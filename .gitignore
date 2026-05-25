@@ -1,0 +1,11 @@
+# Local build outputs
+bin/
+
+# Runtime/local state
+.harness/
+.omx/
+
+# Language/tool caches
+__pycache__/
+*.pyc
+.DS_Store

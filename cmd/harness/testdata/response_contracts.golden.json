@@ -1,0 +1,1374 @@
+{
+  "cli": {
+    "docs_index": {
+      "docs": [
+        {
+          "bytes": 7677,
+          "headings": [
+            "AGENTS.md",
+            "1. 작업 원칙",
+            "2. 프로젝트 결정 요약",
+            "3. Required Reading / Agent Docs",
+            "4. Working Contract",
+            "5. Planned Directory Map",
+            "6. Essential Commands",
+            "7. Critical Invariants",
+            "8. Manual Notes"
+          ],
+          "path": "$HARNESS_ROOT/AGENTS.md",
+          "rel_path": "AGENTS.md",
+          "title": "AGENTS.md"
+        },
+        {
+          "bytes": 478,
+          "headings": [
+            "CLAUDE.md"
+          ],
+          "path": "$HARNESS_ROOT/CLAUDE.md",
+          "rel_path": "CLAUDE.md",
+          "title": "CLAUDE.md"
+        },
+        {
+          "bytes": 9289,
+          "headings": [
+            "agent-harness 아키텍처",
+            "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
+            "2. Target Architecture",
+            "3. 실행 모드",
+            "4. Planned package boundaries",
+            "5. Docs / state / config / logs",
+            "6. Command / policy model",
+            "7. Codex / Claude integration map",
+            "8. 변경 체크리스트"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
+          "rel_path": "agent_docs/ARCHITECTURE.md",
+          "title": "agent-harness 아키텍처"
+        },
+        {
+          "bytes": 3684,
+          "headings": [
+            "주의사항 모음",
+            "1. Host-specific lock-in",
+            "2. Plugin-only 착각",
+            "3. 위험한 shell 실행",
+            "4. Secret leakage",
+            "5. Worker lifecycle 문제",
+            "6. State 위치 혼동",
+            "7. MCP schema drift",
+            "8. Shared skill drift",
+            "9. Self-augmentation drift",
+            "10. 과도한 초기 추상화"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
+          "rel_path": "agent_docs/CAUTIONS.md",
+          "title": "주의사항 모음"
+        },
+        {
+          "bytes": 2945,
+          "headings": [
+            "커밋 메시지 정책: Conventional + Lore Hybrid",
+            "1. 기본 형식",
+            "2. Subject 규칙",
+            "3. Lore body 규칙",
+            "4. Atomic commit과의 관계"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
+          "rel_path": "agent_docs/COMMIT_POLICY.md",
+          "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
+        },
+        {
+          "bytes": 4603,
+          "headings": [
+            "프로젝트 헌법",
+            "제0장: 문서 우선순위",
+            "제1장: 언어 규칙",
+            "제2장: 안전 / 정확성 우선",
+            "제3장: 아키텍처 원칙",
+            "제4장: 설계 3원칙",
+            "KISS",
+            "DRY",
+            "YAGNI",
+            "제5장: 검증 원칙"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
+          "rel_path": "agent_docs/CONSTITUTION.md",
+          "title": "프로젝트 헌법"
+        },
+        {
+          "bytes": 5611,
+          "headings": [
+            "구현 컨벤션",
+            "1. 네이밍 / 구조",
+            "2. 레이어 경계",
+            "3. CLI 컨벤션",
+            "4. MCP 컨벤션",
+            "5. Worker 컨벤션",
+            "6. Config / env",
+            "7. Logging / secret hygiene",
+            "8. Dependency 원칙",
+            "9. Shared Skill 컨벤션",
+            "10. 커밋 메시지 컨벤션"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
+          "rel_path": "agent_docs/CONVENTIONS.md",
+          "title": "구현 컨벤션"
+        },
+        {
+          "bytes": 7845,
+          "headings": [
+            "agent-harness 구현 계획",
+            "1. 최종 결정",
+            "1.1 Plugin 방식 vs 외부 worker 방식",
+            "1.2 언어 선택",
+            "2. 목표 아키텍처",
+            "3. Phase별 계획",
+            "Phase 0 — 문서 기반 세팅",
+            "Phase 1 — Go 프로젝트 부트스트랩",
+            "Phase 2 — Core capability MVP",
+            "Phase 3 — MCP stdio server",
+            "Phase 4 — Local worker daemon",
+            "Phase 5 — Codex adapter",
+            "Phase 6 — Claude Code adapter",
+            "Phase 7 — Hardening / release",
+            "4. MVP 범위",
+            "5. 주요 위험과 대응",
+            "6. 다음 작업 제안"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
+          "rel_path": "agent_docs/IMPLEMENTATION_PLAN.md",
+          "title": "agent-harness 구현 계획"
+        },
+        {
+          "bytes": 7746,
+          "headings": [
+            "자가증강 루프",
+            "현재 구현",
+            "반복 단계",
+            "승격 규칙"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
+          "rel_path": "agent_docs/SELF_AUGMENTATION.md",
+          "title": "자가증강 루프"
+        },
+        {
+          "bytes": 4535,
+          "headings": [
+            "기술 스택",
+            "1. 언어 선택",
+            "2. 런타임 / 패키지 관리",
+            "3. 예상 라이브러리 후보",
+            "4. 예정 명령어",
+            "5. 주요 설정/상태 위치",
+            "Native integration 확인"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
+          "rel_path": "agent_docs/TECH_STACK.md",
+          "title": "기술 스택"
+        },
+        {
+          "bytes": 5736,
+          "headings": [
+            "테스트 컨벤션",
+            "1. 현재 문서 단계 검증",
+            "2. Go 코드 변경 기본 검증",
+            "3. 테스트 작성 기준",
+            "4. Contract / Golden tests",
+            "5. 완료 보고 기준"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/TESTING.md",
+          "rel_path": "agent_docs/TESTING.md",
+          "title": "테스트 컨벤션"
+        },
+        {
+          "bytes": 7593,
+          "headings": [
+            "하네스 사용법",
+            "1. 설치/갱신",
+            "2. Codex에서 사용",
+            "Native skill",
+            "MCP",
+            "3. Claude Code에서 사용",
+            "Native skill",
+            "MCP",
+            "4. CLI로 직접 사용",
+            "5. MCP smoke test"
+          ],
+          "path": "$HARNESS_ROOT/agent_docs/USAGE.md",
+          "rel_path": "agent_docs/USAGE.md",
+          "title": "하네스 사용법"
+        }
+      ],
+      "generated_at": "$TIMESTAMP",
+      "harness_root": "$HARNESS_ROOT",
+      "ok": true,
+      "version": "0.1.0"
+    },
+    "inspect": {
+      "docs": [
+        "$HARNESS_ROOT/AGENTS.md",
+        "$HARNESS_ROOT/CLAUDE.md",
+        "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
+        "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
+        "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
+        "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
+        "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
+        "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
+        "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
+        "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
+        "$HARNESS_ROOT/agent_docs/TESTING.md",
+        "$HARNESS_ROOT/agent_docs/USAGE.md"
+      ],
+      "generated_at": "$TIMESTAMP",
+      "harness_root": "$HARNESS_ROOT",
+      "integration": {
+        "claude_skill_installed": true,
+        "claude_skill_path": "$HOME/.claude/skills/atomic-commit-push",
+        "codex_mcp_configured": true,
+        "codex_skill_installed": true,
+        "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
+        "mcp_binary_path": "$HARNESS_ROOT/bin/harness",
+        "project_claude_mcp_config": true,
+        "project_claude_skill": true,
+        "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
+      },
+      "ok": true,
+      "skills": [
+        {
+          "description": "Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "atomic-commit-push",
+          "path": "$HARNESS_ROOT/skills/atomic-commit-push"
+        }
+      ],
+      "target_repo": "$WORKSPACE",
+      "version": "0.1.0"
+    },
+    "policy_check": {
+      "allowed": true,
+      "argv": [
+        "git",
+        "status",
+        "--short"
+      ],
+      "audit_log_id": "$AUDIT_ID",
+      "cwd": "$WORKSPACE",
+      "deny_reasons": [],
+      "env_allowlist": [],
+      "generated_at": "$TIMESTAMP",
+      "network_allowed": false,
+      "ok": true,
+      "shell_allowed": false,
+      "timeout": "30s",
+      "warnings": [],
+      "workspace_root": "$WORKSPACE",
+      "write_allowed": false
+    },
+    "preflight": {
+      "ahead": null,
+      "behind": null,
+      "branch": "main",
+      "commit_style_hints": {
+        "conventional_subjects": 1,
+        "lore_bodies": 1,
+        "message_policy_doc_path": "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
+        "recent_count": 1,
+        "recommended": "conventional_subject_plus_lore_body"
+      },
+      "head": "$GIT_SHA",
+      "is_clean": false,
+      "last_commit": "$GIT_SHA docs(contract): add fixture",
+      "ok": true,
+      "recent_commits": [
+        {
+          "sha": "$GIT_SHA",
+          "subject": "docs(contract): add fixture"
+        }
+      ],
+      "remotes": null,
+      "repo_root": "$GIT_REPO",
+      "secret_like_paths": [
+        ".env"
+      ],
+      "staged_files": [],
+      "status_lines": [
+        "## main",
+        "?? .env"
+      ],
+      "unstaged_files": [],
+      "untracked_files": [
+        ".env"
+      ],
+      "upstream": null,
+      "warnings": [
+        "no_upstream",
+        "secret_like_paths_present"
+      ]
+    },
+    "self_augment_compare": {
+      "added_step_labels": [],
+      "baseline_key": "self-augment-baseline",
+      "baseline_slowest_steps": [
+        {
+          "duration_ms": 1000,
+          "iteration": 1,
+          "label": "go test",
+          "seed": 600
+        }
+      ],
+      "baseline_snapshot_generated_at": "$TIMESTAMP",
+      "baseline_summary": {
+        "failed_steps": 0,
+        "passed_steps": 20,
+        "slowest_steps": [
+          {
+            "duration_ms": 1000,
+            "iteration": 1,
+            "label": "go test",
+            "seed": 600
+          }
+        ],
+        "step_labels": [
+          "go test",
+          "MCP smoke"
+        ],
+        "total_runs": 10,
+        "total_steps": 20
+      },
+      "candidate_key": "self-augment-candidate",
+      "candidate_slowest_steps": [
+        {
+          "duration_ms": 1000,
+          "iteration": 1,
+          "label": "go test",
+          "seed": 600
+        }
+      ],
+      "candidate_snapshot_generated_at": "$TIMESTAMP",
+      "candidate_summary": {
+        "failed_steps": 0,
+        "passed_steps": 20,
+        "slowest_steps": [
+          {
+            "duration_ms": 1000,
+            "iteration": 1,
+            "label": "go test",
+            "seed": 600
+          }
+        ],
+        "step_labels": [
+          "go test",
+          "MCP smoke"
+        ],
+        "total_runs": 10,
+        "total_steps": 20
+      },
+      "elapsed_delta_ms": 100,
+      "elapsed_delta_pct": 10,
+      "failed_steps_delta": 0,
+      "max_elapsed_regression_pct": 20,
+      "missing_step_labels": [],
+      "ok": true,
+      "regressed": false,
+      "regressions": [],
+      "state_dir": "$STATE_DIR",
+      "total_steps_delta": 0,
+      "warnings": []
+    },
+    "self_augment_history": {
+      "entries": [
+        {
+          "base_seed": 600,
+          "bytes": 556,
+          "elapsed_ms": 1100,
+          "failed_steps": 0,
+          "generated_at": "$TIMESTAMP",
+          "iterations": 10,
+          "key": "self-augment-candidate",
+          "ok": true,
+          "slowest_steps": [
+            {
+              "duration_ms": 1000,
+              "iteration": 1,
+              "label": "go test",
+              "seed": 600
+            }
+          ],
+          "step_labels": [
+            "go test",
+            "MCP smoke"
+          ],
+          "total_runs": 10,
+          "total_steps": 20,
+          "updated_at": "$TIMESTAMP"
+        },
+        {
+          "base_seed": 600,
+          "bytes": 556,
+          "elapsed_ms": 1000,
+          "failed_steps": 0,
+          "generated_at": "$TIMESTAMP",
+          "iterations": 10,
+          "key": "self-augment-baseline",
+          "ok": true,
+          "slowest_steps": [
+            {
+              "duration_ms": 1000,
+              "iteration": 1,
+              "label": "go test",
+              "seed": 600
+            }
+          ],
+          "step_labels": [
+            "go test",
+            "MCP smoke"
+          ],
+          "total_runs": 10,
+          "total_steps": 20,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "limit": 20,
+      "ok": true,
+      "prefix": "self-augment",
+      "returned": 2,
+      "skipped": [],
+      "state_dir": "$STATE_DIR",
+      "total_matches": 2,
+      "warnings": []
+    },
+    "self_augment_promote_dry_run": {
+      "baseline_key": "self-augment-promoted",
+      "confirm": false,
+      "dry_run": true,
+      "from_key": "self-augment-candidate",
+      "ok": true,
+      "promoted": false,
+      "snapshot_generated_at": "$TIMESTAMP",
+      "state_dir": "$STATE_DIR",
+      "summary": {
+        "failed_steps": 0,
+        "passed_steps": 20,
+        "slowest_steps": [
+          {
+            "duration_ms": 1000,
+            "iteration": 1,
+            "label": "go test",
+            "seed": 600
+          }
+        ],
+        "step_labels": [
+          "go test",
+          "MCP smoke"
+        ],
+        "total_runs": 10,
+        "total_steps": 20
+      }
+    },
+    "state_doctor_corrupt": {
+      "checked": 3,
+      "healthy": false,
+      "issues": [
+        {
+          "code": "invalid_json",
+          "key": "corrupt",
+          "message": "invalid character 'n' looking for beginning of object key string",
+          "path": "$STATE_DIR/corrupt.json",
+          "severity": "error"
+        }
+      ],
+      "ok": true,
+      "state_dir": "$STATE_DIR",
+      "valid": [
+        {
+          "bytes": 15,
+          "key": "current",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        },
+        {
+          "bytes": 14,
+          "key": "legacy",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "valid_keys": [
+        "current",
+        "legacy"
+      ]
+    },
+    "state_doctor_healthy": {
+      "checked": 2,
+      "healthy": true,
+      "issues": [],
+      "ok": true,
+      "state_dir": "$STATE_DIR",
+      "valid": [
+        {
+          "bytes": 15,
+          "key": "current",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        },
+        {
+          "bytes": 14,
+          "key": "legacy",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "valid_keys": [
+        "current",
+        "legacy"
+      ]
+    },
+    "state_list": {
+      "keys": [
+        "current"
+      ],
+      "ok": true,
+      "records": [
+        {
+          "bytes": 15,
+          "key": "current",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "state_dir": "$STATE_DIR"
+    },
+    "state_migrate_confirm": {
+      "candidate_keys": [
+        "legacy"
+      ],
+      "candidates": [
+        {
+          "bytes": 14,
+          "key": "legacy",
+          "schema_version": 0,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "confirm": true,
+      "dry_run": false,
+      "from_schema": 0,
+      "issues": [],
+      "migrated_keys": [
+        "legacy"
+      ],
+      "ok": true,
+      "skipped": [
+        {
+          "bytes": 15,
+          "key": "current",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "skipped_keys": [
+        "current"
+      ],
+      "state_dir": "$STATE_DIR",
+      "to_schema": 1
+    },
+    "state_migrate_dry_run": {
+      "candidate_keys": [
+        "legacy"
+      ],
+      "candidates": [
+        {
+          "bytes": 14,
+          "key": "legacy",
+          "schema_version": 0,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "confirm": false,
+      "dry_run": true,
+      "from_schema": 0,
+      "issues": [],
+      "migrated_keys": [],
+      "ok": true,
+      "skipped": [
+        {
+          "bytes": 15,
+          "key": "current",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "skipped_keys": [
+        "current"
+      ],
+      "state_dir": "$STATE_DIR",
+      "to_schema": 1
+    },
+    "state_prune_confirm": {
+      "confirm": true,
+      "cutoff": "$TIMESTAMP",
+      "deleted_keys": [
+        "old"
+      ],
+      "dry_run": false,
+      "kept": [
+        {
+          "bytes": 15,
+          "key": "current",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "kept_keys": [
+        "current"
+      ],
+      "max_age": "1h0m0s",
+      "ok": true,
+      "pruned": [
+        {
+          "bytes": 15,
+          "key": "old",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "state_dir": "$STATE_DIR"
+    },
+    "state_prune_dry_run": {
+      "confirm": false,
+      "cutoff": "$TIMESTAMP",
+      "deleted_keys": [
+        "old"
+      ],
+      "dry_run": true,
+      "kept": [
+        {
+          "bytes": 15,
+          "key": "current",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "kept_keys": [
+        "current"
+      ],
+      "max_age": "1h0m0s",
+      "ok": true,
+      "pruned": [
+        {
+          "bytes": 15,
+          "key": "old",
+          "schema_version": 1,
+          "updated_at": "$TIMESTAMP"
+        }
+      ],
+      "state_dir": "$STATE_DIR"
+    },
+    "state_read": {
+      "ok": true,
+      "path": "$STATE_DIR/current.json",
+      "record": {
+        "bytes": 15,
+        "content": "current content",
+        "key": "current",
+        "schema_version": 1,
+        "updated_at": "$TIMESTAMP"
+      },
+      "state_dir": "$STATE_DIR"
+    },
+    "state_write": {
+      "ok": true,
+      "path": "$STATE_DIR/current.json",
+      "record": {
+        "bytes": 15,
+        "content": "current content",
+        "key": "current",
+        "schema_version": 1,
+        "updated_at": "$TIMESTAMP"
+      },
+      "state_dir": "$STATE_DIR"
+    }
+  },
+  "mcp": {
+    "atomic_commit_preflight": {
+      "content": [
+        {
+          "json": {
+            "ahead": null,
+            "behind": null,
+            "branch": "main",
+            "commit_style_hints": {
+              "conventional_subjects": 1,
+              "lore_bodies": 1,
+              "message_policy_doc_path": "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
+              "recent_count": 1,
+              "recommended": "conventional_subject_plus_lore_body"
+            },
+            "head": "$GIT_SHA",
+            "is_clean": false,
+            "last_commit": "$GIT_SHA docs(contract): add fixture",
+            "ok": true,
+            "recent_commits": [
+              {
+                "sha": "$GIT_SHA",
+                "subject": "docs(contract): add fixture"
+              }
+            ],
+            "remotes": null,
+            "repo_root": "$GIT_REPO",
+            "secret_like_paths": [
+              ".env"
+            ],
+            "staged_files": [],
+            "status_lines": [
+              "## main",
+              "?? .env"
+            ],
+            "unstaged_files": [],
+            "untracked_files": [
+              ".env"
+            ],
+            "upstream": null,
+            "warnings": [
+              "no_upstream",
+              "secret_like_paths_present"
+            ]
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "command_policy_check": {
+      "content": [
+        {
+          "json": {
+            "allowed": true,
+            "argv": [
+              "git",
+              "status",
+              "--short"
+            ],
+            "audit_log_id": "$AUDIT_ID",
+            "cwd": "$WORKSPACE",
+            "deny_reasons": [],
+            "env_allowlist": [],
+            "generated_at": "$TIMESTAMP",
+            "network_allowed": false,
+            "ok": true,
+            "shell_allowed": false,
+            "timeout": "30s",
+            "warnings": [],
+            "workspace_root": "$WORKSPACE",
+            "write_allowed": false
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "docs_index": {
+      "content": [
+        {
+          "json": {
+            "docs": [
+              {
+                "bytes": 7677,
+                "headings": [
+                  "AGENTS.md",
+                  "1. 작업 원칙",
+                  "2. 프로젝트 결정 요약",
+                  "3. Required Reading / Agent Docs",
+                  "4. Working Contract",
+                  "5. Planned Directory Map",
+                  "6. Essential Commands",
+                  "7. Critical Invariants",
+                  "8. Manual Notes"
+                ],
+                "path": "$HARNESS_ROOT/AGENTS.md",
+                "rel_path": "AGENTS.md",
+                "title": "AGENTS.md"
+              },
+              {
+                "bytes": 478,
+                "headings": [
+                  "CLAUDE.md"
+                ],
+                "path": "$HARNESS_ROOT/CLAUDE.md",
+                "rel_path": "CLAUDE.md",
+                "title": "CLAUDE.md"
+              },
+              {
+                "bytes": 9289,
+                "headings": [
+                  "agent-harness 아키텍처",
+                  "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
+                  "2. Target Architecture",
+                  "3. 실행 모드",
+                  "4. Planned package boundaries",
+                  "5. Docs / state / config / logs",
+                  "6. Command / policy model",
+                  "7. Codex / Claude integration map",
+                  "8. 변경 체크리스트"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
+                "rel_path": "agent_docs/ARCHITECTURE.md",
+                "title": "agent-harness 아키텍처"
+              },
+              {
+                "bytes": 3684,
+                "headings": [
+                  "주의사항 모음",
+                  "1. Host-specific lock-in",
+                  "2. Plugin-only 착각",
+                  "3. 위험한 shell 실행",
+                  "4. Secret leakage",
+                  "5. Worker lifecycle 문제",
+                  "6. State 위치 혼동",
+                  "7. MCP schema drift",
+                  "8. Shared skill drift",
+                  "9. Self-augmentation drift",
+                  "10. 과도한 초기 추상화"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
+                "rel_path": "agent_docs/CAUTIONS.md",
+                "title": "주의사항 모음"
+              },
+              {
+                "bytes": 2945,
+                "headings": [
+                  "커밋 메시지 정책: Conventional + Lore Hybrid",
+                  "1. 기본 형식",
+                  "2. Subject 규칙",
+                  "3. Lore body 규칙",
+                  "4. Atomic commit과의 관계"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
+                "rel_path": "agent_docs/COMMIT_POLICY.md",
+                "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
+              },
+              {
+                "bytes": 4603,
+                "headings": [
+                  "프로젝트 헌법",
+                  "제0장: 문서 우선순위",
+                  "제1장: 언어 규칙",
+                  "제2장: 안전 / 정확성 우선",
+                  "제3장: 아키텍처 원칙",
+                  "제4장: 설계 3원칙",
+                  "KISS",
+                  "DRY",
+                  "YAGNI",
+                  "제5장: 검증 원칙"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
+                "rel_path": "agent_docs/CONSTITUTION.md",
+                "title": "프로젝트 헌법"
+              },
+              {
+                "bytes": 5611,
+                "headings": [
+                  "구현 컨벤션",
+                  "1. 네이밍 / 구조",
+                  "2. 레이어 경계",
+                  "3. CLI 컨벤션",
+                  "4. MCP 컨벤션",
+                  "5. Worker 컨벤션",
+                  "6. Config / env",
+                  "7. Logging / secret hygiene",
+                  "8. Dependency 원칙",
+                  "9. Shared Skill 컨벤션",
+                  "10. 커밋 메시지 컨벤션"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
+                "rel_path": "agent_docs/CONVENTIONS.md",
+                "title": "구현 컨벤션"
+              },
+              {
+                "bytes": 7845,
+                "headings": [
+                  "agent-harness 구현 계획",
+                  "1. 최종 결정",
+                  "1.1 Plugin 방식 vs 외부 worker 방식",
+                  "1.2 언어 선택",
+                  "2. 목표 아키텍처",
+                  "3. Phase별 계획",
+                  "Phase 0 — 문서 기반 세팅",
+                  "Phase 1 — Go 프로젝트 부트스트랩",
+                  "Phase 2 — Core capability MVP",
+                  "Phase 3 — MCP stdio server",
+                  "Phase 4 — Local worker daemon",
+                  "Phase 5 — Codex adapter",
+                  "Phase 6 — Claude Code adapter",
+                  "Phase 7 — Hardening / release",
+                  "4. MVP 범위",
+                  "5. 주요 위험과 대응",
+                  "6. 다음 작업 제안"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
+                "rel_path": "agent_docs/IMPLEMENTATION_PLAN.md",
+                "title": "agent-harness 구현 계획"
+              },
+              {
+                "bytes": 7746,
+                "headings": [
+                  "자가증강 루프",
+                  "현재 구현",
+                  "반복 단계",
+                  "승격 규칙"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
+                "rel_path": "agent_docs/SELF_AUGMENTATION.md",
+                "title": "자가증강 루프"
+              },
+              {
+                "bytes": 4535,
+                "headings": [
+                  "기술 스택",
+                  "1. 언어 선택",
+                  "2. 런타임 / 패키지 관리",
+                  "3. 예상 라이브러리 후보",
+                  "4. 예정 명령어",
+                  "5. 주요 설정/상태 위치",
+                  "Native integration 확인"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
+                "rel_path": "agent_docs/TECH_STACK.md",
+                "title": "기술 스택"
+              },
+              {
+                "bytes": 5736,
+                "headings": [
+                  "테스트 컨벤션",
+                  "1. 현재 문서 단계 검증",
+                  "2. Go 코드 변경 기본 검증",
+                  "3. 테스트 작성 기준",
+                  "4. Contract / Golden tests",
+                  "5. 완료 보고 기준"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/TESTING.md",
+                "rel_path": "agent_docs/TESTING.md",
+                "title": "테스트 컨벤션"
+              },
+              {
+                "bytes": 7593,
+                "headings": [
+                  "하네스 사용법",
+                  "1. 설치/갱신",
+                  "2. Codex에서 사용",
+                  "Native skill",
+                  "MCP",
+                  "3. Claude Code에서 사용",
+                  "Native skill",
+                  "MCP",
+                  "4. CLI로 직접 사용",
+                  "5. MCP smoke test"
+                ],
+                "path": "$HARNESS_ROOT/agent_docs/USAGE.md",
+                "rel_path": "agent_docs/USAGE.md",
+                "title": "하네스 사용법"
+              }
+            ],
+            "generated_at": "$TIMESTAMP",
+            "harness_root": "$HARNESS_ROOT",
+            "ok": true,
+            "version": "0.1.0"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "harness_inspect": {
+      "content": [
+        {
+          "json": {
+            "docs": [
+              "$HARNESS_ROOT/AGENTS.md",
+              "$HARNESS_ROOT/CLAUDE.md",
+              "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
+              "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
+              "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
+              "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
+              "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
+              "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
+              "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
+              "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
+              "$HARNESS_ROOT/agent_docs/TESTING.md",
+              "$HARNESS_ROOT/agent_docs/USAGE.md"
+            ],
+            "generated_at": "$TIMESTAMP",
+            "harness_root": "$HARNESS_ROOT",
+            "integration": {
+              "claude_skill_installed": true,
+              "claude_skill_path": "$HOME/.claude/skills/atomic-commit-push",
+              "codex_mcp_configured": true,
+              "codex_skill_installed": true,
+              "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
+              "mcp_binary_path": "$HARNESS_ROOT/bin/harness",
+              "project_claude_mcp_config": true,
+              "project_claude_skill": true,
+              "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
+            },
+            "ok": true,
+            "skills": [
+              {
+                "description": "Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "atomic-commit-push",
+                "path": "$HARNESS_ROOT/skills/atomic-commit-push"
+              }
+            ],
+            "target_repo": "$WORKSPACE",
+            "version": "0.1.0"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "self_augment_compare": {
+      "content": [
+        {
+          "json": {
+            "added_step_labels": [],
+            "baseline_key": "self-augment-baseline",
+            "baseline_slowest_steps": [
+              {
+                "duration_ms": 1000,
+                "iteration": 1,
+                "label": "go test",
+                "seed": 600
+              }
+            ],
+            "baseline_snapshot_generated_at": "$TIMESTAMP",
+            "baseline_summary": {
+              "failed_steps": 0,
+              "passed_steps": 20,
+              "slowest_steps": [
+                {
+                  "duration_ms": 1000,
+                  "iteration": 1,
+                  "label": "go test",
+                  "seed": 600
+                }
+              ],
+              "step_labels": [
+                "go test",
+                "MCP smoke"
+              ],
+              "total_runs": 10,
+              "total_steps": 20
+            },
+            "candidate_key": "self-augment-candidate",
+            "candidate_slowest_steps": [
+              {
+                "duration_ms": 1000,
+                "iteration": 1,
+                "label": "go test",
+                "seed": 600
+              }
+            ],
+            "candidate_snapshot_generated_at": "$TIMESTAMP",
+            "candidate_summary": {
+              "failed_steps": 0,
+              "passed_steps": 20,
+              "slowest_steps": [
+                {
+                  "duration_ms": 1000,
+                  "iteration": 1,
+                  "label": "go test",
+                  "seed": 600
+                }
+              ],
+              "step_labels": [
+                "go test",
+                "MCP smoke"
+              ],
+              "total_runs": 10,
+              "total_steps": 20
+            },
+            "elapsed_delta_ms": 100,
+            "elapsed_delta_pct": 10,
+            "failed_steps_delta": 0,
+            "max_elapsed_regression_pct": 20,
+            "missing_step_labels": [],
+            "ok": true,
+            "regressed": false,
+            "regressions": [],
+            "state_dir": "$STATE_DIR",
+            "total_steps_delta": 0,
+            "warnings": []
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "self_augment_history": {
+      "content": [
+        {
+          "json": {
+            "entries": [
+              {
+                "base_seed": 600,
+                "bytes": 556,
+                "elapsed_ms": 1100,
+                "failed_steps": 0,
+                "generated_at": "$TIMESTAMP",
+                "iterations": 10,
+                "key": "self-augment-candidate",
+                "ok": true,
+                "slowest_steps": [
+                  {
+                    "duration_ms": 1000,
+                    "iteration": 1,
+                    "label": "go test",
+                    "seed": 600
+                  }
+                ],
+                "step_labels": [
+                  "go test",
+                  "MCP smoke"
+                ],
+                "total_runs": 10,
+                "total_steps": 20,
+                "updated_at": "$TIMESTAMP"
+              },
+              {
+                "base_seed": 600,
+                "bytes": 556,
+                "elapsed_ms": 1000,
+                "failed_steps": 0,
+                "generated_at": "$TIMESTAMP",
+                "iterations": 10,
+                "key": "self-augment-baseline",
+                "ok": true,
+                "slowest_steps": [
+                  {
+                    "duration_ms": 1000,
+                    "iteration": 1,
+                    "label": "go test",
+                    "seed": 600
+                  }
+                ],
+                "step_labels": [
+                  "go test",
+                  "MCP smoke"
+                ],
+                "total_runs": 10,
+                "total_steps": 20,
+                "updated_at": "$TIMESTAMP"
+              }
+            ],
+            "limit": 20,
+            "ok": true,
+            "prefix": "self-augment",
+            "returned": 2,
+            "skipped": [],
+            "state_dir": "$STATE_DIR",
+            "total_matches": 2,
+            "warnings": []
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "self_augment_promote": {
+      "content": [
+        {
+          "json": {
+            "baseline_key": "self-augment-promoted",
+            "confirm": false,
+            "dry_run": true,
+            "from_key": "self-augment-candidate",
+            "ok": true,
+            "promoted": false,
+            "snapshot_generated_at": "$TIMESTAMP",
+            "state_dir": "$STATE_DIR",
+            "summary": {
+              "failed_steps": 0,
+              "passed_steps": 20,
+              "slowest_steps": [
+                {
+                  "duration_ms": 1000,
+                  "iteration": 1,
+                  "label": "go test",
+                  "seed": 600
+                }
+              ],
+              "step_labels": [
+                "go test",
+                "MCP smoke"
+              ],
+              "total_runs": 10,
+              "total_steps": 20
+            }
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "state_doctor": {
+      "content": [
+        {
+          "json": {
+            "checked": 5,
+            "healthy": false,
+            "issues": [
+              {
+                "code": "invalid_json",
+                "key": "corrupt",
+                "message": "invalid character 'n' looking for beginning of object key string",
+                "path": "$STATE_DIR/corrupt.json",
+                "severity": "error"
+              }
+            ],
+            "ok": true,
+            "state_dir": "$STATE_DIR",
+            "valid": [
+              {
+                "bytes": 15,
+                "key": "current",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": 14,
+                "key": "legacy",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": 556,
+                "key": "self-augment-baseline",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": 556,
+                "key": "self-augment-candidate",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              }
+            ],
+            "valid_keys": [
+              "current",
+              "legacy",
+              "self-augment-baseline",
+              "self-augment-candidate"
+            ]
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "state_migrate": {
+      "content": [
+        {
+          "json": {
+            "candidate_keys": [],
+            "candidates": [],
+            "confirm": false,
+            "dry_run": true,
+            "from_schema": 0,
+            "issues": [
+              {
+                "code": "invalid_json",
+                "key": "corrupt",
+                "message": "invalid character 'n' looking for beginning of object key string",
+                "path": "$STATE_DIR/corrupt.json",
+                "severity": "error"
+              }
+            ],
+            "migrated_keys": [],
+            "ok": true,
+            "skipped": [
+              {
+                "bytes": 15,
+                "key": "current",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": 14,
+                "key": "legacy",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": 556,
+                "key": "self-augment-baseline",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": 556,
+                "key": "self-augment-candidate",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              }
+            ],
+            "skipped_keys": [
+              "current",
+              "legacy",
+              "self-augment-baseline",
+              "self-augment-candidate"
+            ],
+            "state_dir": "$STATE_DIR",
+            "to_schema": 1
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "state_prune": {
+      "content": [
+        {
+          "json": {
+            "confirm": false,
+            "cutoff": "$TIMESTAMP",
+            "deleted_keys": [
+              "legacy"
+            ],
+            "dry_run": true,
+            "kept": [
+              {
+                "bytes": 15,
+                "key": "current",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": 556,
+                "key": "self-augment-baseline",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": 556,
+                "key": "self-augment-candidate",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              }
+            ],
+            "kept_keys": [
+              "current",
+              "self-augment-baseline",
+              "self-augment-candidate"
+            ],
+            "max_age": "1h0m0s",
+            "ok": true,
+            "pruned": [
+              {
+                "bytes": 14,
+                "key": "legacy",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
+              }
+            ],
+            "state_dir": "$STATE_DIR"
+          },
+          "type": "text"
+        }
+      ]
+    }
+  }
+}

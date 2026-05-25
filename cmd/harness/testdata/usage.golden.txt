@@ -1,0 +1,20 @@
+harness 0.1.0
+
+Usage:
+  harness inspect [--json] [--repo PATH]
+  harness preflight [--json] [PATH]
+  harness docs [index] [--json]
+  harness policy check [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
+  harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
+  harness state write --key KEY (--value TEXT|--input FILE|--stdin) [--json]
+  harness state read --key KEY [--json]
+  harness state list [--json]
+  harness state prune --max-age DURATION [--confirm] [--json]
+  harness state doctor [--json]
+  harness state migrate [--confirm] [--json]
+  harness self-augment [--iterations=10] [--seed=N] [--save-state] [--state-key KEY] [--json]
+  harness self-augment history [--prefix PREFIX] [--limit N] [--json]
+  harness self-augment compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
+  harness self-augment promote --from-key KEY --baseline-key KEY [--confirm] [--json]
+  harness mcp
+  harness version

@@ -1,0 +1,342 @@
+[
+  {
+    "description": "Inspect the agent harness installation, shared skills, docs, and native Codex/Claude integration status.",
+    "inputSchema": {
+      "properties": {
+        "repo": {
+          "description": "Optional target repository path.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "harness_inspect"
+  },
+  {
+    "description": "Run a read-only git preflight for the atomic-commit-push workflow: branch/upstream, staged/unstaged/untracked files, secret-like paths, and commit style hints.",
+    "inputSchema": {
+      "properties": {
+        "path": {
+          "description": "Git repository path. Defaults to the agent project directory.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "atomic_commit_preflight"
+  },
+  {
+    "description": "Return the Conventional Commit + Lore body policy used by this harness.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "commit_policy"
+  },
+  {
+    "description": "List shared skills exposed by the harness and their metadata.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "skill_manifest"
+  },
+  {
+    "description": "Return a lightweight index of AGENTS.md, CLAUDE.md, and agent_docs markdown files: relative path, title, headings, and byte size.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "docs_index"
+  },
+  {
+    "description": "Evaluate whether an argv-based command request is allowed by the harness command policy without executing it.",
+    "inputSchema": {
+      "properties": {
+        "argv": {
+          "description": "Command argv array. Shell strings are not accepted.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "description": "Command working directory; must be inside workspace_root.",
+          "type": "string"
+        },
+        "env_allowlist": {
+          "description": "Allowed environment variable names.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "network_allowed": {
+          "description": "Whether network access is allowed.",
+          "type": "boolean"
+        },
+        "shell_allowed": {
+          "description": "Whether shell interpreter argv[0] is allowed.",
+          "type": "boolean"
+        },
+        "shell_reason": {
+          "description": "Required reason when shell_allowed is true.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Duration such as 30s or 2m; max 15m.",
+          "type": "string"
+        },
+        "workspace_root": {
+          "description": "Workspace root boundary.",
+          "type": "string"
+        },
+        "write_allowed": {
+          "description": "Whether workspace writes are allowed.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "workspace_root",
+        "cwd",
+        "argv"
+      ],
+      "type": "object"
+    },
+    "name": "command_policy_check"
+  },
+  {
+    "description": "Run the command policy and return a fake runner result. This never executes the command; it only proves policy acceptance/denial and audit metadata.",
+    "inputSchema": {
+      "properties": {
+        "argv": {
+          "description": "Command argv array. Shell strings are not accepted.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "description": "Command working directory; must be inside workspace_root.",
+          "type": "string"
+        },
+        "env_allowlist": {
+          "description": "Allowed environment variable names.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "network_allowed": {
+          "description": "Whether network access is allowed.",
+          "type": "boolean"
+        },
+        "shell_allowed": {
+          "description": "Whether shell interpreter argv[0] is allowed.",
+          "type": "boolean"
+        },
+        "shell_reason": {
+          "description": "Required reason when shell_allowed is true.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Duration such as 30s or 2m; max 15m.",
+          "type": "string"
+        },
+        "workspace_root": {
+          "description": "Workspace root boundary.",
+          "type": "string"
+        },
+        "write_allowed": {
+          "description": "Whether workspace writes are allowed.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "workspace_root",
+        "cwd",
+        "argv"
+      ],
+      "type": "object"
+    },
+    "name": "command_fake_run"
+  },
+  {
+    "description": "Write a small agent state checkpoint to HARNESS_STATE_DIR or ~/.local/state/agent-harness. Keys allow [A-Za-z0-9._-] and cannot contain path traversal.",
+    "inputSchema": {
+      "properties": {
+        "content": {
+          "description": "State checkpoint content.",
+          "type": "string"
+        },
+        "key": {
+          "description": "State key, max 128 chars, no path separators.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "content"
+      ],
+      "type": "object"
+    },
+    "name": "state_write"
+  },
+  {
+    "description": "Read an agent state checkpoint by key.",
+    "inputSchema": {
+      "properties": {
+        "key": {
+          "description": "State key.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "type": "object"
+    },
+    "name": "state_read"
+  },
+  {
+    "description": "List agent state checkpoint keys and metadata.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "state_list"
+  },
+  {
+    "description": "Prune old agent state checkpoints. Defaults to dry-run; pass confirm=true to delete records older than max_age.",
+    "inputSchema": {
+      "properties": {
+        "confirm": {
+          "description": "When true, delete matching records; false or omitted performs a dry-run.",
+          "type": "boolean"
+        },
+        "max_age": {
+          "description": "Duration such as 720h or 168h. Must be positive.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "max_age"
+      ],
+      "type": "object"
+    },
+    "name": "state_prune"
+  },
+  {
+    "description": "Inspect agent state checkpoint files for invalid JSON, key mismatches, byte-count drift, invalid timestamps, and unexpected files without modifying state.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "state_doctor"
+  },
+  {
+    "description": "Migrate valid legacy state checkpoints to the current schema. Defaults to dry-run; pass confirm=true to rewrite eligible records.",
+    "inputSchema": {
+      "properties": {
+        "confirm": {
+          "description": "When true, rewrite legacy records; false or omitted performs a dry-run.",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "state_migrate"
+  },
+  {
+    "description": "Run the harness self-augmentation validation loop inspired by eye-tracking-scroll: at least 10 seeded iterations of invariants, build/test, CLI, MCP, state roundtrip, native integration, and git preflight fuzz checks. Can optionally save a compact summary checkpoint to harness state.",
+    "inputSchema": {
+      "properties": {
+        "iterations": {
+          "description": "Iteration count; must be at least 10.",
+          "type": "integer"
+        },
+        "save_state": {
+          "description": "When true, save compact summary to harness state after the run.",
+          "type": "boolean"
+        },
+        "seed": {
+          "description": "Base seed for deterministic per-iteration fuzz fixtures.",
+          "type": "integer"
+        },
+        "state_key": {
+          "description": "State key for save_state; defaults to self-augment-latest.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "self_augment"
+  },
+  {
+    "description": "List saved self-augment summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "description": "Maximum entries to return; defaults to 20, 0 returns all.",
+          "type": "integer"
+        },
+        "prefix": {
+          "description": "State key prefix to scan; defaults to self-augment. Use empty string to scan all keys.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "self_augment_history"
+  },
+  {
+    "description": "Compare two saved self-augment summary checkpoints from harness state and report elapsed-time, failed-step, and step-label regressions.",
+    "inputSchema": {
+      "properties": {
+        "baseline_key": {
+          "description": "State key containing the baseline self-augment summary snapshot.",
+          "type": "string"
+        },
+        "candidate_key": {
+          "description": "State key containing the candidate self-augment summary snapshot.",
+          "type": "string"
+        },
+        "max_elapsed_regression_pct": {
+          "description": "Allowed elapsed_ms increase percentage before regression; defaults to 20.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "baseline_key",
+        "candidate_key"
+      ],
+      "type": "object"
+    },
+    "name": "self_augment_compare"
+  },
+  {
+    "description": "Promote a saved self-augment summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
+    "inputSchema": {
+      "properties": {
+        "baseline_key": {
+          "description": "State key to write as the promoted baseline.",
+          "type": "string"
+        },
+        "confirm": {
+          "description": "When true, write baseline_key; false or omitted performs a dry-run.",
+          "type": "boolean"
+        },
+        "from_key": {
+          "description": "State key containing the candidate self-augment summary snapshot to promote.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_key",
+        "baseline_key"
+      ],
+      "type": "object"
+    },
+    "name": "self_augment_promote"
+  }
+]

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atomic Commit Push"
+  short_description: "Make small verified commits and push safely"
+  default_prompt: "Use $atomic-commit-push to review my changes, split them into atomic commits, and push the branch safely."

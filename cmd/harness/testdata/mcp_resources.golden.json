@@ -1,0 +1,38 @@
+[
+  {
+    "description": "Conventional Commit + Lore body policy.",
+    "mimeType": "text/markdown",
+    "name": "Commit policy",
+    "uri": "harness://commit-policy"
+  },
+  {
+    "description": "Shared native skill instructions.",
+    "mimeType": "text/markdown",
+    "name": "atomic-commit-push skill",
+    "uri": "harness://skill/atomic-commit-push"
+  },
+  {
+    "description": "AGENTS.md root operating contract.",
+    "mimeType": "text/markdown",
+    "name": "Agent root rules",
+    "uri": "harness://agents"
+  },
+  {
+    "description": "JSON index of harness agent-facing markdown docs.",
+    "mimeType": "application/json",
+    "name": "Agent docs index",
+    "uri": "harness://docs"
+  },
+  {
+    "description": "JSON summary of command policy boundaries and fake runner behavior.",
+    "mimeType": "application/json",
+    "name": "Command policy summary",
+    "uri": "harness://command-policy"
+  },
+  {
+    "description": "JSON index of harness state checkpoints.",
+    "mimeType": "application/json",
+    "name": "State checkpoint index",
+    "uri": "harness://state"
+  }
+]
