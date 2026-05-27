@@ -136,6 +136,7 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `harness self-verify --json`의 `summary.contract`/`goal_scores`/`coverage_gaps`/`failure_class`/`rerun_commands`/`step_duration_stats` field
 - `harness self-verify candidates --json` candidate curriculum export and state save/read smoke
 - `harness self-verify compare` step budget p95 regression fixture for labels outside `slowest_steps`
+- `harness self-verify` install dry-run smoke for temp HOME/CODEX_HOME/HARNESS_ROOT no-write assertions
 - `harness self-verify --save-state` summary checkpoint serialization
 - `harness self-verify history` summary checkpoint discovery and retention dry-run/confirm safety
 - `harness self-verify` llm-wiki fixture guard step for temp fixture root and isolated HOME default-root leakage

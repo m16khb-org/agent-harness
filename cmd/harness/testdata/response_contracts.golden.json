@@ -193,7 +193,7 @@
           "title": "LLM Wiki 통합 설계"
         },
         {
-          "bytes": 10817,
+          "bytes": 11044,
           "headings": [
             "자기 검증 루프와 자가 증강 루프",
             "1. 자기 검증 루프",
@@ -214,7 +214,7 @@
           "title": "자기 검증 루프와 자가 증강 루프"
         },
         {
-          "bytes": 10177,
+          "bytes": 10347,
           "headings": [
             "자기 검증 루프 후보 발굴 기록",
             "1. 확인한 현재 상태",
@@ -243,7 +243,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 9594,
+          "bytes": 9698,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -258,7 +258,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 10254,
+          "bytes": 10286,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -1153,8 +1153,11 @@
           "category": "native integration",
           "id": "self-verify-install-dry-run-smoke",
           "priority": 8,
+          "satisfaction_evidence": [
+            "install dry-run smoke runs install-native --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
+          ],
           "score": 76,
-          "status": "open",
+          "status": "already_satisfied",
           "verify_with": [
             "temp HOME smoke",
             "dry-run no-write assertion"
@@ -1306,9 +1309,7 @@
       "korean_name": "자기 검증 루프",
       "loop_kind": "self_verification",
       "ok": true,
-      "open_candidate_ids": [
-        "self-verify-install-dry-run-smoke"
-      ],
+      "open_candidate_ids": [],
       "satisfied_candidate_ids": [
         "self-verify-progress-heartbeat",
         "self-verify-secret-redaction-audit",
@@ -1317,6 +1318,7 @@
         "self-verify-failure-rerun-recipe",
         "self-verify-candidate-export",
         "self-verify-step-budget-baseline",
+        "self-verify-install-dry-run-smoke",
         "self-verify-policy-path-fuzz-plus",
         "self-verify-json-schema-contract",
         "self-verify-flake-classifier",
@@ -1326,20 +1328,6 @@
         "self-verify-duplicate-mcp-warning",
         "self-verify-daemon-restart-resilience"
       ],
-      "selected_candidate": {
-        "category": "native integration",
-        "id": "self-verify-install-dry-run-smoke",
-        "priority": 8,
-        "score": 76,
-        "status": "open",
-        "verify_with": [
-          "temp HOME smoke",
-          "dry-run no-write assertion"
-        ],
-        "why_now": [
-          "install-native --dry-run should be an independent no-write evidence label"
-        ]
-      },
       "source_exists": true,
       "source_path": "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
       "state_checkpoint": {
@@ -2081,7 +2069,7 @@
                 "title": "LLM Wiki 통합 설계"
               },
               {
-                "bytes": 10817,
+                "bytes": 11044,
                 "headings": [
                   "자기 검증 루프와 자가 증강 루프",
                   "1. 자기 검증 루프",
@@ -2102,7 +2090,7 @@
                 "title": "자기 검증 루프와 자가 증강 루프"
               },
               {
-                "bytes": 10177,
+                "bytes": 10347,
                 "headings": [
                   "자기 검증 루프 후보 발굴 기록",
                   "1. 확인한 현재 상태",
@@ -2131,7 +2119,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 9594,
+                "bytes": 9698,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -2146,7 +2134,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 10254,
+                "bytes": 10286,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -3036,8 +3024,11 @@
                 "category": "native integration",
                 "id": "self-verify-install-dry-run-smoke",
                 "priority": 8,
+                "satisfaction_evidence": [
+                  "install dry-run smoke runs install-native --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
+                ],
                 "score": 76,
-                "status": "open",
+                "status": "already_satisfied",
                 "verify_with": [
                   "temp HOME smoke",
                   "dry-run no-write assertion"
@@ -3189,9 +3180,7 @@
             "korean_name": "자기 검증 루프",
             "loop_kind": "self_verification",
             "ok": true,
-            "open_candidate_ids": [
-              "self-verify-install-dry-run-smoke"
-            ],
+            "open_candidate_ids": [],
             "satisfied_candidate_ids": [
               "self-verify-progress-heartbeat",
               "self-verify-secret-redaction-audit",
@@ -3200,6 +3189,7 @@
               "self-verify-failure-rerun-recipe",
               "self-verify-candidate-export",
               "self-verify-step-budget-baseline",
+              "self-verify-install-dry-run-smoke",
               "self-verify-policy-path-fuzz-plus",
               "self-verify-json-schema-contract",
               "self-verify-flake-classifier",
@@ -3209,20 +3199,6 @@
               "self-verify-duplicate-mcp-warning",
               "self-verify-daemon-restart-resilience"
             ],
-            "selected_candidate": {
-              "category": "native integration",
-              "id": "self-verify-install-dry-run-smoke",
-              "priority": 8,
-              "score": 76,
-              "status": "open",
-              "verify_with": [
-                "temp HOME smoke",
-                "dry-run no-write assertion"
-              ],
-              "why_now": [
-                "install-native --dry-run should be an independent no-write evidence label"
-              ]
-            },
             "source_exists": true,
             "source_path": "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
             "state_checkpoint": {

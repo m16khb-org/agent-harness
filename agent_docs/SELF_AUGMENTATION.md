@@ -46,16 +46,17 @@ MCP tools:
 6. inspect/docs smoke
 7. candidate export: `self-verify candidates`가 다음 자기 검증 후보와 open/satisfied 후보를 JSON/state로 내보내는지 확인
 8. step budget baseline: label별 `step_duration_stats` p95 budget과 compare regression을 확인
-9. command policy smoke
-10. MCP smoke
-11. llm-wiki fixture guard: MCP/CLI smoke가 사용자 durable wiki 대신 temp fixture와 isolated HOME만 사용하는지 확인
-12. state roundtrip, prune, doctor, migrate, compare/promote/history and history retention smoke
-13. parallel isolation: 동시 실행 중 temp state, daemon dir, llm-wiki fixture, build artifact path가 충돌하지 않는지 확인
-14. daemon resilience: stale lock/socket 상태에서 daemon start/status/stop 복구와 socket permission을 확인
-15. git preflight fuzz
-16. native Codex/Claude integration smoke, including duplicate MCP warning classification fixture
-17. redaction audit: docs, skill metadata, golden response artifacts에 unredacted secret-like 문자열이 없는지 확인
-18. **QA gate**: `GENIUS_THINK.md`, 루프 문서, skill frontmatter/openai metadata, self-augment skill 존재 여부 확인
+9. install dry-run smoke: temp HOME/CODEX_HOME/HARNESS_ROOT에서 `install-native --dry-run`이 planned writes/links만 보고 실제 파일을 쓰지 않는지 확인
+10. command policy smoke
+11. MCP smoke
+12. llm-wiki fixture guard: MCP/CLI smoke가 사용자 durable wiki 대신 temp fixture와 isolated HOME만 사용하는지 확인
+13. state roundtrip, prune, doctor, migrate, compare/promote/history and history retention smoke
+14. parallel isolation: 동시 실행 중 temp state, daemon dir, llm-wiki fixture, build artifact path가 충돌하지 않는지 확인
+15. daemon resilience: stale lock/socket 상태에서 daemon start/status/stop 복구와 socket permission을 확인
+16. git preflight fuzz
+17. native Codex/Claude integration smoke, including duplicate MCP warning classification fixture
+18. redaction audit: docs, skill metadata, golden response artifacts에 unredacted secret-like 문자열이 없는지 확인
+19. **QA gate**: `GENIUS_THINK.md`, 루프 문서, skill frontmatter/openai metadata, self-augment skill 존재 여부 확인
 
 ### 점수 목표
 
@@ -67,6 +68,7 @@ MCP tools:
 | QA 스모크 | invariants, inspect/docs, candidate export, QA gate | 점수 > 95 |
 | 후보 export | candidate export | 점수 > 95 |
 | 단계 budget baseline | step budget baseline | 점수 > 95 |
+| 설치 dry-run | install dry-run smoke | 점수 > 95 |
 | 정책·보안 | command policy, preflight fuzz, redaction audit | 점수 > 95 |
 | MCP·상태 회귀 | MCP smoke, llm-wiki fixture guard, state roundtrip | 점수 > 95 |
 | LLM Wiki fixture guard | llm-wiki fixture guard | 점수 > 95 |
@@ -77,7 +79,7 @@ MCP tools:
 `self-verify --json`의 `summary.contract`, `summary.goal_scores`, `summary.coverage`, `summary.coverage_gaps`, 실패 시 `summary.failure_class`/`summary.failure_clusters`/`summary.rerun_commands`, `summary.minimum_goal_score`, `summary.termination_eligible`를 판정 기준으로 삼는다.
 `--progress=jsonl`은 stdout JSON summary를 깨지 않고 stderr에 `loop_start`, `iteration_start`, `step_start`, `step_end`, `iteration_end`, `loop_end` 이벤트를 JSON Lines로 기록한다.
 `self-verify compare`는 전체 `elapsed_ms`뿐 아니라 `summary.slowest_steps`와 `summary.step_duration_stats`의 label별 p95 budget을 비교해 느린 단계 회귀를 `slow_step:*`/`step_budget:*` regression으로 승격한다.
-자기 검증 루프 자체의 다음 개선 후보는 `agent_docs/SELF_VERIFICATION_CANDIDATES.md`에 기록한다. progress heartbeat, secret redaction audit, coverage gap report, failure rerun recipe, policy path fuzz plus, JSON schema contract, flake classifier, output size budget, history retention budget, parallel temp isolation, duplicate MCP warning, daemon restart resilience, llm-wiki fixture guard, candidate export, step budget baseline은 구현됐고, 현재 미완료 1순위는 install dry-run smoke이다.
+자기 검증 루프 자체의 다음 개선 후보는 `agent_docs/SELF_VERIFICATION_CANDIDATES.md`에 기록한다. progress heartbeat, secret redaction audit, coverage gap report, failure rerun recipe, policy path fuzz plus, JSON schema contract, flake classifier, output size budget, history retention budget, parallel temp isolation, duplicate MCP warning, daemon restart resilience, llm-wiki fixture guard, candidate export, step budget baseline, install dry-run smoke는 구현됐고, 현재 미완료 후보는 없다.
 
 ## 2. 자가 증강 루프
 

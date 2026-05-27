@@ -1061,6 +1061,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			{Label: "docs index smoke", Run: func() StepResult { return validateDocsIndex(tempBin, result.HarnessRoot) }},
 			{Label: "candidate export", Run: func() StepResult { return validateSelfVerifyCandidateExport(tempBin, result.HarnessRoot, seed) }},
 			{Label: "step budget baseline", Run: func() StepResult { return validateStepBudgetBaseline(tempBin, result.HarnessRoot, seed) }},
+			{Label: "install dry-run smoke", Run: func() StepResult { return validateInstallDryRunSmoke(tempBin, result.HarnessRoot, seed) }},
 			{Label: "command policy smoke", Run: func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) }},
 			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
 			{Label: "llm-wiki fixture guard", Run: func() StepResult { return validateLLMWikiFixtureGuard(tempBin, result.HarnessRoot) }},
@@ -1391,6 +1392,11 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 			Labels:     []string{"step budget baseline"},
 		},
 		{
+			Name:       "install_dry_run",
+			KoreanName: "설치 dry-run",
+			Labels:     []string{"install dry-run smoke"},
+		},
+		{
 			Name:       "policy_security",
 			KoreanName: "정책·보안",
 			Labels:     []string{"command policy smoke", "preflight fuzz", "redaction audit"},
@@ -1432,6 +1438,7 @@ func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition 
 		{Claim: "CLI inspect/docs smoke", Labels: []string{"inspect smoke", "docs index smoke"}},
 		{Claim: "self-verification candidate export", Labels: []string{"candidate export"}},
 		{Claim: "step duration budget baseline", Labels: []string{"step budget baseline"}},
+		{Claim: "install-native dry-run no-write smoke", Labels: []string{"install dry-run smoke"}},
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
 		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
 		{Claim: "llm-wiki fixture guard", Labels: []string{"llm-wiki fixture guard"}},
@@ -1500,6 +1507,8 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify candidates --save-state --state-key self-verify-candidates-test --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state read --key self-verify-candidates-test --json; rm -rf \"$tmp_state\"", true
 	case "step budget baseline":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
+	case "install dry-run smoke":
+		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/harness install-native --dry-run --project-local --llm-wiki-root \"$tmp_home/wiki\" --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
 	case "command policy smoke":
 		return "./bin/harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
 	case "MCP smoke":
@@ -2581,13 +2590,10 @@ func validateSelfVerifyCandidateExport(binary, root string, seed int64) StepResu
 	if exportResult.CandidateCount < 10 || len(exportResult.Candidates) != exportResult.CandidateCount {
 		errs = append(errs, "candidate export did not include the candidate curriculum")
 	}
-	if exportResult.SelectedCandidate == nil || exportResult.SelectedCandidate.ID != "self-verify-install-dry-run-smoke" {
-		errs = append(errs, "candidate export selected the wrong next candidate")
+	if exportResult.SelectedCandidate != nil || len(exportResult.OpenCandidateIDs) != 0 {
+		errs = append(errs, "candidate export should have no remaining open candidates")
 	}
-	if !containsString(exportResult.OpenCandidateIDs, "self-verify-install-dry-run-smoke") {
-		errs = append(errs, "candidate export missing expected open candidate IDs")
-	}
-	if containsString(exportResult.OpenCandidateIDs, "self-verify-candidate-export") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-candidate-export") || containsString(exportResult.OpenCandidateIDs, "self-verify-step-budget-baseline") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-step-budget-baseline") {
+	if containsString(exportResult.OpenCandidateIDs, "self-verify-candidate-export") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-candidate-export") || containsString(exportResult.OpenCandidateIDs, "self-verify-step-budget-baseline") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-step-budget-baseline") || containsString(exportResult.OpenCandidateIDs, "self-verify-install-dry-run-smoke") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-install-dry-run-smoke") {
 		errs = append(errs, "candidate export did not mark implemented candidates satisfied")
 	}
 	if exportResult.StateCheckpoint == nil || !exportResult.StateCheckpoint.OK || exportResult.StateCheckpoint.Key != key {
@@ -2596,7 +2602,7 @@ func validateSelfVerifyCandidateExport(binary, root string, seed int64) StepResu
 	if snapshot.Kind != selfVerificationCandidateExportKind || snapshot.CandidateCount != exportResult.CandidateCount {
 		errs = append(errs, "candidate export state snapshot mismatch")
 	}
-	if snapshot.SelectedCandidate == nil || snapshot.SelectedCandidate.ID != exportResult.SelectedCandidate.ID {
+	if snapshot.SelectedCandidate != nil {
 		errs = append(errs, "candidate export state selected candidate mismatch")
 	}
 	if len(errs) > 0 {
@@ -2708,6 +2714,116 @@ func validateStepBudgetBaseline(binary, root string, seed int64) StepResult {
 		StdoutBytes:     stdoutBytes,
 		StdoutTruncated: stdoutTruncated,
 	}
+}
+
+func validateInstallDryRunSmoke(binary, root string, seed int64) StepResult {
+	started := time.Now()
+	tempHome, err := os.MkdirTemp("", fmt.Sprintf("agent-harness-install-home-%d-*", seed))
+	if err != nil {
+		return failedStep("install dry-run smoke", err)
+	}
+	defer os.RemoveAll(tempHome)
+	tempRoot, err := os.MkdirTemp("", fmt.Sprintf("agent-harness-install-root-%d-*", seed))
+	if err != nil {
+		return failedStep("install dry-run smoke", err)
+	}
+	defer os.RemoveAll(tempRoot)
+	skillDir := filepath.Join(tempRoot, "skills", skillName)
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		return failedStep("install dry-run smoke", err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: "+skillName+"\ndescription: install dry-run smoke\n---\n"), 0o644); err != nil {
+		return failedStep("install dry-run smoke", err)
+	}
+	tempWiki := filepath.Join(tempHome, "wiki")
+	env := []string{
+		"HOME=" + tempHome,
+		"CODEX_HOME=" + filepath.Join(tempHome, ".codex"),
+		"HARNESS_ROOT=" + tempRoot,
+	}
+	step := runCommandStepEnv(root, "install dry-run smoke", 30*time.Second, "", env, binary, "install-native", "--dry-run", "--project-local", "--llm-wiki-root", tempWiki, "--json")
+	if !step.OK {
+		return step
+	}
+	var result struct {
+		OK             bool `json:"ok"`
+		DryRun         bool `json:"dry_run"`
+		ProjectLocal   bool `json:"project_local"`
+		ClaudeUserHook bool `json:"claude_user_hook"`
+		Hosts          []struct {
+			Host   string `json:"host"`
+			OK     bool   `json:"ok"`
+			DryRun bool   `json:"dry_run"`
+		} `json:"hosts"`
+		Files []struct {
+			Path       string `json:"path"`
+			Written    bool   `json:"written"`
+			WouldWrite bool   `json:"would_write"`
+		} `json:"files"`
+		Links []struct {
+			Path        string `json:"path"`
+			Created     bool   `json:"created"`
+			WouldCreate bool   `json:"would_create"`
+		} `json:"links"`
+		SkillNames []string `json:"skill_names"`
+		Messages   []string `json:"messages"`
+	}
+	if err := json.Unmarshal([]byte(step.Stdout), &result); err != nil {
+		return assertionStepWithOutput("install dry-run smoke", started, []string{err.Error()}, []string{step.Stdout}, []string{step.Command})
+	}
+	errs := []string{}
+	if !result.OK || !result.DryRun || !result.ProjectLocal || !result.ClaudeUserHook {
+		errs = append(errs, "install dry-run result flags mismatch")
+	}
+	if len(result.Hosts) != 2 {
+		errs = append(errs, "install dry-run did not cover both hosts")
+	}
+	for _, host := range result.Hosts {
+		if !host.OK || !host.DryRun {
+			errs = append(errs, "install dry-run host mismatch:"+host.Host)
+		}
+	}
+	if !containsString(result.SkillNames, skillName) {
+		errs = append(errs, "install dry-run did not discover smoke skill")
+	}
+	plannedWrite := false
+	for _, file := range result.Files {
+		if file.Written {
+			errs = append(errs, "install dry-run reported written file:"+file.Path)
+		}
+		if file.WouldWrite {
+			plannedWrite = true
+		}
+	}
+	plannedLink := false
+	for _, link := range result.Links {
+		if link.Created {
+			errs = append(errs, "install dry-run reported created link:"+link.Path)
+		}
+		if link.WouldCreate {
+			plannedLink = true
+		}
+	}
+	if !plannedWrite || !plannedLink {
+		errs = append(errs, "install dry-run did not expose planned writes and links")
+	}
+	for _, path := range []string{
+		filepath.Join(tempHome, ".codex"),
+		filepath.Join(tempHome, ".claude"),
+		filepath.Join(tempRoot, "configs"),
+		filepath.Join(tempRoot, ".mcp.json"),
+		filepath.Join(tempRoot, ".claude"),
+		tempWiki,
+	} {
+		if exists(path) {
+			errs = append(errs, "install dry-run wrote unexpected path:"+path)
+		}
+	}
+	if len(errs) > 0 {
+		return assertionStepWithOutput("install dry-run smoke", started, errs, []string{step.Stdout}, []string{step.Command})
+	}
+	step.DurationMS = time.Since(started).Milliseconds()
+	return step
 }
 
 func docIndexContains(docs []core.DocIndexInfo, relPath string) bool {
