@@ -95,6 +95,8 @@ func IsPolicyDenied(err error) bool {
 func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 	root := absOrOriginal(req.WorkspaceRoot)
 	cwd := absOrOriginal(req.CWD)
+	canonicalRoot := canonicalPotentialPath(root)
+	canonicalCWD := canonicalPotentialPath(cwd)
 	argv := append([]string{}, req.Argv...)
 	timeout, timeoutErr := time.ParseDuration(req.Timeout)
 	if req.Timeout == "" {
@@ -137,7 +139,7 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 	} else if info, err := os.Stat(cwd); err != nil || !info.IsDir() {
 		addDeny("cwd_not_directory")
 	}
-	if root != "" && cwd != "" && !sameOrWithin(root, cwd) {
+	if root != "" && cwd != "" && !sameOrWithin(canonicalRoot, canonicalCWD) {
 		addDeny("cwd_outside_workspace")
 	}
 	if len(argv) == 0 {
@@ -161,6 +163,9 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 		}
 	}
 	if len(argv) > 0 {
+		if commandReferencesOutsideWorkspace(canonicalRoot, canonicalCWD, argv) {
+			addDeny("path_outside_workspace")
+		}
 		if isShellCommand(argv[0]) {
 			if !req.ShellAllowed {
 				addDeny("shell_interpreter_not_allowed")
@@ -216,7 +221,7 @@ func CommandPolicySummary() map[string]any {
 		"default_timeout":       "30s",
 		"max_timeout":           "15m",
 		"required_fields":       []string{"workspace_root", "cwd", "argv", "timeout", "env_allowlist", "network_allowed", "write_allowed", "audit_log_id"},
-		"default_denials":       []string{"cwd_outside_workspace", "shell_interpreter_not_allowed", "network_not_allowed", "write_not_allowed", "command_not_in_read_only_allowlist", "secret_like_argument"},
+		"default_denials":       []string{"cwd_outside_workspace", "path_outside_workspace", "shell_interpreter_not_allowed", "network_not_allowed", "write_not_allowed", "command_not_in_read_only_allowlist", "secret_like_argument"},
 		"read_only_examples":    [][]string{{"git", "status", "--short"}, {"git", "diff", "--stat"}, {"rg", "pattern", "."}},
 		"catalog":               commandPolicyCatalog(),
 		"write_requires_flag":   true,
@@ -244,12 +249,104 @@ func absOrOriginal(path string) string {
 	return path
 }
 
+func canonicalPotentialPath(path string) string {
+	if path == "" {
+		return ""
+	}
+	abs := absOrOriginal(path)
+	if eval, err := filepath.EvalSymlinks(abs); err == nil {
+		return eval
+	}
+	originalAbs := abs
+	missing := []string{}
+	for {
+		parent := filepath.Dir(abs)
+		if parent == abs {
+			return originalAbs
+		}
+		missing = append([]string{filepath.Base(abs)}, missing...)
+		if eval, err := filepath.EvalSymlinks(parent); err == nil {
+			parts := append([]string{eval}, missing...)
+			return filepath.Join(parts...)
+		}
+		abs = parent
+	}
+}
+
 func sameOrWithin(root, candidate string) bool {
 	rel, err := filepath.Rel(root, candidate)
 	if err != nil {
 		return false
 	}
 	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)))
+}
+
+func commandReferencesOutsideWorkspace(root, cwd string, argv []string) bool {
+	if root == "" || cwd == "" || len(argv) < 2 {
+		return false
+	}
+	for _, arg := range argv[1:] {
+		for _, candidate := range policyPathCandidates(arg) {
+			resolved := resolvePolicyPathCandidate(cwd, candidate)
+			if resolved == "" {
+				continue
+			}
+			if !sameOrWithin(root, canonicalPotentialPath(resolved)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func policyPathCandidates(arg string) []string {
+	arg = strings.TrimSpace(arg)
+	if arg == "" || looksLikeRemoteOrURL(arg) {
+		return nil
+	}
+	if strings.HasPrefix(arg, "-") {
+		if key, value, ok := strings.Cut(arg, "="); ok && strings.TrimSpace(key) != "" && policyArgLooksPathLike(value) {
+			return []string{value}
+		}
+		return nil
+	}
+	if !policyArgLooksPathLike(arg) {
+		return nil
+	}
+	return []string{arg}
+}
+
+func policyArgLooksPathLike(arg string) bool {
+	arg = strings.TrimSpace(arg)
+	if arg == "" || looksLikeRemoteOrURL(arg) {
+		return false
+	}
+	if arg == "~" || strings.HasPrefix(arg, "~/") || strings.HasPrefix(arg, "~"+string(os.PathSeparator)) {
+		return true
+	}
+	if filepath.IsAbs(arg) || arg == "." || arg == ".." {
+		return true
+	}
+	slashArg := filepath.ToSlash(arg)
+	return strings.HasPrefix(slashArg, "./") || strings.HasPrefix(slashArg, "../") || strings.Contains(slashArg, "/")
+}
+
+func looksLikeRemoteOrURL(arg string) bool {
+	lower := strings.ToLower(arg)
+	if strings.Contains(lower, "://") {
+		return true
+	}
+	return strings.Contains(arg, "@") && strings.Contains(arg, ":") && !strings.Contains(arg, string(os.PathSeparator))
+}
+
+func resolvePolicyPathCandidate(cwd, candidate string) string {
+	if strings.TrimSpace(candidate) == "" || strings.HasPrefix(candidate, "~") {
+		return candidate
+	}
+	if filepath.IsAbs(candidate) {
+		return candidate
+	}
+	return filepath.Join(cwd, candidate)
 }
 
 func cleanEnvAllowlist(items []string) []string {

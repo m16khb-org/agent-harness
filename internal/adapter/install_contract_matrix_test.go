@@ -93,6 +93,42 @@ func TestNativeInstallAdapterContractMatrix(t *testing.T) {
 	assertAdapterContractGolden(t, "native_install_contract_matrix.golden.json", snapshot)
 }
 
+func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	codexHome := filepath.Join(home, ".codex")
+	binPath := filepath.Join(root, "bin", "harness")
+	wikiRoot := filepath.Join(home, "knowledge", "llm-wiki")
+	writeContractSkill(t, root, "alpha")
+
+	req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath, wikiRoot)
+	req.ProjectLocal = true
+	req.DryRun = true
+	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
+	if err != nil {
+		t.Fatalf("dry-run InstallNative returned error: %v\n%+v", err, result)
+	}
+	if !result.OK || !result.DryRun {
+		t.Fatalf("unexpected dry-run result: %+v", result)
+	}
+	for _, path := range []string{
+		filepath.Join(codexHome, "skills", "alpha"),
+		filepath.Join(codexHome, "config.toml"),
+		filepath.Join(home, ".claude", "skills", "alpha"),
+		filepath.Join(home, ".claude", "settings.json"),
+		filepath.Join(root, ".mcp.json"),
+		filepath.Join(root, ".claude"),
+		filepath.Join(root, "configs"),
+	} {
+		if exists(path) {
+			t.Fatalf("dry-run wrote unexpected path %s", path)
+		}
+	}
+	if !hasPlannedWrite(result) || !hasPlannedLink(result) {
+		t.Fatalf("dry-run did not expose planned files and links: %+v", result)
+	}
+}
+
 func writeContractSkill(t *testing.T, root, name string) {
 	t.Helper()
 	dir := filepath.Join(root, "skills", name)
@@ -105,6 +141,24 @@ func writeContractSkill(t *testing.T, root, name string) {
 	if err := os.WriteFile(filepath.Join(dir, "agents", "openai.yaml"), []byte("name: "+name+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func hasPlannedWrite(result port.NativeInstallResult) bool {
+	for _, file := range result.Files {
+		if file.WouldWrite && !file.Written {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPlannedLink(result port.NativeInstallResult) bool {
+	for _, link := range result.Links {
+		if link.WouldCreate && !link.Created {
+			return true
+		}
+	}
+	return false
 }
 
 func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest, result port.NativeInstallResult) {

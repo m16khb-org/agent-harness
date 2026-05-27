@@ -18,11 +18,11 @@ func NewInstaller() Installer { return Installer{} }
 func (Installer) Name() string { return "codex" }
 
 func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult, error) {
-	result := port.HostInstallResult{Host: "codex", OK: true}
+	result := port.HostInstallResult{Host: "codex", OK: true, DryRun: req.DryRun}
 	var errs []error
 
 	for _, skillName := range req.SkillNames {
-		link, err := installutil.EnsureSymlink(filepath.Join(req.Root, "skills", skillName), filepath.Join(req.CodexHome, "skills", skillName))
+		link, err := installutil.EnsureSymlinkPlan(filepath.Join(req.Root, "skills", skillName), filepath.Join(req.CodexHome, "skills", skillName), req.DryRun)
 		result.Links = append(result.Links, link)
 		if err != nil {
 			errs = append(errs, err)
@@ -37,20 +37,26 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	}
 
 	templatePath := filepath.Join(req.Root, "configs", "codex", "mcp.config.toml")
-	file, err = installutil.WriteText(templatePath, "codex_mcp_template", codexTemplate(req), 0o644)
+	file, err = installutil.WriteTextPlan(templatePath, "codex_mcp_template", codexTemplate(req), 0o644, req.DryRun)
 	result.Files = append(result.Files, file)
 	if err != nil {
 		errs = append(errs, err)
 	}
 
 	hookPath := filepath.Join(req.Root, "configs", "codex", "hooks", "session-start-llm-wiki.sh")
-	file, err = installutil.WriteText(hookPath, "codex_session_start_hook_template", codexHookTemplate(), 0o755)
+	file, err = installutil.WriteTextPlan(hookPath, "codex_session_start_hook_template", codexHookTemplate(), 0o755, req.DryRun)
 	result.Files = append(result.Files, file)
 	if err != nil {
 		errs = append(errs, err)
 	}
-	if chmodErr := os.Chmod(hookPath, 0o755); chmodErr != nil {
-		errs = append(errs, chmodErr)
+	if !req.DryRun {
+		if chmodErr := os.Chmod(hookPath, 0o755); chmodErr != nil {
+			errs = append(errs, chmodErr)
+		}
+	}
+
+	if req.DryRun {
+		result.Messages = append(result.Messages, "dry-run: planned Codex user skill links, MCP config, and templates without writing")
 	}
 
 	if len(errs) > 0 {
@@ -62,19 +68,18 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 
 func writeGlobalConfig(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
 	file := port.InstallFile{Path: path, Kind: "codex_user_mcp_config"}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return file, err
-	}
 	text := ""
 	if b, err := os.ReadFile(path); err == nil {
 		text = string(b)
-		backup := path + ".harness.bak"
-		if _, statErr := os.Stat(backup); os.IsNotExist(statErr) {
-			if writeErr := os.WriteFile(backup, []byte(text), 0o600); writeErr != nil {
-				return file, writeErr
+		if !req.DryRun {
+			backup := path + ".harness.bak"
+			if _, statErr := os.Stat(backup); os.IsNotExist(statErr) {
+				if writeErr := os.WriteFile(backup, []byte(text), 0o600); writeErr != nil {
+					return file, writeErr
+				}
 			}
 		}
-	} else if !os.IsNotExist(err) {
+	} else if !os.IsNotExist(err) && !req.DryRun {
 		return file, err
 	}
 	for _, section := range []string{"mcp_servers.agent_harness", "mcp_servers.agent_harness.env"} {
@@ -90,6 +95,13 @@ func writeGlobalConfig(path string, req port.NativeInstallRequest) (port.Install
 	existing, _ := os.ReadFile(path)
 	if string(existing) == text {
 		return file, nil
+	}
+	if req.DryRun {
+		file.WouldWrite = true
+		return file, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return file, err
 	}
 	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
 		return file, err

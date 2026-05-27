@@ -27,7 +27,7 @@
 - Claude user SessionStart hook 활성화: `~/.claude/settings.json`
 - LLM Wiki SessionStart hook helper/템플릿 생성: `scripts/session-start-llm-wiki.sh`, `configs/claude/hooks/session-start-llm-wiki.settings.json`
 
-기본 설치는 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. repo-local 파일이 필요할 때만 `./bin/harness install-native --project-local`을 명시적으로 사용한다.
+기본 설치는 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. 쓰기 전 계획만 확인하려면 `./bin/harness install-native --dry-run --json`을 사용한다. repo-local 파일이 필요할 때만 `./bin/harness install-native --project-local`을 명시적으로 사용한다.
 
 ---
 
@@ -113,6 +113,7 @@ Hook은 core logic을 갖지 않고 `harness llm-wiki session-context`만 호출
 ```bash
 ./bin/harness version
 ./bin/harness install-native --json
+./bin/harness install-native --dry-run --json
 ./bin/harness inspect --json
 ./bin/harness preflight --json /path/to/git-repo
 ./bin/harness docs --json

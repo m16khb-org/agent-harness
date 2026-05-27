@@ -11,12 +11,22 @@ import (
 )
 
 func WriteText(path, kind, content string, perm os.FileMode) (port.InstallFile, error) {
+	return WriteTextPlan(path, kind, content, perm, false)
+}
+
+func WriteTextPlan(path, kind, content string, perm os.FileMode, dryRun bool) (port.InstallFile, error) {
 	file := port.InstallFile{Path: path, Kind: kind}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return file, err
-	}
 	if existing, err := os.ReadFile(path); err == nil && bytes.Equal(existing, []byte(content)) {
 		return file, nil
+	} else if err != nil && !os.IsNotExist(err) && !dryRun {
+		return file, err
+	}
+	if dryRun {
+		file.WouldWrite = true
+		return file, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return file, err
 	}
 	if err := os.WriteFile(path, []byte(content), perm); err != nil {
 		return file, err
@@ -26,18 +36,23 @@ func WriteText(path, kind, content string, perm os.FileMode) (port.InstallFile, 
 }
 
 func WriteJSON(path, kind string, value any, perm os.FileMode) (port.InstallFile, error) {
+	return WriteJSONPlan(path, kind, value, perm, false)
+}
+
+func WriteJSONPlan(path, kind string, value any, perm os.FileMode, dryRun bool) (port.InstallFile, error) {
 	b, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
 		return port.InstallFile{Path: path, Kind: kind}, err
 	}
-	return WriteText(path, kind, string(append(b, '\n')), perm)
+	return WriteTextPlan(path, kind, string(append(b, '\n')), perm, dryRun)
 }
 
 func EnsureSymlink(target, path string) (port.InstallLink, error) {
+	return EnsureSymlinkPlan(target, path, false)
+}
+
+func EnsureSymlinkPlan(target, path string, dryRun bool) (port.InstallLink, error) {
 	link := port.InstallLink{Path: path, Target: target}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return link, err
-	}
 	info, err := os.Lstat(path)
 	if err == nil {
 		if info.Mode()&os.ModeSymlink == 0 {
@@ -47,10 +62,21 @@ func EnsureSymlink(target, path string) (port.InstallLink, error) {
 		if readErr == nil && current == target {
 			return link, nil
 		}
+		if dryRun {
+			link.WouldCreate = true
+			return link, nil
+		}
 		if err := os.Remove(path); err != nil {
 			return link, err
 		}
 	} else if !os.IsNotExist(err) {
+		return link, err
+	}
+	if dryRun {
+		link.WouldCreate = true
+		return link, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return link, err
 	}
 	if err := os.Symlink(target, path); err != nil {

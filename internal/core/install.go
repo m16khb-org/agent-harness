@@ -85,6 +85,7 @@ func InstallNative(req port.NativeInstallRequest, installers ...port.HostInstall
 		Links:               []port.InstallLink{},
 		ProjectLocal:        req.ProjectLocal,
 		ClaudeUserHook:      req.ClaudeUserHook,
+		DryRun:              req.DryRun,
 	}
 	if len(installers) == 0 {
 		result.OK = false

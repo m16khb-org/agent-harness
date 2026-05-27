@@ -18,7 +18,7 @@ Usage:
   harness llm-wiki read --page PATH_OR_SLUG [--root PATH] [--json]
   harness llm-wiki capture --title TITLE (--content TEXT|--input FILE|--stdin) [--type session|concept|entity|summary] [--json]
   harness daemon start|status|stop [--json]
-  harness install-native [--llm-wiki-root PATH] [--project-local] [--no-claude-user-hook] [--json]
+  harness install-native [--llm-wiki-root PATH] [--project-local] [--no-claude-user-hook] [--dry-run] [--json]
   harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--save-state] [--state-key KEY] [--json]
   harness self-verify history [--prefix PREFIX] [--limit N] [--json]
   harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]

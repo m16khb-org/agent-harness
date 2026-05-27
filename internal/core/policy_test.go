@@ -1,6 +1,7 @@
 package core
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -39,6 +40,51 @@ func TestCommandPolicyDeniesOutsideWorkspaceAndShell(t *testing.T) {
 	})
 	if shellResult.Allowed || !containsString(shellResult.DenyReasons, "shell_interpreter_not_allowed") {
 		t.Fatalf("shell command not denied: %+v", shellResult)
+	}
+}
+
+func TestCommandPolicyDeniesPathArgsOutsideWorkspace(t *testing.T) {
+	root := t.TempDir()
+	inside := filepath.Join(root, "inside")
+	if err := os.MkdirAll(inside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	outsideFile := filepath.Join(outside, "note.txt")
+	if err := os.WriteFile(outsideFile, []byte("outside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name string
+		argv []string
+	}{
+		{name: "relative parent escape", argv: []string{"cat", filepath.Join("..", "..", filepath.Base(outside), "note.txt")}},
+		{name: "absolute outside path", argv: []string{"cat", outsideFile}},
+		{name: "flag value outside path", argv: []string{"sed", "--file=" + outsideFile}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := EvaluateCommandPolicy(CommandPolicyRequest{
+				WorkspaceRoot: root,
+				CWD:           inside,
+				Argv:          tc.argv,
+				Timeout:       "30s",
+			})
+			if result.Allowed || !containsString(result.DenyReasons, "path_outside_workspace") {
+				t.Fatalf("outside path arg not denied: %+v", result)
+			}
+		})
+	}
+
+	insideResult := EvaluateCommandPolicy(CommandPolicyRequest{
+		WorkspaceRoot: root,
+		CWD:           inside,
+		Argv:          []string{"cat", filepath.Join("..", "inside", "local.txt")},
+		Timeout:       "30s",
+	})
+	if !insideResult.Allowed {
+		t.Fatalf("inside path arg should be allowed: %+v", insideResult)
 	}
 }
 

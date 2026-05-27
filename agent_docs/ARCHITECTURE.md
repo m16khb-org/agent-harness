@@ -21,22 +21,22 @@
 
 ```mermaid
 flowchart LR
-    Codex[Codex\nAGENTS.md · native skills · MCP config] --> MCPProxy[harness mcp\nstdio proxy]
-    Claude[Claude Code\nCLAUDE.md · skills · hooks · MCP config] --> MCPProxy
-    Human[Human shell] --> CLI[CLI: harness]
-    Hook[SessionStart hook] --> CLI
+    Codex["Codex<br/>AGENTS.md · native skills · MCP config"] --> MCPProxy["harness mcp<br/>stdio proxy"]
+    Claude["Claude Code<br/>CLAUDE.md · skills · hooks · MCP config"] --> MCPProxy
+    Human["Human shell"] --> CLI["CLI: harness"]
+    Hook["SessionStart hook"] --> CLI
 
-    MCPProxy --> Daemon[agent-harness daemon\nuser-level Unix socket]
-    CLI --> Core[core usecases\npolicy · workspace · docs · state · llm-wiki]
+    MCPProxy --> Daemon["agent-harness daemon<br/>user-level Unix socket"]
+    CLI --> Core["core usecases<br/>policy · workspace · docs · state · llm-wiki"]
     Daemon --> Core
-    Core --> Ports[ports/interfaces]
-    Ports --> FS[fs/git/wiki adapter]
-    Ports --> Proc[process runner adapter]
-    Ports --> State[state/log adapter]
-    Ports --> Config[config adapter]
-    Core --> Wiki[~/workspace/knowledge-base/llm-wiki]
+    Core --> Ports["ports/interfaces"]
+    Ports --> FS["fs/git/wiki adapter"]
+    Ports --> Proc["process runner adapter"]
+    Ports --> State["state/log adapter"]
+    Ports --> Config["config adapter"]
+    Core --> Wiki["~/workspace/knowledge-base/llm-wiki"]
 
-    Core -. future .-> Worker[local job worker\nqueue · watch · long tasks]
+    Core -. future .-> Worker["local job worker<br/>queue · watch · long tasks"]
     Worker --> Core
 ```
 
@@ -167,6 +167,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 현재 기본 거부:
 
 - `cwd`가 `workspace_root` 밖인 요청
+- path-like argv가 `workspace_root` 밖 파일/디렉터리를 가리키는 요청
 - shell interpreter(`sh`, `bash`, `zsh` 등) without reason
 - `network_allowed=false`에서 network성 명령
 - `write_allowed=false`에서 write성 명령

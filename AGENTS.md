@@ -87,6 +87,7 @@ find agent_docs -maxdepth 1 -type f -name '*.md' | sort
 python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
 python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/llm-wiki
 ./scripts/install-native.sh
+./bin/harness install-native --dry-run --json
 go test ./... -count=1
 go test ./cmd/harness -run Golden -count=1
 go build -o bin/harness ./cmd/harness

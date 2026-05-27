@@ -17,6 +17,7 @@ func runInstallNative(args []string) error {
 	llmWikiRoot := fs.String("llm-wiki-root", "", "llm-wiki root; defaults to ~/workspace/knowledge-base/llm-wiki")
 	projectLocal := fs.Bool("project-local", false, "also write project-local .mcp.json/.claude settings and project skill links; default is user/global only")
 	noClaudeUserHook := fs.Bool("no-claude-user-hook", false, "skip merging the Claude user SessionStart hook")
+	dryRun := fs.Bool("dry-run", false, "plan files and links without writing them")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -29,6 +30,7 @@ func runInstallNative(args []string) error {
 	req := core.DefaultNativeInstallRequest(harnessRoot(), home, codexHome, filepath.Join(harnessRoot(), "bin", "harness"), *llmWikiRoot)
 	req.ProjectLocal = *projectLocal
 	req.ClaudeUserHook = !*noClaudeUserHook
+	req.DryRun = *dryRun
 	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
 	if *jsonOut {
 		_ = printJSON(result)
@@ -43,7 +45,11 @@ func printInstallNativeResult(result port.NativeInstallResult) {
 	if result.ProjectLocal {
 		mode = "user/global + explicit project-local"
 	}
-	fmt.Println("Installed agent harness native integrations:")
+	if result.DryRun {
+		fmt.Println("Dry-run plan for agent harness native integrations:")
+	} else {
+		fmt.Println("Installed agent harness native integrations:")
+	}
 	fmt.Printf("- mode: %s\n", mode)
 	fmt.Printf("- binary: %s\n", result.BinPath)
 	fmt.Printf("- LLM Wiki root: %s\n", result.LLMWikiRoot)

@@ -29,13 +29,13 @@ LLM_WIKI_ROOT=/path/to/llm-wiki
 
 ```mermaid
 flowchart LR
-    Codex[Codex session] --> MCPProxy[harness mcp\nstdio proxy]
-    Claude[Claude Code session] --> MCPProxy
-    Hook[SessionStart hook\nsession-start-llm-wiki.sh] --> CLI[harness llm-wiki session-context]
-    MCPProxy --> Daemon[agent-harness daemon\nuser-level Unix socket]
-    CLI --> Core[internal/core]
+    Codex["Codex session"] --> MCPProxy["harness mcp<br/>stdio proxy"]
+    Claude["Claude Code session"] --> MCPProxy
+    Hook["SessionStart hook<br/>session-start-llm-wiki.sh"] --> CLI["harness llm-wiki session-context"]
+    MCPProxy --> Daemon["agent-harness daemon<br/>user-level Unix socket"]
+    CLI --> Core["internal/core"]
     Daemon --> Core
-    Core --> Wiki[~/workspace/knowledge-base/llm-wiki]
+    Core --> Wiki["~/workspace/knowledge-base/llm-wiki"]
 ```
 
 `harness mcp`는 직접 MCP server를 매번 띄우지 않고 user-level daemon에 stdio를 proxy한다. daemon은 `HARNESS_DAEMON_DIR` 또는 기본 `~/.local/state/agent-harness/daemon/`에 Unix socket, pid, lock, log를 둔다.

@@ -12,6 +12,7 @@ type NativeInstallRequest struct {
 	SkillNames          []string `json:"skill_names"`
 	ProjectLocal        bool     `json:"project_local"`
 	ClaudeUserHook      bool     `json:"claude_user_hook"`
+	DryRun              bool     `json:"dry_run,omitempty"`
 }
 
 // NativeInstallResult is the aggregate result of all host installers.
@@ -30,12 +31,14 @@ type NativeInstallResult struct {
 	Messages            []string            `json:"messages,omitempty"`
 	ProjectLocal        bool                `json:"project_local"`
 	ClaudeUserHook      bool                `json:"claude_user_hook"`
+	DryRun              bool                `json:"dry_run,omitempty"`
 }
 
 // HostInstallResult reports one concrete host adapter installation.
 type HostInstallResult struct {
 	Host     string        `json:"host"`
 	OK       bool          `json:"ok"`
+	DryRun   bool          `json:"dry_run,omitempty"`
 	Files    []InstallFile `json:"files,omitempty"`
 	Links    []InstallLink `json:"links,omitempty"`
 	Messages []string      `json:"messages,omitempty"`
@@ -44,16 +47,18 @@ type HostInstallResult struct {
 
 // InstallFile reports a file the installer manages.
 type InstallFile struct {
-	Path    string `json:"path"`
-	Kind    string `json:"kind"`
-	Written bool   `json:"written"`
+	Path       string `json:"path"`
+	Kind       string `json:"kind"`
+	Written    bool   `json:"written"`
+	WouldWrite bool   `json:"would_write,omitempty"`
 }
 
 // InstallLink reports a symlink the installer manages.
 type InstallLink struct {
-	Path    string `json:"path"`
-	Target  string `json:"target"`
-	Created bool   `json:"created"`
+	Path        string `json:"path"`
+	Target      string `json:"target"`
+	Created     bool   `json:"created"`
+	WouldCreate bool   `json:"would_create,omitempty"`
 }
 
 // HostInstaller is implemented by host-specific adapters such as Codex and Claude Code.

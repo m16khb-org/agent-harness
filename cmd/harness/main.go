@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -117,7 +118,7 @@ Usage:
   harness llm-wiki read --page PATH_OR_SLUG [--root PATH] [--json]
   harness llm-wiki capture --title TITLE (--content TEXT|--input FILE|--stdin) [--type session|concept|entity|summary] [--json]
   harness daemon start|status|stop [--json]
-  harness install-native [--llm-wiki-root PATH] [--project-local] [--no-claude-user-hook] [--json]
+  harness install-native [--llm-wiki-root PATH] [--project-local] [--no-claude-user-hook] [--dry-run] [--json]
   harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--save-state] [--state-key KEY] [--json]
   harness self-verify history [--prefix PREFIX] [--limit N] [--json]
   harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
@@ -740,28 +741,37 @@ type SelfAugmentStateSnapshot struct {
 }
 
 type SelfAugmentCompareResult struct {
-	OK                           bool                  `json:"ok"`
-	StateDir                     string                `json:"state_dir"`
-	BaselineKey                  string                `json:"baseline_key"`
-	CandidateKey                 string                `json:"candidate_key"`
-	MaxElapsedRegressionPct      float64               `json:"max_elapsed_regression_pct"`
-	Regressed                    bool                  `json:"regressed"`
-	ElapsedDeltaMS               int64                 `json:"elapsed_delta_ms"`
-	ElapsedDeltaPct              float64               `json:"elapsed_delta_pct"`
-	FailedStepsDelta             int                   `json:"failed_steps_delta"`
-	TotalStepsDelta              int                   `json:"total_steps_delta"`
-	BaselineMinimumGoalScore     float64               `json:"baseline_minimum_goal_score"`
-	CandidateMinimumGoalScore    float64               `json:"candidate_minimum_goal_score"`
-	MissingStepLabels            []string              `json:"missing_step_labels"`
-	AddedStepLabels              []string              `json:"added_step_labels"`
-	Regressions                  []string              `json:"regressions"`
-	Warnings                     []string              `json:"warnings"`
-	BaselineSummary              SelfAugmentSummary    `json:"baseline_summary"`
-	CandidateSummary             SelfAugmentSummary    `json:"candidate_summary"`
-	BaselineSnapshotGeneratedAt  string                `json:"baseline_snapshot_generated_at"`
-	CandidateSnapshotGeneratedAt string                `json:"candidate_snapshot_generated_at"`
-	BaselineSlowestSteps         []SelfAugmentSlowStep `json:"baseline_slowest_steps"`
-	CandidateSlowestSteps        []SelfAugmentSlowStep `json:"candidate_slowest_steps"`
+	OK                           bool                            `json:"ok"`
+	StateDir                     string                          `json:"state_dir"`
+	BaselineKey                  string                          `json:"baseline_key"`
+	CandidateKey                 string                          `json:"candidate_key"`
+	MaxElapsedRegressionPct      float64                         `json:"max_elapsed_regression_pct"`
+	Regressed                    bool                            `json:"regressed"`
+	ElapsedDeltaMS               int64                           `json:"elapsed_delta_ms"`
+	ElapsedDeltaPct              float64                         `json:"elapsed_delta_pct"`
+	FailedStepsDelta             int                             `json:"failed_steps_delta"`
+	TotalStepsDelta              int                             `json:"total_steps_delta"`
+	BaselineMinimumGoalScore     float64                         `json:"baseline_minimum_goal_score"`
+	CandidateMinimumGoalScore    float64                         `json:"candidate_minimum_goal_score"`
+	MissingStepLabels            []string                        `json:"missing_step_labels"`
+	AddedStepLabels              []string                        `json:"added_step_labels"`
+	Regressions                  []string                        `json:"regressions"`
+	Warnings                     []string                        `json:"warnings"`
+	BaselineSummary              SelfAugmentSummary              `json:"baseline_summary"`
+	CandidateSummary             SelfAugmentSummary              `json:"candidate_summary"`
+	BaselineSnapshotGeneratedAt  string                          `json:"baseline_snapshot_generated_at"`
+	CandidateSnapshotGeneratedAt string                          `json:"candidate_snapshot_generated_at"`
+	BaselineSlowestSteps         []SelfAugmentSlowStep           `json:"baseline_slowest_steps"`
+	CandidateSlowestSteps        []SelfAugmentSlowStep           `json:"candidate_slowest_steps"`
+	SlowStepRegressions          []SelfAugmentSlowStepRegression `json:"slow_step_regressions"`
+}
+
+type SelfAugmentSlowStepRegression struct {
+	Label               string  `json:"label"`
+	BaselineDurationMS  int64   `json:"baseline_duration_ms"`
+	CandidateDurationMS int64   `json:"candidate_duration_ms"`
+	DeltaMS             int64   `json:"delta_ms"`
+	DeltaPct            float64 `json:"delta_pct"`
 }
 
 type SelfAugmentPromoteResult struct {
@@ -1296,6 +1306,7 @@ func compareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 		AddedStepLabels:         []string{},
 		Regressions:             []string{},
 		Warnings:                []string{},
+		SlowStepRegressions:     []SelfAugmentSlowStepRegression{},
 	}
 	if strings.TrimSpace(baselineKey) == "" {
 		return result, fmt.Errorf("baseline-key is required")
@@ -1347,6 +1358,10 @@ func compareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 	if result.ElapsedDeltaPct > maxElapsedRegressionPct {
 		result.Regressions = append(result.Regressions, fmt.Sprintf("elapsed_ms_increased_by_%.2f_pct", result.ElapsedDeltaPct))
 	}
+	result.SlowStepRegressions = compareSlowestStepRegressions(baseline.Summary.SlowestSteps, candidate.Summary.SlowestSteps, maxElapsedRegressionPct)
+	for _, regression := range result.SlowStepRegressions {
+		result.Regressions = append(result.Regressions, fmt.Sprintf("slow_step:%s_increased_by_%.2f_pct", regression.Label, regression.DeltaPct))
+	}
 	for _, label := range result.MissingStepLabels {
 		result.Regressions = append(result.Regressions, "missing_step_label:"+label)
 	}
@@ -1363,6 +1378,53 @@ func compareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 	result.Regressed = len(result.Regressions) > 0
 	result.OK = true
 	return result, nil
+}
+
+func compareSlowestStepRegressions(baseline, candidate []SelfAugmentSlowStep, maxRegressionPct float64) []SelfAugmentSlowStepRegression {
+	baselineByLabel := maxSlowStepDurationByLabel(baseline)
+	candidateByLabel := maxSlowStepDurationByLabel(candidate)
+	regressions := []SelfAugmentSlowStepRegression{}
+	for label, candidateDuration := range candidateByLabel {
+		baselineDuration, ok := baselineByLabel[label]
+		if !ok || baselineDuration <= 0 {
+			continue
+		}
+		delta := candidateDuration - baselineDuration
+		if delta <= 0 {
+			continue
+		}
+		deltaPct := float64(delta) * 100 / float64(baselineDuration)
+		if deltaPct <= maxRegressionPct {
+			continue
+		}
+		regressions = append(regressions, SelfAugmentSlowStepRegression{
+			Label:               label,
+			BaselineDurationMS:  baselineDuration,
+			CandidateDurationMS: candidateDuration,
+			DeltaMS:             delta,
+			DeltaPct:            deltaPct,
+		})
+	}
+	sort.Slice(regressions, func(i, j int) bool {
+		if regressions[i].DeltaPct != regressions[j].DeltaPct {
+			return regressions[i].DeltaPct > regressions[j].DeltaPct
+		}
+		return regressions[i].Label < regressions[j].Label
+	})
+	return regressions
+}
+
+func maxSlowStepDurationByLabel(steps []SelfAugmentSlowStep) map[string]int64 {
+	out := map[string]int64{}
+	for _, step := range steps {
+		if step.Label == "" {
+			continue
+		}
+		if step.DurationMS > out[step.Label] {
+			out[step.Label] = step.DurationMS
+		}
+	}
+	return out
 }
 
 func promoteSelfAugmentBaseline(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error) {
@@ -1835,6 +1897,20 @@ func validateCommandPolicy(binary, root string) StepResult {
 	}
 	if outsideEval.Allowed || !containsString(outsideEval.DenyReasons, "cwd_outside_workspace") {
 		return assertionStepWithOutput("command policy smoke", started, []string{"outside cwd was not denied"}, stdoutParts, commands)
+	}
+
+	deniedOutsidePath := runCommandStep(root, "policy deny outside path arg", 30*time.Second, "", binary, "policy", "check", "--json", "--workspace-root", tempWorkspace, "--cwd", tempWorkspace, "--", "cat", filepath.Join(outside, "note.txt"))
+	stdoutParts = append(stdoutParts, deniedOutsidePath.Stdout)
+	commands = append(commands, deniedOutsidePath.Command)
+	if !deniedOutsidePath.OK {
+		return combineFailedStep("command policy smoke", started, deniedOutsidePath, stdoutParts, commands)
+	}
+	var outsidePathEval core.CommandPolicyEvaluation
+	if err := json.Unmarshal([]byte(deniedOutsidePath.Stdout), &outsidePathEval); err != nil {
+		return assertionStepWithOutput("command policy smoke", started, []string{err.Error()}, stdoutParts, commands)
+	}
+	if outsidePathEval.Allowed || !containsString(outsidePathEval.DenyReasons, "path_outside_workspace") {
+		return assertionStepWithOutput("command policy smoke", started, []string{"outside path arg was not denied"}, stdoutParts, commands)
 	}
 
 	deniedShell := runCommandStep(root, "policy deny shell", 30*time.Second, "", binary, "policy", "check", "--json", "--workspace-root", tempWorkspace, "--cwd", tempWorkspace, "--", "sh", "-c", "echo ok")
@@ -2443,7 +2519,77 @@ func validateQAGate(root string) StepResult {
 			errs = append(errs, "skill missing agents/openai.yaml "+skill)
 		}
 	}
+	errs = append(errs, validateMermaidDocs(root)...)
 	return assertionStep("QA gate", started, errs)
+}
+
+var mermaidUnquotedBracketTextRe = regexp.MustCompile(`\[[^"\]]`)
+
+func validateMermaidDocs(root string) []string {
+	errs := []string{}
+	for _, path := range core.ListDocs(root) {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			errs = append(errs, "read mermaid doc "+path+": "+err.Error())
+			continue
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			rel = path
+		}
+		for _, issue := range lintMermaidBlocks(filepath.ToSlash(rel), string(b)) {
+			errs = append(errs, issue)
+		}
+	}
+	return errs
+}
+
+func lintMermaidBlocks(relPath, text string) []string {
+	errs := []string{}
+	lines := strings.Split(text, "\n")
+	inMermaid := false
+	ignoreBlock := false
+	currentHeading := ""
+	ignoreNextMermaid := false
+	for i, line := range lines {
+		lineNo := i + 1
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "harness:mermaid-lint ignore") {
+			ignoreNextMermaid = true
+		}
+		if strings.HasPrefix(trimmed, "#") {
+			currentHeading = trimmed
+		}
+		if strings.HasPrefix(trimmed, "```") {
+			if !inMermaid {
+				if strings.HasPrefix(trimmed, "```mermaid") {
+					inMermaid = true
+					ignoreBlock = ignoreNextMermaid || strings.Contains(currentHeading, "잘못된 예시")
+					ignoreNextMermaid = false
+				}
+				continue
+			}
+			inMermaid = false
+			ignoreBlock = false
+			continue
+		}
+		if !inMermaid || ignoreBlock {
+			continue
+		}
+		if strings.Contains(line, "<br>") {
+			errs = append(errs, fmt.Sprintf("%s:%d mermaid uses <br>; use <br/>", relPath, lineNo))
+		}
+		if mermaidUnquotedBracketTextRe.MatchString(line) {
+			errs = append(errs, fmt.Sprintf("%s:%d mermaid node text must start with a quote", relPath, lineNo))
+		}
+		if strings.HasPrefix(trimmed, "subgraph ") {
+			title := strings.TrimSpace(strings.TrimPrefix(trimmed, "subgraph "))
+			if title != "" && !strings.HasPrefix(title, `"`) {
+				errs = append(errs, fmt.Sprintf("%s:%d mermaid subgraph title must be quoted", relPath, lineNo))
+			}
+		}
+	}
+	return errs
 }
 
 func runCommandStep(dir, label string, timeout time.Duration, stdin string, name string, args ...string) StepResult {

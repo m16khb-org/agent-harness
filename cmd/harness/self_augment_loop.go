@@ -91,6 +91,10 @@ type SelfAugmentRepoSignals struct {
 	HasAdapterContractMatrix    bool     `json:"has_adapter_contract_matrix"`
 	HasRiskQATier               bool     `json:"has_risk_qa_tier"`
 	HasGoalScoreSummary         bool     `json:"has_goal_score_summary"`
+	HasRepoLocalSandbox         bool     `json:"has_repo_local_sandbox"`
+	HasPerformanceBaseline      bool     `json:"has_performance_baseline"`
+	HasGeniusMermaidLint        bool     `json:"has_genius_mermaid_lint"`
+	HasInstallDryRunMode        bool     `json:"has_install_dry_run_mode"`
 }
 
 type SelfAugmentLessonRequest struct {
@@ -237,6 +241,10 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 		HasAdapterContractMatrix:    fileContainsTerm(root, filepath.Join("internal", "adapter", "install_contract_matrix_test.go"), "TestNativeInstallAdapterContractMatrix") && fileContainsTerm(root, filepath.Join("internal", "adapter", "testdata", "native_install_contract_matrix.golden.json"), "project-local-opt-in"),
 		HasRiskQATier:               fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "validateRiskQATier") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "risk_qa"),
 		HasGoalScoreSummary:         fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "GoalScores") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "MinimumGoalScore"),
+		HasRepoLocalSandbox:         fileContainsTerm(root, filepath.Join("internal", "core", "policy.go"), "path_outside_workspace") && fileContainsTerm(root, filepath.Join("internal", "core", "policy_test.go"), "TestCommandPolicyDeniesPathArgsOutsideWorkspace") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "policy deny outside path arg"),
+		HasPerformanceBaseline:      fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "SlowStepRegressions") && fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_summary_test.go"), "TestCompareSelfAugmentSummariesDetectsSlowStepRegression") && docsContainTerm(root, "slow_step:*"),
+		HasGeniusMermaidLint:        fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "lintMermaidBlocks") && fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_summary_test.go"), "TestLintMermaidBlocksEnforcesGeniusThinkRules") && !fileContainsTerm(root, filepath.Join("agent_docs", "ARCHITECTURE.md"), `\n`),
+		HasInstallDryRunMode:        fileContainsTerm(root, filepath.Join("cmd", "harness", "install_native.go"), "dry-run") && fileContainsTerm(root, filepath.Join("internal", "adapter", "install_contract_matrix_test.go"), "TestNativeInstallDryRunDoesNotWrite") && docsContainTerm(root, "install-native --dry-run"),
 	}
 	goals := []SelfAugmentGoal{
 		{
@@ -726,6 +734,22 @@ func markSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals 
 	case "adapter-contract-matrix":
 		if signals.HasAdapterContractMatrix {
 			evidence = []string{"internal/adapter install contract matrix locks Codex/Claude user-global and project-local installation behavior with a golden fixture"}
+		}
+	case "repo-local-augmentation-sandbox":
+		if signals.HasRepoLocalSandbox {
+			evidence = []string{"command policy rejects path-like argv outside workspace_root and self-verify command policy smoke covers the boundary"}
+		}
+	case "performance-baseline":
+		if signals.HasPerformanceBaseline {
+			evidence = []string{"self-verify compare promotes label-level slowest_steps deltas into slow_step regressions with unit coverage"}
+		}
+	case "genius-mermaid-lint":
+		if signals.HasGeniusMermaidLint {
+			evidence = []string{"QA gate lints Mermaid fences using GENIUS_THINK quote/<br/> rules and repo diagrams were normalized"}
+		}
+	case "install-dry-run-mode":
+		if signals.HasInstallDryRunMode {
+			evidence = []string{"install-native supports --dry-run planning with no filesystem writes and adapter-level coverage"}
 		}
 	}
 	if len(evidence) == 0 {

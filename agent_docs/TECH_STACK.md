@@ -65,6 +65,7 @@ go build -o bin/harness ./cmd/harness
 ./bin/harness self-augment --cycles=1 --target-score=95 --json
 ./scripts/install-native.sh
 ./bin/harness install-native --json
+./bin/harness install-native --dry-run --json
 ```
 
 예정 사용 예:

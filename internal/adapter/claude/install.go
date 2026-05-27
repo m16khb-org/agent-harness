@@ -19,11 +19,11 @@ func NewInstaller() Installer { return Installer{} }
 func (Installer) Name() string { return "claude" }
 
 func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult, error) {
-	result := port.HostInstallResult{Host: "claude", OK: true}
+	result := port.HostInstallResult{Host: "claude", OK: true, DryRun: req.DryRun}
 	var errs []error
 
 	for _, skillName := range req.SkillNames {
-		userLink, err := installutil.EnsureSymlink(filepath.Join(req.Root, "skills", skillName), filepath.Join(req.Home, ".claude", "skills", skillName))
+		userLink, err := installutil.EnsureSymlinkPlan(filepath.Join(req.Root, "skills", skillName), filepath.Join(req.Home, ".claude", "skills", skillName), req.DryRun)
 		result.Links = append(result.Links, userLink)
 		if err != nil {
 			errs = append(errs, err)
@@ -31,14 +31,14 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	}
 
 	mcpConfig := claudeProjectMCPConfig(req)
-	file, err := installutil.WriteJSON(filepath.Join(req.Root, "configs", "claude", "mcp.project.json"), "claude_project_mcp_template", mcpConfig, 0o644)
+	file, err := installutil.WriteJSONPlan(filepath.Join(req.Root, "configs", "claude", "mcp.project.json"), "claude_project_mcp_template", mcpConfig, 0o644, req.DryRun)
 	result.Files = append(result.Files, file)
 	if err != nil {
 		errs = append(errs, err)
 	}
 
 	projectHookSettings := claudeProjectHookSettings()
-	file, err = installutil.WriteJSON(filepath.Join(req.Root, "configs", "claude", "hooks", "session-start-llm-wiki.settings.json"), "claude_project_session_start_hook_template", projectHookSettings, 0o644)
+	file, err = installutil.WriteJSONPlan(filepath.Join(req.Root, "configs", "claude", "hooks", "session-start-llm-wiki.settings.json"), "claude_project_session_start_hook_template", projectHookSettings, 0o644, req.DryRun)
 	result.Files = append(result.Files, file)
 	if err != nil {
 		errs = append(errs, err)
@@ -46,7 +46,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 
 	if req.ClaudeUserHook {
 		userHookSettings := claudeUserHookSettings(req)
-		file, err = mergeClaudeSettings(filepath.Join(req.Home, ".claude", "settings.json"), userHookSettings, "claude_user_settings")
+		file, err = mergeClaudeSettings(filepath.Join(req.Home, ".claude", "settings.json"), userHookSettings, "claude_user_settings", req.DryRun)
 		result.Files = append(result.Files, file)
 		if err != nil {
 			errs = append(errs, err)
@@ -55,22 +55,26 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 
 	if req.ProjectLocal {
 		for _, skillName := range req.SkillNames {
-			projectLink, err := installutil.EnsureSymlink(filepath.ToSlash(filepath.Join("..", "..", "skills", skillName)), filepath.Join(req.Root, ".claude", "skills", skillName))
+			projectLink, err := installutil.EnsureSymlinkPlan(filepath.ToSlash(filepath.Join("..", "..", "skills", skillName)), filepath.Join(req.Root, ".claude", "skills", skillName), req.DryRun)
 			result.Links = append(result.Links, projectLink)
 			if err != nil {
 				errs = append(errs, err)
 			}
 		}
-		file, err = installutil.WriteJSON(filepath.Join(req.Root, ".mcp.json"), "claude_project_mcp_config", mcpConfig, 0o644)
+		file, err = installutil.WriteJSONPlan(filepath.Join(req.Root, ".mcp.json"), "claude_project_mcp_config", mcpConfig, 0o644, req.DryRun)
 		result.Files = append(result.Files, file)
 		if err != nil {
 			errs = append(errs, err)
 		}
-		file, err = mergeClaudeSettings(filepath.Join(req.Root, ".claude", "settings.json"), projectHookSettings, "claude_project_settings")
+		file, err = mergeClaudeSettings(filepath.Join(req.Root, ".claude", "settings.json"), projectHookSettings, "claude_project_settings", req.DryRun)
 		result.Files = append(result.Files, file)
 		if err != nil {
 			errs = append(errs, err)
 		}
+	}
+
+	if req.DryRun {
+		result.Messages = append(result.Messages, "dry-run: planned Claude user/global and optional project-local files without writing")
 	}
 
 	if len(errs) > 0 {
@@ -130,17 +134,14 @@ func claudeHookEntry(command string) map[string]any {
 	}
 }
 
-func mergeClaudeSettings(path string, hookSettings map[string]any, kind string) (port.InstallFile, error) {
+func mergeClaudeSettings(path string, hookSettings map[string]any, kind string, dryRun bool) (port.InstallFile, error) {
 	file := port.InstallFile{Path: path, Kind: kind}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return file, err
-	}
 	settings := map[string]any{}
 	if b, err := os.ReadFile(path); err == nil && len(strings.TrimSpace(string(b))) > 0 {
 		if err := json.Unmarshal(b, &settings); err != nil {
 			return file, fmt.Errorf("refusing to merge invalid JSON in %s: %w", path, err)
 		}
-	} else if err != nil && !os.IsNotExist(err) {
+	} else if err != nil && !os.IsNotExist(err) && !dryRun {
 		return file, err
 	}
 	hooks, ok := settings["hooks"].(map[string]any)
@@ -161,6 +162,13 @@ func mergeClaudeSettings(path string, hookSettings map[string]any, kind string) 
 	b = append(b, '\n')
 	if existing, err := os.ReadFile(path); err == nil && string(existing) == string(b) {
 		return file, nil
+	}
+	if dryRun {
+		file.WouldWrite = true
+		return file, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return file, err
 	}
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		return file, err

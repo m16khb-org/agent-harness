@@ -142,9 +142,6 @@ func TestSaveSelfAugmentPlan(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)
 	result := planSelfAugmentation(SelfAugmentPlanRequest{Cycles: 1, TargetScore: 95})
-	if result.SelectedCandidate == nil {
-		t.Fatalf("expected selected candidate")
-	}
 	if err := saveSelfAugmentPlan(&result, "self-augment-plan-test"); err != nil {
 		t.Fatalf("saveSelfAugmentPlan: %v", err)
 	}
@@ -162,10 +159,10 @@ func TestSaveSelfAugmentPlan(t *testing.T) {
 	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
 		t.Fatalf("unmarshal saved plan snapshot: %v", err)
 	}
-	if snapshot.Kind != selfAugmentationPlanKind || snapshot.LoopKind != "self_augmentation" || snapshot.SelectedCandidate == nil {
+	if snapshot.Kind != selfAugmentationPlanKind || snapshot.LoopKind != "self_augmentation" {
 		t.Fatalf("unexpected saved plan snapshot: %+v", snapshot)
 	}
-	if snapshot.CandidateCount < 10 || len(snapshot.OpenCandidateIDs) == 0 || len(snapshot.SatisfiedCandidateIDs) == 0 {
+	if snapshot.CandidateCount < 10 || len(snapshot.SatisfiedCandidateIDs) == 0 {
 		t.Fatalf("saved plan did not preserve candidate memory: %+v", snapshot)
 	}
 }
@@ -260,6 +257,84 @@ func TestCompareSelfAugmentSummariesDetectsFailedStepRegression(t *testing.T) {
 	}
 	if !result.Regressed || !containsString(result.MissingStepLabels, "MCP smoke") || result.FailedStepsDelta != 1 {
 		t.Fatalf("expected failed-step and missing-label regression: %+v", result)
+	}
+}
+
+func TestCompareSelfAugmentSummariesDetectsSlowStepRegression(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	baseline := SelfAugmentSummary{
+		TotalRuns:   10,
+		TotalSteps:  20,
+		PassedSteps: 20,
+		StepLabels:  []string{"go test", "MCP smoke"},
+		SlowestSteps: []SelfAugmentSlowStep{
+			{Iteration: 1, Seed: 600, Label: "go test", DurationMS: 1000},
+			{Iteration: 1, Seed: 600, Label: "MCP smoke", DurationMS: 100},
+		},
+	}
+	candidate := baseline
+	candidate.SlowestSteps = []SelfAugmentSlowStep{
+		{Iteration: 1, Seed: 600, Label: "go test", DurationMS: 1400},
+		{Iteration: 1, Seed: 600, Label: "MCP smoke", DurationMS: 100},
+	}
+	if err := writeSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
+		SchemaVersion: 1,
+		Kind:          "self_verification_summary",
+		OK:            true,
+		Iterations:    10,
+		BaseSeed:      600,
+		ElapsedMS:     1000,
+		GeneratedAt:   "2000-01-01T00:00:00Z",
+		Summary:       baseline,
+	}); err != nil {
+		t.Fatalf("write baseline: %v", err)
+	}
+	if err := writeSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
+		SchemaVersion: 1,
+		Kind:          "self_verification_summary",
+		OK:            true,
+		Iterations:    10,
+		BaseSeed:      600,
+		ElapsedMS:     1000,
+		GeneratedAt:   "2000-01-01T00:01:00Z",
+		Summary:       candidate,
+	}); err != nil {
+		t.Fatalf("write candidate: %v", err)
+	}
+	result, err := compareSelfAugmentSummaries("baseline", "candidate", 20)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if !result.Regressed || len(result.SlowStepRegressions) != 1 {
+		t.Fatalf("expected slow-step regression: %+v", result)
+	}
+	regression := result.SlowStepRegressions[0]
+	if regression.Label != "go test" || regression.DeltaMS != 400 || regression.DeltaPct != 40 {
+		t.Fatalf("unexpected slow-step regression detail: %+v", regression)
+	}
+	if !containsString(result.Regressions, "slow_step:go test_increased_by_40.00_pct") {
+		t.Fatalf("missing slow-step regression marker: %+v", result.Regressions)
+	}
+}
+
+func TestLintMermaidBlocksEnforcesGeniusThinkRules(t *testing.T) {
+	good := "```mermaid\nflowchart LR\n    A[\"한글 노드<br/>설명\"] --> B[\"Next\"]\n    subgraph \"계획 레이어\"\n    end\n```\n"
+	if issues := lintMermaidBlocks("good.md", good); len(issues) != 0 {
+		t.Fatalf("valid mermaid was rejected: %+v", issues)
+	}
+
+	bad := "```mermaid\nflowchart LR\n    A[한글 노드<br>설명] --> B[Next]\n    subgraph 계획 레이어\n    end\n```\n"
+	issues := lintMermaidBlocks("bad.md", bad)
+	for _, want := range []string{"bad.md:3 mermaid uses <br>; use <br/>", "bad.md:3 mermaid node text must start with a quote", "bad.md:4 mermaid subgraph title must be quoted"} {
+		if !containsString(issues, want) {
+			t.Fatalf("missing %q in issues: %+v", want, issues)
+		}
+	}
+
+	documentedBadExample := "## 잘못된 예시 (파싱 에러 발생)\n\n```mermaid\nflowchart LR\n    A[한글 노드<br>설명]\n```\n"
+	if issues := lintMermaidBlocks("genius.md", documentedBadExample); len(issues) != 0 {
+		t.Fatalf("documented bad example should be ignored: %+v", issues)
 	}
 }
 
@@ -466,10 +541,10 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 	if !result.UsesGeniusThink || len(result.SelectedFormulas) < 2 {
 		t.Fatalf("expected GENIUS_THINK formulas: %+v", result.SelectedFormulas)
 	}
-	if len(result.Candidates) < 10 || result.SelectedCandidate == nil {
-		t.Fatalf("expected candidate curriculum and selected candidate: %+v", result.Candidates)
+	if len(result.Candidates) < 10 {
+		t.Fatalf("expected candidate curriculum: %+v", result.Candidates)
 	}
-	if result.SelectedCandidate.Status != selfAugmentCandidateStatusOpen {
+	if result.SelectedCandidate != nil && result.SelectedCandidate.Status != selfAugmentCandidateStatusOpen {
 		t.Fatalf("selected candidate must be an open improvement, got %+v", result.SelectedCandidate)
 	}
 	if candidateByID(result.Candidates, "loop-taxonomy-score-gates").Status != selfAugmentCandidateStatusSatisfied {
@@ -486,6 +561,25 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 	}
 	if candidateByID(result.Candidates, "qa-race-tier").Status != selfAugmentCandidateStatusSatisfied {
 		t.Fatalf("QA race tier candidate should be satisfied after risk-tier QA support: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "repo-local-augmentation-sandbox").Status != selfAugmentCandidateStatusSatisfied {
+		t.Fatalf("repo-local sandbox candidate should be satisfied after path boundary hardening: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "performance-baseline").Status != selfAugmentCandidateStatusSatisfied {
+		t.Fatalf("performance baseline candidate should be satisfied after slow-step compare support: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "genius-mermaid-lint").Status != selfAugmentCandidateStatusSatisfied {
+		t.Fatalf("Mermaid lint candidate should be satisfied after QA lint support: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "install-dry-run-mode").Status != selfAugmentCandidateStatusSatisfied {
+		t.Fatalf("install dry-run candidate should be satisfied after dry-run planning support: %+v", result.Candidates)
+	}
+	if result.SelectedCandidate == nil {
+		for _, candidate := range result.Candidates {
+			if candidate.Status == selfAugmentCandidateStatusOpen {
+				t.Fatalf("nil selected candidate is valid only when no open candidates remain: %+v", result.Candidates)
+			}
+		}
 	}
 	if result.TerminationEligible {
 		t.Fatalf("planner must not claim implementation termination before a diff is applied")

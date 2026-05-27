@@ -62,6 +62,8 @@ MCP tools:
 | 네이티브 통합 | native integration | 점수 > 95 |
 
 `self-verify --json`의 `summary.goal_scores`, `summary.minimum_goal_score`, `summary.termination_eligible`를 판정 기준으로 삼는다.
+`self-verify compare`는 전체 `elapsed_ms`뿐 아니라 `summary.slowest_steps`를 label별 baseline으로 비교해 느린 단계 회귀를 `slow_step:*` regression으로 승격한다.
+자기 검증 루프 자체의 다음 개선 후보는 `agent_docs/SELF_VERIFICATION_CANDIDATES.md`에 기록하며, 현재 1순위는 무출력 장기 실행을 줄이는 progress heartbeat다.
 
 ## 2. 자가 증강 루프
 
