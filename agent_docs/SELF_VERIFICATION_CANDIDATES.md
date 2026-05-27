@@ -36,7 +36,9 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + user_value*0.20 + (10
 
 `risk`와 `verification_cost`는 낮을수록 좋으므로 역점수로 반영한다.
 
-## 3. Open 후보
+## 3. 후보 목록
+
+2026-05-27 cycle update: `self-verify-progress-heartbeat`는 `self-verify --progress=jsonl`로 구현됐다. stdout의 최종 JSON summary는 유지하고 stderr에 JSON Lines progress event를 기록한다. `self-verify-secret-redaction-audit`도 `redaction audit` self-verify 단계로 구현됐다. `self-verify-coverage-gap-report`는 `summary.coverage`와 `summary.coverage_gaps`로 구현됐다. `self-verify-failure-rerun-recipe`는 실패 summary의 `rerun_commands`로 구현됐다. `self-verify-policy-path-fuzz-plus`는 symlink escape, `~/path`, remote URL/ref 예외 fixture로 보강됐다. `self-verify-json-schema-contract`는 `summary.contract` version/hash/required fields로 구현됐다. `self-verify-flake-classifier`는 `failure_class`와 `failure_clusters`로 구현됐다. `self-verify-output-size-budget`은 bounded stdout/stderr와 truncation metadata로 구현됐다. 다음 self-augment cycle의 기본 1순위는 `self-verify-history-retention-budget`이다.
 
 | 우선순위 | 후보 ID | 분류 | 점수 | 왜 지금 필요한가 | 검증 방법 |
 | --- | --- | --- | ---: | --- | --- |
@@ -59,11 +61,10 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + user_value*0.20 + (10
 
 ## 4. 추천 실행 순서
 
-1. `self-verify-progress-heartbeat`: 이번 인터럽트의 직접 원인을 줄인다. 기존 `--json` contract를 유지하면서 stderr 또는 opt-in JSONL만 추가하면 위험이 낮다.
-2. `self-verify-secret-redaction-audit`: 검증 산출물은 여러 도구가 읽으므로 보안 가치가 높다.
-3. `self-verify-coverage-gap-report`: 이후 후보를 “감”이 아니라 coverage gap으로 자동 도출하게 만든다.
-4. `self-verify-failure-rerun-recipe`: 실패 시 다음 agent가 재현부터 시작할 수 있어 복구 시간이 줄어든다.
-5. `self-verify-policy-path-fuzz-plus`: workspace boundary는 critical invariant라 fuzz 확대 가치가 높다.
+1. `self-verify-history-retention-budget`: baseline/history가 계속 쌓일 때 오래된 기준과 상태 저장소 부하를 관리한다.
+2. `self-verify-parallel-temp-isolation`: 동시 실행 때 temp state와 daemon fixture가 충돌하지 않도록 한다.
+3. `self-verify-duplicate-mcp-warning`: user/project MCP endpoint 중복 경고를 native integration 위험으로 분류한다.
+4. `self-verify-daemon-restart-resilience`: daemon-backed MCP proxy의 stale lock/socket 복구를 다룬다.
 
 ## 5. 완료 기준
 
@@ -74,4 +75,4 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + user_value*0.20 + (10
 - 현재 baseline 증거와 이번 인터럽트 원인을 반영한다.
 - 다음 cycle에서 바로 선택할 추천 후보가 있다.
 
-다음 자가 증강 cycle에서 실제 구현 후보를 고를 때는 `self-verify-progress-heartbeat`를 기본 1순위로 본다.
+다음 자가 증강 cycle에서 실제 구현 후보를 고를 때는 아직 완료되지 않은 후보 중 가장 높은 점수인 `self-verify-history-retention-budget`을 기본 1순위로 본다.

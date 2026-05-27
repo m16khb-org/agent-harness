@@ -54,6 +54,11 @@ func TestCommandPolicyDeniesPathArgsOutsideWorkspace(t *testing.T) {
 	if err := os.WriteFile(outsideFile, []byte("outside"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv("HOME", outside)
+	link := filepath.Join(inside, "outside-link")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatal(err)
+	}
 
 	cases := []struct {
 		name string
@@ -62,6 +67,8 @@ func TestCommandPolicyDeniesPathArgsOutsideWorkspace(t *testing.T) {
 		{name: "relative parent escape", argv: []string{"cat", filepath.Join("..", "..", filepath.Base(outside), "note.txt")}},
 		{name: "absolute outside path", argv: []string{"cat", outsideFile}},
 		{name: "flag value outside path", argv: []string{"sed", "--file=" + outsideFile}},
+		{name: "symlink escape path", argv: []string{"cat", filepath.Join(link, "note.txt")}},
+		{name: "home shorthand escape", argv: []string{"cat", "~/note.txt"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -85,6 +92,21 @@ func TestCommandPolicyDeniesPathArgsOutsideWorkspace(t *testing.T) {
 	})
 	if !insideResult.Allowed {
 		t.Fatalf("inside path arg should be allowed: %+v", insideResult)
+	}
+}
+
+func TestPolicyPathCandidatesIgnoreRemoteReferences(t *testing.T) {
+	for _, arg := range []string{
+		"https://github.com/example/repo",
+		"ssh://git@github.com/example/repo",
+		"git@github.com:example/repo",
+	} {
+		if got := policyPathCandidates(arg); len(got) != 0 {
+			t.Fatalf("remote reference %q should not be treated as a local path: %+v", arg, got)
+		}
+	}
+	if got := policyPathCandidates("--file=/tmp/outside"); len(got) != 1 || got[0] != "/tmp/outside" {
+		t.Fatalf("flag path candidate not detected: %+v", got)
 	}
 }
 

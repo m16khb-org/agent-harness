@@ -336,11 +336,25 @@ func looksLikeRemoteOrURL(arg string) bool {
 	if strings.Contains(lower, "://") {
 		return true
 	}
-	return strings.Contains(arg, "@") && strings.Contains(arg, ":") && !strings.Contains(arg, string(os.PathSeparator))
+	if at := strings.Index(arg, "@"); at >= 0 {
+		return strings.Contains(arg[at+1:], ":")
+	}
+	return false
 }
 
 func resolvePolicyPathCandidate(cwd, candidate string) string {
 	if strings.TrimSpace(candidate) == "" || strings.HasPrefix(candidate, "~") {
+		if candidate == "~" || strings.HasPrefix(candidate, "~/") || strings.HasPrefix(candidate, "~"+string(os.PathSeparator)) {
+			home, err := os.UserHomeDir()
+			if err != nil || home == "" {
+				return candidate
+			}
+			rest := strings.TrimPrefix(strings.TrimPrefix(candidate, "~/"), "~"+string(os.PathSeparator))
+			if rest == candidate {
+				rest = ""
+			}
+			return filepath.Join(home, rest)
+		}
 		return candidate
 	}
 	if filepath.IsAbs(candidate) {

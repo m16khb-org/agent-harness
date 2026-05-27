@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -23,6 +25,8 @@ import (
 
 const version = "0.1.0"
 const skillName = "atomic-commit-push"
+const selfVerifyCommandOutputBudgetBytes = 32 * 1024
+const selfVerifyAggregateOutputBudgetBytes = 8 * 1024
 
 func main() {
 	if len(os.Args) < 2 {
@@ -119,7 +123,7 @@ Usage:
   harness llm-wiki capture --title TITLE (--content TEXT|--input FILE|--stdin) [--type session|concept|entity|summary] [--json]
   harness daemon start|status|stop [--json]
   harness install-native [--llm-wiki-root PATH] [--project-local] [--no-claude-user-hook] [--dry-run] [--json]
-  harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--save-state] [--state-key KEY] [--json]
+  harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--save-state] [--state-key KEY] [--json]
   harness self-verify history [--prefix PREFIX] [--limit N] [--json]
   harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
   harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]
@@ -321,6 +325,7 @@ func runSelfVerify(args []string) error {
 	targetScore := fs.Float64("target-score", 95, "exclusive per-goal score threshold; every concrete goal must score above this value to terminate")
 	saveState := fs.Bool("save-state", false, "save compact self-verification summary to harness state")
 	stateKey := fs.String("state-key", "self-verify-latest", "state key for --save-state")
+	progress := fs.String("progress", "none", "progress output mode: none or jsonl; jsonl writes JSON Lines events to stderr")
 	jsonOut := fs.Bool("json", false, "print JSON summary")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -328,7 +333,11 @@ func runSelfVerify(args []string) error {
 	if *targetScore < 0 || *targetScore >= 100 {
 		return fmt.Errorf("target-score must be >= 0 and < 100")
 	}
-	result, err := selfVerify(*iterations, *seed, *targetScore, !*jsonOut)
+	progressReporter, err := newSelfVerifyProgressReporter(*progress, os.Stderr)
+	if err != nil {
+		return err
+	}
+	result, err := selfVerifyWithProgress(*iterations, *seed, *targetScore, !*jsonOut, progressReporter)
 	saveErr := error(nil)
 	if *saveState {
 		saveErr = saveSelfVerificationSummary(&result, *stateKey)
@@ -683,19 +692,35 @@ type SelfAugmentResult struct {
 }
 
 type SelfAugmentSummary struct {
-	TotalRuns           int                         `json:"total_runs"`
-	TotalSteps          int                         `json:"total_steps"`
-	PassedSteps         int                         `json:"passed_steps"`
-	FailedSteps         int                         `json:"failed_steps"`
-	TargetScore         float64                     `json:"target_score"`
-	MinimumGoalScore    float64                     `json:"minimum_goal_score"`
-	TerminationEligible bool                        `json:"termination_eligible"`
-	GoalScores          []SelfVerificationGoalScore `json:"goal_scores"`
-	FailedIteration     int                         `json:"failed_iteration,omitempty"`
-	FailedSeed          int64                       `json:"failed_seed,omitempty"`
-	FailedStep          string                      `json:"failed_step,omitempty"`
-	StepLabels          []string                    `json:"step_labels"`
-	SlowestSteps        []SelfAugmentSlowStep       `json:"slowest_steps"`
+	TotalRuns           int                              `json:"total_runs"`
+	TotalSteps          int                              `json:"total_steps"`
+	PassedSteps         int                              `json:"passed_steps"`
+	FailedSteps         int                              `json:"failed_steps"`
+	TargetScore         float64                          `json:"target_score"`
+	Contract            SelfVerificationContract         `json:"contract"`
+	MinimumGoalScore    float64                          `json:"minimum_goal_score"`
+	TerminationEligible bool                             `json:"termination_eligible"`
+	GoalScores          []SelfVerificationGoalScore      `json:"goal_scores"`
+	Coverage            []SelfVerificationCoverage       `json:"coverage"`
+	CoverageGaps        []string                         `json:"coverage_gaps"`
+	RerunCommands       []string                         `json:"rerun_commands,omitempty"`
+	FailureClass        string                           `json:"failure_class,omitempty"`
+	FailureClassReason  string                           `json:"failure_class_reason,omitempty"`
+	FailureClusters     []SelfVerificationFailureCluster `json:"failure_clusters,omitempty"`
+	FailedIteration     int                              `json:"failed_iteration,omitempty"`
+	FailedSeed          int64                            `json:"failed_seed,omitempty"`
+	FailedStep          string                           `json:"failed_step,omitempty"`
+	StepLabels          []string                         `json:"step_labels"`
+	SlowestSteps        []SelfAugmentSlowStep            `json:"slowest_steps"`
+}
+
+type SelfVerificationContract struct {
+	Name           string   `json:"name"`
+	Version        int      `json:"version"`
+	Hash           string   `json:"hash"`
+	RequiredFields []string `json:"required_fields"`
+	GoalNames      []string `json:"goal_names"`
+	CoverageClaims []string `json:"coverage_claims"`
 }
 
 type SelfVerificationGoalScore struct {
@@ -709,11 +734,47 @@ type SelfVerificationGoalScore struct {
 	TotalChecks    int      `json:"total_checks"`
 }
 
+type SelfVerificationCoverage struct {
+	Claim          string   `json:"claim"`
+	EvidenceLabels []string `json:"evidence_labels"`
+	Covered        bool     `json:"covered"`
+	MissingLabels  []string `json:"missing_labels"`
+}
+
+type SelfVerificationFailureCluster struct {
+	Step  string  `json:"step"`
+	Seeds []int64 `json:"seeds"`
+	Count int     `json:"count"`
+}
+
 type SelfAugmentSlowStep struct {
 	Iteration  int    `json:"iteration"`
 	Seed       int64  `json:"seed"`
 	Label      string `json:"label"`
 	DurationMS int64  `json:"duration_ms"`
+}
+
+type SelfVerifyProgressEvent struct {
+	Event       string `json:"event"`
+	LoopKind    string `json:"loop_kind,omitempty"`
+	Iteration   int    `json:"iteration,omitempty"`
+	Iterations  int    `json:"iterations,omitempty"`
+	Seed        int64  `json:"seed,omitempty"`
+	StepIndex   int    `json:"step_index,omitempty"`
+	StepCount   int    `json:"step_count,omitempty"`
+	Step        string `json:"step,omitempty"`
+	OK          *bool  `json:"ok,omitempty"`
+	ElapsedMS   int64  `json:"elapsed_ms"`
+	DurationMS  int64  `json:"duration_ms,omitempty"`
+	LastSuccess string `json:"last_success,omitempty"`
+	Error       string `json:"error,omitempty"`
+}
+
+type selfVerifyProgressReporter struct {
+	mode        string
+	writer      io.Writer
+	started     time.Time
+	lastSuccess string
 }
 
 type SelfAugmentStateCheckpoint struct {
@@ -828,16 +889,24 @@ type SelfAugmentIteration struct {
 }
 
 type StepResult struct {
-	Label      string `json:"label"`
-	Command    string `json:"command,omitempty"`
-	OK         bool   `json:"ok"`
-	DurationMS int64  `json:"duration_ms"`
-	Stdout     string `json:"stdout,omitempty"`
-	Stderr     string `json:"stderr,omitempty"`
-	Error      string `json:"error,omitempty"`
+	Label           string `json:"label"`
+	Command         string `json:"command,omitempty"`
+	OK              bool   `json:"ok"`
+	DurationMS      int64  `json:"duration_ms"`
+	Stdout          string `json:"stdout,omitempty"`
+	Stderr          string `json:"stderr,omitempty"`
+	StdoutBytes     int    `json:"stdout_bytes,omitempty"`
+	StderrBytes     int    `json:"stderr_bytes,omitempty"`
+	StdoutTruncated bool   `json:"stdout_truncated,omitempty"`
+	StderrTruncated bool   `json:"stderr_truncated,omitempty"`
+	Error           string `json:"error,omitempty"`
 }
 
 func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose bool) (SelfAugmentResult, error) {
+	return selfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, nil)
+}
+
+func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfVerifyProgressReporter) (SelfAugmentResult, error) {
 	started := time.Now()
 	result := SelfAugmentResult{
 		LoopKind:    "self_verification",
@@ -856,10 +925,29 @@ func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose boo
 			"fail fast on the first failed step and report goal scores for recovery",
 		},
 	}
+	if progress != nil {
+		progress.started = started
+		progress.emit(SelfVerifyProgressEvent{
+			Event:      "loop_start",
+			LoopKind:   result.LoopKind,
+			Iterations: iterations,
+			Seed:       baseSeed,
+		})
+	}
 	if iterations < 10 {
 		err := fmt.Errorf("self-verification requires at least 10 iterations; use --iterations=10 or higher")
 		result.ElapsedMS = time.Since(started).Milliseconds()
 		result.Summary = summarizeSelfVerification(result, targetScore)
+		if progress != nil {
+			progress.emit(SelfVerifyProgressEvent{
+				Event:      "loop_end",
+				LoopKind:   result.LoopKind,
+				Iterations: iterations,
+				Seed:       baseSeed,
+				OK:         boolPtr(false),
+				Error:      err.Error(),
+			})
+		}
 		return result, err
 	}
 
@@ -876,35 +964,71 @@ func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose boo
 			result.Runs = append(result.Runs, run)
 			result.ElapsedMS = time.Since(started).Milliseconds()
 			result.Summary = summarizeSelfVerification(result, targetScore)
+			if progress != nil {
+				progress.emit(SelfVerifyProgressEvent{
+					Event:      "loop_end",
+					LoopKind:   result.LoopKind,
+					Iterations: iterations,
+					Seed:       baseSeed,
+					OK:         boolPtr(false),
+					Error:      err.Error(),
+				})
+			}
 			return result, err
 		}
 		tempBin := filepath.Join(tempDir, "harness")
 
-		steps := []func() StepResult{
-			func() StepResult { return validateHarnessInvariants(result.HarnessRoot) },
-			func() StepResult {
+		steps := []selfVerifyPlannedStep{
+			{Label: "harness invariants", Run: func() StepResult { return validateHarnessInvariants(result.HarnessRoot) }},
+			{Label: "go test", Run: func() StepResult {
 				return runCommandStep(result.HarnessRoot, "go test", 120*time.Second, "", "go", "test", "./...", "-count=1")
-			},
-			func() StepResult {
+			}},
+			{Label: "contract golden tests", Run: func() StepResult {
 				return runCommandStep(result.HarnessRoot, "contract golden tests", 120*time.Second, "", "go", "test", "./cmd/harness", "-run", "Golden", "-count=1")
-			},
-			func() StepResult { return validateRiskQATier(result.HarnessRoot) },
-			func() StepResult {
+			}},
+			{Label: "risk QA tier", Run: func() StepResult { return validateRiskQATier(result.HarnessRoot) }},
+			{Label: "go build", Run: func() StepResult {
 				return runCommandStep(result.HarnessRoot, "go build", 120*time.Second, "", "go", "build", "-o", tempBin, "./cmd/harness")
-			},
-			func() StepResult { return validateInspect(tempBin, result.HarnessRoot) },
-			func() StepResult { return validateDocsIndex(tempBin, result.HarnessRoot) },
-			func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) },
-			func() StepResult { return validateMCP(tempBin, result.HarnessRoot) },
-			func() StepResult { return validateStateRoundtrip(tempBin, result.HarnessRoot, seed) },
-			func() StepResult { return validatePreflightFuzz(tempBin, result.HarnessRoot, seed) },
-			func() StepResult { return validateNativeIntegration(result.HarnessRoot) },
-			func() StepResult { return validateQAGate(result.HarnessRoot) },
+			}},
+			{Label: "inspect smoke", Run: func() StepResult { return validateInspect(tempBin, result.HarnessRoot) }},
+			{Label: "docs index smoke", Run: func() StepResult { return validateDocsIndex(tempBin, result.HarnessRoot) }},
+			{Label: "command policy smoke", Run: func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) }},
+			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
+			{Label: "state roundtrip", Run: func() StepResult { return validateStateRoundtrip(tempBin, result.HarnessRoot, seed) }},
+			{Label: "preflight fuzz", Run: func() StepResult { return validatePreflightFuzz(tempBin, result.HarnessRoot, seed) }},
+			{Label: "native integration", Run: func() StepResult { return validateNativeIntegration(result.HarnessRoot) }},
+			{Label: "redaction audit", Run: func() StepResult { return validateRedactionAudit(result.HarnessRoot) }},
+			{Label: "QA gate", Run: func() StepResult { return validateQAGate(result.HarnessRoot) }},
 		}
 
-		for _, stepFn := range steps {
-			step := stepFn()
+		if progress != nil {
+			progress.emit(SelfVerifyProgressEvent{
+				Event:      "iteration_start",
+				LoopKind:   result.LoopKind,
+				Iteration:  iteration,
+				Iterations: iterations,
+				Seed:       seed,
+				StepCount:  len(steps),
+			})
+		}
+		for index, plannedStep := range steps {
+			if progress != nil {
+				progress.emit(SelfVerifyProgressEvent{
+					Event:      "step_start",
+					LoopKind:   result.LoopKind,
+					Iteration:  iteration,
+					Iterations: iterations,
+					Seed:       seed,
+					StepIndex:  index + 1,
+					StepCount:  len(steps),
+					Step:       plannedStep.Label,
+				})
+			}
+			step := plannedStep.Run()
 			run.Steps = append(run.Steps, step)
+			if progress != nil {
+				progress.emitStepEnd(result.LoopKind, iteration, iterations, seed, index+1, len(steps), step)
+			}
 			if verbose {
 				printStep(step)
 			}
@@ -914,11 +1038,32 @@ func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose boo
 				result.ElapsedMS = time.Since(started).Milliseconds()
 				result.OK = false
 				result.Summary = summarizeSelfVerification(result, targetScore)
+				if progress != nil {
+					progress.emit(SelfVerifyProgressEvent{
+						Event:      "loop_end",
+						LoopKind:   result.LoopKind,
+						Iterations: iterations,
+						Seed:       baseSeed,
+						OK:         boolPtr(false),
+						Error:      fmt.Sprintf("%s failed: %s", step.Label, step.Error),
+					})
+				}
 				return result, fmt.Errorf("%s failed: %s", step.Label, step.Error)
 			}
 		}
 		_ = os.RemoveAll(tempDir)
 		result.Runs = append(result.Runs, run)
+		if progress != nil {
+			progress.emit(SelfVerifyProgressEvent{
+				Event:      "iteration_end",
+				LoopKind:   result.LoopKind,
+				Iteration:  iteration,
+				Iterations: iterations,
+				Seed:       seed,
+				OK:         boolPtr(true),
+				StepCount:  len(steps),
+			})
+		}
 	}
 
 	result.OK = true
@@ -929,7 +1074,85 @@ func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose boo
 	if verbose {
 		fmt.Printf("\nSelf-verification pipeline passed %d iterations in %.1fs.\n", iterations, float64(result.ElapsedMS)/1000)
 	}
+	if progress != nil {
+		progress.emit(SelfVerifyProgressEvent{
+			Event:      "loop_end",
+			LoopKind:   result.LoopKind,
+			Iterations: iterations,
+			Seed:       baseSeed,
+			OK:         boolPtr(result.OK),
+		})
+	}
 	return result, nil
+}
+
+type selfVerifyPlannedStep struct {
+	Label string
+	Run   func() StepResult
+}
+
+func newSelfVerifyProgressReporter(mode string, writer io.Writer) (*selfVerifyProgressReporter, error) {
+	mode = strings.TrimSpace(strings.ToLower(mode))
+	if mode == "" || mode == "none" {
+		return nil, nil
+	}
+	if mode != "jsonl" {
+		return nil, fmt.Errorf("unsupported self-verify progress mode %q; use none or jsonl", mode)
+	}
+	if writer == nil {
+		writer = io.Discard
+	}
+	return &selfVerifyProgressReporter{mode: mode, writer: writer, started: time.Now()}, nil
+}
+
+func (r *selfVerifyProgressReporter) emit(event SelfVerifyProgressEvent) {
+	if r == nil || r.mode == "" {
+		return
+	}
+	if event.ElapsedMS == 0 {
+		event.ElapsedMS = time.Since(r.started).Milliseconds()
+	}
+	if event.LastSuccess == "" {
+		event.LastSuccess = r.lastSuccess
+	}
+	b, err := json.Marshal(event)
+	if err != nil {
+		fmt.Fprintf(r.writer, `{"event":"progress_error","error":%q}`+"\n", err.Error())
+		return
+	}
+	fmt.Fprintln(r.writer, string(b))
+}
+
+func (r *selfVerifyProgressReporter) emitStepEnd(loopKind string, iteration, iterations int, seed int64, stepIndex, stepCount int, step StepResult) {
+	if r == nil {
+		return
+	}
+	lastSuccess := r.lastSuccess
+	if step.OK {
+		lastSuccess = step.Label
+	}
+	event := SelfVerifyProgressEvent{
+		Event:       "step_end",
+		LoopKind:    loopKind,
+		Iteration:   iteration,
+		Iterations:  iterations,
+		Seed:        seed,
+		StepIndex:   stepIndex,
+		StepCount:   stepCount,
+		Step:        step.Label,
+		OK:          boolPtr(step.OK),
+		DurationMS:  step.DurationMS,
+		LastSuccess: lastSuccess,
+		Error:       step.Error,
+	}
+	r.emit(event)
+	if step.OK {
+		r.lastSuccess = step.Label
+	}
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
 
 func summarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {
@@ -940,6 +1163,7 @@ func summarizeSelfVerification(result SelfAugmentResult, targetScore float64) Se
 	summary := SelfAugmentSummary{
 		TotalRuns:    len(result.Runs),
 		TargetScore:  targetScore,
+		Contract:     selfVerificationContract(),
 		StepLabels:   []string{},
 		SlowestSteps: []SelfAugmentSlowStep{},
 	}
@@ -988,6 +1212,11 @@ func summarizeSelfVerification(result SelfAugmentResult, targetScore float64) Se
 		summary.SlowestSteps = []SelfAugmentSlowStep{}
 	}
 	summary.GoalScores = scoreSelfVerificationGoals(result, targetScore)
+	summary.Coverage, summary.CoverageGaps = selfVerificationCoverage(summary.StepLabels)
+	if summary.FailedStep != "" {
+		summary.RerunCommands = selfVerifyRerunCommands(summary.FailedStep, result.Iterations, result.BaseSeed, targetScore)
+		summary.FailureClass, summary.FailureClassReason, summary.FailureClusters = classifySelfVerificationFailure(result, summary)
+	}
 	summary.MinimumGoalScore = 100
 	if len(summary.GoalScores) == 0 {
 		summary.MinimumGoalScore = 0
@@ -1008,6 +1237,45 @@ type selfVerificationGoalDefinition struct {
 	Name       string
 	KoreanName string
 	Labels     []string
+}
+
+type selfVerificationCoverageDefinition struct {
+	Claim  string
+	Labels []string
+}
+
+func selfVerificationContract() SelfVerificationContract {
+	contract := SelfVerificationContract{
+		Name:    "self_verification_summary",
+		Version: 2,
+		RequiredFields: []string{
+			"total_runs",
+			"total_steps",
+			"passed_steps",
+			"failed_steps",
+			"target_score",
+			"contract",
+			"minimum_goal_score",
+			"termination_eligible",
+			"goal_scores",
+			"coverage",
+			"coverage_gaps",
+			"step_labels",
+			"slowest_steps",
+		},
+		GoalNames:      []string{},
+		CoverageClaims: []string{},
+	}
+	for _, goal := range selfVerificationGoalDefinitions() {
+		contract.GoalNames = append(contract.GoalNames, goal.Name)
+	}
+	for _, coverage := range selfVerificationCoverageDefinitions() {
+		contract.CoverageClaims = append(contract.CoverageClaims, coverage.Claim)
+	}
+	b, _ := json.Marshal(contract)
+	sum := sha256.Sum256(b)
+	contract.Hash = hex.EncodeToString(sum[:])
+	return contract
 }
 
 func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
@@ -1035,7 +1303,7 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 		{
 			Name:       "policy_security",
 			KoreanName: "정책·보안",
-			Labels:     []string{"command policy smoke", "preflight fuzz"},
+			Labels:     []string{"command policy smoke", "preflight fuzz", "redaction audit"},
 		},
 		{
 			Name:       "mcp_state_regression",
@@ -1048,6 +1316,146 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 			Labels:     []string{"native integration"},
 		},
 	}
+}
+
+func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition {
+	return []selfVerificationCoverageDefinition{
+		{Claim: "core repository invariants", Labels: []string{"harness invariants"}},
+		{Claim: "test suite contract", Labels: []string{"go test", "contract golden tests"}},
+		{Claim: "risk-tier static and race QA", Labels: []string{"risk QA tier"}},
+		{Claim: "release build artifact", Labels: []string{"go build"}},
+		{Claim: "CLI inspect/docs smoke", Labels: []string{"inspect smoke", "docs index smoke"}},
+		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
+		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
+		{Claim: "git preflight fuzz", Labels: []string{"preflight fuzz"}},
+		{Claim: "native integration", Labels: []string{"native integration"}},
+		{Claim: "secret redaction audit", Labels: []string{"redaction audit"}},
+		{Claim: "documentation QA gate", Labels: []string{"QA gate"}},
+	}
+}
+
+func selfVerificationCoverage(stepLabels []string) ([]SelfVerificationCoverage, []string) {
+	labelSet := map[string]bool{}
+	for _, label := range stepLabels {
+		labelSet[label] = true
+	}
+	coverage := []SelfVerificationCoverage{}
+	gaps := []string{}
+	for _, definition := range selfVerificationCoverageDefinitions() {
+		item := SelfVerificationCoverage{
+			Claim:          definition.Claim,
+			EvidenceLabels: append([]string{}, definition.Labels...),
+			Covered:        true,
+			MissingLabels:  []string{},
+		}
+		for _, label := range definition.Labels {
+			if !labelSet[label] {
+				item.Covered = false
+				item.MissingLabels = append(item.MissingLabels, label)
+				gaps = append(gaps, definition.Claim+": missing "+label)
+			}
+		}
+		coverage = append(coverage, item)
+	}
+	return coverage, gaps
+}
+
+func selfVerifyRerunCommands(failedStep string, iterations int, baseSeed int64, targetScore float64) []string {
+	commands := []string{}
+	if command, ok := selfVerifyStepRerunCommand(failedStep); ok {
+		commands = append(commands, command)
+	}
+	if iterations < 10 {
+		iterations = 10
+	}
+	commands = append(commands, fmt.Sprintf("./bin/harness self-verify --iterations=%d --seed=%d --target-score=%s --progress=jsonl --json", iterations, baseSeed, formatScore(targetScore)))
+	return commands
+}
+
+func selfVerifyStepRerunCommand(label string) (string, bool) {
+	switch label {
+	case "go test":
+		return "go test ./... -count=1", true
+	case "contract golden tests":
+		return "go test ./cmd/harness -run Golden -count=1", true
+	case "risk QA tier":
+		return "go vet ./... && go test -race ./... -count=1", true
+	case "go build":
+		return "go build -o bin/harness ./cmd/harness", true
+	case "inspect smoke":
+		return "./bin/harness inspect --json", true
+	case "docs index smoke":
+		return "./bin/harness docs --json", true
+	case "command policy smoke":
+		return "./bin/harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
+	case "MCP smoke":
+		return "./bin/harness mcp", true
+	case "state roundtrip":
+		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state migrate --json; rm -rf \"$tmp_state\"", true
+	case "preflight fuzz":
+		return "./bin/harness preflight --json \"$PWD\"", true
+	case "native integration":
+		return "./scripts/install-native.sh && ./bin/harness install-native --dry-run --json", true
+	case "redaction audit", "QA gate", "harness invariants":
+		return "go test ./cmd/harness -run Test -count=1", true
+	default:
+		return "", false
+	}
+}
+
+func formatScore(score float64) string {
+	if score == float64(int64(score)) {
+		return strconv.FormatInt(int64(score), 10)
+	}
+	return strconv.FormatFloat(score, 'f', -1, 64)
+}
+
+func classifySelfVerificationFailure(result SelfAugmentResult, summary SelfAugmentSummary) (string, string, []SelfVerificationFailureCluster) {
+	clusters := selfVerificationFailureClusters(result)
+	if summary.FailedSteps == 0 {
+		return "", "", nil
+	}
+	if len(clusters) == 0 {
+		return "unknown", "summary reports failed steps but no failed step details were captured", nil
+	}
+	if summary.FailedSteps < summary.TotalRuns {
+		return "intermittent", "only some completed seeds failed", clusters
+	}
+	if len(clusters) == 1 && clusters[0].Count == 1 {
+		return "single_failure_observation", "self-verify is fail-fast; rerun the same seed before calling the failure flaky or deterministic", clusters
+	}
+	if len(clusters) == 1 {
+		return "deterministic", "all completed failing seeds failed at the same step", clusters
+	}
+	return "mixed", "multiple failure steps were observed across completed seeds", clusters
+}
+
+func selfVerificationFailureClusters(result SelfAugmentResult) []SelfVerificationFailureCluster {
+	byStep := map[string][]int64{}
+	for _, run := range result.Runs {
+		for _, step := range run.Steps {
+			if step.OK {
+				continue
+			}
+			byStep[step.Label] = append(byStep[step.Label], run.Seed)
+		}
+	}
+	steps := make([]string, 0, len(byStep))
+	for step := range byStep {
+		steps = append(steps, step)
+	}
+	sort.Strings(steps)
+	clusters := []SelfVerificationFailureCluster{}
+	for _, step := range steps {
+		seeds := append([]int64{}, byStep[step]...)
+		sort.Slice(seeds, func(i, j int) bool { return seeds[i] < seeds[j] })
+		clusters = append(clusters, SelfVerificationFailureCluster{
+			Step:  step,
+			Seeds: seeds,
+			Count: len(seeds),
+		})
+	}
+	return clusters
 }
 
 type RiskQATierPlan struct {
@@ -1087,12 +1495,15 @@ func validateRiskQATier(root string) StepResult {
 			return combineFailedStep("risk QA tier", started, step, stdoutParts, commands)
 		}
 	}
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
 	return StepResult{
-		Label:      "risk QA tier",
-		Command:    strings.Join(commands, " && "),
-		OK:         true,
-		DurationMS: time.Since(started).Milliseconds(),
-		Stdout:     tail(strings.Join(stdoutParts, "\n"), 8*1024),
+		Label:           "risk QA tier",
+		Command:         strings.Join(commands, " && "),
+		OK:              true,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		StdoutBytes:     stdoutBytes,
+		StdoutTruncated: stdoutTruncated,
 	}
 }
 
@@ -1945,12 +2356,15 @@ func validateCommandPolicy(binary, root string) StepResult {
 		return assertionStepWithOutput("command policy smoke", started, []string{"fake-run created marker; command executed unexpectedly"}, stdoutParts, commands)
 	}
 
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
 	return StepResult{
-		Label:      "command policy smoke",
-		Command:    strings.Join(commands, " && "),
-		OK:         true,
-		DurationMS: time.Since(started).Milliseconds(),
-		Stdout:     tail(strings.Join(stdoutParts, "\n"), 8*1024),
+		Label:           "command policy smoke",
+		Command:         strings.Join(commands, " && "),
+		OK:              true,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		StdoutBytes:     stdoutBytes,
+		StdoutTruncated: stdoutTruncated,
 	}
 }
 
@@ -1989,7 +2403,7 @@ func validateMCP(binary, root string) StepResult {
 		`{"jsonrpc":"2.0","id":10,"method":"resources/read","params":{"uri":"harness://llm-wiki/session-context"}}`,
 		`{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"llm_wiki_search","arguments":{"query":"llm wiki","limit":3}}}`,
 	}, "\n") + "\n"
-	step := runCommandStepEnv(root, "MCP smoke", 30*time.Second, input, env, binary, "mcp")
+	step := runCommandStepEnvWithBudget(root, "MCP smoke", 30*time.Second, input, env, 0, binary, "mcp")
 	if !step.OK {
 		return step
 	}
@@ -2016,7 +2430,7 @@ func validateMCP(binary, root string) StepResult {
 		step.OK = false
 		step.Error = "MCP smoke did not expose expected tool/resource"
 	}
-	step.Stdout = tail(step.Stdout, 8*1024)
+	step.Stdout, step.StdoutTruncated, step.StdoutBytes = tailWithBudget(step.Stdout, selfVerifyAggregateOutputBudgetBytes)
 	return step
 }
 
@@ -2367,12 +2781,15 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 		return assertionStepWithOutput("state roundtrip", started, []string{"state doctor did not report corrupt fixture and preserve valid key"}, stdoutParts, commands)
 	}
 
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
 	return StepResult{
-		Label:      "state roundtrip",
-		Command:    strings.Join(commands, " && "),
-		OK:         true,
-		DurationMS: time.Since(started).Milliseconds(),
-		Stdout:     tail(strings.Join(stdoutParts, "\n"), 8*1024),
+		Label:           "state roundtrip",
+		Command:         strings.Join(commands, " && "),
+		OK:              true,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		StdoutBytes:     stdoutBytes,
+		StdoutTruncated: stdoutTruncated,
 	}
 }
 
@@ -2468,6 +2885,90 @@ func validateNativeIntegration(root string) StepResult {
 		errs = append(errs, "Claude user SessionStart hook missing")
 	}
 	return assertionStep("native integration", started, errs)
+}
+
+var secretMaterialPatterns = []struct {
+	name string
+	re   *regexp.Regexp
+}{
+	{name: "private_key", re: regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`)},
+	{name: "aws_access_key_id", re: regexp.MustCompile(`AKIA[0-9A-Z]{16}`)},
+	{name: "github_token", re: regexp.MustCompile(`ghp_[A-Za-z0-9]{20,}`)},
+	{name: "openai_token", re: regexp.MustCompile(`sk-[A-Za-z0-9_-]{20,}`)},
+	{name: "secret_assignment", re: regexp.MustCompile(`(?i)\b(token|secret|password|api[_-]?key|access[_-]?key)\s*[:=]\s*["']?([^\s"',}]+)`)},
+}
+
+func validateRedactionAudit(root string) StepResult {
+	started := time.Now()
+	errs := []string{}
+	for _, path := range redactionAuditFiles(root) {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			errs = append(errs, "read redaction audit file "+path+": "+err.Error())
+			continue
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			rel = path
+		}
+		for _, finding := range findUnredactedSecretLike(string(b)) {
+			errs = append(errs, filepath.ToSlash(rel)+": "+finding)
+		}
+	}
+	return assertionStep("redaction audit", started, errs)
+}
+
+func redactionAuditFiles(root string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	add := func(path string) {
+		if path == "" || seen[path] || !exists(path) {
+			return
+		}
+		seen[path] = true
+		out = append(out, path)
+	}
+	for _, path := range core.ListDocs(root) {
+		add(path)
+	}
+	for _, pattern := range []string{
+		filepath.Join(root, "cmd", "harness", "testdata", "*"),
+		filepath.Join(root, "internal", "adapter", "testdata", "*"),
+		filepath.Join(root, "skills", "*", "SKILL.md"),
+		filepath.Join(root, "skills", "*", "agents", "openai.yaml"),
+	} {
+		matches, _ := filepath.Glob(pattern)
+		for _, match := range matches {
+			add(match)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+func findUnredactedSecretLike(text string) []string {
+	findings := []string{}
+	for lineNo, line := range strings.Split(text, "\n") {
+		if strings.TrimSpace(line) == "" || lineContainsAllowedSecretPlaceholder(line) {
+			continue
+		}
+		for _, pattern := range secretMaterialPatterns {
+			if pattern.re.MatchString(line) {
+				findings = append(findings, fmt.Sprintf("line %d contains %s", lineNo+1, pattern.name))
+			}
+		}
+	}
+	return findings
+}
+
+func lineContainsAllowedSecretPlaceholder(line string) bool {
+	lower := strings.ToLower(line)
+	for _, marker := range []string{"redacted", "placeholder", "example", "fake", "dummy", "sample", "$secret", "$token", "<secret", "<token", "..."} {
+		if strings.Contains(lower, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateQAGate(root string) StepResult {
@@ -2597,6 +3098,10 @@ func runCommandStep(dir, label string, timeout time.Duration, stdin string, name
 }
 
 func runCommandStepEnv(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult {
+	return runCommandStepEnvWithBudget(dir, label, timeout, stdin, env, selfVerifyCommandOutputBudgetBytes, name, args...)
+}
+
+func runCommandStepEnvWithBudget(dir, label string, timeout time.Duration, stdin string, env []string, outputBudget int, name string, args ...string) StepResult {
 	started := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -2612,13 +3117,19 @@ func runCommandStepEnv(dir, label string, timeout time.Duration, stdin string, e
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
+	stdoutText, stdoutTruncated, stdoutBytes := budgetCommandOutput(stdout.String(), outputBudget)
+	stderrText, stderrTruncated, stderrBytes := budgetCommandOutput(stderr.String(), outputBudget)
 	step := StepResult{
-		Label:      label,
-		Command:    strings.Join(append([]string{name}, args...), " "),
-		OK:         err == nil,
-		DurationMS: time.Since(started).Milliseconds(),
-		Stdout:     tail(stdout.String(), 256*1024),
-		Stderr:     tail(stderr.String(), 256*1024),
+		Label:           label,
+		Command:         strings.Join(append([]string{name}, args...), " "),
+		OK:              err == nil,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		Stderr:          stderrText,
+		StdoutBytes:     stdoutBytes,
+		StderrBytes:     stderrBytes,
+		StdoutTruncated: stdoutTruncated,
+		StderrTruncated: stderrTruncated,
 	}
 	if ctx.Err() == context.DeadlineExceeded {
 		step.OK = false
@@ -2629,15 +3140,27 @@ func runCommandStepEnv(dir, label string, timeout time.Duration, stdin string, e
 	return step
 }
 
+func budgetCommandOutput(s string, budget int) (string, bool, int) {
+	if budget <= 0 {
+		return s, false, len(s)
+	}
+	return tailWithBudget(s, budget)
+}
+
 func combineFailedStep(label string, started time.Time, child StepResult, stdoutParts []string, commands []string) StepResult {
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
 	step := StepResult{
-		Label:      label,
-		Command:    strings.Join(commands, " && "),
-		OK:         false,
-		DurationMS: time.Since(started).Milliseconds(),
-		Stdout:     tail(strings.Join(stdoutParts, "\n"), 8*1024),
-		Stderr:     child.Stderr,
-		Error:      child.Label + ": " + child.Error,
+		Label:           label,
+		Command:         strings.Join(commands, " && "),
+		OK:              false,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		Stderr:          child.Stderr,
+		StdoutBytes:     stdoutBytes,
+		StderrBytes:     child.StderrBytes,
+		StdoutTruncated: stdoutTruncated,
+		StderrTruncated: child.StderrTruncated,
+		Error:           child.Label + ": " + child.Error,
 	}
 	if step.Error == child.Label+": " {
 		step.Error = child.Label + " failed"
@@ -2656,7 +3179,7 @@ func assertionStep(label string, started time.Time, errs []string) StepResult {
 func assertionStepWithOutput(label string, started time.Time, errs []string, stdoutParts []string, commands []string) StepResult {
 	step := assertionStep(label, started, errs)
 	step.Command = strings.Join(commands, " && ")
-	step.Stdout = tail(strings.Join(stdoutParts, "\n"), 8*1024)
+	step.Stdout, step.StdoutTruncated, step.StdoutBytes = tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
 	return step
 }
 
@@ -2679,10 +3202,26 @@ func printStep(step StepResult) {
 }
 
 func tail(s string, max int) string {
-	if len(s) <= max {
-		return s
+	out, _, _ := tailWithBudget(s, max)
+	return out
+}
+
+func tailWithBudget(s string, max int) (string, bool, int) {
+	originalBytes := len(s)
+	if max <= 0 {
+		return "", originalBytes > 0, originalBytes
 	}
-	return s[len(s)-max:]
+	if originalBytes <= max {
+		return s, false, originalBytes
+	}
+	tailBudget := max
+	marker := fmt.Sprintf("[truncated: original_bytes=%d omitted_bytes=%d]\n", originalBytes, originalBytes-tailBudget)
+	tailBudget = max - len(marker)
+	if tailBudget < 0 {
+		return marker[:max], true, originalBytes
+	}
+	marker = fmt.Sprintf("[truncated: original_bytes=%d omitted_bytes=%d]\n", originalBytes, originalBytes-tailBudget)
+	return marker + s[originalBytes-tailBudget:], true, originalBytes
 }
 
 func indentLines(s string) string {

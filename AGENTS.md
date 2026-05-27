@@ -99,6 +99,7 @@ go build -o bin/harness ./cmd/harness
 ./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/harness state migrate --json && rm -rf "$tmp_state"
 ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
 codex mcp get agent_harness
 claude mcp list
 ```

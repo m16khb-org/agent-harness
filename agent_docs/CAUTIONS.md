@@ -33,7 +33,7 @@ plugin 방식은 설치 UX에는 좋지만, Codex와 Claude Code가 같은 plugi
 - argv 실행을 기본으로 하고 shell string 실행은 예외로 둔다.
 - cwd, timeout, env, write/network 허용 여부를 명시한다.
 - stdout/stderr는 redaction 후 저장/반환한다.
-- workspace root 밖 파일 접근을 기본 거부한다. `cwd`뿐 아니라 path-like argv(`../`, `/abs/path`, `--flag=/abs/path`)도 경계 검사를 통과해야 한다.
+- workspace root 밖 파일 접근을 기본 거부한다. `cwd`뿐 아니라 path-like argv(`../`, `/abs/path`, `--flag=/abs/path`, `~/path`, symlink escape)도 경계 검사를 통과해야 한다.
 
 ---
 

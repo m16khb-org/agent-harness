@@ -167,7 +167,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 현재 기본 거부:
 
 - `cwd`가 `workspace_root` 밖인 요청
-- path-like argv가 `workspace_root` 밖 파일/디렉터리를 가리키는 요청
+- path-like argv가 `workspace_root` 밖 파일/디렉터리를 가리키는 요청(`~/path`, symlink escape 포함)
 - shell interpreter(`sh`, `bash`, `zsh` 등) without reason
 - `network_allowed=false`에서 network성 명령
 - `write_allowed=false`에서 write성 명령

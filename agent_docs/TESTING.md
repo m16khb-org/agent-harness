@@ -43,6 +43,7 @@ HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify history --prefix self-v
 HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify compare --baseline-key self-verify-smoke --candidate-key self-verify-smoke --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify promote --from-key self-verify-smoke --baseline-key self-verify-baseline --json
 ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
 ./bin/harness self-augment --cycles=1 --target-score=95 --json
 ./bin/harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
 ./bin/harness self-augment lesson --candidate reflexion-state-memory --lesson "test lesson" --next-action "test next action" --state-key self-augment-lesson-test --json
@@ -131,7 +132,7 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `internal/adapter/testdata/native_install_contract_matrix.golden.json` — Codex/Claude user-global 기본 설치와 project-local opt-in 계약
 - `harness self-verify` 10회 반복 결과
 - `harness self-verify`의 `risk QA tier` step과 `risk_qa` goal score
-- `harness self-verify --json`의 `summary`/`goal_scores` field
+- `harness self-verify --json`의 `summary.contract`/`goal_scores`/`coverage_gaps`/`failure_class`/`rerun_commands` field
 - `harness self-verify --save-state` summary checkpoint serialization
 - `harness self-verify history` summary checkpoint discovery
 - `harness self-verify compare` summary checkpoint regression comparison
@@ -159,4 +160,4 @@ Golden file은 사람이 읽을 수 있게 작게 유지하고, schema 변경 �
 
 ## 자기 검증 QA gate
 
-`harness self-verify`는 테스트 실행뿐 아니라 QA gate를 포함한다. QA gate는 루프 문서, `GENIUS_THINK.md`, shared skill metadata, native integration 설치 상태, Mermaid 문서 lint를 확인하며, 모든 목표 점수가 95점을 초과해야 종료 가능하다. Mermaid lint는 `GENIUS_THINK.md`의 따옴표/`<br/>` 규칙을 기준으로 문서 다이어그램 파싱 오류를 조기에 막는다.
+`harness self-verify`는 테스트 실행뿐 아니라 QA gate를 포함한다. QA gate는 루프 문서, `GENIUS_THINK.md`, shared skill metadata, native integration 설치 상태, redaction audit, bounded stdout/stderr metadata, Mermaid 문서 lint를 확인하며, 모든 목표 점수가 95점을 초과해야 종료 가능하다. Mermaid lint는 `GENIUS_THINK.md`의 따옴표/`<br/>` 규칙을 기준으로 문서 다이어그램 파싱 오류를 조기에 막는다.

@@ -3,7 +3,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 8807,
+          "bytes": 8902,
           "headings": [
             "AGENTS.md",
             "1. 작업 원칙",
@@ -57,7 +57,7 @@
           "title": "Mermaid 다이어그램 작성 가이드라인"
         },
         {
-          "bytes": 12582,
+          "bytes": 12615,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -75,7 +75,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 5263,
+          "bytes": 5289,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -193,7 +193,7 @@
           "title": "LLM Wiki 통합 설계"
         },
         {
-          "bytes": 8711,
+          "bytes": 9466,
           "headings": [
             "자기 검증 루프와 자가 증강 루프",
             "1. 자기 검증 루프",
@@ -214,12 +214,12 @@
           "title": "자기 검증 루프와 자가 증강 루프"
         },
         {
-          "bytes": 8744,
+          "bytes": 9624,
           "headings": [
             "자기 검증 루프 후보 발굴 기록",
             "1. 확인한 현재 상태",
             "2. 후보 생성 공식",
-            "3. Open 후보",
+            "3. 후보 목록",
             "4. 추천 실행 순서",
             "5. 완료 기준"
           ],
@@ -243,7 +243,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 8554,
+          "bytes": 8756,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -258,7 +258,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 8731,
+          "bytes": 9358,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -1040,6 +1040,16 @@
       ],
       "baseline_snapshot_generated_at": "$TIMESTAMP",
       "baseline_summary": {
+        "contract": {
+          "coverage_claims": null,
+          "goal_names": null,
+          "hash": "",
+          "name": "",
+          "required_fields": null,
+          "version": 0
+        },
+        "coverage": null,
+        "coverage_gaps": null,
         "failed_steps": 0,
         "goal_scores": null,
         "minimum_goal_score": 0,
@@ -1073,6 +1083,16 @@
       ],
       "candidate_snapshot_generated_at": "$TIMESTAMP",
       "candidate_summary": {
+        "contract": {
+          "coverage_claims": null,
+          "goal_names": null,
+          "hash": "",
+          "name": "",
+          "required_fields": null,
+          "version": 0
+        },
+        "coverage": null,
+        "coverage_gaps": null,
         "failed_steps": 0,
         "goal_scores": null,
         "minimum_goal_score": 0,
@@ -1111,7 +1131,7 @@
       "entries": [
         {
           "base_seed": 600,
-          "bytes": 674,
+          "bytes": 891,
           "elapsed_ms": 1100,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -1136,7 +1156,7 @@
         },
         {
           "base_seed": 600,
-          "bytes": 674,
+          "bytes": 891,
           "elapsed_ms": 1000,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -1179,6 +1199,16 @@
       "snapshot_generated_at": "$TIMESTAMP",
       "state_dir": "$STATE_DIR",
       "summary": {
+        "contract": {
+          "coverage_claims": null,
+          "goal_names": null,
+          "hash": "",
+          "name": "",
+          "required_fields": null,
+          "version": 0
+        },
+        "coverage": null,
+        "coverage_gaps": null,
         "failed_steps": 0,
         "goal_scores": null,
         "minimum_goal_score": 0,
@@ -1507,7 +1537,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 8807,
+                "bytes": 8902,
                 "headings": [
                   "AGENTS.md",
                   "1. 작업 원칙",
@@ -1561,7 +1591,7 @@
                 "title": "Mermaid 다이어그램 작성 가이드라인"
               },
               {
-                "bytes": 12582,
+                "bytes": 12615,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -1579,7 +1609,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 5263,
+                "bytes": 5289,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -1697,7 +1727,7 @@
                 "title": "LLM Wiki 통합 설계"
               },
               {
-                "bytes": 8711,
+                "bytes": 9466,
                 "headings": [
                   "자기 검증 루프와 자가 증강 루프",
                   "1. 자기 검증 루프",
@@ -1718,12 +1748,12 @@
                 "title": "자기 검증 루프와 자가 증강 루프"
               },
               {
-                "bytes": 8744,
+                "bytes": 9624,
                 "headings": [
                   "자기 검증 루프 후보 발굴 기록",
                   "1. 확인한 현재 상태",
                   "2. 후보 생성 공식",
-                  "3. Open 후보",
+                  "3. 후보 목록",
                   "4. 추천 실행 순서",
                   "5. 완료 기준"
                 ],
@@ -1747,7 +1777,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 8554,
+                "bytes": 8756,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -1762,7 +1792,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 8731,
+                "bytes": 9358,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -2539,6 +2569,16 @@
             ],
             "baseline_snapshot_generated_at": "$TIMESTAMP",
             "baseline_summary": {
+              "contract": {
+                "coverage_claims": null,
+                "goal_names": null,
+                "hash": "",
+                "name": "",
+                "required_fields": null,
+                "version": 0
+              },
+              "coverage": null,
+              "coverage_gaps": null,
               "failed_steps": 0,
               "goal_scores": null,
               "minimum_goal_score": 0,
@@ -2572,6 +2612,16 @@
             ],
             "candidate_snapshot_generated_at": "$TIMESTAMP",
             "candidate_summary": {
+              "contract": {
+                "coverage_claims": null,
+                "goal_names": null,
+                "hash": "",
+                "name": "",
+                "required_fields": null,
+                "version": 0
+              },
+              "coverage": null,
+              "coverage_gaps": null,
               "failed_steps": 0,
               "goal_scores": null,
               "minimum_goal_score": 0,
@@ -2617,7 +2667,7 @@
             "entries": [
               {
                 "base_seed": 600,
-                "bytes": 674,
+                "bytes": 891,
                 "elapsed_ms": 1100,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -2642,7 +2692,7 @@
               },
               {
                 "base_seed": 600,
-                "bytes": 674,
+                "bytes": 891,
                 "elapsed_ms": 1000,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -2692,6 +2742,16 @@
             "snapshot_generated_at": "$TIMESTAMP",
             "state_dir": "$STATE_DIR",
             "summary": {
+              "contract": {
+                "coverage_claims": null,
+                "goal_names": null,
+                "hash": "",
+                "name": "",
+                "required_fields": null,
+                "version": 0
+              },
+              "coverage": null,
+              "coverage_gaps": null,
               "failed_steps": 0,
               "goal_scores": null,
               "minimum_goal_score": 0,
@@ -2755,13 +2815,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 674,
+                "bytes": 891,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 674,
+                "bytes": 891,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -2819,13 +2879,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 674,
+                "bytes": 891,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 674,
+                "bytes": 891,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -2869,13 +2929,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 674,
+                "bytes": 891,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 674,
+                "bytes": 891,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
