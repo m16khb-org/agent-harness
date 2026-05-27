@@ -23,7 +23,7 @@
 | 로컬 확인 toolchain | `go version go1.26.3 darwin/arm64` |
 | 패키지 관리 | Go modules |
 | 기본 바이너리 | `bin/harness` (`cmd/harness` source) |
-| 실행 모드 | CLI one-shot, MCP stdio server, local worker daemon |
+| 실행 모드 | CLI one-shot, MCP stdio proxy, user-level daemon, future local job worker |
 | 설정 prefix | `HARNESS_` |
 
 ---
@@ -38,7 +38,7 @@
 | Config | `gopkg.in/yaml.v3` 또는 JSON/TOML | 초기에는 JSON/YAML 중 하나만 선택 |
 | Logging | 표준 `log/slog` | secret redaction wrapper 필요 |
 | MCP | 안정적인 Go MCP SDK 또는 직접 JSON-RPC 최소 구현 | SDK 선택 전 schema 안정성 확인 |
-| IPC | Unix socket/localhost HTTP | worker phase에서 결정 |
+| IPC | Unix socket | 현재 MCP proxy daemon은 Unix socket 사용. localhost HTTP는 future worker 필요 시 검토 |
 | State | 표준 library JSON 파일 저장 | `HARNESS_STATE_DIR` 또는 `~/.local/state/agent-harness/` |
 | Testing | 표준 `testing`, golden file, `httptest` | 외부 agent host 없이 core contract 검증 |
 
@@ -54,12 +54,17 @@ go build -o bin/harness ./cmd/harness
 ./bin/harness inspect --json
 ./bin/harness docs --json
 ./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-./bin/harness self-augment --iterations=10 --seed=100 --json
-./bin/harness self-augment --iterations=10 --seed=100 --save-state --state-key self-augment-latest --json
-./bin/harness self-augment history --prefix self-augment --json
-./bin/harness self-augment compare --baseline-key self-augment-baseline --candidate-key self-augment-latest --json
-./bin/harness self-augment promote --from-key self-augment-latest --baseline-key self-augment-baseline --confirm --json
+./bin/harness daemon status --json
+./bin/harness llm-wiki inventory --json
+./bin/harness llm-wiki session-context --json
+./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+./bin/harness self-verify history --prefix self-verify --json
+./bin/harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+./bin/harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+./bin/harness self-augment --cycles=1 --target-score=95 --json
 ./scripts/install-native.sh
+./bin/harness install-native --json
 ```
 
 예정 사용 예:
@@ -77,12 +82,21 @@ harness state prune --max-age 720h --confirm --json
 harness state doctor --json
 harness state migrate --json
 harness state migrate --confirm --json
+harness daemon start --json
+harness daemon status --json
+harness daemon stop --json
+harness llm-wiki inventory --json
+harness llm-wiki session-context --json
+harness llm-wiki search --query "llm wiki" --json
+harness llm-wiki read --page llm-wiki-pattern --json
+harness llm-wiki capture --title "Reusable finding" --content "..." --json
 harness mcp
-harness self-augment --iterations=10 --seed=100
-harness self-augment --iterations=10 --seed=100 --save-state --state-key self-augment-latest --json
-harness self-augment history --prefix self-augment --json
-harness self-augment compare --baseline-key self-augment-baseline --candidate-key self-augment-latest --json
-harness self-augment promote --from-key self-augment-latest --baseline-key self-augment-baseline --confirm --json
+harness self-verify --iterations=10 --seed=100 --target-score=95
+harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+harness self-verify history --prefix self-verify --json
+harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+harness self-augment --cycles=1 --target-score=95 --json
 harness worker start
 ```
 
@@ -97,8 +111,10 @@ harness worker start
 | 사용자 설정 | `~/.config/agent-harness/config.yaml` |
 | 사용자 state/log | OS별 state dir 또는 `~/.local/state/agent-harness/` |
 | workspace cache | `.harness/` |
-| Codex 템플릿 | `configs/codex/` 예정 |
-| Claude 템플릿 | `configs/claude/` 예정 |
+| daemon socket/pid/log | `~/.local/state/agent-harness/daemon/` 또는 `HARNESS_DAEMON_DIR` |
+| LLM Wiki vault | `~/workspace/knowledge-base/llm-wiki` 또는 `LLM_WIKI_ROOT` |
+| Codex 템플릿 | `configs/codex/` |
+| Claude 템플릿 | `configs/claude/` |
 
 ---
 
@@ -106,7 +122,10 @@ harness worker start
 
 ```bash
 test -f ~/.codex/skills/atomic-commit-push/SKILL.md
+test -f ~/.codex/skills/llm-wiki/SKILL.md
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md
+test -f ~/.claude/skills/llm-wiki/SKILL.md
+grep -q "session-start-llm-wiki.sh" ~/.claude/settings.json
 codex mcp get agent_harness
 claude mcp list | grep agent-harness
 ```

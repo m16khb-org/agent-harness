@@ -1,7 +1,8 @@
 [mcp_servers.agent_harness]
-command = "/Users/habin/workspace/agent-harness/bin/harness"
+command = "./bin/harness"
 args = ["mcp"]
 startup_timeout_sec = 30
 
 [mcp_servers.agent_harness.env]
-HARNESS_ROOT = "/Users/habin/workspace/agent-harness"
+HARNESS_ROOT = "."
+LLM_WIKI_ROOT = "~/workspace/knowledge-base/llm-wiki"

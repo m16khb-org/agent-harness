@@ -55,6 +55,11 @@ func main() {
 			}
 			os.Exit(1)
 		}
+	case "self-verify":
+		if err := runSelfVerify(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "self-verify:", err)
+			os.Exit(1)
+		}
 	case "self-augment":
 		if err := runSelfAugment(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "self-augment:", err)
@@ -63,6 +68,21 @@ func main() {
 	case "state":
 		if err := runState(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "state:", err)
+			os.Exit(1)
+		}
+	case "llm-wiki":
+		if err := runLLMWiki(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "llm-wiki:", err)
+			os.Exit(1)
+		}
+	case "install-native":
+		if err := runInstallNative(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "install-native:", err)
+			os.Exit(1)
+		}
+	case "daemon":
+		if err := runDaemon(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "daemon:", err)
 			os.Exit(1)
 		}
 	case "mcp":
@@ -91,10 +111,19 @@ Usage:
   harness state prune --max-age DURATION [--confirm] [--json]
   harness state doctor [--json]
   harness state migrate [--confirm] [--json]
-  harness self-augment [--iterations=10] [--seed=N] [--save-state] [--state-key KEY] [--json]
-  harness self-augment history [--prefix PREFIX] [--limit N] [--json]
-  harness self-augment compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
-  harness self-augment promote --from-key KEY --baseline-key KEY [--confirm] [--json]
+  harness llm-wiki inventory [--root PATH] [--project PATH] [--json]
+  harness llm-wiki session-context [--root PATH] [--project PATH] [--json]
+  harness llm-wiki search --query TEXT [--root PATH] [--limit N] [--json]
+  harness llm-wiki read --page PATH_OR_SLUG [--root PATH] [--json]
+  harness llm-wiki capture --title TITLE (--content TEXT|--input FILE|--stdin) [--type session|concept|entity|summary] [--json]
+  harness daemon start|status|stop [--json]
+  harness install-native [--llm-wiki-root PATH] [--project-local] [--no-claude-user-hook] [--json]
+  harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--save-state] [--state-key KEY] [--json]
+  harness self-verify history [--prefix PREFIX] [--limit N] [--json]
+  harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
+  harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]
+  harness self-augment [--cycles=1] [--target-score=95] [--save-state] [--state-key KEY] [--json]
+  harness self-augment lesson [--candidate ID] --lesson TEXT --next-action TEXT [--source TEXT] [--severity info|warning|error] [--state-key KEY] [--json]
   harness mcp
   harness version
 `, version)
@@ -122,6 +151,7 @@ func runInspect(args []string) error {
 	}
 	fmt.Printf("codex skill installed: %v\n", info.Integration.CodexSkillInstalled)
 	fmt.Printf("claude skill installed: %v\n", info.Integration.ClaudeSkillInstalled)
+	fmt.Printf("Claude user SessionStart hook: %v\n", info.Integration.ClaudeUserHook)
 	fmt.Printf("project Claude MCP config: %v\n", info.Integration.ProjectClaudeMCPConfig)
 	return nil
 }
@@ -274,29 +304,33 @@ func printPolicyEvaluation(result core.CommandPolicyEvaluation) {
 	}
 }
 
-func runSelfAugment(args []string) error {
+func runSelfVerify(args []string) error {
 	if len(args) > 0 && args[0] == "history" {
-		return runSelfAugmentHistory(args[1:])
+		return runSelfVerifyHistory(args[1:])
 	}
 	if len(args) > 0 && args[0] == "compare" {
-		return runSelfAugmentCompare(args[1:])
+		return runSelfVerifyCompare(args[1:])
 	}
 	if len(args) > 0 && args[0] == "promote" {
-		return runSelfAugmentPromote(args[1:])
+		return runSelfVerifyPromote(args[1:])
 	}
-	fs := flag.NewFlagSet("self-augment", flag.ContinueOnError)
-	iterations := fs.Int("iterations", 10, "number of validation loop iterations; must be at least 10")
+	fs := flag.NewFlagSet("self-verify", flag.ContinueOnError)
+	iterations := fs.Int("iterations", 10, "number of self-verification loop iterations; must be at least 10")
 	seed := fs.Int64("seed", time.Now().Unix(), "base seed for randomized checks")
-	saveState := fs.Bool("save-state", false, "save compact self-augment summary to harness state")
-	stateKey := fs.String("state-key", "self-augment-latest", "state key for --save-state")
+	targetScore := fs.Float64("target-score", 95, "exclusive per-goal score threshold; every concrete goal must score above this value to terminate")
+	saveState := fs.Bool("save-state", false, "save compact self-verification summary to harness state")
+	stateKey := fs.String("state-key", "self-verify-latest", "state key for --save-state")
 	jsonOut := fs.Bool("json", false, "print JSON summary")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := selfAugment(*iterations, *seed, !*jsonOut)
+	if *targetScore < 0 || *targetScore >= 100 {
+		return fmt.Errorf("target-score must be >= 0 and < 100")
+	}
+	result, err := selfVerify(*iterations, *seed, *targetScore, !*jsonOut)
 	saveErr := error(nil)
 	if *saveState {
-		saveErr = saveSelfAugmentSummary(&result, *stateKey)
+		saveErr = saveSelfVerificationSummary(&result, *stateKey)
 	}
 	if *jsonOut {
 		_ = printJSON(result)
@@ -307,10 +341,10 @@ func runSelfAugment(args []string) error {
 	return err
 }
 
-func runSelfAugmentCompare(args []string) error {
-	fs := flag.NewFlagSet("self-augment compare", flag.ContinueOnError)
-	baselineKey := fs.String("baseline-key", "", "state key containing the baseline self-augment summary snapshot")
-	candidateKey := fs.String("candidate-key", "", "state key containing the candidate self-augment summary snapshot")
+func runSelfVerifyCompare(args []string) error {
+	fs := flag.NewFlagSet("self-verify compare", flag.ContinueOnError)
+	baselineKey := fs.String("baseline-key", "", "state key containing the baseline self-verification summary snapshot")
+	candidateKey := fs.String("candidate-key", "", "state key containing the candidate self-verification summary snapshot")
 	maxElapsedRegressionPct := fs.Float64("max-elapsed-regression-pct", 20, "allowed elapsed_ms increase percentage before regression")
 	failOnRegression := fs.Bool("fail-on-regression", false, "return non-zero when comparison reports a regression")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -330,20 +364,20 @@ func runSelfAugmentCompare(args []string) error {
 		if result.Regressed {
 			status = "regressed"
 		}
-		fmt.Printf("self-augment compare %s: elapsed_delta=%dms failed_steps_delta=%d\n", status, result.ElapsedDeltaMS, result.FailedStepsDelta)
+		fmt.Printf("self-verify compare %s: elapsed_delta=%dms failed_steps_delta=%d\n", status, result.ElapsedDeltaMS, result.FailedStepsDelta)
 		for _, regression := range result.Regressions {
 			fmt.Println("- " + regression)
 		}
 	}
 	if *failOnRegression && result.Regressed {
-		return fmt.Errorf("self-augment summary regression detected")
+		return fmt.Errorf("self-verification summary regression detected")
 	}
 	return nil
 }
 
-func runSelfAugmentHistory(args []string) error {
-	fs := flag.NewFlagSet("self-augment history", flag.ContinueOnError)
-	prefix := fs.String("prefix", "self-augment", "state key prefix to scan; empty string scans all keys")
+func runSelfVerifyHistory(args []string) error {
+	fs := flag.NewFlagSet("self-verify history", flag.ContinueOnError)
+	prefix := fs.String("prefix", "self-verify", "state key prefix to scan; empty string scans all keys")
 	limit := fs.Int("limit", 20, "maximum entries to return; 0 returns all")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
@@ -356,7 +390,7 @@ func runSelfAugmentHistory(args []string) error {
 	if *jsonOut {
 		return printJSON(result)
 	}
-	fmt.Printf("self-augment history: %d/%d entries from %s (prefix=%q)\n", result.Returned, result.TotalMatches, result.StateDir, result.Prefix)
+	fmt.Printf("self-verify history: %d/%d entries from %s (prefix=%q)\n", result.Returned, result.TotalMatches, result.StateDir, result.Prefix)
 	for _, entry := range result.Entries {
 		status := "fail"
 		if entry.OK {
@@ -370,9 +404,9 @@ func runSelfAugmentHistory(args []string) error {
 	return nil
 }
 
-func runSelfAugmentPromote(args []string) error {
-	fs := flag.NewFlagSet("self-augment promote", flag.ContinueOnError)
-	fromKey := fs.String("from-key", "", "state key containing the candidate self-augment summary snapshot")
+func runSelfVerifyPromote(args []string) error {
+	fs := flag.NewFlagSet("self-verify promote", flag.ContinueOnError)
+	fromKey := fs.String("from-key", "", "state key containing the candidate self-verification summary snapshot")
 	baselineKey := fs.String("baseline-key", "", "state key to write as the promoted baseline")
 	confirm := fs.Bool("confirm", false, "write baseline-key; omitted means dry-run")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -390,7 +424,7 @@ func runSelfAugmentPromote(args []string) error {
 	if result.Confirm {
 		action = "promoted"
 	}
-	fmt.Printf("%s self-augment summary %q to baseline %q\n", action, result.FromKey, result.BaselineKey)
+	fmt.Printf("%s self-verification summary %q to baseline %q\n", action, result.FromKey, result.BaselineKey)
 	return nil
 }
 
@@ -622,29 +656,56 @@ func inspectHarness(repoArg string) core.InspectInfo {
 	return core.InspectHarness(root, target, home, version, skillName)
 }
 
+const (
+	selfVerificationSummaryKind     = "self_verification_summary"
+	legacySelfAugmentSummaryKind    = "self_augment_summary"
+	selfVerificationKoreanName      = "자기 검증 루프"
+	selfAugmentationKoreanName      = "자가 증강 루프"
+	defaultLoopTargetScoreExclusive = 95.0
+)
+
 type SelfAugmentResult struct {
-	OK              bool                        `json:"ok"`
-	Iterations      int                         `json:"iterations"`
-	BaseSeed        int64                       `json:"base_seed"`
-	ElapsedMS       int64                       `json:"elapsed_ms"`
-	HarnessRoot     string                      `json:"harness_root"`
-	InspiredBy      string                      `json:"inspired_by"`
-	LoopContract    []string                    `json:"loop_contract"`
-	Summary         SelfAugmentSummary          `json:"summary"`
-	StateCheckpoint *SelfAugmentStateCheckpoint `json:"state_checkpoint,omitempty"`
-	Runs            []SelfAugmentIteration      `json:"runs"`
+	OK                  bool                        `json:"ok"`
+	LoopKind            string                      `json:"loop_kind"`
+	KoreanName          string                      `json:"korean_name"`
+	Iterations          int                         `json:"iterations"`
+	BaseSeed            int64                       `json:"base_seed"`
+	TargetScore         float64                     `json:"target_score"`
+	TerminationEligible bool                        `json:"termination_eligible"`
+	ElapsedMS           int64                       `json:"elapsed_ms"`
+	HarnessRoot         string                      `json:"harness_root"`
+	InspiredBy          string                      `json:"inspired_by"`
+	LoopContract        []string                    `json:"loop_contract"`
+	Summary             SelfAugmentSummary          `json:"summary"`
+	StateCheckpoint     *SelfAugmentStateCheckpoint `json:"state_checkpoint,omitempty"`
+	Runs                []SelfAugmentIteration      `json:"runs"`
 }
 
 type SelfAugmentSummary struct {
-	TotalRuns       int                   `json:"total_runs"`
-	TotalSteps      int                   `json:"total_steps"`
-	PassedSteps     int                   `json:"passed_steps"`
-	FailedSteps     int                   `json:"failed_steps"`
-	FailedIteration int                   `json:"failed_iteration,omitempty"`
-	FailedSeed      int64                 `json:"failed_seed,omitempty"`
-	FailedStep      string                `json:"failed_step,omitempty"`
-	StepLabels      []string              `json:"step_labels"`
-	SlowestSteps    []SelfAugmentSlowStep `json:"slowest_steps"`
+	TotalRuns           int                         `json:"total_runs"`
+	TotalSteps          int                         `json:"total_steps"`
+	PassedSteps         int                         `json:"passed_steps"`
+	FailedSteps         int                         `json:"failed_steps"`
+	TargetScore         float64                     `json:"target_score"`
+	MinimumGoalScore    float64                     `json:"minimum_goal_score"`
+	TerminationEligible bool                        `json:"termination_eligible"`
+	GoalScores          []SelfVerificationGoalScore `json:"goal_scores"`
+	FailedIteration     int                         `json:"failed_iteration,omitempty"`
+	FailedSeed          int64                       `json:"failed_seed,omitempty"`
+	FailedStep          string                      `json:"failed_step,omitempty"`
+	StepLabels          []string                    `json:"step_labels"`
+	SlowestSteps        []SelfAugmentSlowStep       `json:"slowest_steps"`
+}
+
+type SelfVerificationGoalScore struct {
+	Name           string   `json:"name"`
+	KoreanName     string   `json:"korean_name"`
+	Score          float64  `json:"score"`
+	TargetScore    float64  `json:"target_score"`
+	Passed         bool     `json:"passed"`
+	EvidenceLabels []string `json:"evidence_labels"`
+	PassedChecks   int      `json:"passed_checks"`
+	TotalChecks    int      `json:"total_checks"`
 }
 
 type SelfAugmentSlowStep struct {
@@ -666,9 +727,12 @@ type SelfAugmentStateCheckpoint struct {
 type SelfAugmentStateSnapshot struct {
 	SchemaVersion int                `json:"schema_version"`
 	Kind          string             `json:"kind"`
+	LoopKind      string             `json:"loop_kind,omitempty"`
+	KoreanName    string             `json:"korean_name,omitempty"`
 	OK            bool               `json:"ok"`
 	Iterations    int                `json:"iterations"`
 	BaseSeed      int64              `json:"base_seed"`
+	TargetScore   float64            `json:"target_score,omitempty"`
 	ElapsedMS     int64              `json:"elapsed_ms"`
 	HarnessRoot   string             `json:"harness_root"`
 	GeneratedAt   string             `json:"generated_at"`
@@ -686,6 +750,8 @@ type SelfAugmentCompareResult struct {
 	ElapsedDeltaPct              float64               `json:"elapsed_delta_pct"`
 	FailedStepsDelta             int                   `json:"failed_steps_delta"`
 	TotalStepsDelta              int                   `json:"total_steps_delta"`
+	BaselineMinimumGoalScore     float64               `json:"baseline_minimum_goal_score"`
+	CandidateMinimumGoalScore    float64               `json:"candidate_minimum_goal_score"`
 	MissingStepLabels            []string              `json:"missing_step_labels"`
 	AddedStepLabels              []string              `json:"added_step_labels"`
 	Regressions                  []string              `json:"regressions"`
@@ -761,39 +827,45 @@ type StepResult struct {
 	Error      string `json:"error,omitempty"`
 }
 
-func selfAugment(iterations int, baseSeed int64, verbose bool) (SelfAugmentResult, error) {
+func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose bool) (SelfAugmentResult, error) {
 	started := time.Now()
 	result := SelfAugmentResult{
+		LoopKind:    "self_verification",
+		KoreanName:  selfVerificationKoreanName,
 		Iterations:  iterations,
 		BaseSeed:    baseSeed,
+		TargetScore: targetScore,
 		HarnessRoot: harnessRoot(),
 		InspiredBy:  "/Users/habin/workspace/eye-tracking-scroll/scripts/self-augment.js",
 		LoopContract: []string{
 			"minimum 10 iterations",
+			"tests and QA are first-class stages, not optional follow-ups",
 			"seeded per-iteration randomized git preflight fuzz",
-			"repeat core invariant, build, CLI/MCP schema and response contract golden, CLI, docs, command policy, MCP, state, and native integration smoke checks",
-			"fail fast on the first failed step",
+			"repeat core invariant, tests, risk-tier QA, build, CLI/MCP schema and response contract golden, CLI, docs, command policy, MCP, state, and native integration smoke checks",
+			"terminate only when every concrete goal score is greater than target_score",
+			"fail fast on the first failed step and report goal scores for recovery",
 		},
 	}
 	if iterations < 10 {
-		err := fmt.Errorf("self-augmentation requires at least 10 iterations; use --iterations=10 or higher")
+		err := fmt.Errorf("self-verification requires at least 10 iterations; use --iterations=10 or higher")
 		result.ElapsedMS = time.Since(started).Milliseconds()
-		result.Summary = summarizeSelfAugment(result)
+		result.Summary = summarizeSelfVerification(result, targetScore)
 		return result, err
 	}
 
 	for iteration := 1; iteration <= iterations; iteration++ {
 		seed := baseSeed + int64(iteration) - 1
 		if verbose {
-			fmt.Printf("\n=== Self-augmentation iteration %d/%d seed=%d ===\n", iteration, iterations, seed)
+			fmt.Printf("\n=== Self-verification iteration %d/%d seed=%d ===\n", iteration, iterations, seed)
 		}
 		run := SelfAugmentIteration{Iteration: iteration, Seed: seed}
-		tempDir, err := os.MkdirTemp("", "agent-harness-self-augment-*")
+		tempDir, err := os.MkdirTemp("", "agent-harness-self-verify-*")
 		if err != nil {
 			step := failedStep("create temp workspace", err)
 			run.Steps = append(run.Steps, step)
 			result.Runs = append(result.Runs, run)
 			result.ElapsedMS = time.Since(started).Milliseconds()
+			result.Summary = summarizeSelfVerification(result, targetScore)
 			return result, err
 		}
 		tempBin := filepath.Join(tempDir, "harness")
@@ -806,6 +878,7 @@ func selfAugment(iterations int, baseSeed int64, verbose bool) (SelfAugmentResul
 			func() StepResult {
 				return runCommandStep(result.HarnessRoot, "contract golden tests", 120*time.Second, "", "go", "test", "./cmd/harness", "-run", "Golden", "-count=1")
 			},
+			func() StepResult { return validateRiskQATier(result.HarnessRoot) },
 			func() StepResult {
 				return runCommandStep(result.HarnessRoot, "go build", 120*time.Second, "", "go", "build", "-o", tempBin, "./cmd/harness")
 			},
@@ -816,6 +889,7 @@ func selfAugment(iterations int, baseSeed int64, verbose bool) (SelfAugmentResul
 			func() StepResult { return validateStateRoundtrip(tempBin, result.HarnessRoot, seed) },
 			func() StepResult { return validatePreflightFuzz(tempBin, result.HarnessRoot, seed) },
 			func() StepResult { return validateNativeIntegration(result.HarnessRoot) },
+			func() StepResult { return validateQAGate(result.HarnessRoot) },
 		}
 
 		for _, stepFn := range steps {
@@ -829,7 +903,7 @@ func selfAugment(iterations int, baseSeed int64, verbose bool) (SelfAugmentResul
 				result.Runs = append(result.Runs, run)
 				result.ElapsedMS = time.Since(started).Milliseconds()
 				result.OK = false
-				result.Summary = summarizeSelfAugment(result)
+				result.Summary = summarizeSelfVerification(result, targetScore)
 				return result, fmt.Errorf("%s failed: %s", step.Label, step.Error)
 			}
 		}
@@ -839,16 +913,23 @@ func selfAugment(iterations int, baseSeed int64, verbose bool) (SelfAugmentResul
 
 	result.OK = true
 	result.ElapsedMS = time.Since(started).Milliseconds()
-	result.Summary = summarizeSelfAugment(result)
+	result.Summary = summarizeSelfVerification(result, targetScore)
+	result.TerminationEligible = result.Summary.TerminationEligible
+	result.OK = result.TerminationEligible
 	if verbose {
-		fmt.Printf("\nSelf-augmentation pipeline passed %d iterations in %.1fs.\n", iterations, float64(result.ElapsedMS)/1000)
+		fmt.Printf("\nSelf-verification pipeline passed %d iterations in %.1fs.\n", iterations, float64(result.ElapsedMS)/1000)
 	}
 	return result, nil
 }
 
 func summarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {
+	return summarizeSelfVerification(result, defaultLoopTargetScoreExclusive)
+}
+
+func summarizeSelfVerification(result SelfAugmentResult, targetScore float64) SelfAugmentSummary {
 	summary := SelfAugmentSummary{
 		TotalRuns:    len(result.Runs),
+		TargetScore:  targetScore,
 		StepLabels:   []string{},
 		SlowestSteps: []SelfAugmentSlowStep{},
 	}
@@ -896,19 +977,285 @@ func summarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {
 	if summary.SlowestSteps == nil {
 		summary.SlowestSteps = []SelfAugmentSlowStep{}
 	}
+	summary.GoalScores = scoreSelfVerificationGoals(result, targetScore)
+	summary.MinimumGoalScore = 100
+	if len(summary.GoalScores) == 0 {
+		summary.MinimumGoalScore = 0
+	}
+	summary.TerminationEligible = result.OK
+	for _, goal := range summary.GoalScores {
+		if goal.Score < summary.MinimumGoalScore {
+			summary.MinimumGoalScore = goal.Score
+		}
+		if !goal.Passed {
+			summary.TerminationEligible = false
+		}
+	}
 	return summary
 }
 
-func saveSelfAugmentSummary(result *SelfAugmentResult, key string) error {
+type selfVerificationGoalDefinition struct {
+	Name       string
+	KoreanName string
+	Labels     []string
+}
+
+func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
+	return []selfVerificationGoalDefinition{
+		{
+			Name:       "test_suite",
+			KoreanName: "테스트 스위트",
+			Labels:     []string{"go test", "contract golden tests"},
+		},
+		{
+			Name:       "risk_qa",
+			KoreanName: "위험도 기반 QA",
+			Labels:     []string{"risk QA tier"},
+		},
+		{
+			Name:       "build_release",
+			KoreanName: "빌드 산출물",
+			Labels:     []string{"go build"},
+		},
+		{
+			Name:       "qa_smoke",
+			KoreanName: "QA 스모크",
+			Labels:     []string{"harness invariants", "inspect smoke", "docs index smoke", "QA gate"},
+		},
+		{
+			Name:       "policy_security",
+			KoreanName: "정책·보안",
+			Labels:     []string{"command policy smoke", "preflight fuzz"},
+		},
+		{
+			Name:       "mcp_state_regression",
+			KoreanName: "MCP·상태 회귀",
+			Labels:     []string{"MCP smoke", "state roundtrip"},
+		},
+		{
+			Name:       "native_integration",
+			KoreanName: "네이티브 통합",
+			Labels:     []string{"native integration"},
+		},
+	}
+}
+
+type RiskQATierPlan struct {
+	Tier         string   `json:"tier"`
+	ChangedPaths []string `json:"changed_paths"`
+	Reasons      []string `json:"reasons"`
+	Commands     []string `json:"commands"`
+}
+
+func validateRiskQATier(root string) StepResult {
+	started := time.Now()
+	plan := planRiskQATier(root)
+	planJSON := riskQATierPlanJSON(plan)
+	stdoutParts := []string{planJSON}
+	commands := []string{}
+	if len(plan.Commands) == 0 {
+		return StepResult{
+			Label:      "risk QA tier",
+			OK:         true,
+			DurationMS: time.Since(started).Milliseconds(),
+			Stdout:     planJSON,
+		}
+	}
+	for _, command := range plan.Commands {
+		var step StepResult
+		switch command {
+		case "go test -race ./... -count=1":
+			step = runCommandStep(root, "risk QA race test", 180*time.Second, "", "go", "test", "-race", "./...", "-count=1")
+		case "go vet ./...":
+			step = runCommandStep(root, "risk QA static vet", 120*time.Second, "", "go", "vet", "./...")
+		default:
+			step = failedStep("risk QA tier", fmt.Errorf("unknown risk QA command %q", command))
+		}
+		commands = append(commands, step.Command)
+		stdoutParts = append(stdoutParts, step.Stdout)
+		if !step.OK {
+			return combineFailedStep("risk QA tier", started, step, stdoutParts, commands)
+		}
+	}
+	return StepResult{
+		Label:      "risk QA tier",
+		Command:    strings.Join(commands, " && "),
+		OK:         true,
+		DurationMS: time.Since(started).Milliseconds(),
+		Stdout:     tail(strings.Join(stdoutParts, "\n"), 8*1024),
+	}
+}
+
+func planRiskQATier(root string) RiskQATierPlan {
+	paths, warnings := gitChangedPaths(root)
+	plan := planRiskQATierFromPaths(paths)
+	plan.Reasons = append(plan.Reasons, warnings...)
+	sort.Strings(plan.Reasons)
+	return plan
+}
+
+func planRiskQATierFromPaths(paths []string) RiskQATierPlan {
+	plan := RiskQATierPlan{Tier: "standard", ChangedPaths: uniqueSortedStrings(paths), Reasons: []string{}, Commands: []string{}}
+	if len(plan.ChangedPaths) == 0 {
+		plan.Reasons = append(plan.Reasons, "working tree has no local changes")
+		return plan
+	}
+	goChanged := false
+	sensitive := false
+	for _, path := range plan.ChangedPaths {
+		if strings.HasSuffix(path, ".go") {
+			goChanged = true
+		}
+		if isRiskSensitivePath(path) {
+			sensitive = true
+		}
+	}
+	if goChanged {
+		plan.Tier = "static"
+		plan.Reasons = append(plan.Reasons, "go changes detected")
+		plan.Commands = append(plan.Commands, "go vet ./...")
+	}
+	if goChanged && sensitive {
+		plan.Tier = "elevated"
+		plan.Reasons = append(plan.Reasons, "go changes touch policy, MCP, adapter, daemon, state, or harness orchestration surfaces")
+		plan.Commands = append([]string{"go test -race ./... -count=1"}, plan.Commands...)
+	}
+	if !goChanged {
+		plan.Reasons = append(plan.Reasons, "no Go changes detected; race/static tier skipped")
+	}
+	sort.Strings(plan.Reasons)
+	return plan
+}
+
+func gitChangedPaths(root string) ([]string, []string) {
+	cmd := exec.Command("git", "-C", root, "status", "--short", "--porcelain")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, []string{"git status unavailable: " + err.Error()}
+	}
+	paths := []string{}
+	for _, line := range strings.Split(string(out), "\n") {
+		path := parseGitStatusPath(line)
+		if path != "" {
+			paths = append(paths, path)
+		}
+	}
+	return uniqueSortedStrings(paths), nil
+}
+
+func parseGitStatusPath(line string) string {
+	line = strings.TrimRight(line, "\r")
+	if strings.TrimSpace(line) == "" {
+		return ""
+	}
+	if len(line) > 3 {
+		line = line[3:]
+	} else {
+		line = strings.TrimSpace(line)
+	}
+	if strings.Contains(line, " -> ") {
+		parts := strings.Split(line, " -> ")
+		line = parts[len(parts)-1]
+	}
+	line = strings.Trim(line, ` "`)
+	return filepath.ToSlash(line)
+}
+
+func isRiskSensitivePath(path string) bool {
+	path = filepath.ToSlash(path)
+	if strings.HasPrefix(path, "cmd/harness/") || strings.HasPrefix(path, "internal/") {
+		return true
+	}
+	for _, token := range []string{"daemon", "worker", "policy", "state", "mcp", "adapter", "install", "hook", "self_augment", "self-augment"} {
+		if strings.Contains(path, token) {
+			return true
+		}
+	}
+	return false
+}
+
+func uniqueSortedStrings(values []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, value := range values {
+		value = strings.TrimSpace(filepath.ToSlash(value))
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func riskQATierPlanJSON(plan RiskQATierPlan) string {
+	b, err := json.Marshal(plan)
+	if err != nil {
+		return fmt.Sprintf(`{"tier":%q,"error":%q}`, plan.Tier, err.Error())
+	}
+	return string(b)
+}
+
+func scoreSelfVerificationGoals(result SelfAugmentResult, targetScore float64) []SelfVerificationGoalScore {
+	goals := selfVerificationGoalDefinitions()
+	scores := make([]SelfVerificationGoalScore, 0, len(goals))
+	runCount := result.Iterations
+	if runCount < 1 {
+		runCount = len(result.Runs)
+	}
+	for _, goal := range goals {
+		passed := 0
+		total := 0
+		for iteration := 1; iteration <= runCount; iteration++ {
+			steps := map[string]StepResult{}
+			for _, run := range result.Runs {
+				if run.Iteration != iteration {
+					continue
+				}
+				for _, step := range run.Steps {
+					steps[step.Label] = step
+				}
+				break
+			}
+			for _, label := range goal.Labels {
+				total++
+				if step, ok := steps[label]; ok && step.OK {
+					passed++
+				}
+			}
+		}
+		score := 0.0
+		if total > 0 {
+			score = float64(passed) * 100 / float64(total)
+		}
+		scores = append(scores, SelfVerificationGoalScore{
+			Name:           goal.Name,
+			KoreanName:     goal.KoreanName,
+			Score:          score,
+			TargetScore:    targetScore,
+			Passed:         score > targetScore,
+			EvidenceLabels: append([]string{}, goal.Labels...),
+			PassedChecks:   passed,
+			TotalChecks:    total,
+		})
+	}
+	return scores
+}
+
+func saveSelfVerificationSummary(result *SelfAugmentResult, key string) error {
 	if key == "" {
-		key = "self-augment-latest"
+		key = "self-verify-latest"
 	}
 	snapshot := SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          selfVerificationSummaryKind,
+		LoopKind:      result.LoopKind,
+		KoreanName:    result.KoreanName,
 		OK:            result.OK,
 		Iterations:    result.Iterations,
 		BaseSeed:      result.BaseSeed,
+		TargetScore:   result.TargetScore,
 		ElapsedMS:     result.ElapsedMS,
 		HarnessRoot:   result.HarnessRoot,
 		GeneratedAt:   time.Now().UTC().Format(time.RFC3339Nano),
@@ -932,6 +1279,10 @@ func saveSelfAugmentSummary(result *SelfAugmentResult, key string) error {
 		Bytes:    state.Record.Bytes,
 	}
 	return nil
+}
+
+func saveSelfAugmentSummary(result *SelfAugmentResult, key string) error {
+	return saveSelfVerificationSummary(result, key)
 }
 
 func compareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedRegressionPct float64) (SelfAugmentCompareResult, error) {
@@ -970,6 +1321,8 @@ func compareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 	result.BaselineSlowestSteps = baseline.Summary.SlowestSteps
 	result.CandidateSlowestSteps = candidate.Summary.SlowestSteps
 	result.ElapsedDeltaMS = candidate.ElapsedMS - baseline.ElapsedMS
+	result.BaselineMinimumGoalScore = baseline.Summary.MinimumGoalScore
+	result.CandidateMinimumGoalScore = candidate.Summary.MinimumGoalScore
 	if baseline.ElapsedMS > 0 {
 		result.ElapsedDeltaPct = float64(result.ElapsedDeltaMS) * 100 / float64(baseline.ElapsedMS)
 	} else if candidate.ElapsedMS > 0 {
@@ -981,6 +1334,12 @@ func compareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 	result.AddedStepLabels = missingStrings(candidate.Summary.StepLabels, baseline.Summary.StepLabels)
 	if baseline.OK && !candidate.OK {
 		result.Regressions = append(result.Regressions, "candidate_not_ok")
+	}
+	if baseline.Summary.TerminationEligible && !candidate.Summary.TerminationEligible {
+		result.Regressions = append(result.Regressions, "candidate_not_termination_eligible")
+	}
+	if baseline.Summary.MinimumGoalScore > 0 && candidate.Summary.MinimumGoalScore < baseline.Summary.MinimumGoalScore {
+		result.Regressions = append(result.Regressions, fmt.Sprintf("minimum_goal_score_decreased_by_%.2f", baseline.Summary.MinimumGoalScore-candidate.Summary.MinimumGoalScore))
 	}
 	if result.FailedStepsDelta > 0 {
 		result.Regressions = append(result.Regressions, fmt.Sprintf("failed_steps_increased_by_%d", result.FailedStepsDelta))
@@ -1076,7 +1435,7 @@ func selfAugmentHistory(prefix string, limit int) (SelfAugmentHistoryResult, err
 			result.Skipped = append(result.Skipped, SelfAugmentHistorySkipped{Key: record.Key, Reason: "not_json_summary"})
 			continue
 		}
-		if snapshot.Kind != "self_augment_summary" {
+		if !isSelfVerificationSummaryKind(snapshot.Kind) {
 			result.Skipped = append(result.Skipped, SelfAugmentHistorySkipped{Key: record.Key, Reason: "kind:" + snapshot.Kind})
 			continue
 		}
@@ -1169,13 +1528,17 @@ func readSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) 
 	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
 		return SelfAugmentStateSnapshot{}, err
 	}
-	if snapshot.Kind != "self_augment_summary" {
-		return SelfAugmentStateSnapshot{}, fmt.Errorf("state key %q contains kind %q, want self_augment_summary", key, snapshot.Kind)
+	if !isSelfVerificationSummaryKind(snapshot.Kind) {
+		return SelfAugmentStateSnapshot{}, fmt.Errorf("state key %q contains kind %q, want %s", key, snapshot.Kind, selfVerificationSummaryKind)
 	}
 	if snapshot.SchemaVersion != 1 {
-		return SelfAugmentStateSnapshot{}, fmt.Errorf("state key %q has unsupported self-augment summary schema %d", key, snapshot.SchemaVersion)
+		return SelfAugmentStateSnapshot{}, fmt.Errorf("state key %q has unsupported self-verification summary schema %d", key, snapshot.SchemaVersion)
 	}
 	return snapshot, nil
+}
+
+func isSelfVerificationSummaryKind(kind string) bool {
+	return kind == selfVerificationSummaryKind || kind == legacySelfAugmentSummaryKind
 }
 
 func writeSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSnapshot) error {
@@ -1243,7 +1606,8 @@ func validateHarnessInvariants(root string) StepResult {
 		filepath.Join("cmd", "harness", "testdata", "mcp_resources.golden.json"),
 		filepath.Join("cmd", "harness", "testdata", "response_contracts.golden.json"),
 		filepath.Join(".mcp.json"),
-		filepath.Join(".claude", "skills", skillName, "SKILL.md"),
+		filepath.Join("configs", "claude", "hooks", "session-start-llm-wiki.settings.json"),
+		filepath.Join("scripts", "session-start-llm-wiki.sh"),
 	}
 	for _, rel := range required {
 		if !exists(filepath.Join(root, rel)) {
@@ -1279,7 +1643,6 @@ func validateSkillShape(skillDir string) error {
 }
 
 func forbiddenNameHits(root string) []string {
-	forbidden := []string{"m" + "16kh", "m" + "16h", "M" + "16H", "m" + "16"}
 	var hits []string
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -1301,7 +1664,7 @@ func forbiddenNameHits(root string) []string {
 			return nil
 		}
 		text := string(b)
-		for _, needle := range forbidden {
+		for _, needle := range forbiddenLegacyNeedles() {
 			if strings.Contains(text, needle) {
 				rel, _ := filepath.Rel(root, path)
 				hits = append(hits, rel+" contains "+needle)
@@ -1315,6 +1678,33 @@ func forbiddenNameHits(root string) []string {
 		return hits[:20]
 	}
 	return hits
+}
+
+func forbiddenLegacyNeedles() []string {
+	return []string{"m" + "16kh", "m" + "16h", "M" + "16H", "m" + "16"}
+}
+
+func containsForbiddenLegacyOutsideRuntimePaths(text, root string) bool {
+	sanitized := text
+	replacements := []string{}
+	if abs, err := filepath.Abs(root); err == nil {
+		replacements = append(replacements, abs)
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		replacements = append(replacements, home)
+	}
+	for _, runtimePath := range replacements {
+		if runtimePath == "" || runtimePath == string(filepath.Separator) {
+			continue
+		}
+		sanitized = strings.ReplaceAll(sanitized, runtimePath, "$RUNTIME_PATH")
+	}
+	for _, needle := range forbiddenLegacyNeedles() {
+		if strings.Contains(sanitized, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateInspect(binary, root string) StepResult {
@@ -1338,7 +1728,10 @@ func validateInspect(binary, root string) StepResult {
 	if !info.Integration.ProjectClaudeMCPConfig {
 		errs = append(errs, "project Claude MCP config missing")
 	}
-	if strings.Contains(step.Stdout, "m"+"16") {
+	if !info.Integration.ClaudeUserHook && !info.Integration.ProjectClaudeHook {
+		errs = append(errs, "Claude SessionStart hook missing")
+	}
+	if containsForbiddenLegacyOutsideRuntimePaths(step.Stdout, root) {
 		errs = append(errs, "inspect output contains legacy "+"m"+"16 name")
 	}
 	if len(errs) > 0 {
@@ -1369,7 +1762,7 @@ func validateDocsIndex(binary, root string) StepResult {
 	if len(index.Docs) == 0 {
 		errs = append(errs, "no docs indexed")
 	}
-	wantDocs := []string{"AGENTS.md", "CLAUDE.md", "agent_docs/COMMIT_POLICY.md", "agent_docs/USAGE.md"}
+	wantDocs := []string{"AGENTS.md", "CLAUDE.md", "GENIUS_THINK.md", "agent_docs/COMMIT_POLICY.md", "agent_docs/SELF_AUGMENTATION.md", "agent_docs/USAGE.md"}
 	for _, want := range wantDocs {
 		if !docIndexContains(index.Docs, want) {
 			errs = append(errs, "missing doc "+want)
@@ -1491,9 +1884,24 @@ func validateMCP(binary, root string) StepResult {
 		return failedStep("MCP smoke", err)
 	}
 	defer os.RemoveAll(tempState)
+	tempWiki := filepath.Join(tempState, "llm-wiki")
+	if err := writeSelfAugmentWikiFixture(tempWiki); err != nil {
+		return failedStep("MCP smoke", err)
+	}
+	daemonDir, err := os.MkdirTemp("", "ahd-*")
+	if err != nil {
+		return failedStep("MCP smoke", err)
+	}
+	defer os.RemoveAll(daemonDir)
+	env := []string{
+		"HARNESS_STATE_DIR=" + tempState,
+		"HARNESS_DAEMON_DIR=" + daemonDir,
+		"LLM_WIKI_ROOT=" + tempWiki,
+	}
+	defer runCommandStepEnv(root, "MCP daemon stop", 5*time.Second, "", env, binary, "daemon", "stop", "--json")
 
 	input := strings.Join([]string{
-		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"self-augment","version":"0"}}}`,
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"self-verify","version":"0"}}}`,
 		`{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`,
 		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"harness://commit-policy"}}`,
 		`{"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"harness://state"}}`,
@@ -1502,15 +1910,17 @@ func validateMCP(binary, root string) StepResult {
 		`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"state_prune","arguments":{"max_age":"1h"}}}`,
 		`{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"state_doctor","arguments":{}}}`,
 		`{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"state_migrate","arguments":{}}}`,
+		`{"jsonrpc":"2.0","id":10,"method":"resources/read","params":{"uri":"harness://llm-wiki/session-context"}}`,
+		`{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"llm_wiki_search","arguments":{"query":"llm wiki","limit":3}}}`,
 	}, "\n") + "\n"
-	step := runCommandStepEnv(root, "MCP smoke", 30*time.Second, input, []string{"HARNESS_STATE_DIR=" + tempState}, binary, "mcp")
+	step := runCommandStepEnv(root, "MCP smoke", 30*time.Second, input, env, binary, "mcp")
 	if !step.OK {
 		return step
 	}
 	lines := splitLines(step.Stdout)
-	if len(lines) != 9 {
+	if len(lines) != 11 {
 		step.OK = false
-		step.Error = fmt.Sprintf("expected 9 MCP responses, got %d", len(lines))
+		step.Error = fmt.Sprintf("expected 11 MCP responses, got %d", len(lines))
 		return step
 	}
 	for i, line := range lines {
@@ -1526,12 +1936,32 @@ func validateMCP(binary, root string) StepResult {
 			return step
 		}
 	}
-	if !strings.Contains(step.Stdout, "atomic_commit_preflight") || !strings.Contains(step.Stdout, "docs_index") || !strings.Contains(step.Stdout, "command_policy_check") || !strings.Contains(step.Stdout, "state_write") || !strings.Contains(step.Stdout, "state_prune") || !strings.Contains(step.Stdout, "state_doctor") || !strings.Contains(step.Stdout, "state_migrate") || !strings.Contains(step.Stdout, "self_augment_history") || !strings.Contains(step.Stdout, "self_augment_compare") || !strings.Contains(step.Stdout, "self_augment_promote") || !strings.Contains(step.Stdout, "dry_run") || !strings.Contains(step.Stdout, "healthy") || !strings.Contains(step.Stdout, "to_schema") || !strings.Contains(step.Stdout, "Lore:") {
+	if !strings.Contains(step.Stdout, "atomic_commit_preflight") || !strings.Contains(step.Stdout, "docs_index") || !strings.Contains(step.Stdout, "command_policy_check") || !strings.Contains(step.Stdout, "state_write") || !strings.Contains(step.Stdout, "state_prune") || !strings.Contains(step.Stdout, "state_doctor") || !strings.Contains(step.Stdout, "state_migrate") || !strings.Contains(step.Stdout, "self_augment") || !strings.Contains(step.Stdout, "self_augment_lesson") || !strings.Contains(step.Stdout, "self_verify") || !strings.Contains(step.Stdout, "self_verify_history") || !strings.Contains(step.Stdout, "self_verify_compare") || !strings.Contains(step.Stdout, "self_verify_promote") || !strings.Contains(step.Stdout, "llm_wiki_session_context") || !strings.Contains(step.Stdout, "llm_wiki_search") || !strings.Contains(step.Stdout, "dry_run") || !strings.Contains(step.Stdout, "healthy") || !strings.Contains(step.Stdout, "to_schema") || !strings.Contains(step.Stdout, "Lore:") || !strings.Contains(step.Stdout, "LLM Wiki Session Context") {
 		step.OK = false
 		step.Error = "MCP smoke did not expose expected tool/resource"
 	}
 	step.Stdout = tail(step.Stdout, 8*1024)
 	return step
+}
+
+func writeSelfAugmentWikiFixture(root string) error {
+	files := map[string]string{
+		"00-meta/AGENTS.md":                    "# LLM Wiki Operating Schema\n\nUse sources as read-only evidence.\n",
+		"00-meta/index.md":                     "# Wiki Index\n\n- [[llm-wiki-pattern]]\n- [[karpathy-llm-wiki-gist]]\n",
+		"00-meta/log.md":                       "# Wiki Log\n\n",
+		"10-sources/karpathy-llm-wiki-gist.md": "---\ntitle: Karpathy LLM Wiki Gist\ntype: source\nstatus: active\ntags: [llm-wiki]\n---\n\nSource card for the LLM Wiki pattern.\n",
+		"20-wiki/concepts/llm-wiki-pattern.md": "---\ntitle: LLM Wiki Pattern\ntype: concept\nstatus: active\ntags: [llm-wiki]\n---\n\nThe LLM Wiki pattern keeps durable, interlinked markdown knowledge.\n",
+	}
+	for rel, content := range files {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateStateRoundtrip(binary, root string, seed int64) StepResult {
@@ -1542,7 +1972,7 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 	}
 	defer os.RemoveAll(tempState)
 
-	key := fmt.Sprintf("self-augment-%d", seed)
+	key := fmt.Sprintf("self-verify-%d", seed)
 	content := fmt.Sprintf("seed=%d\nLore: state roundtrip\n", seed)
 	env := []string{"HARNESS_STATE_DIR=" + tempState}
 	stdoutParts := []string{}
@@ -1732,7 +2162,7 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 	}
 	if err := writeSelfAugmentSnapshotRecord(tempState, baselineCompareKey, SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          selfVerificationSummaryKind,
 		OK:            true,
 		Iterations:    10,
 		BaseSeed:      seed,
@@ -1745,7 +2175,7 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 	}
 	if err := writeSelfAugmentSnapshotRecord(tempState, candidateCompareKey, SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          selfVerificationSummaryKind,
 		OK:            true,
 		Iterations:    10,
 		BaseSeed:      seed,
@@ -1756,7 +2186,7 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 	}); err != nil {
 		return assertionStepWithOutput("state roundtrip", started, []string{err.Error()}, stdoutParts, commands)
 	}
-	compareOK := runCommandStepEnv(root, "self augment compare ok", 30*time.Second, "", env, binary, "self-augment", "compare", "--baseline-key", baselineCompareKey, "--candidate-key", candidateCompareKey, "--json")
+	compareOK := runCommandStepEnv(root, "self verify compare ok", 30*time.Second, "", env, binary, "self-verify", "compare", "--baseline-key", baselineCompareKey, "--candidate-key", candidateCompareKey, "--json")
 	stdoutParts = append(stdoutParts, compareOK.Stdout)
 	commands = append(commands, compareOK.Command)
 	if !compareOK.OK {
@@ -1767,9 +2197,9 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 		return assertionStepWithOutput("state roundtrip", started, []string{err.Error()}, stdoutParts, commands)
 	}
 	if !compareOKResult.OK || compareOKResult.Regressed || compareOKResult.ElapsedDeltaMS != 100 {
-		return assertionStepWithOutput("state roundtrip", started, []string{"self-augment compare reported unexpected non-regression result"}, stdoutParts, commands)
+		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify compare reported unexpected non-regression result"}, stdoutParts, commands)
 	}
-	compareRegression := runCommandStepEnv(root, "self augment compare regression", 30*time.Second, "", env, binary, "self-augment", "compare", "--baseline-key", baselineCompareKey, "--candidate-key", candidateCompareKey, "--max-elapsed-regression-pct", "5", "--json")
+	compareRegression := runCommandStepEnv(root, "self verify compare regression", 30*time.Second, "", env, binary, "self-verify", "compare", "--baseline-key", baselineCompareKey, "--candidate-key", candidateCompareKey, "--max-elapsed-regression-pct", "5", "--json")
 	stdoutParts = append(stdoutParts, compareRegression.Stdout)
 	commands = append(commands, compareRegression.Command)
 	if !compareRegression.OK {
@@ -1780,10 +2210,10 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 		return assertionStepWithOutput("state roundtrip", started, []string{err.Error()}, stdoutParts, commands)
 	}
 	if !compareRegressionResult.OK || !compareRegressionResult.Regressed || len(compareRegressionResult.Regressions) == 0 {
-		return assertionStepWithOutput("state roundtrip", started, []string{"self-augment compare did not report expected elapsed regression"}, stdoutParts, commands)
+		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify compare did not report expected elapsed regression"}, stdoutParts, commands)
 	}
 	promotedBaselineKey := key + "-promoted-baseline"
-	promoteDry := runCommandStepEnv(root, "self augment promote dry-run", 30*time.Second, "", env, binary, "self-augment", "promote", "--from-key", candidateCompareKey, "--baseline-key", promotedBaselineKey, "--json")
+	promoteDry := runCommandStepEnv(root, "self verify promote dry-run", 30*time.Second, "", env, binary, "self-verify", "promote", "--from-key", candidateCompareKey, "--baseline-key", promotedBaselineKey, "--json")
 	stdoutParts = append(stdoutParts, promoteDry.Stdout)
 	commands = append(commands, promoteDry.Command)
 	if !promoteDry.OK {
@@ -1794,12 +2224,12 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 		return assertionStepWithOutput("state roundtrip", started, []string{err.Error()}, stdoutParts, commands)
 	}
 	if !promoteDryResult.OK || !promoteDryResult.DryRun || promoteDryResult.Promoted {
-		return assertionStepWithOutput("state roundtrip", started, []string{"self-augment promote dry-run mutated state or did not report dry-run"}, stdoutParts, commands)
+		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify promote dry-run mutated state or did not report dry-run"}, stdoutParts, commands)
 	}
 	if _, err := core.StateRead(promotedBaselineKey); err == nil {
-		return assertionStepWithOutput("state roundtrip", started, []string{"self-augment promote dry-run wrote baseline unexpectedly"}, stdoutParts, commands)
+		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify promote dry-run wrote baseline unexpectedly"}, stdoutParts, commands)
 	}
-	promoteConfirm := runCommandStepEnv(root, "self augment promote confirm", 30*time.Second, "", env, binary, "self-augment", "promote", "--from-key", candidateCompareKey, "--baseline-key", promotedBaselineKey, "--confirm", "--json")
+	promoteConfirm := runCommandStepEnv(root, "self verify promote confirm", 30*time.Second, "", env, binary, "self-verify", "promote", "--from-key", candidateCompareKey, "--baseline-key", promotedBaselineKey, "--confirm", "--json")
 	stdoutParts = append(stdoutParts, promoteConfirm.Stdout)
 	commands = append(commands, promoteConfirm.Command)
 	if !promoteConfirm.OK {
@@ -1810,9 +2240,9 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 		return assertionStepWithOutput("state roundtrip", started, []string{err.Error()}, stdoutParts, commands)
 	}
 	if !promoteConfirmResult.OK || promoteConfirmResult.DryRun || !promoteConfirmResult.Promoted {
-		return assertionStepWithOutput("state roundtrip", started, []string{"self-augment promote confirm did not write baseline"}, stdoutParts, commands)
+		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify promote confirm did not write baseline"}, stdoutParts, commands)
 	}
-	comparePromoted := runCommandStepEnv(root, "self augment compare promoted", 30*time.Second, "", env, binary, "self-augment", "compare", "--baseline-key", promotedBaselineKey, "--candidate-key", candidateCompareKey, "--json")
+	comparePromoted := runCommandStepEnv(root, "self verify compare promoted", 30*time.Second, "", env, binary, "self-verify", "compare", "--baseline-key", promotedBaselineKey, "--candidate-key", candidateCompareKey, "--json")
 	stdoutParts = append(stdoutParts, comparePromoted.Stdout)
 	commands = append(commands, comparePromoted.Command)
 	if !comparePromoted.OK {
@@ -1825,7 +2255,7 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 	if !comparePromotedResult.OK || comparePromotedResult.Regressed || comparePromotedResult.ElapsedDeltaMS != 0 {
 		return assertionStepWithOutput("state roundtrip", started, []string{"promoted baseline did not compare cleanly with candidate"}, stdoutParts, commands)
 	}
-	history := runCommandStepEnv(root, "self augment history", 30*time.Second, "", env, binary, "self-augment", "history", "--prefix", key+"-", "--json")
+	history := runCommandStepEnv(root, "self verify history", 30*time.Second, "", env, binary, "self-verify", "history", "--prefix", key+"-", "--json")
 	stdoutParts = append(stdoutParts, history.Stdout)
 	commands = append(commands, history.Command)
 	if !history.OK {
@@ -1840,7 +2270,7 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 		historyKeys = append(historyKeys, entry.Key)
 	}
 	if !historyResult.OK || historyResult.TotalMatches < 3 || !containsString(historyKeys, baselineCompareKey) || !containsString(historyKeys, candidateCompareKey) || !containsString(historyKeys, promotedBaselineKey) {
-		return assertionStepWithOutput("state roundtrip", started, []string{"self-augment history did not list saved baseline/candidate/promoted summaries"}, stdoutParts, commands)
+		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify history did not list saved baseline/candidate/promoted summaries"}, stdoutParts, commands)
 	}
 
 	corruptPath := filepath.Join(tempState, "corrupt.json")
@@ -1887,8 +2317,8 @@ func validatePreflightFuzz(binary, root string, seed int64) StepResult {
 		return failedStep("preflight fuzz", fmt.Errorf("git add: %s", stderr))
 	}
 	msg := "docs(test): add seeded sample"
-	body := "Lore:\n- Intent: Validate seeded preflight fuzz.\n- Why: Self-augmentation needs deterministic git fixtures.\n- Changes:\n  - Add sample file.\n- Verify: harness self-augment\n- Risk: Low"
-	commitArgs := []string{"-c", "user.name=Self Augment", "-c", "user.email=self-augment@example.invalid", "commit", "-q", "-m", msg, "-m", body}
+	body := "Lore:\n- Intent: Validate seeded preflight fuzz.\n- Why: Self-verification needs deterministic git fixtures.\n- Changes:\n  - Add sample file.\n- Verify: harness self-verify\n- Risk: Low"
+	commitArgs := []string{"-c", "user.name=Self Verify", "-c", "user.email=self-verify@example.invalid", "commit", "-q", "-m", msg, "-m", body}
 	if code, _, stderr := core.GitCmd(tempRepo, commitArgs...); code != 0 {
 		return failedStep("preflight fuzz", fmt.Errorf("git commit: %s", stderr))
 	}
@@ -1935,12 +2365,20 @@ func validateNativeIntegration(root string) StepResult {
 	home, _ := os.UserHomeDir()
 	errs := []string{}
 	paths := []string{
-		filepath.Join(home, ".codex", "skills", skillName, "SKILL.md"),
-		filepath.Join(home, ".claude", "skills", skillName, "SKILL.md"),
-		filepath.Join(root, ".claude", "skills", skillName, "SKILL.md"),
-		filepath.Join(root, ".mcp.json"),
 		filepath.Join(root, "configs", "codex", "mcp.config.toml"),
 		filepath.Join(root, "configs", "claude", "mcp.project.json"),
+		filepath.Join(root, "configs", "claude", "hooks", "session-start-llm-wiki.settings.json"),
+		filepath.Join(root, "scripts", "session-start-llm-wiki.sh"),
+	}
+	nativeSkills, err := core.ListSkillNames(root)
+	if err != nil {
+		errs = append(errs, "list native skills: "+err.Error())
+	}
+	for _, nativeSkill := range nativeSkills {
+		paths = append(paths,
+			filepath.Join(home, ".codex", "skills", nativeSkill, "SKILL.md"),
+			filepath.Join(home, ".claude", "skills", nativeSkill, "SKILL.md"),
+		)
 	}
 	for _, path := range paths {
 		if !exists(path) {
@@ -1950,7 +2388,62 @@ func validateNativeIntegration(root string) StepResult {
 	if b, err := os.ReadFile(filepath.Join(home, ".codex", "config.toml")); err != nil || !strings.Contains(string(b), "[mcp_servers.agent_harness]") {
 		errs = append(errs, "Codex MCP config missing agent_harness")
 	}
+	if b, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json")); err != nil || !strings.Contains(string(b), "session-start-llm-wiki.sh") {
+		errs = append(errs, "Claude user SessionStart hook missing")
+	}
 	return assertionStep("native integration", started, errs)
+}
+
+func validateQAGate(root string) StepResult {
+	started := time.Now()
+	errs := []string{}
+	requiredDocs := map[string][]string{
+		filepath.Join(root, "GENIUS_THINK.md"):                    {"천재적 사고", "Mermaid"},
+		filepath.Join(root, "agent_docs", "SELF_AUGMENTATION.md"): {"자기 검증 루프", "자가 증강 루프", "95"},
+		filepath.Join(root, "agent_docs", "TESTING.md"):           {"self-verify", "QA"},
+	}
+	for path, needles := range requiredDocs {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			errs = append(errs, "missing QA doc "+path)
+			continue
+		}
+		text := string(b)
+		for _, needle := range needles {
+			if !strings.Contains(text, needle) {
+				errs = append(errs, fmt.Sprintf("%s missing %q", path, needle))
+			}
+		}
+	}
+	skills, err := core.ListSkillNames(root)
+	if err != nil {
+		errs = append(errs, "list skills: "+err.Error())
+	}
+	for _, want := range []string{"atomic-commit-push", "llm-wiki", "self-augment"} {
+		if !containsString(skills, want) {
+			errs = append(errs, "missing shared skill "+want)
+		}
+	}
+	for _, skill := range skills {
+		skillDir := filepath.Join(root, "skills", skill)
+		skillMD := filepath.Join(skillDir, "SKILL.md")
+		b, err := os.ReadFile(skillMD)
+		if err != nil {
+			errs = append(errs, "missing skill file "+skillMD)
+			continue
+		}
+		text := string(b)
+		if !strings.Contains(text, "\nname:") && !strings.HasPrefix(text, "---\nname:") {
+			errs = append(errs, "skill missing name frontmatter "+skill)
+		}
+		if !strings.Contains(text, "\ndescription:") {
+			errs = append(errs, "skill missing description frontmatter "+skill)
+		}
+		if !exists(filepath.Join(skillDir, "agents", "openai.yaml")) {
+			errs = append(errs, "skill missing agents/openai.yaml "+skill)
+		}
+	}
+	return assertionStep("QA gate", started, errs)
 }
 
 func runCommandStep(dir, label string, timeout time.Duration, stdin string, name string, args ...string) StepResult {
@@ -2055,7 +2548,14 @@ func indentLines(s string) string {
 }
 
 func runMCP() error {
-	scanner := bufio.NewScanner(os.Stdin)
+	if os.Getenv("HARNESS_MCP_DIRECT") == "1" || os.Getenv("HARNESS_DAEMON_DISABLE") == "1" {
+		return serveMCPStream(os.Stdin, os.Stdout, os.Stderr)
+	}
+	return runMCPProxy()
+}
+
+func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
+	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -2064,19 +2564,19 @@ func runMCP() error {
 		}
 		var req rpcRequest
 		if err := json.Unmarshal([]byte(line), &req); err != nil {
-			writeRPCError(nil, -32700, "Parse error", err.Error())
+			writeRPCErrorTo(output, nil, -32700, "Parse error", err.Error())
 			continue
 		}
 		if len(req.ID) == 0 {
-			handleNotification(req)
+			handleNotificationTo(diagnostics, req)
 			continue
 		}
 		result, rpcErr := handleRequest(req)
 		if rpcErr != nil {
-			writeRPCError(req.ID, rpcErr.Code, rpcErr.Message, rpcErr.Data)
+			writeRPCErrorTo(output, req.ID, rpcErr.Code, rpcErr.Message, rpcErr.Data)
 			continue
 		}
-		writeRPCResult(req.ID, result)
+		writeRPCResultTo(output, req.ID, result)
 	}
 	return scanner.Err()
 }
@@ -2095,8 +2595,12 @@ type rpcError struct {
 }
 
 func handleNotification(req rpcRequest) {
+	handleNotificationTo(os.Stderr, req)
+}
+
+func handleNotificationTo(w io.Writer, req rpcRequest) {
 	// notifications/initialized and cancellation notifications intentionally require no response.
-	fmt.Fprintln(os.Stderr, "harness mcp notification:", req.Method)
+	fmt.Fprintln(w, "harness mcp notification:", req.Method)
 }
 
 func handleRequest(req rpcRequest) (any, *rpcError) {
@@ -2109,7 +2613,7 @@ func handleRequest(req rpcRequest) (any, *rpcError) {
 				"resources": map[string]any{},
 			},
 			"serverInfo":   map[string]any{"name": "agent-harness", "version": version},
-			"instructions": "Use harness tools for shared Codex/Claude harness inspection, atomic commit preflight, state checkpoints, self-augmentation, and commit policy context.",
+			"instructions": "This MCP endpoint is a proxy to the shared agent-harness daemon. At session start, read resource harness://llm-wiki/session-context or call llm_wiki_session_context to load the local LLM Wiki operating rules and inventory. Use llm-wiki only when durable knowledge, previous decisions, source-card citations, or reusable capture materially improves the task. Use other harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context.",
 		}, nil
 	case "tools/list":
 		return map[string]any{"tools": mcpTools()}, nil
@@ -2148,7 +2652,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "docs_index",
-			"description": "Return a lightweight index of AGENTS.md, CLAUDE.md, and agent_docs markdown files: relative path, title, headings, and byte size.",
+			"description": "Return a lightweight index of AGENTS.md, CLAUDE.md, GENIUS_THINK.md, and agent_docs markdown files: relative path, title, headings, and byte size.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
 		},
 		{
@@ -2202,37 +2706,113 @@ func mcpTools() []map[string]any {
 			}},
 		},
 		{
-			"name":        "self_augment",
-			"description": "Run the harness self-augmentation validation loop inspired by eye-tracking-scroll: at least 10 seeded iterations of invariants, build/test, CLI, MCP, state roundtrip, native integration, and git preflight fuzz checks. Can optionally save a compact summary checkpoint to harness state.",
+			"name":        "daemon_status",
+			"description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
+			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
+		},
+		{
+			"name":        "llm_wiki_inventory",
+			"description": "Inspect the local LLM Wiki vault inventory, entry points, and page counts. Defaults to ~/workspace/knowledge-base/llm-wiki or LLM_WIKI_ROOT.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
-				"iterations": map[string]any{"type": "integer", "description": "Iteration count; must be at least 10."},
-				"seed":       map[string]any{"type": "integer", "description": "Base seed for deterministic per-iteration fuzz fixtures."},
-				"save_state": map[string]any{"type": "boolean", "description": "When true, save compact summary to harness state after the run."},
-				"state_key":  map[string]any{"type": "string", "description": "State key for save_state; defaults to self-augment-latest."},
+				"root":         map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
+				"project_path": map[string]any{"type": "string", "description": "Optional current project path for session context."},
 			}},
 		},
 		{
-			"name":        "self_augment_history",
-			"description": "List saved self-augment summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
+			"name":        "llm_wiki_session_context",
+			"description": "Return session-start instructions plus bounded index context for using the shared local LLM Wiki safely and selectively.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
-				"prefix": map[string]any{"type": "string", "description": "State key prefix to scan; defaults to self-augment. Use empty string to scan all keys."},
+				"root":         map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
+				"project_path": map[string]any{"type": "string", "description": "Optional current project path."},
+			}},
+		},
+		{
+			"name":        "llm_wiki_search",
+			"description": "Search canonical LLM Wiki markdown surfaces (00-meta, 10-sources, 20-wiki, 30-sessions) with a focused lexical query.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"query"}, "properties": map[string]any{
+				"root":  map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
+				"query": map[string]any{"type": "string", "description": "Focused search terms."},
+				"limit": map[string]any{"type": "integer", "description": "Maximum results, default 10, max 50."},
+			}},
+		},
+		{
+			"name":        "llm_wiki_read",
+			"description": "Read a bounded LLM Wiki page by relative path, slug, or wikilink. Refuses paths outside the vault and .obsidian.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"page"}, "properties": map[string]any{
+				"root": map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
+				"page": map[string]any{"type": "string", "description": "Relative path, slug, or wikilink."},
+			}},
+		},
+		{
+			"name":        "llm_wiki_capture",
+			"description": "Create a concise durable LLM Wiki capture under 30-sessions or synthesized page under 20-wiki. Requires title and content; checks 00-meta/AGENTS.md before writing.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"title", "content"}, "properties": map[string]any{
+				"root":         map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
+				"title":        map[string]any{"type": "string", "description": "Capture title."},
+				"content":      map[string]any{"type": "string", "description": "Markdown content to capture."},
+				"type":         map[string]any{"type": "string", "description": "session, concept, entity, or summary. Defaults to session."},
+				"status":       map[string]any{"type": "string", "description": "Page status. Defaults to active."},
+				"tags":         map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Frontmatter tags."},
+				"sources":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Source wikilinks."},
+				"related":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Related wikilinks."},
+				"project_path": map[string]any{"type": "string", "description": "Optional current project path."},
+			}},
+		},
+		{
+			"name":        "self_augment",
+			"description": "Plan the 자가 증강 루프: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to harness state for durable Reflexion-style memory.",
+			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+				"cycles":       map[string]any{"type": "integer", "description": "Number of autonomous improvement cycles to plan; defaults to 1."},
+				"target_score": map[string]any{"type": "number", "description": "Exclusive per-goal score threshold; defaults to 95."},
+				"save_state":   map[string]any{"type": "boolean", "description": "When true, save the selected self-augmentation plan to harness state."},
+				"state_key":    map[string]any{"type": "string", "description": "State key for save_state; defaults to self-augment-latest."},
+			}},
+		},
+		{
+			"name":        "self_augment_lesson",
+			"description": "Store a Reflexion-style 자가 증강 lesson in harness state and return an llm-wiki capture draft for durable cross-session learning.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"lesson", "next_action"}, "properties": map[string]any{
+				"candidate_id": map[string]any{"type": "string", "description": "Candidate id this lesson belongs to; defaults to current selected open candidate."},
+				"lesson":       map[string]any{"type": "string", "description": "Lesson learned from failure, QA issue, or design concern."},
+				"next_action":  map[string]any{"type": "string", "description": "Specific next action that should use this lesson."},
+				"source":       map[string]any{"type": "string", "description": "Source that produced the lesson; defaults to self-augment."},
+				"severity":     map[string]any{"type": "string", "description": "info, warning, or error. Defaults to info."},
+				"state_key":    map[string]any{"type": "string", "description": "State key; defaults to self-augment-lesson-<candidate>-<timestamp>."},
+			}},
+		},
+		{
+			"name":        "self_verify",
+			"description": "Run the 자기 검증 루프: at least 10 seeded iterations of tests, risk-tier QA, build, CLI/MCP schema and response contract golden checks, command policy, MCP, state roundtrip, native integration, and git preflight fuzz checks. Termination requires every concrete goal score to be greater than target_score.",
+			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+				"iterations":   map[string]any{"type": "integer", "description": "Iteration count; must be at least 10."},
+				"seed":         map[string]any{"type": "integer", "description": "Base seed for deterministic per-iteration fuzz fixtures."},
+				"target_score": map[string]any{"type": "number", "description": "Exclusive per-goal score threshold; defaults to 95."},
+				"save_state":   map[string]any{"type": "boolean", "description": "When true, save compact summary to harness state after the run."},
+				"state_key":    map[string]any{"type": "string", "description": "State key for save_state; defaults to self-verify-latest."},
+			}},
+		},
+		{
+			"name":        "self_verify_history",
+			"description": "List saved 자기 검증 루프 summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
+			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+				"prefix": map[string]any{"type": "string", "description": "State key prefix to scan; defaults to self-verify. Use empty string to scan all keys."},
 				"limit":  map[string]any{"type": "integer", "description": "Maximum entries to return; defaults to 20, 0 returns all."},
 			}},
 		},
 		{
-			"name":        "self_augment_compare",
-			"description": "Compare two saved self-augment summary checkpoints from harness state and report elapsed-time, failed-step, and step-label regressions.",
+			"name":        "self_verify_compare",
+			"description": "Compare two saved 자기 검증 루프 summary checkpoints from harness state and report elapsed-time, failed-step, step-label, and goal-score regressions.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"baseline_key", "candidate_key"}, "properties": map[string]any{
-				"baseline_key":               map[string]any{"type": "string", "description": "State key containing the baseline self-augment summary snapshot."},
-				"candidate_key":              map[string]any{"type": "string", "description": "State key containing the candidate self-augment summary snapshot."},
+				"baseline_key":               map[string]any{"type": "string", "description": "State key containing the baseline self-verification summary snapshot."},
+				"candidate_key":              map[string]any{"type": "string", "description": "State key containing the candidate self-verification summary snapshot."},
 				"max_elapsed_regression_pct": map[string]any{"type": "number", "description": "Allowed elapsed_ms increase percentage before regression; defaults to 20."},
 			}},
 		},
 		{
-			"name":        "self_augment_promote",
-			"description": "Promote a saved self-augment summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
+			"name":        "self_verify_promote",
+			"description": "Promote a saved 자기 검증 루프 summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"from_key", "baseline_key"}, "properties": map[string]any{
-				"from_key":     map[string]any{"type": "string", "description": "State key containing the candidate self-augment summary snapshot to promote."},
+				"from_key":     map[string]any{"type": "string", "description": "State key containing the candidate self-verification summary snapshot to promote."},
 				"baseline_key": map[string]any{"type": "string", "description": "State key to write as the promoted baseline."},
 				"confirm":      map[string]any{"type": "boolean", "description": "When true, write baseline_key; false or omitted performs a dry-run."},
 			}},
@@ -2341,47 +2921,126 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 			return nil, &rpcError{Code: -32000, Message: "State migrate failed", Data: err.Error()}
 		}
 		payload = result
+	case "daemon_status":
+		payload = daemonStatusForMCP()
+	case "llm_wiki_inventory":
+		projectPath := stringArg(call.Arguments, "project_path")
+		if projectPath == "" {
+			projectPath = resolveTarget("")
+		}
+		result, err := core.LLMWikiInventoryFor(stringArg(call.Arguments, "root"), projectPath)
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "LLM Wiki inventory failed", Data: err.Error()}
+		}
+		payload = result
+	case "llm_wiki_session_context":
+		projectPath := stringArg(call.Arguments, "project_path")
+		if projectPath == "" {
+			projectPath = resolveTarget("")
+		}
+		result, err := core.LLMWikiSessionContextFor(stringArg(call.Arguments, "root"), projectPath)
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "LLM Wiki session context failed", Data: err.Error()}
+		}
+		payload = result
+	case "llm_wiki_search":
+		result, err := core.LLMWikiSearch(stringArg(call.Arguments, "root"), stringArg(call.Arguments, "query"), intArg(call.Arguments, "limit", 10))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "LLM Wiki search failed", Data: err.Error()}
+		}
+		payload = result
+	case "llm_wiki_read":
+		result, err := core.LLMWikiRead(stringArg(call.Arguments, "root"), stringArg(call.Arguments, "page"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "LLM Wiki read failed", Data: err.Error()}
+		}
+		payload = result
+	case "llm_wiki_capture":
+		projectPath := stringArg(call.Arguments, "project_path")
+		if projectPath == "" {
+			projectPath = resolveTarget("")
+		}
+		result, err := core.LLMWikiCapture(core.LLMWikiCaptureRequest{
+			Root:        stringArg(call.Arguments, "root"),
+			Title:       stringArg(call.Arguments, "title"),
+			Content:     stringArg(call.Arguments, "content"),
+			Type:        stringArgWithDefault(call.Arguments, "type", "session"),
+			Status:      stringArgWithDefault(call.Arguments, "status", "active"),
+			Tags:        stringSliceArg(call.Arguments, "tags"),
+			Sources:     stringSliceArg(call.Arguments, "sources"),
+			Related:     stringSliceArg(call.Arguments, "related"),
+			ProjectPath: projectPath,
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "LLM Wiki capture failed", Data: err.Error()}
+		}
+		payload = result
 	case "self_augment":
+		result := planSelfAugmentation(SelfAugmentPlanRequest{
+			Cycles:      intArg(call.Arguments, "cycles", 1),
+			TargetScore: floatArg(call.Arguments, "target_score", defaultLoopTargetScoreExclusive),
+		})
+		if boolArg(call.Arguments, "save_state") {
+			if err := saveSelfAugmentPlan(&result, stringArgWithDefault(call.Arguments, "state_key", "self-augment-latest")); err != nil {
+				return nil, &rpcError{Code: -32000, Message: "Self-augmentation plan save failed", Data: result}
+			}
+		}
+		payload = result
+	case "self_augment_lesson":
+		result, err := saveSelfAugmentLesson(SelfAugmentLessonRequest{
+			CandidateID: stringArg(call.Arguments, "candidate_id"),
+			Lesson:      stringArg(call.Arguments, "lesson"),
+			NextAction:  stringArg(call.Arguments, "next_action"),
+			Source:      stringArgWithDefault(call.Arguments, "source", "self-augment"),
+			Severity:    stringArgWithDefault(call.Arguments, "severity", "info"),
+			StateKey:    stringArg(call.Arguments, "state_key"),
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "Self-augmentation lesson save failed", Data: result}
+		}
+		payload = result
+	case "self_verify":
 		iterations := intArg(call.Arguments, "iterations", 10)
 		seed := int64Arg(call.Arguments, "seed", time.Now().Unix())
-		result, err := selfAugment(iterations, seed, false)
+		targetScore := floatArg(call.Arguments, "target_score", defaultLoopTargetScoreExclusive)
+		result, err := selfVerify(iterations, seed, targetScore, false)
 		if boolArg(call.Arguments, "save_state") {
-			saveErr := saveSelfAugmentSummary(&result, stringArgWithDefault(call.Arguments, "state_key", "self-augment-latest"))
+			saveErr := saveSelfVerificationSummary(&result, stringArgWithDefault(call.Arguments, "state_key", "self-verify-latest"))
 			if err == nil && saveErr != nil {
 				err = saveErr
 			}
 		}
 		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: "Self-augmentation failed", Data: result}
+			return nil, &rpcError{Code: -32000, Message: "Self-verification failed", Data: result}
 		}
 		payload = result
-	case "self_augment_history":
+	case "self_verify_history", "self_augment_history":
 		result, err := selfAugmentHistory(
-			stringArgWithDefault(call.Arguments, "prefix", "self-augment"),
+			stringArgWithDefault(call.Arguments, "prefix", "self-verify"),
 			intArg(call.Arguments, "limit", 20),
 		)
 		if err != nil {
-			return nil, &rpcError{Code: -32602, Message: "Self-augment history failed", Data: err.Error()}
+			return nil, &rpcError{Code: -32602, Message: "Self-verify history failed", Data: err.Error()}
 		}
 		payload = result
-	case "self_augment_compare":
+	case "self_verify_compare", "self_augment_compare":
 		result, err := compareSelfAugmentSummaries(
 			stringArg(call.Arguments, "baseline_key"),
 			stringArg(call.Arguments, "candidate_key"),
 			floatArg(call.Arguments, "max_elapsed_regression_pct", 20),
 		)
 		if err != nil {
-			return nil, &rpcError{Code: -32602, Message: "Self-augment compare failed", Data: err.Error()}
+			return nil, &rpcError{Code: -32602, Message: "Self-verify compare failed", Data: err.Error()}
 		}
 		payload = result
-	case "self_augment_promote":
+	case "self_verify_promote", "self_augment_promote":
 		result, err := promoteSelfAugmentBaseline(
 			stringArg(call.Arguments, "from_key"),
 			stringArg(call.Arguments, "baseline_key"),
 			boolArg(call.Arguments, "confirm"),
 		)
 		if err != nil {
-			return nil, &rpcError{Code: -32602, Message: "Self-augment promote failed", Data: err.Error()}
+			return nil, &rpcError{Code: -32602, Message: "Self-verify promote failed", Data: err.Error()}
 		}
 		payload = result
 	default:
@@ -2403,6 +3062,10 @@ func mcpResources() []map[string]any {
 		{"uri": "harness://docs", "name": "Agent docs index", "description": "JSON index of harness agent-facing markdown docs.", "mimeType": "application/json"},
 		{"uri": "harness://command-policy", "name": "Command policy summary", "description": "JSON summary of command policy boundaries and fake runner behavior.", "mimeType": "application/json"},
 		{"uri": "harness://state", "name": "State checkpoint index", "description": "JSON index of harness state checkpoints.", "mimeType": "application/json"},
+		{"uri": "harness://llm-wiki/session-context", "name": "LLM Wiki session context", "description": "Session-start instructions and bounded inventory for the shared local LLM Wiki.", "mimeType": "text/markdown"},
+		{"uri": "harness://llm-wiki/inventory", "name": "LLM Wiki inventory", "description": "JSON inventory of the shared local LLM Wiki vault.", "mimeType": "application/json"},
+		{"uri": "harness://llm-wiki/index", "name": "LLM Wiki index", "description": "Canonical llm-wiki catalog at 00-meta/index.md.", "mimeType": "text/markdown"},
+		{"uri": "harness://llm-wiki/schema", "name": "LLM Wiki schema", "description": "Canonical llm-wiki agent operating rules at 00-meta/AGENTS.md.", "mimeType": "text/markdown"},
 	}
 }
 
@@ -2430,6 +3093,36 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "application/json", "text": string(b)}}}, nil
 	}
+	if req.URI == "harness://llm-wiki/session-context" {
+		result, err := core.LLMWikiSessionContextFor("", resolveTarget(""))
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "Cannot read LLM Wiki session context", Data: err.Error()}
+		}
+		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "text/markdown", "text": result.Text}}}, nil
+	}
+	if req.URI == "harness://llm-wiki/inventory" {
+		result, err := core.LLMWikiInventoryFor("", resolveTarget(""))
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "Cannot read LLM Wiki inventory", Data: err.Error()}
+		}
+		b, _ := json.MarshalIndent(result, "", "  ")
+		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "application/json", "text": string(b)}}}, nil
+	}
+	if req.URI == "harness://llm-wiki/index" || req.URI == "harness://llm-wiki/schema" {
+		root, err := core.ResolveLLMWikiRoot("")
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "Cannot resolve LLM Wiki root", Data: err.Error()}
+		}
+		rel := "00-meta/index.md"
+		if req.URI == "harness://llm-wiki/schema" {
+			rel = "00-meta/AGENTS.md"
+		}
+		result, err := core.LLMWikiRead(root, rel)
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "Cannot read LLM Wiki resource", Data: err.Error()}
+		}
+		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "text/markdown", "text": result.Content}}}, nil
+	}
 	var rel []string
 	switch req.URI {
 	case "harness://commit-policy":
@@ -2449,12 +3142,20 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 }
 
 func writeRPCResult(id json.RawMessage, result any) {
-	msg := map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(id), "result": result}
-	b, _ := json.Marshal(msg)
-	fmt.Println(string(b))
+	writeRPCResultTo(os.Stdout, id, result)
 }
 
 func writeRPCError(id json.RawMessage, code int, message string, data any) {
+	writeRPCErrorTo(os.Stdout, id, code, message, data)
+}
+
+func writeRPCResultTo(w io.Writer, id json.RawMessage, result any) {
+	msg := map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(id), "result": result}
+	b, _ := json.Marshal(msg)
+	fmt.Fprintln(w, string(b))
+}
+
+func writeRPCErrorTo(w io.Writer, id json.RawMessage, code int, message string, data any) {
 	msg := map[string]any{"jsonrpc": "2.0", "error": map[string]any{"code": code, "message": message, "data": data}}
 	if id != nil {
 		msg["id"] = json.RawMessage(id)
@@ -2462,7 +3163,7 @@ func writeRPCError(id json.RawMessage, code int, message string, data any) {
 		msg["id"] = nil
 	}
 	b, _ := json.Marshal(msg)
-	fmt.Println(string(b))
+	fmt.Fprintln(w, string(b))
 }
 
 func stringArg(args map[string]any, key string) string {

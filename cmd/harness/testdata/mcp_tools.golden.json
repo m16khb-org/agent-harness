@@ -42,7 +42,7 @@
     "name": "skill_manifest"
   },
   {
-    "description": "Return a lightweight index of AGENTS.md, CLAUDE.md, and agent_docs markdown files: relative path, title, headings, and byte size.",
+    "description": "Return a lightweight index of AGENTS.md, CLAUDE.md, GENIUS_THINK.md, and agent_docs markdown files: relative path, title, headings, and byte size.",
     "inputSchema": {
       "properties": {},
       "type": "object"
@@ -248,7 +248,213 @@
     "name": "state_migrate"
   },
   {
-    "description": "Run the harness self-augmentation validation loop inspired by eye-tracking-scroll: at least 10 seeded iterations of invariants, build/test, CLI, MCP, state roundtrip, native integration, and git preflight fuzz checks. Can optionally save a compact summary checkpoint to harness state.",
+    "description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "daemon_status"
+  },
+  {
+    "description": "Inspect the local LLM Wiki vault inventory, entry points, and page counts. Defaults to ~/workspace/knowledge-base/llm-wiki or LLM_WIKI_ROOT.",
+    "inputSchema": {
+      "properties": {
+        "project_path": {
+          "description": "Optional current project path for session context.",
+          "type": "string"
+        },
+        "root": {
+          "description": "Optional LLM Wiki root path.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "llm_wiki_inventory"
+  },
+  {
+    "description": "Return session-start instructions plus bounded index context for using the shared local LLM Wiki safely and selectively.",
+    "inputSchema": {
+      "properties": {
+        "project_path": {
+          "description": "Optional current project path.",
+          "type": "string"
+        },
+        "root": {
+          "description": "Optional LLM Wiki root path.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "llm_wiki_session_context"
+  },
+  {
+    "description": "Search canonical LLM Wiki markdown surfaces (00-meta, 10-sources, 20-wiki, 30-sessions) with a focused lexical query.",
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "description": "Maximum results, default 10, max 50.",
+          "type": "integer"
+        },
+        "query": {
+          "description": "Focused search terms.",
+          "type": "string"
+        },
+        "root": {
+          "description": "Optional LLM Wiki root path.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "name": "llm_wiki_search"
+  },
+  {
+    "description": "Read a bounded LLM Wiki page by relative path, slug, or wikilink. Refuses paths outside the vault and .obsidian.",
+    "inputSchema": {
+      "properties": {
+        "page": {
+          "description": "Relative path, slug, or wikilink.",
+          "type": "string"
+        },
+        "root": {
+          "description": "Optional LLM Wiki root path.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    },
+    "name": "llm_wiki_read"
+  },
+  {
+    "description": "Create a concise durable LLM Wiki capture under 30-sessions or synthesized page under 20-wiki. Requires title and content; checks 00-meta/AGENTS.md before writing.",
+    "inputSchema": {
+      "properties": {
+        "content": {
+          "description": "Markdown content to capture.",
+          "type": "string"
+        },
+        "project_path": {
+          "description": "Optional current project path.",
+          "type": "string"
+        },
+        "related": {
+          "description": "Related wikilinks.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "root": {
+          "description": "Optional LLM Wiki root path.",
+          "type": "string"
+        },
+        "sources": {
+          "description": "Source wikilinks.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "description": "Page status. Defaults to active.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Frontmatter tags.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "description": "Capture title.",
+          "type": "string"
+        },
+        "type": {
+          "description": "session, concept, entity, or summary. Defaults to session.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "content"
+      ],
+      "type": "object"
+    },
+    "name": "llm_wiki_capture"
+  },
+  {
+    "description": "Plan the 자가 증강 루프: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to harness state for durable Reflexion-style memory.",
+    "inputSchema": {
+      "properties": {
+        "cycles": {
+          "description": "Number of autonomous improvement cycles to plan; defaults to 1.",
+          "type": "integer"
+        },
+        "save_state": {
+          "description": "When true, save the selected self-augmentation plan to harness state.",
+          "type": "boolean"
+        },
+        "state_key": {
+          "description": "State key for save_state; defaults to self-augment-latest.",
+          "type": "string"
+        },
+        "target_score": {
+          "description": "Exclusive per-goal score threshold; defaults to 95.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "name": "self_augment"
+  },
+  {
+    "description": "Store a Reflexion-style 자가 증강 lesson in harness state and return an llm-wiki capture draft for durable cross-session learning.",
+    "inputSchema": {
+      "properties": {
+        "candidate_id": {
+          "description": "Candidate id this lesson belongs to; defaults to current selected open candidate.",
+          "type": "string"
+        },
+        "lesson": {
+          "description": "Lesson learned from failure, QA issue, or design concern.",
+          "type": "string"
+        },
+        "next_action": {
+          "description": "Specific next action that should use this lesson.",
+          "type": "string"
+        },
+        "severity": {
+          "description": "info, warning, or error. Defaults to info.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Source that produced the lesson; defaults to self-augment.",
+          "type": "string"
+        },
+        "state_key": {
+          "description": "State key; defaults to self-augment-lesson-\u003ccandidate\u003e-\u003ctimestamp\u003e.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lesson",
+        "next_action"
+      ],
+      "type": "object"
+    },
+    "name": "self_augment_lesson"
+  },
+  {
+    "description": "Run the 자기 검증 루프: at least 10 seeded iterations of tests, risk-tier QA, build, CLI/MCP schema and response contract golden checks, command policy, MCP, state roundtrip, native integration, and git preflight fuzz checks. Termination requires every concrete goal score to be greater than target_score.",
     "inputSchema": {
       "properties": {
         "iterations": {
@@ -264,16 +470,20 @@
           "type": "integer"
         },
         "state_key": {
-          "description": "State key for save_state; defaults to self-augment-latest.",
+          "description": "State key for save_state; defaults to self-verify-latest.",
           "type": "string"
+        },
+        "target_score": {
+          "description": "Exclusive per-goal score threshold; defaults to 95.",
+          "type": "number"
         }
       },
       "type": "object"
     },
-    "name": "self_augment"
+    "name": "self_verify"
   },
   {
-    "description": "List saved self-augment summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
+    "description": "List saved 자기 검증 루프 summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
     "inputSchema": {
       "properties": {
         "limit": {
@@ -281,24 +491,24 @@
           "type": "integer"
         },
         "prefix": {
-          "description": "State key prefix to scan; defaults to self-augment. Use empty string to scan all keys.",
+          "description": "State key prefix to scan; defaults to self-verify. Use empty string to scan all keys.",
           "type": "string"
         }
       },
       "type": "object"
     },
-    "name": "self_augment_history"
+    "name": "self_verify_history"
   },
   {
-    "description": "Compare two saved self-augment summary checkpoints from harness state and report elapsed-time, failed-step, and step-label regressions.",
+    "description": "Compare two saved 자기 검증 루프 summary checkpoints from harness state and report elapsed-time, failed-step, step-label, and goal-score regressions.",
     "inputSchema": {
       "properties": {
         "baseline_key": {
-          "description": "State key containing the baseline self-augment summary snapshot.",
+          "description": "State key containing the baseline self-verification summary snapshot.",
           "type": "string"
         },
         "candidate_key": {
-          "description": "State key containing the candidate self-augment summary snapshot.",
+          "description": "State key containing the candidate self-verification summary snapshot.",
           "type": "string"
         },
         "max_elapsed_regression_pct": {
@@ -312,10 +522,10 @@
       ],
       "type": "object"
     },
-    "name": "self_augment_compare"
+    "name": "self_verify_compare"
   },
   {
-    "description": "Promote a saved self-augment summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
+    "description": "Promote a saved 자기 검증 루프 summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
     "inputSchema": {
       "properties": {
         "baseline_key": {
@@ -327,7 +537,7 @@
           "type": "boolean"
         },
         "from_key": {
-          "description": "State key containing the candidate self-augment summary snapshot to promote.",
+          "description": "State key containing the candidate self-verification summary snapshot to promote.",
           "type": "string"
         }
       },
@@ -337,6 +547,6 @@
       ],
       "type": "object"
     },
-    "name": "self_augment_promote"
+    "name": "self_verify_promote"
   }
 ]

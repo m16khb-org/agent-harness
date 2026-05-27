@@ -19,55 +19,72 @@ func TestResponseContractsGolden(t *testing.T) {
 	stateDir := t.TempDir()
 	workspaceDir := t.TempDir()
 	gitRepoDir := makeGitRepoForContract(t)
+	homeDir := t.TempDir()
+	wikiDir := makeLLMWikiForContract(t)
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	t.Setenv("HOME", homeDir)
+	t.Setenv("CODEX_HOME", filepath.Join(homeDir, ".codex"))
+	t.Setenv("LLM_WIKI_ROOT", wikiDir)
 
-	homeDir, _ := os.UserHomeDir()
 	replacements := map[string]string{
 		stateDir:      "$STATE_DIR",
 		workspaceDir:  "$WORKSPACE",
 		gitRepoDir:    "$GIT_REPO",
 		harnessRoot(): "$HARNESS_ROOT",
 		homeDir:       "$HOME",
+		wikiDir:       "$LLM_WIKI",
 	}
 	addEvalSymlinkReplacement(t, replacements, stateDir, "$STATE_DIR")
 	addEvalSymlinkReplacement(t, replacements, workspaceDir, "$WORKSPACE")
 	addEvalSymlinkReplacement(t, replacements, gitRepoDir, "$GIT_REPO")
+	addEvalSymlinkReplacement(t, replacements, wikiDir, "$LLM_WIKI")
 	addEvalSymlinkReplacement(t, replacements, harnessRoot(), "$HARNESS_ROOT")
 
-	snapshot := map[string]any{
-		"cli": map[string]any{
-			"inspect": runCLIJSONContract(t, replacements, func() error {
-				return runInspect([]string{"--json", "--repo", workspaceDir})
-			}),
-			"docs_index": runCLIJSONContract(t, replacements, func() error {
-				return runDocs([]string{"--json"})
-			}),
-			"preflight": runCLIJSONContract(t, replacements, func() error {
-				return runPreflight([]string{"--json", gitRepoDir})
-			}),
-			"policy_check": runCLIJSONContract(t, replacements, func() error {
-				return runPolicy([]string{"check", "--workspace-root", workspaceDir, "--cwd", workspaceDir, "--json", "--", "git", "status", "--short"})
-			}),
-			"state_write": runCLIJSONContract(t, replacements, func() error {
-				return runState([]string{"write", "--key", "current", "--value", "current content", "--json"})
-			}),
-			"state_read": runCLIJSONContract(t, replacements, func() error {
-				return runState([]string{"read", "--key", "current", "--json"})
-			}),
-			"state_list": runCLIJSONContract(t, replacements, func() error {
-				return runState([]string{"list", "--json"})
-			}),
-		},
-	}
+	snapshot := map[string]any{}
+	cliSnapshot := map[string]any{}
+	snapshot["cli"] = cliSnapshot
+	cliSnapshot["inspect"] = runCLIJSONContract(t, replacements, func() error {
+		return runInspect([]string{"--json", "--repo", workspaceDir})
+	})
+	cliSnapshot["docs_index"] = runCLIJSONContract(t, replacements, func() error {
+		return runDocs([]string{"--json"})
+	})
+	cliSnapshot["preflight"] = runCLIJSONContract(t, replacements, func() error {
+		return runPreflight([]string{"--json", gitRepoDir})
+	})
+	cliSnapshot["policy_check"] = runCLIJSONContract(t, replacements, func() error {
+		return runPolicy([]string{"check", "--workspace-root", workspaceDir, "--cwd", workspaceDir, "--json", "--", "git", "status", "--short"})
+	})
+	cliSnapshot["state_write"] = runCLIJSONContract(t, replacements, func() error {
+		return runState([]string{"write", "--key", "current", "--value", "current content", "--json"})
+	})
+	cliSnapshot["state_read"] = runCLIJSONContract(t, replacements, func() error {
+		return runState([]string{"read", "--key", "current", "--json"})
+	})
+	cliSnapshot["state_list"] = runCLIJSONContract(t, replacements, func() error {
+		return runState([]string{"list", "--json"})
+	})
+	cliSnapshot["llm_wiki_inventory"] = runCLIJSONContract(t, replacements, func() error {
+		return runLLMWiki([]string{"inventory", "--json", "--project", workspaceDir})
+	})
+	cliSnapshot["llm_wiki_session_context"] = runCLIJSONContract(t, replacements, func() error {
+		return runLLMWiki([]string{"session-context", "--json", "--project", workspaceDir})
+	})
+	cliSnapshot["llm_wiki_search"] = runCLIJSONContract(t, replacements, func() error {
+		return runLLMWiki([]string{"search", "--query", "llm wiki", "--limit", "2", "--json"})
+	})
+	cliSnapshot["llm_wiki_read"] = runCLIJSONContract(t, replacements, func() error {
+		return runLLMWiki([]string{"read", "--page", "llm-wiki-pattern", "--json"})
+	})
 
 	old := mustStateReadForContract(t, "current")
 	old.Record.Key = "old"
 	old.Record.UpdatedAt = "2000-01-01T00:00:00Z"
 	mustWriteStateRecordForContract(t, stateDir, "old", old.Record)
-	snapshot["cli"].(map[string]any)["state_prune_dry_run"] = runCLIJSONContract(t, replacements, func() error {
+	cliSnapshot["state_prune_dry_run"] = runCLIJSONContract(t, replacements, func() error {
 		return runState([]string{"prune", "--max-age", "1h", "--json"})
 	})
-	snapshot["cli"].(map[string]any)["state_prune_confirm"] = runCLIJSONContract(t, replacements, func() error {
+	cliSnapshot["state_prune_confirm"] = runCLIJSONContract(t, replacements, func() error {
 		return runState([]string{"prune", "--max-age", "1h", "--confirm", "--json"})
 	})
 
@@ -78,64 +95,92 @@ func TestResponseContractsGolden(t *testing.T) {
 		Bytes:     len([]byte("legacy content")),
 	}
 	mustWriteStateRecordForContract(t, stateDir, "legacy", legacy)
-	snapshot["cli"].(map[string]any)["state_migrate_dry_run"] = runCLIJSONContract(t, replacements, func() error {
+	cliSnapshot["state_migrate_dry_run"] = runCLIJSONContract(t, replacements, func() error {
 		return runState([]string{"migrate", "--json"})
 	})
-	snapshot["cli"].(map[string]any)["state_migrate_confirm"] = runCLIJSONContract(t, replacements, func() error {
+	cliSnapshot["state_migrate_confirm"] = runCLIJSONContract(t, replacements, func() error {
 		return runState([]string{"migrate", "--confirm", "--json"})
 	})
-	snapshot["cli"].(map[string]any)["state_doctor_healthy"] = runCLIJSONContract(t, replacements, func() error {
+	cliSnapshot["state_doctor_healthy"] = runCLIJSONContract(t, replacements, func() error {
 		return runState([]string{"doctor", "--json"})
 	})
 
 	if err := os.WriteFile(filepath.Join(stateDir, "corrupt.json"), []byte("{not json\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	snapshot["cli"].(map[string]any)["state_doctor_corrupt"] = runCLIJSONContract(t, replacements, func() error {
+	cliSnapshot["state_doctor_corrupt"] = runCLIJSONContract(t, replacements, func() error {
 		return runState([]string{"doctor", "--json"})
 	})
 
 	writeSelfAugmentCompareFixturesForContract(t, stateDir)
-	snapshot["cli"].(map[string]any)["self_augment_compare"] = runCLIJSONContract(t, replacements, func() error {
-		return runSelfAugment([]string{"compare", "--baseline-key", "self-augment-baseline", "--candidate-key", "self-augment-candidate", "--json"})
+	cliSnapshot["self_augment_plan"] = runCLIJSONContract(t, replacements, func() error {
+		return runSelfAugment([]string{"--target-score", "95", "--json"})
 	})
-	snapshot["cli"].(map[string]any)["self_augment_promote_dry_run"] = runCLIJSONContract(t, replacements, func() error {
-		return runSelfAugment([]string{"promote", "--from-key", "self-augment-candidate", "--baseline-key", "self-augment-promoted", "--json"})
+	cliSnapshot["self_augment_lesson"] = runCLIJSONContract(t, replacements, func() error {
+		return runSelfAugment([]string{"lesson", "--candidate", "reflexion-state-memory", "--lesson", "Contract lesson", "--next-action", "Check stored lesson before next cycle", "--state-key", "self-augment-lesson-contract", "--json"})
 	})
-	snapshot["cli"].(map[string]any)["self_augment_history"] = runCLIJSONContract(t, replacements, func() error {
-		return runSelfAugment([]string{"history", "--prefix", "self-augment", "--json"})
+	cliSnapshot["self_verify_compare"] = runCLIJSONContract(t, replacements, func() error {
+		return runSelfVerify([]string{"compare", "--baseline-key", "self-verify-baseline", "--candidate-key", "self-verify-candidate", "--json"})
+	})
+	cliSnapshot["self_verify_promote_dry_run"] = runCLIJSONContract(t, replacements, func() error {
+		return runSelfVerify([]string{"promote", "--from-key", "self-verify-candidate", "--baseline-key", "self-verify-promoted", "--json"})
+	})
+	cliSnapshot["self_verify_history"] = runCLIJSONContract(t, replacements, func() error {
+		return runSelfVerify([]string{"history", "--prefix", "self-verify", "--json"})
 	})
 
-	snapshot["mcp"] = map[string]any{
-		"harness_inspect": runMCPToolContract(t, replacements, "harness_inspect", map[string]any{
-			"repo": workspaceDir,
-		}),
-		"docs_index": runMCPToolContract(t, replacements, "docs_index", map[string]any{}),
-		"atomic_commit_preflight": runMCPToolContract(t, replacements, "atomic_commit_preflight", map[string]any{
-			"path": gitRepoDir,
-		}),
-		"command_policy_check": runMCPToolContract(t, replacements, "command_policy_check", map[string]any{
-			"workspace_root": workspaceDir,
-			"cwd":            workspaceDir,
-			"argv":           []string{"git", "status", "--short"},
-		}),
-		"state_prune": runMCPToolContract(t, replacements, "state_prune", map[string]any{
-			"max_age": "1h",
-		}),
-		"state_doctor":  runMCPToolContract(t, replacements, "state_doctor", map[string]any{}),
-		"state_migrate": runMCPToolContract(t, replacements, "state_migrate", map[string]any{}),
-		"self_augment_compare": runMCPToolContract(t, replacements, "self_augment_compare", map[string]any{
-			"baseline_key":  "self-augment-baseline",
-			"candidate_key": "self-augment-candidate",
-		}),
-		"self_augment_promote": runMCPToolContract(t, replacements, "self_augment_promote", map[string]any{
-			"from_key":     "self-augment-candidate",
-			"baseline_key": "self-augment-promoted",
-		}),
-		"self_augment_history": runMCPToolContract(t, replacements, "self_augment_history", map[string]any{
-			"prefix": "self-augment",
-		}),
-	}
+	mcpSnapshot := map[string]any{}
+	snapshot["mcp"] = mcpSnapshot
+	mcpSnapshot["harness_inspect"] = runMCPToolContract(t, replacements, "harness_inspect", map[string]any{
+		"repo": workspaceDir,
+	})
+	mcpSnapshot["docs_index"] = runMCPToolContract(t, replacements, "docs_index", map[string]any{})
+	mcpSnapshot["atomic_commit_preflight"] = runMCPToolContract(t, replacements, "atomic_commit_preflight", map[string]any{
+		"path": gitRepoDir,
+	})
+	mcpSnapshot["command_policy_check"] = runMCPToolContract(t, replacements, "command_policy_check", map[string]any{
+		"workspace_root": workspaceDir,
+		"cwd":            workspaceDir,
+		"argv":           []string{"git", "status", "--short"},
+	})
+	mcpSnapshot["state_prune"] = runMCPToolContract(t, replacements, "state_prune", map[string]any{
+		"max_age": "1h",
+	})
+	mcpSnapshot["state_doctor"] = runMCPToolContract(t, replacements, "state_doctor", map[string]any{})
+	mcpSnapshot["state_migrate"] = runMCPToolContract(t, replacements, "state_migrate", map[string]any{})
+	mcpSnapshot["llm_wiki_inventory"] = runMCPToolContract(t, replacements, "llm_wiki_inventory", map[string]any{
+		"project_path": workspaceDir,
+	})
+	mcpSnapshot["llm_wiki_session_context"] = runMCPToolContract(t, replacements, "llm_wiki_session_context", map[string]any{
+		"project_path": workspaceDir,
+	})
+	mcpSnapshot["llm_wiki_search"] = runMCPToolContract(t, replacements, "llm_wiki_search", map[string]any{
+		"query": "llm wiki",
+		"limit": 2,
+	})
+	mcpSnapshot["llm_wiki_read"] = runMCPToolContract(t, replacements, "llm_wiki_read", map[string]any{
+		"page": "llm-wiki-pattern",
+	})
+	mcpSnapshot["self_augment"] = runMCPToolContract(t, replacements, "self_augment", map[string]any{
+		"target_score": 95,
+	})
+	mcpSnapshot["self_augment_lesson"] = runMCPToolContract(t, replacements, "self_augment_lesson", map[string]any{
+		"candidate_id": "reflexion-state-memory",
+		"lesson":       "MCP lesson",
+		"next_action":  "Check MCP lesson before next cycle",
+		"state_key":    "self-augment-lesson-mcp",
+	})
+	mcpSnapshot["self_verify_compare"] = runMCPToolContract(t, replacements, "self_verify_compare", map[string]any{
+		"baseline_key":  "self-verify-baseline",
+		"candidate_key": "self-verify-candidate",
+	})
+	mcpSnapshot["self_verify_promote"] = runMCPToolContract(t, replacements, "self_verify_promote", map[string]any{
+		"from_key":     "self-verify-candidate",
+		"baseline_key": "self-verify-promoted",
+	})
+	mcpSnapshot["self_verify_history"] = runMCPToolContract(t, replacements, "self_verify_history", map[string]any{
+		"prefix": "self-verify",
+	})
 
 	assertJSONGolden(t, "response_contracts.golden.json", snapshot)
 }
@@ -157,6 +202,28 @@ func makeGitRepoForContract(t *testing.T) string {
 	)
 	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("TOKEN=fixture\n"), 0o600); err != nil {
 		t.Fatal(err)
+	}
+	return dir
+}
+
+func makeLLMWikiForContract(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	files := map[string]string{
+		"00-meta/AGENTS.md":                    "---\ntitle: Schema\ntype: schema\nstatus: active\ncreated: 2026-05-27\nupdated: 2026-05-27\ntags: [meta]\n---\n\n# LLM Wiki Operating Schema\n\nUse source cards as read-only evidence.\n",
+		"00-meta/index.md":                     "---\ntitle: Wiki Index\ntype: index\nstatus: active\ncreated: 2026-05-27\nupdated: 2026-05-27\ntags: [meta]\n---\n\n# Wiki Index\n\n- [[karpathy-llm-wiki-gist]]\n- [[llm-wiki-pattern]]\n",
+		"00-meta/log.md":                       "# Wiki Log\n\n",
+		"10-sources/karpathy-llm-wiki-gist.md": "---\ntitle: Karpathy LLM Wiki Gist\ntype: source\nstatus: active\ntags: [llm-wiki, source]\n---\n\nSource card about the LLM Wiki pattern.\n",
+		"20-wiki/concepts/llm-wiki-pattern.md": "---\ntitle: LLM Wiki Pattern\ntype: concept\nstatus: active\ntags: [llm-wiki, memory]\n---\n\nLLM Wiki keeps durable interlinked markdown knowledge for agents.\n",
+	}
+	for rel, content := range files {
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return dir
 }
@@ -195,13 +262,13 @@ func writeSelfAugmentCompareFixturesForContract(t *testing.T, stateDir string) {
 		elapsed     int64
 		generatedAt string
 	}{
-		{key: "self-augment-baseline", elapsed: 1000, generatedAt: "2000-01-01T00:00:00Z"},
-		{key: "self-augment-candidate", elapsed: 1100, generatedAt: "2000-01-01T00:01:00Z"},
+		{key: "self-verify-baseline", elapsed: 1000, generatedAt: "2000-01-01T00:00:00Z"},
+		{key: "self-verify-candidate", elapsed: 1100, generatedAt: "2000-01-01T00:01:00Z"},
 	}
 	for _, fixture := range fixtures {
 		if err := writeSelfAugmentSnapshotRecord(stateDir, fixture.key, SelfAugmentStateSnapshot{
 			SchemaVersion: 1,
-			Kind:          "self_augment_summary",
+			Kind:          "self_verification_summary",
 			OK:            true,
 			Iterations:    10,
 			BaseSeed:      600,
@@ -294,9 +361,19 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 	switch v := value.(type) {
 	case map[string]any:
 		out := make(map[string]any, len(v))
+		isStateCheckpoint := looksLikeStateCheckpoint(v)
+		isDynamicStateRecord := looksLikeDynamicStateRecord(v)
 		for key, child := range v {
 			if isDynamicTimeKey(key) {
 				out[key] = "$TIMESTAMP"
+				continue
+			}
+			if isStateCheckpoint && key == "bytes" {
+				out[key] = "$STATE_BYTES"
+				continue
+			}
+			if isDynamicStateRecord && key == "bytes" {
+				out[key] = "$STATE_RECORD_BYTES"
 				continue
 			}
 			if key == "audit_log_id" {
@@ -321,6 +398,39 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 	default:
 		return v
 	}
+}
+
+func looksLikeDynamicStateRecord(value map[string]any) bool {
+	keyValue, ok := value["key"].(string)
+	if !ok || !strings.HasPrefix(keyValue, "self-augment-lesson-") {
+		return false
+	}
+	if _, ok := value["schema_version"]; !ok {
+		return false
+	}
+	if _, ok := value["updated_at"]; !ok {
+		return false
+	}
+	if _, ok := value["bytes"]; !ok {
+		return false
+	}
+	return true
+}
+
+func looksLikeStateCheckpoint(value map[string]any) bool {
+	if _, ok := value["state_dir"]; !ok {
+		return false
+	}
+	if _, ok := value["path"]; !ok {
+		return false
+	}
+	if _, ok := value["key"]; !ok {
+		return false
+	}
+	if _, ok := value["bytes"]; !ok {
+		return false
+	}
+	return true
 }
 
 var gitSubjectPrefixRe = regexp.MustCompile(`^[0-9a-f]{7,40} `)

@@ -83,16 +83,16 @@ func TestSaveSelfAugmentSummary(t *testing.T) {
 		},
 	}
 	result.Summary = summarizeSelfAugment(result)
-	if err := saveSelfAugmentSummary(&result, "self-augment-test"); err != nil {
+	if err := saveSelfAugmentSummary(&result, "self-verify-test"); err != nil {
 		t.Fatalf("saveSelfAugmentSummary: %v", err)
 	}
 	if result.StateCheckpoint == nil || !result.StateCheckpoint.OK {
 		t.Fatalf("missing state checkpoint: %+v", result.StateCheckpoint)
 	}
-	if result.StateCheckpoint.Key != "self-augment-test" || result.StateCheckpoint.Path != filepath.Join(dir, "self-augment-test.json") {
+	if result.StateCheckpoint.Key != "self-verify-test" || result.StateCheckpoint.Path != filepath.Join(dir, "self-verify-test.json") {
 		t.Fatalf("unexpected checkpoint metadata: %+v", result.StateCheckpoint)
 	}
-	state, err := core.StateRead("self-augment-test")
+	state, err := core.StateRead("self-verify-test")
 	if err != nil {
 		t.Fatalf("StateRead: %v", err)
 	}
@@ -100,8 +100,73 @@ func TestSaveSelfAugmentSummary(t *testing.T) {
 	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
 		t.Fatalf("unmarshal saved snapshot: %v", err)
 	}
-	if snapshot.Kind != "self_augment_summary" || !snapshot.OK || snapshot.Summary.TotalSteps != 1 || snapshot.Summary.PassedSteps != 1 {
+	if snapshot.Kind != "self_verification_summary" || !snapshot.OK || snapshot.Summary.TotalSteps != 1 || snapshot.Summary.PassedSteps != 1 {
 		t.Fatalf("unexpected saved snapshot: %+v", snapshot)
+	}
+}
+
+func TestSaveSelfAugmentLesson(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	result, err := saveSelfAugmentLesson(SelfAugmentLessonRequest{
+		CandidateID: "reflexion-state-memory",
+		Lesson:      "실패 교훈은 다음 cycle에서 재사용 가능해야 한다.",
+		NextAction:  "다음 자가 증강 후보 선택 전에 저장된 lesson을 확인한다.",
+		Source:      "unit-test",
+		Severity:    "warning",
+		StateKey:    "self-augment-lesson-test",
+	})
+	if err != nil {
+		t.Fatalf("saveSelfAugmentLesson: %v", err)
+	}
+	if !result.OK || result.Kind != selfAugmentationLessonKind || result.StateCheckpoint == nil || !result.StateCheckpoint.OK {
+		t.Fatalf("unexpected lesson result: %+v", result)
+	}
+	if result.LLMWikiDraft.Title == "" || result.LLMWikiDraft.Content == "" || result.LLMWikiDraft.Type != "session" {
+		t.Fatalf("missing llm-wiki draft: %+v", result.LLMWikiDraft)
+	}
+	state, err := core.StateRead("self-augment-lesson-test")
+	if err != nil {
+		t.Fatalf("StateRead: %v", err)
+	}
+	var snapshot SelfAugmentLessonStateSnapshot
+	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
+		t.Fatalf("unmarshal saved lesson snapshot: %v", err)
+	}
+	if snapshot.Kind != selfAugmentationLessonKind || snapshot.CandidateID != "reflexion-state-memory" || snapshot.NextAction == "" {
+		t.Fatalf("unexpected lesson snapshot: %+v", snapshot)
+	}
+}
+
+func TestSaveSelfAugmentPlan(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	result := planSelfAugmentation(SelfAugmentPlanRequest{Cycles: 1, TargetScore: 95})
+	if result.SelectedCandidate == nil {
+		t.Fatalf("expected selected candidate")
+	}
+	if err := saveSelfAugmentPlan(&result, "self-augment-plan-test"); err != nil {
+		t.Fatalf("saveSelfAugmentPlan: %v", err)
+	}
+	if result.StateCheckpoint == nil || !result.StateCheckpoint.OK {
+		t.Fatalf("missing plan checkpoint: %+v", result.StateCheckpoint)
+	}
+	if result.StateCheckpoint.Key != "self-augment-plan-test" || result.StateCheckpoint.Path != filepath.Join(dir, "self-augment-plan-test.json") {
+		t.Fatalf("unexpected plan checkpoint metadata: %+v", result.StateCheckpoint)
+	}
+	state, err := core.StateRead("self-augment-plan-test")
+	if err != nil {
+		t.Fatalf("StateRead: %v", err)
+	}
+	var snapshot SelfAugmentPlanStateSnapshot
+	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
+		t.Fatalf("unmarshal saved plan snapshot: %v", err)
+	}
+	if snapshot.Kind != selfAugmentationPlanKind || snapshot.LoopKind != "self_augmentation" || snapshot.SelectedCandidate == nil {
+		t.Fatalf("unexpected saved plan snapshot: %+v", snapshot)
+	}
+	if snapshot.CandidateCount < 10 || len(snapshot.OpenCandidateIDs) == 0 || len(snapshot.SatisfiedCandidateIDs) == 0 {
+		t.Fatalf("saved plan did not preserve candidate memory: %+v", snapshot)
 	}
 }
 
@@ -120,7 +185,7 @@ func TestCompareSelfAugmentSummaries(t *testing.T) {
 	candidateSummary := baseSummary
 	if err := writeSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          "self_verification_summary",
 		OK:            true,
 		Iterations:    10,
 		BaseSeed:      400,
@@ -133,7 +198,7 @@ func TestCompareSelfAugmentSummaries(t *testing.T) {
 	}
 	if err := writeSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          "self_verification_summary",
 		OK:            true,
 		Iterations:    10,
 		BaseSeed:      400,
@@ -167,7 +232,7 @@ func TestCompareSelfAugmentSummariesDetectsFailedStepRegression(t *testing.T) {
 	candidate := SelfAugmentSummary{TotalRuns: 10, TotalSteps: 20, PassedSteps: 19, FailedSteps: 1, StepLabels: []string{"go test"}}
 	if err := writeSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          "self_verification_summary",
 		OK:            true,
 		Iterations:    10,
 		BaseSeed:      500,
@@ -179,7 +244,7 @@ func TestCompareSelfAugmentSummariesDetectsFailedStepRegression(t *testing.T) {
 	}
 	if err := writeSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          "self_verification_summary",
 		OK:            false,
 		Iterations:    10,
 		BaseSeed:      500,
@@ -204,7 +269,7 @@ func TestPromoteSelfAugmentBaseline(t *testing.T) {
 	summary := SelfAugmentSummary{TotalRuns: 10, TotalSteps: 20, PassedSteps: 20, StepLabels: []string{"go test"}}
 	source := SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          "self_verification_summary",
 		OK:            true,
 		Iterations:    10,
 		BaseSeed:      700,
@@ -261,9 +326,9 @@ func TestSelfAugmentHistory(t *testing.T) {
 			{Iteration: 1, Seed: 800, Label: "go test", DurationMS: 1000},
 		},
 	}
-	if err := writeSelfAugmentSnapshotRecord(dir, "self-augment-old", SelfAugmentStateSnapshot{
+	if err := writeSelfAugmentSnapshotRecord(dir, "self-verify-old", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          "self_verification_summary",
 		OK:            true,
 		Iterations:    10,
 		BaseSeed:      800,
@@ -273,9 +338,9 @@ func TestSelfAugmentHistory(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("write old snapshot: %v", err)
 	}
-	if err := writeSelfAugmentSnapshotRecord(dir, "self-augment-new", SelfAugmentStateSnapshot{
+	if err := writeSelfAugmentSnapshotRecord(dir, "self-verify-new", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          "self_verification_summary",
 		OK:            true,
 		Iterations:    10,
 		BaseSeed:      801,
@@ -287,7 +352,7 @@ func TestSelfAugmentHistory(t *testing.T) {
 	}
 	if err := writeSelfAugmentSnapshotRecord(dir, "other-summary", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          "self_augment_summary",
+		Kind:          "self_verification_summary",
 		OK:            true,
 		Iterations:    10,
 		BaseSeed:      802,
@@ -297,18 +362,18 @@ func TestSelfAugmentHistory(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("write other snapshot: %v", err)
 	}
-	if _, err := core.StateWrite("self-augment-note", "not a summary"); err != nil {
+	if _, err := core.StateWrite("self-verify-note", "not a summary"); err != nil {
 		t.Fatalf("write non-summary state: %v", err)
 	}
 
-	limited, err := selfAugmentHistory("self-augment", 1)
+	limited, err := selfAugmentHistory("self-verify", 1)
 	if err != nil {
 		t.Fatalf("history limited: %v", err)
 	}
-	if !limited.OK || limited.TotalMatches != 2 || limited.Returned != 1 || limited.Entries[0].Key != "self-augment-new" {
+	if !limited.OK || limited.TotalMatches != 2 || limited.Returned != 1 || limited.Entries[0].Key != "self-verify-new" {
 		t.Fatalf("unexpected limited history: %+v", limited)
 	}
-	if !historySkippedKey(limited.Skipped, "self-augment-note") {
+	if !historySkippedKey(limited.Skipped, "self-verify-note") {
 		t.Fatalf("expected non-summary key to be skipped: %+v", limited.Skipped)
 	}
 
@@ -319,6 +384,121 @@ func TestSelfAugmentHistory(t *testing.T) {
 	if all.TotalMatches != 3 || all.Returned != 3 || all.Entries[0].Key != "other-summary" {
 		t.Fatalf("unexpected all history ordering/counts: %+v", all)
 	}
+}
+
+func TestPlanRiskQATierFromPaths(t *testing.T) {
+	tests := []struct {
+		name     string
+		paths    []string
+		tier     string
+		commands []string
+	}{
+		{
+			name:     "no changes",
+			paths:    nil,
+			tier:     "standard",
+			commands: []string{},
+		},
+		{
+			name:     "docs only",
+			paths:    []string{"agent_docs/TESTING.md"},
+			tier:     "standard",
+			commands: []string{},
+		},
+		{
+			name:     "go but not sensitive",
+			paths:    []string{"examples/demo.go"},
+			tier:     "static",
+			commands: []string{"go vet ./..."},
+		},
+		{
+			name:     "sensitive go",
+			paths:    []string{"internal/core/policy.go", "cmd/harness/main.go"},
+			tier:     "elevated",
+			commands: []string{"go test -race ./... -count=1", "go vet ./..."},
+		},
+	}
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			plan := planRiskQATierFromPaths(tc.paths)
+			if plan.Tier != tc.tier {
+				t.Fatalf("tier=%q want %q: %+v", plan.Tier, tc.tier, plan)
+			}
+			if !sameStringSlice(plan.Commands, tc.commands) {
+				t.Fatalf("commands=%+v want %+v", plan.Commands, tc.commands)
+			}
+		})
+	}
+}
+
+func TestParseGitStatusPath(t *testing.T) {
+	tests := map[string]string{
+		" M cmd/harness/main.go":               "cmd/harness/main.go",
+		"?? internal/adapter/new_test.go":      "internal/adapter/new_test.go",
+		"R  old/path.go -> internal/core/x.go": "internal/core/x.go",
+		"":                                     "",
+	}
+	for line, want := range tests {
+		if got := parseGitStatusPath(line); got != want {
+			t.Fatalf("parseGitStatusPath(%q)=%q want %q", line, got, want)
+		}
+	}
+}
+
+func sameStringSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
+	result := planSelfAugmentation(SelfAugmentPlanRequest{Cycles: 1, TargetScore: 95})
+	if !result.OK || result.LoopKind != "self_augmentation" || result.KoreanName != selfAugmentationKoreanName {
+		t.Fatalf("unexpected loop identity: %+v", result)
+	}
+	if !result.UsesGeniusThink || len(result.SelectedFormulas) < 2 {
+		t.Fatalf("expected GENIUS_THINK formulas: %+v", result.SelectedFormulas)
+	}
+	if len(result.Candidates) < 10 || result.SelectedCandidate == nil {
+		t.Fatalf("expected candidate curriculum and selected candidate: %+v", result.Candidates)
+	}
+	if result.SelectedCandidate.Status != selfAugmentCandidateStatusOpen {
+		t.Fatalf("selected candidate must be an open improvement, got %+v", result.SelectedCandidate)
+	}
+	if candidateByID(result.Candidates, "loop-taxonomy-score-gates").Status != selfAugmentCandidateStatusSatisfied {
+		t.Fatalf("completed taxonomy candidate should be kept for audit but skipped for selection: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "durable-augmentation-memory").Status != selfAugmentCandidateStatusSatisfied {
+		t.Fatalf("durable memory candidate should be satisfied after state capture support: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "reflexion-state-memory").Status != selfAugmentCandidateStatusSatisfied {
+		t.Fatalf("reflexion memory candidate should be satisfied after lesson capture support: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "adapter-contract-matrix").Status != selfAugmentCandidateStatusSatisfied {
+		t.Fatalf("adapter contract matrix candidate should be satisfied after matrix golden support: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "qa-race-tier").Status != selfAugmentCandidateStatusSatisfied {
+		t.Fatalf("QA race tier candidate should be satisfied after risk-tier QA support: %+v", result.Candidates)
+	}
+	if result.TerminationEligible {
+		t.Fatalf("planner must not claim implementation termination before a diff is applied")
+	}
+}
+
+func candidateByID(candidates []SelfAugmentCandidate, id string) SelfAugmentCandidate {
+	for _, candidate := range candidates {
+		if candidate.ID == id {
+			return candidate
+		}
+	}
+	return SelfAugmentCandidate{}
 }
 
 func historySkippedKey(skipped []SelfAugmentHistorySkipped, key string) bool {

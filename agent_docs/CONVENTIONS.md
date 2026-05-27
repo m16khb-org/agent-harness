@@ -26,6 +26,9 @@ cmd/harness/testdata/*.golden.*
 internal/port/
 internal/adapter/cli/
 internal/adapter/mcp/
+internal/adapter/codex/
+internal/adapter/claude/
+internal/adapter/installutil/
 internal/adapter/worker/
 internal/adapter/fs/
 configs/codex/
@@ -44,6 +47,8 @@ agent_docs/
 | `port` | interface, DTO, error contract | 표준 라이브러리 | adapter concrete type 의존 |
 | `adapter/cli` | flag/stdout/stderr/exit code | `core`, CLI library | 정책 복제 |
 | `adapter/mcp` | MCP tool schema/transport | `core`, MCP library | CLI와 다른 의미의 응답 |
+| `adapter/codex` | Codex user skill/MCP 설치 구현 | `core`, `port`, 표준 라이브러리 | 적용 대상 repo 파일 쓰기 |
+| `adapter/claude` | Claude user skill/hook/MCP 설치 구현 | `core`, `port`, 표준 라이브러리 | 기본 설치에서 `.claude/skills` 같은 repo-local 파일 쓰기 |
 | `adapter/worker` | local daemon, job lifecycle, IPC | `core`, stdlib/net | command policy 우회 |
 | `adapter/fs` | filesystem/git/process 구현 | `port`, os/exec 등 | root 밖 접근을 암묵 허용 |
 
@@ -117,11 +122,19 @@ agent_docs/
 ## 9. Shared Skill 컨벤션
 
 - 공용 스킬 원본은 `skills/<skill-name>/`에 둔다.
-- Codex/Claude별 경로는 원본으로 향하는 symlink 또는 installer로 연결한다.
+- Codex/Claude별 user skill 경로는 원본으로 향하는 symlink 또는 installer로 연결한다. 적용 대상 repo의 `.claude/skills`는 기본 설치에서 만들지 않는다.
 - skill 이름은 lowercase/digit/hyphen만 사용한다.
 - 각 skill은 `SKILL.md`를 반드시 포함하고, Codex UI metadata가 필요하면 `agents/openai.yaml`을 둔다.
 - 스킬 안에는 README, 설치 가이드, changelog 같은 보조 문서를 만들지 않는다.
 - 검증은 skill-creator의 `quick_validate.py`로 수행한다.
+
+설치 adapter 규칙:
+
+- `internal/core.InstallNative`가 host-neutral 설치 engine이고 `port.HostInstaller`가 SOLID 경계다.
+- Codex/Claude adapter는 자기 host의 user/global 설정만 기본으로 쓴다. repo-local `.mcp.json`, `.claude/settings.json`, `.claude/skills`는 `--project-local` 같은 명시적 opt-in 없이는 만들지 않는다.
+- symlink는 사용자 홈의 skill 경로에서 중앙 `skills/<name>`을 참조하기 위해서만 기본 사용한다.
+- adapter 설치 계약을 바꾸면 `internal/adapter/install_contract_matrix_test.go`와 `internal/adapter/testdata/native_install_contract_matrix.golden.json`을 함께 갱신해 user/global 기본 설치와 explicit project-local opt-in의 차이를 보존한다.
+
 ---
 
 ## 10. 커밋 메시지 컨벤션

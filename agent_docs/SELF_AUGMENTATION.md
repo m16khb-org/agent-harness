@@ -1,119 +1,136 @@
-# 자가증강 루프
+# 자기 검증 루프와 자가 증강 루프
 
-`agent-harness`의 자가증강 루프는 `/Users/habin/workspace/eye-tracking-scroll/scripts/self-augment.js`의 운영 방식을 하네스에 맞게 옮긴 것이다.
+이 문서는 기존 `self-augment` 검증 루프를 두 개의 서로 다른 계약으로 분리한다.
 
-참고한 원칙:
+- **자기 검증 루프**: 서비스/하네스가 의도한 대로 동작하는지 테스트와 QA를 포함해 확인한다.
+- **자가 증강 루프**: 레포에 꼭 필요한 기능 추가, 성능 개선, 품질 개선, 문서/운영 개선을 스스로 결정하고 구현한 뒤 자기 검증 루프로 검증한다.
 
-- 최소 10회 반복을 강제한다.
-- 각 반복은 `base_seed + iteration - 1` seed를 사용한다.
-- 매 반복마다 정적 invariant, smoke, fuzz, 외부 경계 검증을 모두 수행한다.
-- 첫 실패에서 즉시 중단하고 실패 단계의 stdout/stderr/error를 남긴다.
-- 통과 시 반복 횟수와 elapsed time을 요약한다.
-- JSON 결과의 `summary`는 전체 run/step 수, 실패 위치, step label coverage, 가장 느린 step 상위 5개를 포함한다.
+두 루프 모두 구체 목표별 점수를 가진다. 기본 종료 조건은 **각 목표 점수가 95점을 초과**하는 것이다. 95점 이하인 항목이 하나라도 있으면 완료가 아니라 개선/재시도/블로커 보고 상태다.
 
----
+## 1. 자기 검증 루프
 
-## 현재 구현
+### 목적
 
-CLI:
+하네스가 Codex/Claude 양쪽에서 같은 결과를 내고, CLI/MCP/native integration/state/정책/문서/스킬이 의도대로 동작하는지 검증한다. 이 루프는 **개선을 직접 선택하지 않는다**. 개선 여부를 판정하는 QA 게이트다.
+
+### CLI/MCP 표면
 
 ```bash
-./bin/harness self-augment --iterations=10 --seed=100
-./bin/harness self-augment --iterations=10 --seed=100 --json
-./bin/harness self-augment --iterations=10 --seed=100 --save-state --state-key self-augment-latest --json
-./bin/harness self-augment history --prefix self-augment --json
-./bin/harness self-augment compare --baseline-key self-augment-baseline --candidate-key self-augment-latest --json
-./bin/harness self-augment promote --from-key self-augment-latest --baseline-key self-augment-baseline --confirm --json
+./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+./bin/harness self-verify history --prefix self-verify --json
+./bin/harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+./bin/harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
 ```
 
-MCP tool:
+MCP tools:
 
-- `self_augment`
-  - `iterations`: 10 이상
-  - `seed`: deterministic fuzz fixture base seed
-  - `save_state`: true이면 compact summary checkpoint를 harness state에 저장
-  - `state_key`: 저장 key, 기본 `self-augment-latest`
-- `self_augment_history`
-  - `prefix`: 조회할 state key prefix, 기본 `self-augment`
-  - `limit`: 반환 개수 제한, 기본 20, 0은 전체
-- `self_augment_compare`
-- `self_augment_promote`
+- `self_verify`
+- `self_verify_history`
+- `self_verify_compare`
+- `self_verify_promote`
 
-`--json` 출력은 다음 triage 필드를 포함한다.
+기존 `self_augment_history/compare/promote` 호출은 호환 alias로만 남긴다. 새 문서와 자동화에서는 `self_verify_*`를 사용한다.
 
-- `summary.total_runs`, `summary.total_steps`, `summary.passed_steps`, `summary.failed_steps`
-- `summary.failed_iteration`, `summary.failed_seed`, `summary.failed_step` (실패 시)
-- `summary.step_labels`
-- `summary.slowest_steps`
+### 포함 단계
 
-`--save-state`는 전체 `runs` 원문 대신 compact summary snapshot만 state에 저장한다. 저장된 state record의 content는 `kind: self_augment_summary`, `schema_version: 1`, `summary`를 포함한다.
-`self-augment history`는 저장된 summary snapshot들을 `generated_at` 최신순으로 정렬해 운영 중 baseline/candidate key를 찾는 데 쓴다. self-augment summary가 아닌 같은 prefix record는 실패하지 않고 `skipped`로 보고한다.
-`self-augment compare`는 저장된 summary checkpoint 2개를 비교해 elapsed time 증가, failed step 증가, step label 누락을 regression으로 보고한다.
-`self-augment promote`는 regression이 없는 candidate summary를 baseline key로 승격한다. 기본은 dry-run이며 `--confirm`을 명시해야 쓴다.
+각 iteration은 최소 다음 단계를 포함한다.
 
-자가증강 루프는 새 capability가 추가될 때마다 smoke/fuzz 단계를 늘리는 것을 원칙으로 한다. 현재 `docs` capability는 agent docs index smoke로, `command policy` capability는 allow/deny/fake-run smoke로, `state` capability는 temp `HARNESS_STATE_DIR`에서 write/read/list/prune/doctor/migrate 라운드트립으로 검증한다.
+1. core invariant 확인
+2. `go test ./... -count=1`
+3. contract/golden tests
+4. **risk QA tier**: working tree risk를 판정해 민감한 Go 변경에는 `go test -race ./... -count=1`와 `go vet ./...`를 실행하고, 일반 Go 변경에는 `go vet ./...`를 실행한다. 문서/설정만 바뀐 경우에는 skip을 명시적으로 기록한다.
+5. `go build`
+6. inspect/docs smoke
+7. command policy smoke
+8. MCP smoke
+9. state roundtrip, prune, doctor, migrate, compare/promote/history smoke
+10. git preflight fuzz
+11. native Codex/Claude integration smoke
+12. **QA gate**: `GENIUS_THINK.md`, 루프 문서, skill frontmatter/openai metadata, self-augment skill 존재 여부 확인
 
----
+### 점수 목표
 
-## 반복 단계
+| 목표 | 증거 label | 종료 조건 |
+| --- | --- | --- |
+| 테스트 스위트 | `go test`, `contract golden tests` | 점수 > 95 |
+| 위험도 기반 QA | `risk QA tier` | 점수 > 95 |
+| 빌드 산출물 | `go build` | 점수 > 95 |
+| QA 스모크 | invariants, inspect/docs, QA gate | 점수 > 95 |
+| 정책·보안 | command policy, preflight fuzz | 점수 > 95 |
+| MCP·상태 회귀 | MCP smoke, state roundtrip | 점수 > 95 |
+| 네이티브 통합 | native integration | 점수 > 95 |
 
-각 iteration은 다음 순서로 실행된다.
+`self-verify --json`의 `summary.goal_scores`, `summary.minimum_goal_score`, `summary.termination_eligible`를 판정 기준으로 삼는다.
 
-1. `harness invariants`
-   - 필수 문서, skill, MCP 설정, native skill 연결 파일 존재 확인
-   - `internal/core/inspect.go`, `internal/core/preflight.go`, `internal/core/docs.go`, `internal/core/state.go`, `internal/core/policy.go` 존재 확인
-   - `atomic-commit-push` skill frontmatter 확인
-   - legacy 개인 식별자 계열 이름이 repo/config/skill에 남아 있지 않은지 확인
-2. `go test`
-   - `go test ./... -count=1`
-3. `contract golden tests`
-   - `go test ./cmd/harness -run Golden -count=1`
-   - CLI usage text, MCP tools list, MCP resources list가 `cmd/harness/testdata/*.golden.*`와 일치하는지 확인
-   - normalized CLI/MCP 실제 JSON response snapshot(`response_contracts.golden.json`)이 drift 없이 유지되는지 확인
-   - self-augment summary helper가 성공/실패 fixture를 올바르게 요약하고, summary checkpoint를 state에 저장할 수 있는지 확인
-   - 현재 snapshot은 `inspect`, `docs_index`, `preflight`, `policy_check`, `state_*`, `self_augment_history`, `self_augment_compare`, `self_augment_promote`의 CLI/MCP 응답을 포함한다.
-4. `go build`
-   - temp dir에 `harness` binary build
-5. `inspect smoke`
-   - temp binary로 `inspect --json` 실행
-   - skill/native/MCP 상태와 legacy name 미노출 확인
-6. `docs index smoke`
-   - temp binary로 `docs --json` 실행
-   - `AGENTS.md`, `CLAUDE.md`, `agent_docs/COMMIT_POLICY.md`, `agent_docs/USAGE.md`가 index에 포함되는지 확인
-   - 각 문서 title과 legacy name 미노출 확인
-7. `command policy smoke`
-   - read-only `git status --short` 요청이 workspace 안에서 허용되는지 확인
-   - workspace 밖 `cwd`와 shell interpreter가 거부되는지 확인
-   - `policy fake-run`이 write 허용 요청을 받아도 실제 파일을 만들지 않는지 확인
-8. `MCP smoke`
-   - temp `HARNESS_STATE_DIR`에서 stdio JSON-RPC로 `initialize`, `tools/list`, `resources/read`, `tools/call state_prune`, `tools/call state_doctor`, `tools/call state_migrate` 실행
-   - `atomic_commit_preflight`, `docs_index`, `command_policy_check`, `state_write`, `state_prune`, `state_doctor`, `state_migrate`, `self_augment_history`, `Lore:` 리소스 노출 확인
-   - `state_prune` MCP tool이 기본 dry-run으로 응답하고 `state_doctor` MCP tool이 healthy 결과를, `state_migrate` MCP tool이 target schema를 반환하는지 확인
-9. `state roundtrip`
-   - temp `HARNESS_STATE_DIR` 생성
-   - `state write --json`, `state read --json`, `state list --json` 실행
-   - seed 기반 key/content가 손실 없이 저장·조회·목록화되는지 확인
-   - 오래된 checkpoint fixture를 만들고 `state prune --max-age 1h --json` dry-run이 old/fresh key를 올바르게 분류하는지 확인
-   - `state prune --max-age 1h --confirm --json`이 old key만 삭제하고 fresh key를 보존하는지 확인
-   - legacy schema fixture를 만들고 `state migrate --json` dry-run과 `state migrate --confirm --json`이 schema를 승격하면서 content/updated_at을 보존하는지 확인
-   - saved self-augment summary fixture 2개를 만들고 `self-augment compare --json`이 정상/회귀 threshold를 구분하는지 확인
-   - `self-augment promote --json` dry-run/confirm이 baseline 승격을 안전하게 처리하고, 승격 후 compare가 깨끗한지 확인
-   - `self-augment history --json`이 저장된 baseline/candidate/promoted summary를 최신순 조회 결과에 포함하는지 확인
-   - corrupt JSON fixture를 만들고 `state doctor --json`이 `invalid_json` issue와 valid key 보존을 보고하는지 확인
-10. `preflight fuzz`
-   - seed 기반 temp git repo 생성
-   - Conventional + Lore commit 작성
-   - secret-like untracked path 생성
-   - `preflight --json`이 commit style과 secret-like path를 감지하는지 확인
-11. `native integration`
-   - `~/.codex/skills`, `~/.claude/skills`, `.claude/skills`, `.mcp.json`, config template 존재 확인
-   - Codex MCP config에 `agent_harness` 서버가 있는지 확인
+## 2. 자가 증강 루프
 
----
+### 목적
 
-## 승격 규칙
+자가 증강 루프는 레포를 실제로 개선한다. 실행되면 다음 중 하나 이상을 수행해야 한다.
 
-- 새 CLI/MCP/native capability를 추가하면 self-augment 반복 단계에 smoke 또는 fuzz를 추가한다.
-- 반복적으로 놓친 회귀는 `agent_docs/CAUTIONS.md`에 기록하고 invariant로 승격한다.
-- 10회 루프가 너무 느려지면 단계를 삭제하지 말고 targeted quick mode를 별도 command로 추가한다.
-- self-augment는 쓰기 작업을 temp dir로 제한해야 한다. 실제 사용자 repo에는 commit/push를 수행하지 않는다.
+- 필요한 기능 추가
+- 성능 개선
+- 품질/안전/테스트 강화
+- 문서/운영 경험 개선
+- 반복 실패를 줄이는 자동화 또는 기억 구조 개선
+
+단순히 테스트를 반복하거나 보고서만 작성하면 자가 증강이 아니다.
+
+### 표면
+
+```bash
+./bin/harness self-augment --cycles=1 --target-score=95 --json
+./bin/harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
+./bin/harness self-augment lesson --candidate reflexion-state-memory --lesson "..." --next-action "..." --json
+```
+
+이 CLI는 deterministic planner/curriculum 표면이다. 실제 코드 편집과 구현은 native agent skill `skills/self-augment`가 수행한다. `--save-state`를 사용하면 선택 후보, open/satisfied 후보 목록, GENIUS_THINK 공식, 연구 앵커를 `self_augmentation_plan` state snapshot으로 저장해 다음 cycle의 기억으로 재사용한다. `self-augment lesson`은 실패/QA/설계 교훈을 `self_augmentation_lesson` state snapshot과 llm-wiki capture draft로 남긴다. 플래너는 이미 충족된 후보를 `already_satisfied`로 남겨 감사 가능하게 하되, 다음 cycle의 `selected_candidate`에서는 제외한다. 따라서 자가 증강 루프를 반복 실행하면 완료된 일을 다시 고르는 대신 다음으로 필요한 기능·성능·품질·문서 개선을 고른다.
+
+스킬 실행 계약:
+
+```text
+$self-augment
+```
+
+### 종료 목표
+
+| 목표 | 설명 | 종료 조건 |
+| --- | --- | --- |
+| 개선 목표 선별 | `GENIUS_THINK.md`, docs index, skill inventory, git evidence로 10개 이상 후보 생성·점수화 | 점수 > 95 |
+| 개선 구현 | 선택 후보가 실제 diff로 구현됨 | 점수 > 95 |
+| 검증·QA | 타깃 테스트와 자기 검증 루프 통과 | 점수 > 95 |
+| 학습 기록 | 실패/성공 교훈과 다음 후보가 state/docs/wiki 중 적절한 곳에 남음. 기본 state artifact는 `self_augmentation_plan`이다. | 점수 > 95 |
+
+### GENIUS_THINK.md 사용
+
+자가 증강 후보 생성에는 `GENIUS_THINK.md`의 공식을 최소 2개 이상 사용한다. 기본 조합은 다음이다.
+
+- 문제 재정의 알고리즘: “이 레포의 진짜 병목은 무엇인가?”를 다시 정의한다.
+- 혁신적 솔루션 생성 공식: 가치, 참신성, 실현 가능성, 위험을 함께 점수화한다.
+- 사고의 진화 방정식: 이전 실패/학습을 다음 cycle에 반영한다.
+- 복잡성 해결 매트릭스: 큰 개선을 작고 검증 가능한 하위 작업으로 쪼갠다.
+
+## 3. 외부 전략에서 채택한 점
+
+사용자 아이디어는 좋은 출발점이지만, 종료 조건과 학습 구조는 기존 agent 연구의 장점을 섞어 강화한다.
+
+| 출처 | 채택한 점 |
+| --- | --- |
+| [Reflexion: Language Agents with Verbal Reinforcement Learning](https://arxiv.org/abs/2303.11366) | 실패를 scalar 결과로만 버리지 않고 언어 교훈으로 저장해 다음 cycle에 반영 |
+| [Self-Refine](https://arxiv.org/abs/2303.17651) | generate → feedback → refine 반복을 후보 설계와 구현 재시도에 적용 |
+| [Voyager](https://arxiv.org/abs/2305.16291) | 자동 curriculum과 skill-library 관점으로 “다음에 필요한 개선”을 선택 |
+| [SWE-agent](https://arxiv.org/abs/2405.15793) | repo navigation, file edit, test 실행을 명시적 agent-computer interface로 취급 |
+| [AgentBench](https://arxiv.org/abs/2308.03688) | 단일 pass/fail 대신 다차원 agent 목표 점수화 |
+| [SWE-bench](https://arxiv.org/abs/2310.06770) | 실제 GitHub issue 해결처럼 repo-local, test-backed 개선을 선호 |
+| [LangGraph docs](https://docs.langchain.com/oss/python/langgraph/overview) | durable execution/state/recovery와 human oversight를 장기 루프 설계 제약으로 반영 |
+| [Microsoft AutoGen docs](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/human-in-the-loop.html) | termination condition과 max-turn safeguard를 점수 gate와 cycle budget에 반영 |
+| [DSPy optimizers docs](https://github.com/stanfordnlp/dspy/blob/main/docs/docs/learn/optimization/optimizers.md) | metric-first optimization 방식으로 candidate scoring과 regression compare 설계 |
+| [OpenAI Evals](https://github.com/openai/evals) | 재사용 가능한 eval artifact와 baseline promotion 개념 차용 |
+
+## 4. 운영 규칙
+
+- 자기 검증 루프는 temp dir 기반 쓰기만 수행하고 사용자 repo의 소스 변경을 만들지 않는다.
+- 자가 증강 루프는 실제 개선 diff를 만들 수 있지만, 작은 범위와 되돌릴 수 있는 변경을 선호한다.
+- 새 CLI/MCP/native capability를 추가하면 자기 검증 루프의 테스트 또는 QA 단계에 증거 label을 추가한다.
+- 95점 gate를 낮추지 않는다. 비용 때문에 생략한 검증은 해당 목표 점수를 통과로 계산하지 않는다.

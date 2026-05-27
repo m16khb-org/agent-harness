@@ -36,14 +36,14 @@
 Codex / Claude Code / Human
         │
         ├─ harness CLI
-        ├─ harness mcp           (MCP stdio server)
-        └─ harness worker        (Phase 4 이후 local daemon)
+        ├─ harness mcp           (MCP stdio proxy)
+        └─ harness daemon        (user-level shared MCP backend)
                 │
           internal/core
                 │
-          internal/port
+          fs/git/process/state/config/wiki adapters
                 │
-          fs/git/process/state/config adapters
+          ~/workspace/knowledge-base/llm-wiki
 ```
 
 핵심 원칙:
@@ -51,7 +51,8 @@ Codex / Claude Code / Human
 - core는 host neutral해야 한다.
 - adapter는 core 호출과 입출력 변환만 한다.
 - command execution과 workspace access는 policy를 통과해야 한다.
-- CLI JSON, MCP response, worker API는 같은 DTO를 공유한다.
+- CLI JSON, MCP response, daemon-backed MCP response는 같은 DTO를 공유한다.
+- `llm-wiki`는 Codex/Claude 공통 long-term memory로 노출하고, 자세한 설계는 `agent_docs/LLM_WIKI_INTEGRATION.md`를 따른다.
 
 ---
 
@@ -76,8 +77,8 @@ Deliverables:
 - `agent_docs/USAGE.md`
 - `agent_docs/SELF_AUGMENTATION.md`
 - `skills/atomic-commit-push`
-- `configs/codex/skills/atomic-commit-push` → shared skill 연결
-- `configs/claude/skills/atomic-commit-push` → shared skill 연결
+- user-level Codex/Claude skill 경로가 `skills/atomic-commit-push` 단일 원본을 참조
+- project-local skill 연결은 기본 설치에서 제외하고 명시적 attach/project-local 모드로만 생성
 
 Acceptance criteria:
 
@@ -109,7 +110,7 @@ go build ./cmd/harness
 
 ### Phase 2 — Core capability MVP
 
-상태: MVP 구현 완료. `internal/core`의 `inspect`, `preflight`, `docs` indexer, `state` checkpoint read/write/list/prune/doctor/migrate API, catalog 기반 `command policy check + fake runner`가 CLI/MCP와 self-augment smoke까지 연결됐다. self-augment summary 저장·history·compare·promote도 state 기반으로 검증된다. CLI usage와 MCP tools/resources golden test도 self-augment에 포함됐다. 남은 adapter 분리는 hardening 과제다.
+상태: MVP 구현 완료. `internal/core`의 `inspect`, `preflight`, `docs` indexer, `state` checkpoint read/write/list/prune/doctor/migrate API, catalog 기반 `command policy check + fake runner`가 CLI/MCP와 자기 검증 루프 smoke까지 연결됐다. self-verify summary 저장·history·compare·promote도 state 기반으로 검증된다. CLI usage와 MCP tools/resources golden test는 self-verify와 self-augment planner를 함께 포함한다. 남은 adapter 분리는 hardening 과제다.
 
 Deliverables:
 
@@ -126,40 +127,36 @@ Acceptance criteria:
 - state read/write/list/prune/doctor/migrate roundtrip test
 - root 밖 path 접근 거부 test
 
-### Phase 3 — MCP stdio server
+### Phase 3 — MCP stdio proxy/server
 
-상태: `harness mcp` stdio server와 기본 tools/resources 구현 완료.
+상태: `harness mcp`가 shared `agent-harness daemon`을 자동 시작하고 stdio를 Unix socket으로 proxy한다. 기본 tools/resources와 llm-wiki tools/resources 구현 완료.
 
 Deliverables:
 
 - `harness mcp` command
-- MCP tools 초안:
-  - `harness.inspect`
-  - `harness.docs_index`
-  - `harness.state_read`
-  - `harness.state_write`
-  - `harness.state_list`
-  - `harness.state_prune`
-  - `harness.state_doctor`
-  - `harness.state_migrate`
-  - `self_augment`
-  - `self_augment_history`
-  - `self_augment_compare`
-  - `self_augment_promote`
+- `harness daemon start/status/stop`
+- MCP tools/resources:
+  - harness inspect/docs/state/policy/self-verify/self-augment tools
+  - `daemon_status`
+  - `llm_wiki_inventory`, `llm_wiki_session_context`, `llm_wiki_search`, `llm_wiki_read`, `llm_wiki_capture`
+  - `harness://llm-wiki/session-context`, `harness://llm-wiki/inventory`, `harness://llm-wiki/index`, `harness://llm-wiki/schema`
 - CLI DTO와 MCP response 공유
-- Claude Code MCP config template
+- Claude Code MCP config template + SessionStart hook helper template
 
 Acceptance criteria:
 
-- MCP tool schema golden test
-- stdio smoke test
-- Claude Code config template 문서화
+- MCP tool/resource schema golden test
+- daemon-backed MCP stdio smoke test
+- llm-wiki CLI/MCP response golden test
+- Claude Code config/hook template 문서화
 
-### Phase 4 — Local worker daemon
+### Phase 4 — Local job worker daemon
+
+상태: MCP backend daemon은 Phase 3에서 구현됨. Phase 4는 별도 job queue/watch worker를 도입할 때만 진행한다.
 
 Deliverables:
 
-- `harness worker start|stop|status`
+- `harness worker start|stop|status` 또는 daemon 하위 job API
 - local Unix socket 또는 localhost API
 - job lifecycle: queued/running/succeeded/failed/cancelled
 - audit log와 redaction
@@ -174,6 +171,8 @@ Acceptance criteria:
 
 ### Phase 5 — Codex adapter
 
+상태: `internal/adapter/codex`가 `port.HostInstaller`를 구현한다. 기본 설치는 사용자 홈의 Codex skill symlink와 `~/.codex/config.toml` MCP 서버만 갱신한다. 적용 대상 repo에는 파일을 쓰지 않는다.
+
 Deliverables:
 
 - `configs/codex/` 템플릿
@@ -186,6 +185,8 @@ Acceptance criteria:
 - plugin/skill 내부에 core policy가 복제되지 않는다.
 
 ### Phase 6 — Claude Code adapter
+
+상태: `internal/adapter/claude`가 `port.HostInstaller`를 구현한다. 기본 설치는 `~/.claude/skills`, Claude user SessionStart hook, user-scope MCP 등록 경로만 사용한다. `.claude/skills`, `.claude/settings.json`, `.mcp.json` 같은 repo-local 파일은 명시적 `--project-local`에서만 쓴다.
 
 Deliverables:
 
@@ -252,7 +253,7 @@ MVP에서 제외:
 
 1. `internal/adapter/cli`, `internal/adapter/mcp`를 추가해 flag/JSON-RPC mapping을 분리
 2. worker 도입 전 core DTO compatibility policy를 문서화
-3. self-augment summary baseline promotion을 history 목록/자동 rotation 정책으로 확장할 필요가 있는지 dogfood 결과로 판단
+3. self-verify summary baseline promotion을 history 목록/자동 rotation 정책으로 확장할 필요가 있는지 dogfood 결과로 판단
 4. response contract golden 범위를 새로 추가되는 capability까지 계속 넓히고, docs byte-size drift가 과하면 normalized subset 전략을 검토
 5. state migration 정책을 multi-version fixture로 확장할 필요가 있는지 dogfood 결과로 판단
 6. command policy catalog를 config로 확장할 필요가 있는지 dogfood 결과로 판단

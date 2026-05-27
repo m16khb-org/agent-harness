@@ -1,0 +1,4 @@
+interface:
+  display_name: "Self Augment"
+  short_description: "Autonomously improve a repo, then verify with 95점 gates"
+  default_prompt: "Use $self-augment to choose one high-value repo improvement, implement it, and verify it with the 자기 검증 루프."

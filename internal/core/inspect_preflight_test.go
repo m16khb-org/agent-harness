@@ -18,7 +18,7 @@ func TestInspectHarnessIndexesSkillsAndDocs(t *testing.T) {
 	if info.Version != "test-version" || info.HarnessRoot != root || info.TargetRepo != root {
 		t.Fatalf("unexpected identity fields: %+v", info)
 	}
-	if len(info.Skills) != 1 || info.Skills[0].Name != "atomic-commit-push" || !info.Skills[0].HasSkillMD {
+	if !containsSkill(info.Skills, "atomic-commit-push") || !containsSkill(info.Skills, "llm-wiki") {
 		t.Fatalf("unexpected skills: %+v", info.Skills)
 	}
 	if !containsDoc(info.Docs, "agent_docs/USAGE.md") {
@@ -26,6 +26,27 @@ func TestInspectHarnessIndexesSkillsAndDocs(t *testing.T) {
 	}
 	if !info.Integration.ProjectClaudeMCPConfig {
 		t.Fatalf("project MCP config not detected: %+v", info.Integration)
+	}
+}
+
+func TestClaudeSessionStartHookConfigured(t *testing.T) {
+	settings := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(settings, []byte(`{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {"type": "command", "command": "HARNESS_ROOT=/tmp/harness /tmp/harness/scripts/session-start-llm-wiki.sh"}
+        ]
+      }
+    ]
+  }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !ClaudeSessionStartHookConfigured(settings) {
+		t.Fatalf("SessionStart hook not detected")
 	}
 }
 
@@ -75,6 +96,15 @@ func containsDoc(paths []string, suffix string) bool {
 			return true
 		}
 		if rel, err := filepath.Rel(filepath.Join("..", ".."), path); err == nil && filepath.ToSlash(rel) == suffix {
+			return true
+		}
+	}
+	return false
+}
+
+func containsSkill(skills []SkillInfo, name string) bool {
+	for _, skill := range skills {
+		if skill.Name == name && skill.HasSkillMD {
 			return true
 		}
 	}

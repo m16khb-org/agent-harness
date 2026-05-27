@@ -1,6 +1,6 @@
 # agent-harness 아키텍처
 
-이 문서는 에이전트가 변경 영향을 빠르게 판단하기 위한 문서다. 현재 저장소는 Go CLI/MCP 기반 MVP가 구현된 상태이며, 아래 구조는 구현 계획의 source of truth다.
+이 문서는 에이전트가 변경 영향을 빠르게 판단하기 위한 문서다. 현재 저장소는 Go CLI/MCP/daemon 기반 MVP가 구현된 상태이며, 아래 구조는 구현 계획의 source of truth다. llm-wiki 공통 접근 구조의 세부 source of truth는 `agent_docs/LLM_WIKI_INTEGRATION.md`다.
 
 ---
 
@@ -21,24 +21,38 @@
 
 ```mermaid
 flowchart LR
-    Codex[Codex\nAGENTS.md · optional plugin/skill] --> CLI[CLI: harness]
-    Claude[Claude Code\nCLAUDE.md · slash commands · MCP config] --> CLI
-    Claude --> MCP[MCP stdio server]
-    Human[Human shell] --> CLI
+    Codex[Codex\nAGENTS.md · native skills · MCP config] --> MCPProxy[harness mcp\nstdio proxy]
+    Claude[Claude Code\nCLAUDE.md · skills · hooks · MCP config] --> MCPProxy
+    Human[Human shell] --> CLI[CLI: harness]
+    Hook[SessionStart hook] --> CLI
 
-    CLI --> Core[core usecases\npolicy · workspace · docs · state]
-    MCP --> Core
+    MCPProxy --> Daemon[agent-harness daemon\nuser-level Unix socket]
+    CLI --> Core[core usecases\npolicy · workspace · docs · state · llm-wiki]
+    Daemon --> Core
     Core --> Ports[ports/interfaces]
-    Ports --> FS[fs/git adapter]
+    Ports --> FS[fs/git/wiki adapter]
     Ports --> Proc[process runner adapter]
     Ports --> State[state/log adapter]
     Ports --> Config[config adapter]
+    Core --> Wiki[~/workspace/knowledge-base/llm-wiki]
 
-    Core -. phase 2 .-> Worker[local worker daemon\nUnix socket/localhost API]
+    Core -. future .-> Worker[local job worker\nqueue · watch · long tasks]
     Worker --> Core
 ```
 
 Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트를 우선한다.
+
+### Core engine / port / host adapter 구조
+
+설치와 host 통합은 SOLID 경계로 나눈다.
+
+- `internal/core.InstallNative`: host-neutral core engine. skill 목록, root/bin/wiki 경로 같은 공통 입력을 정규화하고 `port.HostInstaller`만 호출한다.
+- `internal/port`: `NativeInstallRequest`, `NativeInstallResult`, `HostInstaller` interface, 설치 DTO를 정의한다. core는 concrete host를 모른다.
+- `internal/adapter/codex`: Codex 구현체. user skill symlink와 `~/.codex/config.toml`만 기본 갱신한다.
+- `internal/adapter/claude`: Claude Code 구현체. user skill symlink, user SessionStart hook, user-scope MCP 등록 경로만 기본 사용한다.
+- repo-local `.claude/skills`, `.claude/settings.json`, `.mcp.json`은 적용 대상 repo에 커밋될 수 있으므로 `--project-local` 같은 명시적 opt-in에서만 생성한다.
+
+이 구조에서 새 host를 추가할 때는 core 수정 없이 `port.HostInstaller` 구현체만 추가하는 것이 원칙이다.
 
 ---
 
@@ -46,9 +60,10 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 | 모드 | 도입 단계 | 용도 | 원칙 |
 |------|----------|------|------|
-| `harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/harness inspect/preflight/docs/policy/state/self-augment` 사용 |
-| `harness mcp` stdio server | 구현됨 | Claude Code 및 MCP-capable host에서 tool로 사용 | `harness_inspect`, `atomic_commit_preflight`, `commit_policy`, `skill_manifest`, `docs_index`, `command_policy_*`, `state_*`, `self_augment`, `self_augment_history`, `self_augment_compare`, `self_augment_promote` 제공 |
-| `harness worker` local daemon | Phase 4 | 장기 작업, cross-turn state, concurrent job, file watch | socket 권한, stale lock, audit log, shutdown 검증 후 도입 |
+| `harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/harness inspect/preflight/docs/policy/state/self-verify/self-augment` 사용 |
+| `harness mcp` stdio proxy | 구현됨 | Codex/Claude Code가 같은 MCP schema로 daemon에 연결 | `agent-harness` daemon을 자동 시작하고 stdio를 Unix socket으로 proxy한다. |
+| `harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, llm-wiki 접근, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
+| `harness worker` job daemon | Future | 장기 작업, concurrent job, file watch | 현재 daemon은 MCP proxy backend이며 job queue worker가 아니다. queue/cancel/audit hardening 후 별도 확장 |
 | Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
 | Claude commands/hooks | Phase 6 | Claude Code UX 개선 | core 정책 우회 금지 |
 
@@ -58,18 +73,20 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 | 경로 | 책임 | 금지/주의 |
 |------|------|----------|
-| `cmd/harness` | binary entrypoint, CLI flag 처리, MCP JSON-RPC mapping, self-augment orchestration | host별 정책 복제 금지 |
-| `internal/core` | host-neutral core usecase. 현재 inspect, preflight, docs index, state store, command policy/fake runner 구현 | host-specific API 의존 금지 |
+| `cmd/harness` | binary entrypoint, CLI flag 처리, MCP JSON-RPC mapping/proxy, daemon lifecycle, self-verify QA loop, self-augment curriculum orchestration | host별 정책 복제 금지 |
+| `internal/core` | host-neutral core usecase. 현재 inspect, preflight, docs index, state store, command policy/fake runner, llm-wiki inventory/search/read/capture 구현 | host-specific API 의존 금지 |
 | `internal/port` | core interface, DTO, error contract | adapter concrete type 의존 금지 |
 | `internal/adapter/cli` | flag parsing, stdout/stderr, exit code mapping | core 정책 복제 금지 |
 | `internal/adapter/mcp` | MCP tool schema, stdio server, JSON-RPC mapping | CLI와 다른 의미의 schema 금지 |
+| `internal/adapter/codex` | Codex user skill symlink와 user MCP config 설치 | 대상 repo 파일 쓰기 금지 |
+| `internal/adapter/claude` | Claude user skill symlink와 user SessionStart hook 설치 | 기본 설치에서 `.claude/skills`, `.claude/settings.json`, `.mcp.json` 같은 repo-local 파일 쓰기 금지 |
 | `internal/adapter/worker` | local IPC, job lifecycle, daemon state | shell policy 우회 금지 |
 | `internal/adapter/fs` | filesystem, git, process runner | workspace boundary 검증 필요 |
 | `configs/codex` | Codex plugin/skill 템플릿 | core 로직 금지 |
-| `configs/claude` | Claude Code MCP/slash/hook 템플릿 | core 로직 금지 |
+| `configs/claude` | Claude Code MCP/slash/hook 템플릿 | core 로직 금지. hook은 `harness llm-wiki session-context` 같은 thin CLI wrapper만 호출 |
 | `skills` | Codex/Claude 공용 skill source of truth | host별 복사본을 만들어 drift 유발 금지 |
-| `.mcp.json` | Claude Code project MCP server 설정 | 로컬 절대경로 drift 시 `scripts/install-native.sh` 재실행 |
-| `scripts/install-native.sh` | native skill/MCP 설치 및 갱신 | 기존 non-symlink skill을 덮어쓰지 않음 |
+| `.mcp.json` | 이 하네스 repo의 dogfood/project-local MCP server 설정 | 기본 설치는 user-scope MCP를 사용하므로 대상 repo에 복사 금지 |
+| `scripts/install-native.sh` | native skill/MCP 설치 및 갱신 | 사용자 홈 skill symlink만 기본 생성. repo-local 파일은 `--project-local` 명시 때만 생성 |
 
 ---
 
@@ -77,7 +94,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 현재 `harness docs`는 에이전트가 읽어야 할 markdown source of truth를 index로 노출한다.
 
-- 대상: `AGENTS.md`, `CLAUDE.md`, `agent_docs/*.md`
+- 대상: `AGENTS.md`, `CLAUDE.md`, `GENIUS_THINK.md`, `agent_docs/*.md`
 - 필드: relative path, absolute path, title, headings, byte size
 - 제공 표면: CLI `docs --json`, MCP `docs_index`, resource `harness://docs`
 
@@ -92,7 +109,17 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 - cleanup: `state prune --max-age DURATION`은 기본 dry-run이고, 실제 삭제에는 `--confirm`이 필요하다.
 - integrity: `state doctor`는 checkpoint 파일을 수정하지 않고 invalid JSON, key mismatch, byte count drift, timestamp 오류를 보고한다.
 - migration: `state migrate`는 기본 dry-run이고, 실제 legacy schema rewrite에는 `--confirm`이 필요하다.
-- self-augment summary checkpoint는 `self-augment history/compare/promote`와 MCP `self_augment_history/self_augment_compare/self_augment_promote`로 조회·비교·승격한다.
+- self-verify summary checkpoint는 `self-verify history/compare/promote`와 MCP `self_verify_history/self_verify_compare/self_verify_promote`로 조회·비교·승격한다.
+
+
+현재 `harness llm-wiki`는 `~/workspace/knowledge-base/llm-wiki`를 공통 long-term memory로 노출한다.
+
+- 기본 root: `~/workspace/knowledge-base/llm-wiki`
+- override: `LLM_WIKI_ROOT`
+- CLI: `llm-wiki inventory/session-context/search/read/capture`
+- MCP tools: `llm_wiki_inventory`, `llm_wiki_session_context`, `llm_wiki_search`, `llm_wiki_read`, `llm_wiki_capture`
+- MCP resources: `harness://llm-wiki/session-context`, `harness://llm-wiki/inventory`, `harness://llm-wiki/index`, `harness://llm-wiki/schema`
+- SessionStart helper: `scripts/session-start-llm-wiki.sh`
 
 기준:
 
@@ -159,8 +186,8 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 | Host | 최소 통합 | 권장 통합 | 주의 |
 |------|----------|----------|------|
-| Codex | `AGENTS.md` + shell에서 `harness` 실행 | `~/.codex/skills/atomic-commit-push` native skill + `~/.codex/config.toml` MCP server | plugin에 core logic을 넣지 않는다 |
-| Claude Code | `CLAUDE.md` + shell에서 `harness` 실행 | `~/.claude/skills`/`.claude/skills` native skill + `.mcp.json` MCP server | hook에서 위험 명령을 직접 실행하지 않는다 |
+| Codex | `AGENTS.md` + shell에서 `harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + MCP initialize llm-wiki instructions | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
+| Claude Code | `CLAUDE.md` + shell에서 `harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server + user `SessionStart` hook | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.mcp.json`은 explicit project-local opt-in에서만 쓴다 |
 
 ---
 
@@ -168,6 +195,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 - core behavior 변경: CLI, MCP, worker adapter가 같은 결과를 내는지 테스트한다.
 - command policy 변경: CAUTIONS와 TESTING에 위험과 검증을 업데이트한다.
-- host adapter 변경: core contract를 복제하지 않았는지 확인한다.
-- shared skill 변경: `skills/<name>` 원본과 `configs/*/skills/<name>` 연결이 같은 대상을 가리키는지 확인한다.
+- host adapter 변경: core contract를 복제하지 않았는지 확인하고 `internal/adapter` contract matrix golden으로 Codex/Claude 설치 표면이 drift되지 않았는지 검증한다.
+- shared skill 변경: `skills/<name>` 원본과 user-level host skill 연결(`~/.codex/skills`, `~/.claude/skills`)이 같은 대상을 가리키는지 확인한다. repo-local skill link는 기본 설치에 포함하지 않는다.
+- llm-wiki 변경: `agent_docs/LLM_WIKI_INTEGRATION.md`, MCP tools/resources golden, CLI smoke, daemon smoke를 함께 갱신한다.
 - state 위치 변경: migration/backward compatibility와 cleanup 전략을 문서화한다.
