@@ -133,8 +133,9 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `internal/adapter/testdata/native_install_contract_matrix.golden.json` — Codex/Claude user-global 기본 설치와 project-local opt-in 계약
 - `harness self-verify` 10회 반복 결과
 - `harness self-verify`의 `risk QA tier` step과 `risk_qa` goal score
-- `harness self-verify --json`의 `summary.contract`/`goal_scores`/`coverage_gaps`/`failure_class`/`rerun_commands` field
+- `harness self-verify --json`의 `summary.contract`/`goal_scores`/`coverage_gaps`/`failure_class`/`rerun_commands`/`step_duration_stats` field
 - `harness self-verify candidates --json` candidate curriculum export and state save/read smoke
+- `harness self-verify compare` step budget p95 regression fixture for labels outside `slowest_steps`
 - `harness self-verify --save-state` summary checkpoint serialization
 - `harness self-verify history` summary checkpoint discovery and retention dry-run/confirm safety
 - `harness self-verify` llm-wiki fixture guard step for temp fixture root and isolated HOME default-root leakage

@@ -193,7 +193,7 @@
           "title": "LLM Wiki 통합 설계"
         },
         {
-          "bytes": 10582,
+          "bytes": 10817,
           "headings": [
             "자기 검증 루프와 자가 증강 루프",
             "1. 자기 검증 루프",
@@ -214,7 +214,7 @@
           "title": "자기 검증 루프와 자가 증강 루프"
         },
         {
-          "bytes": 10118,
+          "bytes": 10177,
           "headings": [
             "자기 검증 루프 후보 발굴 기록",
             "1. 확인한 현재 상태",
@@ -243,7 +243,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 9470,
+          "bytes": 9594,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -258,7 +258,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 10072,
+          "bytes": 10254,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -1136,8 +1136,11 @@
           "category": "performance",
           "id": "self-verify-step-budget-baseline",
           "priority": 7,
+          "satisfaction_evidence": [
+            "summary.step_duration_stats records per-label p95 budgets and compare reports step_budget regressions independent of slowest_steps top entries"
+          ],
           "score": 76,
-          "status": "open",
+          "status": "already_satisfied",
           "verify_with": [
             "baseline compare fixture",
             "label budget regression"
@@ -1304,7 +1307,6 @@
       "loop_kind": "self_verification",
       "ok": true,
       "open_candidate_ids": [
-        "self-verify-step-budget-baseline",
         "self-verify-install-dry-run-smoke"
       ],
       "satisfied_candidate_ids": [
@@ -1314,6 +1316,7 @@
         "self-verify-llm-wiki-fixture-guard",
         "self-verify-failure-rerun-recipe",
         "self-verify-candidate-export",
+        "self-verify-step-budget-baseline",
         "self-verify-policy-path-fuzz-plus",
         "self-verify-json-schema-contract",
         "self-verify-flake-classifier",
@@ -1324,17 +1327,17 @@
         "self-verify-daemon-restart-resilience"
       ],
       "selected_candidate": {
-        "category": "performance",
-        "id": "self-verify-step-budget-baseline",
-        "priority": 7,
+        "category": "native integration",
+        "id": "self-verify-install-dry-run-smoke",
+        "priority": 8,
         "score": 76,
         "status": "open",
         "verify_with": [
-          "baseline compare fixture",
-          "label budget regression"
+          "temp HOME smoke",
+          "dry-run no-write assertion"
         ],
         "why_now": [
-          "slowest_steps top 5 does not catch gradual per-label budget drift"
+          "install-native --dry-run should be an independent no-write evidence label"
         ]
       },
       "source_exists": true,
@@ -1361,6 +1364,16 @@
         }
       ],
       "baseline_snapshot_generated_at": "$TIMESTAMP",
+      "baseline_step_duration_stats": [
+        {
+          "average_duration_ms": 1000,
+          "count": 1,
+          "label": "go test",
+          "max_duration_ms": 1000,
+          "min_duration_ms": 1000,
+          "p95_duration_ms": 1000
+        }
+      ],
       "baseline_summary": {
         "contract": {
           "coverage_claims": null,
@@ -1384,6 +1397,7 @@
             "seed": 600
           }
         ],
+        "step_duration_stats": null,
         "step_labels": [
           "go test",
           "MCP smoke"
@@ -1404,6 +1418,16 @@
         }
       ],
       "candidate_snapshot_generated_at": "$TIMESTAMP",
+      "candidate_step_duration_stats": [
+        {
+          "average_duration_ms": 1000,
+          "count": 1,
+          "label": "go test",
+          "max_duration_ms": 1000,
+          "min_duration_ms": 1000,
+          "p95_duration_ms": 1000
+        }
+      ],
       "candidate_summary": {
         "contract": {
           "coverage_claims": null,
@@ -1427,6 +1451,7 @@
             "seed": 600
           }
         ],
+        "step_duration_stats": null,
         "step_labels": [
           "go test",
           "MCP smoke"
@@ -1446,6 +1471,7 @@
       "regressions": [],
       "slow_step_regressions": [],
       "state_dir": "$STATE_DIR",
+      "step_budget_regressions": [],
       "total_steps_delta": 0,
       "warnings": []
     },
@@ -1453,7 +1479,7 @@
       "entries": [
         {
           "base_seed": 600,
-          "bytes": 891,
+          "bytes": 924,
           "elapsed_ms": 1100,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -1478,7 +1504,7 @@
         },
         {
           "base_seed": 600,
-          "bytes": 891,
+          "bytes": 924,
           "elapsed_ms": 1000,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -1548,6 +1574,7 @@
             "seed": 600
           }
         ],
+        "step_duration_stats": null,
         "step_labels": [
           "go test",
           "MCP smoke"
@@ -2054,7 +2081,7 @@
                 "title": "LLM Wiki 통합 설계"
               },
               {
-                "bytes": 10582,
+                "bytes": 10817,
                 "headings": [
                   "자기 검증 루프와 자가 증강 루프",
                   "1. 자기 검증 루프",
@@ -2075,7 +2102,7 @@
                 "title": "자기 검증 루프와 자가 증강 루프"
               },
               {
-                "bytes": 10118,
+                "bytes": 10177,
                 "headings": [
                   "자기 검증 루프 후보 발굴 기록",
                   "1. 확인한 현재 상태",
@@ -2104,7 +2131,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 9470,
+                "bytes": 9594,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -2119,7 +2146,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 10072,
+                "bytes": 10254,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -2992,8 +3019,11 @@
                 "category": "performance",
                 "id": "self-verify-step-budget-baseline",
                 "priority": 7,
+                "satisfaction_evidence": [
+                  "summary.step_duration_stats records per-label p95 budgets and compare reports step_budget regressions independent of slowest_steps top entries"
+                ],
                 "score": 76,
-                "status": "open",
+                "status": "already_satisfied",
                 "verify_with": [
                   "baseline compare fixture",
                   "label budget regression"
@@ -3160,7 +3190,6 @@
             "loop_kind": "self_verification",
             "ok": true,
             "open_candidate_ids": [
-              "self-verify-step-budget-baseline",
               "self-verify-install-dry-run-smoke"
             ],
             "satisfied_candidate_ids": [
@@ -3170,6 +3199,7 @@
               "self-verify-llm-wiki-fixture-guard",
               "self-verify-failure-rerun-recipe",
               "self-verify-candidate-export",
+              "self-verify-step-budget-baseline",
               "self-verify-policy-path-fuzz-plus",
               "self-verify-json-schema-contract",
               "self-verify-flake-classifier",
@@ -3180,17 +3210,17 @@
               "self-verify-daemon-restart-resilience"
             ],
             "selected_candidate": {
-              "category": "performance",
-              "id": "self-verify-step-budget-baseline",
-              "priority": 7,
+              "category": "native integration",
+              "id": "self-verify-install-dry-run-smoke",
+              "priority": 8,
               "score": 76,
               "status": "open",
               "verify_with": [
-                "baseline compare fixture",
-                "label budget regression"
+                "temp HOME smoke",
+                "dry-run no-write assertion"
               ],
               "why_now": [
-                "slowest_steps top 5 does not catch gradual per-label budget drift"
+                "install-native --dry-run should be an independent no-write evidence label"
               ]
             },
             "source_exists": true,
@@ -3224,6 +3254,16 @@
               }
             ],
             "baseline_snapshot_generated_at": "$TIMESTAMP",
+            "baseline_step_duration_stats": [
+              {
+                "average_duration_ms": 1000,
+                "count": 1,
+                "label": "go test",
+                "max_duration_ms": 1000,
+                "min_duration_ms": 1000,
+                "p95_duration_ms": 1000
+              }
+            ],
             "baseline_summary": {
               "contract": {
                 "coverage_claims": null,
@@ -3247,6 +3287,7 @@
                   "seed": 600
                 }
               ],
+              "step_duration_stats": null,
               "step_labels": [
                 "go test",
                 "MCP smoke"
@@ -3267,6 +3308,16 @@
               }
             ],
             "candidate_snapshot_generated_at": "$TIMESTAMP",
+            "candidate_step_duration_stats": [
+              {
+                "average_duration_ms": 1000,
+                "count": 1,
+                "label": "go test",
+                "max_duration_ms": 1000,
+                "min_duration_ms": 1000,
+                "p95_duration_ms": 1000
+              }
+            ],
             "candidate_summary": {
               "contract": {
                 "coverage_claims": null,
@@ -3290,6 +3341,7 @@
                   "seed": 600
                 }
               ],
+              "step_duration_stats": null,
               "step_labels": [
                 "go test",
                 "MCP smoke"
@@ -3309,6 +3361,7 @@
             "regressions": [],
             "slow_step_regressions": [],
             "state_dir": "$STATE_DIR",
+            "step_budget_regressions": [],
             "total_steps_delta": 0,
             "warnings": []
           },
@@ -3323,7 +3376,7 @@
             "entries": [
               {
                 "base_seed": 600,
-                "bytes": 891,
+                "bytes": 924,
                 "elapsed_ms": 1100,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -3348,7 +3401,7 @@
               },
               {
                 "base_seed": 600,
-                "bytes": 891,
+                "bytes": 924,
                 "elapsed_ms": 1000,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -3429,6 +3482,7 @@
                   "seed": 600
                 }
               ],
+              "step_duration_stats": null,
               "step_labels": [
                 "go test",
                 "MCP smoke"
@@ -3480,13 +3534,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 891,
+                "bytes": 924,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 891,
+                "bytes": 924,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -3551,13 +3605,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 891,
+                "bytes": 924,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 891,
+                "bytes": 924,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -3608,13 +3662,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 891,
+                "bytes": 924,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 891,
+                "bytes": 924,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"

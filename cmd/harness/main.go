@@ -735,6 +735,7 @@ type SelfAugmentSummary struct {
 	FailedStep          string                           `json:"failed_step,omitempty"`
 	StepLabels          []string                         `json:"step_labels"`
 	SlowestSteps        []SelfAugmentSlowStep            `json:"slowest_steps"`
+	StepDurationStats   []SelfAugmentStepDurationStat    `json:"step_duration_stats"`
 }
 
 type SelfVerificationContract struct {
@@ -775,6 +776,15 @@ type SelfAugmentSlowStep struct {
 	Seed       int64  `json:"seed"`
 	Label      string `json:"label"`
 	DurationMS int64  `json:"duration_ms"`
+}
+
+type SelfAugmentStepDurationStat struct {
+	Label             string  `json:"label"`
+	Count             int     `json:"count"`
+	MinDurationMS     int64   `json:"min_duration_ms"`
+	MaxDurationMS     int64   `json:"max_duration_ms"`
+	AverageDurationMS float64 `json:"average_duration_ms"`
+	P95DurationMS     int64   `json:"p95_duration_ms"`
 }
 
 type SelfVerifyProgressEvent struct {
@@ -825,29 +835,32 @@ type SelfAugmentStateSnapshot struct {
 }
 
 type SelfAugmentCompareResult struct {
-	OK                           bool                            `json:"ok"`
-	StateDir                     string                          `json:"state_dir"`
-	BaselineKey                  string                          `json:"baseline_key"`
-	CandidateKey                 string                          `json:"candidate_key"`
-	MaxElapsedRegressionPct      float64                         `json:"max_elapsed_regression_pct"`
-	Regressed                    bool                            `json:"regressed"`
-	ElapsedDeltaMS               int64                           `json:"elapsed_delta_ms"`
-	ElapsedDeltaPct              float64                         `json:"elapsed_delta_pct"`
-	FailedStepsDelta             int                             `json:"failed_steps_delta"`
-	TotalStepsDelta              int                             `json:"total_steps_delta"`
-	BaselineMinimumGoalScore     float64                         `json:"baseline_minimum_goal_score"`
-	CandidateMinimumGoalScore    float64                         `json:"candidate_minimum_goal_score"`
-	MissingStepLabels            []string                        `json:"missing_step_labels"`
-	AddedStepLabels              []string                        `json:"added_step_labels"`
-	Regressions                  []string                        `json:"regressions"`
-	Warnings                     []string                        `json:"warnings"`
-	BaselineSummary              SelfAugmentSummary              `json:"baseline_summary"`
-	CandidateSummary             SelfAugmentSummary              `json:"candidate_summary"`
-	BaselineSnapshotGeneratedAt  string                          `json:"baseline_snapshot_generated_at"`
-	CandidateSnapshotGeneratedAt string                          `json:"candidate_snapshot_generated_at"`
-	BaselineSlowestSteps         []SelfAugmentSlowStep           `json:"baseline_slowest_steps"`
-	CandidateSlowestSteps        []SelfAugmentSlowStep           `json:"candidate_slowest_steps"`
-	SlowStepRegressions          []SelfAugmentSlowStepRegression `json:"slow_step_regressions"`
+	OK                           bool                              `json:"ok"`
+	StateDir                     string                            `json:"state_dir"`
+	BaselineKey                  string                            `json:"baseline_key"`
+	CandidateKey                 string                            `json:"candidate_key"`
+	MaxElapsedRegressionPct      float64                           `json:"max_elapsed_regression_pct"`
+	Regressed                    bool                              `json:"regressed"`
+	ElapsedDeltaMS               int64                             `json:"elapsed_delta_ms"`
+	ElapsedDeltaPct              float64                           `json:"elapsed_delta_pct"`
+	FailedStepsDelta             int                               `json:"failed_steps_delta"`
+	TotalStepsDelta              int                               `json:"total_steps_delta"`
+	BaselineMinimumGoalScore     float64                           `json:"baseline_minimum_goal_score"`
+	CandidateMinimumGoalScore    float64                           `json:"candidate_minimum_goal_score"`
+	MissingStepLabels            []string                          `json:"missing_step_labels"`
+	AddedStepLabels              []string                          `json:"added_step_labels"`
+	Regressions                  []string                          `json:"regressions"`
+	Warnings                     []string                          `json:"warnings"`
+	BaselineSummary              SelfAugmentSummary                `json:"baseline_summary"`
+	CandidateSummary             SelfAugmentSummary                `json:"candidate_summary"`
+	BaselineSnapshotGeneratedAt  string                            `json:"baseline_snapshot_generated_at"`
+	CandidateSnapshotGeneratedAt string                            `json:"candidate_snapshot_generated_at"`
+	BaselineSlowestSteps         []SelfAugmentSlowStep             `json:"baseline_slowest_steps"`
+	CandidateSlowestSteps        []SelfAugmentSlowStep             `json:"candidate_slowest_steps"`
+	SlowStepRegressions          []SelfAugmentSlowStepRegression   `json:"slow_step_regressions"`
+	BaselineStepDurationStats    []SelfAugmentStepDurationStat     `json:"baseline_step_duration_stats"`
+	CandidateStepDurationStats   []SelfAugmentStepDurationStat     `json:"candidate_step_duration_stats"`
+	StepBudgetRegressions        []SelfAugmentStepBudgetRegression `json:"step_budget_regressions"`
 }
 
 type SelfAugmentSlowStepRegression struct {
@@ -856,6 +869,17 @@ type SelfAugmentSlowStepRegression struct {
 	CandidateDurationMS int64   `json:"candidate_duration_ms"`
 	DeltaMS             int64   `json:"delta_ms"`
 	DeltaPct            float64 `json:"delta_pct"`
+}
+
+type SelfAugmentStepBudgetRegression struct {
+	Label               string  `json:"label"`
+	Metric              string  `json:"metric"`
+	BaselineDurationMS  int64   `json:"baseline_duration_ms"`
+	CandidateDurationMS int64   `json:"candidate_duration_ms"`
+	DeltaMS             int64   `json:"delta_ms"`
+	DeltaPct            float64 `json:"delta_pct"`
+	BaselineCount       int     `json:"baseline_count"`
+	CandidateCount      int     `json:"candidate_count"`
 }
 
 type SelfAugmentPromoteResult struct {
@@ -1036,6 +1060,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			{Label: "inspect smoke", Run: func() StepResult { return validateInspect(tempBin, result.HarnessRoot) }},
 			{Label: "docs index smoke", Run: func() StepResult { return validateDocsIndex(tempBin, result.HarnessRoot) }},
 			{Label: "candidate export", Run: func() StepResult { return validateSelfVerifyCandidateExport(tempBin, result.HarnessRoot, seed) }},
+			{Label: "step budget baseline", Run: func() StepResult { return validateStepBudgetBaseline(tempBin, result.HarnessRoot, seed) }},
 			{Label: "command policy smoke", Run: func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) }},
 			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
 			{Label: "llm-wiki fixture guard", Run: func() StepResult { return validateLLMWikiFixtureGuard(tempBin, result.HarnessRoot) }},
@@ -1208,13 +1233,15 @@ func summarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {
 
 func summarizeSelfVerification(result SelfAugmentResult, targetScore float64) SelfAugmentSummary {
 	summary := SelfAugmentSummary{
-		TotalRuns:    len(result.Runs),
-		TargetScore:  targetScore,
-		Contract:     selfVerificationContract(),
-		StepLabels:   []string{},
-		SlowestSteps: []SelfAugmentSlowStep{},
+		TotalRuns:         len(result.Runs),
+		TargetScore:       targetScore,
+		Contract:          selfVerificationContract(),
+		StepLabels:        []string{},
+		SlowestSteps:      []SelfAugmentSlowStep{},
+		StepDurationStats: []SelfAugmentStepDurationStat{},
 	}
 	seenLabels := map[string]bool{}
+	durationsByLabel := map[string][]int64{}
 	for _, run := range result.Runs {
 		for _, step := range run.Steps {
 			summary.TotalSteps++
@@ -1238,6 +1265,7 @@ func summarizeSelfVerification(result SelfAugmentResult, targetScore float64) Se
 				Label:      step.Label,
 				DurationMS: step.DurationMS,
 			})
+			durationsByLabel[step.Label] = append(durationsByLabel[step.Label], step.DurationMS)
 		}
 	}
 	sort.Slice(summary.SlowestSteps, func(i, j int) bool {
@@ -1257,6 +1285,10 @@ func summarizeSelfVerification(result SelfAugmentResult, targetScore float64) Se
 	}
 	if summary.SlowestSteps == nil {
 		summary.SlowestSteps = []SelfAugmentSlowStep{}
+	}
+	summary.StepDurationStats = buildStepDurationStats(durationsByLabel)
+	if summary.StepDurationStats == nil {
+		summary.StepDurationStats = []SelfAugmentStepDurationStat{}
 	}
 	summary.GoalScores = scoreSelfVerificationGoals(result, targetScore)
 	summary.Coverage, summary.CoverageGaps = selfVerificationCoverage(summary.StepLabels)
@@ -1294,7 +1326,7 @@ type selfVerificationCoverageDefinition struct {
 func selfVerificationContract() SelfVerificationContract {
 	contract := SelfVerificationContract{
 		Name:    "self_verification_summary",
-		Version: 2,
+		Version: 3,
 		RequiredFields: []string{
 			"total_runs",
 			"total_steps",
@@ -1309,6 +1341,7 @@ func selfVerificationContract() SelfVerificationContract {
 			"coverage_gaps",
 			"step_labels",
 			"slowest_steps",
+			"step_duration_stats",
 		},
 		GoalNames:      []string{},
 		CoverageClaims: []string{},
@@ -1353,6 +1386,11 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 			Labels:     []string{"candidate export"},
 		},
 		{
+			Name:       "step_budget_baseline",
+			KoreanName: "단계 budget baseline",
+			Labels:     []string{"step budget baseline"},
+		},
+		{
 			Name:       "policy_security",
 			KoreanName: "정책·보안",
 			Labels:     []string{"command policy smoke", "preflight fuzz", "redaction audit"},
@@ -1393,6 +1431,7 @@ func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition 
 		{Claim: "release build artifact", Labels: []string{"go build"}},
 		{Claim: "CLI inspect/docs smoke", Labels: []string{"inspect smoke", "docs index smoke"}},
 		{Claim: "self-verification candidate export", Labels: []string{"candidate export"}},
+		{Claim: "step duration budget baseline", Labels: []string{"step budget baseline"}},
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
 		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
 		{Claim: "llm-wiki fixture guard", Labels: []string{"llm-wiki fixture guard"}},
@@ -1459,6 +1498,8 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 		return "./bin/harness docs --json", true
 	case "candidate export":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify candidates --save-state --state-key self-verify-candidates-test --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state read --key self-verify-candidates-test --json; rm -rf \"$tmp_state\"", true
+	case "step budget baseline":
+		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
 	case "command policy smoke":
 		return "./bin/harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
 	case "MCP smoke":
@@ -1797,6 +1838,7 @@ func compareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 		Regressions:             []string{},
 		Warnings:                []string{},
 		SlowStepRegressions:     []SelfAugmentSlowStepRegression{},
+		StepBudgetRegressions:   []SelfAugmentStepBudgetRegression{},
 	}
 	if strings.TrimSpace(baselineKey) == "" {
 		return result, fmt.Errorf("baseline-key is required")
@@ -1821,6 +1863,8 @@ func compareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 	result.CandidateSnapshotGeneratedAt = candidate.GeneratedAt
 	result.BaselineSlowestSteps = baseline.Summary.SlowestSteps
 	result.CandidateSlowestSteps = candidate.Summary.SlowestSteps
+	result.BaselineStepDurationStats = stepDurationStatsForCompare(baseline.Summary)
+	result.CandidateStepDurationStats = stepDurationStatsForCompare(candidate.Summary)
 	result.ElapsedDeltaMS = candidate.ElapsedMS - baseline.ElapsedMS
 	result.BaselineMinimumGoalScore = baseline.Summary.MinimumGoalScore
 	result.CandidateMinimumGoalScore = candidate.Summary.MinimumGoalScore
@@ -1851,6 +1895,10 @@ func compareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 	result.SlowStepRegressions = compareSlowestStepRegressions(baseline.Summary.SlowestSteps, candidate.Summary.SlowestSteps, maxElapsedRegressionPct)
 	for _, regression := range result.SlowStepRegressions {
 		result.Regressions = append(result.Regressions, fmt.Sprintf("slow_step:%s_increased_by_%.2f_pct", regression.Label, regression.DeltaPct))
+	}
+	result.StepBudgetRegressions = compareStepBudgetRegressions(result.BaselineStepDurationStats, result.CandidateStepDurationStats, maxElapsedRegressionPct)
+	for _, regression := range result.StepBudgetRegressions {
+		result.Regressions = append(result.Regressions, fmt.Sprintf("step_budget:%s_p95_increased_by_%.2f_pct", regression.Label, regression.DeltaPct))
 	}
 	for _, label := range result.MissingStepLabels {
 		result.Regressions = append(result.Regressions, "missing_step_label:"+label)
@@ -1904,6 +1952,54 @@ func compareSlowestStepRegressions(baseline, candidate []SelfAugmentSlowStep, ma
 	return regressions
 }
 
+func compareStepBudgetRegressions(baseline, candidate []SelfAugmentStepDurationStat, maxRegressionPct float64) []SelfAugmentStepBudgetRegression {
+	baselineByLabel := stepDurationStatByLabel(baseline)
+	candidateByLabel := stepDurationStatByLabel(candidate)
+	regressions := []SelfAugmentStepBudgetRegression{}
+	for label, candidateStat := range candidateByLabel {
+		baselineStat, ok := baselineByLabel[label]
+		if !ok || baselineStat.P95DurationMS <= 0 {
+			continue
+		}
+		delta := candidateStat.P95DurationMS - baselineStat.P95DurationMS
+		if delta <= 0 {
+			continue
+		}
+		deltaPct := float64(delta) * 100 / float64(baselineStat.P95DurationMS)
+		if deltaPct <= maxRegressionPct {
+			continue
+		}
+		regressions = append(regressions, SelfAugmentStepBudgetRegression{
+			Label:               label,
+			Metric:              "p95_duration_ms",
+			BaselineDurationMS:  baselineStat.P95DurationMS,
+			CandidateDurationMS: candidateStat.P95DurationMS,
+			DeltaMS:             delta,
+			DeltaPct:            deltaPct,
+			BaselineCount:       baselineStat.Count,
+			CandidateCount:      candidateStat.Count,
+		})
+	}
+	sort.Slice(regressions, func(i, j int) bool {
+		if regressions[i].DeltaPct != regressions[j].DeltaPct {
+			return regressions[i].DeltaPct > regressions[j].DeltaPct
+		}
+		return regressions[i].Label < regressions[j].Label
+	})
+	return regressions
+}
+
+func stepDurationStatByLabel(stats []SelfAugmentStepDurationStat) map[string]SelfAugmentStepDurationStat {
+	out := map[string]SelfAugmentStepDurationStat{}
+	for _, stat := range stats {
+		if stat.Label == "" {
+			continue
+		}
+		out[stat.Label] = stat
+	}
+	return out
+}
+
 func maxSlowStepDurationByLabel(steps []SelfAugmentSlowStep) map[string]int64 {
 	out := map[string]int64{}
 	for _, step := range steps {
@@ -1915,6 +2011,49 @@ func maxSlowStepDurationByLabel(steps []SelfAugmentSlowStep) map[string]int64 {
 		}
 	}
 	return out
+}
+
+func buildStepDurationStats(durationsByLabel map[string][]int64) []SelfAugmentStepDurationStat {
+	stats := []SelfAugmentStepDurationStat{}
+	for label, durations := range durationsByLabel {
+		if label == "" || len(durations) == 0 {
+			continue
+		}
+		sortedDurations := append([]int64{}, durations...)
+		sort.Slice(sortedDurations, func(i, j int) bool { return sortedDurations[i] < sortedDurations[j] })
+		var sum int64
+		for _, duration := range sortedDurations {
+			sum += duration
+		}
+		p95Index := (95*len(sortedDurations) + 99) / 100
+		if p95Index < 1 {
+			p95Index = 1
+		}
+		stats = append(stats, SelfAugmentStepDurationStat{
+			Label:             label,
+			Count:             len(sortedDurations),
+			MinDurationMS:     sortedDurations[0],
+			MaxDurationMS:     sortedDurations[len(sortedDurations)-1],
+			AverageDurationMS: float64(sum) / float64(len(sortedDurations)),
+			P95DurationMS:     sortedDurations[p95Index-1],
+		})
+	}
+	sort.Slice(stats, func(i, j int) bool { return stats[i].Label < stats[j].Label })
+	return stats
+}
+
+func stepDurationStatsForCompare(summary SelfAugmentSummary) []SelfAugmentStepDurationStat {
+	if len(summary.StepDurationStats) > 0 {
+		return append([]SelfAugmentStepDurationStat{}, summary.StepDurationStats...)
+	}
+	durationsByLabel := map[string][]int64{}
+	for _, step := range summary.SlowestSteps {
+		if step.Label == "" {
+			continue
+		}
+		durationsByLabel[step.Label] = append(durationsByLabel[step.Label], step.DurationMS)
+	}
+	return buildStepDurationStats(durationsByLabel)
 }
 
 func promoteSelfAugmentBaseline(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error) {
@@ -2442,14 +2581,14 @@ func validateSelfVerifyCandidateExport(binary, root string, seed int64) StepResu
 	if exportResult.CandidateCount < 10 || len(exportResult.Candidates) != exportResult.CandidateCount {
 		errs = append(errs, "candidate export did not include the candidate curriculum")
 	}
-	if exportResult.SelectedCandidate == nil || exportResult.SelectedCandidate.ID != "self-verify-step-budget-baseline" {
+	if exportResult.SelectedCandidate == nil || exportResult.SelectedCandidate.ID != "self-verify-install-dry-run-smoke" {
 		errs = append(errs, "candidate export selected the wrong next candidate")
 	}
-	if !containsString(exportResult.OpenCandidateIDs, "self-verify-step-budget-baseline") || !containsString(exportResult.OpenCandidateIDs, "self-verify-install-dry-run-smoke") {
+	if !containsString(exportResult.OpenCandidateIDs, "self-verify-install-dry-run-smoke") {
 		errs = append(errs, "candidate export missing expected open candidate IDs")
 	}
-	if containsString(exportResult.OpenCandidateIDs, "self-verify-candidate-export") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-candidate-export") {
-		errs = append(errs, "candidate export did not mark itself satisfied")
+	if containsString(exportResult.OpenCandidateIDs, "self-verify-candidate-export") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-candidate-export") || containsString(exportResult.OpenCandidateIDs, "self-verify-step-budget-baseline") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-step-budget-baseline") {
+		errs = append(errs, "candidate export did not mark implemented candidates satisfied")
 	}
 	if exportResult.StateCheckpoint == nil || !exportResult.StateCheckpoint.OK || exportResult.StateCheckpoint.Key != key {
 		errs = append(errs, "candidate export did not save the requested state checkpoint")
@@ -2466,6 +2605,102 @@ func validateSelfVerifyCandidateExport(binary, root string, seed int64) StepResu
 	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
 	return StepResult{
 		Label:           "candidate export",
+		Command:         strings.Join(commands, " && "),
+		OK:              true,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		StdoutBytes:     stdoutBytes,
+		StdoutTruncated: stdoutTruncated,
+	}
+}
+
+func validateStepBudgetBaseline(binary, root string, seed int64) StepResult {
+	started := time.Now()
+	tempState, err := os.MkdirTemp("", fmt.Sprintf("agent-harness-budget-%d-*", seed))
+	if err != nil {
+		return failedStep("step budget baseline", err)
+	}
+	defer os.RemoveAll(tempState)
+	baselineKey := fmt.Sprintf("self-verify-budget-baseline-%d", seed)
+	candidateKey := fmt.Sprintf("self-verify-budget-candidate-%d", seed)
+	baselineSummary := SelfAugmentSummary{
+		TotalRuns:   10,
+		TotalSteps:  20,
+		PassedSteps: 20,
+		StepLabels:  []string{"go test", "docs index smoke"},
+		SlowestSteps: []SelfAugmentSlowStep{
+			{Iteration: 1, Seed: seed, Label: "go test", DurationMS: 2000},
+		},
+		StepDurationStats: []SelfAugmentStepDurationStat{
+			{Label: "docs index smoke", Count: 10, MinDurationMS: 90, MaxDurationMS: 100, AverageDurationMS: 95, P95DurationMS: 100},
+			{Label: "go test", Count: 10, MinDurationMS: 1800, MaxDurationMS: 2000, AverageDurationMS: 1900, P95DurationMS: 2000},
+		},
+	}
+	candidateSummary := baselineSummary
+	candidateSummary.StepDurationStats = []SelfAugmentStepDurationStat{
+		{Label: "docs index smoke", Count: 10, MinDurationMS: 90, MaxDurationMS: 130, AverageDurationMS: 105, P95DurationMS: 130},
+		{Label: "go test", Count: 10, MinDurationMS: 1800, MaxDurationMS: 2000, AverageDurationMS: 1900, P95DurationMS: 2000},
+	}
+	for _, fixture := range []struct {
+		key     string
+		summary SelfAugmentSummary
+	}{
+		{key: baselineKey, summary: baselineSummary},
+		{key: candidateKey, summary: candidateSummary},
+	} {
+		if err := writeSelfAugmentSnapshotRecord(tempState, fixture.key, SelfAugmentStateSnapshot{
+			SchemaVersion: 1,
+			Kind:          selfVerificationSummaryKind,
+			LoopKind:      "self_verification",
+			KoreanName:    selfVerificationKoreanName,
+			OK:            true,
+			Iterations:    10,
+			BaseSeed:      seed,
+			TargetScore:   95,
+			ElapsedMS:     1000,
+			HarnessRoot:   root,
+			GeneratedAt:   "2000-01-01T00:00:00Z",
+			Summary:       fixture.summary,
+		}); err != nil {
+			return failedStep("step budget baseline", err)
+		}
+	}
+
+	env := []string{"HARNESS_STATE_DIR=" + tempState}
+	compareStep := runCommandStepEnv(root, "step budget baseline", 30*time.Second, "", env, binary, "self-verify", "compare", "--baseline-key", baselineKey, "--candidate-key", candidateKey, "--max-elapsed-regression-pct", "5", "--json")
+	stdoutParts := []string{compareStep.Stdout}
+	commands := []string{compareStep.Command}
+	if !compareStep.OK {
+		return combineFailedStep("step budget baseline", started, compareStep, stdoutParts, commands)
+	}
+	var result SelfAugmentCompareResult
+	if err := json.Unmarshal([]byte(compareStep.Stdout), &result); err != nil {
+		return assertionStepWithOutput("step budget baseline", started, []string{err.Error()}, stdoutParts, commands)
+	}
+	errs := []string{}
+	if !result.OK || !result.Regressed {
+		errs = append(errs, "step budget compare did not report a regression")
+	}
+	if len(result.SlowStepRegressions) != 0 {
+		errs = append(errs, "step budget regression should not depend on slowest_steps top entries")
+	}
+	if len(result.StepBudgetRegressions) != 1 {
+		errs = append(errs, "step budget compare did not report exactly one budget regression")
+	} else {
+		regression := result.StepBudgetRegressions[0]
+		if regression.Label != "docs index smoke" || regression.Metric != "p95_duration_ms" || regression.DeltaMS != 30 || regression.DeltaPct != 30 {
+			errs = append(errs, "step budget regression details mismatch")
+		}
+	}
+	if !containsString(result.Regressions, "step_budget:docs index smoke_p95_increased_by_30.00_pct") {
+		errs = append(errs, "step budget regression marker missing")
+	}
+	if len(errs) > 0 {
+		return assertionStepWithOutput("step budget baseline", started, errs, stdoutParts, commands)
+	}
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
+	return StepResult{
+		Label:           "step budget baseline",
 		Command:         strings.Join(commands, " && "),
 		OK:              true,
 		DurationMS:      time.Since(started).Milliseconds(),
