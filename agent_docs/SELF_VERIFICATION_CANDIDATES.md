@@ -38,14 +38,14 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + user_value*0.20 + (10
 
 ## 3. 후보 목록
 
-2026-05-27 cycle update: `self-verify-progress-heartbeat`는 `self-verify --progress=jsonl`로 구현됐다. stdout의 최종 JSON summary는 유지하고 stderr에 JSON Lines progress event를 기록한다. `self-verify-secret-redaction-audit`도 `redaction audit` self-verify 단계로 구현됐다. `self-verify-coverage-gap-report`는 `summary.coverage`와 `summary.coverage_gaps`로 구현됐다. `self-verify-failure-rerun-recipe`는 실패 summary의 `rerun_commands`로 구현됐다. `self-verify-policy-path-fuzz-plus`는 symlink escape, `~/path`, remote URL/ref 예외 fixture로 보강됐다. `self-verify-json-schema-contract`는 `summary.contract` version/hash/required fields로 구현됐다. `self-verify-flake-classifier`는 `failure_class`와 `failure_clusters`로 구현됐다. `self-verify-output-size-budget`은 bounded stdout/stderr와 truncation metadata로 구현됐다. `self-verify-history-retention-budget`은 history retention-limit 계획/dry-run/confirm으로 구현됐다. `self-verify-parallel-temp-isolation`은 parallel isolation self-verify step으로 구현됐다. `self-verify-duplicate-mcp-warning`은 Claude MCP conflicting scopes fixture 분류로 구현됐다. `self-verify-daemon-restart-resilience`는 daemon resilience self-verify step으로 구현됐다. 다음 self-augment cycle의 기본 1순위는 `self-verify-llm-wiki-fixture-guard`이다.
+2026-05-27 cycle update: `self-verify-progress-heartbeat`는 `self-verify --progress=jsonl`로 구현됐다. stdout의 최종 JSON summary는 유지하고 stderr에 JSON Lines progress event를 기록한다. `self-verify-secret-redaction-audit`도 `redaction audit` self-verify 단계로 구현됐다. `self-verify-coverage-gap-report`는 `summary.coverage`와 `summary.coverage_gaps`로 구현됐다. `self-verify-failure-rerun-recipe`는 실패 summary의 `rerun_commands`로 구현됐다. `self-verify-policy-path-fuzz-plus`는 symlink escape, `~/path`, remote URL/ref 예외 fixture로 보강됐다. `self-verify-json-schema-contract`는 `summary.contract` version/hash/required fields로 구현됐다. `self-verify-flake-classifier`는 `failure_class`와 `failure_clusters`로 구현됐다. `self-verify-output-size-budget`은 bounded stdout/stderr와 truncation metadata로 구현됐다. `self-verify-history-retention-budget`은 history retention-limit 계획/dry-run/confirm으로 구현됐다. `self-verify-parallel-temp-isolation`은 parallel isolation self-verify step으로 구현됐다. `self-verify-duplicate-mcp-warning`은 Claude MCP conflicting scopes fixture 분류로 구현됐다. `self-verify-daemon-restart-resilience`는 daemon resilience self-verify step으로 구현됐다. `self-verify-llm-wiki-fixture-guard`는 temp fixture/isolated HOME guard self-verify step으로 구현됐다. 다음 self-augment cycle의 기본 1순위는 `self-verify-candidate-export`이다.
 
 | 우선순위 | 후보 ID | 분류 | 점수 | 왜 지금 필요한가 | 검증 방법 |
 | --- | --- | --- | ---: | --- | --- |
 | 1 | `self-verify-progress-heartbeat` | 관측성 | 81 | self-verify가 52초 동안 실행되면 redirect/무출력 환경에서 hang으로 보인다. iteration, current step, elapsed, last-success를 JSONL 또는 stderr heartbeat로 내보내면 불필요한 인터럽트를 줄인다. | `self-verify --progress=jsonl` fixture, timeout 없는 heartbeat test, 기존 `--json` stdout contract 불변 golden |
 | 2 | `self-verify-secret-redaction-audit` | 보안 | 79 | command output, state snapshot, golden, MCP 응답에 token-like 문자열이 섞이면 검증 루프가 오히려 secret 유출 경로가 된다. | synthetic secret fixture, stdout/state/golden redaction scan, `go test ./...`, preflight secret-like smoke |
 | 3 | `self-verify-coverage-gap-report` | coverage | 78 | 현재 labels는 넓지만 “문서 invariant 또는 CLI 계약 중 어떤 항목이 어느 step으로 보호되는지”가 기계적으로 드러나지 않는다. | docs/invariant-to-step matrix fixture, unowned claim 실패 fixture, `docs --json` smoke |
-| 4 | `self-verify-llm-wiki-fixture-guard` | MCP/state | 78 | MCP smoke는 temp wiki를 쓰지만, 회귀 시 사용자 durable wiki를 건드리지 않는다는 guard가 명시 후보로 고정되어야 한다. | `LLM_WIKI_ROOT` temp guard, default env leak negative test, MCP smoke |
+| 4 | `self-verify-llm-wiki-fixture-guard` | MCP/state | 78 | MCP smoke는 temp wiki를 쓰지만, 회귀 시 사용자 durable wiki를 건드리지 않는다는 guard가 명시 후보로 고정되어야 한다. | 구현됨: `LLM_WIKI_ROOT` temp guard, isolated HOME default negative test, MCP smoke default-root leak assertion |
 | 5 | `self-verify-failure-rerun-recipe` | 재현성 | 78 | 실패 시 현재 summary만으로는 해당 step을 같은 env/seed로 바로 재현하기 어렵다. 실패 step마다 copy-paste 가능한 rerun command를 제공한다. | failing fixture, summary `rerun_commands`, command redaction test |
 | 6 | `self-verify-candidate-export` | curriculum | 77 | self-augment 후보가 모두 `already_satisfied`가 된 뒤 다음 self-verify 후보를 별도 명령으로 뽑을 수 있어야 반복 개선이 끊기지 않는다. | `self-verify candidates --json` golden, state save/read, docs smoke |
 | 7 | `self-verify-step-budget-baseline` | 성능 | 76 | `slowest_steps` top 5는 있으나 label별 budget/분산을 추적하지 않으면 “항상 조금씩 느려지는” 회귀를 놓친다. | baseline compare fixture, label budget regression, `slow_step:*` 확장 test |
@@ -61,10 +61,9 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + user_value*0.20 + (10
 
 ## 4. 추천 실행 순서
 
-1. `self-verify-llm-wiki-fixture-guard`: MCP smoke가 사용자 durable wiki를 건드리지 않고 temp fixture만 쓰는지 guard를 명시한다.
-2. `self-verify-candidate-export`: 다음 self-verify 후보를 명령으로 내보내 반복 개선이 끊기지 않게 한다.
-3. `self-verify-step-budget-baseline`: label별 성능 budget/분산을 추적해 느린 회귀를 더 일찍 잡는다.
-4. `self-verify-install-dry-run-smoke`: install-native dry-run을 독립 evidence label로 승격한다.
+1. `self-verify-candidate-export`: 다음 self-verify 후보를 명령으로 내보내 반복 개선이 끊기지 않게 한다.
+2. `self-verify-step-budget-baseline`: label별 성능 budget/분산을 추적해 느린 회귀를 더 일찍 잡는다.
+3. `self-verify-install-dry-run-smoke`: install-native dry-run을 독립 evidence label로 승격한다.
 
 ## 5. 완료 기준
 
@@ -75,4 +74,4 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + user_value*0.20 + (10
 - 현재 baseline 증거와 이번 인터럽트 원인을 반영한다.
 - 다음 cycle에서 바로 선택할 추천 후보가 있다.
 
-다음 자가 증강 cycle에서 실제 구현 후보를 고를 때는 아직 완료되지 않은 후보 중 가장 높은 점수인 `self-verify-llm-wiki-fixture-guard`를 기본 1순위로 본다.
+다음 자가 증강 cycle에서 실제 구현 후보를 고를 때는 아직 완료되지 않은 후보 중 가장 높은 점수인 `self-verify-candidate-export`를 기본 1순위로 본다.

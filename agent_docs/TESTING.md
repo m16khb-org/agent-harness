@@ -136,6 +136,7 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `harness self-verify --json`의 `summary.contract`/`goal_scores`/`coverage_gaps`/`failure_class`/`rerun_commands` field
 - `harness self-verify --save-state` summary checkpoint serialization
 - `harness self-verify history` summary checkpoint discovery and retention dry-run/confirm safety
+- `harness self-verify` llm-wiki fixture guard step for temp fixture root and isolated HOME default-root leakage
 - `harness self-verify` parallel isolation step for temp state, daemon dir, llm-wiki fixture, and artifact path collisions
 - `harness self-verify` native integration fixture for Claude MCP conflicting-scope warning classification
 - `harness self-verify` daemon resilience step for stale lock/socket recovery and socket permission checks

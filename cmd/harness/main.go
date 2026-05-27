@@ -1033,6 +1033,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			{Label: "docs index smoke", Run: func() StepResult { return validateDocsIndex(tempBin, result.HarnessRoot) }},
 			{Label: "command policy smoke", Run: func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) }},
 			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
+			{Label: "llm-wiki fixture guard", Run: func() StepResult { return validateLLMWikiFixtureGuard(tempBin, result.HarnessRoot) }},
 			{Label: "state roundtrip", Run: func() StepResult { return validateStateRoundtrip(tempBin, result.HarnessRoot, seed) }},
 			{Label: "parallel isolation", Run: func() StepResult { return validateParallelTempIsolation(tempBin, result.HarnessRoot, seed) }},
 			{Label: "daemon resilience", Run: func() StepResult { return validateDaemonRestartResilience(tempBin, result.HarnessRoot, seed) }},
@@ -1349,7 +1350,12 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 		{
 			Name:       "mcp_state_regression",
 			KoreanName: "MCP·상태 회귀",
-			Labels:     []string{"MCP smoke", "state roundtrip"},
+			Labels:     []string{"MCP smoke", "llm-wiki fixture guard", "state roundtrip"},
+		},
+		{
+			Name:       "llm_wiki_fixture_guard",
+			KoreanName: "LLM Wiki fixture guard",
+			Labels:     []string{"llm-wiki fixture guard"},
 		},
 		{
 			Name:       "concurrency_isolation",
@@ -1378,6 +1384,7 @@ func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition 
 		{Claim: "CLI inspect/docs smoke", Labels: []string{"inspect smoke", "docs index smoke"}},
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
 		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
+		{Claim: "llm-wiki fixture guard", Labels: []string{"llm-wiki fixture guard"}},
 		{Claim: "parallel temp isolation", Labels: []string{"parallel isolation"}},
 		{Claim: "daemon restart resilience", Labels: []string{"daemon resilience"}},
 		{Claim: "git preflight fuzz", Labels: []string{"preflight fuzz"}},
@@ -1443,6 +1450,8 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 		return "./bin/harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
 	case "MCP smoke":
 		return "./bin/harness mcp", true
+	case "llm-wiki fixture guard":
+		return "tmp_home=\"$(mktemp -d)\" tmp_wiki=\"$tmp_home/llm-wiki\" && mkdir -p \"$tmp_wiki/00-meta\" \"$tmp_wiki/20-wiki/concepts\" && printf '# Wiki Index\\n\\n- [[llm-wiki-pattern]]\\n' > \"$tmp_wiki/00-meta/index.md\" && printf -- '---\\ntitle: LLM Wiki Pattern\\ntype: concept\\n---\\n\\nfixture\\n' > \"$tmp_wiki/20-wiki/concepts/llm-wiki-pattern.md\" && HOME=\"$tmp_home\" LLM_WIKI_ROOT=\"$tmp_wiki\" ./bin/harness llm-wiki inventory --json; rm -rf \"$tmp_home\"", true
 	case "state roundtrip":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state migrate --json; rm -rf \"$tmp_state\"", true
 	case "parallel isolation":
@@ -2547,8 +2556,116 @@ func validateMCP(binary, root string) StepResult {
 		step.OK = false
 		step.Error = "MCP smoke did not expose expected tool/resource"
 	}
+	defaultRoot, err := core.ResolveLLMWikiRoot(core.DefaultLLMWikiRoot)
+	if err == nil && defaultRoot != tempWiki && strings.Contains(step.Stdout, defaultRoot) {
+		step.OK = false
+		step.Error = "MCP smoke leaked the default llm-wiki root instead of the temp fixture"
+	}
+	if !strings.Contains(step.Stdout, tempWiki) {
+		step.OK = false
+		step.Error = "MCP smoke did not expose the temp llm-wiki fixture root"
+	}
 	step.Stdout, step.StdoutTruncated, step.StdoutBytes = tailWithBudget(step.Stdout, selfVerifyAggregateOutputBudgetBytes)
 	return step
+}
+
+func validateLLMWikiFixtureGuard(binary, root string) StepResult {
+	started := time.Now()
+	tempHome, err := os.MkdirTemp("", "agent-harness-llm-wiki-home-*")
+	if err != nil {
+		return failedStep("llm-wiki fixture guard", err)
+	}
+	defer os.RemoveAll(tempHome)
+	tempWiki := filepath.Join(tempHome, "fixture-llm-wiki")
+	if err := writeSelfAugmentWikiFixture(tempWiki); err != nil {
+		return failedStep("llm-wiki fixture guard", err)
+	}
+	defaultRoot, err := core.ResolveLLMWikiRoot(core.DefaultLLMWikiRoot)
+	if err != nil {
+		return failedStep("llm-wiki fixture guard", err)
+	}
+	expectedHomeDefault := filepath.Join(tempHome, "workspace", "knowledge-base", "llm-wiki")
+	commands := []string{}
+	stdoutParts := []string{}
+	runJSON := func(label string, env []string, out any, args ...string) (StepResult, error) {
+		step := runCommandStepEnv(root, label, 30*time.Second, "", env, binary, args...)
+		commands = append(commands, step.Command)
+		stdoutParts = append(stdoutParts, step.Stdout)
+		if !step.OK {
+			return step, fmt.Errorf("%s failed: %s", label, step.Error)
+		}
+		if err := json.Unmarshal([]byte(step.Stdout), out); err != nil {
+			return step, fmt.Errorf("parse %s JSON: %w", label, err)
+		}
+		return step, nil
+	}
+	fixtureEnv := []string{"HOME=" + tempHome, "LLM_WIKI_ROOT=" + tempWiki}
+	errs := []string{}
+
+	var inventory core.LLMWikiInventory
+	if step, err := runJSON("llm-wiki fixture inventory", fixtureEnv, &inventory, "llm-wiki", "inventory", "--json"); err != nil {
+		return combineFailedStep("llm-wiki fixture guard", started, step, stdoutParts, commands)
+	}
+	if filepath.Clean(inventory.Root) != filepath.Clean(tempWiki) || !inventory.OK || inventory.Status != "ready" {
+		errs = append(errs, "fixture inventory did not use the temp wiki root")
+	}
+	if inventory.Counts.MarkdownFiles < 5 {
+		errs = append(errs, fmt.Sprintf("fixture inventory markdown count = %d, want at least 5", inventory.Counts.MarkdownFiles))
+	}
+
+	var contextResult core.LLMWikiSessionContext
+	if step, err := runJSON("llm-wiki fixture session-context", fixtureEnv, &contextResult, "llm-wiki", "session-context", "--json"); err != nil {
+		return combineFailedStep("llm-wiki fixture guard", started, step, stdoutParts, commands)
+	}
+	if filepath.Clean(contextResult.Inventory.Root) != filepath.Clean(tempWiki) || !strings.Contains(contextResult.Text, "llm-wiki-pattern") {
+		errs = append(errs, "session-context did not expose the temp wiki fixture")
+	}
+
+	var searchResult core.LLMWikiSearchResponse
+	if step, err := runJSON("llm-wiki fixture search", fixtureEnv, &searchResult, "llm-wiki", "search", "--query", "llm wiki", "--limit", "3", "--json"); err != nil {
+		return combineFailedStep("llm-wiki fixture guard", started, step, stdoutParts, commands)
+	}
+	foundFixture := false
+	for _, item := range searchResult.Results {
+		if item.Path == "20-wiki/concepts/llm-wiki-pattern.md" {
+			foundFixture = true
+			break
+		}
+	}
+	if filepath.Clean(searchResult.Root) != filepath.Clean(tempWiki) || !foundFixture {
+		errs = append(errs, "search did not stay inside the temp wiki fixture")
+	}
+
+	var defaultInventory core.LLMWikiInventory
+	if step, err := runJSON("llm-wiki fixture default-root negative", []string{"HOME=" + tempHome}, &defaultInventory, "llm-wiki", "inventory", "--json"); err != nil {
+		return combineFailedStep("llm-wiki fixture guard", started, step, stdoutParts, commands)
+	}
+	if filepath.Clean(defaultInventory.Root) != filepath.Clean(expectedHomeDefault) {
+		errs = append(errs, "default root did not resolve under the isolated HOME")
+	}
+	if defaultInventory.Exists || defaultInventory.Status != "missing" {
+		errs = append(errs, "isolated HOME default root unexpectedly existed")
+	}
+	combinedStdout := strings.Join(stdoutParts, "\n")
+	if defaultRoot != tempWiki && strings.Contains(combinedStdout, defaultRoot) {
+		errs = append(errs, "llm-wiki commands leaked the user's durable default root")
+	}
+	if !strings.Contains(combinedStdout, tempWiki) {
+		errs = append(errs, "llm-wiki commands did not report the fixture root")
+	}
+	if len(errs) > 0 {
+		return assertionStepWithOutput("llm-wiki fixture guard", started, errs, stdoutParts, commands)
+	}
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(combinedStdout, selfVerifyAggregateOutputBudgetBytes)
+	return StepResult{
+		Label:           "llm-wiki fixture guard",
+		Command:         strings.Join(commands, " && "),
+		OK:              true,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		StdoutBytes:     stdoutBytes,
+		StdoutTruncated: stdoutTruncated,
+	}
 }
 
 func writeSelfAugmentWikiFixture(root string) error {
@@ -3620,7 +3737,7 @@ func runCommandStepEnvWithBudget(dir, label string, timeout time.Duration, stdin
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
 	if len(env) > 0 {
-		cmd.Env = append(os.Environ(), env...)
+		cmd.Env = mergeEnvOverrides(os.Environ(), env)
 	}
 	if stdin != "" {
 		cmd.Stdin = strings.NewReader(stdin)
@@ -3650,6 +3767,44 @@ func runCommandStepEnvWithBudget(dir, label string, timeout time.Duration, stdin
 		step.Error = err.Error()
 	}
 	return step
+}
+
+func mergeEnvOverrides(base []string, overrides []string) []string {
+	result := make([]string, 0, len(base)+len(overrides))
+	indexByKey := map[string]int{}
+	for _, entry := range base {
+		key, ok := envEntryKey(entry)
+		if !ok {
+			continue
+		}
+		if idx, exists := indexByKey[key]; exists {
+			result[idx] = entry
+			continue
+		}
+		indexByKey[key] = len(result)
+		result = append(result, entry)
+	}
+	for _, entry := range overrides {
+		key, ok := envEntryKey(entry)
+		if !ok {
+			continue
+		}
+		if idx, exists := indexByKey[key]; exists {
+			result[idx] = entry
+			continue
+		}
+		indexByKey[key] = len(result)
+		result = append(result, entry)
+	}
+	return result
+}
+
+func envEntryKey(entry string) (string, bool) {
+	idx := strings.IndexByte(entry, '=')
+	if idx <= 0 {
+		return "", false
+	}
+	return entry[:idx], true
 }
 
 func budgetCommandOutput(s string, budget int) (string, bool, int) {
