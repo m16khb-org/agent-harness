@@ -119,6 +119,9 @@ func TestResponseContractsGolden(t *testing.T) {
 	cliSnapshot["self_augment_lesson"] = runCLIJSONContract(t, replacements, func() error {
 		return runSelfAugment([]string{"lesson", "--candidate", "reflexion-state-memory", "--lesson", "Contract lesson", "--next-action", "Check stored lesson before next cycle", "--state-key", "self-augment-lesson-contract", "--json"})
 	})
+	cliSnapshot["self_verify_candidates"] = runCLIJSONContract(t, replacements, func() error {
+		return runSelfVerify([]string{"candidates", "--save-state", "--state-key", "self-verify-candidates-contract", "--json"})
+	})
 	cliSnapshot["self_verify_compare"] = runCLIJSONContract(t, replacements, func() error {
 		return runSelfVerify([]string{"compare", "--baseline-key", "self-verify-baseline", "--candidate-key", "self-verify-candidate", "--json"})
 	})
@@ -169,6 +172,10 @@ func TestResponseContractsGolden(t *testing.T) {
 		"lesson":       "MCP lesson",
 		"next_action":  "Check MCP lesson before next cycle",
 		"state_key":    "self-augment-lesson-mcp",
+	})
+	mcpSnapshot["self_verify_candidates"] = runMCPToolContract(t, replacements, "self_verify_candidates", map[string]any{
+		"save_state": true,
+		"state_key":  "self-verify-candidates-mcp",
 	})
 	mcpSnapshot["self_verify_compare"] = runMCPToolContract(t, replacements, "self_verify_compare", map[string]any{
 		"baseline_key":  "self-verify-baseline",
@@ -402,7 +409,7 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 
 func looksLikeDynamicStateRecord(value map[string]any) bool {
 	keyValue, ok := value["key"].(string)
-	if !ok || !strings.HasPrefix(keyValue, "self-augment-lesson-") {
+	if !ok || (!strings.HasPrefix(keyValue, "self-augment-lesson-") && !strings.HasPrefix(keyValue, "self-verify-candidates-")) {
 		return false
 	}
 	if _, ok := value["schema_version"]; !ok {

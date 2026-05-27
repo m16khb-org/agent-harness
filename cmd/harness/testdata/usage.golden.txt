@@ -23,6 +23,7 @@ Usage:
   harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
   harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
   harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]
+  harness self-verify candidates [--save-state] [--state-key KEY] [--json]
   harness self-augment [--cycles=1] [--target-score=95] [--save-state] [--state-key KEY] [--json]
   harness self-augment lesson [--candidate ID] --lesson TEXT --next-action TEXT [--source TEXT] [--severity info|warning|error] [--state-key KEY] [--json]
   harness mcp

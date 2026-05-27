@@ -789,6 +789,25 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 	}
 }
 
+func TestExportSelfVerificationCandidatesSelectsNextOpenCandidate(t *testing.T) {
+	result := exportSelfVerificationCandidates()
+	if !result.OK || result.Kind != selfVerificationCandidateExportKind || result.LoopKind != "self_verification" {
+		t.Fatalf("unexpected candidate export identity: %+v", result)
+	}
+	if result.CandidateCount < 10 || len(result.Candidates) != result.CandidateCount {
+		t.Fatalf("expected self-verification candidate curriculum: %+v", result)
+	}
+	if result.SelectedCandidate == nil || result.SelectedCandidate.ID != "self-verify-step-budget-baseline" {
+		t.Fatalf("expected step-budget baseline as next candidate: %+v", result.SelectedCandidate)
+	}
+	if !containsString(result.OpenCandidateIDs, "self-verify-step-budget-baseline") || !containsString(result.OpenCandidateIDs, "self-verify-install-dry-run-smoke") {
+		t.Fatalf("missing expected open IDs: %+v", result.OpenCandidateIDs)
+	}
+	if containsString(result.OpenCandidateIDs, "self-verify-candidate-export") || !containsString(result.SatisfiedCandidateIDs, "self-verify-candidate-export") {
+		t.Fatalf("candidate-export should be satisfied after this CLI exists: open=%v satisfied=%v", result.OpenCandidateIDs, result.SatisfiedCandidateIDs)
+	}
+}
+
 func candidateByID(candidates []SelfAugmentCandidate, id string) SelfAugmentCandidate {
 	for _, candidate := range candidates {
 		if candidate.ID == id {

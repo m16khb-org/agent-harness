@@ -193,7 +193,7 @@
           "title": "LLM Wiki 통합 설계"
         },
         {
-          "bytes": 10348,
+          "bytes": 10582,
           "headings": [
             "자기 검증 루프와 자가 증강 루프",
             "1. 자기 검증 루프",
@@ -214,7 +214,7 @@
           "title": "자기 검증 루프와 자가 증강 루프"
         },
         {
-          "bytes": 10060,
+          "bytes": 10118,
           "headings": [
             "자기 검증 루프 후보 발굴 기록",
             "1. 확인한 현재 상태",
@@ -243,7 +243,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 9374,
+          "bytes": 9470,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -258,7 +258,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 9911,
+          "bytes": 10072,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -1026,6 +1026,328 @@
       ],
       "warnings": []
     },
+    "self_verify_candidates": {
+      "candidate_count": 16,
+      "candidates": [
+        {
+          "category": "observability",
+          "id": "self-verify-progress-heartbeat",
+          "priority": 1,
+          "satisfaction_evidence": [
+            "--progress=jsonl emits loop and step JSONL events without breaking stdout JSON"
+          ],
+          "score": 81,
+          "status": "already_satisfied",
+          "verify_with": [
+            "self-verify --progress=jsonl",
+            "progress reporter test"
+          ],
+          "why_now": [
+            "self-verify can look hung in redirected output without progress events"
+          ]
+        },
+        {
+          "category": "security",
+          "id": "self-verify-secret-redaction-audit",
+          "priority": 2,
+          "satisfaction_evidence": [
+            "redaction audit scans docs, skill metadata, golden responses, and synthetic command output"
+          ],
+          "score": 79,
+          "status": "already_satisfied",
+          "verify_with": [
+            "redaction audit step",
+            "secret-like fixture scan"
+          ],
+          "why_now": [
+            "verification artifacts must not become a secret leak path"
+          ]
+        },
+        {
+          "category": "coverage",
+          "id": "self-verify-coverage-gap-report",
+          "priority": 3,
+          "satisfaction_evidence": [
+            "summary includes coverage matrix and fails termination when claims are missing evidence labels"
+          ],
+          "score": 78,
+          "status": "already_satisfied",
+          "verify_with": [
+            "summary.coverage",
+            "summary.coverage_gaps"
+          ],
+          "why_now": [
+            "self-verify claims need machine-readable evidence mapping"
+          ]
+        },
+        {
+          "category": "MCP/state",
+          "id": "self-verify-llm-wiki-fixture-guard",
+          "priority": 4,
+          "satisfaction_evidence": [
+            "llm-wiki fixture guard covers temp LLM_WIKI_ROOT and isolated HOME default-root negative checks"
+          ],
+          "score": 78,
+          "status": "already_satisfied",
+          "verify_with": [
+            "llm-wiki fixture guard",
+            "MCP smoke root leak assertion"
+          ],
+          "why_now": [
+            "MCP smoke must prove it uses temp wiki fixtures, not durable user memory"
+          ]
+        },
+        {
+          "category": "reproducibility",
+          "id": "self-verify-failure-rerun-recipe",
+          "priority": 5,
+          "satisfaction_evidence": [
+            "failure summaries include rerun_commands keyed by failed label"
+          ],
+          "score": 78,
+          "status": "already_satisfied",
+          "verify_with": [
+            "summary.rerun_commands",
+            "failure fixture"
+          ],
+          "why_now": [
+            "failed steps need copy-paste rerun commands"
+          ]
+        },
+        {
+          "category": "curriculum",
+          "id": "self-verify-candidate-export",
+          "priority": 6,
+          "satisfaction_evidence": [
+            "self-verify candidates exports open/satisfied candidate IDs and can save a state snapshot"
+          ],
+          "score": 77,
+          "status": "already_satisfied",
+          "verify_with": [
+            "self-verify candidates --json",
+            "state save/read",
+            "response contract golden"
+          ],
+          "why_now": [
+            "self-augment candidates can all be satisfied, so self-verify needs its own next-candidate export"
+          ]
+        },
+        {
+          "category": "performance",
+          "id": "self-verify-step-budget-baseline",
+          "priority": 7,
+          "score": 76,
+          "status": "open",
+          "verify_with": [
+            "baseline compare fixture",
+            "label budget regression"
+          ],
+          "why_now": [
+            "slowest_steps top 5 does not catch gradual per-label budget drift"
+          ]
+        },
+        {
+          "category": "native integration",
+          "id": "self-verify-install-dry-run-smoke",
+          "priority": 8,
+          "score": 76,
+          "status": "open",
+          "verify_with": [
+            "temp HOME smoke",
+            "dry-run no-write assertion"
+          ],
+          "why_now": [
+            "install-native --dry-run should be an independent no-write evidence label"
+          ]
+        },
+        {
+          "category": "policy/security",
+          "id": "self-verify-policy-path-fuzz-plus",
+          "priority": 9,
+          "satisfaction_evidence": [
+            "policy fuzz covers symlink escape, ~/path, remote URL/ref exceptions, and outside workspace assertions"
+          ],
+          "score": 76,
+          "status": "already_satisfied",
+          "verify_with": [
+            "preflight fuzz",
+            "policy path fixtures"
+          ],
+          "why_now": [
+            "path policy needs seeded edge cases beyond simple outside paths"
+          ]
+        },
+        {
+          "category": "contract",
+          "id": "self-verify-json-schema-contract",
+          "priority": 10,
+          "satisfaction_evidence": [
+            "summary.contract includes version, hash, required fields, goals, and coverage claims"
+          ],
+          "score": 76,
+          "status": "already_satisfied",
+          "verify_with": [
+            "summary.contract",
+            "response contract golden"
+          ],
+          "why_now": [
+            "summary schema drift should be visible without hand-reading golden diffs"
+          ]
+        },
+        {
+          "category": "reliability",
+          "id": "self-verify-flake-classifier",
+          "priority": 11,
+          "satisfaction_evidence": [
+            "summary classifies failure patterns and clusters failed seeds by step"
+          ],
+          "score": 75,
+          "status": "already_satisfied",
+          "verify_with": [
+            "failure_class",
+            "failure_clusters"
+          ],
+          "why_now": [
+            "intermittent seed failures need deterministic vs flaky classification"
+          ]
+        },
+        {
+          "category": "operability",
+          "id": "self-verify-output-size-budget",
+          "priority": 12,
+          "satisfaction_evidence": [
+            "StepResult output is budgeted with byte counts and truncation flags"
+          ],
+          "score": 73,
+          "status": "already_satisfied",
+          "verify_with": [
+            "bounded stdout/stderr",
+            "truncation metadata"
+          ],
+          "why_now": [
+            "large command output can bloat JSON and state snapshots"
+          ]
+        },
+        {
+          "category": "state operations",
+          "id": "self-verify-history-retention-budget",
+          "priority": 13,
+          "satisfaction_evidence": [
+            "history retention computes dry-run candidates and requires --confirm to delete"
+          ],
+          "score": 71,
+          "status": "already_satisfied",
+          "verify_with": [
+            "history --retention-limit",
+            "prune dry-run/confirm"
+          ],
+          "why_now": [
+            "history checkpoints need retention planning before state gets slow"
+          ]
+        },
+        {
+          "category": "concurrency",
+          "id": "self-verify-parallel-temp-isolation",
+          "priority": 14,
+          "satisfaction_evidence": [
+            "parallel isolation probes unique temp roots for state, daemon, llm-wiki, and artifact paths"
+          ],
+          "score": 70,
+          "status": "already_satisfied",
+          "verify_with": [
+            "parallel isolation step",
+            "race tier"
+          ],
+          "why_now": [
+            "parallel self-verify runs must not collide in temp state, daemon, wiki, or artifacts"
+          ]
+        },
+        {
+          "category": "native integration",
+          "id": "self-verify-duplicate-mcp-warning",
+          "priority": 15,
+          "satisfaction_evidence": [
+            "native integration classifies conflicting user/project MCP scope warnings from fixtures"
+          ],
+          "score": 70,
+          "status": "already_satisfied",
+          "verify_with": [
+            "Claude MCP warning fixture",
+            "native integration step"
+          ],
+          "why_now": [
+            "host MCP duplicate-scope warnings can pass smoke tests while hurting UX"
+          ]
+        },
+        {
+          "category": "daemon",
+          "id": "self-verify-daemon-restart-resilience",
+          "priority": 16,
+          "satisfaction_evidence": [
+            "daemon resilience verifies stale lock/socket recovery, start/status/stop, and socket permissions"
+          ],
+          "score": 68,
+          "status": "already_satisfied",
+          "verify_with": [
+            "daemon resilience step",
+            "stale lock recovery test"
+          ],
+          "why_now": [
+            "daemon-backed MCP proxy must recover from stale lock/socket state"
+          ]
+        }
+      ],
+      "generated_at": "$TIMESTAMP",
+      "harness_root": "$HARNESS_ROOT",
+      "kind": "self_verification_candidate_export",
+      "korean_name": "자기 검증 루프",
+      "loop_kind": "self_verification",
+      "ok": true,
+      "open_candidate_ids": [
+        "self-verify-step-budget-baseline",
+        "self-verify-install-dry-run-smoke"
+      ],
+      "satisfied_candidate_ids": [
+        "self-verify-progress-heartbeat",
+        "self-verify-secret-redaction-audit",
+        "self-verify-coverage-gap-report",
+        "self-verify-llm-wiki-fixture-guard",
+        "self-verify-failure-rerun-recipe",
+        "self-verify-candidate-export",
+        "self-verify-policy-path-fuzz-plus",
+        "self-verify-json-schema-contract",
+        "self-verify-flake-classifier",
+        "self-verify-output-size-budget",
+        "self-verify-history-retention-budget",
+        "self-verify-parallel-temp-isolation",
+        "self-verify-duplicate-mcp-warning",
+        "self-verify-daemon-restart-resilience"
+      ],
+      "selected_candidate": {
+        "category": "performance",
+        "id": "self-verify-step-budget-baseline",
+        "priority": 7,
+        "score": 76,
+        "status": "open",
+        "verify_with": [
+          "baseline compare fixture",
+          "label budget regression"
+        ],
+        "why_now": [
+          "slowest_steps top 5 does not catch gradual per-label budget drift"
+        ]
+      },
+      "source_exists": true,
+      "source_path": "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
+      "state_checkpoint": {
+        "bytes": "$STATE_BYTES",
+        "key": "self-verify-candidates-contract",
+        "ok": true,
+        "path": "$STATE_DIR/self-verify-candidates-contract.json",
+        "state_dir": "$STATE_DIR"
+      },
+      "warnings": []
+    },
     "self_verify_compare": {
       "added_step_labels": [],
       "baseline_key": "self-verify-baseline",
@@ -1184,7 +1506,12 @@
       "ok": true,
       "prefix": "self-verify",
       "returned": 2,
-      "skipped": [],
+      "skipped": [
+        {
+          "key": "self-verify-candidates-contract",
+          "reason": "kind:self_verification_candidate_export"
+        }
+      ],
       "state_dir": "$STATE_DIR",
       "total_matches": 2,
       "warnings": []
@@ -1727,7 +2054,7 @@
                 "title": "LLM Wiki 통합 설계"
               },
               {
-                "bytes": 10348,
+                "bytes": 10582,
                 "headings": [
                   "자기 검증 루프와 자가 증강 루프",
                   "1. 자기 검증 루프",
@@ -1748,7 +2075,7 @@
                 "title": "자기 검증 루프와 자가 증강 루프"
               },
               {
-                "bytes": 10060,
+                "bytes": 10118,
                 "headings": [
                   "자기 검증 루프 후보 발굴 기록",
                   "1. 확인한 현재 상태",
@@ -1777,7 +2104,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 9374,
+                "bytes": 9470,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -1792,7 +2119,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 9911,
+                "bytes": 10072,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -2552,6 +2879,335 @@
         }
       ]
     },
+    "self_verify_candidates": {
+      "content": [
+        {
+          "json": {
+            "candidate_count": 16,
+            "candidates": [
+              {
+                "category": "observability",
+                "id": "self-verify-progress-heartbeat",
+                "priority": 1,
+                "satisfaction_evidence": [
+                  "--progress=jsonl emits loop and step JSONL events without breaking stdout JSON"
+                ],
+                "score": 81,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "self-verify --progress=jsonl",
+                  "progress reporter test"
+                ],
+                "why_now": [
+                  "self-verify can look hung in redirected output without progress events"
+                ]
+              },
+              {
+                "category": "security",
+                "id": "self-verify-secret-redaction-audit",
+                "priority": 2,
+                "satisfaction_evidence": [
+                  "redaction audit scans docs, skill metadata, golden responses, and synthetic command output"
+                ],
+                "score": 79,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "redaction audit step",
+                  "secret-like fixture scan"
+                ],
+                "why_now": [
+                  "verification artifacts must not become a secret leak path"
+                ]
+              },
+              {
+                "category": "coverage",
+                "id": "self-verify-coverage-gap-report",
+                "priority": 3,
+                "satisfaction_evidence": [
+                  "summary includes coverage matrix and fails termination when claims are missing evidence labels"
+                ],
+                "score": 78,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "summary.coverage",
+                  "summary.coverage_gaps"
+                ],
+                "why_now": [
+                  "self-verify claims need machine-readable evidence mapping"
+                ]
+              },
+              {
+                "category": "MCP/state",
+                "id": "self-verify-llm-wiki-fixture-guard",
+                "priority": 4,
+                "satisfaction_evidence": [
+                  "llm-wiki fixture guard covers temp LLM_WIKI_ROOT and isolated HOME default-root negative checks"
+                ],
+                "score": 78,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "llm-wiki fixture guard",
+                  "MCP smoke root leak assertion"
+                ],
+                "why_now": [
+                  "MCP smoke must prove it uses temp wiki fixtures, not durable user memory"
+                ]
+              },
+              {
+                "category": "reproducibility",
+                "id": "self-verify-failure-rerun-recipe",
+                "priority": 5,
+                "satisfaction_evidence": [
+                  "failure summaries include rerun_commands keyed by failed label"
+                ],
+                "score": 78,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "summary.rerun_commands",
+                  "failure fixture"
+                ],
+                "why_now": [
+                  "failed steps need copy-paste rerun commands"
+                ]
+              },
+              {
+                "category": "curriculum",
+                "id": "self-verify-candidate-export",
+                "priority": 6,
+                "satisfaction_evidence": [
+                  "self-verify candidates exports open/satisfied candidate IDs and can save a state snapshot"
+                ],
+                "score": 77,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "self-verify candidates --json",
+                  "state save/read",
+                  "response contract golden"
+                ],
+                "why_now": [
+                  "self-augment candidates can all be satisfied, so self-verify needs its own next-candidate export"
+                ]
+              },
+              {
+                "category": "performance",
+                "id": "self-verify-step-budget-baseline",
+                "priority": 7,
+                "score": 76,
+                "status": "open",
+                "verify_with": [
+                  "baseline compare fixture",
+                  "label budget regression"
+                ],
+                "why_now": [
+                  "slowest_steps top 5 does not catch gradual per-label budget drift"
+                ]
+              },
+              {
+                "category": "native integration",
+                "id": "self-verify-install-dry-run-smoke",
+                "priority": 8,
+                "score": 76,
+                "status": "open",
+                "verify_with": [
+                  "temp HOME smoke",
+                  "dry-run no-write assertion"
+                ],
+                "why_now": [
+                  "install-native --dry-run should be an independent no-write evidence label"
+                ]
+              },
+              {
+                "category": "policy/security",
+                "id": "self-verify-policy-path-fuzz-plus",
+                "priority": 9,
+                "satisfaction_evidence": [
+                  "policy fuzz covers symlink escape, ~/path, remote URL/ref exceptions, and outside workspace assertions"
+                ],
+                "score": 76,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "preflight fuzz",
+                  "policy path fixtures"
+                ],
+                "why_now": [
+                  "path policy needs seeded edge cases beyond simple outside paths"
+                ]
+              },
+              {
+                "category": "contract",
+                "id": "self-verify-json-schema-contract",
+                "priority": 10,
+                "satisfaction_evidence": [
+                  "summary.contract includes version, hash, required fields, goals, and coverage claims"
+                ],
+                "score": 76,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "summary.contract",
+                  "response contract golden"
+                ],
+                "why_now": [
+                  "summary schema drift should be visible without hand-reading golden diffs"
+                ]
+              },
+              {
+                "category": "reliability",
+                "id": "self-verify-flake-classifier",
+                "priority": 11,
+                "satisfaction_evidence": [
+                  "summary classifies failure patterns and clusters failed seeds by step"
+                ],
+                "score": 75,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "failure_class",
+                  "failure_clusters"
+                ],
+                "why_now": [
+                  "intermittent seed failures need deterministic vs flaky classification"
+                ]
+              },
+              {
+                "category": "operability",
+                "id": "self-verify-output-size-budget",
+                "priority": 12,
+                "satisfaction_evidence": [
+                  "StepResult output is budgeted with byte counts and truncation flags"
+                ],
+                "score": 73,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "bounded stdout/stderr",
+                  "truncation metadata"
+                ],
+                "why_now": [
+                  "large command output can bloat JSON and state snapshots"
+                ]
+              },
+              {
+                "category": "state operations",
+                "id": "self-verify-history-retention-budget",
+                "priority": 13,
+                "satisfaction_evidence": [
+                  "history retention computes dry-run candidates and requires --confirm to delete"
+                ],
+                "score": 71,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "history --retention-limit",
+                  "prune dry-run/confirm"
+                ],
+                "why_now": [
+                  "history checkpoints need retention planning before state gets slow"
+                ]
+              },
+              {
+                "category": "concurrency",
+                "id": "self-verify-parallel-temp-isolation",
+                "priority": 14,
+                "satisfaction_evidence": [
+                  "parallel isolation probes unique temp roots for state, daemon, llm-wiki, and artifact paths"
+                ],
+                "score": 70,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "parallel isolation step",
+                  "race tier"
+                ],
+                "why_now": [
+                  "parallel self-verify runs must not collide in temp state, daemon, wiki, or artifacts"
+                ]
+              },
+              {
+                "category": "native integration",
+                "id": "self-verify-duplicate-mcp-warning",
+                "priority": 15,
+                "satisfaction_evidence": [
+                  "native integration classifies conflicting user/project MCP scope warnings from fixtures"
+                ],
+                "score": 70,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "Claude MCP warning fixture",
+                  "native integration step"
+                ],
+                "why_now": [
+                  "host MCP duplicate-scope warnings can pass smoke tests while hurting UX"
+                ]
+              },
+              {
+                "category": "daemon",
+                "id": "self-verify-daemon-restart-resilience",
+                "priority": 16,
+                "satisfaction_evidence": [
+                  "daemon resilience verifies stale lock/socket recovery, start/status/stop, and socket permissions"
+                ],
+                "score": 68,
+                "status": "already_satisfied",
+                "verify_with": [
+                  "daemon resilience step",
+                  "stale lock recovery test"
+                ],
+                "why_now": [
+                  "daemon-backed MCP proxy must recover from stale lock/socket state"
+                ]
+              }
+            ],
+            "generated_at": "$TIMESTAMP",
+            "harness_root": "$HARNESS_ROOT",
+            "kind": "self_verification_candidate_export",
+            "korean_name": "자기 검증 루프",
+            "loop_kind": "self_verification",
+            "ok": true,
+            "open_candidate_ids": [
+              "self-verify-step-budget-baseline",
+              "self-verify-install-dry-run-smoke"
+            ],
+            "satisfied_candidate_ids": [
+              "self-verify-progress-heartbeat",
+              "self-verify-secret-redaction-audit",
+              "self-verify-coverage-gap-report",
+              "self-verify-llm-wiki-fixture-guard",
+              "self-verify-failure-rerun-recipe",
+              "self-verify-candidate-export",
+              "self-verify-policy-path-fuzz-plus",
+              "self-verify-json-schema-contract",
+              "self-verify-flake-classifier",
+              "self-verify-output-size-budget",
+              "self-verify-history-retention-budget",
+              "self-verify-parallel-temp-isolation",
+              "self-verify-duplicate-mcp-warning",
+              "self-verify-daemon-restart-resilience"
+            ],
+            "selected_candidate": {
+              "category": "performance",
+              "id": "self-verify-step-budget-baseline",
+              "priority": 7,
+              "score": 76,
+              "status": "open",
+              "verify_with": [
+                "baseline compare fixture",
+                "label budget regression"
+              ],
+              "why_now": [
+                "slowest_steps top 5 does not catch gradual per-label budget drift"
+              ]
+            },
+            "source_exists": true,
+            "source_path": "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
+            "state_checkpoint": {
+              "bytes": "$STATE_BYTES",
+              "key": "self-verify-candidates-mcp",
+              "ok": true,
+              "path": "$STATE_DIR/self-verify-candidates-mcp.json",
+              "state_dir": "$STATE_DIR"
+            },
+            "warnings": []
+          },
+          "type": "text"
+        }
+      ]
+    },
     "self_verify_compare": {
       "content": [
         {
@@ -2720,7 +3376,16 @@
             "ok": true,
             "prefix": "self-verify",
             "returned": 2,
-            "skipped": [],
+            "skipped": [
+              {
+                "key": "self-verify-candidates-contract",
+                "reason": "kind:self_verification_candidate_export"
+              },
+              {
+                "key": "self-verify-candidates-mcp",
+                "reason": "kind:self_verification_candidate_export"
+              }
+            ],
             "state_dir": "$STATE_DIR",
             "total_matches": 2,
             "warnings": []
@@ -2782,7 +3447,7 @@
       "content": [
         {
           "json": {
-            "checked": 6,
+            "checked": 7,
             "healthy": false,
             "issues": [
               {
@@ -2825,6 +3490,12 @@
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": "$STATE_RECORD_BYTES",
+                "key": "self-verify-candidates-contract",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
               }
             ],
             "valid_keys": [
@@ -2832,7 +3503,8 @@
               "legacy",
               "self-augment-lesson-contract",
               "self-verify-baseline",
-              "self-verify-candidate"
+              "self-verify-candidate",
+              "self-verify-candidates-contract"
             ]
           },
           "type": "text"
@@ -2889,6 +3561,12 @@
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": "$STATE_RECORD_BYTES",
+                "key": "self-verify-candidates-contract",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
               }
             ],
             "skipped_keys": [
@@ -2896,7 +3574,8 @@
               "legacy",
               "self-augment-lesson-contract",
               "self-verify-baseline",
-              "self-verify-candidate"
+              "self-verify-candidate",
+              "self-verify-candidates-contract"
             ],
             "state_dir": "$STATE_DIR",
             "to_schema": 1
@@ -2939,13 +3618,20 @@
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
+              },
+              {
+                "bytes": "$STATE_RECORD_BYTES",
+                "key": "self-verify-candidates-contract",
+                "schema_version": 1,
+                "updated_at": "$TIMESTAMP"
               }
             ],
             "kept_keys": [
               "current",
               "self-augment-lesson-contract",
               "self-verify-baseline",
-              "self-verify-candidate"
+              "self-verify-candidate",
+              "self-verify-candidates-contract"
             ],
             "max_age": "1h0m0s",
             "ok": true,

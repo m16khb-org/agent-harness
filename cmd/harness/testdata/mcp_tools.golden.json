@@ -483,6 +483,23 @@
     "name": "self_verify"
   },
   {
+    "description": "Export the 자기 검증 루프 improvement candidate curriculum, including open/satisfied IDs and the next selected candidate.",
+    "inputSchema": {
+      "properties": {
+        "save_state": {
+          "description": "When true, save the candidate export snapshot to harness state.",
+          "type": "boolean"
+        },
+        "state_key": {
+          "description": "State key for save_state; defaults to self-verify-candidates-latest.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "self_verify_candidates"
+  },
+  {
     "description": "List saved 자기 검증 루프 summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
     "inputSchema": {
       "properties": {

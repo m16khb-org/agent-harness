@@ -128,6 +128,7 @@ Usage:
   harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
   harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
   harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]
+  harness self-verify candidates [--save-state] [--state-key KEY] [--json]
   harness self-augment [--cycles=1] [--target-score=95] [--save-state] [--state-key KEY] [--json]
   harness self-augment lesson [--candidate ID] --lesson TEXT --next-action TEXT [--source TEXT] [--severity info|warning|error] [--state-key KEY] [--json]
   harness mcp
@@ -319,6 +320,9 @@ func runSelfVerify(args []string) error {
 	}
 	if len(args) > 0 && args[0] == "promote" {
 		return runSelfVerifyPromote(args[1:])
+	}
+	if len(args) > 0 && args[0] == "candidates" {
+		return runSelfVerifyCandidates(args[1:])
 	}
 	fs := flag.NewFlagSet("self-verify", flag.ContinueOnError)
 	iterations := fs.Int("iterations", 10, "number of self-verification loop iterations; must be at least 10")
@@ -1031,6 +1035,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			}},
 			{Label: "inspect smoke", Run: func() StepResult { return validateInspect(tempBin, result.HarnessRoot) }},
 			{Label: "docs index smoke", Run: func() StepResult { return validateDocsIndex(tempBin, result.HarnessRoot) }},
+			{Label: "candidate export", Run: func() StepResult { return validateSelfVerifyCandidateExport(tempBin, result.HarnessRoot, seed) }},
 			{Label: "command policy smoke", Run: func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) }},
 			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
 			{Label: "llm-wiki fixture guard", Run: func() StepResult { return validateLLMWikiFixtureGuard(tempBin, result.HarnessRoot) }},
@@ -1340,7 +1345,12 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 		{
 			Name:       "qa_smoke",
 			KoreanName: "QA 스모크",
-			Labels:     []string{"harness invariants", "inspect smoke", "docs index smoke", "QA gate"},
+			Labels:     []string{"harness invariants", "inspect smoke", "docs index smoke", "candidate export", "QA gate"},
+		},
+		{
+			Name:       "candidate_export",
+			KoreanName: "후보 export",
+			Labels:     []string{"candidate export"},
 		},
 		{
 			Name:       "policy_security",
@@ -1382,6 +1392,7 @@ func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition 
 		{Claim: "risk-tier static and race QA", Labels: []string{"risk QA tier"}},
 		{Claim: "release build artifact", Labels: []string{"go build"}},
 		{Claim: "CLI inspect/docs smoke", Labels: []string{"inspect smoke", "docs index smoke"}},
+		{Claim: "self-verification candidate export", Labels: []string{"candidate export"}},
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
 		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
 		{Claim: "llm-wiki fixture guard", Labels: []string{"llm-wiki fixture guard"}},
@@ -1446,6 +1457,8 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 		return "./bin/harness inspect --json", true
 	case "docs index smoke":
 		return "./bin/harness docs --json", true
+	case "candidate export":
+		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify candidates --save-state --state-key self-verify-candidates-test --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state read --key self-verify-candidates-test --json; rm -rf \"$tmp_state\"", true
 	case "command policy smoke":
 		return "./bin/harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
 	case "MCP smoke":
@@ -2384,6 +2397,84 @@ func validateDocsIndex(binary, root string) StepResult {
 	return step
 }
 
+func validateSelfVerifyCandidateExport(binary, root string, seed int64) StepResult {
+	started := time.Now()
+	tempState, err := os.MkdirTemp("", fmt.Sprintf("agent-harness-candidates-%d-*", seed))
+	if err != nil {
+		return failedStep("candidate export", err)
+	}
+	defer os.RemoveAll(tempState)
+	key := fmt.Sprintf("self-verify-candidates-%d", seed)
+	env := []string{"HARNESS_STATE_DIR=" + tempState}
+	stdoutParts := []string{}
+	commands := []string{}
+
+	exportStep := runCommandStepEnv(root, "candidate export", 30*time.Second, "", env, binary, "self-verify", "candidates", "--save-state", "--state-key", key, "--json")
+	stdoutParts = append(stdoutParts, exportStep.Stdout)
+	commands = append(commands, exportStep.Command)
+	if !exportStep.OK {
+		return combineFailedStep("candidate export", started, exportStep, stdoutParts, commands)
+	}
+	var exportResult SelfVerificationCandidateExportResult
+	if err := json.Unmarshal([]byte(exportStep.Stdout), &exportResult); err != nil {
+		return assertionStepWithOutput("candidate export", started, []string{err.Error()}, stdoutParts, commands)
+	}
+
+	readStep := runCommandStepEnv(root, "candidate export state read", 30*time.Second, "", env, binary, "state", "read", "--key", key, "--json")
+	stdoutParts = append(stdoutParts, readStep.Stdout)
+	commands = append(commands, readStep.Command)
+	if !readStep.OK {
+		return combineFailedStep("candidate export", started, readStep, stdoutParts, commands)
+	}
+	var readResult core.StateResult
+	if err := json.Unmarshal([]byte(readStep.Stdout), &readResult); err != nil {
+		return assertionStepWithOutput("candidate export", started, []string{err.Error()}, stdoutParts, commands)
+	}
+	var snapshot SelfVerificationCandidateExportStateSnapshot
+	if err := json.Unmarshal([]byte(readResult.Record.Content), &snapshot); err != nil {
+		return assertionStepWithOutput("candidate export", started, []string{"candidate export state snapshot parse: " + err.Error()}, stdoutParts, commands)
+	}
+
+	errs := []string{}
+	if !exportResult.OK || exportResult.Kind != selfVerificationCandidateExportKind || exportResult.LoopKind != "self_verification" {
+		errs = append(errs, "candidate export identity mismatch")
+	}
+	if exportResult.CandidateCount < 10 || len(exportResult.Candidates) != exportResult.CandidateCount {
+		errs = append(errs, "candidate export did not include the candidate curriculum")
+	}
+	if exportResult.SelectedCandidate == nil || exportResult.SelectedCandidate.ID != "self-verify-step-budget-baseline" {
+		errs = append(errs, "candidate export selected the wrong next candidate")
+	}
+	if !containsString(exportResult.OpenCandidateIDs, "self-verify-step-budget-baseline") || !containsString(exportResult.OpenCandidateIDs, "self-verify-install-dry-run-smoke") {
+		errs = append(errs, "candidate export missing expected open candidate IDs")
+	}
+	if containsString(exportResult.OpenCandidateIDs, "self-verify-candidate-export") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-candidate-export") {
+		errs = append(errs, "candidate export did not mark itself satisfied")
+	}
+	if exportResult.StateCheckpoint == nil || !exportResult.StateCheckpoint.OK || exportResult.StateCheckpoint.Key != key {
+		errs = append(errs, "candidate export did not save the requested state checkpoint")
+	}
+	if snapshot.Kind != selfVerificationCandidateExportKind || snapshot.CandidateCount != exportResult.CandidateCount {
+		errs = append(errs, "candidate export state snapshot mismatch")
+	}
+	if snapshot.SelectedCandidate == nil || snapshot.SelectedCandidate.ID != exportResult.SelectedCandidate.ID {
+		errs = append(errs, "candidate export state selected candidate mismatch")
+	}
+	if len(errs) > 0 {
+		return assertionStepWithOutput("candidate export", started, errs, stdoutParts, commands)
+	}
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
+	return StepResult{
+		Label:           "candidate export",
+		Command:         strings.Join(commands, " && "),
+		OK:              true,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		StdoutBytes:     stdoutBytes,
+		StdoutTruncated: stdoutTruncated,
+	}
+}
+
 func docIndexContains(docs []core.DocIndexInfo, relPath string) bool {
 	for _, doc := range docs {
 		if doc.RelPath == relPath {
@@ -2552,7 +2643,7 @@ func validateMCP(binary, root string) StepResult {
 			return step
 		}
 	}
-	if !strings.Contains(step.Stdout, "atomic_commit_preflight") || !strings.Contains(step.Stdout, "docs_index") || !strings.Contains(step.Stdout, "command_policy_check") || !strings.Contains(step.Stdout, "state_write") || !strings.Contains(step.Stdout, "state_prune") || !strings.Contains(step.Stdout, "state_doctor") || !strings.Contains(step.Stdout, "state_migrate") || !strings.Contains(step.Stdout, "self_augment") || !strings.Contains(step.Stdout, "self_augment_lesson") || !strings.Contains(step.Stdout, "self_verify") || !strings.Contains(step.Stdout, "self_verify_history") || !strings.Contains(step.Stdout, "self_verify_compare") || !strings.Contains(step.Stdout, "self_verify_promote") || !strings.Contains(step.Stdout, "llm_wiki_session_context") || !strings.Contains(step.Stdout, "llm_wiki_search") || !strings.Contains(step.Stdout, "dry_run") || !strings.Contains(step.Stdout, "healthy") || !strings.Contains(step.Stdout, "to_schema") || !strings.Contains(step.Stdout, "Lore:") || !strings.Contains(step.Stdout, "LLM Wiki Session Context") {
+	if !strings.Contains(step.Stdout, "atomic_commit_preflight") || !strings.Contains(step.Stdout, "docs_index") || !strings.Contains(step.Stdout, "command_policy_check") || !strings.Contains(step.Stdout, "state_write") || !strings.Contains(step.Stdout, "state_prune") || !strings.Contains(step.Stdout, "state_doctor") || !strings.Contains(step.Stdout, "state_migrate") || !strings.Contains(step.Stdout, "self_augment") || !strings.Contains(step.Stdout, "self_augment_lesson") || !strings.Contains(step.Stdout, "self_verify") || !strings.Contains(step.Stdout, "self_verify_candidates") || !strings.Contains(step.Stdout, "self_verify_history") || !strings.Contains(step.Stdout, "self_verify_compare") || !strings.Contains(step.Stdout, "self_verify_promote") || !strings.Contains(step.Stdout, "llm_wiki_session_context") || !strings.Contains(step.Stdout, "llm_wiki_search") || !strings.Contains(step.Stdout, "dry_run") || !strings.Contains(step.Stdout, "healthy") || !strings.Contains(step.Stdout, "to_schema") || !strings.Contains(step.Stdout, "Lore:") || !strings.Contains(step.Stdout, "LLM Wiki Session Context") {
 		step.OK = false
 		step.Error = "MCP smoke did not expose expected tool/resource"
 	}
@@ -4144,6 +4235,14 @@ func mcpTools() []map[string]any {
 			}},
 		},
 		{
+			"name":        "self_verify_candidates",
+			"description": "Export the 자기 검증 루프 improvement candidate curriculum, including open/satisfied IDs and the next selected candidate.",
+			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+				"save_state": map[string]any{"type": "boolean", "description": "When true, save the candidate export snapshot to harness state."},
+				"state_key":  map[string]any{"type": "string", "description": "State key for save_state; defaults to self-verify-candidates-latest."},
+			}},
+		},
+		{
 			"name":        "self_verify_history",
 			"description": "List saved 자기 검증 루프 summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
@@ -4367,6 +4466,14 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		}
 		if err != nil {
 			return nil, &rpcError{Code: -32000, Message: "Self-verification failed", Data: result}
+		}
+		payload = result
+	case "self_verify_candidates":
+		result := exportSelfVerificationCandidates()
+		if boolArg(call.Arguments, "save_state") {
+			if err := saveSelfVerificationCandidateExport(&result, stringArgWithDefault(call.Arguments, "state_key", "self-verify-candidates-latest")); err != nil {
+				return nil, &rpcError{Code: -32000, Message: "Self-verify candidate export save failed", Data: result}
+			}
 		}
 		payload = result
 	case "self_verify_history", "self_augment_history":

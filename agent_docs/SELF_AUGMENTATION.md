@@ -44,16 +44,17 @@ MCP tools:
 4. **risk QA tier**: working tree risk를 판정해 민감한 Go 변경에는 `go test -race ./... -count=1`와 `go vet ./...`를 실행하고, 일반 Go 변경에는 `go vet ./...`를 실행한다. 문서/설정만 바뀐 경우에는 skip을 명시적으로 기록한다.
 5. `go build`
 6. inspect/docs smoke
-7. command policy smoke
-8. MCP smoke
-9. llm-wiki fixture guard: MCP/CLI smoke가 사용자 durable wiki 대신 temp fixture와 isolated HOME만 사용하는지 확인
-10. state roundtrip, prune, doctor, migrate, compare/promote/history and history retention smoke
-11. parallel isolation: 동시 실행 중 temp state, daemon dir, llm-wiki fixture, build artifact path가 충돌하지 않는지 확인
-12. daemon resilience: stale lock/socket 상태에서 daemon start/status/stop 복구와 socket permission을 확인
-13. git preflight fuzz
-14. native Codex/Claude integration smoke, including duplicate MCP warning classification fixture
-15. redaction audit: docs, skill metadata, golden response artifacts에 unredacted secret-like 문자열이 없는지 확인
-16. **QA gate**: `GENIUS_THINK.md`, 루프 문서, skill frontmatter/openai metadata, self-augment skill 존재 여부 확인
+7. candidate export: `self-verify candidates`가 다음 자기 검증 후보와 open/satisfied 후보를 JSON/state로 내보내는지 확인
+8. command policy smoke
+9. MCP smoke
+10. llm-wiki fixture guard: MCP/CLI smoke가 사용자 durable wiki 대신 temp fixture와 isolated HOME만 사용하는지 확인
+11. state roundtrip, prune, doctor, migrate, compare/promote/history and history retention smoke
+12. parallel isolation: 동시 실행 중 temp state, daemon dir, llm-wiki fixture, build artifact path가 충돌하지 않는지 확인
+13. daemon resilience: stale lock/socket 상태에서 daemon start/status/stop 복구와 socket permission을 확인
+14. git preflight fuzz
+15. native Codex/Claude integration smoke, including duplicate MCP warning classification fixture
+16. redaction audit: docs, skill metadata, golden response artifacts에 unredacted secret-like 문자열이 없는지 확인
+17. **QA gate**: `GENIUS_THINK.md`, 루프 문서, skill frontmatter/openai metadata, self-augment skill 존재 여부 확인
 
 ### 점수 목표
 
@@ -62,7 +63,8 @@ MCP tools:
 | 테스트 스위트 | `go test`, `contract golden tests` | 점수 > 95 |
 | 위험도 기반 QA | `risk QA tier` | 점수 > 95 |
 | 빌드 산출물 | `go build` | 점수 > 95 |
-| QA 스모크 | invariants, inspect/docs, QA gate | 점수 > 95 |
+| QA 스모크 | invariants, inspect/docs, candidate export, QA gate | 점수 > 95 |
+| 후보 export | candidate export | 점수 > 95 |
 | 정책·보안 | command policy, preflight fuzz, redaction audit | 점수 > 95 |
 | MCP·상태 회귀 | MCP smoke, llm-wiki fixture guard, state roundtrip | 점수 > 95 |
 | LLM Wiki fixture guard | llm-wiki fixture guard | 점수 > 95 |
@@ -73,7 +75,7 @@ MCP tools:
 `self-verify --json`의 `summary.contract`, `summary.goal_scores`, `summary.coverage`, `summary.coverage_gaps`, 실패 시 `summary.failure_class`/`summary.failure_clusters`/`summary.rerun_commands`, `summary.minimum_goal_score`, `summary.termination_eligible`를 판정 기준으로 삼는다.
 `--progress=jsonl`은 stdout JSON summary를 깨지 않고 stderr에 `loop_start`, `iteration_start`, `step_start`, `step_end`, `iteration_end`, `loop_end` 이벤트를 JSON Lines로 기록한다.
 `self-verify compare`는 전체 `elapsed_ms`뿐 아니라 `summary.slowest_steps`를 label별 baseline으로 비교해 느린 단계 회귀를 `slow_step:*` regression으로 승격한다.
-자기 검증 루프 자체의 다음 개선 후보는 `agent_docs/SELF_VERIFICATION_CANDIDATES.md`에 기록한다. progress heartbeat, secret redaction audit, coverage gap report, failure rerun recipe, policy path fuzz plus, JSON schema contract, flake classifier, output size budget, history retention budget, parallel temp isolation, duplicate MCP warning, daemon restart resilience, llm-wiki fixture guard는 구현됐고, 현재 미완료 1순위는 candidate export이다.
+자기 검증 루프 자체의 다음 개선 후보는 `agent_docs/SELF_VERIFICATION_CANDIDATES.md`에 기록한다. progress heartbeat, secret redaction audit, coverage gap report, failure rerun recipe, policy path fuzz plus, JSON schema contract, flake classifier, output size budget, history retention budget, parallel temp isolation, duplicate MCP warning, daemon restart resilience, llm-wiki fixture guard, candidate export는 구현됐고, 현재 미완료 1순위는 step budget baseline이다.
 
 ## 2. 자가 증강 루프
 
