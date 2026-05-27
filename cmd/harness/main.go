@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"agent-harness/internal/core"
@@ -1033,6 +1034,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			{Label: "command policy smoke", Run: func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) }},
 			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
 			{Label: "state roundtrip", Run: func() StepResult { return validateStateRoundtrip(tempBin, result.HarnessRoot, seed) }},
+			{Label: "parallel isolation", Run: func() StepResult { return validateParallelTempIsolation(tempBin, result.HarnessRoot, seed) }},
 			{Label: "preflight fuzz", Run: func() StepResult { return validatePreflightFuzz(tempBin, result.HarnessRoot, seed) }},
 			{Label: "native integration", Run: func() StepResult { return validateNativeIntegration(result.HarnessRoot) }},
 			{Label: "redaction audit", Run: func() StepResult { return validateRedactionAudit(result.HarnessRoot) }},
@@ -1349,6 +1351,11 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 			Labels:     []string{"MCP smoke", "state roundtrip"},
 		},
 		{
+			Name:       "concurrency_isolation",
+			KoreanName: "동시성 격리",
+			Labels:     []string{"parallel isolation"},
+		},
+		{
 			Name:       "native_integration",
 			KoreanName: "네이티브 통합",
 			Labels:     []string{"native integration"},
@@ -1365,6 +1372,7 @@ func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition 
 		{Claim: "CLI inspect/docs smoke", Labels: []string{"inspect smoke", "docs index smoke"}},
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
 		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
+		{Claim: "parallel temp isolation", Labels: []string{"parallel isolation"}},
 		{Claim: "git preflight fuzz", Labels: []string{"preflight fuzz"}},
 		{Claim: "native integration", Labels: []string{"native integration"}},
 		{Claim: "secret redaction audit", Labels: []string{"redaction audit"}},
@@ -1430,6 +1438,8 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 		return "./bin/harness mcp", true
 	case "state roundtrip":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state migrate --json; rm -rf \"$tmp_state\"", true
+	case "parallel isolation":
+		return "./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json", true
 	case "preflight fuzz":
 		return "./bin/harness preflight --json \"$PWD\"", true
 	case "native integration":
@@ -2931,6 +2941,192 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 		StdoutBytes:     stdoutBytes,
 		StdoutTruncated: stdoutTruncated,
 	}
+}
+
+type parallelIsolationProbe struct {
+	Worker       int      `json:"worker"`
+	TempRoot     string   `json:"temp_root"`
+	StateDir     string   `json:"state_dir"`
+	DaemonDir    string   `json:"daemon_dir"`
+	WikiRoot     string   `json:"wiki_root"`
+	ArtifactPath string   `json:"artifact_path"`
+	Key          string   `json:"key"`
+	Commands     []string `json:"commands"`
+	Error        string   `json:"error,omitempty"`
+}
+
+func validateParallelTempIsolation(binary, root string, seed int64) StepResult {
+	started := time.Now()
+	const workers = 3
+	results := make(chan parallelIsolationProbe, workers)
+	var wg sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			results <- runParallelIsolationProbe(binary, root, seed, worker)
+		}(worker)
+	}
+	wg.Wait()
+	close(results)
+
+	probes := []parallelIsolationProbe{}
+	errs := []string{}
+	seenPaths := map[string]string{}
+	for probe := range results {
+		probes = append(probes, probe)
+		if probe.Error != "" {
+			errs = append(errs, fmt.Sprintf("worker %d: %s", probe.Worker, probe.Error))
+		}
+		for label, path := range map[string]string{
+			"temp_root":     probe.TempRoot,
+			"state_dir":     probe.StateDir,
+			"daemon_dir":    probe.DaemonDir,
+			"wiki_root":     probe.WikiRoot,
+			"artifact_path": probe.ArtifactPath,
+		} {
+			if strings.TrimSpace(path) == "" {
+				errs = append(errs, fmt.Sprintf("worker %d has empty %s", probe.Worker, label))
+				continue
+			}
+			if previous, ok := seenPaths[path]; ok {
+				errs = append(errs, fmt.Sprintf("path collision: %s reused by %s and worker %d %s", path, previous, probe.Worker, label))
+				continue
+			}
+			seenPaths[path] = fmt.Sprintf("worker %d %s", probe.Worker, label)
+		}
+	}
+	sort.Slice(probes, func(i, j int) bool { return probes[i].Worker < probes[j].Worker })
+	stdoutBytes, _ := json.MarshalIndent(map[string]any{
+		"workers": workers,
+		"probes":  probes,
+	}, "", "  ")
+	stdoutText, stdoutTruncated, stdoutOriginalBytes := tailWithBudget(string(stdoutBytes), selfVerifyAggregateOutputBudgetBytes)
+	if len(errs) > 0 {
+		return StepResult{
+			Label:           "parallel isolation",
+			OK:              false,
+			DurationMS:      time.Since(started).Milliseconds(),
+			Stdout:          stdoutText,
+			StdoutBytes:     stdoutOriginalBytes,
+			StdoutTruncated: stdoutTruncated,
+			Error:           strings.Join(errs, "; "),
+		}
+	}
+	commands := []string{}
+	for _, probe := range probes {
+		commands = append(commands, probe.Commands...)
+	}
+	return StepResult{
+		Label:           "parallel isolation",
+		Command:         strings.Join(commands, " && "),
+		OK:              true,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		StdoutBytes:     stdoutOriginalBytes,
+		StdoutTruncated: stdoutTruncated,
+	}
+}
+
+func runParallelIsolationProbe(binary, root string, seed int64, worker int) parallelIsolationProbe {
+	probe := parallelIsolationProbe{Worker: worker, Key: fmt.Sprintf("parallel-%d-%d", seed, worker), Commands: []string{}}
+	tempRoot, err := os.MkdirTemp("", fmt.Sprintf("agent-harness-parallel-%d-%d-*", seed, worker))
+	if err != nil {
+		probe.Error = err.Error()
+		return probe
+	}
+	probe.TempRoot = tempRoot
+	defer os.RemoveAll(tempRoot)
+	probe.StateDir = filepath.Join(tempRoot, "state")
+	probe.DaemonDir = filepath.Join(tempRoot, "daemon")
+	probe.WikiRoot = filepath.Join(tempRoot, "llm-wiki")
+	buildDir := filepath.Join(tempRoot, "build")
+	probe.ArtifactPath = filepath.Join(buildDir, "harness")
+	if err := os.MkdirAll(buildDir, 0o700); err != nil {
+		probe.Error = err.Error()
+		return probe
+	}
+	if err := os.WriteFile(probe.ArtifactPath, []byte("parallel isolation artifact\n"), 0o600); err != nil {
+		probe.Error = err.Error()
+		return probe
+	}
+	if err := writeSelfAugmentWikiFixture(probe.WikiRoot); err != nil {
+		probe.Error = err.Error()
+		return probe
+	}
+	env := []string{
+		"HARNESS_STATE_DIR=" + probe.StateDir,
+		"HARNESS_DAEMON_DIR=" + probe.DaemonDir,
+		"LLM_WIKI_ROOT=" + probe.WikiRoot,
+	}
+	value := fmt.Sprintf("worker=%d seed=%d", worker, seed)
+	write := runCommandStepEnv(root, fmt.Sprintf("parallel state write %d", worker), 30*time.Second, "", env, binary, "state", "write", "--key", probe.Key, "--value", value, "--json")
+	probe.Commands = append(probe.Commands, write.Command)
+	if !write.OK {
+		probe.Error = "state write failed: " + write.Error
+		return probe
+	}
+	read := runCommandStepEnv(root, fmt.Sprintf("parallel state read %d", worker), 30*time.Second, "", env, binary, "state", "read", "--key", probe.Key, "--json")
+	probe.Commands = append(probe.Commands, read.Command)
+	if !read.OK {
+		probe.Error = "state read failed: " + read.Error
+		return probe
+	}
+	var readResult core.StateResult
+	if err := json.Unmarshal([]byte(read.Stdout), &readResult); err != nil {
+		probe.Error = "state read parse failed: " + err.Error()
+		return probe
+	}
+	if readResult.Record.Key != probe.Key || readResult.Record.Content != value {
+		probe.Error = "state read returned another worker's content"
+		return probe
+	}
+	list := runCommandStepEnv(root, fmt.Sprintf("parallel state list %d", worker), 30*time.Second, "", env, binary, "state", "list", "--json")
+	probe.Commands = append(probe.Commands, list.Command)
+	if !list.OK {
+		probe.Error = "state list failed: " + list.Error
+		return probe
+	}
+	var listResult core.StateListResult
+	if err := json.Unmarshal([]byte(list.Stdout), &listResult); err != nil {
+		probe.Error = "state list parse failed: " + err.Error()
+		return probe
+	}
+	if len(listResult.Keys) != 1 || listResult.Keys[0] != probe.Key {
+		probe.Error = fmt.Sprintf("state list leaked keys across workers: %v", listResult.Keys)
+		return probe
+	}
+	wiki := runCommandStepEnv(root, fmt.Sprintf("parallel wiki inventory %d", worker), 30*time.Second, "", env, binary, "llm-wiki", "inventory", "--json")
+	probe.Commands = append(probe.Commands, wiki.Command)
+	if !wiki.OK {
+		probe.Error = "llm-wiki inventory failed: " + wiki.Error
+		return probe
+	}
+	var wikiResult core.LLMWikiInventory
+	if err := json.Unmarshal([]byte(wiki.Stdout), &wikiResult); err != nil {
+		probe.Error = "llm-wiki inventory parse failed: " + err.Error()
+		return probe
+	}
+	if filepath.Clean(wikiResult.Root) != filepath.Clean(probe.WikiRoot) {
+		probe.Error = "llm-wiki inventory used another root"
+		return probe
+	}
+	daemon := runCommandStepEnv(root, fmt.Sprintf("parallel daemon status %d", worker), 30*time.Second, "", env, binary, "daemon", "status", "--json")
+	probe.Commands = append(probe.Commands, daemon.Command)
+	if !daemon.OK {
+		probe.Error = "daemon status failed: " + daemon.Error
+		return probe
+	}
+	var daemonResult daemonStatus
+	if err := json.Unmarshal([]byte(daemon.Stdout), &daemonResult); err != nil {
+		probe.Error = "daemon status parse failed: " + err.Error()
+		return probe
+	}
+	if filepath.Clean(daemonResult.Paths.Dir) != filepath.Clean(probe.DaemonDir) {
+		probe.Error = "daemon status used another daemon dir"
+		return probe
+	}
+	return probe
 }
 
 func validatePreflightFuzz(binary, root string, seed int64) StepResult {
