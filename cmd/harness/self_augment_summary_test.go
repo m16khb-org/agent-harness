@@ -648,6 +648,22 @@ func TestSelfAugmentHistoryRetentionRejectsUnsafeOptions(t *testing.T) {
 	}
 }
 
+func TestDetectClaudeMCPDuplicateWarnings(t *testing.T) {
+	warnings := detectClaudeMCPDuplicateWarnings(claudeMCPDuplicateWarningFixture())
+	if len(warnings) != 1 {
+		t.Fatalf("expected one duplicate warning, got %+v", warnings)
+	}
+	if warnings[0].Server != "agent-harness" || !strings.Contains(warnings[0].Message, "multiple scopes") {
+		t.Fatalf("duplicate warning was not classified: %+v", warnings[0])
+	}
+	if len(warnings[0].Suggestions) != 1 || !strings.Contains(warnings[0].Suggestions[0], "claude mcp remove agent-harness") {
+		t.Fatalf("duplicate warning suggestion missing: %+v", warnings[0].Suggestions)
+	}
+	if got := detectClaudeMCPDuplicateWarnings("agent-harness: ./bin/harness mcp - ✓ Connected\n"); len(got) != 0 {
+		t.Fatalf("non-conflicting output produced warnings: %+v", got)
+	}
+}
+
 func TestPlanRiskQATierFromPaths(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -216,7 +216,7 @@ rm -rf "$tmp_state" "$tmp_wiki"
 
 ## 7. 자기 검증 루프 / 자가 증강 루프 요약
 
-`self-verify --json`은 전체 run/step count, 실패 위치, step label coverage, contract version/hash, coverage claim matrix/`coverage_gaps`, 실패 시 `failure_class`/`failure_clusters`/`rerun_commands`, bounded stdout/stderr metadata, parallel isolation evidence, 가장 느린 step 상위 5개, 목표별 `goal_scores`를 `summary`에 포함한다. 실패 triage는 먼저 `summary.failed_*`, `summary.goal_scores`, `summary.slowest_steps`를 확인한다.
+`self-verify --json`은 전체 run/step count, 실패 위치, step label coverage, contract version/hash, coverage claim matrix/`coverage_gaps`, 실패 시 `failure_class`/`failure_clusters`/`rerun_commands`, bounded stdout/stderr metadata, parallel isolation evidence, duplicate MCP warning classification, 가장 느린 step 상위 5개, 목표별 `goal_scores`를 `summary`에 포함한다. 실패 triage는 먼저 `summary.failed_*`, `summary.goal_scores`, `summary.slowest_steps`를 확인한다.
 `--progress=jsonl`은 stdout의 최종 JSON summary를 유지하면서 stderr에 iteration/step JSON Lines heartbeat를 기록한다. redirect 또는 장기 실행 환경에서 hang으로 오해하지 않도록 진행 상태를 볼 때 사용한다. self-verify에는 golden/docs/skill metadata의 unredacted secret-like 문자열을 막는 redaction audit도 포함된다.
 
 `--save-state`를 함께 쓰면 전체 runs 로그가 아니라 compact summary snapshot만 `state_key`에 저장한다. `history`, `compare`, `promote`는 저장된 summary checkpoint를 조회·비교·승격한다. `history --retention-limit N`은 newest-first 기준 보존/삭제 후보를 계산하고, `--prune-retention --confirm`이 있을 때만 초과 checkpoint를 삭제한다; `--confirm`이 없으면 dry-run이다.

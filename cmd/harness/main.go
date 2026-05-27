@@ -3193,6 +3193,7 @@ func validateNativeIntegration(root string) StepResult {
 	started := time.Now()
 	home, _ := os.UserHomeDir()
 	errs := []string{}
+	stdoutParts := []string{}
 	paths := []string{
 		filepath.Join(root, "configs", "codex", "mcp.config.toml"),
 		filepath.Join(root, "configs", "claude", "mcp.project.json"),
@@ -3220,7 +3221,73 @@ func validateNativeIntegration(root string) StepResult {
 	if b, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json")); err != nil || !strings.Contains(string(b), "session-start-llm-wiki.sh") {
 		errs = append(errs, "Claude user SessionStart hook missing")
 	}
-	return assertionStep("native integration", started, errs)
+	duplicateWarnings := detectClaudeMCPDuplicateWarnings(claudeMCPDuplicateWarningFixture())
+	warningBytes, _ := json.MarshalIndent(map[string]any{
+		"duplicate_mcp_warning_fixture": duplicateWarnings,
+	}, "", "  ")
+	stdoutParts = append(stdoutParts, string(warningBytes))
+	if len(duplicateWarnings) != 1 || duplicateWarnings[0].Server != "agent-harness" || !strings.Contains(duplicateWarnings[0].Message, "multiple scopes") {
+		errs = append(errs, "Claude duplicate MCP warning fixture was not classified")
+	}
+	if len(errs) > 0 {
+		return assertionStepWithOutput("native integration", started, errs, stdoutParts, nil)
+	}
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
+	return StepResult{
+		Label:           "native integration",
+		OK:              true,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		StdoutBytes:     stdoutBytes,
+		StdoutTruncated: stdoutTruncated,
+	}
+}
+
+type ClaudeMCPDuplicateWarning struct {
+	Server      string   `json:"server"`
+	Message     string   `json:"message"`
+	Suggestions []string `json:"suggestions"`
+}
+
+func detectClaudeMCPDuplicateWarnings(output string) []ClaudeMCPDuplicateWarning {
+	warnings := []ClaudeMCPDuplicateWarning{}
+	current := -1
+	for _, line := range strings.Split(output, "\n") {
+		trimmed := strings.TrimSpace(strings.TrimPrefix(line, "└"))
+		trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "│"))
+		if strings.Contains(trimmed, "[Warning]") && strings.Contains(trimmed, "defined in multiple scopes") {
+			server := ""
+			if before, after, ok := strings.Cut(trimmed, `Server "`); ok {
+				_ = before
+				if name, _, ok := strings.Cut(after, `"`); ok {
+					server = name
+				}
+			}
+			warnings = append(warnings, ClaudeMCPDuplicateWarning{
+				Server:      server,
+				Message:     strings.TrimSpace(trimmed),
+				Suggestions: []string{},
+			})
+			current = len(warnings) - 1
+			continue
+		}
+		if current >= 0 && strings.Contains(trimmed, "Suggestion:") {
+			_, suggestion, _ := strings.Cut(trimmed, "Suggestion:")
+			warnings[current].Suggestions = append(warnings[current].Suggestions, strings.TrimSpace(suggestion))
+		}
+	}
+	return warnings
+}
+
+func claudeMCPDuplicateWarningFixture() string {
+	return `MCP Config Diagnostics
+
+For help configuring MCP servers, see: https://code.claude.com/docs/en/mcp
+
+[Conflicting scopes]
+ └ [Warning] Server "agent-harness" is defined in multiple scopes with different endpoints: user (/Users/example/agent-harness/bin/harness mcp), project (./bin/harness mcp). OAuth tokens are stored per endpoint, so authenticating in one context will not carry over.
+   Suggestion: Keep the correct endpoint and remove the others: ` + "`claude mcp remove agent-harness -s user`" + ` or ` + "`claude mcp remove agent-harness -s project`" + `
+`
 }
 
 var secretMaterialPatterns = []struct {
