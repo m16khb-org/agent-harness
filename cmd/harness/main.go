@@ -1035,6 +1035,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
 			{Label: "state roundtrip", Run: func() StepResult { return validateStateRoundtrip(tempBin, result.HarnessRoot, seed) }},
 			{Label: "parallel isolation", Run: func() StepResult { return validateParallelTempIsolation(tempBin, result.HarnessRoot, seed) }},
+			{Label: "daemon resilience", Run: func() StepResult { return validateDaemonRestartResilience(tempBin, result.HarnessRoot, seed) }},
 			{Label: "preflight fuzz", Run: func() StepResult { return validatePreflightFuzz(tempBin, result.HarnessRoot, seed) }},
 			{Label: "native integration", Run: func() StepResult { return validateNativeIntegration(result.HarnessRoot) }},
 			{Label: "redaction audit", Run: func() StepResult { return validateRedactionAudit(result.HarnessRoot) }},
@@ -1356,6 +1357,11 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 			Labels:     []string{"parallel isolation"},
 		},
 		{
+			Name:       "daemon_resilience",
+			KoreanName: "데몬 복구력",
+			Labels:     []string{"daemon resilience"},
+		},
+		{
 			Name:       "native_integration",
 			KoreanName: "네이티브 통합",
 			Labels:     []string{"native integration"},
@@ -1373,6 +1379,7 @@ func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition 
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
 		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
 		{Claim: "parallel temp isolation", Labels: []string{"parallel isolation"}},
+		{Claim: "daemon restart resilience", Labels: []string{"daemon resilience"}},
 		{Claim: "git preflight fuzz", Labels: []string{"preflight fuzz"}},
 		{Claim: "native integration", Labels: []string{"native integration"}},
 		{Claim: "secret redaction audit", Labels: []string{"redaction audit"}},
@@ -1440,6 +1447,8 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state migrate --json; rm -rf \"$tmp_state\"", true
 	case "parallel isolation":
 		return "./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json", true
+	case "daemon resilience":
+		return "tmp_daemon=\"$(mktemp -d)\" && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/harness daemon start --json && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/harness daemon stop --json; rm -rf \"$tmp_daemon\"", true
 	case "preflight fuzz":
 		return "./bin/harness preflight --json \"$PWD\"", true
 	case "native integration":
@@ -3127,6 +3136,106 @@ func runParallelIsolationProbe(binary, root string, seed int64, worker int) para
 		return probe
 	}
 	return probe
+}
+
+func validateDaemonRestartResilience(binary, root string, seed int64) StepResult {
+	started := time.Now()
+	// Keep this prefix short because Unix socket paths are length-limited on
+	// macOS. Long self-verify prefixes can make the daemon fail before it can
+	// write a useful status file.
+	tempDaemon, err := os.MkdirTemp("", fmt.Sprintf("ahd-%d-*", seed))
+	if err != nil {
+		return failedStep("daemon resilience", err)
+	}
+	defer os.RemoveAll(tempDaemon)
+	paths := daemonPaths{
+		Dir:    tempDaemon,
+		Socket: filepath.Join(tempDaemon, "agent-harness.sock"),
+		PID:    filepath.Join(tempDaemon, "agent-harness.pid"),
+		Lock:   filepath.Join(tempDaemon, "agent-harness.lock"),
+		Log:    filepath.Join(tempDaemon, "agent-harness.log"),
+	}
+	if err := os.WriteFile(paths.Lock, []byte("999999\n"), 0o600); err != nil {
+		return failedStep("daemon resilience", err)
+	}
+	old := time.Now().Add(-2 * time.Minute)
+	_ = os.Chtimes(paths.Lock, old, old)
+	if err := os.WriteFile(paths.Socket, []byte("stale socket placeholder\n"), 0o600); err != nil {
+		return failedStep("daemon resilience", err)
+	}
+	stdoutParts := []string{}
+	commands := []string{}
+	env := []string{"HARNESS_DAEMON_DIR=" + tempDaemon}
+	runDaemonJSON := func(label string, args ...string) (daemonStatus, StepResult, error) {
+		step := runCommandStepEnv(root, label, 30*time.Second, "", env, binary, args...)
+		commands = append(commands, step.Command)
+		stdoutParts = append(stdoutParts, step.Stdout)
+		var status daemonStatus
+		if step.Stdout != "" {
+			if err := json.Unmarshal([]byte(step.Stdout), &status); err != nil {
+				return status, step, fmt.Errorf("parse %s JSON: %w", label, err)
+			}
+		}
+		if !step.OK {
+			return status, step, fmt.Errorf("%s failed: %s", label, step.Error)
+		}
+		return status, step, nil
+	}
+	defer runCommandStepEnv(root, "daemon resilience cleanup stop", 30*time.Second, "", env, binary, "daemon", "stop", "--json")
+
+	errs := []string{}
+	startStatus, startStep, startErr := runDaemonJSON("daemon resilience start", "daemon", "start", "--json")
+	if startErr != nil {
+		return combineFailedStep("daemon resilience", started, startStep, stdoutParts, commands)
+	}
+	if !startStatus.OK || !startStatus.Running || startStatus.PID <= 0 {
+		errs = append(errs, "daemon did not start from stale lock/socket fixture")
+	}
+	if exists(paths.Lock) {
+		errs = append(errs, "stale daemon lock remained after start")
+	}
+	if info, err := os.Stat(paths.Socket); err != nil {
+		errs = append(errs, "daemon socket missing after start: "+err.Error())
+	} else if info.Mode().Perm() != 0o600 {
+		errs = append(errs, fmt.Sprintf("daemon socket mode = %o, want 600", info.Mode().Perm()))
+	}
+
+	runningStatus, statusStep, statusErr := runDaemonJSON("daemon resilience status", "daemon", "status", "--json")
+	if statusErr != nil {
+		return combineFailedStep("daemon resilience", started, statusStep, stdoutParts, commands)
+	}
+	if !runningStatus.Running || filepath.Clean(runningStatus.Paths.Dir) != filepath.Clean(tempDaemon) {
+		errs = append(errs, "daemon status did not report running temp daemon")
+	}
+
+	stopStatus, stopStep, stopErr := runDaemonJSON("daemon resilience stop", "daemon", "stop", "--json")
+	if stopErr != nil {
+		return combineFailedStep("daemon resilience", started, stopStep, stdoutParts, commands)
+	}
+	if !stopStatus.OK || stopStatus.Running {
+		errs = append(errs, "daemon stop did not report stopped state")
+	}
+
+	afterStatus, afterStep, afterErr := runDaemonJSON("daemon resilience after status", "daemon", "status", "--json")
+	if afterErr != nil {
+		return combineFailedStep("daemon resilience", started, afterStep, stdoutParts, commands)
+	}
+	if afterStatus.Running || exists(paths.Socket) || exists(paths.PID) {
+		errs = append(errs, "daemon stop left running socket or pid file")
+	}
+	if len(errs) > 0 {
+		return assertionStepWithOutput("daemon resilience", started, errs, stdoutParts, commands)
+	}
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
+	return StepResult{
+		Label:           "daemon resilience",
+		Command:         strings.Join(commands, " && "),
+		OK:              true,
+		DurationMS:      time.Since(started).Milliseconds(),
+		Stdout:          stdoutText,
+		StdoutBytes:     stdoutBytes,
+		StdoutTruncated: stdoutTruncated,
+	}
 }
 
 func validatePreflightFuzz(binary, root string, seed int64) StepResult {

@@ -51,7 +51,10 @@ func runDaemon(args []string) error {
 	case "start":
 		status, err := ensureDaemonRunning()
 		if *jsonOut {
-			return printJSON(status)
+			if printErr := printJSON(status); printErr != nil {
+				return printErr
+			}
+			return err
 		}
 		if err != nil {
 			return err
@@ -72,7 +75,10 @@ func runDaemon(args []string) error {
 	case "stop":
 		status, err := stopDaemon()
 		if *jsonOut {
-			return printJSON(status)
+			if printErr := printJSON(status); printErr != nil {
+				return printErr
+			}
+			return err
 		}
 		if err != nil {
 			return err

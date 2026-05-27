@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestServeMCPStreamListsLLMWikiTools(t *testing.T) {
@@ -50,6 +52,30 @@ func TestDaemonPathsUseOverride(t *testing.T) {
 	}
 	if paths.Dir != dir || filepath.Base(paths.Socket) != "agent-harness.sock" || filepath.Base(paths.PID) != "agent-harness.pid" {
 		t.Fatalf("unexpected daemon paths: %+v", paths)
+	}
+}
+
+func TestAcquireDaemonLockRemovesStaleLock(t *testing.T) {
+	dir := t.TempDir()
+	paths := daemonPaths{Dir: dir, Lock: filepath.Join(dir, "agent-harness.lock")}
+	if err := os.WriteFile(paths.Lock, []byte("999999\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-2 * time.Minute)
+	if err := os.Chtimes(paths.Lock, old, old); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := acquireDaemonLock(paths)
+	if err != nil {
+		t.Fatalf("acquireDaemonLock should recover stale lock: %v", err)
+	}
+	defer lock.Close()
+	b, err := os.ReadFile(paths.Lock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), strconv.Itoa(os.Getpid())) {
+		t.Fatalf("lock file was not replaced with current pid: %q", string(b))
 	}
 }
 

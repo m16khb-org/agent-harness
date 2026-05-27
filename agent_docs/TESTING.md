@@ -138,6 +138,7 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `harness self-verify history` summary checkpoint discovery and retention dry-run/confirm safety
 - `harness self-verify` parallel isolation step for temp state, daemon dir, llm-wiki fixture, and artifact path collisions
 - `harness self-verify` native integration fixture for Claude MCP conflicting-scope warning classification
+- `harness self-verify` daemon resilience step for stale lock/socket recovery and socket permission checks
 - `harness self-verify compare` summary checkpoint regression comparison
 - `harness self-verify promote` dry-run/confirm baseline promotion
 - `harness self-augment --json` planner/candidate curriculum
