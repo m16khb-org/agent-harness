@@ -124,7 +124,7 @@ Usage:
   harness daemon start|status|stop [--json]
   harness install-native [--llm-wiki-root PATH] [--project-local] [--no-claude-user-hook] [--dry-run] [--json]
   harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--save-state] [--state-key KEY] [--json]
-  harness self-verify history [--prefix PREFIX] [--limit N] [--json]
+  harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
   harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
   harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]
   harness self-augment [--cycles=1] [--target-score=95] [--save-state] [--state-key KEY] [--json]
@@ -389,11 +389,18 @@ func runSelfVerifyHistory(args []string) error {
 	fs := flag.NewFlagSet("self-verify history", flag.ContinueOnError)
 	prefix := fs.String("prefix", "self-verify", "state key prefix to scan; empty string scans all keys")
 	limit := fs.Int("limit", 20, "maximum entries to return; 0 returns all")
+	retentionLimit := fs.Int("retention-limit", 0, "maximum matching summaries to retain by newest-first ordering; 0 disables retention planning")
+	pruneRetention := fs.Bool("prune-retention", false, "delete retention candidates; dry-run unless --confirm is also set")
+	confirm := fs.Bool("confirm", false, "confirm deletion when used with --prune-retention")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := selfAugmentHistory(*prefix, *limit)
+	result, err := selfAugmentHistory(*prefix, *limit, selfAugmentHistoryRetentionOptions{
+		Limit:          *retentionLimit,
+		PruneRequested: *pruneRetention,
+		Confirm:        *confirm,
+	})
 	if err != nil {
 		return err
 	}
@@ -410,6 +417,17 @@ func runSelfVerifyHistory(args []string) error {
 	}
 	if len(result.Skipped) > 0 {
 		fmt.Printf("skipped %d non-summary records\n", len(result.Skipped))
+	}
+	if result.Retention != nil {
+		retention := result.Retention
+		action := "planned"
+		if retention.PruneRequested && !retention.Confirm {
+			action = "would delete"
+		}
+		if retention.PruneRequested && retention.Confirm {
+			action = "deleted"
+		}
+		fmt.Printf("retention: retain=%d candidates=%d %s=%d\n", retention.Limit, len(retention.CandidateKeys), action, len(retention.DeletedKeys))
 	}
 	return nil
 }
@@ -850,15 +868,35 @@ type SelfAugmentPromoteResult struct {
 }
 
 type SelfAugmentHistoryResult struct {
-	OK           bool                        `json:"ok"`
-	StateDir     string                      `json:"state_dir"`
-	Prefix       string                      `json:"prefix"`
-	Limit        int                         `json:"limit"`
-	TotalMatches int                         `json:"total_matches"`
-	Returned     int                         `json:"returned"`
-	Entries      []SelfAugmentHistoryEntry   `json:"entries"`
-	Skipped      []SelfAugmentHistorySkipped `json:"skipped"`
-	Warnings     []string                    `json:"warnings"`
+	OK           bool                         `json:"ok"`
+	StateDir     string                       `json:"state_dir"`
+	Prefix       string                       `json:"prefix"`
+	Limit        int                          `json:"limit"`
+	TotalMatches int                          `json:"total_matches"`
+	Returned     int                          `json:"returned"`
+	Retention    *SelfAugmentHistoryRetention `json:"retention,omitempty"`
+	Entries      []SelfAugmentHistoryEntry    `json:"entries"`
+	Skipped      []SelfAugmentHistorySkipped  `json:"skipped"`
+	Warnings     []string                     `json:"warnings"`
+}
+
+type SelfAugmentHistoryRetention struct {
+	Enabled        bool     `json:"enabled"`
+	Limit          int      `json:"limit"`
+	TotalMatches   int      `json:"total_matches"`
+	RetainedKeys   []string `json:"retained_keys"`
+	CandidateKeys  []string `json:"candidate_keys"`
+	DeletedKeys    []string `json:"deleted_keys"`
+	PruneRequested bool     `json:"prune_requested"`
+	Confirm        bool     `json:"confirm"`
+	DryRun         bool     `json:"dry_run"`
+	Recommendation string   `json:"recommendation"`
+}
+
+type selfAugmentHistoryRetentionOptions struct {
+	Limit          int
+	PruneRequested bool
+	Confirm        bool
 }
 
 type SelfAugmentHistoryEntry struct {
@@ -1877,7 +1915,7 @@ func promoteSelfAugmentBaseline(fromKey, baselineKey string, confirm bool) (Self
 	return result, nil
 }
 
-func selfAugmentHistory(prefix string, limit int) (SelfAugmentHistoryResult, error) {
+func selfAugmentHistory(prefix string, limit int, retentionOptions ...selfAugmentHistoryRetentionOptions) (SelfAugmentHistoryResult, error) {
 	result := SelfAugmentHistoryResult{
 		OK:       false,
 		StateDir: core.StateDir(),
@@ -1889,6 +1927,19 @@ func selfAugmentHistory(prefix string, limit int) (SelfAugmentHistoryResult, err
 	}
 	if limit < 0 {
 		return result, fmt.Errorf("limit must be non-negative")
+	}
+	retention := selfAugmentHistoryRetentionOptions{}
+	if len(retentionOptions) > 0 {
+		retention = retentionOptions[0]
+	}
+	if retention.Limit < 0 {
+		return result, fmt.Errorf("retention-limit must be non-negative")
+	}
+	if retention.Confirm && !retention.PruneRequested {
+		return result, fmt.Errorf("confirm requires --prune-retention")
+	}
+	if retention.PruneRequested && retention.Limit <= 0 {
+		return result, fmt.Errorf("prune-retention requires a positive --retention-limit")
 	}
 	list, err := core.StateList()
 	if err != nil {
@@ -1957,12 +2008,59 @@ func selfAugmentHistory(prefix string, limit int) (SelfAugmentHistoryResult, err
 	sort.Slice(result.Skipped, func(i, j int) bool { return result.Skipped[i].Key < result.Skipped[j].Key })
 	sort.Strings(result.Warnings)
 	result.TotalMatches = len(result.Entries)
+	if retention.Limit > 0 {
+		if err := applySelfAugmentHistoryRetention(&result, retention); err != nil {
+			return result, err
+		}
+		sort.Strings(result.Warnings)
+	}
 	if limit > 0 && len(result.Entries) > limit {
 		result.Entries = result.Entries[:limit]
 	}
 	result.Returned = len(result.Entries)
 	result.OK = true
 	return result, nil
+}
+
+func applySelfAugmentHistoryRetention(result *SelfAugmentHistoryResult, options selfAugmentHistoryRetentionOptions) error {
+	retention := &SelfAugmentHistoryRetention{
+		Enabled:        true,
+		Limit:          options.Limit,
+		TotalMatches:   result.TotalMatches,
+		RetainedKeys:   []string{},
+		CandidateKeys:  []string{},
+		DeletedKeys:    []string{},
+		PruneRequested: options.PruneRequested,
+		Confirm:        options.Confirm,
+		DryRun:         options.PruneRequested && !options.Confirm,
+		Recommendation: "within_retention_budget",
+	}
+	for i, entry := range result.Entries {
+		if i < options.Limit {
+			retention.RetainedKeys = append(retention.RetainedKeys, entry.Key)
+			continue
+		}
+		retention.CandidateKeys = append(retention.CandidateKeys, entry.Key)
+	}
+	if len(retention.CandidateKeys) > 0 {
+		retention.Recommendation = fmt.Sprintf("prune %d history checkpoint(s) beyond retention-limit=%d after reviewing dry-run output", len(retention.CandidateKeys), options.Limit)
+		result.Warnings = append(result.Warnings, fmt.Sprintf("history_retention_candidates:%d", len(retention.CandidateKeys)))
+	}
+	if options.PruneRequested && options.Confirm {
+		for _, key := range retention.CandidateKeys {
+			state, err := core.StateRead(key)
+			if err != nil {
+				return fmt.Errorf("read retention candidate %q: %w", key, err)
+			}
+			if err := os.Remove(state.Path); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("delete retention candidate %q: %w", key, err)
+			}
+			retention.DeletedKeys = append(retention.DeletedKeys, key)
+		}
+		retention.Recommendation = fmt.Sprintf("deleted %d history checkpoint(s) beyond retention-limit=%d", len(retention.DeletedKeys), options.Limit)
+	}
+	result.Retention = retention
+	return nil
 }
 
 func parseSelfAugmentTimestamp(value string) (time.Time, bool) {
@@ -2763,6 +2861,48 @@ func validateStateRoundtrip(binary, root string, seed int64) StepResult {
 		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify history did not list saved baseline/candidate/promoted summaries"}, stdoutParts, commands)
 	}
 
+	retentionDry := runCommandStepEnv(root, "self verify history retention dry-run", 30*time.Second, "", env, binary, "self-verify", "history", "--prefix", key+"-", "--retention-limit", "1", "--prune-retention", "--json")
+	stdoutParts = append(stdoutParts, retentionDry.Stdout)
+	commands = append(commands, retentionDry.Command)
+	if !retentionDry.OK {
+		return combineFailedStep("state roundtrip", started, retentionDry, stdoutParts, commands)
+	}
+	var retentionDryResult SelfAugmentHistoryResult
+	if err := json.Unmarshal([]byte(retentionDry.Stdout), &retentionDryResult); err != nil {
+		return assertionStepWithOutput("state roundtrip", started, []string{err.Error()}, stdoutParts, commands)
+	}
+	if retentionDryResult.Retention == nil || !retentionDryResult.Retention.DryRun || retentionDryResult.Retention.Confirm || retentionDryResult.Retention.Limit != 1 || len(retentionDryResult.Retention.CandidateKeys) == 0 || len(retentionDryResult.Retention.DeletedKeys) != 0 {
+		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify history retention dry-run did not classify prune candidates safely"}, stdoutParts, commands)
+	}
+
+	retentionConfirm := runCommandStepEnv(root, "self verify history retention confirm", 30*time.Second, "", env, binary, "self-verify", "history", "--prefix", key+"-", "--retention-limit", "1", "--prune-retention", "--confirm", "--json")
+	stdoutParts = append(stdoutParts, retentionConfirm.Stdout)
+	commands = append(commands, retentionConfirm.Command)
+	if !retentionConfirm.OK {
+		return combineFailedStep("state roundtrip", started, retentionConfirm, stdoutParts, commands)
+	}
+	var retentionConfirmResult SelfAugmentHistoryResult
+	if err := json.Unmarshal([]byte(retentionConfirm.Stdout), &retentionConfirmResult); err != nil {
+		return assertionStepWithOutput("state roundtrip", started, []string{err.Error()}, stdoutParts, commands)
+	}
+	if retentionConfirmResult.Retention == nil || retentionConfirmResult.Retention.DryRun || !retentionConfirmResult.Retention.Confirm || len(retentionConfirmResult.Retention.DeletedKeys) == 0 {
+		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify history retention confirm did not delete prune candidates"}, stdoutParts, commands)
+	}
+
+	historyAfterRetention := runCommandStepEnv(root, "self verify history after retention", 30*time.Second, "", env, binary, "self-verify", "history", "--prefix", key+"-", "--json")
+	stdoutParts = append(stdoutParts, historyAfterRetention.Stdout)
+	commands = append(commands, historyAfterRetention.Command)
+	if !historyAfterRetention.OK {
+		return combineFailedStep("state roundtrip", started, historyAfterRetention, stdoutParts, commands)
+	}
+	var historyAfterRetentionResult SelfAugmentHistoryResult
+	if err := json.Unmarshal([]byte(historyAfterRetention.Stdout), &historyAfterRetentionResult); err != nil {
+		return assertionStepWithOutput("state roundtrip", started, []string{err.Error()}, stdoutParts, commands)
+	}
+	if historyAfterRetentionResult.TotalMatches > 1 {
+		return assertionStepWithOutput("state roundtrip", started, []string{"self-verify history retention confirm left too many matching summaries"}, stdoutParts, commands)
+	}
+
 	corruptPath := filepath.Join(tempState, "corrupt.json")
 	if err := os.WriteFile(corruptPath, []byte("{not json\n"), 0o600); err != nil {
 		return assertionStepWithOutput("state roundtrip", started, []string{err.Error()}, stdoutParts, commands)
@@ -3480,8 +3620,11 @@ func mcpTools() []map[string]any {
 			"name":        "self_verify_history",
 			"description": "List saved 자기 검증 루프 summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
-				"prefix": map[string]any{"type": "string", "description": "State key prefix to scan; defaults to self-verify. Use empty string to scan all keys."},
-				"limit":  map[string]any{"type": "integer", "description": "Maximum entries to return; defaults to 20, 0 returns all."},
+				"prefix":          map[string]any{"type": "string", "description": "State key prefix to scan; defaults to self-verify. Use empty string to scan all keys."},
+				"limit":           map[string]any{"type": "integer", "description": "Maximum entries to return; defaults to 20, 0 returns all."},
+				"retention_limit": map[string]any{"type": "integer", "description": "Maximum matching summaries to retain by newest-first ordering. Omit or use 0 to disable retention planning."},
+				"prune_retention": map[string]any{"type": "boolean", "description": "When true, plan retention pruning. This is a dry-run unless confirm is also true."},
+				"confirm":         map[string]any{"type": "boolean", "description": "When true with prune_retention, delete retention candidates beyond retention_limit."},
 			}},
 		},
 		{
@@ -3703,6 +3846,11 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		result, err := selfAugmentHistory(
 			stringArgWithDefault(call.Arguments, "prefix", "self-verify"),
 			intArg(call.Arguments, "limit", 20),
+			selfAugmentHistoryRetentionOptions{
+				Limit:          intArg(call.Arguments, "retention_limit", 0),
+				PruneRequested: boolArg(call.Arguments, "prune_retention"),
+				Confirm:        boolArg(call.Arguments, "confirm"),
+			},
 		)
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "Self-verify history failed", Data: err.Error()}

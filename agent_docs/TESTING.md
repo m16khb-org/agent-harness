@@ -40,6 +40,7 @@ HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/harness daemon start --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/harness daemon stop --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-smoke --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify history --prefix self-verify --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify history --prefix self-verify --retention-limit 1 --prune-retention --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify compare --baseline-key self-verify-smoke --candidate-key self-verify-smoke --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify promote --from-key self-verify-smoke --baseline-key self-verify-baseline --json
 ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
@@ -134,7 +135,7 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `harness self-verify`의 `risk QA tier` step과 `risk_qa` goal score
 - `harness self-verify --json`의 `summary.contract`/`goal_scores`/`coverage_gaps`/`failure_class`/`rerun_commands` field
 - `harness self-verify --save-state` summary checkpoint serialization
-- `harness self-verify history` summary checkpoint discovery
+- `harness self-verify history` summary checkpoint discovery and retention dry-run/confirm safety
 - `harness self-verify compare` summary checkpoint regression comparison
 - `harness self-verify promote` dry-run/confirm baseline promotion
 - `harness self-augment --json` planner/candidate curriculum

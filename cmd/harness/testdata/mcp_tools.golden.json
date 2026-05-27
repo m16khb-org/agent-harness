@@ -486,6 +486,10 @@
     "description": "List saved 자기 검증 루프 summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
     "inputSchema": {
       "properties": {
+        "confirm": {
+          "description": "When true with prune_retention, delete retention candidates beyond retention_limit.",
+          "type": "boolean"
+        },
         "limit": {
           "description": "Maximum entries to return; defaults to 20, 0 returns all.",
           "type": "integer"
@@ -493,6 +497,14 @@
         "prefix": {
           "description": "State key prefix to scan; defaults to self-verify. Use empty string to scan all keys.",
           "type": "string"
+        },
+        "prune_retention": {
+          "description": "When true, plan retention pruning. This is a dry-run unless confirm is also true.",
+          "type": "boolean"
+        },
+        "retention_limit": {
+          "description": "Maximum matching summaries to retain by newest-first ordering. Omit or use 0 to disable retention planning.",
+          "type": "integer"
         }
       },
       "type": "object"

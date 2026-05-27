@@ -38,7 +38,7 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + user_value*0.20 + (10
 
 ## 3. 후보 목록
 
-2026-05-27 cycle update: `self-verify-progress-heartbeat`는 `self-verify --progress=jsonl`로 구현됐다. stdout의 최종 JSON summary는 유지하고 stderr에 JSON Lines progress event를 기록한다. `self-verify-secret-redaction-audit`도 `redaction audit` self-verify 단계로 구현됐다. `self-verify-coverage-gap-report`는 `summary.coverage`와 `summary.coverage_gaps`로 구현됐다. `self-verify-failure-rerun-recipe`는 실패 summary의 `rerun_commands`로 구현됐다. `self-verify-policy-path-fuzz-plus`는 symlink escape, `~/path`, remote URL/ref 예외 fixture로 보강됐다. `self-verify-json-schema-contract`는 `summary.contract` version/hash/required fields로 구현됐다. `self-verify-flake-classifier`는 `failure_class`와 `failure_clusters`로 구현됐다. `self-verify-output-size-budget`은 bounded stdout/stderr와 truncation metadata로 구현됐다. 다음 self-augment cycle의 기본 1순위는 `self-verify-history-retention-budget`이다.
+2026-05-27 cycle update: `self-verify-progress-heartbeat`는 `self-verify --progress=jsonl`로 구현됐다. stdout의 최종 JSON summary는 유지하고 stderr에 JSON Lines progress event를 기록한다. `self-verify-secret-redaction-audit`도 `redaction audit` self-verify 단계로 구현됐다. `self-verify-coverage-gap-report`는 `summary.coverage`와 `summary.coverage_gaps`로 구현됐다. `self-verify-failure-rerun-recipe`는 실패 summary의 `rerun_commands`로 구현됐다. `self-verify-policy-path-fuzz-plus`는 symlink escape, `~/path`, remote URL/ref 예외 fixture로 보강됐다. `self-verify-json-schema-contract`는 `summary.contract` version/hash/required fields로 구현됐다. `self-verify-flake-classifier`는 `failure_class`와 `failure_clusters`로 구현됐다. `self-verify-output-size-budget`은 bounded stdout/stderr와 truncation metadata로 구현됐다. `self-verify-history-retention-budget`은 history retention-limit 계획/dry-run/confirm으로 구현됐다. 다음 self-augment cycle의 기본 1순위는 `self-verify-parallel-temp-isolation`이다.
 
 | 우선순위 | 후보 ID | 분류 | 점수 | 왜 지금 필요한가 | 검증 방법 |
 | --- | --- | --- | ---: | --- | --- |
@@ -54,17 +54,16 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + user_value*0.20 + (10
 | 10 | `self-verify-json-schema-contract` | 계약 | 76 | `summary.goal_scores`, `slowest_steps`, history/compare/promote 응답이 확장될수록 schema drift를 사람이 golden diff로만 확인하기 어렵다. | JSON schema/hash fixture, backward-compatible field test, response contract golden |
 | 11 | `self-verify-flake-classifier` | 신뢰성 | 75 | 10회 반복 중 일부 seed만 실패할 때 deterministic failure와 flaky failure를 분류해야 우선순위가 선명해진다. | synthetic intermittent step, per-seed failure clustering, summary `failure_class` golden |
 | 12 | `self-verify-output-size-budget` | 운영성 | 73 | 실패 stdout/stderr가 커지면 JSON 응답과 state 저장이 비대해진다. tailing, truncation, size budget이 필요하다. | oversized output fixture, truncation marker test, state write size check |
-| 13 | `self-verify-history-retention-budget` | 상태 운영 | 71 | baseline/history가 계속 쌓이면 상태 저장소가 느려지고 오래된 회귀 기준이 혼재된다. | retention policy fixture, prune dry-run/confirm regression, history ordering golden |
+| 13 | `self-verify-history-retention-budget` | 상태 운영 | 71 | baseline/history가 계속 쌓이면 상태 저장소가 느려지고 오래된 회귀 기준이 혼재된다. | 구현됨: retention policy fixture, prune dry-run/confirm regression, history ordering golden |
 | 14 | `self-verify-parallel-temp-isolation` | 동시성 | 70 | 여러 self-verify가 동시에 실행될 때 temp state, MCP fixture, build artifact가 충돌하지 않는지 별도 stress가 필요하다. | parallel seeded self-verify smoke, temp path uniqueness assertion, race tier |
 | 15 | `self-verify-duplicate-mcp-warning` | native integration | 70 | Claude/Codex MCP endpoint가 user/project scope에 중복 등록되면 smoke는 통과해도 실제 UX에는 경고가 생긴다. | mocked `claude mcp list` duplicate fixture, warning classification, install docs update |
 | 16 | `self-verify-daemon-restart-resilience` | daemon | 68 | daemon-backed MCP proxy가 핵심이 되면 stale lock, socket permission, restart 후 state 재연결을 self-verify가 다뤄야 한다. | daemon temp socket fixture, restart smoke, stale lock recovery test |
 
 ## 4. 추천 실행 순서
 
-1. `self-verify-history-retention-budget`: baseline/history가 계속 쌓일 때 오래된 기준과 상태 저장소 부하를 관리한다.
-2. `self-verify-parallel-temp-isolation`: 동시 실행 때 temp state와 daemon fixture가 충돌하지 않도록 한다.
-3. `self-verify-duplicate-mcp-warning`: user/project MCP endpoint 중복 경고를 native integration 위험으로 분류한다.
-4. `self-verify-daemon-restart-resilience`: daemon-backed MCP proxy의 stale lock/socket 복구를 다룬다.
+1. `self-verify-parallel-temp-isolation`: 동시 실행 때 temp state와 daemon fixture가 충돌하지 않도록 한다.
+2. `self-verify-duplicate-mcp-warning`: user/project MCP endpoint 중복 경고를 native integration 위험으로 분류한다.
+3. `self-verify-daemon-restart-resilience`: daemon-backed MCP proxy의 stale lock/socket 복구를 다룬다.
 
 ## 5. 완료 기준
 
@@ -75,4 +74,4 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + user_value*0.20 + (10
 - 현재 baseline 증거와 이번 인터럽트 원인을 반영한다.
 - 다음 cycle에서 바로 선택할 추천 후보가 있다.
 
-다음 자가 증강 cycle에서 실제 구현 후보를 고를 때는 아직 완료되지 않은 후보 중 가장 높은 점수인 `self-verify-history-retention-budget`을 기본 1순위로 본다.
+다음 자가 증강 cycle에서 실제 구현 후보를 고를 때는 아직 완료되지 않은 후보 중 가장 높은 점수인 `self-verify-parallel-temp-isolation`을 기본 1순위로 본다.

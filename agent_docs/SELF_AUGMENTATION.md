@@ -20,6 +20,7 @@
 ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
 ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
 ./bin/harness self-verify history --prefix self-verify --json
+./bin/harness self-verify history --prefix self-verify --retention-limit 20 --prune-retention --json
 ./bin/harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
 ./bin/harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
 ```
@@ -45,7 +46,7 @@ MCP tools:
 6. inspect/docs smoke
 7. command policy smoke
 8. MCP smoke
-9. state roundtrip, prune, doctor, migrate, compare/promote/history smoke
+9. state roundtrip, prune, doctor, migrate, compare/promote/history and history retention smoke
 10. git preflight fuzz
 11. native Codex/Claude integration smoke
 12. redaction audit: docs, skill metadata, golden response artifacts에 unredacted secret-like 문자열이 없는지 확인
@@ -66,7 +67,7 @@ MCP tools:
 `self-verify --json`의 `summary.contract`, `summary.goal_scores`, `summary.coverage`, `summary.coverage_gaps`, 실패 시 `summary.failure_class`/`summary.failure_clusters`/`summary.rerun_commands`, `summary.minimum_goal_score`, `summary.termination_eligible`를 판정 기준으로 삼는다.
 `--progress=jsonl`은 stdout JSON summary를 깨지 않고 stderr에 `loop_start`, `iteration_start`, `step_start`, `step_end`, `iteration_end`, `loop_end` 이벤트를 JSON Lines로 기록한다.
 `self-verify compare`는 전체 `elapsed_ms`뿐 아니라 `summary.slowest_steps`를 label별 baseline으로 비교해 느린 단계 회귀를 `slow_step:*` regression으로 승격한다.
-자기 검증 루프 자체의 다음 개선 후보는 `agent_docs/SELF_VERIFICATION_CANDIDATES.md`에 기록한다. progress heartbeat, secret redaction audit, coverage gap report, failure rerun recipe, policy path fuzz plus, JSON schema contract, flake classifier, output size budget은 구현됐고, 현재 미완료 1순위는 history retention budget이다.
+자기 검증 루프 자체의 다음 개선 후보는 `agent_docs/SELF_VERIFICATION_CANDIDATES.md`에 기록한다. progress heartbeat, secret redaction audit, coverage gap report, failure rerun recipe, policy path fuzz plus, JSON schema contract, flake classifier, output size budget, history retention budget은 구현됐고, 현재 미완료 1순위는 parallel temp isolation이다.
 
 ## 2. 자가 증강 루프
 

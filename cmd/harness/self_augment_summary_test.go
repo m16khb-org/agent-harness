@@ -583,13 +583,68 @@ func TestSelfAugmentHistory(t *testing.T) {
 	if !historySkippedKey(limited.Skipped, "self-verify-note") {
 		t.Fatalf("expected non-summary key to be skipped: %+v", limited.Skipped)
 	}
+	if limited.Retention != nil {
+		t.Fatalf("retention should be omitted when no retention limit is requested: %+v", limited.Retention)
+	}
+
+	retentionPlan, err := selfAugmentHistory("self-verify", 0, selfAugmentHistoryRetentionOptions{Limit: 1})
+	if err != nil {
+		t.Fatalf("history retention plan: %v", err)
+	}
+	if retentionPlan.Retention == nil || !retentionPlan.Retention.Enabled || retentionPlan.Retention.Limit != 1 {
+		t.Fatalf("retention plan missing: %+v", retentionPlan.Retention)
+	}
+	if retentionPlan.Retention.TotalMatches != 2 ||
+		!containsString(retentionPlan.Retention.RetainedKeys, "self-verify-new") ||
+		!containsString(retentionPlan.Retention.CandidateKeys, "self-verify-old") ||
+		len(retentionPlan.Retention.DeletedKeys) != 0 {
+		t.Fatalf("unexpected retention plan: %+v", retentionPlan.Retention)
+	}
+	if !containsString(retentionPlan.Warnings, "history_retention_candidates:1") {
+		t.Fatalf("retention plan should warn about prune candidates: %+v", retentionPlan.Warnings)
+	}
+
+	retentionDryRun, err := selfAugmentHistory("self-verify", 0, selfAugmentHistoryRetentionOptions{Limit: 1, PruneRequested: true})
+	if err != nil {
+		t.Fatalf("history retention dry-run: %v", err)
+	}
+	if retentionDryRun.Retention == nil || !retentionDryRun.Retention.DryRun || retentionDryRun.Retention.Confirm || len(retentionDryRun.Retention.DeletedKeys) != 0 {
+		t.Fatalf("unexpected retention dry-run: %+v", retentionDryRun.Retention)
+	}
+	if _, err := core.StateRead("self-verify-old"); err != nil {
+		t.Fatalf("retention dry-run deleted old summary: %v", err)
+	}
+
+	retentionConfirmed, err := selfAugmentHistory("self-verify", 0, selfAugmentHistoryRetentionOptions{Limit: 1, PruneRequested: true, Confirm: true})
+	if err != nil {
+		t.Fatalf("history retention confirm: %v", err)
+	}
+	if retentionConfirmed.Retention == nil || retentionConfirmed.Retention.DryRun || !retentionConfirmed.Retention.Confirm || !containsString(retentionConfirmed.Retention.DeletedKeys, "self-verify-old") {
+		t.Fatalf("unexpected retention confirm: %+v", retentionConfirmed.Retention)
+	}
+	if _, err := core.StateRead("self-verify-old"); err == nil {
+		t.Fatalf("retention confirm left old summary in state")
+	}
 
 	all, err := selfAugmentHistory("", 0)
 	if err != nil {
 		t.Fatalf("history all: %v", err)
 	}
-	if all.TotalMatches != 3 || all.Returned != 3 || all.Entries[0].Key != "other-summary" {
+	if all.TotalMatches != 2 || all.Returned != 2 || all.Entries[0].Key != "other-summary" {
 		t.Fatalf("unexpected all history ordering/counts: %+v", all)
+	}
+}
+
+func TestSelfAugmentHistoryRetentionRejectsUnsafeOptions(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	if _, err := selfAugmentHistory("self-verify", 0, selfAugmentHistoryRetentionOptions{Limit: -1}); err == nil {
+		t.Fatalf("negative retention limit was accepted")
+	}
+	if _, err := selfAugmentHistory("self-verify", 0, selfAugmentHistoryRetentionOptions{Confirm: true}); err == nil {
+		t.Fatalf("confirm without prune-retention was accepted")
+	}
+	if _, err := selfAugmentHistory("self-verify", 0, selfAugmentHistoryRetentionOptions{PruneRequested: true}); err == nil {
+		t.Fatalf("prune-retention without positive retention limit was accepted")
 	}
 }
 
