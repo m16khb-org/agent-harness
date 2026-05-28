@@ -254,9 +254,6 @@ func TestSaveSelfAugmentLesson(t *testing.T) {
 	if !result.OK || result.Kind != selfAugmentationLessonKind || result.StateCheckpoint == nil || !result.StateCheckpoint.OK {
 		t.Fatalf("unexpected lesson result: %+v", result)
 	}
-	if result.LLMWikiDraft.Title == "" || result.LLMWikiDraft.Content == "" || result.LLMWikiDraft.Type != "session" {
-		t.Fatalf("missing llm-wiki draft: %+v", result.LLMWikiDraft)
-	}
 	state, err := core.StateRead("self-augment-lesson-test")
 	if err != nil {
 		t.Fatalf("StateRead: %v", err)

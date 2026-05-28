@@ -49,9 +49,7 @@ MCP tools:
 9. install dry-run smoke: temp HOME/CODEX_HOME/HARNESS_ROOT에서 `install-native --dry-run`이 planned writes/links만 보고 실제 파일을 쓰지 않는지 확인
 10. command policy smoke
 11. MCP smoke
-12. llm-wiki fixture guard: MCP/CLI smoke가 사용자 durable wiki 대신 temp fixture와 isolated HOME만 사용하는지 확인
 13. state roundtrip, prune, doctor, migrate, compare/promote/history and history retention smoke
-14. parallel isolation: 동시 실행 중 temp state, daemon dir, llm-wiki fixture, build artifact path가 충돌하지 않는지 확인
 15. daemon resilience: stale lock/socket 상태에서 daemon start/status/stop 복구와 socket permission을 확인
 16. git preflight fuzz
 17. native Codex/Claude integration smoke, including duplicate MCP warning classification fixture
@@ -70,8 +68,6 @@ MCP tools:
 | 단계 budget baseline | step budget baseline | 점수 > 95 |
 | 설치 dry-run | install dry-run smoke | 점수 > 95 |
 | 정책·보안 | command policy, preflight fuzz, redaction audit | 점수 > 95 |
-| MCP·상태 회귀 | MCP smoke, llm-wiki fixture guard, state roundtrip | 점수 > 95 |
-| LLM Wiki fixture guard | llm-wiki fixture guard | 점수 > 95 |
 | 동시성 격리 | parallel isolation | 점수 > 95 |
 | 데몬 복구력 | daemon resilience | 점수 > 95 |
 | 네이티브 통합 | native integration | 점수 > 95 |
@@ -79,7 +75,6 @@ MCP tools:
 `self-verify --json`의 `summary.contract`, `summary.goal_scores`, `summary.coverage`, `summary.coverage_gaps`, 실패 시 `summary.failure_class`/`summary.failure_clusters`/`summary.rerun_commands`, `summary.minimum_goal_score`, `summary.termination_eligible`를 판정 기준으로 삼는다.
 `--progress=jsonl`은 stdout JSON summary를 깨지 않고 stderr에 `loop_start`, `iteration_start`, `step_start`, `step_end`, `iteration_end`, `loop_end` 이벤트를 JSON Lines로 기록한다.
 `self-verify compare`는 전체 `elapsed_ms`뿐 아니라 `summary.slowest_steps`와 `summary.step_duration_stats`의 label별 p95 budget을 비교해 느린 단계 회귀를 `slow_step:*`/`step_budget:*` regression으로 승격한다.
-자기 검증 루프 자체의 다음 개선 후보는 `agent_docs/SELF_VERIFICATION_CANDIDATES.md`에 기록한다. progress heartbeat, secret redaction audit, coverage gap report, failure rerun recipe, policy path fuzz plus, JSON schema contract, flake classifier, output size budget, history retention budget, parallel temp isolation, duplicate MCP warning, daemon restart resilience, llm-wiki fixture guard, candidate export, step budget baseline, install dry-run smoke는 구현됐고, 현재 미완료 후보는 없다.
 
 ## 2. 자가 증강 루프
 
@@ -103,7 +98,6 @@ MCP tools:
 ./bin/harness self-augment lesson --candidate reflexion-state-memory --lesson "..." --next-action "..." --json
 ```
 
-이 CLI는 deterministic planner/curriculum 표면이다. 실제 코드 편집과 구현은 native agent skill `skills/self-augment`가 수행한다. `--save-state`를 사용하면 선택 후보, open/satisfied 후보 목록, GENIUS_THINK 공식, 연구 앵커를 `self_augmentation_plan` state snapshot으로 저장해 다음 cycle의 기억으로 재사용한다. `self-augment lesson`은 실패/QA/설계 교훈을 `self_augmentation_lesson` state snapshot과 llm-wiki capture draft로 남긴다. 플래너는 이미 충족된 후보를 `already_satisfied`로 남겨 감사 가능하게 하되, 다음 cycle의 `selected_candidate`에서는 제외한다. 따라서 자가 증강 루프를 반복 실행하면 완료된 일을 다시 고르는 대신 다음으로 필요한 기능·성능·품질·문서 개선을 고른다.
 
 스킬 실행 계약:
 
@@ -118,7 +112,7 @@ $self-augment
 | 개선 목표 선별 | `GENIUS_THINK.md`, docs index, skill inventory, git evidence로 10개 이상 후보 생성·점수화 | 점수 > 95 |
 | 개선 구현 | 선택 후보가 실제 diff로 구현됨 | 점수 > 95 |
 | 검증·QA | 타깃 테스트와 자기 검증 루프 통과 | 점수 > 95 |
-| 학습 기록 | 실패/성공 교훈과 다음 후보가 state/docs/wiki 중 적절한 곳에 남음. 기본 state artifact는 `self_augmentation_plan`이다. | 점수 > 95 |
+| 학습 기록 | 실패/성공 교훈과 다음 후보가 state/docs 중 적절한 곳에 남음. 기본 state artifact는 `self_augmentation_plan`이다. | 점수 > 95 |
 
 ### GENIUS_THINK.md 사용
 

@@ -11,14 +11,11 @@ import (
 	"time"
 )
 
-func TestServeMCPStreamListsLLMWikiTools(t *testing.T) {
-	root := t.TempDir()
-	writeMCPWikiFixture(t, root)
-	t.Setenv("LLM_WIKI_ROOT", root)
+func TestServeMCPStreamListsHarnessTools(t *testing.T) {
 	input := strings.Join([]string{
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
 		`{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`,
-		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"harness://llm-wiki/session-context"}}`,
+		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"harness://commit-policy"}}`,
 	}, "\n") + "\n"
 	var out bytes.Buffer
 	var diag bytes.Buffer
@@ -38,11 +35,10 @@ func TestServeMCPStreamListsLLMWikiTools(t *testing.T) {
 			t.Fatalf("missing result: %s", line)
 		}
 	}
-	if !strings.Contains(out.String(), "llm_wiki_session_context") || !strings.Contains(out.String(), "LLM Wiki Session Context") {
-		t.Fatalf("missing llm wiki tools/context in output:\n%s", out.String())
+	if !strings.Contains(out.String(), "atomic_commit_preflight") || !strings.Contains(out.String(), "Lore") {
+		t.Fatalf("missing harness tools/context in output:\n%s", out.String())
 	}
 }
-
 func TestDaemonPathsUseOverride(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_DAEMON_DIR", dir)
@@ -76,24 +72,5 @@ func TestAcquireDaemonLockRemovesStaleLock(t *testing.T) {
 	}
 	if !strings.Contains(string(b), strconv.Itoa(os.Getpid())) {
 		t.Fatalf("lock file was not replaced with current pid: %q", string(b))
-	}
-}
-
-func writeMCPWikiFixture(t *testing.T, root string) {
-	t.Helper()
-	files := map[string]string{
-		"00-meta/AGENTS.md":                    "# Schema\n",
-		"00-meta/index.md":                     "# Wiki Index\n\n- [[llm-wiki-pattern]]\n",
-		"00-meta/log.md":                       "# Log\n",
-		"20-wiki/concepts/llm-wiki-pattern.md": "---\ntitle: LLM Wiki Pattern\ntype: concept\nstatus: active\ntags: [llm-wiki]\n---\n\nDurable wiki memory.\n",
-	}
-	for rel, content := range files {
-		path := filepath.Join(root, filepath.FromSlash(rel))
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
 	}
 }

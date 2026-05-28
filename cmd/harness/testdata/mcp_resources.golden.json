@@ -34,29 +34,5 @@
     "mimeType": "application/json",
     "name": "State checkpoint index",
     "uri": "harness://state"
-  },
-  {
-    "description": "Session-start instructions and bounded inventory for the shared local LLM Wiki.",
-    "mimeType": "text/markdown",
-    "name": "LLM Wiki session context",
-    "uri": "harness://llm-wiki/session-context"
-  },
-  {
-    "description": "JSON inventory of the shared local LLM Wiki vault.",
-    "mimeType": "application/json",
-    "name": "LLM Wiki inventory",
-    "uri": "harness://llm-wiki/inventory"
-  },
-  {
-    "description": "Canonical llm-wiki catalog at 00-meta/index.md.",
-    "mimeType": "text/markdown",
-    "name": "LLM Wiki index",
-    "uri": "harness://llm-wiki/index"
-  },
-  {
-    "description": "Canonical llm-wiki agent operating rules at 00-meta/AGENTS.md.",
-    "mimeType": "text/markdown",
-    "name": "LLM Wiki schema",
-    "uri": "harness://llm-wiki/schema"
   }
 ]

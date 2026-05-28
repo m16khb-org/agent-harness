@@ -5,4 +5,3 @@ startup_timeout_sec = 30
 
 [mcp_servers.agent_harness.env]
 HARNESS_ROOT = "."
-LLM_WIKI_ROOT = "~/workspace/knowledge-base/llm-wiki"

@@ -6,8 +6,7 @@
       ],
       "command": "./bin/harness",
       "env": {
-        "HARNESS_ROOT": ".",
-        "LLM_WIKI_ROOT": "~/workspace/knowledge-base/llm-wiki"
+        "HARNESS_ROOT": "."
       },
       "type": "stdio"
     }

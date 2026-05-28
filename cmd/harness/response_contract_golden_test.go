@@ -20,11 +20,9 @@ func TestResponseContractsGolden(t *testing.T) {
 	workspaceDir := t.TempDir()
 	gitRepoDir := makeGitRepoForContract(t)
 	homeDir := t.TempDir()
-	wikiDir := makeLLMWikiForContract(t)
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
 	t.Setenv("HOME", homeDir)
 	t.Setenv("CODEX_HOME", filepath.Join(homeDir, ".codex"))
-	t.Setenv("LLM_WIKI_ROOT", wikiDir)
 
 	replacements := map[string]string{
 		stateDir:      "$STATE_DIR",
@@ -32,12 +30,10 @@ func TestResponseContractsGolden(t *testing.T) {
 		gitRepoDir:    "$GIT_REPO",
 		harnessRoot(): "$HARNESS_ROOT",
 		homeDir:       "$HOME",
-		wikiDir:       "$LLM_WIKI",
 	}
 	addEvalSymlinkReplacement(t, replacements, stateDir, "$STATE_DIR")
 	addEvalSymlinkReplacement(t, replacements, workspaceDir, "$WORKSPACE")
 	addEvalSymlinkReplacement(t, replacements, gitRepoDir, "$GIT_REPO")
-	addEvalSymlinkReplacement(t, replacements, wikiDir, "$LLM_WIKI")
 	addEvalSymlinkReplacement(t, replacements, harnessRoot(), "$HARNESS_ROOT")
 
 	snapshot := map[string]any{}
@@ -63,18 +59,6 @@ func TestResponseContractsGolden(t *testing.T) {
 	})
 	cliSnapshot["state_list"] = runCLIJSONContract(t, replacements, func() error {
 		return runState([]string{"list", "--json"})
-	})
-	cliSnapshot["llm_wiki_inventory"] = runCLIJSONContract(t, replacements, func() error {
-		return runLLMWiki([]string{"inventory", "--json", "--project", workspaceDir})
-	})
-	cliSnapshot["llm_wiki_session_context"] = runCLIJSONContract(t, replacements, func() error {
-		return runLLMWiki([]string{"session-context", "--json", "--project", workspaceDir})
-	})
-	cliSnapshot["llm_wiki_search"] = runCLIJSONContract(t, replacements, func() error {
-		return runLLMWiki([]string{"search", "--query", "llm wiki", "--limit", "2", "--json"})
-	})
-	cliSnapshot["llm_wiki_read"] = runCLIJSONContract(t, replacements, func() error {
-		return runLLMWiki([]string{"read", "--page", "llm-wiki-pattern", "--json"})
 	})
 
 	old := mustStateReadForContract(t, "current")
@@ -151,19 +135,6 @@ func TestResponseContractsGolden(t *testing.T) {
 	})
 	mcpSnapshot["state_doctor"] = runMCPToolContract(t, replacements, "state_doctor", map[string]any{})
 	mcpSnapshot["state_migrate"] = runMCPToolContract(t, replacements, "state_migrate", map[string]any{})
-	mcpSnapshot["llm_wiki_inventory"] = runMCPToolContract(t, replacements, "llm_wiki_inventory", map[string]any{
-		"project_path": workspaceDir,
-	})
-	mcpSnapshot["llm_wiki_session_context"] = runMCPToolContract(t, replacements, "llm_wiki_session_context", map[string]any{
-		"project_path": workspaceDir,
-	})
-	mcpSnapshot["llm_wiki_search"] = runMCPToolContract(t, replacements, "llm_wiki_search", map[string]any{
-		"query": "llm wiki",
-		"limit": 2,
-	})
-	mcpSnapshot["llm_wiki_read"] = runMCPToolContract(t, replacements, "llm_wiki_read", map[string]any{
-		"page": "llm-wiki-pattern",
-	})
 	mcpSnapshot["self_augment"] = runMCPToolContract(t, replacements, "self_augment", map[string]any{
 		"target_score": 95,
 	})
@@ -209,28 +180,6 @@ func makeGitRepoForContract(t *testing.T) string {
 	)
 	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("TOKEN=fixture\n"), 0o600); err != nil {
 		t.Fatal(err)
-	}
-	return dir
-}
-
-func makeLLMWikiForContract(t *testing.T) string {
-	t.Helper()
-	dir := t.TempDir()
-	files := map[string]string{
-		"00-meta/AGENTS.md":                    "---\ntitle: Schema\ntype: schema\nstatus: active\ncreated: 2026-05-27\nupdated: 2026-05-27\ntags: [meta]\n---\n\n# LLM Wiki Operating Schema\n\nUse source cards as read-only evidence.\n",
-		"00-meta/index.md":                     "---\ntitle: Wiki Index\ntype: index\nstatus: active\ncreated: 2026-05-27\nupdated: 2026-05-27\ntags: [meta]\n---\n\n# Wiki Index\n\n- [[karpathy-llm-wiki-gist]]\n- [[llm-wiki-pattern]]\n",
-		"00-meta/log.md":                       "# Wiki Log\n\n",
-		"10-sources/karpathy-llm-wiki-gist.md": "---\ntitle: Karpathy LLM Wiki Gist\ntype: source\nstatus: active\ntags: [llm-wiki, source]\n---\n\nSource card about the LLM Wiki pattern.\n",
-		"20-wiki/concepts/llm-wiki-pattern.md": "---\ntitle: LLM Wiki Pattern\ntype: concept\nstatus: active\ntags: [llm-wiki, memory]\n---\n\nLLM Wiki keeps durable interlinked markdown knowledge for agents.\n",
-	}
-	for rel, content := range files {
-		path := filepath.Join(dir, filepath.FromSlash(rel))
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
 	}
 	return dir
 }

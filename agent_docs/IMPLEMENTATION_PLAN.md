@@ -43,7 +43,6 @@ Codex / Claude Code / Human
                 │
           fs/git/process/state/config/wiki adapters
                 │
-          ~/workspace/knowledge-base/llm-wiki
 ```
 
 핵심 원칙:
@@ -52,7 +51,6 @@ Codex / Claude Code / Human
 - adapter는 core 호출과 입출력 변환만 한다.
 - command execution과 workspace access는 policy를 통과해야 한다.
 - CLI JSON, MCP response, daemon-backed MCP response는 같은 DTO를 공유한다.
-- `llm-wiki`는 Codex/Claude 공통 long-term memory로 노출하고, 자세한 설계는 `agent_docs/LLM_WIKI_INTEGRATION.md`를 따른다.
 
 ---
 
@@ -129,7 +127,7 @@ Acceptance criteria:
 
 ### Phase 3 — MCP stdio proxy/server
 
-상태: `harness mcp`가 shared `agent-harness daemon`을 자동 시작하고 stdio를 Unix socket으로 proxy한다. 기본 tools/resources와 llm-wiki tools/resources 구현 완료.
+상태: `harness mcp`가 shared `agent-harness daemon`을 자동 시작하고 stdio를 Unix socket으로 proxy한다. llm-wiki 전용 tools/resources는 upstream plugin 사용 원칙에 따라 제거됐다.
 
 Deliverables:
 
@@ -138,8 +136,6 @@ Deliverables:
 - MCP tools/resources:
   - harness inspect/docs/state/policy/self-verify/self-augment tools
   - `daemon_status`
-  - `llm_wiki_inventory`, `llm_wiki_session_context`, `llm_wiki_search`, `llm_wiki_read`, `llm_wiki_capture`
-  - `harness://llm-wiki/session-context`, `harness://llm-wiki/inventory`, `harness://llm-wiki/index`, `harness://llm-wiki/schema`
 - CLI DTO와 MCP response 공유
 - Claude Code MCP config template + SessionStart hook helper template
 
@@ -147,8 +143,7 @@ Acceptance criteria:
 
 - MCP tool/resource schema golden test
 - daemon-backed MCP stdio smoke test
-- llm-wiki CLI/MCP response golden test
-- Claude Code config/hook template 문서화
+- Claude Code/Codex MCP config template 문서화
 
 ### Phase 4 — Local job worker daemon
 
@@ -257,3 +252,7 @@ MVP에서 제외:
 4. response contract golden 범위를 새로 추가되는 capability까지 계속 넓히고, docs byte-size drift가 과하면 normalized subset 전략을 검토
 5. state migration 정책을 multi-version fixture로 확장할 필요가 있는지 dogfood 결과로 판단
 6. command policy catalog를 config로 확장할 필요가 있는지 dogfood 결과로 판단
+
+## LLM Wiki 정책
+
+LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.

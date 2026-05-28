@@ -13,7 +13,6 @@ find . -maxdepth 3 -type f | sort
 find agent_docs -maxdepth 1 -type f -name '*.md' | sort
 grep -R "외부 Go 하네스\|Go\|MCP\|Codex\|Claude" -n AGENTS.md CLAUDE.md agent_docs
 python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
-python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/llm-wiki
 go test ./... -count=1
 go test ./cmd/harness -run Golden -count=1
 go build -o bin/harness ./cmd/harness
@@ -24,10 +23,6 @@ go build -o bin/harness ./cmd/harness
 ./bin/harness docs --json
 ./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
-./bin/harness llm-wiki inventory --json
-./bin/harness llm-wiki session-context --json
-./bin/harness llm-wiki search --query "llm wiki" --limit 5 --json
-./bin/harness llm-wiki read --page 00-meta/index.md --json
 tmp_state="$(mktemp -d)"
 HARNESS_STATE_DIR="$tmp_state" ./bin/harness state write --key smoke --value "ok" --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/harness state read --key smoke --json
@@ -57,10 +52,7 @@ Native integration smoke:
 
 ```bash
 test -f ~/.codex/skills/atomic-commit-push/SKILL.md
-test -f ~/.codex/skills/llm-wiki/SKILL.md
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md
-test -f ~/.claude/skills/llm-wiki/SKILL.md
-grep -q "session-start-llm-wiki.sh" ~/.claude/settings.json
 codex mcp get agent_harness
 claude mcp list | grep agent-harness
 ```
@@ -70,7 +62,6 @@ claude mcp list | grep agent-harness
 - `agent_docs/`의 링크가 실제 파일과 맞는가
 - plugin vs worker 결정과 Go 선택이 여러 문서에서 충돌하지 않는가
 - shared skill 원본(`skills/*`)과 user-level host 연결(`~/.codex/skills/*`, `~/.claude/skills/*`)이 drift 없이 같은 대상을 가리키는가
-- llm-wiki root(`~/workspace/knowledge-base/llm-wiki`)가 존재하고 `00-meta/AGENTS.md`, `00-meta/index.md`, `00-meta/log.md`가 읽히는가
 - 커밋 정책이 `AGENTS.md`, `agent_docs/COMMIT_POLICY.md`, `atomic-commit-push` skill에서 충돌하지 않는가
 
 ---
@@ -125,7 +116,6 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `harness policy check/fake-run` allow/deny/fake execution output shape
 - MCP tool schema와 response shape
 - daemon-backed MCP smoke response
-- `harness llm-wiki inventory/session-context/search/read` output shape
 - `cmd/harness/testdata/usage.golden.txt`
 - `cmd/harness/testdata/mcp_tools.golden.json`
 - `cmd/harness/testdata/mcp_resources.golden.json`
@@ -139,8 +129,6 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `harness self-verify` install dry-run smoke for temp HOME/CODEX_HOME/HARNESS_ROOT no-write assertions
 - `harness self-verify --save-state` summary checkpoint serialization
 - `harness self-verify history` summary checkpoint discovery and retention dry-run/confirm safety
-- `harness self-verify` llm-wiki fixture guard step for temp fixture root and isolated HOME default-root leakage
-- `harness self-verify` parallel isolation step for temp state, daemon dir, llm-wiki fixture, and artifact path collisions
 - `harness self-verify` native integration fixture for Claude MCP conflicting-scope warning classification
 - `harness self-verify` daemon resilience step for stale lock/socket recovery and socket permission checks
 - `harness self-verify compare` summary checkpoint regression comparison
@@ -169,3 +157,7 @@ Golden file은 사람이 읽을 수 있게 작게 유지하고, schema 변경 �
 ## 자기 검증 QA gate
 
 `harness self-verify`는 테스트 실행뿐 아니라 QA gate를 포함한다. QA gate는 루프 문서, `GENIUS_THINK.md`, shared skill metadata, native integration 설치 상태, redaction audit, bounded stdout/stderr metadata, Mermaid 문서 lint를 확인하며, 모든 목표 점수가 95점을 초과해야 종료 가능하다. Mermaid lint는 `GENIUS_THINK.md`의 따옴표/`<br/>` 규칙을 기준으로 문서 다이어그램 파싱 오류를 조기에 막는다.
+
+## LLM Wiki 정책
+
+LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.

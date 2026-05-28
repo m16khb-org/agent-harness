@@ -143,3 +143,6 @@ agent_docs/
 - subject는 Conventional Commit 형식(`<type>(<scope>)!?: <summary>`)을 사용한다.
 - body에는 AI agent가 맥락을 회수할 수 있도록 `Lore:` 블록을 둔다.
 - atomic commit 하나에는 Lore `Intent`도 하나만 있어야 한다.
+## API Documentation Gate
+
+Reusable API documentation checks belong in `harness api-doc review`, not in a single application repository or framework-specific hook. Keep the core prompt framework-agnostic: it may mention examples such as NestJS Swagger decorators, Go swaggo annotations, OpenAPI specs, Spring/FastAPI annotations, but must instruct reviewers to follow the target project's own convention and staged diff only. Project-specific strictness should be supplied via `--prompt-file` rather than hardcoded into harness core.

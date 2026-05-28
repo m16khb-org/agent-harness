@@ -55,8 +55,6 @@ go build -o bin/harness ./cmd/harness
 ./bin/harness docs --json
 ./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/harness daemon status --json
-./bin/harness llm-wiki inventory --json
-./bin/harness llm-wiki session-context --json
 ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
 ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
 ./bin/harness self-verify history --prefix self-verify --json
@@ -86,11 +84,6 @@ harness state migrate --confirm --json
 harness daemon start --json
 harness daemon status --json
 harness daemon stop --json
-harness llm-wiki inventory --json
-harness llm-wiki session-context --json
-harness llm-wiki search --query "llm wiki" --json
-harness llm-wiki read --page llm-wiki-pattern --json
-harness llm-wiki capture --title "Reusable finding" --content "..." --json
 harness mcp
 harness self-verify --iterations=10 --seed=100 --target-score=95
 harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
@@ -113,7 +106,6 @@ harness worker start
 | 사용자 state/log | OS별 state dir 또는 `~/.local/state/agent-harness/` |
 | workspace cache | `.harness/` |
 | daemon socket/pid/log | `~/.local/state/agent-harness/daemon/` 또는 `HARNESS_DAEMON_DIR` |
-| LLM Wiki vault | `~/workspace/knowledge-base/llm-wiki` 또는 `LLM_WIKI_ROOT` |
 | Codex 템플릿 | `configs/codex/` |
 | Claude 템플릿 | `configs/claude/` |
 
@@ -123,10 +115,11 @@ harness worker start
 
 ```bash
 test -f ~/.codex/skills/atomic-commit-push/SKILL.md
-test -f ~/.codex/skills/llm-wiki/SKILL.md
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md
-test -f ~/.claude/skills/llm-wiki/SKILL.md
-grep -q "session-start-llm-wiki.sh" ~/.claude/settings.json
 codex mcp get agent_harness
 claude mcp list | grep agent-harness
 ```
+
+## LLM Wiki 정책
+
+LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.

@@ -43,20 +43,8 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 		errs = append(errs, err)
 	}
 
-	hookPath := filepath.Join(req.Root, "configs", "codex", "hooks", "session-start-llm-wiki.sh")
-	file, err = installutil.WriteTextPlan(hookPath, "codex_session_start_hook_template", codexHookTemplate(), 0o755, req.DryRun)
-	result.Files = append(result.Files, file)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	if !req.DryRun {
-		if chmodErr := os.Chmod(hookPath, 0o755); chmodErr != nil {
-			errs = append(errs, chmodErr)
-		}
-	}
-
 	if req.DryRun {
-		result.Messages = append(result.Messages, "dry-run: planned Codex user skill links, MCP config, and templates without writing")
+		result.Messages = append(result.Messages, "dry-run: planned Codex user skill links and MCP config templates without writing")
 	}
 
 	if len(errs) > 0 {
@@ -118,34 +106,17 @@ startup_timeout_sec = 30
 
 [mcp_servers.agent_harness.env]
 HARNESS_ROOT = %s
-LLM_WIKI_ROOT = %s
-`, installutil.TOMLString(req.BinPath), installutil.TOMLString(req.Root), installutil.TOMLString(req.LLMWikiRoot))
+`, installutil.TOMLString(req.BinPath), installutil.TOMLString(req.Root))
 }
 
 func codexTemplate(req port.NativeInstallRequest) string {
-	portableRoot := req.PortableLLMWikiRoot
-	if portableRoot == "" {
-		portableRoot = "~/workspace/knowledge-base/llm-wiki"
-	}
-	return fmt.Sprintf(`[mcp_servers.agent_harness]
+	return `[mcp_servers.agent_harness]
 command = "./bin/harness"
 args = ["mcp"]
 startup_timeout_sec = 30
 
 [mcp_servers.agent_harness.env]
 HARNESS_ROOT = "."
-LLM_WIKI_ROOT = %s
-`, installutil.TOMLString(portableRoot))
-}
-
-func codexHookTemplate() string {
-	return `#!/usr/bin/env bash
-# Generic plain-text session-start hook adapter for Codex-compatible hook runners.
-# It intentionally emits plain context instead of Claude's hookSpecificOutput JSON.
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-export HARNESS_ROOT="$ROOT"
-export HARNESS_SESSION_CONTEXT_MODE=plain
-exec "$ROOT/scripts/session-start-llm-wiki.sh"
 `
 }
 

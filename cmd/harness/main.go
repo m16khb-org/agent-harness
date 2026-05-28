@@ -76,9 +76,9 @@ func main() {
 			fmt.Fprintln(os.Stderr, "state:", err)
 			os.Exit(1)
 		}
-	case "llm-wiki":
-		if err := runLLMWiki(os.Args[2:]); err != nil {
-			fmt.Fprintln(os.Stderr, "llm-wiki:", err)
+	case "api-doc":
+		if err := runAPIDoc(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "api-doc:", err)
 			os.Exit(1)
 		}
 	case "install-native":
@@ -117,13 +117,9 @@ Usage:
   harness state prune --max-age DURATION [--confirm] [--json]
   harness state doctor [--json]
   harness state migrate [--confirm] [--json]
-  harness llm-wiki inventory [--root PATH] [--project PATH] [--json]
-  harness llm-wiki session-context [--root PATH] [--project PATH] [--json]
-  harness llm-wiki search --query TEXT [--root PATH] [--limit N] [--json]
-  harness llm-wiki read --page PATH_OR_SLUG [--root PATH] [--json]
-  harness llm-wiki capture --title TITLE (--content TEXT|--input FILE|--stdin) [--type session|concept|entity|summary] [--json]
+  harness api-doc review [--repo PATH] [--model MODEL] [--reasoning EFFORT] [--timeout DURATION] [--diff-file FILE] [--prompt-file FILE] [--json] [--] [FILES...]
   harness daemon start|status|stop [--json]
-  harness install-native [--llm-wiki-root PATH] [--project-local] [--no-claude-user-hook] [--dry-run] [--json]
+  harness install-native [--project-local] [--dry-run] [--json]
   harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--save-state] [--state-key KEY] [--json]
   harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
   harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
@@ -158,7 +154,6 @@ func runInspect(args []string) error {
 	}
 	fmt.Printf("codex skill installed: %v\n", info.Integration.CodexSkillInstalled)
 	fmt.Printf("claude skill installed: %v\n", info.Integration.ClaudeSkillInstalled)
-	fmt.Printf("Claude user SessionStart hook: %v\n", info.Integration.ClaudeUserHook)
 	fmt.Printf("project Claude MCP config: %v\n", info.Integration.ProjectClaudeMCPConfig)
 	return nil
 }
@@ -1064,7 +1059,6 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			{Label: "install dry-run smoke", Run: func() StepResult { return validateInstallDryRunSmoke(tempBin, result.HarnessRoot, seed) }},
 			{Label: "command policy smoke", Run: func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) }},
 			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
-			{Label: "llm-wiki fixture guard", Run: func() StepResult { return validateLLMWikiFixtureGuard(tempBin, result.HarnessRoot) }},
 			{Label: "state roundtrip", Run: func() StepResult { return validateStateRoundtrip(tempBin, result.HarnessRoot, seed) }},
 			{Label: "parallel isolation", Run: func() StepResult { return validateParallelTempIsolation(tempBin, result.HarnessRoot, seed) }},
 			{Label: "daemon resilience", Run: func() StepResult { return validateDaemonRestartResilience(tempBin, result.HarnessRoot, seed) }},
@@ -1404,12 +1398,7 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 		{
 			Name:       "mcp_state_regression",
 			KoreanName: "MCP·상태 회귀",
-			Labels:     []string{"MCP smoke", "llm-wiki fixture guard", "state roundtrip"},
-		},
-		{
-			Name:       "llm_wiki_fixture_guard",
-			KoreanName: "LLM Wiki fixture guard",
-			Labels:     []string{"llm-wiki fixture guard"},
+			Labels:     []string{"MCP smoke", "state roundtrip"},
 		},
 		{
 			Name:       "concurrency_isolation",
@@ -1441,7 +1430,6 @@ func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition 
 		{Claim: "install-native dry-run no-write smoke", Labels: []string{"install dry-run smoke"}},
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
 		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
-		{Claim: "llm-wiki fixture guard", Labels: []string{"llm-wiki fixture guard"}},
 		{Claim: "parallel temp isolation", Labels: []string{"parallel isolation"}},
 		{Claim: "daemon restart resilience", Labels: []string{"daemon resilience"}},
 		{Claim: "git preflight fuzz", Labels: []string{"preflight fuzz"}},
@@ -1508,13 +1496,11 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 	case "step budget baseline":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
 	case "install dry-run smoke":
-		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/harness install-native --dry-run --project-local --llm-wiki-root \"$tmp_home/wiki\" --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
+		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/harness install-native --dry-run --project-local --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
 	case "command policy smoke":
 		return "./bin/harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
 	case "MCP smoke":
 		return "./bin/harness mcp", true
-	case "llm-wiki fixture guard":
-		return "tmp_home=\"$(mktemp -d)\" tmp_wiki=\"$tmp_home/llm-wiki\" && mkdir -p \"$tmp_wiki/00-meta\" \"$tmp_wiki/20-wiki/concepts\" && printf '# Wiki Index\\n\\n- [[llm-wiki-pattern]]\\n' > \"$tmp_wiki/00-meta/index.md\" && printf -- '---\\ntitle: LLM Wiki Pattern\\ntype: concept\\n---\\n\\nfixture\\n' > \"$tmp_wiki/20-wiki/concepts/llm-wiki-pattern.md\" && HOME=\"$tmp_home\" LLM_WIKI_ROOT=\"$tmp_wiki\" ./bin/harness llm-wiki inventory --json; rm -rf \"$tmp_home\"", true
 	case "state roundtrip":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state migrate --json; rm -rf \"$tmp_state\"", true
 	case "parallel isolation":
@@ -2366,8 +2352,6 @@ func validateHarnessInvariants(root string) StepResult {
 		filepath.Join("cmd", "harness", "testdata", "mcp_resources.golden.json"),
 		filepath.Join("cmd", "harness", "testdata", "response_contracts.golden.json"),
 		filepath.Join(".mcp.json"),
-		filepath.Join("configs", "claude", "hooks", "session-start-llm-wiki.settings.json"),
-		filepath.Join("scripts", "session-start-llm-wiki.sh"),
 	}
 	for _, rel := range required {
 		if !exists(filepath.Join(root, rel)) {
@@ -2487,9 +2471,6 @@ func validateInspect(binary, root string) StepResult {
 	}
 	if !info.Integration.ProjectClaudeMCPConfig {
 		errs = append(errs, "project Claude MCP config missing")
-	}
-	if !info.Integration.ClaudeUserHook && !info.Integration.ProjectClaudeHook {
-		errs = append(errs, "Claude SessionStart hook missing")
 	}
 	if containsForbiddenLegacyOutsideRuntimePaths(step.Stdout, root) {
 		errs = append(errs, "inspect output contains legacy "+"m"+"16 name")
@@ -2735,22 +2716,20 @@ func validateInstallDryRunSmoke(binary, root string, seed int64) StepResult {
 	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: "+skillName+"\ndescription: install dry-run smoke\n---\n"), 0o644); err != nil {
 		return failedStep("install dry-run smoke", err)
 	}
-	tempWiki := filepath.Join(tempHome, "wiki")
 	env := []string{
 		"HOME=" + tempHome,
 		"CODEX_HOME=" + filepath.Join(tempHome, ".codex"),
 		"HARNESS_ROOT=" + tempRoot,
 	}
-	step := runCommandStepEnv(root, "install dry-run smoke", 30*time.Second, "", env, binary, "install-native", "--dry-run", "--project-local", "--llm-wiki-root", tempWiki, "--json")
+	step := runCommandStepEnv(root, "install dry-run smoke", 30*time.Second, "", env, binary, "install-native", "--dry-run", "--project-local", "--json")
 	if !step.OK {
 		return step
 	}
 	var result struct {
-		OK             bool `json:"ok"`
-		DryRun         bool `json:"dry_run"`
-		ProjectLocal   bool `json:"project_local"`
-		ClaudeUserHook bool `json:"claude_user_hook"`
-		Hosts          []struct {
+		OK           bool `json:"ok"`
+		DryRun       bool `json:"dry_run"`
+		ProjectLocal bool `json:"project_local"`
+		Hosts        []struct {
 			Host   string `json:"host"`
 			OK     bool   `json:"ok"`
 			DryRun bool   `json:"dry_run"`
@@ -2772,7 +2751,7 @@ func validateInstallDryRunSmoke(binary, root string, seed int64) StepResult {
 		return assertionStepWithOutput("install dry-run smoke", started, []string{err.Error()}, []string{step.Stdout}, []string{step.Command})
 	}
 	errs := []string{}
-	if !result.OK || !result.DryRun || !result.ProjectLocal || !result.ClaudeUserHook {
+	if !result.OK || !result.DryRun || !result.ProjectLocal {
 		errs = append(errs, "install dry-run result flags mismatch")
 	}
 	if len(result.Hosts) != 2 {
@@ -2813,7 +2792,6 @@ func validateInstallDryRunSmoke(binary, root string, seed int64) StepResult {
 		filepath.Join(tempRoot, "configs"),
 		filepath.Join(tempRoot, ".mcp.json"),
 		filepath.Join(tempRoot, ".claude"),
-		tempWiki,
 	} {
 		if exists(path) {
 			errs = append(errs, "install dry-run wrote unexpected path:"+path)
@@ -2942,10 +2920,6 @@ func validateMCP(binary, root string) StepResult {
 		return failedStep("MCP smoke", err)
 	}
 	defer os.RemoveAll(tempState)
-	tempWiki := filepath.Join(tempState, "llm-wiki")
-	if err := writeSelfAugmentWikiFixture(tempWiki); err != nil {
-		return failedStep("MCP smoke", err)
-	}
 	daemonDir, err := os.MkdirTemp("", "ahd-*")
 	if err != nil {
 		return failedStep("MCP smoke", err)
@@ -2954,7 +2928,6 @@ func validateMCP(binary, root string) StepResult {
 	env := []string{
 		"HARNESS_STATE_DIR=" + tempState,
 		"HARNESS_DAEMON_DIR=" + daemonDir,
-		"LLM_WIKI_ROOT=" + tempWiki,
 	}
 	defer runCommandStepEnv(root, "MCP daemon stop", 5*time.Second, "", env, binary, "daemon", "stop", "--json")
 
@@ -2968,17 +2941,15 @@ func validateMCP(binary, root string) StepResult {
 		`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"state_prune","arguments":{"max_age":"1h"}}}`,
 		`{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"state_doctor","arguments":{}}}`,
 		`{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"state_migrate","arguments":{}}}`,
-		`{"jsonrpc":"2.0","id":10,"method":"resources/read","params":{"uri":"harness://llm-wiki/session-context"}}`,
-		`{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"llm_wiki_search","arguments":{"query":"llm wiki","limit":3}}}`,
 	}, "\n") + "\n"
 	step := runCommandStepEnvWithBudget(root, "MCP smoke", 30*time.Second, input, env, 0, binary, "mcp")
 	if !step.OK {
 		return step
 	}
 	lines := splitLines(step.Stdout)
-	if len(lines) != 11 {
+	if len(lines) != 9 {
 		step.OK = false
-		step.Error = fmt.Sprintf("expected 11 MCP responses, got %d", len(lines))
+		step.Error = fmt.Sprintf("expected 9 MCP responses, got %d", len(lines))
 		return step
 	}
 	for i, line := range lines {
@@ -2994,140 +2965,12 @@ func validateMCP(binary, root string) StepResult {
 			return step
 		}
 	}
-	if !strings.Contains(step.Stdout, "atomic_commit_preflight") || !strings.Contains(step.Stdout, "docs_index") || !strings.Contains(step.Stdout, "command_policy_check") || !strings.Contains(step.Stdout, "state_write") || !strings.Contains(step.Stdout, "state_prune") || !strings.Contains(step.Stdout, "state_doctor") || !strings.Contains(step.Stdout, "state_migrate") || !strings.Contains(step.Stdout, "self_augment") || !strings.Contains(step.Stdout, "self_augment_lesson") || !strings.Contains(step.Stdout, "self_verify") || !strings.Contains(step.Stdout, "self_verify_candidates") || !strings.Contains(step.Stdout, "self_verify_history") || !strings.Contains(step.Stdout, "self_verify_compare") || !strings.Contains(step.Stdout, "self_verify_promote") || !strings.Contains(step.Stdout, "llm_wiki_session_context") || !strings.Contains(step.Stdout, "llm_wiki_search") || !strings.Contains(step.Stdout, "dry_run") || !strings.Contains(step.Stdout, "healthy") || !strings.Contains(step.Stdout, "to_schema") || !strings.Contains(step.Stdout, "Lore:") || !strings.Contains(step.Stdout, "LLM Wiki Session Context") {
+	if !strings.Contains(step.Stdout, "atomic_commit_preflight") || !strings.Contains(step.Stdout, "docs_index") || !strings.Contains(step.Stdout, "command_policy_check") || !strings.Contains(step.Stdout, "state_write") || !strings.Contains(step.Stdout, "state_prune") || !strings.Contains(step.Stdout, "state_doctor") || !strings.Contains(step.Stdout, "state_migrate") || !strings.Contains(step.Stdout, "self_augment") || !strings.Contains(step.Stdout, "self_augment_lesson") || !strings.Contains(step.Stdout, "self_verify") || !strings.Contains(step.Stdout, "self_verify_candidates") || !strings.Contains(step.Stdout, "self_verify_history") || !strings.Contains(step.Stdout, "self_verify_compare") || !strings.Contains(step.Stdout, "self_verify_promote") || !strings.Contains(step.Stdout, "dry_run") || !strings.Contains(step.Stdout, "healthy") || !strings.Contains(step.Stdout, "to_schema") || !strings.Contains(step.Stdout, "Lore:") {
 		step.OK = false
 		step.Error = "MCP smoke did not expose expected tool/resource"
 	}
-	defaultRoot, err := core.ResolveLLMWikiRoot(core.DefaultLLMWikiRoot)
-	if err == nil && defaultRoot != tempWiki && strings.Contains(step.Stdout, defaultRoot) {
-		step.OK = false
-		step.Error = "MCP smoke leaked the default llm-wiki root instead of the temp fixture"
-	}
-	if !strings.Contains(step.Stdout, tempWiki) {
-		step.OK = false
-		step.Error = "MCP smoke did not expose the temp llm-wiki fixture root"
-	}
 	step.Stdout, step.StdoutTruncated, step.StdoutBytes = tailWithBudget(step.Stdout, selfVerifyAggregateOutputBudgetBytes)
 	return step
-}
-
-func validateLLMWikiFixtureGuard(binary, root string) StepResult {
-	started := time.Now()
-	tempHome, err := os.MkdirTemp("", "agent-harness-llm-wiki-home-*")
-	if err != nil {
-		return failedStep("llm-wiki fixture guard", err)
-	}
-	defer os.RemoveAll(tempHome)
-	tempWiki := filepath.Join(tempHome, "fixture-llm-wiki")
-	if err := writeSelfAugmentWikiFixture(tempWiki); err != nil {
-		return failedStep("llm-wiki fixture guard", err)
-	}
-	defaultRoot, err := core.ResolveLLMWikiRoot(core.DefaultLLMWikiRoot)
-	if err != nil {
-		return failedStep("llm-wiki fixture guard", err)
-	}
-	expectedHomeDefault := filepath.Join(tempHome, "workspace", "knowledge-base", "llm-wiki")
-	commands := []string{}
-	stdoutParts := []string{}
-	runJSON := func(label string, env []string, out any, args ...string) (StepResult, error) {
-		step := runCommandStepEnv(root, label, 30*time.Second, "", env, binary, args...)
-		commands = append(commands, step.Command)
-		stdoutParts = append(stdoutParts, step.Stdout)
-		if !step.OK {
-			return step, fmt.Errorf("%s failed: %s", label, step.Error)
-		}
-		if err := json.Unmarshal([]byte(step.Stdout), out); err != nil {
-			return step, fmt.Errorf("parse %s JSON: %w", label, err)
-		}
-		return step, nil
-	}
-	fixtureEnv := []string{"HOME=" + tempHome, "LLM_WIKI_ROOT=" + tempWiki}
-	errs := []string{}
-
-	var inventory core.LLMWikiInventory
-	if step, err := runJSON("llm-wiki fixture inventory", fixtureEnv, &inventory, "llm-wiki", "inventory", "--json"); err != nil {
-		return combineFailedStep("llm-wiki fixture guard", started, step, stdoutParts, commands)
-	}
-	if filepath.Clean(inventory.Root) != filepath.Clean(tempWiki) || !inventory.OK || inventory.Status != "ready" {
-		errs = append(errs, "fixture inventory did not use the temp wiki root")
-	}
-	if inventory.Counts.MarkdownFiles < 5 {
-		errs = append(errs, fmt.Sprintf("fixture inventory markdown count = %d, want at least 5", inventory.Counts.MarkdownFiles))
-	}
-
-	var contextResult core.LLMWikiSessionContext
-	if step, err := runJSON("llm-wiki fixture session-context", fixtureEnv, &contextResult, "llm-wiki", "session-context", "--json"); err != nil {
-		return combineFailedStep("llm-wiki fixture guard", started, step, stdoutParts, commands)
-	}
-	if filepath.Clean(contextResult.Inventory.Root) != filepath.Clean(tempWiki) || !strings.Contains(contextResult.Text, "llm-wiki-pattern") {
-		errs = append(errs, "session-context did not expose the temp wiki fixture")
-	}
-
-	var searchResult core.LLMWikiSearchResponse
-	if step, err := runJSON("llm-wiki fixture search", fixtureEnv, &searchResult, "llm-wiki", "search", "--query", "llm wiki", "--limit", "3", "--json"); err != nil {
-		return combineFailedStep("llm-wiki fixture guard", started, step, stdoutParts, commands)
-	}
-	foundFixture := false
-	for _, item := range searchResult.Results {
-		if item.Path == "20-wiki/concepts/llm-wiki-pattern.md" {
-			foundFixture = true
-			break
-		}
-	}
-	if filepath.Clean(searchResult.Root) != filepath.Clean(tempWiki) || !foundFixture {
-		errs = append(errs, "search did not stay inside the temp wiki fixture")
-	}
-
-	var defaultInventory core.LLMWikiInventory
-	if step, err := runJSON("llm-wiki fixture default-root negative", []string{"HOME=" + tempHome}, &defaultInventory, "llm-wiki", "inventory", "--json"); err != nil {
-		return combineFailedStep("llm-wiki fixture guard", started, step, stdoutParts, commands)
-	}
-	if filepath.Clean(defaultInventory.Root) != filepath.Clean(expectedHomeDefault) {
-		errs = append(errs, "default root did not resolve under the isolated HOME")
-	}
-	if defaultInventory.Exists || defaultInventory.Status != "missing" {
-		errs = append(errs, "isolated HOME default root unexpectedly existed")
-	}
-	combinedStdout := strings.Join(stdoutParts, "\n")
-	if defaultRoot != tempWiki && strings.Contains(combinedStdout, defaultRoot) {
-		errs = append(errs, "llm-wiki commands leaked the user's durable default root")
-	}
-	if !strings.Contains(combinedStdout, tempWiki) {
-		errs = append(errs, "llm-wiki commands did not report the fixture root")
-	}
-	if len(errs) > 0 {
-		return assertionStepWithOutput("llm-wiki fixture guard", started, errs, stdoutParts, commands)
-	}
-	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(combinedStdout, selfVerifyAggregateOutputBudgetBytes)
-	return StepResult{
-		Label:           "llm-wiki fixture guard",
-		Command:         strings.Join(commands, " && "),
-		OK:              true,
-		DurationMS:      time.Since(started).Milliseconds(),
-		Stdout:          stdoutText,
-		StdoutBytes:     stdoutBytes,
-		StdoutTruncated: stdoutTruncated,
-	}
-}
-
-func writeSelfAugmentWikiFixture(root string) error {
-	files := map[string]string{
-		"00-meta/AGENTS.md":                    "# LLM Wiki Operating Schema\n\nUse sources as read-only evidence.\n",
-		"00-meta/index.md":                     "# Wiki Index\n\n- [[llm-wiki-pattern]]\n- [[karpathy-llm-wiki-gist]]\n",
-		"00-meta/log.md":                       "# Wiki Log\n\n",
-		"10-sources/karpathy-llm-wiki-gist.md": "---\ntitle: Karpathy LLM Wiki Gist\ntype: source\nstatus: active\ntags: [llm-wiki]\n---\n\nSource card for the LLM Wiki pattern.\n",
-		"20-wiki/concepts/llm-wiki-pattern.md": "---\ntitle: LLM Wiki Pattern\ntype: concept\nstatus: active\ntags: [llm-wiki]\n---\n\nThe LLM Wiki pattern keeps durable, interlinked markdown knowledge.\n",
-	}
-	for rel, content := range files {
-		path := filepath.Join(root, filepath.FromSlash(rel))
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return err
-		}
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func validateStateRoundtrip(binary, root string, seed int64) StepResult {
@@ -3516,7 +3359,6 @@ type parallelIsolationProbe struct {
 	TempRoot     string   `json:"temp_root"`
 	StateDir     string   `json:"state_dir"`
 	DaemonDir    string   `json:"daemon_dir"`
-	WikiRoot     string   `json:"wiki_root"`
 	ArtifactPath string   `json:"artifact_path"`
 	Key          string   `json:"key"`
 	Commands     []string `json:"commands"`
@@ -3550,7 +3392,6 @@ func validateParallelTempIsolation(binary, root string, seed int64) StepResult {
 			"temp_root":     probe.TempRoot,
 			"state_dir":     probe.StateDir,
 			"daemon_dir":    probe.DaemonDir,
-			"wiki_root":     probe.WikiRoot,
 			"artifact_path": probe.ArtifactPath,
 		} {
 			if strings.TrimSpace(path) == "" {
@@ -3607,7 +3448,6 @@ func runParallelIsolationProbe(binary, root string, seed int64, worker int) para
 	defer os.RemoveAll(tempRoot)
 	probe.StateDir = filepath.Join(tempRoot, "state")
 	probe.DaemonDir = filepath.Join(tempRoot, "daemon")
-	probe.WikiRoot = filepath.Join(tempRoot, "llm-wiki")
 	buildDir := filepath.Join(tempRoot, "build")
 	probe.ArtifactPath = filepath.Join(buildDir, "harness")
 	if err := os.MkdirAll(buildDir, 0o700); err != nil {
@@ -3618,14 +3458,9 @@ func runParallelIsolationProbe(binary, root string, seed int64, worker int) para
 		probe.Error = err.Error()
 		return probe
 	}
-	if err := writeSelfAugmentWikiFixture(probe.WikiRoot); err != nil {
-		probe.Error = err.Error()
-		return probe
-	}
 	env := []string{
 		"HARNESS_STATE_DIR=" + probe.StateDir,
 		"HARNESS_DAEMON_DIR=" + probe.DaemonDir,
-		"LLM_WIKI_ROOT=" + probe.WikiRoot,
 	}
 	value := fmt.Sprintf("worker=%d seed=%d", worker, seed)
 	write := runCommandStepEnv(root, fmt.Sprintf("parallel state write %d", worker), 30*time.Second, "", env, binary, "state", "write", "--key", probe.Key, "--value", value, "--json")
@@ -3662,36 +3497,6 @@ func runParallelIsolationProbe(binary, root string, seed int64, worker int) para
 	}
 	if len(listResult.Keys) != 1 || listResult.Keys[0] != probe.Key {
 		probe.Error = fmt.Sprintf("state list leaked keys across workers: %v", listResult.Keys)
-		return probe
-	}
-	wiki := runCommandStepEnv(root, fmt.Sprintf("parallel wiki inventory %d", worker), 30*time.Second, "", env, binary, "llm-wiki", "inventory", "--json")
-	probe.Commands = append(probe.Commands, wiki.Command)
-	if !wiki.OK {
-		probe.Error = "llm-wiki inventory failed: " + wiki.Error
-		return probe
-	}
-	var wikiResult core.LLMWikiInventory
-	if err := json.Unmarshal([]byte(wiki.Stdout), &wikiResult); err != nil {
-		probe.Error = "llm-wiki inventory parse failed: " + err.Error()
-		return probe
-	}
-	if filepath.Clean(wikiResult.Root) != filepath.Clean(probe.WikiRoot) {
-		probe.Error = "llm-wiki inventory used another root"
-		return probe
-	}
-	daemon := runCommandStepEnv(root, fmt.Sprintf("parallel daemon status %d", worker), 30*time.Second, "", env, binary, "daemon", "status", "--json")
-	probe.Commands = append(probe.Commands, daemon.Command)
-	if !daemon.OK {
-		probe.Error = "daemon status failed: " + daemon.Error
-		return probe
-	}
-	var daemonResult daemonStatus
-	if err := json.Unmarshal([]byte(daemon.Stdout), &daemonResult); err != nil {
-		probe.Error = "daemon status parse failed: " + err.Error()
-		return probe
-	}
-	if filepath.Clean(daemonResult.Paths.Dir) != filepath.Clean(probe.DaemonDir) {
-		probe.Error = "daemon status used another daemon dir"
 		return probe
 	}
 	return probe
@@ -3865,8 +3670,6 @@ func validateNativeIntegration(root string) StepResult {
 	paths := []string{
 		filepath.Join(root, "configs", "codex", "mcp.config.toml"),
 		filepath.Join(root, "configs", "claude", "mcp.project.json"),
-		filepath.Join(root, "configs", "claude", "hooks", "session-start-llm-wiki.settings.json"),
-		filepath.Join(root, "scripts", "session-start-llm-wiki.sh"),
 	}
 	nativeSkills, err := core.ListSkillNames(root)
 	if err != nil {
@@ -3886,7 +3689,7 @@ func validateNativeIntegration(root string) StepResult {
 	if b, err := os.ReadFile(filepath.Join(home, ".codex", "config.toml")); err != nil || !strings.Contains(string(b), "[mcp_servers.agent_harness]") {
 		errs = append(errs, "Codex MCP config missing agent_harness")
 	}
-	if b, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json")); err != nil || !strings.Contains(string(b), "session-start-llm-wiki.sh") {
+	if _, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json")); err != nil {
 		errs = append(errs, "Claude user SessionStart hook missing")
 	}
 	duplicateWarnings := detectClaudeMCPDuplicateWarnings(claudeMCPDuplicateWarningFixture())
@@ -4067,7 +3870,7 @@ func validateQAGate(root string) StepResult {
 	if err != nil {
 		errs = append(errs, "list skills: "+err.Error())
 	}
-	for _, want := range []string{"atomic-commit-push", "llm-wiki", "self-augment"} {
+	for _, want := range []string{"atomic-commit-push", "self-augment"} {
 		if !containsString(skills, want) {
 			errs = append(errs, "missing shared skill "+want)
 		}
@@ -4407,7 +4210,7 @@ func handleRequest(req rpcRequest) (any, *rpcError) {
 				"resources": map[string]any{},
 			},
 			"serverInfo":   map[string]any{"name": "agent-harness", "version": version},
-			"instructions": "This MCP endpoint is a proxy to the shared agent-harness daemon. At session start, read resource harness://llm-wiki/session-context or call llm_wiki_session_context to load the local LLM Wiki operating rules and inventory. Use llm-wiki only when durable knowledge, previous decisions, source-card citations, or reusable capture materially improves the task. Use other harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context.",
+			"instructions": "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. For LLM Wiki workflows, install and use the upstream nvk/llm-wiki plugin instead of agent-harness.",
 		}, nil
 	case "tools/list":
 		return map[string]any{"tools": mcpTools()}, nil
@@ -4505,54 +4308,6 @@ func mcpTools() []map[string]any {
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
 		},
 		{
-			"name":        "llm_wiki_inventory",
-			"description": "Inspect the local LLM Wiki vault inventory, entry points, and page counts. Defaults to ~/workspace/knowledge-base/llm-wiki or LLM_WIKI_ROOT.",
-			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
-				"root":         map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
-				"project_path": map[string]any{"type": "string", "description": "Optional current project path for session context."},
-			}},
-		},
-		{
-			"name":        "llm_wiki_session_context",
-			"description": "Return session-start instructions plus bounded index context for using the shared local LLM Wiki safely and selectively.",
-			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
-				"root":         map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
-				"project_path": map[string]any{"type": "string", "description": "Optional current project path."},
-			}},
-		},
-		{
-			"name":        "llm_wiki_search",
-			"description": "Search canonical LLM Wiki markdown surfaces (00-meta, 10-sources, 20-wiki, 30-sessions) with a focused lexical query.",
-			"inputSchema": map[string]any{"type": "object", "required": []string{"query"}, "properties": map[string]any{
-				"root":  map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
-				"query": map[string]any{"type": "string", "description": "Focused search terms."},
-				"limit": map[string]any{"type": "integer", "description": "Maximum results, default 10, max 50."},
-			}},
-		},
-		{
-			"name":        "llm_wiki_read",
-			"description": "Read a bounded LLM Wiki page by relative path, slug, or wikilink. Refuses paths outside the vault and .obsidian.",
-			"inputSchema": map[string]any{"type": "object", "required": []string{"page"}, "properties": map[string]any{
-				"root": map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
-				"page": map[string]any{"type": "string", "description": "Relative path, slug, or wikilink."},
-			}},
-		},
-		{
-			"name":        "llm_wiki_capture",
-			"description": "Create a concise durable LLM Wiki capture under 30-sessions or synthesized page under 20-wiki. Requires title and content; checks 00-meta/AGENTS.md before writing.",
-			"inputSchema": map[string]any{"type": "object", "required": []string{"title", "content"}, "properties": map[string]any{
-				"root":         map[string]any{"type": "string", "description": "Optional LLM Wiki root path."},
-				"title":        map[string]any{"type": "string", "description": "Capture title."},
-				"content":      map[string]any{"type": "string", "description": "Markdown content to capture."},
-				"type":         map[string]any{"type": "string", "description": "session, concept, entity, or summary. Defaults to session."},
-				"status":       map[string]any{"type": "string", "description": "Page status. Defaults to active."},
-				"tags":         map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Frontmatter tags."},
-				"sources":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Source wikilinks."},
-				"related":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Related wikilinks."},
-				"project_path": map[string]any{"type": "string", "description": "Optional current project path."},
-			}},
-		},
-		{
 			"name":        "self_augment",
 			"description": "Plan the 자가 증강 루프: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to harness state for durable Reflexion-style memory.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
@@ -4564,7 +4319,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "self_augment_lesson",
-			"description": "Store a Reflexion-style 자가 증강 lesson in harness state and return an llm-wiki capture draft for durable cross-session learning.",
+			"description": "Store a Reflexion-style 자가 증강 lesson in harness state for durable cross-session learning.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"lesson", "next_action"}, "properties": map[string]any{
 				"candidate_id": map[string]any{"type": "string", "description": "Candidate id this lesson belongs to; defaults to current selected open candidate."},
 				"lesson":       map[string]any{"type": "string", "description": "Lesson learned from failure, QA issue, or design concern."},
@@ -4728,58 +4483,6 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		payload = result
 	case "daemon_status":
 		payload = daemonStatusForMCP()
-	case "llm_wiki_inventory":
-		projectPath := stringArg(call.Arguments, "project_path")
-		if projectPath == "" {
-			projectPath = resolveTarget("")
-		}
-		result, err := core.LLMWikiInventoryFor(stringArg(call.Arguments, "root"), projectPath)
-		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: "LLM Wiki inventory failed", Data: err.Error()}
-		}
-		payload = result
-	case "llm_wiki_session_context":
-		projectPath := stringArg(call.Arguments, "project_path")
-		if projectPath == "" {
-			projectPath = resolveTarget("")
-		}
-		result, err := core.LLMWikiSessionContextFor(stringArg(call.Arguments, "root"), projectPath)
-		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: "LLM Wiki session context failed", Data: err.Error()}
-		}
-		payload = result
-	case "llm_wiki_search":
-		result, err := core.LLMWikiSearch(stringArg(call.Arguments, "root"), stringArg(call.Arguments, "query"), intArg(call.Arguments, "limit", 10))
-		if err != nil {
-			return nil, &rpcError{Code: -32602, Message: "LLM Wiki search failed", Data: err.Error()}
-		}
-		payload = result
-	case "llm_wiki_read":
-		result, err := core.LLMWikiRead(stringArg(call.Arguments, "root"), stringArg(call.Arguments, "page"))
-		if err != nil {
-			return nil, &rpcError{Code: -32602, Message: "LLM Wiki read failed", Data: err.Error()}
-		}
-		payload = result
-	case "llm_wiki_capture":
-		projectPath := stringArg(call.Arguments, "project_path")
-		if projectPath == "" {
-			projectPath = resolveTarget("")
-		}
-		result, err := core.LLMWikiCapture(core.LLMWikiCaptureRequest{
-			Root:        stringArg(call.Arguments, "root"),
-			Title:       stringArg(call.Arguments, "title"),
-			Content:     stringArg(call.Arguments, "content"),
-			Type:        stringArgWithDefault(call.Arguments, "type", "session"),
-			Status:      stringArgWithDefault(call.Arguments, "status", "active"),
-			Tags:        stringSliceArg(call.Arguments, "tags"),
-			Sources:     stringSliceArg(call.Arguments, "sources"),
-			Related:     stringSliceArg(call.Arguments, "related"),
-			ProjectPath: projectPath,
-		})
-		if err != nil {
-			return nil, &rpcError{Code: -32602, Message: "LLM Wiki capture failed", Data: err.Error()}
-		}
-		payload = result
 	case "self_augment":
 		result := planSelfAugmentation(SelfAugmentPlanRequest{
 			Cycles:      intArg(call.Arguments, "cycles", 1),
@@ -4880,10 +4583,6 @@ func mcpResources() []map[string]any {
 		{"uri": "harness://docs", "name": "Agent docs index", "description": "JSON index of harness agent-facing markdown docs.", "mimeType": "application/json"},
 		{"uri": "harness://command-policy", "name": "Command policy summary", "description": "JSON summary of command policy boundaries and fake runner behavior.", "mimeType": "application/json"},
 		{"uri": "harness://state", "name": "State checkpoint index", "description": "JSON index of harness state checkpoints.", "mimeType": "application/json"},
-		{"uri": "harness://llm-wiki/session-context", "name": "LLM Wiki session context", "description": "Session-start instructions and bounded inventory for the shared local LLM Wiki.", "mimeType": "text/markdown"},
-		{"uri": "harness://llm-wiki/inventory", "name": "LLM Wiki inventory", "description": "JSON inventory of the shared local LLM Wiki vault.", "mimeType": "application/json"},
-		{"uri": "harness://llm-wiki/index", "name": "LLM Wiki index", "description": "Canonical llm-wiki catalog at 00-meta/index.md.", "mimeType": "text/markdown"},
-		{"uri": "harness://llm-wiki/schema", "name": "LLM Wiki schema", "description": "Canonical llm-wiki agent operating rules at 00-meta/AGENTS.md.", "mimeType": "text/markdown"},
 	}
 }
 
@@ -4910,36 +4609,6 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 		}
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "application/json", "text": string(b)}}}, nil
-	}
-	if req.URI == "harness://llm-wiki/session-context" {
-		result, err := core.LLMWikiSessionContextFor("", resolveTarget(""))
-		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: "Cannot read LLM Wiki session context", Data: err.Error()}
-		}
-		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "text/markdown", "text": result.Text}}}, nil
-	}
-	if req.URI == "harness://llm-wiki/inventory" {
-		result, err := core.LLMWikiInventoryFor("", resolveTarget(""))
-		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: "Cannot read LLM Wiki inventory", Data: err.Error()}
-		}
-		b, _ := json.MarshalIndent(result, "", "  ")
-		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "application/json", "text": string(b)}}}, nil
-	}
-	if req.URI == "harness://llm-wiki/index" || req.URI == "harness://llm-wiki/schema" {
-		root, err := core.ResolveLLMWikiRoot("")
-		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: "Cannot resolve LLM Wiki root", Data: err.Error()}
-		}
-		rel := "00-meta/index.md"
-		if req.URI == "harness://llm-wiki/schema" {
-			rel = "00-meta/AGENTS.md"
-		}
-		result, err := core.LLMWikiRead(root, rel)
-		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: "Cannot read LLM Wiki resource", Data: err.Error()}
-		}
-		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "text/markdown", "text": result.Content}}}, nil
 	}
 	var rel []string
 	switch req.URI {

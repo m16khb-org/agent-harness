@@ -33,11 +33,9 @@ type IntegrationStatus struct {
 	CodexMCPConfigured     bool   `json:"codex_mcp_configured"`
 	ClaudeSkillPath        string `json:"claude_skill_path"`
 	ClaudeSkillInstalled   bool   `json:"claude_skill_installed"`
-	ClaudeUserHook         bool   `json:"claude_user_session_start_hook"`
 	ProjectClaudeSkillPath string `json:"project_claude_skill_path"`
 	ProjectClaudeSkill     bool   `json:"project_claude_skill"`
 	ProjectClaudeMCPConfig bool   `json:"project_claude_mcp_config"`
-	ProjectClaudeHook      bool   `json:"project_claude_session_start_hook"`
 	MCPBinaryPath          string `json:"mcp_binary_path"`
 }
 
@@ -61,9 +59,7 @@ func InspectHarness(root, target, home, version, skillName string) InspectInfo {
 			ClaudeSkillInstalled:   exists(filepath.Join(claudeSkill, "SKILL.md")),
 			ProjectClaudeSkillPath: projectClaudeSkill,
 			ProjectClaudeSkill:     exists(filepath.Join(projectClaudeSkill, "SKILL.md")),
-			ClaudeUserHook:         ClaudeSessionStartHookConfigured(filepath.Join(home, ".claude", "settings.json")),
 			ProjectClaudeMCPConfig: exists(filepath.Join(root, ".mcp.json")),
-			ProjectClaudeHook:      ClaudeSessionStartHookConfigured(filepath.Join(root, ".claude", "settings.json")),
 			MCPBinaryPath:          mcpBinary,
 		},
 		GeneratedAt: time.Now().Format(time.RFC3339),
@@ -113,17 +109,6 @@ func readSkillDescription(path string) string {
 func CodexMCPConfigured(path string) bool {
 	b, err := os.ReadFile(path)
 	return err == nil && strings.Contains(string(b), "[mcp_servers.agent_harness]")
-}
-
-func ClaudeSessionStartHookConfigured(path string) bool {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	text := string(b)
-	return strings.Contains(text, `"SessionStart"`) &&
-		strings.Contains(text, "startup|resume|clear|compact") &&
-		strings.Contains(text, "session-start-llm-wiki.sh")
 }
 
 func exists(path string) bool {

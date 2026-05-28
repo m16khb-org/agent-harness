@@ -39,7 +39,6 @@
 - `agent_docs/TECH_STACK.md`: 선택한 기술 스택과 예정 명령어
 - `agent_docs/IMPLEMENTATION_PLAN.md`: 구현 로드맵과 완료 기준
 - `agent_docs/USAGE.md`: Codex/Claude native skill, MCP, CLI 사용법
-- `agent_docs/LLM_WIKI_INTEGRATION.md`: 공통 llm-wiki daemon/proxy/session-context 통합 설계
 - `agent_docs/SELF_AUGMENTATION.md`: 자기 검증 루프와 자가 증강 루프의 95점 종료 게이트, 테스트/QA/개선 실행 계약
 
 충돌 시 우선순위는 **현재 사용자 지시 → 가장 가까운 `AGENTS.md`/`CLAUDE.md` → 루트 `AGENTS.md` → `agent_docs/CONSTITUTION.md` → 나머지 agent docs → README/과거 계획** 순서다.
@@ -73,7 +72,6 @@
 | `bin/harness` | 빌드된 로컬 하네스 CLI/MCP 바이너리 |
 | `skills/` | Codex/Claude가 공유하는 스킬 source of truth |
 | `agent_docs/` | 에이전트용 프로젝트 지식 베이스 |
-| `scripts/session-start-llm-wiki.sh` | Claude/Codex hook에서 `harness llm-wiki session-context`를 호출하는 얇은 helper |
 
 문서·설정·실행 코드가 함께 존재하므로, 작업 전 실제 tree와 설치 상태를 다시 확인한다.
 
@@ -85,7 +83,6 @@
 find . -maxdepth 3 -type f | sort
 find agent_docs -maxdepth 1 -type f -name '*.md' | sort
 python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
-python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/llm-wiki
 ./scripts/install-native.sh
 ./bin/harness install-native --dry-run --json
 go test ./... -count=1
@@ -93,8 +90,6 @@ go test ./cmd/harness -run Golden -count=1
 go build -o bin/harness ./cmd/harness
 ./bin/harness inspect --json
 ./bin/harness docs --json
-./bin/harness llm-wiki inventory --json
-./bin/harness llm-wiki session-context --json
 ./bin/harness daemon status --json
 ./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/harness state migrate --json && rm -rf "$tmp_state"
@@ -117,7 +112,7 @@ go build -o bin/harness ./cmd/harness
 
 - Codex와 Claude Code에서 관찰되는 하네스 결과가 같아야 한다.
 - 같은 스킬을 두 host에 복사해 중복 관리하지 않는다. `skills/`의 단일 원본을 사용자 홈 skill 경로에서 참조한다. 적용 대상 repo에는 기본 설치가 파일을 남기지 않는다.
-- `~/workspace/knowledge-base/llm-wiki`는 공통 durable memory이며, 하네스는 session-start bounded context와 MCP/CLI search/read/capture 표면만 제공한다.
+- LLM Wiki 기능은 이 하네스가 재구현하지 않는다. 필요하면 upstream `nvk/llm-wiki` Codex/Claude plugin 또는 portable AGENTS.md를 사용한다.
 - host adapter는 인증·권한·명령 실행 정책을 우회할 수 없다.
 - worker/CLI/MCP는 workspace root를 명시적으로 식별하고, root 밖 파일 접근은 정책으로 통제한다.
 - shell 실행 기능은 allowlist/denylist, timeout, cwd, env redaction, audit log를 포함해야 한다.

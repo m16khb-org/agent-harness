@@ -1,4 +1,0 @@
-interface:
-  display_name: "LLM Wiki"
-  short_description: "Query and curate the local LLM Wiki"
-  default_prompt: "Use $llm-wiki with agent_harness llm_wiki_* MCP tools to search and curate ~/workspace/knowledge-base/llm-wiki for durable project knowledge."

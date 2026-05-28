@@ -24,13 +24,12 @@ type installContractSnapshot struct {
 }
 
 type installContractCaseSnapshot struct {
-	Name           string                        `json:"name"`
-	ProjectLocal   bool                          `json:"project_local"`
-	ClaudeUserHook bool                          `json:"claude_user_hook"`
-	OK             bool                          `json:"ok"`
-	SkillNames     []string                      `json:"skill_names"`
-	Hosts          []installContractHostSnapshot `json:"hosts"`
-	Assertions     []string                      `json:"assertions"`
+	Name         string                        `json:"name"`
+	ProjectLocal bool                          `json:"project_local"`
+	OK           bool                          `json:"ok"`
+	SkillNames   []string                      `json:"skill_names"`
+	Hosts        []installContractHostSnapshot `json:"hosts"`
+	Assertions   []string                      `json:"assertions"`
 }
 
 type installContractHostSnapshot struct {
@@ -57,13 +56,11 @@ type installContractLinkSnapshot struct {
 
 func TestNativeInstallAdapterContractMatrix(t *testing.T) {
 	cases := []struct {
-		name           string
-		projectLocal   bool
-		claudeUserHook bool
+		name         string
+		projectLocal bool
 	}{
-		{name: "user-global-default", projectLocal: false, claudeUserHook: true},
-		{name: "user-global-no-claude-hook", projectLocal: false, claudeUserHook: false},
-		{name: "project-local-opt-in", projectLocal: true, claudeUserHook: true},
+		{name: "user-global-default", projectLocal: false},
+		{name: "project-local-opt-in", projectLocal: true},
 	}
 
 	snapshot := installContractSnapshot{Cases: []installContractCaseSnapshot{}}
@@ -74,13 +71,11 @@ func TestNativeInstallAdapterContractMatrix(t *testing.T) {
 			home := t.TempDir()
 			codexHome := filepath.Join(home, ".codex")
 			binPath := filepath.Join(root, "bin", "harness")
-			wikiRoot := filepath.Join(home, "knowledge", "llm-wiki")
 			writeContractSkill(t, root, "beta")
 			writeContractSkill(t, root, "alpha")
 
-			req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath, wikiRoot)
+			req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath)
 			req.ProjectLocal = tc.projectLocal
-			req.ClaudeUserHook = tc.claudeUserHook
 			result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
 			if err != nil {
 				t.Fatalf("InstallNative returned error: %v\n%+v", err, result)
@@ -98,10 +93,9 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 	home := t.TempDir()
 	codexHome := filepath.Join(home, ".codex")
 	binPath := filepath.Join(root, "bin", "harness")
-	wikiRoot := filepath.Join(home, "knowledge", "llm-wiki")
 	writeContractSkill(t, root, "alpha")
 
-	req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath, wikiRoot)
+	req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath)
 	req.ProjectLocal = true
 	req.DryRun = true
 	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
@@ -115,7 +109,6 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 		filepath.Join(codexHome, "skills", "alpha"),
 		filepath.Join(codexHome, "config.toml"),
 		filepath.Join(home, ".claude", "skills", "alpha"),
-		filepath.Join(home, ".claude", "settings.json"),
 		filepath.Join(root, ".mcp.json"),
 		filepath.Join(root, ".claude"),
 		filepath.Join(root, "configs"),
@@ -180,7 +173,7 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 		for _, skill := range result.SkillNames {
 			assertRootSkillSymlink(t, filepath.Join(req.Root, ".claude", "skills", skill), filepath.Join(req.Root, "skills", skill))
 		}
-		for _, path := range []string{filepath.Join(req.Root, ".mcp.json"), filepath.Join(req.Root, ".claude", "settings.json")} {
+		for _, path := range []string{filepath.Join(req.Root, ".mcp.json")} {
 			if !exists(path) {
 				t.Fatalf("project-local opt-in did not write %s", path)
 			}
@@ -192,16 +185,11 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 			}
 		}
 	}
-	if req.ClaudeUserHook {
-		settings := readFile(t, filepath.Join(req.Home, ".claude", "settings.json"))
-		if !strings.Contains(settings, "SessionStart") || !strings.Contains(settings, "session-start-llm-wiki.sh") {
-			t.Fatalf("Claude user SessionStart hook missing from settings:\n%s", settings)
-		}
-	} else if exists(filepath.Join(req.Home, ".claude", "settings.json")) {
-		t.Fatalf("Claude user settings should not be written when ClaudeUserHook=false")
+	if exists(filepath.Join(req.Home, ".claude", "settings.json")) {
+		t.Fatalf("Claude user settings should not be written by agent-harness install")
 	}
 	codexConfig := readFile(t, filepath.Join(req.CodexHome, "config.toml"))
-	for _, needle := range []string{"[mcp_servers.agent_harness]", req.BinPath, req.LLMWikiRoot} {
+	for _, needle := range []string{"[mcp_servers.agent_harness]", req.BinPath, req.Root} {
 		if !strings.Contains(codexConfig, needle) {
 			t.Fatalf("Codex config missing %q:\n%s", needle, codexConfig)
 		}
@@ -233,12 +221,11 @@ func assertRootSkillSymlink(t *testing.T, linkPath, wantTarget string) {
 func normalizeInstallContractCase(t *testing.T, name string, req port.NativeInstallRequest, result port.NativeInstallResult) installContractCaseSnapshot {
 	t.Helper()
 	caseSnapshot := installContractCaseSnapshot{
-		Name:           name,
-		ProjectLocal:   req.ProjectLocal,
-		ClaudeUserHook: req.ClaudeUserHook,
-		OK:             result.OK,
-		SkillNames:     append([]string{}, result.SkillNames...),
-		Hosts:          []installContractHostSnapshot{},
+		Name:         name,
+		ProjectLocal: req.ProjectLocal,
+		OK:           result.OK,
+		SkillNames:   append([]string{}, result.SkillNames...),
+		Hosts:        []installContractHostSnapshot{},
 		Assertions: []string{
 			"core discovers shared skills once and passes sorted names to both host adapters",
 			"Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
@@ -297,11 +284,10 @@ func linkResolvesUnderRootSkills(linkPath, root string) bool {
 
 func normalizeInstallContractString(value string, req port.NativeInstallRequest) string {
 	replacements := map[string]string{
-		req.CodexHome:   "$CODEX_HOME",
-		req.Home:        "$HOME",
-		req.Root:        "$ROOT",
-		req.BinPath:     "$BIN",
-		req.LLMWikiRoot: "$LLM_WIKI_ROOT",
+		req.CodexHome: "$CODEX_HOME",
+		req.Home:      "$HOME",
+		req.Root:      "$ROOT",
+		req.BinPath:   "$BIN",
 	}
 	keys := make([]string, 0, len(replacements))
 	for from := range replacements {

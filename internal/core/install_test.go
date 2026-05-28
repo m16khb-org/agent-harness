@@ -21,7 +21,7 @@ func TestInstallNativeDelegatesThroughHostInstaller(t *testing.T) {
 	root := t.TempDir()
 	writeInstallTestSkill(t, root, "alpha")
 	writeInstallTestSkill(t, root, "beta")
-	req := DefaultNativeInstallRequest(root, t.TempDir(), "", "", "~/wiki")
+	req := DefaultNativeInstallRequest(root, t.TempDir(), "", "")
 	result, err := InstallNative(req, fakeHostInstaller{name: "host-a"}, fakeHostInstaller{name: "host-b"})
 	if err != nil {
 		t.Fatal(err)
@@ -32,7 +32,7 @@ func TestInstallNativeDelegatesThroughHostInstaller(t *testing.T) {
 	if got := result.SkillNames; len(got) != 2 || got[0] != "alpha" || got[1] != "beta" {
 		t.Fatalf("skill names not normalized: %+v", got)
 	}
-	if result.ClaudeUserHook != true || result.ProjectLocal != false {
+	if result.ProjectLocal != false {
 		t.Fatalf("unexpected install defaults: %+v", result)
 	}
 }

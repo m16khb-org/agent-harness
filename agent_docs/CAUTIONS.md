@@ -114,17 +114,9 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 ---
 
-## 11. LLM Wiki 과주입 / 무분별 검색
+## 11. LLM Wiki 재구현 금지
 
-`llm-wiki`는 durable memory이지 모든 prompt에 붙이는 대용량 context가 아니다. 매 세션 전체 vault를 주입하면 token 낭비와 stale context anchoring이 생긴다.
-
-주의:
-- SessionStart에는 `harness://llm-wiki/session-context`처럼 bounded inventory/index excerpt만 주입한다.
-- 실제 답변에 필요할 때만 `llm_wiki_search`/`llm_wiki_read`를 호출한다.
-- reusable finding이나 사용자 요청이 있을 때만 `llm_wiki_capture`를 사용한다.
-- `10-sources/` 본문, `.obsidian/`, runtime/cache/log artifact는 수정하지 않는다.
-
----
+`agent-harness`는 llm-wiki vault, 검색, capture, SessionStart 주입을 직접 구현하지 않는다. LLM Wiki 기능이 필요하면 upstream `nvk/llm-wiki` plugin/portable AGENTS.md를 설치해 사용한다. 하네스 MCP/CLI에는 llm-wiki 전용 tool/resource를 다시 추가하지 않는다.
 
 ## 12. Daemon lifecycle drift
 

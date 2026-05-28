@@ -5,7 +5,7 @@ import "testing"
 func TestMergeEnvOverridesReplacesExistingKeys(t *testing.T) {
 	env := mergeEnvOverrides(
 		[]string{"HOME=/real-home", "PATH=/bin", "HOME=/duplicate-home"},
-		[]string{"HOME=/fixture-home", "LLM_WIKI_ROOT=/fixture-wiki"},
+		[]string{"HOME=/fixture-home", "HARNESS_ROOT=/fixture-root"},
 	)
 	values := map[string]string{}
 	counts := map[string]int{}
@@ -23,7 +23,7 @@ func TestMergeEnvOverridesReplacesExistingKeys(t *testing.T) {
 	if values["PATH"] != "PATH=/bin" {
 		t.Fatalf("PATH was not preserved: %v", env)
 	}
-	if values["LLM_WIKI_ROOT"] != "LLM_WIKI_ROOT=/fixture-wiki" {
-		t.Fatalf("LLM_WIKI_ROOT override missing: %v", env)
+	if values["HARNESS_ROOT"] != "HARNESS_ROOT=/fixture-root" {
+		t.Fatalf("HARNESS_ROOT override missing: %v", env)
 	}
 }

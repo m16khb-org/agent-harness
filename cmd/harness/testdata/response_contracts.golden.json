@@ -3,7 +3,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 8902,
+          "bytes": 8474,
           "headings": [
             "AGENTS.md",
             "1. 작업 원칙",
@@ -20,7 +20,7 @@
           "title": "AGENTS.md"
         },
         {
-          "bytes": 828,
+          "bytes": 746,
           "headings": [
             "CLAUDE.md"
           ],
@@ -57,7 +57,7 @@
           "title": "Mermaid 다이어그램 작성 가이드라인"
         },
         {
-          "bytes": 12615,
+          "bytes": 11413,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -68,14 +68,15 @@
             "5. Docs / state / config / logs",
             "6. Command / policy model",
             "7. Codex / Claude integration map",
-            "8. 변경 체크리스트"
+            "8. 변경 체크리스트",
+            "LLM Wiki 정책"
           ],
           "path": "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
           "rel_path": "agent_docs/ARCHITECTURE.md",
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 5289,
+          "bytes": 4991,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -88,7 +89,7 @@
             "8. Shared skill drift",
             "9. 자기 검증/자가 증강 drift",
             "10. 과도한 초기 추상화",
-            "11. LLM Wiki 과주입 / 무분별 검색",
+            "11. LLM Wiki 재구현 금지",
             "12. Daemon lifecycle drift"
           ],
           "path": "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
@@ -127,7 +128,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 6844,
+          "bytes": 7379,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -139,14 +140,15 @@
             "7. Logging / secret hygiene",
             "8. Dependency 원칙",
             "9. Shared Skill 컨벤션",
-            "10. 커밋 메시지 컨벤션"
+            "10. 커밋 메시지 컨벤션",
+            "API Documentation Gate"
           ],
           "path": "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
           "rel_path": "agent_docs/CONVENTIONS.md",
           "title": "구현 컨벤션"
         },
         {
-          "bytes": 9143,
+          "bytes": 9023,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -164,36 +166,15 @@
             "Phase 7 — Hardening / release",
             "4. MVP 범위",
             "5. 주요 위험과 대응",
-            "6. 다음 작업 제안"
+            "6. 다음 작업 제안",
+            "LLM Wiki 정책"
           ],
           "path": "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
           "rel_path": "agent_docs/IMPLEMENTATION_PLAN.md",
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 7535,
-          "headings": [
-            "LLM Wiki 통합 설계",
-            "1. 목표",
-            "2. 현재 구현 구조",
-            "3. 세션 시작 주입 방식",
-            "MCP-first",
-            "Hook helper",
-            "4. 리서치 근거와 설계 판단",
-            "Karpathy LLM Wiki pattern",
-            "RAG baseline",
-            "GraphRAG / structured retrieval",
-            "Long-term agent memory",
-            "Local-first 원칙",
-            "5. 현재 vault 분석",
-            "6. 운영 규칙"
-          ],
-          "path": "$HARNESS_ROOT/agent_docs/LLM_WIKI_INTEGRATION.md",
-          "rel_path": "agent_docs/LLM_WIKI_INTEGRATION.md",
-          "title": "LLM Wiki 통합 설계"
-        },
-        {
-          "bytes": 11044,
+          "bytes": 9261,
           "headings": [
             "자기 검증 루프와 자가 증강 루프",
             "1. 자기 검증 루프",
@@ -214,7 +195,7 @@
           "title": "자기 검증 루프와 자가 증강 루프"
         },
         {
-          "bytes": 10347,
+          "bytes": 9907,
           "headings": [
             "자기 검증 루프 후보 발굴 기록",
             "1. 확인한 현재 상태",
@@ -228,7 +209,7 @@
           "title": "자기 검증 루프 후보 발굴 기록"
         },
         {
-          "bytes": 5630,
+          "bytes": 5383,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -236,14 +217,15 @@
             "3. 예상 라이브러리 후보",
             "4. 예정 명령어",
             "5. 주요 설정/상태 위치",
-            "Native integration 확인"
+            "Native integration 확인",
+            "LLM Wiki 정책"
           ],
           "path": "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
           "rel_path": "agent_docs/TECH_STACK.md",
           "title": "기술 스택"
         },
         {
-          "bytes": 9698,
+          "bytes": 9100,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -251,14 +233,15 @@
             "3. 테스트 작성 기준",
             "4. Contract / Golden tests",
             "5. 완료 보고 기준",
-            "자기 검증 QA gate"
+            "자기 검증 QA gate",
+            "LLM Wiki 정책"
           ],
           "path": "$HARNESS_ROOT/agent_docs/TESTING.md",
           "rel_path": "agent_docs/TESTING.md",
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 10286,
+          "bytes": 8198,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -270,9 +253,14 @@
             "MCP",
             "SessionStart hook",
             "4. CLI로 직접 사용",
-            "5. LLM Wiki 운영",
-            "6. MCP smoke test",
-            "7. 자기 검증 루프 / 자가 증강 루프 요약"
+            "5. MCP smoke test",
+            "6. 자기 검증 루프 / 자가 증강 루프 요약",
+            "7. API Documentation Pre-commit Review",
+            "Review staged API docs/endpoint changes in the current repo",
+            "JSON output for hooks/CI",
+            "Explicit files from lint-staged/pre-commit",
+            "Add project-specific conventions without changing harness core",
+            "8. LLM Wiki 정책"
           ],
           "path": "$HARNESS_ROOT/agent_docs/USAGE.md",
           "rel_path": "agent_docs/USAGE.md",
@@ -295,7 +283,6 @@
         "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
         "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
         "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
-        "$HARNESS_ROOT/agent_docs/LLM_WIKI_INTEGRATION.md",
         "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
         "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
         "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
@@ -307,13 +294,11 @@
       "integration": {
         "claude_skill_installed": false,
         "claude_skill_path": "$HOME/.claude/skills/atomic-commit-push",
-        "claude_user_session_start_hook": false,
         "codex_mcp_configured": false,
         "codex_skill_installed": false,
         "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
         "mcp_binary_path": "$HARNESS_ROOT/bin/harness",
         "project_claude_mcp_config": true,
-        "project_claude_session_start_hook": false,
         "project_claude_skill": false,
         "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
       },
@@ -327,13 +312,6 @@
           "path": "$HARNESS_ROOT/skills/atomic-commit-push"
         },
         {
-          "description": "Query, read, cite, and curate the local LLM Wiki at ~/workspace/knowledge-base/llm-wiki. Use when the user asks to use llm-wiki, search durable knowledge, recall previous decisions, cite local source cards, capture reusable findings, ingest/update wiki pages, lint/audit the vault, or persist project/session knowledge outside the current repository.",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "llm-wiki",
-          "path": "$HARNESS_ROOT/skills/llm-wiki"
-        },
-        {
           "description": "Run the 자가 증강 루프 for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose necessary feature, performance, quality, or documentation improvements, implement one safe high-value diff, and verify it with the 자기 검증 루프. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95점 gate loops, or to decide and execute the next valuable improvement.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -343,130 +321,6 @@
       ],
       "target_repo": "$WORKSPACE",
       "version": "0.1.0"
-    },
-    "llm_wiki_inventory": {
-      "counts": {
-        "archive": 0,
-        "concepts": 1,
-        "entities": 0,
-        "markdown_files": 5,
-        "meta": 3,
-        "reports": 0,
-        "sessions": 0,
-        "sources": 1,
-        "summaries": 0
-      },
-      "entry_points": [
-        {
-          "bytes": 173,
-          "exists": true,
-          "path": "00-meta/AGENTS.md",
-          "sha256": "7051fe8e7e5472e7114b92a54bd9157692f29ae594cc079a5402fbfc67bc3376"
-        },
-        {
-          "bytes": 173,
-          "exists": true,
-          "path": "00-meta/index.md",
-          "sha256": "faba12339f192bdb4c3d90095a661d917757ffe1f750629cdf10764190d7db68"
-        },
-        {
-          "bytes": 12,
-          "exists": true,
-          "path": "00-meta/log.md",
-          "sha256": "8d555159a3b1d1f966f402808b5c7a00412d021a2e00937bc1cfcfde23a8fa0d"
-        }
-      ],
-      "exists": true,
-      "generated_at": "$TIMESTAMP",
-      "ok": true,
-      "project_path": "$WORKSPACE",
-      "root": "$LLM_WIKI",
-      "status": "ready"
-    },
-    "llm_wiki_read": {
-      "bytes": 153,
-      "content": "---\ntitle: LLM Wiki Pattern\ntype: concept\nstatus: active\ntags: [llm-wiki, memory]\n---\n\nLLM Wiki keeps durable interlinked markdown knowledge for agents.\n",
-      "ok": true,
-      "path": "20-wiki/concepts/llm-wiki-pattern.md",
-      "root": "$LLM_WIKI",
-      "status": "active",
-      "title": "LLM Wiki Pattern",
-      "truncated": false,
-      "type": "concept"
-    },
-    "llm_wiki_search": {
-      "limit": 2,
-      "ok": true,
-      "query": "llm wiki",
-      "results": [
-        {
-          "path": "10-sources/karpathy-llm-wiki-gist.md",
-          "score": 70,
-          "snippet": "--- title: Karpathy LLM Wiki Gist type: source status: active tags: [llm-wiki, source] --- Source card about the LLM Wiki pattern.",
-          "status": "active",
-          "tags": [
-            "llm-wiki",
-            "source"
-          ],
-          "title": "Karpathy LLM Wiki Gist",
-          "type": "source"
-        },
-        {
-          "path": "20-wiki/concepts/llm-wiki-pattern.md",
-          "score": 70,
-          "snippet": "--- title: LLM Wiki Pattern type: concept status: active tags: [llm-wiki, memory] --- LLM Wiki keeps durable interlinked markdown knowledge for agents.",
-          "status": "active",
-          "tags": [
-            "llm-wiki",
-            "memory"
-          ],
-          "title": "LLM Wiki Pattern",
-          "type": "concept"
-        }
-      ],
-      "root": "$LLM_WIKI"
-    },
-    "llm_wiki_session_context": {
-      "inventory": {
-        "counts": {
-          "archive": 0,
-          "concepts": 1,
-          "entities": 0,
-          "markdown_files": 5,
-          "meta": 3,
-          "reports": 0,
-          "sessions": 0,
-          "sources": 1,
-          "summaries": 0
-        },
-        "entry_points": [
-          {
-            "bytes": 173,
-            "exists": true,
-            "path": "00-meta/AGENTS.md",
-            "sha256": "7051fe8e7e5472e7114b92a54bd9157692f29ae594cc079a5402fbfc67bc3376"
-          },
-          {
-            "bytes": 173,
-            "exists": true,
-            "path": "00-meta/index.md",
-            "sha256": "faba12339f192bdb4c3d90095a661d917757ffe1f750629cdf10764190d7db68"
-          },
-          {
-            "bytes": 12,
-            "exists": true,
-            "path": "00-meta/log.md",
-            "sha256": "8d555159a3b1d1f966f402808b5c7a00412d021a2e00937bc1cfcfde23a8fa0d"
-          }
-        ],
-        "exists": true,
-        "generated_at": "$TIMESTAMP",
-        "ok": true,
-        "project_path": "$WORKSPACE",
-        "root": "$LLM_WIKI",
-        "status": "ready"
-      },
-      "text": "# LLM Wiki Session Context\n\nCanonical vault root: `$LLM_WIKI`\nCurrent project: `$WORKSPACE`\nStatus: `ready`; markdown=5, sources=1, concepts=1, entities=0, summaries=0, sessions=0.\n\n## When to use\n\nUse llm-wiki only when durable memory, previous decisions, repository reference cards, citation-backed local knowledge, or explicit capture/update work would materially improve the task. Do not query it reflexively for every prompt.\n\n## How to use through agent-harness\n\n- Search: call MCP tool `llm_wiki_search` with focused terms.\n- Read: call `llm_wiki_read` on returned relative paths or known slugs.\n- Orient: read resource `harness://llm-wiki/index` or call `llm_wiki_inventory`.\n- Capture: call `llm_wiki_capture` only for reusable findings or user-requested persistence.\n\n## Hard constraints\n\n- Read `00-meta/AGENTS.md` before wiki writes; this tool checks that schema exists before capture.\n- Treat `10-sources/` bodies as read-only evidence; write synthesized knowledge to `20-wiki/` and session notes to `30-sessions/`.\n- Preserve source fidelity, cite with Obsidian wikilinks, and mark synthesis or unverified claims explicitly.\n- Never edit `.obsidian/`; archive obsolete pages instead of deleting.\n\n## Current index excerpt\n\n```markdown\n---\ntitle: Wiki Index\ntype: index\nstatus: active\ncreated: 2026-05-27\nupdated: 2026-05-27\ntags: [meta]\n---\n\n# Wiki Index\n\n- [[karpathy-llm-wiki-gist]]\n- [[llm-wiki-pattern]]\n```\n"
     },
     "policy_check": {
       "allowed": true,
@@ -536,25 +390,6 @@
       "kind": "self_augmentation_lesson",
       "korean_name": "자가 증강 루프",
       "lesson": "Contract lesson",
-      "llm_wiki_capture_draft": {
-        "content": "## Context\n\n- Candidate: `reflexion-state-memory`\n- Source: `self-augment`\n- Severity: `info`\n\n## Lesson\n\nContract lesson\n\n## Next action\n\nCheck stored lesson before next cycle\n",
-        "project_path": "$HARNESS_ROOT",
-        "related": [
-          "[[LLM Wiki Pattern]]"
-        ],
-        "sources": [
-          "[[agent-harness]]"
-        ],
-        "status": "active",
-        "tags": [
-          "agent-harness",
-          "self-augment",
-          "reflexion",
-          "reflexion-state-memory"
-        ],
-        "title": "Self Augmentation Lesson - reflexion-state-memory",
-        "type": "session"
-      },
       "loop_kind": "self_augmentation",
       "next_action": "Check stored lesson before next cycle",
       "ok": true,
@@ -640,10 +475,9 @@
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "자가 증강 후보·결정·실패 교훈을 state/llm-wiki에 축적",
+          "title": "자가 증강 후보·결정·실패 교훈을 state에 축적",
           "verify_with": [
             "state roundtrip",
-            "llm_wiki_capture smoke",
             "history/compare contract"
           ],
           "why_now": [
@@ -825,14 +659,13 @@
           "novelty": 84,
           "risk": 16,
           "satisfaction_evidence": [
-            "self-augment lesson stores Reflexion lessons in harness state with an llm-wiki capture draft"
+            "self-augment lesson stores Reflexion lessons in harness state"
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "자가 증강 실패 교훈을 state와 llm-wiki 후보로 저장",
+          "title": "자가 증강 실패 교훈을 state에 저장",
           "verify_with": [
-            "state_write/read",
-            "llm_wiki_capture dry-run review"
+            "state_write/read"
           ],
           "why_now": [
             "반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다",
@@ -917,11 +750,10 @@
           "target_score": 95
         },
         {
-          "description": "실패/성공 원인과 다음 개선점을 state/docs/wiki 중 적절한 위치에 남긴다.",
+          "description": "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
           "evidence": [
             "harness state",
-            "agent_docs",
-            "llm-wiki when durable"
+            "agent_docs"
           ],
           "korean_name": "학습 기록",
           "name": "learning_capture",
@@ -935,7 +767,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 15,
+        "docs_indexed": 14,
         "has_adapter_contract_matrix": true,
         "has_genius_mermaid_lint": true,
         "has_genius_think": true,
@@ -952,7 +784,6 @@
         "has_self_verify_cli": true,
         "skills": [
           "atomic-commit-push",
-          "llm-wiki",
           "self-augment"
         ]
       },
@@ -1027,7 +858,7 @@
       "warnings": []
     },
     "self_verify_candidates": {
-      "candidate_count": 16,
+      "candidate_count": 15,
       "candidates": [
         {
           "category": "observability",
@@ -1078,23 +909,6 @@
           ],
           "why_now": [
             "self-verify claims need machine-readable evidence mapping"
-          ]
-        },
-        {
-          "category": "MCP/state",
-          "id": "self-verify-llm-wiki-fixture-guard",
-          "priority": 4,
-          "satisfaction_evidence": [
-            "llm-wiki fixture guard covers temp LLM_WIKI_ROOT and isolated HOME default-root negative checks"
-          ],
-          "score": 78,
-          "status": "already_satisfied",
-          "verify_with": [
-            "llm-wiki fixture guard",
-            "MCP smoke root leak assertion"
-          ],
-          "why_now": [
-            "MCP smoke must prove it uses temp wiki fixtures, not durable user memory"
           ]
         },
         {
@@ -1256,7 +1070,7 @@
           "id": "self-verify-parallel-temp-isolation",
           "priority": 14,
           "satisfaction_evidence": [
-            "parallel isolation probes unique temp roots for state, daemon, llm-wiki, and artifact paths"
+            "parallel isolation probes unique temp roots for state, daemon, and artifact paths"
           ],
           "score": 70,
           "status": "already_satisfied",
@@ -1265,7 +1079,7 @@
             "race tier"
           ],
           "why_now": [
-            "parallel self-verify runs must not collide in temp state, daemon, wiki, or artifacts"
+            "parallel self-verify runs must not collide in temp state, daemon, or artifacts"
           ]
         },
         {
@@ -1314,7 +1128,6 @@
         "self-verify-progress-heartbeat",
         "self-verify-secret-redaction-audit",
         "self-verify-coverage-gap-report",
-        "self-verify-llm-wiki-fixture-guard",
         "self-verify-failure-rerun-recipe",
         "self-verify-candidate-export",
         "self-verify-step-budget-baseline",
@@ -1879,7 +1692,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 8902,
+                "bytes": 8474,
                 "headings": [
                   "AGENTS.md",
                   "1. 작업 원칙",
@@ -1896,7 +1709,7 @@
                 "title": "AGENTS.md"
               },
               {
-                "bytes": 828,
+                "bytes": 746,
                 "headings": [
                   "CLAUDE.md"
                 ],
@@ -1933,7 +1746,7 @@
                 "title": "Mermaid 다이어그램 작성 가이드라인"
               },
               {
-                "bytes": 12615,
+                "bytes": 11413,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -1944,14 +1757,15 @@
                   "5. Docs / state / config / logs",
                   "6. Command / policy model",
                   "7. Codex / Claude integration map",
-                  "8. 변경 체크리스트"
+                  "8. 변경 체크리스트",
+                  "LLM Wiki 정책"
                 ],
                 "path": "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
                 "rel_path": "agent_docs/ARCHITECTURE.md",
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 5289,
+                "bytes": 4991,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -1964,7 +1778,7 @@
                   "8. Shared skill drift",
                   "9. 자기 검증/자가 증강 drift",
                   "10. 과도한 초기 추상화",
-                  "11. LLM Wiki 과주입 / 무분별 검색",
+                  "11. LLM Wiki 재구현 금지",
                   "12. Daemon lifecycle drift"
                 ],
                 "path": "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
@@ -2003,7 +1817,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 6844,
+                "bytes": 7379,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2015,14 +1829,15 @@
                   "7. Logging / secret hygiene",
                   "8. Dependency 원칙",
                   "9. Shared Skill 컨벤션",
-                  "10. 커밋 메시지 컨벤션"
+                  "10. 커밋 메시지 컨벤션",
+                  "API Documentation Gate"
                 ],
                 "path": "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
                 "rel_path": "agent_docs/CONVENTIONS.md",
                 "title": "구현 컨벤션"
               },
               {
-                "bytes": 9143,
+                "bytes": 9023,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -2040,36 +1855,15 @@
                   "Phase 7 — Hardening / release",
                   "4. MVP 범위",
                   "5. 주요 위험과 대응",
-                  "6. 다음 작업 제안"
+                  "6. 다음 작업 제안",
+                  "LLM Wiki 정책"
                 ],
                 "path": "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
                 "rel_path": "agent_docs/IMPLEMENTATION_PLAN.md",
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 7535,
-                "headings": [
-                  "LLM Wiki 통합 설계",
-                  "1. 목표",
-                  "2. 현재 구현 구조",
-                  "3. 세션 시작 주입 방식",
-                  "MCP-first",
-                  "Hook helper",
-                  "4. 리서치 근거와 설계 판단",
-                  "Karpathy LLM Wiki pattern",
-                  "RAG baseline",
-                  "GraphRAG / structured retrieval",
-                  "Long-term agent memory",
-                  "Local-first 원칙",
-                  "5. 현재 vault 분석",
-                  "6. 운영 규칙"
-                ],
-                "path": "$HARNESS_ROOT/agent_docs/LLM_WIKI_INTEGRATION.md",
-                "rel_path": "agent_docs/LLM_WIKI_INTEGRATION.md",
-                "title": "LLM Wiki 통합 설계"
-              },
-              {
-                "bytes": 11044,
+                "bytes": 9261,
                 "headings": [
                   "자기 검증 루프와 자가 증강 루프",
                   "1. 자기 검증 루프",
@@ -2090,7 +1884,7 @@
                 "title": "자기 검증 루프와 자가 증강 루프"
               },
               {
-                "bytes": 10347,
+                "bytes": 9907,
                 "headings": [
                   "자기 검증 루프 후보 발굴 기록",
                   "1. 확인한 현재 상태",
@@ -2104,7 +1898,7 @@
                 "title": "자기 검증 루프 후보 발굴 기록"
               },
               {
-                "bytes": 5630,
+                "bytes": 5383,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -2112,14 +1906,15 @@
                   "3. 예상 라이브러리 후보",
                   "4. 예정 명령어",
                   "5. 주요 설정/상태 위치",
-                  "Native integration 확인"
+                  "Native integration 확인",
+                  "LLM Wiki 정책"
                 ],
                 "path": "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
                 "rel_path": "agent_docs/TECH_STACK.md",
                 "title": "기술 스택"
               },
               {
-                "bytes": 9698,
+                "bytes": 9100,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -2127,14 +1922,15 @@
                   "3. 테스트 작성 기준",
                   "4. Contract / Golden tests",
                   "5. 완료 보고 기준",
-                  "자기 검증 QA gate"
+                  "자기 검증 QA gate",
+                  "LLM Wiki 정책"
                 ],
                 "path": "$HARNESS_ROOT/agent_docs/TESTING.md",
                 "rel_path": "agent_docs/TESTING.md",
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 10286,
+                "bytes": 8198,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -2146,9 +1942,14 @@
                   "MCP",
                   "SessionStart hook",
                   "4. CLI로 직접 사용",
-                  "5. LLM Wiki 운영",
-                  "6. MCP smoke test",
-                  "7. 자기 검증 루프 / 자가 증강 루프 요약"
+                  "5. MCP smoke test",
+                  "6. 자기 검증 루프 / 자가 증강 루프 요약",
+                  "7. API Documentation Pre-commit Review",
+                  "Review staged API docs/endpoint changes in the current repo",
+                  "JSON output for hooks/CI",
+                  "Explicit files from lint-staged/pre-commit",
+                  "Add project-specific conventions without changing harness core",
+                  "8. LLM Wiki 정책"
                 ],
                 "path": "$HARNESS_ROOT/agent_docs/USAGE.md",
                 "rel_path": "agent_docs/USAGE.md",
@@ -2178,7 +1979,6 @@
               "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
               "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
               "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
-              "$HARNESS_ROOT/agent_docs/LLM_WIKI_INTEGRATION.md",
               "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
               "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
               "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
@@ -2190,13 +1990,11 @@
             "integration": {
               "claude_skill_installed": false,
               "claude_skill_path": "$HOME/.claude/skills/atomic-commit-push",
-              "claude_user_session_start_hook": false,
               "codex_mcp_configured": false,
               "codex_skill_installed": false,
               "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
               "mcp_binary_path": "$HARNESS_ROOT/bin/harness",
               "project_claude_mcp_config": true,
-              "project_claude_session_start_hook": false,
               "project_claude_skill": false,
               "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
             },
@@ -2210,13 +2008,6 @@
                 "path": "$HARNESS_ROOT/skills/atomic-commit-push"
               },
               {
-                "description": "Query, read, cite, and curate the local LLM Wiki at ~/workspace/knowledge-base/llm-wiki. Use when the user asks to use llm-wiki, search durable knowledge, recall previous decisions, cite local source cards, capture reusable findings, ingest/update wiki pages, lint/audit the vault, or persist project/session knowledge outside the current repository.",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "llm-wiki",
-                "path": "$HARNESS_ROOT/skills/llm-wiki"
-              },
-              {
                 "description": "Run the 자가 증강 루프 for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose necessary feature, performance, quality, or documentation improvements, implement one safe high-value diff, and verify it with the 자기 검증 루프. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95점 gate loops, or to decide and execute the next valuable improvement.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -2226,158 +2017,6 @@
             ],
             "target_repo": "$WORKSPACE",
             "version": "0.1.0"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "llm_wiki_inventory": {
-      "content": [
-        {
-          "json": {
-            "counts": {
-              "archive": 0,
-              "concepts": 1,
-              "entities": 0,
-              "markdown_files": 5,
-              "meta": 3,
-              "reports": 0,
-              "sessions": 0,
-              "sources": 1,
-              "summaries": 0
-            },
-            "entry_points": [
-              {
-                "bytes": 173,
-                "exists": true,
-                "path": "00-meta/AGENTS.md",
-                "sha256": "7051fe8e7e5472e7114b92a54bd9157692f29ae594cc079a5402fbfc67bc3376"
-              },
-              {
-                "bytes": 173,
-                "exists": true,
-                "path": "00-meta/index.md",
-                "sha256": "faba12339f192bdb4c3d90095a661d917757ffe1f750629cdf10764190d7db68"
-              },
-              {
-                "bytes": 12,
-                "exists": true,
-                "path": "00-meta/log.md",
-                "sha256": "8d555159a3b1d1f966f402808b5c7a00412d021a2e00937bc1cfcfde23a8fa0d"
-              }
-            ],
-            "exists": true,
-            "generated_at": "$TIMESTAMP",
-            "ok": true,
-            "project_path": "$WORKSPACE",
-            "root": "$LLM_WIKI",
-            "status": "ready"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "llm_wiki_read": {
-      "content": [
-        {
-          "json": {
-            "bytes": 153,
-            "content": "---\ntitle: LLM Wiki Pattern\ntype: concept\nstatus: active\ntags: [llm-wiki, memory]\n---\n\nLLM Wiki keeps durable interlinked markdown knowledge for agents.\n",
-            "ok": true,
-            "path": "20-wiki/concepts/llm-wiki-pattern.md",
-            "root": "$LLM_WIKI",
-            "status": "active",
-            "title": "LLM Wiki Pattern",
-            "truncated": false,
-            "type": "concept"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "llm_wiki_search": {
-      "content": [
-        {
-          "json": {
-            "limit": 2,
-            "ok": true,
-            "query": "llm wiki",
-            "results": [
-              {
-                "path": "10-sources/karpathy-llm-wiki-gist.md",
-                "score": 70,
-                "snippet": "--- title: Karpathy LLM Wiki Gist type: source status: active tags: [llm-wiki, source] --- Source card about the LLM Wiki pattern.",
-                "status": "active",
-                "tags": [
-                  "llm-wiki",
-                  "source"
-                ],
-                "title": "Karpathy LLM Wiki Gist",
-                "type": "source"
-              },
-              {
-                "path": "20-wiki/concepts/llm-wiki-pattern.md",
-                "score": 70,
-                "snippet": "--- title: LLM Wiki Pattern type: concept status: active tags: [llm-wiki, memory] --- LLM Wiki keeps durable interlinked markdown knowledge for agents.",
-                "status": "active",
-                "tags": [
-                  "llm-wiki",
-                  "memory"
-                ],
-                "title": "LLM Wiki Pattern",
-                "type": "concept"
-              }
-            ],
-            "root": "$LLM_WIKI"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "llm_wiki_session_context": {
-      "content": [
-        {
-          "json": {
-            "inventory": {
-              "counts": {
-                "archive": 0,
-                "concepts": 1,
-                "entities": 0,
-                "markdown_files": 5,
-                "meta": 3,
-                "reports": 0,
-                "sessions": 0,
-                "sources": 1,
-                "summaries": 0
-              },
-              "entry_points": [
-                {
-                  "bytes": 173,
-                  "exists": true,
-                  "path": "00-meta/AGENTS.md",
-                  "sha256": "7051fe8e7e5472e7114b92a54bd9157692f29ae594cc079a5402fbfc67bc3376"
-                },
-                {
-                  "bytes": 173,
-                  "exists": true,
-                  "path": "00-meta/index.md",
-                  "sha256": "faba12339f192bdb4c3d90095a661d917757ffe1f750629cdf10764190d7db68"
-                },
-                {
-                  "bytes": 12,
-                  "exists": true,
-                  "path": "00-meta/log.md",
-                  "sha256": "8d555159a3b1d1f966f402808b5c7a00412d021a2e00937bc1cfcfde23a8fa0d"
-                }
-              ],
-              "exists": true,
-              "generated_at": "$TIMESTAMP",
-              "ok": true,
-              "project_path": "$WORKSPACE",
-              "root": "$LLM_WIKI",
-              "status": "ready"
-            },
-            "text": "# LLM Wiki Session Context\n\nCanonical vault root: `$LLM_WIKI`\nCurrent project: `$WORKSPACE`\nStatus: `ready`; markdown=5, sources=1, concepts=1, entities=0, summaries=0, sessions=0.\n\n## When to use\n\nUse llm-wiki only when durable memory, previous decisions, repository reference cards, citation-backed local knowledge, or explicit capture/update work would materially improve the task. Do not query it reflexively for every prompt.\n\n## How to use through agent-harness\n\n- Search: call MCP tool `llm_wiki_search` with focused terms.\n- Read: call `llm_wiki_read` on returned relative paths or known slugs.\n- Orient: read resource `harness://llm-wiki/index` or call `llm_wiki_inventory`.\n- Capture: call `llm_wiki_capture` only for reusable findings or user-requested persistence.\n\n## Hard constraints\n\n- Read `00-meta/AGENTS.md` before wiki writes; this tool checks that schema exists before capture.\n- Treat `10-sources/` bodies as read-only evidence; write synthesized knowledge to `20-wiki/` and session notes to `30-sessions/`.\n- Preserve source fidelity, cite with Obsidian wikilinks, and mark synthesis or unverified claims explicitly.\n- Never edit `.obsidian/`; archive obsolete pages instead of deleting.\n\n## Current index excerpt\n\n```markdown\n---\ntitle: Wiki Index\ntype: index\nstatus: active\ncreated: 2026-05-27\nupdated: 2026-05-27\ntags: [meta]\n---\n\n# Wiki Index\n\n- [[karpathy-llm-wiki-gist]]\n- [[llm-wiki-pattern]]\n```\n"
           },
           "type": "text"
         }
@@ -2458,10 +2097,9 @@
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "자가 증강 후보·결정·실패 교훈을 state/llm-wiki에 축적",
+                "title": "자가 증강 후보·결정·실패 교훈을 state에 축적",
                 "verify_with": [
                   "state roundtrip",
-                  "llm_wiki_capture smoke",
                   "history/compare contract"
                 ],
                 "why_now": [
@@ -2643,14 +2281,13 @@
                 "novelty": 84,
                 "risk": 16,
                 "satisfaction_evidence": [
-                  "self-augment lesson stores Reflexion lessons in harness state with an llm-wiki capture draft"
+                  "self-augment lesson stores Reflexion lessons in harness state"
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "자가 증강 실패 교훈을 state와 llm-wiki 후보로 저장",
+                "title": "자가 증강 실패 교훈을 state에 저장",
                 "verify_with": [
-                  "state_write/read",
-                  "llm_wiki_capture dry-run review"
+                  "state_write/read"
                 ],
                 "why_now": [
                   "반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다",
@@ -2735,11 +2372,10 @@
                 "target_score": 95
               },
               {
-                "description": "실패/성공 원인과 다음 개선점을 state/docs/wiki 중 적절한 위치에 남긴다.",
+                "description": "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
                 "evidence": [
                   "harness state",
-                  "agent_docs",
-                  "llm-wiki when durable"
+                  "agent_docs"
                 ],
                 "korean_name": "학습 기록",
                 "name": "learning_capture",
@@ -2753,7 +2389,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 15,
+              "docs_indexed": 14,
               "has_adapter_contract_matrix": true,
               "has_genius_mermaid_lint": true,
               "has_genius_think": true,
@@ -2770,7 +2406,6 @@
               "has_self_verify_cli": true,
               "skills": [
                 "atomic-commit-push",
-                "llm-wiki",
                 "self-augment"
               ]
             },
@@ -2858,25 +2493,6 @@
             "kind": "self_augmentation_lesson",
             "korean_name": "자가 증강 루프",
             "lesson": "MCP lesson",
-            "llm_wiki_capture_draft": {
-              "content": "## Context\n\n- Candidate: `reflexion-state-memory`\n- Source: `self-augment`\n- Severity: `info`\n\n## Lesson\n\nMCP lesson\n\n## Next action\n\nCheck MCP lesson before next cycle\n",
-              "project_path": "$HARNESS_ROOT",
-              "related": [
-                "[[LLM Wiki Pattern]]"
-              ],
-              "sources": [
-                "[[agent-harness]]"
-              ],
-              "status": "active",
-              "tags": [
-                "agent-harness",
-                "self-augment",
-                "reflexion",
-                "reflexion-state-memory"
-              ],
-              "title": "Self Augmentation Lesson - reflexion-state-memory",
-              "type": "session"
-            },
             "loop_kind": "self_augmentation",
             "next_action": "Check MCP lesson before next cycle",
             "ok": true,
@@ -2898,7 +2514,7 @@
       "content": [
         {
           "json": {
-            "candidate_count": 16,
+            "candidate_count": 15,
             "candidates": [
               {
                 "category": "observability",
@@ -2949,23 +2565,6 @@
                 ],
                 "why_now": [
                   "self-verify claims need machine-readable evidence mapping"
-                ]
-              },
-              {
-                "category": "MCP/state",
-                "id": "self-verify-llm-wiki-fixture-guard",
-                "priority": 4,
-                "satisfaction_evidence": [
-                  "llm-wiki fixture guard covers temp LLM_WIKI_ROOT and isolated HOME default-root negative checks"
-                ],
-                "score": 78,
-                "status": "already_satisfied",
-                "verify_with": [
-                  "llm-wiki fixture guard",
-                  "MCP smoke root leak assertion"
-                ],
-                "why_now": [
-                  "MCP smoke must prove it uses temp wiki fixtures, not durable user memory"
                 ]
               },
               {
@@ -3127,7 +2726,7 @@
                 "id": "self-verify-parallel-temp-isolation",
                 "priority": 14,
                 "satisfaction_evidence": [
-                  "parallel isolation probes unique temp roots for state, daemon, llm-wiki, and artifact paths"
+                  "parallel isolation probes unique temp roots for state, daemon, and artifact paths"
                 ],
                 "score": 70,
                 "status": "already_satisfied",
@@ -3136,7 +2735,7 @@
                   "race tier"
                 ],
                 "why_now": [
-                  "parallel self-verify runs must not collide in temp state, daemon, wiki, or artifacts"
+                  "parallel self-verify runs must not collide in temp state, daemon, or artifacts"
                 ]
               },
               {
@@ -3185,7 +2784,6 @@
               "self-verify-progress-heartbeat",
               "self-verify-secret-redaction-audit",
               "self-verify-coverage-gap-report",
-              "self-verify-llm-wiki-fixture-guard",
               "self-verify-failure-rerun-recipe",
               "self-verify-candidate-export",
               "self-verify-step-budget-baseline",

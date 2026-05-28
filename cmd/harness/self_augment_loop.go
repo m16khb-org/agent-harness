@@ -118,35 +118,22 @@ type SelfAugmentLessonResult struct {
 	Severity        string                      `json:"severity"`
 	HarnessRoot     string                      `json:"harness_root"`
 	GeneratedAt     string                      `json:"generated_at"`
-	LLMWikiDraft    SelfAugmentLLMWikiDraft     `json:"llm_wiki_capture_draft"`
 	StateCheckpoint *SelfAugmentStateCheckpoint `json:"state_checkpoint,omitempty"`
 }
 
-type SelfAugmentLLMWikiDraft struct {
-	Title       string   `json:"title"`
-	Type        string   `json:"type"`
-	Status      string   `json:"status"`
-	Tags        []string `json:"tags"`
-	Sources     []string `json:"sources"`
-	Related     []string `json:"related"`
-	ProjectPath string   `json:"project_path"`
-	Content     string   `json:"content"`
-}
-
 type SelfAugmentLessonStateSnapshot struct {
-	SchemaVersion int                     `json:"schema_version"`
-	Kind          string                  `json:"kind"`
-	LoopKind      string                  `json:"loop_kind"`
-	KoreanName    string                  `json:"korean_name"`
-	OK            bool                    `json:"ok"`
-	CandidateID   string                  `json:"candidate_id"`
-	Lesson        string                  `json:"lesson"`
-	NextAction    string                  `json:"next_action"`
-	Source        string                  `json:"source"`
-	Severity      string                  `json:"severity"`
-	HarnessRoot   string                  `json:"harness_root"`
-	GeneratedAt   string                  `json:"generated_at"`
-	LLMWikiDraft  SelfAugmentLLMWikiDraft `json:"llm_wiki_capture_draft"`
+	SchemaVersion int    `json:"schema_version"`
+	Kind          string `json:"kind"`
+	LoopKind      string `json:"loop_kind"`
+	KoreanName    string `json:"korean_name"`
+	OK            bool   `json:"ok"`
+	CandidateID   string `json:"candidate_id"`
+	Lesson        string `json:"lesson"`
+	NextAction    string `json:"next_action"`
+	Source        string `json:"source"`
+	Severity      string `json:"severity"`
+	HarnessRoot   string `json:"harness_root"`
+	GeneratedAt   string `json:"generated_at"`
 }
 
 type SelfAugmentPlanStateSnapshot struct {
@@ -268,8 +255,8 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 		{
 			Name: "learning_capture", KoreanName: "학습 기록", TargetScore: req.TargetScore,
 			Score:       scoreBool(false),
-			Description: "실패/성공 원인과 다음 개선점을 state/docs/wiki 중 적절한 위치에 남긴다.",
-			Evidence:    []string{"harness state", "agent_docs", "llm-wiki when durable"},
+			Description: "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
+			Evidence:    []string{"harness state", "agent_docs"},
 		},
 	}
 	for i := range goals {
@@ -391,20 +378,18 @@ func saveSelfAugmentLesson(req SelfAugmentLessonRequest) (SelfAugmentLessonResul
 	}
 	now := time.Now().UTC()
 	generatedAt := now.Format(time.RFC3339Nano)
-	draft := selfAugmentLessonLLMWikiDraft(root, candidateID, lesson, nextAction, source, severity)
 	result := SelfAugmentLessonResult{
-		OK:           true,
-		Kind:         selfAugmentationLessonKind,
-		LoopKind:     "self_augmentation",
-		KoreanName:   selfAugmentationKoreanName,
-		CandidateID:  candidateID,
-		Lesson:       lesson,
-		NextAction:   nextAction,
-		Source:       source,
-		Severity:     severity,
-		HarnessRoot:  root,
-		GeneratedAt:  generatedAt,
-		LLMWikiDraft: draft,
+		OK:          true,
+		Kind:        selfAugmentationLessonKind,
+		LoopKind:    "self_augmentation",
+		KoreanName:  selfAugmentationKoreanName,
+		CandidateID: candidateID,
+		Lesson:      lesson,
+		NextAction:  nextAction,
+		Source:      source,
+		Severity:    severity,
+		HarnessRoot: root,
+		GeneratedAt: generatedAt,
 	}
 	key := strings.TrimSpace(req.StateKey)
 	if key == "" {
@@ -423,7 +408,6 @@ func saveSelfAugmentLesson(req SelfAugmentLessonRequest) (SelfAugmentLessonResul
 		Severity:      result.Severity,
 		HarnessRoot:   result.HarnessRoot,
 		GeneratedAt:   result.GeneratedAt,
-		LLMWikiDraft:  result.LLMWikiDraft,
 	}
 	b, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
@@ -445,21 +429,6 @@ func saveSelfAugmentLesson(req SelfAugmentLessonRequest) (SelfAugmentLessonResul
 		Bytes:    state.Record.Bytes,
 	}
 	return result, nil
-}
-
-func selfAugmentLessonLLMWikiDraft(root, candidateID, lesson, nextAction, source, severity string) SelfAugmentLLMWikiDraft {
-	title := "Self Augmentation Lesson - " + candidateID
-	content := fmt.Sprintf("## Context\n\n- Candidate: `%s`\n- Source: `%s`\n- Severity: `%s`\n\n## Lesson\n\n%s\n\n## Next action\n\n%s\n", candidateID, source, severity, lesson, nextAction)
-	return SelfAugmentLLMWikiDraft{
-		Title:       title,
-		Type:        "session",
-		Status:      "active",
-		Tags:        []string{"agent-harness", "self-augment", "reflexion", candidateID},
-		Sources:     []string{"[[agent-harness]]"},
-		Related:     []string{"[[LLM Wiki Pattern]]"},
-		ProjectPath: root,
-		Content:     content,
-	}
 }
 
 func stateKeySlug(s string) string {
@@ -633,11 +602,11 @@ func selfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			VerifyWith:   []string{"skill quick_validate", "install-native", "self-verify QA gate"},
 		},
 		{
-			ID: "durable-augmentation-memory", Title: "자가 증강 후보·결정·실패 교훈을 state/llm-wiki에 축적", Category: "memory",
+			ID: "durable-augmentation-memory", Title: "자가 증강 후보·결정·실패 교훈을 state에 축적", Category: "memory",
 			Impact: 93, Feasibility: 92, Novelty: 86, Risk: 20,
 			WhyNow:       []string{"Reflexion식 언어 피드백을 다음 실행에 재사용하려면 durable memory가 필요하다"},
 			ExpectedGain: []string{"동일 실패 반복 감소", "레포별 개선 히스토리 누적"},
-			VerifyWith:   []string{"state roundtrip", "llm_wiki_capture smoke", "history/compare contract"},
+			VerifyWith:   []string{"state roundtrip", "history/compare contract"},
 		},
 		{
 			ID: "qa-dashboard-summary", Title: "자기 검증 루프 summary를 QA 대시보드형 점수표로 확장", Category: "observability",
@@ -647,11 +616,11 @@ func selfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			VerifyWith:   []string{"response_contract golden", "self-verify --json schema inspection"},
 		},
 		{
-			ID: "reflexion-state-memory", Title: "자가 증강 실패 교훈을 state와 llm-wiki 후보로 저장", Category: "memory",
+			ID: "reflexion-state-memory", Title: "자가 증강 실패 교훈을 state에 저장", Category: "memory",
 			Impact: 89, Feasibility: 91, Novelty: 84, Risk: 16,
 			WhyNow:       []string{"반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다"},
 			ExpectedGain: []string{"실패 원인 재발 감소", "레포별 개선 이력 검색 가능"},
-			VerifyWith:   []string{"state_write/read", "llm_wiki_capture dry-run review"},
+			VerifyWith:   []string{"state_write/read"},
 		},
 		{
 			ID: "qa-race-tier", Title: "위험도 기반 race/static QA tier를 자기 검증 루프에 조건부 연결", Category: "qa",
@@ -721,7 +690,7 @@ func markSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals 
 		}
 	case "reflexion-state-memory":
 		if signals.HasSelfAugmentLessonCapture {
-			evidence = []string{"self-augment lesson stores Reflexion lessons in harness state with an llm-wiki capture draft"}
+			evidence = []string{"self-augment lesson stores Reflexion lessons in harness state"}
 		}
 	case "qa-dashboard-summary":
 		if signals.HasGoalScoreSummary {

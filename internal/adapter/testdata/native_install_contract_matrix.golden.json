@@ -3,7 +3,6 @@
     {
       "name": "project-local-opt-in",
       "project_local": true,
-      "claude_user_hook": true,
       "ok": true,
       "skill_names": [
         "alpha",
@@ -18,36 +17,15 @@
               "kind": "claude_project_mcp_config",
               "path": "$ROOT/.mcp.json",
               "written": true,
-              "content_sha256": "ab89c84423ffe07a0a39fe2c5aacf7ffcdac480984493808d6f8c09cc31cfb3c",
-              "content": "{\n  \"mcpServers\": {\n    \"agent-harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\",\n        \"LLM_WIKI_ROOT\": \"~/knowledge/llm-wiki\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "80923582fbd1a9f5fb2a7e5554bf55a38be38999a710df6e25baa334a9a818e9",
+              "content": "{\n  \"mcpServers\": {\n    \"agent-harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_project_mcp_template",
               "path": "$ROOT/configs/claude/mcp.project.json",
               "written": true,
-              "content_sha256": "ab89c84423ffe07a0a39fe2c5aacf7ffcdac480984493808d6f8c09cc31cfb3c",
-              "content": "{\n  \"mcpServers\": {\n    \"agent-harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\",\n        \"LLM_WIKI_ROOT\": \"~/knowledge/llm-wiki\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
-            },
-            {
-              "kind": "claude_project_session_start_hook_template",
-              "path": "$ROOT/configs/claude/hooks/session-start-llm-wiki.settings.json",
-              "written": true,
-              "content_sha256": "d1b16f21851cea7164ff8ff3b10b4ca0b6fab54b0690e1f7cca6f23ccdfeab44",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"./scripts/session-start-llm-wiki.sh\",\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"startup|resume|clear|compact\"\n      }\n    ]\n  }\n}\n"
-            },
-            {
-              "kind": "claude_project_settings",
-              "path": "$ROOT/.claude/settings.json",
-              "written": true,
-              "content_sha256": "d1b16f21851cea7164ff8ff3b10b4ca0b6fab54b0690e1f7cca6f23ccdfeab44",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"./scripts/session-start-llm-wiki.sh\",\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"startup|resume|clear|compact\"\n      }\n    ]\n  }\n}\n"
-            },
-            {
-              "kind": "claude_user_settings",
-              "path": "$HOME/.claude/settings.json",
-              "written": true,
-              "content_sha256": "936fe2833840b2d4e82276d08e509f3ece21cb379f938c86efcba4327464d8b5",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"HARNESS_ROOT='$ROOT' '$ROOT/scripts/session-start-llm-wiki.sh'\",\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"startup|resume|clear|compact\"\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "80923582fbd1a9f5fb2a7e5554bf55a38be38999a710df6e25baa334a9a818e9",
+              "content": "{\n  \"mcpServers\": {\n    \"agent-harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             }
           ],
           "links": [
@@ -85,22 +63,15 @@
               "kind": "codex_mcp_template",
               "path": "$ROOT/configs/codex/mcp.config.toml",
               "written": true,
-              "content_sha256": "b7acc441450a891d978370608851cb63e46c9647c9bc0e20a95ac879c15f18a8",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\nLLM_WIKI_ROOT = \"~/knowledge/llm-wiki\"\n"
-            },
-            {
-              "kind": "codex_session_start_hook_template",
-              "path": "$ROOT/configs/codex/hooks/session-start-llm-wiki.sh",
-              "written": true,
-              "content_sha256": "eebc42989e0fe009ea77ceae231f984622a050864c1fb2f96d80ad740786f225",
-              "content": "#!/usr/bin/env bash\n# Generic plain-text session-start hook adapter for Codex-compatible hook runners.\n# It intentionally emits plain context instead of Claude's hookSpecificOutput JSON.\nROOT=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/../../..\" \u0026\u0026 pwd)\"\nexport HARNESS_ROOT=\"$ROOT\"\nexport HARNESS_SESSION_CONTEXT_MODE=plain\nexec \"$ROOT/scripts/session-start-llm-wiki.sh\"\n"
+              "content_sha256": "408e968ac805536995cca3c2356023c572065a1a4e3e2628ebcf2f5467d62058",
+              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\n"
             },
             {
               "kind": "codex_user_mcp_config",
               "path": "$CODEX_HOME/config.toml",
               "written": true,
-              "content_sha256": "ffc45ff9c30249b283403587814d466e9952d9d3ed84ce42b99086e900a1f1de",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"$BIN\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \"$ROOT\"\nLLM_WIKI_ROOT = \"$LLM_WIKI_ROOT\"\n"
+              "content_sha256": "a2c0a91dc8dd967983100a4990b1b59ddb502a08367c83d4254debfb99bcec00",
+              "content": "[mcp_servers.agent_harness]\ncommand = \"$BIN\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \"$ROOT\"\n"
             }
           ],
           "links": [
@@ -129,7 +100,6 @@
     {
       "name": "user-global-default",
       "project_local": false,
-      "claude_user_hook": true,
       "ok": true,
       "skill_names": [
         "alpha",
@@ -144,22 +114,8 @@
               "kind": "claude_project_mcp_template",
               "path": "$ROOT/configs/claude/mcp.project.json",
               "written": true,
-              "content_sha256": "ab89c84423ffe07a0a39fe2c5aacf7ffcdac480984493808d6f8c09cc31cfb3c",
-              "content": "{\n  \"mcpServers\": {\n    \"agent-harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\",\n        \"LLM_WIKI_ROOT\": \"~/knowledge/llm-wiki\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
-            },
-            {
-              "kind": "claude_project_session_start_hook_template",
-              "path": "$ROOT/configs/claude/hooks/session-start-llm-wiki.settings.json",
-              "written": true,
-              "content_sha256": "d1b16f21851cea7164ff8ff3b10b4ca0b6fab54b0690e1f7cca6f23ccdfeab44",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"./scripts/session-start-llm-wiki.sh\",\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"startup|resume|clear|compact\"\n      }\n    ]\n  }\n}\n"
-            },
-            {
-              "kind": "claude_user_settings",
-              "path": "$HOME/.claude/settings.json",
-              "written": true,
-              "content_sha256": "936fe2833840b2d4e82276d08e509f3ece21cb379f938c86efcba4327464d8b5",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"HARNESS_ROOT='$ROOT' '$ROOT/scripts/session-start-llm-wiki.sh'\",\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"startup|resume|clear|compact\"\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "80923582fbd1a9f5fb2a7e5554bf55a38be38999a710df6e25baa334a9a818e9",
+              "content": "{\n  \"mcpServers\": {\n    \"agent-harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             }
           ],
           "links": [
@@ -185,115 +141,15 @@
               "kind": "codex_mcp_template",
               "path": "$ROOT/configs/codex/mcp.config.toml",
               "written": true,
-              "content_sha256": "b7acc441450a891d978370608851cb63e46c9647c9bc0e20a95ac879c15f18a8",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\nLLM_WIKI_ROOT = \"~/knowledge/llm-wiki\"\n"
-            },
-            {
-              "kind": "codex_session_start_hook_template",
-              "path": "$ROOT/configs/codex/hooks/session-start-llm-wiki.sh",
-              "written": true,
-              "content_sha256": "eebc42989e0fe009ea77ceae231f984622a050864c1fb2f96d80ad740786f225",
-              "content": "#!/usr/bin/env bash\n# Generic plain-text session-start hook adapter for Codex-compatible hook runners.\n# It intentionally emits plain context instead of Claude's hookSpecificOutput JSON.\nROOT=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/../../..\" \u0026\u0026 pwd)\"\nexport HARNESS_ROOT=\"$ROOT\"\nexport HARNESS_SESSION_CONTEXT_MODE=plain\nexec \"$ROOT/scripts/session-start-llm-wiki.sh\"\n"
+              "content_sha256": "408e968ac805536995cca3c2356023c572065a1a4e3e2628ebcf2f5467d62058",
+              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\n"
             },
             {
               "kind": "codex_user_mcp_config",
               "path": "$CODEX_HOME/config.toml",
               "written": true,
-              "content_sha256": "ffc45ff9c30249b283403587814d466e9952d9d3ed84ce42b99086e900a1f1de",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"$BIN\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \"$ROOT\"\nLLM_WIKI_ROOT = \"$LLM_WIKI_ROOT\"\n"
-            }
-          ],
-          "links": [
-            {
-              "path": "$CODEX_HOME/skills/alpha",
-              "target": "$ROOT/skills/alpha",
-              "created": true,
-              "resolves_to_root_skill": true
-            },
-            {
-              "path": "$CODEX_HOME/skills/beta",
-              "target": "$ROOT/skills/beta",
-              "created": true,
-              "resolves_to_root_skill": true
-            }
-          ]
-        }
-      ],
-      "assertions": [
-        "core discovers shared skills once and passes sorted names to both host adapters",
-        "Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
-        "default install writes no repo-local .claude or .mcp.json paths",
-        "project-local repo files are created only when project_local=true"
-      ]
-    },
-    {
-      "name": "user-global-no-claude-hook",
-      "project_local": false,
-      "claude_user_hook": false,
-      "ok": true,
-      "skill_names": [
-        "alpha",
-        "beta"
-      ],
-      "hosts": [
-        {
-          "host": "claude",
-          "ok": true,
-          "files": [
-            {
-              "kind": "claude_project_mcp_template",
-              "path": "$ROOT/configs/claude/mcp.project.json",
-              "written": true,
-              "content_sha256": "ab89c84423ffe07a0a39fe2c5aacf7ffcdac480984493808d6f8c09cc31cfb3c",
-              "content": "{\n  \"mcpServers\": {\n    \"agent-harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\",\n        \"LLM_WIKI_ROOT\": \"~/knowledge/llm-wiki\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
-            },
-            {
-              "kind": "claude_project_session_start_hook_template",
-              "path": "$ROOT/configs/claude/hooks/session-start-llm-wiki.settings.json",
-              "written": true,
-              "content_sha256": "d1b16f21851cea7164ff8ff3b10b4ca0b6fab54b0690e1f7cca6f23ccdfeab44",
-              "content": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"./scripts/session-start-llm-wiki.sh\",\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"startup|resume|clear|compact\"\n      }\n    ]\n  }\n}\n"
-            }
-          ],
-          "links": [
-            {
-              "path": "$HOME/.claude/skills/alpha",
-              "target": "$ROOT/skills/alpha",
-              "created": true,
-              "resolves_to_root_skill": true
-            },
-            {
-              "path": "$HOME/.claude/skills/beta",
-              "target": "$ROOT/skills/beta",
-              "created": true,
-              "resolves_to_root_skill": true
-            }
-          ]
-        },
-        {
-          "host": "codex",
-          "ok": true,
-          "files": [
-            {
-              "kind": "codex_mcp_template",
-              "path": "$ROOT/configs/codex/mcp.config.toml",
-              "written": true,
-              "content_sha256": "b7acc441450a891d978370608851cb63e46c9647c9bc0e20a95ac879c15f18a8",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\nLLM_WIKI_ROOT = \"~/knowledge/llm-wiki\"\n"
-            },
-            {
-              "kind": "codex_session_start_hook_template",
-              "path": "$ROOT/configs/codex/hooks/session-start-llm-wiki.sh",
-              "written": true,
-              "content_sha256": "eebc42989e0fe009ea77ceae231f984622a050864c1fb2f96d80ad740786f225",
-              "content": "#!/usr/bin/env bash\n# Generic plain-text session-start hook adapter for Codex-compatible hook runners.\n# It intentionally emits plain context instead of Claude's hookSpecificOutput JSON.\nROOT=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/../../..\" \u0026\u0026 pwd)\"\nexport HARNESS_ROOT=\"$ROOT\"\nexport HARNESS_SESSION_CONTEXT_MODE=plain\nexec \"$ROOT/scripts/session-start-llm-wiki.sh\"\n"
-            },
-            {
-              "kind": "codex_user_mcp_config",
-              "path": "$CODEX_HOME/config.toml",
-              "written": true,
-              "content_sha256": "ffc45ff9c30249b283403587814d466e9952d9d3ed84ce42b99086e900a1f1de",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"$BIN\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \"$ROOT\"\nLLM_WIKI_ROOT = \"$LLM_WIKI_ROOT\"\n"
+              "content_sha256": "a2c0a91dc8dd967983100a4990b1b59ddb502a08367c83d4254debfb99bcec00",
+              "content": "[mcp_servers.agent_harness]\ncommand = \"$BIN\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \"$ROOT\"\n"
             }
           ],
           "links": [

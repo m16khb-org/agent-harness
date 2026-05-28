@@ -13,7 +13,7 @@ import (
 
 // DefaultNativeInstallRequest normalizes common installation inputs while keeping
 // host-specific file decisions in adapter implementations.
-func DefaultNativeInstallRequest(root, home, codexHome, binPath, llmWikiRoot string) port.NativeInstallRequest {
+func DefaultNativeInstallRequest(root, home, codexHome, binPath string) port.NativeInstallRequest {
 	root = absClean(root)
 	if home == "" {
 		home, _ = os.UserHomeDir()
@@ -27,19 +27,11 @@ func DefaultNativeInstallRequest(root, home, codexHome, binPath, llmWikiRoot str
 		binPath = filepath.Join(root, "bin", "harness")
 	}
 	binPath = absClean(binPath)
-	if strings.TrimSpace(llmWikiRoot) == "" {
-		llmWikiRoot = DefaultLLMWikiRoot
-	}
-	llmWikiRoot = expandHomeWithHome(llmWikiRoot, home)
-	llmWikiRoot = absClean(llmWikiRoot)
 	return port.NativeInstallRequest{
-		Root:                root,
-		Home:                home,
-		CodexHome:           codexHome,
-		BinPath:             binPath,
-		LLMWikiRoot:         llmWikiRoot,
-		PortableLLMWikiRoot: homeRelativePath(llmWikiRoot, home),
-		ClaudeUserHook:      true,
+		Root:      root,
+		Home:      home,
+		CodexHome: codexHome,
+		BinPath:   binPath,
 	}
 }
 
@@ -54,14 +46,6 @@ func InstallNative(req port.NativeInstallRequest, installers ...port.HostInstall
 	req.Home = absClean(req.Home)
 	req.CodexHome = absClean(req.CodexHome)
 	req.BinPath = absClean(req.BinPath)
-	if req.LLMWikiRoot == "" {
-		req.LLMWikiRoot = absClean(expandHomeWithHome(DefaultLLMWikiRoot, req.Home))
-	} else {
-		req.LLMWikiRoot = absClean(expandHomeWithHome(req.LLMWikiRoot, req.Home))
-	}
-	if req.PortableLLMWikiRoot == "" {
-		req.PortableLLMWikiRoot = homeRelativePath(req.LLMWikiRoot, req.Home)
-	}
 	if len(req.SkillNames) == 0 {
 		skills, err := ListSkillNames(req.Root)
 		if err != nil {
@@ -72,20 +56,17 @@ func InstallNative(req port.NativeInstallRequest, installers ...port.HostInstall
 		req.SkillNames = normalizeSkillNames(req.SkillNames)
 	}
 	result := port.NativeInstallResult{
-		OK:                  true,
-		Root:                req.Root,
-		Home:                req.Home,
-		CodexHome:           req.CodexHome,
-		BinPath:             req.BinPath,
-		LLMWikiRoot:         req.LLMWikiRoot,
-		PortableLLMWikiRoot: req.PortableLLMWikiRoot,
-		SkillNames:          append([]string{}, req.SkillNames...),
-		Hosts:               []port.HostInstallResult{},
-		Files:               []port.InstallFile{},
-		Links:               []port.InstallLink{},
-		ProjectLocal:        req.ProjectLocal,
-		ClaudeUserHook:      req.ClaudeUserHook,
-		DryRun:              req.DryRun,
+		OK:           true,
+		Root:         req.Root,
+		Home:         req.Home,
+		CodexHome:    req.CodexHome,
+		BinPath:      req.BinPath,
+		SkillNames:   append([]string{}, req.SkillNames...),
+		Hosts:        []port.HostInstallResult{},
+		Files:        []port.InstallFile{},
+		Links:        []port.InstallLink{},
+		ProjectLocal: req.ProjectLocal,
+		DryRun:       req.DryRun,
 	}
 	if len(installers) == 0 {
 		result.OK = false

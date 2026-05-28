@@ -21,7 +21,7 @@ description: "Run the 자가 증강 루프 for agent-harness or another reposito
 1. 개선 목표 선별: repo evidence와 `GENIUS_THINK.md`를 사용해 10개 이상 후보를 만들고, 가치/실현 가능성/위험을 점수화한다.
 2. 개선 구현: 선택 후보가 실제 코드/문서/스킬 diff로 반영된다. cosmetic-only 변경은 제외한다.
 3. 검증·QA: 타깃 테스트, QA 단계, `self-verify`가 통과한다.
-4. 학습 기록: 결정, 실패 교훈, 다음 개선 후보를 state/docs/wiki 중 적절한 곳에 남긴다.
+4. 학습 기록: 결정, 실패 교훈, 다음 개선 후보를 state/docs 중 적절한 곳에 남긴다.
 
 ## Workflow
 
@@ -29,7 +29,7 @@ description: "Run the 자가 증강 루프 for agent-harness or another reposito
    - Read nearest `AGENTS.md`/`CLAUDE.md`, `GENIUS_THINK.md`, and `agent_docs/SELF_AUGMENTATION.md` when present.
    - Run or inspect `./bin/harness self-augment --json` for the current candidate curriculum.
    - Use `./bin/harness self-augment --save-state --state-key self-augment-latest --json` when the selected plan should become durable memory for the next cycle.
-   - Use `./bin/harness self-augment lesson --lesson "..." --next-action "..." --json` to store reusable Reflexion lessons with an llm-wiki capture draft.
+   - Use `./bin/harness self-augment lesson --lesson "..." --next-action "..." --json` to store reusable Reflexion lessons.
    - Run a baseline 자기 검증 루프 when feasible; otherwise capture why it cannot run.
 
 2. **Candidate curriculum**
@@ -54,5 +54,5 @@ description: "Run the 자가 증강 루프 for agent-harness or another reposito
    - Finish with `./bin/harness self-verify --iterations=10 --target-score=95 --json` when practical.
 
 6. **Capture**
-   - Store durable lessons only when reusable: `harness state`, `agent_docs/`, or llm-wiki if the user asked for durable knowledge; prefer `self-augment --save-state` for the selected candidate curriculum and `self-augment lesson` for reusable failure/QA/design lessons.
+   - Store durable lessons only when reusable: `harness state`, `agent_docs/`; prefer `self-augment --save-state` for the selected candidate curriculum and `self-augment lesson` for reusable failure/QA/design lessons.
    - Final report includes selected candidate, implemented diff, goal scores, verification evidence, and remaining risk.
