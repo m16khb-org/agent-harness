@@ -668,5 +668,133 @@
       "type": "object"
     },
     "name": "self_verify_promote"
+  },
+  {
+    "description": "Return the current CLI/MCP compatibility contract, required response fields, and stable schema hash. This tool is read-only and is used before changing response DTOs.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "contract_schema"
+  },
+  {
+    "description": "Check whether the current CLI/MCP compatibility contract is internally consistent. This tool is read-only and returns a pass/fail result plus warnings.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "contract_check"
+  },
+  {
+    "description": "Create a no-shell local worker job record. This writes only to the harness worker state directory and never executes shell commands.",
+    "inputSchema": {
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "name": "worker_enqueue"
+  },
+  {
+    "description": "Read a no-shell local worker job by id. This is read-only and returns the persisted job lifecycle record.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "worker_status"
+  },
+  {
+    "description": "List no-shell local worker jobs from the harness worker state directory. This is read-only.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": "worker_list"
+  },
+  {
+    "description": "Mark a queued no-shell local worker job as cancelled. This writes only the job lifecycle record and never kills processes.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "worker_cancel"
+  },
+  {
+    "description": "Evaluate command policy and append a redacted JSONL audit record without executing the command. This writes only to the harness audit log.",
+    "inputSchema": {
+      "properties": {
+        "argv": {
+          "description": "Command argv array. Shell strings are not accepted.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cwd": {
+          "description": "Command working directory; must be inside workspace_root.",
+          "type": "string"
+        },
+        "env_allowlist": {
+          "description": "Allowed environment variable names.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "network_allowed": {
+          "description": "Whether network access is allowed.",
+          "type": "boolean"
+        },
+        "shell_allowed": {
+          "description": "Whether shell interpreter argv[0] is allowed.",
+          "type": "boolean"
+        },
+        "shell_reason": {
+          "description": "Required reason when shell_allowed is true.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Duration such as 30s or 2m; max 15m.",
+          "type": "string"
+        },
+        "workspace_root": {
+          "description": "Workspace root boundary.",
+          "type": "string"
+        },
+        "write_allowed": {
+          "description": "Whether workspace writes are allowed.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "workspace_root",
+        "cwd",
+        "argv"
+      ],
+      "type": "object"
+    },
+    "name": "command_policy_audit"
   }
 ]

@@ -1,9 +1,242 @@
 {
   "cli": {
+    "contract_schema": {
+      "adapter_tools": [
+        {
+          "description": "Return the current CLI/MCP compatibility contract, required response fields, and stable schema hash. This tool is read-only and is used before changing response DTOs.",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "contract_schema"
+        },
+        {
+          "description": "Check whether the current CLI/MCP compatibility contract is internally consistent. This tool is read-only and returns a pass/fail result plus warnings.",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "contract_check"
+        },
+        {
+          "description": "Create a no-shell local worker job record. This writes only to the harness worker state directory and never executes shell commands.",
+          "inputSchema": {
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "name": "worker_enqueue"
+        },
+        {
+          "description": "Read a no-shell local worker job by id. This is read-only and returns the persisted job lifecycle record.",
+          "inputSchema": {
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "name": "worker_status"
+        },
+        {
+          "description": "List no-shell local worker jobs from the harness worker state directory. This is read-only.",
+          "inputSchema": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": "worker_list"
+        },
+        {
+          "description": "Mark a queued no-shell local worker job as cancelled. This writes only the job lifecycle record and never kills processes.",
+          "inputSchema": {
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "name": "worker_cancel"
+        }
+      ],
+      "cli_commands": [
+        {
+          "description": "inspect harness installation and native integration",
+          "name": "inspect"
+        },
+        {
+          "description": "run read-only git preflight checks",
+          "name": "preflight"
+        },
+        {
+          "description": "index harness guidance documents",
+          "name": "docs"
+        },
+        {
+          "description": "evaluate command policy, fake-run commands, and write audit records",
+          "name": "policy"
+        },
+        {
+          "description": "print or check CLI/MCP response compatibility contracts",
+          "name": "contract"
+        },
+        {
+          "description": "read and write small agent state checkpoints",
+          "name": "state"
+        },
+        {
+          "description": "run API documentation static and agent review gates",
+          "name": "api-doc"
+        },
+        {
+          "description": "run prompt-routing hooks",
+          "name": "hook"
+        },
+        {
+          "description": "bootstrap and maintain project operating docs",
+          "name": "project"
+        },
+        {
+          "description": "install shared native skills and MCP config",
+          "name": "install-native"
+        },
+        {
+          "description": "manage the MCP backend daemon",
+          "name": "daemon"
+        },
+        {
+          "description": "manage safe no-shell local worker jobs",
+          "name": "worker"
+        },
+        {
+          "description": "run harness verification gates",
+          "name": "self-verify"
+        },
+        {
+          "description": "plan self-augmentation candidates and lessons",
+          "name": "self-augment"
+        },
+        {
+          "description": "serve the MCP stdio proxy",
+          "name": "mcp"
+        },
+        {
+          "description": "print harness version",
+          "name": "version"
+        }
+      ],
+      "hash": "b55acba3a02c18f542144f3dee939511be0a91fc8d74b121669f87842f3688cc",
+      "mcp_tools": [
+        "api_doc_review",
+        "api_doc_static_check",
+        "atomic_commit_preflight",
+        "command_fake_run",
+        "command_policy_audit",
+        "command_policy_check",
+        "commit_policy",
+        "contract_check",
+        "contract_schema",
+        "daemon_status",
+        "docs_index",
+        "harness_inspect",
+        "project_docs_bootstrap_plan",
+        "project_docs_read",
+        "project_docs_record",
+        "project_docs_route",
+        "project_docs_update",
+        "self_augment",
+        "self_augment_lesson",
+        "self_verify",
+        "self_verify_candidates",
+        "self_verify_compare",
+        "self_verify_history",
+        "self_verify_promote",
+        "skill_manifest",
+        "state_doctor",
+        "state_list",
+        "state_migrate",
+        "state_prune",
+        "state_read",
+        "state_write",
+        "worker_cancel",
+        "worker_enqueue",
+        "worker_list",
+        "worker_status"
+      ],
+      "name": "agent_harness_cli_mcp_compatibility",
+      "ok": true,
+      "response_fields": {
+        "command_audit": [
+          "ok",
+          "kind",
+          "audit_log_id",
+          "log_path",
+          "policy"
+        ],
+        "command_policy": [
+          "ok",
+          "allowed",
+          "audit_log_id",
+          "workspace_root",
+          "cwd",
+          "argv",
+          "deny_reasons",
+          "warnings"
+        ],
+        "self_verification_summary": [
+          "total_runs",
+          "total_steps",
+          "passed_steps",
+          "failed_steps",
+          "target_score",
+          "contract",
+          "minimum_goal_score",
+          "termination_eligible",
+          "goal_scores",
+          "coverage",
+          "coverage_gaps",
+          "step_labels",
+          "slowest_steps",
+          "step_duration_stats"
+        ],
+        "worker_job": [
+          "ok",
+          "id",
+          "kind",
+          "status",
+          "created_at",
+          "updated_at",
+          "no_shell"
+        ]
+      },
+      "verification": [
+        "go test ./... -count=1",
+        "go test ./cmd/harness -run Golden -count=1",
+        "harness contract check --json"
+      ],
+      "version": 1,
+      "warnings": []
+    },
     "docs_index": {
       "docs": [
         {
-          "bytes": 9565,
+          "bytes": 10821,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -23,7 +256,8 @@
             "5. 주요 위험과 대응",
             "6. 다음 작업 제안",
             "LLM Wiki 정책",
-            "ADR note: MCP-backed project memory records"
+            "ADR note: MCP-backed project memory records",
+            "ADR note: Adapter 분리, compatibility contract, audit log, worker MVP"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
           "rel_path": ".agent-harness/ADR.md",
@@ -49,7 +283,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 13167,
+          "bytes": 13987,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -62,7 +296,8 @@
             "7. Codex / Claude integration map",
             "8. 변경 체크리스트",
             "LLM Wiki 정책",
-            "MCP tool design guidance"
+            "MCP tool design guidance",
+            "현재 hardening 추가 사항"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/ARCHITECTURE.md",
           "rel_path": ".agent-harness/ARCHITECTURE.md",
@@ -166,7 +401,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 13757,
+          "bytes": 14397,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -194,7 +429,7 @@
           "title": "하네스 사용법"
         },
         {
-          "bytes": 5069,
+          "bytes": 5520,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -202,14 +437,15 @@
             "3. 예상 라이브러리 후보",
             "4. 예정 명령어",
             "5. 주요 설정/상태 위치",
-            "Native integration 확인"
+            "Native integration 확인",
+            "구현된 hardening commands"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
           "rel_path": ".agent-harness/TECH_STACK.md",
           "title": "기술 스택"
         },
         {
-          "bytes": 13330,
+          "bytes": 13821,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -225,7 +461,8 @@
             "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",
             "Business logic error response coverage",
             "Agent-backed verification boundary",
-            "OpenAPI prompt source"
+            "OpenAPI prompt source",
+            "Contract/audit/worker verification"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
           "rel_path": ".agent-harness/TESTING.md",
@@ -425,6 +662,33 @@
       "target_repo": "$WORKSPACE",
       "version": "0.1.0"
     },
+    "policy_audit": {
+      "audit_log_id": "$AUDIT_ID",
+      "generated_at": "$TIMESTAMP",
+      "kind": "command_policy_audit",
+      "log_path": "$AUDIT_LOG",
+      "ok": true,
+      "policy": {
+        "allowed": true,
+        "argv": [
+          "git",
+          "status",
+          "--short"
+        ],
+        "audit_log_id": "$AUDIT_ID",
+        "cwd": "$WORKSPACE",
+        "deny_reasons": [],
+        "env_allowlist": [],
+        "generated_at": "$TIMESTAMP",
+        "network_allowed": false,
+        "ok": true,
+        "shell_allowed": false,
+        "timeout": "30s",
+        "warnings": [],
+        "workspace_root": "$WORKSPACE",
+        "write_allowed": false
+      }
+    },
     "policy_check": {
       "allowed": true,
       "argv": [
@@ -509,6 +773,28 @@
     "self_augment_plan": {
       "candidates": [
         {
+          "category": "release",
+          "expected_gain": [
+            "새 환경 설치 절차 재현성",
+            "tarball/Homebrew 여부 결정 근거"
+          ],
+          "feasibility": 78,
+          "id": "release-repro-pack",
+          "impact": 86,
+          "novelty": 68,
+          "risk": 22,
+          "score": 79.03999999999999,
+          "status": "open",
+          "title": "Create a clean-machine release and install reproducibility pack",
+          "verify_with": [
+            "release checklist",
+            "temp HOME install smoke"
+          ],
+          "why_now": [
+            "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다"
+          ]
+        },
+        {
           "category": "test",
           "expected_gain": [
             "SOLID 구조의 포트 계약 보존",
@@ -559,6 +845,86 @@
           "why_now": [
             "Go CLI는 LLM 판단/코드 편집 주체가 아니므로 skill 표면이 필요하다",
             "Codex/Claude 공용 하네스 목적과 맞다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "curriculum",
+          "expected_gain": [
+            "완료된 후보는 audit history로 유지",
+            "release/worker 등 후속 open 후보를 계속 노출"
+          ],
+          "feasibility": 91,
+          "id": "candidate-refill-curriculum",
+          "impact": 90,
+          "novelty": 82,
+          "risk": 12,
+          "satisfaction_evidence": [
+            "self-augment catalog includes second-wave candidates and release-repro-pack open follow-up"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Refill self-augmentation candidates after the original curriculum is satisfied",
+          "verify_with": [
+            "self-augment --json open_candidate_ids",
+            "self_augment_summary_test"
+          ],
+          "why_now": [
+            "기존 후보가 모두 satisfied가 되면 자가증강 루프가 다음 필요 기능을 선택하지 못한다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "architecture",
+          "expected_gain": [
+            "CLI/MCP 표면을 독립적으로 테스트",
+            "후속 worker와 contract 기능 추가 비용 감소"
+          ],
+          "feasibility": 86,
+          "id": "cli-mcp-adapter-split",
+          "impact": 94,
+          "novelty": 76,
+          "risk": 24,
+          "satisfaction_evidence": [
+            "CLI usage lives in internal/adapter/cli",
+            "MCP adapter-owned tool descriptors live in internal/adapter/mcp"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Split CLI usage and MCP schema catalog into adapter-owned packages",
+          "verify_with": [
+            "internal/adapter/cli tests",
+            "internal/adapter/mcp tests",
+            "usage golden"
+          ],
+          "why_now": [
+            "cmd/harness가 routing, usage, MCP schema를 모두 소유하면 기능 추가 때 drift 위험이 커진다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "contract",
+          "expected_gain": [
+            "response DTO 변경 시 명시적 hash와 required field 확인",
+            "MCP tool schema와 CLI usage를 같은 계약으로 검증"
+          ],
+          "feasibility": 88,
+          "id": "dto-compatibility-contract",
+          "impact": 92,
+          "novelty": 78,
+          "risk": 18,
+          "satisfaction_evidence": [
+            "harness contract schema/check exposes CLI/MCP compatibility contract"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Expose a CLI/MCP DTO compatibility contract and schema check",
+          "verify_with": [
+            "harness contract check --json",
+            "response contract golden"
+          ],
+          "why_now": [
+            "worker와 audit 표면이 늘면 JSON response field drift를 기계적으로 확인해야 한다",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
@@ -699,6 +1065,32 @@
           ]
         },
         {
+          "category": "safety",
+          "expected_gain": [
+            "명령 허용/거부 판단을 재현 가능하게 저장",
+            "secret 원문 없는 JSONL 증거 확보"
+          ],
+          "feasibility": 87,
+          "id": "policy-audit-redaction",
+          "impact": 91,
+          "novelty": 77,
+          "risk": 20,
+          "satisfaction_evidence": [
+            "policy audit writes append-only redacted JSONL records without executing commands"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Add append-only redacted command-policy audit records",
+          "verify_with": [
+            "policy audit CLI smoke",
+            "redaction audit unit test"
+          ],
+          "why_now": [
+            "실제 runner나 worker 확장 전 audit log와 secret redaction 기반이 필요하다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
           "category": "observability",
           "expected_gain": [
             "목표별 점수와 증거 label을 바로 확인",
@@ -800,6 +1192,32 @@
             "하네스가 여러 레포에서 쓰이면 repo별 권한·상태 경계가 핵심이다",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
+        },
+        {
+          "category": "worker",
+          "expected_gain": [
+            "worker lifecycle DTO와 storage 경계 검증",
+            "future process runner 도입 전 안전한 API 확보"
+          ],
+          "feasibility": 84,
+          "id": "worker-mvp-no-shell",
+          "impact": 89,
+          "novelty": 80,
+          "risk": 26,
+          "satisfaction_evidence": [
+            "worker MVP persists queued/cancelled job lifecycle records and never executes shell commands"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Implement a no-shell local worker MVP for job lifecycle records",
+          "verify_with": [
+            "worker enqueue/status/list/cancel tests",
+            "MCP worker tool smoke"
+          ],
+          "why_now": [
+            "Phase 4 worker는 필요하지만 첫 단계는 shell 실행 없는 queue/status/cancel로 제한해야 안전하다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
         }
       ],
       "cycles": 1,
@@ -872,10 +1290,15 @@
       "repo_signals": {
         "docs_indexed": 18,
         "has_adapter_contract_matrix": true,
+        "has_candidate_refill": true,
+        "has_cli_adapter_split": true,
+        "has_command_audit_log": true,
+        "has_compatibility_contract": true,
         "has_genius_mermaid_lint": true,
         "has_genius_think": true,
         "has_goal_score_summary": true,
         "has_install_dry_run_mode": true,
+        "has_mcp_adapter_catalog": true,
         "has_performance_baseline": true,
         "has_repo_local_sandbox": true,
         "has_risk_qa_tier": true,
@@ -885,6 +1308,7 @@
         "has_self_augment_state_capture": true,
         "has_self_verification_docs": true,
         "has_self_verify_cli": true,
+        "has_worker_mvp": true,
         "skills": [
           "atomic-commit-push",
           "project-bootstrap",
@@ -944,6 +1368,28 @@
           "source": "https://github.com/openai/evals"
         }
       ],
+      "selected_candidate": {
+        "category": "release",
+        "expected_gain": [
+          "새 환경 설치 절차 재현성",
+          "tarball/Homebrew 여부 결정 근거"
+        ],
+        "feasibility": 78,
+        "id": "release-repro-pack",
+        "impact": 86,
+        "novelty": 68,
+        "risk": 22,
+        "score": 79.03999999999999,
+        "status": "open",
+        "title": "Create a clean-machine release and install reproducibility pack",
+        "verify_with": [
+          "release checklist",
+          "temp HOME install smoke"
+        ],
+        "why_now": [
+          "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다"
+        ]
+      },
       "selected_formulas": [
         "문제 재정의 알고리즘",
         "혁신적 솔루션 생성 공식",
@@ -1713,6 +2159,18 @@
         "updated_at": "$TIMESTAMP"
       },
       "state_dir": "$STATE_DIR"
+    },
+    "worker_enqueue": {
+      "created_at": "$TIMESTAMP",
+      "id": "$WORKER_JOB_ID",
+      "kind": "contract",
+      "no_shell": true,
+      "ok": true,
+      "payload": "\u003credacted\u003e",
+      "safety_notice": "worker MVP records lifecycle state only; it never executes shell commands",
+      "status": "queued",
+      "updated_at": "$TIMESTAMP",
+      "worker_dir": "$WORKER_DIR"
     }
   },
   "mcp": {
@@ -1764,6 +2222,40 @@
         }
       ]
     },
+    "command_policy_audit": {
+      "content": [
+        {
+          "json": {
+            "audit_log_id": "$AUDIT_ID",
+            "generated_at": "$TIMESTAMP",
+            "kind": "command_policy_audit",
+            "log_path": "$AUDIT_LOG",
+            "ok": true,
+            "policy": {
+              "allowed": true,
+              "argv": [
+                "git",
+                "status",
+                "--short"
+              ],
+              "audit_log_id": "$AUDIT_ID",
+              "cwd": "$WORKSPACE",
+              "deny_reasons": [],
+              "env_allowlist": [],
+              "generated_at": "$TIMESTAMP",
+              "network_allowed": false,
+              "ok": true,
+              "shell_allowed": false,
+              "timeout": "30s",
+              "warnings": [],
+              "workspace_root": "$WORKSPACE",
+              "write_allowed": false
+            }
+          },
+          "type": "text"
+        }
+      ]
+    },
     "command_policy_check": {
       "content": [
         {
@@ -1791,13 +2283,253 @@
         }
       ]
     },
+    "contract_schema": {
+      "content": [
+        {
+          "json": {
+            "adapter_tools": [
+              {
+                "description": "Return the current CLI/MCP compatibility contract, required response fields, and stable schema hash. This tool is read-only and is used before changing response DTOs.",
+                "inputSchema": {
+                  "properties": {},
+                  "type": "object"
+                },
+                "name": "contract_schema"
+              },
+              {
+                "description": "Check whether the current CLI/MCP compatibility contract is internally consistent. This tool is read-only and returns a pass/fail result plus warnings.",
+                "inputSchema": {
+                  "properties": {},
+                  "type": "object"
+                },
+                "name": "contract_check"
+              },
+              {
+                "description": "Create a no-shell local worker job record. This writes only to the harness worker state directory and never executes shell commands.",
+                "inputSchema": {
+                  "properties": {
+                    "kind": {
+                      "type": "string"
+                    },
+                    "payload": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                "name": "worker_enqueue"
+              },
+              {
+                "description": "Read a no-shell local worker job by id. This is read-only and returns the persisted job lifecycle record.",
+                "inputSchema": {
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                "name": "worker_status"
+              },
+              {
+                "description": "List no-shell local worker jobs from the harness worker state directory. This is read-only.",
+                "inputSchema": {
+                  "properties": {},
+                  "type": "object"
+                },
+                "name": "worker_list"
+              },
+              {
+                "description": "Mark a queued no-shell local worker job as cancelled. This writes only the job lifecycle record and never kills processes.",
+                "inputSchema": {
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                "name": "worker_cancel"
+              }
+            ],
+            "cli_commands": [
+              {
+                "description": "inspect harness installation and native integration",
+                "name": "inspect"
+              },
+              {
+                "description": "run read-only git preflight checks",
+                "name": "preflight"
+              },
+              {
+                "description": "index harness guidance documents",
+                "name": "docs"
+              },
+              {
+                "description": "evaluate command policy, fake-run commands, and write audit records",
+                "name": "policy"
+              },
+              {
+                "description": "print or check CLI/MCP response compatibility contracts",
+                "name": "contract"
+              },
+              {
+                "description": "read and write small agent state checkpoints",
+                "name": "state"
+              },
+              {
+                "description": "run API documentation static and agent review gates",
+                "name": "api-doc"
+              },
+              {
+                "description": "run prompt-routing hooks",
+                "name": "hook"
+              },
+              {
+                "description": "bootstrap and maintain project operating docs",
+                "name": "project"
+              },
+              {
+                "description": "install shared native skills and MCP config",
+                "name": "install-native"
+              },
+              {
+                "description": "manage the MCP backend daemon",
+                "name": "daemon"
+              },
+              {
+                "description": "manage safe no-shell local worker jobs",
+                "name": "worker"
+              },
+              {
+                "description": "run harness verification gates",
+                "name": "self-verify"
+              },
+              {
+                "description": "plan self-augmentation candidates and lessons",
+                "name": "self-augment"
+              },
+              {
+                "description": "serve the MCP stdio proxy",
+                "name": "mcp"
+              },
+              {
+                "description": "print harness version",
+                "name": "version"
+              }
+            ],
+            "hash": "b55acba3a02c18f542144f3dee939511be0a91fc8d74b121669f87842f3688cc",
+            "mcp_tools": [
+              "api_doc_review",
+              "api_doc_static_check",
+              "atomic_commit_preflight",
+              "command_fake_run",
+              "command_policy_audit",
+              "command_policy_check",
+              "commit_policy",
+              "contract_check",
+              "contract_schema",
+              "daemon_status",
+              "docs_index",
+              "harness_inspect",
+              "project_docs_bootstrap_plan",
+              "project_docs_read",
+              "project_docs_record",
+              "project_docs_route",
+              "project_docs_update",
+              "self_augment",
+              "self_augment_lesson",
+              "self_verify",
+              "self_verify_candidates",
+              "self_verify_compare",
+              "self_verify_history",
+              "self_verify_promote",
+              "skill_manifest",
+              "state_doctor",
+              "state_list",
+              "state_migrate",
+              "state_prune",
+              "state_read",
+              "state_write",
+              "worker_cancel",
+              "worker_enqueue",
+              "worker_list",
+              "worker_status"
+            ],
+            "name": "agent_harness_cli_mcp_compatibility",
+            "ok": true,
+            "response_fields": {
+              "command_audit": [
+                "ok",
+                "kind",
+                "audit_log_id",
+                "log_path",
+                "policy"
+              ],
+              "command_policy": [
+                "ok",
+                "allowed",
+                "audit_log_id",
+                "workspace_root",
+                "cwd",
+                "argv",
+                "deny_reasons",
+                "warnings"
+              ],
+              "self_verification_summary": [
+                "total_runs",
+                "total_steps",
+                "passed_steps",
+                "failed_steps",
+                "target_score",
+                "contract",
+                "minimum_goal_score",
+                "termination_eligible",
+                "goal_scores",
+                "coverage",
+                "coverage_gaps",
+                "step_labels",
+                "slowest_steps",
+                "step_duration_stats"
+              ],
+              "worker_job": [
+                "ok",
+                "id",
+                "kind",
+                "status",
+                "created_at",
+                "updated_at",
+                "no_shell"
+              ]
+            },
+            "verification": [
+              "go test ./... -count=1",
+              "go test ./cmd/harness -run Golden -count=1",
+              "harness contract check --json"
+            ],
+            "version": 1,
+            "warnings": []
+          },
+          "type": "text"
+        }
+      ]
+    },
     "docs_index": {
       "content": [
         {
           "json": {
             "docs": [
               {
-                "bytes": 9565,
+                "bytes": 10821,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -1817,7 +2549,8 @@
                   "5. 주요 위험과 대응",
                   "6. 다음 작업 제안",
                   "LLM Wiki 정책",
-                  "ADR note: MCP-backed project memory records"
+                  "ADR note: MCP-backed project memory records",
+                  "ADR note: Adapter 분리, compatibility contract, audit log, worker MVP"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
                 "rel_path": ".agent-harness/ADR.md",
@@ -1843,7 +2576,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 13167,
+                "bytes": 13987,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -1856,7 +2589,8 @@
                   "7. Codex / Claude integration map",
                   "8. 변경 체크리스트",
                   "LLM Wiki 정책",
-                  "MCP tool design guidance"
+                  "MCP tool design guidance",
+                  "현재 hardening 추가 사항"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/ARCHITECTURE.md",
                 "rel_path": ".agent-harness/ARCHITECTURE.md",
@@ -1960,7 +2694,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 13757,
+                "bytes": 14397,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -1988,7 +2722,7 @@
                 "title": "하네스 사용법"
               },
               {
-                "bytes": 5069,
+                "bytes": 5520,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -1996,14 +2730,15 @@
                   "3. 예상 라이브러리 후보",
                   "4. 예정 명령어",
                   "5. 주요 설정/상태 위치",
-                  "Native integration 확인"
+                  "Native integration 확인",
+                  "구현된 hardening commands"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
                 "rel_path": ".agent-harness/TECH_STACK.md",
                 "title": "기술 스택"
               },
               {
-                "bytes": 13330,
+                "bytes": 13821,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -2019,7 +2754,8 @@
                   "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",
                   "Business logic error response coverage",
                   "Agent-backed verification boundary",
-                  "OpenAPI prompt source"
+                  "OpenAPI prompt source",
+                  "Contract/audit/worker verification"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
                 "rel_path": ".agent-harness/TESTING.md",
@@ -2236,6 +2972,28 @@
           "json": {
             "candidates": [
               {
+                "category": "release",
+                "expected_gain": [
+                  "새 환경 설치 절차 재현성",
+                  "tarball/Homebrew 여부 결정 근거"
+                ],
+                "feasibility": 78,
+                "id": "release-repro-pack",
+                "impact": 86,
+                "novelty": 68,
+                "risk": 22,
+                "score": 79.03999999999999,
+                "status": "open",
+                "title": "Create a clean-machine release and install reproducibility pack",
+                "verify_with": [
+                  "release checklist",
+                  "temp HOME install smoke"
+                ],
+                "why_now": [
+                  "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다"
+                ]
+              },
+              {
                 "category": "test",
                 "expected_gain": [
                   "SOLID 구조의 포트 계약 보존",
@@ -2286,6 +3044,86 @@
                 "why_now": [
                   "Go CLI는 LLM 판단/코드 편집 주체가 아니므로 skill 표면이 필요하다",
                   "Codex/Claude 공용 하네스 목적과 맞다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "curriculum",
+                "expected_gain": [
+                  "완료된 후보는 audit history로 유지",
+                  "release/worker 등 후속 open 후보를 계속 노출"
+                ],
+                "feasibility": 91,
+                "id": "candidate-refill-curriculum",
+                "impact": 90,
+                "novelty": 82,
+                "risk": 12,
+                "satisfaction_evidence": [
+                  "self-augment catalog includes second-wave candidates and release-repro-pack open follow-up"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Refill self-augmentation candidates after the original curriculum is satisfied",
+                "verify_with": [
+                  "self-augment --json open_candidate_ids",
+                  "self_augment_summary_test"
+                ],
+                "why_now": [
+                  "기존 후보가 모두 satisfied가 되면 자가증강 루프가 다음 필요 기능을 선택하지 못한다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "architecture",
+                "expected_gain": [
+                  "CLI/MCP 표면을 독립적으로 테스트",
+                  "후속 worker와 contract 기능 추가 비용 감소"
+                ],
+                "feasibility": 86,
+                "id": "cli-mcp-adapter-split",
+                "impact": 94,
+                "novelty": 76,
+                "risk": 24,
+                "satisfaction_evidence": [
+                  "CLI usage lives in internal/adapter/cli",
+                  "MCP adapter-owned tool descriptors live in internal/adapter/mcp"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Split CLI usage and MCP schema catalog into adapter-owned packages",
+                "verify_with": [
+                  "internal/adapter/cli tests",
+                  "internal/adapter/mcp tests",
+                  "usage golden"
+                ],
+                "why_now": [
+                  "cmd/harness가 routing, usage, MCP schema를 모두 소유하면 기능 추가 때 drift 위험이 커진다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "contract",
+                "expected_gain": [
+                  "response DTO 변경 시 명시적 hash와 required field 확인",
+                  "MCP tool schema와 CLI usage를 같은 계약으로 검증"
+                ],
+                "feasibility": 88,
+                "id": "dto-compatibility-contract",
+                "impact": 92,
+                "novelty": 78,
+                "risk": 18,
+                "satisfaction_evidence": [
+                  "harness contract schema/check exposes CLI/MCP compatibility contract"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Expose a CLI/MCP DTO compatibility contract and schema check",
+                "verify_with": [
+                  "harness contract check --json",
+                  "response contract golden"
+                ],
+                "why_now": [
+                  "worker와 audit 표면이 늘면 JSON response field drift를 기계적으로 확인해야 한다",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
@@ -2426,6 +3264,32 @@
                 ]
               },
               {
+                "category": "safety",
+                "expected_gain": [
+                  "명령 허용/거부 판단을 재현 가능하게 저장",
+                  "secret 원문 없는 JSONL 증거 확보"
+                ],
+                "feasibility": 87,
+                "id": "policy-audit-redaction",
+                "impact": 91,
+                "novelty": 77,
+                "risk": 20,
+                "satisfaction_evidence": [
+                  "policy audit writes append-only redacted JSONL records without executing commands"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Add append-only redacted command-policy audit records",
+                "verify_with": [
+                  "policy audit CLI smoke",
+                  "redaction audit unit test"
+                ],
+                "why_now": [
+                  "실제 runner나 worker 확장 전 audit log와 secret redaction 기반이 필요하다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
                 "category": "observability",
                 "expected_gain": [
                   "목표별 점수와 증거 label을 바로 확인",
@@ -2527,6 +3391,32 @@
                   "하네스가 여러 레포에서 쓰이면 repo별 권한·상태 경계가 핵심이다",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
+              },
+              {
+                "category": "worker",
+                "expected_gain": [
+                  "worker lifecycle DTO와 storage 경계 검증",
+                  "future process runner 도입 전 안전한 API 확보"
+                ],
+                "feasibility": 84,
+                "id": "worker-mvp-no-shell",
+                "impact": 89,
+                "novelty": 80,
+                "risk": 26,
+                "satisfaction_evidence": [
+                  "worker MVP persists queued/cancelled job lifecycle records and never executes shell commands"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Implement a no-shell local worker MVP for job lifecycle records",
+                "verify_with": [
+                  "worker enqueue/status/list/cancel tests",
+                  "MCP worker tool smoke"
+                ],
+                "why_now": [
+                  "Phase 4 worker는 필요하지만 첫 단계는 shell 실행 없는 queue/status/cancel로 제한해야 안전하다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
               }
             ],
             "cycles": 1,
@@ -2599,10 +3489,15 @@
             "repo_signals": {
               "docs_indexed": 18,
               "has_adapter_contract_matrix": true,
+              "has_candidate_refill": true,
+              "has_cli_adapter_split": true,
+              "has_command_audit_log": true,
+              "has_compatibility_contract": true,
               "has_genius_mermaid_lint": true,
               "has_genius_think": true,
               "has_goal_score_summary": true,
               "has_install_dry_run_mode": true,
+              "has_mcp_adapter_catalog": true,
               "has_performance_baseline": true,
               "has_repo_local_sandbox": true,
               "has_risk_qa_tier": true,
@@ -2612,6 +3507,7 @@
               "has_self_augment_state_capture": true,
               "has_self_verification_docs": true,
               "has_self_verify_cli": true,
+              "has_worker_mvp": true,
               "skills": [
                 "atomic-commit-push",
                 "project-bootstrap",
@@ -2671,6 +3567,28 @@
                 "source": "https://github.com/openai/evals"
               }
             ],
+            "selected_candidate": {
+              "category": "release",
+              "expected_gain": [
+                "새 환경 설치 절차 재현성",
+                "tarball/Homebrew 여부 결정 근거"
+              ],
+              "feasibility": 78,
+              "id": "release-repro-pack",
+              "impact": 86,
+              "novelty": 68,
+              "risk": 22,
+              "score": 79.03999999999999,
+              "status": "open",
+              "title": "Create a clean-machine release and install reproducibility pack",
+              "verify_with": [
+                "release checklist",
+                "temp HOME install smoke"
+              ],
+              "why_now": [
+                "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다"
+              ]
+            },
             "selected_formulas": [
               "문제 재정의 알고리즘",
               "혁신적 솔루션 생성 공식",
@@ -3482,6 +4400,25 @@
               }
             ],
             "state_dir": "$STATE_DIR"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "worker_enqueue": {
+      "content": [
+        {
+          "json": {
+            "created_at": "$TIMESTAMP",
+            "id": "$WORKER_JOB_ID",
+            "kind": "contract",
+            "no_shell": true,
+            "ok": true,
+            "payload": "\u003credacted\u003e",
+            "safety_notice": "worker MVP records lifecycle state only; it never executes shell commands",
+            "status": "queued",
+            "updated_at": "$TIMESTAMP",
+            "worker_dir": "$WORKER_DIR"
           },
           "type": "text"
         }

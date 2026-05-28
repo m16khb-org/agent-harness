@@ -207,3 +207,11 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 - Keep tool list ordering deterministic for stable client caching and golden tests.
 - Use resources for reusable context, tools for actions, and project docs routing for deciding what to read.
 - Writable MCP tools should either be dry-run by default or append-only with narrow target files.
+
+## 현재 hardening 추가 사항
+
+- `internal/adapter/cli`는 top-level command catalog와 canonical usage text를 소유한다. `cmd/harness`는 process entrypoint와 dispatch layer로 남는다.
+- `internal/adapter/mcp`는 compatibility/worker 계열 adapter-level MCP tool descriptor를 소유한다. `cmd/harness`는 JSON-RPC request handling과 core usecase 호출을 유지한다.
+- `harness contract schema|check`는 CLI/MCP command list, MCP tool name, required response field를 검증하는 DTO compatibility 표면이다.
+- `harness policy audit`는 redacted command-policy decision을 append-only JSONL로 기록하며 command를 실행하지 않는다.
+- `harness worker`는 현재 no-shell lifecycle MVP다. enqueue, status, list, cancel은 job record만 저장하며 아직 process runner가 아니다.

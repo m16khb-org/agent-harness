@@ -263,3 +263,13 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 - Rationale: this keeps durable project knowledge in repo-local markdown while giving agents a precise tool-use situation.
 - Rejected: relying only on session memory or always-on context injection, because it is less durable and can overfill context.
 - Consequence: record writes must stay append-only, narrow, and test-covered.
+
+## ADR note: Adapter 분리, compatibility contract, audit log, worker MVP
+
+- Decision: CLI usage metadata는 `internal/adapter/cli`, MCP adapter-owned tool descriptor는 `internal/adapter/mcp`에 둔다. `cmd/harness`는 process entrypoint와 concrete handler mapping을 유지한다.
+- Decision: `harness contract schema|check`는 DTO 변경 전 CLI/MCP command, tool, required response field, stable hash를 확인하는 compatibility contract 표면이다.
+- Decision: `harness policy audit`는 command를 실행하지 않고 redacted command-policy JSONL record만 append한다.
+- Decision: `harness worker enqueue|status|list|cancel`은 Phase 4의 no-shell lifecycle record MVP다. 실제 process execution은 audit, cancellation, timeout, policy hardening이 더 확장된 뒤 도입한다.
+- Rationale: 추천 구현 순서를 수행하면서 host adapter가 core policy를 우회하지 않는다는 project invariant를 유지하기 위해서다.
+- Rejected: 첫 worker 단계에서 실제 shell/job runner를 추가하는 대안. command execution은 더 강한 audit, timeout, cancellation, redaction gate가 필요하다.
+- Consequence: future worker work는 별도 queue 표면을 만들지 말고 no-shell lifecycle DTO 위에 확장한다.

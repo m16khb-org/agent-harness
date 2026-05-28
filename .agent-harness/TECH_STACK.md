@@ -119,3 +119,18 @@ test -f ~/.claude/skills/atomic-commit-push/SKILL.md
 codex mcp get agent_harness
 claude mcp list | grep agent_harness
 ```
+
+
+## 구현된 hardening commands
+
+```bash
+harness contract schema --json
+harness contract check --json
+harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+harness worker enqueue --kind smoke --payload "..." --json
+harness worker status --id JOB_ID --json
+harness worker list --json
+harness worker cancel --id JOB_ID --json
+```
+
+이번 phase의 worker command는 의도적으로 state-only/no-shell로 제한한다.

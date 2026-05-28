@@ -20,7 +20,11 @@ func TestResponseContractsGolden(t *testing.T) {
 	workspaceDir := t.TempDir()
 	gitRepoDir := makeGitRepoForContract(t)
 	homeDir := t.TempDir()
+	auditLog := filepath.Join(t.TempDir(), "audit.jsonl")
+	workerDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	t.Setenv("HARNESS_AUDIT_LOG", auditLog)
+	t.Setenv("HARNESS_WORKER_DIR", workerDir)
 	t.Setenv("HOME", homeDir)
 	t.Setenv("CODEX_HOME", filepath.Join(homeDir, ".codex"))
 
@@ -30,11 +34,15 @@ func TestResponseContractsGolden(t *testing.T) {
 		gitRepoDir:    "$GIT_REPO",
 		harnessRoot(): "$HARNESS_ROOT",
 		homeDir:       "$HOME",
+		auditLog:      "$AUDIT_LOG",
+		workerDir:     "$WORKER_DIR",
 	}
 	addEvalSymlinkReplacement(t, replacements, stateDir, "$STATE_DIR")
 	addEvalSymlinkReplacement(t, replacements, workspaceDir, "$WORKSPACE")
 	addEvalSymlinkReplacement(t, replacements, gitRepoDir, "$GIT_REPO")
 	addEvalSymlinkReplacement(t, replacements, harnessRoot(), "$HARNESS_ROOT")
+	addEvalSymlinkReplacement(t, replacements, workerDir, "$WORKER_DIR")
+	addEvalSymlinkReplacement(t, replacements, filepath.Dir(auditLog), "$AUDIT_DIR")
 
 	snapshot := map[string]any{}
 	cliSnapshot := map[string]any{}
@@ -115,6 +123,15 @@ func TestResponseContractsGolden(t *testing.T) {
 	cliSnapshot["self_verify_history"] = runCLIJSONContract(t, replacements, func() error {
 		return runSelfVerify([]string{"history", "--prefix", "self-verify", "--json"})
 	})
+	cliSnapshot["contract_schema"] = runCLIJSONContract(t, replacements, func() error {
+		return runContract([]string{"schema", "--json"})
+	})
+	cliSnapshot["policy_audit"] = runCLIJSONContract(t, replacements, func() error {
+		return runPolicy([]string{"audit", "--workspace-root", workspaceDir, "--cwd", workspaceDir, "--json", "--", "git", "status", "--short"})
+	})
+	cliSnapshot["worker_enqueue"] = runCLIJSONContract(t, replacements, func() error {
+		return runWorker([]string{"enqueue", "--kind", "contract", "--payload", "TOKEN=secret-value", "--json"})
+	})
 
 	mcpSnapshot := map[string]any{}
 	snapshot["mcp"] = mcpSnapshot
@@ -129,6 +146,16 @@ func TestResponseContractsGolden(t *testing.T) {
 		"workspace_root": workspaceDir,
 		"cwd":            workspaceDir,
 		"argv":           []string{"git", "status", "--short"},
+	})
+	mcpSnapshot["command_policy_audit"] = runMCPToolContract(t, replacements, "command_policy_audit", map[string]any{
+		"workspace_root": workspaceDir,
+		"cwd":            workspaceDir,
+		"argv":           []string{"git", "status", "--short"},
+	})
+	mcpSnapshot["contract_schema"] = runMCPToolContract(t, replacements, "contract_schema", map[string]any{})
+	mcpSnapshot["worker_enqueue"] = runMCPToolContract(t, replacements, "worker_enqueue", map[string]any{
+		"kind":    "contract",
+		"payload": "TOKEN=secret-value",
 	})
 	mcpSnapshot["state_prune"] = runMCPToolContract(t, replacements, "state_prune", map[string]any{
 		"max_age": "1h",
@@ -335,6 +362,12 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 			if key == "audit_log_id" {
 				out[key] = "$AUDIT_ID"
 				continue
+			}
+			if key == "id" {
+				if s, ok := child.(string); ok && strings.HasPrefix(s, "job-") {
+					out[key] = "$WORKER_JOB_ID"
+					continue
+				}
 			}
 			if key == "head" || key == "sha" {
 				out[key] = "$GIT_SHA"

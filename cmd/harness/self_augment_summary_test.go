@@ -838,6 +838,15 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 	if candidateByID(result.Candidates, "install-dry-run-mode").Status != selfAugmentCandidateStatusSatisfied {
 		t.Fatalf("install dry-run candidate should be satisfied after dry-run planning support: %+v", result.Candidates)
 	}
+
+	for _, id := range []string{"cli-mcp-adapter-split", "dto-compatibility-contract", "candidate-refill-curriculum", "policy-audit-redaction", "worker-mvp-no-shell"} {
+		if candidateByID(result.Candidates, id).Status != selfAugmentCandidateStatusSatisfied {
+			t.Fatalf("%s should be satisfied after recommended implementation work: %+v", id, result.Candidates)
+		}
+	}
+	if candidateByID(result.Candidates, "release-repro-pack").Status != selfAugmentCandidateStatusOpen {
+		t.Fatalf("release reproducibility should remain as the next refill candidate: %+v", result.Candidates)
+	}
 	if result.SelectedCandidate == nil {
 		for _, candidate := range result.Candidates {
 			if candidate.Status == selfAugmentCandidateStatusOpen {

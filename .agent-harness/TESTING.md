@@ -233,3 +233,8 @@ Swagger/OpenAPI 검사는 decorator/comment 존재 여부만 보지 않는다. �
 ## OpenAPI prompt source
 
 Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.
+
+
+## Contract/audit/worker verification
+
+CLI/MCP DTO를 변경할 때는 `harness contract check --json`과 golden test를 실행해 command name, MCP tool name, required response field가 machine-visible하게 유지되는지 확인한다. policy audit 동작 변경은 JSONL record가 append-only이고 secret-like argument가 redacted 되는지 검증한다. 현재 worker 변경은 no-shell MVP 범위이며 process execution 없이 enqueue/status/list/cancel을 테스트해야 한다.

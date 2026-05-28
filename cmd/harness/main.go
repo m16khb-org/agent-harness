@@ -21,6 +21,9 @@ import (
 	"sync"
 	"time"
 
+	cliadapter "agent-harness/internal/adapter/cli"
+	mcpadapter "agent-harness/internal/adapter/mcp"
+
 	"agent-harness/internal/core"
 )
 
@@ -71,6 +74,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "self-augment:", err)
 			os.Exit(1)
 		}
+	case "contract":
+		if err := runContract(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "contract:", err)
+			os.Exit(1)
+		}
 	case "state":
 		if err := runState(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "state:", err)
@@ -96,6 +104,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "install-native:", err)
 			os.Exit(1)
 		}
+	case "worker":
+		if err := runWorker(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "worker:", err)
+			os.Exit(1)
+		}
 	case "daemon":
 		if err := runDaemon(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "daemon:", err)
@@ -113,37 +126,15 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `harness %s
+	fprintUsage(os.Stderr)
+}
 
-Usage:
-  harness inspect [--json] [--repo PATH]
-  harness preflight [--json] [PATH]
-  harness docs [index] [--json]
-  harness policy check [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
-  harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
-  harness state write --key KEY (--value TEXT|--input FILE|--stdin) [--json]
-  harness state read --key KEY [--json]
-  harness state list [--json]
-  harness state prune --max-age DURATION [--confirm] [--json]
-  harness state doctor [--json]
-  harness state migrate [--confirm] [--json]
-  harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
-  harness hook user-prompt [--prompt TEXT] [--json]
-  harness project bootstrap [--repo PATH] [--write] [--json]
-  harness project docs [--repo PATH] [--json]
-  harness project route-docs [--repo PATH] [--task TEXT] [--json]
-  harness daemon start|status|stop [--json]
-  harness install-native [--project-local] [--dry-run] [--json]
-  harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--save-state] [--state-key KEY] [--json]
-  harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
-  harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
-  harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]
-  harness self-verify candidates [--save-state] [--state-key KEY] [--json]
-  harness self-augment [--cycles=1] [--target-score=95] [--save-state] [--state-key KEY] [--json]
-  harness self-augment lesson [--candidate ID] --lesson TEXT --next-action TEXT [--source TEXT] [--severity info|warning|error] [--state-key KEY] [--json]
-  harness mcp
-  harness version
-`, version)
+func fprintUsage(w io.Writer) {
+	fprintString(w, cliadapter.Usage(version))
+}
+
+func fprintString(w io.Writer, text string) {
+	_, _ = fmt.Fprint(w, text)
 }
 
 func runInspect(args []string) error {
@@ -367,6 +358,8 @@ func runPolicy(args []string) error {
 		return runPolicyCheck(args[1:])
 	case "fake-run":
 		return runPolicyFakeRun(args[1:])
+	case "audit":
+		return runPolicyAudit(args[1:])
 	default:
 		policyUsage()
 		return fmt.Errorf("unknown policy subcommand %q", args[0])
@@ -377,6 +370,7 @@ func policyUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   harness policy check [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
   harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
+  harness policy audit [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
 `)
 }
 
@@ -416,6 +410,23 @@ func runPolicyFakeRun(args []string) error {
 		return core.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
 	}
 	return nil
+}
+
+func runPolicyAudit(args []string) error {
+	req, jsonOut, err := parseCommandPolicyFlags("policy audit", args)
+	if err != nil {
+		return err
+	}
+	result, err := core.AuditCommandPolicy(req)
+	if jsonOut {
+		if printErr := printJSON(result); printErr != nil {
+			return printErr
+		}
+	} else {
+		printPolicyEvaluation(result.Policy)
+		fmt.Printf("audit log: %s\n", result.LogPath)
+	}
+	return err
 }
 
 func parseCommandPolicyFlags(name string, args []string) (core.CommandPolicyRequest, bool, error) {
@@ -1217,6 +1228,9 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			{Label: "step budget baseline", Run: func() StepResult { return validateStepBudgetBaseline(tempBin, result.HarnessRoot, seed) }},
 			{Label: "install dry-run smoke", Run: func() StepResult { return validateInstallDryRunSmoke(tempBin, result.HarnessRoot, seed) }},
 			{Label: "command policy smoke", Run: func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) }},
+			{Label: "command audit smoke", Run: func() StepResult { return validateCommandAudit(tempBin, result.HarnessRoot, seed) }},
+			{Label: "contract check", Run: func() StepResult { return validateContractCheck(tempBin, result.HarnessRoot) }},
+			{Label: "worker lifecycle smoke", Run: func() StepResult { return validateWorkerLifecycle(tempBin, result.HarnessRoot, seed) }},
 			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
 			{Label: "state roundtrip", Run: func() StepResult { return validateStateRoundtrip(tempBin, result.HarnessRoot, seed) }},
 			{Label: "parallel isolation", Run: func() StepResult { return validateParallelTempIsolation(tempBin, result.HarnessRoot, seed) }},
@@ -1552,12 +1566,12 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 		{
 			Name:       "policy_security",
 			KoreanName: "정책·보안",
-			Labels:     []string{"command policy smoke", "preflight fuzz", "redaction audit"},
+			Labels:     []string{"command policy smoke", "command audit smoke", "preflight fuzz", "redaction audit"},
 		},
 		{
 			Name:       "mcp_state_regression",
 			KoreanName: "MCP·상태 회귀",
-			Labels:     []string{"MCP smoke", "state roundtrip"},
+			Labels:     []string{"MCP smoke", "state roundtrip", "contract check"},
 		},
 		{
 			Name:       "concurrency_isolation",
@@ -1568,6 +1582,11 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 			Name:       "daemon_resilience",
 			KoreanName: "데몬 복구력",
 			Labels:     []string{"daemon resilience"},
+		},
+		{
+			Name:       "worker_lifecycle",
+			KoreanName: "Worker 생명주기",
+			Labels:     []string{"worker lifecycle smoke"},
 		},
 		{
 			Name:       "native_integration",
@@ -1588,6 +1607,9 @@ func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition 
 		{Claim: "step duration budget baseline", Labels: []string{"step budget baseline"}},
 		{Claim: "install-native dry-run no-write smoke", Labels: []string{"install dry-run smoke"}},
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
+		{Claim: "redacted command audit log", Labels: []string{"command audit smoke"}},
+		{Claim: "CLI/MCP compatibility contract", Labels: []string{"contract check"}},
+		{Claim: "no-shell worker lifecycle", Labels: []string{"worker lifecycle smoke"}},
 		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
 		{Claim: "parallel temp isolation", Labels: []string{"parallel isolation"}},
 		{Claim: "daemon restart resilience", Labels: []string{"daemon resilience"}},
@@ -1658,6 +1680,12 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/harness install-native --dry-run --project-local --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
 	case "command policy smoke":
 		return "./bin/harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
+	case "command audit smoke":
+		return "tmp_audit=$(mktemp) && HARNESS_AUDIT_LOG=\"$tmp_audit\" ./bin/harness policy audit --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
+	case "contract check":
+		return "./bin/harness contract check --json", true
+	case "worker lifecycle smoke":
+		return "tmp_worker=$(mktemp -d) && HARNESS_WORKER_DIR=\"$tmp_worker\" ./bin/harness worker enqueue --kind smoke --json", true
 	case "MCP smoke":
 		return "./bin/harness mcp", true
 	case "state roundtrip":
@@ -4394,7 +4422,7 @@ func handleRequest(req rpcRequest) (any, *rpcError) {
 }
 
 func mcpTools() []map[string]any {
-	return []map[string]any{
+	tools := []map[string]any{
 		{
 			"name":        "harness_inspect",
 			"description": "Inspect the agent harness installation, shared skills, docs, and native Codex/Claude integration status.",
@@ -4622,6 +4650,15 @@ func mcpTools() []map[string]any {
 			}},
 		},
 	}
+	for _, tool := range mcpadapter.AdapterOwnedTools() {
+		tools = append(tools, map[string]any{"name": tool.Name, "description": tool.Description, "inputSchema": tool.InputSchema})
+	}
+	tools = append(tools, map[string]any{
+		"name":        "command_policy_audit",
+		"description": "Evaluate command policy and append a redacted JSONL audit record without executing the command. This writes only to the harness audit log.",
+		"inputSchema": commandPolicyInputSchema(),
+	})
+	return tools
 }
 
 func commandPolicyInputSchema() map[string]any {
@@ -4766,6 +4803,12 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		payload = core.EvaluateCommandPolicy(commandPolicyRequestFromArgs(call.Arguments))
 	case "command_fake_run":
 		payload = core.FakeRunCommand(commandPolicyRequestFromArgs(call.Arguments))
+	case "command_policy_audit":
+		result, err := core.AuditCommandPolicy(commandPolicyRequestFromArgs(call.Arguments))
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "command_policy_audit failed", Data: err.Error()}
+		}
+		payload = result
 	case "state_write":
 		result, err := core.StateWrite(stringArg(call.Arguments, "key"), stringArg(call.Arguments, "content"))
 		if err != nil {
@@ -4808,6 +4851,34 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		payload = result
 	case "daemon_status":
 		payload = daemonStatusForMCP()
+	case "contract_schema":
+		payload = compatibilityContract()
+	case "contract_check":
+		payload = compatibilityContract()
+	case "worker_enqueue":
+		result, err := core.EnqueueWorkerJob(stringArg(call.Arguments, "kind"), stringArg(call.Arguments, "payload"))
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "worker_enqueue failed", Data: err.Error()}
+		}
+		payload = result
+	case "worker_status":
+		result, err := core.ReadWorkerJob(stringArg(call.Arguments, "id"))
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "worker_status failed", Data: err.Error()}
+		}
+		payload = result
+	case "worker_list":
+		result, err := core.ListWorkerJobs()
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "worker_list failed", Data: err.Error()}
+		}
+		payload = result
+	case "worker_cancel":
+		result, err := core.CancelWorkerJob(stringArg(call.Arguments, "id"))
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "worker_cancel failed", Data: err.Error()}
+		}
+		payload = result
 	case "self_augment":
 		result := planSelfAugmentation(SelfAugmentPlanRequest{
 			Cycles:      intArg(call.Arguments, "cycles", 1),
@@ -5255,4 +5326,87 @@ func printJSON(v any) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+func validateCommandAudit(binary, root string, seed int64) StepResult {
+	auditDir, err := os.MkdirTemp("", "agent-harness-audit-*")
+	if err != nil {
+		return failedStep("command audit smoke", err)
+	}
+	defer os.RemoveAll(auditDir)
+	auditLog := filepath.Join(auditDir, "audit.jsonl")
+	step := runCommandStepEnv(root, "command audit smoke", 30*time.Second, "", []string{"HARNESS_AUDIT_LOG=" + auditLog}, binary, "policy", "audit", "--workspace-root", root, "--cwd", root, "--json", "--", "git", "status", "--short")
+	if !step.OK {
+		return step
+	}
+	b, err := os.ReadFile(auditLog)
+	if err != nil {
+		return failedStep("command audit smoke", err)
+	}
+	errs := []string{}
+	text := string(b)
+	if !strings.Contains(text, "command_policy_audit") || !strings.Contains(text, "audit_log_id") {
+		errs = append(errs, "audit log missing command_policy_audit fields")
+	}
+	if strings.Contains(strings.ToLower(text), "secret-value") || strings.Contains(text, "sk-123") {
+		errs = append(errs, "audit log contains unredacted secret fixture")
+	}
+	return assertionStep("command audit smoke", time.Now(), errs)
+}
+
+func validateContractCheck(binary, root string) StepResult {
+	step := runCommandStep(root, "contract check", 30*time.Second, "", binary, "contract", "check", "--json")
+	if !step.OK {
+		return step
+	}
+	var result CompatibilityContract
+	if err := json.Unmarshal([]byte(step.Stdout), &result); err != nil {
+		return failedStep("contract check", err)
+	}
+	errs := []string{}
+	if !result.OK || result.Hash == "" {
+		errs = append(errs, "contract did not pass or hash is empty")
+	}
+	for _, want := range []string{"worker", "contract", "policy"} {
+		found := false
+		for _, command := range result.CLICommands {
+			if command.Name == want {
+				found = true
+			}
+		}
+		if !found {
+			errs = append(errs, "missing CLI command "+want)
+		}
+	}
+	return assertionStep("contract check", time.Now(), errs)
+}
+
+func validateWorkerLifecycle(binary, root string, seed int64) StepResult {
+	workerDir, err := os.MkdirTemp("", "agent-harness-worker-*")
+	if err != nil {
+		return failedStep("worker lifecycle smoke", err)
+	}
+	defer os.RemoveAll(workerDir)
+	env := []string{"HARNESS_WORKER_DIR=" + workerDir}
+	enqueue := runCommandStepEnv(root, "worker lifecycle enqueue", 30*time.Second, "", env, binary, "worker", "enqueue", "--kind", "smoke", "--payload", fmt.Sprintf("seed=%d", seed), "--json")
+	if !enqueue.OK {
+		return enqueue
+	}
+	var job core.WorkerJob
+	if err := json.Unmarshal([]byte(enqueue.Stdout), &job); err != nil {
+		return failedStep("worker lifecycle smoke", err)
+	}
+	status := runCommandStepEnv(root, "worker lifecycle status", 30*time.Second, "", env, binary, "worker", "status", "--id", job.ID, "--json")
+	cancel := runCommandStepEnv(root, "worker lifecycle cancel", 30*time.Second, "", env, binary, "worker", "cancel", "--id", job.ID, "--json")
+	list := runCommandStepEnv(root, "worker lifecycle list", 30*time.Second, "", env, binary, "worker", "list", "--json")
+	errs := []string{}
+	for _, step := range []StepResult{status, cancel, list} {
+		if !step.OK {
+			errs = append(errs, step.Label+" failed")
+		}
+	}
+	if !job.NoShell || job.Status != core.WorkerStatusQueued {
+		errs = append(errs, "worker job is not queued no-shell")
+	}
+	return assertionStep("worker lifecycle smoke", time.Now(), errs)
 }

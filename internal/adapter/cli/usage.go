@@ -1,4 +1,41 @@
-harness 0.1.0
+package cli
+
+import "fmt"
+
+// Command describes a stable top-level CLI command exposed by the harness.
+type Command struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// Commands returns the deterministic top-level CLI command catalog. The main
+// package still owns subcommand execution; this adapter package owns the human
+// command surface so usage and contract checks do not drift from routing.
+func Commands() []Command {
+	return []Command{
+		{Name: "inspect", Description: "inspect harness installation and native integration"},
+		{Name: "preflight", Description: "run read-only git preflight checks"},
+		{Name: "docs", Description: "index harness guidance documents"},
+		{Name: "policy", Description: "evaluate command policy, fake-run commands, and write audit records"},
+		{Name: "contract", Description: "print or check CLI/MCP response compatibility contracts"},
+		{Name: "state", Description: "read and write small agent state checkpoints"},
+		{Name: "api-doc", Description: "run API documentation static and agent review gates"},
+		{Name: "hook", Description: "run prompt-routing hooks"},
+		{Name: "project", Description: "bootstrap and maintain project operating docs"},
+		{Name: "install-native", Description: "install shared native skills and MCP config"},
+		{Name: "daemon", Description: "manage the MCP backend daemon"},
+		{Name: "worker", Description: "manage safe no-shell local worker jobs"},
+		{Name: "self-verify", Description: "run harness verification gates"},
+		{Name: "self-augment", Description: "plan self-augmentation candidates and lessons"},
+		{Name: "mcp", Description: "serve the MCP stdio proxy"},
+		{Name: "version", Description: "print harness version"},
+	}
+}
+
+// Usage returns the canonical CLI usage text. Keeping this in the CLI adapter
+// package makes command-surface changes testable without invoking main().
+func Usage(version string) string {
+	return fmt.Sprintf(`harness %s
 
 Usage:
   harness inspect [--json] [--repo PATH]
@@ -35,3 +72,5 @@ Usage:
   harness self-augment lesson [--candidate ID] --lesson TEXT --next-action TEXT [--source TEXT] [--severity info|warning|error] [--state-key KEY] [--json]
   harness mcp
   harness version
+`, version)
+}

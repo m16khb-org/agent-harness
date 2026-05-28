@@ -282,3 +282,15 @@ API docs review must inspect the changed endpoint's directly related business lo
 ## OpenAPI prompt source
 
 Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.
+
+
+## 10. Contract, audit, worker MVP
+
+```bash
+./bin/harness contract schema --json
+./bin/harness contract check --json
+HARNESS_AUDIT_LOG="$(mktemp)" ./bin/harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+HARNESS_WORKER_DIR="$(mktemp -d)" ./bin/harness worker enqueue --kind smoke --payload "TOKEN=redacted" --json
+```
+
+`policy audit`는 redacted JSONL policy decision을 기록하고 command를 실행하지 않는다. `worker`는 lifecycle record만 저장하는 no-shell MVP다. future process execution은 command policy, audit logging, timeout/cancellation, redaction check를 통과해야 한다.

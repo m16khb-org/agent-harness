@@ -95,6 +95,12 @@ type SelfAugmentRepoSignals struct {
 	HasPerformanceBaseline      bool     `json:"has_performance_baseline"`
 	HasGeniusMermaidLint        bool     `json:"has_genius_mermaid_lint"`
 	HasInstallDryRunMode        bool     `json:"has_install_dry_run_mode"`
+	HasCLIAdapterSplit          bool     `json:"has_cli_adapter_split"`
+	HasMCPAdapterCatalog        bool     `json:"has_mcp_adapter_catalog"`
+	HasCompatibilityContract    bool     `json:"has_compatibility_contract"`
+	HasCandidateRefill          bool     `json:"has_candidate_refill"`
+	HasCommandAuditLog          bool     `json:"has_command_audit_log"`
+	HasWorkerMVP                bool     `json:"has_worker_mvp"`
 }
 
 type SelfAugmentLessonRequest struct {
@@ -232,6 +238,12 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 		HasPerformanceBaseline:      fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "SlowStepRegressions") && fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_summary_test.go"), "TestCompareSelfAugmentSummariesDetectsSlowStepRegression") && docsContainTerm(root, "slow_step:*"),
 		HasGeniusMermaidLint:        fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "lintMermaidBlocks") && fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_summary_test.go"), "TestLintMermaidBlocksEnforcesGeniusThinkRules") && !fileContainsTerm(root, filepath.Join(".agent-harness", "ARCHITECTURE.md"), `\n`),
 		HasInstallDryRunMode:        fileContainsTerm(root, filepath.Join("cmd", "harness", "install_native.go"), "dry-run") && fileContainsTerm(root, filepath.Join("internal", "adapter", "install_contract_matrix_test.go"), "TestNativeInstallDryRunDoesNotWrite") && docsContainTerm(root, "install-native --dry-run"),
+		HasCLIAdapterSplit:          fileContainsTerm(root, filepath.Join("internal", "adapter", "cli", "usage.go"), "func Usage") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "cliadapter.Usage"),
+		HasMCPAdapterCatalog:        fileContainsTerm(root, filepath.Join("internal", "adapter", "mcp", "catalog.go"), "AdapterOwnedTools") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "mcpadapter.AdapterOwnedTools"),
+		HasCompatibilityContract:    fileContainsTerm(root, filepath.Join("cmd", "harness", "contract.go"), "CompatibilityContract") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), `case "contract"`),
+		HasCandidateRefill:          fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_loop.go"), "candidate-refill-curriculum") && fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_loop.go"), "release-repro-pack"),
+		HasCommandAuditLog:          fileContainsTerm(root, filepath.Join("internal", "core", "audit.go"), "AuditCommandPolicy") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "policy audit"),
+		HasWorkerMVP:                fileContainsTerm(root, filepath.Join("internal", "core", "worker.go"), "EnqueueWorkerJob") && fileContainsTerm(root, filepath.Join("cmd", "harness", "worker.go"), "runWorkerEnqueue"),
 	}
 	goals := []SelfAugmentGoal{
 		{
@@ -664,6 +676,48 @@ func selfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			ExpectedGain: []string{"레포별 독립 self-augment 실행", "root 밖 접근 회귀 방지"},
 			VerifyWith:   []string{"command_policy_check", "temp repo integration tests"},
 		},
+		{
+			ID: "cli-mcp-adapter-split", Title: "Split CLI usage and MCP schema catalog into adapter-owned packages", Category: "architecture",
+			Impact: 94, Feasibility: 86, Novelty: 76, Risk: 24,
+			WhyNow:       []string{"cmd/harness가 routing, usage, MCP schema를 모두 소유하면 기능 추가 때 drift 위험이 커진다"},
+			ExpectedGain: []string{"CLI/MCP 표면을 독립적으로 테스트", "후속 worker와 contract 기능 추가 비용 감소"},
+			VerifyWith:   []string{"internal/adapter/cli tests", "internal/adapter/mcp tests", "usage golden"},
+		},
+		{
+			ID: "dto-compatibility-contract", Title: "Expose a CLI/MCP DTO compatibility contract and schema check", Category: "contract",
+			Impact: 92, Feasibility: 88, Novelty: 78, Risk: 18,
+			WhyNow:       []string{"worker와 audit 표면이 늘면 JSON response field drift를 기계적으로 확인해야 한다"},
+			ExpectedGain: []string{"response DTO 변경 시 명시적 hash와 required field 확인", "MCP tool schema와 CLI usage를 같은 계약으로 검증"},
+			VerifyWith:   []string{"harness contract check --json", "response contract golden"},
+		},
+		{
+			ID: "candidate-refill-curriculum", Title: "Refill self-augmentation candidates after the original curriculum is satisfied", Category: "curriculum",
+			Impact: 90, Feasibility: 91, Novelty: 82, Risk: 12,
+			WhyNow:       []string{"기존 후보가 모두 satisfied가 되면 자가증강 루프가 다음 필요 기능을 선택하지 못한다"},
+			ExpectedGain: []string{"완료된 후보는 audit history로 유지", "release/worker 등 후속 open 후보를 계속 노출"},
+			VerifyWith:   []string{"self-augment --json open_candidate_ids", "self_augment_summary_test"},
+		},
+		{
+			ID: "policy-audit-redaction", Title: "Add append-only redacted command-policy audit records", Category: "safety",
+			Impact: 91, Feasibility: 87, Novelty: 77, Risk: 20,
+			WhyNow:       []string{"실제 runner나 worker 확장 전 audit log와 secret redaction 기반이 필요하다"},
+			ExpectedGain: []string{"명령 허용/거부 판단을 재현 가능하게 저장", "secret 원문 없는 JSONL 증거 확보"},
+			VerifyWith:   []string{"policy audit CLI smoke", "redaction audit unit test"},
+		},
+		{
+			ID: "worker-mvp-no-shell", Title: "Implement a no-shell local worker MVP for job lifecycle records", Category: "worker",
+			Impact: 89, Feasibility: 84, Novelty: 80, Risk: 26,
+			WhyNow:       []string{"Phase 4 worker는 필요하지만 첫 단계는 shell 실행 없는 queue/status/cancel로 제한해야 안전하다"},
+			ExpectedGain: []string{"worker lifecycle DTO와 storage 경계 검증", "future process runner 도입 전 안전한 API 확보"},
+			VerifyWith:   []string{"worker enqueue/status/list/cancel tests", "MCP worker tool smoke"},
+		},
+		{
+			ID: "release-repro-pack", Title: "Create a clean-machine release and install reproducibility pack", Category: "release",
+			Impact: 86, Feasibility: 78, Novelty: 68, Risk: 22,
+			WhyNow:       []string{"adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다"},
+			ExpectedGain: []string{"새 환경 설치 절차 재현성", "tarball/Homebrew 여부 결정 근거"},
+			VerifyWith:   []string{"release checklist", "temp HOME install smoke"},
+		},
 	}
 	for i := range base {
 		base[i].Status = selfAugmentCandidateStatusOpen
@@ -719,6 +773,26 @@ func markSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals 
 	case "install-dry-run-mode":
 		if signals.HasInstallDryRunMode {
 			evidence = []string{"install-native supports --dry-run planning with no filesystem writes and adapter-level coverage"}
+		}
+	case "cli-mcp-adapter-split":
+		if signals.HasCLIAdapterSplit && signals.HasMCPAdapterCatalog {
+			evidence = []string{"CLI usage lives in internal/adapter/cli", "MCP adapter-owned tool descriptors live in internal/adapter/mcp"}
+		}
+	case "dto-compatibility-contract":
+		if signals.HasCompatibilityContract {
+			evidence = []string{"harness contract schema/check exposes CLI/MCP compatibility contract"}
+		}
+	case "candidate-refill-curriculum":
+		if signals.HasCandidateRefill {
+			evidence = []string{"self-augment catalog includes second-wave candidates and release-repro-pack open follow-up"}
+		}
+	case "policy-audit-redaction":
+		if signals.HasCommandAuditLog {
+			evidence = []string{"policy audit writes append-only redacted JSONL records without executing commands"}
+		}
+	case "worker-mvp-no-shell":
+		if signals.HasWorkerMVP {
+			evidence = []string{"worker MVP persists queued/cancelled job lifecycle records and never executes shell commands"}
 		}
 	}
 	if len(evidence) == 0 {
