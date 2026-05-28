@@ -21,7 +21,7 @@ func TestInspectHarnessIndexesSkillsAndDocs(t *testing.T) {
 	if !containsSkill(info.Skills, "atomic-commit-push") {
 		t.Fatalf("unexpected skills: %+v", info.Skills)
 	}
-	if !containsDoc(info.Docs, "agent_docs/USAGE.md") {
+	if !containsDoc(info.Docs, ".agent-harness/OPERATIONS.md") {
 		t.Fatalf("USAGE.md not indexed: %+v", info.Docs)
 	}
 	if !info.Integration.ProjectClaudeMCPConfig {

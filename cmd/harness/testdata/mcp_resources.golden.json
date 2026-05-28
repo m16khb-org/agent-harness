@@ -24,6 +24,24 @@
     "uri": "harness://docs"
   },
   {
+    "description": "JSON default routing for AGENTS.md and .agent-harness project docs in the current workspace.",
+    "mimeType": "application/json",
+    "name": "Project docs route",
+    "uri": "harness://project-docs"
+  },
+  {
+    "description": "How agents should keep .agent-harness docs current through MCP route/read/update/record while preserving user consensus.",
+    "mimeType": "text/markdown",
+    "name": "Project doc upkeep guidance",
+    "uri": "harness://project-doc-upkeep"
+  },
+  {
+    "description": "Framework-agnostic Swagger/OpenAPI review guidance, including business-logic error response coverage.",
+    "mimeType": "text/markdown",
+    "name": "API documentation guidance",
+    "uri": "harness://api-doc-guidance"
+  },
+  {
     "description": "JSON summary of command policy boundaries and fake runner behavior.",
     "mimeType": "application/json",
     "name": "Command policy summary",

@@ -27,7 +27,7 @@ type DocIndexInfo struct {
 
 func ListDocs(root string) []string {
 	var docs []string
-	for _, p := range []string{"AGENTS.md", "CLAUDE.md", "GENIUS_THINK.md", "agent_docs"} {
+	for _, p := range []string{"AGENTS.md", "CLAUDE.md", "GENIUS_THINK.md", ".agent-harness", "skills/self-verify", "skills/self-augment"} {
 		full := filepath.Join(root, p)
 		info, err := os.Stat(full)
 		if err != nil {

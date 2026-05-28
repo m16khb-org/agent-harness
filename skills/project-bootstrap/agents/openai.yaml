@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Bootstrap"
+  short_description: "Generate AGENTS.md routing and .agent-harness project docs"
+  default_prompt: "Use $project-bootstrap to run static project docs bootstrap, then apply skills/project-bootstrap/PROMPT.md: inspect repo evidence and maintain .agent-harness docs through MCP route/read/update/record without inventing facts."

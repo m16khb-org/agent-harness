@@ -81,6 +81,16 @@ func main() {
 			fmt.Fprintln(os.Stderr, "api-doc:", err)
 			os.Exit(1)
 		}
+	case "hook":
+		if err := runHook(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "hook:", err)
+			os.Exit(1)
+		}
+	case "project":
+		if err := runProject(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "project:", err)
+			os.Exit(1)
+		}
 	case "install-native":
 		if err := runInstallNative(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "install-native:", err)
@@ -117,7 +127,11 @@ Usage:
   harness state prune --max-age DURATION [--confirm] [--json]
   harness state doctor [--json]
   harness state migrate [--confirm] [--json]
-  harness api-doc review [--repo PATH] [--model MODEL] [--reasoning EFFORT] [--timeout DURATION] [--diff-file FILE] [--prompt-file FILE] [--json] [--] [FILES...]
+  harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
+  harness hook user-prompt [--prompt TEXT] [--json]
+  harness project bootstrap [--repo PATH] [--write] [--json]
+  harness project docs [--repo PATH] [--json]
+  harness project route-docs [--repo PATH] [--task TEXT] [--json]
   harness daemon start|status|stop [--json]
   harness install-native [--project-local] [--dry-run] [--json]
   harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--save-state] [--state-key KEY] [--json]
@@ -195,6 +209,151 @@ func runDocs(args []string) error {
 		}
 		fmt.Printf("%s — %s\n", doc.RelPath, doc.Title)
 	}
+	return nil
+}
+
+func runProject(args []string) error {
+	if len(args) == 0 {
+		projectUsage()
+		return fmt.Errorf("missing project subcommand")
+	}
+	switch args[0] {
+	case "bootstrap":
+		return runProjectBootstrap(args[1:])
+	case "docs":
+		return runProjectDocs(args[1:])
+	case "route-docs":
+		return runProjectRouteDocs(args[1:])
+	case "record":
+		return runProjectRecord(args[1:])
+	default:
+		projectUsage()
+		return fmt.Errorf("unknown project subcommand %q", args[0])
+	}
+}
+
+func projectUsage() {
+	fmt.Fprintf(os.Stderr, `Usage:
+  harness project bootstrap [--repo PATH] [--write] [--json]
+  harness project docs [--repo PATH] [--json]
+  harness project route-docs [--repo PATH] [--task TEXT] [--json]
+  harness project record --kind caution|adr --title TEXT --summary TEXT [--repo PATH] [--json]
+`)
+}
+
+func runProjectBootstrap(args []string) error {
+	fs := flag.NewFlagSet("project bootstrap", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "target repository path")
+	write := fs.Bool("write", false, "write AGENTS.md marker block and .agent-harness docs; omitted means dry-run")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		*repo = fs.Arg(0)
+	}
+	result, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: *repo, Write: *write})
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	action := "would update"
+	if result.Write {
+		action = "updated"
+	}
+	fmt.Printf("project docs %s %d files in %s\n", action, len(result.Files), result.RepoRoot)
+	for _, file := range result.Files {
+		fmt.Printf("- %s %s\n", file.Action, file.RelPath)
+	}
+	return nil
+}
+
+func runProjectDocs(args []string) error {
+	fs := flag.NewFlagSet("project docs", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "target repository path")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		*repo = fs.Arg(0)
+	}
+	result, err := core.RouteProjectDocs(*repo, "general")
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	for _, doc := range result.Docs {
+		fmt.Printf("%s — %s\n", doc.RelPath, doc.Reason)
+	}
+	return nil
+}
+
+func runProjectRouteDocs(args []string) error {
+	fs := flag.NewFlagSet("project route-docs", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "target repository path")
+	task := fs.String("task", "general", "task description such as commit, test, architecture, dependency, deploy")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		*task = strings.Join(fs.Args(), " ")
+	}
+	result, err := core.RouteProjectDocs(*repo, *task)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	for _, doc := range result.Docs {
+		status := "missing"
+		if doc.Exists {
+			status = "exists"
+		}
+		fmt.Printf("%s [%s] — %s\n", doc.RelPath, status, doc.Reason)
+	}
+	return nil
+}
+
+func runProjectRecord(args []string) error {
+	fs := flag.NewFlagSet("project record", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "target repository path")
+	kind := fs.String("kind", "", "record kind: caution or adr")
+	title := fs.String("title", "", "record title")
+	summary := fs.String("summary", "", "brief summary")
+	context := fs.String("context", "", "problem or decision context")
+	resolution := fs.String("resolution", "", "resolution for caution/problem records")
+	decision := fs.String("decision", "", "decision for ADR records")
+	consequences := fs.String("consequences", "", "consequences for ADR records")
+	source := fs.String("source", "cli", "record source")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	result, err := core.AppendProjectDocsRecord(core.ProjectDocsRecordRequest{
+		RepoRoot:     *repo,
+		Kind:         *kind,
+		Title:        *title,
+		Summary:      *summary,
+		Context:      *context,
+		Resolution:   *resolution,
+		Decision:     *decision,
+		Consequences: *consequences,
+		Source:       *source,
+	})
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	fmt.Printf("recorded %s in %s (%d bytes)\n", result.RecordKind, result.RelPath, result.BytesAppended)
 	return nil
 }
 
@@ -2334,12 +2493,16 @@ func validateHarnessInvariants(root string) StepResult {
 	required := []string{
 		"AGENTS.md",
 		"CLAUDE.md",
-		filepath.Join("agent_docs", "USAGE.md"),
-		filepath.Join("agent_docs", "COMMIT_POLICY.md"),
+		filepath.Join(".agent-harness", "OPERATIONS.md"),
+		filepath.Join(".agent-harness", "COMMIT_POLICY.md"),
 		filepath.Join("skills", skillName, "SKILL.md"),
 		filepath.Join("skills", skillName, "agents", "openai.yaml"),
 		filepath.Join("skills", skillName, "scripts", "git_preflight.py"),
+		filepath.Join("skills", "self-verify", "SKILL.md"),
+		filepath.Join("skills", "self-verify", "CANDIDATES.md"),
+		filepath.Join("skills", "project-bootstrap", "SKILL.md"),
 		filepath.Join("internal", "core", "docs.go"),
+		filepath.Join("internal", "core", "project_docs.go"),
 		filepath.Join("internal", "core", "inspect.go"),
 		filepath.Join("internal", "core", "policy.go"),
 		filepath.Join("internal", "core", "preflight.go"),
@@ -2503,7 +2666,7 @@ func validateDocsIndex(binary, root string) StepResult {
 	if len(index.Docs) == 0 {
 		errs = append(errs, "no docs indexed")
 	}
-	wantDocs := []string{"AGENTS.md", "CLAUDE.md", "GENIUS_THINK.md", "agent_docs/COMMIT_POLICY.md", "agent_docs/SELF_AUGMENTATION.md", "agent_docs/USAGE.md"}
+	wantDocs := []string{"AGENTS.md", "CLAUDE.md", "GENIUS_THINK.md", ".agent-harness/COMMIT_POLICY.md", "skills/self-augment/SELF_AUGMENTATION.md", "skills/self-verify/SKILL.md", ".agent-harness/OPERATIONS.md"}
 	for _, want := range wantDocs {
 		if !docIndexContains(index.Docs, want) {
 			errs = append(errs, "missing doc "+want)
@@ -2938,18 +3101,21 @@ func validateMCP(binary, root string) StepResult {
 		`{"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"harness://state"}}`,
 		`{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"harness://docs"}}`,
 		`{"jsonrpc":"2.0","id":6,"method":"resources/read","params":{"uri":"harness://command-policy"}}`,
-		`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"state_prune","arguments":{"max_age":"1h"}}}`,
-		`{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"state_doctor","arguments":{}}}`,
-		`{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"state_migrate","arguments":{}}}`,
+		`{"jsonrpc":"2.0","id":7,"method":"resources/read","params":{"uri":"harness://project-docs"}}`,
+		`{"jsonrpc":"2.0","id":8,"method":"resources/read","params":{"uri":"harness://project-doc-upkeep"}}`,
+		`{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"project_docs_route","arguments":{"repo":".","task":"commit"}}}`,
+		`{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"state_prune","arguments":{"max_age":"1h"}}}`,
+		`{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"state_doctor","arguments":{}}}`,
+		`{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"state_migrate","arguments":{}}}`,
 	}, "\n") + "\n"
 	step := runCommandStepEnvWithBudget(root, "MCP smoke", 30*time.Second, input, env, 0, binary, "mcp")
 	if !step.OK {
 		return step
 	}
 	lines := splitLines(step.Stdout)
-	if len(lines) != 9 {
+	if len(lines) != 12 {
 		step.OK = false
-		step.Error = fmt.Sprintf("expected 9 MCP responses, got %d", len(lines))
+		step.Error = fmt.Sprintf("expected 12 MCP responses, got %d", len(lines))
 		return step
 	}
 	for i, line := range lines {
@@ -2965,7 +3131,7 @@ func validateMCP(binary, root string) StepResult {
 			return step
 		}
 	}
-	if !strings.Contains(step.Stdout, "atomic_commit_preflight") || !strings.Contains(step.Stdout, "docs_index") || !strings.Contains(step.Stdout, "command_policy_check") || !strings.Contains(step.Stdout, "state_write") || !strings.Contains(step.Stdout, "state_prune") || !strings.Contains(step.Stdout, "state_doctor") || !strings.Contains(step.Stdout, "state_migrate") || !strings.Contains(step.Stdout, "self_augment") || !strings.Contains(step.Stdout, "self_augment_lesson") || !strings.Contains(step.Stdout, "self_verify") || !strings.Contains(step.Stdout, "self_verify_candidates") || !strings.Contains(step.Stdout, "self_verify_history") || !strings.Contains(step.Stdout, "self_verify_compare") || !strings.Contains(step.Stdout, "self_verify_promote") || !strings.Contains(step.Stdout, "dry_run") || !strings.Contains(step.Stdout, "healthy") || !strings.Contains(step.Stdout, "to_schema") || !strings.Contains(step.Stdout, "Lore:") {
+	if !strings.Contains(step.Stdout, "atomic_commit_preflight") || !strings.Contains(step.Stdout, "docs_index") || !strings.Contains(step.Stdout, "project_docs_route") || !strings.Contains(step.Stdout, "project_docs_read") || !strings.Contains(step.Stdout, "project_docs_update") || !strings.Contains(step.Stdout, "project_docs_record") || !strings.Contains(step.Stdout, "api_doc_static_check") || !strings.Contains(step.Stdout, "api_doc_review") || !strings.Contains(step.Stdout, "harness://project-docs") || !strings.Contains(step.Stdout, "harness://project-doc-upkeep") || !strings.Contains(step.Stdout, "command_policy_check") || !strings.Contains(step.Stdout, "state_write") || !strings.Contains(step.Stdout, "state_prune") || !strings.Contains(step.Stdout, "state_doctor") || !strings.Contains(step.Stdout, "state_migrate") || !strings.Contains(step.Stdout, "self_augment") || !strings.Contains(step.Stdout, "self_augment_lesson") || !strings.Contains(step.Stdout, "self_verify") || !strings.Contains(step.Stdout, "self_verify_candidates") || !strings.Contains(step.Stdout, "self_verify_history") || !strings.Contains(step.Stdout, "self_verify_compare") || !strings.Contains(step.Stdout, "self_verify_promote") || !strings.Contains(step.Stdout, "dry_run") || !strings.Contains(step.Stdout, "healthy") || !strings.Contains(step.Stdout, "to_schema") || !strings.Contains(step.Stdout, "Lore:") {
 		step.OK = false
 		step.Error = "MCP smoke did not expose expected tool/resource"
 	}
@@ -3669,6 +3835,7 @@ func validateNativeIntegration(root string) StepResult {
 	stdoutParts := []string{}
 	paths := []string{
 		filepath.Join(root, "configs", "codex", "mcp.config.toml"),
+		filepath.Join(root, "configs", "codex", "hooks.json"),
 		filepath.Join(root, "configs", "claude", "mcp.project.json"),
 	}
 	nativeSkills, err := core.ListSkillNames(root)
@@ -3689,15 +3856,15 @@ func validateNativeIntegration(root string) StepResult {
 	if b, err := os.ReadFile(filepath.Join(home, ".codex", "config.toml")); err != nil || !strings.Contains(string(b), "[mcp_servers.agent_harness]") {
 		errs = append(errs, "Codex MCP config missing agent_harness")
 	}
-	if _, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json")); err != nil {
-		errs = append(errs, "Claude user SessionStart hook missing")
+	if b, err := os.ReadFile(filepath.Join(home, ".codex", "hooks.json")); err != nil || !strings.Contains(string(b), "hook user-prompt") {
+		errs = append(errs, "Codex UserPromptSubmit hook missing harness hook user-prompt")
 	}
 	duplicateWarnings := detectClaudeMCPDuplicateWarnings(claudeMCPDuplicateWarningFixture())
 	warningBytes, _ := json.MarshalIndent(map[string]any{
 		"duplicate_mcp_warning_fixture": duplicateWarnings,
 	}, "", "  ")
 	stdoutParts = append(stdoutParts, string(warningBytes))
-	if len(duplicateWarnings) != 1 || duplicateWarnings[0].Server != "agent-harness" || !strings.Contains(duplicateWarnings[0].Message, "multiple scopes") {
+	if len(duplicateWarnings) != 1 || duplicateWarnings[0].Server != "agent_harness" || !strings.Contains(duplicateWarnings[0].Message, "multiple scopes") {
 		errs = append(errs, "Claude duplicate MCP warning fixture was not classified")
 	}
 	if len(errs) > 0 {
@@ -3756,8 +3923,8 @@ func claudeMCPDuplicateWarningFixture() string {
 For help configuring MCP servers, see: https://code.claude.com/docs/en/mcp
 
 [Conflicting scopes]
- └ [Warning] Server "agent-harness" is defined in multiple scopes with different endpoints: user (/Users/example/agent-harness/bin/harness mcp), project (./bin/harness mcp). OAuth tokens are stored per endpoint, so authenticating in one context will not carry over.
-   Suggestion: Keep the correct endpoint and remove the others: ` + "`claude mcp remove agent-harness -s user`" + ` or ` + "`claude mcp remove agent-harness -s project`" + `
+ └ [Warning] Server "agent_harness" is defined in multiple scopes with different endpoints: user (/Users/example/agent-harness/bin/harness mcp), project (./bin/harness mcp). OAuth tokens are stored per endpoint, so authenticating in one context will not carry over.
+   Suggestion: Keep the correct endpoint and remove the others: ` + "`claude mcp remove agent_harness -s user`" + ` or ` + "`claude mcp remove agent_harness -s project`" + `
 `
 }
 
@@ -3849,9 +4016,10 @@ func validateQAGate(root string) StepResult {
 	started := time.Now()
 	errs := []string{}
 	requiredDocs := map[string][]string{
-		filepath.Join(root, "GENIUS_THINK.md"):                    {"천재적 사고", "Mermaid"},
-		filepath.Join(root, "agent_docs", "SELF_AUGMENTATION.md"): {"자기 검증 루프", "자가 증강 루프", "95"},
-		filepath.Join(root, "agent_docs", "TESTING.md"):           {"self-verify", "QA"},
+		filepath.Join(root, "GENIUS_THINK.md"):                                {"천재적 사고", "Mermaid"},
+		filepath.Join(root, "skills", "self-augment", "SELF_AUGMENTATION.md"): {"Self-augmentation", "95"},
+		filepath.Join(root, "skills", "self-verify", "SKILL.md"):              {"Self-verification", "95"},
+		filepath.Join(root, ".agent-harness", "TESTING.md"):                   {"Well-structured tests", "Poorly-structured tests"},
 	}
 	for path, needles := range requiredDocs {
 		b, err := os.ReadFile(path)
@@ -4209,7 +4377,7 @@ func handleRequest(req rpcRequest) (any, *rpcError) {
 				"tools":     map[string]any{},
 				"resources": map[string]any{},
 			},
-			"serverInfo":   map[string]any{"name": "agent-harness", "version": version},
+			"serverInfo":   map[string]any{"name": "agent_harness", "version": version},
 			"instructions": "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. For LLM Wiki workflows, install and use the upstream nvk/llm-wiki plugin instead of agent-harness.",
 		}, nil
 	case "tools/list":
@@ -4249,8 +4417,84 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "docs_index",
-			"description": "Return a lightweight index of AGENTS.md, CLAUDE.md, GENIUS_THINK.md, and agent_docs markdown files: relative path, title, headings, and byte size.",
+			"description": "Return a lightweight index of AGENTS.md, CLAUDE.md, GENIUS_THINK.md, .agent-harness markdown files, and self-* skill docs: relative path, title, headings, and byte size.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
+		},
+		{
+			"name":        "project_docs_route",
+			"description": "Given a task, return the project AGENTS.md and .agent-harness documents an agent should read before working.",
+			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+				"repo": map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
+				"task": map[string]any{"type": "string", "description": "Task description such as commit, test, architecture, dependency, deploy, or general."},
+			}},
+		},
+		{
+			"name":        "project_docs_bootstrap_plan",
+			"description": "Dry-run the project docs bootstrap that creates or updates AGENTS.md and .agent-harness/*.md from repository evidence. This tool never writes files.",
+			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+				"repo": map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
+			}},
+		},
+		{
+			"name":        "project_docs_read",
+			"description": "Read one allowed .agent-harness project document and return its content plus SHA-256. Use before project_docs_update so autonomous doc refreshes preserve user consensus and avoid stale overwrites.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"rel_path"}, "properties": map[string]any{
+				"repo":     map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
+				"rel_path": map[string]any{"type": "string", "description": "Allowed project doc path, for example .agent-harness/TESTING.md or TESTING.md."},
+			}},
+		},
+		{
+			"name":        "project_docs_update",
+			"description": "Update one allowed .agent-harness project document after reading repo evidence and preserving user consensus. Dry-run unless confirm=true. Existing files require expected_sha256 from project_docs_read. Do not use for solved false cases or ADR entries; use project_docs_record there.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"rel_path", "content", "summary"}, "properties": map[string]any{
+				"repo":            map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
+				"rel_path":        map[string]any{"type": "string", "description": "Allowed project doc path under .agent-harness, for example .agent-harness/OPERATIONS.md."},
+				"content":         map[string]any{"type": "string", "description": "Full replacement content for the one document. Preserve stronger existing local guidance and user decisions."},
+				"expected_sha256": map[string]any{"type": "string", "description": "SHA-256 returned by project_docs_read. Required when the file exists."},
+				"summary":         map[string]any{"type": "string", "description": "Short reason for the update and how it maintains current consensus."},
+				"evidence":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Files, commands, tests, or user instructions that justify the update."},
+				"confirm":         map[string]any{"type": "boolean", "description": "Set true to write. Omit or false for dry-run preview."},
+			}},
+		},
+		{
+			"name":        "project_docs_record",
+			"description": "Append a durable project note to .agent-harness/CAUTIONS.md after a solved problem/false case, or to .agent-harness/ADR.md after a decision with rationale. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"kind", "title", "summary"}, "properties": map[string]any{
+				"repo":         map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
+				"kind":         map[string]any{"type": "string", "description": "caution for solved problems/false cases; adr for decisions."},
+				"title":        map[string]any{"type": "string", "description": "Short record title."},
+				"summary":      map[string]any{"type": "string", "description": "One-sentence summary of the issue or decision."},
+				"context":      map[string]any{"type": "string", "description": "Relevant context or trigger."},
+				"resolution":   map[string]any{"type": "string", "description": "How the problem was solved; use for caution records."},
+				"decision":     map[string]any{"type": "string", "description": "Chosen decision; use for ADR records."},
+				"evidence":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Commands, files, tests, or source evidence."},
+				"alternatives": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Rejected alternatives or tradeoffs."},
+				"consequences": map[string]any{"type": "string", "description": "Expected follow-up consequences for ADR records."},
+				"source":       map[string]any{"type": "string", "description": "Calling workflow or agent source."},
+			}},
+		},
+		{
+			"name":        "api_doc_review",
+			"description": "Run the API documentation review gate on staged or explicit controller/DTO/handler/OpenAPI files. By default it reviews only git staged API candidate files and does not fail unrelated legacy Swagger/OpenAPI debt. Use for endpoint, controller, DTO, schema, or OpenAPI changes.",
+			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+				"repo":        map[string]any{"type": "string", "description": "Target git repository path. Defaults to current directory."},
+				"files":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Explicit API candidate files. Omit to use staged controller/DTO/handler/OpenAPI files."},
+				"all":         map[string]any{"type": "boolean", "description": "When true, review all tracked API candidate files. Default false keeps scope to staged changes."},
+				"diff_file":   map[string]any{"type": "string", "description": "Optional file containing a diff to review instead of git diff --cached."},
+				"prompt_file": map[string]any{"type": "string", "description": "Optional project-specific Swagger/OpenAPI rules."},
+				"model":       map[string]any{"type": "string", "description": "Codex model. Defaults to gpt-5.5."},
+				"reasoning":   map[string]any{"type": "string", "description": "Codex reasoning effort. Defaults to medium."},
+				"timeout":     map[string]any{"type": "string", "description": "Timeout such as 3m. Defaults to 3m."},
+			}},
+		},
+		{
+			"name":        "api_doc_static_check",
+			"description": "Run deterministic API documentation checks for syntax-level Swagger/OpenAPI omissions such as missing operation descriptions, params, body/query/header docs, 400/401 responses, and NestJS DTO decorators. Use before api_doc_review.",
+			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+				"repo":  map[string]any{"type": "string", "description": "Target git repository path. Defaults to current directory."},
+				"files": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Explicit API candidate files. Omit to use staged controller/DTO/handler/OpenAPI files."},
+				"all":   map[string]any{"type": "boolean", "description": "When true, check all tracked API candidate files. Default false keeps scope to staged changes."},
+			}},
 		},
 		{
 			"name":        "command_policy_check",
@@ -4309,7 +4553,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "self_augment",
-			"description": "Plan the 자가 증강 루프: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to harness state for durable Reflexion-style memory.",
+			"description": "Plan the self-augmentation loop: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to harness state for durable Reflexion-style memory.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
 				"cycles":       map[string]any{"type": "integer", "description": "Number of autonomous improvement cycles to plan; defaults to 1."},
 				"target_score": map[string]any{"type": "number", "description": "Exclusive per-goal score threshold; defaults to 95."},
@@ -4319,7 +4563,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "self_augment_lesson",
-			"description": "Store a Reflexion-style 자가 증강 lesson in harness state for durable cross-session learning.",
+			"description": "Store a Reflexion-style self-augmentation lesson in harness state for durable cross-session learning.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"lesson", "next_action"}, "properties": map[string]any{
 				"candidate_id": map[string]any{"type": "string", "description": "Candidate id this lesson belongs to; defaults to current selected open candidate."},
 				"lesson":       map[string]any{"type": "string", "description": "Lesson learned from failure, QA issue, or design concern."},
@@ -4331,7 +4575,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "self_verify",
-			"description": "Run the 자기 검증 루프: at least 10 seeded iterations of tests, risk-tier QA, build, CLI/MCP schema and response contract golden checks, command policy, MCP, state roundtrip, native integration, and git preflight fuzz checks. Termination requires every concrete goal score to be greater than target_score.",
+			"description": "Run the self-verification loop: at least 10 seeded iterations of tests, risk-tier QA, build, CLI/MCP schema and response contract golden checks, command policy, MCP, state roundtrip, native integration, and git preflight fuzz checks. Termination requires every concrete goal score to be greater than target_score.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
 				"iterations":   map[string]any{"type": "integer", "description": "Iteration count; must be at least 10."},
 				"seed":         map[string]any{"type": "integer", "description": "Base seed for deterministic per-iteration fuzz fixtures."},
@@ -4342,7 +4586,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "self_verify_candidates",
-			"description": "Export the 자기 검증 루프 improvement candidate curriculum, including open/satisfied IDs and the next selected candidate.",
+			"description": "Export the self-verification loop improvement candidate curriculum, including open/satisfied IDs and the next selected candidate.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
 				"save_state": map[string]any{"type": "boolean", "description": "When true, save the candidate export snapshot to harness state."},
 				"state_key":  map[string]any{"type": "string", "description": "State key for save_state; defaults to self-verify-candidates-latest."},
@@ -4350,7 +4594,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "self_verify_history",
-			"description": "List saved 자기 검증 루프 summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
+			"description": "List saved self-verification loop summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
 				"prefix":          map[string]any{"type": "string", "description": "State key prefix to scan; defaults to self-verify. Use empty string to scan all keys."},
 				"limit":           map[string]any{"type": "integer", "description": "Maximum entries to return; defaults to 20, 0 returns all."},
@@ -4361,7 +4605,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "self_verify_compare",
-			"description": "Compare two saved 자기 검증 루프 summary checkpoints from harness state and report elapsed-time, failed-step, step-label, and goal-score regressions.",
+			"description": "Compare two saved self-verification loop summary checkpoints from harness state and report elapsed-time, failed-step, step-label, and goal-score regressions.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"baseline_key", "candidate_key"}, "properties": map[string]any{
 				"baseline_key":               map[string]any{"type": "string", "description": "State key containing the baseline self-verification summary snapshot."},
 				"candidate_key":              map[string]any{"type": "string", "description": "State key containing the candidate self-verification summary snapshot."},
@@ -4370,7 +4614,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "self_verify_promote",
-			"description": "Promote a saved 자기 검증 루프 summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
+			"description": "Promote a saved self-verification loop summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"from_key", "baseline_key"}, "properties": map[string]any{
 				"from_key":     map[string]any{"type": "string", "description": "State key containing the candidate self-verification summary snapshot to promote."},
 				"baseline_key": map[string]any{"type": "string", "description": "State key to write as the promoted baseline."},
@@ -4428,7 +4672,7 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 	case "atomic_commit_preflight":
 		payload = core.GitPreflight(resolveTarget(stringArg(call.Arguments, "path")), harnessRoot())
 	case "commit_policy":
-		text, err := readHarnessFile("agent_docs", "COMMIT_POLICY.md")
+		text, err := readHarnessFile(".agent-harness", "COMMIT_POLICY.md")
 		if err != nil {
 			return nil, &rpcError{Code: -32000, Message: "Cannot read commit policy", Data: err.Error()}
 		}
@@ -4437,6 +4681,87 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		payload = core.ListSkills(harnessRoot(), skillName)
 	case "docs_index":
 		payload = core.DocsIndex(harnessRoot(), version)
+	case "project_docs_route":
+		result, err := core.RouteProjectDocs(resolveTarget(stringArg(call.Arguments, "repo")), stringArgWithDefault(call.Arguments, "task", "general"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "Project docs route failed", Data: err.Error()}
+		}
+		payload = result
+	case "project_docs_bootstrap_plan":
+		result, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: resolveTarget(stringArg(call.Arguments, "repo")), Write: false})
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "Project docs bootstrap plan failed", Data: err.Error()}
+		}
+		payload = result
+	case "project_docs_read":
+		result, err := core.ReadProjectDoc(resolveTarget(stringArg(call.Arguments, "repo")), stringArg(call.Arguments, "rel_path"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "Project docs read failed", Data: err.Error()}
+		}
+		payload = result
+	case "project_docs_update":
+		result, err := core.UpdateProjectDoc(core.ProjectDocsUpdateRequest{
+			RepoRoot:       resolveTarget(stringArg(call.Arguments, "repo")),
+			RelPath:        stringArg(call.Arguments, "rel_path"),
+			Content:        stringArg(call.Arguments, "content"),
+			ExpectedSHA256: stringArg(call.Arguments, "expected_sha256"),
+			Summary:        stringArg(call.Arguments, "summary"),
+			Evidence:       stringSliceArg(call.Arguments, "evidence"),
+			Confirm:        boolArg(call.Arguments, "confirm"),
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "Project docs update failed", Data: err.Error()}
+		}
+		payload = result
+	case "project_docs_record":
+		result, err := core.AppendProjectDocsRecord(core.ProjectDocsRecordRequest{
+			RepoRoot:     resolveTarget(stringArg(call.Arguments, "repo")),
+			Kind:         stringArg(call.Arguments, "kind"),
+			Title:        stringArg(call.Arguments, "title"),
+			Summary:      stringArg(call.Arguments, "summary"),
+			Context:      stringArg(call.Arguments, "context"),
+			Resolution:   stringArg(call.Arguments, "resolution"),
+			Decision:     stringArg(call.Arguments, "decision"),
+			Evidence:     stringSliceArg(call.Arguments, "evidence"),
+			Alternatives: stringSliceArg(call.Arguments, "alternatives"),
+			Consequences: stringArg(call.Arguments, "consequences"),
+			Source:       stringArgWithDefault(call.Arguments, "source", "mcp"),
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "Project docs record failed", Data: err.Error()}
+		}
+		payload = result
+	case "api_doc_review":
+		timeout, err := time.ParseDuration(stringArgWithDefault(call.Arguments, "timeout", defaultAPIDocReviewTimeout.String()))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "API doc review failed", Data: "invalid timeout: " + err.Error()}
+		}
+		result, err := runAPIDocReviewWithOptions(apiDocReviewOptions{
+			Repo:       resolveTarget(stringArg(call.Arguments, "repo")),
+			Model:      stringArgWithDefault(call.Arguments, "model", defaultAPIDocReviewModel),
+			Effort:     stringArgWithDefault(call.Arguments, "reasoning", defaultAPIDocReviewReasoning),
+			Timeout:    timeout,
+			Files:      stringSliceArg(call.Arguments, "files"),
+			All:        boolArg(call.Arguments, "all"),
+			DiffFile:   stringArg(call.Arguments, "diff_file"),
+			PromptFile: stringArg(call.Arguments, "prompt_file"),
+			JSON:       true,
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "API doc review failed", Data: result}
+		}
+		payload = result
+	case "api_doc_static_check":
+		result, err := runAPIDocStaticCheckWithOptions(apiDocStaticOptions{
+			Repo:  resolveTarget(stringArg(call.Arguments, "repo")),
+			Files: stringSliceArg(call.Arguments, "files"),
+			All:   boolArg(call.Arguments, "all"),
+			JSON:  true,
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "API doc static check failed", Data: result}
+		}
+		payload = result
 	case "command_policy_check":
 		payload = core.EvaluateCommandPolicy(commandPolicyRequestFromArgs(call.Arguments))
 	case "command_fake_run":
@@ -4581,9 +4906,47 @@ func mcpResources() []map[string]any {
 		{"uri": "harness://skill/atomic-commit-push", "name": "atomic-commit-push skill", "description": "Shared native skill instructions.", "mimeType": "text/markdown"},
 		{"uri": "harness://agents", "name": "Agent root rules", "description": "AGENTS.md root operating contract.", "mimeType": "text/markdown"},
 		{"uri": "harness://docs", "name": "Agent docs index", "description": "JSON index of harness agent-facing markdown docs.", "mimeType": "application/json"},
+		{"uri": "harness://project-docs", "name": "Project docs route", "description": "JSON default routing for AGENTS.md and .agent-harness project docs in the current workspace.", "mimeType": "application/json"},
+		{"uri": "harness://project-doc-upkeep", "name": "Project doc upkeep guidance", "description": "How agents should keep .agent-harness docs current through MCP route/read/update/record while preserving user consensus.", "mimeType": "text/markdown"},
+		{"uri": "harness://api-doc-guidance", "name": "API documentation guidance", "description": "Framework-agnostic Swagger/OpenAPI review guidance, including business-logic error response coverage.", "mimeType": "text/markdown"},
 		{"uri": "harness://command-policy", "name": "Command policy summary", "description": "JSON summary of command policy boundaries and fake runner behavior.", "mimeType": "application/json"},
 		{"uri": "harness://state", "name": "State checkpoint index", "description": "JSON index of harness state checkpoints.", "mimeType": "application/json"},
 	}
+}
+
+func apiDocGuidanceText() string {
+	return `# API Documentation Guidance
+
+Use deterministic ` + "`harness api-doc static-check`" + `/MCP ` + "`api_doc_static_check`" + ` first, then agent-backed ` + "`harness api-doc review`" + `/MCP ` + "`api_doc_review`" + ` whenever endpoint, controller, handler, DTO, schema, or OpenAPI files change.
+
+Default scope is staged API candidate files. Do not fail unrelated legacy Swagger/OpenAPI debt.
+Use ` + "`--all`" + ` or MCP ` + "`all: true`" + ` only for an explicit full tracked-file review.
+
+The static check catches deterministic omissions such as missing operation descriptions, path/query/header/body documentation, 400/401 responses, and DTO required/optional decorator mismatches where the framework convention is known.
+
+The agent reviewer must inspect directly related business logic, not only decorators or comments. If the changed endpoint can return domain errors such as 400 validation, 401 auth, 403 forbidden, 404 not found, 409 conflict, or equivalent framework errors, those responses must be documented in the OpenAPI spec.
+
+Clean Swagger/OpenAPI output should include concise operation summaries, consistent sectioned descriptions, documented path/query/header/body parameters, accurate required/optional schemas, explicit success and error responses, and response descriptions or examples where the target project convention supports them.
+
+For NestJS projects following the nextcandle-api style, prefer Markdown-section operation descriptions such as purpose, request rules/processing, and auth/cautions; keep public/admin documents audience-filtered when the project has that split.
+`
+}
+
+func projectDocUpkeepText() string {
+	return `# Project Doc Upkeep Guidance
+
+After first bootstrap, .agent-harness documents are living project operating docs. Agents should keep them current through MCP instead of relying on static template text.
+
+Use this flow:
+
+1. Call project_docs_route with the current task to choose only relevant docs.
+2. Read the selected docs. When a document needs updating, call project_docs_read first and keep the returned sha256.
+3. Update one document at a time with project_docs_update, passing expected_sha256, a consensus-preserving summary, concrete evidence, and confirm=true only when the full replacement content preserves stronger existing guidance.
+4. Use project_docs_record(kind=caution) for solved false cases, repeated failures, and risk notes.
+5. Use project_docs_record(kind=adr) for decisions, rationale, rejected alternatives, and consequences.
+
+Do not invent repo facts. If evidence is missing, mark the section as "Unknown / not confirmed" and explain how to verify. Do not overwrite user decisions or stronger local docs with generated template language.
+`
 }
 
 func handleResourceRead(params json.RawMessage) (any, *rpcError) {
@@ -4597,6 +4960,20 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 		result := core.DocsIndex(harnessRoot(), version)
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "application/json", "text": string(b)}}}, nil
+	}
+	if req.URI == "harness://project-docs" {
+		result, err := core.RouteProjectDocs(".", "general")
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "Cannot read project docs route", Data: err.Error()}
+		}
+		b, _ := json.MarshalIndent(result, "", "  ")
+		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "application/json", "text": string(b)}}}, nil
+	}
+	if req.URI == "harness://project-doc-upkeep" {
+		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "text/markdown", "text": projectDocUpkeepText()}}}, nil
+	}
+	if req.URI == "harness://api-doc-guidance" {
+		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "text/markdown", "text": apiDocGuidanceText()}}}, nil
 	}
 	if req.URI == "harness://command-policy" {
 		b, _ := json.MarshalIndent(core.CommandPolicySummary(), "", "  ")
@@ -4613,7 +4990,7 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 	var rel []string
 	switch req.URI {
 	case "harness://commit-policy":
-		rel = []string{"agent_docs", "COMMIT_POLICY.md"}
+		rel = []string{".agent-harness", "COMMIT_POLICY.md"}
 	case "harness://skill/atomic-commit-push":
 		rel = []string{"skills", skillName, "SKILL.md"}
 	case "harness://agents":

@@ -63,7 +63,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 func claudeProjectMCPConfig() map[string]any {
 	return map[string]any{
 		"mcpServers": map[string]any{
-			"agent-harness": map[string]any{
+			"agent_harness": map[string]any{
 				"type":    "stdio",
 				"command": "./bin/harness",
 				"args":    []string{"mcp"},

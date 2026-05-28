@@ -23,7 +23,7 @@ flowchart LR
     Codex["Codex<br/>AGENTS.md · native skills · MCP config"] --> MCPProxy["harness mcp<br/>stdio proxy"]
     Claude["Claude Code<br/>CLAUDE.md · skills · hooks · MCP config"] --> MCPProxy
     Human["Human shell"] --> CLI["CLI: harness"]
-    Hook["SessionStart hook"] --> CLI
+    Hook["UserPromptSubmit / SessionStart hook"] --> CLI
 
     MCPProxy --> Daemon["agent-harness daemon<br/>user-level Unix socket"]
     CLI --> Core["core usecases<br/>policy · workspace · docs · state"]
@@ -46,8 +46,8 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 - `internal/core.InstallNative`: host-neutral core engine. skill 목록, root/bin/wiki 경로 같은 공통 입력을 정규화하고 `port.HostInstaller`만 호출한다.
 - `internal/port`: `NativeInstallRequest`, `NativeInstallResult`, `HostInstaller` interface, 설치 DTO를 정의한다. core는 concrete host를 모른다.
-- `internal/adapter/codex`: Codex 구현체. user skill symlink와 `~/.codex/config.toml`만 기본 갱신한다.
-- `internal/adapter/claude`: Claude Code 구현체. user skill symlink, user SessionStart hook, user-scope MCP 등록 경로만 기본 사용한다.
+- `internal/adapter/codex`: Codex 구현체. user skill symlink, `~/.codex/config.toml` MCP 등록, `~/.codex/hooks.json` UserPromptSubmit hook을 기본 갱신한다.
+- `internal/adapter/claude`: Claude Code 구현체. user skill symlink와 user-scope MCP 등록 경로를 기본 사용한다. Claude hook은 host별 지원 상태와 project-local opt-in 여부에 따라 별도 template/installer에서 다룬다.
 - repo-local `.claude/skills`, `.claude/settings.json`, `.mcp.json`은 적용 대상 repo에 커밋될 수 있으므로 `--project-local` 같은 명시적 opt-in에서만 생성한다.
 
 이 구조에서 새 host를 추가할 때는 core 수정 없이 `port.HostInstaller` 구현체만 추가하는 것이 원칙이다.
@@ -76,7 +76,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 | `internal/adapter/cli` | flag parsing, stdout/stderr, exit code mapping | core 정책 복제 금지 |
 | `internal/adapter/mcp` | MCP tool schema, stdio server, JSON-RPC mapping | CLI와 다른 의미의 schema 금지 |
 | `internal/adapter/codex` | Codex user skill symlink와 user MCP config 설치 | 대상 repo 파일 쓰기 금지 |
-| `internal/adapter/claude` | Claude user skill symlink와 user SessionStart hook 설치 | 기본 설치에서 `.claude/skills`, `.claude/settings.json`, `.mcp.json` 같은 repo-local 파일 쓰기 금지 |
+| `internal/adapter/claude` | Claude user skill symlink와 user-scope MCP 설정 | 기본 설치에서 `.claude/skills`, `.claude/settings.json`, `.mcp.json` 같은 repo-local 파일 쓰기 금지 |
 | `internal/adapter/worker` | local IPC, job lifecycle, daemon state | shell policy 우회 금지 |
 | `internal/adapter/fs` | filesystem, git, process runner | workspace boundary 검증 필요 |
 | `configs/codex` | Codex plugin/skill 템플릿 | core 로직 금지 |
@@ -88,11 +88,18 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 ## 5. Docs / state / config / logs
 
-현재 `harness docs`는 에이전트가 읽어야 할 markdown source of truth를 index로 노출한다.
+현재 `harness docs`는 에이전트가 읽어야 할 markdown source of truth를 index로 노출한다. `harness project bootstrap`은 적용 대상 레포에 명시 실행될 때만 `AGENTS.md` marker block과 `.agent-harness/*.md` 프로젝트 운영 문서를 생성/갱신한다.
 
-- 대상: `AGENTS.md`, `CLAUDE.md`, `GENIUS_THINK.md`, `agent_docs/*.md`
+- 대상: `AGENTS.md`, `CLAUDE.md`, `GENIUS_THINK.md`, `.agent-harness/*.md`, `skills/self-verify/*.md`, `skills/self-augment/*.md`
 - 필드: relative path, absolute path, title, headings, byte size
 - 제공 표면: CLI `docs --json`, MCP `docs_index`, resource `harness://docs`
+
+Project docs bootstrap:
+
+- 대상: 적용 대상 repo의 `AGENTS.md`, `.agent-harness/ARCHITECTURE.md`, `.agent-harness/CAUTIONS.md`, `.agent-harness/COMMIT_POLICY.md`, `.agent-harness/CONSTITUTION.md`, `.agent-harness/CONVENTIONS.md`, `.agent-harness/TECH_STACK.md`, `.agent-harness/TESTING.md`, `.agent-harness/ADR.md`, `.agent-harness/OPERATIONS.md`, `.agent-harness/AGENT_WORKFLOW.md`
+- 기본 동작: `harness project bootstrap`은 dry-run이며 `--write`가 있을 때만 파일을 쓴다.
+- 안전: `AGENTS.md` 전체를 덮어쓰지 않고 `AGENT_HARNESS` marker block만 관리한다.
+- MCP: `project_docs_bootstrap_plan`, `project_docs_route`, `harness://project-docs`로 어떤 작업에 어떤 문서를 확인해야 하는지 제공한다.
 
 현재 `harness state`는 작은 에이전트 체크포인트를 JSON 파일로 저장한다.
 
@@ -114,7 +121,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 | 종류 | 권장 위치 | 추적 여부 |
 |------|-----------|----------|
-| 프로젝트 지식 | `agent_docs/`, `AGENTS.md`, `CLAUDE.md` | git 추적 |
+| 프로젝트 지식 | `.agent-harness/`, `AGENTS.md`, `CLAUDE.md` | git 추적 |
 | 사용자 전역 설정 | `~/.config/agent-harness/config.yaml` | git 비추적 |
 | 사용자 전역 state/log | `~/.local/state/agent-harness/` 또는 OS별 state dir | git 비추적 |
 | workspace local cache | `.harness/` | `.gitignore` 대상 |
@@ -176,8 +183,8 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 | Host | 최소 통합 | 권장 통합 | 주의 |
 |------|----------|----------|------|
-| Codex | `AGENTS.md` + shell에서 `harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
-| Claude Code | `CLAUDE.md` + shell에서 `harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server + user `SessionStart` hook | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.mcp.json`은 explicit project-local opt-in에서만 쓴다 |
+| Codex | `AGENTS.md` + shell에서 `harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` UserPromptSubmit hook | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
+| Claude Code | `CLAUDE.md` + shell에서 `harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server; optional prompt/session hook templates reuse `harness hook user-prompt` | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.mcp.json`은 explicit project-local opt-in에서만 쓴다 |
 
 ---
 
@@ -192,3 +199,11 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 ## LLM Wiki 정책
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
+
+## MCP tool design guidance
+
+- Tool descriptions must state: purpose, when to use, whether it writes, required arguments, and expected result shape.
+- Prefer bounded, task-specific tools over catch-all tools.
+- Keep tool list ordering deterministic for stable client caching and golden tests.
+- Use resources for reusable context, tools for actions, and project docs routing for deciding what to read.
+- Writable MCP tools should either be dry-run by default or append-only with narrow target files.

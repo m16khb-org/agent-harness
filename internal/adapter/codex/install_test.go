@@ -32,6 +32,13 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	if !strings.Contains(string(config), "[mcp_servers.agent_harness]") || !strings.Contains(string(config), req.BinPath) {
 		t.Fatalf("codex config missing harness block:\n%s", string(config))
 	}
+	hooks, err := os.ReadFile(filepath.Join(home, ".codex", "hooks.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(hooks), "hook user-prompt") || !strings.Contains(string(hooks), req.BinPath) {
+		t.Fatalf("codex hooks missing harness UserPromptSubmit hook:\n%s", string(hooks))
+	}
 	if exists(filepath.Join(root, ".claude", "skills", "alpha")) || exists(filepath.Join(root, ".mcp.json")) {
 		t.Fatalf("codex installer wrote project-local files")
 	}

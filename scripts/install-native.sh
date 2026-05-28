@@ -11,7 +11,8 @@ fi
 "$BIN" install-native "$@"
 
 if command -v claude >/dev/null 2>&1; then
-  claude mcp add-json agent-harness "$(python3 - "$BIN" "$ROOT" <<'PY'
+  claude mcp remove agent-harness -s user >/dev/null 2>&1 || true
+  claude mcp add-json -s user agent_harness "$(python3 - "$BIN" "$ROOT" <<'PY'
 import json
 import sys
 bin_path, root = sys.argv[1], sys.argv[2]

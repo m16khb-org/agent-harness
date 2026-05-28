@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "agent-harness": {
+    "agent_harness": {
       "args": [
         "mcp"
       ],

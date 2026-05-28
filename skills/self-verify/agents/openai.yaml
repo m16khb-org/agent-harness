@@ -1,0 +1,4 @@
+interface:
+  display_name: "Self Verify"
+  short_description: "Run the harness self-verification 95-point QA gate"
+  default_prompt: "Use $self-verify to run the harness self-verification loop and report goal scores, failures, and rerun commands."

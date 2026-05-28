@@ -10,8 +10,8 @@
 
 ```bash
 find . -maxdepth 3 -type f | sort
-find agent_docs -maxdepth 1 -type f -name '*.md' | sort
-grep -R "외부 Go 하네스\|Go\|MCP\|Codex\|Claude" -n AGENTS.md CLAUDE.md agent_docs
+find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
+grep -R "외부 Go 하네스\|Go\|MCP\|Codex\|Claude" -n AGENTS.md CLAUDE.md .agent-harness
 python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
 go test ./... -count=1
 go test ./cmd/harness -run Golden -count=1
@@ -21,6 +21,7 @@ go build -o bin/harness ./cmd/harness
 ./bin/harness install-native --dry-run --json
 ./bin/harness inspect --json
 ./bin/harness docs --json
+printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/harness hook user-prompt
 ./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
 tmp_state="$(mktemp -d)"
@@ -43,7 +44,7 @@ HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify promote --from-key self
 ./bin/harness self-augment --cycles=1 --target-score=95 --json
 ./bin/harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
 ./bin/harness self-augment lesson --candidate reflexion-state-memory --lesson "test lesson" --next-action "test next action" --state-key self-augment-lesson-test --json
-grep -R "Conventional Commit\|Lore:" -n AGENTS.md agent_docs/COMMIT_POLICY.md skills/atomic-commit-push/SKILL.md
+grep -R "Conventional Commit\|Lore:" -n AGENTS.md .agent-harness/COMMIT_POLICY.md skills/atomic-commit-push/SKILL.md
 ```
 
 확인할 것:
@@ -54,15 +55,15 @@ Native integration smoke:
 test -f ~/.codex/skills/atomic-commit-push/SKILL.md
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md
 codex mcp get agent_harness
-claude mcp list | grep agent-harness
+claude mcp list | grep agent_harness
 ```
 
 
 - `AGENTS.md`와 `CLAUDE.md`가 같은 source of truth를 가리키는가
-- `agent_docs/`의 링크가 실제 파일과 맞는가
+- `.agent-harness/`의 링크가 실제 파일과 맞는가
 - plugin vs worker 결정과 Go 선택이 여러 문서에서 충돌하지 않는가
 - shared skill 원본(`skills/*`)과 user-level host 연결(`~/.codex/skills/*`, `~/.claude/skills/*`)이 drift 없이 같은 대상을 가리키는가
-- 커밋 정책이 `AGENTS.md`, `agent_docs/COMMIT_POLICY.md`, `atomic-commit-push` skill에서 충돌하지 않는가
+- 커밋 정책이 `AGENTS.md`, `.agent-harness/COMMIT_POLICY.md`, `atomic-commit-push` skill에서 충돌하지 않는가
 
 ---
 
@@ -96,6 +97,22 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 ---
 
 ## 3. 테스트 작성 기준
+
+### Well-structured tests
+
+- 변경된 공개 동작/계약을 직접 검증하고 구현 세부사항에 과도하게 묶이지 않는다.
+- 실패 시 원인을 좁힐 수 있는 fixture 이름, assertion, 에러 메시지를 둔다.
+- deterministic하며 test order, wall-clock sleep, real network, local machine state에 의존하지 않는다.
+- regression test는 재발했던 입력, false case, 기대 결과를 명확히 담는다.
+- 기존 helper와 style을 재사용하고, golden/snapshot 변경은 의도와 범위를 설명한다.
+
+### Poorly-structured tests
+
+- 실제 요구사항과 무관한 내부 구조만 고정한다.
+- 통과를 위해 production behavior를 약화하거나 오류 처리를 숨긴다.
+- sleep, real external service, global mutable state, 실행 순서에 의존한다.
+- 실패해도 원인을 알 수 없는 거대한 fixture나 broad snapshot만 둔다.
+- 테스트 이름이 “works” 수준이라 어떤 계약을 지키는지 알 수 없다.
 
 - core policy와 adapter transport를 분리해서 테스트한다.
 - CLI/MCP/worker는 같은 core DTO를 쓰는지 contract test를 둔다. 설치 경로는 `core.InstallNative` + `port.HostInstaller` adapter 단위 테스트와 `internal/adapter/testdata/native_install_contract_matrix.golden.json` matrix fixture로 고정한다.
@@ -161,3 +178,58 @@ Golden file은 사람이 읽을 수 있게 작게 유지하고, schema 변경 �
 ## LLM Wiki 정책
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
+
+## API documentation checks
+
+Endpoint/DTO 변경 시 Swagger/OpenAPI 문서 검사를 필수로 실행한다.
+
+```bash
+harness api-doc check --json
+# target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.
+npm run swagger:check
+npm run swagger:check -- --all
+```
+
+기본 검사 범위는 staged controller/DTO/handler/OpenAPI 후보 파일이어야 하며, 기존 레거시 전체 부채를 한 번에 실패시키지 않는다.
+
+NestJS Swagger 프로젝트에서 blocking으로 잡아야 하는 누락:
+
+- REST route method의 `@ApiOperation` 누락
+- `@ApiOperation.description` 누락 또는 repo의 문서 섹션 형식 위반
+- `:id` 등 path param이 있는데 `@ApiParam` 누락
+- `@Headers` 사용인데 `@ApiHeader` 누락
+- `@Body`, `@Query`, `@Headers` 사용으로 validation 400 가능성이 있는데 400 Swagger response 누락
+- private/auth endpoint인데 401 Swagger response 누락
+- DTO required property의 `@ApiProperty` 누락
+- DTO optional property의 `@ApiPropertyOptional` 누락
+- DTO optional property의 `@IsOptional` 누락
+
+### Business logic error response coverage
+
+Swagger/OpenAPI 검사는 decorator/comment 존재 여부만 보지 않는다. 변경된 endpoint가 호출하는 service/usecase/domain error mapping을 확인해 비즈니스 로직상 가능한 public error response가 스펙에 있는지 확인한다.
+
+예:
+
+- entity lookup 실패 → 404 response 필요
+- ownership/permission 실패 → 403 response 필요
+- duplicate/state conflict → 409 response 필요
+- validation/body/query/header 문제 → 400 response 필요
+- private/auth endpoint → 401 response 필요
+
+깔끔한 Swagger 문서는 success-only가 아니라, client가 실제로 처리해야 하는 성공/실패 계약을 모두 보여줘야 한다.
+
+### Agent-backed verification boundary
+
+비즈니스 로직의 실제 404/403/409 가능성과 OpenAPI 누락 여부는 정적 테스트만으로 신뢰 있게 판정하지 않는다. 정적 테스트는 후보 파일 선택, `--all` wiring, prompt contract, MCP schema 같은 배선을 검증하고, 실제 API 문서 품질 판정은 `harness api-doc review`/MCP `api_doc_static_check` 후 `api_doc_review`가 Codex 에이전트를 호출해 수행한다.
+
+`nextcandle-api`에서 확인한 좋은 기준:
+
+- `@ApiOperation.description`은 `### 목적`, `### 요청 규칙`/`### 처리 방식`, `### 권한/주의사항`처럼 Markdown section + bullet로 구성한다.
+- path/query/header/body와 auth/tier/public 여부가 response 문서와 일치한다.
+- service/usecase의 `NotFoundException`, `ForbiddenException`, `ConflictException` 등 public error가 endpoint response에 반영된다.
+- public/admin Swagger document를 분리하고, 사용하지 않는 schema를 필터링해 client가 읽는 문서를 깔끔하게 유지한다.
+
+
+## OpenAPI prompt source
+
+Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.

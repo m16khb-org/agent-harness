@@ -64,7 +64,7 @@ persistent worker는 편하지만 stale lock, orphan process, socket 권한, 오
 프로젝트 지식과 런타임 state가 섞이면 repo가 오염되고 secret이 커밋될 수 있다.
 
 주의:
-- 추적할 지식은 `agent_docs/`에 둔다.
+- 추적할 지식은 `.agent-harness/`에 둔다.
 - cache/log/runtime state는 user state dir 또는 ignored `.harness/`에 둔다.
 - `.harness/`를 도입하면 `.gitignore`에 추가한다.
 
@@ -126,3 +126,10 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 - 설치/빌드 후 MCP smoke 전에는 필요하면 `harness daemon stop --json`으로 기존 daemon을 내린다.
 - 테스트는 `HARNESS_DAEMON_DIR=$(mktemp -d)/daemon`으로 실제 user daemon과 분리한다.
 - daemon socket/pid/log는 user state dir에 두고 repo나 wiki vault에 쓰지 않는다.
+
+## MCP tool-use risks
+
+- Broad tool descriptions make agents over-call tools or pass wrong arguments.
+- Always injecting all project documents at session start wastes context and can hide task-specific evidence.
+- Writable tools need explicit write semantics; prefer dry-run or append-only behavior.
+- Tool output is evidence, not proof: verify file existence, warnings, and command/test results before claiming completion.

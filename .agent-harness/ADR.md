@@ -64,16 +64,16 @@ Deliverables:
 
 - `AGENTS.md`
 - `CLAUDE.md`
-- `agent_docs/CONSTITUTION.md`
-- `agent_docs/ARCHITECTURE.md`
-- `agent_docs/CONVENTIONS.md`
-- `agent_docs/TESTING.md`
-- `agent_docs/CAUTIONS.md`
-- `agent_docs/TECH_STACK.md`
-- `agent_docs/IMPLEMENTATION_PLAN.md`
-- `agent_docs/COMMIT_POLICY.md`
-- `agent_docs/USAGE.md`
-- `agent_docs/SELF_AUGMENTATION.md`
+- `.agent-harness/CONSTITUTION.md`
+- `.agent-harness/ARCHITECTURE.md`
+- `.agent-harness/CONVENTIONS.md`
+- `.agent-harness/TESTING.md`
+- `.agent-harness/CAUTIONS.md`
+- `.agent-harness/TECH_STACK.md`
+- `.agent-harness/ADR.md`
+- `.agent-harness/COMMIT_POLICY.md`
+- `.agent-harness/OPERATIONS.md`
+- `skills/self-augment/SELF_AUGMENTATION.md`
 - `skills/atomic-commit-push`
 - user-level Codex/Claude skill 경로가 `skills/atomic-commit-push` 단일 원본을 참조
 - project-local skill 연결은 기본 설치에서 제외하고 명시적 attach/project-local 모드로만 생성
@@ -113,7 +113,7 @@ go build ./cmd/harness
 Deliverables:
 
 - workspace root detection
-- `AGENTS.md`/`CLAUDE.md`/`agent_docs` indexer
+- `AGENTS.md`/`CLAUDE.md`/`.agent-harness` indexer
 - state checkpoint read/write/list/prune/doctor/migrate API
 - command policy model(type only, runner는 fake 우선)
 - JSON DTO와 error code 정리
@@ -137,7 +137,7 @@ Deliverables:
   - harness inspect/docs/state/policy/self-verify/self-augment tools
   - `daemon_status`
 - CLI DTO와 MCP response 공유
-- Claude Code MCP config template + SessionStart hook helper template
+- Claude Code MCP config template + hook helper template
 
 Acceptance criteria:
 
@@ -181,7 +181,7 @@ Acceptance criteria:
 
 ### Phase 6 — Claude Code adapter
 
-상태: `internal/adapter/claude`가 `port.HostInstaller`를 구현한다. 기본 설치는 `~/.claude/skills`, Claude user SessionStart hook, user-scope MCP 등록 경로만 사용한다. `.claude/skills`, `.claude/settings.json`, `.mcp.json` 같은 repo-local 파일은 명시적 `--project-local`에서만 쓴다.
+상태: `internal/adapter/claude`가 `port.HostInstaller`를 구현한다. 기본 설치는 `~/.claude/skills`와 user-scope MCP 등록 경로를 사용한다. `.claude/skills`, `.claude/settings.json`, `.mcp.json` 같은 repo-local 파일은 명시적 `--project-local`에서만 쓴다.
 
 Deliverables:
 
@@ -217,7 +217,7 @@ Acceptance criteria:
 처음 구현할 MVP는 다음으로 제한한다.
 
 1. `harness inspect --json`
-2. agent docs index
+2. project docs index
 3. state checkpoint read/write/list/prune/doctor/migrate
 4. command policy type과 fake runner
 5. MCP `inspect`/`state` tools
@@ -256,3 +256,10 @@ MVP에서 제외:
 ## LLM Wiki 정책
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
+
+## ADR note: MCP-backed project memory records
+
+- Decision: CAUTIONS and ADR records should be appended through `project_docs_record` MCP when an agent solves a concrete problem or makes a decision with rationale.
+- Rationale: this keeps durable project knowledge in repo-local markdown while giving agents a precise tool-use situation.
+- Rejected: relying only on session memory or always-on context injection, because it is less durable and can overfill context.
+- Consequence: record writes must stay append-only, narrow, and test-covered.

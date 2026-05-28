@@ -1,8 +1,9 @@
 # 프로젝트 헌법
 
-이 문서는 `agent-harness`에서 코드·문서·설정 변경 시 따라야 할 상위 원칙이다.
-구체적인 구현 규칙은 `agent_docs/CONVENTIONS.md`, 테스트 규칙은 `agent_docs/TESTING.md`, 반복 실수 방지는
-`agent_docs/CAUTIONS.md`, 기술 스택과 명령어는 `agent_docs/TECH_STACK.md`를 따른다.
+이 문서는 `agent-harness`에서 코드·문서·설정 변경 시 따라야 할 프로젝트 고유 원칙이다.
+일반적인 LLM 코딩 행동 지침(추측 금지, 단순성, surgical changes, goal-driven verification)은 `AGENTS.md` 최상단을 따른다. 이 문서는 그 내용을 반복하지 않고, 하네스 구조·보안·검증 불변식만 추가로 정의한다.
+구체적인 구현 규칙은 `.agent-harness/CONVENTIONS.md`, 테스트 규칙은 `.agent-harness/TESTING.md`, 반복 실수 방지는
+`.agent-harness/CAUTIONS.md`, 기술 스택과 명령어는 `.agent-harness/TECH_STACK.md`를 따른다.
 
 ---
 
@@ -14,11 +15,11 @@
 2. 가장 가까운 범위의 `AGENTS.md` 또는 `CLAUDE.md`
 3. 루트 `AGENTS.md`
 4. 이 문서의 안전·정확성·설계 원칙
-5. `agent_docs/CAUTIONS.md`의 장애/회귀 방지 규칙
-6. `agent_docs/CONVENTIONS.md`의 구현 컨벤션
-7. `agent_docs/TESTING.md`의 테스트 작성·검증 규칙
-8. `agent_docs/TECH_STACK.md`의 기술 스택·명령어 설명
-9. `agent_docs/ARCHITECTURE.md`, `agent_docs/IMPLEMENTATION_PLAN.md`, README, 과거 계획 문서
+5. `.agent-harness/CAUTIONS.md`의 장애/회귀 방지 규칙
+6. `.agent-harness/CONVENTIONS.md`의 구현 컨벤션
+7. `.agent-harness/TESTING.md`의 테스트 작성·검증 규칙
+8. `.agent-harness/TECH_STACK.md`의 기술 스택·명령어 설명
+9. `.agent-harness/ARCHITECTURE.md`, `.agent-harness/ADR.md`, README, 과거 계획 문서
 
 문서와 현재 코드/설정이 어긋나면 현재 코드와 설정 파일을 source of truth로 확인하고, 작업 범위에 포함되면 문서를 함께 최신화한다.
 
@@ -91,11 +92,11 @@ Human CLI          ┘                                      ├─> fs/git/proce
 
 ---
 
-## 제5장: 검증 원칙
+## 제5장: 하네스 검증 불변식
 
-- 완료 주장은 fresh verification 이후에만 한다.
+`AGENTS.md`의 Goal-Driven Execution 원칙을 기본으로 하고, 이 저장소에서는 변경 범위별로 다음 하네스 특화 검증을 추가한다.
+
 - 문서 변경은 파일 존재, 링크/경로, grep 기반 결정 사항 확인으로 검증한다.
 - Go 코드 변경은 영향 범위에 맞게 `go test ./... -count=1`, `go test -race ./...`, `go build ./cmd/harness`를 실행한다.
 - CLI/MCP contract 변경은 JSON schema/golden test와 실제 command smoke test를 남긴다.
 - worker 변경은 timeout, cancellation, stale lock, concurrent request 테스트를 포함한다.
-- 실행하지 못한 검증은 완료 보고에 이유와 대체 확인을 명시한다.

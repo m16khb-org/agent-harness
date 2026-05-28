@@ -17,7 +17,7 @@ func TestDocsIndexIncludesAgentDocs(t *testing.T) {
 	if !index.OK {
 		t.Fatalf("DocsIndex ok=false: %+v", index)
 	}
-	for _, want := range []string{"AGENTS.md", "CLAUDE.md", "agent_docs/COMMIT_POLICY.md", "agent_docs/USAGE.md"} {
+	for _, want := range []string{"AGENTS.md", "CLAUDE.md", ".agent-harness/COMMIT_POLICY.md", ".agent-harness/OPERATIONS.md"} {
 		if !docIndexContains(index.Docs, want) {
 			t.Fatalf("DocsIndex missing %s: %+v", want, index.Docs)
 		}

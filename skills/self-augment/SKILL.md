@@ -1,42 +1,42 @@
 ---
 name: self-augment
-description: "Run the 자가 증강 루프 for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose necessary feature, performance, quality, or documentation improvements, implement one safe high-value diff, and verify it with the 자기 검증 루프. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95점 gate loops, or to decide and execute the next valuable improvement."
+description: "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement."
 ---
 
-# 자가 증강 루프
+# Self-augmentation loop
 
-## 목표
+## Goal
 
-레포를 실제로 더 좋아지게 만드는 개선을 스스로 후보화, 선택, 구현, 검증한다. 단순 분석 보고서나 테스트 실행만으로는 완료가 아니다.
+Autonomously identify, select, implement, and verify one improvement that makes the repository materially better. A report-only analysis or test-only run is not enough.
 
-## 필수 구분
+## Required distinction
 
-- **자기 검증 루프**: 서비스/하네스가 의도대로 동작하는지 테스트와 QA를 포함해 확인한다. 기본 명령은 `./bin/harness self-verify --iterations=10 --target-score=95 --json`이다.
-- **자가 증강 루프**: 필요한 기능 추가, 성능 개선, 품질/문서 개선 중 하나를 직접 구현하고 자기 검증 루프로 검증한다.
+- **Self-verification loop**: verifies that the service/harness behaves as intended, including tests and QA. Default command: `./bin/harness self-verify --iterations=10 --target-score=95 --json`.
+- **Self-augmentation loop**: directly implements one needed feature, performance improvement, quality improvement, or documentation improvement, then verifies it with the self-verification loop.
 
-## 종료 조건
+## Exit criteria
 
-종료하려면 아래 목표가 모두 `target_score`를 초과해야 한다. 기본 target은 95점이며, 95점 이하이면 계속 개선하거나 실패 원인을 보고한다.
+Completion requires all goals below to exceed `target_score`. The default target is 95. If any score is 95 or below, keep improving or report the blocker.
 
-1. 개선 목표 선별: repo evidence와 `GENIUS_THINK.md`를 사용해 10개 이상 후보를 만들고, 가치/실현 가능성/위험을 점수화한다.
-2. 개선 구현: 선택 후보가 실제 코드/문서/스킬 diff로 반영된다. cosmetic-only 변경은 제외한다.
-3. 검증·QA: 타깃 테스트, QA 단계, `self-verify`가 통과한다.
-4. 학습 기록: 결정, 실패 교훈, 다음 개선 후보를 state/docs 중 적절한 곳에 남긴다.
+1. Improvement selection: use repo evidence and `GENIUS_THINK.md` to produce at least 10 candidates, then score value, feasibility, and risk.
+2. Implementation: the selected candidate appears as an actual code, docs, or skill diff. Cosmetic-only changes do not count.
+3. Verification and QA: targeted tests, QA checks, and `self-verify` pass.
+4. Learning capture: record decisions, failure lessons, and next candidates in state or docs where appropriate.
 
 ## Workflow
 
 1. **Baseline**
-   - Read nearest `AGENTS.md`/`CLAUDE.md`, `GENIUS_THINK.md`, and `agent_docs/SELF_AUGMENTATION.md` when present.
+   - Read the nearest `AGENTS.md`/`CLAUDE.md`, `GENIUS_THINK.md`, and `skills/self-augment/SELF_AUGMENTATION.md` when present.
    - Run or inspect `./bin/harness self-augment --json` for the current candidate curriculum.
    - Use `./bin/harness self-augment --save-state --state-key self-augment-latest --json` when the selected plan should become durable memory for the next cycle.
    - Use `./bin/harness self-augment lesson --lesson "..." --next-action "..." --json` to store reusable Reflexion lessons.
-   - Run a baseline 자기 검증 루프 when feasible; otherwise capture why it cannot run.
+   - Run a baseline self-verification loop when feasible; otherwise capture why it cannot run.
 
 2. **Candidate curriculum**
    - Generate at least 10 concrete improvement candidates.
-   - Use at least two `GENIUS_THINK.md` formulas, preferring 문제 재정의, 혁신적 솔루션, 사고의 진화, 복잡성 해결.
+   - Use at least two `GENIUS_THINK.md` formulas, preferring problem reframing, innovative solution generation, thought evolution, and complexity resolution.
    - Score each candidate by impact, feasibility, novelty, risk, verification cost, and user value.
-   - Treat candidates marked `already_satisfied` by the planner as audit history only; select the highest-value `open` candidate so repeated 자가 증강 cycles keep moving to the next necessary improvement.
+   - Treat candidates marked `already_satisfied` by the planner as audit history only; select the highest-value `open` candidate so repeated cycles keep moving to the next necessary improvement.
    - Prefer high-value, low-risk, reversible improvements over broad rewrites.
 
 3. **Select and implement**
@@ -54,5 +54,9 @@ description: "Run the 자가 증강 루프 for agent-harness or another reposito
    - Finish with `./bin/harness self-verify --iterations=10 --target-score=95 --json` when practical.
 
 6. **Capture**
-   - Store durable lessons only when reusable: `harness state`, `agent_docs/`; prefer `self-augment --save-state` for the selected candidate curriculum and `self-augment lesson` for reusable failure/QA/design lessons.
+   - Store durable lessons only when reusable: `harness state`, `.agent-harness/`; prefer `self-augment --save-state` for the selected candidate curriculum and `self-augment lesson` for reusable failure/QA/design lessons.
    - Final report includes selected candidate, implemented diff, goal scores, verification evidence, and remaining risk.
+
+## Reference
+
+For the detailed loop contract and research rationale, read `SELF_AUGMENTATION.md` in this skill directory. The self-verification candidate catalog in `skills/self-verify/CANDIDATES.md` is the source of truth.

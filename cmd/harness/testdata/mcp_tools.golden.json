@@ -42,12 +42,239 @@
     "name": "skill_manifest"
   },
   {
-    "description": "Return a lightweight index of AGENTS.md, CLAUDE.md, GENIUS_THINK.md, and agent_docs markdown files: relative path, title, headings, and byte size.",
+    "description": "Return a lightweight index of AGENTS.md, CLAUDE.md, GENIUS_THINK.md, .agent-harness markdown files, and self-* skill docs: relative path, title, headings, and byte size.",
     "inputSchema": {
       "properties": {},
       "type": "object"
     },
     "name": "docs_index"
+  },
+  {
+    "description": "Given a task, return the project AGENTS.md and .agent-harness documents an agent should read before working.",
+    "inputSchema": {
+      "properties": {
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        },
+        "task": {
+          "description": "Task description such as commit, test, architecture, dependency, deploy, or general.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "project_docs_route"
+  },
+  {
+    "description": "Dry-run the project docs bootstrap that creates or updates AGENTS.md and .agent-harness/*.md from repository evidence. This tool never writes files.",
+    "inputSchema": {
+      "properties": {
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "project_docs_bootstrap_plan"
+  },
+  {
+    "description": "Read one allowed .agent-harness project document and return its content plus SHA-256. Use before project_docs_update so autonomous doc refreshes preserve user consensus and avoid stale overwrites.",
+    "inputSchema": {
+      "properties": {
+        "rel_path": {
+          "description": "Allowed project doc path, for example .agent-harness/TESTING.md or TESTING.md.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rel_path"
+      ],
+      "type": "object"
+    },
+    "name": "project_docs_read"
+  },
+  {
+    "description": "Update one allowed .agent-harness project document after reading repo evidence and preserving user consensus. Dry-run unless confirm=true. Existing files require expected_sha256 from project_docs_read. Do not use for solved false cases or ADR entries; use project_docs_record there.",
+    "inputSchema": {
+      "properties": {
+        "confirm": {
+          "description": "Set true to write. Omit or false for dry-run preview.",
+          "type": "boolean"
+        },
+        "content": {
+          "description": "Full replacement content for the one document. Preserve stronger existing local guidance and user decisions.",
+          "type": "string"
+        },
+        "evidence": {
+          "description": "Files, commands, tests, or user instructions that justify the update.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "expected_sha256": {
+          "description": "SHA-256 returned by project_docs_read. Required when the file exists.",
+          "type": "string"
+        },
+        "rel_path": {
+          "description": "Allowed project doc path under .agent-harness, for example .agent-harness/OPERATIONS.md.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        },
+        "summary": {
+          "description": "Short reason for the update and how it maintains current consensus.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rel_path",
+        "content",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "name": "project_docs_update"
+  },
+  {
+    "description": "Append a durable project note to .agent-harness/CAUTIONS.md after a solved problem/false case, or to .agent-harness/ADR.md after a decision with rationale. Use only when there is a concrete issue resolved or decision made; this tool writes files.",
+    "inputSchema": {
+      "properties": {
+        "alternatives": {
+          "description": "Rejected alternatives or tradeoffs.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "consequences": {
+          "description": "Expected follow-up consequences for ADR records.",
+          "type": "string"
+        },
+        "context": {
+          "description": "Relevant context or trigger.",
+          "type": "string"
+        },
+        "decision": {
+          "description": "Chosen decision; use for ADR records.",
+          "type": "string"
+        },
+        "evidence": {
+          "description": "Commands, files, tests, or source evidence.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "description": "caution for solved problems/false cases; adr for decisions.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Target repository path. Defaults to current directory.",
+          "type": "string"
+        },
+        "resolution": {
+          "description": "How the problem was solved; use for caution records.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Calling workflow or agent source.",
+          "type": "string"
+        },
+        "summary": {
+          "description": "One-sentence summary of the issue or decision.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Short record title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "title",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "name": "project_docs_record"
+  },
+  {
+    "description": "Run the API documentation review gate on staged or explicit controller/DTO/handler/OpenAPI files. By default it reviews only git staged API candidate files and does not fail unrelated legacy Swagger/OpenAPI debt. Use for endpoint, controller, DTO, schema, or OpenAPI changes.",
+    "inputSchema": {
+      "properties": {
+        "all": {
+          "description": "When true, review all tracked API candidate files. Default false keeps scope to staged changes.",
+          "type": "boolean"
+        },
+        "diff_file": {
+          "description": "Optional file containing a diff to review instead of git diff --cached.",
+          "type": "string"
+        },
+        "files": {
+          "description": "Explicit API candidate files. Omit to use staged controller/DTO/handler/OpenAPI files.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "model": {
+          "description": "Codex model. Defaults to gpt-5.5.",
+          "type": "string"
+        },
+        "prompt_file": {
+          "description": "Optional project-specific Swagger/OpenAPI rules.",
+          "type": "string"
+        },
+        "reasoning": {
+          "description": "Codex reasoning effort. Defaults to medium.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Target git repository path. Defaults to current directory.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Timeout such as 3m. Defaults to 3m.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "api_doc_review"
+  },
+  {
+    "description": "Run deterministic API documentation checks for syntax-level Swagger/OpenAPI omissions such as missing operation descriptions, params, body/query/header docs, 400/401 responses, and NestJS DTO decorators. Use before api_doc_review.",
+    "inputSchema": {
+      "properties": {
+        "all": {
+          "description": "When true, check all tracked API candidate files. Default false keeps scope to staged changes.",
+          "type": "boolean"
+        },
+        "files": {
+          "description": "Explicit API candidate files. Omit to use staged controller/DTO/handler/OpenAPI files.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repo": {
+          "description": "Target git repository path. Defaults to current directory.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "api_doc_static_check"
   },
   {
     "description": "Evaluate whether an argv-based command request is allowed by the harness command policy without executing it.",
@@ -256,7 +483,7 @@
     "name": "daemon_status"
   },
   {
-    "description": "Plan the 자가 증강 루프: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to harness state for durable Reflexion-style memory.",
+    "description": "Plan the self-augmentation loop: use GENIUS_THINK.md, repo signals, and research-backed strategies to choose concrete feature/performance/quality improvements. The native skill performs implementation; this tool exposes the scoring contract and candidate curriculum, and can persist the chosen plan to harness state for durable Reflexion-style memory.",
     "inputSchema": {
       "properties": {
         "cycles": {
@@ -281,7 +508,7 @@
     "name": "self_augment"
   },
   {
-    "description": "Store a Reflexion-style 자가 증강 lesson in harness state for durable cross-session learning.",
+    "description": "Store a Reflexion-style self-augmentation lesson in harness state for durable cross-session learning.",
     "inputSchema": {
       "properties": {
         "candidate_id": {
@@ -318,7 +545,7 @@
     "name": "self_augment_lesson"
   },
   {
-    "description": "Run the 자기 검증 루프: at least 10 seeded iterations of tests, risk-tier QA, build, CLI/MCP schema and response contract golden checks, command policy, MCP, state roundtrip, native integration, and git preflight fuzz checks. Termination requires every concrete goal score to be greater than target_score.",
+    "description": "Run the self-verification loop: at least 10 seeded iterations of tests, risk-tier QA, build, CLI/MCP schema and response contract golden checks, command policy, MCP, state roundtrip, native integration, and git preflight fuzz checks. Termination requires every concrete goal score to be greater than target_score.",
     "inputSchema": {
       "properties": {
         "iterations": {
@@ -347,7 +574,7 @@
     "name": "self_verify"
   },
   {
-    "description": "Export the 자기 검증 루프 improvement candidate curriculum, including open/satisfied IDs and the next selected candidate.",
+    "description": "Export the self-verification loop improvement candidate curriculum, including open/satisfied IDs and the next selected candidate.",
     "inputSchema": {
       "properties": {
         "save_state": {
@@ -364,7 +591,7 @@
     "name": "self_verify_candidates"
   },
   {
-    "description": "List saved 자기 검증 루프 summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
+    "description": "List saved self-verification loop summary checkpoints from harness state, sorted by snapshot generation time for quick baseline/candidate discovery.",
     "inputSchema": {
       "properties": {
         "confirm": {
@@ -393,7 +620,7 @@
     "name": "self_verify_history"
   },
   {
-    "description": "Compare two saved 자기 검증 루프 summary checkpoints from harness state and report elapsed-time, failed-step, step-label, and goal-score regressions.",
+    "description": "Compare two saved self-verification loop summary checkpoints from harness state and report elapsed-time, failed-step, step-label, and goal-score regressions.",
     "inputSchema": {
       "properties": {
         "baseline_key": {
@@ -418,7 +645,7 @@
     "name": "self_verify_compare"
   },
   {
-    "description": "Promote a saved 자기 검증 루프 summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
+    "description": "Promote a saved self-verification loop summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
     "inputSchema": {
       "properties": {
         "baseline_key": {

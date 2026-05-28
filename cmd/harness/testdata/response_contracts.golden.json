@@ -3,26 +3,260 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 8474,
+          "bytes": 9565,
+          "headings": [
+            "agent-harness 구현 계획",
+            "1. 최종 결정",
+            "1.1 Plugin 방식 vs 외부 worker 방식",
+            "1.2 언어 선택",
+            "2. 목표 아키텍처",
+            "3. Phase별 계획",
+            "Phase 0 — 문서 기반 세팅",
+            "Phase 1 — Go 프로젝트 부트스트랩",
+            "Phase 2 — Core capability MVP",
+            "Phase 3 — MCP stdio proxy/server",
+            "Phase 4 — Local job worker daemon",
+            "Phase 5 — Codex adapter",
+            "Phase 6 — Claude Code adapter",
+            "Phase 7 — Hardening / release",
+            "4. MVP 범위",
+            "5. 주요 위험과 대응",
+            "6. 다음 작업 제안",
+            "LLM Wiki 정책",
+            "ADR note: MCP-backed project memory records"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
+          "rel_path": ".agent-harness/ADR.md",
+          "title": "agent-harness 구현 계획"
+        },
+        {
+          "bytes": 4977,
+          "headings": [
+            "Agent Workflow",
+            "Start",
+            "Work",
+            "Verify",
+            "Finish",
+            "UserPromptSubmit hook",
+            "MCP Usage Rule",
+            ".agent-harness Upkeep via MCP",
+            "Evidence-backed MCP Heuristics",
+            "API documentation gate",
+            "OpenAPI prompt source"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/AGENT_WORKFLOW.md",
+          "rel_path": ".agent-harness/AGENT_WORKFLOW.md",
+          "title": "Agent Workflow"
+        },
+        {
+          "bytes": 13167,
+          "headings": [
+            "agent-harness 아키텍처",
+            "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
+            "2. Target Architecture",
+            "Core engine / port / host adapter 구조",
+            "3. 실행 모드",
+            "4. Planned package boundaries",
+            "5. Docs / state / config / logs",
+            "6. Command / policy model",
+            "7. Codex / Claude integration map",
+            "8. 변경 체크리스트",
+            "LLM Wiki 정책",
+            "MCP tool design guidance"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/ARCHITECTURE.md",
+          "rel_path": ".agent-harness/ARCHITECTURE.md",
+          "title": "agent-harness 아키텍처"
+        },
+        {
+          "bytes": 5420,
+          "headings": [
+            "주의사항 모음",
+            "1. Host-specific lock-in",
+            "2. Plugin-only 착각",
+            "3. 위험한 shell 실행",
+            "4. Secret leakage",
+            "5. Worker lifecycle 문제",
+            "6. State 위치 혼동",
+            "7. MCP schema drift",
+            "8. Shared skill drift",
+            "9. 자기 검증/자가 증강 drift",
+            "10. 과도한 초기 추상화",
+            "11. LLM Wiki 재구현 금지",
+            "12. Daemon lifecycle drift",
+            "MCP tool-use risks"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
+          "rel_path": ".agent-harness/CAUTIONS.md",
+          "title": "주의사항 모음"
+        },
+        {
+          "bytes": 2945,
+          "headings": [
+            "커밋 메시지 정책: Conventional + Lore Hybrid",
+            "1. 기본 형식",
+            "2. Subject 규칙",
+            "3. Lore body 규칙",
+            "4. Atomic commit과의 관계"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
+          "rel_path": ".agent-harness/COMMIT_POLICY.md",
+          "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
+        },
+        {
+          "bytes": 4930,
+          "headings": [
+            "프로젝트 헌법",
+            "제0장: 문서 우선순위",
+            "제1장: 언어 규칙",
+            "제2장: 안전 / 정확성 우선",
+            "제3장: 아키텍처 원칙",
+            "제4장: 설계 3원칙",
+            "KISS",
+            "DRY",
+            "YAGNI",
+            "제5장: 하네스 검증 불변식"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
+          "rel_path": ".agent-harness/CONSTITUTION.md",
+          "title": "프로젝트 헌법"
+        },
+        {
+          "bytes": 11897,
+          "headings": [
+            "구현 컨벤션",
+            "1. 네이밍 / 구조",
+            "2. 레이어 경계",
+            "3. CLI 컨벤션",
+            "4. MCP 컨벤션",
+            "5. Worker 컨벤션",
+            "6. Config / env",
+            "7. Logging / secret hygiene",
+            "8. Dependency 원칙",
+            "9. Shared Skill 컨벤션",
+            "10. 커밋 메시지 컨벤션",
+            "API Documentation Gate",
+            "Project Docs Bootstrap 컨벤션",
+            "API Documentation Convention",
+            "Single-object response convention",
+            "SOLID / Design Pattern 적용 지침",
+            "좋은 케이스",
+            "나쁜 케이스",
+            "적용 규칙",
+            "Hook 컨벤션"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
+          "rel_path": ".agent-harness/CONVENTIONS.md",
+          "title": "구현 컨벤션"
+        },
+        {
+          "bytes": 3264,
+          "headings": [
+            "OpenAPI Spec Guidance",
+            "Purpose",
+            "Gate order",
+            "또는 통합 실행",
+            "Static omissions to block",
+            "Agent review prompt",
+            "Clean Swagger style",
+            "Single-object response shape"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
+          "rel_path": ".agent-harness/OPEN_API_SPEC.md",
+          "title": "OpenAPI Spec Guidance"
+        },
+        {
+          "bytes": 13757,
+          "headings": [
+            "하네스 사용법",
+            "1. 설치/갱신",
+            "2. Codex에서 사용",
+            "Native skills",
+            "MCP",
+            "UserPromptSubmit hook",
+            "3. Claude Code에서 사용",
+            "Native skills",
+            "MCP",
+            "Claude hooks",
+            "4. CLI로 직접 사용",
+            "5. MCP smoke test",
+            "6. 자기 검증 루프 / 자가 증강 루프 요약",
+            "7. API Documentation Pre-commit Review",
+            "Review staged API docs/endpoint changes in the current repo",
+            "JSON output for hooks/CI",
+            "Explicit files from lint-staged/pre-commit",
+            "Add project-specific conventions without changing harness core",
+            "8. Project Docs Bootstrap",
+            "9. LLM Wiki 정책"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
+          "rel_path": ".agent-harness/OPERATIONS.md",
+          "title": "하네스 사용법"
+        },
+        {
+          "bytes": 5069,
+          "headings": [
+            "기술 스택",
+            "1. 언어 선택",
+            "2. 런타임 / 패키지 관리",
+            "3. 예상 라이브러리 후보",
+            "4. 예정 명령어",
+            "5. 주요 설정/상태 위치",
+            "Native integration 확인"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
+          "rel_path": ".agent-harness/TECH_STACK.md",
+          "title": "기술 스택"
+        },
+        {
+          "bytes": 13330,
+          "headings": [
+            "테스트 컨벤션",
+            "1. 현재 문서 단계 검증",
+            "2. Go 코드 변경 기본 검증",
+            "3. 테스트 작성 기준",
+            "Well-structured tests",
+            "Poorly-structured tests",
+            "4. Contract / Golden tests",
+            "5. 완료 보고 기준",
+            "자기 검증 QA gate",
+            "LLM Wiki 정책",
+            "API documentation checks",
+            "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",
+            "Business logic error response coverage",
+            "Agent-backed verification boundary",
+            "OpenAPI prompt source"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
+          "rel_path": ".agent-harness/TESTING.md",
+          "title": "테스트 컨벤션"
+        },
+        {
+          "bytes": 11065,
           "headings": [
             "AGENTS.md",
-            "1. 작업 원칙",
-            "2. 프로젝트 결정 요약",
-            "3. Required Reading / Agent Docs",
-            "4. Working Contract",
-            "5. Planned Directory Map",
-            "6. Essential Commands",
-            "7. Critical Invariants",
-            "8. Manual Notes"
+            "1. Think Before Coding",
+            "2. Simplicity First",
+            "3. Surgical Changes",
+            "4. Goal-Driven Execution",
+            "5. 프로젝트 결정 요약",
+            "6. Required Reading / Agent Docs",
+            "7. Working Contract",
+            "8. Planned Directory Map",
+            "9. Essential Commands",
+            "10. Critical Invariants",
+            "11. Manual Notes",
+            "12. API Documentation Gate"
           ],
           "path": "$HARNESS_ROOT/AGENTS.md",
           "rel_path": "AGENTS.md",
           "title": "AGENTS.md"
         },
         {
-          "bytes": 746,
+          "bytes": 1140,
           "headings": [
-            "CLAUDE.md"
+            "CLAUDE.md",
+            "API docs"
           ],
           "path": "$HARNESS_ROOT/CLAUDE.md",
           "rel_path": "CLAUDE.md",
@@ -57,214 +291,65 @@
           "title": "Mermaid 다이어그램 작성 가이드라인"
         },
         {
-          "bytes": 11413,
+          "bytes": 7230,
           "headings": [
-            "agent-harness 아키텍처",
-            "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
-            "2. Target Architecture",
-            "Core engine / port / host adapter 구조",
-            "3. 실행 모드",
-            "4. Planned package boundaries",
-            "5. Docs / state / config / logs",
-            "6. Command / policy model",
-            "7. Codex / Claude integration map",
-            "8. 변경 체크리스트",
-            "LLM Wiki 정책"
+            "Self-verification and self-augmentation loops",
+            "1. Self-verification loop",
+            "Purpose",
+            "CLI/MCP surface",
+            "Required steps",
+            "Score goals",
+            "2. Self-augmentation loop",
+            "Purpose",
+            "Surface",
+            "Exit goals",
+            "GENIUS_THINK.md usage",
+            "3. External strategies adopted",
+            "4. Operating rules"
           ],
-          "path": "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
-          "rel_path": "agent_docs/ARCHITECTURE.md",
-          "title": "agent-harness 아키텍처"
+          "path": "$HARNESS_ROOT/skills/self-augment/SELF_AUGMENTATION.md",
+          "rel_path": "skills/self-augment/SELF_AUGMENTATION.md",
+          "title": "Self-verification and self-augmentation loops"
         },
         {
-          "bytes": 4991,
+          "bytes": 4571,
           "headings": [
-            "주의사항 모음",
-            "1. Host-specific lock-in",
-            "2. Plugin-only 착각",
-            "3. 위험한 shell 실행",
-            "4. Secret leakage",
-            "5. Worker lifecycle 문제",
-            "6. State 위치 혼동",
-            "7. MCP schema drift",
-            "8. Shared skill drift",
-            "9. 자기 검증/자가 증강 drift",
-            "10. 과도한 초기 추상화",
-            "11. LLM Wiki 재구현 금지",
-            "12. Daemon lifecycle drift"
+            "Self-augmentation loop",
+            "Goal",
+            "Required distinction",
+            "Exit criteria",
+            "Workflow",
+            "Reference"
           ],
-          "path": "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
-          "rel_path": "agent_docs/CAUTIONS.md",
-          "title": "주의사항 모음"
+          "path": "$HARNESS_ROOT/skills/self-augment/SKILL.md",
+          "rel_path": "skills/self-augment/SKILL.md",
+          "title": "Self-augmentation loop"
         },
         {
-          "bytes": 2945,
+          "bytes": 5312,
           "headings": [
-            "커밋 메시지 정책: Conventional + Lore Hybrid",
-            "1. 기본 형식",
-            "2. Subject 규칙",
-            "3. Lore body 규칙",
-            "4. Atomic commit과의 관계"
+            "Self-verification candidate catalog",
+            "Current evidence",
+            "Candidate generation method",
+            "Candidate list",
+            "Completion criteria"
           ],
-          "path": "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
-          "rel_path": "agent_docs/COMMIT_POLICY.md",
-          "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
+          "path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
+          "rel_path": "skills/self-verify/CANDIDATES.md",
+          "title": "Self-verification candidate catalog"
         },
         {
-          "bytes": 4603,
+          "bytes": 1425,
           "headings": [
-            "프로젝트 헌법",
-            "제0장: 문서 우선순위",
-            "제1장: 언어 규칙",
-            "제2장: 안전 / 정확성 우선",
-            "제3장: 아키텍처 원칙",
-            "제4장: 설계 3원칙",
-            "KISS",
-            "DRY",
-            "YAGNI",
-            "제5장: 검증 원칙"
+            "Self-verification loop",
+            "Goal",
+            "Commands",
+            "Gate",
+            "Candidate catalog"
           ],
-          "path": "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
-          "rel_path": "agent_docs/CONSTITUTION.md",
-          "title": "프로젝트 헌법"
-        },
-        {
-          "bytes": 7379,
-          "headings": [
-            "구현 컨벤션",
-            "1. 네이밍 / 구조",
-            "2. 레이어 경계",
-            "3. CLI 컨벤션",
-            "4. MCP 컨벤션",
-            "5. Worker 컨벤션",
-            "6. Config / env",
-            "7. Logging / secret hygiene",
-            "8. Dependency 원칙",
-            "9. Shared Skill 컨벤션",
-            "10. 커밋 메시지 컨벤션",
-            "API Documentation Gate"
-          ],
-          "path": "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
-          "rel_path": "agent_docs/CONVENTIONS.md",
-          "title": "구현 컨벤션"
-        },
-        {
-          "bytes": 9023,
-          "headings": [
-            "agent-harness 구현 계획",
-            "1. 최종 결정",
-            "1.1 Plugin 방식 vs 외부 worker 방식",
-            "1.2 언어 선택",
-            "2. 목표 아키텍처",
-            "3. Phase별 계획",
-            "Phase 0 — 문서 기반 세팅",
-            "Phase 1 — Go 프로젝트 부트스트랩",
-            "Phase 2 — Core capability MVP",
-            "Phase 3 — MCP stdio proxy/server",
-            "Phase 4 — Local job worker daemon",
-            "Phase 5 — Codex adapter",
-            "Phase 6 — Claude Code adapter",
-            "Phase 7 — Hardening / release",
-            "4. MVP 범위",
-            "5. 주요 위험과 대응",
-            "6. 다음 작업 제안",
-            "LLM Wiki 정책"
-          ],
-          "path": "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
-          "rel_path": "agent_docs/IMPLEMENTATION_PLAN.md",
-          "title": "agent-harness 구현 계획"
-        },
-        {
-          "bytes": 9261,
-          "headings": [
-            "자기 검증 루프와 자가 증강 루프",
-            "1. 자기 검증 루프",
-            "목적",
-            "CLI/MCP 표면",
-            "포함 단계",
-            "점수 목표",
-            "2. 자가 증강 루프",
-            "목적",
-            "표면",
-            "종료 목표",
-            "GENIUS_THINK.md 사용",
-            "3. 외부 전략에서 채택한 점",
-            "4. 운영 규칙"
-          ],
-          "path": "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
-          "rel_path": "agent_docs/SELF_AUGMENTATION.md",
-          "title": "자기 검증 루프와 자가 증강 루프"
-        },
-        {
-          "bytes": 9907,
-          "headings": [
-            "자기 검증 루프 후보 발굴 기록",
-            "1. 확인한 현재 상태",
-            "2. 후보 생성 공식",
-            "3. 후보 목록",
-            "4. 추천 실행 순서",
-            "5. 완료 기준"
-          ],
-          "path": "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
-          "rel_path": "agent_docs/SELF_VERIFICATION_CANDIDATES.md",
-          "title": "자기 검증 루프 후보 발굴 기록"
-        },
-        {
-          "bytes": 5383,
-          "headings": [
-            "기술 스택",
-            "1. 언어 선택",
-            "2. 런타임 / 패키지 관리",
-            "3. 예상 라이브러리 후보",
-            "4. 예정 명령어",
-            "5. 주요 설정/상태 위치",
-            "Native integration 확인",
-            "LLM Wiki 정책"
-          ],
-          "path": "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
-          "rel_path": "agent_docs/TECH_STACK.md",
-          "title": "기술 스택"
-        },
-        {
-          "bytes": 9100,
-          "headings": [
-            "테스트 컨벤션",
-            "1. 현재 문서 단계 검증",
-            "2. Go 코드 변경 기본 검증",
-            "3. 테스트 작성 기준",
-            "4. Contract / Golden tests",
-            "5. 완료 보고 기준",
-            "자기 검증 QA gate",
-            "LLM Wiki 정책"
-          ],
-          "path": "$HARNESS_ROOT/agent_docs/TESTING.md",
-          "rel_path": "agent_docs/TESTING.md",
-          "title": "테스트 컨벤션"
-        },
-        {
-          "bytes": 8198,
-          "headings": [
-            "하네스 사용법",
-            "1. 설치/갱신",
-            "2. Codex에서 사용",
-            "Native skills",
-            "MCP",
-            "3. Claude Code에서 사용",
-            "Native skills",
-            "MCP",
-            "SessionStart hook",
-            "4. CLI로 직접 사용",
-            "5. MCP smoke test",
-            "6. 자기 검증 루프 / 자가 증강 루프 요약",
-            "7. API Documentation Pre-commit Review",
-            "Review staged API docs/endpoint changes in the current repo",
-            "JSON output for hooks/CI",
-            "Explicit files from lint-staged/pre-commit",
-            "Add project-specific conventions without changing harness core",
-            "8. LLM Wiki 정책"
-          ],
-          "path": "$HARNESS_ROOT/agent_docs/USAGE.md",
-          "rel_path": "agent_docs/USAGE.md",
-          "title": "하네스 사용법"
+          "path": "$HARNESS_ROOT/skills/self-verify/SKILL.md",
+          "rel_path": "skills/self-verify/SKILL.md",
+          "title": "Self-verification loop"
         }
       ],
       "generated_at": "$TIMESTAMP",
@@ -274,20 +359,24 @@
     },
     "inspect": {
       "docs": [
+        "$HARNESS_ROOT/.agent-harness/ADR.md",
+        "$HARNESS_ROOT/.agent-harness/AGENT_WORKFLOW.md",
+        "$HARNESS_ROOT/.agent-harness/ARCHITECTURE.md",
+        "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
+        "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
+        "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
+        "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
+        "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
+        "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
+        "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
+        "$HARNESS_ROOT/.agent-harness/TESTING.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
         "$HARNESS_ROOT/GENIUS_THINK.md",
-        "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
-        "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
-        "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
-        "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
-        "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
-        "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
-        "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
-        "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
-        "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
-        "$HARNESS_ROOT/agent_docs/TESTING.md",
-        "$HARNESS_ROOT/agent_docs/USAGE.md"
+        "$HARNESS_ROOT/skills/self-augment/SELF_AUGMENTATION.md",
+        "$HARNESS_ROOT/skills/self-augment/SKILL.md",
+        "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
+        "$HARNESS_ROOT/skills/self-verify/SKILL.md"
       ],
       "generated_at": "$TIMESTAMP",
       "harness_root": "$HARNESS_ROOT",
@@ -312,11 +401,25 @@
           "path": "$HARNESS_ROOT/skills/atomic-commit-push"
         },
         {
-          "description": "Run the 자가 증강 루프 for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose necessary feature, performance, quality, or documentation improvements, implement one safe high-value diff, and verify it with the 자기 검증 루프. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95점 gate loops, or to decide and execute the next valuable improvement.",
+          "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "project-bootstrap",
+          "path": "$HARNESS_ROOT/skills/project-bootstrap"
+        },
+        {
+          "description": "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "self-augment",
           "path": "$HARNESS_ROOT/skills/self-augment"
+        },
+        {
+          "description": "Run or interpret the agent-harness self-verification loop. Use when the user asks to verify the harness, run the 95-point gate, inspect self-verification candidates, compare or promote verification baselines, or confirm CLI/MCP/native integration health.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "self-verify",
+          "path": "$HARNESS_ROOT/skills/self-verify"
         }
       ],
       "target_repo": "$WORKSPACE",
@@ -349,7 +452,7 @@
       "commit_style_hints": {
         "conventional_subjects": 1,
         "lore_bodies": 1,
-        "message_policy_doc_path": "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
+        "message_policy_doc_path": "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
         "recent_count": 1,
         "recommended": "conventional_subject_plus_lore_body"
       },
@@ -428,7 +531,7 @@
           ],
           "why_now": [
             "설치 방식과 host adapter가 늘면서 core/adapter 계약 회귀 가능성이 커졌다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -447,7 +550,7 @@
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "자가 증강 루프를 native skill 실행자로 제공해 실제 개선 diff를 생성",
+          "title": "Provide the self-augmentation loop as a native skill executor that creates real improvement diffs",
           "verify_with": [
             "skill quick_validate",
             "install-native",
@@ -456,7 +559,7 @@
           "why_now": [
             "Go CLI는 LLM 판단/코드 편집 주체가 아니므로 skill 표면이 필요하다",
             "Codex/Claude 공용 하네스 목적과 맞다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -475,14 +578,14 @@
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "자가 증강 후보·결정·실패 교훈을 state에 축적",
+          "title": "Accumulate self-augmentation candidates, decisions, and failure lessons in state",
           "verify_with": [
             "state roundtrip",
             "history/compare contract"
           ],
           "why_now": [
             "Reflexion식 언어 피드백을 다음 실행에 재사용하려면 durable memory가 필요하다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -508,7 +611,7 @@
           ],
           "why_now": [
             "문서 생성 시 Mermaid 파싱 오류를 반복 방지할 수 있다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -534,7 +637,7 @@
           ],
           "why_now": [
             "user/global 설치는 안전하지만 쓰기 전 preview가 있으면 신뢰도가 오른다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -557,7 +660,7 @@
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "자기 검증 루프와 자가 증강 루프를 분리하고 95점 초과 종료 게이트를 적용",
+          "title": "Separate self-verification and self-augmentation loops and enforce \u003e95 exit gates",
           "verify_with": [
             "go test ./...",
             "MCP/CLI golden",
@@ -566,7 +669,7 @@
           "why_now": [
             "현재 self-augment가 실제로는 검증 루프 역할을 한다",
             "사용자가 테스트와 QA 포함 및 95점 게이트를 요구했다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -592,7 +695,7 @@
           ],
           "why_now": [
             "현재 elapsed regression은 summary 단위라 병목 위치 추적이 약하다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -611,14 +714,14 @@
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "자기 검증 루프 summary를 QA 대시보드형 점수표로 확장",
+          "title": "Expand self-verification summaries into QA dashboard scorecards",
           "verify_with": [
             "response_contract golden",
             "self-verify --json schema inspection"
           ],
           "why_now": [
             "느린 step과 실패 위치만으로는 목표별 종료 판단이 부족하다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -637,14 +740,14 @@
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "위험도 기반 race/static QA tier를 자기 검증 루프에 조건부 연결",
+          "title": "Conditionally attach risk-based race/static QA tier to the self-verification loop",
           "verify_with": [
             "go test -race ./... -count=1",
             "targeted package tests"
           ],
           "why_now": [
             "모든 반복에서 race를 돌리면 과하지만 concurrency/policy 변경에는 필요하다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -663,13 +766,13 @@
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "자가 증강 실패 교훈을 state에 저장",
+          "title": "Store self-augmentation failure lessons in state",
           "verify_with": [
             "state_write/read"
           ],
           "why_now": [
             "반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
         {
@@ -688,25 +791,25 @@
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "다른 레포 자가 증강을 위한 workspace boundary sandbox 강화",
+          "title": "Harden workspace-boundary sandboxing for self-augmenting other repositories",
           "verify_with": [
             "command_policy_check",
             "temp repo integration tests"
           ],
           "why_now": [
             "하네스가 여러 레포에서 쓰이면 repo별 권한·상태 경계가 핵심이다",
-            "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+            "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         }
       ],
       "cycles": 1,
       "execution_protocol": [
-        "baseline: run 자기 검증 루프 and collect goal scores",
+        "baseline: run the self-verification loop and collect goal scores",
         "curriculum: generate at least 10 improvement candidates using GENIUS_THINK.md formulas and repo evidence",
         "selection: choose the highest score safe candidate, not the easiest cosmetic change",
         "implementation: edit code/docs/skills with small reversible diffs",
         "feedback: convert failures into Reflexion-style verbal lessons and retry within the cycle budget",
-        "termination: stop only when every 자가 증강 목표 and the 자기 검증 루프 goals score above target_score"
+        "termination: stop only when every self-augmentation goal and self-verification goal scores above target_score"
       ],
       "generated_at": "$TIMESTAMP",
       "genius_think_path": "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -737,7 +840,7 @@
           "target_score": 95
         },
         {
-          "description": "타깃 테스트, QA 스모크, 자기 검증 루프를 통과해야 한다.",
+          "description": "Targeted tests, QA smoke checks, and the self-verification loop must pass.",
           "evidence": [
             "go test",
             "QA gate",
@@ -753,7 +856,7 @@
           "description": "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
           "evidence": [
             "harness state",
-            "agent_docs"
+            ".agent-harness"
           ],
           "korean_name": "학습 기록",
           "name": "learning_capture",
@@ -767,7 +870,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 14,
+        "docs_indexed": 18,
         "has_adapter_contract_matrix": true,
         "has_genius_mermaid_lint": true,
         "has_genius_think": true,
@@ -784,7 +887,9 @@
         "has_self_verify_cli": true,
         "skills": [
           "atomic-commit-push",
-          "self-augment"
+          "project-bootstrap",
+          "self-augment",
+          "self-verify"
         ]
       },
       "research_influences": [
@@ -1142,7 +1247,7 @@
         "self-verify-daemon-restart-resilience"
       ],
       "source_exists": true,
-      "source_path": "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
+      "source_path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
       "state_checkpoint": {
         "bytes": "$STATE_BYTES",
         "key": "self-verify-candidates-contract",
@@ -1621,7 +1726,7 @@
             "commit_style_hints": {
               "conventional_subjects": 1,
               "lore_bodies": 1,
-              "message_policy_doc_path": "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
+              "message_policy_doc_path": "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
               "recent_count": 1,
               "recommended": "conventional_subject_plus_lore_body"
             },
@@ -1692,26 +1797,260 @@
           "json": {
             "docs": [
               {
-                "bytes": 8474,
+                "bytes": 9565,
+                "headings": [
+                  "agent-harness 구현 계획",
+                  "1. 최종 결정",
+                  "1.1 Plugin 방식 vs 외부 worker 방식",
+                  "1.2 언어 선택",
+                  "2. 목표 아키텍처",
+                  "3. Phase별 계획",
+                  "Phase 0 — 문서 기반 세팅",
+                  "Phase 1 — Go 프로젝트 부트스트랩",
+                  "Phase 2 — Core capability MVP",
+                  "Phase 3 — MCP stdio proxy/server",
+                  "Phase 4 — Local job worker daemon",
+                  "Phase 5 — Codex adapter",
+                  "Phase 6 — Claude Code adapter",
+                  "Phase 7 — Hardening / release",
+                  "4. MVP 범위",
+                  "5. 주요 위험과 대응",
+                  "6. 다음 작업 제안",
+                  "LLM Wiki 정책",
+                  "ADR note: MCP-backed project memory records"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
+                "rel_path": ".agent-harness/ADR.md",
+                "title": "agent-harness 구현 계획"
+              },
+              {
+                "bytes": 4977,
+                "headings": [
+                  "Agent Workflow",
+                  "Start",
+                  "Work",
+                  "Verify",
+                  "Finish",
+                  "UserPromptSubmit hook",
+                  "MCP Usage Rule",
+                  ".agent-harness Upkeep via MCP",
+                  "Evidence-backed MCP Heuristics",
+                  "API documentation gate",
+                  "OpenAPI prompt source"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/AGENT_WORKFLOW.md",
+                "rel_path": ".agent-harness/AGENT_WORKFLOW.md",
+                "title": "Agent Workflow"
+              },
+              {
+                "bytes": 13167,
+                "headings": [
+                  "agent-harness 아키텍처",
+                  "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
+                  "2. Target Architecture",
+                  "Core engine / port / host adapter 구조",
+                  "3. 실행 모드",
+                  "4. Planned package boundaries",
+                  "5. Docs / state / config / logs",
+                  "6. Command / policy model",
+                  "7. Codex / Claude integration map",
+                  "8. 변경 체크리스트",
+                  "LLM Wiki 정책",
+                  "MCP tool design guidance"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/ARCHITECTURE.md",
+                "rel_path": ".agent-harness/ARCHITECTURE.md",
+                "title": "agent-harness 아키텍처"
+              },
+              {
+                "bytes": 5420,
+                "headings": [
+                  "주의사항 모음",
+                  "1. Host-specific lock-in",
+                  "2. Plugin-only 착각",
+                  "3. 위험한 shell 실행",
+                  "4. Secret leakage",
+                  "5. Worker lifecycle 문제",
+                  "6. State 위치 혼동",
+                  "7. MCP schema drift",
+                  "8. Shared skill drift",
+                  "9. 자기 검증/자가 증강 drift",
+                  "10. 과도한 초기 추상화",
+                  "11. LLM Wiki 재구현 금지",
+                  "12. Daemon lifecycle drift",
+                  "MCP tool-use risks"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
+                "rel_path": ".agent-harness/CAUTIONS.md",
+                "title": "주의사항 모음"
+              },
+              {
+                "bytes": 2945,
+                "headings": [
+                  "커밋 메시지 정책: Conventional + Lore Hybrid",
+                  "1. 기본 형식",
+                  "2. Subject 규칙",
+                  "3. Lore body 규칙",
+                  "4. Atomic commit과의 관계"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
+                "rel_path": ".agent-harness/COMMIT_POLICY.md",
+                "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
+              },
+              {
+                "bytes": 4930,
+                "headings": [
+                  "프로젝트 헌법",
+                  "제0장: 문서 우선순위",
+                  "제1장: 언어 규칙",
+                  "제2장: 안전 / 정확성 우선",
+                  "제3장: 아키텍처 원칙",
+                  "제4장: 설계 3원칙",
+                  "KISS",
+                  "DRY",
+                  "YAGNI",
+                  "제5장: 하네스 검증 불변식"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
+                "rel_path": ".agent-harness/CONSTITUTION.md",
+                "title": "프로젝트 헌법"
+              },
+              {
+                "bytes": 11897,
+                "headings": [
+                  "구현 컨벤션",
+                  "1. 네이밍 / 구조",
+                  "2. 레이어 경계",
+                  "3. CLI 컨벤션",
+                  "4. MCP 컨벤션",
+                  "5. Worker 컨벤션",
+                  "6. Config / env",
+                  "7. Logging / secret hygiene",
+                  "8. Dependency 원칙",
+                  "9. Shared Skill 컨벤션",
+                  "10. 커밋 메시지 컨벤션",
+                  "API Documentation Gate",
+                  "Project Docs Bootstrap 컨벤션",
+                  "API Documentation Convention",
+                  "Single-object response convention",
+                  "SOLID / Design Pattern 적용 지침",
+                  "좋은 케이스",
+                  "나쁜 케이스",
+                  "적용 규칙",
+                  "Hook 컨벤션"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
+                "rel_path": ".agent-harness/CONVENTIONS.md",
+                "title": "구현 컨벤션"
+              },
+              {
+                "bytes": 3264,
+                "headings": [
+                  "OpenAPI Spec Guidance",
+                  "Purpose",
+                  "Gate order",
+                  "또는 통합 실행",
+                  "Static omissions to block",
+                  "Agent review prompt",
+                  "Clean Swagger style",
+                  "Single-object response shape"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
+                "rel_path": ".agent-harness/OPEN_API_SPEC.md",
+                "title": "OpenAPI Spec Guidance"
+              },
+              {
+                "bytes": 13757,
+                "headings": [
+                  "하네스 사용법",
+                  "1. 설치/갱신",
+                  "2. Codex에서 사용",
+                  "Native skills",
+                  "MCP",
+                  "UserPromptSubmit hook",
+                  "3. Claude Code에서 사용",
+                  "Native skills",
+                  "MCP",
+                  "Claude hooks",
+                  "4. CLI로 직접 사용",
+                  "5. MCP smoke test",
+                  "6. 자기 검증 루프 / 자가 증강 루프 요약",
+                  "7. API Documentation Pre-commit Review",
+                  "Review staged API docs/endpoint changes in the current repo",
+                  "JSON output for hooks/CI",
+                  "Explicit files from lint-staged/pre-commit",
+                  "Add project-specific conventions without changing harness core",
+                  "8. Project Docs Bootstrap",
+                  "9. LLM Wiki 정책"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
+                "rel_path": ".agent-harness/OPERATIONS.md",
+                "title": "하네스 사용법"
+              },
+              {
+                "bytes": 5069,
+                "headings": [
+                  "기술 스택",
+                  "1. 언어 선택",
+                  "2. 런타임 / 패키지 관리",
+                  "3. 예상 라이브러리 후보",
+                  "4. 예정 명령어",
+                  "5. 주요 설정/상태 위치",
+                  "Native integration 확인"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
+                "rel_path": ".agent-harness/TECH_STACK.md",
+                "title": "기술 스택"
+              },
+              {
+                "bytes": 13330,
+                "headings": [
+                  "테스트 컨벤션",
+                  "1. 현재 문서 단계 검증",
+                  "2. Go 코드 변경 기본 검증",
+                  "3. 테스트 작성 기준",
+                  "Well-structured tests",
+                  "Poorly-structured tests",
+                  "4. Contract / Golden tests",
+                  "5. 완료 보고 기준",
+                  "자기 검증 QA gate",
+                  "LLM Wiki 정책",
+                  "API documentation checks",
+                  "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",
+                  "Business logic error response coverage",
+                  "Agent-backed verification boundary",
+                  "OpenAPI prompt source"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
+                "rel_path": ".agent-harness/TESTING.md",
+                "title": "테스트 컨벤션"
+              },
+              {
+                "bytes": 11065,
                 "headings": [
                   "AGENTS.md",
-                  "1. 작업 원칙",
-                  "2. 프로젝트 결정 요약",
-                  "3. Required Reading / Agent Docs",
-                  "4. Working Contract",
-                  "5. Planned Directory Map",
-                  "6. Essential Commands",
-                  "7. Critical Invariants",
-                  "8. Manual Notes"
+                  "1. Think Before Coding",
+                  "2. Simplicity First",
+                  "3. Surgical Changes",
+                  "4. Goal-Driven Execution",
+                  "5. 프로젝트 결정 요약",
+                  "6. Required Reading / Agent Docs",
+                  "7. Working Contract",
+                  "8. Planned Directory Map",
+                  "9. Essential Commands",
+                  "10. Critical Invariants",
+                  "11. Manual Notes",
+                  "12. API Documentation Gate"
                 ],
                 "path": "$HARNESS_ROOT/AGENTS.md",
                 "rel_path": "AGENTS.md",
                 "title": "AGENTS.md"
               },
               {
-                "bytes": 746,
+                "bytes": 1140,
                 "headings": [
-                  "CLAUDE.md"
+                  "CLAUDE.md",
+                  "API docs"
                 ],
                 "path": "$HARNESS_ROOT/CLAUDE.md",
                 "rel_path": "CLAUDE.md",
@@ -1746,214 +2085,65 @@
                 "title": "Mermaid 다이어그램 작성 가이드라인"
               },
               {
-                "bytes": 11413,
+                "bytes": 7230,
                 "headings": [
-                  "agent-harness 아키텍처",
-                  "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
-                  "2. Target Architecture",
-                  "Core engine / port / host adapter 구조",
-                  "3. 실행 모드",
-                  "4. Planned package boundaries",
-                  "5. Docs / state / config / logs",
-                  "6. Command / policy model",
-                  "7. Codex / Claude integration map",
-                  "8. 변경 체크리스트",
-                  "LLM Wiki 정책"
+                  "Self-verification and self-augmentation loops",
+                  "1. Self-verification loop",
+                  "Purpose",
+                  "CLI/MCP surface",
+                  "Required steps",
+                  "Score goals",
+                  "2. Self-augmentation loop",
+                  "Purpose",
+                  "Surface",
+                  "Exit goals",
+                  "GENIUS_THINK.md usage",
+                  "3. External strategies adopted",
+                  "4. Operating rules"
                 ],
-                "path": "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
-                "rel_path": "agent_docs/ARCHITECTURE.md",
-                "title": "agent-harness 아키텍처"
+                "path": "$HARNESS_ROOT/skills/self-augment/SELF_AUGMENTATION.md",
+                "rel_path": "skills/self-augment/SELF_AUGMENTATION.md",
+                "title": "Self-verification and self-augmentation loops"
               },
               {
-                "bytes": 4991,
+                "bytes": 4571,
                 "headings": [
-                  "주의사항 모음",
-                  "1. Host-specific lock-in",
-                  "2. Plugin-only 착각",
-                  "3. 위험한 shell 실행",
-                  "4. Secret leakage",
-                  "5. Worker lifecycle 문제",
-                  "6. State 위치 혼동",
-                  "7. MCP schema drift",
-                  "8. Shared skill drift",
-                  "9. 자기 검증/자가 증강 drift",
-                  "10. 과도한 초기 추상화",
-                  "11. LLM Wiki 재구현 금지",
-                  "12. Daemon lifecycle drift"
+                  "Self-augmentation loop",
+                  "Goal",
+                  "Required distinction",
+                  "Exit criteria",
+                  "Workflow",
+                  "Reference"
                 ],
-                "path": "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
-                "rel_path": "agent_docs/CAUTIONS.md",
-                "title": "주의사항 모음"
+                "path": "$HARNESS_ROOT/skills/self-augment/SKILL.md",
+                "rel_path": "skills/self-augment/SKILL.md",
+                "title": "Self-augmentation loop"
               },
               {
-                "bytes": 2945,
+                "bytes": 5312,
                 "headings": [
-                  "커밋 메시지 정책: Conventional + Lore Hybrid",
-                  "1. 기본 형식",
-                  "2. Subject 규칙",
-                  "3. Lore body 규칙",
-                  "4. Atomic commit과의 관계"
+                  "Self-verification candidate catalog",
+                  "Current evidence",
+                  "Candidate generation method",
+                  "Candidate list",
+                  "Completion criteria"
                 ],
-                "path": "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
-                "rel_path": "agent_docs/COMMIT_POLICY.md",
-                "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
+                "path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
+                "rel_path": "skills/self-verify/CANDIDATES.md",
+                "title": "Self-verification candidate catalog"
               },
               {
-                "bytes": 4603,
+                "bytes": 1425,
                 "headings": [
-                  "프로젝트 헌법",
-                  "제0장: 문서 우선순위",
-                  "제1장: 언어 규칙",
-                  "제2장: 안전 / 정확성 우선",
-                  "제3장: 아키텍처 원칙",
-                  "제4장: 설계 3원칙",
-                  "KISS",
-                  "DRY",
-                  "YAGNI",
-                  "제5장: 검증 원칙"
+                  "Self-verification loop",
+                  "Goal",
+                  "Commands",
+                  "Gate",
+                  "Candidate catalog"
                 ],
-                "path": "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
-                "rel_path": "agent_docs/CONSTITUTION.md",
-                "title": "프로젝트 헌법"
-              },
-              {
-                "bytes": 7379,
-                "headings": [
-                  "구현 컨벤션",
-                  "1. 네이밍 / 구조",
-                  "2. 레이어 경계",
-                  "3. CLI 컨벤션",
-                  "4. MCP 컨벤션",
-                  "5. Worker 컨벤션",
-                  "6. Config / env",
-                  "7. Logging / secret hygiene",
-                  "8. Dependency 원칙",
-                  "9. Shared Skill 컨벤션",
-                  "10. 커밋 메시지 컨벤션",
-                  "API Documentation Gate"
-                ],
-                "path": "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
-                "rel_path": "agent_docs/CONVENTIONS.md",
-                "title": "구현 컨벤션"
-              },
-              {
-                "bytes": 9023,
-                "headings": [
-                  "agent-harness 구현 계획",
-                  "1. 최종 결정",
-                  "1.1 Plugin 방식 vs 외부 worker 방식",
-                  "1.2 언어 선택",
-                  "2. 목표 아키텍처",
-                  "3. Phase별 계획",
-                  "Phase 0 — 문서 기반 세팅",
-                  "Phase 1 — Go 프로젝트 부트스트랩",
-                  "Phase 2 — Core capability MVP",
-                  "Phase 3 — MCP stdio proxy/server",
-                  "Phase 4 — Local job worker daemon",
-                  "Phase 5 — Codex adapter",
-                  "Phase 6 — Claude Code adapter",
-                  "Phase 7 — Hardening / release",
-                  "4. MVP 범위",
-                  "5. 주요 위험과 대응",
-                  "6. 다음 작업 제안",
-                  "LLM Wiki 정책"
-                ],
-                "path": "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
-                "rel_path": "agent_docs/IMPLEMENTATION_PLAN.md",
-                "title": "agent-harness 구현 계획"
-              },
-              {
-                "bytes": 9261,
-                "headings": [
-                  "자기 검증 루프와 자가 증강 루프",
-                  "1. 자기 검증 루프",
-                  "목적",
-                  "CLI/MCP 표면",
-                  "포함 단계",
-                  "점수 목표",
-                  "2. 자가 증강 루프",
-                  "목적",
-                  "표면",
-                  "종료 목표",
-                  "GENIUS_THINK.md 사용",
-                  "3. 외부 전략에서 채택한 점",
-                  "4. 운영 규칙"
-                ],
-                "path": "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
-                "rel_path": "agent_docs/SELF_AUGMENTATION.md",
-                "title": "자기 검증 루프와 자가 증강 루프"
-              },
-              {
-                "bytes": 9907,
-                "headings": [
-                  "자기 검증 루프 후보 발굴 기록",
-                  "1. 확인한 현재 상태",
-                  "2. 후보 생성 공식",
-                  "3. 후보 목록",
-                  "4. 추천 실행 순서",
-                  "5. 완료 기준"
-                ],
-                "path": "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
-                "rel_path": "agent_docs/SELF_VERIFICATION_CANDIDATES.md",
-                "title": "자기 검증 루프 후보 발굴 기록"
-              },
-              {
-                "bytes": 5383,
-                "headings": [
-                  "기술 스택",
-                  "1. 언어 선택",
-                  "2. 런타임 / 패키지 관리",
-                  "3. 예상 라이브러리 후보",
-                  "4. 예정 명령어",
-                  "5. 주요 설정/상태 위치",
-                  "Native integration 확인",
-                  "LLM Wiki 정책"
-                ],
-                "path": "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
-                "rel_path": "agent_docs/TECH_STACK.md",
-                "title": "기술 스택"
-              },
-              {
-                "bytes": 9100,
-                "headings": [
-                  "테스트 컨벤션",
-                  "1. 현재 문서 단계 검증",
-                  "2. Go 코드 변경 기본 검증",
-                  "3. 테스트 작성 기준",
-                  "4. Contract / Golden tests",
-                  "5. 완료 보고 기준",
-                  "자기 검증 QA gate",
-                  "LLM Wiki 정책"
-                ],
-                "path": "$HARNESS_ROOT/agent_docs/TESTING.md",
-                "rel_path": "agent_docs/TESTING.md",
-                "title": "테스트 컨벤션"
-              },
-              {
-                "bytes": 8198,
-                "headings": [
-                  "하네스 사용법",
-                  "1. 설치/갱신",
-                  "2. Codex에서 사용",
-                  "Native skills",
-                  "MCP",
-                  "3. Claude Code에서 사용",
-                  "Native skills",
-                  "MCP",
-                  "SessionStart hook",
-                  "4. CLI로 직접 사용",
-                  "5. MCP smoke test",
-                  "6. 자기 검증 루프 / 자가 증강 루프 요약",
-                  "7. API Documentation Pre-commit Review",
-                  "Review staged API docs/endpoint changes in the current repo",
-                  "JSON output for hooks/CI",
-                  "Explicit files from lint-staged/pre-commit",
-                  "Add project-specific conventions without changing harness core",
-                  "8. LLM Wiki 정책"
-                ],
-                "path": "$HARNESS_ROOT/agent_docs/USAGE.md",
-                "rel_path": "agent_docs/USAGE.md",
-                "title": "하네스 사용법"
+                "path": "$HARNESS_ROOT/skills/self-verify/SKILL.md",
+                "rel_path": "skills/self-verify/SKILL.md",
+                "title": "Self-verification loop"
               }
             ],
             "generated_at": "$TIMESTAMP",
@@ -1970,20 +2160,24 @@
         {
           "json": {
             "docs": [
+              "$HARNESS_ROOT/.agent-harness/ADR.md",
+              "$HARNESS_ROOT/.agent-harness/AGENT_WORKFLOW.md",
+              "$HARNESS_ROOT/.agent-harness/ARCHITECTURE.md",
+              "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
+              "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
+              "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
+              "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
+              "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
+              "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
+              "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
+              "$HARNESS_ROOT/.agent-harness/TESTING.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
               "$HARNESS_ROOT/GENIUS_THINK.md",
-              "$HARNESS_ROOT/agent_docs/ARCHITECTURE.md",
-              "$HARNESS_ROOT/agent_docs/CAUTIONS.md",
-              "$HARNESS_ROOT/agent_docs/COMMIT_POLICY.md",
-              "$HARNESS_ROOT/agent_docs/CONSTITUTION.md",
-              "$HARNESS_ROOT/agent_docs/CONVENTIONS.md",
-              "$HARNESS_ROOT/agent_docs/IMPLEMENTATION_PLAN.md",
-              "$HARNESS_ROOT/agent_docs/SELF_AUGMENTATION.md",
-              "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
-              "$HARNESS_ROOT/agent_docs/TECH_STACK.md",
-              "$HARNESS_ROOT/agent_docs/TESTING.md",
-              "$HARNESS_ROOT/agent_docs/USAGE.md"
+              "$HARNESS_ROOT/skills/self-augment/SELF_AUGMENTATION.md",
+              "$HARNESS_ROOT/skills/self-augment/SKILL.md",
+              "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
+              "$HARNESS_ROOT/skills/self-verify/SKILL.md"
             ],
             "generated_at": "$TIMESTAMP",
             "harness_root": "$HARNESS_ROOT",
@@ -2008,11 +2202,25 @@
                 "path": "$HARNESS_ROOT/skills/atomic-commit-push"
               },
               {
-                "description": "Run the 자가 증강 루프 for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose necessary feature, performance, quality, or documentation improvements, implement one safe high-value diff, and verify it with the 자기 검증 루프. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95점 gate loops, or to decide and execute the next valuable improvement.",
+                "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "project-bootstrap",
+                "path": "$HARNESS_ROOT/skills/project-bootstrap"
+              },
+              {
+                "description": "Run the self-augmentation loop for agent-harness or another repository: use GENIUS_THINK.md, repo evidence, and research-backed agent improvement patterns to choose a necessary feature, performance, quality, or documentation improvement, implement one safe high-value diff, and verify it with the self-verification loop. Use when the user asks for self-augmentation, autonomous improvement, repo enhancement, 95-point gate loops, or to decide and execute the next valuable improvement.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "self-augment",
                 "path": "$HARNESS_ROOT/skills/self-augment"
+              },
+              {
+                "description": "Run or interpret the agent-harness self-verification loop. Use when the user asks to verify the harness, run the 95-point gate, inspect self-verification candidates, compare or promote verification baselines, or confirm CLI/MCP/native integration health.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "self-verify",
+                "path": "$HARNESS_ROOT/skills/self-verify"
               }
             ],
             "target_repo": "$WORKSPACE",
@@ -2050,7 +2258,7 @@
                 ],
                 "why_now": [
                   "설치 방식과 host adapter가 늘면서 core/adapter 계약 회귀 가능성이 커졌다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2069,7 +2277,7 @@
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "자가 증강 루프를 native skill 실행자로 제공해 실제 개선 diff를 생성",
+                "title": "Provide the self-augmentation loop as a native skill executor that creates real improvement diffs",
                 "verify_with": [
                   "skill quick_validate",
                   "install-native",
@@ -2078,7 +2286,7 @@
                 "why_now": [
                   "Go CLI는 LLM 판단/코드 편집 주체가 아니므로 skill 표면이 필요하다",
                   "Codex/Claude 공용 하네스 목적과 맞다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2097,14 +2305,14 @@
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "자가 증강 후보·결정·실패 교훈을 state에 축적",
+                "title": "Accumulate self-augmentation candidates, decisions, and failure lessons in state",
                 "verify_with": [
                   "state roundtrip",
                   "history/compare contract"
                 ],
                 "why_now": [
                   "Reflexion식 언어 피드백을 다음 실행에 재사용하려면 durable memory가 필요하다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2130,7 +2338,7 @@
                 ],
                 "why_now": [
                   "문서 생성 시 Mermaid 파싱 오류를 반복 방지할 수 있다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2156,7 +2364,7 @@
                 ],
                 "why_now": [
                   "user/global 설치는 안전하지만 쓰기 전 preview가 있으면 신뢰도가 오른다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2179,7 +2387,7 @@
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "자기 검증 루프와 자가 증강 루프를 분리하고 95점 초과 종료 게이트를 적용",
+                "title": "Separate self-verification and self-augmentation loops and enforce \u003e95 exit gates",
                 "verify_with": [
                   "go test ./...",
                   "MCP/CLI golden",
@@ -2188,7 +2396,7 @@
                 "why_now": [
                   "현재 self-augment가 실제로는 검증 루프 역할을 한다",
                   "사용자가 테스트와 QA 포함 및 95점 게이트를 요구했다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2214,7 +2422,7 @@
                 ],
                 "why_now": [
                   "현재 elapsed regression은 summary 단위라 병목 위치 추적이 약하다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2233,14 +2441,14 @@
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "자기 검증 루프 summary를 QA 대시보드형 점수표로 확장",
+                "title": "Expand self-verification summaries into QA dashboard scorecards",
                 "verify_with": [
                   "response_contract golden",
                   "self-verify --json schema inspection"
                 ],
                 "why_now": [
                   "느린 step과 실패 위치만으로는 목표별 종료 판단이 부족하다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2259,14 +2467,14 @@
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "위험도 기반 race/static QA tier를 자기 검증 루프에 조건부 연결",
+                "title": "Conditionally attach risk-based race/static QA tier to the self-verification loop",
                 "verify_with": [
                   "go test -race ./... -count=1",
                   "targeted package tests"
                 ],
                 "why_now": [
                   "모든 반복에서 race를 돌리면 과하지만 concurrency/policy 변경에는 필요하다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2285,13 +2493,13 @@
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "자가 증강 실패 교훈을 state에 저장",
+                "title": "Store self-augmentation failure lessons in state",
                 "verify_with": [
                   "state_write/read"
                 ],
                 "why_now": [
                   "반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
               {
@@ -2310,25 +2518,25 @@
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "다른 레포 자가 증강을 위한 workspace boundary sandbox 강화",
+                "title": "Harden workspace-boundary sandboxing for self-augmenting other repositories",
                 "verify_with": [
                   "command_policy_check",
                   "temp repo integration tests"
                 ],
                 "why_now": [
                   "하네스가 여러 레포에서 쓰이면 repo별 권한·상태 경계가 핵심이다",
-                  "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다"
+                  "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               }
             ],
             "cycles": 1,
             "execution_protocol": [
-              "baseline: run 자기 검증 루프 and collect goal scores",
+              "baseline: run the self-verification loop and collect goal scores",
               "curriculum: generate at least 10 improvement candidates using GENIUS_THINK.md formulas and repo evidence",
               "selection: choose the highest score safe candidate, not the easiest cosmetic change",
               "implementation: edit code/docs/skills with small reversible diffs",
               "feedback: convert failures into Reflexion-style verbal lessons and retry within the cycle budget",
-              "termination: stop only when every 자가 증강 목표 and the 자기 검증 루프 goals score above target_score"
+              "termination: stop only when every self-augmentation goal and self-verification goal scores above target_score"
             ],
             "generated_at": "$TIMESTAMP",
             "genius_think_path": "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -2359,7 +2567,7 @@
                 "target_score": 95
               },
               {
-                "description": "타깃 테스트, QA 스모크, 자기 검증 루프를 통과해야 한다.",
+                "description": "Targeted tests, QA smoke checks, and the self-verification loop must pass.",
                 "evidence": [
                   "go test",
                   "QA gate",
@@ -2375,7 +2583,7 @@
                 "description": "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
                 "evidence": [
                   "harness state",
-                  "agent_docs"
+                  ".agent-harness"
                 ],
                 "korean_name": "학습 기록",
                 "name": "learning_capture",
@@ -2389,7 +2597,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 14,
+              "docs_indexed": 18,
               "has_adapter_contract_matrix": true,
               "has_genius_mermaid_lint": true,
               "has_genius_think": true,
@@ -2406,7 +2614,9 @@
               "has_self_verify_cli": true,
               "skills": [
                 "atomic-commit-push",
-                "self-augment"
+                "project-bootstrap",
+                "self-augment",
+                "self-verify"
               ]
             },
             "research_influences": [
@@ -2798,7 +3008,7 @@
               "self-verify-daemon-restart-resilience"
             ],
             "source_exists": true,
-            "source_path": "$HARNESS_ROOT/agent_docs/SELF_VERIFICATION_CANDIDATES.md",
+            "source_path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
             "state_checkpoint": {
               "bytes": "$STATE_BYTES",
               "key": "self-verify-candidates-mcp",

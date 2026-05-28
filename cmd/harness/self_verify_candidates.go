@@ -83,7 +83,7 @@ func runSelfVerifyCandidates(args []string) error {
 
 func exportSelfVerificationCandidates() SelfVerificationCandidateExportResult {
 	root := harnessRoot()
-	sourcePath := filepath.Join(root, "agent_docs", "SELF_VERIFICATION_CANDIDATES.md")
+	sourcePath := filepath.Join(root, "skills", "self-verify", "CANDIDATES.md")
 	sourceExists := exists(sourcePath)
 	candidates := selfVerificationCandidateCatalog()
 	openIDs := selfVerificationCandidateIDsByStatus(candidates, selfAugmentCandidateStatusOpen)
@@ -100,7 +100,7 @@ func exportSelfVerificationCandidates() SelfVerificationCandidateExportResult {
 	}
 	warnings := []string{}
 	if !sourceExists {
-		warnings = append(warnings, "agent_docs/SELF_VERIFICATION_CANDIDATES.md not found; using built-in candidate export catalog")
+		warnings = append(warnings, "skills/self-verify/CANDIDATES.md not found; using built-in candidate export catalog")
 	}
 	return SelfVerificationCandidateExportResult{
 		OK:                    true,

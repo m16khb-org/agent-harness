@@ -18,6 +18,7 @@
 ```text
 cmd/harness/main.go
 internal/core/docs.go
+internal/core/project_docs.go
 internal/core/inspect.go
 internal/core/policy.go
 internal/core/preflight.go
@@ -34,7 +35,7 @@ internal/adapter/fs/
 configs/codex/
 configs/claude/
 skills/
-agent_docs/
+.agent-harness/
 ```
 
 ---
@@ -139,10 +140,64 @@ agent_docs/
 
 ## 10. 커밋 메시지 컨벤션
 
-- 커밋 메시지는 `agent_docs/COMMIT_POLICY.md`를 따른다.
+- 커밋 메시지는 `.agent-harness/COMMIT_POLICY.md`를 따른다.
 - subject는 Conventional Commit 형식(`<type>(<scope>)!?: <summary>`)을 사용한다.
 - body에는 AI agent가 맥락을 회수할 수 있도록 `Lore:` 블록을 둔다.
 - atomic commit 하나에는 Lore `Intent`도 하나만 있어야 한다.
 ## API Documentation Gate
 
-Reusable API documentation checks belong in `harness api-doc review`, not in a single application repository or framework-specific hook. Keep the core prompt framework-agnostic: it may mention examples such as NestJS Swagger decorators, Go swaggo annotations, OpenAPI specs, Spring/FastAPI annotations, but must instruct reviewers to follow the target project's own convention and staged diff only. Project-specific strictness should be supplied via `--prompt-file` rather than hardcoded into harness core.
+Reusable API documentation checks belong in `harness api-doc check`, not in a single application repository or framework-specific hook. Keep the core prompt framework-agnostic: it may mention examples such as NestJS Swagger decorators, Go swaggo annotations, OpenAPI specs, Spring/FastAPI annotations, but must instruct reviewers to follow the target project's own convention and staged diff only. Project-specific strictness should be supplied via `--prompt-file` rather than hardcoded into harness core.
+
+## Project Docs Bootstrap 컨벤션
+
+- 적용 대상 repo의 `.agent-harness/` 문서는 명시적 `harness project bootstrap --write` 또는 `$project-bootstrap` 실행 때만 생성한다.
+- 기본 설치나 MCP read는 대상 repo에 파일을 쓰지 않는다.
+- `AGENTS.md`는 전체 덮어쓰기 금지다. bootstrap은 behavioral top block이 없으면 prepend하고, 이후에는 `AGENT_HARNESS` marker block만 관리한다.
+- 생성 문서에는 추론된 명령과 기술스택의 Evidence/Confidence를 포함한다.
+- MCP 라우팅은 문서를 무조건 주입하지 않고 작업별로 읽어야 할 문서 경로와 이유만 제공한다.
+
+## API Documentation Convention
+
+API documentation gates are framework-agnostic and business-logic-aware. A changed endpoint's docs must reflect not only syntax-level params and DTO schemas but also directly reachable domain errors from service/usecase/error-mapping code. Keep Swagger/OpenAPI output clean: concise summaries, consistent sectioned descriptions, complete params, accurate required/optional fields, and explicit success/error responses.
+
+
+NextCandle-style cleanliness means sectioned Markdown operation descriptions, complete params, accurate auth/error responses, DTO required/optional correctness, and Swagger outputs split/filtered for the intended audience where the framework supports it.
+
+## Single-object response convention
+
+단일 객체 응답은 불필요한 wrapper object로 한 번 더 감싸지 않는다. 공개 계약이 이미 하나의 resource/detail/view model이라면 controller/handler는 `{ data: object }`, `{ result: object }`, `{ item: object }`처럼 포장하지 말고 object fields를 top-level로 spread해 반환한다.
+
+예외는 pagination/list envelope, metadata가 계약의 일부인 경우, backward compatibility 유지, 표준 error envelope처럼 wrapper 자체가 명시적 API 계약인 경우다. 새 endpoint나 DTO 리팩터링 시 OpenAPI schema도 이 규칙과 일치해야 한다.
+
+## SOLID / Design Pattern 적용 지침
+
+SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을 많이 만들라는 뜻이 아니라, 실제 변경 축이 확인된 곳에서 책임과 의존 방향을 선명하게 하라는 지침이다. Design Pattern은 문제를 설명하고 유지보수를 줄이는 이름일 때만 사용한다.
+
+### 좋은 케이스
+
+- 기존 코드에 이미 있는 Adapter, Strategy, Factory, Repository 같은 패턴을 같은 문제에 일관되게 적용한다.
+- 외부 host, SDK, filesystem, process, network처럼 교체 가능성이 실제로 있는 경계에 interface/port를 둔다.
+- 두 개 이상의 구현이 있거나 테스트 double이 필요한 경계에서 dependency inversion을 사용한다.
+- 책임이 섞인 코드에서 변경 이유가 서로 다른 부분을 작게 분리한다.
+- 새 패턴을 도입할 때 ADR에 문제, 선택한 패턴, 기각한 단순 대안, 비용을 기록한다.
+
+### 나쁜 케이스
+
+- 단일 사용처를 위해 interface, factory, registry, plugin layer를 먼저 만든다.
+- “미래 확장성”만 근거로 추상화하거나 설정 가능하게 만든다.
+- 간단한 함수 호출을 패턴 이름에 맞추려고 class/object graph로 늘린다.
+- 기존 repo 스타일과 다른 패턴을 작은 변경에 끼워 넣는다.
+- SOLID를 이유로 core 정책을 host adapter에 복제하거나, host별 구현을 중복한다.
+
+### 적용 규칙
+
+- 먼저 가장 단순한 구현을 선택하고, 실제 variation point가 확인될 때 패턴을 도입한다.
+- 새 abstraction은 최소 두 사용처, 명확한 테스트 경계, 또는 외부 기술 경계 중 하나가 있을 때만 만든다.
+- 패턴 도입이 50줄 해결책을 200줄 구조로 만들면 되돌려 단순화한다.
+- 패턴을 쓰는 경우 이름보다 계약을 문서화한다: 책임, 입력/출력, 금지된 의존 방향, 검증 방법.
+
+## Hook 컨벤션
+
+- UserPromptSubmit hook은 사용자의 prompt를 분석해 MCP 후보 힌트만 주입한다. 작업을 대신 실행하거나 긴 파일/네트워크를 읽지 않는다.
+- Hook 출력은 host가 이해하는 `hookSpecificOutput.additionalContext` JSON을 기본으로 하며, 실패해도 사용자 작업을 막지 않도록 작고 deterministic하게 유지한다.
+- Codex/Claude별 hook 설정은 adapter/template에서만 다루고, routing 판단은 공통 `harness hook user-prompt` CLI/core에 둔다.

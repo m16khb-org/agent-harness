@@ -1,0 +1,29 @@
+---
+name: self-verify
+description: Run or interpret the agent-harness self-verification loop. Use when the user asks to verify the harness, run the 95-point gate, inspect self-verification candidates, compare or promote verification baselines, or confirm CLI/MCP/native integration health.
+---
+
+# Self-verification loop
+
+## Goal
+
+Verify that the harness behaves consistently across Codex and Claude Code, and that CLI, MCP, native integration, state, policy, docs, and skills work as intended. This skill is a QA gate; it does not choose improvements by itself.
+
+## Commands
+
+```bash
+./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/harness self-verify candidates --json
+./bin/harness self-verify history --prefix self-verify --json
+./bin/harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+./bin/harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+```
+
+## Gate
+
+Completion requires every concrete goal score to exceed the target score. The default target is 95. If any item scores 95 or below, the state is not complete; improve, retry, or report the blocker.
+
+## Candidate catalog
+
+The self-verification improvement catalog in this skill's `CANDIDATES.md` is the source of truth.

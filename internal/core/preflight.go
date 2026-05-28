@@ -181,7 +181,7 @@ func commitStyleHints(root, harnessRoot string, limit int) map[string]any {
 		"conventional_subjects":   conv,
 		"lore_bodies":             lore,
 		"recommended":             "conventional_subject_plus_lore_body",
-		"message_policy_doc_path": filepath.Join(harnessRoot, "agent_docs", "COMMIT_POLICY.md"),
+		"message_policy_doc_path": filepath.Join(harnessRoot, ".agent-harness", "COMMIT_POLICY.md"),
 	}
 }
 

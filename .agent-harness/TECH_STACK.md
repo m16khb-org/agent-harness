@@ -101,7 +101,7 @@ harness worker start
 | 종류 | 위치 |
 |------|------|
 | 루트 규칙 | `AGENTS.md`, `CLAUDE.md` |
-| 에이전트 문서 | `agent_docs/` |
+| 에이전트 문서 | `.agent-harness/` |
 | 사용자 설정 | `~/.config/agent-harness/config.yaml` |
 | 사용자 state/log | OS별 state dir 또는 `~/.local/state/agent-harness/` |
 | workspace cache | `.harness/` |
@@ -117,9 +117,5 @@ harness worker start
 test -f ~/.codex/skills/atomic-commit-push/SKILL.md
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md
 codex mcp get agent_harness
-claude mcp list | grep agent-harness
+claude mcp list | grep agent_harness
 ```
-
-## LLM Wiki 정책
-
-LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.

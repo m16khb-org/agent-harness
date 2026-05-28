@@ -13,7 +13,7 @@ Turn local changes into one or more atomic commits, verify each commit as approp
 
 - Only commit/push when the user explicitly asks for it.
 - Read the repo's nearest `AGENTS.md`/`CLAUDE.md` and relevant project docs before committing.
-- If `agent_docs/COMMIT_POLICY.md` exists, use it as the commit-message source of truth.
+- If `.agent-harness/COMMIT_POLICY.md` exists, use it as the commit-message source of truth.
 - Never use `git add .` or `git commit -a`. Stage exact files, and use `git add -p` when a file mixes unrelated changes.
 - Do not discard, stash, reformat, or rewrite user changes unless the user explicitly asks.
 - Treat `.env`, private keys, credentials, local state, logs, and generated secrets as blockers until inspected or excluded.
@@ -22,8 +22,11 @@ Turn local changes into one or more atomic commits, verify each commit as approp
 
 ## Workflow
 
-1. **Preflight**
+1. **Pre-start gate / Preflight**
    - Run `python3 <skill>/scripts/git_preflight.py [repo]` if available.
+   - Before planning commits, run `python3 <skill>/scripts/api_doc_gate.py [repo]` if available. This hook-style gate calls the agent-backed API documentation reviewer and exits non-zero on blocking Swagger/OpenAPI drift.
+   - If that script is unavailable, run the equivalent API documentation gate when staged API candidate files exist: `harness api-doc check --json` or MCP `api_doc_static_check` plus `api_doc_review`.
+   - If the API documentation gate fails, stop at the gate and report the blocking Swagger/OpenAPI findings instead of continuing to stage/commit.
    - Also inspect `git status --short`, current branch, upstream, and recent commit style.
    - If the directory is not a git repo, stop and report.
 

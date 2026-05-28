@@ -220,7 +220,7 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 		Skills:                      append([]string{}, skills...),
 		HasGeniusThink:              strings.TrimSpace(geniusText) != "",
 		HasSelfAugmentSkill:         containsString(skills, "self-augment"),
-		HasSelfVerificationDocs:     docsContainTerm(root, "자기 검증 루프") && docsContainTerm(root, "자가 증강 루프"),
+		HasSelfVerificationDocs:     docsContainTerm(root, "Self-verification") && docsContainTerm(root, "Self-augmentation"),
 		HasSelfVerifyCLI:            fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), `case "self-verify"`) && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "selfVerificationKoreanName"),
 		HasSelfAugmentPlanner:       fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_loop.go"), "planSelfAugmentation"),
 		HasSelfAugmentStateCapture:  fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_loop.go"), "saveSelfAugmentPlan") && docsContainTerm(root, "--save-state"),
@@ -230,7 +230,7 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 		HasGoalScoreSummary:         fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "GoalScores") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "MinimumGoalScore"),
 		HasRepoLocalSandbox:         fileContainsTerm(root, filepath.Join("internal", "core", "policy.go"), "path_outside_workspace") && fileContainsTerm(root, filepath.Join("internal", "core", "policy_test.go"), "TestCommandPolicyDeniesPathArgsOutsideWorkspace") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "policy deny outside path arg"),
 		HasPerformanceBaseline:      fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "SlowStepRegressions") && fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_summary_test.go"), "TestCompareSelfAugmentSummariesDetectsSlowStepRegression") && docsContainTerm(root, "slow_step:*"),
-		HasGeniusMermaidLint:        fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "lintMermaidBlocks") && fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_summary_test.go"), "TestLintMermaidBlocksEnforcesGeniusThinkRules") && !fileContainsTerm(root, filepath.Join("agent_docs", "ARCHITECTURE.md"), `\n`),
+		HasGeniusMermaidLint:        fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "lintMermaidBlocks") && fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_summary_test.go"), "TestLintMermaidBlocksEnforcesGeniusThinkRules") && !fileContainsTerm(root, filepath.Join(".agent-harness", "ARCHITECTURE.md"), `\n`),
 		HasInstallDryRunMode:        fileContainsTerm(root, filepath.Join("cmd", "harness", "install_native.go"), "dry-run") && fileContainsTerm(root, filepath.Join("internal", "adapter", "install_contract_matrix_test.go"), "TestNativeInstallDryRunDoesNotWrite") && docsContainTerm(root, "install-native --dry-run"),
 	}
 	goals := []SelfAugmentGoal{
@@ -249,14 +249,14 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 		{
 			Name: "verification_qa", KoreanName: "검증·QA", TargetScore: req.TargetScore,
 			Score:       scoreBool(false),
-			Description: "타깃 테스트, QA 스모크, 자기 검증 루프를 통과해야 한다.",
+			Description: "Targeted tests, QA smoke checks, and the self-verification loop must pass.",
 			Evidence:    []string{"go test", "QA gate", "harness self-verify"},
 		},
 		{
 			Name: "learning_capture", KoreanName: "학습 기록", TargetScore: req.TargetScore,
 			Score:       scoreBool(false),
 			Description: "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
-			Evidence:    []string{"harness state", "agent_docs"},
+			Evidence:    []string{"harness state", ".agent-harness"},
 		},
 	}
 	for i := range goals {
@@ -299,12 +299,12 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 		Candidates:          candidates,
 		SelectedCandidate:   selected,
 		ExecutionProtocol: []string{
-			"baseline: run 자기 검증 루프 and collect goal scores",
+			"baseline: run the self-verification loop and collect goal scores",
 			"curriculum: generate at least 10 improvement candidates using GENIUS_THINK.md formulas and repo evidence",
 			"selection: choose the highest score safe candidate, not the easiest cosmetic change",
 			"implementation: edit code/docs/skills with small reversible diffs",
 			"feedback: convert failures into Reflexion-style verbal lessons and retry within the cycle budget",
-			"termination: stop only when every 자가 증강 목표 and the 자기 검증 루프 goals score above target_score",
+			"termination: stop only when every self-augmentation goal and self-verification goal scores above target_score",
 		},
 		VerificationGate: []string{
 			"targeted tests for changed behavior",
@@ -588,42 +588,42 @@ const (
 func selfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidate {
 	base := []SelfAugmentCandidate{
 		{
-			ID: "loop-taxonomy-score-gates", Title: "자기 검증 루프와 자가 증강 루프를 분리하고 95점 초과 종료 게이트를 적용", Category: "quality",
+			ID: "loop-taxonomy-score-gates", Title: "Separate self-verification and self-augmentation loops and enforce >95 exit gates", Category: "quality",
 			Impact: 99, Feasibility: 98, Novelty: 93, Risk: 8,
 			WhyNow:       []string{"현재 self-augment가 실제로는 검증 루프 역할을 한다", "사용자가 테스트와 QA 포함 및 95점 게이트를 요구했다"},
 			ExpectedGain: []string{"루프 이름/책임 혼동 제거", "검증 없는 종료 방지", "CLI/MCP/native skill 계약 일치"},
 			VerifyWith:   []string{"go test ./...", "MCP/CLI golden", "harness self-verify --iterations=10 --target-score=95"},
 		},
 		{
-			ID: "agent-skill-executor", Title: "자가 증강 루프를 native skill 실행자로 제공해 실제 개선 diff를 생성", Category: "feature",
+			ID: "agent-skill-executor", Title: "Provide the self-augmentation loop as a native skill executor that creates real improvement diffs", Category: "feature",
 			Impact: 97, Feasibility: 96, Novelty: 92, Risk: 12,
 			WhyNow:       []string{"Go CLI는 LLM 판단/코드 편집 주체가 아니므로 skill 표면이 필요하다", "Codex/Claude 공용 하네스 목적과 맞다"},
 			ExpectedGain: []string{"후보화→선택→구현→검증을 agent가 실제 수행", "GENIUS_THINK.md와 연구 앵커를 반복적으로 활용"},
 			VerifyWith:   []string{"skill quick_validate", "install-native", "self-verify QA gate"},
 		},
 		{
-			ID: "durable-augmentation-memory", Title: "자가 증강 후보·결정·실패 교훈을 state에 축적", Category: "memory",
+			ID: "durable-augmentation-memory", Title: "Accumulate self-augmentation candidates, decisions, and failure lessons in state", Category: "memory",
 			Impact: 93, Feasibility: 92, Novelty: 86, Risk: 20,
 			WhyNow:       []string{"Reflexion식 언어 피드백을 다음 실행에 재사용하려면 durable memory가 필요하다"},
 			ExpectedGain: []string{"동일 실패 반복 감소", "레포별 개선 히스토리 누적"},
 			VerifyWith:   []string{"state roundtrip", "history/compare contract"},
 		},
 		{
-			ID: "qa-dashboard-summary", Title: "자기 검증 루프 summary를 QA 대시보드형 점수표로 확장", Category: "observability",
+			ID: "qa-dashboard-summary", Title: "Expand self-verification summaries into QA dashboard scorecards", Category: "observability",
 			Impact: 91, Feasibility: 95, Novelty: 72, Risk: 10,
 			WhyNow:       []string{"느린 step과 실패 위치만으로는 목표별 종료 판단이 부족하다"},
 			ExpectedGain: []string{"목표별 점수와 증거 label을 바로 확인", "CI/agent가 gate를 기계적으로 판정"},
 			VerifyWith:   []string{"response_contract golden", "self-verify --json schema inspection"},
 		},
 		{
-			ID: "reflexion-state-memory", Title: "자가 증강 실패 교훈을 state에 저장", Category: "memory",
+			ID: "reflexion-state-memory", Title: "Store self-augmentation failure lessons in state", Category: "memory",
 			Impact: 89, Feasibility: 91, Novelty: 84, Risk: 16,
 			WhyNow:       []string{"반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다"},
 			ExpectedGain: []string{"실패 원인 재발 감소", "레포별 개선 이력 검색 가능"},
 			VerifyWith:   []string{"state_write/read"},
 		},
 		{
-			ID: "qa-race-tier", Title: "위험도 기반 race/static QA tier를 자기 검증 루프에 조건부 연결", Category: "qa",
+			ID: "qa-race-tier", Title: "Conditionally attach risk-based race/static QA tier to the self-verification loop", Category: "qa",
 			Impact: 88, Feasibility: 88, Novelty: 79, Risk: 22,
 			WhyNow:       []string{"모든 반복에서 race를 돌리면 과하지만 concurrency/policy 변경에는 필요하다"},
 			ExpectedGain: []string{"검증 비용과 신뢰도 균형", "고위험 변경에 대한 추가 방어"},
@@ -658,7 +658,7 @@ func selfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			VerifyWith:   []string{"self-verify compare fixtures", "slowest_steps golden"},
 		},
 		{
-			ID: "repo-local-augmentation-sandbox", Title: "다른 레포 자가 증강을 위한 workspace boundary sandbox 강화", Category: "safety",
+			ID: "repo-local-augmentation-sandbox", Title: "Harden workspace-boundary sandboxing for self-augmenting other repositories", Category: "safety",
 			Impact: 90, Feasibility: 82, Novelty: 83, Risk: 24,
 			WhyNow:       []string{"하네스가 여러 레포에서 쓰이면 repo별 권한·상태 경계가 핵심이다"},
 			ExpectedGain: []string{"레포별 독립 self-augment 실행", "root 밖 접근 회귀 방지"},
@@ -727,7 +727,7 @@ func markSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals 
 	candidate.Status = selfAugmentCandidateStatusSatisfied
 	candidate.SatisfactionEvidence = evidence
 	candidate.Score = 0
-	candidate.WhyNow = append(candidate.WhyNow, "이미 충족된 후보이므로 다음 자가 증강 cycle에서는 선택하지 않는다")
+	candidate.WhyNow = append(candidate.WhyNow, "Already satisfied; do not select in the next self-augmentation cycle")
 }
 
 func selfAugmentCandidateScore(c SelfAugmentCandidate) float64 {
