@@ -305,7 +305,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 15906,
+          "bytes": 15997,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -380,7 +380,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 13072,
+          "bytes": 13222,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -424,7 +424,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 19011,
+          "bytes": 19445,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -2623,7 +2623,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 15906,
+                "bytes": 15997,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2698,7 +2698,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 13072,
+                "bytes": 13222,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2742,7 +2742,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 19011,
+                "bytes": 19445,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",

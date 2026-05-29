@@ -16,6 +16,7 @@ import (
 const ProjectLifecycleSchemaVersion = 1
 const projectLifecycleProfileFile = "project.json"
 const docUpkeepQueueFile = "doc-upkeep-queue.jsonl"
+const compactCapsuleFile = "compact-capsule.json"
 
 type ProjectFingerprint struct {
 	RepoRoot      string `json:"repo_root"`
@@ -40,6 +41,7 @@ type ProjectLifecycleStatePlan struct {
 	ProjectStateDir string                   `json:"project_state_dir"`
 	ProjectJSONPath string                   `json:"project_json_path"`
 	QueuePath       string                   `json:"queue_path"`
+	CompactPath     string                   `json:"compact_path"`
 	Fingerprint     ProjectFingerprint       `json:"fingerprint"`
 	Exists          bool                     `json:"exists"`
 	NamespaceValid  bool                     `json:"namespace_valid"`
@@ -85,6 +87,7 @@ func ResolveProjectLifecycleState(repoRoot string) (ProjectLifecycleStatePlan, e
 		ProjectStateDir: projectDir,
 		ProjectJSONPath: filepath.Join(projectDir, projectLifecycleProfileFile),
 		QueuePath:       filepath.Join(projectDir, docUpkeepQueueFile),
+		CompactPath:     filepath.Join(projectDir, compactCapsuleFile),
 		Fingerprint:     fingerprint,
 		Warnings:        []string{},
 	}
@@ -369,6 +372,26 @@ type LifecycleStopReminderResult struct {
 	PendingCount      int    `json:"pending_count"`
 }
 
+type LifecycleCompactCapsule struct {
+	SchemaVersion     int              `json:"schema_version"`
+	RepoRoot          string           `json:"repo_root"`
+	RepoID            string           `json:"repo_id"`
+	CreatedAt         string           `json:"created_at"`
+	RequiredDocs      []string         `json:"required_docs,omitempty"`
+	PendingDocUpkeep  []DocUpkeepEvent `json:"pending_doc_upkeep,omitempty"`
+	AdditionalSummary string           `json:"additional_summary,omitempty"`
+}
+
+type LifecycleCompactResult struct {
+	OK                bool     `json:"ok"`
+	Recorded          bool     `json:"recorded,omitempty"`
+	ShouldInject      bool     `json:"should_inject,omitempty"`
+	AdditionalContext string   `json:"additional_context,omitempty"`
+	PendingCount      int      `json:"pending_count,omitempty"`
+	CompactPath       string   `json:"compact_path,omitempty"`
+	Warnings          []string `json:"warnings,omitempty"`
+}
+
 func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecycleResult, error) {
 	repo := strings.TrimSpace(req.Repo)
 	if repo == "" {
@@ -424,6 +447,100 @@ func BuildLifecycleStopReminder(repo string) LifecycleStopReminderResult {
 	}
 	b.WriteString("Use project_docs_record for ADR/caution entries or project_docs_read/project_docs_update for evidence-preserving doc refreshes.")
 	return LifecycleStopReminderResult{OK: true, ShouldInject: true, AdditionalContext: strings.TrimSpace(b.String()), PendingCount: len(events)}
+}
+
+func BuildLifecyclePreCompactCapsule(repo string) LifecycleCompactResult {
+	events, plan, err := ReadPendingDocUpkeepEvents(repo, 8)
+	if err != nil {
+		return LifecycleCompactResult{OK: true, Warnings: []string{"pending_doc_upkeep_read_error"}}
+	}
+	if !plan.Exists || !plan.NamespaceValid || len(events) == 0 {
+		return LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+	}
+	capsule := LifecycleCompactCapsule{
+		SchemaVersion:     ProjectLifecycleSchemaVersion,
+		RepoRoot:          plan.RepoRoot,
+		RepoID:            plan.RepoID,
+		CreatedAt:         time.Now().UTC().Format(time.RFC3339Nano),
+		RequiredDocs:      docsFromDocUpkeepEvents(events),
+		PendingDocUpkeep:  events,
+		AdditionalSummary: "Session compaction capsule: restore these lifecycle/doc-upkeep hints after compacting to avoid rediscovering project-doc context.",
+	}
+	if err := writeJSONAtomic(plan.CompactPath, capsule, 0o600); err != nil {
+		return LifecycleCompactResult{OK: false, PendingCount: len(events), CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_write_error"}}
+	}
+	return LifecycleCompactResult{OK: true, Recorded: true, PendingCount: len(events), CompactPath: plan.CompactPath}
+}
+
+func BuildLifecyclePostCompactReminder(repo string) LifecycleCompactResult {
+	plan, err := ValidateProjectLifecycleState(repo)
+	if err != nil {
+		return LifecycleCompactResult{OK: true, Warnings: []string{"lifecycle_state_read_error"}}
+	}
+	if !plan.Exists || !plan.NamespaceValid {
+		return LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+	}
+	b, err := os.ReadFile(plan.CompactPath)
+	if os.IsNotExist(err) {
+		return LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+	}
+	if err != nil {
+		return LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_read_error"}}
+	}
+	var capsule LifecycleCompactCapsule
+	if err := json.Unmarshal(b, &capsule); err != nil {
+		return LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_decode_error"}}
+	}
+	if capsule.SchemaVersion != ProjectLifecycleSchemaVersion || capsule.RepoID != plan.RepoID {
+		return LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_namespace_mismatch"}}
+	}
+	context := renderLifecycleCompactContext(capsule)
+	if strings.TrimSpace(context) == "" {
+		return LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+	}
+	_ = os.Remove(plan.CompactPath)
+	return LifecycleCompactResult{
+		OK:                true,
+		ShouldInject:      true,
+		AdditionalContext: context,
+		PendingCount:      len(capsule.PendingDocUpkeep),
+		CompactPath:       plan.CompactPath,
+	}
+}
+
+func docsFromDocUpkeepEvents(events []DocUpkeepEvent) []string {
+	docs := []string{}
+	for _, event := range events {
+		docs = append(docs, event.TargetDocs...)
+	}
+	return normalizeTargetDocs(docs)
+}
+
+func renderLifecycleCompactContext(capsule LifecycleCompactCapsule) string {
+	if len(capsule.PendingDocUpkeep) == 0 && len(capsule.RequiredDocs) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("Restored agent-harness compaction capsule:\n")
+	if len(capsule.RequiredDocs) > 0 {
+		b.WriteString("- Relevant project docs: ")
+		b.WriteString(strings.Join(capsule.RequiredDocs, ", "))
+		b.WriteString("\n")
+	}
+	if len(capsule.PendingDocUpkeep) > 0 {
+		b.WriteString("- Pending doc upkeep preserved across compaction:\n")
+		for _, event := range capsule.PendingDocUpkeep {
+			b.WriteString("  - ")
+			if len(event.TargetDocs) > 0 {
+				b.WriteString(strings.Join(event.TargetDocs, ", "))
+				b.WriteString(": ")
+			}
+			b.WriteString(event.Summary)
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString("Use this as routing context only; read/update project docs when the resumed task touches the listed areas.")
+	return strings.TrimSpace(b.String())
 }
 
 func docTargetsForLifecyclePath(path string) []string {

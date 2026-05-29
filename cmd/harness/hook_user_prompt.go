@@ -21,6 +21,10 @@ func runHook(args []string) error {
 		return runHookUserPrompt(args[1:])
 	case "post-tool-use":
 		return runHookPostToolUse(args[1:])
+	case "pre-compact":
+		return runHookPreCompact(args[1:])
+	case "post-compact":
+		return runHookPostCompact(args[1:])
 	case "stop":
 		return runHookStop(args[1:])
 	default:
@@ -33,6 +37,8 @@ func hookUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   agent-harness hook user-prompt [--prompt TEXT] [--json]
   agent-harness hook post-tool-use [--repo PATH] [--json]
+  agent-harness hook pre-compact [--repo PATH] [--json]
+  agent-harness hook post-compact [--repo PATH] [--json]
   agent-harness hook stop [--repo PATH] [--json]
 `)
 }
@@ -143,6 +149,59 @@ func runHookPostToolUse(args []string) error {
 	return printJSON(map[string]any{
 		"hookSpecificOutput": map[string]any{
 			"hookEventName": "PostToolUse",
+		},
+	})
+}
+
+func runHookPreCompact(args []string) error {
+	fs := flag.NewFlagSet("hook pre-compact", flag.ContinueOnError)
+	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
+	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	stdin, _ := io.ReadAll(os.Stdin)
+	parsedRepo := strings.TrimSpace(*repo)
+	if parsedRepo == "" {
+		parsedRepo = repoFromHookInput(stdin)
+	}
+	if parsedRepo == "" {
+		parsedRepo = resolveTarget("")
+	}
+	result := core.BuildLifecyclePreCompactCapsule(parsedRepo)
+	if *jsonOut {
+		return printJSON(result)
+	}
+	return printJSON(map[string]any{
+		"hookSpecificOutput": map[string]any{
+			"hookEventName": "PreCompact",
+		},
+	})
+}
+
+func runHookPostCompact(args []string) error {
+	fs := flag.NewFlagSet("hook post-compact", flag.ContinueOnError)
+	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
+	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	stdin, _ := io.ReadAll(os.Stdin)
+	parsedRepo := strings.TrimSpace(*repo)
+	if parsedRepo == "" {
+		parsedRepo = repoFromHookInput(stdin)
+	}
+	if parsedRepo == "" {
+		parsedRepo = resolveTarget("")
+	}
+	result := core.BuildLifecyclePostCompactReminder(parsedRepo)
+	if *jsonOut {
+		return printJSON(result)
+	}
+	return printJSON(map[string]any{
+		"hookSpecificOutput": map[string]any{
+			"hookEventName":     "PostCompact",
+			"additionalContext": result.AdditionalContext,
 		},
 	})
 }

@@ -26,8 +26,8 @@ agent-harness update
 - Codex user skill symlink 생성: `~/.codex/skills/* -> <agent-harness>/skills/*`
 - Claude user skill symlink 생성: `~/.claude/skills/* -> <agent-harness>/skills/*`
 - Codex MCP 설정 추가/갱신: `~/.codex/config.toml`의 `[mcp_servers.agent_harness]`
-- Codex lifecycle hooks 추가/갱신: `~/.codex/hooks.json`에서 `agent-harness hook user-prompt`, `agent-harness hook post-tool-use`, `agent-harness hook stop` 실행
-- Claude lifecycle hooks 추가/갱신: `~/.claude/settings.json`에서 같은 `agent-harness hook user-prompt`, `agent-harness hook post-tool-use`, `agent-harness hook stop` 실행
+- Codex lifecycle hooks 추가/갱신: `~/.codex/hooks.json`에서 `agent-harness hook user-prompt`, `agent-harness hook post-tool-use`, `agent-harness hook pre-compact`, `agent-harness hook post-compact`, `agent-harness hook stop` 실행
+- Claude lifecycle hooks 추가/갱신: `~/.claude/settings.json`에서 같은 `agent-harness hook user-prompt`, `agent-harness hook post-tool-use`, `agent-harness hook pre-compact`, `agent-harness hook post-compact`, `agent-harness hook stop` 실행
 - Claude user-scope MCP 서버 등록: `claude mcp add-json -s user agent_harness ...`
 
 기본 설치는 user-level host 설정을 갱신하지만 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. 쓰기 전 계획만 확인하려면 `agent-harness update --dry-run` 또는 `./bin/agent-harness install-native --dry-run --json`을 사용한다. repo-local 파일이 필요할 때만 `agent-harness update --project-local` 또는 `./bin/agent-harness install-native --project-local`을 명시적으로 사용한다. 기존 `bin/agent-harness`를 유지해야 하는 특수 상황에서는 `--skip-build` 또는 `HARNESS_SKIP_BUILD=1`을 사용한다.
@@ -86,7 +86,7 @@ codex mcp get agent_harness
 
 ### Lifecycle hooks
 
-Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 세 lifecycle hook을 등록한다. `UserPromptSubmit`의 `agent-harness hook user-prompt`는 사용자의 새 지시를 차단하거나 대신 수행하지 않고, agent가 고려해야 할 `agent_harness` MCP 후보만 짧은 additional context로 주입한다. 대상 repo의 lifecycle namespace가 user-state에 초기화되어 있으면 pending doc-upkeep queue도 참고해 `.agent-harness` 갱신 후보를 함께 주입한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일 변경을 repo별 user-state queue에 기록하고, `Stop`의 `agent-harness hook stop`은 pending upkeep reminder를 주입한다. 두 후속 hook도 shared docs를 직접 수정하지 않는다.
+Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifecycle hook을 등록한다. `UserPromptSubmit`의 `agent-harness hook user-prompt`는 사용자의 새 지시를 차단하거나 대신 수행하지 않고, agent가 고려해야 할 `agent_harness` MCP 후보만 짧은 additional context로 주입한다. 대상 repo의 lifecycle namespace가 user-state에 초기화되어 있으면 pending doc-upkeep queue도 참고해 `.agent-harness` 갱신 후보를 함께 주입한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일 변경을 repo별 user-state queue에 기록하고, `PreCompact`의 `agent-harness hook pre-compact`는 pending doc-upkeep 상태를 작은 compact capsule로 저장하며, `PostCompact`의 `agent-harness hook post-compact`는 capsule을 한 번만 additional context로 복원한다. `Stop`의 `agent-harness hook stop`은 pending upkeep reminder를 주입한다. 후속 hook들은 shared docs를 직접 수정하지 않는다.
 
 예:
 
@@ -131,7 +131,7 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 
 ### Claude hooks
 
-기본 설치는 `~/.claude/settings.json`에 세 lifecycle hook을 등록한다. Claude Code의 `UserPromptSubmit`, `PostToolUse`, `Stop` hook은 Codex와 같은 공통 CLI를 호출하므로 living docs routing, lifecycle upkeep queue 기록, stop reminder 의미가 양쪽 host에서 동일하다. `PostToolUse`는 Claude hook matcher `*`로 모든 tool 성공 이벤트를 받아 core에서 관련 파일만 queue에 남긴다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in 없이 `.claude/settings.json`을 target repo에 만들지 않는다.
+기본 설치는 `~/.claude/settings.json`에 Codex와 같은 lifecycle hook을 등록한다. Claude Code의 `UserPromptSubmit`, `PostToolUse`, `PreCompact`, `PostCompact`, `Stop` hook은 Codex와 같은 공통 CLI를 호출하므로 living docs routing, lifecycle upkeep queue 기록, compaction capsule 복원, stop reminder 의미가 양쪽 host에서 동일하다. `PostToolUse`는 Claude hook matcher `*`로 모든 tool 성공 이벤트를 받아 core에서 관련 파일만 queue에 남긴다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in 없이 `.claude/settings.json`을 target repo에 만들지 않는다.
 
 ---
 

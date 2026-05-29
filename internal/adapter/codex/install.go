@@ -321,6 +321,8 @@ func codexLifecycleHookSpecs(binPath string) []codexLifecycleHookSpec {
 	return []codexLifecycleHookSpec{
 		{BinPath: binPath, Event: "UserPromptSubmit", Subcommand: "user-prompt", Timeout: 5},
 		{BinPath: binPath, Event: "PostToolUse", Subcommand: "post-tool-use", Timeout: 5},
+		{BinPath: binPath, Event: "PreCompact", Subcommand: "pre-compact", Timeout: 5},
+		{BinPath: binPath, Event: "PostCompact", Subcommand: "post-compact", Timeout: 5},
 		{BinPath: binPath, Event: "Stop", Subcommand: "stop", Timeout: 5},
 	}
 }

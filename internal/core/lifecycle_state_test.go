@@ -173,3 +173,55 @@ func TestBuildLifecycleStopReminderIncludesPendingUpkeep(t *testing.T) {
 		t.Fatalf("unexpected reminder: %+v", reminder)
 	}
 }
+
+func TestLifecycleCompactCapsulePreservesPendingUpkeep(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if _, err := InitProjectLifecycleState(repo, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AppendDocUpkeepEvent(repo, DocUpkeepEvent{
+		Kind:       "code_change",
+		TargetDocs: []string{"OPERATIONS.md", "TESTING.md"},
+		Summary:    "Hook and tests changed.",
+		Source:     "test",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	pre := BuildLifecyclePreCompactCapsule(repo)
+	if !pre.OK || !pre.Recorded || pre.PendingCount != 1 || pre.CompactPath == "" {
+		t.Fatalf("unexpected pre-compact result: %+v", pre)
+	}
+	if _, err := os.Stat(pre.CompactPath); err != nil {
+		t.Fatalf("compact capsule missing: %v", err)
+	}
+
+	post := BuildLifecyclePostCompactReminder(repo)
+	if !post.OK || !post.ShouldInject || post.PendingCount != 1 {
+		t.Fatalf("unexpected post-compact result: %+v", post)
+	}
+	for _, want := range []string{"Restored agent-harness compaction capsule", "OPERATIONS.md", "TESTING.md", "Hook and tests changed."} {
+		if !strings.Contains(post.AdditionalContext, want) {
+			t.Fatalf("post-compact context missing %q: %s", want, post.AdditionalContext)
+		}
+	}
+	if _, err := os.Stat(pre.CompactPath); !os.IsNotExist(err) {
+		t.Fatalf("post-compact should consume compact capsule, stat error: %v", err)
+	}
+}
+
+func TestLifecyclePreCompactNoPendingUpkeepDoesNotWriteCapsule(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if _, err := InitProjectLifecycleState(repo, true); err != nil {
+		t.Fatal(err)
+	}
+	pre := BuildLifecyclePreCompactCapsule(repo)
+	if !pre.OK || pre.Recorded || pre.PendingCount != 0 {
+		t.Fatalf("unexpected pre-compact result: %+v", pre)
+	}
+	if _, err := os.Stat(pre.CompactPath); !os.IsNotExist(err) {
+		t.Fatalf("pre-compact without pending upkeep should not write capsule, stat error: %v", err)
+	}
+}

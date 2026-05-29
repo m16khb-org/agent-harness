@@ -115,7 +115,7 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 		t.Fatalf("existing setting was not preserved: %+v", settings)
 	}
 	hooks := settings["hooks"].(map[string]any)
-	for _, event := range []string{"UserPromptSubmit", "PostToolUse", "Stop"} {
+	for _, event := range []string{"UserPromptSubmit", "PostToolUse", "PreCompact", "PostCompact", "Stop"} {
 		groups := hooks[event].([]any)
 		count := 0
 		for _, group := range groups {
