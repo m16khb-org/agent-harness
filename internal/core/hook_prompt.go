@@ -106,15 +106,23 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		addPriority("claude-mem", "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.", hintPrioritySecondary)
 	}
 
-	if len(result.Hints) == 0 {
+	pendingUpkeep := []DocUpkeepEvent{}
+	if strings.TrimSpace(req.Repo) != "" {
+		if events, _, err := ReadPendingDocUpkeepEvents(req.Repo, 5); err == nil && len(events) > 0 {
+			pendingUpkeep = events
+			addAction("project_docs_read/project_docs_update", "Pending lifecycle state indicates shared .agent-harness docs may need an evidence-preserving refresh.")
+		}
+	}
+
+	if len(result.Hints) == 0 && len(pendingUpkeep) == 0 {
 		return result
 	}
 	result.ShouldInject = true
-	result.AdditionalContext = renderHookMCPHintContext(result.Hints)
+	result.AdditionalContext = renderHookMCPHintContext(result.Hints, pendingUpkeep)
 	return result
 }
 
-func renderHookMCPHintContext(hints []HookUserPromptHint) string {
+func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent) string {
 	groups := map[string][]HookUserPromptHint{}
 	for _, h := range hints {
 		priority := h.Priority
@@ -131,6 +139,7 @@ func renderHookMCPHintContext(hints []HookUserPromptHint) string {
 	writeHintGroup(&b, "Consider project docs:", filterDocs(groups[hintPriorityConsider]))
 	writeHintGroup(&b, "Route if ambiguous:", groups[hintPriorityRoute])
 	writeHintGroup(&b, "MCP/action candidates:", groups[hintPriorityAction])
+	writePendingUpkeep(&b, pendingUpkeep)
 	writeHintGroup(&b, "Secondary companion-tool hints:", groups[hintPrioritySecondary])
 	b.WriteString("- Writable tools must preserve user consensus and current file evidence; never use them for destructive actions.")
 	return strings.TrimRight(b.String(), "\n")
@@ -181,4 +190,20 @@ func containsAny(s string, needles ...string) bool {
 		}
 	}
 	return false
+}
+
+func writePendingUpkeep(b *strings.Builder, events []DocUpkeepEvent) {
+	if len(events) == 0 {
+		return
+	}
+	b.WriteString("Pending project-doc upkeep:\n")
+	for _, event := range events {
+		b.WriteString("- ")
+		if len(event.TargetDocs) > 0 {
+			b.WriteString(strings.Join(event.TargetDocs, ", "))
+			b.WriteString(": ")
+		}
+		b.WriteString(event.Summary)
+		b.WriteString("\n")
+	}
 }

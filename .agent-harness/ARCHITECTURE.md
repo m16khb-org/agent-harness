@@ -23,7 +23,7 @@ flowchart LR
     Codex["Codex<br/>AGENTS.md · native skills · MCP config"] --> MCPProxy["agent-harness mcp<br/>stdio proxy"]
     Claude["Claude Code<br/>CLAUDE.md · skills · hooks · MCP config"] --> MCPProxy
     Human["Human shell"] --> CLI["CLI: agent-harness"]
-    Hook["UserPromptSubmit / SessionStart hook"] --> CLI
+    Hook["UserPromptSubmit / PostToolUse / Stop hook"] --> CLI
 
     MCPProxy --> Daemon["agent-harness daemon<br/>user-level Unix socket"]
     CLI --> Core["core usecases<br/>policy · workspace · docs · state"]
@@ -58,7 +58,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 | 모드 | 도입 단계 | 용도 | 원칙 |
 |------|----------|------|------|
-| `agent-harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/agent-harness inspect/preflight/docs/policy/state/self-verify/self-augment` 사용 |
+| `agent-harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/agent-harness inspect/preflight/doctor/docs/policy/state/self-verify/self-augment` 사용 |
 | `agent-harness mcp` stdio proxy | 구현됨 | Codex/Claude Code가 같은 MCP schema로 daemon에 연결 | `agent-harness` daemon을 자동 시작하고 stdio를 Unix socket으로 proxy한다. |
 | `agent-harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
 | `agent-harness worker` job daemon | Future | 장기 작업, concurrent job, file watch | 현재 daemon은 MCP proxy backend이며 job queue worker가 아니다. queue/cancel/audit hardening 후 별도 확장 |
@@ -101,9 +101,10 @@ Project docs bootstrap:
 - 안전: `AGENTS.md` 전체를 덮어쓰지 않고 `AGENT_HARNESS` marker block만 관리한다.
 - MCP: `project_docs_bootstrap_plan`, `project_docs_route`, `harness://project-docs`로 어떤 작업에 어떤 문서를 확인해야 하는지 제공한다.
 
-현재 `agent-harness state`는 작은 에이전트 체크포인트를 JSON 파일로 저장한다.
+현재 `agent-harness state`는 작은 에이전트 체크포인트를 JSON 파일로 저장한다. project lifecycle state는 같은 user-state root 아래 `projects/<repo-id>/`에 격리되며 target repo의 `.agent-harness/`에는 쓰지 않는다.
 
 - 기본 위치: `~/.local/state/agent-harness/`
+- project lifecycle 위치: `~/.local/state/agent-harness/projects/<repo-id>/project.json` 및 `doc-upkeep-queue.jsonl`; `<repo-id>`는 repo fingerprint hash라 같은 머신의 여러 repo가 섞이지 않는다.
 - override: `HARNESS_STATE_DIR`
 - 파일: `<key>.json`
 - key 제한: `[A-Za-z0-9._-]`, 최대 128자, `/`, `\`, `..` 금지
@@ -111,6 +112,7 @@ Project docs bootstrap:
 - 제공 표면: CLI `state write/read/list/prune/doctor/migrate`, MCP `state_write/state_read/state_list/state_prune/state_doctor/state_migrate`, resource `harness://state`
 - cleanup: `state prune --max-age DURATION`은 기본 dry-run이고, 실제 삭제에는 `--confirm`이 필요하다.
 - integrity: `state doctor`는 checkpoint 파일을 수정하지 않고 invalid JSON, key mismatch, byte count drift, timestamp 오류를 보고한다.
+- comprehensive diagnostics: `agent-harness doctor`는 state doctor를 포함해 install, hooks, MCP, daemon, project docs, lifecycle namespace, repo-local runtime/schema 흔적을 종합 점검한다.
 - migration: `state migrate`는 기본 dry-run이고, 실제 legacy schema rewrite에는 `--confirm`이 필요하다.
 - self-verify summary checkpoint는 `self-verify history/compare/promote`와 MCP `self_verify_history/self_verify_compare/self_verify_promote`로 조회·비교·승격한다.
 
@@ -183,7 +185,7 @@ Project docs bootstrap:
 
 | Host | 최소 통합 | 권장 통합 | 주의 |
 |------|----------|----------|------|
-| Codex | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` UserPromptSubmit hook | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
+| Codex | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` UserPromptSubmit/PostToolUse/Stop lifecycle hooks | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
 | Claude Code | `CLAUDE.md` + shell에서 `agent-harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server; optional prompt/session hook templates reuse `agent-harness hook user-prompt` | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.mcp.json`은 explicit project-local opt-in에서만 쓴다 |
 
 ---

@@ -3,6 +3,7 @@ agent-harness 0.1.0
 Usage:
   agent-harness inspect [--json] [--repo PATH]
   agent-harness preflight [--json] [PATH]
+  agent-harness doctor [--repo PATH] [--json]
   agent-harness docs [index] [--json]
   agent-harness policy check [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...

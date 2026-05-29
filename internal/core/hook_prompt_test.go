@@ -104,3 +104,35 @@ func TestBuildUserPromptMCPHintsDoesNotTreatPRSubstringAsCommit(t *testing.T) {
 		t.Fatalf("substring pr should not trigger commit policy:\n%s", got.AdditionalContext)
 	}
 }
+
+func TestBuildUserPromptMCPHintsIncludesPendingUpkeep(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	if _, err := InitProjectLifecycleState(root, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AppendDocUpkeepEvent(root, DocUpkeepEvent{
+		Kind:       "operation_change",
+		TargetDocs: []string{"OPERATIONS.md"},
+		Summary:    "Hook behavior changed.",
+		Source:     "test",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "계속", Repo: root})
+	for _, want := range []string{"Pending project-doc upkeep:", "OPERATIONS.md", "Hook behavior changed.", "project_docs_read/project_docs_update"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("pending upkeep hint missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
+func TestBuildUserPromptMCPHintsFallsBackWhenLifecycleStateMissing(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "hook 운영을 고쳐줘", Repo: t.TempDir()})
+	for _, want := range []string{"OPERATIONS.md", "CONVENTIONS.md"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("fallback hint missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}

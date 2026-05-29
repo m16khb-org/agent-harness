@@ -4,7 +4,7 @@
 
 1. Codex/Claude native skills: `atomic-commit-push`, `self-augment`, `project-bootstrap`
 2. MCP stdio proxy: `agent-harness mcp` → shared `agent-harness daemon`
-3. CLI: `agent-harness inspect/preflight/docs/project/policy/state/daemon/self-verify/self-augment/api-doc/hook`
+3. CLI: `agent-harness inspect/preflight/doctor/docs/project/policy/state/daemon/self-verify/self-augment/api-doc/hook`
 
 ---
 
@@ -26,7 +26,7 @@ agent-harness update
 - Codex user skill symlink 생성: `~/.codex/skills/* -> <agent-harness>/skills/*`
 - Claude user skill symlink 생성: `~/.claude/skills/* -> <agent-harness>/skills/*`
 - Codex MCP 설정 추가/갱신: `~/.codex/config.toml`의 `[mcp_servers.agent_harness]`
-- Codex `UserPromptSubmit` hook 추가/갱신: `~/.codex/hooks.json`에서 `agent-harness hook user-prompt` 실행
+- Codex lifecycle hooks 추가/갱신: `~/.codex/hooks.json`에서 `agent-harness hook user-prompt`, `agent-harness hook post-tool-use`, `agent-harness hook stop` 실행
 - Claude user-scope MCP 서버 등록: `claude mcp add-json -s user agent_harness ...`
 
 기본 설치는 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. 쓰기 전 계획만 확인하려면 `agent-harness update --dry-run` 또는 `./bin/agent-harness install-native --dry-run --json`을 사용한다. repo-local 파일이 필요할 때만 `agent-harness update --project-local` 또는 `./bin/agent-harness install-native --project-local`을 명시적으로 사용한다. 기존 `bin/agent-harness`를 유지해야 하는 특수 상황에서는 `--skip-build` 또는 `HARNESS_SKIP_BUILD=1`을 사용한다.
@@ -83,9 +83,9 @@ codex mcp get agent_harness
 
 `agent-harness mcp`는 user-level daemon을 자동 시작하고 stdio를 daemon socket으로 proxy한다.
 
-### UserPromptSubmit hook
+### Lifecycle hooks
 
-Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`의 `UserPromptSubmit`에 `agent-harness hook user-prompt`를 등록한다. 이 hook은 사용자의 새 지시를 차단하거나 대신 수행하지 않고, agent가 고려해야 할 `agent_harness` MCP 후보만 짧은 additional context로 주입한다.
+Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 세 lifecycle hook을 등록한다. `UserPromptSubmit`의 `agent-harness hook user-prompt`는 사용자의 새 지시를 차단하거나 대신 수행하지 않고, agent가 고려해야 할 `agent_harness` MCP 후보만 짧은 additional context로 주입한다. 대상 repo의 lifecycle namespace가 user-state에 초기화되어 있으면 pending doc-upkeep queue도 참고해 `.agent-harness` 갱신 후보를 함께 주입한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일 변경을 repo별 user-state queue에 기록하고, `Stop`의 `agent-harness hook stop`은 pending upkeep reminder를 주입한다. 두 후속 hook도 shared docs를 직접 수정하지 않는다.
 
 예:
 
@@ -93,7 +93,7 @@ Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`의 `User
 printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
 ```
 
-주입 후보 예시는 `project_docs_route`, `api_doc_static_check`, `api_doc_review`, `project_docs_read/project_docs_update`, `project_docs_record`다. 매 prompt마다 실행되므로 네트워크나 긴 파일 읽기를 하지 않고 정적 keyword routing만 수행한다.
+주입 후보 예시는 `project_docs_route`, `api_doc_static_check`, `api_doc_review`, `project_docs_read/project_docs_update`, `project_docs_record`다. 매 prompt마다 실행되므로 네트워크나 긴 파일 읽기를 하지 않고 정적 keyword routing과 짧은 user-state 조회만 수행한다.
 
 ---
 
@@ -145,6 +145,7 @@ Claude Code도 UserPromptSubmit/SessionStart 계열 hook에서 `hookSpecificOutp
 ./bin/agent-harness docs --json
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
+./bin/agent-harness doctor --json
 ./bin/agent-harness state write --key checkpoint-1 --value "작업 메모" --json
 ./bin/agent-harness state read --key checkpoint-1 --json
 ./bin/agent-harness state list --json
@@ -231,7 +232,7 @@ module.exports = {
 
 ## 8. Project Docs Bootstrap
 
-`agent-harness project bootstrap`은 대상 레포를 분석해 에이전트용 프로젝트 운영 문서 초안을 생성한다. 기본은 dry-run이며, 실제 쓰기는 `--write`가 있을 때만 수행한다. `AGENTS.md`는 전체 덮어쓰지 않고, behavioral top block이 없으면 prepend하며 `AGENT_HARNESS` marker block만 추가/갱신한다. 정적 bootstrap은 안전한 baseline일 뿐이므로 최초 세팅 후 에이전트가 repo 증거를 읽고 `.agent-harness` 문서를 MCP로 보강해야 한다.
+`agent-harness project bootstrap`은 대상 레포를 분석해 에이전트용 프로젝트 운영 문서 초안을 생성한다. 기본은 dry-run이며, 실제 쓰기는 `--write`가 있을 때만 수행한다. `AGENTS.md`는 전체 덮어쓰지 않고, behavioral top block이 없으면 prepend하며 `AGENT_HARNESS` marker block만 추가/갱신한다. `--write` 실행은 target repo에 runtime state를 쓰지 않고 user-state의 `projects/<repo-id>/project.json` lifecycle namespace를 생성·검증한다. 정적 bootstrap은 안전한 baseline일 뿐이므로 최초 세팅 후 에이전트가 repo 증거와 lifecycle state를 읽고 `.agent-harness` 문서를 MCP로 보강해야 한다.
 
 생성 대상:
 
@@ -320,3 +321,13 @@ HARNESS_WORKER_DIR="$(mktemp -d)" ./bin/agent-harness worker enqueue --kind smok
 ```
 
 `policy audit`는 redacted JSONL policy decision을 기록하고 command를 실행하지 않는다. `worker`는 lifecycle record만 저장하는 no-shell MVP다. future process execution은 command policy, audit logging, timeout/cancellation, redaction check를 통과해야 한다.
+
+### Comprehensive doctor
+
+`agent-harness doctor`는 일반 사용자가 먼저 실행할 종합 진단 명령이다. 설치, hook, MCP, daemon, user-state, project lifecycle namespace, `.agent-harness` 문서, repo-local runtime state 흔적을 read-only로 점검하고 해결책을 제안한다. `agent-harness state doctor`는 여전히 checkpoint store 무결성만 보는 좁은 명령이다.
+
+```bash
+./bin/agent-harness doctor --repo . --json
+```
+
+팀 repo에서는 `.agent-harness/state/`, `.agent-harness/state.schema.json` 같은 per-user runtime/schema 데이터를 커밋하지 않는다. lifecycle schema와 validator는 agent-harness core가 소유하고, 실제 queue/profile 상태는 user-state 아래 repo별 namespace에 저장한다.

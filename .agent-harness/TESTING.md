@@ -28,6 +28,7 @@ printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
 tmp_state="$(mktemp -d)"
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness doctor --repo . --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state write --key smoke --value "ok" --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state read --key smoke --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state list --json
@@ -164,7 +165,8 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `agent-harness self-verify compare` summary checkpoint regression comparison
 - `agent-harness self-verify promote` dry-run/confirm baseline promotion
 - `agent-harness self-augment --json` planner/candidate curriculum
-- `agent-harness inspect/docs/preflight/policy/state` 실제 JSON response normalization 결과
+- `agent-harness inspect/doctor/docs/preflight/policy/state` 실제 JSON response normalization 결과
+- `agent-harness doctor --json` comprehensive diagnostics output shape
 - `agent-harness state write/read/list/prune/doctor/migrate` output shape
 - command policy allow/deny 결과
 - command policy catalog table과 `CommandPolicySummary().catalog` 노출
@@ -253,3 +255,10 @@ Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.
 ## Contract/audit/worker verification
 
 CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden test를 실행해 command name, MCP tool name, required response field가 machine-visible하게 유지되는지 확인한다. policy audit 동작 변경은 JSONL record가 append-only이고 secret-like argument가 redacted 되는지 검증한다. 현재 worker 변경은 no-shell MVP 범위이며 process execution 없이 enqueue/status/list/cancel을 테스트해야 한다.
+
+## Lifecycle state tests
+
+- project lifecycle namespace tests must use `HARNESS_STATE_DIR` with `t.TempDir()` and must not write runtime state under the target repo.
+- bootstrap tests should verify dry-run plans `projects/<repo-id>/project.json` without creating it, and `--write` creates it in user-state.
+- hook tests should cover fallback behavior when lifecycle state is missing/corrupt so prompt routing remains useful.
+- doctor tests should cover repo-local `.agent-harness/state/` and namespace mismatch warnings.

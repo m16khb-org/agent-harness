@@ -66,7 +66,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	}
 
 	if req.DryRun {
-		result.Messages = append(result.Messages, "dry-run: planned Codex user skill links, MCP config, and UserPromptSubmit hook without writing")
+		result.Messages = append(result.Messages, "dry-run: planned Codex user skill links, MCP config, and lifecycle hooks without writing")
 	}
 
 	if len(errs) > 0 {
@@ -213,7 +213,7 @@ func writeCodexHooks(path string, req port.NativeInstallRequest) (port.InstallFi
 	} else if err != nil && !os.IsNotExist(err) && !req.DryRun {
 		return file, err
 	}
-	merged := mergeHookConfig(config, codexHookCommand(req.BinPath))
+	merged := mergeHookConfig(config, req.BinPath)
 	b, err := json.MarshalIndent(merged, "", "  ")
 	if err != nil {
 		return file, err
@@ -303,28 +303,45 @@ HARNESS_ROOT = "."
 }
 
 func codexHooksConfig(binPath string) map[string]any {
+	hooks := map[string]any{}
+	for _, spec := range codexLifecycleHookSpecs(binPath) {
+		hooks[spec.Event] = []any{codexHookGroup(spec)}
+	}
+	return map[string]any{"hooks": hooks}
+}
+
+type codexLifecycleHookSpec struct {
+	BinPath    string
+	Event      string
+	Subcommand string
+	Timeout    int
+}
+
+func codexLifecycleHookSpecs(binPath string) []codexLifecycleHookSpec {
+	return []codexLifecycleHookSpec{
+		{BinPath: binPath, Event: "UserPromptSubmit", Subcommand: "user-prompt", Timeout: 5},
+		{BinPath: binPath, Event: "PostToolUse", Subcommand: "post-tool-use", Timeout: 5},
+		{BinPath: binPath, Event: "Stop", Subcommand: "stop", Timeout: 5},
+	}
+}
+
+func codexHookGroup(spec codexLifecycleHookSpec) map[string]any {
 	return map[string]any{
-		"hooks": map[string]any{
-			"UserPromptSubmit": []any{
-				map[string]any{
-					"hooks": []any{
-						map[string]any{
-							"type":    "command",
-							"command": codexHookCommand(binPath),
-							"timeout": 5,
-						},
-					},
-				},
+		"hooks": []any{
+			map[string]any{
+				"type":    "command",
+				"command": codexHookCommand(spec.BinPath, spec.Subcommand),
+				"timeout": spec.Timeout,
 			},
 		},
 	}
 }
 
-func codexHookCommand(binPath string) string {
-	return fmt.Sprintf("%s hook user-prompt", shellQuote(binPath))
+func codexHookCommand(binPath, subcommand string) string {
+	return fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
 }
 
-func mergeHookConfig(config map[string]any, command string) map[string]any {
+func mergeHookConfig(config map[string]any, binPath string) map[string]any {
 	if config == nil {
 		config = map[string]any{}
 	}
@@ -333,24 +350,18 @@ func mergeHookConfig(config map[string]any, command string) map[string]any {
 		hooks = map[string]any{}
 		config["hooks"] = hooks
 	}
-	groups := []any{}
-	if existing, ok := hooks["UserPromptSubmit"].([]any); ok {
-		for _, group := range existing {
-			if !hookGroupContainsAgentHarness(group) {
-				groups = append(groups, group)
+	for _, spec := range codexLifecycleHookSpecs(binPath) {
+		groups := []any{}
+		if existing, ok := hooks[spec.Event].([]any); ok {
+			for _, group := range existing {
+				if !hookGroupContainsAgentHarness(group) {
+					groups = append(groups, group)
+				}
 			}
 		}
+		groups = append(groups, codexHookGroup(spec))
+		hooks[spec.Event] = groups
 	}
-	groups = append(groups, map[string]any{
-		"hooks": []any{
-			map[string]any{
-				"type":    "command",
-				"command": command,
-				"timeout": 5,
-			},
-		},
-	})
-	hooks["UserPromptSubmit"] = groups
 	return config
 }
 

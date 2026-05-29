@@ -45,6 +45,7 @@ Use it when you want to:
 | Install and inspection | `install-native`, `inspect`, `preflight`, `version` | Build and connect user-level Codex/Claude integrations, then inspect the installation. |
 | MCP backend | `agent-harness mcp`, `daemon start/status/stop` | Run a stdio MCP proxy backed by a user-level daemon so Codex and Claude see the same tools. |
 | Command policy | `policy check`, `policy fake-run`, `policy audit` | Evaluate argv, workspace root, cwd, timeout, write/network intent, and audit metadata without a real shell runner. |
+| Doctor | `doctor` | Diagnose install, hooks, MCP, daemon, user-state, lifecycle namespace, and project docs. |
 | State checkpoints | `state write/read/list/prune/doctor/migrate` | Store small JSON checkpoints in user state, not tracked repo files. |
 | Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | Generate, index, route, and append project operating docs under `.agent-harness/`. |
 | API docs gate | `api-doc check/static-check/review` | Catch endpoint/DTO/OpenAPI documentation drift. |
@@ -173,6 +174,7 @@ Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_C
 ./bin/agent-harness project route-docs --repo "$PWD" --task "update command policy" --json
 
 # State checkpoints
+./bin/agent-harness doctor --repo . --json
 ./bin/agent-harness state write --key checkpoint --value "ready" --json
 ./bin/agent-harness state read --key checkpoint --json
 ./bin/agent-harness state doctor --json
@@ -234,7 +236,7 @@ claude mcp list
 - Policy commands reason about argv form, workspace root, cwd, write/network intent, timeout, and audit metadata.
 - Current policy/fake-run/audit commands do not provide a general shell execution capability.
 - Worker commands are intentionally no-shell lifecycle records until queueing, cancellation, redaction, and audit boundaries are hardened.
-- Runtime state belongs in user state directories or ignored workspace state, not committed source files.
+- Runtime state belongs in user state directories, not committed source files. Project lifecycle state is namespaced under `~/.local/state/agent-harness/projects/<repo-id>/`, not under `.agent-harness/`.
 
 ## Development
 
@@ -326,6 +328,7 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 | 설치와 점검 | `install-native`, `inspect`, `preflight`, `version` | user-level Codex/Claude integration을 만들고 설치 상태를 확인합니다. |
 | MCP backend | `agent-harness mcp`, `daemon start/status/stop` | user-level daemon 뒤의 stdio MCP proxy를 실행해 Codex와 Claude가 같은 tool을 보게 합니다. |
 | Command policy | `policy check`, `policy fake-run`, `policy audit` | 실제 shell runner 없이 argv, workspace root, cwd, timeout, write/network intent, audit metadata를 평가합니다. |
+| Doctor | `doctor` | install, hook, MCP, daemon, user-state, lifecycle namespace, project docs를 종합 진단합니다. |
 | State checkpoint | `state write/read/list/prune/doctor/migrate` | 작은 JSON checkpoint를 repo가 아니라 user state에 저장합니다. |
 | Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | `.agent-harness/` 운영 문서를 생성, 색인, 라우팅, append 기록합니다. |
 | API docs gate | `api-doc check/static-check/review` | endpoint/DTO/OpenAPI 문서 drift를 찾습니다. |
@@ -454,6 +457,7 @@ agent-harness update
 ./bin/agent-harness project route-docs --repo "$PWD" --task "update command policy" --json
 
 # 상태 체크포인트
+./bin/agent-harness doctor --repo . --json
 ./bin/agent-harness state write --key checkpoint --value "ready" --json
 ./bin/agent-harness state read --key checkpoint --json
 ./bin/agent-harness state doctor --json
@@ -515,7 +519,7 @@ claude mcp list
 - policy 명령은 argv form, workspace root, cwd, write/network intent, timeout, audit metadata를 명시적으로 다룹니다.
 - 현재 policy/fake-run/audit 명령은 범용 shell 실행 기능이 아닙니다.
 - worker 명령은 queue, cancellation, redaction, audit 경계가 단단해질 때까지 no-shell lifecycle record로 유지합니다.
-- runtime state는 user state directory나 ignored workspace state에 두고 source file로 commit하지 않습니다.
+- runtime state는 user state directory에 두고 source file로 commit하지 않습니다. project lifecycle state는 `.agent-harness/`가 아니라 `~/.local/state/agent-harness/projects/<repo-id>/` 아래에 격리합니다.
 
 ## 개발과 검증
 

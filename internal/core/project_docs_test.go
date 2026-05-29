@@ -25,6 +25,12 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	if len(dry.Files) != 1+len(ProjectDocNames()) {
 		t.Fatalf("planned files=%d want %d", len(dry.Files), 1+len(ProjectDocNames()))
 	}
+	if dry.LifecycleState.ProjectStateDir == "" || dry.LifecycleState.ProjectJSONPath == "" {
+		t.Fatalf("dry-run missing lifecycle namespace plan: %+v", dry.LifecycleState)
+	}
+	if _, err := os.Stat(dry.LifecycleState.ProjectJSONPath); !os.IsNotExist(err) {
+		t.Fatalf("dry-run wrote lifecycle project.json or unexpected stat error: %v", err)
+	}
 	if !containsProjectCommand(dry.Signals.TestCommands, "go test ./...") {
 		t.Fatalf("go test command not inferred: %+v", dry.Signals.TestCommands)
 	}
@@ -35,6 +41,12 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	}
 	if !written.OK || written.DryRun || !written.Write {
 		t.Fatalf("unexpected write flags: %+v", written)
+	}
+	if !written.LifecycleState.NamespaceValid || !written.LifecycleState.Exists {
+		t.Fatalf("write did not initialize lifecycle namespace: %+v", written.LifecycleState)
+	}
+	if _, err := os.Stat(written.LifecycleState.ProjectJSONPath); err != nil {
+		t.Fatalf("write did not create lifecycle project.json: %v", err)
 	}
 	agents := mustRead(t, filepath.Join(root, "AGENTS.md"))
 	if !strings.Contains(agents, "# Existing Rules") || !strings.Contains(agents, agentsStartMarker) || !strings.Contains(agents, ".agent-harness/TESTING.md") || !strings.Contains(agents, ".agent-harness/OPERATIONS.md") {

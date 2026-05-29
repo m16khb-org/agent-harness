@@ -15,6 +15,7 @@ func Commands() []Command {
 	return []Command{
 		{Name: "inspect", Description: "inspect harness installation and native integration"},
 		{Name: "preflight", Description: "run read-only git preflight checks"},
+		{Name: "doctor", Description: "diagnose harness installation, state, hooks, MCP, daemon, and project docs"},
 		{Name: "docs", Description: "index harness guidance documents"},
 		{Name: "policy", Description: "evaluate command policy, fake-run commands, and write audit records"},
 		{Name: "contract", Description: "print or check CLI/MCP response compatibility contracts"},
@@ -42,6 +43,7 @@ func Usage(version string) string {
 Usage:
   agent-harness inspect [--json] [--repo PATH]
   agent-harness preflight [--json] [PATH]
+  agent-harness doctor [--repo PATH] [--json]
   agent-harness docs [index] [--json]
   agent-harness policy check [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...

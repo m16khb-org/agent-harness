@@ -85,6 +85,10 @@
           "name": "preflight"
         },
         {
+          "description": "diagnose harness installation, state, hooks, MCP, daemon, and project docs",
+          "name": "doctor"
+        },
+        {
           "description": "index harness guidance documents",
           "name": "docs"
         },
@@ -149,7 +153,7 @@
           "name": "version"
         }
       ],
-      "hash": "e1fb892b2fd7f300654a629cc1f1b13380f52896d25fef27c921845b348df62b",
+      "hash": "79322b56ed530da3f4b2ce2a290b9d70cce1fbf8ff981776a33218818f6ead53",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -206,6 +210,16 @@
           "argv",
           "deny_reasons",
           "warnings"
+        ],
+        "harness_doctor": [
+          "ok",
+          "healthy",
+          "kind",
+          "repo_root",
+          "state_dir",
+          "lifecycle_state",
+          "checks",
+          "issues"
         ],
         "self_verification_summary": [
           "total_runs",
@@ -291,7 +305,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 15226,
+          "bytes": 15835,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -366,7 +380,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 11921,
+          "bytes": 12834,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -410,7 +424,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 17108,
+          "bytes": 18626,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -419,7 +433,7 @@
             "2. Codex에서 사용",
             "Native skills",
             "MCP",
-            "UserPromptSubmit hook",
+            "Lifecycle hooks",
             "3. Claude Code에서 사용",
             "Native skills",
             "MCP",
@@ -455,7 +469,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 14999,
+          "bytes": 15673,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -472,7 +486,8 @@
             "Business logic error response coverage",
             "Agent-backed verification boundary",
             "OpenAPI prompt source",
-            "Contract/audit/worker verification"
+            "Contract/audit/worker verification",
+            "Lifecycle state tests"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
           "rel_path": ".agent-harness/TESTING.md",
@@ -2381,6 +2396,10 @@
                 "name": "preflight"
               },
               {
+                "description": "diagnose harness installation, state, hooks, MCP, daemon, and project docs",
+                "name": "doctor"
+              },
+              {
                 "description": "index harness guidance documents",
                 "name": "docs"
               },
@@ -2445,7 +2464,7 @@
                 "name": "version"
               }
             ],
-            "hash": "e1fb892b2fd7f300654a629cc1f1b13380f52896d25fef27c921845b348df62b",
+            "hash": "79322b56ed530da3f4b2ce2a290b9d70cce1fbf8ff981776a33218818f6ead53",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2502,6 +2521,16 @@
                 "argv",
                 "deny_reasons",
                 "warnings"
+              ],
+              "harness_doctor": [
+                "ok",
+                "healthy",
+                "kind",
+                "repo_root",
+                "state_dir",
+                "lifecycle_state",
+                "checks",
+                "issues"
               ],
               "self_verification_summary": [
                 "total_runs",
@@ -2594,7 +2623,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 15226,
+                "bytes": 15835,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2669,7 +2698,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 11921,
+                "bytes": 12834,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2713,7 +2742,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 17108,
+                "bytes": 18626,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -2722,7 +2751,7 @@
                   "2. Codex에서 사용",
                   "Native skills",
                   "MCP",
-                  "UserPromptSubmit hook",
+                  "Lifecycle hooks",
                   "3. Claude Code에서 사용",
                   "Native skills",
                   "MCP",
@@ -2758,7 +2787,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 14999,
+                "bytes": 15673,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -2775,7 +2804,8 @@
                   "Business logic error response coverage",
                   "Agent-backed verification boundary",
                   "OpenAPI prompt source",
-                  "Contract/audit/worker verification"
+                  "Contract/audit/worker verification",
+                  "Lifecycle state tests"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
                 "rel_path": ".agent-harness/TESTING.md",

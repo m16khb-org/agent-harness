@@ -128,16 +128,17 @@ type ProjectDocsBootstrapRequest struct {
 }
 
 type ProjectDocsBootstrapResult struct {
-	OK          bool                     `json:"ok"`
-	Kind        string                   `json:"kind"`
-	RepoRoot    string                   `json:"repo_root"`
-	DocsDir     string                   `json:"docs_dir"`
-	Write       bool                     `json:"write"`
-	DryRun      bool                     `json:"dry_run"`
-	GeneratedAt string                   `json:"generated_at"`
-	Signals     ProjectSignals           `json:"signals"`
-	Files       []ProjectDocsPlannedFile `json:"files"`
-	Warnings    []string                 `json:"warnings,omitempty"`
+	OK             bool                      `json:"ok"`
+	Kind           string                    `json:"kind"`
+	RepoRoot       string                    `json:"repo_root"`
+	DocsDir        string                    `json:"docs_dir"`
+	Write          bool                      `json:"write"`
+	DryRun         bool                      `json:"dry_run"`
+	GeneratedAt    string                    `json:"generated_at"`
+	Signals        ProjectSignals            `json:"signals"`
+	Files          []ProjectDocsPlannedFile  `json:"files"`
+	LifecycleState ProjectLifecycleStatePlan `json:"lifecycle_state"`
+	Warnings       []string                  `json:"warnings,omitempty"`
 }
 
 type ProjectDocsPlannedFile struct {
@@ -263,8 +264,12 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		return ProjectDocsBootstrapResult{}, err
 	}
 	signals := AnalyzeProjectSignals(root)
+	lifecycleState, err := InitProjectLifecycleState(root, req.Write)
+	if err != nil {
+		return ProjectDocsBootstrapResult{}, err
+	}
 	files := []ProjectDocsPlannedFile{}
-	warnings := []string{}
+	warnings := append([]string{}, lifecycleState.Warnings...)
 	contents := renderProjectDocs(root, signals)
 	contents["AGENTS.md"] = renderAgentsWithBlock(root, contents["AGENTS.md"])
 
@@ -296,16 +301,17 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		warnings = append(warnings, "dry_run_only: pass --write to create or update AGENTS.md and .agent-harness/*.md")
 	}
 	return ProjectDocsBootstrapResult{
-		OK:          true,
-		Kind:        "project_docs_bootstrap",
-		RepoRoot:    root,
-		DocsDir:     filepath.Join(root, ProjectDocsDir),
-		Write:       req.Write,
-		DryRun:      !req.Write,
-		GeneratedAt: time.Now().Format(time.RFC3339),
-		Signals:     signals,
-		Files:       files,
-		Warnings:    warnings,
+		OK:             true,
+		Kind:           "project_docs_bootstrap",
+		RepoRoot:       root,
+		DocsDir:        filepath.Join(root, ProjectDocsDir),
+		Write:          req.Write,
+		DryRun:         !req.Write,
+		GeneratedAt:    time.Now().Format(time.RFC3339),
+		Signals:        signals,
+		Files:          files,
+		LifecycleState: lifecycleState,
+		Warnings:       warnings,
 	}, nil
 }
 

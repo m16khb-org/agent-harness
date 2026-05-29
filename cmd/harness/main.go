@@ -51,6 +51,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "preflight:", err)
 			os.Exit(1)
 		}
+	case "doctor":
+		if err := runDoctor(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "doctor:", err)
+			os.Exit(1)
+		}
 	case "docs":
 		if err := runDocs(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "docs:", err)
@@ -190,6 +195,38 @@ func runPreflight(args []string) error {
 	return printJSON(result)
 }
 
+func runDoctor(args []string) error {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "target repository path")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		*repo = fs.Arg(0)
+	}
+	home, _ := os.UserHomeDir()
+	result, err := core.HarnessDoctor(core.HarnessDoctorRequest{RepoRoot: *repo, HarnessRoot: harnessRoot(), Home: home, Version: version})
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	if result.Healthy {
+		fmt.Printf("agent-harness doctor healthy: %s\n", result.RepoRoot)
+		return nil
+	}
+	fmt.Printf("agent-harness doctor found %d issues for %s\n", len(result.Issues), result.RepoRoot)
+	for _, issue := range result.Issues {
+		fmt.Printf("%s %s %s\n", issue.Severity, issue.Code, issue.Summary)
+		if issue.Fix != nil && issue.Fix.Command != "" {
+			fmt.Printf("  fix: %s\n", issue.Fix.Command)
+		}
+	}
+	return nil
+}
+
 func runDocs(args []string) error {
 	if len(args) > 0 && args[0] == "index" {
 		args = args[1:]
@@ -268,6 +305,11 @@ func runProjectBootstrap(args []string) error {
 	for _, file := range result.Files {
 		fmt.Printf("- %s %s\n", file.Action, file.RelPath)
 	}
+	stateAction := "planned"
+	if result.LifecycleState.Exists && result.LifecycleState.NamespaceValid {
+		stateAction = "initialized"
+	}
+	fmt.Printf("lifecycle state: %s (%s)\n", result.LifecycleState.ProjectStateDir, stateAction)
 	return nil
 }
 

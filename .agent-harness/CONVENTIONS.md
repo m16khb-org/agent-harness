@@ -89,7 +89,7 @@ skills/
 - Unix socket 또는 localhost binding을 사용하고, 권한을 제한한다.
 - job은 idempotency key, timeout, cancellation을 갖는다.
 - worker 시작/종료는 stale lock과 orphan process를 처리한다.
-- 장기 작업 상태는 user state dir에 저장하고, repo에 secret/state 원문을 쓰지 않는다.
+- 장기 작업 상태와 project lifecycle queue/profile은 user state dir에 저장하고, repo에 secret/state 원문을 쓰지 않는다. lifecycle state는 `projects/<repo-id>/` namespace로 격리해 같은 머신의 여러 repo가 섞이지 않게 한다.
 
 ---
 
@@ -198,6 +198,12 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 
 ## Hook 컨벤션
 
-- UserPromptSubmit hook은 사용자의 prompt를 분석해 MCP 후보 힌트만 주입한다. 작업을 대신 실행하거나 긴 파일/네트워크를 읽지 않는다.
+- UserPromptSubmit hook은 사용자의 prompt와 project-scoped lifecycle state를 분석해 MCP 후보 힌트만 주입한다. PostToolUse/Stop hook은 lifecycle upkeep queue 기록과 reminder만 수행한다. 어떤 hook도 작업을 대신 실행하거나 shared docs를 직접 수정하거나 긴 파일/네트워크를 읽지 않는다.
 - Hook 출력은 host가 이해하는 `hookSpecificOutput.additionalContext` JSON을 기본으로 하며, 실패해도 사용자 작업을 막지 않도록 작고 deterministic하게 유지한다.
 - Codex/Claude별 hook 설정은 adapter/template에서만 다루고, routing 판단은 공통 `agent-harness hook user-prompt` CLI/core에 둔다.
+
+## Doctor / lifecycle state conventions
+
+- `agent-harness doctor`는 종합 진단 표면이고 기본 read-only다. 자동 수정은 별도 `--fix` 같은 명시 플래그가 있을 때만 추가한다.
+- `agent-harness state doctor`는 checkpoint store 무결성 전용으로 유지한다. 사용자 안내와 troubleshooting 문서는 top-level doctor를 우선한다.
+- `project bootstrap --write`는 target repo 문서와 별도로 user-state의 repo별 lifecycle namespace를 초기화한다. target repo에는 `.agent-harness/state/`나 schema 파일을 생성하지 않는다.

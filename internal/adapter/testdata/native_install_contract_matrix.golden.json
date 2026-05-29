@@ -63,8 +63,8 @@
               "kind": "codex_hooks_template",
               "path": "$ROOT/configs/codex/hooks.json",
               "written": true,
-              "content_sha256": "1113d126d96dbd23b99eb3b769ad72e272510bcd031897d81951f7c07d50e639",
-              "content": "{\n  \"hooks\": {\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "6f80361fa232e7f552c3c463f8179e2c40031fdd4501806d76b7d4ccb1cb49bf",
+              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-tool-use\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook stop\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_mcp_template",
@@ -77,8 +77,8 @@
               "kind": "codex_user_hooks_config",
               "path": "$CODEX_HOME/hooks.json",
               "written": true,
-              "content_sha256": "79a387b92fd771c53cfb647a589fbb83e86ef56c85ee6e31924ed4cc062ad8ce",
-              "content": "{\n  \"hooks\": {\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "aaccd8f40e8e48f38deb692f95ebd6c0a276cb1b24d81dbb5a071fb269aa5029",
+              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-tool-use\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook stop\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_user_mcp_config",
@@ -155,8 +155,8 @@
               "kind": "codex_hooks_template",
               "path": "$ROOT/configs/codex/hooks.json",
               "written": true,
-              "content_sha256": "1113d126d96dbd23b99eb3b769ad72e272510bcd031897d81951f7c07d50e639",
-              "content": "{\n  \"hooks\": {\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "6f80361fa232e7f552c3c463f8179e2c40031fdd4501806d76b7d4ccb1cb49bf",
+              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-tool-use\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook stop\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_mcp_template",
@@ -169,8 +169,8 @@
               "kind": "codex_user_hooks_config",
               "path": "$CODEX_HOME/hooks.json",
               "written": true,
-              "content_sha256": "79a387b92fd771c53cfb647a589fbb83e86ef56c85ee6e31924ed4cc062ad8ce",
-              "content": "{\n  \"hooks\": {\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "aaccd8f40e8e48f38deb692f95ebd6c0a276cb1b24d81dbb5a071fb269aa5029",
+              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-tool-use\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook stop\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_user_mcp_config",
