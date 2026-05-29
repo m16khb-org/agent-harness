@@ -32,3 +32,49 @@ func TestBuildUserPromptMCPHintsOutputIsEnglish(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildUserPromptMCPHintsRoutesArchitectureDocs(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "hook 구조와 대안을 설계해줘"})
+	for _, want := range []string{"agent_harness project-doc routing hint", "ARCHITECTURE.md", "ADR.md", "project_docs_route"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("architecture doc hint missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
+func TestBuildUserPromptMCPHintsRoutesOperationsDocs(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "install hook와 daemon 운영 경로를 고쳐줘"})
+	for _, want := range []string{"OPERATIONS.md", "CONVENTIONS.md", "TECH_STACK.md"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("operations doc hint missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
+func TestBuildUserPromptMCPHintsRoutesTestingDocs(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "golden test와 verification을 추가해줘"})
+	for _, want := range []string{"TESTING.md", "AGENT_WORKFLOW.md"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("testing doc hint missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
+func TestBuildUserPromptMCPHintsCompanionToolsStaySecondary(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "이 symbol의 call graph와 impact를 codegraph로 확인해줘"})
+	projectIndex := strings.Index(got.AdditionalContext, "agent_harness project-doc routing hint")
+	companionIndex := strings.Index(got.AdditionalContext, "Secondary companion-tool hints")
+	if projectIndex < 0 || companionIndex < 0 || projectIndex > companionIndex {
+		t.Fatalf("expected project-doc routing before companion hints:\n%s", got.AdditionalContext)
+	}
+	if !strings.Contains(got.AdditionalContext, "CodeGraph") {
+		t.Fatalf("expected CodeGraph secondary hint:\n%s", got.AdditionalContext)
+	}
+}
+
+func TestBuildUserPromptMCPHintsEmptyPromptDoesNotInject(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "   "})
+	if got.ShouldInject || got.AdditionalContext != "" || len(got.Hints) != 0 {
+		t.Fatalf("expected no injection for empty prompt: %+v", got)
+	}
+}
