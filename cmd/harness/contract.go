@@ -44,8 +44,8 @@ func runContract(args []string) error {
 
 func contractUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  harness contract schema [--json]
-  harness contract check [--json]
+  agent-harness contract schema [--json]
+  agent-harness contract check [--json]
 `)
 }
 

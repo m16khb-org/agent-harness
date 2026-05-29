@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/harness' hook user-prompt",
+            "command": "'./bin/agent-harness' hook user-prompt",
             "timeout": 5,
             "type": "command"
           }

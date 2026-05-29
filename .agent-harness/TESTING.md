@@ -15,35 +15,38 @@ grep -R "외부 Go 하네스\|Go\|MCP\|Codex\|Claude" -n AGENTS.md CLAUDE.md .ag
 python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
 go test ./... -count=1
 go test ./cmd/harness -run Golden -count=1
-go build -o bin/harness ./cmd/harness
+go build -o bin/agent-harness ./cmd/harness
 ./scripts/install-native.sh
-./bin/harness install-native --json
-./bin/harness install-native --dry-run --json
-./bin/harness inspect --json
-./bin/harness docs --json
-printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/harness hook user-prompt
-./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-./bin/harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
+./bin/agent-harness bootstrap --skip-upstream-tools --dry-run
+./bin/agent-harness update --skip-upstream-tools --dry-run
+./scripts/install-native.sh --with-upstream-tools --dry-run
+./bin/agent-harness install-native --json
+./bin/agent-harness install-native --dry-run --json
+./bin/agent-harness inspect --json
+./bin/agent-harness docs --json
+printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
+./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
 tmp_state="$(mktemp -d)"
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness state write --key smoke --value "ok" --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness state read --key smoke --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness state list --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness state prune --max-age 720h --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness state doctor --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness state migrate --json
-HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/harness daemon status --json
-HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/harness daemon start --json
-HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/harness daemon stop --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-smoke --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify history --prefix self-verify --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify history --prefix self-verify --retention-limit 1 --prune-retention --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify compare --baseline-key self-verify-smoke --candidate-key self-verify-smoke --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/harness self-verify promote --from-key self-verify-smoke --baseline-key self-verify-baseline --json
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
-./bin/harness self-augment --cycles=1 --target-score=95 --json
-./bin/harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
-./bin/harness self-augment lesson --candidate reflexion-state-memory --lesson "test lesson" --next-action "test next action" --state-key self-augment-lesson-test --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state write --key smoke --value "ok" --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state read --key smoke --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state list --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state prune --max-age 720h --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state doctor --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state migrate --json
+HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon status --json
+HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon start --json
+HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon stop --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-smoke --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify history --prefix self-verify --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify history --prefix self-verify --retention-limit 1 --prune-retention --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify compare --baseline-key self-verify-smoke --candidate-key self-verify-smoke --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify promote --from-key self-verify-smoke --baseline-key self-verify-baseline --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
+./bin/agent-harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
+./bin/agent-harness self-augment lesson --candidate reflexion-state-memory --lesson "test lesson" --next-action "test next action" --state-key self-augment-lesson-test --json
 grep -R "Conventional Commit\|Lore:" -n AGENTS.md .agent-harness/COMMIT_POLICY.md skills/atomic-commit-push/SKILL.md
 ```
 
@@ -56,6 +59,16 @@ test -f ~/.codex/skills/atomic-commit-push/SKILL.md
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md
 codex mcp get agent_harness
 claude mcp list | grep agent_harness
+```
+
+Optional upstream companion smoke:
+
+```bash
+./scripts/install-native.sh --with-upstream-tools --dry-run
+codex plugin list | grep -E 'wiki@llm-wiki|claude-mem@claude-mem-local'
+claude plugin list | grep -E 'wiki@llm-wiki|claude-mem@thedotmack'
+command -v codegraph
+codegraph status --json .  # after a real --with-upstream-tools run with HARNESS_INIT_CODEGRAPH enabled
 ```
 
 
@@ -75,7 +88,7 @@ Go 코드가 추가되면 기본 검증은 다음이다. `self-verify`는 workin
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
-go build -o bin/harness ./cmd/harness
+go build -o bin/agent-harness ./cmd/harness
 ```
 
 작은 변경은 targeted test를 먼저 실행하고, 완료 전 영향 범위에 맞게 전체 테스트를 실행한다.
@@ -128,9 +141,9 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 
 다음은 golden test 대상으로 둔다.
 
-- `harness inspect --json` output shape
-- `harness docs --json` output shape
-- `harness policy check/fake-run` allow/deny/fake execution output shape
+- `agent-harness inspect --json` output shape
+- `agent-harness docs --json` output shape
+- `agent-harness policy check/fake-run` allow/deny/fake execution output shape
 - MCP tool schema와 response shape
 - daemon-backed MCP smoke response
 - `cmd/harness/testdata/usage.golden.txt`
@@ -138,21 +151,21 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `cmd/harness/testdata/mcp_resources.golden.json`
 - `cmd/harness/testdata/response_contracts.golden.json`
 - `internal/adapter/testdata/native_install_contract_matrix.golden.json` — Codex/Claude user-global 기본 설치와 project-local opt-in 계약
-- `harness self-verify` 10회 반복 결과
-- `harness self-verify`의 `risk QA tier` step과 `risk_qa` goal score
-- `harness self-verify --json`의 `summary.contract`/`goal_scores`/`coverage_gaps`/`failure_class`/`rerun_commands`/`step_duration_stats` field
-- `harness self-verify candidates --json` candidate curriculum export and state save/read smoke
-- `harness self-verify compare` step budget p95 regression fixture for labels outside `slowest_steps`
-- `harness self-verify` install dry-run smoke for temp HOME/CODEX_HOME/HARNESS_ROOT no-write assertions
-- `harness self-verify --save-state` summary checkpoint serialization
-- `harness self-verify history` summary checkpoint discovery and retention dry-run/confirm safety
-- `harness self-verify` native integration fixture for Claude MCP conflicting-scope warning classification
-- `harness self-verify` daemon resilience step for stale lock/socket recovery and socket permission checks
-- `harness self-verify compare` summary checkpoint regression comparison
-- `harness self-verify promote` dry-run/confirm baseline promotion
-- `harness self-augment --json` planner/candidate curriculum
-- `harness inspect/docs/preflight/policy/state` 실제 JSON response normalization 결과
-- `harness state write/read/list/prune/doctor/migrate` output shape
+- `agent-harness self-verify` 10회 반복 결과
+- `agent-harness self-verify`의 `risk QA tier` step과 `risk_qa` goal score
+- `agent-harness self-verify --json`의 `summary.contract`/`goal_scores`/`coverage_gaps`/`failure_class`/`rerun_commands`/`step_duration_stats` field
+- `agent-harness self-verify candidates --json` candidate curriculum export and state save/read smoke
+- `agent-harness self-verify compare` step budget p95 regression fixture for labels outside `slowest_steps`
+- `agent-harness self-verify` install dry-run smoke for temp HOME/CODEX_HOME/HARNESS_ROOT no-write assertions
+- `agent-harness self-verify --save-state` summary checkpoint serialization
+- `agent-harness self-verify history` summary checkpoint discovery and retention dry-run/confirm safety
+- `agent-harness self-verify` native integration fixture for Claude MCP conflicting-scope warning classification
+- `agent-harness self-verify` daemon resilience step for stale lock/socket recovery and socket permission checks
+- `agent-harness self-verify compare` summary checkpoint regression comparison
+- `agent-harness self-verify promote` dry-run/confirm baseline promotion
+- `agent-harness self-augment --json` planner/candidate curriculum
+- `agent-harness inspect/docs/preflight/policy/state` 실제 JSON response normalization 결과
+- `agent-harness state write/read/list/prune/doctor/migrate` output shape
 - command policy allow/deny 결과
 - command policy catalog table과 `CommandPolicySummary().catalog` 노출
 - state write/read/prune/doctor/migrate serialization
@@ -173,18 +186,20 @@ Golden file은 사람이 읽을 수 있게 작게 유지하고, schema 변경 �
 
 ## 자기 검증 QA gate
 
-`harness self-verify`는 테스트 실행뿐 아니라 QA gate를 포함한다. QA gate는 루프 문서, `GENIUS_THINK.md`, shared skill metadata, native integration 설치 상태, redaction audit, bounded stdout/stderr metadata, Mermaid 문서 lint를 확인하며, 모든 목표 점수가 95점을 초과해야 종료 가능하다. Mermaid lint는 `GENIUS_THINK.md`의 따옴표/`<br/>` 규칙을 기준으로 문서 다이어그램 파싱 오류를 조기에 막는다.
+`agent-harness self-verify`는 테스트 실행뿐 아니라 QA gate를 포함한다. QA gate는 루프 문서, `GENIUS_THINK.md`, shared skill metadata, native integration 설치 상태, redaction audit, bounded stdout/stderr metadata, Mermaid 문서 lint를 확인하며, 모든 목표 점수가 95점을 초과해야 종료 가능하다. Mermaid lint는 `GENIUS_THINK.md`의 따옴표/`<br/>` 규칙을 기준으로 문서 다이어그램 파싱 오류를 조기에 막는다.
 
 ## LLM Wiki 정책
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
+
+같은 원칙으로 CodeGraph와 claude-mem도 하네스 내부에 재구현하지 않는다. `scripts/install-native.sh --with-upstream-tools`는 upstream installer/plugin을 연결하는 convenience path이며, 테스트는 하네스 core 기능이 아니라 설치 배선과 opt-in/dry-run 동작을 검증한다.
 
 ## API documentation checks
 
 Endpoint/DTO 변경 시 Swagger/OpenAPI 문서 검사를 필수로 실행한다.
 
 ```bash
-harness api-doc check --json
+agent-harness api-doc check --json
 # target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.
 npm run swagger:check
 npm run swagger:check -- --all
@@ -220,7 +235,7 @@ Swagger/OpenAPI 검사는 decorator/comment 존재 여부만 보지 않는다. �
 
 ### Agent-backed verification boundary
 
-비즈니스 로직의 실제 404/403/409 가능성과 OpenAPI 누락 여부는 정적 테스트만으로 신뢰 있게 판정하지 않는다. 정적 테스트는 후보 파일 선택, `--all` wiring, prompt contract, MCP schema 같은 배선을 검증하고, 실제 API 문서 품질 판정은 `harness api-doc review`/MCP `api_doc_static_check` 후 `api_doc_review`가 Codex 에이전트를 호출해 수행한다.
+비즈니스 로직의 실제 404/403/409 가능성과 OpenAPI 누락 여부는 정적 테스트만으로 신뢰 있게 판정하지 않는다. 정적 테스트는 후보 파일 선택, `--all` wiring, prompt contract, MCP schema 같은 배선을 검증하고, 실제 API 문서 품질 판정은 `agent-harness api-doc review`/MCP `api_doc_static_check` 후 `api_doc_review`가 Codex 에이전트를 호출해 수행한다.
 
 `nextcandle-api`에서 확인한 좋은 기준:
 
@@ -232,9 +247,9 @@ Swagger/OpenAPI 검사는 decorator/comment 존재 여부만 보지 않는다. �
 
 ## OpenAPI prompt source
 
-Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.
+Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `agent-harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.
 
 
 ## Contract/audit/worker verification
 
-CLI/MCP DTO를 변경할 때는 `harness contract check --json`과 golden test를 실행해 command name, MCP tool name, required response field가 machine-visible하게 유지되는지 확인한다. policy audit 동작 변경은 JSONL record가 append-only이고 secret-like argument가 redacted 되는지 검증한다. 현재 worker 변경은 no-shell MVP 범위이며 process execution 없이 enqueue/status/list/cancel을 테스트해야 한다.
+CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden test를 실행해 command name, MCP tool name, required response field가 machine-visible하게 유지되는지 확인한다. policy audit 동작 변경은 JSONL record가 append-only이고 secret-like argument가 redacted 되는지 검증한다. 현재 worker 변경은 no-shell MVP 범위이며 process execution 없이 enqueue/status/list/cancel을 테스트해야 한다.

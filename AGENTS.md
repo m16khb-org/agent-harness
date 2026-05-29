@@ -127,7 +127,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | `configs/` | Codex/Claude/MCP 설정 템플릿 |
 | `.claude/skills/` | 명시적 `--project-local` 때만 생성되는 Claude Code project-native skill 연결. 기본 설치에서는 생성하지 않으며 git 추적 금지 |
 | `.mcp.json` | 이 하네스 repo의 dogfood/project-local Claude MCP 설정. 기본 설치는 user-scope MCP를 사용하며 대상 repo에는 쓰지 않음 |
-| `bin/harness` | 빌드된 로컬 하네스 CLI/MCP 바이너리 |
+| `bin/agent-harness` | 빌드된 로컬 하네스 CLI/MCP 바이너리 |
 | `skills/` | Codex/Claude가 공유하는 스킬 source of truth |
 | `.agent-harness/` | 에이전트용 프로젝트 지식 베이스 |
 
@@ -142,17 +142,19 @@ find . -maxdepth 3 -type f | sort
 find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
 python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
 ./scripts/install-native.sh
-./bin/harness install-native --dry-run --json
+./bin/agent-harness bootstrap --skip-upstream-tools --dry-run
+./bin/agent-harness update --skip-upstream-tools --dry-run
+./bin/agent-harness install-native --dry-run --json
 go test ./... -count=1
 go test ./cmd/harness -run Golden -count=1
-go build -o bin/harness ./cmd/harness
-./bin/harness inspect --json
-./bin/harness docs --json
-./bin/harness daemon status --json
-./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/harness state migrate --json && rm -rf "$tmp_state"
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+go build -o bin/agent-harness ./cmd/harness
+./bin/agent-harness inspect --json
+./bin/agent-harness docs --json
+./bin/agent-harness daemon status --json
+./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state migrate --json && rm -rf "$tmp_state"
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
 codex mcp get agent_harness
 claude mcp list
 ```
@@ -163,7 +165,7 @@ Go 코드가 추가된 뒤 표준 검증:
 go mod tidy
 go test ./... -count=1
 go test -race ./... -count=1
-go build -o bin/harness ./cmd/harness
+go build -o bin/agent-harness ./cmd/harness
 ```
 
 ## 10. Critical Invariants
@@ -171,6 +173,7 @@ go build -o bin/harness ./cmd/harness
 - Codex와 Claude Code에서 관찰되는 하네스 결과가 같아야 한다.
 - 같은 스킬을 두 host에 복사해 중복 관리하지 않는다. `skills/`의 단일 원본을 사용자 홈 skill 경로에서 참조한다. 적용 대상 repo에는 기본 설치가 파일을 남기지 않는다.
 - LLM Wiki 기능은 이 하네스가 재구현하지 않는다. 필요하면 upstream `nvk/llm-wiki` Codex/Claude plugin 또는 portable AGENTS.md를 사용한다.
+- 하네스 철학은 **바퀴를 재발명하지 않는다**이다. llm-wiki, CodeGraph, claude-mem 같은 전문 도구는 `scripts/install-native.sh --with-upstream-tools`로 upstream installer/plugin을 연결하고, core 동작을 agent-harness에 복제하지 않는다.
 - host adapter는 인증·권한·명령 실행 정책을 우회할 수 없다.
 - worker/CLI/MCP는 workspace root를 명시적으로 식별하고, root 밖 파일 접근은 정책으로 통제한다.
 - shell 실행 기능은 allowlist/denylist, timeout, cwd, env redaction, audit log를 포함해야 한다.
@@ -186,7 +189,7 @@ go build -o bin/harness ./cmd/harness
 
 ## 12. API Documentation Gate
 
-- Endpoint/controller/DTO/schema/OpenAPI 변경 시 `harness api-doc check --json` 또는 MCP `api_doc_static_check` 후 `api_doc_review`를 실행한다.
+- Endpoint/controller/DTO/schema/OpenAPI 변경 시 `agent-harness api-doc check --json` 또는 MCP `api_doc_static_check` 후 `api_doc_review`를 실행한다.
 - 대상 Node/Nest repo에 `npm run swagger:check`가 있으면 그 wrapper를 우선 사용한다.
 - 기본 검사는 git 변경분의 API candidate files로 제한하고, 기존 레거시 전체 Swagger 부채를 이번 변경의 실패 원인으로 삼지 않는다.
 

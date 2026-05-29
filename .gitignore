@@ -3,6 +3,7 @@ bin/
 
 # Runtime/local state
 .harness/
+.codegraph/
 .omx/
 .omc/
 .claude/

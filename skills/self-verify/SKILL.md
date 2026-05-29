@@ -12,12 +12,12 @@ Verify that the harness behaves consistently across Codex and Claude Code, and t
 ## Commands
 
 ```bash
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
-./bin/harness self-verify candidates --json
-./bin/harness self-verify history --prefix self-verify --json
-./bin/harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
-./bin/harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify candidates --json
+./bin/agent-harness self-verify history --prefix self-verify --json
+./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+./bin/agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
 ```
 
 ## Gate

@@ -1,5 +1,5 @@
 [mcp_servers.agent_harness]
-command = "./bin/harness"
+command = "./bin/agent-harness"
 args = ["mcp"]
 startup_timeout_sec = 30
 

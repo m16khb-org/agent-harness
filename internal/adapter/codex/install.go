@@ -52,8 +52,15 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	}
 
 	hooksTemplatePath := filepath.Join(req.Root, "configs", "codex", "hooks.json")
-	file, err = installutil.WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/harness"), 0o644, req.DryRun)
+	file, err = installutil.WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/agent-harness"), 0o644, req.DryRun)
 	result.Files = append(result.Files, file)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	patchedFiles, patchMessages, err := patchCodexPluginHookCompatibility(req)
+	result.Files = append(result.Files, patchedFiles...)
+	result.Messages = append(result.Messages, patchMessages...)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -67,6 +74,133 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 		return result, joinErrors(errs)
 	}
 	return result, nil
+}
+
+func patchCodexPluginHookCompatibility(req port.NativeInstallRequest) ([]port.InstallFile, []string, error) {
+	patches := []hookCompatibilityPatch{
+		{
+			Kind: "codex_plugin_hook_compat_llm_wiki",
+			Globs: []string{
+				filepath.Join(req.CodexHome, "plugins", "cache", "llm-wiki-marketplace", "llm-wiki", "*", "hooks", "llm-wiki-hook.cjs"),
+				filepath.Join(req.CodexHome, "plugins", "cache", "llm-wiki", "llm-wiki", "*", "hooks", "llm-wiki-hook.cjs"),
+			},
+			Replacements: []textReplacement{
+				{Old: "    },\n    suppressOutput: true\n  }));", New: "    }\n  }));"},
+			},
+		},
+		{
+			Kind: "codex_plugin_hook_compat_claude_mem",
+			Globs: []string{
+				filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "*", "scripts", "worker-service.cjs"),
+				filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "*", "hooks", "hooks.json"),
+				filepath.Join(req.Home, ".claude", "plugins", "cache", "thedotmack", "claude-mem", "*", "scripts", "worker-service.cjs"),
+				filepath.Join(req.Home, ".claude", "plugins", "cache", "thedotmack", "claude-mem", "*", "hooks", "hooks.json"),
+				filepath.Join(req.Home, ".claude", "plugins", "marketplaces", "thedotmack", "plugin", "scripts", "worker-service.cjs"),
+				filepath.Join(req.Home, ".claude", "plugins", "marketplaces", "thedotmack", "plugin", "hooks", "hooks.json"),
+			},
+			Replacements: []textReplacement{
+				{Old: "; echo '{\\\"continue\\\":true,\\\"suppressOutput\\\":true}'", New: ""},
+				{Old: "return{continue:!0,suppressOutput:!0,status:t,...e&&{message:e}}", New: "return{}"},
+				{Old: "return{continue:!0,status:t,...e&&{message:e}}", New: "return{}"},
+				{Old: "return { continue: true, suppressOutput: true, status: status, ...(message && { message }) }", New: "return {}"},
+				{Old: "return { continue: true, status: status, ...(message && { message }) }", New: "return {}"},
+				{Old: "formatOutput(t){let e=t??{};if(e.hookSpecificOutput){let n={hookSpecificOutput:t.hookSpecificOutput};return e.systemMessage&&(n.systemMessage=e.systemMessage),n}let r={};return e.systemMessage&&(r.systemMessage=e.systemMessage),r}", New: "formatOutput(t){let e=t??{};if(e.hookSpecificOutput)return{hookSpecificOutput:t.hookSpecificOutput};return{}}"},
+				{Old: "function gqt(t){let e={};return t.continue!==void 0&&(e.continue=t.continue),t.suppressOutput!==void 0&&(e.suppressOutput=t.suppressOutput),t.systemMessage&&(e.systemMessage=t.systemMessage),t.decision===\"block\"&&(e.decision=\"block\"),t.reason&&(e.reason=t.reason),e}", New: "function gqt(t){let e={};return t.continue!==void 0&&(e.continue=t.continue),t.decision===\"block\"&&(e.decision=\"block\"),t.reason&&(e.reason=t.reason),e}"},
+				{Old: "function gqt(t){let e={};return t.continue!==void 0&&(e.continue=t.continue),t.suppressOutput!==void 0&&(e.suppressOutput=t.suppressOutput),t.decision===\"block\"&&(e.decision=\"block\"),t.reason&&(e.reason=t.reason),e}", New: "function gqt(t){let e={};return t.continue!==void 0&&(e.continue=t.continue),t.decision===\"block\"&&(e.decision=\"block\"),t.reason&&(e.reason=t.reason),e}"},
+				{Old: "e.continue=t.continue??!0,t.suppressOutput!==void 0&&(e.suppressOutput=t.suppressOutput),t.systemMessage", New: "e.continue=t.continue??!0,t.systemMessage"},
+				{Old: "formatOutput(output) {\n    const result = output ?? {};\n    if (result.hookSpecificOutput) {\n      const hookOutput = { hookSpecificOutput: result.hookSpecificOutput };\n      if (result.systemMessage) hookOutput.systemMessage = result.systemMessage;\n      return hookOutput;\n    }\n    const hookOutput = {};\n    if (result.systemMessage) hookOutput.systemMessage = result.systemMessage;\n    return hookOutput;\n  }", New: "formatOutput(output) {\n    const result = output ?? {};\n    if (result.hookSpecificOutput) return { hookSpecificOutput: result.hookSpecificOutput };\n    return {};\n  }"},
+			},
+		},
+	}
+	var files []port.InstallFile
+	var messages []string
+	var errs []error
+	for _, patch := range patches {
+		paths := expandPatchGlobs(patch.Globs)
+		if len(paths) == 0 {
+			continue
+		}
+		for _, path := range paths {
+			file, changed, err := applyHookCompatibilityPatch(path, patch.Kind, patch.Replacements, req.DryRun)
+			if file.Path != "" {
+				files = append(files, file)
+			}
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+			if changed {
+				if req.DryRun {
+					messages = append(messages, "dry-run: would patch Codex plugin hook compatibility: "+path)
+				} else {
+					messages = append(messages, "patched Codex plugin hook compatibility: "+path)
+				}
+			}
+		}
+	}
+	return files, messages, joinErrors(errs)
+}
+
+type hookCompatibilityPatch struct {
+	Kind         string
+	Globs        []string
+	Replacements []textReplacement
+}
+
+type textReplacement struct {
+	Old string
+	New string
+}
+
+func expandPatchGlobs(globs []string) []string {
+	seen := map[string]bool{}
+	var paths []string
+	for _, pattern := range globs {
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			continue
+		}
+		for _, path := range matches {
+			if !seen[path] {
+				seen[path] = true
+				paths = append(paths, path)
+			}
+		}
+	}
+	return paths
+}
+
+func applyHookCompatibilityPatch(path, kind string, replacements []textReplacement, dryRun bool) (port.InstallFile, bool, error) {
+	file := port.InstallFile{Path: path, Kind: kind}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return file, false, err
+	}
+	text := string(b)
+	next := text
+	for _, replacement := range replacements {
+		next = strings.ReplaceAll(next, replacement.Old, replacement.New)
+	}
+	if next == text {
+		return file, false, nil
+	}
+	if dryRun {
+		file.WouldWrite = true
+		return file, true, nil
+	}
+	backup := path + ".harness.bak"
+	if _, err := os.Stat(backup); os.IsNotExist(err) {
+		if err := os.WriteFile(backup, b, 0o600); err != nil {
+			return file, false, err
+		}
+	} else if err != nil {
+		return file, false, err
+	}
+	if err := os.WriteFile(path, []byte(next), 0o600); err != nil {
+		return file, false, err
+	}
+	file.Written = true
+	return file, true, nil
 }
 
 func writeCodexHooks(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
@@ -159,7 +293,7 @@ HARNESS_ROOT = %s
 
 func codexTemplate(req port.NativeInstallRequest) string {
 	return `[mcp_servers.agent_harness]
-command = "./bin/harness"
+command = "./bin/agent-harness"
 args = ["mcp"]
 startup_timeout_sec = 30
 

@@ -40,7 +40,7 @@ func main() {
 
 	switch os.Args[1] {
 	case "version", "--version", "-v":
-		fmt.Println("harness", version)
+		fmt.Println("agent-harness", version)
 	case "inspect":
 		if err := runInspect(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "inspect:", err)
@@ -104,6 +104,16 @@ func main() {
 			fmt.Fprintln(os.Stderr, "install-native:", err)
 			os.Exit(1)
 		}
+	case "update":
+		if err := runUpdate(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "update:", err)
+			os.Exit(1)
+		}
+	case "bootstrap":
+		if err := runBootstrap(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "bootstrap:", err)
+			os.Exit(1)
+		}
 	case "worker":
 		if err := runWorker(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "worker:", err)
@@ -151,7 +161,7 @@ func runInspect(args []string) error {
 	if *jsonOut {
 		return printJSON(info)
 	}
-	fmt.Printf("harness harness root: %s\n", info.HarnessRoot)
+	fmt.Printf("agent-harness root: %s\n", info.HarnessRoot)
 	fmt.Printf("target repo: %s\n", info.TargetRepo)
 	fmt.Printf("skills: %d\n", len(info.Skills))
 	for _, s := range info.Skills {
@@ -225,10 +235,10 @@ func runProject(args []string) error {
 
 func projectUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  harness project bootstrap [--repo PATH] [--write] [--json]
-  harness project docs [--repo PATH] [--json]
-  harness project route-docs [--repo PATH] [--task TEXT] [--json]
-  harness project record --kind caution|adr --title TEXT --summary TEXT [--repo PATH] [--json]
+  agent-harness project bootstrap [--repo PATH] [--write] [--json]
+  agent-harness project docs [--repo PATH] [--json]
+  agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
+  agent-harness project record --kind caution|adr --title TEXT --summary TEXT [--repo PATH] [--json]
 `)
 }
 
@@ -368,9 +378,9 @@ func runPolicy(args []string) error {
 
 func policyUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  harness policy check [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
-  harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
-  harness policy audit [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
+  agent-harness policy check [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
+  agent-harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
+  agent-harness policy audit [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
 `)
 }
 
@@ -652,12 +662,12 @@ func runState(args []string) error {
 
 func stateUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  harness state write --key KEY (--value TEXT|--input FILE|--stdin) [--json]
-  harness state read --key KEY [--json]
-  harness state list [--json]
-  harness state prune --max-age DURATION [--confirm] [--json]
-  harness state doctor [--json]
-  harness state migrate [--confirm] [--json]
+  agent-harness state write --key KEY (--value TEXT|--input FILE|--stdin) [--json]
+  agent-harness state read --key KEY [--json]
+  agent-harness state list [--json]
+  agent-harness state prune --max-age DURATION [--confirm] [--json]
+  agent-harness state doctor [--json]
+  agent-harness state migrate [--confirm] [--json]
 `)
 }
 
@@ -1654,7 +1664,7 @@ func selfVerifyRerunCommands(failedStep string, iterations int, baseSeed int64, 
 	if iterations < 10 {
 		iterations = 10
 	}
-	commands = append(commands, fmt.Sprintf("./bin/harness self-verify --iterations=%d --seed=%d --target-score=%s --progress=jsonl --json", iterations, baseSeed, formatScore(targetScore)))
+	commands = append(commands, fmt.Sprintf("./bin/agent-harness self-verify --iterations=%d --seed=%d --target-score=%s --progress=jsonl --json", iterations, baseSeed, formatScore(targetScore)))
 	return commands
 }
 
@@ -1667,37 +1677,37 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 	case "risk QA tier":
 		return "go vet ./... && go test -race ./... -count=1", true
 	case "go build":
-		return "go build -o bin/harness ./cmd/harness", true
+		return "go build -o bin/agent-harness ./cmd/harness", true
 	case "inspect smoke":
-		return "./bin/harness inspect --json", true
+		return "./bin/agent-harness inspect --json", true
 	case "docs index smoke":
-		return "./bin/harness docs --json", true
+		return "./bin/agent-harness docs --json", true
 	case "candidate export":
-		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify candidates --save-state --state-key self-verify-candidates-test --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state read --key self-verify-candidates-test --json; rm -rf \"$tmp_state\"", true
+		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify candidates --save-state --state-key self-verify-candidates-test --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state read --key self-verify-candidates-test --json; rm -rf \"$tmp_state\"", true
 	case "step budget baseline":
-		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
+		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
 	case "install dry-run smoke":
-		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/harness install-native --dry-run --project-local --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
+		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/agent-harness install-native --dry-run --project-local --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
 	case "command policy smoke":
-		return "./bin/harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
+		return "./bin/agent-harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
 	case "command audit smoke":
-		return "tmp_audit=$(mktemp) && HARNESS_AUDIT_LOG=\"$tmp_audit\" ./bin/harness policy audit --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
+		return "tmp_audit=$(mktemp) && HARNESS_AUDIT_LOG=\"$tmp_audit\" ./bin/agent-harness policy audit --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
 	case "contract check":
-		return "./bin/harness contract check --json", true
+		return "./bin/agent-harness contract check --json", true
 	case "worker lifecycle smoke":
-		return "tmp_worker=$(mktemp -d) && HARNESS_WORKER_DIR=\"$tmp_worker\" ./bin/harness worker enqueue --kind smoke --json", true
+		return "tmp_worker=$(mktemp -d) && HARNESS_WORKER_DIR=\"$tmp_worker\" ./bin/agent-harness worker enqueue --kind smoke --json", true
 	case "MCP smoke":
-		return "./bin/harness mcp", true
+		return "./bin/agent-harness mcp", true
 	case "state roundtrip":
-		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/harness state migrate --json; rm -rf \"$tmp_state\"", true
+		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state migrate --json; rm -rf \"$tmp_state\"", true
 	case "parallel isolation":
-		return "./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json", true
+		return "./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json", true
 	case "daemon resilience":
-		return "tmp_daemon=\"$(mktemp -d)\" && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/harness daemon start --json && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/harness daemon stop --json; rm -rf \"$tmp_daemon\"", true
+		return "tmp_daemon=\"$(mktemp -d)\" && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/agent-harness daemon start --json && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/agent-harness daemon stop --json; rm -rf \"$tmp_daemon\"", true
 	case "preflight fuzz":
-		return "./bin/harness preflight --json \"$PWD\"", true
+		return "./bin/agent-harness preflight --json \"$PWD\"", true
 	case "native integration":
-		return "./scripts/install-native.sh && ./bin/harness install-native --dry-run --json", true
+		return "./scripts/install-native.sh && ./bin/agent-harness install-native --dry-run --json", true
 	case "redaction audit", "QA gate", "harness invariants":
 		return "go test ./cmd/harness -run Test -count=1", true
 	default:
@@ -3813,7 +3823,7 @@ func validatePreflightFuzz(binary, root string, seed int64) StepResult {
 		return failedStep("preflight fuzz", fmt.Errorf("git add: %s", stderr))
 	}
 	msg := "docs(test): add seeded sample"
-	body := "Lore:\n- Intent: Validate seeded preflight fuzz.\n- Why: Self-verification needs deterministic git fixtures.\n- Changes:\n  - Add sample file.\n- Verify: harness self-verify\n- Risk: Low"
+	body := "Lore:\n- Intent: Validate seeded preflight fuzz.\n- Why: Self-verification needs deterministic git fixtures.\n- Changes:\n  - Add sample file.\n- Verify: agent-harness self-verify\n- Risk: Low"
 	commitArgs := []string{"-c", "user.name=Self Verify", "-c", "user.email=self-verify@example.invalid", "commit", "-q", "-m", msg, "-m", body}
 	if code, _, stderr := core.GitCmd(tempRepo, commitArgs...); code != 0 {
 		return failedStep("preflight fuzz", fmt.Errorf("git commit: %s", stderr))
@@ -3885,7 +3895,7 @@ func validateNativeIntegration(root string) StepResult {
 		errs = append(errs, "Codex MCP config missing agent_harness")
 	}
 	if b, err := os.ReadFile(filepath.Join(home, ".codex", "hooks.json")); err != nil || !strings.Contains(string(b), "hook user-prompt") {
-		errs = append(errs, "Codex UserPromptSubmit hook missing harness hook user-prompt")
+		errs = append(errs, "Codex UserPromptSubmit hook missing agent-harness hook user-prompt")
 	}
 	duplicateWarnings := detectClaudeMCPDuplicateWarnings(claudeMCPDuplicateWarningFixture())
 	warningBytes, _ := json.MarshalIndent(map[string]any{
@@ -3951,7 +3961,7 @@ func claudeMCPDuplicateWarningFixture() string {
 For help configuring MCP servers, see: https://code.claude.com/docs/en/mcp
 
 [Conflicting scopes]
- └ [Warning] Server "agent_harness" is defined in multiple scopes with different endpoints: user (/Users/example/agent-harness/bin/harness mcp), project (./bin/harness mcp). OAuth tokens are stored per endpoint, so authenticating in one context will not carry over.
+ └ [Warning] Server "agent_harness" is defined in multiple scopes with different endpoints: user (/Users/example/agent-harness/bin/agent-harness mcp), project (./bin/agent-harness mcp). OAuth tokens are stored per endpoint, so authenticating in one context will not carry over.
    Suggestion: Keep the correct endpoint and remove the others: ` + "`claude mcp remove agent_harness -s user`" + ` or ` + "`claude mcp remove agent_harness -s project`" + `
 `
 }
@@ -4393,7 +4403,7 @@ func handleNotification(req rpcRequest) {
 
 func handleNotificationTo(w io.Writer, req rpcRequest) {
 	// notifications/initialized and cancellation notifications intentionally require no response.
-	fmt.Fprintln(w, "harness mcp notification:", req.Method)
+	fmt.Fprintln(w, "agent-harness mcp notification:", req.Method)
 }
 
 func handleRequest(req rpcRequest) (any, *rpcError) {
@@ -4425,7 +4435,7 @@ func mcpTools() []map[string]any {
 	tools := []map[string]any{
 		{
 			"name":        "harness_inspect",
-			"description": "Inspect the agent harness installation, shared skills, docs, and native Codex/Claude integration status.",
+			"description": "Inspect the agent-harness installation, shared skills, docs, and native Codex/Claude integration status.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{"repo": map[string]any{"type": "string", "description": "Optional target repository path."}}},
 		},
 		{
@@ -4988,7 +4998,7 @@ func mcpResources() []map[string]any {
 func apiDocGuidanceText() string {
 	return `# API Documentation Guidance
 
-Use deterministic ` + "`harness api-doc static-check`" + `/MCP ` + "`api_doc_static_check`" + ` first, then agent-backed ` + "`harness api-doc review`" + `/MCP ` + "`api_doc_review`" + ` whenever endpoint, controller, handler, DTO, schema, or OpenAPI files change.
+Use deterministic ` + "`agent-harness api-doc static-check`" + `/MCP ` + "`api_doc_static_check`" + ` first, then agent-backed ` + "`agent-harness api-doc review`" + `/MCP ` + "`api_doc_review`" + ` whenever endpoint, controller, handler, DTO, schema, or OpenAPI files change.
 
 Default scope is staged API candidate files. Do not fail unrelated legacy Swagger/OpenAPI debt.
 Use ` + "`--all`" + ` or MCP ` + "`all: true`" + ` only for an explicit full tracked-file review.

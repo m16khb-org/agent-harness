@@ -3,8 +3,8 @@
 현재 `agent-harness`는 Codex와 Claude Code가 같은 Go binary와 MCP schema를 쓰도록 다음 표면을 제공한다.
 
 1. Codex/Claude native skills: `atomic-commit-push`, `self-augment`, `project-bootstrap`
-2. MCP stdio proxy: `harness mcp` → shared `agent-harness daemon`
-3. CLI: `harness inspect/preflight/docs/project/policy/state/daemon/self-verify/self-augment/api-doc/hook`
+2. MCP stdio proxy: `agent-harness mcp` → shared `agent-harness daemon`
+3. CLI: `agent-harness inspect/preflight/docs/project/policy/state/daemon/self-verify/self-augment/api-doc/hook`
 
 ---
 
@@ -13,20 +13,46 @@
 저장소 루트에서 실행한다.
 
 ```bash
-./scripts/install-native.sh
+./bin/agent-harness bootstrap
+# 이후에는 어느 위치에서든:
+agent-harness update
 ```
 
-이 스크립트는 다음을 수행한다.
+`bootstrap`과 `update`는 `./scripts/install-native.sh --with-upstream-tools`를 호출하는 high-level UX다. 이 경로는 다음을 수행한다.
 
-- `go build -o bin/harness ./cmd/harness`
-- `harness install-native` 실행
+- 현재 checkout 기준으로 `go build -o bin/agent-harness ./cmd/harness`를 매번 실행해 기존 하네스 binary를 갱신한다. 원격 변경을 가져오는 `git pull`은 자동 실행하지 않는다.
+- `~/.local/bin/agent-harness -> <checkout>/bin/agent-harness` command shim 생성/갱신
+- `agent-harness install-native` 실행
 - Codex user skill symlink 생성: `~/.codex/skills/* -> <agent-harness>/skills/*`
 - Claude user skill symlink 생성: `~/.claude/skills/* -> <agent-harness>/skills/*`
 - Codex MCP 설정 추가/갱신: `~/.codex/config.toml`의 `[mcp_servers.agent_harness]`
-- Codex `UserPromptSubmit` hook 추가/갱신: `~/.codex/hooks.json`에서 `harness hook user-prompt` 실행
+- Codex `UserPromptSubmit` hook 추가/갱신: `~/.codex/hooks.json`에서 `agent-harness hook user-prompt` 실행
 - Claude user-scope MCP 서버 등록: `claude mcp add-json -s user agent_harness ...`
 
-기본 설치는 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. 쓰기 전 계획만 확인하려면 `./bin/harness install-native --dry-run --json`을 사용한다. repo-local 파일이 필요할 때만 `./bin/harness install-native --project-local`을 명시적으로 사용한다.
+기본 설치는 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. 쓰기 전 계획만 확인하려면 `agent-harness update --dry-run` 또는 `./bin/agent-harness install-native --dry-run --json`을 사용한다. repo-local 파일이 필요할 때만 `agent-harness update --project-local` 또는 `./bin/agent-harness install-native --project-local`을 명시적으로 사용한다. 기존 `bin/agent-harness`를 유지해야 하는 특수 상황에서는 `--skip-build` 또는 `HARNESS_SKIP_BUILD=1`을 사용한다.
+
+### Upstream companion tools 선택 설치
+
+하네스의 철학은 **바퀴를 재발명하지 않는다**이다. `agent-harness`는 llm-wiki, CodeGraph, claude-mem의 core 동작을 재구현하지 않고 upstream plugin/CLI를 연결한다. 새 환경에서 하네스와 companion tools를 함께 세팅하려면 high-level 명령을 사용한다.
+
+```bash
+agent-harness bootstrap
+agent-harness update
+```
+
+낮은 수준 스크립트가 필요하면 같은 동작은 `./scripts/install-native.sh --with-upstream-tools` 또는 `HARNESS_INSTALL_UPSTREAM_TOOLS=1 ./scripts/install-native.sh`로도 실행할 수 있다.
+
+`bootstrap`/`update`는 개인 하네스 UX이므로 upstream companion tools까지 갱신하는 full path가 기본이다. user-level Codex/Claude/plugin/MCP 설정을 바꾸고 네트워크를 사용할 수 있다. 원하지 않으면 `--skip-upstream-tools`를 사용한다. `--dry-run`과 함께 실행하면 upstream 설치는 수행하지 않고 계획 메시지만 출력한다.
+
+설치되는 upstream dependency:
+
+| 도구 | Upstream | 동작 |
+|------|----------|------|
+| LLM Wiki | `nvk/llm-wiki` | Codex marketplace와 Claude marketplace에 `wiki@llm-wiki`를 추가/갱신한다. |
+| CodeGraph | `colbymchenry/codegraph` | `npm install -g @colbymchenry/codegraph`, Codex/Claude MCP 등록, 현재 harness repo `.codegraph/` index 초기화를 수행한다. |
+| claude-mem | `thedotmack/claude-mem` | Codex/Claude plugin marketplace와 `claude-mem` plugin을 추가/갱신한다. |
+
+CodeGraph local index 생성을 건너뛰려면 `HARNESS_INIT_CODEGRAPH=0 ./scripts/install-native.sh --with-upstream-tools`를 사용한다.
 
 ---
 
@@ -55,16 +81,16 @@ codex mcp list
 codex mcp get agent_harness
 ```
 
-`harness mcp`는 user-level daemon을 자동 시작하고 stdio를 daemon socket으로 proxy한다.
+`agent-harness mcp`는 user-level daemon을 자동 시작하고 stdio를 daemon socket으로 proxy한다.
 
 ### UserPromptSubmit hook
 
-Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`의 `UserPromptSubmit`에 `harness hook user-prompt`를 등록한다. 이 hook은 사용자의 새 지시를 차단하거나 대신 수행하지 않고, agent가 고려해야 할 `agent_harness` MCP 후보만 짧은 additional context로 주입한다.
+Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`의 `UserPromptSubmit`에 `agent-harness hook user-prompt`를 등록한다. 이 hook은 사용자의 새 지시를 차단하거나 대신 수행하지 않고, agent가 고려해야 할 `agent_harness` MCP 후보만 짧은 additional context로 주입한다.
 
 예:
 
 ```bash
-printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/harness hook user-prompt
+printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
 ```
 
 주입 후보 예시는 `project_docs_route`, `api_doc_static_check`, `api_doc_review`, `project_docs_read/project_docs_update`, `project_docs_record`다. 매 prompt마다 실행되므로 네트워크나 긴 파일 읽기를 하지 않고 정적 keyword routing만 수행한다.
@@ -88,7 +114,7 @@ Claude Code는 기본적으로 user skill 경로에서 중앙 원본을 본다.
 
 ### MCP
 
-기본 설치는 user-scope MCP 서버 `agent_harness`가 중앙 `bin/harness mcp`를 등록한다. 이 레포의 `.mcp.json`은 dogfood/project-local 템플릿 역할이다.
+기본 설치는 user-scope MCP 서버 `agent_harness`가 중앙 `bin/agent-harness mcp`를 등록한다. 이 레포의 `.mcp.json`은 dogfood/project-local 템플릿 역할이다.
 
 확인:
 
@@ -104,50 +130,50 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 
 ### Claude hooks
 
-Claude Code도 UserPromptSubmit/SessionStart 계열 hook에서 `hookSpecificOutput.additionalContext`를 사용할 수 있다. 현재 기본 설치는 Claude MCP와 skills를 user-scope로 등록하고, prompt routing hook은 공통 CLI `harness hook user-prompt`를 재사용할 수 있도록 문서화한다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in일 때만 추가한다.
+Claude Code도 UserPromptSubmit/SessionStart 계열 hook에서 `hookSpecificOutput.additionalContext`를 사용할 수 있다. 현재 기본 설치는 Claude MCP와 skills를 user-scope로 등록하고, prompt routing hook은 공통 CLI `agent-harness hook user-prompt`를 재사용할 수 있도록 문서화한다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in일 때만 추가한다.
 
 ---
 
 ## 4. CLI로 직접 사용
 
 ```bash
-./bin/harness version
-./bin/harness install-native --json
-./bin/harness install-native --dry-run --json
-./bin/harness inspect --json
-./bin/harness preflight --json /path/to/git-repo
-./bin/harness docs --json
-./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-./bin/harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
-./bin/harness state write --key checkpoint-1 --value "작업 메모" --json
-./bin/harness state read --key checkpoint-1 --json
-./bin/harness state list --json
-./bin/harness state prune --max-age 720h --json
-./bin/harness state prune --max-age 720h --confirm --json
-./bin/harness state doctor --json
-./bin/harness state migrate --json
-./bin/harness state migrate --confirm --json
-./bin/harness daemon start --json
-./bin/harness daemon status --json
-./bin/harness daemon stop --json
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
-./bin/harness self-verify candidates --json
-./bin/harness self-verify candidates --save-state --state-key self-verify-candidates-latest --json
-./bin/harness self-verify history --prefix self-verify --json
-./bin/harness self-verify history --prefix self-verify --retention-limit 20 --prune-retention --json
-./bin/harness self-verify history --prefix self-verify --retention-limit 20 --prune-retention --confirm --json
-./bin/harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
-./bin/harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
-./bin/harness self-augment --cycles=1 --target-score=95 --json
-./bin/harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
-./bin/harness self-augment lesson --candidate reflexion-state-memory --lesson "..." --next-action "..." --json
-./bin/harness api-doc check --json
-printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/harness hook user-prompt
-./bin/harness project bootstrap --repo . --json
-./bin/harness project bootstrap --repo . --write --json
-./bin/harness project route-docs --repo . --task "commit" --json
-./bin/harness mcp
+./bin/agent-harness version
+./bin/agent-harness install-native --json
+./bin/agent-harness install-native --dry-run --json
+./bin/agent-harness inspect --json
+./bin/agent-harness preflight --json /path/to/git-repo
+./bin/agent-harness docs --json
+./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
+./bin/agent-harness state write --key checkpoint-1 --value "작업 메모" --json
+./bin/agent-harness state read --key checkpoint-1 --json
+./bin/agent-harness state list --json
+./bin/agent-harness state prune --max-age 720h --json
+./bin/agent-harness state prune --max-age 720h --confirm --json
+./bin/agent-harness state doctor --json
+./bin/agent-harness state migrate --json
+./bin/agent-harness state migrate --confirm --json
+./bin/agent-harness daemon start --json
+./bin/agent-harness daemon status --json
+./bin/agent-harness daemon stop --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify candidates --json
+./bin/agent-harness self-verify candidates --save-state --state-key self-verify-candidates-latest --json
+./bin/agent-harness self-verify history --prefix self-verify --json
+./bin/agent-harness self-verify history --prefix self-verify --retention-limit 20 --prune-retention --json
+./bin/agent-harness self-verify history --prefix self-verify --retention-limit 20 --prune-retention --confirm --json
+./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+./bin/agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
+./bin/agent-harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
+./bin/agent-harness self-augment lesson --candidate reflexion-state-memory --lesson "..." --next-action "..." --json
+./bin/agent-harness api-doc check --json
+printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
+./bin/agent-harness project bootstrap --repo . --json
+./bin/agent-harness project bootstrap --repo . --write --json
+./bin/agent-harness project route-docs --repo . --task "commit" --json
+./bin/agent-harness mcp
 ```
 
 ---
@@ -160,8 +186,8 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
   '{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"harness://commit-policy"}}' \
-  | HARNESS_STATE_DIR="$tmp_state" HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/harness mcp
-HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/harness daemon stop --json
+  | HARNESS_STATE_DIR="$tmp_state" HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness mcp
+HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon stop --json
 rm -rf "$tmp_state"
 ```
 
@@ -173,20 +199,20 @@ rm -rf "$tmp_state"
 
 ## 7. API Documentation Pre-commit Review
 
-`harness api-doc review` provides a reusable, framework-agnostic AI gate for API documentation drift. It is not tied to NestJS or one repository. By default it inspects staged API candidate files only, including names such as `*controller*`, `*dto*`, `*handler*`, `*router*`, `openapi.*`, `swagger.*`, and other API/schema files.
+`agent-harness api-doc review` provides a reusable, framework-agnostic AI gate for API documentation drift. It is not tied to NestJS or one repository. By default it inspects staged API candidate files only, including names such as `*controller*`, `*dto*`, `*handler*`, `*router*`, `openapi.*`, `swagger.*`, and other API/schema files.
 
 ```bash
 # Review staged API docs/endpoint changes in the current repo
-harness api-doc review
+agent-harness api-doc review
 
 # JSON output for hooks/CI
-harness api-doc check --json
+agent-harness api-doc check --json
 
 # Explicit files from lint-staged/pre-commit
-harness api-doc review -- src/users/users.controller.ts internal/api/user_handler.go openapi.yaml
+agent-harness api-doc review -- src/users/users.controller.ts internal/api/user_handler.go openapi.yaml
 
 # Add project-specific conventions without changing harness core
-harness api-doc review --prompt-file docs/api-doc-rules.md
+agent-harness api-doc review --prompt-file docs/api-doc-rules.md
 ```
 
 The reviewer runs Codex non-interactively with `gpt-5.5` and `model_reasoning_effort=medium` by default, in read-only/no-approval mode. The prompt is framework-agnostic and asks the model to apply the target project's own API documentation conventions, e.g. NestJS Swagger decorators, Go swaggo comments, OpenAPI YAML/JSON, Spring/FastAPI equivalents, or other machine-readable API documentation.
@@ -197,7 +223,7 @@ Hook example:
 // lint-staged.config.js
 module.exports = {
   '*.{ts,js,go,yaml,yml,json}': (files) => [
-    'harness api-doc check -- ' + files.join(' '),
+    'agent-harness api-doc check -- ' + files.join(' '),
   ],
 }
 ```
@@ -205,7 +231,7 @@ module.exports = {
 
 ## 8. Project Docs Bootstrap
 
-`harness project bootstrap`은 대상 레포를 분석해 에이전트용 프로젝트 운영 문서 초안을 생성한다. 기본은 dry-run이며, 실제 쓰기는 `--write`가 있을 때만 수행한다. `AGENTS.md`는 전체 덮어쓰지 않고, behavioral top block이 없으면 prepend하며 `AGENT_HARNESS` marker block만 추가/갱신한다. 정적 bootstrap은 안전한 baseline일 뿐이므로 최초 세팅 후 에이전트가 repo 증거를 읽고 `.agent-harness` 문서를 MCP로 보강해야 한다.
+`agent-harness project bootstrap`은 대상 레포를 분석해 에이전트용 프로젝트 운영 문서 초안을 생성한다. 기본은 dry-run이며, 실제 쓰기는 `--write`가 있을 때만 수행한다. `AGENTS.md`는 전체 덮어쓰지 않고, behavioral top block이 없으면 prepend하며 `AGENT_HARNESS` marker block만 추가/갱신한다. 정적 bootstrap은 안전한 baseline일 뿐이므로 최초 세팅 후 에이전트가 repo 증거를 읽고 `.agent-harness` 문서를 MCP로 보강해야 한다.
 
 생성 대상:
 
@@ -225,9 +251,9 @@ module.exports = {
 작업별 문서 라우팅은 CLI와 MCP에서 제공한다.
 
 ```bash
-./bin/harness project bootstrap --repo /path/to/repo --json
-./bin/harness project bootstrap --repo /path/to/repo --write --json
-./bin/harness project route-docs --repo /path/to/repo --task "commit" --json
+./bin/agent-harness project bootstrap --repo /path/to/repo --json
+./bin/agent-harness project bootstrap --repo /path/to/repo --write --json
+./bin/agent-harness project route-docs --repo /path/to/repo --task "commit" --json
 ```
 
 MCP tools/resources:
@@ -260,14 +286,14 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 
 ## 10. API Documentation Gate
 
-`harness api-doc check`(정적+에이전트)와 MCP `api_doc_static_check` 후 `api_doc_review`는 staged API candidate files만 기본 검사한다. 후보는 controller/DTO/handler/router/OpenAPI/Swagger/schema 파일명 기준으로 고른다. `--all`은 명시적으로 전체 tracked API 후보를 에이전트에게 검토시킬 때만 사용하며, 기본 pre-commit 경로는 legacy 전체 부채를 실패시키지 않아야 한다.
+`agent-harness api-doc check`(정적+에이전트)와 MCP `api_doc_static_check` 후 `api_doc_review`는 staged API candidate files만 기본 검사한다. 후보는 controller/DTO/handler/router/OpenAPI/Swagger/schema 파일명 기준으로 고른다. `--all`은 명시적으로 전체 tracked API 후보를 에이전트에게 검토시킬 때만 사용하며, 기본 pre-commit 경로는 legacy 전체 부채를 실패시키지 않아야 한다.
 
 권장 package script for target Node/Nest repos:
 
 ```json
 {
   "scripts": {
-    "swagger:check": "harness api-doc check --json"
+    "swagger:check": "agent-harness api-doc check --json"
   }
 }
 ```
@@ -281,16 +307,16 @@ API docs review must inspect the changed endpoint's directly related business lo
 
 ## OpenAPI prompt source
 
-Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.
+Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `agent-harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.
 
 
 ## 10. Contract, audit, worker MVP
 
 ```bash
-./bin/harness contract schema --json
-./bin/harness contract check --json
-HARNESS_AUDIT_LOG="$(mktemp)" ./bin/harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-HARNESS_WORKER_DIR="$(mktemp -d)" ./bin/harness worker enqueue --kind smoke --payload "TOKEN=redacted" --json
+./bin/agent-harness contract schema --json
+./bin/agent-harness contract check --json
+HARNESS_AUDIT_LOG="$(mktemp)" ./bin/agent-harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+HARNESS_WORKER_DIR="$(mktemp -d)" ./bin/agent-harness worker enqueue --kind smoke --payload "TOKEN=redacted" --json
 ```
 
 `policy audit`는 redacted JSONL policy decision을 기록하고 command를 실행하지 않는다. `worker`는 lifecycle record만 저장하는 no-shell MVP다. future process execution은 command policy, audit logging, timeout/cancellation, redaction check를 통과해야 한다.

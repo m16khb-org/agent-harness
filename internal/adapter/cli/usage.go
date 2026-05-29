@@ -23,54 +23,58 @@ func Commands() []Command {
 		{Name: "hook", Description: "run prompt-routing hooks"},
 		{Name: "project", Description: "bootstrap and maintain project operating docs"},
 		{Name: "install-native", Description: "install shared native skills and MCP config"},
+		{Name: "update", Description: "rebuild this checkout and refresh user-level integrations plus upstream companion tools"},
+		{Name: "bootstrap", Description: "first-time full setup for user-level integrations plus upstream companion tools"},
 		{Name: "daemon", Description: "manage the MCP backend daemon"},
 		{Name: "worker", Description: "manage safe no-shell local worker jobs"},
 		{Name: "self-verify", Description: "run harness verification gates"},
 		{Name: "self-augment", Description: "plan self-augmentation candidates and lessons"},
 		{Name: "mcp", Description: "serve the MCP stdio proxy"},
-		{Name: "version", Description: "print harness version"},
+		{Name: "version", Description: "print agent-harness version"},
 	}
 }
 
 // Usage returns the canonical CLI usage text. Keeping this in the CLI adapter
 // package makes command-surface changes testable without invoking main().
 func Usage(version string) string {
-	return fmt.Sprintf(`harness %s
+	return fmt.Sprintf(`agent-harness %s
 
 Usage:
-  harness inspect [--json] [--repo PATH]
-  harness preflight [--json] [PATH]
-  harness docs [index] [--json]
-  harness policy check [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
-  harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
-  harness policy audit [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
-  harness contract schema [--json]
-  harness contract check [--json]
-  harness state write --key KEY (--value TEXT|--input FILE|--stdin) [--json]
-  harness state read --key KEY [--json]
-  harness state list [--json]
-  harness state prune --max-age DURATION [--confirm] [--json]
-  harness state doctor [--json]
-  harness state migrate [--confirm] [--json]
-  harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
-  harness hook user-prompt [--prompt TEXT] [--json]
-  harness project bootstrap [--repo PATH] [--write] [--json]
-  harness project docs [--repo PATH] [--json]
-  harness project route-docs [--repo PATH] [--task TEXT] [--json]
-  harness daemon start|status|stop [--json]
-  harness worker enqueue --kind KIND [--payload TEXT] [--json]
-  harness worker status --id ID [--json]
-  harness worker list [--json]
-  harness worker cancel --id ID [--json]
-  harness install-native [--project-local] [--dry-run] [--json]
-  harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--save-state] [--state-key KEY] [--json]
-  harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
-  harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
-  harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]
-  harness self-verify candidates [--save-state] [--state-key KEY] [--json]
-  harness self-augment [--cycles=1] [--target-score=95] [--save-state] [--state-key KEY] [--json]
-  harness self-augment lesson [--candidate ID] --lesson TEXT --next-action TEXT [--source TEXT] [--severity info|warning|error] [--state-key KEY] [--json]
-  harness mcp
-  harness version
+  agent-harness inspect [--json] [--repo PATH]
+  agent-harness preflight [--json] [PATH]
+  agent-harness docs [index] [--json]
+  agent-harness policy check [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
+  agent-harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
+  agent-harness policy audit [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
+  agent-harness contract schema [--json]
+  agent-harness contract check [--json]
+  agent-harness state write --key KEY (--value TEXT|--input FILE|--stdin) [--json]
+  agent-harness state read --key KEY [--json]
+  agent-harness state list [--json]
+  agent-harness state prune --max-age DURATION [--confirm] [--json]
+  agent-harness state doctor [--json]
+  agent-harness state migrate [--confirm] [--json]
+  agent-harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
+  agent-harness hook user-prompt [--prompt TEXT] [--json]
+  agent-harness project bootstrap [--repo PATH] [--write] [--json]
+  agent-harness project docs [--repo PATH] [--json]
+  agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
+  agent-harness daemon start|status|stop [--json]
+  agent-harness worker enqueue --kind KIND [--payload TEXT] [--json]
+  agent-harness worker status --id ID [--json]
+  agent-harness worker list [--json]
+  agent-harness worker cancel --id ID [--json]
+  agent-harness install-native [--project-local] [--dry-run] [--json]
+  agent-harness update [--skip-upstream-tools] [--project-local] [--dry-run] [--skip-build]
+  agent-harness bootstrap [--skip-upstream-tools] [--project-local] [--dry-run] [--skip-build]
+  agent-harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--save-state] [--state-key KEY] [--json]
+  agent-harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
+  agent-harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
+  agent-harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]
+  agent-harness self-verify candidates [--save-state] [--state-key KEY] [--json]
+  agent-harness self-augment [--cycles=1] [--target-score=95] [--save-state] [--state-key KEY] [--json]
+  agent-harness self-augment lesson [--candidate ID] --lesson TEXT --next-action TEXT [--source TEXT] [--severity info|warning|error] [--state-key KEY] [--json]
+  agent-harness mcp
+  agent-harness version
 `, version)
 }

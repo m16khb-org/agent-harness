@@ -32,7 +32,7 @@
 
 ## UserPromptSubmit hook
 
-Codex/Claude host가 지원하면 `harness hook user-prompt`가 매 사용자 지시마다 짧은 MCP 후보 힌트를 주입한다. 이 힌트는 자동 실행 명령이 아니라 agent가 필요한 MCP를 판단하기 위한 routing reminder다. Hook은 차단/대행 실행을 하지 않고, project docs/API docs/CAUTIONS/ADR 갱신 후보만 제안해야 한다.
+Codex/Claude host가 지원하면 `agent-harness hook user-prompt`가 매 사용자 지시마다 짧은 MCP 후보 힌트를 주입한다. 이 힌트는 자동 실행 명령이 아니라 agent가 필요한 MCP를 판단하기 위한 routing reminder다. Hook은 차단/대행 실행을 하지 않고, project docs/API docs/CAUTIONS/ADR 갱신 후보만 제안해야 한다.
 
 ## MCP Usage Rule
 
@@ -63,10 +63,10 @@ Codex/Claude host가 지원하면 `harness hook user-prompt`가 매 사용자 �
 ## API documentation gate
 
 - Endpoint/controller/DTO/schema/OpenAPI changes require the API documentation gate before completion.
-- Prefer `harness api-doc check` or MCP `api_doc_static_check` 후 `api_doc_review`; both default to staged API candidate files so legacy Swagger/OpenAPI debt is not failed all at once.
+- Prefer `agent-harness api-doc check` or MCP `api_doc_static_check` 후 `api_doc_review`; both default to staged API candidate files so legacy Swagger/OpenAPI debt is not failed all at once.
 - For NestJS Swagger projects, the gate must catch missing `@ApiOperation`, missing/invalid operation descriptions, missing `@ApiParam`/`@ApiHeader`, missing 400/401 responses, and DTO `@ApiProperty`/`@ApiPropertyOptional`/`@IsOptional` mismatches.
 
 
 ## OpenAPI prompt source
 
-Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.
+Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `agent-harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.

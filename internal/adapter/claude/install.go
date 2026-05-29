@@ -65,7 +65,7 @@ func claudeProjectMCPConfig() map[string]any {
 		"mcpServers": map[string]any{
 			"agent_harness": map[string]any{
 				"type":    "stdio",
-				"command": "./bin/harness",
+				"command": "./bin/agent-harness",
 				"args":    []string{"mcp"},
 				"env": map[string]any{
 					"HARNESS_ROOT": ".",

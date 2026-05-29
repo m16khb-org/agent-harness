@@ -24,7 +24,7 @@ func DefaultNativeInstallRequest(root, home, codexHome, binPath string) port.Nat
 	}
 	codexHome = absClean(codexHome)
 	if binPath == "" && root != "" {
-		binPath = filepath.Join(root, "bin", "harness")
+		binPath = filepath.Join(root, "bin", "agent-harness")
 	}
 	binPath = absClean(binPath)
 	return port.NativeInstallRequest{

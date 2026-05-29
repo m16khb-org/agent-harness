@@ -117,6 +117,14 @@
           "name": "install-native"
         },
         {
+          "description": "rebuild this checkout and refresh user-level integrations plus upstream companion tools",
+          "name": "update"
+        },
+        {
+          "description": "first-time full setup for user-level integrations plus upstream companion tools",
+          "name": "bootstrap"
+        },
+        {
           "description": "manage the MCP backend daemon",
           "name": "daemon"
         },
@@ -137,11 +145,11 @@
           "name": "mcp"
         },
         {
-          "description": "print harness version",
+          "description": "print agent-harness version",
           "name": "version"
         }
       ],
-      "hash": "b55acba3a02c18f542144f3dee939511be0a91fc8d74b121669f87842f3688cc",
+      "hash": "e1fb892b2fd7f300654a629cc1f1b13380f52896d25fef27c921845b348df62b",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -236,7 +244,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 12259,
+          "bytes": 16522,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -256,15 +264,15 @@
             "5. 주요 위험과 대응",
             "6. 다음 작업 제안",
             "LLM Wiki 정책",
-            "ADR note: MCP-backed project memory records",
-            "ADR note: Adapter 분리, compatibility contract, audit log, worker MVP"
+            "2026-05-29 — Upstream companion tools are opt-in dependencies",
+            "ADR note: MCP-backed project memory records"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
           "rel_path": ".agent-harness/ADR.md",
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 4977,
+          "bytes": 4995,
           "headings": [
             "Agent Workflow",
             "Start",
@@ -283,7 +291,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 13987,
+          "bytes": 15226,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -296,6 +304,7 @@
             "7. Codex / Claude integration map",
             "8. 변경 체크리스트",
             "LLM Wiki 정책",
+            "바퀴를 재발명하지 않는 companion tool 정책",
             "MCP tool design guidance",
             "현재 hardening 추가 사항"
           ],
@@ -304,7 +313,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 5420,
+          "bytes": 6363,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -357,7 +366,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 11897,
+          "bytes": 11921,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -401,10 +410,12 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 14397,
+          "bytes": 17108,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
+            "이후에는 어느 위치에서든:",
+            "Upstream companion tools 선택 설치",
             "2. Codex에서 사용",
             "Native skills",
             "MCP",
@@ -420,20 +431,19 @@
             "Review staged API docs/endpoint changes in the current repo",
             "JSON output for hooks/CI",
             "Explicit files from lint-staged/pre-commit",
-            "Add project-specific conventions without changing harness core",
-            "8. Project Docs Bootstrap",
-            "9. LLM Wiki 정책"
+            "Add project-specific conventions without changing harness core"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
           "rel_path": ".agent-harness/OPERATIONS.md",
           "title": "하네스 사용법"
         },
         {
-          "bytes": 5520,
+          "bytes": 7092,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
             "2. 런타임 / 패키지 관리",
+            "2.1 Upstream companion dependencies",
             "3. 예상 라이브러리 후보",
             "4. 예정 명령어",
             "5. 주요 설정/상태 위치",
@@ -445,7 +455,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 13821,
+          "bytes": 14999,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -469,7 +479,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 11065,
+          "bytes": 11535,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -490,7 +500,7 @@
           "title": "AGENTS.md"
         },
         {
-          "bytes": 1140,
+          "bytes": 1315,
           "headings": [
             "CLAUDE.md",
             "API docs"
@@ -528,7 +538,7 @@
           "title": "Mermaid 다이어그램 작성 가이드라인"
         },
         {
-          "bytes": 7230,
+          "bytes": 7284,
           "headings": [
             "Self-verification and self-augmentation loops",
             "1. Self-verification loop",
@@ -549,7 +559,7 @@
           "title": "Self-verification and self-augmentation loops"
         },
         {
-          "bytes": 4571,
+          "bytes": 4601,
           "headings": [
             "Self-augmentation loop",
             "Goal",
@@ -563,7 +573,7 @@
           "title": "Self-augmentation loop"
         },
         {
-          "bytes": 5312,
+          "bytes": 5318,
           "headings": [
             "Self-verification candidate catalog",
             "Current evidence",
@@ -576,7 +586,7 @@
           "title": "Self-verification candidate catalog"
         },
         {
-          "bytes": 1425,
+          "bytes": 1461,
           "headings": [
             "Self-verification loop",
             "Goal",
@@ -623,7 +633,7 @@
         "codex_mcp_configured": false,
         "codex_skill_installed": false,
         "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
-        "mcp_binary_path": "$HARNESS_ROOT/bin/harness",
+        "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
         "project_claude_mcp_config": true,
         "project_claude_skill": false,
         "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
@@ -1404,7 +1414,7 @@
         "QA gate including docs, skills, native integration, and MCP/state smoke",
         "go test ./... -count=1",
         "go test -race ./... -count=1 when touched Go behavior is concurrency or policy sensitive",
-        "./bin/harness self-verify --iterations=10 --target-score=95 --json"
+        "./bin/agent-harness self-verify --iterations=10 --target-score=95 --json"
       ],
       "warnings": []
     },
@@ -1831,7 +1841,7 @@
       "entries": [
         {
           "base_seed": 600,
-          "bytes": 923,
+          "bytes": 924,
           "elapsed_ms": 1100,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -1856,7 +1866,7 @@
         },
         {
           "base_seed": 600,
-          "bytes": 923,
+          "bytes": 924,
           "elapsed_ms": 1000,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -2403,6 +2413,14 @@
                 "name": "install-native"
               },
               {
+                "description": "rebuild this checkout and refresh user-level integrations plus upstream companion tools",
+                "name": "update"
+              },
+              {
+                "description": "first-time full setup for user-level integrations plus upstream companion tools",
+                "name": "bootstrap"
+              },
+              {
                 "description": "manage the MCP backend daemon",
                 "name": "daemon"
               },
@@ -2423,11 +2441,11 @@
                 "name": "mcp"
               },
               {
-                "description": "print harness version",
+                "description": "print agent-harness version",
                 "name": "version"
               }
             ],
-            "hash": "b55acba3a02c18f542144f3dee939511be0a91fc8d74b121669f87842f3688cc",
+            "hash": "e1fb892b2fd7f300654a629cc1f1b13380f52896d25fef27c921845b348df62b",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2529,7 +2547,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 12259,
+                "bytes": 16522,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -2549,15 +2567,15 @@
                   "5. 주요 위험과 대응",
                   "6. 다음 작업 제안",
                   "LLM Wiki 정책",
-                  "ADR note: MCP-backed project memory records",
-                  "ADR note: Adapter 분리, compatibility contract, audit log, worker MVP"
+                  "2026-05-29 — Upstream companion tools are opt-in dependencies",
+                  "ADR note: MCP-backed project memory records"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
                 "rel_path": ".agent-harness/ADR.md",
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 4977,
+                "bytes": 4995,
                 "headings": [
                   "Agent Workflow",
                   "Start",
@@ -2576,7 +2594,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 13987,
+                "bytes": 15226,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2589,6 +2607,7 @@
                   "7. Codex / Claude integration map",
                   "8. 변경 체크리스트",
                   "LLM Wiki 정책",
+                  "바퀴를 재발명하지 않는 companion tool 정책",
                   "MCP tool design guidance",
                   "현재 hardening 추가 사항"
                 ],
@@ -2597,7 +2616,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 5420,
+                "bytes": 6363,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -2650,7 +2669,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 11897,
+                "bytes": 11921,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2694,10 +2713,12 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 14397,
+                "bytes": 17108,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
+                  "이후에는 어느 위치에서든:",
+                  "Upstream companion tools 선택 설치",
                   "2. Codex에서 사용",
                   "Native skills",
                   "MCP",
@@ -2713,20 +2734,19 @@
                   "Review staged API docs/endpoint changes in the current repo",
                   "JSON output for hooks/CI",
                   "Explicit files from lint-staged/pre-commit",
-                  "Add project-specific conventions without changing harness core",
-                  "8. Project Docs Bootstrap",
-                  "9. LLM Wiki 정책"
+                  "Add project-specific conventions without changing harness core"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
                 "rel_path": ".agent-harness/OPERATIONS.md",
                 "title": "하네스 사용법"
               },
               {
-                "bytes": 5520,
+                "bytes": 7092,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
                   "2. 런타임 / 패키지 관리",
+                  "2.1 Upstream companion dependencies",
                   "3. 예상 라이브러리 후보",
                   "4. 예정 명령어",
                   "5. 주요 설정/상태 위치",
@@ -2738,7 +2758,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 13821,
+                "bytes": 14999,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -2762,7 +2782,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 11065,
+                "bytes": 11535,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
@@ -2783,7 +2803,7 @@
                 "title": "AGENTS.md"
               },
               {
-                "bytes": 1140,
+                "bytes": 1315,
                 "headings": [
                   "CLAUDE.md",
                   "API docs"
@@ -2821,7 +2841,7 @@
                 "title": "Mermaid 다이어그램 작성 가이드라인"
               },
               {
-                "bytes": 7230,
+                "bytes": 7284,
                 "headings": [
                   "Self-verification and self-augmentation loops",
                   "1. Self-verification loop",
@@ -2842,7 +2862,7 @@
                 "title": "Self-verification and self-augmentation loops"
               },
               {
-                "bytes": 4571,
+                "bytes": 4601,
                 "headings": [
                   "Self-augmentation loop",
                   "Goal",
@@ -2856,7 +2876,7 @@
                 "title": "Self-augmentation loop"
               },
               {
-                "bytes": 5312,
+                "bytes": 5318,
                 "headings": [
                   "Self-verification candidate catalog",
                   "Current evidence",
@@ -2869,7 +2889,7 @@
                 "title": "Self-verification candidate catalog"
               },
               {
-                "bytes": 1425,
+                "bytes": 1461,
                 "headings": [
                   "Self-verification loop",
                   "Goal",
@@ -2923,7 +2943,7 @@
               "codex_mcp_configured": false,
               "codex_skill_installed": false,
               "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
-              "mcp_binary_path": "$HARNESS_ROOT/bin/harness",
+              "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
               "project_claude_mcp_config": true,
               "project_claude_skill": false,
               "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
@@ -3603,7 +3623,7 @@
               "QA gate including docs, skills, native integration, and MCP/state smoke",
               "go test ./... -count=1",
               "go test -race ./... -count=1 when touched Go behavior is concurrency or policy sensitive",
-              "./bin/harness self-verify --iterations=10 --target-score=95 --json"
+              "./bin/agent-harness self-verify --iterations=10 --target-score=95 --json"
             ],
             "warnings": []
           },
@@ -4078,7 +4098,7 @@
             "entries": [
               {
                 "base_seed": 600,
-                "bytes": 923,
+                "bytes": 924,
                 "elapsed_ms": 1100,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -4103,7 +4123,7 @@
               },
               {
                 "base_seed": 600,
-                "bytes": 923,
+                "bytes": 924,
                 "elapsed_ms": 1000,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -4236,13 +4256,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -4307,13 +4327,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -4364,13 +4384,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"

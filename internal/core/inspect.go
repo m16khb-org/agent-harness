@@ -43,7 +43,7 @@ func InspectHarness(root, target, home, version, skillName string) InspectInfo {
 	codexSkill := filepath.Join(home, ".codex", "skills", skillName)
 	claudeSkill := filepath.Join(home, ".claude", "skills", skillName)
 	projectClaudeSkill := filepath.Join(root, ".claude", "skills", skillName)
-	mcpBinary := filepath.Join(root, "bin", "harness")
+	mcpBinary := filepath.Join(root, "bin", "agent-harness")
 	return InspectInfo{
 		OK:          true,
 		Version:     version,

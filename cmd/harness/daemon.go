@@ -93,9 +93,9 @@ func runDaemon(args []string) error {
 
 func daemonUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  harness daemon start [--json]
-  harness daemon status [--json]
-  harness daemon stop [--json]
+  agent-harness daemon start [--json]
+  agent-harness daemon status [--json]
+  agent-harness daemon stop [--json]
 `)
 }
 

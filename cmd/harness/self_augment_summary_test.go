@@ -720,7 +720,7 @@ func TestDetectClaudeMCPDuplicateWarnings(t *testing.T) {
 	if len(warnings[0].Suggestions) != 1 || !strings.Contains(warnings[0].Suggestions[0], "claude mcp remove agent_harness") {
 		t.Fatalf("duplicate warning suggestion missing: %+v", warnings[0].Suggestions)
 	}
-	if got := detectClaudeMCPDuplicateWarnings("agent_harness: ./bin/harness mcp - ✓ Connected\n"); len(got) != 0 {
+	if got := detectClaudeMCPDuplicateWarnings("agent_harness: ./bin/agent-harness mcp - ✓ Connected\n"); len(got) != 0 {
 		t.Fatalf("non-conflicting output produced warnings: %+v", got)
 	}
 }

@@ -27,7 +27,7 @@ func runHook(args []string) error {
 
 func hookUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  harness hook user-prompt [--prompt TEXT] [--json]
+  agent-harness hook user-prompt [--prompt TEXT] [--json]
 `)
 }
 

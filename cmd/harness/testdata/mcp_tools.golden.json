@@ -1,6 +1,6 @@
 [
   {
-    "description": "Inspect the agent harness installation, shared skills, docs, and native Codex/Claude integration status.",
+    "description": "Inspect the agent-harness installation, shared skills, docs, and native Codex/Claude integration status.",
     "inputSchema": {
       "properties": {
         "repo": {

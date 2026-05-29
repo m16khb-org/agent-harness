@@ -323,7 +323,7 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 			"QA gate including docs, skills, native integration, and MCP/state smoke",
 			"go test ./... -count=1",
 			"go test -race ./... -count=1 when touched Go behavior is concurrency or policy sensitive",
-			"./bin/harness self-verify --iterations=10 --target-score=95 --json",
+			"./bin/agent-harness self-verify --iterations=10 --target-score=95 --json",
 		},
 		Warnings:    warnings,
 		RepoSignals: signals,

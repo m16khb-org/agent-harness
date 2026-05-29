@@ -16,12 +16,12 @@ Verify that the harness produces consistent results across Codex and Claude Code
 ### CLI/MCP surface
 
 ```bash
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
-./bin/harness self-verify candidates --json
-./bin/harness self-verify history --prefix self-verify --json
-./bin/harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
-./bin/harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify candidates --json
+./bin/agent-harness self-verify history --prefix self-verify --json
+./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+./bin/agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
 ```
 
 Legacy `self_augment_history`, `compare`, and `promote` calls remain compatibility aliases only. New docs and automation should use `self_verify_*` names.
@@ -81,9 +81,9 @@ Repeating tests or producing only an analysis report is not self-augmentation.
 ### Surface
 
 ```bash
-./bin/harness self-augment --json
-./bin/harness self-augment --save-state --state-key self-augment-latest --json
-./bin/harness self-augment lesson --lesson "..." --next-action "..." --json
+./bin/agent-harness self-augment --json
+./bin/agent-harness self-augment --save-state --state-key self-augment-latest --json
+./bin/agent-harness self-augment lesson --lesson "..." --next-action "..." --json
 ```
 
 Skill contract: use `$self-augment` when the user asks for autonomous improvement, repo enhancement, next valuable improvement, or 95-point improvement loops.

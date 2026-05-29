@@ -30,10 +30,10 @@ func runWorker(args []string) error {
 
 func workerUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  harness worker enqueue --kind KIND [--payload TEXT] [--json]
-  harness worker status --id ID [--json]
-  harness worker list [--json]
-  harness worker cancel --id ID [--json]
+  agent-harness worker enqueue --kind KIND [--payload TEXT] [--json]
+  agent-harness worker status --id ID [--json]
+  agent-harness worker list [--json]
+  agent-harness worker cancel --id ID [--json]
 `)
 }
 

@@ -4,7 +4,7 @@
       "args": [
         "mcp"
       ],
-      "command": "./bin/harness",
+      "command": "./bin/agent-harness",
       "env": {
         "HARNESS_ROOT": "."
       },

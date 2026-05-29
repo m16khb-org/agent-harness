@@ -19,6 +19,8 @@
 
 The project is intentionally not “just a Codex plugin” or “just Claude commands.” The reusable behavior lives in a host-neutral Go core; host integrations are thin adapters that call that core.
 
+The project philosophy is **do not reinvent the wheel**: agent-harness owns the small shared core for orchestration, policy, state, project docs, and install glue. Specialized knowledge/retrieval tools stay upstream — for example `nvk/llm-wiki`, `colbymchenry/codegraph`, and `thedotmack/claude-mem` are installed or configured as optional dependencies instead of being reimplemented inside the harness.
+
 > Status: early but functional MVP. The CLI, daemon-backed MCP proxy, policy checker, state checkpoints, project-doc tools, API-doc review gate, native skill installer, self-verification loop, and self-augmentation loop are implemented. The worker surface is currently **state-only / no-shell** by design.
 
 ---
@@ -41,7 +43,7 @@ Use it when you want to:
 | Area | Commands / files | What it does |
 | --- | --- | --- |
 | Install and inspection | `install-native`, `inspect`, `preflight`, `version` | Build and connect user-level Codex/Claude integrations, then inspect the installation. |
-| MCP backend | `harness mcp`, `daemon start/status/stop` | Run a stdio MCP proxy backed by a user-level daemon so Codex and Claude see the same tools. |
+| MCP backend | `agent-harness mcp`, `daemon start/status/stop` | Run a stdio MCP proxy backed by a user-level daemon so Codex and Claude see the same tools. |
 | Command policy | `policy check`, `policy fake-run`, `policy audit` | Evaluate argv, workspace root, cwd, timeout, write/network intent, and audit metadata without a real shell runner. |
 | State checkpoints | `state write/read/list/prune/doctor/migrate` | Store small JSON checkpoints in user state, not tracked repo files. |
 | Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | Generate, index, route, and append project operating docs under `.agent-harness/`. |
@@ -54,7 +56,7 @@ Use it when you want to:
 
 ```mermaid
 flowchart LR
-    Codex[Codex\nAGENTS.md · skills · MCP] --> MCP[harness mcp\nstdio proxy]
+    Codex[Codex\nAGENTS.md · skills · MCP] --> MCP[agent-harness mcp\nstdio proxy]
     Claude[Claude Code\nCLAUDE.md · skills · MCP] --> MCP
     Human[Human shell] --> CLI[harness CLI]
 
@@ -74,6 +76,7 @@ Design rules:
 3. **Safe by default** — command policy, workspace boundaries, audit records, redaction, and dry-run/default no-shell behavior come first.
 4. **One skill source** — `skills/<name>/` is the source of truth; user-level Codex/Claude skill paths point back to it.
 5. **Incremental worker** — persistent worker functionality starts with lifecycle state before process execution.
+6. **Do not reinvent the wheel** — integrate upstream tools such as llm-wiki, CodeGraph, and claude-mem through their own installers/plugins; do not copy their core behavior into agent-harness.
 
 ## Repository map
 
@@ -87,7 +90,7 @@ configs/claude/           Claude MCP template
 skills/                   Shared native skills used by Codex and Claude Code
 .agent-harness/           Project operating docs, ADRs, cautions, testing rules
 scripts/install-native.sh Native install convenience script
-bin/harness               Locally built binary
+bin/agent-harness               Locally built binary
 ```
 
 ## Requirements
@@ -103,16 +106,16 @@ The project currently has no external Go module dependencies beyond the standard
 From the repository root:
 
 ```bash
-go build -o bin/harness ./cmd/harness
-./bin/harness version
-./bin/harness inspect --json
-./bin/harness docs --json
+go build -o bin/agent-harness ./cmd/harness
+./bin/agent-harness version
+./bin/agent-harness inspect --json
+./bin/agent-harness docs --json
 ```
 
 Check command policy without executing the command:
 
 ```bash
-./bin/harness policy check \
+./bin/agent-harness policy check \
   --workspace-root "$PWD" \
   --cwd "$PWD" \
   --json -- git status --short
@@ -121,54 +124,74 @@ Check command policy without executing the command:
 Smoke-test the daemon lifecycle:
 
 ```bash
-./bin/harness daemon status --json
-./bin/harness daemon start --json
-./bin/harness daemon status --json
-./bin/harness daemon stop --json
+./bin/agent-harness daemon status --json
+./bin/agent-harness daemon start --json
+./bin/agent-harness daemon status --json
+./bin/agent-harness daemon stop --json
 ```
 
-Install user-level Codex/Claude integration after reviewing the dry run:
+Install or update user-level Codex/Claude integration after reviewing the dry run. First-time setup should use `agent-harness bootstrap`; later refreshes should use `agent-harness update`, like `claude-mem update`. Both commands use the recommended full path by default: they rebuild this checkout, refresh host integrations, and install/update upstream companion tools. The installer also creates/refreshes `~/.local/bin/agent-harness`, so new shells can run `agent-harness ...` from anywhere:
 
 ```bash
-./bin/harness install-native --dry-run --json
-./scripts/install-native.sh
-./bin/harness install-native --json
+./bin/agent-harness install-native --dry-run --json
+
+# Recommended first-time full setup.
+./bin/agent-harness bootstrap
+
+# Recommended ongoing update, like `claude-mem update`.
+agent-harness update
+
+# Minimal/low-level path: update only agent-harness native Codex/Claude integration.
+./scripts/install-native.sh --skip-upstream-tools
+./bin/agent-harness install-native --json
 ```
 
+`agent-harness update` and `agent-harness bootstrap` delegate to `./scripts/install-native.sh --with-upstream-tools`. The script rebuilds `bin/agent-harness` from the current checkout every run, refreshes `~/.local/bin/agent-harness`, and then updates host integrations, so an existing install is updated in place. It does not run `git pull`; update the checkout yourself first when you want remote changes. Use `--skip-build` only when you intentionally want to leave the existing binary unchanged, and `--skip-upstream-tools` only for a minimal harness-only refresh.
+
 Default installation targets user-level host locations. It must not create project-local `.claude/skills`, `.claude/settings.json`, or `.mcp.json` files in a target repository unless project-local mode is explicitly requested.
+
+`--with-upstream-tools` is the recommended full setup for this harness philosophy: do not reinvent the wheel, and keep specialized capabilities on their upstream implementations. It modifies user-level Codex/Claude/plugin/MCP configuration and may use the network. It wires these upstream tools without vendoring or reimplementing them:
+
+| Tool | Upstream | What the installer does |
+| --- | --- | --- |
+| LLM Wiki | `nvk/llm-wiki` | Adds/updates the Codex and Claude `wiki@llm-wiki` plugin. |
+| CodeGraph | `colbymchenry/codegraph` | Installs `@colbymchenry/codegraph`, registers its MCP server for Codex/Claude, and initializes this repo's `.codegraph/` index when enabled. |
+| claude-mem | `thedotmack/claude-mem` | Adds/updates the Codex and Claude `claude-mem` plugin. |
+
+Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_CODEGRAPH=0` to skip local CodeGraph indexing.
 
 ## Common commands
 
 ```bash
 # Installation and environment
-./bin/harness inspect --json
-./bin/harness preflight --json "$PWD"
-./bin/harness contract check --json
+./bin/agent-harness inspect --json
+./bin/agent-harness preflight --json "$PWD"
+./bin/agent-harness contract check --json
 
 # Docs and routing
-./bin/harness docs --json
-./bin/harness project route-docs --repo "$PWD" --task "update command policy" --json
+./bin/agent-harness docs --json
+./bin/agent-harness project route-docs --repo "$PWD" --task "update command policy" --json
 
 # State checkpoints
-./bin/harness state write --key checkpoint --value "ready" --json
-./bin/harness state read --key checkpoint --json
-./bin/harness state doctor --json
+./bin/agent-harness state write --key checkpoint --value "ready" --json
+./bin/agent-harness state read --key checkpoint --json
+./bin/agent-harness state doctor --json
 
 # Policy-only command handling: no real shell runner
-./bin/harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-./bin/harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 
 # Worker MVP: state only, no shell execution
-./bin/harness worker enqueue --kind smoke --payload "hello" --json
-./bin/harness worker list --json
+./bin/agent-harness worker enqueue --kind smoke --payload "hello" --json
+./bin/agent-harness worker list --json
 
 # API documentation gate
-./bin/harness api-doc check --json
-./bin/harness api-doc review --json
+./bin/agent-harness api-doc check --json
+./bin/agent-harness api-doc review --json
 
 # Harness verification and improvement loops
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/harness self-augment --cycles=1 --target-score=95 --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ```
 
 ## Native host integration
@@ -221,10 +244,10 @@ Recommended baseline:
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
-go build -o bin/harness ./cmd/harness
-./bin/harness inspect --json
-./bin/harness docs --json
-./bin/harness contract check --json
+go build -o bin/agent-harness ./cmd/harness
+./bin/agent-harness inspect --json
+./bin/agent-harness docs --json
+./bin/agent-harness contract check --json
 ```
 
 For documentation-only changes, at minimum check file paths, buildability, and the docs index:
@@ -232,8 +255,8 @@ For documentation-only changes, at minimum check file paths, buildability, and t
 ```bash
 find . -maxdepth 3 -type f | sort
 find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
-go build -o bin/harness ./cmd/harness
-./bin/harness docs --json
+go build -o bin/agent-harness ./cmd/harness
+./bin/agent-harness docs --json
 ```
 
 ## Project documentation
@@ -285,6 +308,8 @@ No license file is present in this repository at the time of this README update.
 
 AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라지면 신뢰하기 어려워집니다. `agent-harness`는 그 공통 관심사를 하나의 portable core에 모읍니다.
 
+하네스의 철학은 **바퀴를 재발명하지 않는다**입니다. agent-harness는 orchestration, policy, state, project docs, install glue 같은 작은 공통 core를 맡고, 전문 knowledge/retrieval 기능은 upstream을 그대로 연결합니다. 예를 들어 `nvk/llm-wiki`, `colbymchenry/codegraph`, `thedotmack/claude-mem`은 하네스 내부에 복제하지 않고 optional dependency로 설치/설정합니다.
+
 다음이 필요할 때 사용합니다.
 
 - Codex, Claude Code, MCP, shell에서 같은 agent workflow를 실행하고 싶을 때
@@ -299,7 +324,7 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 | 영역 | 명령 / 파일 | 역할 |
 | --- | --- | --- |
 | 설치와 점검 | `install-native`, `inspect`, `preflight`, `version` | user-level Codex/Claude integration을 만들고 설치 상태를 확인합니다. |
-| MCP backend | `harness mcp`, `daemon start/status/stop` | user-level daemon 뒤의 stdio MCP proxy를 실행해 Codex와 Claude가 같은 tool을 보게 합니다. |
+| MCP backend | `agent-harness mcp`, `daemon start/status/stop` | user-level daemon 뒤의 stdio MCP proxy를 실행해 Codex와 Claude가 같은 tool을 보게 합니다. |
 | Command policy | `policy check`, `policy fake-run`, `policy audit` | 실제 shell runner 없이 argv, workspace root, cwd, timeout, write/network intent, audit metadata를 평가합니다. |
 | State checkpoint | `state write/read/list/prune/doctor/migrate` | 작은 JSON checkpoint를 repo가 아니라 user state에 저장합니다. |
 | Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | `.agent-harness/` 운영 문서를 생성, 색인, 라우팅, append 기록합니다. |
@@ -312,7 +337,7 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 
 ```mermaid
 flowchart LR
-    Codex[Codex\nAGENTS.md · skills · MCP] --> MCP[harness mcp\nstdio proxy]
+    Codex[Codex\nAGENTS.md · skills · MCP] --> MCP[agent-harness mcp\nstdio proxy]
     Claude[Claude Code\nCLAUDE.md · skills · MCP] --> MCP
     Human[Human shell] --> CLI[harness CLI]
 
@@ -332,6 +357,7 @@ flowchart LR
 3. **Safe by default** — command policy, workspace boundary, audit record, redaction, dry-run/no-shell 기본값을 먼저 둡니다.
 4. **One skill source** — `skills/<name>/`이 원본이고 user-level Codex/Claude skill 경로는 이를 가리킵니다.
 5. **Incremental worker** — persistent worker는 process 실행보다 lifecycle state부터 검증합니다.
+6. **바퀴를 재발명하지 않기** — llm-wiki, CodeGraph, claude-mem 같은 upstream 도구는 각자의 installer/plugin으로 연결하고 core 동작을 agent-harness에 복제하지 않습니다.
 
 ## 저장소 구조
 
@@ -345,7 +371,7 @@ configs/claude/           Claude MCP template
 skills/                   Codex와 Claude Code가 공유하는 native skill 원본
 .agent-harness/           project operating docs, ADR, caution, testing rule
 scripts/install-native.sh native install 편의 스크립트
-bin/harness               로컬 build binary
+bin/agent-harness               로컬 build binary
 ```
 
 ## 요구 사항
@@ -361,16 +387,16 @@ bin/harness               로컬 build binary
 저장소 루트에서 실행합니다.
 
 ```bash
-go build -o bin/harness ./cmd/harness
-./bin/harness version
-./bin/harness inspect --json
-./bin/harness docs --json
+go build -o bin/agent-harness ./cmd/harness
+./bin/agent-harness version
+./bin/agent-harness inspect --json
+./bin/agent-harness docs --json
 ```
 
 명령을 실행하지 않고 command policy만 확인합니다.
 
 ```bash
-./bin/harness policy check \
+./bin/agent-harness policy check \
   --workspace-root "$PWD" \
   --cwd "$PWD" \
   --json -- git status --short
@@ -379,54 +405,74 @@ go build -o bin/harness ./cmd/harness
 Daemon lifecycle smoke test:
 
 ```bash
-./bin/harness daemon status --json
-./bin/harness daemon start --json
-./bin/harness daemon status --json
-./bin/harness daemon stop --json
+./bin/agent-harness daemon status --json
+./bin/agent-harness daemon start --json
+./bin/agent-harness daemon status --json
+./bin/agent-harness daemon stop --json
 ```
 
-user-level Codex/Claude integration은 dry-run 확인 후 설치합니다.
+user-level Codex/Claude integration은 dry-run 확인 후 설치하거나 갱신합니다. 첫 설치는 `agent-harness bootstrap`, 이후 갱신은 `claude-mem update`처럼 `agent-harness update`를 권장합니다. 두 명령은 기본적으로 현재 checkout binary를 다시 build하고 host integration과 upstream companion tools를 함께 갱신합니다. installer는 `~/.local/bin/agent-harness`를 생성/갱신하므로 새 shell에서는 어디서든 `agent-harness ...`를 사용할 수 있습니다.
 
 ```bash
-./bin/harness install-native --dry-run --json
-./scripts/install-native.sh
-./bin/harness install-native --json
+./bin/agent-harness install-native --dry-run --json
+
+# 권장 첫 설치: agent-harness와 upstream companion tools를 함께 세팅합니다.
+./bin/agent-harness bootstrap
+
+# 권장 갱신: claude-mem update처럼 사용합니다.
+agent-harness update
+
+# 최소 설치: agent-harness native Codex/Claude integration만 갱신합니다.
+./scripts/install-native.sh --skip-upstream-tools
+./bin/agent-harness install-native --json
 ```
 
+`agent-harness update`와 `agent-harness bootstrap`은 내부적으로 `./scripts/install-native.sh --with-upstream-tools`를 호출합니다. 스크립트는 매 실행마다 현재 checkout 기준으로 `bin/agent-harness`를 다시 build하고, `~/.local/bin/agent-harness`를 갱신한 뒤 host integration을 갱신하므로, 이미 설치된 agent-harness도 제자리에서 업데이트됩니다. 단, local 변경을 덮어쓰지 않기 위해 `git pull`은 자동 실행하지 않습니다. 원격 변경까지 반영하려면 checkout을 먼저 직접 갱신하세요. 기존 binary를 의도적으로 유지하려면 `--skip-build`, 최소 harness-only 갱신이 필요하면 `--skip-upstream-tools`를 사용합니다.
+
 기본 설치는 user-level host 위치만 대상으로 합니다. target repo에 project-local `.claude/skills`, `.claude/settings.json`, `.mcp.json` 파일을 만들려면 명시적인 project-local mode가 필요합니다.
+
+`--with-upstream-tools`는 이 하네스의 철학인 “바퀴를 재발명하지 않는다”에 맞는 권장 full setup입니다. user-level Codex/Claude/plugin/MCP 설정을 바꾸고 네트워크를 사용할 수 있으며, 다음 upstream 도구를 vendoring/reimplementation 없이 연결합니다.
+
+| 도구 | Upstream | installer 동작 |
+| --- | --- | --- |
+| LLM Wiki | `nvk/llm-wiki` | Codex/Claude `wiki@llm-wiki` plugin을 추가/갱신합니다. |
+| CodeGraph | `colbymchenry/codegraph` | `@colbymchenry/codegraph`를 설치하고 Codex/Claude MCP server를 등록하며, 설정 시 이 repo의 `.codegraph/` index를 초기화합니다. |
+| claude-mem | `thedotmack/claude-mem` | Codex/Claude `claude-mem` plugin을 추가/갱신합니다. |
+
+같은 동작은 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`로도 켤 수 있고, local CodeGraph indexing은 `HARNESS_INIT_CODEGRAPH=0`으로 끌 수 있습니다.
 
 ## 자주 쓰는 명령
 
 ```bash
 # 설치와 환경 확인
-./bin/harness inspect --json
-./bin/harness preflight --json "$PWD"
-./bin/harness contract check --json
+./bin/agent-harness inspect --json
+./bin/agent-harness preflight --json "$PWD"
+./bin/agent-harness contract check --json
 
 # 문서와 라우팅
-./bin/harness docs --json
-./bin/harness project route-docs --repo "$PWD" --task "update command policy" --json
+./bin/agent-harness docs --json
+./bin/agent-harness project route-docs --repo "$PWD" --task "update command policy" --json
 
 # 상태 체크포인트
-./bin/harness state write --key checkpoint --value "ready" --json
-./bin/harness state read --key checkpoint --json
-./bin/harness state doctor --json
+./bin/agent-harness state write --key checkpoint --value "ready" --json
+./bin/agent-harness state read --key checkpoint --json
+./bin/agent-harness state doctor --json
 
 # Policy-only command handling: 실제 shell runner 아님
-./bin/harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-./bin/harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 
 # Worker MVP: state only, no shell execution
-./bin/harness worker enqueue --kind smoke --payload "hello" --json
-./bin/harness worker list --json
+./bin/agent-harness worker enqueue --kind smoke --payload "hello" --json
+./bin/agent-harness worker list --json
 
 # API 문서 gate
-./bin/harness api-doc check --json
-./bin/harness api-doc review --json
+./bin/agent-harness api-doc check --json
+./bin/agent-harness api-doc review --json
 
 # 하네스 자체 검증과 개선 루프
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/harness self-augment --cycles=1 --target-score=95 --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ```
 
 ## Native host integration
@@ -479,10 +525,10 @@ claude mcp list
 go test ./... -count=1
 go test -race ./... -count=1
 go vet ./...
-go build -o bin/harness ./cmd/harness
-./bin/harness inspect --json
-./bin/harness docs --json
-./bin/harness contract check --json
+go build -o bin/agent-harness ./cmd/harness
+./bin/agent-harness inspect --json
+./bin/agent-harness docs --json
+./bin/agent-harness contract check --json
 ```
 
 문서만 변경한 경우에도 최소한 파일 경로, build 가능 여부, docs index를 확인합니다.
@@ -490,8 +536,8 @@ go build -o bin/harness ./cmd/harness
 ```bash
 find . -maxdepth 3 -type f | sort
 find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
-go build -o bin/harness ./cmd/harness
-./bin/harness docs --json
+go build -o bin/agent-harness ./cmd/harness
+./bin/agent-harness docs --json
 ```
 
 ## 프로젝트 문서

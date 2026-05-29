@@ -22,9 +22,21 @@
 | 언어 | Go |
 | 로컬 확인 toolchain | `go version go1.26.3 darwin/arm64` |
 | 패키지 관리 | Go modules |
-| 기본 바이너리 | `bin/harness` (`cmd/harness` source) |
+| 기본 바이너리 | `bin/agent-harness` (`cmd/harness` source) |
 | 실행 모드 | CLI one-shot, MCP stdio proxy, user-level daemon, future local job worker |
 | 설정 prefix | `HARNESS_` |
+
+## 2.1 Upstream companion dependencies
+
+하네스의 철학은 **바퀴를 재발명하지 않는다**이다. 아래 도구들은 agent-harness core dependency가 아니라 선택 설치되는 user-level companion tools다. 기능을 하네스에 복제하지 않고 각 upstream의 installer/plugin/MCP를 사용한다.
+
+| 도구 | Upstream/package | 역할 | 설치 경로 |
+|------|------------------|------|-----------|
+| LLM Wiki | `nvk/llm-wiki` | research/query/compile 가능한 Markdown wiki workflow | `scripts/install-native.sh --with-upstream-tools`가 Codex/Claude plugin을 설치/갱신 |
+| CodeGraph | `@colbymchenry/codegraph` | AST 기반 symbol graph와 MCP code intelligence | `npm install -g @colbymchenry/codegraph`, `codegraph install`, `codegraph init -i` |
+| claude-mem | `thedotmack/claude-mem` | session memory capture/compression | Codex/Claude plugin marketplace 설치/갱신 |
+
+이 optional path는 네트워크와 user-level host 설정 변경을 수반하므로 기본 install-native에는 포함하지 않고 `--with-upstream-tools` 또는 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`일 때만 실행한다.
 
 ---
 
@@ -50,29 +62,33 @@
 
 ```bash
 go test ./... -count=1
-go build -o bin/harness ./cmd/harness
-./bin/harness inspect --json
-./bin/harness docs --json
-./bin/harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-./bin/harness daemon status --json
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
-./bin/harness self-verify history --prefix self-verify --json
-./bin/harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
-./bin/harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
-./bin/harness self-augment --cycles=1 --target-score=95 --json
+go build -o bin/agent-harness ./cmd/harness
+./bin/agent-harness inspect --json
+./bin/agent-harness docs --json
+./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness daemon status --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+./bin/agent-harness self-verify history --prefix self-verify --json
+./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+./bin/agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ./scripts/install-native.sh
-./bin/harness install-native --json
-./bin/harness install-native --dry-run --json
+./bin/agent-harness bootstrap --skip-upstream-tools --dry-run
+./bin/agent-harness update --skip-upstream-tools --dry-run
+./scripts/install-native.sh --skip-build
+./scripts/install-native.sh --with-upstream-tools --dry-run
+./bin/agent-harness install-native --json
+./bin/agent-harness install-native --dry-run --json
 ```
 
 예정 사용 예:
 
 ```bash
-harness inspect --json
-harness docs --json
-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
+agent-harness inspect --json
+agent-harness docs --json
+agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
 harness state write --key checkpoint --input checkpoint.json --json
 harness state read --key checkpoint --json
 harness state list --json
@@ -81,17 +97,17 @@ harness state prune --max-age 720h --confirm --json
 harness state doctor --json
 harness state migrate --json
 harness state migrate --confirm --json
-harness daemon start --json
-harness daemon status --json
-harness daemon stop --json
-harness mcp
-harness self-verify --iterations=10 --seed=100 --target-score=95
-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
-harness self-verify history --prefix self-verify --json
-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
-harness self-augment --cycles=1 --target-score=95 --json
-harness worker start
+agent-harness daemon start --json
+agent-harness daemon status --json
+agent-harness daemon stop --json
+agent-harness mcp
+agent-harness self-verify --iterations=10 --seed=100 --target-score=95
+agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+agent-harness self-verify history --prefix self-verify --json
+agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
+agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+agent-harness self-augment --cycles=1 --target-score=95 --json
+agent-harness worker start
 ```
 
 ---
@@ -124,13 +140,13 @@ claude mcp list | grep agent_harness
 ## 구현된 hardening commands
 
 ```bash
-harness contract schema --json
-harness contract check --json
-harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-harness worker enqueue --kind smoke --payload "..." --json
-harness worker status --id JOB_ID --json
-harness worker list --json
-harness worker cancel --id JOB_ID --json
+agent-harness contract schema --json
+agent-harness contract check --json
+agent-harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+agent-harness worker enqueue --kind smoke --payload "..." --json
+agent-harness worker status --id JOB_ID --json
+agent-harness worker list --json
+agent-harness worker cancel --id JOB_ID --json
 ```
 
 이번 phase의 worker command는 의도적으로 state-only/no-shell로 제한한다.

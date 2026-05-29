@@ -36,8 +36,8 @@
 Codex / Claude Code / Human
         │
         ├─ harness CLI
-        ├─ harness mcp           (MCP stdio proxy)
-        └─ harness daemon        (user-level shared MCP backend)
+        ├─ agent-harness mcp     (MCP stdio proxy)
+        └─ agent-harness daemon        (user-level shared MCP backend)
                 │
           internal/core
                 │
@@ -88,14 +88,14 @@ Acceptance criteria:
 
 ### Phase 1 — Go 프로젝트 부트스트랩
 
-상태: `cmd/harness`, `go.mod`, `bin/harness`, `inspect`, `preflight`, `mcp` 기본 구현 완료.
+상태: `cmd/harness`, `go.mod`, `bin/agent-harness`, `inspect`, `preflight`, `mcp` 기본 구현 완료.
 
 Deliverables:
 
 - `go.mod`
 - `cmd/harness/main.go`
 - 기본 version/build info
-- `harness inspect --json` smoke command
+- `agent-harness inspect --json` smoke command
 - `.gitignore`에 `.harness/`, build artifacts 추가
 
 Acceptance criteria:
@@ -103,7 +103,7 @@ Acceptance criteria:
 ```bash
 go test ./... -count=1
 go build ./cmd/harness
-./harness inspect --json
+./agent-harness inspect --json
 ```
 
 ### Phase 2 — Core capability MVP
@@ -127,14 +127,14 @@ Acceptance criteria:
 
 ### Phase 3 — MCP stdio proxy/server
 
-상태: `harness mcp`가 shared `agent-harness daemon`을 자동 시작하고 stdio를 Unix socket으로 proxy한다. llm-wiki 전용 tools/resources는 upstream plugin 사용 원칙에 따라 제거됐다.
+상태: `agent-harness mcp`가 shared `agent-harness daemon`을 자동 시작하고 stdio를 Unix socket으로 proxy한다. llm-wiki 전용 tools/resources는 upstream plugin 사용 원칙에 따라 제거됐다.
 
 Deliverables:
 
-- `harness mcp` command
-- `harness daemon start/status/stop`
+- `agent-harness mcp` command
+- `agent-harness daemon start/status/stop`
 - MCP tools/resources:
-  - harness inspect/docs/state/policy/self-verify/self-augment tools
+  - agent-harness inspect/docs/state/policy/self-verify/self-augment tools
   - `daemon_status`
 - CLI DTO와 MCP response 공유
 - Claude Code MCP config template + hook helper template
@@ -151,7 +151,7 @@ Acceptance criteria:
 
 Deliverables:
 
-- `harness worker start|stop|status` 또는 daemon 하위 job API
+- `agent-harness worker start|stop|status` 또는 daemon 하위 job API
 - local Unix socket 또는 localhost API
 - job lifecycle: queued/running/succeeded/failed/cancelled
 - audit log와 redaction
@@ -172,7 +172,7 @@ Deliverables:
 
 - `configs/codex/` 템플릿
 - Codex plugin/skill이 필요한 경우 최소 wrapper 작성
-- AGENTS.md에서 `harness` 사용 흐름 설명
+- AGENTS.md에서 `agent-harness` 사용 흐름 설명
 
 Acceptance criteria:
 
@@ -191,7 +191,7 @@ Deliverables:
 
 Acceptance criteria:
 
-- `harness mcp` 기반 설정이 문서화된다.
+- `agent-harness mcp` 기반 설정이 문서화된다.
 - slash command가 core CLI만 호출한다.
 - hook에서 위험 shell을 직접 실행하지 않는다.
 
@@ -216,7 +216,7 @@ Acceptance criteria:
 
 처음 구현할 MVP는 다음으로 제한한다.
 
-1. `harness inspect --json`
+1. `agent-harness inspect --json`
 2. project docs index
 3. state checkpoint read/write/list/prune/doctor/migrate
 4. command policy type과 fake runner
@@ -257,6 +257,16 @@ MVP에서 제외:
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
 
+## 2026-05-29 — Upstream companion tools are opt-in dependencies
+
+- Kind: `adr`
+- Source: user consensus
+- Summary: agent-harness의 철학은 **바퀴를 재발명하지 않는다**이며, llm-wiki, CodeGraph, claude-mem은 하네스 core 기능이 아니라 upstream dependency로 연결한다.
+- Decision: `scripts/install-native.sh --with-upstream-tools`는 `nvk/llm-wiki`, `colbymchenry/codegraph`, `thedotmack/claude-mem`의 공식 installer/plugin 경로를 호출하는 opt-in convenience path를 제공한다. 기본 `install-native`는 하네스 자체 Codex/Claude integration만 설치한다.
+- Rationale: knowledge wiki, code graph, memory compression은 각 upstream이 이미 전문적으로 제공한다. 하네스는 이들을 재구현하지 않고 설치/설정 접착제만 제공해야 core policy, MCP, state, docs 책임이 흐려지지 않는다.
+- Rejected: llm-wiki/codegraph/claude-mem 기능을 하네스 CLI/MCP tool로 복제하는 대안 | 중복 구현과 drift를 만들고 host-neutral core를 비대하게 만든다.
+- Consequences: companion tool 설치는 네트워크와 user-level host 설정 변경을 수반하므로 opt-in이어야 한다. 실패 시 하네스 core contract를 약화하지 말고 upstream 설치 경로나 문서를 고친다.
+
 ## ADR note: MCP-backed project memory records
 
 - Decision: CAUTIONS and ADR records should be appended through `project_docs_record` MCP when an agent solves a concrete problem or makes a decision with rationale.
@@ -267,9 +277,9 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 ## ADR note: Adapter 분리, compatibility contract, audit log, worker MVP
 
 - Decision: CLI usage metadata는 `internal/adapter/cli`, MCP adapter-owned tool descriptor는 `internal/adapter/mcp`에 둔다. `cmd/harness`는 process entrypoint와 concrete handler mapping을 유지한다.
-- Decision: `harness contract schema|check`는 DTO 변경 전 CLI/MCP command, tool, required response field, stable hash를 확인하는 compatibility contract 표면이다.
-- Decision: `harness policy audit`는 command를 실행하지 않고 redacted command-policy JSONL record만 append한다.
-- Decision: `harness worker enqueue|status|list|cancel`은 Phase 4의 no-shell lifecycle record MVP다. 실제 process execution은 audit, cancellation, timeout, policy hardening이 더 확장된 뒤 도입한다.
+- Decision: `agent-harness contract schema|check`는 DTO 변경 전 CLI/MCP command, tool, required response field, stable hash를 확인하는 compatibility contract 표면이다.
+- Decision: `agent-harness policy audit`는 command를 실행하지 않고 redacted command-policy JSONL record만 append한다.
+- Decision: `agent-harness worker enqueue|status|list|cancel`은 Phase 4의 no-shell lifecycle record MVP다. 실제 process execution은 audit, cancellation, timeout, policy hardening이 더 확장된 뒤 도입한다.
 - Rationale: 추천 구현 순서를 수행하면서 host adapter가 core policy를 우회하지 않는다는 project invariant를 유지하기 위해서다.
 - Rejected: 첫 worker 단계에서 실제 shell/job runner를 추가하는 대안. command execution은 더 강한 audit, timeout, cancellation, redaction gate가 필요하다.
 - Consequence: future worker work는 별도 queue 표면을 만들지 말고 no-shell lifecycle DTO 위에 확장한다.
@@ -289,3 +299,25 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 - Alternatives / rejected options:
   - Continue returning JSON-RPC errors for gate failures | conflates successful review outcomes with tool/runtime failures and hides structured result handling behind exception paths
   - Suppress all errors with result payloads | would hide real IO, invalid argument, save-state, subprocess, and transport failures
+
+
+## 2026-05-29 — Public command identity follows project identity
+
+- Kind: `adr`
+- Source: user directive
+- Summary: agent-harness의 설치 UX와 문서에서 public command 이름은 프로젝트 이름과 같은 `agent-harness`로 통일한다.
+- Decision: canonical built binary와 user-facing command는 `bin/agent-harness` 및 PATH command shim `~/.local/bin/agent-harness`이다. 설치 스크립트는 기존 checkout의 binary를 매번 갱신하고, `~/.local/bin/agent-harness -> <checkout>/bin/agent-harness` symlink를 생성/갱신한다. 이전 실험에서 만든 managed shell alias block은 제거해 alias와 symlink가 서로 다른 표면으로 drift하지 않게 한다. 예전 `bin/harness` compatibility symlink는 남기지 않는다.
+- Rationale: command, binary, 로그, README, MCP 설정 이름이 갈라지면 사용자는 어떤 표면이 최신/정식인지 판단해야 한다. 이름 통일성은 개인 하네스의 신뢰성과 학습 비용에 직접 영향을 준다.
+- Rejected: `bin/harness`를 계속 남기거나 shell alias만 public command 표면으로 삼는 대안 | legacy alias가 drift를 만들고, alias는 non-interactive script/daemon 환경에서 일관되게 동작하지 않는다.
+- Consequences: docs, golden fixtures, install templates, MCP command paths는 `agent-harness`를 기준으로 유지한다. 내부 Go source directory `cmd/harness`는 구현 경로일 뿐 public UX 이름이 아니다.
+
+
+## 2026-05-29 — Self-managing update and bootstrap commands
+
+- Kind: `adr`
+- Source: user directive
+- Summary: agent-harness는 설치 후 `claude-mem update`처럼 `agent-harness update` / `agent-harness bootstrap`으로 자기 자신과 companion tools를 관리한다.
+- Decision: `agent-harness bootstrap`은 first-time full setup, `agent-harness update`는 ongoing refresh 명령이다. 두 명령은 기본적으로 `scripts/install-native.sh --with-upstream-tools`를 호출해 현재 checkout binary rebuild, user command shim, Codex/Claude native integration, llm-wiki/CodeGraph/claude-mem upstream setup을 함께 갱신한다. `install-native`는 host integration만 다루는 low-level primitive로 유지한다.
+- Rationale: 사용자는 설치 후 내부 script 경로나 `./bin/...`를 기억하지 않아야 한다. command-oriented UX는 macOS에서 쓰는 `claude-mem update`류 도구와 같고, 하네스의 public identity도 `agent-harness` 하나로 유지된다.
+- Rejected: `./scripts/install-native.sh --with-upstream-tools`를 계속 primary UX로 두는 대안 | 동작은 가능하지만 설치 후 자기 관리 도구처럼 느껴지지 않고, 사용자가 repo 내부 layout을 기억해야 한다.
+- Consequences: README/OPERATIONS/usage/golden은 high-level `agent-harness update`와 `agent-harness bootstrap`을 권장한다. script는 compatibility/automation path로 남긴다.

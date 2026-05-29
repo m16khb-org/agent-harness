@@ -72,9 +72,9 @@ func runAPIDoc(args []string) error {
 
 func apiDocUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  harness api-doc review [--repo PATH] [--all] [--model MODEL] [--reasoning EFFORT] [--timeout DURATION] [--diff-file FILE] [--prompt-file FILE] [--json] [--] [FILES...]
-  harness api-doc static-check [--repo PATH] [--all] [--json] [--] [FILES...]
-  harness api-doc check [--repo PATH] [--all] [--model MODEL] [--reasoning EFFORT] [--timeout DURATION] [--diff-file FILE] [--prompt-file FILE] [--json] [--] [FILES...]
+  agent-harness api-doc review [--repo PATH] [--all] [--model MODEL] [--reasoning EFFORT] [--timeout DURATION] [--diff-file FILE] [--prompt-file FILE] [--json] [--] [FILES...]
+  agent-harness api-doc static-check [--repo PATH] [--all] [--json] [--] [FILES...]
+  agent-harness api-doc check [--repo PATH] [--all] [--model MODEL] [--reasoning EFFORT] [--timeout DURATION] [--diff-file FILE] [--prompt-file FILE] [--json] [--] [FILES...]
 `)
 }
 

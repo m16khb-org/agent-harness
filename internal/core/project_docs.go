@@ -331,7 +331,7 @@ func RouteProjectDocs(repoRoot, task string) (ProjectDocsRouteResult, error) {
 		missingProjectDocs = false
 	}
 	if missingProjectDocs {
-		warnings = append(warnings, "project docs are missing; run harness project bootstrap --write to create AGENTS.md routing and .agent-harness docs")
+		warnings = append(warnings, "project docs are missing; run agent-harness project bootstrap --write to create AGENTS.md routing and .agent-harness docs")
 	}
 	return ProjectDocsRouteResult{
 		OK:          true,
@@ -431,7 +431,7 @@ func ReadProjectDoc(repoRoot, relPath string) (ProjectDocsReadResult, error) {
 	b, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		result.Exists = false
-		result.Warnings = []string{"document_missing: run project_docs_bootstrap_plan or harness project bootstrap --write first"}
+		result.Warnings = []string{"document_missing: run project_docs_bootstrap_plan or agent-harness project bootstrap --write first"}
 		return result, nil
 	}
 	if err != nil {
@@ -772,9 +772,9 @@ This project-specific API documentation prompt is for agents and MCP routing whe
 
 ## Gate order
 
-1. Static gate: ` + "`harness api-doc static-check --json`" + `
-2. Agent gate: ` + "`harness api-doc review --json`" + `
-3. Combined gate: ` + "`harness api-doc check --json`" + `
+1. Static gate: ` + "`agent-harness api-doc static-check --json`" + `
+2. Agent gate: ` + "`agent-harness api-doc review --json`" + `
+3. Combined gate: ` + "`agent-harness api-doc check --json`" + `
 
 Default scope is staged API candidate files. Scan all legacy debt only when ` + "`--all`" + ` is explicitly supplied.
 
@@ -960,11 +960,11 @@ func renderOperations(signals ProjectSignals) string {
 	b.WriteString("\n## Deploy/release\n\n")
 	b.WriteString("- Do not infer deploy procedures automatically. Verify them from CI/CD workflows and operations docs.\n")
 	b.WriteString("\n## Project docs bootstrap and upkeep\n\n")
-	b.WriteString("- `harness project bootstrap --repo . --write --json` creates only a static-signal baseline.\n")
+	b.WriteString("- `agent-harness project bootstrap --repo . --write --json` creates only a static-signal baseline.\n")
 	b.WriteString("- After initial setup, agents should read repo evidence and keep `.agent-harness` docs current through MCP `project_docs_route` → `project_docs_read` → `project_docs_update`.\n")
 	b.WriteString("- Append resolved false cases and decisions to CAUTIONS/ADR with `project_docs_record` instead of rewriting full documents.\n")
 	b.WriteString("\n## UserPromptSubmit hook\n\n")
-	b.WriteString("- When the host supports it, connect `harness hook user-prompt` to UserPromptSubmit to inject short agent_harness MCP candidates for each user prompt.\n")
+	b.WriteString("- When the host supports it, connect `agent-harness hook user-prompt` to UserPromptSubmit to inject short agent_harness MCP candidates for each user prompt.\n")
 	b.WriteString("- The hook does not execute work; it only performs static keyword routing. It does not use the network or read large files.\n")
 	return b.String()
 }
@@ -981,7 +981,7 @@ func renderAgentWorkflow() string {
 
 ## MCP usage rule
 
-- When the host supports it, harness hook user-prompt injects MCP candidate hints for each user instruction. The hint is a reminder for judgment, not an auto-execution command.
+- When the host supports it, agent-harness hook user-prompt injects MCP candidate hints for each user instruction. The hint is a reminder for judgment, not an auto-execution command.
 - Use MCP when the task needs current state, repo-specific doc routing, policy decisions, state checkpoints, or durable records that the model should not rely on from memory.
 - Do not use MCP for simple reasoning or summarizing already opened files.
 - Avoid exposing many tools at once; narrowly use route/read/update/record/check tools that match the task.

@@ -17,15 +17,15 @@
               "kind": "claude_project_mcp_config",
               "path": "$ROOT/.mcp.json",
               "written": true,
-              "content_sha256": "fcc213545246e785222e2dea3c20743de2aaf05c92372180e67f37341049f569",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "62f4655fc22e1f42a20ec87c8ee52b2f3fb0e1b862d0e0514df84c15cc370c44",
+              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_project_mcp_template",
               "path": "$ROOT/configs/claude/mcp.project.json",
               "written": true,
-              "content_sha256": "fcc213545246e785222e2dea3c20743de2aaf05c92372180e67f37341049f569",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "62f4655fc22e1f42a20ec87c8ee52b2f3fb0e1b862d0e0514df84c15cc370c44",
+              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             }
           ],
           "links": [
@@ -63,15 +63,15 @@
               "kind": "codex_hooks_template",
               "path": "$ROOT/configs/codex/hooks.json",
               "written": true,
-              "content_sha256": "ab0511165f2facc13e0b65682bed099e62631b62200b099625c4eade3d42d9e6",
-              "content": "{\n  \"hooks\": {\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "1113d126d96dbd23b99eb3b769ad72e272510bcd031897d81951f7c07d50e639",
+              "content": "{\n  \"hooks\": {\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_mcp_template",
               "path": "$ROOT/configs/codex/mcp.config.toml",
               "written": true,
-              "content_sha256": "408e968ac805536995cca3c2356023c572065a1a4e3e2628ebcf2f5467d62058",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\n"
+              "content_sha256": "409ba586de111e01c7a29196fc6f73fc9b587a3c77a2b1142a11bdd8ceaa73b6",
+              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/agent-harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\n"
             },
             {
               "kind": "codex_user_hooks_config",
@@ -128,8 +128,8 @@
               "kind": "claude_project_mcp_template",
               "path": "$ROOT/configs/claude/mcp.project.json",
               "written": true,
-              "content_sha256": "fcc213545246e785222e2dea3c20743de2aaf05c92372180e67f37341049f569",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "62f4655fc22e1f42a20ec87c8ee52b2f3fb0e1b862d0e0514df84c15cc370c44",
+              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             }
           ],
           "links": [
@@ -155,15 +155,15 @@
               "kind": "codex_hooks_template",
               "path": "$ROOT/configs/codex/hooks.json",
               "written": true,
-              "content_sha256": "ab0511165f2facc13e0b65682bed099e62631b62200b099625c4eade3d42d9e6",
-              "content": "{\n  \"hooks\": {\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+              "content_sha256": "1113d126d96dbd23b99eb3b769ad72e272510bcd031897d81951f7c07d50e639",
+              "content": "{\n  \"hooks\": {\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             },
             {
               "kind": "codex_mcp_template",
               "path": "$ROOT/configs/codex/mcp.config.toml",
               "written": true,
-              "content_sha256": "408e968ac805536995cca3c2356023c572065a1a4e3e2628ebcf2f5467d62058",
-              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\n"
+              "content_sha256": "409ba586de111e01c7a29196fc6f73fc9b587a3c77a2b1142a11bdd8ceaa73b6",
+              "content": "[mcp_servers.agent_harness]\ncommand = \"./bin/agent-harness\"\nargs = [\"mcp\"]\nstartup_timeout_sec = 30\n\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = \".\"\n"
             },
             {
               "kind": "codex_user_hooks_config",

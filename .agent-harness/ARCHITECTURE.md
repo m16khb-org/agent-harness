@@ -20,9 +20,9 @@
 
 ```mermaid
 flowchart LR
-    Codex["Codex<br/>AGENTS.md · native skills · MCP config"] --> MCPProxy["harness mcp<br/>stdio proxy"]
+    Codex["Codex<br/>AGENTS.md · native skills · MCP config"] --> MCPProxy["agent-harness mcp<br/>stdio proxy"]
     Claude["Claude Code<br/>CLAUDE.md · skills · hooks · MCP config"] --> MCPProxy
-    Human["Human shell"] --> CLI["CLI: harness"]
+    Human["Human shell"] --> CLI["CLI: agent-harness"]
     Hook["UserPromptSubmit / SessionStart hook"] --> CLI
 
     MCPProxy --> Daemon["agent-harness daemon<br/>user-level Unix socket"]
@@ -58,10 +58,10 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 | 모드 | 도입 단계 | 용도 | 원칙 |
 |------|----------|------|------|
-| `harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/harness inspect/preflight/docs/policy/state/self-verify/self-augment` 사용 |
-| `harness mcp` stdio proxy | 구현됨 | Codex/Claude Code가 같은 MCP schema로 daemon에 연결 | `agent-harness` daemon을 자동 시작하고 stdio를 Unix socket으로 proxy한다. |
-| `harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
-| `harness worker` job daemon | Future | 장기 작업, concurrent job, file watch | 현재 daemon은 MCP proxy backend이며 job queue worker가 아니다. queue/cancel/audit hardening 후 별도 확장 |
+| `agent-harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/agent-harness inspect/preflight/docs/policy/state/self-verify/self-augment` 사용 |
+| `agent-harness mcp` stdio proxy | 구현됨 | Codex/Claude Code가 같은 MCP schema로 daemon에 연결 | `agent-harness` daemon을 자동 시작하고 stdio를 Unix socket으로 proxy한다. |
+| `agent-harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
+| `agent-harness worker` job daemon | Future | 장기 작업, concurrent job, file watch | 현재 daemon은 MCP proxy backend이며 job queue worker가 아니다. queue/cancel/audit hardening 후 별도 확장 |
 | Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
 | Claude commands/hooks | Phase 6 | Claude Code UX 개선 | core 정책 우회 금지 |
 
@@ -88,7 +88,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 ## 5. Docs / state / config / logs
 
-현재 `harness docs`는 에이전트가 읽어야 할 markdown source of truth를 index로 노출한다. `harness project bootstrap`은 적용 대상 레포에 명시 실행될 때만 `AGENTS.md` marker block과 `.agent-harness/*.md` 프로젝트 운영 문서를 생성/갱신한다.
+현재 `agent-harness docs`는 에이전트가 읽어야 할 markdown source of truth를 index로 노출한다. `agent-harness project bootstrap`은 적용 대상 레포에 명시 실행될 때만 `AGENTS.md` marker block과 `.agent-harness/*.md` 프로젝트 운영 문서를 생성/갱신한다.
 
 - 대상: `AGENTS.md`, `CLAUDE.md`, `GENIUS_THINK.md`, `.agent-harness/*.md`, `skills/self-verify/*.md`, `skills/self-augment/*.md`
 - 필드: relative path, absolute path, title, headings, byte size
@@ -97,11 +97,11 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 Project docs bootstrap:
 
 - 대상: 적용 대상 repo의 `AGENTS.md`, `.agent-harness/ARCHITECTURE.md`, `.agent-harness/CAUTIONS.md`, `.agent-harness/COMMIT_POLICY.md`, `.agent-harness/CONSTITUTION.md`, `.agent-harness/CONVENTIONS.md`, `.agent-harness/TECH_STACK.md`, `.agent-harness/TESTING.md`, `.agent-harness/ADR.md`, `.agent-harness/OPERATIONS.md`, `.agent-harness/AGENT_WORKFLOW.md`
-- 기본 동작: `harness project bootstrap`은 dry-run이며 `--write`가 있을 때만 파일을 쓴다.
+- 기본 동작: `agent-harness project bootstrap`은 dry-run이며 `--write`가 있을 때만 파일을 쓴다.
 - 안전: `AGENTS.md` 전체를 덮어쓰지 않고 `AGENT_HARNESS` marker block만 관리한다.
 - MCP: `project_docs_bootstrap_plan`, `project_docs_route`, `harness://project-docs`로 어떤 작업에 어떤 문서를 확인해야 하는지 제공한다.
 
-현재 `harness state`는 작은 에이전트 체크포인트를 JSON 파일로 저장한다.
+현재 `agent-harness state`는 작은 에이전트 체크포인트를 JSON 파일로 저장한다.
 
 - 기본 위치: `~/.local/state/agent-harness/`
 - override: `HARNESS_STATE_DIR`
@@ -183,8 +183,8 @@ Project docs bootstrap:
 
 | Host | 최소 통합 | 권장 통합 | 주의 |
 |------|----------|----------|------|
-| Codex | `AGENTS.md` + shell에서 `harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` UserPromptSubmit hook | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
-| Claude Code | `CLAUDE.md` + shell에서 `harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server; optional prompt/session hook templates reuse `harness hook user-prompt` | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.mcp.json`은 explicit project-local opt-in에서만 쓴다 |
+| Codex | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` UserPromptSubmit hook | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
+| Claude Code | `CLAUDE.md` + shell에서 `agent-harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server; optional prompt/session hook templates reuse `agent-harness hook user-prompt` | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.mcp.json`은 explicit project-local opt-in에서만 쓴다 |
 
 ---
 
@@ -200,6 +200,16 @@ Project docs bootstrap:
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
 
+## 바퀴를 재발명하지 않는 companion tool 정책
+
+이 하네스의 철학은 **바퀴를 재발명하지 않는다**이다. agent-harness는 Codex/Claude 공통 CLI, MCP proxy, state, policy, project docs, native skill 설치 같은 작은 공통 core와 접착제를 맡고, 전문 도구의 core 기능은 upstream 구현을 그대로 쓴다.
+
+- LLM Wiki: `nvk/llm-wiki` plugin을 설치/갱신한다. wiki vault, research, query, compile 기능을 하네스에 복제하지 않는다.
+- CodeGraph: `colbymchenry/codegraph` CLI/MCP를 설치/설정한다. symbol graph, AST parser, impact analysis를 하네스에 재구현하지 않는다.
+- claude-mem: `thedotmack/claude-mem` plugin을 설치/갱신한다. memory capture/compression/store logic을 하네스 core에 넣지 않는다.
+
+`scripts/install-native.sh --with-upstream-tools`는 이 세 도구를 user-level dependency로 연결하는 convenience path다. 기본 설치는 여전히 하네스 자체의 user/global Codex/Claude integration만 수행하며, upstream 설치는 네트워크와 user-level host 설정 변경이 필요하므로 명시 opt-in이다.
+
 ## MCP tool design guidance
 
 - Tool descriptions must state: purpose, when to use, whether it writes, required arguments, and expected result shape.
@@ -212,6 +222,6 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 
 - `internal/adapter/cli`는 top-level command catalog와 canonical usage text를 소유한다. `cmd/harness`는 process entrypoint와 dispatch layer로 남는다.
 - `internal/adapter/mcp`는 compatibility/worker 계열 adapter-level MCP tool descriptor를 소유한다. `cmd/harness`는 JSON-RPC request handling과 core usecase 호출을 유지한다.
-- `harness contract schema|check`는 CLI/MCP command list, MCP tool name, required response field를 검증하는 DTO compatibility 표면이다.
-- `harness policy audit`는 redacted command-policy decision을 append-only JSONL로 기록하며 command를 실행하지 않는다.
-- `harness worker`는 현재 no-shell lifecycle MVP다. enqueue, status, list, cancel은 job record만 저장하며 아직 process runner가 아니다.
+- `agent-harness contract schema|check`는 CLI/MCP command list, MCP tool name, required response field를 검증하는 DTO compatibility 표면이다.
+- `agent-harness policy audit`는 redacted command-policy decision을 append-only JSONL로 기록하며 command를 실행하지 않는다.
+- `agent-harness worker`는 현재 no-shell lifecycle MVP다. enqueue, status, list, cancel은 job record만 저장하며 아직 process runner가 아니다.

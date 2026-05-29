@@ -11,7 +11,7 @@ Autonomously identify, select, implement, and verify one improvement that makes 
 
 ## Required distinction
 
-- **Self-verification loop**: verifies that the service/harness behaves as intended, including tests and QA. Default command: `./bin/harness self-verify --iterations=10 --target-score=95 --json`.
+- **Self-verification loop**: verifies that the service/harness behaves as intended, including tests and QA. Default command: `./bin/agent-harness self-verify --iterations=10 --target-score=95 --json`.
 - **Self-augmentation loop**: directly implements one needed feature, performance improvement, quality improvement, or documentation improvement, then verifies it with the self-verification loop.
 
 ## Exit criteria
@@ -27,9 +27,9 @@ Completion requires all goals below to exceed `target_score`. The default target
 
 1. **Baseline**
    - Read the nearest `AGENTS.md`/`CLAUDE.md`, `GENIUS_THINK.md`, and `skills/self-augment/SELF_AUGMENTATION.md` when present.
-   - Run or inspect `./bin/harness self-augment --json` for the current candidate curriculum.
-   - Use `./bin/harness self-augment --save-state --state-key self-augment-latest --json` when the selected plan should become durable memory for the next cycle.
-   - Use `./bin/harness self-augment lesson --lesson "..." --next-action "..." --json` to store reusable Reflexion lessons.
+   - Run or inspect `./bin/agent-harness self-augment --json` for the current candidate curriculum.
+   - Use `./bin/agent-harness self-augment --save-state --state-key self-augment-latest --json` when the selected plan should become durable memory for the next cycle.
+   - Use `./bin/agent-harness self-augment lesson --lesson "..." --next-action "..." --json` to store reusable Reflexion lessons.
    - Run a baseline self-verification loop when feasible; otherwise capture why it cannot run.
 
 2. **Candidate curriculum**
@@ -51,7 +51,7 @@ Completion requires all goals below to exceed `target_score`. The default target
 5. **Verify**
    - Run targeted tests for the changed behavior.
    - Run `go test ./... -count=1`, relevant golden tests, risk-tier QA checks (`go vet ./...` / `go test -race ./... -count=1` when Go risk is present), skill validation, and build checks as applicable.
-   - Finish with `./bin/harness self-verify --iterations=10 --target-score=95 --json` when practical.
+   - Finish with `./bin/agent-harness self-verify --iterations=10 --target-score=95 --json` when practical.
 
 6. **Capture**
    - Store durable lessons only when reusable: `harness state`, `.agent-harness/`; prefer `self-augment --save-state` for the selected candidate curriculum and `self-augment lesson` for reusable failure/QA/design lessons.

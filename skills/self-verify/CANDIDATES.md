@@ -7,7 +7,7 @@ This file is the backlog for improving the self-verification loop itself. It is 
 
 ## Current evidence
 
-A redirected baseline run completed successfully after roughly 52 seconds. The run reported `minimum_goal_score=100` with every goal at `100/100`. The slowest steps were risk-QA tier checks, around 2.4 to 2.6 seconds each. Existing `./bin/harness self-augment --json` candidates were already satisfied and no candidate was selected.
+A redirected baseline run completed successfully after roughly 52 seconds. The run reported `minimum_goal_score=100` with every goal at `100/100`. The slowest steps were risk-QA tier checks, around 2.4 to 2.6 seconds each. Existing `./bin/agent-harness self-augment --json` candidates were already satisfied and no candidate was selected.
 
 Conclusion: the run was not hung, but redirected execution gave too little progress feedback. Candidate priority therefore emphasizes progress observability, blind-spot detection, and reproducibility rather than pass/fail alone.
 

@@ -7,7 +7,7 @@
 ## 1. 네이밍 / 구조
 
 - 프로젝트 이름: `agent-harness`
-- CLI 바이너리 이름: `harness`
+- CLI 바이너리 이름: `agent-harness`
 - Go module 이름은 repo 원격이 확정되면 `agent-harness`를 현재 로컬 module 이름으로 사용한다.
 - 파일명은 snake_case를 사용한다.
 - Go 패키지명은 짧은 소문자 단어를 사용한다.
@@ -146,11 +146,11 @@ skills/
 - atomic commit 하나에는 Lore `Intent`도 하나만 있어야 한다.
 ## API Documentation Gate
 
-Reusable API documentation checks belong in `harness api-doc check`, not in a single application repository or framework-specific hook. Keep the core prompt framework-agnostic: it may mention examples such as NestJS Swagger decorators, Go swaggo annotations, OpenAPI specs, Spring/FastAPI annotations, but must instruct reviewers to follow the target project's own convention and staged diff only. Project-specific strictness should be supplied via `--prompt-file` rather than hardcoded into harness core.
+Reusable API documentation checks belong in `agent-harness api-doc check`, not in a single application repository or framework-specific hook. Keep the core prompt framework-agnostic: it may mention examples such as NestJS Swagger decorators, Go swaggo annotations, OpenAPI specs, Spring/FastAPI annotations, but must instruct reviewers to follow the target project's own convention and staged diff only. Project-specific strictness should be supplied via `--prompt-file` rather than hardcoded into harness core.
 
 ## Project Docs Bootstrap 컨벤션
 
-- 적용 대상 repo의 `.agent-harness/` 문서는 명시적 `harness project bootstrap --write` 또는 `$project-bootstrap` 실행 때만 생성한다.
+- 적용 대상 repo의 `.agent-harness/` 문서는 명시적 `agent-harness project bootstrap --write` 또는 `$project-bootstrap` 실행 때만 생성한다.
 - 기본 설치나 MCP read는 대상 repo에 파일을 쓰지 않는다.
 - `AGENTS.md`는 전체 덮어쓰기 금지다. bootstrap은 behavioral top block이 없으면 prepend하고, 이후에는 `AGENT_HARNESS` marker block만 관리한다.
 - 생성 문서에는 추론된 명령과 기술스택의 Evidence/Confidence를 포함한다.
@@ -200,4 +200,4 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 
 - UserPromptSubmit hook은 사용자의 prompt를 분석해 MCP 후보 힌트만 주입한다. 작업을 대신 실행하거나 긴 파일/네트워크를 읽지 않는다.
 - Hook 출력은 host가 이해하는 `hookSpecificOutput.additionalContext` JSON을 기본으로 하며, 실패해도 사용자 작업을 막지 않도록 작고 deterministic하게 유지한다.
-- Codex/Claude별 hook 설정은 adapter/template에서만 다루고, routing 판단은 공통 `harness hook user-prompt` CLI/core에 둔다.
+- Codex/Claude별 hook 설정은 adapter/template에서만 다루고, routing 판단은 공통 `agent-harness hook user-prompt` CLI/core에 둔다.

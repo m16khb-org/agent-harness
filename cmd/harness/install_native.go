@@ -25,7 +25,7 @@ func runInstallNative(args []string) error {
 	if codexHome == "" && home != "" {
 		codexHome = filepath.Join(home, ".codex")
 	}
-	req := core.DefaultNativeInstallRequest(harnessRoot(), home, codexHome, filepath.Join(harnessRoot(), "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(harnessRoot(), home, codexHome, filepath.Join(harnessRoot(), "bin", "agent-harness"))
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
 	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
@@ -43,9 +43,9 @@ func printInstallNativeResult(result port.NativeInstallResult) {
 		mode = "user/global + explicit project-local"
 	}
 	if result.DryRun {
-		fmt.Println("Dry-run plan for agent harness native integrations:")
+		fmt.Println("Dry-run plan for agent-harness native integrations:")
 	} else {
-		fmt.Println("Installed agent harness native integrations:")
+		fmt.Println("Installed agent-harness native integrations:")
 	}
 	fmt.Printf("- mode: %s\n", mode)
 	fmt.Printf("- binary: %s\n", result.BinPath)
@@ -60,6 +60,9 @@ func printInstallNativeResult(result port.NativeInstallResult) {
 		fmt.Printf("- Project-local Claude MCP config: %s\n", filepath.Join(result.Root, ".mcp.json"))
 		fmt.Printf("- Project-local Claude skills: %s\n", filepath.Join(result.Root, ".claude", "skills", "*"))
 	} else {
-		fmt.Println("- Project-local repo files: not written by default; use --project-local only when you intentionally want repo-scoped files")
+		fmt.Println("- Project-local repo files: unchanged by default; use --project-local only when you intentionally want repo-scoped files")
+	}
+	for _, message := range result.Messages {
+		fmt.Printf("- %s\n", message)
 	}
 }

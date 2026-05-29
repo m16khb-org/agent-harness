@@ -98,7 +98,7 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 자기 검증 루프가 실제 native integration과 QA gate를 검증하지 않으면 문서만 통과하는 가짜 안정성이 생긴다. 자가 증강 루프가 실제 diff를 만들지 않으면 단순 분석 루프로 퇴화한다.
 
 주의:
-- 새 CLI/MCP/native skill 기능은 `harness self-verify`의 테스트 또는 QA 단계에 smoke/fuzz evidence label로 승격한다.
+- 새 CLI/MCP/native skill 기능은 `agent-harness self-verify`의 테스트 또는 QA 단계에 smoke/fuzz evidence label로 승격한다.
 - 반복 횟수 10회 하한을 임의로 낮추지 않는다.
 - temp git repo 외 실제 사용자 repo에서 commit/push를 수행하지 않는다.
 
@@ -109,7 +109,7 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 처음부터 remote server, distributed queue, plugin marketplace packaging을 만들면 개인 하네스 MVP가 늦어진다.
 
 주의:
-- 1단계는 `harness inspect`와 state/checkpoint 같은 작은 기능으로 시작한다.
+- 1단계는 `agent-harness inspect`와 state/checkpoint 같은 작은 기능으로 시작한다.
 - 반복 사용으로 필요가 확인된 기능만 worker/plugin layer로 승격한다.
 
 ---
@@ -118,12 +118,16 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 `agent-harness`는 llm-wiki vault, 검색, capture, SessionStart 주입을 직접 구현하지 않는다. LLM Wiki 기능이 필요하면 upstream `nvk/llm-wiki` plugin/portable AGENTS.md를 설치해 사용한다. 하네스 MCP/CLI에는 llm-wiki 전용 tool/resource를 다시 추가하지 않는다.
 
+같은 원칙으로 CodeGraph와 claude-mem도 하네스 core에 복제하지 않는다. 이 프로젝트의 철학은 **바퀴를 재발명하지 않는다**이며, `scripts/install-native.sh --with-upstream-tools`는 upstream installer/plugin을 호출하는 opt-in convenience path일 뿐이다. companion tool이 실패해도 하네스 core contract를 약화하거나 adapter에 임시 구현을 넣지 말고 upstream 설치/문서 경로를 고친다.
+
+예외: Codex native hook validator가 upstream companion plugin의 오래된/Claude 전용 출력 필드만 거부하는 경우에는, 설치/업데이트 단계에서 **기능 재구현 없이** 호환성 shim을 적용할 수 있다. 예를 들어 `suppressOutput`처럼 Codex 0.135.0에서 unsupported top-level field로 실패하는 값은 백업 후 제거하되, `hookSpecificOutput`, MCP 등록, worker 시작, context 주입 동작은 유지한다.
+
 ## 12. Daemon lifecycle drift
 
-`harness mcp`가 daemon을 자동 시작하므로 오래된 binary가 이미 떠 있으면 새 코드 검증과 실제 MCP 동작이 갈라질 수 있다.
+`agent-harness mcp`가 daemon을 자동 시작하므로 오래된 binary가 이미 떠 있으면 새 코드 검증과 실제 MCP 동작이 갈라질 수 있다.
 
 주의:
-- 설치/빌드 후 MCP smoke 전에는 필요하면 `harness daemon stop --json`으로 기존 daemon을 내린다.
+- 설치/빌드 후 MCP smoke 전에는 필요하면 `agent-harness daemon stop --json`으로 기존 daemon을 내린다.
 - 테스트는 `HARNESS_DAEMON_DIR=$(mktemp -d)/daemon`으로 실제 user daemon과 분리한다.
 - daemon socket/pid/log는 user state dir에 두고 repo나 wiki vault에 쓰지 않는다.
 
