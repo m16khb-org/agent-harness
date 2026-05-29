@@ -4,6 +4,8 @@ bin/
 # Runtime/local state
 .harness/
 .omx/
+.omc/
+.claude/
 
 # Language/tool caches
 __pycache__/
