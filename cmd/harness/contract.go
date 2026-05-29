@@ -104,6 +104,7 @@ func compatibilityContract() CompatibilityContract {
 			"self_verification_summary": selfVerificationContract().RequiredFields,
 			"harness_doctor":            {"ok", "healthy", "kind", "repo_root", "state_dir", "lifecycle_state", "checks", "issues"},
 			"command_policy":            {"ok", "allowed", "audit_log_id", "workspace_root", "cwd", "argv", "deny_reasons", "warnings"},
+			"guard_check":               {"ok", "repo_root", "mode", "checked_files", "findings", "summary"},
 			"worker_job":                {"ok", "id", "kind", "status", "created_at", "updated_at", "no_shell"},
 			"command_audit":             {"ok", "kind", "audit_log_id", "log_path", "policy"},
 		},

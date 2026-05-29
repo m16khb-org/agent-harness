@@ -70,6 +70,14 @@ func main() {
 			}
 			os.Exit(1)
 		}
+	case "guard":
+		if err := runGuard(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "guard:", err)
+			if core.IsGuardBlocked(err) {
+				os.Exit(3)
+			}
+			os.Exit(1)
+		}
 	case "self-verify":
 		if err := runSelfVerify(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "self-verify:", err)

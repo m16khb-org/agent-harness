@@ -202,6 +202,13 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 - Hook 출력은 host가 이해하는 `hookSpecificOutput.additionalContext` JSON을 기본으로 하며, 실패해도 사용자 작업을 막지 않도록 작고 deterministic하게 유지한다.
 - Codex/Claude별 hook 설정은 adapter/template에서만 다루고, routing/compaction 판단은 공통 `agent-harness hook ...` CLI/core에 둔다.
 
+## Guard 컨벤션
+
+- `agent-harness guard check`는 언어 무관 1차 방어선이다. path, diff, regex, token similarity처럼 deterministic하고 빠른 신호만 core rule로 둔다.
+- 확실한 금지만 `block`한다. 예: secret-like path, test sleep, real external service in tests. 기존 코드 재사용 여부, snapshot 품질, production-only 변경처럼 의미 판단이 필요한 항목은 `warn` 또는 `review`로 보고한다.
+- 새 symbol/helper가 기존 symbol과 유사하면 `reuse-before-new` review finding을 낸다. 이 finding은 자동 실패가 아니라 기존 코드 탐색 증거 또는 새 구현 근거를 요구하는 신호다.
+- 언어별 AST/linter 통합은 optional adapter로 붙이고, core guard가 특정 언어 toolchain에 의존하지 않게 한다.
+
 ## Doctor / lifecycle state conventions
 
 - `agent-harness doctor`는 종합 진단 표면이고 기본 read-only다. 자동 수정은 별도 `--fix` 같은 명시 플래그가 있을 때만 추가한다.

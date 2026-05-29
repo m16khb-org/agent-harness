@@ -97,6 +97,10 @@
           "name": "policy"
         },
         {
+          "description": "check language-agnostic code and test anti-patterns",
+          "name": "guard"
+        },
+        {
           "description": "print or check CLI/MCP response compatibility contracts",
           "name": "contract"
         },
@@ -153,7 +157,7 @@
           "name": "version"
         }
       ],
-      "hash": "79322b56ed530da3f4b2ce2a290b9d70cce1fbf8ff981776a33218818f6ead53",
+      "hash": "f6fa4d5ff07d38f9d2e9cbd19bab4126e81d05e15d954d8539b0f3bf1a58834d",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -210,6 +214,14 @@
           "argv",
           "deny_reasons",
           "warnings"
+        ],
+        "guard_check": [
+          "ok",
+          "repo_root",
+          "mode",
+          "checked_files",
+          "findings",
+          "summary"
         ],
         "harness_doctor": [
           "ok",
@@ -305,7 +317,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 15997,
+          "bytes": 16173,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -380,7 +392,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 13222,
+          "bytes": 14024,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -424,7 +436,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 19445,
+          "bytes": 20304,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -439,13 +451,13 @@
             "MCP",
             "Claude hooks",
             "4. CLI로 직접 사용",
+            "Guard checks",
             "5. MCP smoke test",
             "6. 자기 검증 루프 / 자가 증강 루프 요약",
             "7. API Documentation Pre-commit Review",
             "Review staged API docs/endpoint changes in the current repo",
             "JSON output for hooks/CI",
-            "Explicit files from lint-staged/pre-commit",
-            "Add project-specific conventions without changing harness core"
+            "Explicit files from lint-staged/pre-commit"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
           "rel_path": ".agent-harness/OPERATIONS.md",
@@ -469,7 +481,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 15673,
+          "bytes": 15786,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -2408,6 +2420,10 @@
                 "name": "policy"
               },
               {
+                "description": "check language-agnostic code and test anti-patterns",
+                "name": "guard"
+              },
+              {
                 "description": "print or check CLI/MCP response compatibility contracts",
                 "name": "contract"
               },
@@ -2464,7 +2480,7 @@
                 "name": "version"
               }
             ],
-            "hash": "79322b56ed530da3f4b2ce2a290b9d70cce1fbf8ff981776a33218818f6ead53",
+            "hash": "f6fa4d5ff07d38f9d2e9cbd19bab4126e81d05e15d954d8539b0f3bf1a58834d",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2521,6 +2537,14 @@
                 "argv",
                 "deny_reasons",
                 "warnings"
+              ],
+              "guard_check": [
+                "ok",
+                "repo_root",
+                "mode",
+                "checked_files",
+                "findings",
+                "summary"
               ],
               "harness_doctor": [
                 "ok",
@@ -2623,7 +2647,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 15997,
+                "bytes": 16173,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2698,7 +2722,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 13222,
+                "bytes": 14024,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2742,7 +2766,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 19445,
+                "bytes": 20304,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -2757,13 +2781,13 @@
                   "MCP",
                   "Claude hooks",
                   "4. CLI로 직접 사용",
+                  "Guard checks",
                   "5. MCP smoke test",
                   "6. 자기 검증 루프 / 자가 증강 루프 요약",
                   "7. API Documentation Pre-commit Review",
                   "Review staged API docs/endpoint changes in the current repo",
                   "JSON output for hooks/CI",
-                  "Explicit files from lint-staged/pre-commit",
-                  "Add project-specific conventions without changing harness core"
+                  "Explicit files from lint-staged/pre-commit"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
                 "rel_path": ".agent-harness/OPERATIONS.md",
@@ -2787,7 +2811,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 15673,
+                "bytes": 15786,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",

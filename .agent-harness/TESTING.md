@@ -24,6 +24,7 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness install-native --dry-run --json
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
+./bin/agent-harness guard check --staged --json
 printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
@@ -145,6 +146,7 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `agent-harness inspect --json` output shape
 - `agent-harness docs --json` output shape
 - `agent-harness policy check/fake-run` allow/deny/fake execution output shape
+- `agent-harness guard check` portable anti-pattern output shape
 - MCP tool schema와 response shape
 - daemon-backed MCP smoke response
 - `cmd/harness/testdata/usage.golden.txt`

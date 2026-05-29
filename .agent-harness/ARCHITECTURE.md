@@ -71,7 +71,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 
 | 경로 | 책임 | 금지/주의 |
 |------|------|----------|
-| `cmd/harness` | binary entrypoint, CLI flag 처리, MCP JSON-RPC mapping/proxy, daemon lifecycle, self-verify QA loop, self-augment curriculum orchestration | host별 정책 복제 금지 |
+| `cmd/harness` | binary entrypoint, CLI flag 처리, MCP JSON-RPC mapping/proxy, daemon lifecycle, guard CLI, self-verify QA loop, self-augment curriculum orchestration | host별 정책 복제 금지 |
 | `internal/port` | core interface, DTO, error contract | adapter concrete type 의존 금지 |
 | `internal/adapter/cli` | flag parsing, stdout/stderr, exit code mapping | core 정책 복제 금지 |
 | `internal/adapter/mcp` | MCP tool schema, stdio server, JSON-RPC mapping | CLI와 다른 의미의 schema 금지 |
@@ -194,6 +194,7 @@ Project docs bootstrap:
 
 - core behavior 변경: CLI, MCP, worker adapter가 같은 결과를 내는지 테스트한다.
 - command policy 변경: CAUTIONS와 TESTING에 위험과 검증을 업데이트한다.
+- guard 변경: portable anti-pattern rule은 `internal/core/guard_test.go`로 block/warn/review 판정을 고정하고, CLI/contract golden을 함께 갱신한다.
 - host adapter 변경: core contract를 복제하지 않았는지 확인하고 `internal/adapter` contract matrix golden으로 Codex/Claude 설치 표면이 drift되지 않았는지 검증한다.
 - shared skill 변경: `skills/<name>` 원본과 user-level host skill 연결(`~/.codex/skills`, `~/.claude/skills`)이 같은 대상을 가리키는지 확인한다. repo-local skill link는 기본 설치에 포함하지 않는다.
 - state 위치 변경: migration/backward compatibility와 cleanup 전략을 문서화한다.

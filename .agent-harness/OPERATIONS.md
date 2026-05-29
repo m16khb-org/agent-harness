@@ -4,7 +4,7 @@
 
 1. Codex/Claude native skills: `atomic-commit-push`, `self-augment`, `project-bootstrap`
 2. MCP stdio proxy: `agent-harness mcp` → shared `agent-harness daemon`
-3. CLI: `agent-harness inspect/preflight/doctor/docs/project/policy/state/daemon/self-verify/self-augment/api-doc/hook`
+3. CLI: `agent-harness inspect/preflight/doctor/docs/project/policy/guard/state/daemon/self-verify/self-augment/api-doc/hook`
 
 ---
 
@@ -144,6 +144,7 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 ./bin/agent-harness inspect --json
 ./bin/agent-harness preflight --json /path/to/git-repo
 ./bin/agent-harness docs --json
+./bin/agent-harness guard check --staged --json
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
 ./bin/agent-harness doctor --json
@@ -177,6 +178,12 @@ printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook
 ./bin/agent-harness project route-docs --repo . --task "commit" --json
 ./bin/agent-harness mcp
 ```
+
+### Guard checks
+
+`agent-harness guard check`는 언어 무관 1차 품질 gate다. 확실한 anti-pattern은 `block`, 오탐 가능성이 있는 품질 냄새는 `warn`, 기존 코드 재사용 여부처럼 의미 판단이 필요한 항목은 `review`로 보고한다. 기본은 staged files만 검사하며, `--all`은 repo 전체의 관련 소스/테스트/설정 파일을 빠르게 훑는다.
+
+현재 portable rule은 secret-like path, test sleep, real external URL in tests, 모호한 테스트명, snapshot/golden review 필요, production-only 변경, CLI/MCP/adapter 계약 변경 시 golden 누락, 기존 symbol과 유사한 새 helper 후보를 잡는다. 언어별 AST 판정은 후속 adapter로 붙이고, core guard는 path/diff/regex/token 기반의 deterministic rule만 유지한다.
 
 ---
 
