@@ -6,13 +6,11 @@ bin/
 .codegraph/
 .omx/
 .omc/
+.codex/
 .claude/
+.cache/
 
 # Language/tool caches
 __pycache__/
 *.pyc
 .DS_Store
-
-# Host-local Claude project files are opt-in and must not leak into arbitrary repos
-.claude/settings.json
-.claude/skills/
