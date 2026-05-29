@@ -31,6 +31,7 @@ const version = "0.1.0"
 const skillName = "atomic-commit-push"
 const selfVerifyCommandOutputBudgetBytes = 32 * 1024
 const selfVerifyAggregateOutputBudgetBytes = 8 * 1024
+const selfVerifyStepBudgetMinRegressionMS int64 = 25
 
 func main() {
 	if len(os.Args) < 2 {
@@ -1262,13 +1263,15 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 		}
 		tempBin := filepath.Join(tempDir, "harness")
 
+		var goTestStep StepResult
 		steps := []selfVerifyPlannedStep{
 			{Label: "harness invariants", Run: func() StepResult { return validateHarnessInvariants(result.HarnessRoot) }},
 			{Label: "go test", Run: func() StepResult {
-				return runCommandStep(result.HarnessRoot, "go test", 120*time.Second, "", "go", "test", "./...", "-count=1")
+				goTestStep = runCommandStep(result.HarnessRoot, "go test", 120*time.Second, "", "go", "test", "./...", "-count=1")
+				return goTestStep
 			}},
 			{Label: "contract golden tests", Run: func() StepResult {
-				return runCommandStep(result.HarnessRoot, "contract golden tests", 120*time.Second, "", "go", "test", "./cmd/harness", "-run", "Golden", "-count=1")
+				return cachedContractGoldenStep(goTestStep)
 			}},
 			{Label: "risk QA tier", Run: func() StepResult { return validateRiskQATier(result.HarnessRoot) }},
 			{Label: "go build", Run: func() StepResult {
@@ -1381,6 +1384,19 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 type selfVerifyPlannedStep struct {
 	Label string
 	Run   func() StepResult
+}
+
+func cachedContractGoldenStep(goTestStep StepResult) StepResult {
+	if goTestStep.OK {
+		return StepResult{
+			Label:      "contract golden tests",
+			Command:    "covered by go test ./... -count=1",
+			OK:         true,
+			DurationMS: 0,
+			Stdout:     "contract golden tests already executed by full go test suite",
+		}
+	}
+	return runCommandStep(harnessRoot(), "contract golden tests", 120*time.Second, "", "go", "test", "./cmd/harness", "-run", "Golden", "-count=1")
 }
 
 func newSelfVerifyProgressReporter(mode string, writer io.Writer) (*selfVerifyProgressReporter, error) {
@@ -2199,6 +2215,9 @@ func compareStepBudgetRegressions(baseline, candidate []SelfAugmentStepDurationS
 		if delta <= 0 {
 			continue
 		}
+		if delta < selfVerifyStepBudgetMinRegressionMS {
+			continue
+		}
 		deltaPct := float64(delta) * 100 / float64(baselineStat.P95DurationMS)
 		if deltaPct <= maxRegressionPct {
 			continue
@@ -2637,7 +2656,11 @@ func forbiddenNameHits(root string) []string {
 		}
 		name := d.Name()
 		if d.IsDir() {
-			if name == ".git" || name == "bin" || name == ".omx" {
+			rel, relErr := filepath.Rel(root, path)
+			if relErr != nil {
+				rel = name
+			}
+			if shouldSkipForbiddenNameScanDir(name, rel) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -2665,6 +2688,14 @@ func forbiddenNameHits(root string) []string {
 		return hits[:20]
 	}
 	return hits
+}
+
+func shouldSkipForbiddenNameScanDir(name, rel string) bool {
+	switch name {
+	case ".git", "bin", ".cache", ".codex", ".codegraph", ".omc", ".omx":
+		return true
+	}
+	return filepath.ToSlash(rel) == ".claude/hooks/.logs"
 }
 
 func forbiddenLegacyNeedles() []string {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -129,6 +130,50 @@ func TestSelfVerificationContractIncludesSummaryExtensions(t *testing.T) {
 	}
 	if !containsString(contract.GoalNames, "policy_security") || !containsString(contract.CoverageClaims, "secret redaction audit") {
 		t.Fatalf("contract missing goals/coverage claims: %+v", contract)
+	}
+}
+
+func TestForbiddenNameHitsSkipsRuntimeStateDirs(t *testing.T) {
+	root := t.TempDir()
+	runtimeFiles := []string{
+		filepath.Join(".cache", "go-build", "log.txt"),
+		filepath.Join(".claude", "hooks", ".logs", "hook-log.jsonl"),
+		filepath.Join(".codex", "config.toml"),
+		filepath.Join(".codegraph", "daemon.log"),
+		filepath.Join(".omc", "project-memory.json"),
+		filepath.Join(".omx", "state.json"),
+		filepath.Join("bin", "agent-harness"),
+	}
+	for _, rel := range runtimeFiles {
+		path := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("local m"+"16kh runtime state"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sourcePath := filepath.Join(root, "AGENTS.md")
+	if err := os.WriteFile(sourcePath, []byte("source m"+"16kh leak"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	hits := forbiddenNameHits(root)
+	if len(hits) != 1 || hits[0] != "AGENTS.md contains m"+"16kh" {
+		t.Fatalf("expected only source hit, got %+v", hits)
+	}
+}
+
+func TestCachedContractGoldenStepUsesFullGoTestEvidence(t *testing.T) {
+	step := cachedContractGoldenStep(StepResult{Label: "go test", Command: "go test ./... -count=1", OK: true})
+	if !step.OK || step.Label != "contract golden tests" {
+		t.Fatalf("unexpected cached step: %+v", step)
+	}
+	if step.DurationMS != 0 {
+		t.Fatalf("cached step should not report subprocess duration: %+v", step)
+	}
+	if !strings.Contains(step.Command, "covered by go test") || !strings.Contains(step.Stdout, "full go test suite") {
+		t.Fatalf("cached step did not explain evidence source: %+v", step)
 	}
 }
 
@@ -508,6 +553,15 @@ func TestCompareSelfAugmentSummariesDetectsStepBudgetRegressionBeyondSlowestTopF
 	}
 	if !containsString(result.Regressions, "step_budget:docs index smoke_p95_increased_by_30.00_pct") {
 		t.Fatalf("missing step-budget regression marker: %+v", result.Regressions)
+	}
+}
+
+func TestCompareStepBudgetRegressionsIgnoresTinyAbsoluteNoise(t *testing.T) {
+	baseline := []SelfAugmentStepDurationStat{{Label: "state roundtrip", Count: 10, P95DurationMS: 76}}
+	candidate := []SelfAugmentStepDurationStat{{Label: "state roundtrip", Count: 10, P95DurationMS: 83}}
+	regressions := compareStepBudgetRegressions(baseline, candidate, 5)
+	if len(regressions) != 0 {
+		t.Fatalf("expected tiny p95 delta to be ignored, got %+v", regressions)
 	}
 }
 
