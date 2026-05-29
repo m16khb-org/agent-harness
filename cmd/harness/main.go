@@ -1288,7 +1288,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 						Error:      fmt.Sprintf("%s failed: %s", step.Label, step.Error),
 					})
 				}
-				return result, fmt.Errorf("%s failed: %s", step.Label, step.Error)
+				return result, fmt.Errorf("%w: %s failed: %s", errSelfVerificationGateFailed, step.Label, step.Error)
 			}
 		}
 		_ = os.RemoveAll(tempDir)
@@ -4784,7 +4784,7 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 			PromptFile: stringArg(call.Arguments, "prompt_file"),
 			JSON:       true,
 		})
-		if err != nil {
+		if err != nil && !isAPIDocReviewGateError(err) {
 			return nil, &rpcError{Code: -32000, Message: "API doc review failed", Data: result}
 		}
 		payload = result
@@ -4795,7 +4795,7 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 			All:   boolArg(call.Arguments, "all"),
 			JSON:  true,
 		})
-		if err != nil {
+		if err != nil && !isAPIDocStaticGateError(err) {
 			return nil, &rpcError{Code: -32000, Message: "API doc static check failed", Data: result}
 		}
 		payload = result
@@ -4914,7 +4914,7 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 				err = saveErr
 			}
 		}
-		if err != nil {
+		if err != nil && !isSelfVerificationGateError(err) {
 			return nil, &rpcError{Code: -32000, Message: "Self-verification failed", Data: result}
 		}
 		payload = result

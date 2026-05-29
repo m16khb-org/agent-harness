@@ -236,7 +236,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 10821,
+          "bytes": 12259,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -1831,7 +1831,7 @@
       "entries": [
         {
           "base_seed": 600,
-          "bytes": 924,
+          "bytes": 923,
           "elapsed_ms": 1100,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -1856,7 +1856,7 @@
         },
         {
           "base_seed": 600,
-          "bytes": 924,
+          "bytes": 923,
           "elapsed_ms": 1000,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -2529,7 +2529,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 10821,
+                "bytes": 12259,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -4078,7 +4078,7 @@
             "entries": [
               {
                 "base_seed": 600,
-                "bytes": 924,
+                "bytes": 923,
                 "elapsed_ms": 1100,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -4103,7 +4103,7 @@
               },
               {
                 "base_seed": 600,
-                "bytes": 924,
+                "bytes": 923,
                 "elapsed_ms": 1000,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -4236,13 +4236,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -4307,13 +4307,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -4364,13 +4364,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"

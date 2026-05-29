@@ -273,3 +273,19 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 - Rationale: 추천 구현 순서를 수행하면서 host adapter가 core policy를 우회하지 않는다는 project invariant를 유지하기 위해서다.
 - Rejected: 첫 worker 단계에서 실제 shell/job runner를 추가하는 대안. command execution은 더 강한 audit, timeout, cancellation, redaction gate가 필요하다.
 - Consequence: future worker work는 별도 queue 표면을 만들지 말고 no-shell lifecycle DTO 위에 확장한다.
+
+## 2026-05-29 — Return quality gate failures as normal MCP payloads
+
+- Kind: `adr`
+- Source: codex
+- Summary: MCP tools must reserve JSON-RPC errors for transport, input, execution, or persistence failures; quality gate pass/fail outcomes are normal tool payload fields.
+- Context: api_doc_review returned a JSON-RPC error when the review completed successfully but verdict was fail, making agents confuse a gate finding with an MCP/tool failure.
+- Decision: API documentation static/review gates and self-verification gate failures now use sentinel errors internally, and MCP handlers suppress those sentinels so callers receive normal payloads with ok/verdict/findings/violations/summary fields.
+- Consequences: Future MCP quality gates should model failed checks as structured payload fields and only raise rpcError for real execution failures; CLI commands may still return non-zero for automation gate enforcement.
+- Evidence:
+  - cmd/harness/gate_errors.go
+  - cmd/harness/main.go api_doc_review/api_doc_static_check/self_verify handlers
+  - cmd/harness/mcp_quality_gate_test.go
+- Alternatives / rejected options:
+  - Continue returning JSON-RPC errors for gate failures | conflates successful review outcomes with tool/runtime failures and hides structured result handling behind exception paths
+  - Suppress all errors with result payloads | would hide real IO, invalid argument, save-state, subprocess, and transport failures

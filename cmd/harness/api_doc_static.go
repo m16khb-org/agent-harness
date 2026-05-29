@@ -97,7 +97,7 @@ func runAPIDocStaticCheckWithOptions(options apiDocStaticOptions) (apiDocStaticR
 		return result, nil
 	}
 	result.Summary = fmt.Sprintf("API documentation static check found %d violation(s).", len(violations))
-	return result, fmt.Errorf("api documentation static check failed")
+	return result, errAPIDocStaticGateFailed
 }
 
 var nestRouteRe = regexp.MustCompile(`@(Get|Post|Put|Patch|Delete)\s*\(\s*(?:["'\x60]([^"'\x60]*)["'\x60])?`)

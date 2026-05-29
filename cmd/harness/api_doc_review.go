@@ -185,7 +185,7 @@ func runCodexAPIDocReview(options apiDocReviewOptions, files []string, diff, ext
 	result.Effort = options.Effort
 	result.OK = result.Verdict == "pass"
 	if result.Verdict == "fail" {
-		return result, fmt.Errorf("api documentation AI review failed")
+		return result, errAPIDocReviewGateFailed
 	}
 	return result, nil
 }
