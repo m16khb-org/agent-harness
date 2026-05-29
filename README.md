@@ -1,45 +1,56 @@
 # agent-harness
 
 <p align="center">
-  <img src="docs/assets/agent-harness-hero.png" alt="agent-harness hero illustration: a central CLI harness connecting two AI host panels through policy and tool nodes" width="100%" />
+  <a href="#english">English</a> ·
+  <a href="#한국어">한국어</a>
 </p>
 
-**agent-harness**는 Codex와 Claude Code에서 같은 방식으로 쓰는 개인용 에이전트 하네스입니다. 핵심 로직은 Go CLI/MCP/daemon 코어에 두고, Codex plugin·native skill·Claude Code 설정은 그 코어를 호출하는 얇은 어댑터로 유지합니다.
+<a id="english"></a>
 
-**agent-harness** is a personal agent harness designed to behave consistently across Codex and Claude Code. Its shared behavior lives in a Go CLI/MCP/daemon core, while Codex plugin/native-skill and Claude Code integrations stay as thin host adapters.
+## English
 
----
+<p align="right"><a href="#한국어">한국어로 보기</a></p>
 
-## 핵심 요약 / Highlights
+<p align="center">
+  <img src="docs/assets/agent-harness-hero.png" alt="agent-harness hero illustration: one Go harness core connecting Codex and Claude Code through CLI, MCP, policy, state, and skills" width="100%" />
+</p>
 
-| 한국어 | English |
-| --- | --- |
-| Codex와 Claude Code가 같은 binary, schema, state 규칙을 사용합니다. | Codex and Claude Code use the same binary, schemas, and state rules. |
-| Plugin-only가 아니라 외부 Go 하네스 코어 + 얇은 host adapter 구조입니다. | It is an external Go harness core with thin host adapters, not a plugin-only design. |
-| CLI one-shot, daemon-backed MCP stdio proxy, state-only worker MVP를 제공합니다. | It provides one-shot CLI commands, a daemon-backed MCP stdio proxy, and a state-only worker MVP. |
-| 명령 실행은 실제 shell runner가 아니라 policy check/fake-run/audit 중심으로 시작합니다. | Command execution starts with policy check/fake-run/audit rather than a real shell runner. |
-| 공용 skill은 `skills/`를 단일 source of truth로 두고 user-level host skill 경로에 연결합니다. | Shared skills live under `skills/` as the single source of truth and are linked into user-level host skill paths. |
+**agent-harness** is a personal automation harness for AI coding agents. It gives **Codex** and **Claude Code** the same local Go binary, the same MCP tools, the same command-policy checks, and the same shared skill source tree.
 
----
+The project is intentionally not “just a Codex plugin” or “just Claude commands.” The reusable behavior lives in a host-neutral Go core; host integrations are thin adapters that call that core.
 
-## 현재 제공 기능 / Current capabilities
-
-| 기능 | Capability |
-| --- | --- |
-| `inspect`, `preflight`, `docs`, `contract`, `version`으로 설치·문서·계약 상태를 확인합니다. | Inspect installation, docs, and compatibility contracts with `inspect`, `preflight`, `docs`, `contract`, and `version`. |
-| `policy check`, `policy fake-run`, `policy audit`로 위험 명령을 실행하지 않고 정책 판단과 감사 기록을 남깁니다. | Evaluate and audit risky command requests without executing them through `policy check`, `policy fake-run`, and `policy audit`. |
-| `state write/read/list/prune/doctor/migrate`로 작은 에이전트 체크포인트를 관리합니다. | Manage small agent checkpoints with `state write/read/list/prune/doctor/migrate`. |
-| `harness mcp`는 user-level daemon 뒤의 MCP stdio proxy입니다. | `harness mcp` is an MCP stdio proxy backed by a user-level daemon. |
-| `daemon start/status/stop`으로 공용 MCP backend lifecycle을 관리합니다. | Manage the shared MCP backend lifecycle with `daemon start/status/stop`. |
-| `worker enqueue/status/list/cancel`은 현재 shell을 실행하지 않는 state-only worker MVP입니다. | `worker enqueue/status/list/cancel` is currently a state-only, no-shell worker MVP. |
-| `install-native`는 Codex/Claude user-level skill과 MCP 설정 설치를 담당합니다. | `install-native` installs user-level Codex/Claude skills and MCP configuration. |
-| `project bootstrap/docs/route-docs/record`로 대상 repo의 agent 운영 문서를 생성·조회·라우팅합니다. | Generate, read, route, and record target-repo agent operating docs with `project bootstrap/docs/route-docs/record`. |
-| `api-doc check/static-check/review`로 endpoint/DTO/OpenAPI 변경의 문서 drift를 검사합니다. | Check API documentation drift for endpoint/DTO/OpenAPI changes with `api-doc check/static-check/review`. |
-| `self-verify`, `self-augment` 계열 명령으로 하네스 자체 검증과 개선 루프를 실행합니다. | Run harness verification and improvement loops through `self-verify` and `self-augment` commands. |
+> Status: early but functional MVP. The CLI, daemon-backed MCP proxy, policy checker, state checkpoints, project-doc tools, API-doc review gate, native skill installer, self-verification loop, and self-augmentation loop are implemented. The worker surface is currently **state-only / no-shell** by design.
 
 ---
 
-## 아키텍처 / Architecture
+## Why this exists
+
+AI coding agents become hard to trust when every host has different prompts, tools, state, and safety rules. `agent-harness` keeps those concerns in one portable place.
+
+Use it when you want to:
+
+- run the same agent workflow from Codex, Claude Code, MCP, or a shell;
+- keep shared skills in one `skills/` source of truth instead of copying them per host;
+- expose repo operating docs to agents in a structured way;
+- check command safety before execution rather than letting agents run arbitrary shell strings;
+- store small, inspectable agent checkpoints outside the repository;
+- continuously verify and improve the harness itself.
+
+## What you get
+
+| Area | Commands / files | What it does |
+| --- | --- | --- |
+| Install and inspection | `install-native`, `inspect`, `preflight`, `version` | Build and connect user-level Codex/Claude integrations, then inspect the installation. |
+| MCP backend | `harness mcp`, `daemon start/status/stop` | Run a stdio MCP proxy backed by a user-level daemon so Codex and Claude see the same tools. |
+| Command policy | `policy check`, `policy fake-run`, `policy audit` | Evaluate argv, workspace root, cwd, timeout, write/network intent, and audit metadata without a real shell runner. |
+| State checkpoints | `state write/read/list/prune/doctor/migrate` | Store small JSON checkpoints in user state, not tracked repo files. |
+| Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | Generate, index, route, and append project operating docs under `.agent-harness/`. |
+| API docs gate | `api-doc check/static-check/review` | Catch endpoint/DTO/OpenAPI documentation drift. |
+| Shared skills | `skills/atomic-commit-push`, `skills/project-bootstrap`, `skills/self-verify`, `skills/self-augment` | Codex and Claude Code use the same skill definitions. |
+| Self-improvement | `self-verify`, `self-augment` | Run a 95-point verification gate and select safe improvement candidates. |
+| Worker MVP | `worker enqueue/status/list/cancel` | Record job lifecycle state only; it does not execute shell commands yet. |
+
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -48,68 +59,57 @@ flowchart LR
     Human[Human shell] --> CLI[harness CLI]
 
     MCP --> Daemon[agent-harness daemon\nuser-level Unix socket]
-    CLI --> Core[core usecases\npolicy · docs · state]
+    CLI --> Core[Go core use cases\npolicy · docs · state · install]
     Daemon --> Core
     Core --> Ports[ports / DTOs]
-    Ports --> FS[fs · git adapter]
-    Ports --> Proc[process policy adapter]
+    Ports --> FS[fs · git adapters]
     Ports --> State[state · audit log]
-
     Core -. future .-> Worker[local job worker\nqueue · watch · long tasks]
 ```
 
-### 설계 원칙 / Design principles
+Design rules:
 
-| 한국어 | English |
-| --- | --- |
-| **Host-neutral core first** — Codex/Claude 차이는 adapter에 격리하고, 정책과 계약은 core에 둡니다. | **Host-neutral core first** — Codex/Claude differences stay in adapters; policy and contracts stay in core. |
-| **Same contract everywhere** — CLI JSON 출력과 MCP tool response는 같은 의미와 schema를 유지해야 합니다. | **Same contract everywhere** — CLI JSON output and MCP tool responses must keep the same meaning and schema. |
-| **Safe by default** — workspace 경계, secret redaction, dry-run/append-only 동작, no-shell worker를 우선합니다. | **Safe by default** — Workspace boundaries, secret redaction, dry-run/append-only behavior, and no-shell workers come first. |
-| **Single source of truth for skills** — `skills/<name>/`을 원본으로 두고 host별 복사본 drift를 피합니다. | **Single source of truth for skills** — `skills/<name>/` is the source of truth to avoid host-specific copy drift. |
-| **Incremental worker** — persistent worker는 shell 실행 없이 lifecycle state부터 검증합니다. | **Incremental worker** — The persistent worker starts with lifecycle state only, before shell execution. |
+1. **Host-neutral core first** — core behavior belongs in Go, not in host-specific plugin code.
+2. **Same contract everywhere** — CLI JSON, MCP responses, and daemon responses must mean the same thing.
+3. **Safe by default** — command policy, workspace boundaries, audit records, redaction, and dry-run/default no-shell behavior come first.
+4. **One skill source** — `skills/<name>/` is the source of truth; user-level Codex/Claude skill paths point back to it.
+5. **Incremental worker** — persistent worker functionality starts with lifecycle state before process execution.
 
----
-
-## 저장소 구조 / Repository map
+## Repository map
 
 ```text
-cmd/harness/              Go binary entrypoint, CLI dispatch, MCP/daemon/self-* commands
+cmd/harness/              Go binary entrypoint and CLI/MCP/daemon commands
 internal/core/            Host-neutral use cases: docs, policy, state, install, worker contracts
 internal/port/            Core-facing interfaces and DTOs
-internal/adapter/         Codex, Claude, CLI, MCP, install utility adapters
-configs/codex/            Codex hook/MCP templates
+internal/adapter/         Host/install adapter tests and integration boundaries
+configs/codex/            Codex MCP and hook templates
 configs/claude/           Claude MCP template
 skills/                   Shared native skills used by Codex and Claude Code
 .agent-harness/           Project operating docs, ADRs, cautions, testing rules
 scripts/install-native.sh Native install convenience script
+bin/harness               Locally built binary
 ```
 
-- `cmd/harness/`: 사람이 직접 실행하는 CLI와 MCP/daemon entrypoint입니다. / The human-facing CLI plus MCP/daemon entrypoint.
-- `internal/core/`: host와 무관한 usecase와 정책을 둡니다. / Host-neutral use cases and policies.
-- `internal/adapter/`: Codex, Claude, CLI, MCP 등 외부 표면을 core에 연결합니다. / Connects Codex, Claude, CLI, MCP, and other external surfaces to core.
-- `skills/`: Codex와 Claude Code가 공유하는 native skill 원본입니다. / Source-of-truth native skills shared by Codex and Claude Code.
-- `.agent-harness/`: 아키텍처, 운영, 테스트, 주의사항, ADR 문서입니다. / Architecture, operations, testing, cautions, and ADR documents.
+## Requirements
 
----
+- Go toolchain available on your machine.
+- Codex and/or Claude Code if you want native host integration.
+- A Unix-like local environment for the current daemon/socket implementation.
 
-## 빠른 시작 / Quick start
+The project currently has no external Go module dependencies beyond the standard library; check the current tree before assuming additional dependencies.
 
-### 1. 빌드 / Build
+## Quick start
+
+From the repository root:
 
 ```bash
 go build -o bin/harness ./cmd/harness
 ./bin/harness version
-```
-
-### 2. 하네스 확인 / Inspect the harness
-
-```bash
 ./bin/harness inspect --json
 ./bin/harness docs --json
-./bin/harness contract check --json
 ```
 
-### 3. 명령을 실행하지 않고 정책 확인 / Check command policy without executing the command
+Check command policy without executing the command:
 
 ```bash
 ./bin/harness policy check \
@@ -118,7 +118,7 @@ go build -o bin/harness ./cmd/harness
   --json -- git status --short
 ```
 
-### 4. daemon/MCP smoke 확인 / Run daemon/MCP smoke checks
+Smoke-test the daemon lifecycle:
 
 ```bash
 ./bin/harness daemon status --json
@@ -127,80 +127,95 @@ go build -o bin/harness ./cmd/harness
 ./bin/harness daemon stop --json
 ```
 
-### 5. Native host integration 설치 / Install native host integration
-
-먼저 dry-run으로 확인합니다. / Check with dry-run first.
+Install user-level Codex/Claude integration after reviewing the dry run:
 
 ```bash
 ./bin/harness install-native --dry-run --json
-```
-
-user-level integration을 적용합니다. / Apply user-level integration.
-
-```bash
 ./scripts/install-native.sh
 ./bin/harness install-native --json
 ```
 
-기본 설치는 user-level Codex/Claude 위치를 대상으로 합니다. Project-local `.claude/skills`, `.claude/settings.json`, `.mcp.json` 형태 파일은 명시적인 project-local opt-in이 있을 때만 생성해야 합니다.
+Default installation targets user-level host locations. It must not create project-local `.claude/skills`, `.claude/settings.json`, or `.mcp.json` files in a target repository unless project-local mode is explicitly requested.
 
-By default, install commands target user-level Codex/Claude locations. Project-local `.claude/skills`, `.claude/settings.json`, or `.mcp.json` style files require explicit project-local opt-in.
-
----
-
-## 자주 쓰는 명령 / Common commands
+## Common commands
 
 ```bash
-# 문서와 라우팅 / Docs and routing
+# Installation and environment
+./bin/harness inspect --json
+./bin/harness preflight --json "$PWD"
+./bin/harness contract check --json
+
+# Docs and routing
 ./bin/harness docs --json
 ./bin/harness project route-docs --repo "$PWD" --task "update command policy" --json
 
-# 상태 체크포인트 / State checkpoints
+# State checkpoints
 ./bin/harness state write --key checkpoint --value "ready" --json
 ./bin/harness state read --key checkpoint --json
 ./bin/harness state doctor --json
 
-# Worker MVP: shell 실행 없이 state만 관리 / state only, no shell execution
+# Policy-only command handling: no real shell runner
+./bin/harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+
+# Worker MVP: state only, no shell execution
 ./bin/harness worker enqueue --kind smoke --payload "hello" --json
 ./bin/harness worker list --json
 
-# API 문서 gate / API documentation gate
+# API documentation gate
 ./bin/harness api-doc check --json
 ./bin/harness api-doc review --json
 
-# 자기 검증과 자가 증강 / Self-verification and augmentation
+# Harness verification and improvement loops
 ./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
 ./bin/harness self-augment --cycles=1 --target-score=95 --json
 ```
 
----
+## Native host integration
+
+### Codex
+
+`install-native` links shared skills into user-level Codex skill paths and registers the MCP server/hook configuration.
+
+Useful checks:
+
+```bash
+test -f ~/.codex/skills/atomic-commit-push/SKILL.md && echo "Codex skill linked"
+codex mcp get agent_harness
+```
+
+### Claude Code
+
+`install-native` links the same shared skills into user-level Claude skill paths and registers a user-scope MCP server.
+
+Useful checks:
+
+```bash
+test -f ~/.claude/skills/atomic-commit-push/SKILL.md && echo "Claude skill linked"
+claude mcp list
+```
 
 ## Shared skills
 
-| Skill | 한국어 | English |
-| --- | --- | --- |
-| `atomic-commit-push` | 작은 단위의 commit을 만들고 Conventional Commit subject + Lore body 형식으로 안전하게 push합니다. | Creates focused commits and pushes safely with a Conventional Commit subject plus Lore-style body. |
-| `project-bootstrap` | repo 증거를 바탕으로 agent 운영 문서를 생성하거나 갱신합니다. | Generates or updates repo-local agent operating docs from repository evidence. |
-| `self-verify` | 하네스 95점 검증 루프를 실행하거나 결과를 해석합니다. | Runs or interprets the harness 95-point verification loop. |
-| `self-augment` | 안전하고 가치 있는 하네스 개선 1개를 선택·실행하고 검증합니다. | Chooses and executes one safe high-value harness improvement, then verifies it. |
-
----
-
-## 안전 모델 / Safety model
-
-| 한국어 | English |
+| Skill | Purpose |
 | --- | --- |
-| Secret 원문은 문서, 로그, 테스트 fixture, CLI JSON, MCP response에 남기지 않습니다. | Secret values must not appear in docs, logs, test fixtures, CLI JSON, or MCP responses. |
-| shell/process 실행은 기본 capability가 아닙니다. 현재 policy 명령은 요청을 평가, fake-run, audit합니다. | Shell/process execution is not a default capability. Current policy commands evaluate, fake-run, or audit requests. |
-| Worker 명령은 현재 의도적으로 **no-shell** lifecycle record만 다룹니다. | Worker commands are intentionally **no-shell** lifecycle records at this stage. |
-| `workspace_root`, `cwd`, argv, write/network intent, timeout, audit id를 명시적으로 다룹니다. | `workspace_root`, `cwd`, argv, write/network intent, timeout, and audit identifiers are explicit policy inputs. |
-| Host adapter는 core policy를 우회할 수 없습니다. | Host adapters must not bypass core policy. |
+| `atomic-commit-push` | Review local changes, split focused commits, and push safely with a Conventional Commit subject plus Lore body. |
+| `project-bootstrap` | Generate or update repo-local agent operating docs from repository evidence. |
+| `self-verify` | Run or interpret the harness 95-point verification loop. |
+| `self-augment` | Choose one safe high-value harness improvement, implement it, and verify it. |
 
----
+## Safety model
 
-## 검증 / Verification
+- Secret values must not appear in prompts, docs, logs, fixtures, CLI JSON, or MCP responses.
+- Host adapters must not bypass core policy.
+- Policy commands reason about argv form, workspace root, cwd, write/network intent, timeout, and audit metadata.
+- Current policy/fake-run/audit commands do not provide a general shell execution capability.
+- Worker commands are intentionally no-shell lifecycle records until queueing, cancellation, redaction, and audit boundaries are hardened.
+- Runtime state belongs in user state directories or ignored workspace state, not committed source files.
 
-권장 baseline은 다음과 같습니다. / Recommended baseline:
+## Development
+
+Recommended baseline:
 
 ```bash
 go test ./... -count=1
@@ -212,7 +227,7 @@ go build -o bin/harness ./cmd/harness
 ./bin/harness contract check --json
 ```
 
-문서만 변경한 경우에도 최소한 파일·경로·빌드·문서 인덱스를 확인합니다. / For document-only changes, at minimum verify files, paths, build, and docs index.
+For documentation-only changes, at minimum check file paths, buildability, and the docs index:
 
 ```bash
 find . -maxdepth 3 -type f | sort
@@ -221,38 +236,289 @@ go build -o bin/harness ./cmd/harness
 ./bin/harness docs --json
 ```
 
----
+## Project documentation
 
-## 프로젝트 문서 / Project docs
-
-| 문서 | 역할 / Role |
+| Document | Role |
 | --- | --- |
-| `AGENTS.md` | 루트 agent 규칙과 프로젝트 결정 / Root agent rules and project decisions |
-| `CLAUDE.md` | Claude Code entrypoint, shared rule pointer |
-| `.agent-harness/CONSTITUTION.md` | Source-of-truth hierarchy and safety principles |
-| `.agent-harness/ARCHITECTURE.md` | Target architecture and boundaries |
-| `.agent-harness/CONVENTIONS.md` | Implementation and integration conventions |
-| `.agent-harness/TESTING.md` | Verification expectations |
-| `.agent-harness/OPERATIONS.md` | Install, CLI, MCP, and skill usage |
-| `.agent-harness/ADR.md` | Implementation roadmap and architectural decisions |
+| `AGENTS.md` | Root agent rules and project decisions. |
+| `CLAUDE.md` | Claude Code entrypoint and pointer to shared rules. |
+| `.agent-harness/CONSTITUTION.md` | Source-of-truth hierarchy and safety principles. |
+| `.agent-harness/ARCHITECTURE.md` | Target architecture and boundaries. |
+| `.agent-harness/CONVENTIONS.md` | Implementation and integration conventions. |
+| `.agent-harness/TESTING.md` | Verification expectations. |
+| `.agent-harness/OPERATIONS.md` | Install, CLI, MCP, and skill usage. |
+| `.agent-harness/ADR.md` | Implementation roadmap and architectural decisions. |
+
+## Roadmap
+
+- Harden daemon and MCP lifecycle checks.
+- Keep CLI/MCP response contracts golden-tested.
+- Expand API-documentation drift review for endpoint-heavy repos.
+- Promote state-only worker records toward a real job worker only after policy, audit, cancellation, and redaction boundaries are strong enough.
+- Keep Codex and Claude Code integrations thin and contract-compatible.
+
+## Documentation style note
+
+This README follows common open-source README guidance: explain what the project does, why it is useful, how to start, and where to get help. See [GitHub Docs on repository READMEs](https://docs.github.com/articles/about-readmes) and [Open Source Guides on starting a project](https://opensource.guide/starting-a-project/) for the documentation shape that informed this rewrite.
+
+## License
+
+No license file is present in this repository at the time of this README update. Add a `LICENSE` file before distributing this as an open-source project.
 
 ---
 
-## 이미지 / Image
+<a id="한국어"></a>
 
-- README hero 이미지는 `$imagegen`으로 생성했고 프로젝트 안의 `docs/assets/agent-harness-hero.png`에 저장했습니다.
-- The README hero image was generated with `$imagegen` and stored at `docs/assets/agent-harness-hero.png`.
-- 이미지는 central CLI harness, 양쪽 AI host panel, policy/tool/state node를 표현해 이 프로젝트의 핵심 구조를 시각화합니다.
-- The image visualizes the project’s core shape: a central CLI harness, two AI host panels, and policy/tool/state nodes.
+## 한국어
+
+<p align="right"><a href="#english">View in English</a></p>
+
+**agent-harness**는 AI 코딩 에이전트를 위한 개인용 자동화 하네스입니다. **Codex**와 **Claude Code**가 같은 로컬 Go 바이너리, 같은 MCP 도구, 같은 command-policy 검사, 같은 공유 skill 원본을 사용하게 만듭니다.
+
+이 프로젝트는 “Codex plugin 하나”나 “Claude command 모음”이 아닙니다. 재사용 가능한 동작은 host-neutral Go core에 두고, host별 통합은 그 core를 호출하는 얇은 adapter로 유지합니다.
+
+> 현재 상태: 초기이지만 동작 가능한 MVP입니다. CLI, daemon-backed MCP proxy, policy checker, state checkpoint, project-doc tooling, API-doc review gate, native skill installer, self-verification loop, self-augmentation loop가 구현되어 있습니다. worker 표면은 의도적으로 **state-only / no-shell** 상태입니다.
 
 ---
 
-## 현재 상태 / Status
+## 왜 필요한가
 
-이 저장소는 초기이지만 동작 가능한 Go 기반 하네스 MVP입니다. Core CLI, MCP/daemon surface, state checkpoint, policy check, project-doc tooling, native install adapter, self-verification/self-augmentation 명령이 존재합니다.
+AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라지면 신뢰하기 어려워집니다. `agent-harness`는 그 공통 관심사를 하나의 portable core에 모읍니다.
 
-This repository is an early but functional Go-based harness MVP. The core CLI, MCP/daemon surface, state checkpointing, policy checks, project-doc tooling, native install adapters, and self-verification/self-augmentation commands are present.
+다음이 필요할 때 사용합니다.
 
-장기 실행 job worker는 command policy, audit, cancellation, secret-redaction 경계가 충분히 단단해질 때까지 의도적으로 no-shell lifecycle state로 제한합니다.
+- Codex, Claude Code, MCP, shell에서 같은 agent workflow를 실행하고 싶을 때
+- shared skill을 host별로 복사하지 않고 `skills/` 하나를 source of truth로 쓰고 싶을 때
+- repo 운영 문서를 agent가 구조적으로 읽게 하고 싶을 때
+- agent가 임의 shell string을 실행하기 전에 command safety를 먼저 판단하게 하고 싶을 때
+- 작은 agent checkpoint를 repo 밖 user state에 저장하고 싶을 때
+- 하네스 자체를 계속 검증하고 개선하고 싶을 때
 
-The long-running job worker remains intentionally limited to no-shell lifecycle state until command policy, audit, cancellation, and secret-redaction boundaries are hardened enough for real process execution.
+## 제공 기능
+
+| 영역 | 명령 / 파일 | 역할 |
+| --- | --- | --- |
+| 설치와 점검 | `install-native`, `inspect`, `preflight`, `version` | user-level Codex/Claude integration을 만들고 설치 상태를 확인합니다. |
+| MCP backend | `harness mcp`, `daemon start/status/stop` | user-level daemon 뒤의 stdio MCP proxy를 실행해 Codex와 Claude가 같은 tool을 보게 합니다. |
+| Command policy | `policy check`, `policy fake-run`, `policy audit` | 실제 shell runner 없이 argv, workspace root, cwd, timeout, write/network intent, audit metadata를 평가합니다. |
+| State checkpoint | `state write/read/list/prune/doctor/migrate` | 작은 JSON checkpoint를 repo가 아니라 user state에 저장합니다. |
+| Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | `.agent-harness/` 운영 문서를 생성, 색인, 라우팅, append 기록합니다. |
+| API docs gate | `api-doc check/static-check/review` | endpoint/DTO/OpenAPI 문서 drift를 찾습니다. |
+| Shared skills | `skills/atomic-commit-push`, `skills/project-bootstrap`, `skills/self-verify`, `skills/self-augment` | Codex와 Claude Code가 같은 skill 정의를 사용합니다. |
+| Self-improvement | `self-verify`, `self-augment` | 95점 검증 gate와 안전한 개선 후보 선택 루프를 실행합니다. |
+| Worker MVP | `worker enqueue/status/list/cancel` | job lifecycle state만 기록합니다. 아직 shell을 실행하지 않습니다. |
+
+## 아키텍처
+
+```mermaid
+flowchart LR
+    Codex[Codex\nAGENTS.md · skills · MCP] --> MCP[harness mcp\nstdio proxy]
+    Claude[Claude Code\nCLAUDE.md · skills · MCP] --> MCP
+    Human[Human shell] --> CLI[harness CLI]
+
+    MCP --> Daemon[agent-harness daemon\nuser-level Unix socket]
+    CLI --> Core[Go core use cases\npolicy · docs · state · install]
+    Daemon --> Core
+    Core --> Ports[ports / DTOs]
+    Ports --> FS[fs · git adapters]
+    Ports --> State[state · audit log]
+    Core -. future .-> Worker[local job worker\nqueue · watch · long tasks]
+```
+
+설계 규칙:
+
+1. **Host-neutral core first** — 핵심 동작은 host plugin이 아니라 Go core에 둡니다.
+2. **Same contract everywhere** — CLI JSON, MCP response, daemon response는 같은 의미를 가져야 합니다.
+3. **Safe by default** — command policy, workspace boundary, audit record, redaction, dry-run/no-shell 기본값을 먼저 둡니다.
+4. **One skill source** — `skills/<name>/`이 원본이고 user-level Codex/Claude skill 경로는 이를 가리킵니다.
+5. **Incremental worker** — persistent worker는 process 실행보다 lifecycle state부터 검증합니다.
+
+## 저장소 구조
+
+```text
+cmd/harness/              Go binary entrypoint와 CLI/MCP/daemon 명령
+internal/core/            host-neutral usecase: docs, policy, state, install, worker contract
+internal/port/            core-facing interface와 DTO
+internal/adapter/         host/install adapter test와 integration boundary
+configs/codex/            Codex MCP와 hook template
+configs/claude/           Claude MCP template
+skills/                   Codex와 Claude Code가 공유하는 native skill 원본
+.agent-harness/           project operating docs, ADR, caution, testing rule
+scripts/install-native.sh native install 편의 스크립트
+bin/harness               로컬 build binary
+```
+
+## 요구 사항
+
+- 로컬 Go toolchain
+- native host integration을 쓰려면 Codex 또는 Claude Code
+- 현재 daemon/socket 구현을 위한 Unix 계열 로컬 환경
+
+현재 `go.mod` 기준으로 표준 라이브러리 외부 Go module dependency는 없습니다. dependency를 가정하기 전에 현재 tree를 확인하세요.
+
+## 빠른 시작
+
+저장소 루트에서 실행합니다.
+
+```bash
+go build -o bin/harness ./cmd/harness
+./bin/harness version
+./bin/harness inspect --json
+./bin/harness docs --json
+```
+
+명령을 실행하지 않고 command policy만 확인합니다.
+
+```bash
+./bin/harness policy check \
+  --workspace-root "$PWD" \
+  --cwd "$PWD" \
+  --json -- git status --short
+```
+
+Daemon lifecycle smoke test:
+
+```bash
+./bin/harness daemon status --json
+./bin/harness daemon start --json
+./bin/harness daemon status --json
+./bin/harness daemon stop --json
+```
+
+user-level Codex/Claude integration은 dry-run 확인 후 설치합니다.
+
+```bash
+./bin/harness install-native --dry-run --json
+./scripts/install-native.sh
+./bin/harness install-native --json
+```
+
+기본 설치는 user-level host 위치만 대상으로 합니다. target repo에 project-local `.claude/skills`, `.claude/settings.json`, `.mcp.json` 파일을 만들려면 명시적인 project-local mode가 필요합니다.
+
+## 자주 쓰는 명령
+
+```bash
+# 설치와 환경 확인
+./bin/harness inspect --json
+./bin/harness preflight --json "$PWD"
+./bin/harness contract check --json
+
+# 문서와 라우팅
+./bin/harness docs --json
+./bin/harness project route-docs --repo "$PWD" --task "update command policy" --json
+
+# 상태 체크포인트
+./bin/harness state write --key checkpoint --value "ready" --json
+./bin/harness state read --key checkpoint --json
+./bin/harness state doctor --json
+
+# Policy-only command handling: 실제 shell runner 아님
+./bin/harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+
+# Worker MVP: state only, no shell execution
+./bin/harness worker enqueue --kind smoke --payload "hello" --json
+./bin/harness worker list --json
+
+# API 문서 gate
+./bin/harness api-doc check --json
+./bin/harness api-doc review --json
+
+# 하네스 자체 검증과 개선 루프
+./bin/harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/harness self-augment --cycles=1 --target-score=95 --json
+```
+
+## Native host integration
+
+### Codex
+
+`install-native`는 shared skill을 user-level Codex skill 경로에 연결하고 MCP server/hook 설정을 등록합니다.
+
+확인 명령:
+
+```bash
+test -f ~/.codex/skills/atomic-commit-push/SKILL.md && echo "Codex skill linked"
+codex mcp get agent_harness
+```
+
+### Claude Code
+
+`install-native`는 같은 shared skill을 user-level Claude skill 경로에 연결하고 user-scope MCP server를 등록합니다.
+
+확인 명령:
+
+```bash
+test -f ~/.claude/skills/atomic-commit-push/SKILL.md && echo "Claude skill linked"
+claude mcp list
+```
+
+## Shared skills
+
+| Skill | 역할 |
+| --- | --- |
+| `atomic-commit-push` | local change를 검토하고 focused commit으로 나누며 Conventional Commit subject + Lore body 형식으로 안전하게 push합니다. |
+| `project-bootstrap` | repository evidence를 바탕으로 repo-local agent operating docs를 생성하거나 갱신합니다. |
+| `self-verify` | 하네스 95점 verification loop를 실행하거나 결과를 해석합니다. |
+| `self-augment` | 안전하고 가치 있는 하네스 개선 후보 1개를 선택, 구현, 검증합니다. |
+
+## 안전 모델
+
+- secret 원문은 prompt, docs, logs, fixtures, CLI JSON, MCP response에 남기지 않습니다.
+- host adapter는 core policy를 우회할 수 없습니다.
+- policy 명령은 argv form, workspace root, cwd, write/network intent, timeout, audit metadata를 명시적으로 다룹니다.
+- 현재 policy/fake-run/audit 명령은 범용 shell 실행 기능이 아닙니다.
+- worker 명령은 queue, cancellation, redaction, audit 경계가 단단해질 때까지 no-shell lifecycle record로 유지합니다.
+- runtime state는 user state directory나 ignored workspace state에 두고 source file로 commit하지 않습니다.
+
+## 개발과 검증
+
+권장 baseline:
+
+```bash
+go test ./... -count=1
+go test -race ./... -count=1
+go vet ./...
+go build -o bin/harness ./cmd/harness
+./bin/harness inspect --json
+./bin/harness docs --json
+./bin/harness contract check --json
+```
+
+문서만 변경한 경우에도 최소한 파일 경로, build 가능 여부, docs index를 확인합니다.
+
+```bash
+find . -maxdepth 3 -type f | sort
+find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
+go build -o bin/harness ./cmd/harness
+./bin/harness docs --json
+```
+
+## 프로젝트 문서
+
+| 문서 | 역할 |
+| --- | --- |
+| `AGENTS.md` | root agent rule과 project decision |
+| `CLAUDE.md` | Claude Code entrypoint와 shared rule pointer |
+| `.agent-harness/CONSTITUTION.md` | source-of-truth hierarchy와 safety principle |
+| `.agent-harness/ARCHITECTURE.md` | target architecture와 boundary |
+| `.agent-harness/CONVENTIONS.md` | implementation/integration convention |
+| `.agent-harness/TESTING.md` | verification expectation |
+| `.agent-harness/OPERATIONS.md` | install, CLI, MCP, skill 사용법 |
+| `.agent-harness/ADR.md` | implementation roadmap과 architecture decision |
+
+## Roadmap
+
+- daemon과 MCP lifecycle check를 더 단단하게 만듭니다.
+- CLI/MCP response contract를 golden test로 유지합니다.
+- endpoint-heavy repo를 위한 API-documentation drift review를 확장합니다.
+- policy, audit, cancellation, redaction 경계가 충분히 강해진 뒤에만 state-only worker를 실제 job worker로 확장합니다.
+- Codex와 Claude Code integration은 얇고 contract-compatible하게 유지합니다.
+
+## README 작성 기준 메모
+
+이 README는 일반적인 오픈소스 README 관례를 따릅니다. 즉, 프로젝트가 무엇을 하는지, 왜 유용한지, 어떻게 시작하는지, 어디에서 더 볼 수 있는지를 먼저 설명합니다. 이번 개편에서는 [GitHub Docs의 repository README 안내](https://docs.github.com/articles/about-readmes)와 [Open Source Guides의 starting-a-project 안내](https://opensource.guide/starting-a-project/)를 참고했습니다.
+
+## License
+
+이 README를 갱신한 시점에는 repository에 `LICENSE` 파일이 없습니다. 공개 오픈소스 배포 전에 `LICENSE` 파일을 추가하세요.
