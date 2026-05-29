@@ -11,9 +11,18 @@ type HookUserPromptRequest struct {
 }
 
 type HookUserPromptHint struct {
-	Tool   string `json:"tool"`
-	Reason string `json:"reason"`
+	Tool     string `json:"tool"`
+	Reason   string `json:"reason"`
+	Priority string `json:"priority,omitempty"`
 }
+
+const (
+	hintPriorityRequired  = "required"
+	hintPriorityConsider  = "consider"
+	hintPriorityRoute     = "route"
+	hintPriorityAction    = "action"
+	hintPrioritySecondary = "secondary"
+)
 
 type HookUserPromptResult struct {
 	OK                bool                 `json:"ok"`
@@ -36,62 +45,65 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		return result
 	}
 	lower := strings.ToLower(prompt)
-	add := func(tool, reason string) {
+	addPriority := func(tool, reason, priority string) {
 		for _, h := range result.Hints {
-			if h.Tool == tool && h.Reason == reason {
+			if h.Tool == tool && h.Reason == reason && h.Priority == priority {
 				return
 			}
 		}
-		result.Hints = append(result.Hints, HookUserPromptHint{Tool: tool, Reason: reason})
+		result.Hints = append(result.Hints, HookUserPromptHint{Tool: tool, Reason: reason, Priority: priority})
+	}
+	addAction := func(tool, reason string) {
+		addPriority(tool, reason, hintPriorityAction)
 	}
 
-	add("project_docs_route", "Before acting, decide which AGENTS.md/.agent-harness documents are required for this task.")
+	addPriority("project_docs_route", "Use when the prompt is broad, ambiguous, or needs repo-specific document selection beyond static hook hints.", hintPriorityRoute)
 
 	if containsAny(lower, "architecture", "architect", "refactor", "design", "decision", "alternative", "structure") || containsAny(prompt, "아키텍처", "리팩터", "결정", "대안", "구조", "설계") {
-		add("ARCHITECTURE.md", "Read when architecture, boundaries, host-neutral design, or component responsibilities shape the work.")
-		add("ADR.md", "Read or update when a structural decision, trade-off, or rejected alternative matters long-term.")
-		add("project_docs_record", "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.")
+		addPriority("ARCHITECTURE.md", "Required when architecture, boundaries, host-neutral design, or component responsibilities shape the work.", hintPriorityRequired)
+		addPriority("ADR.md", "Consider when a structural decision, trade-off, or rejected alternative matters long-term.", hintPriorityConsider)
+		addAction("project_docs_record", "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.")
 	}
 	if containsAny(lower, "hook", "install", "bootstrap", "update", "daemon", "mcp", "operation", "local", "run") || containsAny(prompt, "훅", "설치", "부트스트랩", "데몬", "운영", "로컬 실행") {
-		add("OPERATIONS.md", "Read for install, update, hook registration, daemon, MCP, and local-run behavior.")
-		add("CONVENTIONS.md", "Read for package boundaries, adapter conventions, and hook implementation rules.")
-		add("TECH_STACK.md", "Read when toolchain, companion tools, or runtime choices affect the work.")
+		addPriority("OPERATIONS.md", "Required for install, update, hook registration, daemon, MCP, and local-run behavior.", hintPriorityRequired)
+		addPriority("CONVENTIONS.md", "Required for package boundaries, adapter conventions, and hook implementation rules.", hintPriorityRequired)
+		addPriority("TECH_STACK.md", "Consider when toolchain, companion tools, or runtime choices affect the work.", hintPriorityConsider)
 	}
 	if containsAny(lower, "test", "spec", "verify", "verification", "lint", "typecheck", "ci", "golden", "race", "qa") || containsAny(prompt, "테스트", "검증", "골든") {
-		add("TESTING.md", "Read for verification commands, gates, and expected test scope.")
-		add("AGENT_WORKFLOW.md", "Read for agent workflow, routing, and validation expectations.")
+		addPriority("TESTING.md", "Required for verification commands, gates, and expected test scope.", hintPriorityRequired)
+		addPriority("AGENT_WORKFLOW.md", "Consider for agent workflow, routing, and validation expectations.", hintPriorityConsider)
 	}
 	if containsAny(lower, "bug", "fix", "regression", "failure", "false case", "caution") || containsAny(prompt, "버그", "고쳐", "회귀", "실패", "주의") {
-		add("CAUTIONS.md", "Read or update when a resolved false case, recurring failure, or operational warning should be reusable.")
-		add("project_docs_record", "When a resolved false case or recurring failure is reusable, consider kind=caution for CAUTIONS.md.")
+		addPriority("CAUTIONS.md", "Consider when a resolved false case, recurring failure, or operational warning should be reusable.", hintPriorityConsider)
+		addAction("project_docs_record", "When a resolved false case or recurring failure is reusable, consider kind=caution for CAUTIONS.md.")
 	}
 	if containsAny(lower, "endpoint", "controller", "dto", "openapi", "swagger", "api doc", "api-doc", "route method", "handler") || containsAny(prompt, "엔드포인트", "스웨거", "컨트롤러") {
-		add("OPEN_API_SPEC.md", "Read for endpoint, DTO, Swagger/OpenAPI, and public API error-contract documentation rules.")
-		add("api_doc_static_check", "For API/endpoint/DTO/OpenAPI changes, consider deterministic Swagger/OpenAPI gap checks before implementation or review.")
-		add("api_doc_review", "Use agent review to compare business-logic error paths such as 400/401/403/404/409 with the documented API contract.")
-		add("project_docs_read/project_docs_update", "If .agent-harness/OPEN_API_SPEC.md or related docs diverge from code/user consensus, update one document at a time.")
+		addPriority("OPEN_API_SPEC.md", "Required for endpoint, DTO, Swagger/OpenAPI, and public API error-contract documentation rules.", hintPriorityRequired)
+		addAction("api_doc_static_check", "For API/endpoint/DTO/OpenAPI changes, consider deterministic Swagger/OpenAPI gap checks before implementation or review.")
+		addAction("api_doc_review", "Use agent review to compare business-logic error paths such as 400/401/403/404/409 with the documented API contract.")
+		addAction("project_docs_read/project_docs_update", "If .agent-harness/OPEN_API_SPEC.md or related docs diverge from code/user consensus, update one document at a time.")
 	}
 	if containsAny(lower, "commit", "push", "pull request", "release note") || containsAny(prompt, "커밋", "푸시", "PR", "릴리즈 노트") {
-		add("COMMIT_POLICY.md", "Read for Conventional Commit subject plus Lore body commit rules.")
+		addPriority("COMMIT_POLICY.md", "Required for Conventional Commit subject plus Lore body commit rules.", hintPriorityRequired)
 	}
 	if containsAny(lower, ".agent-harness", "agents.md", "claude.md", "convention", "workflow", "docs", "project rules") || containsAny(prompt, "문서", "컨벤션", "최신화", "프로젝트 규칙") {
-		add("CONSTITUTION.md", "Read for project document precedence, safety, accuracy, and architecture principles.")
-		add("CONVENTIONS.md", "Read for implementation conventions and package boundaries.")
-		add("project_docs_read/project_docs_update", "If .agent-harness docs diverge from current code or user consensus, update one SHA-checked document at a time.")
+		addPriority("CONSTITUTION.md", "Consider for project document precedence, safety, accuracy, and architecture principles.", hintPriorityConsider)
+		addPriority("CONVENTIONS.md", "Consider for implementation conventions and package boundaries.", hintPriorityConsider)
+		addAction("project_docs_read/project_docs_update", "If .agent-harness docs diverge from current code or user consensus, update one SHA-checked document at a time.")
 	}
 	if containsAny(lower, "deploy", "release", "env", "environment") || containsAny(prompt, "배포", "환경 변수") {
-		add("OPERATIONS.md", "Read for operations, environment, or local-run work.")
-		add("TECH_STACK.md", "Read when runtime or toolchain choices affect operations.")
+		addPriority("OPERATIONS.md", "Required for operations, environment, or local-run work.", hintPriorityRequired)
+		addPriority("TECH_STACK.md", "Consider when runtime or toolchain choices affect operations.", hintPriorityConsider)
 	}
 
 	if containsAny(lower, "codegraph", "symbol", "call graph", "impact", "trace", "caller", "callee") {
-		add("CodeGraph", "Secondary hint: consider CodeGraph for repo-local symbol, call graph, impact, or trace questions.")
+		addPriority("CodeGraph", "Secondary hint: consider CodeGraph for repo-local symbol, call graph, impact, or trace questions.", hintPrioritySecondary)
 	}
 	if containsAny(lower, "llm-wiki", "wiki", "knowledge base", "research", "compile") {
-		add("LLM Wiki", "Secondary hint: consider upstream LLM Wiki for explicit wiki, research, knowledge-base, query, or compile workflows.")
+		addPriority("LLM Wiki", "Secondary hint: consider upstream LLM Wiki for explicit wiki, research, knowledge-base, query, or compile workflows.", hintPrioritySecondary)
 	}
 	if containsAny(lower, "claude-mem", "memory", "previous session", "last time", "already solve", "already solved") || containsAny(prompt, "전에", "지난번", "이미 해결") {
-		add("claude-mem", "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.")
+		addPriority("claude-mem", "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.", hintPrioritySecondary)
 	}
 
 	if len(result.Hints) == 0 {
@@ -103,28 +115,48 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 }
 
 func renderHookMCPHintContext(hints []HookUserPromptHint) string {
-	var docs []HookUserPromptHint
-	var actions []HookUserPromptHint
-	var companions []HookUserPromptHint
+	groups := map[string][]HookUserPromptHint{}
 	for _, h := range hints {
-		switch {
-		case strings.HasSuffix(h.Tool, ".md"):
-			docs = append(docs, h)
-		case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "claude-mem":
-			companions = append(companions, h)
-		default:
-			actions = append(actions, h)
+		priority := h.Priority
+		if priority == "" {
+			priority = fallbackHintPriority(h)
 		}
+		groups[priority] = append(groups[priority], h)
 	}
 
 	var b strings.Builder
 	b.WriteString("agent_harness project-doc routing hint:\n")
 	b.WriteString("- Before acting, decide whether AGENTS.md or .agent-harness documents are necessary for the current request. Use repo evidence, routing, validation, or durable records only when they materially improve correctness; do not call MCP for simple reasoning.\n")
-	writeHintGroup(&b, "Project document candidates:", docs)
-	writeHintGroup(&b, "MCP/action candidates:", actions)
-	writeHintGroup(&b, "Secondary companion-tool hints:", companions)
+	writeHintGroup(&b, "Required project docs:", filterDocs(groups[hintPriorityRequired]))
+	writeHintGroup(&b, "Consider project docs:", filterDocs(groups[hintPriorityConsider]))
+	writeHintGroup(&b, "Route if ambiguous:", groups[hintPriorityRoute])
+	writeHintGroup(&b, "MCP/action candidates:", groups[hintPriorityAction])
+	writeHintGroup(&b, "Secondary companion-tool hints:", groups[hintPrioritySecondary])
 	b.WriteString("- Writable tools must preserve user consensus and current file evidence; never use them for destructive actions.")
 	return strings.TrimRight(b.String(), "\n")
+}
+
+func fallbackHintPriority(h HookUserPromptHint) string {
+	switch {
+	case strings.HasSuffix(h.Tool, ".md"):
+		return hintPriorityConsider
+	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "claude-mem":
+		return hintPrioritySecondary
+	case h.Tool == "project_docs_route":
+		return hintPriorityRoute
+	default:
+		return hintPriorityAction
+	}
+}
+
+func filterDocs(hints []HookUserPromptHint) []HookUserPromptHint {
+	var docs []HookUserPromptHint
+	for _, h := range hints {
+		if strings.HasSuffix(h.Tool, ".md") {
+			docs = append(docs, h)
+		}
+	}
+	return docs
 }
 
 func writeHintGroup(b *strings.Builder, title string, hints []HookUserPromptHint) {

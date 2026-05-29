@@ -78,3 +78,29 @@ func TestBuildUserPromptMCPHintsEmptyPromptDoesNotInject(t *testing.T) {
 		t.Fatalf("expected no injection for empty prompt: %+v", got)
 	}
 }
+
+func TestBuildUserPromptMCPHintsUsesPrioritySections(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "hook 구조와 테스트 검증을 설계해줘"})
+	for _, want := range []string{"Required project docs:", "Consider project docs:", "Route if ambiguous:", "ARCHITECTURE.md", "OPERATIONS.md", "TESTING.md"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("priority section missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+	if strings.Index(got.AdditionalContext, "Required project docs:") > strings.Index(got.AdditionalContext, "Consider project docs:") {
+		t.Fatalf("required docs should render before consider docs:\n%s", got.AdditionalContext)
+	}
+}
+
+func TestBuildUserPromptMCPHintsAmbiguousPromptEmphasizesRoute(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "이거 좀 개선해줘"})
+	if !strings.Contains(got.AdditionalContext, "Route if ambiguous:") || strings.Contains(got.AdditionalContext, "Required project docs:") {
+		t.Fatalf("ambiguous prompt should emphasize route without required docs:\n%s", got.AdditionalContext)
+	}
+}
+
+func TestBuildUserPromptMCPHintsDoesNotTreatPRSubstringAsCommit(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "print output formatting을 확인해줘"})
+	if strings.Contains(got.AdditionalContext, "COMMIT_POLICY.md") {
+		t.Fatalf("substring pr should not trigger commit policy:\n%s", got.AdditionalContext)
+	}
+}
