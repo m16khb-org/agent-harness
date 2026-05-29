@@ -185,8 +185,11 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 			}
 		}
 	}
-	if exists(filepath.Join(req.Home, ".claude", "settings.json")) {
-		t.Fatalf("Claude user settings should not be written by agent-harness install")
+	claudeSettings := readFile(t, filepath.Join(req.Home, ".claude", "settings.json"))
+	for _, needle := range []string{"UserPromptSubmit", "PostToolUse", "Stop", req.BinPath} {
+		if !strings.Contains(claudeSettings, needle) {
+			t.Fatalf("Claude settings missing lifecycle hook %q:\n%s", needle, claudeSettings)
+		}
 	}
 	codexConfig := readFile(t, filepath.Join(req.CodexHome, "config.toml"))
 	for _, needle := range []string{"[mcp_servers.agent_harness]", req.BinPath, req.Root} {
@@ -229,6 +232,7 @@ func normalizeInstallContractCase(t *testing.T, name string, req port.NativeInst
 		Assertions: []string{
 			"core discovers shared skills once and passes sorted names to both host adapters",
 			"Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
+			"Codex and Claude user-level lifecycle hooks route through the same agent-harness hook CLI",
 			"default install writes no repo-local .claude or .mcp.json paths",
 			"project-local repo files are created only when project_local=true",
 		},

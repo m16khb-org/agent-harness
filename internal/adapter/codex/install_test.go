@@ -44,6 +44,29 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	}
 }
 
+func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	writeAdapterTestSkill(t, root, "alpha")
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req.SkillNames = []string{"alpha"}
+	if _, err := NewInstaller().Install(req); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewInstaller().Install(req); err != nil {
+		t.Fatal(err)
+	}
+	hooks, err := os.ReadFile(filepath.Join(home, ".codex", "hooks.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, subcommand := range []string{"hook user-prompt", "hook post-tool-use", "hook stop"} {
+		if count := strings.Count(string(hooks), subcommand); count != 1 {
+			t.Fatalf("%s appears %d times, want 1:\n%s", subcommand, count, string(hooks))
+		}
+	}
+}
+
 func TestCodexInstallerPatchesUnsupportedPluginHookSuppressOutput(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()

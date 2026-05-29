@@ -181,17 +181,17 @@ Acceptance criteria:
 
 ### Phase 6 — Claude Code adapter
 
-상태: `internal/adapter/claude`가 `port.HostInstaller`를 구현한다. 기본 설치는 `~/.claude/skills`와 user-scope MCP 등록 경로를 사용한다. `.claude/skills`, `.claude/settings.json`, `.mcp.json` 같은 repo-local 파일은 명시적 `--project-local`에서만 쓴다.
+상태: `internal/adapter/claude`가 `port.HostInstaller`를 구현한다. 기본 설치는 `~/.claude/skills`, user-scope MCP 등록 경로, `~/.claude/settings.json` lifecycle hook 등록을 사용한다. `.claude/skills`, `.claude/settings.json`, `.mcp.json` 같은 repo-local 파일은 명시적 `--project-local`에서만 쓴다.
 
 Deliverables:
 
-- `configs/claude/` MCP 설정 템플릿
+- `configs/claude/` MCP 설정과 hook 설정 템플릿
 - 자주 쓰는 slash command 템플릿
-- hook은 read-only 또는 policy check wrapper로 제한
+- hook은 공통 `agent-harness hook user-prompt/post-tool-use/stop` CLI처럼 read-only routing, lifecycle queue 기록, reminder로 제한
 
 Acceptance criteria:
 
-- `agent-harness mcp` 기반 설정이 문서화된다.
+- `agent-harness mcp`와 lifecycle hook 기반 설정이 문서화된다.
 - slash command가 core CLI만 호출한다.
 - hook에서 위험 shell을 직접 실행하지 않는다.
 

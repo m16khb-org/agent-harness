@@ -379,7 +379,7 @@ func hookGroupContainsAgentHarness(group any) bool {
 		if !ok {
 			continue
 		}
-		if cmd, ok := hm["command"].(string); ok && strings.Contains(cmd, "hook user-prompt") && strings.Contains(cmd, "harness") {
+		if cmd, ok := hm["command"].(string); ok && strings.Contains(cmd, "harness") && strings.Contains(cmd, " hook ") {
 			return true
 		}
 	}

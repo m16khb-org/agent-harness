@@ -14,6 +14,13 @@
           "ok": true,
           "files": [
             {
+              "kind": "claude_hooks_template",
+              "path": "$ROOT/configs/claude/hooks.settings.json",
+              "written": true,
+              "content_sha256": "a5b167d58ae6de09289315ece1cd21a0afcfe415971cfad114e7b5f1e7380a33",
+              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-tool-use\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook stop\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+            },
+            {
               "kind": "claude_project_mcp_config",
               "path": "$ROOT/.mcp.json",
               "written": true,
@@ -26,6 +33,13 @@
               "written": true,
               "content_sha256": "62f4655fc22e1f42a20ec87c8ee52b2f3fb0e1b862d0e0514df84c15cc370c44",
               "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+            },
+            {
+              "kind": "claude_user_settings",
+              "path": "$HOME/.claude/settings.json",
+              "written": true,
+              "content_sha256": "5e35547e9099cb6095f2e60dcb8a19caa91804356c2b0a6e1b4eccc1e6094e2a",
+              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-tool-use\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook stop\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             }
           ],
           "links": [
@@ -107,6 +121,7 @@
       "assertions": [
         "core discovers shared skills once and passes sorted names to both host adapters",
         "Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
+        "Codex and Claude user-level lifecycle hooks route through the same agent-harness hook CLI",
         "default install writes no repo-local .claude or .mcp.json paths",
         "project-local repo files are created only when project_local=true"
       ]
@@ -125,11 +140,25 @@
           "ok": true,
           "files": [
             {
+              "kind": "claude_hooks_template",
+              "path": "$ROOT/configs/claude/hooks.settings.json",
+              "written": true,
+              "content_sha256": "a5b167d58ae6de09289315ece1cd21a0afcfe415971cfad114e7b5f1e7380a33",
+              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-tool-use\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook stop\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+            },
+            {
               "kind": "claude_project_mcp_template",
               "path": "$ROOT/configs/claude/mcp.project.json",
               "written": true,
               "content_sha256": "62f4655fc22e1f42a20ec87c8ee52b2f3fb0e1b862d0e0514df84c15cc370c44",
               "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+            },
+            {
+              "kind": "claude_user_settings",
+              "path": "$HOME/.claude/settings.json",
+              "written": true,
+              "content_sha256": "5e35547e9099cb6095f2e60dcb8a19caa91804356c2b0a6e1b4eccc1e6094e2a",
+              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-tool-use\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook stop\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"UserPromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook user-prompt\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
             }
           ],
           "links": [
@@ -199,6 +228,7 @@
       "assertions": [
         "core discovers shared skills once and passes sorted names to both host adapters",
         "Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
+        "Codex and Claude user-level lifecycle hooks route through the same agent-harness hook CLI",
         "default install writes no repo-local .claude or .mcp.json paths",
         "project-local repo files are created only when project_local=true"
       ]

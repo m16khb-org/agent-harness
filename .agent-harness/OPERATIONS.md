@@ -27,9 +27,10 @@ agent-harness update
 - Claude user skill symlink 생성: `~/.claude/skills/* -> <agent-harness>/skills/*`
 - Codex MCP 설정 추가/갱신: `~/.codex/config.toml`의 `[mcp_servers.agent_harness]`
 - Codex lifecycle hooks 추가/갱신: `~/.codex/hooks.json`에서 `agent-harness hook user-prompt`, `agent-harness hook post-tool-use`, `agent-harness hook stop` 실행
+- Claude lifecycle hooks 추가/갱신: `~/.claude/settings.json`에서 같은 `agent-harness hook user-prompt`, `agent-harness hook post-tool-use`, `agent-harness hook stop` 실행
 - Claude user-scope MCP 서버 등록: `claude mcp add-json -s user agent_harness ...`
 
-기본 설치는 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. 쓰기 전 계획만 확인하려면 `agent-harness update --dry-run` 또는 `./bin/agent-harness install-native --dry-run --json`을 사용한다. repo-local 파일이 필요할 때만 `agent-harness update --project-local` 또는 `./bin/agent-harness install-native --project-local`을 명시적으로 사용한다. 기존 `bin/agent-harness`를 유지해야 하는 특수 상황에서는 `--skip-build` 또는 `HARNESS_SKIP_BUILD=1`을 사용한다.
+기본 설치는 user-level host 설정을 갱신하지만 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. 쓰기 전 계획만 확인하려면 `agent-harness update --dry-run` 또는 `./bin/agent-harness install-native --dry-run --json`을 사용한다. repo-local 파일이 필요할 때만 `agent-harness update --project-local` 또는 `./bin/agent-harness install-native --project-local`을 명시적으로 사용한다. 기존 `bin/agent-harness`를 유지해야 하는 특수 상황에서는 `--skip-build` 또는 `HARNESS_SKIP_BUILD=1`을 사용한다.
 
 ### Upstream companion tools 선택 설치
 
@@ -130,7 +131,7 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 
 ### Claude hooks
 
-Claude Code도 UserPromptSubmit/SessionStart 계열 hook에서 `hookSpecificOutput.additionalContext`를 사용할 수 있다. 현재 기본 설치는 Claude MCP와 skills를 user-scope로 등록하고, prompt routing hook은 공통 CLI `agent-harness hook user-prompt`를 재사용할 수 있도록 문서화한다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in일 때만 추가한다.
+기본 설치는 `~/.claude/settings.json`에 세 lifecycle hook을 등록한다. Claude Code의 `UserPromptSubmit`, `PostToolUse`, `Stop` hook은 Codex와 같은 공통 CLI를 호출하므로 living docs routing, lifecycle upkeep queue 기록, stop reminder 의미가 양쪽 host에서 동일하다. `PostToolUse`는 Claude hook matcher `*`로 모든 tool 성공 이벤트를 받아 core에서 관련 파일만 queue에 남긴다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in 없이 `.claude/settings.json`을 target repo에 만들지 않는다.
 
 ---
 

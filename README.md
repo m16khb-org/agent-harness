@@ -149,7 +149,7 @@ agent-harness update
 
 `agent-harness update` and `agent-harness bootstrap` delegate to `./scripts/install-native.sh --with-upstream-tools`. The script rebuilds `bin/agent-harness` from the current checkout every run, refreshes `~/.local/bin/agent-harness`, and then updates host integrations, so an existing install is updated in place. It does not run `git pull`; update the checkout yourself first when you want remote changes. Use `--skip-build` only when you intentionally want to leave the existing binary unchanged, and `--skip-upstream-tools` only for a minimal harness-only refresh.
 
-Default installation targets user-level host locations. It must not create project-local `.claude/skills`, `.claude/settings.json`, or `.mcp.json` files in a target repository unless project-local mode is explicitly requested.
+Default installation targets user-level host locations, including Codex hooks in `~/.codex/hooks.json` and Claude hooks in `~/.claude/settings.json`. It must not create project-local `.claude/skills`, `.claude/settings.json`, or `.mcp.json` files in a target repository unless project-local mode is explicitly requested.
 
 `--with-upstream-tools` is the recommended full setup for this harness philosophy: do not reinvent the wheel, and keep specialized capabilities on their upstream implementations. It modifies user-level Codex/Claude/plugin/MCP configuration and may use the network. It wires these upstream tools without vendoring or reimplementing them:
 
@@ -211,13 +211,14 @@ codex mcp get agent_harness
 
 ### Claude Code
 
-`install-native` links the same shared skills into user-level Claude skill paths and registers a user-scope MCP server.
+`install-native` links the same shared skills into user-level Claude skill paths, registers a user-scope MCP server, and installs UserPromptSubmit/PostToolUse/Stop lifecycle hooks in `~/.claude/settings.json`.
 
 Useful checks:
 
 ```bash
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md && echo "Claude skill linked"
 claude mcp list
+test -f ~/.claude/settings.json && rg "hook user-prompt|hook post-tool-use|hook stop" ~/.claude/settings.json
 ```
 
 ## Shared skills
@@ -432,7 +433,7 @@ agent-harness update
 
 `agent-harness update`와 `agent-harness bootstrap`은 내부적으로 `./scripts/install-native.sh --with-upstream-tools`를 호출합니다. 스크립트는 매 실행마다 현재 checkout 기준으로 `bin/agent-harness`를 다시 build하고, `~/.local/bin/agent-harness`를 갱신한 뒤 host integration을 갱신하므로, 이미 설치된 agent-harness도 제자리에서 업데이트됩니다. 단, local 변경을 덮어쓰지 않기 위해 `git pull`은 자동 실행하지 않습니다. 원격 변경까지 반영하려면 checkout을 먼저 직접 갱신하세요. 기존 binary를 의도적으로 유지하려면 `--skip-build`, 최소 harness-only 갱신이 필요하면 `--skip-upstream-tools`를 사용합니다.
 
-기본 설치는 user-level host 위치만 대상으로 합니다. target repo에 project-local `.claude/skills`, `.claude/settings.json`, `.mcp.json` 파일을 만들려면 명시적인 project-local mode가 필요합니다.
+기본 설치는 `~/.codex/hooks.json`의 Codex hook과 `~/.claude/settings.json`의 Claude hook을 포함한 user-level host 위치만 대상으로 합니다. target repo에 project-local `.claude/skills`, `.claude/settings.json`, `.mcp.json` 파일을 만들려면 명시적인 project-local mode가 필요합니다.
 
 `--with-upstream-tools`는 이 하네스의 철학인 “바퀴를 재발명하지 않는다”에 맞는 권장 full setup입니다. user-level Codex/Claude/plugin/MCP 설정을 바꾸고 네트워크를 사용할 수 있으며, 다음 upstream 도구를 vendoring/reimplementation 없이 연결합니다.
 
@@ -494,13 +495,14 @@ codex mcp get agent_harness
 
 ### Claude Code
 
-`install-native`는 같은 shared skill을 user-level Claude skill 경로에 연결하고 user-scope MCP server를 등록합니다.
+`install-native`는 같은 shared skill을 user-level Claude skill 경로에 연결하고 user-scope MCP server와 `~/.claude/settings.json`의 UserPromptSubmit/PostToolUse/Stop lifecycle hook을 등록합니다.
 
 확인 명령:
 
 ```bash
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md && echo "Claude skill linked"
 claude mcp list
+test -f ~/.claude/settings.json && rg "hook user-prompt|hook post-tool-use|hook stop" ~/.claude/settings.json
 ```
 
 ## Shared skills
