@@ -2,7 +2,8 @@
 
 작성일: 2026-05-30  
 원문: https://www.langchain.com/blog/improving-deep-agents-with-harness-engineering  
-대상: `agent-harness`의 설계/검증/자가개선 루프 개선 후보 도출
+대상: `agent-harness`의 설계/검증/자가개선 루프 개선 후보 도출  
+검증: 본 문서의 claim·인용은 2026-05-30 코드베이스(commit `81b0e9c` 기준) 대조로 확인했다. 인용 7건은 모두 정확했고, 그동안의 구현 변경으로 stale해진 두 곳(아래 §3 "Hook 기반 context delivery", §4 P2)을 정정했다.
 
 ## 1. 원문 핵심 요약
 
@@ -32,7 +33,7 @@ LangChain 글은 모델 자체를 바꾸지 않고 agent를 둘러싼 **harness*
 - **Host-neutral core + thin adapter**: `internal/core.InstallNative`, `internal/port`, Codex/Claude adapter 경계가 문서화되어 있고, 새 host는 `HostInstaller` 구현체만 추가하는 구조다 (`.agent-harness/ARCHITECTURE.md:48-58`). 이는 LangChain 글의 “harness를 실험 가능한 시스템으로 관리”하는 관점과 잘 맞는다.
 - **공통 실행 표면**: CLI, MCP proxy, daemon, skill/hook 통합이 실행 모드로 분리되어 있다 (`.agent-harness/ARCHITECTURE.md:62-71`). 원문의 tools/middleware/skills knob를 host별로 흩뜨리지 않는 구조다.
 - **검증 gate**: `agent-harness self-verify`가 테스트뿐 아니라 docs, skill metadata, native integration, redaction, output budget, Mermaid lint를 포함하고 goal score가 target을 넘어야 완료되는 QA gate로 정의되어 있다 (`.agent-harness/TESTING.md:196-198`).
-- **Hook 기반 context delivery**: UserPromptSubmit hook이 project-doc catalog와 routing context를 주입하는 방향은 원문의 LocalContextMiddleware와 같은 계열이다 (`.agent-harness/AGENT_WORKFLOW.md:38-40`).
+- **Hook 기반 context delivery**: 안정적 project-doc catalog는 SessionStart/PostCompact hook이, dynamic per-turn routing hint(routing/actions/profile/pending upkeep/rule)는 UserPromptSubmit hook이 나눠 주입하는 구조로, 원문의 LocalContextMiddleware와 같은 계열이다 (`cmd/harness/hook_user_prompt.go:225-253`, `:69-83`; `internal/core/hook_prompt.go:104-113`). 카탈로그를 매 turn이 아니라 session 경계로 옮긴 것 자체가 per-turn token 비용을 줄이는 harness tuning이다. (이전 `AGENT_WORKFLOW.md` 서술은 catalog를 UserPromptSubmit에서 주입한다고 했으나 commit `876738f`/`06c7668`에서 session 경계로 이전됐고, 본 분석과 함께 정정했다.)
 - **Evidence-first workflow**: 작업 시작 시 현재 파일/명령 출력으로 문서 추정을 검증하고, completion report에 실행 검증을 포함하는 규칙이 있다 (`.agent-harness/AGENT_WORKFLOW.md:8-13`, `:25-31`).
 - **자가검증 후보 catalog**: self-verify candidates가 progress heartbeat, redaction audit, coverage gap, rerun recipe, budget baseline, daemon resilience 같은 개선 후보/증거를 명시한다 (`cmd/harness/self_verify_candidates.go:162-179`).
 
@@ -56,6 +57,18 @@ LangChain 글은 모델 자체를 바꾸지 않고 agent를 둘러싼 **harness*
 5. **Benchmark harness의 scoring loop**
    - Terminal Bench 같은 외부 benchmark를 직접 재현할 필요는 없지만, “고정 모델 + harness 변경만 비교”하는 regression protocol은 agent-harness 자체 self-augment에서 더 명확히 표현할 수 있다.
 
+### 원문 5개 기법 → agent-harness 매핑
+
+원문 §1의 5개 harness 기법을 현재 코드의 구체 컴포넌트·gap·제안 knob에 직접 대응시키면 다음과 같다(모든 행은 2026-05-30 코드 대조로 확인).
+
+| 원문 기법 | 기존 컴포넌트 (근거) | gap | 제안 knob |
+|---|---|---|---|
+| 1. Trace 기반 실패 분석 | self-verify 내부 실패 분류 `classifySelfVerificationFailure`/`selfVerificationFailureClusters` (`cmd/harness/main.go:1866-1912`); lifecycle queue는 doc-upkeep 전용 (`internal/core/lifecycle_state.go:404`) | 외부 run transcript·lifecycle event를 "실패 유형 → harness 변경 후보"로 합성하는 analyzer 없음 | P0 `trace analyze` |
+| 2. Build → self-verify → fix 강제 | `self-verify` QA gate (`.agent-harness/TESTING.md:196-198`), `verify-work` CLI exit 1 (`cmd/harness/status_verify.go:110`), guard exit 3 | Stop hook은 `{}` no-op만 반환 (`cmd/harness/hook_user_prompt.go:316`), completion에 verify를 강제 연결하는 경로 없음 | P1 completion-evidence audit |
+| 3. 환경 context 주입 | SessionStart/PostCompact catalog, `preflight`, `AnalyzeProjectSignals` (`internal/core/project_docs.go:609-668`) | 데이터가 여러 명령에 분산, 통합 onboarding view 없음 | P2 `context local` (consolidation) |
+| 4. doom loop 감지 | PostToolUse는 passive doc-upkeep recorder (`cmd/harness/hook_user_prompt.go:130`), `DocUpkeepEvent`에 count/retry/signature 필드 없음 | per-file edit count·command retry·failure signature 미기록·미감지 | P1 loop detection (append-only count → hint) |
+| 5. reasoning budget 배분 | step duration/step-budget baseline + compare (`cmd/harness/main.go:1082`, `:1175`) | phase별 reasoning-effort telemetry 없음 (`reasoning_effort`는 api-doc-review 입력 플래그뿐) | P2 reasoning/effort metadata |
+
 ## 4. 권장 실행 로드맵
 
 ### P0 — Trace 분석 산출물 표준화
@@ -66,6 +79,15 @@ LangChain 글은 모델 자체를 바꾸지 않고 agent를 둘러싼 **harness*
 - 입력: self-verify summary, failed step outputs, rerun commands, lifecycle queue, guard findings
 - 출력: failure class, recurring pattern, proposed harness knob, overfit risk, verification command
 - 검증: fixture 기반 golden test + synthetic failed trace sample
+
+**Acceptance criteria (완료 기준)**:
+
+- `agent-harness trace analyze --input <jsonl|state-key> --json`은 read-only로 동작하고, 입력이 없거나 비면 non-zero exit + usage를 출력한다.
+- finding마다 출력 스키마를 고정한다: `failure_class`, `recurring_pattern`, `proposed_knob`, `overfit_risk`, `verification_command`.
+- 입력은 self-verify summary JSON과 doc-upkeep queue(jsonl)를 받아들이고, 알 수 없는 필드는 무시한다(forward-compatible).
+- secret 원문을 출력에 남기지 않는다(redaction 게이트 통과, Critical Invariant와 일치).
+- fixture 기반 golden test + synthetic failed-trace sample로 결정적 출력을 고정한다.
+- analyzer는 "제안"만 만들고 구조 변경을 직접 수행하지 않는다(§5 과적합 방지 원칙과 일치).
 
 이 기능은 LangChain의 Trace Analyzer Skill과 가장 직접적으로 대응한다. 단, LangSmith를 재구현하지 말고 기존 state/summary JSON과 optional external trace import만 다룬다.
 
@@ -89,8 +111,8 @@ LangChain 글은 모델 자체를 바꾸지 않고 agent를 둘러싼 **harness*
 
 **목표**: LocalContextMiddleware에 해당하는 repo onboarding context를 안전하게 제공한다.
 
-- 이미 project docs catalog가 있으므로, 추가로 `agent-harness context local --json` 같은 read-only command가 cwd, git root, language/tool hints, test commands 후보를 bounded output으로 제공할 수 있다.
-- 단, shell command discovery는 policy/redaction/audit를 통과해야 한다. `.agent-harness/ARCHITECTURE.md`의 command policy 모델과 맞춰야 한다.
+- 이 onboarding 데이터는 신규 기능이 아니라 **이미 여러 명령에 분산 구현돼 있다**: cwd/git root는 `agent-harness preflight --json`(`internal/core/preflight.go:48-72`, `git rev-parse --show-toplevel`)이, language/tool hints와 test/build/lint command 후보(evidence + confidence 포함)는 `agent-harness project bootstrap --dry-run --json`의 `AnalyzeProjectSignals`(`internal/core/project_docs.go:609-668`)가 제공한다. 따라서 `agent-harness context local --json`은 이 둘을 하나의 read-only onboarding view로 묶는 **consolidation/ergonomics** 작업으로 범위를 좁혀야 하며, 중복 데이터 모델을 새로 만들지 않는다.
+- shell command discovery는 policy/redaction/audit를 통과해야 한다. `.agent-harness/ARCHITECTURE.md`의 command policy 모델과 맞춰야 한다.
 
 ### P2 — Reasoning/compute budget 기록
 

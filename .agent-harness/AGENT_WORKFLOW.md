@@ -35,9 +35,12 @@ description: Agent start, execution, verification, and completion flow.
 - 커밋이 필요하면 `.agent-harness/COMMIT_POLICY.md`를 따른다.
 - 해결한 false case나 구조 결정은 필요한 경우 MCP `project_docs_record`로 기록한다.
 
-## UserPromptSubmit hook
+## Hook context injection (SessionStart / PostCompact / UserPromptSubmit)
 
-Codex/Claude host가 지원하면 `agent-harness hook user-prompt`가 매 사용자 지시마다 project-doc catalog와 host-compatible routing context를 주입한다. 이 힌트는 자동 실행 명령이 아니라 agent가 필요한 문서/MCP를 판단하기 위한 reminder다. Codex는 `--host codex`로 설치되어 visible `hook context:` row에 project-doc catalog만 주입하고, Claude Code는 `systemMessage`와 compact `additionalContext`를 분리해 richer routing/status hints를 유지할 수 있다. Hook은 차단/대행 실행을 하지 않고, project docs/API docs/CAUTIONS/ADR 갱신 후보만 제안해야 한다.
+Codex/Claude host가 지원하면 `agent-harness hook ...`가 시점을 나눠 context를 주입한다. 모두 자동 실행 명령이 아니라 agent가 필요한 문서/MCP를 판단하기 위한 reminder이며, hook은 차단/대행 실행을 하지 않고 project docs/API docs/CAUTIONS/ADR 갱신 후보만 제안한다.
+
+- **SessionStart / PostCompact**: 안정적인 project-doc catalog를 주입한다(`hook session-start`, `hook post-compact`). Codex는 `--host codex`로 설치되어 `additionalContext`에 user-visible catalog를 싣고, Claude Code는 `systemMessage`(pretty catalog)와 compact `additionalContext`를 분리한다. PostCompact는 compaction으로 사라진 SessionStart catalog를 lifecycle reminder와 함께 재주입한다.
+- **UserPromptSubmit**: 매 지시마다 catalog가 아니라 dynamic per-turn hint(routing, actions, profile, pending upkeep, rule)만 싣는다(`hook user-prompt`). 안정적 catalog는 더 이상 per-turn으로 주입하지 않는다(`cmd/harness/hook_user_prompt.go:69-83`, `internal/core/hook_prompt.go:104-113`).
 
 ## MCP Usage Rule
 
