@@ -101,33 +101,52 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		}
 	}
 
-	catalog := DiscoverProjectDocs(req.Repo)
-	result.ProjectDocs = catalog
-	catalogText := FormatProjectDocCatalog(catalog)
-
-	if len(result.Hints) == 0 && len(pendingUpkeep) == 0 && repoProfile == nil && catalogText == "" {
+	// The stable project-doc catalog is no longer injected per turn here; it is
+	// established once via the SessionStart hook and re-established on PostCompact.
+	// UserPromptSubmit now carries only the dynamic, per-turn signals (routing,
+	// actions, profile, pending upkeep, rule).
+	if len(result.Hints) == 0 && len(pendingUpkeep) == 0 && repoProfile == nil {
 		return result
 	}
 	result.ShouldInject = true
-	result.AdditionalContext = renderHookMCPHintContext(result.Hints, pendingUpkeep, repoProfile, catalogText)
+	result.AdditionalContext = renderHookMCPHintContext(result.Hints, pendingUpkeep, repoProfile, "")
 	return result
 }
 
-// RenderUserPromptUserView renders a human-facing, multi-line view of the hook
-// result for the host's user-visible channel (systemMessage on Claude Code and
-// Codex). It is the pretty counterpart to the compact, model-facing
-// AdditionalContext: same project-doc menu, formatted for a person to read in
-// the terminal. Returns "" when there is nothing worth showing the user.
-//
-// systemMessage multi-line rendering is host-defined and not formally
-// documented; the content stays readable even if newlines are collapsed.
-func RenderUserPromptUserView(result HookUserPromptResult) string {
-	if len(result.ProjectDocs) == 0 {
+// ProjectDocCatalogContext is the stable project-doc menu injected at session
+// boundaries (SessionStart, PostCompact) instead of every user prompt. Compact
+// is the model-facing additionalContext; UserView is the pretty, user-visible
+// counterpart for the systemMessage channel.
+type ProjectDocCatalogContext struct {
+	ShouldInject bool
+	ProjectDocs  []ProjectDocCatalogEntry
+	Compact      string
+	UserView     string
+}
+
+// BuildProjectDocCatalogContext discovers the working repo's project docs and
+// renders both the compact (model) and pretty (user) catalog views. ShouldInject
+// is false when the repo has no .agent-harness docs.
+func BuildProjectDocCatalogContext(repo string) ProjectDocCatalogContext {
+	docs := DiscoverProjectDocs(repo)
+	if len(docs) == 0 {
+		return ProjectDocCatalogContext{}
+	}
+	return ProjectDocCatalogContext{
+		ShouldInject: true,
+		ProjectDocs:  docs,
+		Compact:      FormatProjectDocCatalog(docs),
+		UserView:     renderProjectDocCatalogUserView(docs),
+	}
+}
+
+func renderProjectDocCatalogUserView(docs []ProjectDocCatalogEntry) string {
+	if len(docs) == 0 {
 		return ""
 	}
 	var b strings.Builder
 	b.WriteString("📚 agent-harness · 이 레포 project docs (관련된 것을 읽고 작업하세요)")
-	for _, doc := range result.ProjectDocs {
+	for _, doc := range docs {
 		name := strings.TrimPrefix(doc.RelPath, ".agent-harness/")
 		desc := doc.Description
 		if desc == "" {
@@ -139,6 +158,18 @@ func RenderUserPromptUserView(result HookUserPromptResult) string {
 		}
 	}
 	return b.String()
+}
+
+// RenderUserPromptUserView renders a human-facing, multi-line view of the hook
+// result for the host's user-visible channel (systemMessage on Claude Code and
+// Codex). It is the pretty counterpart to the compact, model-facing
+// AdditionalContext: same project-doc menu, formatted for a person to read in
+// the terminal. Returns "" when there is nothing worth showing the user.
+//
+// systemMessage multi-line rendering is host-defined and not formally
+// documented; the content stays readable even if newlines are collapsed.
+func RenderUserPromptUserView(result HookUserPromptResult) string {
+	return renderProjectDocCatalogUserView(result.ProjectDocs)
 }
 
 // RenderUserPromptCodexContext renders only the full project-doc catalog for

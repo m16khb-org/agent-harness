@@ -328,6 +328,7 @@ type codexLifecycleHookSpec struct {
 
 func codexLifecycleHookSpecs(binPath string) []codexLifecycleHookSpec {
 	return []codexLifecycleHookSpec{
+		{BinPath: binPath, Event: "SessionStart", Subcommand: "session-start", Timeout: 5},
 		{BinPath: binPath, Event: "UserPromptSubmit", Subcommand: "user-prompt", Timeout: 5},
 		{BinPath: binPath, Event: "PostToolUse", Subcommand: "post-tool-use", Timeout: 5},
 		{BinPath: binPath, Event: "PreCompact", Subcommand: "pre-compact", Timeout: 5},
@@ -350,7 +351,10 @@ func codexHookGroup(spec codexLifecycleHookSpec) map[string]any {
 
 func codexHookCommand(binPath, subcommand string) string {
 	cmd := fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
-	if subcommand == "user-prompt" {
+	// Events whose additionalContext is rendered in the Codex TUI pass --host
+	// codex so the readable catalog view is used and systemMessage is omitted.
+	switch subcommand {
+	case "user-prompt", "session-start", "post-compact":
 		cmd += " --host codex"
 	}
 	return cmd

@@ -82,20 +82,36 @@ func TestFormatProjectDocCatalogEmpty(t *testing.T) {
 	}
 }
 
-func TestBuildUserPromptMCPHintsInjectsProjectDocCatalog(t *testing.T) {
+func TestBuildProjectDocCatalogContext(t *testing.T) {
+	repo := t.TempDir()
+	writeProjectDoc(t, repo, "ARCHITECTURE.md", "# 아키텍처\n\n## 핵심 경계\n")
+	cat := BuildProjectDocCatalogContext(repo)
+	if !cat.ShouldInject || len(cat.ProjectDocs) != 1 {
+		t.Fatalf("expected catalog context with one doc: %+v", cat)
+	}
+	canonical, _ := DocMetaDescription("ARCHITECTURE.md")
+	if !strings.Contains(cat.Compact, "project docs (read what's relevant):") || !strings.Contains(cat.Compact, "ARCHITECTURE.md="+canonical) {
+		t.Fatalf("compact catalog missing canonical meta: %q", cat.Compact)
+	}
+	if !strings.Contains(cat.UserView, "📚") || !strings.Contains(cat.UserView, "ARCHITECTURE.md") {
+		t.Fatalf("user view missing catalog: %q", cat.UserView)
+	}
+	if got := BuildProjectDocCatalogContext(t.TempDir()); got.ShouldInject {
+		t.Fatalf("expected no injection without docs: %+v", got)
+	}
+}
+
+func TestBuildUserPromptMCPHintsHasNoCatalog(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	writeProjectDoc(t, repo, "ARCHITECTURE.md", "# 아키텍처\n\n## 핵심 경계\n")
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "이거 좀 개선해줘", Repo: repo})
-	if !got.ShouldInject {
-		t.Fatalf("expected injection when repo has project docs: %+v", got)
+	// The catalog now ships via SessionStart/PostCompact, not per turn.
+	if strings.Contains(got.AdditionalContext, "project docs (read what's relevant):") {
+		t.Fatalf("user-prompt must not embed the catalog: %s", got.AdditionalContext)
 	}
-	canonical, _ := DocMetaDescription("ARCHITECTURE.md")
-	if !strings.Contains(got.AdditionalContext, "project docs (read what's relevant):") || !strings.Contains(got.AdditionalContext, "ARCHITECTURE.md="+canonical) {
-		t.Fatalf("expected project doc catalog with canonical meta in context:\n%s", got.AdditionalContext)
-	}
-	if len(got.ProjectDocs) != 1 {
-		t.Fatalf("expected catalog entry in result, got %+v", got.ProjectDocs)
+	if len(got.ProjectDocs) != 0 {
+		t.Fatalf("user-prompt result must not carry catalog docs: %+v", got.ProjectDocs)
 	}
 }
 

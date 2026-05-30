@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook post-compact",
+            "command": "'./bin/agent-harness' hook post-compact --host codex",
             "timeout": 5,
             "type": "command"
           }
@@ -27,6 +27,17 @@
         "hooks": [
           {
             "command": "'./bin/agent-harness' hook pre-compact",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "'./bin/agent-harness' hook session-start --host codex",
             "timeout": 5,
             "type": "command"
           }

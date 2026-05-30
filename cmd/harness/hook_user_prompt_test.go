@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-func TestRunHookUserPromptEmitsSystemMessageAndContext(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+func hookTempRepoWithDoc(t *testing.T) string {
+	t.Helper()
 	repo := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repo, ".agent-harness"), 0o755); err != nil {
 		t.Fatal(err)
@@ -18,80 +18,97 @@ func TestRunHookUserPromptEmitsSystemMessageAndContext(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, ".agent-harness", "ARCHITECTURE.md"), []byte("# Arch\n\n## 경계\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	return repo
+}
 
+func runHookCapture(t *testing.T, stdinJSON string, fn func() error) map[string]any {
+	t.Helper()
 	oldStdin := os.Stdin
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
 	os.Stdin = r
-	go func() { _, _ = io.WriteString(w, `{"prompt":"x","cwd":"`+repo+`"}`); _ = w.Close() }()
+	go func() { _, _ = io.WriteString(w, stdinJSON); _ = w.Close() }()
 	defer func() { os.Stdin = oldStdin }()
-
 	out := captureStdoutForTest(t, func() {
-		if err := runHookUserPrompt(nil); err != nil {
-			t.Fatalf("runHookUserPrompt: %v", err)
+		if err := fn(); err != nil {
+			t.Fatalf("hook: %v", err)
 		}
 	})
-
 	var obj map[string]any
 	if err := json.Unmarshal([]byte(out), &obj); err != nil {
 		t.Fatalf("hook output is not JSON: %q: %v", out, err)
 	}
-	sysMsg, _ := obj["systemMessage"].(string)
-	if !strings.Contains(sysMsg, "📚") || !strings.Contains(sysMsg, "ARCHITECTURE.md") {
-		t.Fatalf("expected pretty user-visible systemMessage, got: %v", obj["systemMessage"])
-	}
+	return obj
+}
+
+func hookAdditionalContext(obj map[string]any) string {
 	hso, _ := obj["hookSpecificOutput"].(map[string]any)
 	if hso == nil {
-		t.Fatalf("missing hookSpecificOutput: %s", out)
+		return ""
 	}
-	if ctx, _ := hso["additionalContext"].(string); !strings.Contains(ctx, "project docs (read what's relevant):") {
-		t.Fatalf("expected compact model additionalContext, got: %v", hso["additionalContext"])
+	ctx, _ := hso["additionalContext"].(string)
+	return ctx
+}
+
+func TestRunHookUserPromptDropsCatalog(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := hookTempRepoWithDoc(t)
+	obj := runHookCapture(t, `{"prompt":"x","cwd":"`+repo+`"}`, func() error { return runHookUserPrompt(nil) })
+	if _, ok := obj["systemMessage"]; ok {
+		t.Fatalf("user-prompt must not carry a catalog systemMessage: %+v", obj)
+	}
+	if ctx := hookAdditionalContext(obj); strings.Contains(ctx, "project docs (read what's relevant):") || strings.Contains(ctx, "📚") {
+		t.Fatalf("user-prompt must not inject the project-doc catalog: %q", ctx)
 	}
 }
 
-func TestRunHookUserPromptCodexHostOmitsSystemMessage(t *testing.T) {
+func TestRunHookSessionStartInjectsCatalogClaude(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(repo, ".agent-harness"), 0o755); err != nil {
-		t.Fatal(err)
+	repo := hookTempRepoWithDoc(t)
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","source":"startup"}`, func() error { return runHookSessionStart(nil) })
+	if sysMsg, _ := obj["systemMessage"].(string); !strings.Contains(sysMsg, "📚") || !strings.Contains(sysMsg, "ARCHITECTURE.md") {
+		t.Fatalf("SessionStart should show the pretty catalog via systemMessage: %v", obj["systemMessage"])
 	}
-	if err := os.WriteFile(filepath.Join(repo, ".agent-harness", "ARCHITECTURE.md"), []byte("# Arch\n\n## 경계\n"), 0o644); err != nil {
-		t.Fatal(err)
+	if ctx := hookAdditionalContext(obj); !strings.Contains(ctx, "project docs (read what's relevant):") {
+		t.Fatalf("SessionStart should inject the compact catalog additionalContext: %q", ctx)
 	}
+}
 
-	oldStdin := os.Stdin
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.Stdin = r
-	go func() { _, _ = io.WriteString(w, `{"prompt":"x","cwd":"`+repo+`"}`); _ = w.Close() }()
-	defer func() { os.Stdin = oldStdin }()
-
-	out := captureStdoutForTest(t, func() {
-		if err := runHookUserPrompt([]string{"--host", "codex"}); err != nil {
-			t.Fatalf("runHookUserPrompt: %v", err)
-		}
-	})
-
-	var obj map[string]any
-	if err := json.Unmarshal([]byte(out), &obj); err != nil {
-		t.Fatalf("hook output is not JSON: %q: %v", out, err)
-	}
+func TestRunHookSessionStartCodexOmitsSystemMessage(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := hookTempRepoWithDoc(t)
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","source":"startup"}`, func() error { return runHookSessionStart([]string{"--host", "codex"}) })
 	if _, ok := obj["systemMessage"]; ok {
-		t.Fatalf("Codex host output should omit systemMessage to avoid collapsed duplicate TUI warning: %s", out)
+		t.Fatalf("Codex SessionStart must omit systemMessage: %+v", obj)
 	}
-	hso, _ := obj["hookSpecificOutput"].(map[string]any)
-	ctx, _ := hso["additionalContext"].(string)
-	if !strings.Contains(ctx, "\n• ARCHITECTURE.md") || !strings.Contains(ctx, "System structure") || strings.Contains(ctx, "project docs (read what's relevant):") {
-		t.Fatalf("expected full readable Codex model additionalContext, got: %v", hso["additionalContext"])
+	if ctx := hookAdditionalContext(obj); !strings.Contains(ctx, "• ARCHITECTURE.md") || strings.Contains(ctx, "project docs (read what's relevant):") {
+		t.Fatalf("Codex SessionStart additionalContext should be the readable catalog view: %q", ctx)
 	}
-	for _, blocked := range []string{"[agent-harness]", "route:", "actions:", "profile:", "pending upkeep:", "rule:"} {
-		if strings.Contains(ctx, blocked) {
-			t.Fatalf("Codex host output should not include routing/status block %q: %v", blocked, hso["additionalContext"])
-		}
+}
+
+func TestRunHookSessionStartSkipsOnCompactSource(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := hookTempRepoWithDoc(t)
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","source":"compact"}`, func() error { return runHookSessionStart(nil) })
+	if _, ok := obj["systemMessage"]; ok {
+		t.Fatalf("compact-source SessionStart should not inject (PostCompact owns it): %+v", obj)
+	}
+	if ctx := hookAdditionalContext(obj); ctx != "" {
+		t.Fatalf("compact-source SessionStart should emit no additionalContext: %q", ctx)
+	}
+}
+
+func TestRunHookPostCompactInjectsCatalog(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := hookTempRepoWithDoc(t)
+	obj := runHookCapture(t, `{"cwd":"`+repo+`"}`, func() error { return runHookPostCompact(nil) })
+	if ctx := hookAdditionalContext(obj); !strings.Contains(ctx, "project docs (read what's relevant):") {
+		t.Fatalf("PostCompact should re-inject the catalog after compaction: %q", ctx)
+	}
+	if sysMsg, _ := obj["systemMessage"].(string); !strings.Contains(sysMsg, "📚") {
+		t.Fatalf("PostCompact (claude) should show the pretty catalog via systemMessage: %v", obj["systemMessage"])
 	}
 }
 
