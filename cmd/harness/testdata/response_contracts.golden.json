@@ -434,7 +434,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 14024,
+          "bytes": 14287,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -506,7 +506,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 21491,
+          "bytes": 21711,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -2835,7 +2835,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 14024,
+                "bytes": 14287,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2907,7 +2907,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 21491,
+                "bytes": 21711,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",

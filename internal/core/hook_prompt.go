@@ -132,17 +132,15 @@ func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpk
 		groups[priority] = append(groups[priority], h)
 	}
 
-	var b strings.Builder
-	b.WriteString("agent_harness project-doc routing hint:\n")
-	b.WriteString("- Before acting, decide whether AGENTS.md or .agent-harness documents are necessary for the current request. Use repo evidence, routing, validation, or durable records only when they materially improve correctness; do not call MCP for simple reasoning.\n")
-	writeHintGroup(&b, "Required project docs:", filterDocs(groups[hintPriorityRequired]))
-	writeHintGroup(&b, "Consider project docs:", filterDocs(groups[hintPriorityConsider]))
-	writeHintGroup(&b, "Route if ambiguous:", groups[hintPriorityRoute])
-	writeHintGroup(&b, "MCP/action candidates:", groups[hintPriorityAction])
-	writePendingUpkeep(&b, pendingUpkeep)
-	writeHintGroup(&b, "Secondary companion-tool hints:", groups[hintPrioritySecondary])
-	b.WriteString("- Writable tools must preserve user consensus and current file evidence; never use them for destructive actions.")
-	return strings.TrimRight(b.String(), "\n")
+	parts := []string{"[agent-harness] 프로젝트 지침 확인 중..."}
+	appendCompactHintGroup(&parts, "required", filterDocs(groups[hintPriorityRequired]))
+	appendCompactHintGroup(&parts, "consider", filterDocs(groups[hintPriorityConsider]))
+	appendCompactHintGroup(&parts, "route", groups[hintPriorityRoute])
+	appendCompactHintGroup(&parts, "actions", groups[hintPriorityAction])
+	appendCompactPendingUpkeep(&parts, pendingUpkeep)
+	appendCompactHintGroup(&parts, "secondary", groups[hintPrioritySecondary])
+	parts = append(parts, "rule: use docs/tools only when material; writes must be evidence-preserving and non-destructive")
+	return strings.Join(parts, " | ")
 }
 
 func fallbackHintPriority(h HookUserPromptHint) string {
@@ -168,19 +166,68 @@ func filterDocs(hints []HookUserPromptHint) []HookUserPromptHint {
 	return docs
 }
 
-func writeHintGroup(b *strings.Builder, title string, hints []HookUserPromptHint) {
+func appendCompactHintGroup(parts *[]string, title string, hints []HookUserPromptHint) {
 	if len(hints) == 0 {
 		return
 	}
-	b.WriteString(title)
-	b.WriteString("\n")
+	labels := make([]string, 0, len(hints))
+	seen := map[string]bool{}
 	for _, h := range hints {
-		b.WriteString("- ")
-		b.WriteString(h.Tool)
-		b.WriteString(": ")
-		b.WriteString(h.Reason)
-		b.WriteString("\n")
+		label := compactHintLabel(h)
+		if seen[label] {
+			continue
+		}
+		seen[label] = true
+		labels = append(labels, label)
 	}
+	if len(labels) == 0 {
+		return
+	}
+	*parts = append(*parts, title+": "+strings.Join(labels, ", "))
+}
+
+func compactHintLabel(h HookUserPromptHint) string {
+	switch h.Tool {
+	case "project_docs_route":
+		return "choose project docs if ambiguous"
+	case "project_docs_read/project_docs_update":
+		return "refresh project docs only if evidence changed"
+	case "project_docs_record":
+		if strings.Contains(h.Reason, "kind=caution") {
+			return "record reusable caution"
+		}
+		if strings.Contains(h.Reason, "kind=adr") {
+			return "record ADR decision"
+		}
+		return "record durable project note"
+	case "api_doc_static_check":
+		return "check OpenAPI gaps"
+	case "api_doc_review":
+		return "review API error contract"
+	case "CodeGraph":
+		return "CodeGraph for symbol/call-impact lookup"
+	case "LLM Wiki":
+		return "LLM Wiki for explicit wiki/research work"
+	case "claude-mem":
+		return "claude-mem for previous-session memory"
+	default:
+		return h.Tool
+	}
+}
+
+func appendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
+	if len(events) == 0 {
+		return
+	}
+	items := make([]string, 0, len(events))
+	for _, event := range events {
+		item := event.Summary
+		if len(event.TargetDocs) > 0 {
+			item = strings.Join(event.TargetDocs, ",") + " " + item
+		}
+		items = append(items, item)
+	}
+	*parts = append(*parts, "pending upkeep: "+strings.Join(items, "; "))
 }
 
 func containsAny(s string, needles ...string) bool {
@@ -190,20 +237,4 @@ func containsAny(s string, needles ...string) bool {
 		}
 	}
 	return false
-}
-
-func writePendingUpkeep(b *strings.Builder, events []DocUpkeepEvent) {
-	if len(events) == 0 {
-		return
-	}
-	b.WriteString("Pending project-doc upkeep:\n")
-	for _, event := range events {
-		b.WriteString("- ")
-		if len(event.TargetDocs) > 0 {
-			b.WriteString(strings.Join(event.TargetDocs, ", "))
-			b.WriteString(": ")
-		}
-		b.WriteString(event.Summary)
-		b.WriteString("\n")
-	}
 }

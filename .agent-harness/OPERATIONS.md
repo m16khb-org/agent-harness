@@ -86,7 +86,7 @@ codex mcp get agent_harness
 
 ### Lifecycle hooks
 
-Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifecycle hook을 등록한다. `UserPromptSubmit`의 `agent-harness hook user-prompt`는 사용자의 새 지시를 차단하거나 대신 수행하지 않고, agent가 고려해야 할 `agent_harness` MCP 후보만 짧은 additional context로 주입한다. 대상 repo의 lifecycle namespace가 user-state에 초기화되어 있으면 pending doc-upkeep queue도 참고해 `.agent-harness` 갱신 후보를 함께 주입한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일 변경을 repo별 user-state queue에 기록하고, `PreCompact`의 `agent-harness hook pre-compact`는 pending doc-upkeep 상태를 작은 compact capsule로 저장하며, `PostCompact`의 `agent-harness hook post-compact`는 capsule을 한 번만 additional context로 복원한다. `Stop`의 `agent-harness hook stop`은 pending upkeep reminder를 주입한다. 후속 hook들은 shared docs를 직접 수정하지 않는다.
+Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifecycle hook을 등록한다. `UserPromptSubmit`의 `agent-harness hook user-prompt`는 사용자의 새 지시를 차단하거나 대신 수행하지 않고, agent가 고려해야 할 `agent_harness` MCP 후보만 짧은 additional context로 주입한다. 대상 repo의 lifecycle namespace가 user-state에 초기화되어 있으면 pending doc-upkeep queue도 참고해 `.agent-harness` 갱신 후보를 함께 주입한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일 변경을 repo별 user-state queue에 기록하고, `PreCompact`의 `agent-harness hook pre-compact`는 pending doc-upkeep 상태를 작은 compact capsule로 저장하며, `PostCompact`의 `agent-harness hook post-compact`는 capsule을 한 번만 additional context로 복원한다. `Stop`의 `agent-harness hook stop`은 Codex/Claude Stop hook schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. pending upkeep reminder는 `agent-harness hook stop --json`의 raw result로 확인하며 Stop hook stdout에 `hookSpecificOutput.additionalContext`를 쓰지 않는다. 후속 hook들은 shared docs를 직접 수정하지 않는다.
 
 예:
 

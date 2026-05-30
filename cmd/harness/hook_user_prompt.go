@@ -225,12 +225,12 @@ func runHookStop(args []string) error {
 	if *jsonOut {
 		return printJSON(result)
 	}
-	return printJSON(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     "Stop",
-			"additionalContext": result.AdditionalContext,
-		},
-	})
+	// Codex and Claude Stop hooks only accept the stop-control schema
+	// (for example decision/reason) or an empty object. Unlike prompt/compact
+	// hooks, Stop cannot inject additionalContext; returning hookSpecificOutput
+	// makes Codex report "invalid stop hook JSON output". Keep the raw
+	// reminder available behind --json, but emit a no-op host payload here.
+	return printJSON(map[string]any{})
 }
 
 func toolNameFromHookInput(input []byte) string {

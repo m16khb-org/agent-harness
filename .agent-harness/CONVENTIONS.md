@@ -198,8 +198,8 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 
 ## Hook 컨벤션
 
-- UserPromptSubmit hook은 사용자의 prompt와 project-scoped lifecycle state를 분석해 MCP 후보 힌트만 주입한다. PostToolUse/Stop hook은 lifecycle upkeep queue 기록과 reminder만 수행한다. PreCompact/PostCompact hook은 pending upkeep queue를 작은 user-state capsule로 저장하고 한 번만 복원한다. Codex와 Claude Code hook adapter는 같은 `agent-harness hook user-prompt/post-tool-use/pre-compact/post-compact/stop` CLI를 호출해야 한다. 어떤 hook도 작업을 대신 실행하거나 shared docs를 직접 수정하거나 긴 파일/네트워크를 읽지 않는다.
-- Hook 출력은 host가 이해하는 `hookSpecificOutput.additionalContext` JSON을 기본으로 하며, 실패해도 사용자 작업을 막지 않도록 작고 deterministic하게 유지한다.
+- UserPromptSubmit hook은 사용자의 prompt와 project-scoped lifecycle state를 분석해 MCP 후보 힌트만 주입한다. PostToolUse hook은 lifecycle upkeep queue 기록만 수행한다. Stop hook은 lifecycle reminder를 계산하되 Stop hook stdout schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. PreCompact/PostCompact hook은 pending upkeep queue를 작은 user-state capsule로 저장하고 한 번만 복원한다. Codex와 Claude Code hook adapter는 같은 `agent-harness hook user-prompt/post-tool-use/pre-compact/post-compact/stop` CLI를 호출해야 한다. 어떤 hook도 작업을 대신 실행하거나 shared docs를 직접 수정하거나 긴 파일/네트워크를 읽지 않는다.
+- Hook 출력은 event별 host schema를 따른다. UserPromptSubmit/PostCompact처럼 additional context를 지원하는 이벤트만 `hookSpecificOutput.additionalContext`를 쓰고, Stop은 빈 JSON 객체 또는 stop-control schema만 사용한다. 실패해도 사용자 작업을 막지 않도록 작고 deterministic하게 유지한다.
 - Codex/Claude별 hook 설정은 adapter/template에서만 다루고, routing/compaction 판단은 공통 `agent-harness hook ...` CLI/core에 둔다.
 
 ## Guard 컨벤션
