@@ -67,6 +67,16 @@ var externalURLRe = regexp.MustCompile(`https?://[^\s"')]+`)
 var snapshotAssertionRe = regexp.MustCompile(`(?i)(toMatchSnapshot|assert.*golden|golden mismatch)`)
 var newSymbolRe = regexp.MustCompile(`^\s*(?:func\s+|function\s+|def\s+|class\s+|type\s+|interface\s+|const\s+|let\s+|var\s+)([A-Za-z_][A-Za-z0-9_]*)`)
 
+// Immutable-prefix determinism guard (Reasonix-derived). A file that opts in
+// with the immutablePrefixMarker comment declares that it builds context an
+// agent reuses as a stable cache prefix; introducing wall-clock/random/nonce
+// values there breaks byte-determinism. A line may carry volatileOKMarker to
+// declare the value intentionally lives in a volatile region.
+const immutablePrefixMarker = "harness:immutable-prefix"
+const volatileOKMarker = "volatile-ok"
+
+var contextNonDeterminismRe = regexp.MustCompile(`(time\.Now\(|time\.Since\(|rand\.(?:Int|Intn|Float32|Float64|Read|Perm|Shuffle)|uuid\.New)`)
+
 func GuardCheck(req GuardCheckRequest) GuardCheckResult {
 	root := absOrOriginal(req.RepoRoot)
 	if root == "" {
@@ -242,9 +252,20 @@ func guardReadFile(root, rel string, staged bool) (string, bool) {
 
 func guardFileFindings(rel, content string, existingSymbols map[string][]string) []GuardFinding {
 	findings := []GuardFinding{}
+	immutablePrefixBuilder := strings.Contains(content, immutablePrefixMarker)
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
 		lineNo := i + 1
+		if immutablePrefixBuilder && contextNonDeterminismRe.MatchString(line) && !strings.Contains(line, volatileOKMarker) {
+			findings = append(findings, GuardFinding{
+				Severity: "warn",
+				Rule:     "nondeterministic-context-serialization",
+				File:     rel,
+				Line:     lineNo,
+				Message:  "Immutable-prefix context builder introduces a non-deterministic value; move it to a volatile region or annotate the line with volatile-ok.",
+				Evidence: strings.TrimSpace(line),
+			})
+		}
 		if isExecutableTestSourcePath(rel) {
 			if ambiguousTestNameRe.MatchString(line) {
 				findings = append(findings, GuardFinding{Severity: "warn", Rule: "ambiguous-test-name", File: rel, Line: lineNo, Message: "Test name is too generic to communicate the protected contract.", Evidence: strings.TrimSpace(line)})

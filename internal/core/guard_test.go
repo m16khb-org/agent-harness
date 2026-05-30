@@ -92,6 +92,58 @@ func TestGuardCheckBlocksSecretLikePaths(t *testing.T) {
 	}
 }
 
+func TestGuardWarnsOnNonDeterministicImmutablePrefix(t *testing.T) {
+	repo := initGuardRepo(t)
+	// Concatenate the marker so this test's own source is not treated as an
+	// immutable-prefix builder when guard scans the harness repo.
+	marker := "harness:" + "immutable-prefix"
+	now := "time." + "Now()"
+	content := "package core\n\n" +
+		"// " + marker + " context builder\n" +
+		"func BuildContextPrefix() string {\n" +
+		"\treturn " + now + ".String()\n" +
+		"\t_ = " + now + ".Unix() // volatile-ok host-stamped envelope\n" +
+		"}\n"
+	writeGuardFile(t, repo, "internal/core/prefix_builder.go", content)
+	if code, _, stderr := GitCmd(repo, "add", "internal/core/prefix_builder.go"); code != 0 {
+		t.Fatalf("git add failed: %s", stderr)
+	}
+
+	result := GuardCheck(GuardCheckRequest{RepoRoot: repo, Staged: true})
+	if result.Summary.Block != 0 {
+		t.Fatalf("non-determinism warning must not block: %+v", result)
+	}
+	if !guardHasFinding(result, "nondeterministic-context-serialization") {
+		t.Fatalf("expected non-deterministic serialization warning: %+v", result.Findings)
+	}
+	count := 0
+	for _, finding := range result.Findings {
+		if finding.Rule == "nondeterministic-context-serialization" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("volatile-ok line must be exempt, expected exactly 1 finding, got %d: %+v", count, result.Findings)
+	}
+}
+
+func TestGuardIgnoresNonDeterminismWithoutImmutablePrefixMarker(t *testing.T) {
+	repo := initGuardRepo(t)
+	now := "time." + "Now()"
+	content := "package core\n\n" +
+		"import \"time\"\n\n" +
+		"func auditStamp() string { return " + now + ".String() }\n"
+	writeGuardFile(t, repo, "internal/core/audit_stamp.go", content)
+	if code, _, stderr := GitCmd(repo, "add", "internal/core/audit_stamp.go"); code != 0 {
+		t.Fatalf("git add failed: %s", stderr)
+	}
+
+	result := GuardCheck(GuardCheckRequest{RepoRoot: repo, Staged: true})
+	if guardHasFinding(result, "nondeterministic-context-serialization") {
+		t.Fatalf("unmarked builder must not trigger determinism rule: %+v", result.Findings)
+	}
+}
+
 func initGuardRepo(t *testing.T) string {
 	t.Helper()
 	repo := t.TempDir()
