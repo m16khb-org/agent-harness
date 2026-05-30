@@ -127,6 +127,35 @@ func TestCommandFakeRunDoesNotExecute(t *testing.T) {
 	}
 }
 
+func TestRunReadOnlyCommandExecutesAllowedArgvOnly(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "note.txt"), []byte("hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result := RunReadOnlyCommand(CommandPolicyRequest{
+		WorkspaceRoot: root,
+		CWD:           root,
+		Argv:          []string{"cat", "note.txt"},
+		Timeout:       "30s",
+	})
+	if !result.OK || !result.Executed || result.ExitCode != 0 || result.Stdout != "hello\n" {
+		t.Fatalf("read-only run failed: %+v", result)
+	}
+	denied := RunReadOnlyCommand(CommandPolicyRequest{
+		WorkspaceRoot: root,
+		CWD:           root,
+		Argv:          []string{"touch", "marker"},
+		Timeout:       "30s",
+		WriteAllowed:  true,
+	})
+	if denied.OK || denied.Executed || denied.ExitCode != 3 || !containsString(denied.Policy.DenyReasons, "write_not_allowed") {
+		t.Fatalf("write command was not denied by read-only runner: %+v", denied)
+	}
+	if existsForTest(filepath.Join(root, "marker")) {
+		t.Fatalf("read-only run created marker")
+	}
+}
+
 func TestCommandPolicyRedactsAndDeniesSecretLikeArgs(t *testing.T) {
 	root := t.TempDir()
 	result := EvaluateCommandPolicy(CommandPolicyRequest{

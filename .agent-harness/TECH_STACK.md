@@ -64,8 +64,12 @@
 go test ./... -count=1
 go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness inspect --json
+./bin/agent-harness status --json
 ./bin/agent-harness docs --json
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy run --read-only --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness worker run --read-only --kind smoke --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness verify-work --json -- git status --short
 ./bin/agent-harness daemon status --json
 ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
 ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
@@ -87,7 +91,11 @@ go build -o bin/agent-harness ./cmd/harness
 ```bash
 agent-harness inspect --json
 agent-harness docs --json
+agent-harness status --json
 agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+agent-harness policy run --read-only --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+agent-harness worker run --read-only --kind smoke --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+agent-harness verify-work --json -- git status --short
 agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
 harness state write --key checkpoint --input checkpoint.json --json
 harness state read --key checkpoint --json
@@ -147,6 +155,7 @@ agent-harness worker enqueue --kind smoke --payload "..." --json
 agent-harness worker status --id JOB_ID --json
 agent-harness worker list --json
 agent-harness worker cancel --id JOB_ID --json
+agent-harness worker run --read-only --kind smoke --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ```
 
-이번 phase의 worker command는 의도적으로 state-only/no-shell로 제한한다.
+이번 phase의 worker command는 기본 job lifecycle에 policy-backed read-only execution을 추가한다. write/network/arbitrary shell/background worker는 아직 열지 않는다.

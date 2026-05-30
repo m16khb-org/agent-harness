@@ -48,3 +48,31 @@ func TestWorkerJobLifecycleIsNoShellStateOnly(t *testing.T) {
 		t.Fatalf("not cancelled: %+v", cancelled)
 	}
 }
+
+func TestWorkerRunReadOnlyJobExecutesPolicyAllowedCommand(t *testing.T) {
+	dir := t.TempDir()
+	root := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", dir)
+	if err := os.WriteFile(filepath.Join(root, "note.txt"), []byte("worker\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	job, err := RunReadOnlyWorkerJob("read-only", "", CommandPolicyRequest{
+		WorkspaceRoot: root,
+		CWD:           root,
+		Argv:          []string{"cat", "note.txt"},
+		Timeout:       "30s",
+	})
+	if err != nil {
+		t.Fatalf("worker run: %v", err)
+	}
+	if job.Status != WorkerStatusSucceeded || job.Result == nil || job.Result.Stdout != "worker\n" {
+		t.Fatalf("unexpected worker run job: %+v", job)
+	}
+	stored, err := ReadWorkerJob(job.ID)
+	if err != nil {
+		t.Fatalf("read stored job: %v", err)
+	}
+	if stored.Status != WorkerStatusSucceeded || stored.Result == nil || stored.Result.ExitCode != 0 {
+		t.Fatalf("stored job missing result: %+v", stored)
+	}
+}

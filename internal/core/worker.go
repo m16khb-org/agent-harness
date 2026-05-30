@@ -15,22 +15,27 @@ import (
 
 const (
 	WorkerStatusQueued    = "queued"
+	WorkerStatusRunning   = "running"
+	WorkerStatusSucceeded = "succeeded"
+	WorkerStatusFailed    = "failed"
 	WorkerStatusCancelled = "cancelled"
 )
 
 var workerIDRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
 
 type WorkerJob struct {
-	OK           bool   `json:"ok"`
-	ID           string `json:"id"`
-	Kind         string `json:"kind"`
-	Status       string `json:"status"`
-	Payload      string `json:"payload,omitempty"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
-	WorkerDir    string `json:"worker_dir"`
-	NoShell      bool   `json:"no_shell"`
-	SafetyNotice string `json:"safety_notice"`
+	OK           bool              `json:"ok"`
+	ID           string            `json:"id"`
+	Kind         string            `json:"kind"`
+	Status       string            `json:"status"`
+	Payload      string            `json:"payload,omitempty"`
+	CreatedAt    string            `json:"created_at"`
+	UpdatedAt    string            `json:"updated_at"`
+	WorkerDir    string            `json:"worker_dir"`
+	NoShell      bool              `json:"no_shell"`
+	SafetyNotice string            `json:"safety_notice"`
+	Command      []string          `json:"command,omitempty"`
+	Result       *CommandRunResult `json:"result,omitempty"`
 }
 
 type WorkerListResult struct {
@@ -132,6 +137,31 @@ func CancelWorkerJob(id string) (WorkerJob, error) {
 	job.Status = WorkerStatusCancelled
 	job.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	job.OK = true
+	return job, writeWorkerJob(job)
+}
+
+func RunReadOnlyWorkerJob(kind, payload string, req CommandPolicyRequest) (WorkerJob, error) {
+	job, err := EnqueueWorkerJob(kind, payload)
+	if err != nil {
+		return job, err
+	}
+	job.Status = WorkerStatusRunning
+	job.NoShell = true
+	job.Command = append([]string{}, req.Argv...)
+	job.SafetyNotice = "worker read-only runner executes only argv commands that pass command policy with write/network/shell disabled"
+	job.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	if err := writeWorkerJob(job); err != nil {
+		return job, err
+	}
+	result := RunReadOnlyCommand(req)
+	job.Result = &result
+	job.OK = result.OK
+	if result.OK {
+		job.Status = WorkerStatusSucceeded
+	} else {
+		job.Status = WorkerStatusFailed
+	}
+	job.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	return job, writeWorkerJob(job)
 }
 

@@ -15,10 +15,12 @@ func Commands() []Command {
 	return []Command{
 		{Name: "inspect", Description: "inspect harness installation and native integration"},
 		{Name: "preflight", Description: "run read-only git preflight checks"},
+		{Name: "status", Description: "summarize doctor, daemon, state, worker, and verification status"},
 		{Name: "doctor", Description: "diagnose harness installation, state, hooks, MCP, daemon, and project docs"},
 		{Name: "docs", Description: "index harness guidance documents"},
 		{Name: "policy", Description: "evaluate command policy, fake-run commands, and write audit records"},
 		{Name: "guard", Description: "check language-agnostic code and test anti-patterns"},
+		{Name: "verify-work", Description: "run a lightweight evidence matrix for current work"},
 		{Name: "contract", Description: "print or check CLI/MCP response compatibility contracts"},
 		{Name: "state", Description: "read and write small agent state checkpoints"},
 		{Name: "api-doc", Description: "run API documentation static and agent review gates"},
@@ -28,7 +30,7 @@ func Commands() []Command {
 		{Name: "update", Description: "rebuild this checkout and refresh user-level integrations plus upstream companion tools"},
 		{Name: "bootstrap", Description: "first-time full setup for user-level integrations plus upstream companion tools"},
 		{Name: "daemon", Description: "manage the MCP backend daemon"},
-		{Name: "worker", Description: "manage safe no-shell local worker jobs"},
+		{Name: "worker", Description: "manage safe local worker jobs and read-only command evidence"},
 		{Name: "self-verify", Description: "run harness verification gates"},
 		{Name: "self-augment", Description: "plan self-augmentation candidates and lessons"},
 		{Name: "mcp", Description: "serve the MCP stdio proxy"},
@@ -44,12 +46,15 @@ func Usage(version string) string {
 Usage:
   agent-harness inspect [--json] [--repo PATH]
   agent-harness preflight [--json] [PATH]
+  agent-harness status [--repo PATH] [--json]
   agent-harness doctor [--repo PATH] [--json]
   agent-harness docs [index] [--json]
   agent-harness policy check [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
+  agent-harness policy run --read-only [--workspace-root PATH] [--cwd PATH] [--json] -- ARGV...
   agent-harness policy audit [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness guard check [--repo PATH] [--staged] [--all] [--json] [--] [FILES...]
+  agent-harness verify-work [--repo PATH] [--all] [--json] [--] [READ_ONLY_ARGV...]
   agent-harness contract schema [--json]
   agent-harness contract check [--json]
   agent-harness state write --key KEY (--value TEXT|--input FILE|--stdin) [--json]
@@ -65,6 +70,7 @@ Usage:
   agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
   agent-harness daemon start|status|stop [--json]
   agent-harness worker enqueue --kind KIND [--payload TEXT] [--json]
+  agent-harness worker run --read-only --kind KIND [--payload TEXT] [--workspace-root PATH] [--cwd PATH] [--json] -- ARGV...
   agent-harness worker status --id ID [--json]
   agent-harness worker list [--json]
   agent-harness worker cancel --id ID [--json]

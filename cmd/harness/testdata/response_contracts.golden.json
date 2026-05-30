@@ -85,6 +85,10 @@
           "name": "preflight"
         },
         {
+          "description": "summarize doctor, daemon, state, worker, and verification status",
+          "name": "status"
+        },
+        {
           "description": "diagnose harness installation, state, hooks, MCP, daemon, and project docs",
           "name": "doctor"
         },
@@ -99,6 +103,10 @@
         {
           "description": "check language-agnostic code and test anti-patterns",
           "name": "guard"
+        },
+        {
+          "description": "run a lightweight evidence matrix for current work",
+          "name": "verify-work"
         },
         {
           "description": "print or check CLI/MCP response compatibility contracts",
@@ -137,7 +145,7 @@
           "name": "daemon"
         },
         {
-          "description": "manage safe no-shell local worker jobs",
+          "description": "manage safe local worker jobs and read-only command evidence",
           "name": "worker"
         },
         {
@@ -157,7 +165,7 @@
           "name": "version"
         }
       ],
-      "hash": "f6fa4d5ff07d38f9d2e9cbd19bab4126e81d05e15d954d8539b0f3bf1a58834d",
+      "hash": "0a7a28ea2de3b91b34c093ea5de6f0d968236636196da00124e7480d6c3357bf",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -215,6 +223,16 @@
           "deny_reasons",
           "warnings"
         ],
+        "command_run": [
+          "ok",
+          "executed",
+          "exit_code",
+          "read_only",
+          "policy",
+          "stdout",
+          "stderr",
+          "error"
+        ],
         "guard_check": [
           "ok",
           "repo_root",
@@ -233,6 +251,19 @@
           "checks",
           "issues"
         ],
+        "harness_status": [
+          "ok",
+          "kind",
+          "version",
+          "repo",
+          "inspect",
+          "doctor",
+          "daemon",
+          "state",
+          "workers",
+          "self_verify",
+          "warnings"
+        ],
         "self_verification_summary": [
           "total_runs",
           "total_steps",
@@ -248,6 +279,17 @@
           "step_labels",
           "slowest_steps",
           "step_duration_stats"
+        ],
+        "verify_work": [
+          "ok",
+          "kind",
+          "repo",
+          "git_status",
+          "preflight",
+          "guard",
+          "command",
+          "evidence",
+          "warnings"
         ],
         "worker_job": [
           "ok",
@@ -420,6 +462,34 @@
           "title": "구현 컨벤션"
         },
         {
+          "bytes": 19906,
+          "headings": [
+            "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness",
+            "1. 요약 결론",
+            "2. 근거와 현재 상태",
+            "2.1 agent-harness 현재 상태",
+            "2.2 OMC(oh-my-claudecode) 참고점",
+            "2.3 OMX(oh-my-codex) 참고점",
+            "2.4 Hermes Agent 참고점",
+            "3. 비교 매트릭스",
+            "4. 모자란 점",
+            "4.1 “하네스”보다 “안전한 공통 library/adapter”에 가깝다",
+            "4.2 Worker가 실행을 하지 않는다",
+            "4.3 팀/분산 작업의 파일 소유권과 통합 모델이 없다",
+            "4.4 Product QA workflow가 부족하다",
+            "4.5 Persistent memory/skill learning이 외부 의존이다",
+            "4.6 Provider/model/runtime abstraction이 부족하다",
+            "4.7 UX/문서 정보 구조가 내부자 지향이다",
+            "5. 개선이 필요한 점: 우선순위 제안",
+            "P0 — 지금 설계 원칙을 유지하면서 빈틈 메우기",
+            "P1 — 안전한 실행 runtime으로 확장",
+            "P2 — 사용자-facing workflow 확장"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/HARNESS_COMPARISON.md",
+          "rel_path": ".agent-harness/HARNESS_COMPARISON.md",
+          "title": "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness"
+        },
+        {
           "bytes": 3264,
           "headings": [
             "OpenAPI Spec Guidance",
@@ -436,7 +506,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 20304,
+          "bytes": 21491,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -451,20 +521,20 @@
             "MCP",
             "Claude hooks",
             "4. CLI로 직접 사용",
+            "Status / read-only runner / verify-work",
             "Guard checks",
             "5. MCP smoke test",
             "6. 자기 검증 루프 / 자가 증강 루프 요약",
             "7. API Documentation Pre-commit Review",
             "Review staged API docs/endpoint changes in the current repo",
-            "JSON output for hooks/CI",
-            "Explicit files from lint-staged/pre-commit"
+            "JSON output for hooks/CI"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
           "rel_path": ".agent-harness/OPERATIONS.md",
           "title": "하네스 사용법"
         },
         {
-          "bytes": 7092,
+          "bytes": 7934,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -640,6 +710,7 @@
         "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
         "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
         "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
+        "$HARNESS_ROOT/.agent-harness/HARNESS_COMPARISON.md",
         "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
         "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
         "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
@@ -1325,7 +1396,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 18,
+        "docs_indexed": 19,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -2408,6 +2479,10 @@
                 "name": "preflight"
               },
               {
+                "description": "summarize doctor, daemon, state, worker, and verification status",
+                "name": "status"
+              },
+              {
                 "description": "diagnose harness installation, state, hooks, MCP, daemon, and project docs",
                 "name": "doctor"
               },
@@ -2422,6 +2497,10 @@
               {
                 "description": "check language-agnostic code and test anti-patterns",
                 "name": "guard"
+              },
+              {
+                "description": "run a lightweight evidence matrix for current work",
+                "name": "verify-work"
               },
               {
                 "description": "print or check CLI/MCP response compatibility contracts",
@@ -2460,7 +2539,7 @@
                 "name": "daemon"
               },
               {
-                "description": "manage safe no-shell local worker jobs",
+                "description": "manage safe local worker jobs and read-only command evidence",
                 "name": "worker"
               },
               {
@@ -2480,7 +2559,7 @@
                 "name": "version"
               }
             ],
-            "hash": "f6fa4d5ff07d38f9d2e9cbd19bab4126e81d05e15d954d8539b0f3bf1a58834d",
+            "hash": "0a7a28ea2de3b91b34c093ea5de6f0d968236636196da00124e7480d6c3357bf",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2538,6 +2617,16 @@
                 "deny_reasons",
                 "warnings"
               ],
+              "command_run": [
+                "ok",
+                "executed",
+                "exit_code",
+                "read_only",
+                "policy",
+                "stdout",
+                "stderr",
+                "error"
+              ],
               "guard_check": [
                 "ok",
                 "repo_root",
@@ -2556,6 +2645,19 @@
                 "checks",
                 "issues"
               ],
+              "harness_status": [
+                "ok",
+                "kind",
+                "version",
+                "repo",
+                "inspect",
+                "doctor",
+                "daemon",
+                "state",
+                "workers",
+                "self_verify",
+                "warnings"
+              ],
               "self_verification_summary": [
                 "total_runs",
                 "total_steps",
@@ -2571,6 +2673,17 @@
                 "step_labels",
                 "slowest_steps",
                 "step_duration_stats"
+              ],
+              "verify_work": [
+                "ok",
+                "kind",
+                "repo",
+                "git_status",
+                "preflight",
+                "guard",
+                "command",
+                "evidence",
+                "warnings"
               ],
               "worker_job": [
                 "ok",
@@ -2750,6 +2863,34 @@
                 "title": "구현 컨벤션"
               },
               {
+                "bytes": 19906,
+                "headings": [
+                  "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness",
+                  "1. 요약 결론",
+                  "2. 근거와 현재 상태",
+                  "2.1 agent-harness 현재 상태",
+                  "2.2 OMC(oh-my-claudecode) 참고점",
+                  "2.3 OMX(oh-my-codex) 참고점",
+                  "2.4 Hermes Agent 참고점",
+                  "3. 비교 매트릭스",
+                  "4. 모자란 점",
+                  "4.1 “하네스”보다 “안전한 공통 library/adapter”에 가깝다",
+                  "4.2 Worker가 실행을 하지 않는다",
+                  "4.3 팀/분산 작업의 파일 소유권과 통합 모델이 없다",
+                  "4.4 Product QA workflow가 부족하다",
+                  "4.5 Persistent memory/skill learning이 외부 의존이다",
+                  "4.6 Provider/model/runtime abstraction이 부족하다",
+                  "4.7 UX/문서 정보 구조가 내부자 지향이다",
+                  "5. 개선이 필요한 점: 우선순위 제안",
+                  "P0 — 지금 설계 원칙을 유지하면서 빈틈 메우기",
+                  "P1 — 안전한 실행 runtime으로 확장",
+                  "P2 — 사용자-facing workflow 확장"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/HARNESS_COMPARISON.md",
+                "rel_path": ".agent-harness/HARNESS_COMPARISON.md",
+                "title": "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness"
+              },
+              {
                 "bytes": 3264,
                 "headings": [
                   "OpenAPI Spec Guidance",
@@ -2766,7 +2907,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 20304,
+                "bytes": 21491,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -2781,20 +2922,20 @@
                   "MCP",
                   "Claude hooks",
                   "4. CLI로 직접 사용",
+                  "Status / read-only runner / verify-work",
                   "Guard checks",
                   "5. MCP smoke test",
                   "6. 자기 검증 루프 / 자가 증강 루프 요약",
                   "7. API Documentation Pre-commit Review",
                   "Review staged API docs/endpoint changes in the current repo",
-                  "JSON output for hooks/CI",
-                  "Explicit files from lint-staged/pre-commit"
+                  "JSON output for hooks/CI"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
                 "rel_path": ".agent-harness/OPERATIONS.md",
                 "title": "하네스 사용법"
               },
               {
-                "bytes": 7092,
+                "bytes": 7934,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -2977,6 +3118,7 @@
               "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
               "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
               "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
+              "$HARNESS_ROOT/.agent-harness/HARNESS_COMPARISON.md",
               "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
               "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
               "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
@@ -3561,7 +3703,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 18,
+              "docs_indexed": 19,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

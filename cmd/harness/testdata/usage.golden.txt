@@ -3,12 +3,15 @@ agent-harness 0.1.0
 Usage:
   agent-harness inspect [--json] [--repo PATH]
   agent-harness preflight [--json] [PATH]
+  agent-harness status [--repo PATH] [--json]
   agent-harness doctor [--repo PATH] [--json]
   agent-harness docs [index] [--json]
   agent-harness policy check [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
+  agent-harness policy run --read-only [--workspace-root PATH] [--cwd PATH] [--json] -- ARGV...
   agent-harness policy audit [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness guard check [--repo PATH] [--staged] [--all] [--json] [--] [FILES...]
+  agent-harness verify-work [--repo PATH] [--all] [--json] [--] [READ_ONLY_ARGV...]
   agent-harness contract schema [--json]
   agent-harness contract check [--json]
   agent-harness state write --key KEY (--value TEXT|--input FILE|--stdin) [--json]
@@ -24,6 +27,7 @@ Usage:
   agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
   agent-harness daemon start|status|stop [--json]
   agent-harness worker enqueue --kind KIND [--payload TEXT] [--json]
+  agent-harness worker run --read-only --kind KIND [--payload TEXT] [--workspace-root PATH] [--cwd PATH] [--json] -- ARGV...
   agent-harness worker status --id ID [--json]
   agent-harness worker list [--json]
   agent-harness worker cancel --id ID [--json]

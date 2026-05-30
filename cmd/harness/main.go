@@ -52,6 +52,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "preflight:", err)
 			os.Exit(1)
 		}
+	case "status":
+		if err := runStatus(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "status:", err)
+			os.Exit(1)
+		}
 	case "doctor":
 		if err := runDoctor(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "doctor:", err)
@@ -68,6 +73,11 @@ func main() {
 			if core.IsPolicyDenied(err) {
 				os.Exit(3)
 			}
+			os.Exit(1)
+		}
+	case "verify-work":
+		if err := runVerifyWork(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "verify-work:", err)
 			os.Exit(1)
 		}
 	case "guard":
@@ -419,6 +429,8 @@ func runPolicy(args []string) error {
 		return runPolicyCheck(args[1:])
 	case "fake-run":
 		return runPolicyFakeRun(args[1:])
+	case "run":
+		return runPolicyRun(args[1:])
 	case "audit":
 		return runPolicyAudit(args[1:])
 	default:
@@ -431,6 +443,7 @@ func policyUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   agent-harness policy check [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
   agent-harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
+  agent-harness policy run --read-only [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--json] -- ARGV...
   agent-harness policy audit [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--write] [--network] [--shell --shell-reason TEXT] [--json] -- ARGV...
 `)
 }
@@ -469,6 +482,37 @@ func runPolicyFakeRun(args []string) error {
 	}
 	if !result.Policy.Allowed {
 		return core.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
+	}
+	return nil
+}
+
+func runPolicyRun(args []string) error {
+	req, jsonOut, readOnly, err := parseCommandPolicyRunFlags(args)
+	if err != nil {
+		return err
+	}
+	if !readOnly {
+		return fmt.Errorf("policy run currently requires --read-only")
+	}
+	result := core.RunReadOnlyCommand(req)
+	if jsonOut {
+		if err := printJSON(result); err != nil {
+			return err
+		}
+	} else {
+		printPolicyEvaluation(result.Policy)
+		if result.Stdout != "" {
+			fmt.Print(result.Stdout)
+		}
+		if result.Stderr != "" {
+			fmt.Fprint(os.Stderr, result.Stderr)
+		}
+	}
+	if !result.Policy.Allowed {
+		return core.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
+	}
+	if result.ExitCode != 0 {
+		return fmt.Errorf("command exited %d", result.ExitCode)
 	}
 	return nil
 }
@@ -524,6 +568,35 @@ func parseCommandPolicyFlags(name string, args []string) (core.CommandPolicyRequ
 		ShellReason:    *shellReason,
 	}
 	return req, *jsonOut, nil
+}
+
+func parseCommandPolicyRunFlags(args []string) (core.CommandPolicyRequest, bool, bool, error) {
+	fs := flag.NewFlagSet("policy run", flag.ContinueOnError)
+	workspaceRoot := fs.String("workspace-root", "", "workspace root boundary")
+	cwd := fs.String("cwd", "", "command working directory")
+	timeout := fs.Duration("timeout", 30*time.Second, "maximum runtime")
+	envAllowlist := fs.String("env", "", "comma-separated environment variable allowlist")
+	readOnly := fs.Bool("read-only", false, "execute only if policy allows a read-only command")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return core.CommandPolicyRequest{}, false, false, err
+	}
+	root := *workspaceRoot
+	if root == "" {
+		root = resolveTarget("")
+	}
+	workDir := *cwd
+	if workDir == "" {
+		workDir = root
+	}
+	req := core.CommandPolicyRequest{
+		WorkspaceRoot: root,
+		CWD:           workDir,
+		Argv:          fs.Args(),
+		Timeout:       timeout.String(),
+		EnvAllowlist:  splitCSV(*envAllowlist),
+	}
+	return req, *jsonOut, *readOnly, nil
 }
 
 func printPolicyEvaluation(result core.CommandPolicyEvaluation) {

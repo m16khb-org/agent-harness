@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "command": "'./bin/agent-harness' hook post-compact",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "hooks": [
@@ -16,17 +27,6 @@
         "hooks": [
           {
             "command": "'./bin/agent-harness' hook pre-compact",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "PostCompact": [
-      {
-        "hooks": [
-          {
-            "command": "'./bin/agent-harness' hook post-compact",
             "timeout": 5,
             "type": "command"
           }

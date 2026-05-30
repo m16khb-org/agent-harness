@@ -4,7 +4,7 @@
 
 1. Codex/Claude native skills: `atomic-commit-push`, `self-augment`, `project-bootstrap`
 2. MCP stdio proxy: `agent-harness mcp` → shared `agent-harness daemon`
-3. CLI: `agent-harness inspect/preflight/doctor/docs/project/policy/guard/state/daemon/self-verify/self-augment/api-doc/hook`
+3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/daemon/worker/self-verify/self-augment/api-doc/hook`
 
 ---
 
@@ -142,10 +142,12 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 ./bin/agent-harness install-native --json
 ./bin/agent-harness install-native --dry-run --json
 ./bin/agent-harness inspect --json
+./bin/agent-harness status --json
 ./bin/agent-harness preflight --json /path/to/git-repo
 ./bin/agent-harness docs --json
 ./bin/agent-harness guard check --staged --json
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy run --read-only --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
 ./bin/agent-harness doctor --json
 ./bin/agent-harness state write --key checkpoint-1 --value "작업 메모" --json
@@ -171,6 +173,8 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
 ./bin/agent-harness self-augment lesson --candidate reflexion-state-memory --lesson "..." --next-action "..." --json
+./bin/agent-harness worker run --read-only --kind smoke --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness verify-work --json -- git status --short
 ./bin/agent-harness api-doc check --json
 printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
 ./bin/agent-harness project bootstrap --repo . --json
@@ -178,6 +182,13 @@ printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook
 ./bin/agent-harness project route-docs --repo . --task "commit" --json
 ./bin/agent-harness mcp
 ```
+
+
+### Status / read-only runner / verify-work
+
+`status --json` aggregates inspect, doctor, daemon, state, worker, and latest self-verify checkpoint status into one machine-readable health view. `policy run --read-only` is the first real command runner: it only executes argv-only allowlisted read-only commands, applies workspace/cwd policy, timeout, env allowlist, audit metadata, redaction, and bounded stdout/stderr. `worker run --read-only` records the same execution as a worker job with command evidence. `verify-work` combines git preflight, guard checks, and an optional read-only verification command for target-repo change evidence.
+
+These commands intentionally do not open write, network, arbitrary shell, or background execution. Use `policy fake-run` for write-intent planning until a later explicit runner phase exists.
 
 ### Guard checks
 
