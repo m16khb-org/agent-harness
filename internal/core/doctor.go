@@ -80,12 +80,12 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 
 	lifecycle, err := ValidateProjectLifecycleState(root)
 	if err != nil {
-		result.addIssue("lifecycle_state_error", "error", "project lifecycle state could not be resolved", root, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root) + " --write", Description: "Initialize project lifecycle state through project bootstrap."})
+		result.addIssue("lifecycle_state_error", "error", "project lifecycle state could not be resolved", root, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Initialize project lifecycle state and repo metadata through project bootstrap."})
 	} else {
 		result.LifecycleState = lifecycle
 		result.addCheck("project_lifecycle_state", lifecycle.Exists && lifecycle.NamespaceValid, lifecycle.ProjectStateDir)
 		if !lifecycle.Exists {
-			result.addIssue("lifecycle_state_missing", "warning", "project lifecycle namespace has not been initialized", lifecycle.ProjectStateDir, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root) + " --write", Description: "Create the repo-scoped lifecycle namespace in user-state."})
+			result.addIssue("lifecycle_state_missing", "warning", "project lifecycle namespace has not been initialized", lifecycle.ProjectStateDir, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Create the repo-scoped lifecycle namespace and profile metadata in user-state."})
 		} else if !lifecycle.NamespaceValid {
 			result.addIssue("lifecycle_namespace_mismatch", "error", "project lifecycle state fingerprint does not match this repo", lifecycle.ProjectJSONPath, &HarnessDoctorFix{Command: "agent-harness doctor --repo " + shellQuote(root) + " --json", Description: "Review the namespace mismatch before migrating or deleting stale state."})
 		}
@@ -134,7 +134,7 @@ func (r *HarnessDoctorResult) checkProjectDocs(root string) {
 		return
 	}
 	r.addCheck("project_docs", false, strings.Join(missing, ", "))
-	r.addIssue("project_docs_missing", "warning", "standard .agent-harness docs are missing", filepath.Join(root, ProjectDocsDir), &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root) + " --write", Description: "Create or refresh the standard project guidance docs."})
+	r.addIssue("project_docs_missing", "warning", "standard .agent-harness docs are missing", filepath.Join(root, ProjectDocsDir), &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Create or refresh the standard project guidance docs and profile metadata."})
 }
 
 func (r *HarnessDoctorResult) checkRepoLocalRuntimeState(root string) {

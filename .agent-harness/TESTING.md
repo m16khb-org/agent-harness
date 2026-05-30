@@ -17,8 +17,8 @@ go test ./... -count=1
 go test ./cmd/harness -run Golden -count=1
 go build -o bin/agent-harness ./cmd/harness
 ./scripts/install-native.sh
-./bin/agent-harness bootstrap --skip-upstream-tools --dry-run
-./bin/agent-harness update --skip-upstream-tools --dry-run
+./bin/agent-harness bootstrap --dry-run
+./bin/agent-harness bootstrap --sync --dry-run
 ./scripts/install-native.sh --with-upstream-tools --dry-run
 ./bin/agent-harness install-native --json
 ./bin/agent-harness install-native --dry-run --json
@@ -261,6 +261,6 @@ CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden 
 ## Lifecycle state tests
 
 - project lifecycle namespace tests must use `HARNESS_STATE_DIR` with `t.TempDir()` and must not write runtime state under the target repo.
-- bootstrap tests should verify dry-run plans `projects/<repo-id>/project.json` without creating it, and `--write` creates it in user-state.
+- bootstrap tests should verify dry-run plans `projects/<repo-id>/project.json` without creating it, and normal `project bootstrap` writes lifecycle profile metadata in user-state.
 - hook tests should cover fallback behavior when lifecycle state is missing/corrupt so prompt routing remains useful.
 - doctor tests should cover repo-local `.agent-harness/state/` and namespace mismatch warnings.

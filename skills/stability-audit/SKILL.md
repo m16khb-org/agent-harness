@@ -41,8 +41,8 @@ If the script reports `ok: false`, inspect `failures`, patch the root cause, and
 2. **Install/update E2E**
    - Build: `go build -o bin/agent-harness ./cmd/harness`.
    - Dry-run both high-level paths with JSON when available:
-     - `./bin/agent-harness bootstrap --skip-upstream-tools --dry-run --json`
-     - `./bin/agent-harness update --skip-upstream-tools --dry-run --json`
+     - `./bin/agent-harness bootstrap --dry-run --json`
+     - `./bin/agent-harness bootstrap --sync --dry-run --json`
    - Verify native install surfaces:
      - `./bin/agent-harness install-native --dry-run --json`
      - `./bin/agent-harness install-native --json` only for full install tasks.

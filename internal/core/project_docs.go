@@ -3,7 +3,9 @@ package core
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -125,6 +127,7 @@ Apply SOLID, YAGNI, and KISS together. SOLID does not mean adding interfaces and
 type ProjectDocsBootstrapRequest struct {
 	RepoRoot string `json:"repo_root"`
 	Write    bool   `json:"write"`
+	Sync     bool   `json:"sync"`
 }
 
 type ProjectDocsBootstrapResult struct {
@@ -133,6 +136,7 @@ type ProjectDocsBootstrapResult struct {
 	RepoRoot       string                    `json:"repo_root"`
 	DocsDir        string                    `json:"docs_dir"`
 	Write          bool                      `json:"write"`
+	Sync           bool                      `json:"sync"`
 	DryRun         bool                      `json:"dry_run"`
 	GeneratedAt    string                    `json:"generated_at"`
 	Signals        ProjectSignals            `json:"signals"`
@@ -154,6 +158,7 @@ type ProjectSignals struct {
 	Files               []string          `json:"files"`
 	Languages           []string          `json:"languages"`
 	PackageManagers     []string          `json:"package_managers"`
+	Profile             ProjectProfile    `json:"profile"`
 	TestCommands        []EvidenceCommand `json:"test_commands"`
 	BuildCommands       []EvidenceCommand `json:"build_commands"`
 	LintCommands        []EvidenceCommand `json:"lint_commands"`
@@ -166,6 +171,23 @@ type EvidenceCommand struct {
 	Command    string   `json:"command"`
 	Evidence   []string `json:"evidence"`
 	Confidence string   `json:"confidence"`
+}
+
+type ProjectProfile struct {
+	VCS             ProjectVCSProfile `json:"vcs"`
+	Languages       []string          `json:"languages"`
+	PackageManagers []string          `json:"package_managers,omitempty"`
+	ProjectTypes    []string          `json:"project_types,omitempty"`
+	Frameworks      []string          `json:"frameworks,omitempty"`
+	Monorepo        bool              `json:"monorepo"`
+	Evidence        []string          `json:"evidence,omitempty"`
+}
+
+type ProjectVCSProfile struct {
+	Provider   string `json:"provider"`
+	Hosting    string `json:"hosting"`
+	RemoteHost string `json:"remote_host,omitempty"`
+	RemoteName string `json:"remote_name,omitempty"`
 }
 
 type ProjectDocsRouteResult struct {
@@ -264,7 +286,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		return ProjectDocsBootstrapResult{}, err
 	}
 	signals := AnalyzeProjectSignals(root)
-	lifecycleState, err := InitProjectLifecycleState(root, req.Write)
+	lifecycleState, err := InitProjectLifecycleState(root, req.Write, signals.Profile)
 	if err != nil {
 		return ProjectDocsBootstrapResult{}, err
 	}
@@ -280,13 +302,16 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		}
 		path := filepath.Join(root, filepath.FromSlash(rel))
 		action := plannedFileAction(path, content)
-		if req.Write && action != "unchanged" {
+		shouldWrite := req.Write && action != "unchanged" && (req.Sync || action == "create" || rel == "AGENTS.md")
+		if shouldWrite {
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				return ProjectDocsBootstrapResult{}, err
 			}
 			if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 				return ProjectDocsBootstrapResult{}, err
 			}
+		} else if req.Write && action == "update" && !req.Sync {
+			warnings = appendUnique(warnings, "sync_available: existing project docs were preserved; pass --sync to refresh them from current templates and repo evidence")
 		}
 		files = append(files, ProjectDocsPlannedFile{
 			RelPath: filepath.ToSlash(rel),
@@ -298,7 +323,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		})
 	}
 	if !req.Write {
-		warnings = append(warnings, "dry_run_only: pass --write to create or update AGENTS.md and .agent-harness/*.md")
+		warnings = append(warnings, "dry_run_only: rerun without --dry-run to create missing AGENTS.md/.agent-harness docs and repo metadata; add --sync to refresh existing docs")
 	}
 	return ProjectDocsBootstrapResult{
 		OK:             true,
@@ -306,6 +331,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		RepoRoot:       root,
 		DocsDir:        filepath.Join(root, ProjectDocsDir),
 		Write:          req.Write,
+		Sync:           req.Sync,
 		DryRun:         !req.Write,
 		GeneratedAt:    time.Now().Format(time.RFC3339),
 		Signals:        signals,
@@ -337,7 +363,7 @@ func RouteProjectDocs(repoRoot, task string) (ProjectDocsRouteResult, error) {
 		missingProjectDocs = false
 	}
 	if missingProjectDocs {
-		warnings = append(warnings, "project docs are missing; run agent-harness project bootstrap --write to create AGENTS.md routing and .agent-harness docs")
+		warnings = append(warnings, "project docs are missing; run agent-harness project bootstrap to create AGENTS.md routing, .agent-harness docs, and repo metadata")
 	}
 	return ProjectDocsRouteResult{
 		OK:          true,
@@ -437,7 +463,7 @@ func ReadProjectDoc(repoRoot, relPath string) (ProjectDocsReadResult, error) {
 	b, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		result.Exists = false
-		result.Warnings = []string{"document_missing: run project_docs_bootstrap_plan or agent-harness project bootstrap --write first"}
+		result.Warnings = []string{"document_missing: run project_docs_bootstrap_plan or agent-harness project bootstrap first"}
 		return result, nil
 	}
 	if err != nil {
@@ -599,6 +625,19 @@ func AnalyzeProjectSignals(root string) ProjectSignals {
 		case "AGENTS.md", "CLAUDE.md":
 			s.ExistingAgentDocs = appendUnique(s.ExistingAgentDocs, rel)
 		}
+		switch {
+		case rel != "go.mod" && strings.HasSuffix(rel, "/go.mod"):
+			addLang("Go")
+		case rel != "package.json" && strings.HasSuffix(rel, "/package.json"):
+			addLang("JavaScript/TypeScript")
+			addPM("npm-compatible")
+		case rel != "pyproject.toml" && strings.HasSuffix(rel, "/pyproject.toml"):
+			addLang("Python")
+			addPM("pyproject")
+		case rel != "Cargo.toml" && strings.HasSuffix(rel, "/Cargo.toml"):
+			addLang("Rust")
+			addPM("cargo")
+		}
 		if strings.HasPrefix(rel, ".github/workflows/") {
 			s.GitHubWorkflows = appendUnique(s.GitHubWorkflows, rel)
 		}
@@ -608,7 +647,288 @@ func AnalyzeProjectSignals(root string) ProjectSignals {
 	sort.Strings(s.ExistingAgentDocs)
 	sort.Strings(s.GitHubWorkflows)
 	sort.Strings(s.DetectedConventions)
+	s.Profile = inferProjectProfile(root, s)
 	return s
+}
+
+func inferProjectProfile(root string, signals ProjectSignals) ProjectProfile {
+	profile := ProjectProfile{
+		VCS:             inferProjectVCS(root),
+		Languages:       append([]string{}, signals.Languages...),
+		PackageManagers: append([]string{}, signals.PackageManagers...),
+		Evidence:        []string{},
+	}
+	addEvidence := func(v string) { profile.Evidence = appendUnique(profile.Evidence, v) }
+	if profile.VCS.RemoteHost != "" || profile.VCS.Provider == "git" || profile.VCS.Provider == "local" {
+		addEvidence("git remote/config")
+	}
+	for _, rel := range signals.Files {
+		switch {
+		case rel == "go.mod" || strings.HasSuffix(rel, "/go.mod"):
+			addEvidence(rel)
+		case rel == "package.json" || strings.HasSuffix(rel, "/package.json"):
+			addEvidence(rel)
+		case rel == "pyproject.toml" || strings.HasSuffix(rel, "/pyproject.toml"):
+			addEvidence(rel)
+		case rel == "Cargo.toml" || strings.HasSuffix(rel, "/Cargo.toml"):
+			addEvidence(rel)
+		case rel == "pnpm-workspace.yaml", rel == "turbo.json", rel == "nx.json", rel == "lerna.json":
+			addEvidence(rel)
+		}
+	}
+	profile.Frameworks = detectFrameworks(root, signals.Files, addEvidence)
+	profile.Monorepo = detectMonorepo(root, signals.Files, addEvidence)
+	profile.ProjectTypes = inferProjectTypes(root, signals, profile.Frameworks, profile.Monorepo, addEvidence)
+	sort.Strings(profile.Frameworks)
+	sort.Strings(profile.ProjectTypes)
+	sort.Strings(profile.Evidence)
+	return profile
+}
+
+func inferProjectVCS(root string) ProjectVCSProfile {
+	origin := readGitOriginURL(root)
+	if origin == "" {
+		if _, err := os.Stat(filepath.Join(root, ".git")); err == nil {
+			return ProjectVCSProfile{Provider: "git", Hosting: "local", RemoteName: "origin"}
+		}
+		return ProjectVCSProfile{Provider: "none", Hosting: "local"}
+	}
+	host := remoteHost(origin)
+	provider := "git"
+	hosting := "self-hosted"
+	switch strings.ToLower(host) {
+	case "github.com":
+		provider, hosting = "github", "managed"
+	case "gitlab.com":
+		provider, hosting = "gitlab", "managed"
+	case "bitbucket.org":
+		provider, hosting = "bitbucket", "managed"
+	default:
+		lowerHost := strings.ToLower(host)
+		switch {
+		case strings.Contains(lowerHost, "gitlab"):
+			provider = "gitlab"
+		case strings.Contains(lowerHost, "github"):
+			provider = "github"
+		case strings.Contains(lowerHost, "bitbucket"):
+			provider = "bitbucket"
+		}
+	}
+	if host == "" {
+		hosting = "unknown"
+	}
+	return ProjectVCSProfile{Provider: provider, Hosting: hosting, RemoteHost: host, RemoteName: "origin"}
+}
+
+func remoteHost(remote string) string {
+	remote = strings.TrimSpace(remote)
+	if remote == "" {
+		return ""
+	}
+	if strings.Contains(remote, "://") {
+		u, err := url.Parse(remote)
+		if err == nil {
+			return strings.ToLower(u.Hostname())
+		}
+	}
+	if at := strings.Index(remote, "@"); at >= 0 {
+		rest := remote[at+1:]
+		if colon := strings.Index(rest, ":"); colon >= 0 {
+			return strings.ToLower(rest[:colon])
+		}
+		if slash := strings.Index(rest, "/"); slash >= 0 {
+			return strings.ToLower(rest[:slash])
+		}
+	}
+	return ""
+}
+
+func detectFrameworks(root string, files []string, addEvidence func(string)) []string {
+	frameworks := []string{}
+	addFramework := func(name, evidence string) {
+		frameworks = appendUnique(frameworks, name)
+		if evidence != "" {
+			addEvidence(evidence)
+		}
+	}
+	for _, rel := range files {
+		base := filepath.Base(rel)
+		switch base {
+		case "next.config.js", "next.config.mjs", "next.config.ts":
+			addFramework("Next.js", rel)
+		case "vite.config.js", "vite.config.mjs", "vite.config.ts":
+			addFramework("Vite", rel)
+		case "nuxt.config.js", "nuxt.config.ts":
+			addFramework("Nuxt", rel)
+		case "astro.config.js", "astro.config.mjs", "astro.config.ts":
+			addFramework("Astro", rel)
+		case "nest-cli.json":
+			addFramework("NestJS", rel)
+		}
+		if rel == "go.mod" {
+			for _, mod := range readGoModules(root) {
+				switch {
+				case strings.Contains(mod, "github.com/spf13/cobra"):
+					addFramework("Cobra", "go.mod:github.com/spf13/cobra")
+				case strings.Contains(mod, "github.com/gin-gonic/gin"):
+					addFramework("Gin", "go.mod:github.com/gin-gonic/gin")
+				case strings.Contains(mod, "github.com/go-chi/chi"):
+					addFramework("chi", "go.mod:github.com/go-chi/chi")
+				case strings.Contains(mod, "github.com/labstack/echo"):
+					addFramework("Echo", "go.mod:github.com/labstack/echo")
+				}
+			}
+		}
+		if rel == "package.json" {
+			for dep := range readPackageDependencies(filepath.Join(root, rel)) {
+				switch dep {
+				case "react":
+					addFramework("React", "package.json:react")
+				case "next":
+					addFramework("Next.js", "package.json:next")
+				case "vite":
+					addFramework("Vite", "package.json:vite")
+				case "vue":
+					addFramework("Vue", "package.json:vue")
+				case "svelte":
+					addFramework("Svelte", "package.json:svelte")
+				case "@angular/core":
+					addFramework("Angular", "package.json:@angular/core")
+				case "express":
+					addFramework("Express", "package.json:express")
+				case "@nestjs/core":
+					addFramework("NestJS", "package.json:@nestjs/core")
+				case "fastify":
+					addFramework("Fastify", "package.json:fastify")
+				case "prisma", "@prisma/client":
+					addFramework("Prisma", "package.json:"+dep)
+				}
+			}
+		}
+	}
+	return frameworks
+}
+
+func detectMonorepo(root string, files []string, addEvidence func(string)) bool {
+	for _, rel := range files {
+		switch rel {
+		case "pnpm-workspace.yaml", "turbo.json", "nx.json", "lerna.json":
+			addEvidence(rel)
+			return true
+		}
+		if strings.Contains(rel, "/") && (strings.HasSuffix(rel, "/package.json") || strings.HasSuffix(rel, "/go.mod") || strings.HasSuffix(rel, "/pyproject.toml") || strings.HasSuffix(rel, "/Cargo.toml")) {
+			addEvidence(rel)
+			return true
+		}
+	}
+	if workspaces := readPackageWorkspaces(filepath.Join(root, "package.json")); len(workspaces) > 0 {
+		addEvidence("package.json:workspaces")
+		return true
+	}
+	return false
+}
+
+func inferProjectTypes(root string, signals ProjectSignals, frameworks []string, monorepo bool, addEvidence func(string)) []string {
+	types := []string{}
+	addType := func(v, evidence string) {
+		types = appendUnique(types, v)
+		if evidence != "" {
+			addEvidence(evidence)
+		}
+	}
+	if monorepo {
+		addType("monorepo", "")
+	}
+	frontend := containsAnyString(frameworks, "React", "Next.js", "Vite", "Vue", "Svelte", "Angular", "Nuxt", "Astro")
+	backend := containsAnyString(frameworks, "Express", "NestJS", "Fastify", "Gin", "chi", "Echo") || containsAnyString(signals.Languages, "Go")
+	cli := containsAnyString(frameworks, "Cobra")
+	if frontend {
+		addType("frontend", "")
+	}
+	if backend {
+		addType("backend", "")
+	}
+	if frontend && backend {
+		addType("fullstack", "")
+	}
+	if cli || dirExists(filepath.Join(root, "cmd")) {
+		addType("cli", "cmd/")
+	}
+	if len(types) == 0 && len(signals.Languages) > 0 {
+		addType("library", "")
+	}
+	return types
+}
+
+func readPackageDependencies(path string) map[string]bool {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return map[string]bool{}
+	}
+	var pkg struct {
+		Dependencies         map[string]string `json:"dependencies"`
+		DevDependencies      map[string]string `json:"devDependencies"`
+		PeerDependencies     map[string]string `json:"peerDependencies"`
+		OptionalDependencies map[string]string `json:"optionalDependencies"`
+	}
+	if err := json.Unmarshal(b, &pkg); err != nil {
+		return map[string]bool{}
+	}
+	out := map[string]bool{}
+	for _, deps := range []map[string]string{pkg.Dependencies, pkg.DevDependencies, pkg.PeerDependencies, pkg.OptionalDependencies} {
+		for dep := range deps {
+			out[dep] = true
+		}
+	}
+	return out
+}
+
+func readPackageWorkspaces(path string) []string {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return nil
+	}
+	var direct []string
+	if err := json.Unmarshal(raw["workspaces"], &direct); err == nil && len(direct) > 0 {
+		return direct
+	}
+	var object struct {
+		Packages []string `json:"packages"`
+	}
+	if err := json.Unmarshal(raw["workspaces"], &object); err == nil {
+		return object.Packages
+	}
+	return nil
+}
+
+func readGoModules(root string) []string {
+	b, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return nil
+	}
+	return strings.Split(string(b), "\n")
+}
+
+func containsAnyString(items []string, wants ...string) bool {
+	set := map[string]bool{}
+	for _, item := range items {
+		set[item] = true
+	}
+	for _, want := range wants {
+		if set[want] {
+			return true
+		}
+	}
+	return false
+}
+
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 func normalizeRepoRoot(root string) (string, error) {
@@ -705,7 +1025,7 @@ func listInterestingFiles(root string) []string {
 
 func isProjectSignalFile(base string) bool {
 	switch base {
-	case "AGENTS.md", "CLAUDE.md", "README.md", "go.mod", "go.sum", "package.json", "pnpm-lock.yaml", "yarn.lock", "package-lock.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "Cargo.lock", "Makefile", "Taskfile.yml", "Taskfile.yaml", "Dockerfile", "docker-compose.yml", "docker-compose.yaml":
+	case "AGENTS.md", "CLAUDE.md", "README.md", "go.mod", "go.sum", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "yarn.lock", "package-lock.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "Cargo.lock", "Makefile", "Taskfile.yml", "Taskfile.yaml", "Dockerfile", "docker-compose.yml", "docker-compose.yaml", "next.config.js", "next.config.mjs", "next.config.ts", "vite.config.js", "vite.config.mjs", "vite.config.ts", "nuxt.config.js", "nuxt.config.ts", "astro.config.js", "astro.config.mjs", "astro.config.ts", "tailwind.config.js", "tailwind.config.ts", "tsconfig.json", "turbo.json", "nx.json", "lerna.json", "nest-cli.json":
 		return true
 	default:
 		return false
@@ -966,7 +1286,7 @@ func renderOperations(signals ProjectSignals) string {
 	b.WriteString("\n## Deploy/release\n\n")
 	b.WriteString("- Do not infer deploy procedures automatically. Verify them from CI/CD workflows and operations docs.\n")
 	b.WriteString("\n## Project docs bootstrap and upkeep\n\n")
-	b.WriteString("- `agent-harness project bootstrap --repo . --write --json` creates only a static-signal baseline.\n")
+	b.WriteString("- `agent-harness project bootstrap --repo . --json` creates docs and user-state repo metadata; `--sync` refreshes them from current evidence.\n")
 	b.WriteString("- After initial setup, agents should read repo evidence and keep `.agent-harness` docs current through MCP `project_docs_route` → `project_docs_read` → `project_docs_update`.\n")
 	b.WriteString("- Append resolved false cases and decisions to CAUTIONS/ADR with `project_docs_record` instead of rewriting full documents.\n")
 	b.WriteString("\n## UserPromptSubmit hook\n\n")

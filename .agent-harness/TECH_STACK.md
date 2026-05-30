@@ -78,8 +78,8 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ./scripts/install-native.sh
-./bin/agent-harness bootstrap --skip-upstream-tools --dry-run
-./bin/agent-harness update --skip-upstream-tools --dry-run
+./bin/agent-harness bootstrap --dry-run
+./bin/agent-harness bootstrap --sync --dry-run
 ./scripts/install-native.sh --skip-build
 ./scripts/install-native.sh --with-upstream-tools --dry-run
 ./bin/agent-harness install-native --json

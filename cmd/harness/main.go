@@ -291,7 +291,7 @@ func runProject(args []string) error {
 
 func projectUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  agent-harness project bootstrap [--repo PATH] [--write] [--json]
+  agent-harness project bootstrap [--repo PATH] [--sync] [--dry-run] [--json]
   agent-harness project docs [--repo PATH] [--json]
   agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
   agent-harness project record --kind caution|adr --title TEXT --summary TEXT [--repo PATH] [--json]
@@ -301,7 +301,9 @@ func projectUsage() {
 func runProjectBootstrap(args []string) error {
 	fs := flag.NewFlagSet("project bootstrap", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
-	write := fs.Bool("write", false, "write AGENTS.md marker block and .agent-harness docs; omitted means dry-run")
+	sync := fs.Bool("sync", false, "refresh existing project docs as well as creating missing files")
+	dryRun := fs.Bool("dry-run", false, "show project docs plan without writing")
+	write := fs.Bool("write", true, "compatibility alias; use --dry-run for planning")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -309,7 +311,7 @@ func runProjectBootstrap(args []string) error {
 	if fs.NArg() > 0 {
 		*repo = fs.Arg(0)
 	}
-	result, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: *repo, Write: *write})
+	result, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: *repo, Write: *write && !*dryRun, Sync: *sync})
 	if err != nil {
 		return err
 	}

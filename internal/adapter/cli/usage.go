@@ -27,8 +27,7 @@ func Commands() []Command {
 		{Name: "hook", Description: "run prompt-routing hooks"},
 		{Name: "project", Description: "bootstrap and maintain project operating docs"},
 		{Name: "install-native", Description: "install shared native skills and MCP config"},
-		{Name: "update", Description: "rebuild this checkout and refresh user-level integrations plus upstream companion tools"},
-		{Name: "bootstrap", Description: "first-time full setup for user-level integrations plus upstream companion tools"},
+		{Name: "bootstrap", Description: "set up user-level integrations; use --sync for upstream companion versions"},
 		{Name: "daemon", Description: "manage the MCP backend daemon"},
 		{Name: "worker", Description: "manage safe local worker jobs and read-only command evidence"},
 		{Name: "self-verify", Description: "run harness verification gates"},
@@ -65,7 +64,7 @@ Usage:
   agent-harness state migrate [--confirm] [--json]
   agent-harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
   agent-harness hook user-prompt [--prompt TEXT] [--json]
-  agent-harness project bootstrap [--repo PATH] [--write] [--json]
+  agent-harness project bootstrap [--repo PATH] [--sync] [--dry-run] [--json]
   agent-harness project docs [--repo PATH] [--json]
   agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
   agent-harness daemon start|status|stop [--json]
@@ -75,8 +74,7 @@ Usage:
   agent-harness worker list [--json]
   agent-harness worker cancel --id ID [--json]
   agent-harness install-native [--project-local] [--dry-run] [--json]
-  agent-harness update [--skip-upstream-tools] [--project-local] [--dry-run] [--json] [--skip-build]
-  agent-harness bootstrap [--skip-upstream-tools] [--project-local] [--dry-run] [--json] [--skip-build]
+  agent-harness bootstrap [--sync] [--dry-run] [--json]
   agent-harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--save-state] [--state-key KEY] [--json]
   agent-harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
   agent-harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]

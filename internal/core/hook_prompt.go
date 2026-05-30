@@ -107,22 +107,26 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	}
 
 	pendingUpkeep := []DocUpkeepEvent{}
+	var repoProfile *ProjectProfile
 	if strings.TrimSpace(req.Repo) != "" {
+		if state, err := ResolveProjectLifecycleState(req.Repo); err == nil && state.Exists && state.NamespaceValid && state.Profile != nil {
+			repoProfile = state.Profile.Metadata
+		}
 		if events, _, err := ReadPendingDocUpkeepEvents(req.Repo, 5); err == nil && len(events) > 0 {
 			pendingUpkeep = events
 			addAction("project_docs_read/project_docs_update", "Pending lifecycle state indicates shared .agent-harness docs may need an evidence-preserving refresh.")
 		}
 	}
 
-	if len(result.Hints) == 0 && len(pendingUpkeep) == 0 {
+	if len(result.Hints) == 0 && len(pendingUpkeep) == 0 && repoProfile == nil {
 		return result
 	}
 	result.ShouldInject = true
-	result.AdditionalContext = renderHookMCPHintContext(result.Hints, pendingUpkeep)
+	result.AdditionalContext = renderHookMCPHintContext(result.Hints, pendingUpkeep, repoProfile)
 	return result
 }
 
-func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent) string {
+func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile) string {
 	groups := map[string][]HookUserPromptHint{}
 	for _, h := range hints {
 		priority := h.Priority
@@ -137,6 +141,7 @@ func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpk
 	appendCompactHintGroup(&parts, "consider", filterDocs(groups[hintPriorityConsider]))
 	appendCompactHintGroup(&parts, "route", groups[hintPriorityRoute])
 	appendCompactHintGroup(&parts, "actions", groups[hintPriorityAction])
+	appendCompactProjectProfile(&parts, profile)
 	appendCompactPendingUpkeep(&parts, pendingUpkeep)
 	appendCompactHintGroup(&parts, "secondary", groups[hintPrioritySecondary])
 	parts = append(parts, "rule: use docs/tools only when material; writes must be evidence-preserving and non-destructive")
@@ -228,6 +233,40 @@ func appendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
 		items = append(items, item)
 	}
 	*parts = append(*parts, "pending upkeep: "+strings.Join(items, "; "))
+}
+
+func appendCompactProjectProfile(parts *[]string, profile *ProjectProfile) {
+	if profile == nil {
+		return
+	}
+	items := []string{}
+	if profile.VCS.Provider != "" && profile.VCS.Provider != "none" {
+		vcs := profile.VCS.Provider
+		if profile.VCS.Hosting != "" && profile.VCS.Hosting != "unknown" {
+			vcs += "/" + profile.VCS.Hosting
+		}
+		if profile.VCS.RemoteHost != "" {
+			vcs += "@" + profile.VCS.RemoteHost
+		}
+		items = append(items, vcs)
+	}
+	if len(profile.Languages) > 0 {
+		items = append(items, strings.Join(profile.Languages, "+"))
+	}
+	if len(profile.ProjectTypes) > 0 {
+		items = append(items, strings.Join(profile.ProjectTypes, "+"))
+	}
+	if len(profile.Frameworks) > 0 {
+		frameworks := profile.Frameworks
+		if len(frameworks) > 4 {
+			frameworks = frameworks[:4]
+		}
+		items = append(items, strings.Join(frameworks, "+"))
+	}
+	if len(items) == 0 {
+		return
+	}
+	*parts = append(*parts, "profile: "+strings.Join(items, ", "))
 }
 
 func containsAny(s string, needles ...string) bool {

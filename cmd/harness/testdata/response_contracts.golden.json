@@ -133,11 +133,7 @@
           "name": "install-native"
         },
         {
-          "description": "rebuild this checkout and refresh user-level integrations plus upstream companion tools",
-          "name": "update"
-        },
-        {
-          "description": "first-time full setup for user-level integrations plus upstream companion tools",
+          "description": "set up user-level integrations; use --sync for upstream companion versions",
           "name": "bootstrap"
         },
         {
@@ -165,7 +161,7 @@
           "name": "version"
         }
       ],
-      "hash": "0a7a28ea2de3b91b34c093ea5de6f0d968236636196da00124e7480d6c3357bf",
+      "hash": "a88cd84b1b31270fc05d7fe36db7573a81cf6d68055fe0860c67764c15f56cd2",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -312,7 +308,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 16685,
+          "bytes": 16649,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -359,7 +355,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 16173,
+          "bytes": 16399,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -434,7 +430,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 14287,
+          "bytes": 14271,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -506,12 +502,15 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 21826,
+          "bytes": 21816,
           "headings": [
             "하네스 사용법",
-            "1. 설치/갱신",
-            "이후에는 어느 위치에서든:",
-            "Upstream companion tools 선택 설치",
+            "1. 설치/동기화",
+            "내 머신의 Codex/Claude user-level 통합 설치/갱신",
+            "upstream companion 도구 버전까지 함께 최신화",
+            "대상 레포에 AGENTS.md 라우팅 블록과 .agent-harness/*.md 생성",
+            "기존 프로젝트 문서까지 최신 템플릿/증거 기준으로 갱신",
+            "`--sync`",
             "2. Codex에서 사용",
             "Native skills",
             "MCP",
@@ -524,17 +523,14 @@
             "Status / read-only runner / verify-work",
             "Guard checks",
             "5. MCP smoke test",
-            "6. 자기 검증 루프 / 자가 증강 루프 요약",
-            "7. API Documentation Pre-commit Review",
-            "Review staged API docs/endpoint changes in the current repo",
-            "JSON output for hooks/CI"
+            "6. 자기 검증 루프 / 자가 증강 루프 요약"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
           "rel_path": ".agent-harness/OPERATIONS.md",
           "title": "하네스 사용법"
         },
         {
-          "bytes": 7934,
+          "bytes": 7900,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -551,7 +547,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 15786,
+          "bytes": 15792,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -576,7 +572,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 11535,
+          "bytes": 11501,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -2535,11 +2531,7 @@
                 "name": "install-native"
               },
               {
-                "description": "rebuild this checkout and refresh user-level integrations plus upstream companion tools",
-                "name": "update"
-              },
-              {
-                "description": "first-time full setup for user-level integrations plus upstream companion tools",
+                "description": "set up user-level integrations; use --sync for upstream companion versions",
                 "name": "bootstrap"
               },
               {
@@ -2567,7 +2559,7 @@
                 "name": "version"
               }
             ],
-            "hash": "0a7a28ea2de3b91b34c093ea5de6f0d968236636196da00124e7480d6c3357bf",
+            "hash": "a88cd84b1b31270fc05d7fe36db7573a81cf6d68055fe0860c67764c15f56cd2",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2721,7 +2713,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 16685,
+                "bytes": 16649,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -2768,7 +2760,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 16173,
+                "bytes": 16399,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2843,7 +2835,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 14287,
+                "bytes": 14271,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2915,12 +2907,15 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 21826,
+                "bytes": 21816,
                 "headings": [
                   "하네스 사용법",
-                  "1. 설치/갱신",
-                  "이후에는 어느 위치에서든:",
-                  "Upstream companion tools 선택 설치",
+                  "1. 설치/동기화",
+                  "내 머신의 Codex/Claude user-level 통합 설치/갱신",
+                  "upstream companion 도구 버전까지 함께 최신화",
+                  "대상 레포에 AGENTS.md 라우팅 블록과 .agent-harness/*.md 생성",
+                  "기존 프로젝트 문서까지 최신 템플릿/증거 기준으로 갱신",
+                  "`--sync`",
                   "2. Codex에서 사용",
                   "Native skills",
                   "MCP",
@@ -2933,17 +2928,14 @@
                   "Status / read-only runner / verify-work",
                   "Guard checks",
                   "5. MCP smoke test",
-                  "6. 자기 검증 루프 / 자가 증강 루프 요약",
-                  "7. API Documentation Pre-commit Review",
-                  "Review staged API docs/endpoint changes in the current repo",
-                  "JSON output for hooks/CI"
+                  "6. 자기 검증 루프 / 자가 증강 루프 요약"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
                 "rel_path": ".agent-harness/OPERATIONS.md",
                 "title": "하네스 사용법"
               },
               {
-                "bytes": 7934,
+                "bytes": 7900,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -2960,7 +2952,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 15786,
+                "bytes": 15792,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -2985,7 +2977,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 11535,
+                "bytes": 11501,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",

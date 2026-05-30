@@ -8,42 +8,46 @@
 
 ---
 
-## 1. 설치/갱신
+## 1. 설치/동기화
 
-저장소 루트에서 실행한다.
+공개 UX는 두 가지로 나눈다.
 
 ```bash
-./bin/agent-harness bootstrap
-# 이후에는 어느 위치에서든:
-agent-harness update
+# 내 머신의 Codex/Claude user-level 통합 설치/갱신
+agent-harness bootstrap
+
+# upstream companion 도구 버전까지 함께 최신화
+agent-harness bootstrap --sync
+
+# 대상 레포에 AGENTS.md 라우팅 블록과 .agent-harness/*.md 생성
+agent-harness project bootstrap --repo /path/to/repo
+
+# 기존 프로젝트 문서까지 최신 템플릿/증거 기준으로 갱신
+agent-harness project bootstrap --repo /path/to/repo --sync
 ```
 
-`bootstrap`과 `update`는 `./scripts/install-native.sh --with-upstream-tools`를 호출하는 high-level UX다. 이 경로는 다음을 수행한다.
+`bootstrap`은 이 agent-harness checkout을 기준으로 user-level host 통합을 설치/갱신한다. 이 경로는 다음을 수행한다.
 
-- 현재 checkout 기준으로 `go build -o bin/agent-harness ./cmd/harness`를 매번 실행해 기존 하네스 binary를 갱신한다. 원격 변경을 가져오는 `git pull`은 자동 실행하지 않는다.
+- 현재 checkout 기준으로 `go build -o bin/agent-harness ./cmd/harness`를 실행해 binary를 갱신한다. 원격 변경을 가져오는 `git pull`은 자동 실행하지 않는다.
 - `~/.local/bin/agent-harness -> <checkout>/bin/agent-harness` command shim 생성/갱신
 - `agent-harness install-native` 실행
 - Codex user skill symlink 생성: `~/.codex/skills/* -> <agent-harness>/skills/*`
 - Claude user skill symlink 생성: `~/.claude/skills/* -> <agent-harness>/skills/*`
 - Codex MCP 설정 추가/갱신: `~/.codex/config.toml`의 `[mcp_servers.agent_harness]`
 - Codex lifecycle hooks 추가/갱신: `~/.codex/hooks.json`에서 `agent-harness hook user-prompt`, `agent-harness hook post-tool-use`, `agent-harness hook pre-compact`, `agent-harness hook post-compact`, `agent-harness hook stop` 실행
-- Claude lifecycle hooks 추가/갱신: `~/.claude/settings.json`에서 같은 `agent-harness hook user-prompt`, `agent-harness hook post-tool-use`, `agent-harness hook pre-compact`, `agent-harness hook post-compact`, `agent-harness hook stop` 실행
+- Claude lifecycle hooks 추가/갱신: `~/.claude/settings.json`에서 같은 lifecycle hook 실행
 - Claude user-scope MCP 서버 등록: `claude mcp add-json -s user agent_harness ...`
 
-기본 설치는 user-level host 설정을 갱신하지만 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. 쓰기 전 계획만 확인하려면 `agent-harness update --dry-run` 또는 `./bin/agent-harness install-native --dry-run --json`을 사용한다. repo-local 파일이 필요할 때만 `agent-harness update --project-local` 또는 `./bin/agent-harness install-native --project-local`을 명시적으로 사용한다. 기존 `bin/agent-harness`를 유지해야 하는 특수 상황에서는 `--skip-build` 또는 `HARNESS_SKIP_BUILD=1`을 사용한다.
+기본 `bootstrap`은 적용 대상 repo에 `.claude/skills`, `.claude/settings.json`, `.mcp.json`을 만들지 않는다. 레포별 파일은 `project bootstrap`이 담당한다. 쓰기 전 계획만 확인하려면 `agent-harness bootstrap --dry-run --json` 또는 low-level `agent-harness install-native --dry-run --json`을 사용한다.
 
-### Upstream companion tools 선택 설치
+### `--sync`
 
-하네스의 철학은 **바퀴를 재발명하지 않는다**이다. `agent-harness`는 llm-wiki, CodeGraph, claude-mem의 core 동작을 재구현하지 않고 upstream plugin/CLI를 연결한다. 새 환경에서 하네스와 companion tools를 함께 세팅하려면 high-level 명령을 사용한다.
+`--sync`는 “최신화” 의도를 명시하는 단일 옵션이다.
 
-```bash
-agent-harness bootstrap
-agent-harness update
-```
+- `agent-harness bootstrap --sync`: user-level 통합을 갱신하면서 llm-wiki, CodeGraph, claude-mem 같은 upstream companion 도구도 설치/갱신한다. 네트워크와 user-level host 설정 변경이 생길 수 있다.
+- `agent-harness project bootstrap --sync`: 대상 repo의 `AGENTS.md` 라우팅 블록, `.agent-harness/*.md`, user-state repo profile metadata를 현재 템플릿/프로젝트 증거 기준으로 다시 계산해 갱신한다.
 
-낮은 수준 스크립트가 필요하면 같은 동작은 `./scripts/install-native.sh --with-upstream-tools` 또는 `HARNESS_INSTALL_UPSTREAM_TOOLS=1 ./scripts/install-native.sh`로도 실행할 수 있다.
-
-`bootstrap`/`update`는 개인 하네스 UX이므로 upstream companion tools까지 갱신하는 full path가 기본이다. user-level Codex/Claude/plugin/MCP 설정을 바꾸고 네트워크를 사용할 수 있다. 원하지 않으면 `--skip-upstream-tools`를 사용한다. `--dry-run`과 함께 실행하면 upstream 설치는 수행하지 않고 계획 메시지만 출력한다.
+낮은 수준 자동화가 필요할 때만 `scripts/install-native.sh`와 `install-native`를 직접 사용한다. 일반 사용자는 `bootstrap`과 `project bootstrap`만 기억하면 된다.
 
 설치되는 upstream dependency:
 
@@ -53,7 +57,7 @@ agent-harness update
 | CodeGraph | `colbymchenry/codegraph` | `npm install -g @colbymchenry/codegraph`, Codex/Claude MCP 등록, 현재 harness repo `.codegraph/` index 초기화를 수행한다. |
 | claude-mem | `thedotmack/claude-mem` | Codex/Claude plugin marketplace와 `claude-mem` plugin을 추가/갱신한다. |
 
-CodeGraph local index 생성을 건너뛰려면 `HARNESS_INIT_CODEGRAPH=0 ./scripts/install-native.sh --with-upstream-tools`를 사용한다.
+CodeGraph local index 생성을 건너뛰려면 `HARNESS_INIT_CODEGRAPH=0 agent-harness bootstrap --sync`를 사용한다.
 
 ---
 
@@ -178,7 +182,7 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 ./bin/agent-harness api-doc check --json
 printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
 ./bin/agent-harness project bootstrap --repo . --json
-./bin/agent-harness project bootstrap --repo . --write --json
+./bin/agent-harness project bootstrap --repo . --sync --json
 ./bin/agent-harness project route-docs --repo . --task "commit" --json
 ./bin/agent-harness mcp
 ```
@@ -251,7 +255,7 @@ module.exports = {
 
 ## 8. Project Docs Bootstrap
 
-`agent-harness project bootstrap`은 대상 레포를 분석해 에이전트용 프로젝트 운영 문서 초안을 생성한다. 기본은 dry-run이며, 실제 쓰기는 `--write`가 있을 때만 수행한다. `AGENTS.md`는 전체 덮어쓰지 않고, behavioral top block이 없으면 prepend하며 `AGENT_HARNESS` marker block만 추가/갱신한다. `--write` 실행은 target repo에 runtime state를 쓰지 않고 user-state의 `projects/<repo-id>/project.json` lifecycle namespace를 생성·검증한다. 정적 bootstrap은 안전한 baseline일 뿐이므로 최초 세팅 후 에이전트가 repo 증거와 lifecycle state를 읽고 `.agent-harness` 문서를 MCP로 보강해야 한다.
+`agent-harness project bootstrap`은 대상 레포를 분석해 에이전트용 프로젝트 운영 문서 초안과 repo profile metadata를 생성한다. 기본 실행은 누락된 파일과 user-state profile을 쓰며, 계획만 확인하려면 `--dry-run`을 쓴다. 기존 문서를 템플릿/증거 기준으로 다시 최신화하려면 `--sync`를 쓴다. `AGENTS.md`는 전체 덮어쓰지 않고, behavioral top block이 없으면 prepend하며 `AGENT_HARNESS` marker block만 추가/갱신한다. 실행은 target repo에 runtime state를 쓰지 않고 user-state의 `projects/<repo-id>/project.json` lifecycle namespace를 생성·검증한다. profile metadata에는 VCS provider/hosting, language, package manager, frontend/backend/fullstack/monorepo/CLI/library classification, framework evidence가 기록되어 이후 hook context injection에서 짧게 참조된다. 정적 bootstrap은 안전한 baseline일 뿐이므로 최초 세팅 후 에이전트가 repo 증거와 lifecycle state를 읽고 `.agent-harness` 문서를 MCP로 보강해야 한다.
 
 생성 대상:
 
@@ -272,7 +276,7 @@ module.exports = {
 
 ```bash
 ./bin/agent-harness project bootstrap --repo /path/to/repo --json
-./bin/agent-harness project bootstrap --repo /path/to/repo --write --json
+./bin/agent-harness project bootstrap --repo /path/to/repo --sync --json
 ./bin/agent-harness project route-docs --repo /path/to/repo --task "commit" --json
 ```
 

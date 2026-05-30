@@ -28,6 +28,7 @@ type ProjectLifecycleProfile struct {
 	SchemaVersion int                `json:"schema_version"`
 	RepoID        string             `json:"repo_id"`
 	Fingerprint   ProjectFingerprint `json:"fingerprint"`
+	Metadata      *ProjectProfile    `json:"metadata,omitempty"`
 	CreatedAt     string             `json:"created_at"`
 	UpdatedAt     string             `json:"updated_at"`
 }
@@ -108,7 +109,7 @@ func ResolveProjectLifecycleState(repoRoot string) (ProjectLifecycleStatePlan, e
 	return plan, nil
 }
 
-func InitProjectLifecycleState(repoRoot string, confirm bool) (ProjectLifecycleStatePlan, error) {
+func InitProjectLifecycleState(repoRoot string, confirm bool, metadata ...ProjectProfile) (ProjectLifecycleStatePlan, error) {
 	plan, err := ResolveProjectLifecycleState(repoRoot)
 	if err != nil || !confirm {
 		return plan, err
@@ -125,10 +126,18 @@ func InitProjectLifecycleState(repoRoot string, confirm bool) (ProjectLifecycleS
 	if plan.Profile != nil && plan.Profile.CreatedAt != "" {
 		createdAt = plan.Profile.CreatedAt
 	}
+	var meta *ProjectProfile
+	if len(metadata) > 0 {
+		m := metadata[0]
+		meta = &m
+	} else if plan.Profile != nil {
+		meta = plan.Profile.Metadata
+	}
 	profile := ProjectLifecycleProfile{
 		SchemaVersion: ProjectLifecycleSchemaVersion,
 		RepoID:        plan.RepoID,
 		Fingerprint:   plan.Fingerprint,
+		Metadata:      meta,
 		CreatedAt:     createdAt,
 		UpdatedAt:     now,
 	}

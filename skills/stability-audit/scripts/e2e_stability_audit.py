@@ -109,8 +109,8 @@ def build(report: dict[str, Any]) -> None:
 
 def install_checks(report: dict[str, Any], full_install: bool) -> None:
     for name, cmd in [
-        ("bootstrap_dry_json", [str(BIN), "bootstrap", "--skip-upstream-tools", "--dry-run", "--json"]),
-        ("update_dry_json", [str(BIN), "update", "--skip-upstream-tools", "--dry-run", "--json"]),
+        ("bootstrap_dry_json", [str(BIN), "bootstrap", "--dry-run", "--json"]),
+        ("bootstrap_sync_dry_json", [str(BIN), "bootstrap", "--sync", "--dry-run", "--json"]),
         ("install_native_dry_json", [str(BIN), "install-native", "--dry-run", "--json"]),
     ]:
         res = run(cmd, timeout=120)

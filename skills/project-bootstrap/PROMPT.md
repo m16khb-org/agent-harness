@@ -1,6 +1,6 @@
 # Project Bootstrap Agent Enrichment Prompt
 
-Use this prompt after the static `harness project bootstrap --write` pass, or when refreshing existing `.agent-harness` docs.
+Use this prompt after the static `harness project bootstrap` pass, or when refreshing existing `.agent-harness` docs.
 
 ## Objective
 

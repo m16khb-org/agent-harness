@@ -150,7 +150,7 @@ Reusable API documentation checks belong in `agent-harness api-doc check`, not i
 
 ## Project Docs Bootstrap 컨벤션
 
-- 적용 대상 repo의 `.agent-harness/` 문서는 명시적 `agent-harness project bootstrap --write` 또는 `$project-bootstrap` 실행 때만 생성한다.
+- 적용 대상 repo의 `.agent-harness/` 문서는 명시적 `agent-harness project bootstrap` 또는 `$project-bootstrap` 실행 때만 생성한다.
 - 기본 설치나 MCP read는 대상 repo에 파일을 쓰지 않는다.
 - `AGENTS.md`는 전체 덮어쓰기 금지다. bootstrap은 behavioral top block이 없으면 prepend하고, 이후에는 `AGENT_HARNESS` marker block만 관리한다.
 - 생성 문서에는 추론된 명령과 기술스택의 Evidence/Confidence를 포함한다.
@@ -213,4 +213,4 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 
 - `agent-harness doctor`는 종합 진단 표면이고 기본 read-only다. 자동 수정은 별도 `--fix` 같은 명시 플래그가 있을 때만 추가한다.
 - `agent-harness state doctor`는 checkpoint store 무결성 전용으로 유지한다. 사용자 안내와 troubleshooting 문서는 top-level doctor를 우선한다.
-- `project bootstrap --write`는 target repo 문서와 별도로 user-state의 repo별 lifecycle namespace를 초기화한다. target repo에는 `.agent-harness/state/`나 schema 파일을 생성하지 않는다.
+- `project bootstrap`은 target repo 문서와 별도로 user-state의 repo별 lifecycle namespace를 초기화한다. target repo에는 `.agent-harness/state/`나 schema 파일을 생성하지 않는다.

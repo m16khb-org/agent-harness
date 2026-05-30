@@ -142,8 +142,8 @@ find . -maxdepth 3 -type f | sort
 find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
 python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
 ./scripts/install-native.sh
-./bin/agent-harness bootstrap --skip-upstream-tools --dry-run
-./bin/agent-harness update --skip-upstream-tools --dry-run
+./bin/agent-harness bootstrap --dry-run
+./bin/agent-harness bootstrap --sync --dry-run
 ./bin/agent-harness install-native --dry-run --json
 go test ./... -count=1
 go test ./cmd/harness -run Golden -count=1

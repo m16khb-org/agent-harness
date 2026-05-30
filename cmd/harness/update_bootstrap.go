@@ -18,6 +18,8 @@ func runBootstrap(args []string) error {
 
 func runInstallScriptCommand(commandName string, args []string) error {
 	fs := flag.NewFlagSet(commandName, flag.ContinueOnError)
+	sync := fs.Bool("sync", false, "sync optional upstream companion tool versions")
+	explicitWithUpstream := hasInstallFlag(args, "with-upstream-tools")
 	withUpstream := fs.Bool("with-upstream-tools", true, "install/update upstream llm-wiki, codegraph, and claude-mem integrations")
 	skipUpstream := fs.Bool("skip-upstream-tools", false, "skip upstream companion tool setup")
 	withoutUpstream := fs.Bool("without-upstream-tools", false, "skip upstream companion tool setup")
@@ -41,10 +43,10 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	}
 
 	scriptArgs := make([]string, 0, 5)
-	if *skipUpstream || *withoutUpstream || !*withUpstream {
-		scriptArgs = append(scriptArgs, "--skip-upstream-tools")
-	} else {
+	if *sync || explicitWithUpstream || (!*skipUpstream && !*withoutUpstream && *withUpstream && commandName == "update") {
 		scriptArgs = append(scriptArgs, "--with-upstream-tools")
+	} else {
+		scriptArgs = append(scriptArgs, "--skip-upstream-tools")
 	}
 	if *projectLocal {
 		scriptArgs = append(scriptArgs, "--project-local")
@@ -65,4 +67,14 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	return cmd.Run()
+}
+
+func hasInstallFlag(args []string, name string) bool {
+	long := "--" + name
+	for _, arg := range args {
+		if arg == long || len(arg) > len(long) && arg[:len(long)+1] == long+"=" {
+			return true
+		}
+	}
+	return false
 }

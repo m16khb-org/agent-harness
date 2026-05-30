@@ -7,7 +7,7 @@ description: Generate or update a repo-local AGENTS.md routing block and .agent-
 
 ## Goal
 
-Create evidence-backed project operating documents for agents without making agent-harness memory or context-injection features. The output is a repo-local `AGENTS.md` routing block plus `.agent-harness/*.md` documents.
+Create evidence-backed project operating documents and repo profile metadata for agents. The output is a repo-local `AGENTS.md` routing block plus `.agent-harness/*.md` documents, with VCS/language/project-type metadata persisted in agent-harness user state for later hook context injection.
 
 ## Generated documents
 
@@ -27,39 +27,40 @@ Create evidence-backed project operating documents for agents without making age
 ## Safety rules
 
 - Never overwrite an existing `AGENTS.md` wholesale. The harness may prepend the behavioral guideline block when missing and manages only the `AGENT_HARNESS` marker block after that.
-- Start with a dry-run plan and inspect planned create/update actions.
-- Write only when the user explicitly requested bootstrapping/updating project docs or when continuing an approved implementation task.
+- Use `--dry-run` when the user only wants a plan.
+- Write when the user explicitly requested bootstrapping/updating project docs or when continuing an approved implementation task; use `--sync` before replacing existing generated docs from current templates/evidence.
 - Treat generated docs as evidence-backed drafts. If the project already has stronger local docs, preserve and reference them.
 - After first setup, keep `.agent-harness` documents fresh through MCP: route the task, read the current doc SHA, update one document at a time, or append CAUTIONS/ADR records for concrete false cases and decisions.
 
 
 ## Static vs agent-filled output
 
-`harness project bootstrap` is deterministic and conservative. It creates a safe baseline from repository signals, but it does not deeply understand business logic, architecture, deployment, API style, or historical decisions.
+`agent-harness project bootstrap` is deterministic and conservative. It creates a safe baseline from repository signals, but it does not deeply understand business logic, architecture, deployment, API style, or historical decisions.
 
-- Static bootstrap fills: document skeletons, detected languages/package managers, candidate commands, routing, generic safety/testing/API guidance, and `AGENTS.md` managed blocks.
+- Static bootstrap fills: document skeletons, detected languages/package managers, candidate commands, routing, generic safety/testing/API guidance, `AGENTS.md` managed blocks, and repo profile metadata.
 - Agent enrichment fills: codebase-specific architecture, operations, conventions, testing examples, OpenAPI style, known risks, and decision rationale from direct evidence.
 
 Use `PROMPT.md` for the enrichment pass. The prompt requires agents to read repo evidence, avoid invented facts, and maintain `.agent-harness` docs through MCP (`project_docs_route` → `project_docs_read` → `project_docs_update` or `project_docs_record`).
 
 ## Workflow
 
-1. Run a dry-run plan:
+1. Run a dry-run plan when you need to inspect before writing:
 
    ```bash
-   harness project bootstrap --repo . --json
+   agent-harness project bootstrap --repo . --dry-run --json
    ```
 
 2. Inspect the JSON:
    - `signals.files`
    - `signals.languages`
    - `signals.test_commands`
+   - `signals.profile`
    - planned `files[].action`
 
-3. If the plan is acceptable, write files:
+3. If the plan is acceptable, write files and user-state profile metadata:
 
    ```bash
-   harness project bootstrap --repo . --write --json
+   agent-harness project bootstrap --repo . --json
    ```
 
 4. Run the agent enrichment pass using `skills/project-bootstrap/PROMPT.md`. The enrichment pass should read repo evidence and update `.agent-harness` docs through MCP rather than blindly accepting static template text.
@@ -67,16 +68,16 @@ Use `PROMPT.md` for the enrichment pass. The prompt requires agents to read repo
 5. Ask the MCP route when starting later work. Prefer this over injecting every project doc into context:
 
    ```bash
-   harness project route-docs --repo . --task "commit" --json
-   harness project route-docs --repo . --task "test" --json
-   harness project route-docs --repo . --task "architecture" --json
+   agent-harness project route-docs --repo . --task "commit" --json
+   agent-harness project route-docs --repo . --task "test" --json
+   agent-harness project route-docs --repo . --task "architecture" --json
    ```
 
 6. When a solved problem or decision should become durable project knowledge, record it through the append-only MCP/CLI contract:
 
    ```bash
-   harness project record --repo . --kind caution --title "<problem>" --summary "<what happened>" --resolution "<fix>" --json
-   harness project record --repo . --kind adr --title "<decision>" --summary "<why>" --decision "<choice>" --json
+   agent-harness project record --repo . --kind caution --title "<problem>" --summary "<what happened>" --resolution "<fix>" --json
+   agent-harness project record --repo . --kind adr --title "<decision>" --summary "<why>" --decision "<choice>" --json
    ```
 
 7. Verify:

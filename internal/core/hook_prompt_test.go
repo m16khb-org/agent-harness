@@ -1,6 +1,8 @@
 package core
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -128,6 +130,29 @@ func TestBuildUserPromptMCPHintsIncludesPendingUpkeep(t *testing.T) {
 	for _, want := range []string{"pending upkeep:", "OPERATIONS.md", "Hook behavior changed.", "refresh project docs only if evidence changed"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("pending upkeep hint missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
+func TestBuildUserPromptMCPHintsIncludesProjectProfile(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".git", "config"), []byte("[remote \"origin\"]\n\turl = git@gitlab.example.internal:group/app.git\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "package.json"), []byte(`{"dependencies":{"react":"latest","express":"latest"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
+		t.Fatal(err)
+	}
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "이거 좀 개선해줘", Repo: root})
+	for _, want := range []string{"profile:", "gitlab/self-hosted@gitlab.example.internal", "JavaScript/TypeScript", "backend", "frontend", "fullstack"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("profile hint missing %q:\n%s", want, got.AdditionalContext)
 		}
 	}
 }

@@ -312,12 +312,12 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 - Consequences: docs, golden fixtures, install templates, MCP command paths는 `agent-harness`를 기준으로 유지한다. 내부 Go source directory `cmd/harness`는 구현 경로일 뿐 public UX 이름이 아니다.
 
 
-## 2026-05-29 — Self-managing update and bootstrap commands
+## 2026-05-29 — Simple bootstrap/project-bootstrap commands
 
 - Kind: `adr`
 - Source: user directive
-- Summary: agent-harness는 설치 후 `claude-mem update`처럼 `agent-harness update` / `agent-harness bootstrap`으로 자기 자신과 companion tools를 관리한다.
-- Decision: `agent-harness bootstrap`은 first-time full setup, `agent-harness update`는 ongoing refresh 명령이다. 두 명령은 기본적으로 `scripts/install-native.sh --with-upstream-tools`를 호출해 현재 checkout binary rebuild, user command shim, Codex/Claude native integration, llm-wiki/CodeGraph/claude-mem upstream setup을 함께 갱신한다. `install-native`는 host integration만 다루는 low-level primitive로 유지한다.
-- Rationale: 사용자는 설치 후 내부 script 경로나 `./bin/...`를 기억하지 않아야 한다. command-oriented UX는 macOS에서 쓰는 `claude-mem update`류 도구와 같고, 하네스의 public identity도 `agent-harness` 하나로 유지된다.
-- Rejected: `./scripts/install-native.sh --with-upstream-tools`를 계속 primary UX로 두는 대안 | 동작은 가능하지만 설치 후 자기 관리 도구처럼 느껴지지 않고, 사용자가 repo 내부 layout을 기억해야 한다.
-- Consequences: README/OPERATIONS/usage/golden은 high-level `agent-harness update`와 `agent-harness bootstrap`을 권장한다. script는 compatibility/automation path로 남긴다.
+- Summary: public setup UX is split into `agent-harness bootstrap` for user-level installation and `agent-harness project bootstrap` for repo-level docs/profile initialization.
+- Decision: `agent-harness bootstrap` installs or refreshes user-level harness integrations; `--sync` additionally refreshes optional upstream companion tool versions. `agent-harness project bootstrap` creates/refreshes target-repo `AGENTS.md`, `.agent-harness/*.md`, and user-state repo profile metadata; `--sync` means refresh from current templates and repo evidence. The old `update` command remains a compatibility alias but is not the recommended UX.
+- Rationale: users should remember two nouns instead of several low-level install/update options: harness-level bootstrap and repo-level project bootstrap. `--sync` consistently means “bring versions/docs/profile back to current evidence.”
+- Rejected: separate `update`, `--write`, and upstream-specific flags as primary UX | they exposed implementation detail and made first setup vs refresh harder to explain.
+- Consequences: docs, usage, skills, and stability audits should recommend only `bootstrap`, `bootstrap --sync`, `project bootstrap`, and `project bootstrap --sync`; low-level flags/scripts stay compatibility/automation surfaces.

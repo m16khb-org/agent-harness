@@ -34,6 +34,9 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	if !containsProjectCommand(dry.Signals.TestCommands, "go test ./...") {
 		t.Fatalf("go test command not inferred: %+v", dry.Signals.TestCommands)
 	}
+	if dry.Signals.Profile.VCS.Provider != "none" || !containsProjectString(dry.Signals.Profile.ProjectTypes, "backend") {
+		t.Fatalf("dry-run profile not inferred from repo evidence: %+v", dry.Signals.Profile)
+	}
 
 	written, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true})
 	if err != nil {
@@ -47,6 +50,12 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	}
 	if _, err := os.Stat(written.LifecycleState.ProjectJSONPath); err != nil {
 		t.Fatalf("write did not create lifecycle project.json: %v", err)
+	}
+	if written.LifecycleState.Profile == nil || written.LifecycleState.Profile.Metadata == nil {
+		t.Fatalf("write did not persist repo metadata: %+v", written.LifecycleState.Profile)
+	}
+	if !containsProjectString(written.LifecycleState.Profile.Metadata.Languages, "Go") || !containsProjectString(written.LifecycleState.Profile.Metadata.ProjectTypes, "backend") {
+		t.Fatalf("persisted metadata missing project profile: %+v", written.LifecycleState.Profile.Metadata)
 	}
 	agents := mustRead(t, filepath.Join(root, "AGENTS.md"))
 	if !strings.Contains(agents, "# Existing Rules") || !strings.Contains(agents, agentsStartMarker) || !strings.Contains(agents, ".agent-harness/TESTING.md") || !strings.Contains(agents, ".agent-harness/OPERATIONS.md") {
@@ -93,6 +102,27 @@ func TestRouteProjectDocsForPreciseTasks(t *testing.T) {
 	}
 }
 
+func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, ProjectDocsDir, "TESTING.md"), "# Custom Testing\n\nKeep local detail.\n")
+	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
+		t.Fatal(err)
+	}
+	if got := mustRead(t, filepath.Join(root, ProjectDocsDir, "TESTING.md")); !strings.Contains(got, "Keep local detail.") {
+		t.Fatalf("bootstrap without sync replaced existing doc:\n%s", got)
+	}
+	synced, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true, Sync: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !synced.Sync {
+		t.Fatalf("sync flag not reflected in result: %+v", synced)
+	}
+	if got := mustRead(t, filepath.Join(root, ProjectDocsDir, "TESTING.md")); strings.Contains(got, "Keep local detail.") {
+		t.Fatalf("bootstrap --sync did not refresh existing doc:\n%s", got)
+	}
+}
+
 func mustWrite(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -124,6 +154,15 @@ func containsProjectCommand(commands []EvidenceCommand, command string) bool {
 func routeContains(result ProjectDocsRouteResult, rel string) bool {
 	for _, doc := range result.Docs {
 		if doc.RelPath == rel {
+			return true
+		}
+	}
+	return false
+}
+
+func containsProjectString(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
 			return true
 		}
 	}
