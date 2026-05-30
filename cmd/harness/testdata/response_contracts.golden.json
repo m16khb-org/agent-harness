@@ -506,7 +506,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 21711,
+          "bytes": 21826,
           "headings": [
             "하네스 사용법",
             "1. 설치/갱신",
@@ -765,6 +765,13 @@
           "has_skill_md": true,
           "name": "self-verify",
           "path": "$HARNESS_ROOT/skills/self-verify"
+        },
+        {
+          "description": "Run an exhaustive agent-harness stability audit from install/update through hooks, MCP, daemon, worker, state, process hygiene, memory-growth signals, stale sockets, zombie/orphan processes, and regression verification. Use when the user asks for E2E stability checks, full operational sweep, hook/MCP reliability, install verification, memory leak investigation, zombie process investigation, or “전수조사/안정성 점검”.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "stability-audit",
+          "path": "$HARNESS_ROOT/skills/stability-audit"
         }
       ],
       "target_repo": "$WORKSPACE",
@@ -1421,7 +1428,8 @@
           "atomic-commit-push",
           "project-bootstrap",
           "self-augment",
-          "self-verify"
+          "self-verify",
+          "stability-audit"
         ]
       },
       "research_influences": [
@@ -2907,7 +2915,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 21711,
+                "bytes": 21826,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/갱신",
@@ -3173,6 +3181,13 @@
                 "has_skill_md": true,
                 "name": "self-verify",
                 "path": "$HARNESS_ROOT/skills/self-verify"
+              },
+              {
+                "description": "Run an exhaustive agent-harness stability audit from install/update through hooks, MCP, daemon, worker, state, process hygiene, memory-growth signals, stale sockets, zombie/orphan processes, and regression verification. Use when the user asks for E2E stability checks, full operational sweep, hook/MCP reliability, install verification, memory leak investigation, zombie process investigation, or “전수조사/안정성 점검”.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "stability-audit",
+                "path": "$HARNESS_ROOT/skills/stability-audit"
               }
             ],
             "target_repo": "$WORKSPACE",
@@ -3728,7 +3743,8 @@
                 "atomic-commit-push",
                 "project-bootstrap",
                 "self-augment",
-                "self-verify"
+                "self-verify",
+                "stability-audit"
               ]
             },
             "research_influences": [

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Stability Audit"
+  short_description: "E2E install, hook, MCP, daemon stability sweep"
+  default_prompt: "Use $stability-audit to run a full agent-harness install, hook, MCP, daemon, and process hygiene audit."
+policy:
+  allow_implicit_invocation: true

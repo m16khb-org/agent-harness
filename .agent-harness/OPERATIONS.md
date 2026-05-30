@@ -115,7 +115,7 @@ Claude Code는 기본적으로 user skill 경로에서 중앙 원본을 본다.
 
 ### MCP
 
-기본 설치는 user-scope MCP 서버 `agent_harness`가 중앙 `bin/agent-harness mcp`를 등록한다. 이 레포의 `.mcp.json`은 dogfood/project-local 템플릿 역할이다.
+기본 설치는 user-scope MCP 서버 `agent_harness`가 중앙 `bin/agent-harness mcp`를 등록한다. 이 레포의 `.mcp.json`은 dogfood/project-local 템플릿 역할이며, Claude scope 충돌 경고를 피하려고 project-local 서버 이름은 `agent_harness_project`를 사용한다.
 
 확인:
 

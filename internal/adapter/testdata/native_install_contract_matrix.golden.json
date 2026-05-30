@@ -24,15 +24,15 @@
               "kind": "claude_project_mcp_config",
               "path": "$ROOT/.mcp.json",
               "written": true,
-              "content_sha256": "62f4655fc22e1f42a20ec87c8ee52b2f3fb0e1b862d0e0514df84c15cc370c44",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "106ae7ce02f841d069e8179bc55f2a8ce04a8677198bcc77a59df5f05decf7c6",
+              "content": "{\n  \"mcpServers\": {\n    \"agent_harness_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_project_mcp_template",
               "path": "$ROOT/configs/claude/mcp.project.json",
               "written": true,
-              "content_sha256": "62f4655fc22e1f42a20ec87c8ee52b2f3fb0e1b862d0e0514df84c15cc370c44",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "106ae7ce02f841d069e8179bc55f2a8ce04a8677198bcc77a59df5f05decf7c6",
+              "content": "{\n  \"mcpServers\": {\n    \"agent_harness_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_user_settings",
@@ -150,8 +150,8 @@
               "kind": "claude_project_mcp_template",
               "path": "$ROOT/configs/claude/mcp.project.json",
               "written": true,
-              "content_sha256": "62f4655fc22e1f42a20ec87c8ee52b2f3fb0e1b862d0e0514df84c15cc370c44",
-              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+              "content_sha256": "106ae7ce02f841d069e8179bc55f2a8ce04a8677198bcc77a59df5f05decf7c6",
+              "content": "{\n  \"mcpServers\": {\n    \"agent_harness_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_user_settings",
