@@ -242,3 +242,46 @@ OMC/OMX/Hermes가 실행력을 강조한다면 agent-harness는 다음 세 가�
 ## 10. 2026-05-30 구현 메모
 
 로드맵의 첫 실행 slice로 `status --json`, `policy run --read-only`, `worker run --read-only`, `verify-work` CLI를 추가했다. 범위는 의도적으로 안전한 argv-only read-only 실행에 한정한다. write/network/arbitrary shell/background queue/worktree merge는 아직 열지 않았고, 후속 phase의 명시적 policy contract와 테스트가 필요하다.
+
+## 11. Qwen Code / DeepSeek-Reasonix 계약 강화 레이어 (2026-05-30 리서치)
+
+범위: OMC/OMX/Hermes 비교(섹션 1~10)에 더해, Qwen Code(`QwenLM/qwen-code`)와 DeepSeek-Reasonix를 분석해 **host-neutral safety core + 바퀴 재발명 금지** 철학에 맞는 정책/계약 조각만 흡수한다. 두 도구의 내부 동작 주장은 리서치 기반 **미검증(unverified)**이며, 흡수 대상은 "엔진"이 아니라 거기서 분리한 정책/계약/측정 조각이다.
+
+### 11.1 흡수 핵심 테마 3가지
+
+1. **정책 게이트를 boolean → 명명 계약으로 승격.** Qwen의 tiered approval / plan-mode 차단 / delegation 권한 격탈을 *실행기를 만들지 않고* 단일 policy evaluator가 해석하는 명명 enum 계약(`PolicyTier`)으로 흡수. 출처: https://github.com/QwenLM/qwen-code
+2. **응답·입력 계약을 cross-host 안정 스키마로 고정.** Qwen `llmContent vs returnDisplay`(→ `model_content vs display`) + `error.type` enum, Reasonix tool-call repair의 *검증 조각만* 떼어 contract/golden에 고정.
+3. **컨텍스트 byte-determinism을 측정 가능한 불변식으로 강제.** Reasonix 3-region(Immutable Prefix / Append-Only Log / Volatile Scratch) 규율을 *캐시 엔진 복제 없이* region mutability 메타 + guard anti-pattern rule + golden byte-identical 회귀로 흡수.
+
+### 11.2 우선순위(기존 P0~P4 위에 겹치는 계약 강화 레이어)
+
+| 그룹 | 앵커 아이디어 | 출처 | 적용 표면 | value |
+|---|---|---|---|---|
+| P0 결정성·안전 기본값 | byte-determinism guard 3종 + golden 회귀, daemon `socket_perm_ok` 노출, MCP inputSchema 정규형 검증 | Reasonix/Qwen | guard·contract·daemon | high |
+| P1 정책 강화 | `PolicyTier` 5단계 enum(YOLO/AUTO 제외), plan-mode 부작용 차단, delegation 권한 격탈, Storm 반복호출 신호, ambiguous-edit 사전 deny | Qwen/Reasonix | policy·CLI·MCP·audit | high |
+| P2 사용자 workflow | `model_content vs display` + `error.type` enum, `did_you_mean`/path-canonical repair, `--stdin` Unix filter, `docs resolve --json` import 트리, skill path-gating | Qwen | contract·cli·mcp·docs | high |
+| P3 컨텍스트·학습 | `ContextRegionContract`(통합 `CONTEXT_BUDGET.md`), `serialization_stability` 메트릭→95점 gate, uncertainty tiebreaker, 구조화 lesson harvesting, sandbox profile "선언만" ladder | Reasonix/Qwen | state·self-verify·self-augment·docs | med |
+
+### 11.3 채택하지 않을 것 (reject)
+
+| reject 항목 | 출처 | 사유 / 흡수 가능한 조각 |
+|---|---|---|
+| data-plane 공유 daemon(모델 세션·컨텍스트 HTTP+SSE 공유) | Qwen `qwen serve` | 모델 세션 호스팅은 host 책임 → host-neutral 경계 붕괴. 단 "control-plane만 공유" 비-목표를 ADR에 명문화. |
+| provider hot-swap 추상화(ContentGenerator/modelProviders) | Qwen | provider 라우팅은 Codex/Claude가 이미 함 = 바퀴 재발명. 단 redaction을 provider-neutral 휴리스틱으로 일반화. |
+| 세션 자동 승격(Proceed Always→AUTO_EDIT) / YOLO bypass | Qwen | 1회 승인→세션 전체 안전등급 상승은 "명시적 opt-in으로만 write/network/shell" 기본값 약화. per-invocation opt-in만 허용. |
+| 메모리 Dream/Extract 백그라운드 압축 엔진 | Qwen | 전문 메모리 엔진 = upstream claude-mem 책임. install-native 카탈로그 라우팅만. |
+| prefix-cache 빌링 최적화 + self-consistency N-sample 분기 | Reasonix | single-provider 추론/빌링 런타임 복제 = host-neutral·runner 금지 위배. byte-determinism·region 분리·측정 조각만 P0/P3로 흡수. |
+| R1 reasoning distill 엔진(secondary 모델 호출) | Reasonix | core가 모델 직접 호출 = provider 결합 + golden 불가. plan-state 저장 스키마 슬롯만 흡수. |
+
+reject 원칙: **"모델을 호출하거나, 단일 provider에 결합하거나, 세션 단위로 안전등급을 자동 상승시키는 것"은 전부 거부**하고, 분리 가능한 정책/계약/측정 조각만 흡수한다.
+
+### 11.4 첫 실행 slice (2026-05-30 착수)
+
+P3 `ContextRegionContract`의 토대로, 실행 경로·정책 결정을 바꾸지 않는 **직렬화 byte-determinism 회귀 안전망**을 먼저 깐다. 범위: (1) `docs`/`contract` JSON 빌더의 2회 호출 byte-identical golden 회귀, (2) guard `nondeterministic-context-serialization` rule 1종, (3) 직렬화 산출물 region/mutability 메타 자리 확보(noop). 검증은 golden diff empty + `contract check` warning 0건 + self-verify 95점 유지.
+
+구현 결과(2026-05-30):
+- `internal/core/context_region.go`: `Region*` 상수 + `VolatileContextFields` + `StableProjection`/`StableProjectionJSON`/`ContextSerializationStable` 추가. volatile field 어휘를 response-contract golden의 dynamic time key 정규화와 단일 source of truth로 통합.
+- `nondeterministic-context-serialization` guard rule을 `// harness:immutable-prefix` marker opt-in + `volatile-ok` 면제로 추가(severity `warn`, 노이즈 0).
+- 발견한 실제 결함: `DocsIndex.generated_at`가 immutable 콘텐츠에 인터리빙되어 golden이 `$TIMESTAMP`로 가리고 있었다. stable projection으로 분리해 회귀 테스트가 콘텐츠 drift를 잡도록 했다.
+- byte-determinism 강제를 docs_index뿐 아니라 `contract_schema`, MCP `tools`/`resources` 등 **모든 재사용-context 빌더**로 확장(`ContextSerializationStable`).
+- **P0 guard 3종 중 2종 의도 변경**: `prefix-region-reorder`(warn)와 `summary-replace-on-prefix`(block)는 Go map 순회/prefix 재배치 같은 의미 분석이 필요해 deterministic regex guard로는 신뢰성 있게 탐지할 수 없다. 코드 패턴을 추측하는 대신, **출력 byte-determinism을 데이터 레벨에서 직접 강제**(`ContextSerializationStable` 회귀)하는 방식으로 같은 보장을 더 확실히 달성한다. 향후 AST adapter가 생기면 code-level rule을 보강 신호로 추가할 수 있다.
