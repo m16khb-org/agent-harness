@@ -460,34 +460,6 @@
           "title": "구현 컨벤션"
         },
         {
-          "bytes": 27443,
-          "headings": [
-            "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness",
-            "1. 요약 결론",
-            "2. 근거와 현재 상태",
-            "2.1 agent-harness 현재 상태",
-            "2.2 OMC(oh-my-claudecode) 참고점",
-            "2.3 OMX(oh-my-codex) 참고점",
-            "2.4 Hermes Agent 참고점",
-            "3. 비교 매트릭스",
-            "4. 모자란 점",
-            "4.1 “하네스”보다 “안전한 공통 library/adapter”에 가깝다",
-            "4.2 Worker가 실행을 하지 않는다",
-            "4.3 팀/분산 작업의 파일 소유권과 통합 모델이 없다",
-            "4.4 Product QA workflow가 부족하다",
-            "4.5 Persistent memory/skill learning이 외부 의존이다",
-            "4.6 Provider/model/runtime abstraction이 부족하다",
-            "4.7 UX/문서 정보 구조가 내부자 지향이다",
-            "5. 개선이 필요한 점: 우선순위 제안",
-            "P0 — 지금 설계 원칙을 유지하면서 빈틈 메우기",
-            "P1 — 안전한 실행 runtime으로 확장",
-            "P2 — 사용자-facing workflow 확장"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/HARNESS_COMPARISON.md",
-          "rel_path": ".agent-harness/HARNESS_COMPARISON.md",
-          "title": "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness"
-        },
-        {
           "bytes": 3362,
           "headings": [
             "OpenAPI Spec Guidance",
@@ -709,7 +681,6 @@
         "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
         "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
         "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
-        "$HARNESS_ROOT/.agent-harness/HARNESS_COMPARISON.md",
         "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
         "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
         "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
@@ -1412,7 +1383,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 19,
+        "docs_indexed": 18,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -2888,34 +2859,6 @@
                 "title": "구현 컨벤션"
               },
               {
-                "bytes": 27443,
-                "headings": [
-                  "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness",
-                  "1. 요약 결론",
-                  "2. 근거와 현재 상태",
-                  "2.1 agent-harness 현재 상태",
-                  "2.2 OMC(oh-my-claudecode) 참고점",
-                  "2.3 OMX(oh-my-codex) 참고점",
-                  "2.4 Hermes Agent 참고점",
-                  "3. 비교 매트릭스",
-                  "4. 모자란 점",
-                  "4.1 “하네스”보다 “안전한 공통 library/adapter”에 가깝다",
-                  "4.2 Worker가 실행을 하지 않는다",
-                  "4.3 팀/분산 작업의 파일 소유권과 통합 모델이 없다",
-                  "4.4 Product QA workflow가 부족하다",
-                  "4.5 Persistent memory/skill learning이 외부 의존이다",
-                  "4.6 Provider/model/runtime abstraction이 부족하다",
-                  "4.7 UX/문서 정보 구조가 내부자 지향이다",
-                  "5. 개선이 필요한 점: 우선순위 제안",
-                  "P0 — 지금 설계 원칙을 유지하면서 빈틈 메우기",
-                  "P1 — 안전한 실행 runtime으로 확장",
-                  "P2 — 사용자-facing workflow 확장"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/HARNESS_COMPARISON.md",
-                "rel_path": ".agent-harness/HARNESS_COMPARISON.md",
-                "title": "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness"
-              },
-              {
                 "bytes": 3362,
                 "headings": [
                   "OpenAPI Spec Guidance",
@@ -3144,7 +3087,6 @@
               "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
               "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
               "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
-              "$HARNESS_ROOT/.agent-harness/HARNESS_COMPARISON.md",
               "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
               "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
               "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
@@ -3736,7 +3678,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 19,
+              "docs_indexed": 18,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
