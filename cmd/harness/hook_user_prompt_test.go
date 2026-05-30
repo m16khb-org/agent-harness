@@ -51,6 +51,50 @@ func TestRunHookUserPromptEmitsSystemMessageAndContext(t *testing.T) {
 	}
 }
 
+func TestRunHookUserPromptCodexHostOmitsSystemMessage(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".agent-harness"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".agent-harness", "ARCHITECTURE.md"), []byte("# Arch\n\n## 경계\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldStdin := os.Stdin
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdin = r
+	go func() { _, _ = io.WriteString(w, `{"prompt":"x","cwd":"`+repo+`"}`); _ = w.Close() }()
+	defer func() { os.Stdin = oldStdin }()
+
+	out := captureStdoutForTest(t, func() {
+		if err := runHookUserPrompt([]string{"--host", "codex"}); err != nil {
+			t.Fatalf("runHookUserPrompt: %v", err)
+		}
+	})
+
+	var obj map[string]any
+	if err := json.Unmarshal([]byte(out), &obj); err != nil {
+		t.Fatalf("hook output is not JSON: %q: %v", out, err)
+	}
+	if _, ok := obj["systemMessage"]; ok {
+		t.Fatalf("Codex host output should omit systemMessage to avoid collapsed duplicate TUI warning: %s", out)
+	}
+	hso, _ := obj["hookSpecificOutput"].(map[string]any)
+	ctx, _ := hso["additionalContext"].(string)
+	if !strings.Contains(ctx, "\n• ARCHITECTURE.md") || !strings.Contains(ctx, "System structure") || strings.Contains(ctx, "project docs (read what's relevant):") {
+		t.Fatalf("expected full readable Codex model additionalContext, got: %v", hso["additionalContext"])
+	}
+	for _, blocked := range []string{"[agent-harness]", "route:", "actions:", "profile:", "pending upkeep:", "rule:"} {
+		if strings.Contains(ctx, blocked) {
+			t.Fatalf("Codex host output should not include routing/status block %q: %v", blocked, hso["additionalContext"])
+		}
+	}
+}
+
 func TestRunHookStopEmitsCodexCompatibleNoopJSON(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

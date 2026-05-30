@@ -1,6 +1,6 @@
 ---
 name: ADR.md
-description: 프로젝트의 구조적 결정과 그 근거를 담는다. 어떤 선택을 왜 했고 무엇을 기각했는지 알 수 있다.
+description: Structural decisions, rationale, and rejected alternatives.
 ---
 
 # agent-harness 구현 계획
@@ -347,3 +347,21 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
   - async 추천 + Stop-time 넛지/검증 루프 | 메뉴를 항상 주입하면 "안 읽었을 때 알림"이 불필요하고, Read 여부 탐지는 이전 턴 로드/타 훅 주입 때문에 오탐 위험.
   - 정적 키워드로 required/consider 판정 유지 | 모호한 프롬프트에서 잘못된 문서를 prescribe할 수 있음.
 - Consequences: §11.3의 "core가 모델 직접 호출 reject"는 **그대로 유지**된다(이 결정은 모델을 안 부른다). 후속 슬라이스: (S1) `DiscoverProjectDocs(repoRoot)` + 카탈로그 포맷 + UserPromptSubmit 훅 주입 배선 + 테스트. (S2, 선택) 카탈로그가 비대해질 경우의 길이 budget/요약 정책. 후보 source는 하네스 자신의 docs(`DocsIndex`/`ListDocs`의 skills 포함분)가 아니라 작업 레포의 project docs임에 주의한다.
+
+
+## 2026-05-30 — Host-specific UserPromptSubmit display contract
+
+- Kind: `adr`
+- Source: Codex 0.135.0 runtime evidence and user directive.
+- Summary: Codex and Claude Code can call the same `agent-harness hook user-prompt` CLI, but their visible rendering of hook output differs. The common core stays shared; host adapters select the output shape.
+- Decision:
+  - `project bootstrap` and `project bootstrap --sync` keep writing canonical frontmatter descriptions for `.agent-harness/*.md`; those descriptions are now concise English metadata to reduce catalog length while preserving meaning.
+  - Codex installs `agent-harness hook user-prompt --host codex`. In that mode the hook omits `systemMessage` and injects only the full project-doc catalog through `hookSpecificOutput.additionalContext`; route/action/profile/pending-upkeep status blocks are excluded because Codex shows `additionalContext` in the TUI `hook context:` row.
+  - Claude Code keeps the richer split: `systemMessage` can show a readable user-facing view while `hookSpecificOutput.additionalContext` carries compact model-facing routing/status hints.
+  - The host-specific split is an adapter/output concern only. Project-doc discovery, canonical metadata, bootstrap/sync frontmatter, and routing hint construction remain in shared Go core.
+- Rationale: Codex currently has no separate hidden UserPromptSubmit context channel; anything in `additionalContext` is also surfaced to the user. Keeping only the project-doc catalog in Codex preserves the information the agent must receive and avoids noisy route/profile/upkeep lines. English metadata is shorter for this technical catalog than the previous Korean prose in byte/character length and is easier to scan in the collapsed hook row.
+- Rejected:
+  - Re-adding the full route/action/profile/pending-upkeep block to Codex | it bloats the visible `hook context:` row and is not required for the agent to choose project docs.
+  - Making Codex use only a short summary | it hides document descriptions from the agent.
+  - Forking hook core by host | host drift would violate the shared CLI/MCP contract.
+- Consequences: tests must cover both bootstrap/frontmatter metadata and host-specific `UserPromptSubmit` output. Future Codex runtime changes that add a hidden context channel may revisit this decision, but until then Codex output should preserve full doc descriptions and omit nonessential status blocks.

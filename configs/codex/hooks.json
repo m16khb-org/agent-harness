@@ -48,7 +48,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook user-prompt",
+            "command": "'./bin/agent-harness' hook user-prompt --host codex",
             "timeout": 5,
             "type": "command"
           }

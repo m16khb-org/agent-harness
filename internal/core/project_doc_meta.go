@@ -9,17 +9,17 @@ import "strings"
 // bootstrap --sync. It is rendered as SKILL.md-style YAML frontmatter at the top
 // of each doc so both humans and the project-doc catalog read the same source.
 var docMetaDescriptions = map[string]string{
-	"ARCHITECTURE.md":   "시스템의 구조, 컴포넌트 경계, 책임 분담을 담는다. 무엇이 어디에 속하고 왜 그렇게 나뉘는지 알 수 있다.",
-	"ADR.md":            "프로젝트의 구조적 결정과 그 근거를 담는다. 어떤 선택을 왜 했고 무엇을 기각했는지 알 수 있다.",
-	"CONSTITUTION.md":   "문서 우선순위와 안전·정확성 같은 최상위 원칙을 담는다. 지시가 충돌할 때 무엇을 따라야 하는지 알 수 있다.",
-	"CONVENTIONS.md":    "코드 구현 규약과 패키지·레이어 경계를 담는다. 코드를 어떤 구조·명명·패턴으로 작성해야 하는지 알 수 있다.",
-	"TECH_STACK.md":     "선택한 언어·런타임·도구와 그 이유를 담는다. 어떤 기술을 쓰고 왜 골랐는지 알 수 있다.",
-	"TESTING.md":        "검증 기준과 테스트 작성·실행 규칙을 담는다. 변경을 어떻게 검증하고 무엇을 통과시켜야 하는지 알 수 있다.",
-	"COMMIT_POLICY.md":  "커밋 메시지 규칙과 형식을 담는다. 커밋을 어떤 형식·단위로 작성해야 하는지 알 수 있다.",
-	"CAUTIONS.md":       "반복되는 실수와 운영상 주의점을 담는다. 과거에 무엇이 잘못됐고 어떻게 피하는지 알 수 있다.",
-	"OPERATIONS.md":     "설치·실행·운영 절차를 담는다. 하네스와 도구를 어떻게 설치·동기화·실행하는지 알 수 있다.",
-	"OPEN_API_SPEC.md":  "엔드포인트·DTO·OpenAPI 문서화 게이트 규칙을 담는다. API 변경 시 무엇을 문서화하고 어떻게 검사하는지 알 수 있다.",
-	"AGENT_WORKFLOW.md": "에이전트의 시작·작업·검증·완료 흐름을 담는다. 작업을 어떤 단계로 진행하고 마무리하는지 알 수 있다.",
+	"ARCHITECTURE.md":   "System structure, component boundaries, and responsibilities.",
+	"ADR.md":            "Structural decisions, rationale, and rejected alternatives.",
+	"CONSTITUTION.md":   "Instruction priority, safety, and accuracy principles.",
+	"CONVENTIONS.md":    "Coding conventions, package structure, and layer boundaries.",
+	"TECH_STACK.md":     "Chosen languages, runtimes, tools, and rationale.",
+	"TESTING.md":        "Verification standards, test practices, and required checks.",
+	"COMMIT_POLICY.md":  "Commit message format, scope, and decision-record rules.",
+	"CAUTIONS.md":       "Recurring mistakes, operational cautions, and avoidance guidance.",
+	"OPERATIONS.md":     "Install, sync, runtime, and operational procedures.",
+	"OPEN_API_SPEC.md":  "Endpoint, DTO, and OpenAPI documentation gate rules.",
+	"AGENT_WORKFLOW.md": "Agent start, execution, verification, and completion flow.",
 }
 
 // DocMetaDescription returns the canonical metadata description for a standard

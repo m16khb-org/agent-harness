@@ -1,6 +1,6 @@
 ---
 name: TESTING.md
-description: 검증 기준과 테스트 작성·실행 규칙을 담는다. 변경을 어떻게 검증하고 무엇을 통과시켜야 하는지 알 수 있다.
+description: Verification standards, test practices, and required checks.
 ---
 
 # 테스트 컨벤션

@@ -35,7 +35,7 @@ func runHook(args []string) error {
 
 func hookUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  agent-harness hook user-prompt [--prompt TEXT] [--json]
+  agent-harness hook user-prompt [--prompt TEXT] [--host codex|claude] [--json]
   agent-harness hook post-tool-use [--repo PATH] [--json]
   agent-harness hook pre-compact [--repo PATH] [--json]
   agent-harness hook post-compact [--repo PATH] [--json]
@@ -46,6 +46,7 @@ func hookUsage() {
 func runHookUserPrompt(args []string) error {
 	fs := flag.NewFlagSet("hook user-prompt", flag.ContinueOnError)
 	promptFlag := fs.String("prompt", "", "user prompt text; defaults to hook stdin JSON prompt")
+	hostFlag := fs.String("host", "", "hook host (codex or claude); controls user-visible compatibility fields")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -66,17 +67,26 @@ func runHookUserPrompt(args []string) error {
 	if *jsonOut {
 		return printJSON(result)
 	}
-	// additionalContext is the compact, model-facing context (hidden from the
-	// user on Claude Code, "developer context" on Codex). systemMessage is the
-	// pretty, user-visible counterpart surfaced in the terminal on both hosts.
+	host := strings.ToLower(strings.TrimSpace(*hostFlag))
+	// additionalContext is the compact, model-facing context. Claude Code keeps
+	// it hidden and renders systemMessage as a readable multiline user view.
+	// Codex currently echoes both systemMessage and additionalContext in the TUI,
+	// collapsing systemMessage newlines into an unreadable warning, so Codex
+	// installs pass --host codex and intentionally omit systemMessage.
+	additionalContext := result.AdditionalContext
+	if host == "codex" {
+		additionalContext = core.RenderUserPromptCodexContext(result)
+	}
 	payload := map[string]any{
 		"hookSpecificOutput": map[string]any{
 			"hookEventName":     "UserPromptSubmit",
-			"additionalContext": result.AdditionalContext,
+			"additionalContext": additionalContext,
 		},
 	}
-	if view := core.RenderUserPromptUserView(result); view != "" {
-		payload["systemMessage"] = view
+	if host != "codex" {
+		if view := core.RenderUserPromptUserView(result); view != "" {
+			payload["systemMessage"] = view
+		}
 	}
 	return printJSON(payload)
 }

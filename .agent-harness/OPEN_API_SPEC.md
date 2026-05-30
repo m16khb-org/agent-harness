@@ -1,6 +1,6 @@
 ---
 name: OPEN_API_SPEC.md
-description: 엔드포인트·DTO·OpenAPI 문서화 게이트 규칙을 담는다. API 변경 시 무엇을 문서화하고 어떻게 검사하는지 알 수 있다.
+description: Endpoint, DTO, and OpenAPI documentation gate rules.
 ---
 
 # OpenAPI Spec Guidance

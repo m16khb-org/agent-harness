@@ -1,6 +1,6 @@
 ---
 name: CAUTIONS.md
-description: 반복되는 실수와 운영상 주의점을 담는다. 과거에 무엇이 잘못됐고 어떻게 피하는지 알 수 있다.
+description: Recurring mistakes, operational cautions, and avoidance guidance.
 ---
 
 # 주의사항 모음
@@ -135,6 +135,17 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 - 설치/빌드 후 MCP smoke 전에는 필요하면 `agent-harness daemon stop --json`으로 기존 daemon을 내린다.
 - 테스트는 `HARNESS_DAEMON_DIR=$(mktemp -d)/daemon`으로 실제 user daemon과 분리한다.
 - daemon socket/pid/log는 user state dir에 두고 repo나 wiki vault에 쓰지 않는다.
+
+## 13. Codex vs Claude Code hook rendering drift
+
+Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not render it the same way.
+
+주의:
+- Codex shows `hookSpecificOutput.additionalContext` in the TUI `hook context:` row, so anything injected for the model is also visible to the user and may be newline-collapsed.
+- Claude Code can use `systemMessage` as the user-visible channel while keeping `additionalContext` as model-facing context.
+- Do not assume a hook field is hidden just because another host hides it. Verify the installed host runtime/schema before changing hook output.
+- For Codex, keep the project-doc catalog in `additionalContext` because the agent needs it, but avoid route/action/profile/pending-upkeep status prose there.
+- Keep project-doc frontmatter descriptions concise English metadata; `project bootstrap` and `project bootstrap --sync` use this canonical metadata, so verbose descriptions multiply across every target repo.
 
 ## MCP tool-use risks
 

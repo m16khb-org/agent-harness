@@ -61,14 +61,14 @@ func TestDiscoverProjectDocsEmptyWhenNoAgentHarness(t *testing.T) {
 
 func TestFormatProjectDocCatalogUsesDescription(t *testing.T) {
 	catalog := []ProjectDocCatalogEntry{
-		{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "프로젝트의 결정과 근거를 담는다."},
+		{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "Structural decisions, rationale, and rejected alternatives."},
 		{RelPath: ".agent-harness/X.md", Title: "엑스", Description: ""},
 	}
 	got := FormatProjectDocCatalog(catalog)
 	if !strings.HasPrefix(got, "project docs (read what's relevant): ") {
 		t.Fatalf("unexpected catalog prefix: %q", got)
 	}
-	if !strings.Contains(got, "ADR.md=프로젝트의 결정과 근거를 담는다.") {
+	if !strings.Contains(got, "ADR.md=Structural decisions, rationale, and rejected alternatives.") {
 		t.Fatalf("catalog should use description: %s", got)
 	}
 	if !strings.Contains(got, "X.md=엑스") {
@@ -102,12 +102,12 @@ func TestBuildUserPromptMCPHintsInjectsProjectDocCatalog(t *testing.T) {
 func TestRenderUserPromptUserView(t *testing.T) {
 	result := HookUserPromptResult{
 		ProjectDocs: []ProjectDocCatalogEntry{
-			{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "프로젝트의 결정과 근거를 담는다."},
+			{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "Structural decisions, rationale, and rejected alternatives."},
 			{RelPath: ".agent-harness/X.md", Title: "엑스", Description: ""},
 		},
 	}
 	view := RenderUserPromptUserView(result)
-	for _, want := range []string{"📚 agent-harness", "• ADR.md — 프로젝트의 결정과 근거를 담는다.", "• X.md — 엑스"} {
+	for _, want := range []string{"📚 agent-harness", "• ADR.md — Structural decisions, rationale, and rejected alternatives.", "• X.md — 엑스"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("user view missing %q:\n%s", want, view)
 		}
@@ -118,6 +118,39 @@ func TestRenderUserPromptUserView(t *testing.T) {
 	}
 	if got := RenderUserPromptUserView(HookUserPromptResult{}); got != "" {
 		t.Fatalf("expected empty user view without docs, got %q", got)
+	}
+}
+
+func TestRenderUserPromptCodexContextPreservesFullCatalogForAgent(t *testing.T) {
+	result := HookUserPromptResult{
+		AdditionalContext: "[agent-harness] 프로젝트 지침 확인 중... | project docs (read what's relevant): ADR.md=Structural decisions, rationale, and rejected alternatives. | route: choose project docs if ambiguous | rule: use docs/tools only when material",
+		ProjectDocs: []ProjectDocCatalogEntry{
+			{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "Structural decisions, rationale, and rejected alternatives."},
+		},
+	}
+	view := RenderUserPromptCodexContext(result)
+	for _, want := range []string{"📚 agent-harness", "\n• ADR.md — Structural decisions, rationale, and rejected alternatives."} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("Codex context missing %q:\n%s", want, view)
+		}
+	}
+	for _, blocked := range []string{"[agent-harness]", "route:", "actions:", "profile:", "pending upkeep:", "rule:", "project docs (read what's relevant):"} {
+		if strings.Contains(view, blocked) {
+			t.Fatalf("Codex context should only contain the readable full catalog; found %q:\n%s", blocked, view)
+		}
+	}
+}
+
+func TestAppendCompactPendingUpkeepDeduplicatesEvents(t *testing.T) {
+	parts := []string{}
+	events := []DocUpkeepEvent{
+		{TargetDocs: []string{"ARCHITECTURE.md", "OPERATIONS.md"}, Summary: "Bash touched harness lifecycle-relevant files; shared project docs may need review."},
+		{TargetDocs: []string{"ARCHITECTURE.md", "OPERATIONS.md"}, Summary: "Bash touched harness lifecycle-relevant files; shared project docs may need review."},
+	}
+	appendCompactPendingUpkeep(&parts, events)
+	got := strings.Join(parts, "\n")
+	if strings.Count(got, "Bash touched") != 1 {
+		t.Fatalf("expected duplicate pending upkeep entries to be collapsed, got:\n%s", got)
 	}
 }
 

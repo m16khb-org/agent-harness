@@ -349,7 +349,11 @@ func codexHookGroup(spec codexLifecycleHookSpec) map[string]any {
 }
 
 func codexHookCommand(binPath, subcommand string) string {
-	return fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
+	cmd := fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
+	if subcommand == "user-prompt" {
+		cmd += " --host codex"
+	}
+	return cmd
 }
 
 func mergeHookConfig(config map[string]any, binPath string) map[string]any {

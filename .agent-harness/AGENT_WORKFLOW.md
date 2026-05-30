@@ -1,6 +1,6 @@
 ---
 name: AGENT_WORKFLOW.md
-description: 에이전트의 시작·작업·검증·완료 흐름을 담는다. 작업을 어떤 단계로 진행하고 마무리하는지 알 수 있다.
+description: Agent start, execution, verification, and completion flow.
 ---
 
 # Agent Workflow
@@ -37,7 +37,7 @@ description: 에이전트의 시작·작업·검증·완료 흐름을 담는다.
 
 ## UserPromptSubmit hook
 
-Codex/Claude host가 지원하면 `agent-harness hook user-prompt`가 매 사용자 지시마다 짧은 MCP 후보 힌트를 주입한다. 이 힌트는 자동 실행 명령이 아니라 agent가 필요한 MCP를 판단하기 위한 routing reminder다. Hook은 차단/대행 실행을 하지 않고, project docs/API docs/CAUTIONS/ADR 갱신 후보만 제안해야 한다.
+Codex/Claude host가 지원하면 `agent-harness hook user-prompt`가 매 사용자 지시마다 project-doc catalog와 host-compatible routing context를 주입한다. 이 힌트는 자동 실행 명령이 아니라 agent가 필요한 문서/MCP를 판단하기 위한 reminder다. Codex는 `--host codex`로 설치되어 visible `hook context:` row에 project-doc catalog만 주입하고, Claude Code는 `systemMessage`와 compact `additionalContext`를 분리해 richer routing/status hints를 유지할 수 있다. Hook은 차단/대행 실행을 하지 않고, project docs/API docs/CAUTIONS/ADR 갱신 후보만 제안해야 한다.
 
 ## MCP Usage Rule
 

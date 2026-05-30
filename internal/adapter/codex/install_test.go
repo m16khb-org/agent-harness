@@ -36,7 +36,7 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(hooks), "hook user-prompt") || !strings.Contains(string(hooks), req.BinPath) {
+	if !strings.Contains(string(hooks), "hook user-prompt --host codex") || !strings.Contains(string(hooks), req.BinPath) {
 		t.Fatalf("codex hooks missing harness UserPromptSubmit hook:\n%s", string(hooks))
 	}
 	if exists(filepath.Join(root, ".claude", "skills", "alpha")) || exists(filepath.Join(root, ".mcp.json")) {
@@ -60,7 +60,7 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, subcommand := range []string{"hook user-prompt", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop"} {
+	for _, subcommand := range []string{"hook user-prompt --host codex", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop"} {
 		if count := strings.Count(string(hooks), subcommand); count != 1 {
 			t.Fatalf("%s appears %d times, want 1:\n%s", subcommand, count, string(hooks))
 		}

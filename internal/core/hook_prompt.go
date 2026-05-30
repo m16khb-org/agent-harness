@@ -141,6 +141,15 @@ func RenderUserPromptUserView(result HookUserPromptResult) string {
 	return b.String()
 }
 
+// RenderUserPromptCodexContext renders only the full project-doc catalog for
+// Codex. Codex has no separate hidden context channel for UserPromptSubmit
+// hooks, so route/action/profile/pending-upkeep hints would also appear in the
+// TUI "hook context:" row; keep those out of the Codex path and preserve the
+// useful doc catalog instead.
+func RenderUserPromptCodexContext(result HookUserPromptResult) string {
+	return RenderUserPromptUserView(result)
+}
+
 func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
 	groups := map[string][]HookUserPromptHint{}
 	for _, h := range hints {
@@ -231,12 +240,20 @@ func appendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
 		return
 	}
 	items := make([]string, 0, len(events))
+	seen := map[string]bool{}
 	for _, event := range events {
 		item := event.Summary
 		if len(event.TargetDocs) > 0 {
 			item = strings.Join(event.TargetDocs, ",") + " " + item
 		}
+		if seen[item] {
+			continue
+		}
+		seen[item] = true
 		items = append(items, item)
+	}
+	if len(items) == 0 {
+		return
 	}
 	*parts = append(*parts, "pending upkeep: "+strings.Join(items, "; "))
 }

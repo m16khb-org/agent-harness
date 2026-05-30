@@ -1,6 +1,6 @@
 ---
 name: COMMIT_POLICY.md
-description: 커밋 메시지 규칙과 형식을 담는다. 커밋을 어떤 형식·단위로 작성해야 하는지 알 수 있다.
+description: Commit message format, scope, and decision-record rules.
 ---
 
 # 커밋 메시지 정책: Conventional + Lore Hybrid

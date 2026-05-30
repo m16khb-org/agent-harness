@@ -1,6 +1,6 @@
 ---
 name: OPERATIONS.md
-description: 설치·실행·운영 절차를 담는다. 하네스와 도구를 어떻게 설치·동기화·실행하는지 알 수 있다.
+description: Install, sync, runtime, and operational procedures.
 ---
 
 # 하네스 사용법
@@ -95,7 +95,7 @@ codex mcp get agent_harness
 
 ### Lifecycle hooks
 
-Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifecycle hook을 등록한다. `UserPromptSubmit`의 `agent-harness hook user-prompt`는 사용자의 새 지시를 차단하거나 대신 수행하지 않고, agent가 고려해야 할 `agent_harness` MCP 후보만 짧은 additional context로 주입한다. 대상 repo의 lifecycle namespace가 user-state에 초기화되어 있으면 pending doc-upkeep queue도 참고해 `.agent-harness` 갱신 후보를 함께 주입한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일 변경을 repo별 user-state queue에 기록하고, `PreCompact`의 `agent-harness hook pre-compact`는 pending doc-upkeep 상태를 작은 compact capsule로 저장하며, `PostCompact`의 `agent-harness hook post-compact`는 capsule을 한 번만 additional context로 복원한다. `Stop`의 `agent-harness hook stop`은 Codex/Claude Stop hook schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. pending upkeep reminder는 `agent-harness hook stop --json`의 raw result로 확인하며 Stop hook stdout에 `hookSpecificOutput.additionalContext`를 쓰지 않는다. 후속 hook들은 shared docs를 직접 수정하지 않는다.
+Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifecycle hook을 등록한다. `UserPromptSubmit`은 `agent-harness hook user-prompt --host codex`로 설치한다. Codex는 `hookSpecificOutput.additionalContext`를 TUI `hook context:` row에도 보여주므로, Codex 경로는 `systemMessage`를 생략하고 agent가 필요한 project-doc catalog만 주입한다. route/action/profile/pending-upkeep status block은 Codex visible context에서 제외한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일 변경을 repo별 user-state queue에 기록하고, `PreCompact`의 `agent-harness hook pre-compact`는 pending doc-upkeep 상태를 작은 compact capsule로 저장하며, `PostCompact`의 `agent-harness hook post-compact`는 capsule을 한 번만 additional context로 복원한다. `Stop`의 `agent-harness hook stop`은 Codex/Claude Stop hook schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. pending upkeep reminder는 `agent-harness hook stop --json`의 raw result로 확인하며 Stop hook stdout에 `hookSpecificOutput.additionalContext`를 쓰지 않는다. 후속 hook들은 shared docs를 직접 수정하지 않는다.
 
 예:
 
@@ -103,7 +103,7 @@ Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifec
 printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
 ```
 
-주입 후보 예시는 `project_docs_route`, `api_doc_static_check`, `api_doc_review`, `project_docs_read/project_docs_update`, `project_docs_record`다. 매 prompt마다 실행되므로 네트워크나 긴 파일 읽기를 하지 않고 정적 keyword routing과 짧은 user-state 조회만 수행한다.
+Raw JSON(`--json`)의 주입 후보 예시는 `project_docs_route`, `api_doc_static_check`, `api_doc_review`, `project_docs_read/project_docs_update`, `project_docs_record`다. 매 prompt마다 실행되므로 네트워크나 긴 파일 읽기를 하지 않고 정적 keyword routing과 짧은 user-state 조회만 수행한다.
 
 ---
 
@@ -140,7 +140,7 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 
 ### Claude hooks
 
-기본 설치는 `~/.claude/settings.json`에 Codex와 같은 lifecycle hook을 등록한다. Claude Code의 `UserPromptSubmit`, `PostToolUse`, `PreCompact`, `PostCompact`, `Stop` hook은 Codex와 같은 공통 CLI를 호출하므로 living docs routing, lifecycle upkeep queue 기록, compaction capsule 복원, stop reminder 의미가 양쪽 host에서 동일하다. `PostToolUse`는 Claude hook matcher `*`로 모든 tool 성공 이벤트를 받아 core에서 관련 파일만 queue에 남긴다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in 없이 `.claude/settings.json`을 target repo에 만들지 않는다.
+기본 설치는 `~/.claude/settings.json`에 lifecycle hook을 등록한다. Claude Code의 `UserPromptSubmit`, `PostToolUse`, `PreCompact`, `PostCompact`, `Stop` hook은 Codex와 같은 공통 CLI/core를 호출하지만 output shape은 host에 맞춘다. Claude Code는 `systemMessage`와 model-facing `hookSpecificOutput.additionalContext`를 분리해 쓸 수 있으므로 UserPromptSubmit에서 readable project-doc view와 compact route/status hints를 함께 유지한다. `PostToolUse`는 Claude hook matcher `*`로 모든 tool 성공 이벤트를 받아 core에서 관련 파일만 queue에 남긴다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in 없이 `.claude/settings.json`을 target repo에 만들지 않는다.
 
 ---
 
@@ -260,7 +260,7 @@ module.exports = {
 
 ## 8. Project Docs Bootstrap
 
-`agent-harness project bootstrap`은 대상 레포를 분석해 에이전트용 프로젝트 운영 문서 초안과 repo profile metadata를 생성한다. 기본 실행은 누락된 파일과 user-state profile을 쓰며, 계획만 확인하려면 `--dry-run`을 쓴다. 기존 문서를 템플릿/증거 기준으로 다시 최신화하려면 `--sync`를 쓴다. `AGENTS.md`는 전체 덮어쓰지 않고, behavioral top block이 없으면 prepend하며 `AGENT_HARNESS` marker block만 추가/갱신한다. 실행은 target repo에 runtime state를 쓰지 않고 user-state의 `projects/<repo-id>/project.json` lifecycle namespace를 생성·검증한다. profile metadata에는 VCS provider/hosting, language, package manager, frontend/backend/fullstack/monorepo/CLI/library classification, framework evidence가 기록되어 이후 hook context injection에서 짧게 참조된다. 정적 bootstrap은 안전한 baseline일 뿐이므로 최초 세팅 후 에이전트가 repo 증거와 lifecycle state를 읽고 `.agent-harness` 문서를 MCP로 보강해야 한다.
+`agent-harness project bootstrap`은 대상 레포를 분석해 에이전트용 프로젝트 운영 문서 초안과 repo profile metadata를 생성한다. 기본 실행은 누락된 파일과 user-state profile을 쓰며, 계획만 확인하려면 `--dry-run`을 쓴다. 기존 문서를 템플릿/증거 기준으로 다시 최신화하려면 `--sync`를 쓴다. `AGENTS.md`는 전체 덮어쓰지 않고, behavioral top block이 없으면 prepend하며 `AGENT_HARNESS` marker block만 추가/갱신한다. `.agent-harness/*.md` frontmatter `description`은 canonical concise English metadata를 쓴다. 신규 bootstrap과 `--sync` 모두 같은 metadata를 적용하므로, description 변경은 모든 target repo의 project-doc catalog와 hook context 길이에 영향을 준다. 실행은 target repo에 runtime state를 쓰지 않고 user-state의 `projects/<repo-id>/project.json` lifecycle namespace를 생성·검증한다. profile metadata에는 VCS provider/hosting, language, package manager, frontend/backend/fullstack/monorepo/CLI/library classification, framework evidence가 기록되어 이후 hook context injection에서 짧게 참조된다. 정적 bootstrap은 안전한 baseline일 뿐이므로 최초 세팅 후 에이전트가 repo 증거와 lifecycle state를 읽고 `.agent-harness` 문서를 MCP로 보강해야 한다.
 
 생성 대상:
 

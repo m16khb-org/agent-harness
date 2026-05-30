@@ -1,6 +1,6 @@
 ---
 name: TECH_STACK.md
-description: 선택한 언어·런타임·도구와 그 이유를 담는다. 어떤 기술을 쓰고 왜 골랐는지 알 수 있다.
+description: Chosen languages, runtimes, tools, and rationale.
 ---
 
 # 기술 스택

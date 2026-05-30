@@ -1,6 +1,6 @@
 ---
 name: CONSTITUTION.md
-description: 문서 우선순위와 안전·정확성 같은 최상위 원칙을 담는다. 지시가 충돌할 때 무엇을 따라야 하는지 알 수 있다.
+description: Instruction priority, safety, and accuracy principles.
 ---
 
 # 프로젝트 헌법

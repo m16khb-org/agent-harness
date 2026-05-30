@@ -1,3 +1,8 @@
+---
+name: HARNESS_COMPARISON.md
+description: Comparison research against OMC, OMX, and Hermes-style harnesses.
+---
+
 # Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness
 
 작성일: 2026-05-30 KST  
