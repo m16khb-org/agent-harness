@@ -106,6 +106,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - `.agent-harness/TECH_STACK.md`: 선택한 기술 스택과 예정 명령어
 - `.agent-harness/ADR.md`: 구현 로드맵과 완료 기준
 - `.agent-harness/OPERATIONS.md`: Codex/Claude native skill, MCP, CLI 사용법
+- `.agent-harness/AGENT_WORKFLOW.md`: 에이전트 시작·작업·검증·완료 흐름과 MCP/문서 사용 규칙
 - `skills/self-verify/SKILL.md`: 자기 검증 루프 실행 계약
 - `skills/self-augment/SELF_AUGMENTATION.md`: 자가 증강 루프의 95점 종료 게이트, 테스트/QA/개선 실행 계약
 

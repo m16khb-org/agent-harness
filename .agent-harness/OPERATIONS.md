@@ -295,7 +295,7 @@ MCP tools/resources:
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
 
-## 9. MCP Usage for Agents
+## 10. MCP Usage for Agents
 
 에이전트가 MCP를 효과적으로 쓰는 기본 순서:
 
@@ -313,7 +313,7 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 - `project_docs_bootstrap_plan`은 dry-run 전용이며 파일을 쓰지 않는다.
 - `state_prune`, `state_migrate`, `self_verify_promote`처럼 `confirm`이 있는 도구는 기본 dry-run이다.
 
-## 10. API Documentation Gate
+## 11. API Documentation Gate
 
 `agent-harness api-doc check`(정적+에이전트)와 MCP `api_doc_static_check` 후 `api_doc_review`는 staged API candidate files만 기본 검사한다. 후보는 controller/DTO/handler/router/OpenAPI/Swagger/schema 파일명 기준으로 고른다. `--all`은 명시적으로 전체 tracked API 후보를 에이전트에게 검토시킬 때만 사용하며, 기본 pre-commit 경로는 legacy 전체 부채를 실패시키지 않아야 한다.
 
@@ -339,7 +339,7 @@ API docs review must inspect the changed endpoint's directly related business lo
 Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `agent-harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.
 
 
-## 10. Contract, audit, worker MVP
+## 12. Contract, audit, worker MVP
 
 ```bash
 ./bin/agent-harness contract schema --json

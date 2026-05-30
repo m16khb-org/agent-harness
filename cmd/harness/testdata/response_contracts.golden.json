@@ -476,7 +476,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 22303,
+          "bytes": 22304,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -546,7 +546,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 12868,
+          "bytes": 12985,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -2875,7 +2875,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 22303,
+                "bytes": 22304,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -2945,7 +2945,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 12868,
+                "bytes": 12985,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
