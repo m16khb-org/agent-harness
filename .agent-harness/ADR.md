@@ -1,3 +1,8 @@
+---
+name: ADR.md
+description: 프로젝트의 구조적 결정과 그 근거를 담는다. 어떤 선택을 왜 했고 무엇을 기각했는지 알 수 있다.
+---
+
 # agent-harness 구현 계획
 
 작성일: 2026-05-25
@@ -321,3 +326,24 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 - Rationale: users should remember two nouns instead of several low-level install/update options: harness-level bootstrap and repo-level project bootstrap. `--sync` consistently means “bring versions/docs/profile back to current evidence.”
 - Rejected: separate `update`, `--write`, and upstream-specific flags as primary UX | they exposed implementation detail and made first setup vs refresh harder to explain.
 - Consequences: docs, usage, skills, and stability audits should recommend only `bootstrap`, `bootstrap --sync`, `project bootstrap`, and `project bootstrap --sync`; low-level flags/scripts stay compatibility/automation surfaces.
+
+
+## 2026-05-30 — Static project-doc catalog injection (작업 레포 .agent-harness 메뉴)
+
+- Kind: `adr`
+- Source: user directive (이번 세션). 앞선 동일 날짜의 "opt-in agent-backed advisor" 검토안을 **이 결정으로 대체한다**(LLM 호출·blocking·넛지/검증 루프 모두 철회).
+- Summary: UserPromptSubmit 훅이 **현재 작업 중인 대상 레포의 `.agent-harness/*.md`**(하네스 자신의 문서가 아님)를 훑어 "어떤 문서에 어떤 정보가 있는지" 컴팩트 카탈로그(메뉴)를 만들어 메인 루프 컨텍스트에 주입한다. **어느 문서를 읽을지의 판단은 메인 에이전트가** 자기 지능으로 한다. 하네스는 결정하지 않고 정확한 목록만 제공한다.
+- Decision:
+  - **하네스는 모델을 호출하지 않는다**: 카탈로그는 각 문서의 title + heading에서 정적·결정적으로 생성한다. provider/key/캐시/타임아웃/어댑터가 전혀 필요 없다 → host-neutral 완전 유지.
+  - **판정 제거, 메뉴 제시**: 기존 정적 훅의 "required/consider로 문서를 *판정*"하던 부분 대신, "이 문서엔 이런 정보가 있다"는 메뉴를 제시한다. 틀릴 수 있는 판정은 메인 에이전트로 넘긴다.
+  - **항상 주입(gating 없음)**: "프롬프트 관련성 있을 때만"을 정적으로 판단하는 것 자체가 신뢰할 수 없는 판정이므로 시도하지 않는다. 메뉴는 값싸므로(문서당 1줄) 매 턴 항상 주입한다.
+  - **non-blocking**: 단순 컨텍스트 주입이라 메인 루프를 막지 않는다.
+  - **결정적 → immutable_prefix**: 카탈로그는 결정적이라 context byte-determinism 계약의 immutable prefix에 그대로 들어간다. volatile region 불필요.
+  - **대상-레포 한정**: 후보는 작업 레포의 `.agent-harness/*.md`로 한정한다(AGENTS.md/CLAUDE.md/임의 docs 제외; 필요 시 후속 ADR에서 확장). `.agent-harness/`가 없으면 카탈로그 생략(no-op).
+- Rationale: 정적 분석이 "결정"하는 건 못 믿지만 "메뉴를 만드는" 정적 작업(존재하는 문서와 그 내용 요약 나열)은 신뢰할 수 있다. 판단을 메인 모델에 두면 LLM·blocking·넛지 없이도 정확성과 효율을 동시에 얻는다.
+- Rejected:
+  - 하네스-소유 opt-in LLM advisor(Arch A) | host-neutral·no-provider 포기 + 매 턴 비용/지연/비결정성. 메인 에이전트가 이미 판단 가능하므로 불필요.
+  - blocking 사전 게이트 | 단순 메뉴 주입에 메인 루프를 막을 이유 없음.
+  - async 추천 + Stop-time 넛지/검증 루프 | 메뉴를 항상 주입하면 "안 읽었을 때 알림"이 불필요하고, Read 여부 탐지는 이전 턴 로드/타 훅 주입 때문에 오탐 위험.
+  - 정적 키워드로 required/consider 판정 유지 | 모호한 프롬프트에서 잘못된 문서를 prescribe할 수 있음.
+- Consequences: §11.3의 "core가 모델 직접 호출 reject"는 **그대로 유지**된다(이 결정은 모델을 안 부른다). 후속 슬라이스: (S1) `DiscoverProjectDocs(repoRoot)` + 카탈로그 포맷 + UserPromptSubmit 훅 주입 배선 + 테스트. (S2, 선택) 카탈로그가 비대해질 경우의 길이 budget/요약 정책. 후보 source는 하네스 자신의 docs(`DocsIndex`/`ListDocs`의 skills 포함분)가 아니라 작업 레포의 project docs임에 주의한다.

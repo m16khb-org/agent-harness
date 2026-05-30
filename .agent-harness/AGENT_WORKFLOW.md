@@ -1,3 +1,8 @@
+---
+name: AGENT_WORKFLOW.md
+description: 에이전트의 시작·작업·검증·완료 흐름을 담는다. 작업을 어떤 단계로 진행하고 마무리하는지 알 수 있다.
+---
+
 # Agent Workflow
 
 ## Start

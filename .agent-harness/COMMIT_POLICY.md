@@ -1,3 +1,8 @@
+---
+name: COMMIT_POLICY.md
+description: 커밋 메시지 규칙과 형식을 담는다. 커밋을 어떤 형식·단위로 작성해야 하는지 알 수 있다.
+---
+
 # 커밋 메시지 정책: Conventional + Lore Hybrid
 
 `agent-harness`는 개발자와 AI agent가 모두 활용하기 쉽도록 **Conventional Commit subject + Lore body**를 사용한다.

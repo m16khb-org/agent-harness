@@ -1,3 +1,8 @@
+---
+name: OPERATIONS.md
+description: 설치·실행·운영 절차를 담는다. 하네스와 도구를 어떻게 설치·동기화·실행하는지 알 수 있다.
+---
+
 # 하네스 사용법
 
 현재 `agent-harness`는 Codex와 Claude Code가 같은 Go binary와 MCP schema를 쓰도록 다음 표면을 제공한다.

@@ -309,7 +309,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 16649,
+          "bytes": 20235,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -337,7 +337,7 @@
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 4995,
+          "bytes": 5184,
           "headings": [
             "Agent Workflow",
             "Start",
@@ -356,7 +356,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 16399,
+          "bytes": 16586,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -378,7 +378,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 6363,
+          "bytes": 6532,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -400,7 +400,7 @@
           "title": "주의사항 모음"
         },
         {
-          "bytes": 2945,
+          "bytes": 3112,
           "headings": [
             "커밋 메시지 정책: Conventional + Lore Hybrid",
             "1. 기본 형식",
@@ -413,7 +413,7 @@
           "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
         },
         {
-          "bytes": 4930,
+          "bytes": 5123,
           "headings": [
             "프로젝트 헌법",
             "제0장: 문서 우선순위",
@@ -431,7 +431,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 15743,
+          "bytes": 15937,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -487,7 +487,7 @@
           "title": "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness"
         },
         {
-          "bytes": 3264,
+          "bytes": 3463,
           "headings": [
             "OpenAPI Spec Guidance",
             "Purpose",
@@ -503,7 +503,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 21816,
+          "bytes": 21986,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -531,7 +531,7 @@
           "title": "하네스 사용법"
         },
         {
-          "bytes": 7900,
+          "bytes": 8063,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -548,7 +548,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 15792,
+          "bytes": 15979,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -2735,7 +2735,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 16649,
+                "bytes": 20235,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -2763,7 +2763,7 @@
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 4995,
+                "bytes": 5184,
                 "headings": [
                   "Agent Workflow",
                   "Start",
@@ -2782,7 +2782,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 16399,
+                "bytes": 16586,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2804,7 +2804,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 6363,
+                "bytes": 6532,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -2826,7 +2826,7 @@
                 "title": "주의사항 모음"
               },
               {
-                "bytes": 2945,
+                "bytes": 3112,
                 "headings": [
                   "커밋 메시지 정책: Conventional + Lore Hybrid",
                   "1. 기본 형식",
@@ -2839,7 +2839,7 @@
                 "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
               },
               {
-                "bytes": 4930,
+                "bytes": 5123,
                 "headings": [
                   "프로젝트 헌법",
                   "제0장: 문서 우선순위",
@@ -2857,7 +2857,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 15743,
+                "bytes": 15937,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2913,7 +2913,7 @@
                 "title": "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness"
               },
               {
-                "bytes": 3264,
+                "bytes": 3463,
                 "headings": [
                   "OpenAPI Spec Guidance",
                   "Purpose",
@@ -2929,7 +2929,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 21816,
+                "bytes": 21986,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -2957,7 +2957,7 @@
                 "title": "하네스 사용법"
               },
               {
-                "bytes": 7900,
+                "bytes": 8063,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -2974,7 +2974,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 15792,
+                "bytes": 15979,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",

@@ -1,3 +1,8 @@
+---
+name: TECH_STACK.md
+description: 선택한 언어·런타임·도구와 그 이유를 담는다. 어떤 기술을 쓰고 왜 골랐는지 알 수 있다.
+---
+
 # 기술 스택
 
 현재 저장소는 Go module과 `cmd/harness` 기반 CLI/MCP MVP가 구현된 상태다. 아래는 계속 유지할 기술 기준이다.

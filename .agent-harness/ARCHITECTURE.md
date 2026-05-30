@@ -1,3 +1,8 @@
+---
+name: ARCHITECTURE.md
+description: 시스템의 구조, 컴포넌트 경계, 책임 분담을 담는다. 무엇이 어디에 속하고 왜 그렇게 나뉘는지 알 수 있다.
+---
+
 # agent-harness 아키텍처
 
 
