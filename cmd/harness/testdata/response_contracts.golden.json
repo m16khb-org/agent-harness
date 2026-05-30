@@ -573,13 +573,14 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 11501,
+          "bytes": 12868,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
             "2. Simplicity First",
             "3. Surgical Changes",
             "4. Goal-Driven Execution",
+            "0. 검증 우선 — 추측·회피 금지 (Verify, don't hedge)",
             "5. 프로젝트 결정 요약",
             "6. Required Reading / Agent Docs",
             "7. Working Contract",
@@ -2999,13 +3000,14 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 11501,
+                "bytes": 12868,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
                   "2. Simplicity First",
                   "3. Surgical Changes",
                   "4. Goal-Driven Execution",
+                  "0. 검증 우선 — 추측·회피 금지 (Verify, don't hedge)",
                   "5. 프로젝트 결정 요약",
                   "6. Required Reading / Agent Docs",
                   "7. Working Contract",
