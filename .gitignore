@@ -9,6 +9,7 @@ bin/
 .codex/
 .claude/
 .cache/
+.antigravitycli/
 
 # Language/tool caches
 __pycache__/
