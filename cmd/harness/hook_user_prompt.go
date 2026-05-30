@@ -66,12 +66,19 @@ func runHookUserPrompt(args []string) error {
 	if *jsonOut {
 		return printJSON(result)
 	}
-	return printJSON(map[string]any{
+	// additionalContext is the compact, model-facing context (hidden from the
+	// user on Claude Code, "developer context" on Codex). systemMessage is the
+	// pretty, user-visible counterpart surfaced in the terminal on both hosts.
+	payload := map[string]any{
 		"hookSpecificOutput": map[string]any{
 			"hookEventName":     "UserPromptSubmit",
 			"additionalContext": result.AdditionalContext,
 		},
-	})
+	}
+	if view := core.RenderUserPromptUserView(result); view != "" {
+		payload["systemMessage"] = view
+	}
+	return printJSON(payload)
 }
 
 func promptFromHookInput(input []byte) string {

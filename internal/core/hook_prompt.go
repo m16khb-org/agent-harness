@@ -113,6 +113,34 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	return result
 }
 
+// RenderUserPromptUserView renders a human-facing, multi-line view of the hook
+// result for the host's user-visible channel (systemMessage on Claude Code and
+// Codex). It is the pretty counterpart to the compact, model-facing
+// AdditionalContext: same project-doc menu, formatted for a person to read in
+// the terminal. Returns "" when there is nothing worth showing the user.
+//
+// systemMessage multi-line rendering is host-defined and not formally
+// documented; the content stays readable even if newlines are collapsed.
+func RenderUserPromptUserView(result HookUserPromptResult) string {
+	if len(result.ProjectDocs) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("📚 agent-harness · 이 레포 project docs (관련된 것을 읽고 작업하세요)")
+	for _, doc := range result.ProjectDocs {
+		name := strings.TrimPrefix(doc.RelPath, ".agent-harness/")
+		desc := doc.Description
+		if desc == "" {
+			desc = doc.Title
+		}
+		b.WriteString("\n• " + name)
+		if desc != "" {
+			b.WriteString(" — " + desc)
+		}
+	}
+	return b.String()
+}
+
 func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
 	groups := map[string][]HookUserPromptHint{}
 	for _, h := range hints {

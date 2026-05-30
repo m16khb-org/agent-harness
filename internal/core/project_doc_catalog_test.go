@@ -99,6 +99,28 @@ func TestBuildUserPromptMCPHintsInjectsProjectDocCatalog(t *testing.T) {
 	}
 }
 
+func TestRenderUserPromptUserView(t *testing.T) {
+	result := HookUserPromptResult{
+		ProjectDocs: []ProjectDocCatalogEntry{
+			{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "프로젝트의 결정과 근거를 담는다."},
+			{RelPath: ".agent-harness/X.md", Title: "엑스", Description: ""},
+		},
+	}
+	view := RenderUserPromptUserView(result)
+	for _, want := range []string{"📚 agent-harness", "• ADR.md — 프로젝트의 결정과 근거를 담는다.", "• X.md — 엑스"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("user view missing %q:\n%s", want, view)
+		}
+	}
+	// Pretty view is multi-line (one bullet per doc).
+	if strings.Count(view, "\n") < 2 {
+		t.Fatalf("expected multi-line user view:\n%s", view)
+	}
+	if got := RenderUserPromptUserView(HookUserPromptResult{}); got != "" {
+		t.Fatalf("expected empty user view without docs, got %q", got)
+	}
+}
+
 func TestBuildUserPromptMCPHintsNoCatalogWithoutRepoDocs(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "그냥 질문이야"})
 	if strings.Contains(got.AdditionalContext, "project docs (read what's relevant):") {
