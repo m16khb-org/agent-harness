@@ -210,6 +210,12 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 - 언어별 AST/linter 통합은 optional adapter로 붙이고, core guard가 특정 언어 toolchain에 의존하지 않게 한다.
 - `nondeterministic-context-serialization` rule은 DeepSeek-Reasonix의 immutable-prefix 결정성 계약에서 유래한 opt-in 규칙이다. agent가 stable cache prefix로 재사용하는 context를 만드는 파일은 `// harness:immutable-prefix` marker로 opt-in하고, 그 파일에서 `time.Now`/`rand`/`uuid` 같은 비결정 값을 도입하면 `warn`을 낸다. 의도된 volatile 값은 해당 줄에 `volatile-ok`를 달아 면제한다. volatile field 어휘와 stable projection은 `internal/core/context_region.go`(`VolatileContextFields`, `StableProjection`, `Region*` 상수)가 source of truth이며, response-contract golden의 dynamic time key 정규화와 같은 집합을 공유한다.
 
+## Policy tier 컨벤션
+
+- `PolicyTier`는 흩어진 capability 플래그(write/network/shell)를 host-neutral 명명 envelope로 *합성하는 분류*다. tier 계산(`resolvePolicyTier`)에 deny 판정 로직을 넣지 않는다. 명령 허용 여부는 `deny_reasons`가, 권한 envelope 이름은 `tier`가 책임진다.
+- tier ladder는 `read_only` → `workspace_write` → `network_access` → `shell_exception` 순이며 most-privileged 차원이 이름을 정한다. 1회 승인이 세션 전체 등급을 올리는 YOLO/AUTO류 자동 승격 tier는 추가하지 않는다.
+- tier를 추가/변경하면 `TestPolicyTierClassifiesEveryFlagCombination` table과 `command_policy` contract ResponseFields, response-contract golden을 함께 갱신한다.
+
 ## Doctor / lifecycle state conventions
 
 - `agent-harness doctor`는 종합 진단 표면이고 기본 read-only다. 자동 수정은 별도 `--fix` 같은 명시 플래그가 있을 때만 추가한다.

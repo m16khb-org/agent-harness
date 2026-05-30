@@ -49,6 +49,69 @@ type CommandPolicyRequest struct {
 	AuditLogID     string   `json:"audit_log_id,omitempty"`
 }
 
+// PolicyTier is a host-neutral synthesis of the scattered capability flags
+// (write/network/shell) into one named privilege envelope, derived from
+// Qwen Code's tiered-approval model. It classifies what a request is permitted
+// to attempt; it does not decide whether a specific command is allowed (that
+// stays in DenyReasons). The YOLO/auto-escalation tiers are deliberately
+// excluded so a single approval never raises the whole session's safety level.
+type PolicyTier struct {
+	Name                string   `json:"name"`
+	GrantedCapabilities []string `json:"granted_capabilities"`
+	Rationale           string   `json:"rationale"`
+}
+
+const (
+	PolicyTierReadOnly       = "read_only"
+	PolicyTierWorkspaceWrite = "workspace_write"
+	PolicyTierNetworkAccess  = "network_access"
+	PolicyTierShellException = "shell_exception"
+)
+
+// resolvePolicyTier names the most-privileged capability the request grants and
+// enumerates every granted capability. The classification is a pure function of
+// the request flags, so the request→tier table is fixed by golden tests.
+func resolvePolicyTier(req CommandPolicyRequest) PolicyTier {
+	caps := []string{}
+	if req.WriteAllowed {
+		caps = append(caps, "write")
+	}
+	if req.NetworkAllowed {
+		caps = append(caps, "network")
+	}
+	if req.ShellAllowed {
+		caps = append(caps, "shell")
+	}
+	sort.Strings(caps)
+	name := PolicyTierReadOnly
+	switch {
+	case req.ShellAllowed:
+		name = PolicyTierShellException
+	case req.NetworkAllowed:
+		name = PolicyTierNetworkAccess
+	case req.WriteAllowed:
+		name = PolicyTierWorkspaceWrite
+	}
+	return PolicyTier{
+		Name:                name,
+		GrantedCapabilities: caps,
+		Rationale:           policyTierRationale(name),
+	}
+}
+
+func policyTierRationale(name string) string {
+	switch name {
+	case PolicyTierShellException:
+		return "shell interpreter exception granted; requires an explicit shell_reason and is audited"
+	case PolicyTierNetworkAccess:
+		return "network capability granted; shell interpreters remain denied"
+	case PolicyTierWorkspaceWrite:
+		return "write capability granted within the workspace; network and shell remain denied"
+	default:
+		return "no write, network, or shell capability requested; restricted to the read-only allowlist"
+	}
+}
+
 type CommandPolicyEvaluation struct {
 	OK             bool     `json:"ok"`
 	Allowed        bool     `json:"allowed"`
@@ -60,11 +123,12 @@ type CommandPolicyEvaluation struct {
 	EnvAllowlist   []string `json:"env_allowlist"`
 	NetworkAllowed bool     `json:"network_allowed"`
 	WriteAllowed   bool     `json:"write_allowed"`
-	ShellAllowed   bool     `json:"shell_allowed"`
-	ShellReason    string   `json:"shell_reason,omitempty"`
-	DenyReasons    []string `json:"deny_reasons"`
-	Warnings       []string `json:"warnings"`
-	GeneratedAt    string   `json:"generated_at"`
+	ShellAllowed   bool       `json:"shell_allowed"`
+	ShellReason    string     `json:"shell_reason,omitempty"`
+	Tier           PolicyTier `json:"tier"`
+	DenyReasons    []string   `json:"deny_reasons"`
+	Warnings       []string   `json:"warnings"`
+	GeneratedAt    string     `json:"generated_at"`
 }
 
 type CommandFakeRunResult struct {
@@ -135,6 +199,7 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 		WriteAllowed:   req.WriteAllowed,
 		ShellAllowed:   req.ShellAllowed,
 		ShellReason:    redactFreeform(req.ShellReason),
+		Tier:           resolvePolicyTier(req),
 		DenyReasons:    []string{},
 		Warnings:       []string{},
 		GeneratedAt:    time.Now().UTC().Format(time.RFC3339),
@@ -331,6 +396,18 @@ func CommandPolicySummary() map[string]any {
 		"catalog":               commandPolicyCatalog(),
 		"write_requires_flag":   true,
 		"network_requires_flag": true,
+		"tiers":                 commandPolicyTiers(),
+	}
+}
+
+// commandPolicyTiers documents the request→tier ladder so hosts can render the
+// privilege envelope without re-deriving it. Order is ascending by privilege.
+func commandPolicyTiers() []map[string]any {
+	return []map[string]any{
+		{"name": PolicyTierReadOnly, "requires": []string{}, "rationale": policyTierRationale(PolicyTierReadOnly)},
+		{"name": PolicyTierWorkspaceWrite, "requires": []string{"write_allowed"}, "rationale": policyTierRationale(PolicyTierWorkspaceWrite)},
+		{"name": PolicyTierNetworkAccess, "requires": []string{"network_allowed"}, "rationale": policyTierRationale(PolicyTierNetworkAccess)},
+		{"name": PolicyTierShellException, "requires": []string{"shell_allowed", "shell_reason"}, "rationale": policyTierRationale(PolicyTierShellException)},
 	}
 }
 

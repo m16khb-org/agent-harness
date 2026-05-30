@@ -3,6 +3,7 @@ package core
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -239,6 +240,47 @@ func TestCommandPolicySummaryIncludesCatalog(t *testing.T) {
 	for _, key := range required {
 		if _, ok := catalog[key]; !ok {
 			t.Fatalf("summary catalog missing %s: %+v", key, catalog)
+		}
+	}
+}
+
+func TestPolicyTierClassifiesEveryFlagCombination(t *testing.T) {
+	root := t.TempDir()
+	cases := []struct {
+		write    bool
+		network  bool
+		shell    bool
+		wantName string
+		wantCaps []string
+	}{
+		{false, false, false, PolicyTierReadOnly, []string{}},
+		{true, false, false, PolicyTierWorkspaceWrite, []string{"write"}},
+		{false, true, false, PolicyTierNetworkAccess, []string{"network"}},
+		{true, true, false, PolicyTierNetworkAccess, []string{"network", "write"}},
+		{false, false, true, PolicyTierShellException, []string{"shell"}},
+		{true, false, true, PolicyTierShellException, []string{"shell", "write"}},
+		{false, true, true, PolicyTierShellException, []string{"network", "shell"}},
+		{true, true, true, PolicyTierShellException, []string{"network", "shell", "write"}},
+	}
+	for _, tc := range cases {
+		result := EvaluateCommandPolicy(CommandPolicyRequest{
+			WorkspaceRoot:  root,
+			CWD:            root,
+			Argv:           []string{"git", "status", "--short"},
+			Timeout:        "30s",
+			WriteAllowed:   tc.write,
+			NetworkAllowed: tc.network,
+			ShellAllowed:   tc.shell,
+			ShellReason:    "test",
+		})
+		if result.Tier.Name != tc.wantName {
+			t.Fatalf("write=%v network=%v shell=%v: want tier %q, got %q", tc.write, tc.network, tc.shell, tc.wantName, result.Tier.Name)
+		}
+		if strings.Join(result.Tier.GrantedCapabilities, ",") != strings.Join(tc.wantCaps, ",") {
+			t.Fatalf("write=%v network=%v shell=%v: want caps %v, got %v", tc.write, tc.network, tc.shell, tc.wantCaps, result.Tier.GrantedCapabilities)
+		}
+		if result.Tier.Rationale == "" {
+			t.Fatalf("tier %q must carry a rationale", tc.wantName)
 		}
 	}
 }

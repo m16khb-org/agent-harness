@@ -285,3 +285,13 @@ P3 `ContextRegionContract`의 토대로, 실행 경로·정책 결정을 바꾸�
 - 발견한 실제 결함: `DocsIndex.generated_at`가 immutable 콘텐츠에 인터리빙되어 golden이 `$TIMESTAMP`로 가리고 있었다. stable projection으로 분리해 회귀 테스트가 콘텐츠 drift를 잡도록 했다.
 - byte-determinism 강제를 docs_index뿐 아니라 `contract_schema`, MCP `tools`/`resources` 등 **모든 재사용-context 빌더**로 확장(`ContextSerializationStable`).
 - **P0 guard 3종 중 2종 의도 변경**: `prefix-region-reorder`(warn)와 `summary-replace-on-prefix`(block)는 Go map 순회/prefix 재배치 같은 의미 분석이 필요해 deterministic regex guard로는 신뢰성 있게 탐지할 수 없다. 코드 패턴을 추측하는 대신, **출력 byte-determinism을 데이터 레벨에서 직접 강제**(`ContextSerializationStable` 회귀)하는 방식으로 같은 보장을 더 확실히 달성한다. 향후 AST adapter가 생기면 code-level rule을 보강 신호로 추가할 수 있다.
+
+### 11.5 P1 앵커 `PolicyTier` (2026-05-30 착수)
+
+Qwen Code의 tiered-approval 모델을 흡수해 흩어진 capability 불리언을 host-neutral 명명 tier로 합성했다.
+
+- `internal/core/policy.go`: `PolicyTier{Name, GrantedCapabilities, Rationale}` 타입 + `read_only`/`workspace_write`/`network_access`/`shell_exception` 상수 + `resolvePolicyTier`. `CommandPolicyEvaluation.Tier`로 모든 표면(CLI `policy check`/`run`, MCP `command_policy_check`/`fake_run`, `policy audit`)에 자동 노출. `CommandPolicySummary().tiers`로 래더를 `harness://command-policy` resource에 문서화.
+- **순수 additive 분류**: tier는 요청이 시도할 수 있는 *권한 envelope*만 이름 붙이고, deny 로직·개별 명령 판정(`deny_reasons`)은 전혀 바꾸지 않는다. tier는 명령 허용 여부가 아니라 요청 플래그(write/network/shell)의 함수다.
+- **YOLO/AUTO 의도적 제외**: 1회 승인이 세션 전체 안전등급을 올리는 자동 승격 tier는 만들지 않는다(reject 표 §11.3 원칙 준수).
+- 검증: 8개 플래그 조합 → tier 매핑을 table test로 고정(`TestPolicyTierClassifiesEveryFlagCombination`). golden은 `tier` 객체 추가 + contract hash 갱신만 변동. self-verify 220/220 유지.
+- 후속(같은 P1 그룹, 미착수): plan-mode 부작용 차단 게이트, delegation_context 권한 격탈, capability_profile monotone narrowing.

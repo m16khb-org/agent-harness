@@ -161,7 +161,7 @@
           "name": "version"
         }
       ],
-      "hash": "a88cd84b1b31270fc05d7fe36db7573a81cf6d68055fe0860c67764c15f56cd2",
+      "hash": "ba0f75807c142b0370cc15ad0b03879952d444146684c01ab7a1ea1928e0a7e6",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -216,6 +216,7 @@
           "workspace_root",
           "cwd",
           "argv",
+          "tier",
           "deny_reasons",
           "warnings"
         ],
@@ -430,7 +431,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 14980,
+          "bytes": 15743,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -458,7 +459,7 @@
           "title": "구현 컨벤션"
         },
         {
-          "bytes": 25910,
+          "bytes": 27327,
           "headings": [
             "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness",
             "1. 요약 결론",
@@ -794,6 +795,11 @@
         "network_allowed": false,
         "ok": true,
         "shell_allowed": false,
+        "tier": {
+          "granted_capabilities": [],
+          "name": "read_only",
+          "rationale": "no write, network, or shell capability requested; restricted to the read-only allowlist"
+        },
         "timeout": "30s",
         "warnings": [],
         "workspace_root": "$WORKSPACE",
@@ -815,6 +821,11 @@
       "network_allowed": false,
       "ok": true,
       "shell_allowed": false,
+      "tier": {
+        "granted_capabilities": [],
+        "name": "read_only",
+        "rationale": "no write, network, or shell capability requested; restricted to the read-only allowlist"
+      },
       "timeout": "30s",
       "warnings": [],
       "workspace_root": "$WORKSPACE",
@@ -2358,6 +2369,11 @@
               "network_allowed": false,
               "ok": true,
               "shell_allowed": false,
+              "tier": {
+                "granted_capabilities": [],
+                "name": "read_only",
+                "rationale": "no write, network, or shell capability requested; restricted to the read-only allowlist"
+              },
               "timeout": "30s",
               "warnings": [],
               "workspace_root": "$WORKSPACE",
@@ -2386,6 +2402,11 @@
             "network_allowed": false,
             "ok": true,
             "shell_allowed": false,
+            "tier": {
+              "granted_capabilities": [],
+              "name": "read_only",
+              "rationale": "no write, network, or shell capability requested; restricted to the read-only allowlist"
+            },
             "timeout": "30s",
             "warnings": [],
             "workspace_root": "$WORKSPACE",
@@ -2559,7 +2580,7 @@
                 "name": "version"
               }
             ],
-            "hash": "a88cd84b1b31270fc05d7fe36db7573a81cf6d68055fe0860c67764c15f56cd2",
+            "hash": "ba0f75807c142b0370cc15ad0b03879952d444146684c01ab7a1ea1928e0a7e6",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2614,6 +2635,7 @@
                 "workspace_root",
                 "cwd",
                 "argv",
+                "tier",
                 "deny_reasons",
                 "warnings"
               ],
@@ -2835,7 +2857,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 14980,
+                "bytes": 15743,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2863,7 +2885,7 @@
                 "title": "구현 컨벤션"
               },
               {
-                "bytes": 25910,
+                "bytes": 27327,
                 "headings": [
                   "Agent Harness 비교 리서치: OMC / OMX / Hermes 대비 agent-harness",
                   "1. 요약 결론",
