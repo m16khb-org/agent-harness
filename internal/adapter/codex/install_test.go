@@ -78,10 +78,18 @@ func TestCodexInstallerPatchesUnsupportedPluginHookSuppressOutput(t *testing.T) 
 	writeFile(t, llmWikiPath, "process.stdout.write(JSON.stringify({\n  hookSpecificOutput: {\n    hookEventName: eventName,\n    additionalContext: text\n    },\n    suppressOutput: true\n  }));\n")
 	claudeMemCodexPath := filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "13.3.0", "scripts", "worker-service.cjs")
 	writeFile(t, claudeMemCodexPath, claudeMemUnsupportedHookOutput)
+	claudeMemCodexWorkerCLIPath := filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "13.3.0", "scripts", "worker-cli.js")
+	writeFile(t, claudeMemCodexWorkerCLIPath, claudeMemUnsupportedWorkerCLI)
 	claudeMemCodexHooksPath := filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "13.3.0", "hooks", "hooks.json")
 	writeFile(t, claudeMemCodexHooksPath, claudeMemUnsupportedHookJSON)
+	claudeMemCodexTmpPath := filepath.Join(req.CodexHome, ".tmp", "marketplaces", "claude-mem-local", "plugin", "scripts", "worker-service.cjs")
+	writeFile(t, claudeMemCodexTmpPath, claudeMemUnsupportedHookOutput)
+	claudeMemCodexTmpHooksPath := filepath.Join(req.CodexHome, ".tmp", "marketplaces", "claude-mem-local", "plugin", "hooks", "hooks.json")
+	writeFile(t, claudeMemCodexTmpHooksPath, claudeMemUnsupportedHookJSON)
 	claudeMemHomePath := filepath.Join(home, ".claude", "plugins", "marketplaces", "thedotmack", "plugin", "scripts", "worker-service.cjs")
 	writeFile(t, claudeMemHomePath, claudeMemUnsupportedHookOutput)
+	claudeMemHomeWorkerCLIPath := filepath.Join(home, ".claude", "plugins", "marketplaces", "thedotmack", "plugin", "scripts", "worker-cli.js")
+	writeFile(t, claudeMemHomeWorkerCLIPath, claudeMemUnsupportedWorkerCLI)
 	claudeMemHomeHooksPath := filepath.Join(home, ".claude", "plugins", "marketplaces", "thedotmack", "plugin", "hooks", "hooks.json")
 	writeFile(t, claudeMemHomeHooksPath, claudeMemUnsupportedHookJSON)
 
@@ -92,7 +100,7 @@ func TestCodexInstallerPatchesUnsupportedPluginHookSuppressOutput(t *testing.T) 
 	if !result.OK {
 		t.Fatalf("installer ok=false: %+v", result)
 	}
-	for _, path := range []string{llmWikiPath, claudeMemCodexPath, claudeMemCodexHooksPath, claudeMemHomePath, claudeMemHomeHooksPath} {
+	for _, path := range []string{llmWikiPath, claudeMemCodexPath, claudeMemCodexWorkerCLIPath, claudeMemCodexHooksPath, claudeMemCodexTmpPath, claudeMemCodexTmpHooksPath, claudeMemHomePath, claudeMemHomeWorkerCLIPath, claudeMemHomeHooksPath} {
 		b, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -142,7 +150,10 @@ func TestCodexInstallerDryRunPlansPluginHookCompatibilityPatch(t *testing.T) {
 	}
 }
 
-const claudeMemUnsupportedHookOutput = `function CBe(t,e){return{continue:!0,suppressOutput:!0,status:t,...e&&{message:e}}}formatOutput(t){let e=t??{};if(e.hookSpecificOutput){let n={hookSpecificOutput:t.hookSpecificOutput};return e.systemMessage&&(n.systemMessage=e.systemMessage),n}let r={};return e.systemMessage&&(r.systemMessage=e.systemMessage),r}function gqt(t){let e={};return t.continue!==void 0&&(e.continue=t.continue),t.suppressOutput!==void 0&&(e.suppressOutput=t.suppressOutput),t.systemMessage&&(e.systemMessage=t.systemMessage),t.decision==="block"&&(e.decision="block"),t.reason&&(e.reason=t.reason),e}
+const claudeMemUnsupportedHookOutput = `function CBe(t,e){return{continue:!0,suppressOutput:!0,status:t,...e&&{message:e}}}formatOutput(t){let e=t??{};if(e.hookSpecificOutput){let n={hookSpecificOutput:t.hookSpecificOutput};return e.systemMessage&&(n.systemMessage=e.systemMessage),n}let r={};return e.systemMessage&&(r.systemMessage=e.systemMessage),r}function gqt(t){let e={};return t.continue!==void 0&&(e.continue=t.continue),t.suppressOutput!==void 0&&(e.suppressOutput=t.suppressOutput),t.systemMessage&&(e.systemMessage=t.systemMessage),t.decision==="block"&&(e.decision="block"),t.reason&&(e.reason=t.reason),e}function LMe(t){let e={};return t.continue!==void 0&&(e.continue=t.continue),t.suppressOutput!==void 0&&(e.suppressOutput=t.suppressOutput),t.systemMessage&&(e.systemMessage=t.systemMessage),t.decision==="block"&&(e.decision="block"),t.reason&&(e.reason=t.reason),e}
+`
+
+const claudeMemUnsupportedWorkerCLI = `var O='{"continue": true, "suppressOutput": true}';console.log(O)
 `
 
 const claudeMemUnsupportedHookJSON = `{
