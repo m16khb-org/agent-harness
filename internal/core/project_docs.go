@@ -322,6 +322,24 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 			Reason:  projectDocReason(rel),
 		})
 	}
+	// Ensure every standard project doc carries its canonical meta frontmatter,
+	// preserving body content. This runs on bootstrap and --sync alike so even
+	// preserved (non-synced) docs declare their category, fixed by doc name.
+	if req.Write {
+		for _, rel := range prefixedProjectDocNames() {
+			path := filepath.Join(root, filepath.FromSlash(rel))
+			existing, err := os.ReadFile(path)
+			if err != nil {
+				continue
+			}
+			ensured := ensureDocMetaFrontmatter(filepath.Base(rel), string(existing))
+			if ensured != string(existing) {
+				if err := os.WriteFile(path, []byte(ensured), 0o644); err != nil {
+					return ProjectDocsBootstrapResult{}, err
+				}
+			}
+		}
+	}
 	if !req.Write {
 		warnings = append(warnings, "dry_run_only: rerun without --dry-run to create missing AGENTS.md/.agent-harness docs and repo metadata; add --sync to refresh existing docs")
 	}
@@ -1045,6 +1063,11 @@ func renderProjectDocs(root string, signals ProjectSignals) map[string]string {
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "ADR.md"))] = renderADR()
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "OPERATIONS.md"))] = renderOperations(signals)
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "AGENT_WORKFLOW.md"))] = renderAgentWorkflow()
+	// Prepend canonical meta frontmatter so created/synced docs declare what
+	// category of information they hold. Same doc name => same metadata.
+	for rel, content := range out {
+		out[rel] = ensureDocMetaFrontmatter(filepath.Base(rel), content)
+	}
 	return out
 }
 

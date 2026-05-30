@@ -12,7 +12,8 @@ func TestBuildUserPromptMCPHintsForAPIWork(t *testing.T) {
 	if !got.OK || !got.ShouldInject {
 		t.Fatalf("expected injected hint: %+v", got)
 	}
-	for _, want := range []string{"choose project docs if ambiguous", "check OpenAPI gaps", "review API error contract", "OPEN_API_SPEC"} {
+	// API keywords now route only to actions, never to a required/consider doc verdict.
+	for _, want := range []string{"choose project docs if ambiguous", "check OpenAPI gaps", "review API error contract"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("hint missing %q:\n%s", want, got.AdditionalContext)
 		}
@@ -28,7 +29,7 @@ func TestBuildUserPromptMCPHintsForBugRecordsCaution(t *testing.T) {
 
 func TestBuildUserPromptMCPHintsUsesCompactBanner(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
-	for _, want := range []string{"[agent-harness]", "프로젝트 지침 확인 중", "required:", "route:"} {
+	for _, want := range []string{"[agent-harness]", "프로젝트 지침 확인 중", "route:"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("compact banner missing %q:\n%s", want, got.AdditionalContext)
 		}
@@ -40,30 +41,18 @@ func TestBuildUserPromptMCPHintsUsesCompactBanner(t *testing.T) {
 	}
 }
 
-func TestBuildUserPromptMCPHintsRoutesArchitectureDocs(t *testing.T) {
+func TestBuildUserPromptMCPHintsDropsKeywordDocPrescription(t *testing.T) {
+	// Architecture keywords used to prescribe required:/consider: docs. That
+	// verdict is removed; doc choice is left to the agent via the catalog.
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "hook 구조와 대안을 설계해줘"})
-	for _, want := range []string{"[agent-harness]", "ARCHITECTURE.md", "ADR.md", "choose project docs if ambiguous"} {
-		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("architecture doc hint missing %q:\n%s", want, got.AdditionalContext)
+	for _, gone := range []string{"required:", "consider:", "ARCHITECTURE.md", "ADR.md"} {
+		if strings.Contains(got.AdditionalContext, gone) {
+			t.Fatalf("keyword doc prescription should be gone, found %q:\n%s", gone, got.AdditionalContext)
 		}
 	}
-}
-
-func TestBuildUserPromptMCPHintsRoutesOperationsDocs(t *testing.T) {
-	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "install hook와 daemon 운영 경로를 고쳐줘"})
-	for _, want := range []string{"OPERATIONS.md", "CONVENTIONS.md", "TECH_STACK.md"} {
-		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("operations doc hint missing %q:\n%s", want, got.AdditionalContext)
-		}
-	}
-}
-
-func TestBuildUserPromptMCPHintsRoutesTestingDocs(t *testing.T) {
-	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "golden test와 verification을 추가해줘"})
-	for _, want := range []string{"TESTING.md", "AGENT_WORKFLOW.md"} {
-		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("testing doc hint missing %q:\n%s", want, got.AdditionalContext)
-		}
+	// Tool/action routing for the same keywords still works.
+	if !strings.Contains(got.AdditionalContext, "record ADR decision") {
+		t.Fatalf("expected ADR record action to survive:\n%s", got.AdditionalContext)
 	}
 }
 
@@ -72,7 +61,7 @@ func TestBuildUserPromptMCPHintsCompanionToolsStaySecondary(t *testing.T) {
 	projectIndex := strings.Index(got.AdditionalContext, "[agent-harness]")
 	companionIndex := strings.Index(got.AdditionalContext, "secondary")
 	if projectIndex < 0 || companionIndex < 0 || projectIndex > companionIndex {
-		t.Fatalf("expected project-doc routing before companion hints:\n%s", got.AdditionalContext)
+		t.Fatalf("expected project banner before companion hints:\n%s", got.AdditionalContext)
 	}
 	if !strings.Contains(got.AdditionalContext, "CodeGraph for symbol/call-impact lookup") {
 		t.Fatalf("expected CodeGraph secondary hint:\n%s", got.AdditionalContext)
@@ -83,18 +72,6 @@ func TestBuildUserPromptMCPHintsEmptyPromptDoesNotInject(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "   "})
 	if got.ShouldInject || got.AdditionalContext != "" || len(got.Hints) != 0 {
 		t.Fatalf("expected no injection for empty prompt: %+v", got)
-	}
-}
-
-func TestBuildUserPromptMCPHintsUsesPrioritySections(t *testing.T) {
-	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "hook 구조와 테스트 검증을 설계해줘"})
-	for _, want := range []string{"required:", "consider:", "route:", "ARCHITECTURE.md", "OPERATIONS.md", "TESTING.md"} {
-		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("priority section missing %q:\n%s", want, got.AdditionalContext)
-		}
-	}
-	if strings.Index(got.AdditionalContext, "required:") > strings.Index(got.AdditionalContext, "consider:") {
-		t.Fatalf("required docs should render before consider docs:\n%s", got.AdditionalContext)
 	}
 }
 
@@ -153,16 +130,6 @@ func TestBuildUserPromptMCPHintsIncludesProjectProfile(t *testing.T) {
 	for _, want := range []string{"profile:", "gitlab/self-hosted@gitlab.example.internal", "JavaScript/TypeScript", "backend", "frontend", "fullstack"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("profile hint missing %q:\n%s", want, got.AdditionalContext)
-		}
-	}
-}
-
-func TestBuildUserPromptMCPHintsFallsBackWhenLifecycleStateMissing(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "hook 운영을 고쳐줘", Repo: t.TempDir()})
-	for _, want := range []string{"OPERATIONS.md", "CONVENTIONS.md"} {
-		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("fallback hint missing %q:\n%s", want, got.AdditionalContext)
 		}
 	}
 }
