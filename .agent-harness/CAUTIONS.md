@@ -153,3 +153,9 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - Always injecting all project documents at session start wastes context and can hide task-specific evidence.
 - Writable tools need explicit write semantics; prefer dry-run or append-only behavior.
 - Tool output is evidence, not proof: verify file existence, warnings, and command/test results before claiming completion.
+
+## 2026-05-31 — Codex PreCompact hook stdout schema
+
+- Kind: `caution`
+- Source: cli
+- Summary: Codex 0.135 PreCompact hook output rejects hookSpecificOutput/additionalContext; PreCompact hook stdout must stay in stop-control shape such as {} or suppressOutput-only, while context injection belongs to SessionStart/PostCompact.

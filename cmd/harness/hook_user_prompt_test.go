@@ -112,6 +112,15 @@ func TestRunHookPostCompactInjectsCatalog(t *testing.T) {
 	}
 }
 
+func TestRunHookPreCompactEmitsCodexCompatibleNoopJSON(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`"}`, func() error { return runHookPreCompact(nil) })
+	if len(obj) != 0 {
+		t.Fatalf("PreCompact hook host output must be a no-op object, got %+v", obj)
+	}
+}
+
 func TestRunHookStopEmitsCodexCompatibleNoopJSON(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

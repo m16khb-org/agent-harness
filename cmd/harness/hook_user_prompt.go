@@ -181,11 +181,10 @@ func runHookPreCompact(args []string) error {
 	if *jsonOut {
 		return printJSON(result)
 	}
-	return printJSON(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName": "PreCompact",
-		},
-	})
+	// Codex PreCompact only accepts the stop-control shape; hookSpecificOutput
+	// makes Codex report "invalid PreCompact hook JSON output". The capsule was
+	// already persisted above, so host stdout can stay a no-op object.
+	return printJSON(map[string]any{})
 }
 
 func runHookPostCompact(args []string) error {
