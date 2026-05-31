@@ -5,6 +5,8 @@
 대상: `agent-harness`의 설계/검증/자가개선 루프 개선 후보 도출  
 검증: 본 문서의 claim·인용은 2026-05-30 코드베이스(commit `81b0e9c` 기준) 대조로 확인했다. 인용 7건은 모두 정확했고, 그동안의 구현 변경으로 stale해진 두 곳(아래 §3 "Hook 기반 context delivery", §4 P2)을 정정했다.
 
+추가 구현 검증(2026-05-31): P0 `trace analyze`의 1차 CLI/core/test slice가 현재 코드에 반영되어 있다(`cmd/harness/trace.go`, `internal/core/trace_analyze.go`, `internal/core/trace_analyze_test.go`). 따라서 아래 로드맵은 “미구현 제안”이 아니라, P0 baseline은 완료되고 completion audit·loop detection·context local·reasoning metadata가 남은 상태로 읽는다.
+
 ## 1. 원문 핵심 요약
 
 LangChain 글은 모델 자체를 바꾸지 않고 agent를 둘러싼 **harness**만 조정해 coding agent 성능을 끌어올린 사례를 설명한다. 실험에서는 `deepagents-cli`를 Terminal Bench 2.0에서 평가했고, 고정 모델 `gpt-5.2-codex`로 점수를 52.8에서 66.5까지 올렸다고 보고한다. 핵심은 “더 좋은 prompt” 하나가 아니라 다음을 반복적으로 조정하는 시스템 엔지니어링이다.
@@ -39,9 +41,9 @@ LangChain 글은 모델 자체를 바꾸지 않고 agent를 둘러싼 **harness*
 
 ### 부족하거나 다음 개선 후보인 부분
 
-1. **Trace analyzer skill 부재**
-   - 현재는 self-verify 결과/후보 catalog가 있지만, 실패 run transcript나 hook lifecycle event를 모아 “실패 유형 → harness 변경 후보”로 자동 합성하는 전용 analyzer가 보이지 않는다.
-   - LangChain 글의 가장 큰 차별점은 이 outer loop 자동화다.
+1. **Trace analyzer 1차 구현 완료, outer loop 통합은 남음**
+   - 현재는 `agent-harness trace analyze --input <jsonl|state-key> --json`이 self-verify summary/progress JSONL, guard result, doc-upkeep lifecycle event를 “실패 유형 → harness 변경 후보” finding으로 합성한다.
+   - 아직 LangSmith식 외부 trace import, 여러 run의 자동 clustering, self-augment 후보 승격까지 이어지는 full outer loop는 남아 있다.
 
 2. **Completion 직전 강제 검증 hook의 강도**
    - Stop hook은 lifecycle reminder 중심이고, host schema 호환을 위해 빈 JSON 또는 작은 reminder를 반환하는 방향이다. 이는 안전하지만, LangChain의 `PreCompletionChecklistMiddleware`처럼 exit를 막고 verification을 강제하는 수준은 아니다.
@@ -63,7 +65,7 @@ LangChain 글은 모델 자체를 바꾸지 않고 agent를 둘러싼 **harness*
 
 | 원문 기법 | 기존 컴포넌트 (근거) | gap | 제안 knob |
 |---|---|---|---|
-| 1. Trace 기반 실패 분석 | self-verify 내부 실패 분류 `classifySelfVerificationFailure`/`selfVerificationFailureClusters` (`cmd/harness/main.go:1866-1912`); lifecycle queue는 doc-upkeep 전용 (`internal/core/lifecycle_state.go:404`) | 외부 run transcript·lifecycle event를 "실패 유형 → harness 변경 후보"로 합성하는 analyzer 없음 | P0 `trace analyze` |
+| 1. Trace 기반 실패 분석 | self-verify 내부 실패 분류 `classifySelfVerificationFailure`/`selfVerificationFailureClusters` (`cmd/harness/main.go:1866-1912`); `trace analyze` CLI/core/test (`cmd/harness/trace.go`, `internal/core/trace_analyze.go`, `internal/core/trace_analyze_test.go`) | 1차 analyzer는 구현됨. 외부 trace import, 다중 run clustering, self-augment 후보 자동 승격은 남음 | P0 baseline 완료; 다음 knob는 trace import/outer-loop integration |
 | 2. Build → self-verify → fix 강제 | `self-verify` QA gate (`.agent-harness/TESTING.md:196-198`), `verify-work` CLI exit 1 (`cmd/harness/status_verify.go:110`), guard exit 3 | Stop hook은 `{}` no-op만 반환 (`cmd/harness/hook_user_prompt.go:316`), completion에 verify를 강제 연결하는 경로 없음 | P1 completion-evidence audit |
 | 3. 환경 context 주입 | SessionStart/PostCompact catalog, `preflight`, `AnalyzeProjectSignals` (`internal/core/project_docs.go:609-668`) | 데이터가 여러 명령에 분산, 통합 onboarding view 없음 | P2 `context local` (consolidation) |
 | 4. doom loop 감지 | PostToolUse는 passive doc-upkeep recorder (`cmd/harness/hook_user_prompt.go:130`), `DocUpkeepEvent`에 count/retry/signature 필드 없음 | per-file edit count·command retry·failure signature 미기록·미감지 | P1 loop detection (append-only count → hint) |
@@ -74,6 +76,8 @@ LangChain 글은 모델 자체를 바꾸지 않고 agent를 둘러싼 **harness*
 ### P0 — Trace 분석 산출물 표준화
 
 **목표**: self-verify/self-augment/hook lifecycle 결과를 trace-like evidence로 묶어 실패 유형과 harness 변경 후보를 자동 도출한다.
+
+**현재 상태(2026-05-31 검증)**: 1차 구현 완료. `agent-harness trace analyze --input <jsonl|state-key> --json`은 read-only로 동작하고, file/stdin/state-key 입력을 받아 `trace_analysis` JSON을 출력한다. finding schema는 `failure_class`, `recurring_pattern`, `proposed_knob`, `overfit_risk`, `verification_command`로 고정되어 있으며, fixture tests가 self-verify summary, doc-upkeep JSON/JSONL, state key, empty input rejection, secret redaction을 검증한다.
 
 - 새 CLI 후보: `agent-harness trace analyze --input <jsonl|state-key> --json`
 - 입력: self-verify summary, failed step outputs, rerun commands, lifecycle queue, guard findings
@@ -89,7 +93,7 @@ LangChain 글은 모델 자체를 바꾸지 않고 agent를 둘러싼 **harness*
 - fixture 기반 golden test + synthetic failed-trace sample로 결정적 출력을 고정한다.
 - analyzer는 "제안"만 만들고 구조 변경을 직접 수행하지 않는다(§5 과적합 방지 원칙과 일치).
 
-이 기능은 LangChain의 Trace Analyzer Skill과 가장 직접적으로 대응한다. 단, LangSmith를 재구현하지 말고 기존 state/summary JSON과 optional external trace import만 다룬다.
+이 기능은 LangChain의 Trace Analyzer Skill과 가장 직접적으로 대응한다. 단, LangSmith를 재구현하지 말고 기존 state/summary JSON과 optional external trace import만 다룬다. 현재 구현은 이 원칙의 baseline이며, 다음 단계는 여러 trace를 묶어 recurrent pattern을 강화하고 self-augment 후보로 연결하는 것이다.
 
 ### P1 — Completion audit 강화
 
@@ -133,4 +137,4 @@ LangChain 글도 task-specific overfit을 경계한다. agent-harness에 적용�
 
 ## 6. 결론
 
-이 글은 `agent-harness`가 이미 가는 방향—host-neutral core, hook/context delivery, self-verification, evidence-backed lifecycle state—을 강화하는 외부 근거다. 가장 가치 있는 다음 단계는 새 model/provider 도입이 아니라 **trace-driven outer loop**를 추가하는 것이다. 즉, 현재 self-verify/self-augment 결과를 사람이 읽는 QA report에서 한 단계 올려, 실패 trace를 자동으로 분류하고 작은 harness 변경 후보와 검증 명령까지 제안하는 경량 analyzer를 만드는 것이 agent-harness 철학과 가장 잘 맞는다.
+이 글은 `agent-harness`가 이미 가는 방향—host-neutral core, hook/context delivery, self-verification, evidence-backed lifecycle state—을 강화하는 외부 근거다. P0 경량 analyzer baseline은 구현됐으므로, 가장 가치 있는 다음 단계는 새 model/provider 도입이 아니라 **trace-driven outer loop를 self-augment/verification workflow에 더 직접 연결하는 것**이다. 즉, 실패 trace를 자동으로 분류하고 작은 harness 변경 후보와 검증 명령까지 제안하는 기능을 여러 run·후보 catalog·completion evidence audit와 연결하는 것이 agent-harness 철학과 가장 잘 맞는다.

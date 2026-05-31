@@ -392,7 +392,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 7446,
+          "bytes": 8306,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -408,7 +408,9 @@
             "11. LLM Wiki 재구현 금지",
             "12. Daemon lifecycle drift",
             "13. Codex vs Claude Code hook rendering drift",
-            "MCP tool-use risks"
+            "MCP tool-use risks",
+            "2026-05-31 — Codex PreCompact hook stdout schema",
+            "2026-05-31 — Do not patch upstream companion plugin caches"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
           "rel_path": ".agent-harness/CAUTIONS.md",
@@ -2874,7 +2876,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 7446,
+                "bytes": 8306,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -2890,7 +2892,9 @@
                   "11. LLM Wiki 재구현 금지",
                   "12. Daemon lifecycle drift",
                   "13. Codex vs Claude Code hook rendering drift",
-                  "MCP tool-use risks"
+                  "MCP tool-use risks",
+                  "2026-05-31 — Codex PreCompact hook stdout schema",
+                  "2026-05-31 — Do not patch upstream companion plugin caches"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
                 "rel_path": ".agent-harness/CAUTIONS.md",
