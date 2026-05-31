@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workflows"
+  short_description: "Run Codex dynamic workflows with subagents."
+  default_prompt: "Run a workflow for this task: plan phases, batch subagents, verify, and synthesize evidence."

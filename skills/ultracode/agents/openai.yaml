@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ultracode"
+  short_description: "Run Codex ultracode with workflows."
+  default_prompt: "Use ultracode for this task: decide workflow need, orchestrate subagents if useful, verify, and synthesize."

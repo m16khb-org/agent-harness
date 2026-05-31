@@ -23,6 +23,10 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	var errs []error
 
 	for _, skillName := range req.SkillNames {
+		if !installutil.SkillEnabledForHost(req.Root, skillName, "codex") {
+			result.Messages = append(result.Messages, "skip skill for codex: "+skillName)
+			continue
+		}
 		link, err := installutil.EnsureSymlinkPlan(filepath.Join(req.Root, "skills", skillName), filepath.Join(req.CodexHome, "skills", skillName), req.DryRun)
 		result.Links = append(result.Links, link)
 		if err != nil {

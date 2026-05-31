@@ -131,6 +131,7 @@ skills/
 - Codex/Claude별 user skill 경로는 원본으로 향하는 symlink 또는 installer로 연결한다. 적용 대상 repo의 `.claude/skills`는 기본 설치에서 만들지 않는다.
 - skill 이름은 lowercase/digit/hyphen만 사용한다.
 - 각 skill은 `SKILL.md`를 반드시 포함하고, Codex UI metadata가 필요하면 `agents/openai.yaml`을 둔다.
+- host별 설치 대상이 다르면 `install.json`에 `{ "hosts": ["codex"] }` 또는 `{ "hosts": ["claude"] }`처럼 명시한다. 생략하면 모든 host에 설치하는 기존 동작을 유지한다.
 - 스킬 안에는 README, 설치 가이드, changelog 같은 보조 문서를 만들지 않는다.
 - 검증은 skill-creator의 `quick_validate.py`로 수행한다.
 

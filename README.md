@@ -49,7 +49,7 @@ Use it when you want to:
 | State checkpoints | `state write/read/list/prune/doctor/migrate` | Store small JSON checkpoints in user state, not tracked repo files. |
 | Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | Generate, index, route, and append project operating docs under `.agent-harness/`. |
 | API docs gate | `api-doc check/static-check/review` | Catch endpoint/DTO/OpenAPI documentation drift. |
-| Shared skills | `skills/atomic-commit-push`, `skills/project-bootstrap`, `skills/self-verify`, `skills/self-augment` | Codex and Claude Code use the same skill definitions. |
+| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/ultracode`, `skills/project-bootstrap`, `skills/self-verify`, `skills/self-augment` | Codex and Claude Code use one source tree; host-targeted skills can opt into one host. |
 | Self-improvement | `self-verify`, `self-augment` | Run a 95-point verification gate and select safe improvement candidates. |
 | Worker MVP | `worker enqueue/status/list/cancel` | Record job lifecycle state only; it does not execute shell commands yet. |
 
@@ -228,6 +228,8 @@ test -f ~/.claude/settings.json && rg "hook user-prompt|hook post-tool-use|hook 
 | Skill | Purpose |
 | --- | --- |
 | `atomic-commit-push` | Review local changes, split focused commits, and push safely with a Conventional Commit subject plus Lore body. |
+| `workflows` | Codex-only explicit dynamic workflow runner with batched subagents, ledger, verification, and synthesis. |
+| `ultracode` | Codex-only mode that automatically applies workflows to substantive tasks, matching Claude Code ultracode’s direction. |
 | `project-bootstrap` | Generate or update repo-local agent operating docs from repository evidence. |
 | `self-verify` | Run or interpret the harness 95-point verification loop. |
 | `self-augment` | Choose one safe high-value harness improvement, implement it, and verify it. |
@@ -335,7 +337,7 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 | State checkpoint | `state write/read/list/prune/doctor/migrate` | 작은 JSON checkpoint를 repo가 아니라 user state에 저장합니다. |
 | Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | `.agent-harness/` 운영 문서를 생성, 색인, 라우팅, append 기록합니다. |
 | API docs gate | `api-doc check/static-check/review` | endpoint/DTO/OpenAPI 문서 drift를 찾습니다. |
-| Shared skills | `skills/atomic-commit-push`, `skills/project-bootstrap`, `skills/self-verify`, `skills/self-augment` | Codex와 Claude Code가 같은 skill 정의를 사용합니다. |
+| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/ultracode`, `skills/project-bootstrap`, `skills/self-verify`, `skills/self-augment` | Codex와 Claude Code가 하나의 source tree를 사용하며 host-targeted skill은 한 host에만 설치할 수 있습니다. |
 | Self-improvement | `self-verify`, `self-augment` | 95점 검증 gate와 안전한 개선 후보 선택 루프를 실행합니다. |
 | Worker MVP | `worker enqueue/status/list/cancel` | job lifecycle state만 기록합니다. 아직 shell을 실행하지 않습니다. |
 
@@ -514,6 +516,8 @@ test -f ~/.claude/settings.json && rg "hook user-prompt|hook post-tool-use|hook 
 | Skill | 역할 |
 | --- | --- |
 | `atomic-commit-push` | local change를 검토하고 focused commit으로 나누며 Conventional Commit subject + Lore body 형식으로 안전하게 push합니다. |
+| `workflows` | Codex 전용 explicit dynamic workflow runner로 batched subagent, ledger, 검증, synthesis를 수행합니다. |
+| `ultracode` | Claude Code ultracode 방향과 맞게 substantive task에 workflows를 자동 적용하는 Codex 전용 mode입니다. |
 | `project-bootstrap` | repository evidence를 바탕으로 repo-local agent operating docs를 생성하거나 갱신합니다. |
 | `self-verify` | 하네스 95점 verification loop를 실행하거나 결과를 해석합니다. |
 | `self-augment` | 안전하고 가치 있는 하네스 개선 후보 1개를 선택, 구현, 검증합니다. |
