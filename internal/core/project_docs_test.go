@@ -22,8 +22,14 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ProjectDocsDir)); !os.IsNotExist(err) {
 		t.Fatalf("dry-run created docs dir or unexpected stat error: %v", err)
 	}
-	if len(dry.Files) != 1+len(ProjectDocNames()) {
-		t.Fatalf("planned files=%d want %d", len(dry.Files), 1+len(ProjectDocNames()))
+	wantBootstrapFiles := 1 + len(ProjectDocNames()) + len(draftWikiSeedFiles())
+	if len(dry.Files) != wantBootstrapFiles {
+		t.Fatalf("planned files=%d want %d", len(dry.Files), wantBootstrapFiles)
+	}
+	for rel := range draftWikiSeedFiles() {
+		if !projectPlanContainsRel(dry.Files, rel) {
+			t.Fatalf("dry-run plan missing draft-wiki seed %s: %+v", rel, dry.Files)
+		}
 	}
 	if dry.LifecycleState.ProjectStateDir == "" || dry.LifecycleState.ProjectJSONPath == "" {
 		t.Fatalf("dry-run missing lifecycle namespace plan: %+v", dry.LifecycleState)
@@ -65,6 +71,11 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 		path := filepath.Join(root, ProjectDocsDir, name)
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected generated %s: %v", name, err)
+		}
+	}
+	for rel := range draftWikiSeedFiles() {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
+			t.Fatalf("expected draft-wiki seed %s: %v", rel, err)
 		}
 	}
 	testingDoc := mustRead(t, filepath.Join(root, ProjectDocsDir, "TESTING.md"))
@@ -145,6 +156,15 @@ func mustRead(t *testing.T, path string) string {
 func containsProjectCommand(commands []EvidenceCommand, command string) bool {
 	for _, c := range commands {
 		if c.Command == command {
+			return true
+		}
+	}
+	return false
+}
+
+func projectPlanContainsRel(files []ProjectDocsPlannedFile, rel string) bool {
+	for _, file := range files {
+		if file.RelPath == rel {
 			return true
 		}
 	}

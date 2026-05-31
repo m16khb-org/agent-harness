@@ -322,6 +322,11 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 			Reason:  projectDocReason(rel),
 		})
 	}
+	draftWiki, err := InitDraftWiki(DraftWikiInitRequest{RepoRoot: root, Write: req.Write})
+	if err != nil {
+		return ProjectDocsBootstrapResult{}, err
+	}
+	files = append(files, draftWiki.Files...)
 	// Ensure every standard project doc carries its canonical meta frontmatter,
 	// preserving body content. This runs on bootstrap and --sync alike so even
 	// preserved (non-synced) docs declare their category, fixed by doc name.
