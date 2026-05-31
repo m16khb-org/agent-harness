@@ -210,6 +210,22 @@ func runHookPostCompact(args []string) error {
 	// Re-establish the project-doc catalog after compaction, alongside the
 	// lifecycle reminder. Compaction drops the SessionStart catalog injection.
 	cat := core.BuildProjectDocCatalogContext(parsedRepo)
+	if hostOf(hostFlag) == "codex" {
+		context := strings.TrimSpace(result.AdditionalContext)
+		if cat.ShouldInject {
+			context = strings.TrimSpace(cat.UserView)
+			if strings.TrimSpace(result.AdditionalContext) != "" {
+				context = strings.TrimSpace(result.AdditionalContext) + "\n" + context
+			}
+		}
+		if context == "" {
+			return printJSON(map[string]any{})
+		}
+		// Codex PostCompact accepts only the compact-control schema
+		// (continue/stopReason/suppressOutput/systemMessage). Unlike
+		// SessionStart, it rejects hookSpecificOutput/additionalContext.
+		return printJSON(map[string]any{"systemMessage": context})
+	}
 	if cat.ShouldInject {
 		return emitCatalogPayload("PostCompact", hostOf(hostFlag), cat, result.AdditionalContext)
 	}

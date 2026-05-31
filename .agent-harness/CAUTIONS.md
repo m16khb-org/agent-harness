@@ -158,7 +158,7 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 
 - Kind: `caution`
 - Source: cli
-- Summary: Codex 0.135 PreCompact hook output rejects hookSpecificOutput/additionalContext; PreCompact hook stdout must stay in stop-control shape such as {} or suppressOutput-only, while context injection belongs to SessionStart/PostCompact.
+- Summary: Codex 0.135 PreCompact and PostCompact hook output rejects hookSpecificOutput/additionalContext; compact hook stdout must stay in compact-control shape such as {}, suppressOutput-only, or systemMessage. Model-facing additionalContext injection belongs to SessionStart/UserPromptSubmit/PostToolUse-style hooks whose installed Codex schema explicitly allows it.
 
 ## 2026-05-31 — Do not patch upstream companion plugin caches
 

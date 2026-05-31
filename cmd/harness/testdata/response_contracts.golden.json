@@ -392,7 +392,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 8306,
+          "bytes": 8434,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -2876,7 +2876,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 8306,
+                "bytes": 8434,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",

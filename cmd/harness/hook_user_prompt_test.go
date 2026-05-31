@@ -112,6 +112,21 @@ func TestRunHookPostCompactInjectsCatalog(t *testing.T) {
 	}
 }
 
+func TestRunHookPostCompactCodexEmitsCompatibleSchema(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := hookTempRepoWithDoc(t)
+	obj := runHookCapture(t, `{"cwd":"`+repo+`"}`, func() error { return runHookPostCompact([]string{"--host", "codex"}) })
+	if _, ok := obj["hookSpecificOutput"]; ok {
+		t.Fatalf("Codex PostCompact must not emit hookSpecificOutput: %+v", obj)
+	}
+	if _, ok := obj["additionalContext"]; ok {
+		t.Fatalf("Codex PostCompact must not emit additionalContext: %+v", obj)
+	}
+	if sysMsg, _ := obj["systemMessage"].(string); !strings.Contains(sysMsg, "📚") || !strings.Contains(sysMsg, "ARCHITECTURE.md") {
+		t.Fatalf("Codex PostCompact should use supported systemMessage catalog: %v", obj["systemMessage"])
+	}
+}
+
 func TestRunHookPreCompactEmitsCodexCompatibleNoopJSON(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
