@@ -136,7 +136,7 @@ Rules:
 - General docs/conventions prompts:
   - `CONSTITUTION.md` and `CONVENTIONS.md` as `consider`
 - Companion tools:
-  - `CodeGraph`, `LLM Wiki`, `claude-mem` as `secondary`
+  - `CodeGraph`, `LLM Wiki`, `agentmemory` as `secondary`
 
 - [ ] **Step 4: Reduce noisy substring matches**
 

@@ -13,7 +13,7 @@
 - CLI/MCP/daemon response contract와 golden 테스트를 중시한다.
 - command 실행을 바로 열지 않고 `policy check`/`fake-run`/audit부터 시작한다.
 - repo-local 파일 쓰기를 기본으로 피하고 user-level integration을 기본값으로 둔다.
-- upstream companion tool(LLM Wiki, CodeGraph, claude-mem)을 재구현하지 않고 연결한다.
+- upstream companion tool(LLM Wiki, CodeGraph, agentmemory)을 재구현하지 않고 연결한다.
 
 하지만 사용자가 OMC/OMX/Hermes에서 기대하는 “하네스 경험”과 비교하면 부족한 점도 명확하다.
 
@@ -105,7 +105,7 @@ OMX는 worker별 worktree, integration report, mixed-provider team을 명시하�
 
 ### 4.5 Persistent memory/skill learning이 외부 의존이다
 
-claude-mem, LLM Wiki, CodeGraph를 재구현하지 않는 결정은 옳다. 다만 Hermes식 “작업 중 배운 것을 skill로 승격하고, skill 사용 중 스스로 개선하며, memory nudge를 한다”는 UX는 agent-harness 안에서 통합된 lifecycle로 보이지 않는다. companion tool은 설치되지만, 언제 어떤 지식을 어디에 저장/승격할지 정책이 약하다.
+agentmemory, LLM Wiki, CodeGraph를 재구현하지 않는 결정은 옳다. 다만 Hermes식 “작업 중 배운 것을 skill로 승격하고, skill 사용 중 스스로 개선하며, memory nudge를 한다”는 UX는 agent-harness 안에서 통합된 lifecycle로 보이지 않는다. companion tool은 설치되지만, 언제 어떤 지식을 어디에 저장/승격할지 정책이 약하다.
 
 ### 4.6 Provider/model/runtime abstraction이 부족하다
 
@@ -125,14 +125,14 @@ README와 `.agent-harness` 문서는 정확하지만, 초심자에게 “그래�
 2. **Workflow taxonomy를 명확히 나누기**  
    agent-harness가 직접 제공할 것과 companion tool에 위임할 것을 표로 고정한다.
    - 직접 제공: cross-host install, contract, command policy, state, docs route, lifecycle hook, audit, minimal job lifecycle.
-   - thin wrapper로 제공: CodeGraph/LLM Wiki/claude-mem invocation and health.
+   - thin wrapper로 제공: CodeGraph/LLM Wiki/agentmemory invocation and health.
    - 제공하지 않음: full wiki engine, AST graph engine, memory compression engine.
 
 3. **`agent-harness doctor`를 경쟁력 있는 status hub로 강화**  
    현재 doctor는 진단 중심이다. OMC/OMX HUD처럼 다음을 한 화면에서 보여주면 체감이 커진다.
    - Codex/Claude integration status
    - MCP/daemon status
-   - companion tool status(CodeGraph/LLM Wiki/claude-mem)
+   - companion tool status(CodeGraph/LLM Wiki/agentmemory)
    - latest self-verify score/history
    - pending project-doc upkeep queue
    - known risk/warning summary
@@ -174,7 +174,7 @@ README와 `.agent-harness` 문서는 정확하지만, 초심자에게 “그래�
 ### P3 — memory/learning 통합 UX
 
 10. **companion tool lifecycle router**  
-    “이 사실은 `.agent-harness/CAUTIONS.md`에 기록”, “이 반복 작업은 skill candidate”, “이 긴 연구는 LLM Wiki”, “이 세션 기억은 claude-mem”처럼 목적별 저장소를 안내/실행하는 thin router를 만든다.
+    “이 사실은 `.agent-harness/CAUTIONS.md`에 기록”, “이 반복 작업은 skill candidate”, “이 긴 연구는 LLM Wiki”, “이 세션 기억은 agentmemory”처럼 목적별 저장소를 안내/실행하는 thin router를 만든다.
 
 11. **skill promotion pipeline**  
     Hermes식 autonomous skill creation을 그대로 따라 하기보다, 안전하게 다음 gate를 둔다.
@@ -204,7 +204,7 @@ agent-harness가 OMC/OMX/Hermes를 모두 따라잡으려 하면 철학과 충�
 
 - OMC/OMX: orchestration runtime으로 쓰되, agent-harness는 preflight/policy/doctor/project-doc/contract gate를 제공한다.
 - Hermes: long-running personal agent/gateway로 쓰되, agent-harness는 repo-local 안전 경계와 verification gate를 제공한다.
-- CodeGraph/LLM Wiki/claude-mem: upstream engine으로 쓰되, agent-harness는 설치 상태와 routing policy를 제공한다.
+- CodeGraph/LLM Wiki/agentmemory: upstream engine으로 쓰되, agent-harness는 설치 상태와 routing policy를 제공한다.
 
 ### 6.3 “실행 전 정책, 실행 중 관측, 실행 후 검증”을 제품 슬로건으로 삼을 수 있다
 
@@ -233,7 +233,7 @@ OMC/OMX/Hermes가 실행력을 강조한다면 agent-harness는 다음 세 가�
 - **Hermes 복제 금지:** memory/gateway/browser/toolset/skills hub를 한 프로젝트에 다 넣으면 범위가 폭발한다.
 - **실제 shell runner를 성급히 열지 말 것:** 현재 command policy가 강점이므로 runner는 read-only부터 단계적으로 열어야 한다.
 - **repo-local 파일 쓰기 기본값 변경 금지:** 지금의 user-level 기본, project-local explicit opt-in은 유지해야 한다.
-- **companion tool source of truth 중복 금지:** LLM Wiki/CodeGraph/claude-mem core 기능은 upstream에 둔다.
+- **companion tool source of truth 중복 금지:** LLM Wiki/CodeGraph/agentmemory core 기능은 upstream에 둔다.
 
 ## 9. 완료 기준 관점의 결론
 
@@ -269,7 +269,7 @@ OMC/OMX/Hermes가 실행력을 강조한다면 agent-harness는 다음 세 가�
 | data-plane 공유 daemon(모델 세션·컨텍스트 HTTP+SSE 공유) | Qwen `qwen serve` | 모델 세션 호스팅은 host 책임 → host-neutral 경계 붕괴. 단 "control-plane만 공유" 비-목표를 ADR에 명문화. |
 | provider hot-swap 추상화(ContentGenerator/modelProviders) | Qwen | provider 라우팅은 Codex/Claude가 이미 함 = 바퀴 재발명. 단 redaction을 provider-neutral 휴리스틱으로 일반화. |
 | 세션 자동 승격(Proceed Always→AUTO_EDIT) / YOLO bypass | Qwen | 1회 승인→세션 전체 안전등급 상승은 "명시적 opt-in으로만 write/network/shell" 기본값 약화. per-invocation opt-in만 허용. |
-| 메모리 Dream/Extract 백그라운드 압축 엔진 | Qwen | 전문 메모리 엔진 = upstream claude-mem 책임. install-native 카탈로그 라우팅만. |
+| 메모리 Dream/Extract 백그라운드 압축 엔진 | Qwen | 전문 메모리 엔진 = upstream agentmemory 책임. install-native 카탈로그 라우팅만. |
 | prefix-cache 빌링 최적화 + self-consistency N-sample 분기 | Reasonix | single-provider 추론/빌링 런타임 복제 = host-neutral·runner 금지 위배. byte-determinism·region 분리·측정 조각만 P0/P3로 흡수. |
 | R1 reasoning distill 엔진(secondary 모델 호출) | Reasonix | core가 모델 직접 호출 = provider 결합 + golden 불가. plan-state 저장 스키마 슬롯만 흡수. |
 

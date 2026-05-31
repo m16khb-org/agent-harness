@@ -309,7 +309,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 22601,
+          "bytes": 22824,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -337,14 +337,14 @@
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 5365,
+          "bytes": 5850,
           "headings": [
             "Agent Workflow",
             "Start",
             "Work",
             "Verify",
             "Finish",
-            "UserPromptSubmit hook",
+            "Hook context injection (SessionStart / PostCompact / UserPromptSubmit)",
             "MCP Usage Rule",
             ".agent-harness Upkeep via MCP",
             "Evidence-backed MCP Heuristics",
@@ -356,7 +356,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 16505,
+          "bytes": 16526,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -378,7 +378,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 7445,
+          "bytes": 7446,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -476,7 +476,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 22304,
+          "bytes": 22494,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -504,7 +504,7 @@
           "title": "하네스 사용법"
         },
         {
-          "bytes": 7992,
+          "bytes": 8008,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -521,7 +521,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 15892,
+          "bytes": 15933,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -546,7 +546,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 12985,
+          "bytes": 12986,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -568,7 +568,7 @@
           "title": "AGENTS.md"
         },
         {
-          "bytes": 1315,
+          "bytes": 1316,
           "headings": [
             "CLAUDE.md",
             "API docs"
@@ -2708,7 +2708,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 22601,
+                "bytes": 22824,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -2736,14 +2736,14 @@
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 5365,
+                "bytes": 5850,
                 "headings": [
                   "Agent Workflow",
                   "Start",
                   "Work",
                   "Verify",
                   "Finish",
-                  "UserPromptSubmit hook",
+                  "Hook context injection (SessionStart / PostCompact / UserPromptSubmit)",
                   "MCP Usage Rule",
                   ".agent-harness Upkeep via MCP",
                   "Evidence-backed MCP Heuristics",
@@ -2755,7 +2755,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 16505,
+                "bytes": 16526,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2777,7 +2777,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 7445,
+                "bytes": 7446,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -2875,7 +2875,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 22304,
+                "bytes": 22494,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -2903,7 +2903,7 @@
                 "title": "하네스 사용법"
               },
               {
-                "bytes": 7992,
+                "bytes": 8008,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -2920,7 +2920,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 15892,
+                "bytes": 15933,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -2945,7 +2945,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 12985,
+                "bytes": 12986,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
@@ -2967,7 +2967,7 @@
                 "title": "AGENTS.md"
               },
               {
-                "bytes": 1315,
+                "bytes": 1316,
                 "headings": [
                   "CLAUDE.md",
                   "API docs"

@@ -64,7 +64,7 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	// catalog injected below presents every doc and what it contains, and the
 	// main agent decides which to read. Keyword rules now only route to MCP
 	// tools/actions, never to a required/consider doc verdict.
-	if containsAny(lower, "architecture", "architect", "refactor", "design", "decision", "alternative", "structure") || containsAny(prompt, "아키텍처", "리팩터", "결정", "대안", "구조", "설계") {
+	if containsAny(lower, "architecture", "architect", "refactor", "design", "decision", "alternative") || containsAny(prompt, "아키텍처", "리팩터", "결정", "대안", "설계") {
 		addAction("project_docs_record", "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.")
 	}
 	if containsAny(lower, "bug", "fix", "regression", "failure", "false case", "caution") || containsAny(prompt, "버그", "고쳐", "회귀", "실패", "주의") {
@@ -85,8 +85,8 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	if containsAny(lower, "llm-wiki", "wiki", "knowledge base", "research", "compile") {
 		addPriority("LLM Wiki", "Secondary hint: consider upstream LLM Wiki for explicit wiki, research, knowledge-base, query, or compile workflows.", hintPrioritySecondary)
 	}
-	if containsAny(lower, "claude-mem", "memory", "previous session", "last time", "already solve", "already solved") || containsAny(prompt, "전에", "지난번", "이미 해결") {
-		addPriority("claude-mem", "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.", hintPrioritySecondary)
+	if containsAny(lower, "agentmemory", "agent-memory", "memory", "previous session", "last time", "already solve", "already solved") || containsAny(prompt, "전에", "지난번", "이미 해결") {
+		addPriority("agentmemory", "Secondary hint: consider agentmemory for previous-session memory or repeated-work questions.", hintPrioritySecondary)
 	}
 
 	pendingUpkeep := []DocUpkeepEvent{}
@@ -191,16 +191,16 @@ func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpk
 		groups[priority] = append(groups[priority], h)
 	}
 
-	parts := []string{"[agent-harness] 프로젝트 지침 확인 중..."}
+	parts := []string{"[agent-harness] routing hint"}
 	if catalog != "" {
 		parts = append(parts, catalog)
 	}
-	appendCompactHintGroup(&parts, "route", groups[hintPriorityRoute])
+	appendCompactHintGroup(&parts, "docs", groups[hintPriorityRoute])
 	appendCompactHintGroup(&parts, "actions", groups[hintPriorityAction])
 	appendCompactProjectProfile(&parts, profile)
 	appendCompactPendingUpkeep(&parts, pendingUpkeep)
-	appendCompactHintGroup(&parts, "secondary", groups[hintPrioritySecondary])
-	parts = append(parts, "rule: use docs/tools only when material; writes must be evidence-preserving and non-destructive")
+	appendSecondaryHints(&parts, groups[hintPrioritySecondary])
+	parts = append(parts, "rule: verify with repo/tool evidence before changing files")
 	return strings.Join(parts, " | ")
 }
 
@@ -208,7 +208,7 @@ func fallbackHintPriority(h HookUserPromptHint) string {
 	switch {
 	case strings.HasSuffix(h.Tool, ".md"):
 		return hintPriorityConsider
-	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "claude-mem":
+	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "agentmemory":
 		return hintPrioritySecondary
 	case h.Tool == "project_docs_route":
 		return hintPriorityRoute
@@ -237,10 +237,18 @@ func appendCompactHintGroup(parts *[]string, title string, hints []HookUserPromp
 	*parts = append(*parts, title+": "+strings.Join(labels, ", "))
 }
 
+func appendSecondaryHints(parts *[]string, hints []HookUserPromptHint) {
+	if len(hints) == 1 && hints[0].Tool == "agentmemory" {
+		*parts = append(*parts, "memory: use agentmemory only for previous-session/repeated-work recall")
+		return
+	}
+	appendCompactHintGroup(parts, "secondary", hints)
+}
+
 func compactHintLabel(h HookUserPromptHint) string {
 	switch h.Tool {
 	case "project_docs_route":
-		return "choose project docs if ambiguous"
+		return "use project docs only when repo-specific context matters"
 	case "project_docs_read/project_docs_update":
 		return "refresh project docs only if evidence changed"
 	case "project_docs_record":
@@ -259,8 +267,8 @@ func compactHintLabel(h HookUserPromptHint) string {
 		return "CodeGraph for symbol/call-impact lookup"
 	case "LLM Wiki":
 		return "LLM Wiki for explicit wiki/research work"
-	case "claude-mem":
-		return "claude-mem for previous-session memory"
+	case "agentmemory":
+		return "agentmemory only for previous-session/repeated-work recall"
 	default:
 		return h.Tool
 	}

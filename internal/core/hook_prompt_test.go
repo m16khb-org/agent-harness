@@ -13,7 +13,7 @@ func TestBuildUserPromptMCPHintsForAPIWork(t *testing.T) {
 		t.Fatalf("expected injected hint: %+v", got)
 	}
 	// API keywords now route only to actions, never to a required/consider doc verdict.
-	for _, want := range []string{"choose project docs if ambiguous", "check OpenAPI gaps", "review API error contract"} {
+	for _, want := range []string{"use project docs only when repo-specific context matters", "check OpenAPI gaps", "review API error contract"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("hint missing %q:\n%s", want, got.AdditionalContext)
 		}
@@ -29,7 +29,7 @@ func TestBuildUserPromptMCPHintsForBugRecordsCaution(t *testing.T) {
 
 func TestBuildUserPromptMCPHintsUsesCompactBanner(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
-	for _, want := range []string{"[agent-harness]", "프로젝트 지침 확인 중", "route:"} {
+	for _, want := range []string{"[agent-harness]", "routing hint", "docs:"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("compact banner missing %q:\n%s", want, got.AdditionalContext)
 		}
@@ -68,6 +68,13 @@ func TestBuildUserPromptMCPHintsCompanionToolsStaySecondary(t *testing.T) {
 	}
 }
 
+func TestBuildUserPromptMCPHintsRoutesMemoryToAgentmemory(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "지난번에 이미 해결한 memory 찾아줘"})
+	if !strings.Contains(got.AdditionalContext, "memory: use agentmemory only for previous-session/repeated-work recall") {
+		t.Fatalf("expected agentmemory secondary hint:\n%s", got.AdditionalContext)
+	}
+}
+
 func TestBuildUserPromptMCPHintsEmptyPromptDoesNotInject(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "   "})
 	if got.ShouldInject || got.AdditionalContext != "" || len(got.Hints) != 0 {
@@ -77,7 +84,7 @@ func TestBuildUserPromptMCPHintsEmptyPromptDoesNotInject(t *testing.T) {
 
 func TestBuildUserPromptMCPHintsAmbiguousPromptEmphasizesRoute(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "이거 좀 개선해줘"})
-	if !strings.Contains(got.AdditionalContext, "route:") || strings.Contains(got.AdditionalContext, "required:") {
+	if !strings.Contains(got.AdditionalContext, "docs:") || strings.Contains(got.AdditionalContext, "required:") {
 		t.Fatalf("ambiguous prompt should emphasize route without required docs:\n%s", got.AdditionalContext)
 	}
 }

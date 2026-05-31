@@ -137,8 +137,8 @@ if containsAny(lower, "codegraph", "symbol", "call graph", "impact", "trace", "c
 if containsAny(lower, "llm-wiki", "wiki", "knowledge base", "research", "compile") {
 	add("LLM Wiki", "Secondary hint: consider upstream LLM Wiki for explicit wiki, research, knowledge-base, query, or compile workflows.")
 }
-if containsAny(lower, "claude-mem", "memory", "previous session", "last time", "already solve", "already solved") || containsAny(prompt, "전에", "지난번", "이미 해결") {
-	add("claude-mem", "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.")
+if containsAny(lower, "agentmemory", "memory", "previous session", "last time", "already solve", "already solved") || containsAny(prompt, "전에", "지난번", "이미 해결") {
+	add("agentmemory", "Secondary hint: consider agentmemory for previous-session memory or repeated-work questions.")
 }
 ```
 
@@ -150,7 +150,7 @@ Change `renderHookMCPHintContext` to:
 - Print the baseline instruction.
 - Print `Project document candidates:` for hints ending in `.md`.
 - Print `MCP/action candidates:` for `project_docs_*` and API review tools.
-- Print `Secondary companion-tool hints:` for `CodeGraph`, `LLM Wiki`, and `claude-mem`.
+- Print `Secondary companion-tool hints:` for `CodeGraph`, `LLM Wiki`, and `agentmemory`.
 - End with the existing writable-tool safety footer.
 
 Do not change public JSON field names.
@@ -237,7 +237,7 @@ Run:
 
 ```bash
 git add internal/core/hook_prompt.go internal/core/hook_prompt_test.go docs/superpowers/plans/2026-05-29-agent-harness-doc-routing-hook.md
-git commit -m "feat(hook): prioritize project-doc routing hints" -m "Make the prompt hook steer agents toward .agent-harness source-of-truth documents before optional companion tools.\n\nConstraint: Hook execution must stay deterministic, short, host-neutral, and free of network or companion-tool calls.\nRejected: Auto-querying claude-mem, LLM Wiki, or CodeGraph from UserPromptSubmit | It would duplicate upstream behavior and make every prompt slower and noisier.\nConfidence: high\nScope-risk: narrow\nDirective: Keep future hook additions as concise routing hints unless a separate ADR approves safe automation.\nTested: go test ./internal/core -run 'TestBuildUserPromptMCPHints' -count=1; go build -o bin/agent-harness ./cmd/harness; hook JSON smoke; go test ./... -count=1\nNot-tested: Cross-host live Codex/Claude hook invocation."
+git commit -m "feat(hook): prioritize project-doc routing hints" -m "Make the prompt hook steer agents toward .agent-harness source-of-truth documents before optional companion tools.\n\nConstraint: Hook execution must stay deterministic, short, host-neutral, and free of network or companion-tool calls.\nRejected: Auto-querying agentmemory, LLM Wiki, or CodeGraph from UserPromptSubmit | It would duplicate upstream behavior and make every prompt slower and noisier.\nConfidence: high\nScope-risk: narrow\nDirective: Keep future hook additions as concise routing hints unless a separate ADR approves safe automation.\nTested: go test ./internal/core -run 'TestBuildUserPromptMCPHints' -count=1; go build -o bin/agent-harness ./cmd/harness; hook JSON smoke; go test ./... -count=1\nNot-tested: Cross-host live Codex/Claude hook invocation."
 ```
 
 Expected: commit succeeds.

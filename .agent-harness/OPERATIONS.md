@@ -49,7 +49,7 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 
 `--sync`는 “최신화” 의도를 명시하는 단일 옵션이다.
 
-- `agent-harness bootstrap --sync`: user-level 통합을 갱신하면서 llm-wiki, CodeGraph, claude-mem 같은 upstream companion 도구도 설치/갱신한다. 네트워크와 user-level host 설정 변경이 생길 수 있다.
+- `agent-harness bootstrap --sync`: user-level 통합을 갱신하면서 llm-wiki, CodeGraph, agentmemory 같은 upstream companion 도구도 설치/갱신한다. 네트워크와 user-level host 설정 변경이 생길 수 있다.
 - `agent-harness project bootstrap --sync`: 대상 repo의 `AGENTS.md` 라우팅 블록, `.agent-harness/*.md`, user-state repo profile metadata를 현재 템플릿/프로젝트 증거 기준으로 다시 계산해 갱신한다.
 
 낮은 수준 자동화가 필요할 때만 `scripts/install-native.sh`와 `install-native`를 직접 사용한다. 일반 사용자는 `bootstrap`과 `project bootstrap`만 기억하면 된다.
@@ -60,7 +60,9 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 |------|----------|------|
 | LLM Wiki | `nvk/llm-wiki` | Codex marketplace와 Claude marketplace에 `wiki@llm-wiki`를 추가/갱신한다. |
 | CodeGraph | `colbymchenry/codegraph` | `npm install -g @colbymchenry/codegraph`, Codex/Claude MCP 등록, 현재 harness repo `.codegraph/` index 초기화를 수행한다. |
-| claude-mem | `thedotmack/claude-mem` | Codex/Claude plugin marketplace와 `claude-mem` plugin을 추가/갱신한다. |
+| agentmemory | `rohitg00/agentmemory` | Codex/Claude plugin marketplace와 `agentmemory` plugin/CLI/MCP/hooks 배선을 추가/갱신한다. |
+
+agentmemory 전환 이후 full upstream setup은 기존 legacy memory plugin/marketplace 배선을 제거한다. Claude plugin data는 `--keep-data`로 보존한다.
 
 CodeGraph local index 생성을 건너뛰려면 `HARNESS_INIT_CODEGRAPH=0 agent-harness bootstrap --sync`를 사용한다.
 

@@ -184,7 +184,7 @@ go build -o bin/agent-harness ./cmd/harness
 - Codex와 Claude Code에서 관찰되는 하네스 결과가 같아야 한다.
 - 같은 스킬을 두 host에 복사해 중복 관리하지 않는다. `skills/`의 단일 원본을 사용자 홈 skill 경로에서 참조한다. 적용 대상 repo에는 기본 설치가 파일을 남기지 않는다.
 - LLM Wiki 기능은 이 하네스가 재구현하지 않는다. 필요하면 upstream `nvk/llm-wiki` Codex/Claude plugin 또는 portable AGENTS.md를 사용한다.
-- 하네스 철학은 **바퀴를 재발명하지 않는다**이다. llm-wiki, CodeGraph, claude-mem 같은 전문 도구는 `scripts/install-native.sh --with-upstream-tools`로 upstream installer/plugin을 연결하고, core 동작을 agent-harness에 복제하지 않는다.
+- 하네스 철학은 **바퀴를 재발명하지 않는다**이다. llm-wiki, CodeGraph, agentmemory 같은 전문 도구는 `scripts/install-native.sh --with-upstream-tools`로 upstream installer/plugin을 연결하고, core 동작을 agent-harness에 복제하지 않는다.
 - host adapter는 인증·권한·명령 실행 정책을 우회할 수 없다.
 - worker/CLI/MCP는 workspace root를 명시적으로 식별하고, root 밖 파일 접근은 정책으로 통제한다.
 - shell 실행 기능은 allowlist/denylist, timeout, cwd, env redaction, audit log를 포함해야 한다.

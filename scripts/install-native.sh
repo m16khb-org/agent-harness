@@ -21,7 +21,7 @@ Harness flags are passed to `agent-harness install-native`, for example:
   --json
 
 Optional upstream tools:
-  --with-upstream-tools   Also install/update upstream llm-wiki, codegraph, and claude-mem integrations.
+  --with-upstream-tools   Also install/update upstream llm-wiki, codegraph, and agentmemory integrations.
   --skip-upstream-tools   Do not install upstream tools, even if HARNESS_INSTALL_UPSTREAM_TOOLS=1.
 
 Harness binary:
@@ -38,7 +38,7 @@ Environment:
   HARNESS_SKIP_BUILD=1              Same as --skip-build.
 
 Philosophy:
-  agent-harness does not reinvent llm-wiki, codegraph, or claude-mem. It can wire
+  agent-harness does not reinvent llm-wiki, codegraph, or agentmemory. It can wire
   their upstream installers as optional dependencies while keeping harness core
   focused on shared CLI/MCP/state/policy orchestration.
 EOF
@@ -92,7 +92,7 @@ ensure_codex_marketplace() {
     codex plugin marketplace upgrade "$marketplace" >/dev/null 2>&1 || true
   else
     log "Codex marketplace ${marketplace} missing; adding ${source}"
-    codex plugin marketplace add "$source" >/dev/null
+    codex plugin marketplace add "$source" >/dev/null 2>&1 || log "warning: failed to add Codex marketplace ${marketplace}; continuing"
   fi
 }
 
@@ -102,8 +102,55 @@ ensure_codex_plugin() {
     log "Codex plugin ${selector} exists; keeping enabled and using updated marketplace snapshot"
   else
     log "Codex plugin ${selector} missing; installing"
-    codex plugin add "$selector" >/dev/null
+    codex plugin add "$selector" >/dev/null 2>&1 || log "warning: failed to install Codex plugin ${selector}; continuing"
   fi
+}
+
+remove_codex_plugin() {
+  local selector="$1"
+  if codex_plugin_installed "$selector"; then
+    log "removing legacy Codex plugin ${selector}"
+    codex plugin remove "$selector" >/dev/null 2>&1 || true
+  fi
+}
+
+remove_codex_marketplace() {
+  local marketplace="$1"
+  if codex_marketplace_exists "$marketplace"; then
+    log "removing legacy Codex marketplace ${marketplace}"
+    codex plugin marketplace remove "$marketplace" >/dev/null 2>&1 || true
+  fi
+}
+
+remove_codex_legacy_claude_mem_hook_state() {
+  local config_path="${CODEX_HOME:-$HOME/.codex}/config.toml"
+  [[ -f "$config_path" ]] || return 0
+  python3 - "$config_path" <<'PYINNER'
+from pathlib import Path
+import shutil
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+legacy_name = 'claude-' 'mem'
+needle = legacy_name + '@' + legacy_name + '-local'
+if needle not in text:
+    raise SystemExit(0)
+backup = path.with_suffix(path.suffix + '.agent-harness-legacy-memory-bak')
+shutil.copy2(path, backup)
+lines = text.splitlines(keepends=True)
+out = []
+i = 0
+while i < len(lines):
+    if lines[i].startswith('[hooks.state."' + needle + ':'):
+        i += 1
+        while i < len(lines) and not lines[i].startswith('['):
+            i += 1
+        continue
+    out.append(lines[i])
+    i += 1
+path.write_text(''.join(out))
+PYINNER
 }
 
 ensure_claude_marketplace() {
@@ -114,7 +161,7 @@ ensure_claude_marketplace() {
     claude plugin marketplace update "$marketplace" >/dev/null 2>&1 || true
   else
     log "Claude marketplace ${marketplace} missing; adding ${source}"
-    claude plugin marketplace add "$source" >/dev/null
+    claude plugin marketplace add "$source" >/dev/null 2>&1 || log "warning: failed to add Claude marketplace ${marketplace}; continuing"
   fi
 }
 
@@ -125,7 +172,64 @@ ensure_claude_plugin() {
     claude plugin update "$selector" >/dev/null 2>&1 || true
   else
     log "Claude plugin ${selector} missing; installing"
-    claude plugin install "$selector" >/dev/null
+    claude plugin install "$selector" >/dev/null 2>&1 || log "warning: failed to install Claude plugin ${selector}; continuing"
+  fi
+}
+
+remove_claude_plugin() {
+  local selector="$1"
+  if claude_plugin_installed "$selector"; then
+    log "removing legacy Claude plugin ${selector} (preserving plugin data)"
+    claude plugin uninstall "$selector" --keep-data -s user -y >/dev/null 2>&1 || true
+  fi
+}
+
+remove_claude_marketplace() {
+  local marketplace="$1"
+  if claude_marketplace_exists "$marketplace"; then
+    log "removing legacy Claude marketplace ${marketplace}"
+    claude plugin marketplace remove "$marketplace" --scope user >/dev/null 2>&1 || true
+  fi
+}
+
+ensure_agentmemory_cli() {
+  if ! command -v npm >/dev/null 2>&1; then
+    log "npm not found; skipping agentmemory CLI setup"
+    return 0
+  fi
+  if command -v agentmemory >/dev/null 2>&1; then
+    log "agentmemory CLI exists; updating npm package"
+  else
+    log "agentmemory CLI missing; installing npm package"
+  fi
+  npm install -g @agentmemory/agentmemory >/dev/null
+  if ! command -v agentmemory >/dev/null 2>&1; then
+    local npm_prefix candidate
+    npm_prefix="$(npm prefix -g 2>/dev/null || true)"
+    candidate="$npm_prefix/bin/agentmemory"
+    if [[ -x "$candidate" ]]; then
+      mkdir -p "$HOME/.local/bin"
+      ln -sf "$candidate" "$HOME/.local/bin/agentmemory"
+    fi
+  fi
+}
+
+refresh_agentmemory_host_wiring() {
+  local agentmemory_cmd
+  agentmemory_cmd="$(command -v agentmemory || true)"
+  if [[ -z "$agentmemory_cmd" && -x "$HOME/.local/bin/agentmemory" ]]; then
+    agentmemory_cmd="$HOME/.local/bin/agentmemory"
+  fi
+  if [[ -z "$agentmemory_cmd" ]]; then
+    return 0
+  fi
+  if command -v codex >/dev/null 2>&1; then
+    log "refreshing agentmemory Codex MCP/hooks wiring"
+    "$agentmemory_cmd" connect codex --with-hooks --force >/dev/null 2>&1 || true
+  fi
+  if command -v claude >/dev/null 2>&1; then
+    log "refreshing agentmemory Claude Code MCP/hooks wiring"
+    "$agentmemory_cmd" connect claude-code --with-hooks --force >/dev/null 2>&1 || true
   fi
 }
 
@@ -232,31 +336,48 @@ ensure_codegraph_on_path() {
 install_upstream_tools() {
   local dry_run="$1"
   if [[ "$dry_run" == "1" ]]; then
-    log "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem"
+    log "dry-run: would install/update upstream tools: llm-wiki, codegraph, agentmemory; would remove legacy memory plugin wiring while preserving data"
     return 0
   fi
+  local legacy_memory_name
+  legacy_memory_name="claude-""mem"
 
   if command -v codex >/dev/null 2>&1; then
-    log "setting up Codex plugins: llm-wiki, claude-mem"
+    log "setting up Codex plugins: llm-wiki, agentmemory"
     ensure_codex_marketplace "llm-wiki" "nvk/llm-wiki"
     ensure_codex_plugin "wiki@llm-wiki"
 
-    ensure_codex_marketplace "claude-mem-local" "thedotmack/claude-mem"
-    ensure_codex_plugin "claude-mem@claude-mem-local"
+    local legacy_codex_marketplace legacy_codex_plugin
+    legacy_codex_marketplace="${legacy_memory_name}-local"
+    legacy_codex_plugin="${legacy_memory_name}@${legacy_codex_marketplace}"
+    remove_codex_plugin "$legacy_codex_plugin"
+    remove_codex_marketplace "$legacy_codex_marketplace"
+    remove_codex_legacy_claude_mem_hook_state
+
+    ensure_codex_marketplace "agentmemory" "rohitg00/agentmemory"
+    ensure_codex_plugin "agentmemory@agentmemory"
   else
-    log "codex not found; skipping Codex llm-wiki/claude-mem plugin setup"
+    log "codex not found; skipping Codex llm-wiki/agentmemory plugin setup"
   fi
 
   if command -v claude >/dev/null 2>&1; then
-    log "setting up Claude plugins: llm-wiki, claude-mem"
+    log "setting up Claude plugins: llm-wiki, agentmemory"
     ensure_claude_marketplace "llm-wiki" "nvk/llm-wiki"
     ensure_claude_plugin "wiki@llm-wiki"
 
-    ensure_claude_marketplace "thedotmack" "thedotmack/claude-mem"
-    ensure_claude_plugin "claude-mem@thedotmack"
+    local legacy_claude_plugin
+    legacy_claude_plugin="${legacy_memory_name}@thedotmack"
+    remove_claude_plugin "$legacy_claude_plugin"
+    remove_claude_marketplace "thedotmack"
+
+    ensure_claude_marketplace "agentmemory" "rohitg00/agentmemory"
+    ensure_claude_plugin "agentmemory@agentmemory"
   else
-    log "claude not found; skipping Claude llm-wiki/claude-mem plugin setup"
+    log "claude not found; skipping Claude llm-wiki/agentmemory plugin setup"
   fi
+
+  ensure_agentmemory_cli
+  refresh_agentmemory_host_wiring
 
   if command -v npm >/dev/null 2>&1; then
     if command -v codegraph >/dev/null 2>&1; then

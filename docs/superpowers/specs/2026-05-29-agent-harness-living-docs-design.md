@@ -14,7 +14,7 @@ The design must support team repositories. Per-user and per-session runtime stat
 - Do not put lifecycle runtime state in `.agent-harness/` by default.
 - Do not put lifecycle schemas in the target repository.
 - Do not let hooks silently rewrite shared docs.
-- Do not replace specialized tools such as CodeGraph, LLM Wiki, or claude-mem.
+- Do not replace specialized tools such as CodeGraph, LLM Wiki, or agentmemory.
 - Do not make missing optional companion tools a hard failure.
 
 ## Key decision
@@ -272,7 +272,7 @@ This is the user-facing comprehensive diagnostic command. Existing `agent-harnes
 12. `.agent-harness` docs presence and obvious missing-doc conditions
 13. pending doc-upkeep summary
 14. forbidden or suspicious repo-local runtime/schema state
-15. optional companion tools such as CodeGraph, LLM Wiki, and claude-mem when detectable
+15. optional companion tools such as CodeGraph, LLM Wiki, and agentmemory when detectable
 
 ### Output shape
 

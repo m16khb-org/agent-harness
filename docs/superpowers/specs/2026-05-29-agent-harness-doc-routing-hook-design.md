@@ -4,7 +4,7 @@
 
 `agent-harness hook user-prompt` should make `.agent-harness` project documents reliably visible at the moment an agent receives a task. Its primary job is not to run external companion tools. Its primary job is to inject a short, deterministic routing contract that tells the agent which repo-local operating documents are likely required and why.
 
-External tools such as claude-mem, LLM Wiki, and CodeGraph remain useful, but they are secondary. They should be suggested only when the prompt clearly benefits from them. The hook must not reimplement or auto-run their core behavior.
+External tools such as agentmemory, LLM Wiki, and CodeGraph remain useful, but they are secondary. They should be suggested only when the prompt clearly benefits from them. The hook must not reimplement or auto-run their core behavior.
 
 ## Goals
 
@@ -18,7 +18,7 @@ External tools such as claude-mem, LLM Wiki, and CodeGraph remain useful, but th
 
 - Do not inject full `.agent-harness` document contents on every prompt.
 - Do not auto-call MCP tools from the hook.
-- Do not query claude-mem, LLM Wiki, or CodeGraph from the hook.
+- Do not query agentmemory, LLM Wiki, or CodeGraph from the hook.
 - Do not duplicate upstream tool functionality inside agent-harness.
 - Do not block user work if routing cannot decide a perfect document set.
 
@@ -45,7 +45,7 @@ The hook should be a deterministic document router with three layers:
 3. **Secondary companion-tool hints**
    - Suggest CodeGraph only for repo-local symbol, call graph, impact, or trace questions.
    - Suggest LLM Wiki only for explicit wiki/research/knowledge-base workflows.
-   - Suggest claude-mem only for previous-session memory, repeated work, or “did we already solve this?” style prompts.
+   - Suggest agentmemory only for previous-session memory, repeated work, or “did we already solve this?” style prompts.
    - These hints should never outrank `.agent-harness` routing.
 
 ## Data Flow

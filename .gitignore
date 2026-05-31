@@ -2,6 +2,7 @@
 bin/
 
 # Runtime/local state
+data/
 .harness/
 .codegraph/
 .omx/
