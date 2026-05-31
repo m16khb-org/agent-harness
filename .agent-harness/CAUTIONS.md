@@ -160,6 +160,13 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - Source: cli
 - Summary: Codex 0.135 PreCompact and PostCompact hook output rejects hookSpecificOutput/additionalContext; compact hook stdout must stay in compact-control shape such as {}, suppressOutput-only, or systemMessage. Model-facing additionalContext injection belongs to SessionStart/UserPromptSubmit/PostToolUse-style hooks whose installed Codex schema explicitly allows it.
 
+## 2026-05-31 — PreToolUse false-positive risk
+
+- Kind: `caution`
+- Source: codex/claude runtime evidence
+- Summary: Codex 0.135.0 and Claude Code 2.1.158 both expose PreToolUse, but the hook runs before every matched tool call and can block or rewrite execution. Keep agent-harness PreToolUse host stdout as `{}` by default and expose only raw `--json` diagnostics until a deterministic policy has host-schema tests and false-positive coverage.
+- Do not record lifecycle upkeep from PreToolUse; the tool may not succeed. Use PostToolUse for observed successful changes.
+
 ## 2026-05-31 — Do not patch upstream companion plugin caches
 
 - Kind: `caution`

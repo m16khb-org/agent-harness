@@ -213,14 +213,14 @@ codex mcp get agent_harness
 
 ### Claude Code
 
-`install-native` links the same shared skills into user-level Claude skill paths, registers a user-scope MCP server, and installs UserPromptSubmit/PostToolUse/Stop lifecycle hooks in `~/.claude/settings.json`.
+`install-native` links the same shared skills into user-level Claude skill paths, registers a user-scope MCP server, and installs UserPromptSubmit/PreToolUse/PostToolUse/Stop lifecycle hooks in `~/.claude/settings.json`.
 
 Useful checks:
 
 ```bash
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md && echo "Claude skill linked"
 claude mcp list
-test -f ~/.claude/settings.json && rg "hook user-prompt|hook post-tool-use|hook stop" ~/.claude/settings.json
+test -f ~/.claude/settings.json && rg "hook user-prompt|hook pre-tool-use|hook post-tool-use|hook stop" ~/.claude/settings.json
 ```
 
 ## Shared skills
@@ -501,14 +501,14 @@ codex mcp get agent_harness
 
 ### Claude Code
 
-`install-native`는 같은 shared skill을 user-level Claude skill 경로에 연결하고 user-scope MCP server와 `~/.claude/settings.json`의 UserPromptSubmit/PostToolUse/Stop lifecycle hook을 등록합니다.
+`install-native`는 같은 shared skill을 user-level Claude skill 경로에 연결하고 user-scope MCP server와 `~/.claude/settings.json`의 UserPromptSubmit/PreToolUse/PostToolUse/Stop lifecycle hook을 등록합니다.
 
 확인 명령:
 
 ```bash
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md && echo "Claude skill linked"
 claude mcp list
-test -f ~/.claude/settings.json && rg "hook user-prompt|hook post-tool-use|hook stop" ~/.claude/settings.json
+test -f ~/.claude/settings.json && rg "hook user-prompt|hook pre-tool-use|hook post-tool-use|hook stop" ~/.claude/settings.json
 ```
 
 ## Shared skills

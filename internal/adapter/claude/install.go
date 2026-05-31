@@ -149,6 +149,7 @@ func claudeLifecycleHookSpecs(binPath string) []claudeLifecycleHookSpec {
 	return []claudeLifecycleHookSpec{
 		{BinPath: binPath, Event: "SessionStart", Subcommand: "session-start", Timeout: 5},
 		{BinPath: binPath, Event: "UserPromptSubmit", Subcommand: "user-prompt", Timeout: 5},
+		{BinPath: binPath, Event: "PreToolUse", Subcommand: "pre-tool-use", Matcher: "*", Timeout: 5},
 		{BinPath: binPath, Event: "PostToolUse", Subcommand: "post-tool-use", Matcher: "*", Timeout: 5},
 		{BinPath: binPath, Event: "PreCompact", Subcommand: "pre-compact", Timeout: 5},
 		{BinPath: binPath, Event: "PostCompact", Subcommand: "post-compact", Timeout: 5},

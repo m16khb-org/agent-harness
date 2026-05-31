@@ -323,7 +323,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 22824,
+          "bytes": 25046,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -351,14 +351,14 @@
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 6116,
+          "bytes": 6611,
           "headings": [
             "Agent Workflow",
             "Start",
             "Work",
             "Verify",
             "Finish",
-            "Hook context injection (SessionStart / PostCompact / UserPromptSubmit)",
+            "Hook context injection and lifecycle observation",
             "MCP Usage Rule",
             ".agent-harness Upkeep via MCP",
             "Evidence-backed MCP Heuristics",
@@ -370,7 +370,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 16526,
+          "bytes": 16574,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -392,7 +392,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 8434,
+          "bytes": 9008,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -410,6 +410,7 @@
             "13. Codex vs Claude Code hook rendering drift",
             "MCP tool-use risks",
             "2026-05-31 — Codex PreCompact hook stdout schema",
+            "2026-05-31 — PreToolUse false-positive risk",
             "2026-05-31 — Do not patch upstream companion plugin caches"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
@@ -448,7 +449,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 16617,
+          "bytes": 16891,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -492,7 +493,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 22702,
+          "bytes": 22783,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -2807,7 +2808,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 22824,
+                "bytes": 25046,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -2835,14 +2836,14 @@
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 6116,
+                "bytes": 6611,
                 "headings": [
                   "Agent Workflow",
                   "Start",
                   "Work",
                   "Verify",
                   "Finish",
-                  "Hook context injection (SessionStart / PostCompact / UserPromptSubmit)",
+                  "Hook context injection and lifecycle observation",
                   "MCP Usage Rule",
                   ".agent-harness Upkeep via MCP",
                   "Evidence-backed MCP Heuristics",
@@ -2854,7 +2855,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 16526,
+                "bytes": 16574,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2876,7 +2877,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 8434,
+                "bytes": 9008,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -2894,6 +2895,7 @@
                   "13. Codex vs Claude Code hook rendering drift",
                   "MCP tool-use risks",
                   "2026-05-31 — Codex PreCompact hook stdout schema",
+                  "2026-05-31 — PreToolUse false-positive risk",
                   "2026-05-31 — Do not patch upstream companion plugin caches"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
@@ -2932,7 +2934,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 16617,
+                "bytes": 16891,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -2976,7 +2978,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 22702,
+                "bytes": 22783,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",

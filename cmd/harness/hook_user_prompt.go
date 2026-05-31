@@ -19,6 +19,8 @@ func runHook(args []string) error {
 	switch args[0] {
 	case "user-prompt":
 		return runHookUserPrompt(args[1:])
+	case "pre-tool-use":
+		return runHookPreToolUse(args[1:])
 	case "post-tool-use":
 		return runHookPostToolUse(args[1:])
 	case "pre-compact":
@@ -38,6 +40,7 @@ func runHook(args []string) error {
 func hookUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   agent-harness hook user-prompt [--prompt TEXT] [--host codex|claude] [--json]
+  agent-harness hook pre-tool-use [--repo PATH] [--json]
   agent-harness hook post-tool-use [--repo PATH] [--json]
   agent-harness hook pre-compact [--repo PATH] [--json]
   agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
@@ -125,6 +128,37 @@ func repoFromHookInput(input []byte) string {
 		}
 	}
 	return ""
+}
+
+func runHookPreToolUse(args []string) error {
+	fs := flag.NewFlagSet("hook pre-tool-use", flag.ContinueOnError)
+	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
+	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	stdin, _ := io.ReadAll(os.Stdin)
+	parsedRepo := strings.TrimSpace(*repo)
+	if parsedRepo == "" {
+		parsedRepo = repoFromHookInput(stdin)
+	}
+	if parsedRepo == "" {
+		parsedRepo = resolveTarget("")
+	}
+	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
+		Repo:    parsedRepo,
+		Tool:    toolNameFromHookInput(stdin),
+		Paths:   pathsFromHookInput(stdin),
+		Command: commandFromHookInput(stdin),
+		Source:  "pre-tool-use",
+	})
+	if *jsonOut {
+		return printJSON(result)
+	}
+	// PreToolUse is on the critical path before every tool call. Keep the shared
+	// harness hook cheap and non-blocking by default; host-specific deny/allow
+	// schemas are intentionally avoided until a deterministic policy needs them.
+	return printJSON(map[string]any{})
 }
 
 func runHookPostToolUse(args []string) error {

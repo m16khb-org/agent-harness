@@ -136,6 +136,26 @@ func TestRunHookPreCompactEmitsCodexCompatibleNoopJSON(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseEmitsCompatibleNoopJSON(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Edit","tool_input":{"file_path":"x.go"}}`, func() error { return runHookPreToolUse(nil) })
+	if len(obj) != 0 {
+		t.Fatalf("PreToolUse hook host output must be a no-op object, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseRawJSONIsAllowByDefault(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Edit","tool_input":{"file_path":"x.go"}}`, func() error {
+		return runHookPreToolUse([]string{"--json"})
+	})
+	if obj["decision"] != "allow" || obj["source"] != "pre-tool-use" || obj["tool"] != "Edit" {
+		t.Fatalf("unexpected PreToolUse raw result: %+v", obj)
+	}
+}
+
 func TestRunHookStopEmitsCodexCompatibleNoopJSON(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

@@ -374,6 +374,15 @@ type HookToolUseLifecycleResult struct {
 	Warnings []string       `json:"warnings,omitempty"`
 }
 
+type HookPreToolUseDecisionResult struct {
+	OK       bool     `json:"ok"`
+	Decision string   `json:"decision"`
+	Tool     string   `json:"tool,omitempty"`
+	Paths    []string `json:"paths,omitempty"`
+	Command  string   `json:"command,omitempty"`
+	Source   string   `json:"source,omitempty"`
+}
+
 type LifecycleStopReminderResult struct {
 	OK                bool   `json:"ok"`
 	ShouldInject      bool   `json:"should_inject"`
@@ -399,6 +408,21 @@ type LifecycleCompactResult struct {
 	PendingCount      int      `json:"pending_count,omitempty"`
 	CompactPath       string   `json:"compact_path,omitempty"`
 	Warnings          []string `json:"warnings,omitempty"`
+}
+
+func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreToolUseDecisionResult {
+	source := strings.TrimSpace(req.Source)
+	if source == "" {
+		source = "pre-tool-use"
+	}
+	return HookPreToolUseDecisionResult{
+		OK:       true,
+		Decision: "allow",
+		Tool:     strings.TrimSpace(req.Tool),
+		Paths:    append([]string{}, req.Paths...),
+		Command:  strings.TrimSpace(req.Command),
+		Source:   source,
+	}
 }
 
 func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecycleResult, error) {

@@ -27,7 +27,7 @@ func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
 		t.Fatalf("claude user skill link missing")
 	}
 	settings := readClaudeTestFile(t, filepath.Join(home, ".claude", "settings.json"))
-	for _, needle := range []string{"UserPromptSubmit", "PostToolUse", "Stop", "hook user-prompt", "hook post-tool-use", "hook stop", req.BinPath} {
+	for _, needle := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "hook user-prompt", "hook pre-tool-use", "hook post-tool-use", "hook stop", req.BinPath} {
 		if !strings.Contains(settings, needle) {
 			t.Fatalf("claude settings missing %q:\n%s", needle, settings)
 		}
@@ -115,7 +115,7 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 		t.Fatalf("existing setting was not preserved: %+v", settings)
 	}
 	hooks := settings["hooks"].(map[string]any)
-	for _, event := range []string{"UserPromptSubmit", "PostToolUse", "PreCompact", "PostCompact", "Stop"} {
+	for _, event := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "PreCompact", "PostCompact", "Stop"} {
 		groups := hooks[event].([]any)
 		count := 0
 		for _, group := range groups {

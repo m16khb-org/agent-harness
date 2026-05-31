@@ -366,3 +366,24 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
   - Making Codex use only a short summary | it hides document descriptions from the agent.
   - Forking hook core by host | host drift would violate the shared CLI/MCP contract.
 - Consequences: tests must cover both bootstrap/frontmatter metadata and host-specific `UserPromptSubmit` output. Future Codex runtime changes that add a hidden context channel may revisit this decision, but until then Codex output should preserve full doc descriptions and omit nonessential status blocks.
+
+
+## 2026-05-31 — Shared PreToolUse hook and prompt/tool lifecycle split
+
+- Kind: `adr`
+- Source: user directive plus Codex 0.135.0 / Claude Code 2.1.158 runtime evidence.
+- Summary: agent-harness now installs PreToolUse alongside UserPromptSubmit and PostToolUse for both Codex and Claude Code, but keeps PreToolUse non-blocking by default.
+- Decision:
+  - UserPromptSubmit owns per-turn advisory routing: prompt intent, repo profile, pending upkeep, and MCP/action hints. It must stay lightweight and must not execute work.
+  - PreToolUse owns only fast deterministic preflight on the critical path before a tool call. The default host payload is `{}`; raw `--json` exposes an allow/no-op diagnostic result. Blocking or input rewriting requires a separate deterministic policy and host-schema tests.
+  - PostToolUse owns observed successful tool-use bookkeeping. It may append lifecycle/doc-upkeep state for relevant files or commands, but it does not edit shared `.agent-harness` docs.
+  - Codex and Claude adapters both install `agent-harness hook pre-tool-use` through the same Go CLI/core. Claude uses matcher `*`; Codex uses the same command without a host flag because no host-shaped payload is emitted.
+- Rationale: both host runtimes expose PreToolUse, but it is high-friction because false positives can block normal tool use. The most efficient harness role is to split intent routing before a turn, no-op preflight before a tool, and state recording after successful tools.
+- Evidence:
+  - `strings ~/.local/share/claude/versions/2.1.158 | grep PreToolUse` shows Claude Code documents PreToolUse as “Run before tool, can block”.
+  - `strings <codex 0.135.0 native binary> | grep PreToolUse` shows Codex has PreToolUse schema and validation strings.
+  - `configs/codex/hooks.json` and `configs/claude/hooks.settings.json` now include PreToolUse.
+- Rejected:
+  - Put lifecycle queue writes in PreToolUse | tool execution may fail or be denied, causing false doc-upkeep records.
+  - Block from PreToolUse immediately | host schema drift and false positives would make the harness intrusive.
+  - Duplicate host-specific policy in adapters | violates the shared core contract and creates Codex/Claude drift.

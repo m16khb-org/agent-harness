@@ -203,7 +203,7 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 		}
 	}
 	claudeSettings := readFile(t, filepath.Join(req.Home, ".claude", "settings.json"))
-	for _, needle := range []string{"UserPromptSubmit", "PostToolUse", "Stop", req.BinPath} {
+	for _, needle := range []string{"UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", req.BinPath} {
 		if !strings.Contains(claudeSettings, needle) {
 			t.Fatalf("Claude settings missing lifecycle hook %q:\n%s", needle, claudeSettings)
 		}
