@@ -28,6 +28,7 @@ description: Agent start, execution, verification, and completion flow.
 
 - 테스트를 작성/수정할 때는 `.agent-harness/TESTING.md`의 good/bad test 기준을 먼저 확인한다.
 - CLI/MCP/API 문서 계약을 바꾸면 golden/schema/smoke 검증을 함께 실행한다.
+- 코드·계약 변경을 완료 보고하기 전에는 가능한 경우 `agent-harness verify-work --json -- <read-only verification command>` 또는 `agent-harness guard check --json` 결과를 evidence로 만든다. Hook은 이를 대신 실행하지 않는다.
 - 실행한 테스트/빌드/정적검사 결과와 실행하지 못한 검증의 이유는 완료 보고에 포함한다.
 
 ## Finish

@@ -109,6 +109,10 @@
           "name": "verify-work"
         },
         {
+          "description": "analyze trace-like verification and lifecycle evidence",
+          "name": "trace"
+        },
+        {
           "description": "print or check CLI/MCP response compatibility contracts",
           "name": "contract"
         },
@@ -161,7 +165,7 @@
           "name": "version"
         }
       ],
-      "hash": "ba0f75807c142b0370cc15ad0b03879952d444146684c01ab7a1ea1928e0a7e6",
+      "hash": "9863b35ca0d3d0588ccec82bb72104d0f8958dd02fc9708b57cff4fbf2881d81",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -277,6 +281,16 @@
           "slowest_steps",
           "step_duration_stats"
         ],
+        "trace_analysis": [
+          "ok",
+          "kind",
+          "input",
+          "input_source",
+          "trace_types",
+          "finding_count",
+          "findings",
+          "warnings"
+        ],
         "verify_work": [
           "ok",
           "kind",
@@ -337,7 +351,7 @@
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 5850,
+          "bytes": 6116,
           "headings": [
             "Agent Workflow",
             "Start",
@@ -641,7 +655,7 @@
           "title": "Self-augmentation loop"
         },
         {
-          "bytes": 5318,
+          "bytes": 5625,
           "headings": [
             "Self-verification candidate catalog",
             "Current evidence",
@@ -1505,7 +1519,7 @@
       "warnings": []
     },
     "self_verify_candidates": {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "candidates": [
         {
           "category": "observability",
@@ -1556,6 +1570,22 @@
           ],
           "why_now": [
             "self-verify claims need machine-readable evidence mapping"
+          ]
+        },
+        {
+          "category": "completion evidence",
+          "id": "completion-evidence-audit",
+          "priority": 4,
+          "score": 80,
+          "status": "open",
+          "verify_with": [
+            "verify-work --json fixture",
+            "self-verify candidates --json",
+            "workflow doc completion-report check"
+          ],
+          "why_now": [
+            "LangChain-style harness engineering emphasizes forcing verification evidence before completion",
+            "agent-harness has verify-work, but completion reports can still omit structured evidence"
           ]
         },
         {
@@ -1770,7 +1800,9 @@
       "korean_name": "자기 검증 루프",
       "loop_kind": "self_verification",
       "ok": true,
-      "open_candidate_ids": [],
+      "open_candidate_ids": [
+        "completion-evidence-audit"
+      ],
       "satisfied_candidate_ids": [
         "self-verify-progress-heartbeat",
         "self-verify-secret-redaction-audit",
@@ -1788,6 +1820,22 @@
         "self-verify-duplicate-mcp-warning",
         "self-verify-daemon-restart-resilience"
       ],
+      "selected_candidate": {
+        "category": "completion evidence",
+        "id": "completion-evidence-audit",
+        "priority": 4,
+        "score": 80,
+        "status": "open",
+        "verify_with": [
+          "verify-work --json fixture",
+          "self-verify candidates --json",
+          "workflow doc completion-report check"
+        ],
+        "why_now": [
+          "LangChain-style harness engineering emphasizes forcing verification evidence before completion",
+          "agent-harness has verify-work, but completion reports can still omit structured evidence"
+        ]
+      },
       "source_exists": true,
       "source_path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
       "state_checkpoint": {
@@ -2256,6 +2304,25 @@
       },
       "state_dir": "$STATE_DIR"
     },
+    "trace_analyze": {
+      "finding_count": 1,
+      "findings": [
+        {
+          "failure_class": "lifecycle_doc_upkeep",
+          "overfit_risk": "low: append-only lifecycle reminders should not alter task execution",
+          "proposed_knob": "route pending upkeep into completion evidence instead of leaving lifecycle queue stale",
+          "recurring_pattern": "OPERATIONS.md queued 1 time(s)",
+          "verification_command": "go test ./internal/core -run Lifecycle -count=1"
+        }
+      ],
+      "input": "$WORKSPACE/trace.jsonl",
+      "input_source": "file",
+      "kind": "trace_analysis",
+      "ok": true,
+      "trace_types": [
+        "doc_upkeep_json"
+      ]
+    },
     "worker_enqueue": {
       "created_at": "$TIMESTAMP",
       "id": "$WORKER_JOB_ID",
@@ -2501,6 +2568,10 @@
                 "name": "verify-work"
               },
               {
+                "description": "analyze trace-like verification and lifecycle evidence",
+                "name": "trace"
+              },
+              {
                 "description": "print or check CLI/MCP response compatibility contracts",
                 "name": "contract"
               },
@@ -2553,7 +2624,7 @@
                 "name": "version"
               }
             ],
-            "hash": "ba0f75807c142b0370cc15ad0b03879952d444146684c01ab7a1ea1928e0a7e6",
+            "hash": "9863b35ca0d3d0588ccec82bb72104d0f8958dd02fc9708b57cff4fbf2881d81",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2669,6 +2740,16 @@
                 "slowest_steps",
                 "step_duration_stats"
               ],
+              "trace_analysis": [
+                "ok",
+                "kind",
+                "input",
+                "input_source",
+                "trace_types",
+                "finding_count",
+                "findings",
+                "warnings"
+              ],
               "verify_work": [
                 "ok",
                 "kind",
@@ -2736,7 +2817,7 @@
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 5850,
+                "bytes": 6116,
                 "headings": [
                   "Agent Workflow",
                   "Start",
@@ -3040,7 +3121,7 @@
                 "title": "Self-augmentation loop"
               },
               {
-                "bytes": 5318,
+                "bytes": 5625,
                 "headings": [
                   "Self-verification candidate catalog",
                   "Current evidence",
@@ -3834,7 +3915,7 @@
       "content": [
         {
           "json": {
-            "candidate_count": 15,
+            "candidate_count": 16,
             "candidates": [
               {
                 "category": "observability",
@@ -3885,6 +3966,22 @@
                 ],
                 "why_now": [
                   "self-verify claims need machine-readable evidence mapping"
+                ]
+              },
+              {
+                "category": "completion evidence",
+                "id": "completion-evidence-audit",
+                "priority": 4,
+                "score": 80,
+                "status": "open",
+                "verify_with": [
+                  "verify-work --json fixture",
+                  "self-verify candidates --json",
+                  "workflow doc completion-report check"
+                ],
+                "why_now": [
+                  "LangChain-style harness engineering emphasizes forcing verification evidence before completion",
+                  "agent-harness has verify-work, but completion reports can still omit structured evidence"
                 ]
               },
               {
@@ -4099,7 +4196,9 @@
             "korean_name": "자기 검증 루프",
             "loop_kind": "self_verification",
             "ok": true,
-            "open_candidate_ids": [],
+            "open_candidate_ids": [
+              "completion-evidence-audit"
+            ],
             "satisfied_candidate_ids": [
               "self-verify-progress-heartbeat",
               "self-verify-secret-redaction-audit",
@@ -4117,6 +4216,22 @@
               "self-verify-duplicate-mcp-warning",
               "self-verify-daemon-restart-resilience"
             ],
+            "selected_candidate": {
+              "category": "completion evidence",
+              "id": "completion-evidence-audit",
+              "priority": 4,
+              "score": 80,
+              "status": "open",
+              "verify_with": [
+                "verify-work --json fixture",
+                "self-verify candidates --json",
+                "workflow doc completion-report check"
+              ],
+              "why_now": [
+                "LangChain-style harness engineering emphasizes forcing verification evidence before completion",
+                "agent-harness has verify-work, but completion reports can still omit structured evidence"
+              ]
+            },
             "source_exists": true,
             "source_path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
             "state_checkpoint": {

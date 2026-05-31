@@ -126,6 +126,13 @@ func TestResponseContractsGolden(t *testing.T) {
 	cliSnapshot["contract_schema"] = runCLIJSONContract(t, replacements, func() error {
 		return runContract([]string{"schema", "--json"})
 	})
+	traceInput := filepath.Join(workspaceDir, "trace.jsonl")
+	if err := os.WriteFile(traceInput, []byte(`{"kind":"code_change","target_docs":["OPERATIONS.md"],"summary":"contract fixture","source":"contract"}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cliSnapshot["trace_analyze"] = runCLIJSONContract(t, replacements, func() error {
+		return runTrace([]string{"analyze", "--input", traceInput, "--json"})
+	})
 	cliSnapshot["policy_audit"] = runCLIJSONContract(t, replacements, func() error {
 		return runPolicy([]string{"audit", "--workspace-root", workspaceDir, "--cwd", workspaceDir, "--json", "--", "git", "status", "--short"})
 	})

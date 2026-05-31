@@ -21,6 +21,7 @@ func Commands() []Command {
 		{Name: "policy", Description: "evaluate command policy, fake-run commands, and write audit records"},
 		{Name: "guard", Description: "check language-agnostic code and test anti-patterns"},
 		{Name: "verify-work", Description: "run a lightweight evidence matrix for current work"},
+		{Name: "trace", Description: "analyze trace-like verification and lifecycle evidence"},
 		{Name: "contract", Description: "print or check CLI/MCP response compatibility contracts"},
 		{Name: "state", Description: "read and write small agent state checkpoints"},
 		{Name: "api-doc", Description: "run API documentation static and agent review gates"},
@@ -54,6 +55,7 @@ Usage:
   agent-harness policy audit [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness guard check [--repo PATH] [--staged] [--all] [--json] [--] [FILES...]
   agent-harness verify-work [--repo PATH] [--all] [--json] [--] [READ_ONLY_ARGV...]
+  agent-harness trace analyze --input <jsonl|state-key> [--json]
   agent-harness contract schema [--json]
   agent-harness contract check [--json]
   agent-harness state write --key KEY (--value TEXT|--input FILE|--stdin) [--json]

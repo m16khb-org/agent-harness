@@ -80,6 +80,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "verify-work:", err)
 			os.Exit(1)
 		}
+	case "trace":
+		if err := runTrace(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "trace:", err)
+			os.Exit(1)
+		}
 	case "guard":
 		if err := runGuard(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "guard:", err)
