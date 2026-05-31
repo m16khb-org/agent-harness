@@ -33,10 +33,11 @@ type installContractCaseSnapshot struct {
 }
 
 type installContractHostSnapshot struct {
-	Host  string                        `json:"host"`
-	OK    bool                          `json:"ok"`
-	Files []installContractFileSnapshot `json:"files"`
-	Links []installContractLinkSnapshot `json:"links"`
+	Host     string                        `json:"host"`
+	OK       bool                          `json:"ok"`
+	Files    []installContractFileSnapshot `json:"files"`
+	Links    []installContractLinkSnapshot `json:"links"`
+	Messages []string                      `json:"messages,omitempty"`
 }
 
 type installContractFileSnapshot struct {
@@ -73,6 +74,8 @@ func TestNativeInstallAdapterContractMatrix(t *testing.T) {
 			binPath := filepath.Join(root, "bin", "harness")
 			writeContractSkill(t, root, "beta")
 			writeContractSkill(t, root, "alpha")
+			writeContractSkill(t, root, "codex-only", "codex")
+			writeContractSkill(t, root, "claude-only", "claude")
 
 			req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath)
 			req.ProjectLocal = tc.projectLocal
@@ -122,7 +125,7 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 	}
 }
 
-func writeContractSkill(t *testing.T, root, name string) {
+func writeContractSkill(t *testing.T, root, name string, hosts ...string) {
 	t.Helper()
 	dir := filepath.Join(root, "skills", name)
 	if err := os.MkdirAll(filepath.Join(dir, "agents"), 0o755); err != nil {
@@ -133,6 +136,15 @@ func writeContractSkill(t *testing.T, root, name string) {
 	}
 	if err := os.WriteFile(filepath.Join(dir, "agents", "openai.yaml"), []byte("name: "+name+"\n"), 0o644); err != nil {
 		t.Fatal(err)
+	}
+	if len(hosts) > 0 {
+		b, err := json.Marshal(map[string][]string{"hosts": hosts})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "install.json"), b, 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -162,17 +174,22 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 	if len(result.Hosts) != 2 || result.Hosts[0].Host != "codex" || result.Hosts[1].Host != "claude" {
 		t.Fatalf("host order/coverage drifted: %+v", result.Hosts)
 	}
-	if got := strings.Join(result.SkillNames, ","); got != "alpha,beta" {
+	if got := strings.Join(result.SkillNames, ","); got != "alpha,beta,claude-only,codex-only" {
 		t.Fatalf("skill discovery must be deterministic and sorted, got %q", got)
 	}
-	for _, skill := range result.SkillNames {
+	for _, skill := range []string{"alpha", "beta", "codex-only"} {
 		assertRootSkillSymlink(t, filepath.Join(req.CodexHome, "skills", skill), filepath.Join(req.Root, "skills", skill))
+	}
+	assertPathMissing(t, filepath.Join(req.CodexHome, "skills", "claude-only"))
+	for _, skill := range []string{"alpha", "beta", "claude-only"} {
 		assertRootSkillSymlink(t, filepath.Join(req.Home, ".claude", "skills", skill), filepath.Join(req.Root, "skills", skill))
 	}
+	assertPathMissing(t, filepath.Join(req.Home, ".claude", "skills", "codex-only"))
 	if req.ProjectLocal {
-		for _, skill := range result.SkillNames {
+		for _, skill := range []string{"alpha", "beta", "claude-only"} {
 			assertRootSkillSymlink(t, filepath.Join(req.Root, ".claude", "skills", skill), filepath.Join(req.Root, "skills", skill))
 		}
+		assertPathMissing(t, filepath.Join(req.Root, ".claude", "skills", "codex-only"))
 		for _, path := range []string{filepath.Join(req.Root, ".mcp.json")} {
 			if !exists(path) {
 				t.Fatalf("project-local opt-in did not write %s", path)
@@ -197,6 +214,8 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 			t.Fatalf("Codex config missing %q:\n%s", needle, codexConfig)
 		}
 	}
+	assertHostMessage(t, result, "codex", "skip skill for codex: claude-only")
+	assertHostMessage(t, result, "claude", "skip skill for claude: codex-only")
 }
 
 func assertRootSkillSymlink(t *testing.T, linkPath, wantTarget string) {
@@ -221,6 +240,29 @@ func assertRootSkillSymlink(t *testing.T, linkPath, wantTarget string) {
 	}
 }
 
+func assertPathMissing(t *testing.T, path string) {
+	t.Helper()
+	if exists(path) {
+		t.Fatalf("path should not exist: %s", path)
+	}
+}
+
+func assertHostMessage(t *testing.T, result port.NativeInstallResult, host, message string) {
+	t.Helper()
+	for _, hostResult := range result.Hosts {
+		if hostResult.Host != host {
+			continue
+		}
+		for _, got := range hostResult.Messages {
+			if got == message {
+				return
+			}
+		}
+		t.Fatalf("host %s missing message %q: %+v", host, message, hostResult.Messages)
+	}
+	t.Fatalf("missing host result %s: %+v", host, result.Hosts)
+}
+
 func normalizeInstallContractCase(t *testing.T, name string, req port.NativeInstallRequest, result port.NativeInstallResult) installContractCaseSnapshot {
 	t.Helper()
 	caseSnapshot := installContractCaseSnapshot{
@@ -238,7 +280,7 @@ func normalizeInstallContractCase(t *testing.T, name string, req port.NativeInst
 		},
 	}
 	for _, host := range result.Hosts {
-		hostSnapshot := installContractHostSnapshot{Host: host.Host, OK: host.OK}
+		hostSnapshot := installContractHostSnapshot{Host: host.Host, OK: host.OK, Messages: append([]string{}, host.Messages...)}
 		for _, file := range host.Files {
 			content := ""
 			if exists(file.Path) {

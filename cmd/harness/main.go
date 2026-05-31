@@ -22,6 +22,7 @@ import (
 	"time"
 
 	cliadapter "agent-harness/internal/adapter/cli"
+	"agent-harness/internal/adapter/installutil"
 	mcpadapter "agent-harness/internal/adapter/mcp"
 
 	"agent-harness/internal/core"
@@ -2933,8 +2934,8 @@ func validateSelfVerifyCandidateExport(binary, root string, seed int64) StepResu
 	if exportResult.CandidateCount < 10 || len(exportResult.Candidates) != exportResult.CandidateCount {
 		errs = append(errs, "candidate export did not include the candidate curriculum")
 	}
-	if exportResult.SelectedCandidate != nil || len(exportResult.OpenCandidateIDs) != 0 {
-		errs = append(errs, "candidate export should have no remaining open candidates")
+	if exportResult.SelectedCandidate == nil || exportResult.SelectedCandidate.ID != "completion-evidence-audit" || len(exportResult.OpenCandidateIDs) != 1 || exportResult.OpenCandidateIDs[0] != "completion-evidence-audit" {
+		errs = append(errs, "candidate export did not preserve the current open completion evidence candidate")
 	}
 	if containsString(exportResult.OpenCandidateIDs, "self-verify-candidate-export") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-candidate-export") || containsString(exportResult.OpenCandidateIDs, "self-verify-step-budget-baseline") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-step-budget-baseline") || containsString(exportResult.OpenCandidateIDs, "self-verify-install-dry-run-smoke") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-install-dry-run-smoke") {
 		errs = append(errs, "candidate export did not mark implemented candidates satisfied")
@@ -2945,7 +2946,7 @@ func validateSelfVerifyCandidateExport(binary, root string, seed int64) StepResu
 	if snapshot.Kind != selfVerificationCandidateExportKind || snapshot.CandidateCount != exportResult.CandidateCount {
 		errs = append(errs, "candidate export state snapshot mismatch")
 	}
-	if snapshot.SelectedCandidate != nil {
+	if snapshot.SelectedCandidate == nil || snapshot.SelectedCandidate.ID != "completion-evidence-audit" {
 		errs = append(errs, "candidate export state selected candidate mismatch")
 	}
 	if len(errs) > 0 {
@@ -4041,11 +4042,15 @@ func validateNativeIntegration(root string) StepResult {
 	if err != nil {
 		errs = append(errs, "list native skills: "+err.Error())
 	}
-	for _, nativeSkill := range nativeSkills {
+	codexSkills, _ := installutil.SkillNamesForHost(root, nativeSkills, "codex")
+	claudeSkills, _ := installutil.SkillNamesForHost(root, nativeSkills, "claude")
+	for _, nativeSkill := range codexSkills {
 		paths = append(paths,
 			filepath.Join(home, ".codex", "skills", nativeSkill, "SKILL.md"),
-			filepath.Join(home, ".claude", "skills", nativeSkill, "SKILL.md"),
 		)
+	}
+	for _, nativeSkill := range claudeSkills {
+		paths = append(paths, filepath.Join(home, ".claude", "skills", nativeSkill, "SKILL.md"))
 	}
 	for _, path := range paths {
 		if !exists(path) {

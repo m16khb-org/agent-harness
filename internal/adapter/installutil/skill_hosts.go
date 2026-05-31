@@ -30,3 +30,16 @@ func SkillEnabledForHost(root, skillName, host string) bool {
 	}
 	return false
 }
+
+// SkillNamesForHost partitions already-discovered skills by their optional
+// install.json host filter while preserving input order.
+func SkillNamesForHost(root string, skillNames []string, host string) (enabled []string, skipped []string) {
+	for _, skillName := range skillNames {
+		if SkillEnabledForHost(root, skillName, host) {
+			enabled = append(enabled, skillName)
+		} else {
+			skipped = append(skipped, skillName)
+		}
+	}
+	return enabled, skipped
+}

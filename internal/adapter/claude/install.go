@@ -22,11 +22,11 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	result := port.HostInstallResult{Host: "claude", OK: true, DryRun: req.DryRun}
 	var errs []error
 
-	for _, skillName := range req.SkillNames {
-		if !installutil.SkillEnabledForHost(req.Root, skillName, "claude") {
-			result.Messages = append(result.Messages, "skip skill for claude: "+skillName)
-			continue
-		}
+	enabledSkills, skippedSkills := installutil.SkillNamesForHost(req.Root, req.SkillNames, "claude")
+	for _, skillName := range skippedSkills {
+		result.Messages = append(result.Messages, "skip skill for claude: "+skillName)
+	}
+	for _, skillName := range enabledSkills {
 		userLink, err := installutil.EnsureSymlinkPlan(filepath.Join(req.Root, "skills", skillName), filepath.Join(req.Home, ".claude", "skills", skillName), req.DryRun)
 		result.Links = append(result.Links, userLink)
 		if err != nil {
@@ -56,11 +56,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	}
 
 	if req.ProjectLocal {
-		for _, skillName := range req.SkillNames {
-			if !installutil.SkillEnabledForHost(req.Root, skillName, "claude") {
-				result.Messages = append(result.Messages, "skip project-local skill for claude: "+skillName)
-				continue
-			}
+		for _, skillName := range enabledSkills {
 			projectLink, err := installutil.EnsureSymlinkPlan(filepath.ToSlash(filepath.Join("..", "..", "skills", skillName)), filepath.Join(req.Root, ".claude", "skills", skillName), req.DryRun)
 			result.Links = append(result.Links, projectLink)
 			if err != nil {

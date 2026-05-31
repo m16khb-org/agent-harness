@@ -6,7 +6,9 @@
       "ok": true,
       "skill_names": [
         "alpha",
-        "beta"
+        "beta",
+        "claude-only",
+        "codex-only"
       ],
       "hosts": [
         {
@@ -56,6 +58,12 @@
               "resolves_to_root_skill": true
             },
             {
+              "path": "$HOME/.claude/skills/claude-only",
+              "target": "$ROOT/skills/claude-only",
+              "created": true,
+              "resolves_to_root_skill": true
+            },
+            {
               "path": "$ROOT/.claude/skills/alpha",
               "target": "../../skills/alpha",
               "created": true,
@@ -66,7 +74,16 @@
               "target": "../../skills/beta",
               "created": true,
               "resolves_to_root_skill": true
+            },
+            {
+              "path": "$ROOT/.claude/skills/claude-only",
+              "target": "../../skills/claude-only",
+              "created": true,
+              "resolves_to_root_skill": true
             }
+          ],
+          "messages": [
+            "skip skill for claude: codex-only"
           ]
         },
         {
@@ -114,7 +131,16 @@
               "target": "$ROOT/skills/beta",
               "created": true,
               "resolves_to_root_skill": true
+            },
+            {
+              "path": "$CODEX_HOME/skills/codex-only",
+              "target": "$ROOT/skills/codex-only",
+              "created": true,
+              "resolves_to_root_skill": true
             }
+          ],
+          "messages": [
+            "skip skill for codex: claude-only"
           ]
         }
       ],
@@ -132,7 +158,9 @@
       "ok": true,
       "skill_names": [
         "alpha",
-        "beta"
+        "beta",
+        "claude-only",
+        "codex-only"
       ],
       "hosts": [
         {
@@ -173,7 +201,16 @@
               "target": "$ROOT/skills/beta",
               "created": true,
               "resolves_to_root_skill": true
+            },
+            {
+              "path": "$HOME/.claude/skills/claude-only",
+              "target": "$ROOT/skills/claude-only",
+              "created": true,
+              "resolves_to_root_skill": true
             }
+          ],
+          "messages": [
+            "skip skill for claude: codex-only"
           ]
         },
         {
@@ -221,7 +258,16 @@
               "target": "$ROOT/skills/beta",
               "created": true,
               "resolves_to_root_skill": true
+            },
+            {
+              "path": "$CODEX_HOME/skills/codex-only",
+              "target": "$ROOT/skills/codex-only",
+              "created": true,
+              "resolves_to_root_skill": true
             }
+          ],
+          "messages": [
+            "skip skill for codex: claude-only"
           ]
         }
       ],
