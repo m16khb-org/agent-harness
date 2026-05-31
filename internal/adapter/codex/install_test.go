@@ -99,6 +99,48 @@ func TestCodexInstallerPatchesUnsupportedPluginHookSuppressOutput(t *testing.T) 
 	}
 }
 
+func TestCodexInstallerPatchesClaudeMemCodexHookOutputs(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	writeAdapterTestSkill(t, root, "alpha")
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req.SkillNames = []string{"alpha"}
+
+	workerServicePath := filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "13.4.0", "scripts", "worker-service.cjs")
+	writeFile(t, workerServicePath, `function fZ(t,e){return{continue:!0,suppressOutput:!0,status:t,...e&&{message:e}}}
+Fh(s,{continue:!0,suppressOutput:!0})
+return{continue:!0,suppressOutput:!0,exitCode:Ke.SUCCESS}
+`)
+	workerCLIPath := filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "13.4.0", "scripts", "worker-cli.js")
+	writeFile(t, workerCLIPath, `var O='{"continue": true, "suppressOutput": true}';`)
+
+	result, err := NewInstaller().Install(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK {
+		t.Fatalf("installer ok=false: %+v", result)
+	}
+	for _, path := range []string{workerServicePath, workerCLIPath} {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(b)
+		for _, unsupported := range []string{"suppressOutput", "status:t", "message:e"} {
+			if strings.Contains(text, unsupported) {
+				t.Fatalf("unsupported Codex hook output field %q was not patched in %s:\n%s", unsupported, path, text)
+			}
+		}
+		if !exists(path + ".harness.bak") {
+			t.Fatalf("backup missing for patched plugin file: %s", path)
+		}
+	}
+	if !containsMessage(result.Messages, "patched Codex plugin hook compatibility") {
+		t.Fatalf("patch message missing: %+v", result.Messages)
+	}
+}
+
 func TestCodexInstallerDryRunPlansPluginHookCompatibilityPatch(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()

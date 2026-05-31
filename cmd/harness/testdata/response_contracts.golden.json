@@ -165,7 +165,7 @@
           "name": "version"
         }
       ],
-      "hash": "9863b35ca0d3d0588ccec82bb72104d0f8958dd02fc9708b57cff4fbf2881d81",
+      "hash": "615908871263aeb4bf4b118cb6d1d3cabc8e694bd1cb515bfee489f6e378f8a5",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -300,6 +300,8 @@
           "guard",
           "command",
           "evidence",
+          "evidence_matrix",
+          "suggested_commands",
           "warnings"
         ],
         "worker_job": [
@@ -323,7 +325,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 25046,
+          "bytes": 25014,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -370,7 +372,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 16574,
+          "bytes": 16614,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -392,7 +394,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 9008,
+          "bytes": 9010,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -493,7 +495,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 22783,
+          "bytes": 22730,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -521,7 +523,7 @@
           "title": "하네스 사용법"
         },
         {
-          "bytes": 8008,
+          "bytes": 8027,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -538,7 +540,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 15933,
+          "bytes": 15945,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -563,7 +565,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 12986,
+          "bytes": 12985,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -585,7 +587,7 @@
           "title": "AGENTS.md"
         },
         {
-          "bytes": 1316,
+          "bytes": 1315,
           "headings": [
             "CLAUDE.md",
             "API docs"
@@ -658,7 +660,7 @@
           "title": "Self-augmentation loop"
         },
         {
-          "bytes": 5625,
+          "bytes": 5715,
           "headings": [
             "Self-verification candidate catalog",
             "Current evidence",
@@ -1595,12 +1597,19 @@
           "category": "completion evidence",
           "id": "completion-evidence-audit",
           "priority": 4,
+          "satisfaction_evidence": [
+            "verify-work JSON includes evidence_matrix entries for git_preflight, guard_check, and read_only_command",
+            "verify-work JSON includes project-signal suggested_commands",
+            "response contract golden snapshots verify_work JSON output",
+            "candidate export records completion-evidence-audit as satisfied"
+          ],
           "score": 80,
-          "status": "open",
+          "status": "already_satisfied",
           "verify_with": [
-            "verify-work --json fixture",
-            "self-verify candidates --json",
-            "workflow doc completion-report check"
+            "verify-work --json evidence_matrix",
+            "verify-work suggested_commands",
+            "verify_work response contract golden",
+            "self-verify candidates --json"
           ],
           "why_now": [
             "LangChain-style harness engineering emphasizes forcing verification evidence before completion",
@@ -1819,13 +1828,12 @@
       "korean_name": "자기 검증 루프",
       "loop_kind": "self_verification",
       "ok": true,
-      "open_candidate_ids": [
-        "completion-evidence-audit"
-      ],
+      "open_candidate_ids": [],
       "satisfied_candidate_ids": [
         "self-verify-progress-heartbeat",
         "self-verify-secret-redaction-audit",
         "self-verify-coverage-gap-report",
+        "completion-evidence-audit",
         "self-verify-failure-rerun-recipe",
         "self-verify-candidate-export",
         "self-verify-step-budget-baseline",
@@ -1839,22 +1847,6 @@
         "self-verify-duplicate-mcp-warning",
         "self-verify-daemon-restart-resilience"
       ],
-      "selected_candidate": {
-        "category": "completion evidence",
-        "id": "completion-evidence-audit",
-        "priority": 4,
-        "score": 80,
-        "status": "open",
-        "verify_with": [
-          "verify-work --json fixture",
-          "self-verify candidates --json",
-          "workflow doc completion-report check"
-        ],
-        "why_now": [
-          "LangChain-style harness engineering emphasizes forcing verification evidence before completion",
-          "agent-harness has verify-work, but completion reports can still omit structured evidence"
-        ]
-      },
       "source_exists": true,
       "source_path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
       "state_checkpoint": {
@@ -2342,6 +2334,158 @@
         "doc_upkeep_json"
       ]
     },
+    "verify_work": {
+      "command": {
+        "duration_ms": "$DURATION_MS",
+        "executed": true,
+        "exit_code": 0,
+        "finished_at": "$TIMESTAMP",
+        "ok": true,
+        "policy": {
+          "allowed": true,
+          "argv": [
+            "git",
+            "status",
+            "--short"
+          ],
+          "audit_log_id": "$AUDIT_ID",
+          "cwd": "$GIT_REPO",
+          "deny_reasons": [],
+          "env_allowlist": [],
+          "generated_at": "$TIMESTAMP",
+          "network_allowed": false,
+          "ok": true,
+          "shell_allowed": false,
+          "tier": {
+            "granted_capabilities": [],
+            "name": "read_only",
+            "rationale": "no write, network, or shell capability requested; restricted to the read-only allowlist"
+          },
+          "timeout": "30s",
+          "warnings": [],
+          "workspace_root": "$GIT_REPO",
+          "write_allowed": false
+        },
+        "read_only": true,
+        "started_at": "$TIMESTAMP",
+        "stdout": "?? .env\n",
+        "timed_out": false
+      },
+      "evidence": [
+        "git preflight completed",
+        "guard check passed (staged, 0 files)",
+        "read-only verification command passed"
+      ],
+      "evidence_matrix": [
+        {
+          "name": "git_preflight",
+          "ok": true,
+          "status": "passed",
+          "summary": "git repository preflight completed"
+        },
+        {
+          "name": "guard_check",
+          "ok": true,
+          "status": "passed",
+          "summary": "guard check completed in staged mode for 0 file(s)"
+        },
+        {
+          "command": "git status --short",
+          "name": "read_only_command",
+          "ok": true,
+          "status": "passed",
+          "summary": "read-only verification command completed"
+        }
+      ],
+      "git_status": "?? .env\n",
+      "guard": {
+        "checked_files": [],
+        "findings": [],
+        "mode": "staged",
+        "ok": true,
+        "repo_root": "$GIT_REPO",
+        "summary": {
+          "block": 0,
+          "info": 0,
+          "review": 0,
+          "warn": 0
+        }
+      },
+      "kind": "verify_work",
+      "ok": true,
+      "preflight": {
+        "ahead": null,
+        "behind": null,
+        "branch": "main",
+        "commit_style_hints": {
+          "conventional_subjects": 1,
+          "lore_bodies": 1,
+          "message_policy_doc_path": "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
+          "recent_count": 1,
+          "recommended": "conventional_subject_plus_lore_body"
+        },
+        "head": "$GIT_SHA",
+        "is_clean": false,
+        "last_commit": "$GIT_SHA docs(contract): add fixture",
+        "ok": true,
+        "recent_commits": [
+          {
+            "sha": "$GIT_SHA",
+            "subject": "docs(contract): add fixture"
+          }
+        ],
+        "remotes": null,
+        "repo_root": "$GIT_REPO",
+        "secret_like_paths": [
+          ".env"
+        ],
+        "staged_files": [],
+        "status_lines": [
+          "## main",
+          "?? .env"
+        ],
+        "unstaged_files": [],
+        "untracked_files": [
+          ".env"
+        ],
+        "upstream": null,
+        "warnings": [
+          "no_upstream",
+          "secret_like_paths_present"
+        ]
+      },
+      "repo": "$GIT_REPO",
+      "suggested_commands": [
+        {
+          "command": [
+            "go",
+            "test",
+            "./..."
+          ],
+          "name": "test_1",
+          "reason": "test command inferred from go.mod (confidence=high)"
+        },
+        {
+          "command": [
+            "go",
+            "build",
+            "./..."
+          ],
+          "name": "build_1",
+          "reason": "build command inferred from go.mod (confidence=medium)"
+        },
+        {
+          "command": [
+            "go",
+            "vet",
+            "./..."
+          ],
+          "name": "lint_1",
+          "reason": "lint command inferred from go.mod (confidence=medium)"
+        }
+      ],
+      "warnings": []
+    },
     "worker_enqueue": {
       "created_at": "$TIMESTAMP",
       "id": "$WORKER_JOB_ID",
@@ -2643,7 +2787,7 @@
                 "name": "version"
               }
             ],
-            "hash": "9863b35ca0d3d0588ccec82bb72104d0f8958dd02fc9708b57cff4fbf2881d81",
+            "hash": "615908871263aeb4bf4b118cb6d1d3cabc8e694bd1cb515bfee489f6e378f8a5",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2778,6 +2922,8 @@
                 "guard",
                 "command",
                 "evidence",
+                "evidence_matrix",
+                "suggested_commands",
                 "warnings"
               ],
               "worker_job": [
@@ -2808,7 +2954,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 25046,
+                "bytes": 25014,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -2855,7 +3001,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 16574,
+                "bytes": 16614,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2877,7 +3023,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 9008,
+                "bytes": 9010,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -2978,7 +3124,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 22783,
+                "bytes": 22730,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -3006,7 +3152,7 @@
                 "title": "하네스 사용법"
               },
               {
-                "bytes": 8008,
+                "bytes": 8027,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -3023,7 +3169,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 15933,
+                "bytes": 15945,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -3048,7 +3194,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 12986,
+                "bytes": 12985,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
@@ -3070,7 +3216,7 @@
                 "title": "AGENTS.md"
               },
               {
-                "bytes": 1316,
+                "bytes": 1315,
                 "headings": [
                   "CLAUDE.md",
                   "API docs"
@@ -3143,7 +3289,7 @@
                 "title": "Self-augmentation loop"
               },
               {
-                "bytes": 5625,
+                "bytes": 5715,
                 "headings": [
                   "Self-verification candidate catalog",
                   "Current evidence",
@@ -4010,12 +4156,19 @@
                 "category": "completion evidence",
                 "id": "completion-evidence-audit",
                 "priority": 4,
+                "satisfaction_evidence": [
+                  "verify-work JSON includes evidence_matrix entries for git_preflight, guard_check, and read_only_command",
+                  "verify-work JSON includes project-signal suggested_commands",
+                  "response contract golden snapshots verify_work JSON output",
+                  "candidate export records completion-evidence-audit as satisfied"
+                ],
                 "score": 80,
-                "status": "open",
+                "status": "already_satisfied",
                 "verify_with": [
-                  "verify-work --json fixture",
-                  "self-verify candidates --json",
-                  "workflow doc completion-report check"
+                  "verify-work --json evidence_matrix",
+                  "verify-work suggested_commands",
+                  "verify_work response contract golden",
+                  "self-verify candidates --json"
                 ],
                 "why_now": [
                   "LangChain-style harness engineering emphasizes forcing verification evidence before completion",
@@ -4234,13 +4387,12 @@
             "korean_name": "자기 검증 루프",
             "loop_kind": "self_verification",
             "ok": true,
-            "open_candidate_ids": [
-              "completion-evidence-audit"
-            ],
+            "open_candidate_ids": [],
             "satisfied_candidate_ids": [
               "self-verify-progress-heartbeat",
               "self-verify-secret-redaction-audit",
               "self-verify-coverage-gap-report",
+              "completion-evidence-audit",
               "self-verify-failure-rerun-recipe",
               "self-verify-candidate-export",
               "self-verify-step-budget-baseline",
@@ -4254,22 +4406,6 @@
               "self-verify-duplicate-mcp-warning",
               "self-verify-daemon-restart-resilience"
             ],
-            "selected_candidate": {
-              "category": "completion evidence",
-              "id": "completion-evidence-audit",
-              "priority": 4,
-              "score": 80,
-              "status": "open",
-              "verify_with": [
-                "verify-work --json fixture",
-                "self-verify candidates --json",
-                "workflow doc completion-report check"
-              ],
-              "why_now": [
-                "LangChain-style harness engineering emphasizes forcing verification evidence before completion",
-                "agent-harness has verify-work, but completion reports can still omit structured evidence"
-              ]
-            },
             "source_exists": true,
             "source_path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
             "state_checkpoint": {

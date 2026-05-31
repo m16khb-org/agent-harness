@@ -92,6 +92,21 @@ func patchCodexPluginHookCompatibility(req port.NativeInstallRequest) ([]port.In
 				{Old: "    },\n    suppressOutput: true\n  }));", New: "    }\n  }));"},
 			},
 		},
+		{
+			Kind: "codex_plugin_hook_compat_claude_mem",
+			Globs: []string{
+				filepath.Join(req.CodexHome, "plugins", "cache", "*", "claude-mem", "*", "scripts", "worker-service.cjs"),
+				filepath.Join(req.CodexHome, "plugins", "cache", "*", "claude-mem", "*", "scripts", "worker-cli.js"),
+			},
+			Replacements: []textReplacement{
+				{Old: "function fZ(t,e){return{continue:!0,suppressOutput:!0,status:t,...e&&{message:e}}}", New: "function fZ(t,e){return{continue:!0,...e&&{systemMessage:e}}}"},
+				{Old: "{continue:!0,suppressOutput:!0}", New: "{continue:!0}"},
+				{Old: ",suppressOutput:!0", New: ""},
+				{Old: "suppressOutput:!0,", New: ""},
+				{Old: `O='{"continue": true, "suppressOutput": true}'`, New: `O='{"continue": true}'`},
+				{Old: `O='{"continue":true,"suppressOutput":true}'`, New: `O='{"continue":true}'`},
+			},
+		},
 	}
 	var files []port.InstallFile
 	var messages []string

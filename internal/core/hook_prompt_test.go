@@ -68,10 +68,13 @@ func TestBuildUserPromptMCPHintsCompanionToolsStaySecondary(t *testing.T) {
 	}
 }
 
-func TestBuildUserPromptMCPHintsRoutesMemoryToAgentmemory(t *testing.T) {
+func TestBuildUserPromptMCPHintsRoutesMemoryToClaudeMem(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "지난번에 이미 해결한 memory 찾아줘"})
-	if !strings.Contains(got.AdditionalContext, "memory: use agentmemory only for previous-session/repeated-work recall") {
-		t.Fatalf("expected agentmemory secondary hint:\n%s", got.AdditionalContext)
+	if !strings.Contains(got.AdditionalContext, "memory: use claude-mem only for previous-session/repeated-work recall") {
+		t.Fatalf("expected claude-mem secondary hint:\n%s", got.AdditionalContext)
+	}
+	if strings.Contains(got.AdditionalContext, "agentmemory") {
+		t.Fatalf("memory routing must not mention agentmemory:\n%s", got.AdditionalContext)
 	}
 }
 

@@ -56,6 +56,9 @@ func TestResponseContractsGolden(t *testing.T) {
 	cliSnapshot["preflight"] = runCLIJSONContract(t, replacements, func() error {
 		return runPreflight([]string{"--json", gitRepoDir})
 	})
+	cliSnapshot["verify_work"] = runCLIJSONContract(t, replacements, func() error {
+		return runVerifyWork([]string{"--repo", gitRepoDir, "--json", "--", "git", "status", "--short"})
+	})
 	cliSnapshot["policy_check"] = runCLIJSONContract(t, replacements, func() error {
 		return runPolicy([]string{"check", "--workspace-root", workspaceDir, "--cwd", workspaceDir, "--json", "--", "git", "status", "--short"})
 	})
@@ -204,7 +207,10 @@ func makeGitRepoForContract(t *testing.T) string {
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# contract fixture\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	runGitForContract(t, dir, "add", "README.md")
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/contract\n\ngo 1.25\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGitForContract(t, dir, "add", "README.md", "go.mod")
 	runGitForContract(t, dir,
 		"-c", "user.name=Contract Test",
 		"-c", "user.email=contract@example.invalid",
@@ -353,9 +359,14 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 		out := make(map[string]any, len(v))
 		isStateCheckpoint := looksLikeStateCheckpoint(v)
 		isDynamicStateRecord := looksLikeDynamicStateRecord(v)
+		isCommandRun := looksLikeCommandRunResult(v)
 		for key, child := range v {
 			if isDynamicTimeKey(key) {
 				out[key] = "$TIMESTAMP"
+				continue
+			}
+			if isCommandRun && key == "duration_ms" {
+				out[key] = "$DURATION_MS"
 				continue
 			}
 			if isStateCheckpoint && key == "bytes" {
@@ -424,6 +435,28 @@ func looksLikeStateCheckpoint(value map[string]any) bool {
 		return false
 	}
 	if _, ok := value["bytes"]; !ok {
+		return false
+	}
+	return true
+}
+
+func looksLikeCommandRunResult(value map[string]any) bool {
+	if _, ok := value["executed"]; !ok {
+		return false
+	}
+	if _, ok := value["exit_code"]; !ok {
+		return false
+	}
+	if _, ok := value["started_at"]; !ok {
+		return false
+	}
+	if _, ok := value["finished_at"]; !ok {
+		return false
+	}
+	if _, ok := value["duration_ms"]; !ok {
+		return false
+	}
+	if _, ok := value["policy"]; !ok {
 		return false
 	}
 	return true

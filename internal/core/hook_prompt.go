@@ -85,8 +85,8 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	if containsAny(lower, "llm-wiki", "wiki", "knowledge base", "research", "compile") {
 		addPriority("LLM Wiki", "Secondary hint: consider upstream LLM Wiki for explicit wiki, research, knowledge-base, query, or compile workflows.", hintPrioritySecondary)
 	}
-	if containsAny(lower, "agentmemory", "agent-memory", "memory", "previous session", "last time", "already solve", "already solved") || containsAny(prompt, "전에", "지난번", "이미 해결") {
-		addPriority("agentmemory", "Secondary hint: consider agentmemory for previous-session memory or repeated-work questions.", hintPrioritySecondary)
+	if containsAny(lower, "claude-mem", "agentmemory", "agent-memory", "memory", "previous session", "last time", "already solve", "already solved") || containsAny(prompt, "전에", "지난번", "이미 해결") {
+		addPriority("claude-mem", "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.", hintPrioritySecondary)
 	}
 
 	pendingUpkeep := []DocUpkeepEvent{}
@@ -208,7 +208,7 @@ func fallbackHintPriority(h HookUserPromptHint) string {
 	switch {
 	case strings.HasSuffix(h.Tool, ".md"):
 		return hintPriorityConsider
-	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "agentmemory":
+	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "claude-mem":
 		return hintPrioritySecondary
 	case h.Tool == "project_docs_route":
 		return hintPriorityRoute
@@ -238,8 +238,8 @@ func appendCompactHintGroup(parts *[]string, title string, hints []HookUserPromp
 }
 
 func appendSecondaryHints(parts *[]string, hints []HookUserPromptHint) {
-	if len(hints) == 1 && hints[0].Tool == "agentmemory" {
-		*parts = append(*parts, "memory: use agentmemory only for previous-session/repeated-work recall")
+	if len(hints) == 1 && hints[0].Tool == "claude-mem" {
+		*parts = append(*parts, "memory: use claude-mem only for previous-session/repeated-work recall")
 		return
 	}
 	appendCompactHintGroup(parts, "secondary", hints)
@@ -267,8 +267,8 @@ func compactHintLabel(h HookUserPromptHint) string {
 		return "CodeGraph for symbol/call-impact lookup"
 	case "LLM Wiki":
 		return "LLM Wiki for explicit wiki/research work"
-	case "agentmemory":
-		return "agentmemory only for previous-session/repeated-work recall"
+	case "claude-mem":
+		return "claude-mem only for previous-session/repeated-work recall"
 	default:
 		return h.Tool
 	}

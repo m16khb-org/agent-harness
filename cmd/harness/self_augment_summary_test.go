@@ -921,11 +921,14 @@ func TestExportSelfVerificationCandidatesSelectsNextOpenCandidate(t *testing.T) 
 	if result.CandidateCount < 10 || len(result.Candidates) != result.CandidateCount {
 		t.Fatalf("expected self-verification candidate curriculum: %+v", result)
 	}
-	if result.SelectedCandidate == nil || result.SelectedCandidate.ID != "completion-evidence-audit" {
-		t.Fatalf("expected completion evidence candidate selection: %+v", result.SelectedCandidate)
+	if result.SelectedCandidate != nil {
+		t.Fatalf("expected no selected candidate after completion-evidence-audit is satisfied, got %s", result.SelectedCandidate.ID)
 	}
-	if len(result.OpenCandidateIDs) != 1 || result.OpenCandidateIDs[0] != "completion-evidence-audit" {
-		t.Fatalf("expected one open completion evidence candidate: %+v", result.OpenCandidateIDs)
+	if len(result.OpenCandidateIDs) != 0 {
+		t.Fatalf("expected no open candidates, got %v", result.OpenCandidateIDs)
+	}
+	if !containsString(result.SatisfiedCandidateIDs, "completion-evidence-audit") {
+		t.Fatalf("expected completion-evidence-audit to be satisfied, got %v", result.SatisfiedCandidateIDs)
 	}
 	if containsString(result.OpenCandidateIDs, "self-verify-candidate-export") || !containsString(result.SatisfiedCandidateIDs, "self-verify-candidate-export") || containsString(result.OpenCandidateIDs, "self-verify-step-budget-baseline") || !containsString(result.SatisfiedCandidateIDs, "self-verify-step-budget-baseline") || containsString(result.OpenCandidateIDs, "self-verify-install-dry-run-smoke") || !containsString(result.SatisfiedCandidateIDs, "self-verify-install-dry-run-smoke") {
 		t.Fatalf("implemented candidates should be satisfied after their evidence exists: open=%v satisfied=%v", result.OpenCandidateIDs, result.SatisfiedCandidateIDs)

@@ -266,11 +266,11 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 
 - Kind: `adr`
 - Source: user consensus
-- Summary: agent-harness의 철학은 **바퀴를 재발명하지 않는다**이며, llm-wiki, CodeGraph, agentmemory는 하네스 core 기능이 아니라 upstream dependency로 연결한다.
-- Decision: `scripts/install-native.sh --with-upstream-tools`는 `nvk/llm-wiki`, `colbymchenry/codegraph`, `rohitg00/agentmemory`의 공식 installer/plugin 경로를 호출하는 opt-in convenience path를 제공한다. 기본 `install-native`는 하네스 자체 Codex/Claude integration만 설치한다.
-- Migration: memory companion은 기존 legacy memory plugin에서 `rohitg00/agentmemory`로 교체한다. full upstream setup은 legacy memory plugin/marketplace 배선을 제거하되 Claude plugin data는 보존한다.
+- Summary: agent-harness의 철학은 **바퀴를 재발명하지 않는다**이며, llm-wiki, CodeGraph, claude-mem은 하네스 core 기능이 아니라 upstream dependency로 연결한다.
+- Decision: `scripts/install-native.sh --with-upstream-tools`는 `nvk/llm-wiki`, `colbymchenry/codegraph`, `thedotmack/claude-mem`의 공식 installer/plugin 경로를 호출하는 opt-in convenience path를 제공한다. 기본 `install-native`는 하네스 자체 Codex/Claude integration만 설치한다.
+- Migration: memory companion은 `rohitg00/agentmemory`에서 `thedotmack/claude-mem`으로 교체한다. full upstream setup은 legacy agentmemory plugin/marketplace 배선을 제거한다.
 - Rationale: knowledge wiki, code graph, memory compression은 각 upstream이 이미 전문적으로 제공한다. 하네스는 이들을 재구현하지 않고 설치/설정 접착제만 제공해야 core policy, MCP, state, docs 책임이 흐려지지 않는다.
-- Rejected: llm-wiki/codegraph/agentmemory 기능을 하네스 CLI/MCP tool로 복제하는 대안 | 중복 구현과 drift를 만들고 host-neutral core를 비대하게 만든다.
+- Rejected: llm-wiki/codegraph/claude-mem 기능을 하네스 CLI/MCP tool로 복제하는 대안 | 중복 구현과 drift를 만들고 host-neutral core를 비대하게 만든다.
 - Consequences: companion tool 설치는 네트워크와 user-level host 설정 변경을 수반하므로 opt-in이어야 한다. 실패 시 하네스 core contract를 약화하지 말고 upstream 설치 경로나 문서를 고친다.
 
 ## ADR note: MCP-backed project memory records

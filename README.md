@@ -19,7 +19,7 @@
 
 The project is intentionally not “just a Codex plugin” or “just Claude commands.” The reusable behavior lives in a host-neutral Go core; host integrations are thin adapters that call that core.
 
-The project philosophy is **do not reinvent the wheel**: agent-harness owns the small shared core for orchestration, policy, state, project docs, and install glue. Specialized knowledge/retrieval tools stay upstream — for example `nvk/llm-wiki`, `colbymchenry/codegraph`, and `rohitg00/agentmemory` are installed or configured as optional dependencies instead of being reimplemented inside the harness.
+The project philosophy is **do not reinvent the wheel**: agent-harness owns the small shared core for orchestration, policy, state, project docs, and install glue. Specialized knowledge/retrieval tools stay upstream — for example `nvk/llm-wiki`, `colbymchenry/codegraph`, and `thedotmack/claude-mem` are installed or configured as optional dependencies instead of being reimplemented inside the harness.
 
 > Status: early but functional MVP. The CLI, daemon-backed MCP proxy, policy checker, state checkpoints, project-doc tools, API-doc review gate, native skill installer, self-verification loop, and self-augmentation loop are implemented. The worker surface is currently **state-only / no-shell** by design.
 
@@ -77,7 +77,7 @@ Design rules:
 3. **Safe by default** — command policy, workspace boundaries, audit records, redaction, and dry-run/default no-shell behavior come first.
 4. **One skill source** — `skills/<name>/` is the source of truth; user-level Codex/Claude skill paths point back to it.
 5. **Incremental worker** — persistent worker functionality starts with lifecycle state before process execution.
-6. **Do not reinvent the wheel** — integrate upstream tools such as llm-wiki, CodeGraph, and agentmemory through their own installers/plugins; do not copy their core behavior into agent-harness.
+6. **Do not reinvent the wheel** — integrate upstream tools such as llm-wiki, CodeGraph, and claude-mem through their own installers/plugins; do not copy their core behavior into agent-harness.
 
 ## Repository map
 
@@ -131,7 +131,7 @@ Smoke-test the daemon lifecycle:
 ./bin/agent-harness daemon stop --json
 ```
 
-Install or update user-level Codex/Claude integration after reviewing the dry run. First-time setup should use `agent-harness bootstrap`; later refreshes should use `agent-harness update`, like `agentmemory upgrade`. Both commands use the recommended full path by default: they rebuild this checkout, refresh host integrations, and install/update upstream companion tools. The installer also creates/refreshes `~/.local/bin/agent-harness`, so new shells can run `agent-harness ...` from anywhere:
+Install or update user-level Codex/Claude integration after reviewing the dry run. First-time setup should use `agent-harness bootstrap`; later refreshes should use `agent-harness update`, like `claude-mem update`. Both commands use the recommended full path by default: they rebuild this checkout, refresh host integrations, and install/update upstream companion tools. The installer also creates/refreshes `~/.local/bin/agent-harness`, so new shells can run `agent-harness ...` from anywhere:
 
 ```bash
 ./bin/agent-harness install-native --dry-run --json
@@ -139,7 +139,7 @@ Install or update user-level Codex/Claude integration after reviewing the dry ru
 # Recommended first-time full setup.
 ./bin/agent-harness bootstrap
 
-# Recommended ongoing update, like `agentmemory upgrade`.
+# Recommended ongoing update, like `claude-mem update`.
 agent-harness update
 
 # Minimal/low-level path: update only agent-harness native Codex/Claude integration.
@@ -157,9 +157,9 @@ Default installation targets user-level host locations, including Codex hooks in
 | --- | --- | --- |
 | LLM Wiki | `nvk/llm-wiki` | Adds/updates the Codex and Claude `wiki@llm-wiki` plugin. |
 | CodeGraph | `colbymchenry/codegraph` | Installs `@colbymchenry/codegraph`, registers its MCP server for Codex/Claude, and initializes this repo's `.codegraph/` index when enabled. |
-| agentmemory | `rohitg00/agentmemory` | Adds/updates the Codex and Claude `agentmemory` plugin, installs the `agentmemory` CLI, and refreshes MCP/hooks wiring. |
+| claude-mem | `thedotmack/claude-mem` | Runs `npx claude-mem@latest install` for Codex and Claude Code to add/update hooks, MCP, and worker wiring. |
 
-During the migration to agentmemory, the full setup removes legacy memory plugin/marketplace wiring while preserving Claude plugin data.
+During the migration to claude-mem, the full setup removes legacy agentmemory plugin/marketplace wiring.
 
 Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_CODEGRAPH=0` to skip local CodeGraph indexing.
 
@@ -315,7 +315,7 @@ No license file is present in this repository at the time of this README update.
 
 AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라지면 신뢰하기 어려워집니다. `agent-harness`는 그 공통 관심사를 하나의 portable core에 모읍니다.
 
-하네스의 철학은 **바퀴를 재발명하지 않는다**입니다. agent-harness는 orchestration, policy, state, project docs, install glue 같은 작은 공통 core를 맡고, 전문 knowledge/retrieval 기능은 upstream을 그대로 연결합니다. 예를 들어 `nvk/llm-wiki`, `colbymchenry/codegraph`, `rohitg00/agentmemory`는 하네스 내부에 복제하지 않고 optional dependency로 설치/설정합니다.
+하네스의 철학은 **바퀴를 재발명하지 않는다**입니다. agent-harness는 orchestration, policy, state, project docs, install glue 같은 작은 공통 core를 맡고, 전문 knowledge/retrieval 기능은 upstream을 그대로 연결합니다. 예를 들어 `nvk/llm-wiki`, `colbymchenry/codegraph`, `thedotmack/claude-mem`는 하네스 내부에 복제하지 않고 optional dependency로 설치/설정합니다.
 
 다음이 필요할 때 사용합니다.
 
@@ -365,7 +365,7 @@ flowchart LR
 3. **Safe by default** — command policy, workspace boundary, audit record, redaction, dry-run/no-shell 기본값을 먼저 둡니다.
 4. **One skill source** — `skills/<name>/`이 원본이고 user-level Codex/Claude skill 경로는 이를 가리킵니다.
 5. **Incremental worker** — persistent worker는 process 실행보다 lifecycle state부터 검증합니다.
-6. **바퀴를 재발명하지 않기** — llm-wiki, CodeGraph, agentmemory 같은 upstream 도구는 각자의 installer/plugin으로 연결하고 core 동작을 agent-harness에 복제하지 않습니다.
+6. **바퀴를 재발명하지 않기** — llm-wiki, CodeGraph, claude-mem 같은 upstream 도구는 각자의 installer/plugin으로 연결하고 core 동작을 agent-harness에 복제하지 않습니다.
 
 ## 저장소 구조
 
@@ -419,7 +419,7 @@ Daemon lifecycle smoke test:
 ./bin/agent-harness daemon stop --json
 ```
 
-user-level Codex/Claude integration은 dry-run 확인 후 설치하거나 갱신합니다. 첫 설치는 `agent-harness bootstrap`, 이후 갱신은 `agentmemory upgrade`처럼 `agent-harness update`를 권장합니다. 두 명령은 기본적으로 현재 checkout binary를 다시 build하고 host integration과 upstream companion tools를 함께 갱신합니다. installer는 `~/.local/bin/agent-harness`를 생성/갱신하므로 새 shell에서는 어디서든 `agent-harness ...`를 사용할 수 있습니다.
+user-level Codex/Claude integration은 dry-run 확인 후 설치하거나 갱신합니다. 첫 설치는 `agent-harness bootstrap`, 이후 갱신은 `claude-mem update`처럼 `agent-harness update`를 권장합니다. 두 명령은 기본적으로 현재 checkout binary를 다시 build하고 host integration과 upstream companion tools를 함께 갱신합니다. installer는 `~/.local/bin/agent-harness`를 생성/갱신하므로 새 shell에서는 어디서든 `agent-harness ...`를 사용할 수 있습니다.
 
 ```bash
 ./bin/agent-harness install-native --dry-run --json
@@ -427,7 +427,7 @@ user-level Codex/Claude integration은 dry-run 확인 후 설치하거나 갱신
 # 권장 첫 설치: agent-harness와 upstream companion tools를 함께 세팅합니다.
 ./bin/agent-harness bootstrap
 
-# 권장 갱신: agentmemory upgrade처럼 사용합니다.
+# 권장 갱신: claude-mem update처럼 사용합니다.
 agent-harness update
 
 # 최소 설치: agent-harness native Codex/Claude integration만 갱신합니다.
@@ -445,9 +445,9 @@ agent-harness update
 | --- | --- | --- |
 | LLM Wiki | `nvk/llm-wiki` | Codex/Claude `wiki@llm-wiki` plugin을 추가/갱신합니다. |
 | CodeGraph | `colbymchenry/codegraph` | `@colbymchenry/codegraph`를 설치하고 Codex/Claude MCP server를 등록하며, 설정 시 이 repo의 `.codegraph/` index를 초기화합니다. |
-| agentmemory | `rohitg00/agentmemory` | Codex/Claude `agentmemory` plugin을 추가/갱신하고, `agentmemory` CLI 및 MCP/hooks 배선을 갱신합니다. |
+| claude-mem | `thedotmack/claude-mem` | Codex/Claude Code에 `npx claude-mem@latest install`을 실행해 hooks, MCP, worker 배선을 추가/갱신합니다. |
 
-agentmemory 전환을 위해 full setup은 기존 legacy memory plugin/marketplace 배선을 제거하되 Claude plugin data는 보존합니다.
+claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marketplace 배선을 제거합니다.
 
 같은 동작은 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`로도 켤 수 있고, local CodeGraph indexing은 `HARNESS_INIT_CODEGRAPH=0`으로 끌 수 있습니다.
 

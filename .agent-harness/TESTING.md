@@ -72,10 +72,10 @@ Optional upstream companion smoke:
 
 ```bash
 ./scripts/install-native.sh --with-upstream-tools --dry-run
-codex plugin list | grep -E 'wiki@llm-wiki|agentmemory@agentmemory'
-claude plugin list | grep -E 'wiki@llm-wiki|agentmemory@agentmemory'
-command -v agentmemory
-agentmemory status
+codex plugin list | grep -E 'wiki@llm-wiki|claude-mem@claude-mem-local'
+claude plugin list | grep -E 'wiki@llm-wiki|claude-mem'
+npx -y claude-mem@latest status
+npx -y claude-mem@latest doctor
 command -v codegraph
 codegraph status --json .  # after a real --with-upstream-tools run with HARNESS_INIT_CODEGRAPH enabled
 ```
@@ -203,7 +203,7 @@ Golden file은 사람이 읽을 수 있게 작게 유지하고, schema 변경 �
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
 
-같은 원칙으로 CodeGraph와 agentmemory도 하네스 내부에 재구현하지 않는다. `scripts/install-native.sh --with-upstream-tools`는 upstream installer/plugin을 연결하는 convenience path이며, 테스트는 하네스 core 기능이 아니라 설치 배선과 opt-in/dry-run 동작을 검증한다.
+같은 원칙으로 CodeGraph와 claude-mem도 하네스 내부에 재구현하지 않는다. `scripts/install-native.sh --with-upstream-tools`는 upstream installer/plugin을 연결하는 convenience path이며, 테스트는 하네스 core 기능이 아니라 설치 배선과 opt-in/dry-run 동작을 검증한다.
 
 ## API documentation checks
 

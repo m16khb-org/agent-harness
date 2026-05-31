@@ -2934,8 +2934,8 @@ func validateSelfVerifyCandidateExport(binary, root string, seed int64) StepResu
 	if exportResult.CandidateCount < 10 || len(exportResult.Candidates) != exportResult.CandidateCount {
 		errs = append(errs, "candidate export did not include the candidate curriculum")
 	}
-	if exportResult.SelectedCandidate == nil || exportResult.SelectedCandidate.ID != "completion-evidence-audit" || len(exportResult.OpenCandidateIDs) != 1 || exportResult.OpenCandidateIDs[0] != "completion-evidence-audit" {
-		errs = append(errs, "candidate export did not preserve the current open completion evidence candidate")
+	if exportResult.SelectedCandidate != nil || len(exportResult.OpenCandidateIDs) != 0 || !containsString(exportResult.SatisfiedCandidateIDs, "completion-evidence-audit") {
+		errs = append(errs, "candidate export did not mark completion evidence candidate satisfied")
 	}
 	if containsString(exportResult.OpenCandidateIDs, "self-verify-candidate-export") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-candidate-export") || containsString(exportResult.OpenCandidateIDs, "self-verify-step-budget-baseline") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-step-budget-baseline") || containsString(exportResult.OpenCandidateIDs, "self-verify-install-dry-run-smoke") || !containsString(exportResult.SatisfiedCandidateIDs, "self-verify-install-dry-run-smoke") {
 		errs = append(errs, "candidate export did not mark implemented candidates satisfied")
@@ -2946,8 +2946,8 @@ func validateSelfVerifyCandidateExport(binary, root string, seed int64) StepResu
 	if snapshot.Kind != selfVerificationCandidateExportKind || snapshot.CandidateCount != exportResult.CandidateCount {
 		errs = append(errs, "candidate export state snapshot mismatch")
 	}
-	if snapshot.SelectedCandidate == nil || snapshot.SelectedCandidate.ID != "completion-evidence-audit" {
-		errs = append(errs, "candidate export state selected candidate mismatch")
+	if snapshot.SelectedCandidate != nil || len(snapshot.OpenCandidateIDs) != 0 || !containsString(snapshot.SatisfiedCandidateIDs, "completion-evidence-audit") {
+		errs = append(errs, "candidate export state satisfied candidate mismatch")
 	}
 	if len(errs) > 0 {
 		return assertionStepWithOutput("candidate export", started, errs, stdoutParts, commands)

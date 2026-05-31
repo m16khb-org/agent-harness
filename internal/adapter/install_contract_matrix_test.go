@@ -125,6 +125,38 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 	}
 }
 
+func TestInstallNativeUpstreamToolsUseClaudeMem(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
+	for _, want := range []string{
+		"npx -y claude-mem@latest install --ide \"$ide\" --provider claude --runtime worker --no-auto-start",
+		"install_claude_mem_for_ide \"codex-cli\"",
+		"install_claude_mem_for_ide \"claude-code\"",
+		"ensure_codex_plugin \"claude-mem@claude-mem-local\"",
+		"ensure_claude_plugin \"claude-mem@thedotmack\"",
+		"remove_codex_plugin \"agentmemory@agentmemory\"",
+		"remove_codex_marketplace \"agentmemory\"",
+		"remove_claude_plugin \"agentmemory@agentmemory\"",
+		"remove_claude_marketplace \"agentmemory\"",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("install-native.sh missing %q", want)
+		}
+	}
+	for _, gone := range []string{
+		"ensure_agentmemory_cli",
+		"refresh_agentmemory_host_wiring",
+		"ensure_codex_marketplace \"agentmemory\"",
+		"ensure_codex_plugin \"agentmemory@agentmemory\"",
+		"ensure_claude_marketplace \"agentmemory\"",
+		"ensure_claude_plugin \"agentmemory@agentmemory\"",
+		"npm install -g @agentmemory/agentmemory",
+	} {
+		if strings.Contains(script, gone) {
+			t.Fatalf("install-native.sh must not retain agentmemory installer path %q", gone)
+		}
+	}
+}
+
 func writeContractSkill(t *testing.T, root, name string, hosts ...string) {
 	t.Helper()
 	dir := filepath.Join(root, "skills", name)

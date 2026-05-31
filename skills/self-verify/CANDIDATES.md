@@ -28,14 +28,14 @@ priority = impact*0.25 + feasibility*0.20 + novelty*0.15 + (100-risk)*0.15 + (10
 
 ## Candidate list
 
-2026-05-31 cycle update: LangChain harness-engineering analysis reopened one completion evidence gap. Current open self-verification candidate: `completion-evidence-audit`.
+2026-05-31 cycle update: LangChain harness-engineering analysis reopened one completion evidence gap, and the gap is now satisfied by `verify-work --json` structured evidence. Current open self-verification candidate: none.
 
 | Priority | Candidate ID | Category | Score | Why it mattered | Verification |
 | --- | --- | --- | ---: | --- | --- |
 | 1 | `self-verify-progress-heartbeat` | observability | 81 | Long redirected runs looked hung without progress events. | `self-verify --progress=jsonl`, heartbeat tests, unchanged `--json` stdout contract. |
 | 2 | `self-verify-secret-redaction-audit` | security | 79 | Secret-like output in command logs, state, goldens, or MCP responses would make the verifier a leak path. | Synthetic secret fixtures and redaction scans. |
 | 3 | `self-verify-coverage-gap-report` | coverage | 78 | Invariant-to-step ownership needed to be machine-visible. | Coverage matrix fixtures and unowned-claim failures. |
-| 4 | `completion-evidence-audit` | completion evidence | 80 | Completion reports can still omit structured `verify-work`/guard evidence even though the CLI exists. | `verify-work --json` fixture, candidate export, and workflow doc completion-report check. |
+| 4 | `completion-evidence-audit` | completion evidence | 80 | Completion reports needed machine-readable `verify-work`/guard evidence, not only prose evidence strings. | `verify-work --json` `evidence_matrix`, project-signal `suggested_commands`, response contract golden, and candidate export. |
 | 5 | `self-verify-failure-rerun-recipe` | reproducibility | 78 | Failed steps needed copy-paste rerun commands with seed/env context. | Failing fixture and `summary.rerun_commands`. |
 | 6 | `self-verify-candidate-export` | curriculum | 77 | Future self-verify improvements needed a dedicated export after self-augment candidates were satisfied. | `self-verify candidates --json`, MCP golden, state export. |
 | 7 | `self-verify-step-budget-baseline` | performance | 76 | Gradual slowdowns needed p95 label budgets, not only top-5 slowest steps. | `summary.step_duration_stats` and compare regressions. |

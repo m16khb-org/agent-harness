@@ -110,7 +110,7 @@ func compatibilityContract() CompatibilityContract {
 			"trace_analysis":            {"ok", "kind", "input", "input_source", "trace_types", "finding_count", "findings", "warnings"},
 			"worker_job":                {"ok", "id", "kind", "status", "created_at", "updated_at", "no_shell"},
 			"command_audit":             {"ok", "kind", "audit_log_id", "log_path", "policy"},
-			"verify_work":               {"ok", "kind", "repo", "git_status", "preflight", "guard", "command", "evidence", "warnings"},
+			"verify_work":               {"ok", "kind", "repo", "git_status", "preflight", "guard", "command", "evidence", "evidence_matrix", "suggested_commands", "warnings"},
 		},
 		Warnings:     []string{},
 		AdapterTools: mcpadapter.AdapterOwnedTools(),
