@@ -159,3 +159,10 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - Kind: `caution`
 - Source: cli
 - Summary: Codex 0.135 PreCompact hook output rejects hookSpecificOutput/additionalContext; PreCompact hook stdout must stay in stop-control shape such as {} or suppressOutput-only, while context injection belongs to SessionStart/PostCompact.
+
+## 2026-05-31 — Do not patch upstream companion plugin caches
+
+- Kind: `caution`
+- Source: manual
+- Summary: Do not edit installed upstream plugin cache files such as `~/.codex/plugins/cache/agentmemory/...`; fix duplicate or host-specific integration issues in user-owned Codex/Claude settings, wrappers, or upstream itself.
+- If agentmemory is installed as a Codex plugin, do not also install the same agentmemory hooks in `~/.codex/hooks.json`; that double-runs capture hooks and creates duplicated observations/summaries.
