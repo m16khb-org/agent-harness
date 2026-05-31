@@ -176,18 +176,45 @@ func runHookPostToolUse(args []string) error {
 	if parsedRepo == "" {
 		parsedRepo = resolveTarget("")
 	}
+	tool := toolNameFromHookInput(stdin)
+	paths := pathsFromHookInput(stdin)
+	command := commandFromHookInput(stdin)
 	result, err := core.RecordLifecycleToolUse(core.HookToolUseLifecycleRequest{
 		Repo:    parsedRepo,
-		Tool:    toolNameFromHookInput(stdin),
-		Paths:   pathsFromHookInput(stdin),
-		Command: commandFromHookInput(stdin),
+		Tool:    tool,
+		Paths:   paths,
+		Command: command,
 		Source:  "post-tool-use",
 	})
 	if err != nil {
 		return err
 	}
+	var draftQueue *core.DraftWikiQueueAppendResult
+	draftMaterial := draftWikiMaterialFromHookInput(stdin)
+	if draftMaterial != "" {
+		queued, queueErr := core.AppendDraftWikiQueueEvent(core.DraftWikiQueueAppendRequest{
+			RepoRoot:       parsedRepo,
+			Tool:           tool,
+			Command:        command,
+			Paths:          paths,
+			SourceMaterial: draftMaterial,
+			Source:         "post-tool-use",
+		})
+		if queueErr == nil {
+			draftQueue = &queued
+		} else {
+			result.Warnings = append(result.Warnings, "draft_wiki_queue_error:"+queueErr.Error())
+		}
+	}
 	if *jsonOut {
-		return printJSON(result)
+		out := map[string]any{
+			"ok":        result.OK,
+			"lifecycle": result,
+		}
+		if draftQueue != nil {
+			out["draft_wiki_queue"] = draftQueue
+		}
+		return printJSON(out)
 	}
 	return printJSON(map[string]any{
 		"hookSpecificOutput": map[string]any{
@@ -390,6 +417,39 @@ func commandFromHookInput(input []byte) string {
 		}
 	}
 	return ""
+}
+
+func draftWikiMaterialFromHookInput(input []byte) string {
+	obj := hookInputObject(input)
+	var parts []string
+	var walk func(any, string)
+	walk = func(v any, key string) {
+		switch x := v.(type) {
+		case map[string]any:
+			for k, value := range x {
+				walk(value, strings.ToLower(k))
+			}
+		case []any:
+			for _, item := range x {
+				walk(item, key)
+			}
+		case string:
+			if draftWikiHookMaterialKey(key) && strings.TrimSpace(x) != "" {
+				parts = append(parts, strings.TrimSpace(x))
+			}
+		}
+	}
+	walk(obj, "")
+	return strings.TrimSpace(strings.Join(parts, "\n\n"))
+}
+
+func draftWikiHookMaterialKey(key string) bool {
+	switch key {
+	case "tool_response", "tool_result", "result", "response", "output", "content", "text", "observation", "observations":
+		return true
+	default:
+		return false
+	}
 }
 
 func pathsFromHookInput(input []byte) []string {

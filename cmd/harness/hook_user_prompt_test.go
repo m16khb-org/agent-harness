@@ -156,6 +156,66 @@ func TestRunHookPreToolUseRawJSONIsAllowByDefault(t *testing.T) {
 	}
 }
 
+func TestRunHookPostToolUseQueuesDraftWikiAndWorkerWritesDraft(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	configPath := filepath.Join(repo, "agy-settings.json")
+	if err := os.WriteFile(configPath, []byte(`{"model":"Gemini 3.5 Flash (High)"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fakeAgy := filepath.Join(repo, "fake-agy.sh")
+	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh
+if [ "$1" != "-p" ]; then
+  echo "missing -p" >&2
+  exit 2
+fi
+cat <<'EOF'
+---
+title: "Hook queued draft"
+source: "claude-mem"
+target_wiki: "agent-harness"
+target_type: "notes"
+summary: "PostToolUse hooks queue draft-wiki work for the worker."
+---
+
+# Hook queued draft
+
+The hook records a queue item and the worker calls agy -p to produce this draft.
+EOF
+`), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	raw := runHookCapture(t, `{
+  "cwd": "`+repo+`",
+  "tool_name": "Bash",
+  "tool_input": {"command": "claude-mem export observations"},
+  "tool_response": "A durable observation says PostToolUse must enqueue draft wiki work while agy runs in a worker."
+}`, func() error {
+		return runHookPostToolUse([]string{"--json"})
+	})
+	queue, _ := raw["draft_wiki_queue"].(map[string]any)
+	if queue == nil || queue["path"] == "" {
+		t.Fatalf("PostToolUse raw JSON did not expose draft_wiki_queue: %+v", raw)
+	}
+
+	out := captureStdoutForTest(t, func() {
+		if err := runWorker([]string{"draft-wiki", "--repo", repo, "--agy-command", fakeAgy, "--agy-settings", configPath, "--json"}); err != nil {
+			t.Fatalf("worker draft-wiki: %v", err)
+		}
+	})
+	var processed map[string]any
+	if err := json.Unmarshal([]byte(out), &processed); err != nil {
+		t.Fatalf("worker output is not JSON: %q: %v", out, err)
+	}
+	if processed["processed"] != float64(1) || processed["succeeded"] != float64(1) {
+		t.Fatalf("worker did not process queued draft-wiki item: %+v", processed)
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".agent-harness", "draft-wiki", "draft", "2026-05-31-hook-queued-draft.md")); err != nil {
+		t.Fatalf("draft-wiki draft file missing after hook+worker: %v", err)
+	}
+}
+
 func TestRunHookStopEmitsCodexCompatibleNoopJSON(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

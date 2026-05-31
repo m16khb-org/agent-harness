@@ -1,0 +1,337 @@
+package core
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestInitDraftWikiCreatesReviewStaging(t *testing.T) {
+	root := t.TempDir()
+
+	dry, err := InitDraftWiki(DraftWikiInitRequest{RepoRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !dry.OK || !dry.DryRun || dry.Write {
+		t.Fatalf("unexpected dry-run result: %+v", dry)
+	}
+	if _, err := os.Stat(filepath.Join(root, DraftWikiDir)); !os.IsNotExist(err) {
+		t.Fatalf("dry-run created draft wiki dir or unexpected stat error: %v", err)
+	}
+
+	written, err := InitDraftWiki(DraftWikiInitRequest{RepoRoot: root, Write: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !written.OK || written.DryRun || !written.Write {
+		t.Fatalf("unexpected write result: %+v", written)
+	}
+	for _, rel := range []string{
+		filepath.ToSlash(filepath.Join(DraftWikiDir, "README.md")),
+		filepath.ToSlash(filepath.Join(DraftWikiDir, "draft", ".gitkeep")),
+		filepath.ToSlash(filepath.Join(DraftWikiDir, "approved", ".gitkeep")),
+		filepath.ToSlash(filepath.Join(DraftWikiDir, "rejected", ".gitkeep")),
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
+			t.Fatalf("expected %s: %v", rel, err)
+		}
+	}
+}
+
+func TestListDraftWikiReadsRepoLocalDrafts(t *testing.T) {
+	root := t.TempDir()
+	draft := filepath.Join(root, DraftWikiDir, "draft", "2026-05-31-hook-policy.md")
+	mustWrite(t, draft, `---
+title: "Hook policy"
+source: "claude-mem"
+target_wiki: "agent-harness"
+target_type: "notes"
+summary: "Reusable hook policy note."
+---
+
+# Hook policy
+
+Body.
+`)
+
+	result, err := ListDraftWiki(DraftWikiListRequest{RepoRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.DraftDir == "" || len(result.Drafts) != 1 {
+		t.Fatalf("unexpected list result: %+v", result)
+	}
+	got := result.Drafts[0]
+	if got.Status != "draft" || got.Title != "Hook policy" || got.TargetWiki != "agent-harness" || got.TargetType != "notes" {
+		t.Fatalf("unexpected draft metadata: %+v", got)
+	}
+	if got.RelPath != ".agent-harness/draft-wiki/draft/2026-05-31-hook-policy.md" {
+		t.Fatalf("RelPath=%q", got.RelPath)
+	}
+}
+
+func TestApproveDraftWikiMovesDraftCandidate(t *testing.T) {
+	root := t.TempDir()
+	draft := filepath.Join(root, DraftWikiDir, "draft", "candidate.md")
+	mustWrite(t, draft, "# Candidate\n")
+
+	result, err := ApproveDraftWiki(DraftWikiMoveRequest{RepoRoot: root, Path: draft})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.From.Status != "draft" || result.To.Status != "approved" {
+		t.Fatalf("unexpected approve result: %+v", result)
+	}
+	if _, err := os.Stat(draft); !os.IsNotExist(err) {
+		t.Fatalf("draft file still exists or unexpected stat error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, DraftWikiDir, "approved", "candidate.md")); err != nil {
+		t.Fatalf("approved file missing: %v", err)
+	}
+}
+
+func TestPromoteDraftWikiWritesLLMWikiRawNoteOnConfirm(t *testing.T) {
+	root := t.TempDir()
+	configPath, hub := writeTestLLMWikiHub(t)
+	approved := filepath.Join(root, DraftWikiDir, "approved", "candidate.md")
+	mustWrite(t, approved, `---
+title: "Candidate"
+target_wiki: "agent-harness"
+target_type: "notes"
+---
+
+# Candidate
+`)
+
+	dry, err := PromoteDraftWiki(DraftWikiPromoteRequest{RepoRoot: root, Path: approved})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !dry.OK || !dry.DryRun || dry.Confirm || dry.Executed {
+		t.Fatalf("unexpected dry-run promote result: %+v", dry)
+	}
+	if !strings.Contains(dry.HandoffCommand, "@wiki ingest") || !strings.Contains(dry.HandoffCommand, "--wiki agent-harness") {
+		t.Fatalf("unexpected handoff command: %q", dry.HandoffCommand)
+	}
+	if _, err := os.Stat(approved); err != nil {
+		t.Fatalf("dry-run moved approved file: %v", err)
+	}
+
+	confirmed, err := PromoteDraftWiki(DraftWikiPromoteRequest{
+		RepoRoot:          root,
+		Path:              approved,
+		Confirm:           true,
+		LLMWikiConfigPath: configPath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !confirmed.OK || confirmed.DryRun || !confirmed.Confirm || !confirmed.Executed {
+		t.Fatalf("unexpected confirmed promote result: %+v", confirmed)
+	}
+	if confirmed.LLMWikiRoot != filepath.Join(hub, "topics", "agent-harness") {
+		t.Fatalf("LLMWikiRoot=%q", confirmed.LLMWikiRoot)
+	}
+	if confirmed.LLMWikiRawPath == "" || !strings.HasSuffix(confirmed.LLMWikiRawPath, "raw/notes/2026-05-31-candidate.md") {
+		t.Fatalf("unexpected raw path: %+v", confirmed)
+	}
+	raw, err := os.ReadFile(confirmed.LLMWikiRawPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawText := string(raw)
+	if !strings.Contains(rawText, "type: notes") || !strings.Contains(rawText, "source: \"agent-harness draft-wiki:.agent-harness/draft-wiki/approved/candidate.md\"") {
+		t.Fatalf("raw note missing llm-wiki frontmatter: %s", rawText)
+	}
+	if !strings.Contains(rawText, "# Candidate") {
+		t.Fatalf("raw note missing draft body: %s", rawText)
+	}
+	if _, err := os.Stat(approved); err != nil {
+		t.Fatalf("approved file should remain reviewable: %v", err)
+	}
+	logText, err := os.ReadFile(filepath.Join(hub, "topics", "agent-harness", "log.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(logText), "ingest | Candidate") {
+		t.Fatalf("log missing ingest entry: %s", string(logText))
+	}
+}
+
+func TestSuggestDraftWikiUsesAgyPrintWithConfiguredModel(t *testing.T) {
+	root := t.TempDir()
+	input := filepath.Join(root, "memory.md")
+	mustWrite(t, input, "Hook policy should stay bookkeeping-only.\n")
+	configPath := filepath.Join(root, "agy-settings.json")
+	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
+	fakeAgy := filepath.Join(root, "fake-agy.sh")
+	mustWrite(t, fakeAgy, `#!/bin/sh
+if [ "$1" != "-p" ]; then
+  echo "missing -p" >&2
+  exit 2
+fi
+cat <<'EOF'
+---
+title: "Hook policy memory"
+source: "claude-mem"
+target_wiki: "agent-harness"
+target_type: "notes"
+summary: "Hooks should enqueue work instead of running long LLM calls inline."
+---
+
+# Hook policy memory
+
+PostToolUse hooks should record events and leave LLM summarization to a worker.
+EOF
+`)
+	if err := os.Chmod(fakeAgy, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := SuggestDraftWiki(DraftWikiSuggestRequest{
+		RepoRoot:        root,
+		InputPath:       input,
+		Title:           "Hook policy memory",
+		TargetWiki:      "agent-harness",
+		AgyCommand:      fakeAgy,
+		AgyModel:        "Gemini 3.5 Flash (High)",
+		AgySettingsPath: configPath,
+		Write:           true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.DryRun || !result.Executed || result.ModelSelectionMethod != "settings_json" {
+		t.Fatalf("unexpected suggest result: %+v", result)
+	}
+	if result.Draft == nil || result.Draft.Status != "draft" || result.Draft.TargetWiki != "agent-harness" {
+		t.Fatalf("unexpected draft metadata: %+v", result.Draft)
+	}
+	if !strings.Contains(result.Command, fakeAgy+" -p") {
+		t.Fatalf("expected agy print command, got %q", result.Command)
+	}
+	if _, err := os.Stat(filepath.Join(root, DraftWikiDir, "draft", "2026-05-31-hook-policy-memory.md")); err != nil {
+		t.Fatalf("draft file missing: %v", err)
+	}
+}
+
+func TestSuggestDraftWikiRejectsWrongAgyModel(t *testing.T) {
+	root := t.TempDir()
+	input := filepath.Join(root, "memory.md")
+	mustWrite(t, input, "memory\n")
+	configPath := filepath.Join(root, "agy-settings.json")
+	mustWrite(t, configPath, `{"model":"Claude Opus 4.6 (Thinking)"}`)
+
+	_, err := SuggestDraftWiki(DraftWikiSuggestRequest{
+		RepoRoot:        root,
+		InputPath:       input,
+		AgyCommand:      "agy",
+		AgyModel:        "Gemini 3.5 Flash (High)",
+		AgySettingsPath: configPath,
+		Write:           true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "agy model mismatch") {
+		t.Fatalf("expected model mismatch, got %v", err)
+	}
+}
+
+func TestDraftWikiQueueWorkerRunsAgyAndWritesDraft(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	configPath := filepath.Join(root, "agy-settings.json")
+	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
+	fakeAgy := filepath.Join(root, "fake-agy.sh")
+	mustWrite(t, fakeAgy, `#!/bin/sh
+if [ "$1" != "-p" ]; then
+  echo "missing -p" >&2
+  exit 2
+fi
+printf '%s\n' "$2" > prompt.txt
+cat <<'EOF'
+---
+title: "Queued hook memory"
+source: "claude-mem"
+target_wiki: "agent-harness"
+target_type: "notes"
+summary: "The hook queues draft-wiki work and the worker performs agy summarization."
+---
+
+# Queued hook memory
+
+PostToolUse hooks enqueue draft-wiki work; the worker calls agy -p outside the hook critical path.
+EOF
+`)
+	if err := os.Chmod(fakeAgy, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	queued, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{
+		RepoRoot:       root,
+		Tool:           "Bash",
+		Command:        "claude-mem export observations",
+		SourceMaterial: "Hooks should enqueue work and a worker should call agy -p.",
+		TargetWiki:     "agent-harness",
+		TargetType:     "notes",
+		Source:         "post-tool-use",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !queued.OK || queued.Event.Status != WorkerStatusQueued || queued.Path == "" {
+		t.Fatalf("unexpected queued result: %+v", queued)
+	}
+
+	processed, err := ProcessDraftWikiQueue(DraftWikiQueueProcessRequest{
+		RepoRoot:        root,
+		AgyCommand:      fakeAgy,
+		AgyModel:        "Gemini 3.5 Flash (High)",
+		AgySettingsPath: configPath,
+		Limit:           1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !processed.OK || processed.Processed != 1 || processed.Succeeded != 1 {
+		t.Fatalf("unexpected processed result: %+v", processed)
+	}
+	if len(processed.Events) != 1 || processed.Events[0].Status != WorkerStatusSucceeded {
+		t.Fatalf("queue event was not marked succeeded: %+v", processed.Events)
+	}
+	if !strings.Contains(processed.Events[0].DraftRelPath, ".agent-harness/draft-wiki/draft/") {
+		t.Fatalf("missing draft rel path: %+v", processed.Events[0])
+	}
+	if _, err := os.Stat(filepath.Join(root, "prompt.txt")); err != nil {
+		t.Fatalf("fake agy did not receive prompt: %v", err)
+	}
+	drafts, err := ListDraftWiki(DraftWikiListRequest{RepoRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(drafts.Drafts) != 1 || drafts.Drafts[0].Status != "draft" || drafts.Drafts[0].Title != "Queued hook memory" {
+		t.Fatalf("worker did not write draft-wiki/draft candidate: %+v", drafts)
+	}
+}
+
+func writeTestLLMWikiHub(t *testing.T) (configPath, hub string) {
+	t.Helper()
+	root := t.TempDir()
+	hub = filepath.Join(root, "llm-wiki")
+	topic := filepath.Join(hub, "topics", "agent-harness")
+	mustWrite(t, filepath.Join(hub, "wikis.json"), `{
+  "default": "agent-harness",
+  "wikis": {
+    "agent-harness": {
+      "path": "topics/agent-harness",
+      "description": "Agent harness memory",
+      "status": "active"
+    }
+  }
+}`)
+	mustWrite(t, filepath.Join(topic, "config.md"), "# Agent Harness\n")
+	mustWrite(t, filepath.Join(topic, "log.md"), "# Log\n")
+	configPath = filepath.Join(root, "llm-wiki-config.json")
+	mustWrite(t, configPath, `{"hub_path":"`+filepath.ToSlash(hub)+`"}`)
+	return configPath, hub
+}

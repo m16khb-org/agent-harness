@@ -127,6 +127,10 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 예외: Codex native hook validator가 upstream companion plugin의 오래된/Claude 전용 출력 필드만 거부하는 경우에는, 설치/업데이트 단계에서 **기능 재구현 없이** 호환성 shim을 적용할 수 있다. 예를 들어 `suppressOutput`처럼 Codex 0.135.0에서 unsupported top-level field로 실패하는 값은 백업 후 제거하되, `hookSpecificOutput`, MCP 등록, worker 시작, context 주입 동작은 유지한다.
 
+draft-wiki는 이 예외가 아니라 별도 staging area다. `.agent-harness/draft-wiki/**`에는 사용자가 검토할 후보 Markdown만 둔다. `agent-harness project draft-wiki promote --confirm`은 configured `nvk/llm-wiki` topic의 `raw/<type>/` note와 `log.md` append까지만 수행한다. index/query/compile을 하네스가 대신 완료한 것처럼 보고하지 않는다.
+
+PostToolUse hook 기반 draft-wiki 자동화는 hook에서 `agy`를 실행하지 않는다. hook은 bounded/redacted queue record만 user state에 append하고, `agent-harness worker draft-wiki`가 나중에 `agy -p`를 argv로 호출해 draft를 쓴다. hook stdout에는 host-compatible no-op shape를 유지하고, queue/draft 생성 여부는 raw `--json`, queue file, draft file, worker result로 검증한다.
+
 ## 12. Daemon lifecycle drift
 
 `agent-harness mcp`가 daemon을 자동 시작하므로 오래된 binary가 이미 떠 있으면 새 코드 검증과 실제 MCP 동작이 갈라질 수 있다.

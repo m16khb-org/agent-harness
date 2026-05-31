@@ -325,7 +325,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 25014,
+          "bytes": 27733,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -372,7 +372,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 16614,
+          "bytes": 18026,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -394,7 +394,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 9010,
+          "bytes": 9816,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -451,7 +451,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 16891,
+          "bytes": 17358,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -540,7 +540,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 15945,
+          "bytes": 16569,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -733,6 +733,13 @@
           "has_skill_md": true,
           "name": "atomic-commit-push",
           "path": "$HARNESS_ROOT/skills/atomic-commit-push"
+        },
+        {
+          "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into nvk/llm-wiki.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "draft-wiki-promoter",
+          "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
         },
         {
           "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
@@ -1439,6 +1446,7 @@
         "has_worker_mvp": true,
         "skills": [
           "atomic-commit-push",
+          "draft-wiki-promoter",
           "project-bootstrap",
           "self-augment",
           "self-verify",
@@ -2954,7 +2962,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 25014,
+                "bytes": 27733,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3001,7 +3009,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 16614,
+                "bytes": 18026,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -3023,7 +3031,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 9010,
+                "bytes": 9816,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3080,7 +3088,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 16891,
+                "bytes": 17358,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -3169,7 +3177,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 15945,
+                "bytes": 16569,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -3369,6 +3377,13 @@
                 "has_skill_md": true,
                 "name": "atomic-commit-push",
                 "path": "$HARNESS_ROOT/skills/atomic-commit-push"
+              },
+              {
+                "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into nvk/llm-wiki.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "draft-wiki-promoter",
+                "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
               },
               {
                 "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
@@ -3964,6 +3979,7 @@
               "has_worker_mvp": true,
               "skills": [
                 "atomic-commit-push",
+                "draft-wiki-promoter",
                 "project-bootstrap",
                 "self-augment",
                 "self-verify",

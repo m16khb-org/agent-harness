@@ -95,6 +95,7 @@ skills/
 - job은 idempotency key, timeout, cancellation을 갖는다.
 - worker 시작/종료는 stale lock과 orphan process를 처리한다.
 - 장기 작업 상태와 project lifecycle queue/profile은 user state dir에 저장하고, repo에 secret/state 원문을 쓰지 않는다. lifecycle state는 `projects/<repo-id>/` namespace로 격리해 같은 머신의 여러 repo가 섞이지 않게 한다.
+- PostToolUse에서 생긴 draft-wiki 후보는 repo가 아니라 project-scoped user state queue에 bounded/redacted 텍스트로 저장한다. worker가 처리할 때도 shell string을 만들지 말고 `agy -p <prompt>` argv 실행만 사용한다.
 
 ---
 
@@ -205,6 +206,7 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 ## Hook 컨벤션
 
 - UserPromptSubmit hook은 사용자의 prompt와 project-scoped lifecycle state를 분석해 MCP 후보 힌트만 주입한다. PreToolUse hook은 tool 실행 직전의 critical path에 있으므로 기본은 host stdout `{}`인 빠른 allow/no-op preflight로 유지하고, raw `--json` 진단만 노출한다. PostToolUse hook은 성공한 tool 실행 이후 lifecycle upkeep queue 기록만 수행한다. Stop hook은 lifecycle reminder를 계산하되 Stop hook stdout schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. PreCompact/PostCompact hook은 pending upkeep queue를 작은 user-state capsule로 저장하고 한 번만 복원한다. Codex와 Claude Code hook adapter는 같은 `agent-harness hook user-prompt/pre-tool-use/post-tool-use/pre-compact/post-compact/stop` CLI를 호출해야 한다. 어떤 hook도 작업을 대신 실행하거나 shared docs를 직접 수정하거나 긴 파일/네트워크를 읽지 않는다.
+- PostToolUse hook의 draft-wiki 연동도 queue append까지만 허용한다. `agy -p` 호출과 `.agent-harness/draft-wiki/draft` 파일 쓰기는 `agent-harness worker draft-wiki`가 hook 밖에서 수행한다.
 - Hook 출력은 event별 host schema를 따른다. UserPromptSubmit/PostCompact처럼 additional context를 지원하는 이벤트만 `hookSpecificOutput.additionalContext`를 쓰고, Stop/PreToolUse는 빈 JSON 객체 또는 검증된 host control schema만 사용한다. 실패해도 사용자 작업을 막지 않도록 작고 deterministic하게 유지한다.
 - UserPromptSubmit output is host-shaped at the adapter edge: Codex uses `--host codex` where needed, omits `systemMessage`, and avoids noisy route/action/profile/pending-upkeep prose in visible TUI channels; Claude Code may keep the richer `systemMessage` + compact `additionalContext` split for events that support it.
 - `.agent-harness/*.md` frontmatter descriptions are canonical bootstrap/sync metadata. Keep them concise English category descriptions, not prose summaries, because every `project bootstrap`/`project bootstrap --sync` target and every project-doc catalog inherits them.

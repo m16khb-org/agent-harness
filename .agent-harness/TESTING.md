@@ -29,6 +29,10 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness install-native --dry-run --json
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
+./bin/agent-harness project draft-wiki init --dry-run --json
+./bin/agent-harness project draft-wiki list --json
+./bin/agent-harness project draft-wiki suggest --input .agent-harness/ADR.md --target-wiki dev-fundamentals --dry-run --json
+tmp_state="$(mktemp -d)" && printf '{"cwd":"%s","tool_name":"Bash","tool_response":"draft wiki smoke"}' "$PWD" | HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness hook post-tool-use --json && rm -rf "$tmp_state"
 ./bin/agent-harness guard check --staged --json
 printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
@@ -263,7 +267,7 @@ Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.
 
 ## Contract/audit/worker verification
 
-CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden test를 실행해 command name, MCP tool name, required response field가 machine-visible하게 유지되는지 확인한다. policy audit 동작 변경은 JSONL record가 append-only이고 secret-like argument가 redacted 되는지 검증한다. 현재 worker 변경은 no-shell MVP 범위이며 process execution 없이 enqueue/status/list/cancel을 테스트해야 한다.
+CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden test를 실행해 command name, MCP tool name, required response field가 machine-visible하게 유지되는지 확인한다. policy audit 동작 변경은 JSONL record가 append-only이고 secret-like argument가 redacted 되는지 검증한다. generic worker 변경은 no-shell MVP 범위이므로 enqueue/status/list/cancel을 테스트한다. draft-wiki worker 변경은 fake `agy`와 temp settings/hub/state를 사용해 PostToolUse queue append와 `worker draft-wiki`의 `.agent-harness/draft-wiki/draft` 파일 생성을 함께 검증한다.
 
 ## Lifecycle state tests
 

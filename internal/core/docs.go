@@ -38,7 +38,7 @@ func ListDocs(root string) []string {
 			continue
 		}
 		_ = filepath.WalkDir(full, func(path string, d fs.DirEntry, err error) error {
-			if err == nil && !d.IsDir() && strings.HasSuffix(path, ".md") {
+			if err == nil && !d.IsDir() && strings.HasSuffix(path, ".md") && !isDraftWikiDoc(root, path) {
 				docs = append(docs, path)
 			}
 			return nil
@@ -46,6 +46,15 @@ func ListDocs(root string) []string {
 	}
 	sort.Strings(docs)
 	return docs
+}
+
+func isDraftWikiDoc(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	rel = filepath.ToSlash(rel)
+	return rel == DraftWikiDir || strings.HasPrefix(rel, DraftWikiDir+"/")
 }
 
 func DocsIndex(root, version string) DocsIndexResult {

@@ -289,6 +289,8 @@ func runProject(args []string) error {
 		return runProjectRouteDocs(args[1:])
 	case "record":
 		return runProjectRecord(args[1:])
+	case "draft-wiki":
+		return runProjectDraftWiki(args[1:])
 	default:
 		projectUsage()
 		return fmt.Errorf("unknown project subcommand %q", args[0])
@@ -301,6 +303,7 @@ func projectUsage() {
   agent-harness project docs [--repo PATH] [--json]
   agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
   agent-harness project record --kind caution|adr --title TEXT --summary TEXT [--repo PATH] [--json]
+  agent-harness project draft-wiki init|list|suggest|approve|reject|promote ...
 `)
 }
 

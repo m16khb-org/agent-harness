@@ -387,3 +387,23 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
   - Put lifecycle queue writes in PreToolUse | tool execution may fail or be denied, causing false doc-upkeep records.
   - Block from PreToolUse immediately | host schema drift and false positives would make the harness intrusive.
   - Duplicate host-specific policy in adapters | violates the shared core contract and creates Codex/Claude drift.
+
+
+## 2026-05-31 — Repo-local draft wiki staging before upstream LLM Wiki ingest
+
+- Kind: `adr`
+- Source: user directive
+- Summary: claude-mem 같은 companion memory에서 장기기억 후보를 찾더라도 바로 LLM Wiki에 쓰지 않고, 적용 대상 repo의 `.agent-harness/draft-wiki/`에 reviewable draft로 먼저 저장한다.
+- Decision:
+  - 기존 `.agent-harness/*.md` 운영 문서는 루트에 유지한다. 경로가 project docs/bootstrap/routing contract에 이미 사용되므로 `agent-base-docs/` 같은 하위 폴더로 이동하지 않는다.
+  - `.agent-harness/draft-wiki/{draft,approved,rejected}/`를 repo-local staging area로 둔다.
+  - `agent-harness docs`/MCP `docs_index`는 `.agent-harness/draft-wiki/**`를 source-of-truth agent docs로 인덱싱하지 않는다.
+  - `agent-harness project draft-wiki suggest`는 `agy -p`를 별도 CLI/worker 단계에서 호출한다. `agy` 모델 선택은 launch flag가 아니라 `~/.gemini/antigravity-cli/settings.json`의 `model` 값이다. `--agy-model`이 있으면 settings 값과 정확히 일치하는지 검증하고, 없으면 현재 settings 모델을 그대로 사용한다.
+  - PostToolUse hook은 tool response/output/content 텍스트를 bounded/redacted user-state queue(`draft-wiki-queue.jsonl`)에 기록하는 데까지만 관여한다. `agent-harness worker draft-wiki`가 hook 밖에서 queue를 처리하고 `agy -p` 응답을 `.agent-harness/draft-wiki/draft`에 쓴다.
+  - `agent-harness project draft-wiki promote --confirm`는 승인된 draft를 configured `nvk/llm-wiki` topic의 `raw/<type>/` note로 쓰고 `log.md`만 append한다. compile/query/index 관리는 upstream LLM Wiki workflow가 맡는다.
+- Rationale: 사용자는 draft를 파일 diff로 직접 확인·수정·거절할 수 있어야 하며, 하네스는 claude-mem→wiki 승격의 승인 게이트를 제공하되 LLM Wiki core 책임을 침범하지 않아야 한다.
+- Rejected:
+  - 기존 `.agent-harness/*.md`를 `agent-base-docs/`로 이동 | bootstrap, routing, AGENTS required reading, golden contract를 대규모로 깨뜨린다.
+  - claude-mem observation을 자동으로 LLM Wiki에 바로 ingest | privacy/secret/false-positive 위험이 크고 사용자 승인 게이트가 없다.
+  - 하네스가 llm-wiki index/query/compile을 직접 관리 | LLM Wiki 재구현 금지 정책과 충돌한다.
+- Consequences: draft-wiki CLI와 tests는 repo-local file boundary, docs index 제외, approve/reject 상태 이동, `agy` settings model 검증, llm-wiki raw-note write를 검증해야 한다. hook 연동은 PostToolUse 직접 LLM 호출이 아니라 lifecycle/user-state queue append와 `worker draft-wiki` 처리로 제한한다.
