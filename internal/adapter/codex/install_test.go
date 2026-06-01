@@ -60,7 +60,7 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, subcommand := range []string{"hook user-prompt --host codex", "hook pre-tool-use", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop"} {
+	for _, subcommand := range []string{"hook user-prompt --host codex", "hook pre-tool-use --enforce-codegraph-search", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop"} {
 		if count := strings.Count(string(hooks), subcommand); count != 1 {
 			t.Fatalf("%s appears %d times, want 1:\n%s", subcommand, count, string(hooks))
 		}

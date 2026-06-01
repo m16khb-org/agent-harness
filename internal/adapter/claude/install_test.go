@@ -130,4 +130,8 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 			t.Fatalf("event %s has %d harness hooks, want 1: %+v", event, count, groups)
 		}
 	}
+	preToolUse := hooks["PreToolUse"].([]any)[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
+	if !strings.Contains(preToolUse, "hook pre-tool-use --host claude --enforce-codegraph-search") {
+		t.Fatalf("PreToolUse should enforce CodeGraph with Claude host schema: %s", preToolUse)
+	}
 }

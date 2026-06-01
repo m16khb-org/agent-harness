@@ -39,8 +39,8 @@ func runHook(args []string) error {
 
 func hookUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  agent-harness hook user-prompt [--prompt TEXT] [--host codex|claude] [--json]
-  agent-harness hook pre-tool-use [--repo PATH] [--json]
+  agent-harness hook user-prompt [--prompt TEXT] [--host codex|claude] [--enable-agy-hints] [--json]
+  agent-harness hook pre-tool-use [--repo PATH] [--host codex|claude] [--enforce-codegraph-search] [--json]
   agent-harness hook post-tool-use [--repo PATH] [--json]
   agent-harness hook pre-compact [--repo PATH] [--json]
   agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
@@ -54,6 +54,7 @@ func runHookUserPrompt(args []string) error {
 	promptFlag := fs.String("prompt", "", "user prompt text; defaults to hook stdin JSON prompt")
 	hostFlag := fs.String("host", "", "hook host (codex or claude); controls user-visible compatibility fields")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
+	enableAgyHints := fs.Bool("enable-agy-hints", false, "suggest agy -p for LLM second-pass review when the prompt fits")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -69,7 +70,7 @@ func runHookUserPrompt(args []string) error {
 	if repo == "" {
 		repo = resolveTarget("")
 	}
-	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo})
+	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo, EnableAgyHints: *enableAgyHints || envBool("HARNESS_ENABLE_AGY_HINTS")})
 	if *jsonOut {
 		return printJSON(result)
 	}
@@ -107,6 +108,15 @@ func promptFromHookInput(input []byte) string {
 	return ""
 }
 
+func envBool(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(name))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
 func repoFromHookInput(input []byte) string {
 	if len(strings.TrimSpace(string(input))) == 0 {
 		return ""
@@ -133,7 +143,9 @@ func repoFromHookInput(input []byte) string {
 func runHookPreToolUse(args []string) error {
 	fs := flag.NewFlagSet("hook pre-tool-use", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
+	host := fs.String("host", "", "hook host (codex or claude); controls host-specific block schema")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
+	enforceCodeGraphSearch := fs.Bool("enforce-codegraph-search", false, "block raw source-code search commands and require CodeGraph first")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -146,18 +158,33 @@ func runHookPreToolUse(args []string) error {
 		parsedRepo = resolveTarget("")
 	}
 	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
-		Repo:    parsedRepo,
-		Tool:    toolNameFromHookInput(stdin),
-		Paths:   pathsFromHookInput(stdin),
-		Command: commandFromHookInput(stdin),
-		Source:  "pre-tool-use",
+		Repo:                   parsedRepo,
+		Tool:                   toolNameFromHookInput(stdin),
+		Paths:                  pathsFromHookInput(stdin),
+		Command:                commandFromHookInput(stdin),
+		Source:                 "pre-tool-use",
+		EnforceCodeGraphSearch: *enforceCodeGraphSearch,
 	})
 	if *jsonOut {
 		return printJSON(result)
 	}
+	if result.Decision == "block" {
+		if strings.EqualFold(strings.TrimSpace(*host), "claude") {
+			return printJSON(map[string]any{
+				"hookSpecificOutput": map[string]any{
+					"hookEventName":            "PreToolUse",
+					"permissionDecision":       "deny",
+					"permissionDecisionReason": result.Reason,
+				},
+			})
+		}
+		return printJSON(map[string]any{
+			"decision": result.Decision,
+			"reason":   result.Reason,
+		})
+	}
 	// PreToolUse is on the critical path before every tool call. Keep the shared
-	// harness hook cheap and non-blocking by default; host-specific deny/allow
-	// schemas are intentionally avoided until a deterministic policy needs them.
+	// harness hook cheap and non-blocking by default.
 	return printJSON(map[string]any{})
 }
 

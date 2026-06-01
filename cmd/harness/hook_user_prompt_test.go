@@ -65,6 +65,20 @@ func TestRunHookUserPromptDropsCatalog(t *testing.T) {
 	}
 }
 
+func TestRunHookUserPromptAgyHintsAreOptIn(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := hookTempRepoWithDoc(t)
+	input := `{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"` + repo + `"}`
+	disabled := runHookCapture(t, input, func() error { return runHookUserPrompt(nil) })
+	if strings.Contains(hookAdditionalContext(disabled), "agy -p") {
+		t.Fatalf("agy hint should be disabled by default: %q", hookAdditionalContext(disabled))
+	}
+	enabled := runHookCapture(t, input, func() error { return runHookUserPrompt([]string{"--enable-agy-hints"}) })
+	if !strings.Contains(hookAdditionalContext(enabled), "agy -p for LLM second-pass review") {
+		t.Fatalf("agy hint should be enabled by flag: %q", hookAdditionalContext(enabled))
+	}
+}
+
 func TestRunHookSessionStartInjectsCatalogClaude(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := hookTempRepoWithDoc(t)
@@ -154,6 +168,55 @@ func TestRunHookPreToolUseRawJSONIsAllowByDefault(t *testing.T) {
 	})
 	if obj["decision"] != "allow" || obj["source"] != "pre-tool-use" || obj["tool"] != "Edit" {
 		t.Fatalf("unexpected PreToolUse raw result: %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseEnforcesCodeGraphForSourceSearch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Bash","tool_input":{"command":"rg -n \"func Run\" cmd internal"}}`, func() error {
+		return runHookPreToolUse([]string{"--enforce-codegraph-search", "--json"})
+	})
+	if obj["decision"] != "block" || obj["tool"] != "Bash" {
+		t.Fatalf("expected enforced source search to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "CodeGraph") || !strings.Contains(reason, "codegraph_context") {
+		t.Fatalf("block reason should point agents to CodeGraph, got %q", reason)
+	}
+}
+
+func TestRunHookPreToolUseAllowsLiteralEvidenceSearchWhenEnforced(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Bash","tool_input":{"command":"rg \"response_contracts\" cmd/harness/testdata README.md"}}`, func() error {
+		return runHookPreToolUse([]string{"--enforce-codegraph-search", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected docs/golden literal search to remain allowed, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseHostJSONBlocksWhenCodeGraphEnforced(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Bash","tool_input":{"command":"grep -R \"type Hook\" internal/core"}}`, func() error {
+		return runHookPreToolUse([]string{"--enforce-codegraph-search"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected host hook JSON to block enforced source search, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseClaudeHostUsesPermissionDecision(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Bash","tool_input":{"command":"rg \"type Hook\" internal/core"}}`, func() error {
+		return runHookPreToolUse([]string{"--host", "claude", "--enforce-codegraph-search"})
+	})
+	hso, _ := obj["hookSpecificOutput"].(map[string]any)
+	if hso["hookEventName"] != "PreToolUse" || hso["permissionDecision"] != "deny" {
+		t.Fatalf("expected Claude PreToolUse permission denial, got %+v", obj)
 	}
 }
 

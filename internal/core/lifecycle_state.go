@@ -360,11 +360,12 @@ func docUpkeepEventID(repoID string, event DocUpkeepEvent, at string) string {
 }
 
 type HookToolUseLifecycleRequest struct {
-	Repo    string   `json:"repo,omitempty"`
-	Tool    string   `json:"tool,omitempty"`
-	Paths   []string `json:"paths,omitempty"`
-	Command string   `json:"command,omitempty"`
-	Source  string   `json:"source,omitempty"`
+	Repo                   string   `json:"repo,omitempty"`
+	Tool                   string   `json:"tool,omitempty"`
+	Paths                  []string `json:"paths,omitempty"`
+	Command                string   `json:"command,omitempty"`
+	Source                 string   `json:"source,omitempty"`
+	EnforceCodeGraphSearch bool     `json:"enforce_codegraph_search,omitempty"`
 }
 
 type HookToolUseLifecycleResult struct {
@@ -377,6 +378,7 @@ type HookToolUseLifecycleResult struct {
 type HookPreToolUseDecisionResult struct {
 	OK       bool     `json:"ok"`
 	Decision string   `json:"decision"`
+	Reason   string   `json:"reason,omitempty"`
 	Tool     string   `json:"tool,omitempty"`
 	Paths    []string `json:"paths,omitempty"`
 	Command  string   `json:"command,omitempty"`
@@ -415,7 +417,7 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 	if source == "" {
 		source = "pre-tool-use"
 	}
-	return HookPreToolUseDecisionResult{
+	result := HookPreToolUseDecisionResult{
 		OK:       true,
 		Decision: "allow",
 		Tool:     strings.TrimSpace(req.Tool),
@@ -423,6 +425,115 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
+	if req.EnforceCodeGraphSearch && shouldBlockNonCodeGraphSourceSearch(result.Tool, result.Command) {
+		result.Decision = "block"
+		result.Reason = "Use CodeGraph first for repo-local source search: call codegraph_context for broad areas, codegraph_search for symbols, or codegraph_trace for call paths. Raw grep/rg is reserved for docs, golden fixtures, or literal evidence after CodeGraph is insufficient."
+	}
+	return result
+}
+
+func shouldBlockNonCodeGraphSourceSearch(tool string, command string) bool {
+	if !isShellTool(tool) {
+		return false
+	}
+	normalizedCommand := strings.ToLower(strings.TrimSpace(command))
+	if normalizedCommand == "" {
+		return false
+	}
+	searchArgs, ok := rawTextSearchArgs(normalizedCommand)
+	if !ok {
+		return false
+	}
+	return sourceSearchNeedsCodeGraph(searchArgs)
+}
+
+func isShellTool(tool string) bool {
+	switch strings.ToLower(strings.TrimSpace(tool)) {
+	case "bash", "sh", "zsh", "shell", "exec", "run_command", "shell_command", "unified_exec", "exec_command":
+		return true
+	default:
+		return false
+	}
+}
+
+func rawTextSearchArgs(command string) ([]string, bool) {
+	tokens := strings.Fields(command)
+	for i, token := range tokens {
+		name := searchTokenName(token)
+		if name == "git" && i+1 < len(tokens) && searchTokenName(tokens[i+1]) == "grep" {
+			return tokens[i+2:], true
+		}
+		switch name {
+		case "rg", "grep", "ag", "ack":
+			return tokens[i+1:], true
+		}
+	}
+	return nil, false
+}
+
+func searchTokenName(token string) string {
+	cleaned := strings.Trim(token, `"'`)
+	return filepath.Base(cleaned)
+}
+
+func sourceSearchNeedsCodeGraph(args []string) bool {
+	targets := []string{}
+	for _, arg := range args {
+		target := searchTargetToken(arg)
+		if target == "" || strings.HasPrefix(target, "-") {
+			continue
+		}
+		if looksLikeSearchTarget(target) {
+			targets = append(targets, target)
+		}
+	}
+	if len(targets) == 0 {
+		return true
+	}
+	for _, target := range targets {
+		if isDocsOrFixtureTarget(target) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func searchTargetToken(token string) string {
+	return strings.Trim(strings.TrimSpace(token), `"',;`)
+}
+
+func looksLikeSearchTarget(token string) bool {
+	if token == "." || strings.HasPrefix(token, "./") || strings.HasPrefix(token, "/") {
+		return true
+	}
+	if strings.Contains(token, "/") || strings.Contains(token, "*") {
+		return true
+	}
+	switch token {
+	case "cmd", "internal", "pkg", "src", "app", "lib", "docs", "testdata":
+		return true
+	default:
+		return strings.HasSuffix(token, ".md")
+	}
+}
+
+func isDocsOrFixtureTarget(token string) bool {
+	cleaned := strings.TrimPrefix(token, "./")
+	if strings.HasSuffix(cleaned, ".md") {
+		return true
+	}
+	base := filepath.Base(cleaned)
+	if base == "readme" || strings.HasPrefix(base, "readme.") {
+		return true
+	}
+	for _, segment := range strings.Split(cleaned, "/") {
+		switch segment {
+		case "docs", ".agent-harness", "testdata", "golden", "goldens", "fixture", "fixtures", "snapshot", "snapshots", "__snapshots__":
+			return true
+		}
+	}
+	return false
 }
 
 func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecycleResult, error) {

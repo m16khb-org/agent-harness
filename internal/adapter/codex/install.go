@@ -344,6 +344,8 @@ func codexHookCommand(binPath, subcommand string) string {
 	switch subcommand {
 	case "user-prompt", "session-start", "post-compact":
 		cmd += " --host codex"
+	case "pre-tool-use":
+		cmd += " --enforce-codegraph-search"
 	}
 	return cmd
 }

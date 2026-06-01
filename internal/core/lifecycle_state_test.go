@@ -136,6 +136,53 @@ func TestAppendDocUpkeepEventWritesJSONL(t *testing.T) {
 	}
 }
 
+func TestPreToolUseCodeGraphPolicyBlocksRawSourceSearchBypassForms(t *testing.T) {
+	for _, command := range []string{
+		`/usr/bin/rg -n "func Run" cmd/internal`,
+		`rg "func Run"`,
+		`rg "func Run" .`,
+		`git grep "func Run"`,
+		`rg "func Run" docs/ cmd/`,
+		`rg "func Run" controllers/`,
+		`rg "func Run" cmd/ # codegraph`,
+		`rg "pattern" snapshot_manager.go`,
+		`rg "pattern" ./snapshot_manager.go`,
+	} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Tool:                   "zsh",
+			Command:                command,
+			EnforceCodeGraphSearch: true,
+		})
+		if got.Decision != "block" {
+			t.Fatalf("expected command to be blocked: %q -> %+v", command, got)
+		}
+	}
+}
+
+func TestPreToolUseCodeGraphPolicyBlocksCodexShellToolNames(t *testing.T) {
+	for _, tool := range []string{"shell_command", "unified_exec", "exec_command"} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Tool:                   tool,
+			Command:                `rg "type Hook" internal/core`,
+			EnforceCodeGraphSearch: true,
+		})
+		if got.Decision != "block" {
+			t.Fatalf("expected Codex shell tool %q to be blocked, got %+v", tool, got)
+		}
+	}
+}
+
+func TestPreToolUseCodeGraphPolicyAllowsDocsLiteralCodeNames(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Tool:                   "Bash",
+		Command:                `rg "main.go" docs/ README.md`,
+		EnforceCodeGraphSearch: true,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected docs literal search to be allowed: %+v", got)
+	}
+}
+
 func TestRecordLifecycleToolUseQueuesRelevantDocUpkeep(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

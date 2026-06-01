@@ -38,7 +38,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook pre-tool-use",
+            "command": "'./bin/agent-harness' hook pre-tool-use --host claude --enforce-codegraph-search",
             "timeout": 5,
             "type": "command"
           }

@@ -6,8 +6,9 @@ import (
 )
 
 type HookUserPromptRequest struct {
-	Prompt string `json:"prompt"`
-	Repo   string `json:"repo,omitempty"`
+	Prompt         string `json:"prompt"`
+	Repo           string `json:"repo,omitempty"`
+	EnableAgyHints bool   `json:"enable_agy_hints,omitempty"`
 }
 
 type HookUserPromptHint struct {
@@ -87,6 +88,9 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	}
 	if containsAny(lower, "claude-mem", "agentmemory", "agent-memory", "memory", "previous session", "last time", "already solve", "already solved") || containsAny(prompt, "전에", "지난번", "이미 해결") {
 		addPriority("claude-mem", "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.", hintPrioritySecondary)
+	}
+	if req.EnableAgyHints && (containsAny(lower, "review", "analyze", "analysis", "critique", "second opinion", "plan", "research") || containsAny(prompt, "검토", "분석", "비평", "계획", "리서치", "조사")) {
+		addPriority("agy -p", "Secondary hint: consider agy -p for foreground second-pass LLM review or background synthesis when extra model judgment is useful.", hintPrioritySecondary)
 	}
 
 	pendingUpkeep := []DocUpkeepEvent{}
@@ -208,7 +212,7 @@ func fallbackHintPriority(h HookUserPromptHint) string {
 	switch {
 	case strings.HasSuffix(h.Tool, ".md"):
 		return hintPriorityConsider
-	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "claude-mem":
+	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "claude-mem" || h.Tool == "agy -p":
 		return hintPrioritySecondary
 	case h.Tool == "project_docs_route":
 		return hintPriorityRoute
@@ -269,6 +273,8 @@ func compactHintLabel(h HookUserPromptHint) string {
 		return "LLM Wiki for explicit wiki/research work"
 	case "claude-mem":
 		return "claude-mem only for previous-session/repeated-work recall"
+	case "agy -p":
+		return "agy -p for LLM second-pass review"
 	default:
 		return h.Tool
 	}

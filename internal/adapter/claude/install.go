@@ -174,7 +174,11 @@ func claudeHookGroup(spec claudeLifecycleHookSpec) map[string]any {
 }
 
 func claudeHookCommand(binPath, subcommand string) string {
-	return fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
+	cmd := fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
+	if subcommand == "pre-tool-use" {
+		cmd += " --host claude --enforce-codegraph-search"
+	}
+	return cmd
 }
 
 func claudeHookGroupContainsAgentHarness(group any) bool {

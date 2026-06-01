@@ -78,6 +78,17 @@ func TestBuildUserPromptMCPHintsRoutesMemoryToClaudeMem(t *testing.T) {
 	}
 }
 
+func TestBuildUserPromptMCPHintsRoutesLLMReviewToAgyWhenEnabled(t *testing.T) {
+	disabled := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "이 계획을 검토하고 개선점을 분석해줘"})
+	if strings.Contains(disabled.AdditionalContext, "agy -p") {
+		t.Fatalf("agy hint should be opt-in:\n%s", disabled.AdditionalContext)
+	}
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "이 계획을 검토하고 개선점을 분석해줘", EnableAgyHints: true})
+	if !strings.Contains(got.AdditionalContext, "agy -p for LLM second-pass review") {
+		t.Fatalf("expected agy secondary hint:\n%s", got.AdditionalContext)
+	}
+}
+
 func TestBuildUserPromptMCPHintsEmptyPromptDoesNotInject(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "   "})
 	if got.ShouldInject || got.AdditionalContext != "" || len(got.Hints) != 0 {
