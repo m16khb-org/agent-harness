@@ -1,0 +1,211 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os/exec"
+	"strings"
+	"time"
+)
+
+const selfVerifyLLMEvalEvidenceBudgetBytes = 24 * 1024
+const selfVerifyLLMEvalErrorBudgetBytes = 512
+
+type SelfVerifyLLMEvalOptions struct {
+	Enabled     bool
+	Mode        string
+	AgyCommand  string
+	TargetScore float64
+	Timeout     time.Duration
+}
+
+type SelfVerifyLLMEvalResult struct {
+	OK                     bool     `json:"ok"`
+	Mode                   string   `json:"mode"`
+	Score                  float64  `json:"score"`
+	Summary                string   `json:"summary,omitempty"`
+	Blockers               []string `json:"blockers,omitempty"`
+	Risks                  []string `json:"risks,omitempty"`
+	RecommendedNextActions []string `json:"recommended_next_actions,omitempty"`
+	EvidencePacketBytes    int      `json:"evidence_packet_bytes"`
+	Error                  string   `json:"error,omitempty"`
+}
+
+type SelfVerifyLLMEvalInput struct {
+	OK                  bool                 `json:"ok"`
+	LoopKind            string               `json:"loop_kind"`
+	Iterations          int                  `json:"iterations"`
+	TargetScore         float64              `json:"target_score"`
+	TerminationEligible bool                 `json:"termination_eligible"`
+	Summary             SelfAugmentSummary   `json:"summary"`
+	LastRun             SelfAugmentIteration `json:"last_run,omitempty"`
+}
+
+func validateSelfVerifyLLMEvalMode(mode string) error {
+	switch normalizeSelfVerifyLLMEvalMode(mode) {
+	case "advisory", "gate":
+		return nil
+	default:
+		return fmt.Errorf("llm-eval-mode must be advisory or gate")
+	}
+}
+
+func normalizeSelfVerifyLLMEvalMode(mode string) string {
+	mode = strings.TrimSpace(strings.ToLower(mode))
+	if mode == "" {
+		return "advisory"
+	}
+	return mode
+}
+
+func applySelfVerifyLLMEval(result SelfAugmentResult, opts SelfVerifyLLMEvalOptions) (SelfAugmentResult, error) {
+	if !opts.Enabled {
+		return result, nil
+	}
+	mode := normalizeSelfVerifyLLMEvalMode(opts.Mode)
+	if err := validateSelfVerifyLLMEvalMode(mode); err != nil {
+		return result, err
+	}
+	agyCommand := strings.TrimSpace(opts.AgyCommand)
+	if agyCommand == "" {
+		agyCommand = "agy"
+	}
+	timeout := opts.Timeout
+	if timeout <= 0 {
+		timeout = 60 * time.Second
+	}
+	evidencePacket, evidenceBytes, err := buildSelfVerifyLLMEvalPrompt(result)
+	if err != nil {
+		result.LLMEval = &SelfVerifyLLMEvalResult{
+			OK:                  false,
+			Mode:                mode,
+			EvidencePacketBytes: evidenceBytes,
+			Error:               boundedLLMEvalError("build LLM evidence packet", err, ""),
+		}
+		return applySelfVerifyLLMGate(result, opts.TargetScore)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	out, runErr := exec.CommandContext(ctx, agyCommand, "--dangerously-skip-permissions", "-p", evidencePacket).CombinedOutput()
+	eval := SelfVerifyLLMEvalResult{
+		Mode:                mode,
+		EvidencePacketBytes: evidenceBytes,
+	}
+	if runErr != nil {
+		eval.Error = boundedLLMEvalError("agy -p failed", runErr, string(out))
+		result.LLMEval = &eval
+		return applySelfVerifyLLMGate(result, opts.TargetScore)
+	}
+	if err := decodeSelfVerifyLLMEval(out, &eval); err != nil {
+		eval.OK = false
+		eval.Error = boundedLLMEvalError("parse agy JSON", err, string(out))
+		result.LLMEval = &eval
+		return applySelfVerifyLLMGate(result, opts.TargetScore)
+	}
+	eval.Mode = mode
+	eval.EvidencePacketBytes = evidenceBytes
+	result.LLMEval = &eval
+	return applySelfVerifyLLMGate(result, opts.TargetScore)
+}
+
+func buildSelfVerifyLLMEvalPrompt(result SelfAugmentResult) (string, int, error) {
+	lastRun := SelfAugmentIteration{}
+	if len(result.Runs) > 0 {
+		lastRun = result.Runs[len(result.Runs)-1]
+	}
+	evidence := SelfVerifyLLMEvalInput{
+		OK:                  result.OK,
+		LoopKind:            result.LoopKind,
+		Iterations:          result.Iterations,
+		TargetScore:         result.TargetScore,
+		TerminationEligible: result.TerminationEligible,
+		Summary:             result.Summary,
+		LastRun:             lastRun,
+	}
+	evidenceBytes, err := json.Marshal(evidence)
+	if err != nil {
+		return "", 0, err
+	}
+	allowedEvidenceBytes := selfVerifyLLMEvalEvidenceBudgetBytes
+	evidenceJSON, _, _ := tailWithBudget(string(evidenceBytes), allowedEvidenceBytes)
+	packet := struct {
+		Instruction           string `json:"instruction"`
+		EvidenceJSON          string `json:"evidence_json"`
+		EvidenceOriginalBytes int    `json:"evidence_original_bytes"`
+	}{
+		Instruction:           "Evaluate evidence_json. Return only JSON with fields ok, score, summary, blockers, risks, recommended_next_actions.",
+		EvidenceJSON:          evidenceJSON,
+		EvidenceOriginalBytes: len(evidenceBytes),
+	}
+	b, err := json.Marshal(packet)
+	if err != nil {
+		return "", 0, err
+	}
+	for len(b) > selfVerifyLLMEvalEvidenceBudgetBytes && allowedEvidenceBytes > 0 {
+		overflow := len(b) - selfVerifyLLMEvalEvidenceBudgetBytes
+		allowedEvidenceBytes -= overflow + 512
+		if allowedEvidenceBytes < 0 {
+			allowedEvidenceBytes = 0
+		}
+		evidenceJSON, _, _ = tailWithBudget(string(evidenceBytes), allowedEvidenceBytes)
+		packet.EvidenceJSON = evidenceJSON
+		b, err = json.Marshal(packet)
+		if err != nil {
+			return "", 0, err
+		}
+	}
+	return string(b), len(b), nil
+}
+
+func decodeSelfVerifyLLMEval(out []byte, eval *SelfVerifyLLMEvalResult) error {
+	decoder := json.NewDecoder(bytes.NewReader(bytes.TrimSpace(out)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(eval); err != nil {
+		return err
+	}
+	var extra json.RawMessage
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("unexpected extra JSON value")
+	}
+	return nil
+}
+
+func boundedLLMEvalError(prefix string, err error, output string) string {
+	message := prefix + ": " + err.Error()
+	output = strings.TrimSpace(output)
+	if output != "" {
+		message += ": " + output
+	}
+	bounded, _, _ := tailWithBudget(message, selfVerifyLLMEvalErrorBudgetBytes)
+	return bounded
+}
+
+func applySelfVerifyLLMGate(result SelfAugmentResult, targetScore float64) (SelfAugmentResult, error) {
+	if result.LLMEval == nil || result.LLMEval.Mode != "gate" {
+		return result, nil
+	}
+	reasons := []string{}
+	if !result.LLMEval.OK {
+		reasons = append(reasons, "llm_eval_not_ok")
+	}
+	if result.LLMEval.Score < targetScore {
+		reasons = append(reasons, fmt.Sprintf("score %.2f below target %.2f", result.LLMEval.Score, targetScore))
+	}
+	if len(result.LLMEval.Blockers) > 0 {
+		reasons = append(reasons, "blockers: "+strings.Join(result.LLMEval.Blockers, "; "))
+	}
+	if len(reasons) == 0 {
+		return result, nil
+	}
+	result.OK = false
+	result.TerminationEligible = false
+	result.Summary.TerminationEligible = false
+	return result, fmt.Errorf("LLM evaluation gate failed: %s", strings.Join(reasons, "; "))
+}

@@ -24,6 +24,8 @@ Verify that the harness behaves consistently across Codex and Claude Code, and t
 
 Completion requires every concrete goal score to exceed the target score. The default target is 95. If any item scores 95 or below, the state is not complete; improve, retry, or report the blocker.
 
+If any self-verification candidate test, compilation, or general check fails during the loop, you can execute the `lint_diagnose` MCP tool (or run `agent-harness project lint-diagnose -- <failed_command>`) to quickly diagnose the root cause and receive a targeted fix proposal via Gemini 3.5 Flash. This enables fast auto-healing during the self-verify cycle.
+
 ## Candidate catalog
 
 The self-verification improvement catalog in this skill's `CANDIDATES.md` is the source of truth.

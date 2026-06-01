@@ -28,6 +28,7 @@ func Commands() []Command {
 		{Name: "hook", Description: "run prompt-routing hooks"},
 		{Name: "project", Description: "bootstrap and maintain project operating docs"},
 		{Name: "install-native", Description: "install shared native skills and MCP config"},
+		{Name: "update", Description: "rebuild and refresh user-level integrations and upstream companion tools"},
 		{Name: "bootstrap", Description: "set up user-level integrations; use --sync for upstream companion versions"},
 		{Name: "daemon", Description: "manage the MCP backend daemon"},
 		{Name: "worker", Description: "manage safe local worker jobs and read-only command evidence"},
@@ -76,8 +77,9 @@ Usage:
   agent-harness worker list [--json]
   agent-harness worker cancel --id ID [--json]
   agent-harness install-native [--project-local] [--dry-run] [--json]
+  agent-harness update [--dry-run] [--json]
   agent-harness bootstrap [--sync] [--dry-run] [--json]
-  agent-harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--save-state] [--state-key KEY] [--json]
+  agent-harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--llm-eval] [--llm-eval-mode=advisory|gate] [--agy-command PATH] [--save-state] [--state-key KEY] [--json]
   agent-harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
   agent-harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
   agent-harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]

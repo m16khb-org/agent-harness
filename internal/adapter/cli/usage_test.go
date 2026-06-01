@@ -18,3 +18,19 @@ func TestUsageIncludesCommandCatalog(t *testing.T) {
 		}
 	}
 }
+func TestUsageIncludesUpdateCommand(t *testing.T) {
+	usage := Usage("test")
+	if !strings.Contains(usage, "agent-harness update") {
+		t.Fatalf("usage missing update command\n%s", usage)
+	}
+	found := false
+	for _, command := range Commands() {
+		if command.Name == "update" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("command catalog missing update")
+	}
+}

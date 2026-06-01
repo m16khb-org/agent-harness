@@ -74,3 +74,23 @@ func TestAcquireDaemonLockRemovesStaleLock(t *testing.T) {
 		t.Fatalf("lock file was not replaced with current pid: %q", string(b))
 	}
 }
+
+func TestAcquireDaemonLockRejectsFreshLiveLock(t *testing.T) {
+	dir := t.TempDir()
+	paths := daemonPaths{Dir: dir, Lock: filepath.Join(dir, "agent-harness.lock")}
+	if err := os.WriteFile(paths.Lock, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := acquireDaemonLock(paths)
+	if err == nil {
+		_ = lock.Close()
+		t.Fatal("expected fresh live daemon lock to be rejected")
+	}
+	b, readErr := os.ReadFile(paths.Lock)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if !strings.Contains(string(b), strconv.Itoa(os.Getpid())) {
+		t.Fatalf("fresh lock was unexpectedly replaced: %q", string(b))
+	}
+}

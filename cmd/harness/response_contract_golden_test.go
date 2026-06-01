@@ -167,6 +167,13 @@ func TestResponseContractsGolden(t *testing.T) {
 		"kind":    "contract",
 		"payload": "TOKEN=secret-value",
 	})
+	mcpSnapshot["worker_run_read_only"] = runMCPToolContract(t, replacements, "worker_run_read_only", map[string]any{
+		"kind":           "contract-run",
+		"payload":        "TOKEN=secret-value",
+		"workspace_root": gitRepoDir,
+		"cwd":            gitRepoDir,
+		"argv":           []string{"git", "status", "--short"},
+	})
 	mcpSnapshot["state_prune"] = runMCPToolContract(t, replacements, "state_prune", map[string]any{
 		"max_age": "1h",
 	})

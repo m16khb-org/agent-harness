@@ -41,6 +41,8 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "help", "--help", "-h":
+		usage()
 	case "version", "--version", "-v":
 		fmt.Println("agent-harness", version)
 	case "inspect":
@@ -291,6 +293,10 @@ func runProject(args []string) error {
 		return runProjectRecord(args[1:])
 	case "draft-wiki":
 		return runProjectDraftWiki(args[1:])
+	case "commit-suggest":
+		return runProjectCommitSuggest(args[1:])
+	case "lint-diagnose":
+		return runProjectLintDiagnose(args[1:])
 	default:
 		projectUsage()
 		return fmt.Errorf("unknown project subcommand %q", args[0])
@@ -304,6 +310,8 @@ func projectUsage() {
   agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
   agent-harness project record --kind caution|adr --title TEXT --summary TEXT [--repo PATH] [--json]
   agent-harness project draft-wiki init|list|suggest|approve|reject|promote ...
+  agent-harness project commit-suggest [--repo PATH] [--staged] [--agy-command CMD] [--json]
+  agent-harness project lint-diagnose [--repo PATH] [--agy-command CMD] [--json] -- <command_to_run...>
 `)
 }
 
@@ -641,6 +649,9 @@ func runSelfVerify(args []string) error {
 	saveState := fs.Bool("save-state", false, "save compact self-verification summary to harness state")
 	stateKey := fs.String("state-key", "self-verify-latest", "state key for --save-state")
 	progress := fs.String("progress", "none", "progress output mode: none or jsonl; jsonl writes JSON Lines events to stderr")
+	llmEval := fs.Bool("llm-eval", false, "run opt-in agy -p LLM evaluation after deterministic self-verification")
+	llmEvalMode := fs.String("llm-eval-mode", "advisory", "LLM evaluation mode: advisory or gate")
+	agyCommand := fs.String("agy-command", "agy", "agy executable path for --llm-eval")
 	jsonOut := fs.Bool("json", false, "print JSON summary")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -648,11 +659,22 @@ func runSelfVerify(args []string) error {
 	if *targetScore < 0 || *targetScore >= 100 {
 		return fmt.Errorf("target-score must be >= 0 and < 100")
 	}
+	if err := validateSelfVerifyLLMEvalMode(*llmEvalMode); err != nil {
+		return err
+	}
 	progressReporter, err := newSelfVerifyProgressReporter(*progress, os.Stderr)
 	if err != nil {
 		return err
 	}
 	result, err := selfVerifyWithProgress(*iterations, *seed, *targetScore, !*jsonOut, progressReporter)
+	if err == nil && *llmEval {
+		result, err = applySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{
+			Enabled:     true,
+			Mode:        *llmEvalMode,
+			AgyCommand:  *agyCommand,
+			TargetScore: *targetScore,
+		})
+	}
 	saveErr := error(nil)
 	if *saveState {
 		saveErr = saveSelfVerificationSummary(&result, *stateKey)
@@ -1021,6 +1043,7 @@ type SelfAugmentResult struct {
 	LoopContract        []string                    `json:"loop_contract"`
 	Summary             SelfAugmentSummary          `json:"summary"`
 	StateCheckpoint     *SelfAugmentStateCheckpoint `json:"state_checkpoint,omitempty"`
+	LLMEval             *SelfVerifyLLMEvalResult    `json:"llm_eval,omitempty"`
 	Runs                []SelfAugmentIteration      `json:"runs"`
 }
 
@@ -4837,6 +4860,33 @@ func mcpTools() []map[string]any {
 		"description": "Evaluate command policy and append a redacted JSONL audit record without executing the command. This writes only to the harness audit log.",
 		"inputSchema": commandPolicyInputSchema(),
 	})
+	tools = append(tools, map[string]any{
+		"name":        "commit_suggest",
+		"description": "Generate a Conventional + Lore Hybrid commit message suggestion based on git diff using Gemini 3.5 Flash.",
+		"inputSchema": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"repo":        map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
+				"staged":      map[string]any{"type": "boolean", "description": "When true, suggest commit based on staged changes (git diff --cached); otherwise unstaged. Defaults to false."},
+				"agy_command": map[string]any{"type": "string", "description": "Antigravity CLI executable path. Defaults to 'agy'."},
+				"agy_model":   map[string]any{"type": "string", "description": "required agy settings.json model label; defaults to current settings model."},
+			},
+		},
+	})
+	tools = append(tools, map[string]any{
+		"name":        "lint_diagnose",
+		"description": "Run a command, capture failure outputs, and provide a diagnosis using Gemini 3.5 Flash.",
+		"inputSchema": map[string]any{
+			"type":     "object",
+			"required": []string{"command_argv"},
+			"properties": map[string]any{
+				"repo":         map[string]any{"type": "string", "description": "Target repository path. Defaults to current directory."},
+				"command_argv": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "The command argv array to run and diagnose."},
+				"agy_command":  map[string]any{"type": "string", "description": "Antigravity CLI executable path. Defaults to 'agy'."},
+				"agy_model":    map[string]any{"type": "string", "description": "required agy settings.json model label; defaults to current settings model."},
+			},
+		},
+	})
 	return tools
 }
 
@@ -5030,6 +5080,28 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		payload = result
 	case "daemon_status":
 		payload = daemonStatusForMCP()
+	case "commit_suggest":
+		result, err := core.SuggestCommit(core.CommitSuggestRequest{
+			RepoRoot:   resolveTarget(stringArg(call.Arguments, "repo")),
+			Staged:     boolArg(call.Arguments, "staged"),
+			AgyCommand: stringArg(call.Arguments, "agy_command"),
+			AgyModel:   stringArg(call.Arguments, "agy_model"),
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "commit_suggest failed", Data: err.Error()}
+		}
+		payload = result
+	case "lint_diagnose":
+		result, err := core.DiagnoseCommand(core.LintDiagnoseRequest{
+			RepoRoot:    resolveTarget(stringArg(call.Arguments, "repo")),
+			CommandArgv: stringSliceArg(call.Arguments, "command_argv"),
+			AgyCommand:  stringArg(call.Arguments, "agy_command"),
+			AgyModel:    stringArg(call.Arguments, "agy_model"),
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "lint_diagnose failed", Data: err.Error()}
+		}
+		payload = result
 	case "contract_schema":
 		payload = compatibilityContract()
 	case "contract_check":
@@ -5038,6 +5110,22 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		result, err := core.EnqueueWorkerJob(stringArg(call.Arguments, "kind"), stringArg(call.Arguments, "payload"))
 		if err != nil {
 			return nil, &rpcError{Code: -32000, Message: "worker_enqueue failed", Data: err.Error()}
+		}
+		payload = result
+	case "worker_run_read_only":
+		result, err := core.RunReadOnlyWorkerJob(
+			stringArg(call.Arguments, "kind"),
+			stringArg(call.Arguments, "payload"),
+			core.CommandPolicyRequest{
+				WorkspaceRoot: stringArg(call.Arguments, "workspace_root"),
+				CWD:           stringArg(call.Arguments, "cwd"),
+				Argv:          stringSliceArg(call.Arguments, "argv"),
+				Timeout:       stringArgWithDefault(call.Arguments, "timeout", "30s"),
+				EnvAllowlist:  stringSliceArg(call.Arguments, "env_allowlist"),
+			},
+		)
+		if err != nil {
+			return nil, &rpcError{Code: -32000, Message: "worker_run_read_only failed", Data: err.Error()}
 		}
 		payload = result
 	case "worker_status":

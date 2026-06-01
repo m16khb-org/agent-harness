@@ -15,6 +15,7 @@ import (
 )
 
 const draftWikiQueueFile = "draft-wiki-queue.jsonl"
+const draftWikiQueueLockFile = "draft-wiki-queue.lock"
 
 type DraftWikiQueueAppendRequest struct {
 	RepoRoot       string   `json:"repo_root"`
@@ -75,6 +76,7 @@ type DraftWikiQueueProcessResult struct {
 	Processed       int                   `json:"processed"`
 	Succeeded       int                   `json:"succeeded"`
 	Failed          int                   `json:"failed"`
+	Warnings        []string              `json:"warnings,omitempty"`
 	Events          []DraftWikiQueueEvent `json:"events"`
 }
 
@@ -121,10 +123,6 @@ func ProcessDraftWikiQueue(req DraftWikiQueueProcessRequest) (DraftWikiQueueProc
 	if err != nil {
 		return DraftWikiQueueProcessResult{OK: false}, err
 	}
-	events, err := readDraftWikiQueueEvents(path)
-	if err != nil {
-		return DraftWikiQueueProcessResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: path}, err
-	}
 	result := DraftWikiQueueProcessResult{
 		OK:              true,
 		Kind:            "draft_wiki_queue_process",
@@ -134,6 +132,20 @@ func ProcessDraftWikiQueue(req DraftWikiQueueProcessRequest) (DraftWikiQueueProc
 		Path:            path,
 		Events:          []DraftWikiQueueEvent{},
 	}
+	unlock, locked, err := acquireDraftWikiQueueLock(plan.ProjectStateDir)
+	if err != nil {
+		return result, err
+	}
+	if !locked {
+		result.Warnings = append(result.Warnings, "draft-wiki queue is already being processed")
+		return result, nil
+	}
+	defer unlock()
+	events, warnings, err := readDraftWikiQueueEvents(path)
+	if err != nil {
+		return DraftWikiQueueProcessResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: path}, err
+	}
+	result.Warnings = append(result.Warnings, warnings...)
 	limit := req.Limit
 	if limit <= 0 {
 		limit = 1
@@ -147,10 +159,12 @@ func ProcessDraftWikiQueue(req DraftWikiQueueProcessRequest) (DraftWikiQueueProc
 		}
 		events[i].Status = WorkerStatusRunning
 		events[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
-		_ = rewriteDraftWikiQueueEvents(path, events)
+		if err := rewriteDraftWikiQueueEventsFunc(path, events); err != nil {
+			return result, err
+		}
 		processed := processDraftWikiQueueEvent(req, events[i])
 		events[i] = processed
-		if err := rewriteDraftWikiQueueEvents(path, events); err != nil {
+		if err := rewriteDraftWikiQueueEventsFunc(path, events); err != nil {
 			return result, err
 		}
 		result.Processed++
@@ -273,31 +287,70 @@ func appendDraftWikiQueueEvent(path string, event DraftWikiQueueEvent) error {
 	return err
 }
 
-func readDraftWikiQueueEvents(path string) ([]DraftWikiQueueEvent, error) {
+func readDraftWikiQueueEvents(path string) ([]DraftWikiQueueEvent, []string, error) {
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
-		return []DraftWikiQueueEvent{}, nil
+		return []DraftWikiQueueEvent{}, nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer f.Close()
 	events := []DraftWikiQueueEvent{}
+	warnings := []string{}
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 64*1024), 2*1024*1024)
+	lineNumber := 0
 	for scanner.Scan() {
+		lineNumber++
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
 			continue
 		}
 		var event DraftWikiQueueEvent
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			warnings = append(warnings, formatDraftWikiQueueMalformedWarning(lineNumber, line))
 			continue
 		}
 		events = append(events, event)
 	}
-	return events, scanner.Err()
+	return events, warnings, scanner.Err()
 }
+
+func acquireDraftWikiQueueLock(projectStateDir string) (func(), bool, error) {
+	if err := os.MkdirAll(projectStateDir, 0o700); err != nil {
+		return nil, false, err
+	}
+	path := filepath.Join(projectStateDir, draftWikiQueueLockFile)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if os.IsExist(err) {
+		return func() {}, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	_, writeErr := fmt.Fprintf(f, "%d %s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano))
+	closeErr := f.Close()
+	if writeErr != nil || closeErr != nil {
+		_ = os.Remove(path)
+		if writeErr != nil {
+			return nil, false, writeErr
+		}
+		return nil, false, closeErr
+	}
+	return func() { _ = os.Remove(path) }, true, nil
+}
+
+func formatDraftWikiQueueMalformedWarning(lineNumber int, line string) string {
+	line = redactFreeform(line)
+	const maxLineBytes = 120
+	if len([]byte(line)) > maxLineBytes {
+		line = string([]byte(line)[:maxLineBytes]) + "...[truncated]"
+	}
+	return fmt.Sprintf("malformed JSONL line %d skipped: %s", lineNumber, line)
+}
+
+var rewriteDraftWikiQueueEventsFunc = rewriteDraftWikiQueueEvents
 
 func rewriteDraftWikiQueueEvents(path string, events []DraftWikiQueueEvent) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

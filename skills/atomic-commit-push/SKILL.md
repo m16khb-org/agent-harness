@@ -46,6 +46,7 @@ Turn local changes into one or more atomic commits, verify each commit as approp
    - Ensure unrelated work remains unstaged with `git status --short`.
 
 5. **Commit**
+   - To save context and ensure compliance with this format, you can execute the `commit_suggest` MCP tool (or run `agent-harness project commit-suggest --staged`) to automatically generate the commit message from your staged diff. Review the suggested draft and refine it as needed before executing the final commit.
    - Match stronger repository-specific rules first, then use the hybrid format below.
    - Use a Conventional Commit subject: `<type>(<scope>)!?: <summary>`.
    - Add a `Lore:` body for AI-readable context:

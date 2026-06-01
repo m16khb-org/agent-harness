@@ -37,6 +37,48 @@
           "name": "worker_enqueue"
         },
         {
+          "description": "Run an argv-only read-only command as a local worker evidence job. This writes only the worker job record and command evidence, forces write/network/shell disabled, applies workspace policy, timeout, env allowlist, redaction, and bounded output.",
+          "inputSchema": {
+            "properties": {
+              "argv": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "env_allowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "string"
+              },
+              "timeout": {
+                "type": "string"
+              },
+              "workspace_root": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "workspace_root",
+              "cwd",
+              "argv"
+            ],
+            "type": "object"
+          },
+          "name": "worker_run_read_only"
+        },
+        {
           "description": "Read a no-shell local worker job by id. This is read-only and returns the persisted job lifecycle record.",
           "inputSchema": {
             "properties": {
@@ -137,6 +179,10 @@
           "name": "install-native"
         },
         {
+          "description": "rebuild and refresh user-level integrations and upstream companion tools",
+          "name": "update"
+        },
+        {
           "description": "set up user-level integrations; use --sync for upstream companion versions",
           "name": "bootstrap"
         },
@@ -165,7 +211,7 @@
           "name": "version"
         }
       ],
-      "hash": "615908871263aeb4bf4b118cb6d1d3cabc8e694bd1cb515bfee489f6e378f8a5",
+      "hash": "266b9e7c387ff3c429fb10d001dd7c758375ff00f940dc4d3d293384196d090b",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -174,11 +220,13 @@
         "command_policy_audit",
         "command_policy_check",
         "commit_policy",
+        "commit_suggest",
         "contract_check",
         "contract_schema",
         "daemon_status",
         "docs_index",
         "harness_inspect",
+        "lint_diagnose",
         "project_docs_bootstrap_plan",
         "project_docs_read",
         "project_docs_record",
@@ -201,6 +249,7 @@
         "worker_cancel",
         "worker_enqueue",
         "worker_list",
+        "worker_run_read_only",
         "worker_status"
       ],
       "name": "agent_harness_cli_mcp_compatibility",
@@ -673,7 +722,7 @@
           "title": "Self-verification candidate catalog"
         },
         {
-          "bytes": 1461,
+          "bytes": 1822,
           "headings": [
             "Self-verification loop",
             "Goal",
@@ -2667,6 +2716,48 @@
                 "name": "worker_enqueue"
               },
               {
+                "description": "Run an argv-only read-only command as a local worker evidence job. This writes only the worker job record and command evidence, forces write/network/shell disabled, applies workspace policy, timeout, env allowlist, redaction, and bounded output.",
+                "inputSchema": {
+                  "properties": {
+                    "argv": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "cwd": {
+                      "type": "string"
+                    },
+                    "env_allowlist": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "payload": {
+                      "type": "string"
+                    },
+                    "timeout": {
+                      "type": "string"
+                    },
+                    "workspace_root": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "workspace_root",
+                    "cwd",
+                    "argv"
+                  ],
+                  "type": "object"
+                },
+                "name": "worker_run_read_only"
+              },
+              {
                 "description": "Read a no-shell local worker job by id. This is read-only and returns the persisted job lifecycle record.",
                 "inputSchema": {
                   "properties": {
@@ -2767,6 +2858,10 @@
                 "name": "install-native"
               },
               {
+                "description": "rebuild and refresh user-level integrations and upstream companion tools",
+                "name": "update"
+              },
+              {
                 "description": "set up user-level integrations; use --sync for upstream companion versions",
                 "name": "bootstrap"
               },
@@ -2795,7 +2890,7 @@
                 "name": "version"
               }
             ],
-            "hash": "615908871263aeb4bf4b118cb6d1d3cabc8e694bd1cb515bfee489f6e378f8a5",
+            "hash": "266b9e7c387ff3c429fb10d001dd7c758375ff00f940dc4d3d293384196d090b",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2804,11 +2899,13 @@
               "command_policy_audit",
               "command_policy_check",
               "commit_policy",
+              "commit_suggest",
               "contract_check",
               "contract_schema",
               "daemon_status",
               "docs_index",
               "harness_inspect",
+              "lint_diagnose",
               "project_docs_bootstrap_plan",
               "project_docs_read",
               "project_docs_record",
@@ -2831,6 +2928,7 @@
               "worker_cancel",
               "worker_enqueue",
               "worker_list",
+              "worker_run_read_only",
               "worker_status"
             ],
             "name": "agent_harness_cli_mcp_compatibility",
@@ -3310,7 +3408,7 @@
                 "title": "Self-verification candidate catalog"
               },
               {
-                "bytes": 1461,
+                "bytes": 1822,
                 "headings": [
                   "Self-verification loop",
                   "Goal",
@@ -4914,6 +5012,66 @@
             "payload": "\u003credacted\u003e",
             "safety_notice": "worker MVP records lifecycle state only; it never executes shell commands",
             "status": "queued",
+            "updated_at": "$TIMESTAMP",
+            "worker_dir": "$WORKER_DIR"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "worker_run_read_only": {
+      "content": [
+        {
+          "json": {
+            "command": [
+              "git",
+              "status",
+              "--short"
+            ],
+            "created_at": "$TIMESTAMP",
+            "id": "$WORKER_JOB_ID",
+            "kind": "contract-run",
+            "no_shell": true,
+            "ok": true,
+            "payload": "\u003credacted\u003e",
+            "result": {
+              "duration_ms": "$DURATION_MS",
+              "executed": true,
+              "exit_code": 0,
+              "finished_at": "$TIMESTAMP",
+              "ok": true,
+              "policy": {
+                "allowed": true,
+                "argv": [
+                  "git",
+                  "status",
+                  "--short"
+                ],
+                "audit_log_id": "$AUDIT_ID",
+                "cwd": "$GIT_REPO",
+                "deny_reasons": [],
+                "env_allowlist": [],
+                "generated_at": "$TIMESTAMP",
+                "network_allowed": false,
+                "ok": true,
+                "shell_allowed": false,
+                "tier": {
+                  "granted_capabilities": [],
+                  "name": "read_only",
+                  "rationale": "no write, network, or shell capability requested; restricted to the read-only allowlist"
+                },
+                "timeout": "30s",
+                "warnings": [],
+                "workspace_root": "$GIT_REPO",
+                "write_allowed": false
+              },
+              "read_only": true,
+              "started_at": "$TIMESTAMP",
+              "stdout": "?? .env\n",
+              "timed_out": false
+            },
+            "safety_notice": "worker read-only runner executes only argv commands that pass command policy with write/network/shell disabled",
+            "status": "succeeded",
             "updated_at": "$TIMESTAMP",
             "worker_dir": "$WORKER_DIR"
           },

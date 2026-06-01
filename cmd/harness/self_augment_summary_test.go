@@ -952,3 +952,133 @@ func historySkippedKey(skipped []SelfAugmentHistorySkipped, key string) bool {
 	}
 	return false
 }
+
+func TestSelfVerifyLLMEvalDefaultOmittedFromJSON(t *testing.T) {
+	result := SelfAugmentResult{OK: true, LoopKind: "self_verification"}
+	b, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "llm_eval") {
+		t.Fatalf("default self-verify JSON must omit llm_eval: %s", b)
+	}
+}
+
+func TestSelfVerifyLLMEvalAdvisorySuccess(t *testing.T) {
+	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":true,"score":99,"summary":"looks safe","risks":["watch flakes"],"recommended_next_actions":["ship"]}`)
+	result := SelfAugmentResult{OK: true, TerminationEligible: true, Summary: SelfAugmentSummary{MinimumGoalScore: 100}}
+	updated, err := applySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", AgyCommand: fake, TargetScore: 95})
+	if err != nil {
+		t.Fatalf("advisory llm eval should not fail self-verify: %v", err)
+	}
+	if !updated.OK || updated.LLMEval == nil || !updated.LLMEval.OK || updated.LLMEval.Score != 99 {
+		t.Fatalf("unexpected advisory llm eval result: %+v", updated)
+	}
+	if len(updated.LLMEval.Risks) != 1 || len(updated.LLMEval.RecommendedNextActions) != 1 || updated.LLMEval.EvidencePacketBytes == 0 {
+		t.Fatalf("llm eval should keep structured review fields and packet size: %+v", updated.LLMEval)
+	}
+}
+
+func TestSelfVerifyLLMEvalMalformedOutputIsStructured(t *testing.T) {
+	fake := writeFakeAgyForSelfVerifyTest(t, `not-json`)
+	result := SelfAugmentResult{OK: true, TerminationEligible: true}
+	updated, err := applySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", AgyCommand: fake, TargetScore: 95})
+	if err != nil {
+		t.Fatalf("advisory malformed llm eval should be recorded, not returned as gate error: %v", err)
+	}
+	if !updated.OK || updated.LLMEval == nil || updated.LLMEval.OK || !strings.Contains(updated.LLMEval.Error, "parse agy JSON") {
+		t.Fatalf("malformed agy output should produce structured llm_eval error: %+v", updated)
+	}
+	if len(updated.LLMEval.Error) > 512 {
+		t.Fatalf("llm eval error should be bounded, got %d bytes", len(updated.LLMEval.Error))
+	}
+}
+
+func TestSelfVerifyLLMEvalUnknownFieldIsStructured(t *testing.T) {
+	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":true,"score":99,"unexpected":true}`)
+	result := SelfAugmentResult{OK: true, TerminationEligible: true}
+	updated, err := applySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", AgyCommand: fake, TargetScore: 95})
+	if err != nil {
+		t.Fatalf("advisory unknown field should be recorded, not returned as gate error: %v", err)
+	}
+	if !updated.OK || updated.LLMEval == nil || updated.LLMEval.OK || !strings.Contains(updated.LLMEval.Error, "unknown field") {
+		t.Fatalf("unknown agy field should produce structured llm_eval error: %+v", updated)
+	}
+}
+
+func TestSelfVerifyLLMEvalCommandFailureIsStructured(t *testing.T) {
+	fake := writeFailingFakeAgyForSelfVerifyTest(t)
+	result := SelfAugmentResult{OK: true, TerminationEligible: true}
+	updated, err := applySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", AgyCommand: fake, TargetScore: 95})
+	if err != nil {
+		t.Fatalf("advisory command failure should be recorded, not returned as gate error: %v", err)
+	}
+	if !updated.OK || updated.LLMEval == nil || updated.LLMEval.OK || !strings.Contains(updated.LLMEval.Error, "agy -p failed") {
+		t.Fatalf("command failure should produce structured llm_eval error: %+v", updated)
+	}
+}
+
+func TestSelfVerifyLLMEvalPromptRemainsJSONWhenEvidenceIsLarge(t *testing.T) {
+	result := SelfAugmentResult{
+		OK:          true,
+		LoopKind:    "self_verification",
+		Iterations:  10,
+		TargetScore: 95,
+		Summary: SelfAugmentSummary{
+			CoverageGaps: []string{strings.Repeat("large-gap-", 6000)},
+		},
+	}
+	prompt, packetBytes, err := buildSelfVerifyLLMEvalPrompt(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if packetBytes > selfVerifyLLMEvalEvidenceBudgetBytes {
+		t.Fatalf("LLM eval prompt should be bounded, got %d bytes", packetBytes)
+	}
+	var packet map[string]any
+	if err := json.Unmarshal([]byte(prompt), &packet); err != nil {
+		t.Fatalf("bounded LLM eval prompt must remain valid JSON: %v\n%s", err, prompt)
+	}
+	if _, ok := packet["evidence_json"].(string); !ok {
+		t.Fatalf("bounded LLM eval prompt should carry evidence_json string: %#v", packet)
+	}
+}
+
+func TestSelfVerifyLLMEvalGateFailsOnBlocker(t *testing.T) {
+	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":false,"score":40,"summary":"blocked","blockers":["missing QA"]}`)
+	result := SelfAugmentResult{OK: true, TerminationEligible: true, Summary: SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true}}
+	updated, err := applySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "gate", AgyCommand: fake, TargetScore: 95})
+	if err == nil || !strings.Contains(err.Error(), "LLM evaluation gate failed") {
+		t.Fatalf("expected gate failure, got err=%v result=%+v", err, updated)
+	}
+	if updated.OK || updated.TerminationEligible || updated.Summary.TerminationEligible || updated.LLMEval == nil || updated.LLMEval.OK {
+		t.Fatalf("gate failure must mark self-verify not OK: %+v", updated)
+	}
+}
+
+func TestRunSelfVerifyRejectsUnknownLLMEvalMode(t *testing.T) {
+	err := runSelfVerify([]string{"--llm-eval", "--llm-eval-mode=unknown", "--json"})
+	if err == nil || !strings.Contains(err.Error(), "llm-eval-mode") {
+		t.Fatalf("expected llm-eval-mode validation error, got %v", err)
+	}
+}
+
+func writeFakeAgyForSelfVerifyTest(t *testing.T, output string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "fake-agy.sh")
+	content := "#!/bin/sh\nif [ \"$1\" != \"--dangerously-skip-permissions\" ] || [ \"$2\" != \"-p\" ]; then echo missing agy flags >&2; exit 2; fi\nprintf '%s\\n' '" + strings.ReplaceAll(output, "'", "'\\''") + "'\n"
+	if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func writeFailingFakeAgyForSelfVerifyTest(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "fake-agy-fail.sh")
+	content := "#!/bin/sh\nif [ \"$1\" != \"--dangerously-skip-permissions\" ] || [ \"$2\" != \"-p\" ]; then echo missing agy flags >&2; exit 2; fi\necho model unavailable >&2\nexit 7\n"
+	if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}

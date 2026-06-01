@@ -22,17 +22,10 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	result := port.HostInstallResult{Host: "codex", OK: true, DryRun: req.DryRun}
 	var errs []error
 
-	enabledSkills, skippedSkills := installutil.SkillNamesForHost(req.Root, req.SkillNames, "codex")
-	for _, skillName := range skippedSkills {
-		result.Messages = append(result.Messages, "skip skill for codex: "+skillName)
-	}
-	for _, skillName := range enabledSkills {
-		link, err := installutil.EnsureSymlinkPlan(filepath.Join(req.Root, "skills", skillName), filepath.Join(req.CodexHome, "skills", skillName), req.DryRun)
-		result.Links = append(result.Links, link)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
+	_, links, messages, skillErrs := installutil.PlanHostSkillLinks(req.Root, filepath.Join(req.CodexHome, "skills"), req.SkillNames, "codex", req.DryRun)
+	result.Messages = append(result.Messages, messages...)
+	result.Links = append(result.Links, links...)
+	errs = append(errs, skillErrs...)
 
 	globalConfig := filepath.Join(req.CodexHome, "config.toml")
 	file, err := writeGlobalConfig(globalConfig, req)

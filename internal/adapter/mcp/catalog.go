@@ -28,6 +28,19 @@ func AdapterOwnedTools() []Tool {
 			InputSchema: map[string]any{"type": "object", "required": []string{"kind"}, "properties": map[string]any{"kind": map[string]any{"type": "string"}, "payload": map[string]any{"type": "string"}}},
 		},
 		{
+			Name:        "worker_run_read_only",
+			Description: "Run an argv-only read-only command as a local worker evidence job. This writes only the worker job record and command evidence, forces write/network/shell disabled, applies workspace policy, timeout, env allowlist, redaction, and bounded output.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"kind", "workspace_root", "cwd", "argv"}, "properties": map[string]any{
+				"kind":           map[string]any{"type": "string"},
+				"payload":        map[string]any{"type": "string"},
+				"workspace_root": map[string]any{"type": "string"},
+				"cwd":            map[string]any{"type": "string"},
+				"argv":           map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+				"timeout":        map[string]any{"type": "string"},
+				"env_allowlist":  map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+			}},
+		},
+		{
 			Name:        "worker_status",
 			Description: "Read a no-shell local worker job by id. This is read-only and returns the persisted job lifecycle record.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{"id": map[string]any{"type": "string"}}},

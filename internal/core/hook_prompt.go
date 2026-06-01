@@ -25,6 +25,87 @@ const (
 	hintPrioritySecondary = "secondary"
 )
 
+type HookRoutingRule struct {
+	Tool            string
+	Reason          string
+	Priority        string
+	LowerKeywords   []string
+	PromptKeywords  []string
+	RequireAgyOptIn bool
+}
+
+var hookRoutingRules = []HookRoutingRule{
+	{
+		Tool:           "project_docs_record",
+		Reason:         "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.",
+		Priority:       hintPriorityAction,
+		LowerKeywords:  []string{"architecture", "architect", "refactor", "design", "decision", "alternative"},
+		PromptKeywords: []string{"아키텍처", "리팩터", "결정", "대안", "설계"},
+	},
+	{
+		Tool:           "project_docs_record",
+		Reason:         "When a resolved false case or recurring failure is reusable, consider kind=caution for CAUTIONS.md.",
+		Priority:       hintPriorityAction,
+		LowerKeywords:  []string{"bug", "fix", "regression", "failure", "false case", "caution"},
+		PromptKeywords: []string{"버그", "고쳐", "회귀", "실패", "주의"},
+	},
+	{
+		Tool:           "api_doc_static_check",
+		Reason:         "For API/endpoint/DTO/OpenAPI changes, consider deterministic Swagger/OpenAPI gap checks before implementation or review.",
+		Priority:       hintPriorityAction,
+		LowerKeywords:  []string{"endpoint", "controller", "dto", "openapi", "swagger", "api doc", "api-doc", "route method", "handler"},
+		PromptKeywords: []string{"엔드포인트", "스웨거", "컨트롤러"},
+	},
+	{
+		Tool:           "api_doc_review",
+		Reason:         "Use agent review to compare business-logic error paths such as 400/401/403/404/409 with the documented API contract.",
+		Priority:       hintPriorityAction,
+		LowerKeywords:  []string{"endpoint", "controller", "dto", "openapi", "swagger", "api doc", "api-doc", "route method", "handler"},
+		PromptKeywords: []string{"엔드포인트", "스웨거", "컨트롤러"},
+	},
+	{
+		Tool:           "project_docs_read/project_docs_update",
+		Reason:         "If .agent-harness/OPEN_API_SPEC.md or related docs diverge from code/user consensus, update one document at a time.",
+		Priority:       hintPriorityAction,
+		LowerKeywords:  []string{"endpoint", "controller", "dto", "openapi", "swagger", "api doc", "api-doc", "route method", "handler"},
+		PromptKeywords: []string{"엔드포인트", "스웨거", "컨트롤러"},
+	},
+	{
+		Tool:           "project_docs_read/project_docs_update",
+		Reason:         "If .agent-harness docs diverge from current code or user consensus, update one SHA-checked document at a time.",
+		Priority:       hintPriorityAction,
+		LowerKeywords:  []string{".agent-harness", "agents.md", "claude.md", "convention", "workflow", "docs", "project rules"},
+		PromptKeywords: []string{"문서", "컨벤션", "최신화", "프로젝트 규칙"},
+	},
+	{
+		Tool:          "CodeGraph",
+		Reason:        "Secondary hint: consider CodeGraph for repo-local symbol, call graph, impact, or trace questions.",
+		Priority:      hintPrioritySecondary,
+		LowerKeywords: []string{"codegraph", "symbol", "call graph", "impact", "trace", "caller", "callee"},
+	},
+	{
+		Tool:          "LLM Wiki",
+		Reason:        "Secondary hint: consider upstream LLM Wiki for explicit wiki, research, knowledge-base, query, or compile workflows.",
+		Priority:      hintPrioritySecondary,
+		LowerKeywords: []string{"llm-wiki", "wiki", "knowledge base", "research", "compile"},
+	},
+	{
+		Tool:           "claude-mem",
+		Reason:         "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.",
+		Priority:       hintPrioritySecondary,
+		LowerKeywords:  []string{"claude-mem", "agentmemory", "agent-memory", "memory", "previous session", "last time", "already solve", "already solved"},
+		PromptKeywords: []string{"전에", "지난번", "이미 해결"},
+	},
+	{
+		Tool:            "agy -p",
+		Reason:          "Secondary hint: consider agy -p for foreground second-pass LLM review or background synthesis when extra model judgment is useful.",
+		Priority:        hintPrioritySecondary,
+		LowerKeywords:   []string{"review", "analyze", "analysis", "critique", "second opinion", "plan", "research"},
+		PromptKeywords:  []string{"검토", "리뷰", "분석", "비평", "계획", "리서치", "조사"},
+		RequireAgyOptIn: true,
+	},
+}
+
 type HookUserPromptResult struct {
 	OK                bool                     `json:"ok"`
 	Kind              string                   `json:"kind"`
@@ -55,42 +136,16 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		}
 		result.Hints = append(result.Hints, HookUserPromptHint{Tool: tool, Reason: reason, Priority: priority})
 	}
-	addAction := func(tool, reason string) {
-		addPriority(tool, reason, hintPriorityAction)
-	}
-
 	addPriority("project_docs_route", "Use when the prompt is broad, ambiguous, or needs repo-specific document selection beyond static hook hints.", hintPriorityRoute)
 
 	// Doc selection is no longer prescribed by keyword matching: the project-doc
 	// catalog injected below presents every doc and what it contains, and the
 	// main agent decides which to read. Keyword rules now only route to MCP
 	// tools/actions, never to a required/consider doc verdict.
-	if containsAny(lower, "architecture", "architect", "refactor", "design", "decision", "alternative") || containsAny(prompt, "아키텍처", "리팩터", "결정", "대안", "설계") {
-		addAction("project_docs_record", "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.")
-	}
-	if containsAny(lower, "bug", "fix", "regression", "failure", "false case", "caution") || containsAny(prompt, "버그", "고쳐", "회귀", "실패", "주의") {
-		addAction("project_docs_record", "When a resolved false case or recurring failure is reusable, consider kind=caution for CAUTIONS.md.")
-	}
-	if containsAny(lower, "endpoint", "controller", "dto", "openapi", "swagger", "api doc", "api-doc", "route method", "handler") || containsAny(prompt, "엔드포인트", "스웨거", "컨트롤러") {
-		addAction("api_doc_static_check", "For API/endpoint/DTO/OpenAPI changes, consider deterministic Swagger/OpenAPI gap checks before implementation or review.")
-		addAction("api_doc_review", "Use agent review to compare business-logic error paths such as 400/401/403/404/409 with the documented API contract.")
-		addAction("project_docs_read/project_docs_update", "If .agent-harness/OPEN_API_SPEC.md or related docs diverge from code/user consensus, update one document at a time.")
-	}
-	if containsAny(lower, ".agent-harness", "agents.md", "claude.md", "convention", "workflow", "docs", "project rules") || containsAny(prompt, "문서", "컨벤션", "최신화", "프로젝트 규칙") {
-		addAction("project_docs_read/project_docs_update", "If .agent-harness docs diverge from current code or user consensus, update one SHA-checked document at a time.")
-	}
-
-	if containsAny(lower, "codegraph", "symbol", "call graph", "impact", "trace", "caller", "callee") {
-		addPriority("CodeGraph", "Secondary hint: consider CodeGraph for repo-local symbol, call graph, impact, or trace questions.", hintPrioritySecondary)
-	}
-	if containsAny(lower, "llm-wiki", "wiki", "knowledge base", "research", "compile") {
-		addPriority("LLM Wiki", "Secondary hint: consider upstream LLM Wiki for explicit wiki, research, knowledge-base, query, or compile workflows.", hintPrioritySecondary)
-	}
-	if containsAny(lower, "claude-mem", "agentmemory", "agent-memory", "memory", "previous session", "last time", "already solve", "already solved") || containsAny(prompt, "전에", "지난번", "이미 해결") {
-		addPriority("claude-mem", "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.", hintPrioritySecondary)
-	}
-	if req.EnableAgyHints && (containsAny(lower, "review", "analyze", "analysis", "critique", "second opinion", "plan", "research") || containsAny(prompt, "검토", "분석", "비평", "계획", "리서치", "조사")) {
-		addPriority("agy -p", "Secondary hint: consider agy -p for foreground second-pass LLM review or background synthesis when extra model judgment is useful.", hintPrioritySecondary)
+	for _, rule := range hookRoutingRules {
+		if rule.matches(prompt, lower, req.EnableAgyHints) {
+			addPriority(rule.Tool, rule.Reason, rule.Priority)
+		}
 	}
 
 	pendingUpkeep := []DocUpkeepEvent{}
@@ -101,7 +156,7 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		}
 		if events, _, err := ReadPendingDocUpkeepEvents(req.Repo, 5); err == nil && len(events) > 0 {
 			pendingUpkeep = events
-			addAction("project_docs_read/project_docs_update", "Pending lifecycle state indicates shared .agent-harness docs may need an evidence-preserving refresh.")
+			addPriority("project_docs_read/project_docs_update", "Pending lifecycle state indicates shared .agent-harness docs may need an evidence-preserving refresh.", hintPriorityAction)
 		}
 	}
 
@@ -335,6 +390,22 @@ func appendCompactProjectProfile(parts *[]string, profile *ProjectProfile) {
 		return
 	}
 	*parts = append(*parts, "profile: "+strings.Join(items, ", "))
+}
+
+func (rule HookRoutingRule) matches(prompt, lower string, enableAgyHints bool) bool {
+	if rule.RequireAgyOptIn && !enableAgyHints {
+		return false
+	}
+	return containsAnySlice(lower, rule.LowerKeywords) || containsAnySlice(prompt, rule.PromptKeywords)
+}
+
+func containsAnySlice(s string, needles []string) bool {
+	for _, needle := range needles {
+		if strings.Contains(s, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func containsAny(s string, needles ...string) bool {

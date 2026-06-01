@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -74,5 +75,62 @@ func TestWorkerRunReadOnlyJobExecutesPolicyAllowedCommand(t *testing.T) {
 	}
 	if stored.Status != WorkerStatusSucceeded || stored.Result == nil || stored.Result.ExitCode != 0 {
 		t.Fatalf("stored job missing result: %+v", stored)
+	}
+}
+
+func TestWorkerRunReadOnlyTimeoutFailsJobWithBoundedStderr(t *testing.T) {
+	dir := t.TempDir()
+	root := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", dir)
+	fifo := filepath.Join(root, "blocked.fifo")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	job, err := RunReadOnlyWorkerJob("read-only-timeout", "", CommandPolicyRequest{
+		WorkspaceRoot: root,
+		CWD:           root,
+		Argv:          []string{"cat", "blocked.fifo"},
+		Timeout:       "20ms",
+	})
+	if err != nil {
+		t.Fatalf("worker run timeout: %v", err)
+	}
+	if job.Status != WorkerStatusFailed || job.Result == nil || !job.Result.TimedOut || job.Result.ExitCode != 124 {
+		t.Fatalf("expected timed-out failed job: %+v", job)
+	}
+	if !strings.Contains(job.Result.Stderr, "command timed out") || len(job.Result.Stderr) > 4096 {
+		t.Fatalf("unexpected timeout stderr: %q", job.Result.Stderr)
+	}
+	stored, err := ReadWorkerJob(job.ID)
+	if err != nil {
+		t.Fatalf("read stored job: %v", err)
+	}
+	if stored.Status != WorkerStatusFailed || stored.Result == nil || !stored.Result.TimedOut {
+		t.Fatalf("stored timeout job missing result: %+v", stored)
+	}
+}
+
+func TestWorkerRunReadOnlyDeniedCommandFailsJobWithoutMarker(t *testing.T) {
+	dir := t.TempDir()
+	root := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", dir)
+	marker := filepath.Join(root, "marker")
+	job, err := RunReadOnlyWorkerJob("read-only-denied", "", CommandPolicyRequest{
+		WorkspaceRoot: root,
+		CWD:           root,
+		Argv:          []string{"touch", "marker"},
+		Timeout:       "30s",
+	})
+	if err != nil {
+		t.Fatalf("worker run denied: %v", err)
+	}
+	if job.Status != WorkerStatusFailed || job.Result == nil || job.Result.Executed || job.Result.ExitCode != 3 {
+		t.Fatalf("expected denied failed job without execution: %+v", job)
+	}
+	if !strings.Contains(strings.Join(job.Result.Policy.DenyReasons, ","), "write_not_allowed") {
+		t.Fatalf("missing write denial reason: %+v", job.Result.Policy.DenyReasons)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("denied command created marker or unexpected stat error: %v", err)
 	}
 }

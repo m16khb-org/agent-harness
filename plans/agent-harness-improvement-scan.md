@@ -88,7 +88,7 @@ Wave 4: Final verification.
   ```
   Scenario: response contract check is green
     Tool: tmux
-    Steps: tmux new-session -d -s qa-contract 'cd /Users/m16khb/Workspace/agent-harness && go test ./cmd/harness -run TestResponseContractsGolden -count=1; echo EXIT:$?'; capture pane
+    Steps: tmux new-session -d -s qa-contract 'cd /Users/user/Workspace/agent-harness && go test ./cmd/harness -run TestResponseContractsGolden -count=1; echo EXIT:$?'; capture pane
     Expected: transcript contains PASS and EXIT:0
     Evidence: evidence/agent-harness-improvement-scan/task-1-contract.txt
 
@@ -122,7 +122,7 @@ Wave 4: Final verification.
   ```
   Scenario: update appears in help
     Tool: tmux
-    Steps: tmux new-session -d -s qa-update-help 'cd /Users/m16khb/Workspace/agent-harness && ./bin/agent-harness --help | grep "agent-harness update"; echo EXIT:$?'; capture pane
+    Steps: tmux new-session -d -s qa-update-help 'cd /Users/user/Workspace/agent-harness && ./bin/agent-harness --help | grep "agent-harness update"; echo EXIT:$?'; capture pane
     Expected: transcript contains agent-harness update and EXIT:0
     Evidence: evidence/agent-harness-improvement-scan/task-2-help.txt
 
@@ -157,7 +157,7 @@ Wave 4: Final verification.
   ```
   Scenario: docs index includes updated source-of-truth text
     Tool: tmux
-    Steps: tmux new-session -d -s qa-docs 'cd /Users/m16khb/Workspace/agent-harness && ./bin/agent-harness docs --json | python3 -m json.tool >/tmp/agent-harness-docs.json; grep -q ARCHITECTURE /tmp/agent-harness-docs.json; echo EXIT:$?'; capture pane
+    Steps: tmux new-session -d -s qa-docs 'cd /Users/user/Workspace/agent-harness && ./bin/agent-harness docs --json | python3 -m json.tool >/tmp/agent-harness-docs.json; grep -q ARCHITECTURE /tmp/agent-harness-docs.json; echo EXIT:$?'; capture pane
     Expected: EXIT:0
     Evidence: evidence/agent-harness-improvement-scan/task-3-docs.txt
 
@@ -191,7 +191,7 @@ Wave 4: Final verification.
   ```
   Scenario: worker read-only command through chosen public surface
     Tool: tmux
-    Steps: tmux new-session -d -s qa-worker 'cd /Users/m16khb/Workspace/agent-harness && tmp=$(mktemp -d) && HARNESS_WORKER_DIR=$tmp ./bin/agent-harness worker run --read-only --kind qa --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short; code=$?; rm -rf "$tmp"; echo EXIT:$code'; capture pane
+    Steps: tmux new-session -d -s qa-worker 'cd /Users/user/Workspace/agent-harness && tmp=$(mktemp -d) && HARNESS_WORKER_DIR=$tmp ./bin/agent-harness worker run --read-only --kind qa --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short; code=$?; rm -rf "$tmp"; echo EXIT:$code'; capture pane
     Expected: JSON has status succeeded and EXIT:0
     Evidence: evidence/agent-harness-improvement-scan/task-4-worker.txt
 
@@ -258,7 +258,7 @@ Wave 4: Final verification.
   ```
   Scenario: command consistency test passes
     Tool: tmux
-    Steps: tmux new-session -d -s qa-command-surface 'cd /Users/m16khb/Workspace/agent-harness && go test ./cmd/harness ./internal/adapter/cli -run "Command|Usage|Golden" -count=1; echo EXIT:$?'; capture pane
+    Steps: tmux new-session -d -s qa-command-surface 'cd /Users/user/Workspace/agent-harness && go test ./cmd/harness ./internal/adapter/cli -run "Command|Usage|Golden" -count=1; echo EXIT:$?'; capture pane
     Expected: PASS and EXIT:0
     Evidence: evidence/agent-harness-improvement-scan/task-6-command-surface.txt
 
@@ -296,7 +296,7 @@ Wave 4: Final verification.
   ```
   Scenario: source grep is blocked when CodeGraph enforcement is enabled
     Tool: tmux
-    Steps: tmux new-session -d -s qa-codegraph-block 'cd /Users/m16khb/Workspace/agent-harness && printf "{\"cwd\":\"$PWD\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rg -n RunReadOnlyCommand internal cmd\"}}" | ./bin/agent-harness hook pre-tool-use --enforce-codegraph-search --json; echo EXIT:$?'; capture pane
+    Steps: tmux new-session -d -s qa-codegraph-block 'cd /Users/user/Workspace/agent-harness && printf "{\"cwd\":\"$PWD\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rg -n RunReadOnlyCommand internal cmd\"}}" | ./bin/agent-harness hook pre-tool-use --enforce-codegraph-search --json; echo EXIT:$?'; capture pane
     Expected: JSON decision is block/deny and reason tells the agent to use CodeGraph first
     Evidence: evidence/agent-harness-improvement-scan/task-7-codegraph-block.txt
 
@@ -336,19 +336,19 @@ Wave 4: Final verification.
   ```
   Scenario: claude-mem hint appears only for memory recall intent
     Tool: bash
-    Steps: printf '{"prompt":"지난번에 이미 해결한 memory 찾아줘","cwd":"/Users/m16khb/Workspace/agent-harness"}' | ./bin/agent-harness hook user-prompt --json
+    Steps: printf '{"prompt":"지난번에 이미 해결한 memory 찾아줘","cwd":"/Users/user/Workspace/agent-harness"}' | ./bin/agent-harness hook user-prompt --json
     Expected: additional_context contains `claude-mem only for previous-session/repeated-work recall`
     Evidence: evidence/agent-harness-improvement-scan/task-8-claude-mem-hint.json
 
   Scenario: LLM Wiki hint appears only for explicit wiki/research intent
     Tool: bash
-    Steps: printf '{"prompt":"wiki research knowledge base 정리해줘","cwd":"/Users/m16khb/Workspace/agent-harness"}' | ./bin/agent-harness hook user-prompt --json
+    Steps: printf '{"prompt":"wiki research knowledge base 정리해줘","cwd":"/Users/user/Workspace/agent-harness"}' | ./bin/agent-harness hook user-prompt --json
     Expected: additional_context contains `LLM Wiki for explicit wiki/research work`
     Evidence: evidence/agent-harness-improvement-scan/task-8-llm-wiki-hint.json
 
   Scenario: generic code task does not over-recommend companion tools
     Tool: tmux
-    Steps: tmux new-session -d -s qa-companion-generic 'cd /Users/m16khb/Workspace/agent-harness && printf "{\"prompt\":\"테스트 실패 고쳐줘\",\"cwd\":\"$PWD\"}" | ./bin/agent-harness hook user-prompt --json; echo EXIT:$?'; capture pane
+    Steps: tmux new-session -d -s qa-companion-generic 'cd /Users/user/Workspace/agent-harness && printf "{\"prompt\":\"테스트 실패 고쳐줘\",\"cwd\":\"$PWD\"}" | ./bin/agent-harness hook user-prompt --json; echo EXIT:$?'; capture pane
     Expected: output does not contain claude-mem or LLM Wiki, and EXIT:0
     Evidence: evidence/agent-harness-improvement-scan/task-8-generic.txt
   ```

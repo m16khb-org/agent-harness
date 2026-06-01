@@ -93,13 +93,13 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   ```
   Scenario: baseline characterization
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && mkdir -p evidence && bash -lc '{ date -Is; git status --short; git diff --stat; go test ./cmd/harness -run TestResponseContractsGolden -count=1; printf "exit=%s\n" "$?"; } 2>&1 | tee evidence/task-1-baseline-red.txt'
+    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && bash -lc '{ date -Is; git status --short; git diff --stat; go test ./cmd/harness -run TestResponseContractsGolden -count=1; printf "exit=%s\n" "$?"; } 2>&1 | tee evidence/task-1-baseline-red.txt'
     Expected: evidence file contains either a TestResponseContractsGolden golden mismatch with exit=1, or an already-green `ok agent-harness/cmd/harness` plus current golden diff noted by the executor.
     Evidence: evidence/task-1-baseline-red.txt
 
   Scenario: unrelated-change guard
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && git diff --name-status | tee evidence/task-1-diff-scope.txt
+    Steps:    cd /Users/user/Workspace/agent-harness && git diff --name-status | tee evidence/task-1-diff-scope.txt
     Expected: output contains only cmd/harness/hook_user_prompt.go, cmd/harness/hook_user_prompt_test.go, cmd/harness/testdata/response_contracts.golden.json, configs/claude/hooks.settings.json, configs/codex/hooks.json, internal/core/hook_prompt.go, internal/core/hook_prompt_test.go, internal/core/lifecycle_state.go, internal/core/lifecycle_state_test.go, and later plan/evidence files.
     Evidence: evidence/task-1-diff-scope.txt
   ```
@@ -133,13 +133,13 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   ```
   Scenario: approved golden refresh
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && mkdir -p evidence && bash -lc 'go test ./cmd/harness -run Golden -update -count=1' 2>&1 | tee evidence/task-2-golden-update.txt && git diff -- cmd/harness/testdata/response_contracts.golden.json | tee evidence/task-2-golden-diff.txt
+    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && bash -lc 'go test ./cmd/harness -run Golden -update -count=1' 2>&1 | tee evidence/task-2-golden-update.txt && git diff -- cmd/harness/testdata/response_contracts.golden.json | tee evidence/task-2-golden-diff.txt
     Expected: update command prints `ok agent-harness/cmd/harness`; diff is limited to response-contract generated values reviewed by the executor.
     Evidence: evidence/task-2-golden-update.txt and evidence/task-2-golden-diff.txt
 
   Scenario: stale-state/flakiness guard
     Tool:     tmux
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && tmux new-session -d -s ah_task2_golden 'cd /Users/m16khb/Workspace/agent-harness && go test ./cmd/harness -run Golden -count=1 && go test ./cmd/harness -run Golden -count=1' && sleep 3 && tmux capture-pane -pt ah_task2_golden | tee evidence/task-2-golden-tmux.txt; tmux kill-session -t ah_task2_golden 2>/dev/null || true
+    Steps:    cd /Users/user/Workspace/agent-harness && tmux new-session -d -s ah_task2_golden 'cd /Users/user/Workspace/agent-harness && go test ./cmd/harness -run Golden -count=1 && go test ./cmd/harness -run Golden -count=1' && sleep 3 && tmux capture-pane -pt ah_task2_golden | tee evidence/task-2-golden-tmux.txt; tmux kill-session -t ah_task2_golden 2>/dev/null || true
     Expected: captured pane contains two `ok agent-harness/cmd/harness` lines and no `FAIL`.
     Evidence: evidence/task-2-golden-tmux.txt
   ```
@@ -173,7 +173,7 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   ```
   Scenario: enforced source search blocks
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && mkdir -p evidence && printf '%s\n' '{"cwd":"/Users/m16khb/Workspace/agent-harness","tool_name":"Bash","tool_input":{"command":"rg -n \"func Run\" cmd internal"}}' | go run ./cmd/harness hook pre-tool-use --enforce-codegraph-search --json | tee evidence/task-3-codegraph-block.json && python3 - <<'PY'
+    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && printf '%s\n' '{"cwd":"/Users/user/Workspace/agent-harness","tool_name":"Bash","tool_input":{"command":"rg -n \"func Run\" cmd internal"}}' | go run ./cmd/harness hook pre-tool-use --enforce-codegraph-search --json | tee evidence/task-3-codegraph-block.json && python3 - <<'PY'
               import json
               data=json.load(open('evidence/task-3-codegraph-block.json'))
               assert data['decision']=='block', data
@@ -184,7 +184,7 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
 
   Scenario: default host output remains no-op
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && printf '%s\n' '{"cwd":"/Users/m16khb/Workspace/agent-harness","tool_name":"Bash","tool_input":{"command":"rg -n \"func Run\" cmd internal"}}' | go run ./cmd/harness hook pre-tool-use | tee evidence/task-3-codegraph-default.json && python3 - <<'PY'
+    Steps:    cd /Users/user/Workspace/agent-harness && printf '%s\n' '{"cwd":"/Users/user/Workspace/agent-harness","tool_name":"Bash","tool_input":{"command":"rg -n \"func Run\" cmd internal"}}' | go run ./cmd/harness hook pre-tool-use | tee evidence/task-3-codegraph-default.json && python3 - <<'PY'
               import json
               data=json.load(open('evidence/task-3-codegraph-default.json'))
               assert data == {}, data
@@ -223,7 +223,7 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   ```
   Scenario: agy default remains disabled
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && mkdir -p evidence && printf '%s\n' '{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"/Users/m16khb/Workspace/agent-harness"}' | go run ./cmd/harness hook user-prompt | tee evidence/task-4-agy-disabled.json && python3 - <<'PY'
+    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && printf '%s\n' '{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"/Users/user/Workspace/agent-harness"}' | go run ./cmd/harness hook user-prompt | tee evidence/task-4-agy-disabled.json && python3 - <<'PY'
               import json
               data=json.load(open('evidence/task-4-agy-disabled.json'))
               ctx=data['hookSpecificOutput'].get('additionalContext','')
@@ -234,7 +234,7 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
 
   Scenario: agy enabled flag injects secondary hint
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && printf '%s\n' '{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"/Users/m16khb/Workspace/agent-harness"}' | go run ./cmd/harness hook user-prompt --enable-agy-hints | tee evidence/task-4-agy-enabled.json && python3 - <<'PY'
+    Steps:    cd /Users/user/Workspace/agent-harness && printf '%s\n' '{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"/Users/user/Workspace/agent-harness"}' | go run ./cmd/harness hook user-prompt --enable-agy-hints | tee evidence/task-4-agy-enabled.json && python3 - <<'PY'
               import json
               data=json.load(open('evidence/task-4-agy-enabled.json'))
               ctx=data['hookSpecificOutput'].get('additionalContext','')
@@ -272,7 +272,7 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   ```
   Scenario: config JSON parse and command assertions
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && mkdir -p evidence && bash -lc 'python3 -m json.tool configs/codex/hooks.json >/dev/null && python3 -m json.tool configs/claude/hooks.settings.json >/dev/null && python3 - <<"PY"
+    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && bash -lc 'python3 -m json.tool configs/codex/hooks.json >/dev/null && python3 -m json.tool configs/claude/hooks.settings.json >/dev/null && python3 - <<"PY"
               import json
               codex=json.load(open("configs/codex/hooks.json"))
               claude=json.load(open("configs/claude/hooks.settings.json"))
@@ -288,7 +288,7 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
 
   Scenario: no user-home mutation
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && git diff --name-status -- configs/codex/hooks.json configs/claude/hooks.settings.json | tee evidence/task-5-config-diff.txt
+    Steps:    cd /Users/user/Workspace/agent-harness && git diff --name-status -- configs/codex/hooks.json configs/claude/hooks.settings.json | tee evidence/task-5-config-diff.txt
     Expected: output lists only the two template config files; no `~/.codex`, `~/.claude`, `.claude/`, or plugin cache paths are touched.
     Evidence: evidence/task-5-config-diff.txt
   ```
@@ -321,13 +321,13 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   ```
   Scenario: deterministic fixture safety scan
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && mkdir -p evidence && bash -lc '{ git diff -- cmd/harness/testdata/response_contracts.golden.json; echo "--- safety grep ---"; if grep -En "/Users/|/var/folders|TOKEN=secret-value|secret-value|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:" cmd/harness/testdata/response_contracts.golden.json; then echo "unsafe_fixture_values_found"; exit 1; else echo "no unsafe fixture values"; fi; }' 2>&1 | tee evidence/task-6-contract-safety.txt
+    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && bash -lc '{ git diff -- cmd/harness/testdata/response_contracts.golden.json; echo "--- safety grep ---"; if grep -En "/Users/|/var/folders|TOKEN=secret-value|secret-value|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:" cmd/harness/testdata/response_contracts.golden.json; then echo "unsafe_fixture_values_found"; exit 1; else echo "no unsafe fixture values"; fi; }' 2>&1 | tee evidence/task-6-contract-safety.txt
     Expected: command exits 0; evidence includes `no unsafe fixture values`.
     Evidence: evidence/task-6-contract-safety.txt
 
   Scenario: contract schema remains internally consistent
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && go run ./cmd/harness contract check --json | tee evidence/task-6-contract-check.json && python3 - <<'PY'
+    Steps:    cd /Users/user/Workspace/agent-harness && go run ./cmd/harness contract check --json | tee evidence/task-6-contract-check.json && python3 - <<'PY'
               import json
               data=json.load(open('evidence/task-6-contract-check.json'))
               assert data['ok'] is True, data
@@ -367,13 +367,13 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   ```
   Scenario: full baseline manual-QA transcript
     Tool:     tmux
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && mkdir -p evidence && tmux new-session -d -s ah_task7_full 'cd /Users/m16khb/Workspace/agent-harness && go test ./cmd/harness -run Golden -count=1 && go test ./... -count=1' && sleep 10 && tmux capture-pane -pt ah_task7_full | tee evidence/task-7-full-tmux.txt; tmux kill-session -t ah_task7_full 2>/dev/null || true
+    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && tmux new-session -d -s ah_task7_full 'cd /Users/user/Workspace/agent-harness && go test ./cmd/harness -run Golden -count=1 && go test ./... -count=1' && sleep 10 && tmux capture-pane -pt ah_task7_full | tee evidence/task-7-full-tmux.txt; tmux kill-session -t ah_task7_full 2>/dev/null || true
     Expected: captured pane contains `ok agent-harness/cmd/harness` and no `FAIL`; if the command is still running after 10 seconds, poll `tmux capture-pane -pt ah_task7_full` until it exits, then capture final PASS/FAIL and kill the session.
     Evidence: evidence/task-7-full-tmux.txt
 
   Scenario: commit hygiene preflight
     Tool:     bash
-    Steps:    cd /Users/m16khb/Workspace/agent-harness && bash -lc 'git diff --check && git status --short && git diff --name-status' 2>&1 | tee evidence/task-7-commit-hygiene.txt
+    Steps:    cd /Users/user/Workspace/agent-harness && bash -lc 'git diff --check && git status --short && git diff --name-status' 2>&1 | tee evidence/task-7-commit-hygiene.txt
     Expected: diff check passes; status/diff list only intentional files for this plan and no runtime-state directories.
     Evidence: evidence/task-7-commit-hygiene.txt
   ```

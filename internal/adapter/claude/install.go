@@ -22,17 +22,10 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	result := port.HostInstallResult{Host: "claude", OK: true, DryRun: req.DryRun}
 	var errs []error
 
-	enabledSkills, skippedSkills := installutil.SkillNamesForHost(req.Root, req.SkillNames, "claude")
-	for _, skillName := range skippedSkills {
-		result.Messages = append(result.Messages, "skip skill for claude: "+skillName)
-	}
-	for _, skillName := range enabledSkills {
-		userLink, err := installutil.EnsureSymlinkPlan(filepath.Join(req.Root, "skills", skillName), filepath.Join(req.Home, ".claude", "skills", skillName), req.DryRun)
-		result.Links = append(result.Links, userLink)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
+	enabledSkills, links, messages, skillErrs := installutil.PlanHostSkillLinks(req.Root, filepath.Join(req.Home, ".claude", "skills"), req.SkillNames, "claude", req.DryRun)
+	result.Messages = append(result.Messages, messages...)
+	result.Links = append(result.Links, links...)
+	errs = append(errs, skillErrs...)
 
 	settingsPath := filepath.Join(req.Home, ".claude", "settings.json")
 	file, err := writeClaudeSettings(settingsPath, req)

@@ -10,6 +10,29 @@ import (
 	"agent-harness/internal/port"
 )
 
+func PlanHostSkillLinks(root, destRoot string, skillNames []string, host string, dryRun bool) ([]string, []port.InstallLink, []string, []error) {
+	enabledSkills, skippedSkills := SkillNamesForHost(root, skillNames, host)
+	messages := make([]string, 0, len(skippedSkills))
+	for _, skillName := range skippedSkills {
+		messages = append(messages, "skip skill for "+host+": "+skillName)
+	}
+	links, errs := PlanSkillLinks(root, destRoot, enabledSkills, dryRun)
+	return enabledSkills, links, messages, errs
+}
+
+func PlanSkillLinks(root, destRoot string, skillNames []string, dryRun bool) ([]port.InstallLink, []error) {
+	links := make([]port.InstallLink, 0, len(skillNames))
+	var errs []error
+	for _, skillName := range skillNames {
+		link, err := EnsureSymlinkPlan(filepath.Join(root, "skills", skillName), filepath.Join(destRoot, skillName), dryRun)
+		links = append(links, link)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return links, errs
+}
+
 func WriteText(path, kind, content string, perm os.FileMode) (port.InstallFile, error) {
 	return WriteTextPlan(path, kind, content, perm, false)
 }

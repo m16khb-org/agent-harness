@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -314,6 +315,296 @@ EOF
 	}
 	if len(drafts.Drafts) != 1 || drafts.Drafts[0].Status != "draft" || drafts.Drafts[0].Title != "Queued hook memory" {
 		t.Fatalf("worker did not write draft-wiki/draft candidate: %+v", drafts)
+	}
+}
+
+func TestPromoteDraftWikiDryRunDoesNotWriteLLMWiki(t *testing.T) {
+	root := t.TempDir()
+	configPath, hub := writeTestLLMWikiHub(t)
+	approved := filepath.Join(root, DraftWikiDir, "approved", "dry-run.md")
+	mustWrite(t, approved, `---
+title: "Dry Run"
+target_wiki: "agent-harness"
+target_type: "notes"
+---
+
+# Dry Run
+`)
+
+	result, err := PromoteDraftWiki(DraftWikiPromoteRequest{RepoRoot: root, Path: approved, LLMWikiConfigPath: configPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || !result.DryRun || result.Confirm || result.Executed {
+		t.Fatalf("unexpected dry-run result: %+v", result)
+	}
+	if result.UpstreamTool != "nvk/llm-wiki" || !strings.Contains(result.HandoffCommand, "@wiki ingest") {
+		t.Fatalf("dry-run should report upstream handoff only: %+v", result)
+	}
+	rawDir := filepath.Join(hub, "topics", "agent-harness", "raw")
+	if _, err := os.Stat(rawDir); !os.IsNotExist(err) {
+		t.Fatalf("dry-run wrote raw directory or unexpected stat error: %v", err)
+	}
+}
+
+func TestPromoteDraftWikiRejectsCollisionWithoutOverwrite(t *testing.T) {
+	root := t.TempDir()
+	configPath, hub := writeTestLLMWikiHub(t)
+	approved := filepath.Join(root, DraftWikiDir, "approved", "collision.md")
+	mustWrite(t, approved, `---
+title: "Collision"
+target_wiki: "agent-harness"
+target_type: "notes"
+---
+
+# Collision
+`)
+	rawPath := filepath.Join(hub, "topics", "agent-harness", "raw", "notes", time.Now().Format(time.DateOnly)+"-collision.md")
+	mustWrite(t, rawPath, "existing raw note\n")
+	_, err := PromoteDraftWiki(DraftWikiPromoteRequest{RepoRoot: root, Path: approved, Confirm: true, LLMWikiConfigPath: configPath})
+	if err == nil || !strings.Contains(err.Error(), "llm-wiki raw file already exists") {
+		t.Fatalf("expected collision error, got %v", err)
+	}
+	got, readErr := os.ReadFile(rawPath)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if string(got) != "existing raw note\n" {
+	}
+}
+
+func TestPromoteDraftWikiRejectsInvalidTargetType(t *testing.T) {
+	root := t.TempDir()
+	configPath, _ := writeTestLLMWikiHub(t)
+	approved := filepath.Join(root, DraftWikiDir, "approved", "invalid-type.md")
+	mustWrite(t, approved, `---
+title: "Invalid Type"
+target_wiki: "agent-harness"
+target_type: "badtype"
+---
+
+# Invalid Type
+`)
+
+	_, err := PromoteDraftWiki(DraftWikiPromoteRequest{RepoRoot: root, Path: approved, Confirm: true, LLMWikiConfigPath: configPath})
+	if err == nil || !strings.Contains(err.Error(), `unsupported llm-wiki raw type "badtype"`) {
+		t.Fatalf("expected invalid target type error, got %v", err)
+	}
+}
+
+func TestPromoteDraftWikiConfirmDoesNotCreateLLMWikiIndexArtifacts(t *testing.T) {
+	root := t.TempDir()
+	configPath, hub := writeTestLLMWikiHub(t)
+	approved := filepath.Join(root, DraftWikiDir, "approved", "boundary.md")
+	mustWrite(t, approved, `---
+title: "Boundary"
+target_wiki: "agent-harness"
+target_type: "notes"
+---
+
+# Boundary
+`)
+
+	result, err := PromoteDraftWiki(DraftWikiPromoteRequest{RepoRoot: root, Path: approved, Confirm: true, LLMWikiConfigPath: configPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Executed || result.LLMWikiRawPath == "" || result.LLMWikiLogPath == "" {
+		t.Fatalf("unexpected confirm result: %+v", result)
+	}
+	for _, rel := range []string{"compiled", "index", "query", "embeddings"} {
+		if _, err := os.Stat(filepath.Join(hub, "topics", "agent-harness", rel)); !os.IsNotExist(err) {
+			t.Fatalf("promotion must not create llm-wiki %s artifact: %v", rel, err)
+		}
+	}
+}
+
+func TestDraftWikiQueueReportsMalformedLinesAndContinues(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	configPath := filepath.Join(root, "agy-settings.json")
+	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
+	fakeAgy := filepath.Join(root, "fake-agy.sh")
+	mustWrite(t, fakeAgy, `#!/bin/sh
+cat <<'EOF'
+---
+title: "Malformed queue still processes"
+source: "claude-mem"
+target_wiki: "agent-harness"
+target_type: "notes"
+summary: "Valid queued events continue after malformed lines."
+---
+
+# Malformed queue still processes
+
+Valid queued events continue after malformed lines.
+EOF
+`)
+	if err := os.Chmod(fakeAgy, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	queued, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{
+		RepoRoot:       root,
+		SourceMaterial: "valid material with secret api_key=supersecret",
+		TargetWiki:     "agent-harness",
+		TargetType:     "notes",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	malformed := `{"source_material":"api_key=supersecret",`
+	original, err := os.ReadFile(queued.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(queued.Path, append([]byte(malformed+"\n"), original...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	processed, err := ProcessDraftWikiQueue(DraftWikiQueueProcessRequest{
+		RepoRoot:        root,
+		AgyCommand:      fakeAgy,
+		AgyModel:        "Gemini 3.5 Flash (High)",
+		AgySettingsPath: configPath,
+		Limit:           1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if processed.Processed != 1 || processed.Succeeded != 1 {
+		t.Fatalf("valid event did not continue after malformed line: %+v", processed)
+	}
+	if len(processed.Warnings) != 1 {
+		t.Fatalf("expected one malformed-line warning, got %+v", processed.Warnings)
+	}
+	warning := processed.Warnings[0]
+	if !strings.Contains(warning, "line 1") || !strings.Contains(warning, "malformed JSONL") {
+		t.Fatalf("warning lacks line number/context: %q", warning)
+	}
+	if strings.Contains(warning, "api_key=supersecret") || len(warning) > 240 {
+		t.Fatalf("warning was not bounded/redacted: %q", warning)
+	}
+	encoded, err := json.Marshal(processed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "valid material") || strings.Contains(string(encoded), "source_material") {
+		t.Fatalf("process response exposed source material: %s", encoded)
+	}
+}
+
+func TestDraftWikiQueueRunningRewriteFailureDoesNotInvokeAgy(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	configPath := filepath.Join(root, "agy-settings.json")
+	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
+	invoked := filepath.Join(root, "agy-invoked")
+	fakeAgy := filepath.Join(root, "fake-agy.sh")
+	mustWrite(t, fakeAgy, `#!/bin/sh
+touch "`+invoked+`"
+echo should-not-run
+`)
+	if err := os.Chmod(fakeAgy, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{RepoRoot: root, SourceMaterial: "must persist running before agy"}); err != nil {
+		t.Fatal(err)
+	}
+	originalRewrite := rewriteDraftWikiQueueEventsFunc
+	rewriteDraftWikiQueueEventsFunc = func(string, []DraftWikiQueueEvent) error {
+		return os.ErrPermission
+	}
+	t.Cleanup(func() { rewriteDraftWikiQueueEventsFunc = originalRewrite })
+
+	processed, err := ProcessDraftWikiQueue(DraftWikiQueueProcessRequest{
+		RepoRoot:        root,
+		AgyCommand:      fakeAgy,
+		AgyModel:        "Gemini 3.5 Flash (High)",
+		AgySettingsPath: configPath,
+		Limit:           1,
+	})
+	if err == nil {
+		t.Fatalf("expected running-state rewrite error, got result %+v", processed)
+	}
+	if _, statErr := os.Stat(invoked); !os.IsNotExist(statErr) {
+		t.Fatalf("fake agy was invoked despite rewrite failure: %v", statErr)
+	}
+}
+
+func TestDraftWikiQueueConcurrentWorkersProcessOneEventOnce(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	configPath := filepath.Join(root, "agy-settings.json")
+	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
+	invocations := filepath.Join(root, "agy-invocations.log")
+	fakeAgy := filepath.Join(root, "fake-agy.sh")
+	mustWrite(t, fakeAgy, `#!/bin/sh
+printf 'invoke\n' >> "`+invocations+`"
+sleep 0.2
+cat <<'EOF'
+---
+title: "Concurrent queue event"
+source: "claude-mem"
+target_wiki: "agent-harness"
+target_type: "notes"
+summary: "One concurrent worker should process the queued event."
+---
+
+# Concurrent queue event
+
+Only one worker should process this event.
+EOF
+`)
+	if err := os.Chmod(fakeAgy, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{RepoRoot: root, SourceMaterial: "race one event"}); err != nil {
+		t.Fatal(err)
+	}
+
+	results := make(chan DraftWikiQueueProcessResult, 2)
+	errs := make(chan error, 2)
+	start := make(chan struct{})
+	for i := 0; i < 2; i++ {
+		go func() {
+			<-start
+			res, err := ProcessDraftWikiQueue(DraftWikiQueueProcessRequest{
+				RepoRoot:        root,
+				AgyCommand:      fakeAgy,
+				AgyModel:        "Gemini 3.5 Flash (High)",
+				AgySettingsPath: configPath,
+				Limit:           1,
+			})
+			results <- res
+			errs <- err
+		}()
+	}
+	close(start)
+	processedTotal := 0
+	for i := 0; i < 2; i++ {
+		res := <-results
+		if err := <-errs; err != nil {
+			t.Fatalf("worker %d returned error: %v result=%+v", i, err, res)
+		}
+		processedTotal += res.Processed
+	}
+	if processedTotal != 1 {
+		t.Fatalf("expected exactly one processed event, got %d", processedTotal)
+	}
+	log, err := os.ReadFile(invocations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(string(log), "invoke"); got != 1 {
+		t.Fatalf("expected one agy invocation, got %d log=%q", got, log)
+	}
+	drafts, err := ListDraftWiki(DraftWikiListRequest{RepoRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(drafts.Drafts) != 1 {
+		t.Fatalf("expected one draft, got %+v", drafts.Drafts)
 	}
 }
 
