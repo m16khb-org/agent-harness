@@ -11,6 +11,8 @@ data/
 .claude/
 .cache/
 .antigravitycli/
+.omo/
+evidence
 
 # Language/tool caches
 __pycache__/
