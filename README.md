@@ -21,7 +21,7 @@ The project is intentionally not “just a Codex plugin” or “just Claude com
 
 The project philosophy is **do not reinvent the wheel**: agent-harness owns the small shared core for orchestration, policy, state, project docs, and install glue. Specialized knowledge/retrieval tools stay upstream — for example `nvk/llm-wiki`, `colbymchenry/codegraph`, and `thedotmack/claude-mem` are installed or configured as optional dependencies instead of being reimplemented inside the harness.
 
-> Status: early but functional MVP. The CLI, daemon-backed MCP proxy, policy checker, state checkpoints, project-doc tools, API-doc review gate, native skill installer, self-verification loop, and self-augmentation loop are implemented. The worker surface is currently **state-only / no-shell** by design.
+> Status: early but functional MVP. The CLI, daemon-backed MCP proxy, policy checker, read-only command evidence runner, state checkpoints, project-doc and draft-wiki tools, lifecycle hooks, guard/verify-work/trace evidence gates, API-doc review gate, native skill installer, self-verification loop, and self-augmentation loop are implemented. The worker surface is still **state-first and policy-gated**: it can record lifecycle jobs, run argv-only read-only evidence commands, and process draft-wiki queue items, but it is not a general writable shell runner.
 
 ---
 
@@ -42,16 +42,17 @@ Use it when you want to:
 
 | Area | Commands / files | What it does |
 | --- | --- | --- |
-| Install and inspection | `install-native`, `inspect`, `preflight`, `version` | Build and connect user-level Codex/Claude integrations, then inspect the installation. |
+| Install and inspection | `bootstrap`, `update`, `install-native`, `inspect`, `preflight`, `status`, `version` | Build/update user-level Codex/Claude integrations, inspect the installation, and summarize health. |
 | MCP backend | `agent-harness mcp`, `daemon start/status/stop` | Run a stdio MCP proxy backed by a user-level daemon so Codex and Claude see the same tools. |
-| Command policy | `policy check`, `policy fake-run`, `policy audit` | Evaluate argv, workspace root, cwd, timeout, write/network intent, and audit metadata without a real shell runner. |
+| Command policy | `policy check`, `policy fake-run`, `policy run --read-only`, `policy audit` | Evaluate argv, workspace root, cwd, timeout, env allowlists, shell/write/network intent, read-only execution, and audit metadata. |
 | Doctor | `doctor` | Diagnose install, hooks, MCP, daemon, user-state, lifecycle namespace, and project docs. |
 | State checkpoints | `state write/read/list/prune/doctor/migrate` | Store small JSON checkpoints in user state, not tracked repo files. |
-| Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | Generate, index, route, and append project operating docs under `.agent-harness/`. |
+| Project docs and draft wiki | `project bootstrap/docs/route-docs/record`, `project draft-wiki ...`; MCP `project_docs_*` | Generate, index, route, update, append, stage, approve, reject, and promote project operating knowledge under `.agent-harness/`. |
 | API docs gate | `api-doc check/static-check/review` | Catch endpoint/DTO/OpenAPI documentation drift. |
-| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/ultracode`, `skills/project-bootstrap`, `skills/self-verify`, `skills/self-augment` | Codex and Claude Code use one source tree; host-targeted skills can opt into one host. |
-| Self-improvement | `self-verify`, `self-augment` | Run a 95-point verification gate and select safe improvement candidates. |
-| Worker MVP | `worker enqueue/status/list/cancel` | Record job lifecycle state only; it does not execute shell commands yet. |
+| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/ultracode`, `skills/project-bootstrap`, `skills/draft-wiki-promoter`, `skills/stability-audit`, `skills/self-verify`, `skills/self-augment` | Codex and Claude Code use one source tree; host-targeted skills can opt into one host. |
+| Evidence and contracts | `guard check`, `verify-work`, `trace analyze`, `contract schema/check` | Check anti-patterns, collect completion evidence matrices, analyze trace/lifecycle evidence, and keep CLI/MCP contracts aligned. |
+| Self-improvement | `self-verify`, `self-verify history/compare/promote/candidates`, `self-augment`, `self-augment lesson` | Run a 95-point verification gate, compare/promote checkpoints, and record safe improvement candidates or lessons. |
+| Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | Record job lifecycle state, run policy-gated read-only evidence commands, and process draft-wiki queue items; no writable shell jobs. |
 
 ## Architecture
 
@@ -67,7 +68,7 @@ flowchart LR
     Core --> Ports[ports / DTOs]
     Ports --> FS[fs · git adapters]
     Ports --> State[state · audit log]
-    Core -. future .-> Worker[local job worker\nqueue · watch · long tasks]
+    Core --> Worker[local worker surface\nstate · read-only evidence · draft-wiki queue]
 ```
 
 Design rules:
@@ -76,7 +77,7 @@ Design rules:
 2. **Same contract everywhere** — CLI JSON, MCP responses, and daemon responses must mean the same thing.
 3. **Safe by default** — command policy, workspace boundaries, audit records, redaction, and dry-run/default no-shell behavior come first.
 4. **One skill source** — `skills/<name>/` is the source of truth; user-level Codex/Claude skill paths point back to it.
-5. **Incremental worker** — persistent worker functionality starts with lifecycle state before process execution.
+5. **Incremental worker** — worker functionality starts with lifecycle state and argv-only read-only evidence before any writable or long-running process execution.
 6. **Do not reinvent the wheel** — integrate upstream tools such as llm-wiki, CodeGraph, and claude-mem through their own installers/plugins; do not copy their core behavior into agent-harness.
 
 ## Repository map
@@ -91,7 +92,7 @@ configs/claude/           Claude MCP template
 skills/                   Shared native skills used by Codex and Claude Code
 .agent-harness/           Project operating docs, ADRs, cautions, testing rules
 scripts/install-native.sh Native install convenience script
-bin/agent-harness               Locally built binary
+bin/agent-harness         Locally built binary
 ```
 
 ## Requirements
@@ -169,11 +170,13 @@ Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_C
 # Installation and environment
 ./bin/agent-harness inspect --json
 ./bin/agent-harness preflight --json "$PWD"
+./bin/agent-harness status --repo . --json
 ./bin/agent-harness contract check --json
 
-# Docs and routing
+# Docs, routing, and durable project knowledge
 ./bin/agent-harness docs --json
 ./bin/agent-harness project route-docs --repo "$PWD" --task "update command policy" --json
+./bin/agent-harness project draft-wiki list --repo . --json
 
 # State checkpoints
 ./bin/agent-harness doctor --repo . --json
@@ -181,20 +184,27 @@ Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_C
 ./bin/agent-harness state read --key checkpoint --json
 ./bin/agent-harness state doctor --json
 
-# Policy-only command handling: no real shell runner
+# Policy and read-only command evidence
 ./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy run --read-only --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/agent-harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness guard check --repo . --all --json
+./bin/agent-harness verify-work --repo . --all --json -- git status --short
 
-# Worker MVP: state only, no shell execution
+# Worker MVP: state plus policy-gated read-only evidence
 ./bin/agent-harness worker enqueue --kind smoke --payload "hello" --json
 ./bin/agent-harness worker list --json
+./bin/agent-harness worker run --read-only --kind smoke --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 
-# API documentation gate
+# API documentation gate and trace analysis
 ./bin/agent-harness api-doc check --json
 ./bin/agent-harness api-doc review --json
+# Replace self-verify-latest with a saved state key or JSONL trace file.
+./bin/agent-harness trace analyze --input self-verify-latest --json
 
 # Harness verification and improvement loops
 ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ```
 
@@ -202,7 +212,7 @@ Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_C
 
 ### Codex
 
-`install-native` links shared skills into user-level Codex skill paths and registers the MCP server/hook configuration.
+`install-native` links shared skills into user-level Codex skill paths and registers the MCP server plus SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks.
 
 Useful checks:
 
@@ -213,14 +223,14 @@ codex mcp get agent_harness
 
 ### Claude Code
 
-`install-native` links the same shared skills into user-level Claude skill paths, registers a user-scope MCP server, and installs UserPromptSubmit/PreToolUse/PostToolUse/Stop lifecycle hooks in `~/.claude/settings.json`.
+`install-native` links the same shared skills into user-level Claude skill paths, registers a user-scope MCP server, and installs SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks in `~/.claude/settings.json`.
 
 Useful checks:
 
 ```bash
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md && echo "Claude skill linked"
 claude mcp list
-test -f ~/.claude/settings.json && rg "hook user-prompt|hook pre-tool-use|hook post-tool-use|hook stop" ~/.claude/settings.json
+test -f ~/.claude/settings.json && rg "hook (session-start|user-prompt|pre-tool-use|post-tool-use|pre-compact|post-compact|stop)" ~/.claude/settings.json
 ```
 
 ## Shared skills
@@ -231,6 +241,8 @@ test -f ~/.claude/settings.json && rg "hook user-prompt|hook pre-tool-use|hook p
 | `workflows` | Codex-only explicit dynamic workflow runner with batched subagents, ledger, verification, and synthesis. |
 | `ultracode` | Codex-only mode that automatically applies workflows to substantive tasks, matching Claude Code ultracode’s direction. |
 | `project-bootstrap` | Generate or update repo-local agent operating docs from repository evidence. |
+| `draft-wiki-promoter` | Review, approve/reject, and promote `.agent-harness/draft-wiki` candidates into upstream llm-wiki notes. |
+| `stability-audit` | Run exhaustive install/update, hook, MCP, daemon, worker, state, and process-hygiene audits. |
 | `self-verify` | Run or interpret the harness 95-point verification loop. |
 | `self-augment` | Choose one safe high-value harness improvement, implement it, and verify it. |
 
@@ -238,9 +250,9 @@ test -f ~/.claude/settings.json && rg "hook user-prompt|hook pre-tool-use|hook p
 
 - Secret values must not appear in prompts, docs, logs, fixtures, CLI JSON, or MCP responses.
 - Host adapters must not bypass core policy.
-- Policy commands reason about argv form, workspace root, cwd, write/network intent, timeout, and audit metadata.
-- Current policy/fake-run/audit commands do not provide a general shell execution capability.
-- Worker commands are intentionally no-shell lifecycle records until queueing, cancellation, redaction, and audit boundaries are hardened.
+- Policy commands reason about argv form, workspace root, cwd, write/network intent, timeout, env allowlists, shell use, and audit metadata.
+- `policy run --read-only` and `worker run --read-only` can execute only argv-form read-only commands after policy approval; they are not general writable shell runners.
+- Worker commands stay state-first until queueing, cancellation, redaction, and audit boundaries are hardened enough for broader process execution.
 - Runtime state belongs in user state directories, not committed source files. Project lifecycle state is namespaced under `~/.local/state/agent-harness/projects/<repo-id>/`, not under `.agent-harness/`.
 
 ## Development
@@ -255,6 +267,8 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
 ./bin/agent-harness contract check --json
+./bin/agent-harness guard check --repo . --all --json
+./bin/agent-harness verify-work --repo . --all --json -- git status --short
 ```
 
 For documentation-only changes, at minimum check file paths, buildability, and the docs index:
@@ -281,10 +295,11 @@ go build -o bin/agent-harness ./cmd/harness
 
 ## Roadmap
 
-- Harden daemon and MCP lifecycle checks.
+- Keep daemon, MCP, and lifecycle hook resilience checks hardened.
 - Keep CLI/MCP response contracts golden-tested.
 - Expand API-documentation drift review for endpoint-heavy repos.
-- Promote state-only worker records toward a real job worker only after policy, audit, cancellation, and redaction boundaries are strong enough.
+- Promote the state/read-only worker surface toward broader job execution only after policy, audit, cancellation, and redaction boundaries are strong enough.
+- Keep draft-wiki promotion and trace analysis as thin glue over upstream knowledge tools rather than replacing them.
 - Keep Codex and Claude Code integrations thin and contract-compatible.
 
 ## Documentation style note
@@ -307,7 +322,7 @@ No license file is present in this repository at the time of this README update.
 
 이 프로젝트는 “Codex plugin 하나”나 “Claude command 모음”이 아닙니다. 재사용 가능한 동작은 host-neutral Go core에 두고, host별 통합은 그 core를 호출하는 얇은 adapter로 유지합니다.
 
-> 현재 상태: 초기이지만 동작 가능한 MVP입니다. CLI, daemon-backed MCP proxy, policy checker, state checkpoint, project-doc tooling, API-doc review gate, native skill installer, self-verification loop, self-augmentation loop가 구현되어 있습니다. worker 표면은 의도적으로 **state-only / no-shell** 상태입니다.
+> 현재 상태: 초기이지만 동작 가능한 MVP입니다. CLI, daemon-backed MCP proxy, policy checker, read-only command evidence runner, state checkpoint, project-doc/draft-wiki tooling, lifecycle hook, guard/verify-work/trace evidence gate, API-doc review gate, native skill installer, self-verification loop, self-augmentation loop가 구현되어 있습니다. worker 표면은 아직 **state-first 및 policy-gated**입니다. job lifecycle을 기록하고 argv-only read-only evidence command와 draft-wiki queue 처리는 가능하지만, 범용 writable shell runner는 아닙니다.
 
 ---
 
@@ -330,16 +345,17 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 
 | 영역 | 명령 / 파일 | 역할 |
 | --- | --- | --- |
-| 설치와 점검 | `install-native`, `inspect`, `preflight`, `version` | user-level Codex/Claude integration을 만들고 설치 상태를 확인합니다. |
+| 설치와 점검 | `bootstrap`, `update`, `install-native`, `inspect`, `preflight`, `status`, `version` | user-level Codex/Claude integration을 build/update하고 설치 상태와 health를 확인합니다. |
 | MCP backend | `agent-harness mcp`, `daemon start/status/stop` | user-level daemon 뒤의 stdio MCP proxy를 실행해 Codex와 Claude가 같은 tool을 보게 합니다. |
-| Command policy | `policy check`, `policy fake-run`, `policy audit` | 실제 shell runner 없이 argv, workspace root, cwd, timeout, write/network intent, audit metadata를 평가합니다. |
+| Command policy | `policy check`, `policy fake-run`, `policy run --read-only`, `policy audit` | argv, workspace root, cwd, timeout, env allowlist, shell/write/network intent, read-only 실행, audit metadata를 평가합니다. |
 | Doctor | `doctor` | install, hook, MCP, daemon, user-state, lifecycle namespace, project docs를 종합 진단합니다. |
 | State checkpoint | `state write/read/list/prune/doctor/migrate` | 작은 JSON checkpoint를 repo가 아니라 user state에 저장합니다. |
-| Project docs | `project bootstrap/docs/route-docs`; MCP `project_docs_record` | `.agent-harness/` 운영 문서를 생성, 색인, 라우팅, append 기록합니다. |
+| Project docs와 draft wiki | `project bootstrap/docs/route-docs/record`, `project draft-wiki ...`; MCP `project_docs_*` | `.agent-harness/` 운영 지식을 생성, 색인, 라우팅, 갱신, append, stage, approve/reject, promote합니다. |
 | API docs gate | `api-doc check/static-check/review` | endpoint/DTO/OpenAPI 문서 drift를 찾습니다. |
-| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/ultracode`, `skills/project-bootstrap`, `skills/self-verify`, `skills/self-augment` | Codex와 Claude Code가 하나의 source tree를 사용하며 host-targeted skill은 한 host에만 설치할 수 있습니다. |
-| Self-improvement | `self-verify`, `self-augment` | 95점 검증 gate와 안전한 개선 후보 선택 루프를 실행합니다. |
-| Worker MVP | `worker enqueue/status/list/cancel` | job lifecycle state만 기록합니다. 아직 shell을 실행하지 않습니다. |
+| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/ultracode`, `skills/project-bootstrap`, `skills/draft-wiki-promoter`, `skills/stability-audit`, `skills/self-verify`, `skills/self-augment` | Codex와 Claude Code가 하나의 source tree를 사용하며 host-targeted skill은 한 host에만 설치할 수 있습니다. |
+| Evidence와 contract | `guard check`, `verify-work`, `trace analyze`, `contract schema/check` | anti-pattern을 검사하고 completion evidence matrix, trace/lifecycle evidence, CLI/MCP contract 정합성을 확인합니다. |
+| Self-improvement | `self-verify`, `self-verify history/compare/promote/candidates`, `self-augment`, `self-augment lesson` | 95점 검증 gate, checkpoint 비교/승격, 안전한 개선 후보와 lesson 기록을 수행합니다. |
+| Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | job lifecycle state를 기록하고 policy-gated read-only evidence command와 draft-wiki queue 처리를 수행합니다. writable shell job은 없습니다. |
 
 ## 아키텍처
 
@@ -355,7 +371,7 @@ flowchart LR
     Core --> Ports[ports / DTOs]
     Ports --> FS[fs · git adapters]
     Ports --> State[state · audit log]
-    Core -. future .-> Worker[local job worker\nqueue · watch · long tasks]
+    Core --> Worker[local worker surface\nstate · read-only evidence · draft-wiki queue]
 ```
 
 설계 규칙:
@@ -364,7 +380,7 @@ flowchart LR
 2. **Same contract everywhere** — CLI JSON, MCP response, daemon response는 같은 의미를 가져야 합니다.
 3. **Safe by default** — command policy, workspace boundary, audit record, redaction, dry-run/no-shell 기본값을 먼저 둡니다.
 4. **One skill source** — `skills/<name>/`이 원본이고 user-level Codex/Claude skill 경로는 이를 가리킵니다.
-5. **Incremental worker** — persistent worker는 process 실행보다 lifecycle state부터 검증합니다.
+5. **Incremental worker** — worker는 writable/long-running process 실행보다 lifecycle state와 argv-only read-only evidence부터 검증합니다.
 6. **바퀴를 재발명하지 않기** — llm-wiki, CodeGraph, claude-mem 같은 upstream 도구는 각자의 installer/plugin으로 연결하고 core 동작을 agent-harness에 복제하지 않습니다.
 
 ## 저장소 구조
@@ -379,7 +395,7 @@ configs/claude/           Claude MCP template
 skills/                   Codex와 Claude Code가 공유하는 native skill 원본
 .agent-harness/           project operating docs, ADR, caution, testing rule
 scripts/install-native.sh native install 편의 스크립트
-bin/agent-harness               로컬 build binary
+bin/agent-harness         로컬 build binary
 ```
 
 ## 요구 사항
@@ -457,11 +473,13 @@ claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marke
 # 설치와 환경 확인
 ./bin/agent-harness inspect --json
 ./bin/agent-harness preflight --json "$PWD"
+./bin/agent-harness status --repo . --json
 ./bin/agent-harness contract check --json
 
-# 문서와 라우팅
+# 문서, 라우팅, durable project knowledge
 ./bin/agent-harness docs --json
 ./bin/agent-harness project route-docs --repo "$PWD" --task "update command policy" --json
+./bin/agent-harness project draft-wiki list --repo . --json
 
 # 상태 체크포인트
 ./bin/agent-harness doctor --repo . --json
@@ -469,20 +487,27 @@ claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marke
 ./bin/agent-harness state read --key checkpoint --json
 ./bin/agent-harness state doctor --json
 
-# Policy-only command handling: 실제 shell runner 아님
+# Policy와 read-only command evidence
 ./bin/agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness policy run --read-only --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 ./bin/agent-harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+./bin/agent-harness guard check --repo . --all --json
+./bin/agent-harness verify-work --repo . --all --json -- git status --short
 
-# Worker MVP: state only, no shell execution
+# Worker MVP: state와 policy-gated read-only evidence
 ./bin/agent-harness worker enqueue --kind smoke --payload "hello" --json
 ./bin/agent-harness worker list --json
+./bin/agent-harness worker run --read-only --kind smoke --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 
-# API 문서 gate
+# API 문서 gate와 trace 분석
 ./bin/agent-harness api-doc check --json
 ./bin/agent-harness api-doc review --json
+# self-verify-latest를 저장된 state key나 JSONL trace file로 교체하세요.
+./bin/agent-harness trace analyze --input self-verify-latest --json
 
 # 하네스 자체 검증과 개선 루프
 ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ```
 
@@ -490,7 +515,7 @@ claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marke
 
 ### Codex
 
-`install-native`는 shared skill을 user-level Codex skill 경로에 연결하고 MCP server/hook 설정을 등록합니다.
+`install-native`는 shared skill을 user-level Codex skill 경로에 연결하고 MCP server 및 SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hook을 등록합니다.
 
 확인 명령:
 
@@ -501,14 +526,14 @@ codex mcp get agent_harness
 
 ### Claude Code
 
-`install-native`는 같은 shared skill을 user-level Claude skill 경로에 연결하고 user-scope MCP server와 `~/.claude/settings.json`의 UserPromptSubmit/PreToolUse/PostToolUse/Stop lifecycle hook을 등록합니다.
+`install-native`는 같은 shared skill을 user-level Claude skill 경로에 연결하고 user-scope MCP server와 `~/.claude/settings.json`의 SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hook을 등록합니다.
 
 확인 명령:
 
 ```bash
 test -f ~/.claude/skills/atomic-commit-push/SKILL.md && echo "Claude skill linked"
 claude mcp list
-test -f ~/.claude/settings.json && rg "hook user-prompt|hook pre-tool-use|hook post-tool-use|hook stop" ~/.claude/settings.json
+test -f ~/.claude/settings.json && rg "hook (session-start|user-prompt|pre-tool-use|post-tool-use|pre-compact|post-compact|stop)" ~/.claude/settings.json
 ```
 
 ## Shared skills
@@ -519,6 +544,8 @@ test -f ~/.claude/settings.json && rg "hook user-prompt|hook pre-tool-use|hook p
 | `workflows` | Codex 전용 explicit dynamic workflow runner로 batched subagent, ledger, 검증, synthesis를 수행합니다. |
 | `ultracode` | Claude Code ultracode 방향과 맞게 substantive task에 workflows를 자동 적용하는 Codex 전용 mode입니다. |
 | `project-bootstrap` | repository evidence를 바탕으로 repo-local agent operating docs를 생성하거나 갱신합니다. |
+| `draft-wiki-promoter` | `.agent-harness/draft-wiki` 후보를 검토하고 approve/reject한 뒤 upstream llm-wiki note로 promote합니다. |
+| `stability-audit` | install/update, hook, MCP, daemon, worker, state, process hygiene를 끝까지 audit합니다. |
 | `self-verify` | 하네스 95점 verification loop를 실행하거나 결과를 해석합니다. |
 | `self-augment` | 안전하고 가치 있는 하네스 개선 후보 1개를 선택, 구현, 검증합니다. |
 
@@ -526,9 +553,9 @@ test -f ~/.claude/settings.json && rg "hook user-prompt|hook pre-tool-use|hook p
 
 - secret 원문은 prompt, docs, logs, fixtures, CLI JSON, MCP response에 남기지 않습니다.
 - host adapter는 core policy를 우회할 수 없습니다.
-- policy 명령은 argv form, workspace root, cwd, write/network intent, timeout, audit metadata를 명시적으로 다룹니다.
-- 현재 policy/fake-run/audit 명령은 범용 shell 실행 기능이 아닙니다.
-- worker 명령은 queue, cancellation, redaction, audit 경계가 단단해질 때까지 no-shell lifecycle record로 유지합니다.
+- policy 명령은 argv form, workspace root, cwd, write/network intent, timeout, env allowlist, shell 사용, audit metadata를 명시적으로 다룹니다.
+- `policy run --read-only`와 `worker run --read-only`는 policy 승인 후 argv-form read-only command만 실행할 수 있습니다. 범용 writable shell runner가 아닙니다.
+- worker 명령은 queue, cancellation, redaction, audit 경계가 단단해질 때까지 state-first로 유지합니다.
 - runtime state는 user state directory에 두고 source file로 commit하지 않습니다. project lifecycle state는 `.agent-harness/`가 아니라 `~/.local/state/agent-harness/projects/<repo-id>/` 아래에 격리합니다.
 
 ## 개발과 검증
@@ -543,6 +570,8 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
 ./bin/agent-harness contract check --json
+./bin/agent-harness guard check --repo . --all --json
+./bin/agent-harness verify-work --repo . --all --json -- git status --short
 ```
 
 문서만 변경한 경우에도 최소한 파일 경로, build 가능 여부, docs index를 확인합니다.
@@ -569,10 +598,11 @@ go build -o bin/agent-harness ./cmd/harness
 
 ## Roadmap
 
-- daemon과 MCP lifecycle check를 더 단단하게 만듭니다.
+- daemon, MCP, lifecycle hook resilience check를 계속 단단하게 유지합니다.
 - CLI/MCP response contract를 golden test로 유지합니다.
 - endpoint-heavy repo를 위한 API-documentation drift review를 확장합니다.
-- policy, audit, cancellation, redaction 경계가 충분히 강해진 뒤에만 state-only worker를 실제 job worker로 확장합니다.
+- state/read-only worker 표면은 policy, audit, cancellation, redaction 경계가 충분히 강해진 뒤에만 더 넓은 job execution으로 확장합니다.
+- draft-wiki promotion과 trace analysis는 upstream knowledge tool을 대체하지 않는 얇은 glue로 유지합니다.
 - Codex와 Claude Code integration은 얇고 contract-compatible하게 유지합니다.
 
 ## README 작성 기준 메모
