@@ -43,7 +43,7 @@ Codex/Claude host가 지원하면 `agent-harness hook ...`가 시점을 나눠 c
 - **SessionStart / PostCompact**: 안정적인 project-doc catalog를 주입한다(`hook session-start`, `hook post-compact`). Codex는 `--host codex`로 설치되어 `additionalContext`에 user-visible catalog를 싣고, Claude Code는 `systemMessage`(pretty catalog)와 compact `additionalContext`를 분리한다. PostCompact는 compaction으로 사라진 SessionStart catalog를 lifecycle reminder와 함께 재주입한다.
 - **UserPromptSubmit**: 매 지시마다 catalog가 아니라 dynamic per-turn hint(routing, actions, profile, pending upkeep, rule)만 싣는다(`hook user-prompt`). 안정적 catalog는 더 이상 per-turn으로 주입하지 않는다(`cmd/harness/hook_user_prompt.go:69-83`, `internal/core/hook_prompt.go:104-113`).
 - **PreToolUse**: tool 실행 직전의 빠른 preflight 지점이다(`hook pre-tool-use`). 기본 host stdout은 `{}`이고 raw `--json`은 allow/no-op 진단만 반환한다. 차단 정책은 host schema와 false-positive 위험을 별도 검증한 뒤에만 추가한다.
-- **PostToolUse**: 성공한 tool 실행 후 경량 관찰 지점이다(`hook post-tool-use`). lifecycle-relevant 파일/명령만 user-state queue에 남기고 shared docs를 직접 수정하지 않는다.
+- **PostToolUse**: 성공한 tool 실행 후 경량 관찰 지점이다(`hook post-tool-use`). lifecycle-relevant 파일을 실제로 수정할 수 있는 tool/명령만 user-state queue에 남기고, read-only 조회 결과나 shared docs를 직접 수정하지 않는다.
 
 ## MCP Usage Rule
 

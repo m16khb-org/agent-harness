@@ -430,14 +430,7 @@ func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecyc
 	if repo == "" {
 		return HookToolUseLifecycleResult{OK: true, Warnings: []string{"repo_missing"}}, nil
 	}
-	targets := []string{}
-	for _, path := range req.Paths {
-		targets = append(targets, docTargetsForLifecyclePath(path)...)
-	}
-	if strings.TrimSpace(req.Command) != "" {
-		targets = append(targets, docTargetsForLifecyclePath(req.Command)...)
-	}
-	targets = normalizeTargetDocs(targets)
+	targets := lifecycleDocTargetsForToolUse(req)
 	if len(targets) == 0 {
 		return HookToolUseLifecycleResult{OK: true}, nil
 	}
@@ -562,7 +555,7 @@ func renderLifecycleCompactContext(capsule LifecycleCompactCapsule) string {
 	}
 	if len(capsule.PendingDocUpkeep) > 0 {
 		b.WriteString("- Pending doc upkeep preserved across compaction:\n")
-		for _, event := range capsule.PendingDocUpkeep {
+		for _, event := range uniqueDocUpkeepEvents(capsule.PendingDocUpkeep) {
 			b.WriteString("  - ")
 			if len(event.TargetDocs) > 0 {
 				b.WriteString(strings.Join(event.TargetDocs, ", "))
@@ -574,22 +567,4 @@ func renderLifecycleCompactContext(capsule LifecycleCompactCapsule) string {
 	}
 	b.WriteString("Use this as routing context only; read/update project docs when the resumed task touches the listed areas.")
 	return strings.TrimSpace(b.String())
-}
-
-func docTargetsForLifecyclePath(path string) []string {
-	p := strings.ToLower(filepath.ToSlash(strings.TrimSpace(path)))
-	if p == "" {
-		return nil
-	}
-	out := []string{}
-	if strings.Contains(p, "hook") || strings.Contains(p, "install") || strings.Contains(p, "daemon") || strings.Contains(p, "mcp") || strings.Contains(p, "doctor") || strings.Contains(p, "lifecycle_state") || strings.Contains(p, "state.go") {
-		out = append(out, "OPERATIONS.md", "CONVENTIONS.md", "ARCHITECTURE.md")
-	}
-	if strings.Contains(p, "_test.go") || strings.Contains(p, "testdata/") || strings.Contains(p, "golden") {
-		out = append(out, "TESTING.md")
-	}
-	if strings.Contains(p, "api_doc") || strings.Contains(p, "openapi") || strings.Contains(p, "swagger") {
-		out = append(out, "OPEN_API_SPEC.md")
-	}
-	return out
 }

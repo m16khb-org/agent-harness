@@ -99,7 +99,7 @@ codex mcp get agent_harness
 
 ### Lifecycle hooks
 
-Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifecycle hook을 등록한다. `UserPromptSubmit`은 `agent-harness hook user-prompt --host codex`로 설치하며 매 prompt의 dynamic routing/profile/upkeep hint만 싣는다. `PreToolUse`의 `agent-harness hook pre-tool-use`는 tool 실행 직전 critical path이므로 기본 host stdout은 `{}`이고 raw `--json`에서만 allow/no-op 진단을 확인한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일 변경을 repo별 user-state queue에 기록하고, `PreCompact`의 `agent-harness hook pre-compact`는 pending doc-upkeep 상태를 작은 compact capsule로 저장하며, `PostCompact`의 `agent-harness hook post-compact`는 capsule을 한 번만 additional context로 복원한다. `Stop`의 `agent-harness hook stop`은 Codex/Claude Stop hook schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. pending upkeep reminder는 `agent-harness hook stop --json`의 raw result로 확인하며 Stop hook stdout에 `hookSpecificOutput.additionalContext`를 쓰지 않는다. 후속 hook들은 shared docs를 직접 수정하지 않는다.
+Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifecycle hook을 등록한다. `UserPromptSubmit`은 `agent-harness hook user-prompt --host codex`로 설치하며 매 prompt의 dynamic routing/profile/upkeep hint만 싣는다. `PreToolUse`의 `agent-harness hook pre-tool-use`는 tool 실행 직전 critical path이므로 기본 host stdout은 `{}`이고 raw `--json`에서만 allow/no-op 진단을 확인한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일을 실제로 수정할 수 있는 tool/명령만 repo별 user-state queue에 기록하고, `PreCompact`의 `agent-harness hook pre-compact`는 pending doc-upkeep 상태를 작은 compact capsule로 저장하며, `PostCompact`의 `agent-harness hook post-compact`는 capsule을 한 번만 additional context로 복원한다. `Stop`의 `agent-harness hook stop`은 Codex/Claude Stop hook schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. pending upkeep reminder는 `agent-harness hook stop --json`의 raw result로 확인하며 Stop hook stdout에 `hookSpecificOutput.additionalContext`를 쓰지 않는다. 후속 hook들은 shared docs를 직접 수정하지 않는다.
 
 예:
 
@@ -144,7 +144,7 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 
 ### Claude hooks
 
-기본 설치는 `~/.claude/settings.json`에 lifecycle hook을 등록한다. Claude Code의 `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, `Stop` hook은 Codex와 같은 공통 CLI/core를 호출하지만 output shape은 host에 맞춘다. Claude Code는 `systemMessage`와 model-facing `hookSpecificOutput.additionalContext`를 분리해 쓸 수 있으므로 지원 이벤트에서 readable view와 compact hint를 함께 유지할 수 있다. `PreToolUse`와 `PostToolUse`는 Claude hook matcher `*`로 모든 tool 이벤트를 받지만, PreToolUse는 기본적으로 차단하지 않고 PostToolUse만 성공 이벤트를 근거로 관련 파일을 queue에 남긴다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in 없이 `.claude/settings.json`을 target repo에 만들지 않는다.
+기본 설치는 `~/.claude/settings.json`에 lifecycle hook을 등록한다. Claude Code의 `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, `Stop` hook은 Codex와 같은 공통 CLI/core를 호출하지만 output shape은 host에 맞춘다. Claude Code는 `systemMessage`와 model-facing `hookSpecificOutput.additionalContext`를 분리해 쓸 수 있으므로 지원 이벤트에서 readable view와 compact hint를 함께 유지할 수 있다. `PreToolUse`와 `PostToolUse`는 Claude hook matcher `*`로 모든 tool 이벤트를 받지만, PreToolUse는 기본적으로 차단하지 않고 PostToolUse는 성공한 mutating 이벤트만 근거로 관련 파일을 queue에 남긴다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in 없이 `.claude/settings.json`을 target repo에 만들지 않는다.
 
 ---
 

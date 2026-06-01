@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestInitDraftWikiCreatesReviewStaging(t *testing.T) {
@@ -134,7 +135,8 @@ target_type: "notes"
 	if confirmed.LLMWikiRoot != filepath.Join(hub, "topics", "agent-harness") {
 		t.Fatalf("LLMWikiRoot=%q", confirmed.LLMWikiRoot)
 	}
-	if confirmed.LLMWikiRawPath == "" || !strings.HasSuffix(confirmed.LLMWikiRawPath, "raw/notes/2026-05-31-candidate.md") {
+	wantRawSuffix := filepath.ToSlash(filepath.Join("raw", "notes", time.Now().Format(time.DateOnly)+"-candidate.md"))
+	if confirmed.LLMWikiRawPath == "" || !strings.HasSuffix(filepath.ToSlash(confirmed.LLMWikiRawPath), wantRawSuffix) {
 		t.Fatalf("unexpected raw path: %+v", confirmed)
 	}
 	raw, err := os.ReadFile(confirmed.LLMWikiRawPath)
@@ -212,7 +214,8 @@ EOF
 	if !strings.Contains(result.Command, fakeAgy+" -p") {
 		t.Fatalf("expected agy print command, got %q", result.Command)
 	}
-	if _, err := os.Stat(filepath.Join(root, DraftWikiDir, "draft", "2026-05-31-hook-policy-memory.md")); err != nil {
+	wantDraftName := time.Now().Format(time.DateOnly) + "-hook-policy-memory.md"
+	if _, err := os.Stat(filepath.Join(root, DraftWikiDir, "draft", wantDraftName)); err != nil {
 		t.Fatalf("draft file missing: %v", err)
 	}
 }

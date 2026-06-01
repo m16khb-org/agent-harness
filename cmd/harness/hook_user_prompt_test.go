@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func hookTempRepoWithDoc(t *testing.T) string {
@@ -211,7 +212,8 @@ EOF
 	if processed["processed"] != float64(1) || processed["succeeded"] != float64(1) {
 		t.Fatalf("worker did not process queued draft-wiki item: %+v", processed)
 	}
-	if _, err := os.Stat(filepath.Join(repo, ".agent-harness", "draft-wiki", "draft", "2026-05-31-hook-queued-draft.md")); err != nil {
+	wantDraftName := time.Now().Format(time.DateOnly) + "-hook-queued-draft.md"
+	if _, err := os.Stat(filepath.Join(repo, ".agent-harness", "draft-wiki", "draft", wantDraftName)); err != nil {
 		t.Fatalf("draft-wiki draft file missing after hook+worker: %v", err)
 	}
 }

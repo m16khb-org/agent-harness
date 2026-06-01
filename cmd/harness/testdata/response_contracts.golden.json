@@ -353,7 +353,7 @@
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 6611,
+          "bytes": 6678,
           "headings": [
             "Agent Workflow",
             "Start",
@@ -394,7 +394,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 9816,
+          "bytes": 9911,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -451,7 +451,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 17358,
+          "bytes": 17434,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -495,7 +495,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 22730,
+          "bytes": 22781,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -1994,7 +1994,7 @@
       "entries": [
         {
           "base_seed": 600,
-          "bytes": 924,
+          "bytes": 923,
           "elapsed_ms": 1100,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -2019,7 +2019,7 @@
         },
         {
           "base_seed": 600,
-          "bytes": 924,
+          "bytes": 923,
           "elapsed_ms": 1000,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -2990,7 +2990,7 @@
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 6611,
+                "bytes": 6678,
                 "headings": [
                   "Agent Workflow",
                   "Start",
@@ -3031,7 +3031,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 9816,
+                "bytes": 9911,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3088,7 +3088,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 17358,
+                "bytes": 17434,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -3132,7 +3132,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 22730,
+                "bytes": 22781,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -4575,7 +4575,7 @@
             "entries": [
               {
                 "base_seed": 600,
-                "bytes": 924,
+                "bytes": 923,
                 "elapsed_ms": 1100,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -4600,7 +4600,7 @@
               },
               {
                 "base_seed": 600,
-                "bytes": 924,
+                "bytes": 923,
                 "elapsed_ms": 1000,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -4733,13 +4733,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -4804,13 +4804,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -4861,13 +4861,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 923,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"

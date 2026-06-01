@@ -169,7 +169,7 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - Kind: `caution`
 - Source: codex/claude runtime evidence
 - Summary: Codex 0.135.0 and Claude Code 2.1.158 both expose PreToolUse, but the hook runs before every matched tool call and can block or rewrite execution. Keep agent-harness PreToolUse host stdout as `{}` by default and expose only raw `--json` diagnostics until a deterministic policy has host-schema tests and false-positive coverage.
-- Do not record lifecycle upkeep from PreToolUse; the tool may not succeed. Use PostToolUse for observed successful changes.
+- Do not record lifecycle upkeep from PreToolUse; the tool may not succeed. Use PostToolUse only for observed successful mutating changes, not read-only searches whose output happens to mention lifecycle-relevant paths.
 
 ## 2026-05-31 — Do not patch upstream companion plugin caches
 
