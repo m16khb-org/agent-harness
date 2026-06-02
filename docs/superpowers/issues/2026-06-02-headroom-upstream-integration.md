@@ -29,9 +29,6 @@ Headroom을 하네스 core나 hook에 넣지 않고, 명시적 upstream sync 경
 - Codex/Claude 요청을 Headroom proxy나 wrapper로 자동 라우팅하지 않는다.
 - repo-local Headroom 설정을 만들지 않는다.
 
-## 계획 링크
-
-`docs/superpowers/plans/2026-06-02-headroom-upstream-integration.md`
 
 ## 원격 이슈
 
