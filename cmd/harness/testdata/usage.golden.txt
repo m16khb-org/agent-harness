@@ -29,6 +29,7 @@ Usage:
   agent-harness issueops pr-readiness --id ID [--json]
   agent-harness issueops benchmark run --fixtures PATH [--judge none|agy] [--agy-command PATH] [--json]
   agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
+  agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]
   agent-harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
   agent-harness hook user-prompt|pre-tool-use|post-tool-use|pre-compact|post-compact|session-start|stop [--json]
   agent-harness project bootstrap [--repo PATH] [--sync] [--dry-run] [--json]

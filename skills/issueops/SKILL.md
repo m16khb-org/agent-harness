@@ -108,6 +108,19 @@ For short or narrow reviews, prefer `verifier` or a direct bounded review over `
 
 When handling remote PR/MR review feedback, first verify each reviewer claim against the diff, code, and commands before changing files. Apply only confirmed fixes, then reply in the original review thread with the commit and verification evidence.
 
+When the user asks only for review-validity verification, do not end with a bare conclusion such as "the next step is to add tests and fix it." After the evidence-based verdict, explicitly present the available next actions so the user can choose or confirm direction. Include one recommended action, one narrower/safer alternative, and one stop/defer option when applicable. Example:
+
+```text
+검증 결론: 두 리뷰 모두 타당합니다.
+
+선택지:
+1. 진행: 테스트를 먼저 추가하고 두 결함을 수정합니다. (추천)
+2. 축소 진행: target dimension 검증만 먼저 수정하고 path separator는 별도 PR로 분리합니다.
+3. 보류: 현재 PR에는 수정하지 않고 리뷰 스레드에 검증 결과만 답변합니다.
+
+제가 추천하는 건 1번입니다. 진행할까요?
+```
+
 For GitHub inline review comments, replying to a thread is not the same as resolving it. If branch protection requires conversation resolution, query review threads and resolve the fixed ones after the correction is pushed:
 
 ```bash
@@ -157,6 +170,14 @@ agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --jud
 ```
 
 The benchmark passes only when every fixture has `average_score: 100`, `minimum_score: 100`, and `critical_failure_count: 0`. Use `--judge agy` for the real LLM gate when Antigravity quota is available; use `--judge none` only for deterministic local evidence.
+
+Run the autoresearch keep/discard gate for IssueOps improvement candidates:
+
+```bash
+agent-harness issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CANDIDATE_ID" --candidate-file candidate.json --changed-path skills/issueops/SKILL.md --json
+```
+
+The candidate file records the hypothesis, target dimensions, edit surface, and keep/discard criteria. The gate keeps a candidate only when the candidate benchmark passes, baseline comparison has no regression, target dimensions do not regress, and every changed path is inside the declared edit surface.
 
 ## Issue Template
 
