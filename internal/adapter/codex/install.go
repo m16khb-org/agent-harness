@@ -88,10 +88,17 @@ func patchCodexPluginHookCompatibility(req port.NativeInstallRequest) ([]port.In
 		{
 			Kind: "codex_plugin_hook_compat_claude_mem",
 			Globs: []string{
+				filepath.Join(req.CodexHome, "plugins", "cache", "*", "claude-mem", "*", "hooks", "codex-hooks.json"),
 				filepath.Join(req.CodexHome, "plugins", "cache", "*", "claude-mem", "*", "scripts", "worker-service.cjs"),
 				filepath.Join(req.CodexHome, "plugins", "cache", "*", "claude-mem", "*", "scripts", "worker-cli.js"),
 			},
 			Replacements: []textReplacement{
+				{Old: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" start`, New: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" start || true`},
+				{Old: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex context`, New: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex context || true`},
+				{Old: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex session-init`, New: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex session-init || true`},
+				{Old: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex file-context`, New: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex file-context || true`},
+				{Old: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex observation`, New: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex observation || true`},
+				{Old: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex summarize`, New: `node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex summarize || true`},
 				{Old: "function fZ(t,e){return{continue:!0,suppressOutput:!0,status:t,...e&&{message:e}}}", New: "function fZ(t,e){return{continue:!0,...e&&{systemMessage:e}}}"},
 				{Old: "{continue:!0,suppressOutput:!0}", New: "{continue:!0}"},
 				{Old: ",suppressOutput:!0", New: ""},

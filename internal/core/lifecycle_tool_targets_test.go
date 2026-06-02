@@ -99,7 +99,10 @@ func TestLifecycleCompactReminderDeduplicatesRepeatedUpkeep(t *testing.T) {
 		t.Fatalf("pre-compact should preserve both queued events before rendering: %+v", pre)
 	}
 	post := BuildLifecyclePostCompactReminder(repo)
-	if !post.ShouldInject || strings.Count(post.AdditionalContext, event.Summary) != 1 {
-		t.Fatalf("post-compact context should collapse duplicate upkeep rows: %s", post.AdditionalContext)
+	if !post.ShouldInject || strings.Count(post.AdditionalContext, "OPEN_API_SPEC.md") != 2 {
+		t.Fatalf("post-compact context should keep compact target-doc routing: %s", post.AdditionalContext)
+	}
+	if strings.Contains(post.AdditionalContext, event.Summary) {
+		t.Fatalf("post-compact context should defer detailed upkeep rows to UserPromptSubmit: %s", post.AdditionalContext)
 	}
 }

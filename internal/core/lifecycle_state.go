@@ -695,16 +695,13 @@ func renderLifecycleCompactContext(capsule LifecycleCompactCapsule) string {
 		b.WriteString("\n")
 	}
 	if len(capsule.PendingDocUpkeep) > 0 {
-		b.WriteString("- Pending doc upkeep preserved across compaction:\n")
-		for _, event := range uniqueDocUpkeepEvents(capsule.PendingDocUpkeep) {
-			b.WriteString("  - ")
-			if len(event.TargetDocs) > 0 {
-				b.WriteString(strings.Join(event.TargetDocs, ", "))
-				b.WriteString(": ")
-			}
-			b.WriteString(event.Summary)
-			b.WriteString("\n")
+		b.WriteString("- Pending doc upkeep preserved across compaction")
+		docs := docsFromDocUpkeepEvents(capsule.PendingDocUpkeep)
+		if len(docs) > 0 {
+			b.WriteString(": ")
+			b.WriteString(strings.Join(docs, ", "))
 		}
+		b.WriteString(". UserPromptSubmit will keep surfacing the current details until the queue is resolved.\n")
 	}
 	b.WriteString("Use this as routing context only; read/update project docs when the resumed task touches the listed areas.")
 	return strings.TrimSpace(b.String())

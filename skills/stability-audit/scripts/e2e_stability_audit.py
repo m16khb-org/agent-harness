@@ -267,6 +267,7 @@ def daemon_and_mcp_stress(report: dict[str, Any], cycles: int) -> None:
             proc.stdin.write(json.dumps(call) + "\n")
             proc.stdin.flush()
         proc.stdin.close()
+        proc.stdin = None
         out, err = proc.communicate(timeout=15)
         ids = []
         rpc_errors = []

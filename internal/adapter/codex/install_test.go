@@ -116,6 +116,8 @@ return{continue:!0,suppressOutput:!0,exitCode:Ke.SUCCESS}
 `)
 	workerCLIPath := filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "13.4.0", "scripts", "worker-cli.js")
 	writeFile(t, workerCLIPath, `var O='{"continue": true, "suppressOutput": true}';`)
+	codexHooksPath := filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "13.4.0", "hooks", "codex-hooks.json")
+	writeFile(t, codexHooksPath, `{"hooks":{"PostToolUse":[{"hooks":[{"command":"node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex observation"}]}]}}`)
 
 	result, err := NewInstaller().Install(req)
 	if err != nil {
@@ -124,7 +126,7 @@ return{continue:!0,suppressOutput:!0,exitCode:Ke.SUCCESS}
 	if !result.OK {
 		t.Fatalf("installer ok=false: %+v", result)
 	}
-	for _, path := range []string{workerServicePath, workerCLIPath} {
+	for _, path := range []string{workerServicePath, workerCLIPath, codexHooksPath} {
 		b, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -134,6 +136,9 @@ return{continue:!0,suppressOutput:!0,exitCode:Ke.SUCCESS}
 			if strings.Contains(text, unsupported) {
 				t.Fatalf("unsupported Codex hook output field %q was not patched in %s:\n%s", unsupported, path, text)
 			}
+		}
+		if path == codexHooksPath && !strings.Contains(text, `hook codex observation || true`) {
+			t.Fatalf("Codex claude-mem hook command was not made non-blocking in %s:\n%s", path, text)
 		}
 		if !exists(path + ".harness.bak") {
 			t.Fatalf("backup missing for patched plugin file: %s", path)

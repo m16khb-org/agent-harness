@@ -261,10 +261,13 @@ func TestLifecycleCompactCapsulePreservesPendingUpkeep(t *testing.T) {
 	if !post.OK || !post.ShouldInject || post.PendingCount != 1 {
 		t.Fatalf("unexpected post-compact result: %+v", post)
 	}
-	for _, want := range []string{"Restored agent-harness compaction capsule", "OPERATIONS.md", "TESTING.md", "Hook and tests changed."} {
+	for _, want := range []string{"Restored agent-harness compaction capsule", "OPERATIONS.md", "TESTING.md", "UserPromptSubmit will keep surfacing the current details"} {
 		if !strings.Contains(post.AdditionalContext, want) {
 			t.Fatalf("post-compact context missing %q: %s", want, post.AdditionalContext)
 		}
+	}
+	if strings.Contains(post.AdditionalContext, "Hook and tests changed.") {
+		t.Fatalf("post-compact should not duplicate detailed pending-upkeep summaries:\n%s", post.AdditionalContext)
 	}
 	if _, err := os.Stat(pre.CompactPath); !os.IsNotExist(err) {
 		t.Fatalf("post-compact should consume compact capsule, stat error: %v", err)

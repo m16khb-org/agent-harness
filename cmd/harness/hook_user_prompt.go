@@ -299,11 +299,8 @@ func runHookPostCompact(args []string) error {
 	cat := core.BuildProjectDocCatalogContext(parsedRepo)
 	if hostOf(hostFlag) == "codex" {
 		context := strings.TrimSpace(result.AdditionalContext)
-		if cat.ShouldInject {
+		if context == "" && cat.ShouldInject {
 			context = strings.TrimSpace(cat.UserView)
-			if strings.TrimSpace(result.AdditionalContext) != "" {
-				context = strings.TrimSpace(result.AdditionalContext) + "\n" + context
-			}
 		}
 		if context == "" {
 			return printJSON(map[string]any{})
