@@ -135,10 +135,41 @@ When handling remote PR/MR review feedback, first verify each reviewer claim aga
 
 The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Run the Korean Remote Artifact Gate before every remote issue body edit.
 
-When the user asks only for review-validity verification, do not end with a bare conclusion such as "the next step is to add tests and fix it." After the evidence-based verdict, explicitly present the available next actions so the user can choose or confirm direction. Include one recommended action, one narrower/safer alternative, and one stop/defer option when applicable. Example:
+When the user asks only for review-validity verification, verify each remote review claim against the diff, code, and commands, then reply in the original review thread with the verdict before reporting back to the user. Each thread reply must say whether the review is `타당` or `타당하지 않음`, cite the concrete evidence, and state the next action. Do not leave a bare local conclusion such as "the next step is to add tests and fix it."
+
+If the verdict is `타당` and the user chooses or instructs the recommended proceed option, continue the loop instead of stopping at validation: add focused tests when the change is behavioral, apply the confirmed fix, run the relevant verification, commit, push the PR/MR branch, and reply again in the original review thread with the commit and verification evidence. If the user has not chosen a proceed option yet, present numbered choices and wait.
+
+For GitHub inline review comments, reply to the original review comment:
+
+```bash
+gh api "repos/$OWNER/$REPO/pulls/comments/$COMMENT_ID/replies" -f body="$BODY"
+```
+
+For GitLab merge request discussions, reply to the original discussion thread:
+
+```bash
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID/notes" -f body="$BODY"
+```
+
+The reply must be in the review thread/discussion, not only in the PR/MR summary, issue body, local notes, or final chat response.
+
+Use this thread reply shape:
+
+```text
+타당성: 타당
+
+근거:
+- <파일:라인 또는 명령 결과 근거>
+- <계약/테스트 근거>
+
+다음 조치: <수정 진행|별도 PR 분리|보류 사유>
+```
+
+When reporting back to the user after posting thread replies, include the evidence-based verdict and explicitly present the available next actions as numbered choices so the user can choose or confirm direction. Use `1.`, `2.`, `3.` choices, not an unstructured paragraph. Include one recommended action, one narrower/safer alternative, and one stop/defer option when applicable. Example:
 
 ```text
 검증 결론: 두 리뷰 모두 타당합니다.
+스레드 답변: 각 리뷰 스레드에 타당성, 근거, 다음 조치를 답글로 남겼습니다.
 
 선택지:
 1. 진행: 테스트를 먼저 추가하고 두 결함을 수정합니다. (추천)
@@ -148,14 +179,24 @@ When the user asks only for review-validity verification, do not end with a bare
 제가 추천하는 건 1번입니다. 진행할까요?
 ```
 
-For GitHub inline review comments, replying to a thread is not the same as resolving it. If branch protection requires conversation resolution, query review threads and resolve the fixed ones after the correction is pushed:
+Replying to a review thread is not the same as resolving it. After a valid review is fixed, verified, committed, pushed, and answered with evidence, resolve the addressed conversation/discussion on the provider before reporting that review feedback is cleared.
+
+For GitHub inline review comments, query review threads and resolve the fixed ones after the correction is pushed:
 
 ```bash
 gh api graphql -f owner="$OWNER" -f repo="$REPO" -F number="$PR_NUMBER" -f query='query($owner:String!, $repo:String!, $number:Int!) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { id isResolved isOutdated path } } } } }'
 gh api graphql -f threadId="$THREAD_ID" -f query='mutation($threadId:ID!) { resolveReviewThread(input:{threadId:$threadId}) { thread { id isResolved } } }'
 ```
 
-Resolve only threads whose feedback has actually been addressed or is obsolete for a verified reason. After resolving, re-check `reviewThreads` and PR/MR readiness; do not claim merge blockage is cleared until unresolved required conversations are gone and the host reports a clean merge state.
+For GitLab merge request discussions, list discussions, resolve only the addressed discussion, and re-check the discussion state:
+
+```bash
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"
+glab api --method PUT "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID" -f resolved=true
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID"
+```
+
+Resolve only threads/discussions whose feedback has actually been addressed or is obsolete for a verified reason. After resolving, re-check GitHub `reviewThreads` or GitLab MR discussions and PR/MR readiness; do not claim merge blockage is cleared until unresolved required conversations are gone and the host reports a clean merge state.
 
 ## State Commands
 
