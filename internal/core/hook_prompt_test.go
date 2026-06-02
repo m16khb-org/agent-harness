@@ -72,7 +72,7 @@ func TestBuildUserPromptMCPHintsCompanionToolsStaySecondary(t *testing.T) {
 	if projectIndex < 0 || companionIndex < 0 || projectIndex > companionIndex {
 		t.Fatalf("expected project banner before companion hints:\n%s", got.AdditionalContext)
 	}
-	if !strings.Contains(got.AdditionalContext, "CodeGraph for symbol/call-impact lookup") {
+	if !strings.Contains(got.AdditionalContext, "CodeGraph for structural lookup; rg for exact strings") {
 		t.Fatalf("expected CodeGraph secondary hint:\n%s", got.AdditionalContext)
 	}
 }

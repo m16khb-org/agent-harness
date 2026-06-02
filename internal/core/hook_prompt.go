@@ -86,7 +86,7 @@ var hookRoutingRules = []HookRoutingRule{
 	},
 	{
 		Tool:          "CodeGraph",
-		Reason:        "Secondary hint: consider CodeGraph for repo-local symbol, call graph, impact, or trace questions.",
+		Reason:        "Secondary hint: use CodeGraph for repo-local symbol, call graph, impact, or trace questions; keep rg for exact strings, env keys, errors, and filenames.",
 		Priority:      hintPrioritySecondary,
 		LowerKeywords: []string{"codegraph", "symbol", "call graph", "impact", "trace", "caller", "callee"},
 	},
@@ -332,7 +332,7 @@ func compactHintLabel(h HookUserPromptHint) string {
 	case "issueops":
 		return "issueops issue-driven workflow; hooks must not create issues or PRs"
 	case "CodeGraph":
-		return "CodeGraph for symbol/call-impact lookup"
+		return "CodeGraph for structural lookup; rg for exact strings"
 	case "LLM Wiki":
 		return "LLM Wiki for explicit wiki/research work"
 	case "claude-mem":

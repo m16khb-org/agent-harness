@@ -65,8 +65,8 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 			t.Fatalf("%s appears %d times, want 1:\n%s", subcommand, count, string(hooks))
 		}
 	}
-	if strings.Contains(string(hooks), "hook pre-tool-use --enforce-codegraph-search") {
-		t.Fatalf("Codex installer must not enable blocking CodeGraph enforcement by default:\n%s", string(hooks))
+	if strings.Contains(string(hooks), "hook pre-tool-use --enforce-search-routing") {
+		t.Fatalf("Codex installer must not enable blocking search routing enforcement by default:\n%s", string(hooks))
 	}
 }
 

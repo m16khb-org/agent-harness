@@ -134,7 +134,7 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	if !strings.Contains(preToolUse, "hook pre-tool-use --host claude") {
 		t.Fatalf("PreToolUse should preserve Claude host schema: %s", preToolUse)
 	}
-	if strings.Contains(preToolUse, "--enforce-codegraph-search") {
-		t.Fatalf("PreToolUse must not enable blocking CodeGraph enforcement by default: %s", preToolUse)
+	if strings.Contains(preToolUse, "--enforce-search-routing") {
+		t.Fatalf("PreToolUse must not enable blocking search routing enforcement by default: %s", preToolUse)
 	}
 }
