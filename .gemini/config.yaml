@@ -7,12 +7,14 @@ code_review:
   max_review_comments: -1
   pull_request_opened:
     help: false
-    summary: true
+    summary: false
     code_review: true
     include_drafts: true
 ignore_patterns:
   - "bin/**"
   - "evidence/**"
+  - "coverage/**"
+  - "tmp/**"
   - ".agent-harness/draft-wiki/**"
   - ".codegraph/**"
   - ".harness/**"
@@ -21,3 +23,5 @@ ignore_patterns:
   - "**/node_modules/**"
   - "**/*.golden.tmp"
   - "**/*.log"
+  - "**/dist/**"
+  - "**/build/**"
