@@ -158,6 +158,14 @@ agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --jud
 
 The benchmark passes only when every fixture has `average_score: 100`, `minimum_score: 100`, and `critical_failure_count: 0`. Use `--judge agy` for the real LLM gate when Antigravity quota is available; use `--judge none` only for deterministic local evidence.
 
+Run the autoresearch keep/discard gate for IssueOps improvement candidates:
+
+```bash
+agent-harness issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CANDIDATE_ID" --candidate-file candidate.json --changed-path skills/issueops/SKILL.md --json
+```
+
+The candidate file records the hypothesis, target dimensions, edit surface, and keep/discard criteria. The gate keeps a candidate only when the candidate benchmark passes, baseline comparison has no regression, target dimensions do not regress, and every changed path is inside the declared edit surface.
+
 ## Issue Template
 
 Use this structure unless the target project already has a stronger issue template:
