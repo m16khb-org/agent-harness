@@ -208,6 +208,17 @@ func TestRunHookPreToolUseHostJSONBlocksWhenCodeGraphEnforced(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseAllowsExternalSearchWhenCodeGraphEnforced(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Bash","tool_input":{"command":"grep -R \"PostToolUse\" -n /Applications/Codex.app/Contents/Resources"}}`, func() error {
+		return runHookPreToolUse([]string{"--enforce-codegraph-search", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected external binary/app search to remain allowed, got %+v", obj)
+	}
+}
+
 func TestRunHookPreToolUseClaudeHostUsesPermissionDecision(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -278,6 +289,17 @@ EOF
 	wantDraftName := time.Now().Format(time.DateOnly) + "-hook-queued-draft.md"
 	if _, err := os.Stat(filepath.Join(repo, ".agent-harness", "draft-wiki", "draft", wantDraftName)); err != nil {
 		t.Fatalf("draft-wiki draft file missing after hook+worker: %v", err)
+	}
+}
+
+func TestRunHookPostToolUseEmitsCodexCompatibleNoopJSON(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Bash","tool_input":{"command":"true"},"tool_response":"ok"}`, func() error {
+		return runHookPostToolUse(nil)
+	})
+	if len(obj) != 0 {
+		t.Fatalf("PostToolUse host output must be a no-op object, got %+v", obj)
 	}
 }
 

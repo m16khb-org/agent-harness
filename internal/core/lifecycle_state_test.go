@@ -183,6 +183,19 @@ func TestPreToolUseCodeGraphPolicyAllowsDocsLiteralCodeNames(t *testing.T) {
 	}
 }
 
+func TestPreToolUseCodeGraphPolicyAllowsExternalAbsoluteTargets(t *testing.T) {
+	repo := t.TempDir()
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:                   repo,
+		Tool:                   "Bash",
+		Command:                `grep -R "PostToolUse" -n /Applications/Codex.app/Contents/Resources`,
+		EnforceCodeGraphSearch: true,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected external absolute target search to be allowed: %+v", got)
+	}
+}
+
 func TestRecordLifecycleToolUseQueuesRelevantDocUpkeep(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

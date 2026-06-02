@@ -214,7 +214,7 @@ func runHookPostToolUse(args []string) error {
 		Source:  "post-tool-use",
 	})
 	if err != nil {
-		return err
+		result = core.HookToolUseLifecycleResult{OK: false, Warnings: []string{"lifecycle_record_error:" + err.Error()}}
 	}
 	var draftQueue *core.DraftWikiQueueAppendResult
 	draftMaterial := draftWikiMaterialFromHookInput(stdin)
@@ -243,11 +243,10 @@ func runHookPostToolUse(args []string) error {
 		}
 		return printJSON(out)
 	}
-	return printJSON(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName": "PostToolUse",
-		},
-	})
+	// Codex PostToolUse is on the critical path after every tool call and does
+	// not need to inject context. Keep host stdout in the broad no-op schema so
+	// lifecycle bookkeeping can never surface as a hook failure in the UI.
+	return printJSON(map[string]any{})
 }
 
 func runHookPreCompact(args []string) error {

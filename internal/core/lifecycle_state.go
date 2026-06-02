@@ -425,14 +425,14 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
-	if req.EnforceCodeGraphSearch && shouldBlockNonCodeGraphSourceSearch(result.Tool, result.Command) {
+	if req.EnforceCodeGraphSearch && shouldBlockNonCodeGraphSourceSearch(result.Tool, result.Command, req.Repo) {
 		result.Decision = "block"
 		result.Reason = "Use CodeGraph first for repo-local source search: call codegraph_context for broad areas, codegraph_search for symbols, or codegraph_trace for call paths. Raw grep/rg is reserved for docs, golden fixtures, or literal evidence after CodeGraph is insufficient."
 	}
 	return result
 }
 
-func shouldBlockNonCodeGraphSourceSearch(tool string, command string) bool {
+func shouldBlockNonCodeGraphSourceSearch(tool string, command string, repo string) bool {
 	if !isShellTool(tool) {
 		return false
 	}
@@ -444,7 +444,7 @@ func shouldBlockNonCodeGraphSourceSearch(tool string, command string) bool {
 	if !ok {
 		return false
 	}
-	return sourceSearchNeedsCodeGraph(searchArgs)
+	return sourceSearchNeedsCodeGraph(searchArgs, repo)
 }
 
 func isShellTool(tool string) bool {
@@ -476,7 +476,7 @@ func searchTokenName(token string) string {
 	return filepath.Base(cleaned)
 }
 
-func sourceSearchNeedsCodeGraph(args []string) bool {
+func sourceSearchNeedsCodeGraph(args []string, repo string) bool {
 	targets := []string{}
 	for _, arg := range args {
 		target := searchTargetToken(arg)
@@ -494,9 +494,39 @@ func sourceSearchNeedsCodeGraph(args []string) bool {
 		if isDocsOrFixtureTarget(target) {
 			continue
 		}
+		if !isRepoLocalSearchTarget(target, repo) {
+			continue
+		}
 		return true
 	}
 	return false
+}
+
+func isRepoLocalSearchTarget(target string, repo string) bool {
+	cleaned := strings.TrimSpace(target)
+	if cleaned == "" {
+		return true
+	}
+	if !filepath.IsAbs(cleaned) {
+		return true
+	}
+	root := strings.TrimSpace(repo)
+	if root == "" {
+		return false
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	absTarget, err := filepath.Abs(cleaned)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(absRoot, absTarget)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, "../"))
 }
 
 func searchTargetToken(token string) string {

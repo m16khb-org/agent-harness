@@ -131,7 +131,10 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 		}
 	}
 	preToolUse := hooks["PreToolUse"].([]any)[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
-	if !strings.Contains(preToolUse, "hook pre-tool-use --host claude --enforce-codegraph-search") {
-		t.Fatalf("PreToolUse should enforce CodeGraph with Claude host schema: %s", preToolUse)
+	if !strings.Contains(preToolUse, "hook pre-tool-use --host claude") {
+		t.Fatalf("PreToolUse should preserve Claude host schema: %s", preToolUse)
+	}
+	if strings.Contains(preToolUse, "--enforce-codegraph-search") {
+		t.Fatalf("PreToolUse must not enable blocking CodeGraph enforcement by default: %s", preToolUse)
 	}
 }

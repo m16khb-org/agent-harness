@@ -169,7 +169,7 @@ func claudeHookGroup(spec claudeLifecycleHookSpec) map[string]any {
 func claudeHookCommand(binPath, subcommand string) string {
 	cmd := fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
 	if subcommand == "pre-tool-use" {
-		cmd += " --host claude --enforce-codegraph-search"
+		cmd += " --host claude"
 	}
 	return cmd
 }

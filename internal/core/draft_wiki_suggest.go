@@ -220,7 +220,7 @@ Source material:
 }
 
 func writeSuggestedDraft(root, title, targetWiki, targetType, agyModel, output string) (string, error) {
-	body := strings.TrimSpace(stripMarkdownFence(output))
+	body := strings.TrimSpace(stripAgyOutputPreamble(stripMarkdownFence(output)))
 	if body == "" {
 		return "", fmt.Errorf("agy output was empty")
 	}
@@ -282,6 +282,19 @@ func stripMarkdownFence(output string) string {
 		return trimmed
 	}
 	return strings.Join(lines[1:len(lines)-1], "\n")
+}
+
+func stripAgyOutputPreamble(output string) string {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	for len(lines) > 0 {
+		line := strings.TrimSpace(lines[0])
+		if line == "" || strings.HasPrefix(line, "ULTRAWORK MODE ENABLED") {
+			lines = lines[1:]
+			continue
+		}
+		break
+	}
+	return strings.Join(lines, "\n")
 }
 
 var draftWikiSlugInvalid = regexp.MustCompile(`[^a-z0-9]+`)

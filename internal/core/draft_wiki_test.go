@@ -221,6 +221,58 @@ EOF
 	}
 }
 
+func TestSuggestDraftWikiStripsAgyModeBanner(t *testing.T) {
+	root := t.TempDir()
+	input := filepath.Join(root, "memory.md")
+	mustWrite(t, input, "Hook policy should stay bookkeeping-only.\n")
+	configPath := filepath.Join(root, "agy-settings.json")
+	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
+	fakeAgy := filepath.Join(root, "fake-agy.sh")
+	mustWrite(t, fakeAgy, `#!/bin/sh
+cat <<'EOF'
+ULTRAWORK MODE ENABLED!
+
+---
+title: "Banner-safe draft"
+source: "claude-mem"
+target_wiki: "agent-harness"
+target_type: "notes"
+summary: "Agy mode banners are not part of the draft."
+---
+
+# Banner-safe draft
+
+The useful draft body remains.
+EOF
+`)
+	if err := os.Chmod(fakeAgy, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := SuggestDraftWiki(DraftWikiSuggestRequest{
+		RepoRoot:        root,
+		InputPath:       input,
+		TargetWiki:      "agent-harness",
+		AgyCommand:      fakeAgy,
+		AgyModel:        "Gemini 3.5 Flash (High)",
+		AgySettingsPath: configPath,
+		Write:           true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Draft == nil || result.Draft.Title != "Banner-safe draft" || result.Draft.TargetWiki != "agent-harness" {
+		t.Fatalf("unexpected draft metadata after banner strip: %+v", result.Draft)
+	}
+	body, err := os.ReadFile(result.Draft.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(body), "ULTRAWORK MODE ENABLED") {
+		t.Fatalf("agy mode banner leaked into draft: %s", string(body))
+	}
+}
+
 func TestSuggestDraftWikiRejectsWrongAgyModel(t *testing.T) {
 	root := t.TempDir()
 	input := filepath.Join(root, "memory.md")
