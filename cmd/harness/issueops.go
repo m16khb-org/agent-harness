@@ -58,6 +58,8 @@ func runIssueOps(args []string) error {
 		return runIssueOpsFeedback(args[1:])
 	case "benchmark":
 		return runIssueOpsBenchmark(args[1:])
+	case "remote":
+		return runIssueOpsRemote(args[1:])
 	case "pr-readiness":
 		fs := flag.NewFlagSet("issueops pr-readiness", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
@@ -81,6 +83,68 @@ func runIssueOps(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops subcommand %q", args[0])
 	}
+}
+
+func runIssueOpsRemote(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("unknown issueops remote subcommand")
+	}
+	switch args[0] {
+	case "score":
+		fs := flag.NewFlagSet("issueops remote score", flag.ContinueOnError)
+		input := fs.String("input", "", "IssueOps remote scoring request JSON file")
+		judge := fs.String("judge", "agy", "judge backend: agy or none")
+		agyCommand := fs.String("agy-command", "agy", "agy command path")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		req, err := readIssueOpsRemoteScoringRequestFile(*input)
+		if err != nil {
+			return err
+		}
+		var result core.IssueOpsRemoteScoringResult
+		switch *judge {
+		case "agy":
+			result, err = core.RunIssueOpsRemoteAgyJudge(core.IssueOpsRemoteAgyJudgeRequest{
+				RepoRoot:   ".",
+				AgyCommand: *agyCommand,
+				Request:    req,
+			})
+		case "none":
+			result, err = core.ScoreIssueOpsRemoteCandidates(req)
+		default:
+			err = fmt.Errorf("unsupported issueops remote score judge %q", *judge)
+		}
+		if err != nil {
+			return err
+		}
+		if *jsonOut {
+			return printJSON(result)
+		}
+		fmt.Printf("provider=%s threshold=%.2f related_issues=%d labels=%d\n", result.Provider, result.Threshold, len(result.SelectedRelatedIssues), len(result.SelectedLabels))
+		for _, issue := range result.SelectedRelatedIssues {
+			fmt.Printf("- related issue: %s score=%.2f\n", formatIssueOpsRemoteIssueRef(issue), issue.Score)
+		}
+		for _, label := range result.SelectedLabels {
+			fmt.Printf("- label: %s score=%.2f\n", label.Name, label.Score)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
+	}
+}
+
+func formatIssueOpsRemoteIssueRef(issue core.IssueOpsRemoteScoredItem) string {
+	ref := firstNonEmptyMain(issue.ID, issue.URL)
+	title := strings.TrimSpace(issue.Title)
+	if title == "" {
+		return firstNonEmptyMain(ref, issue.Title)
+	}
+	if ref == "" {
+		return title
+	}
+	return fmt.Sprintf("%s (%s)", ref, title)
 }
 
 func runIssueOpsBenchmark(args []string) error {
@@ -201,6 +265,32 @@ func runIssueOpsBenchmark(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops benchmark subcommand %q", args[0])
 	}
+}
+
+func readIssueOpsRemoteScoringRequestFile(path string) (core.IssueOpsRemoteScoringRequest, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return core.IssueOpsRemoteScoringRequest{}, fmt.Errorf("input is required")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return core.IssueOpsRemoteScoringRequest{}, err
+	}
+	var req core.IssueOpsRemoteScoringRequest
+	if err := json.Unmarshal(b, &req); err != nil {
+		return core.IssueOpsRemoteScoringRequest{}, fmt.Errorf("parse input file %s: %w", path, err)
+	}
+	return req, nil
+}
+
+func firstNonEmptyMain(values ...string) string {
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 type repeatedFlag []string

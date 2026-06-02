@@ -313,8 +313,8 @@ func TestRunHookPostToolUseQueuesDraftWikiAndWorkerWritesDraft(t *testing.T) {
 	}
 	fakeAgy := filepath.Join(repo, "fake-agy.sh")
 	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh
-if [ "$1" != "-p" ]; then
-  echo "missing -p" >&2
+if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
+  echo "missing agy flags" >&2
   exit 2
 fi
 cat <<'EOF'

@@ -66,6 +66,45 @@ EOF
 	}
 }
 
+func TestIssueOpsAgyJudgeRetriesExternalLLMFailure(t *testing.T) {
+	dir := t.TempDir()
+	counter := filepath.Join(dir, "counter")
+	fake := filepath.Join(dir, "fake-agy.sh")
+	script := `#!/bin/sh
+if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
+  echo missing agy flags >&2
+  exit 2
+fi
+count=0
+if [ -f "$COUNTER_FILE" ]; then
+  count=$(cat "$COUNTER_FILE")
+fi
+count=$((count + 1))
+printf '%s' "$count" > "$COUNTER_FILE"
+if [ "$count" -eq 1 ]; then
+  echo transient failure >&2
+  exit 7
+fi
+cat <<'EOF'
+{"ok":true,"fixture_id":"fixture","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"retry ok"}],"deterministic_failures":[],"judge_failures":[],"critical_failures":[],"passed":true}
+EOF
+`
+	if err := os.WriteFile(fake, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("COUNTER_FILE", counter)
+
+	result, err := RunIssueOpsAgyJudge(IssueOpsAgyJudgeRequest{
+		RepoRoot:   t.TempDir(),
+		AgyCommand: fake,
+		Attempts:   2,
+		Fixture:    IssueOpsBenchmarkFixture{ID: "fixture"},
+	})
+	if err != nil || !result.OK {
+		t.Fatalf("expected retry to recover external LLM failure: result=%+v err=%v", result, err)
+	}
+}
+
 func TestIssueOpsAgyJudgeRejectsDimensionScoreObjectWithOutputEvidence(t *testing.T) {
 	output := `{"ok":true,"fixture_id":"fixture","average_score":100,"minimum_score":100,"dimension_scores":{"intent_understanding":{"score":100,"evidence":"object is invalid"}},"deterministic_failures":[],"judge_failures":[],"critical_failures":[],"passed":true}`
 	fake := writeFakeIssueOpsAgy(t, output)
@@ -106,7 +145,7 @@ func TestIssueOpsAgyJudgePromptRequiresDimensionScoresArray(t *testing.T) {
 func writeFakeIssueOpsAgy(t *testing.T, output string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "fake-agy.sh")
-	script := "#!/bin/sh\nif [ \"$1\" != \"-p\" ]; then echo missing -p >&2; exit 2; fi\ncat <<'EOF'\n" + output + "\nEOF\n"
+	script := "#!/bin/sh\nif [ \"$1\" != \"--dangerously-skip-permissions\" ] || [ \"$2\" != \"-p\" ]; then echo missing agy flags >&2; exit 2; fi\ncat <<'EOF'\n" + output + "\nEOF\n"
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
