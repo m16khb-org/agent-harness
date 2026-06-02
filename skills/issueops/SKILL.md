@@ -52,6 +52,14 @@ Default threshold is `0.70` unless the repo or user sets a stronger threshold. I
 
 The agent must propose the operational choice instead of leaving the user to invent it. For example, after validating a need, offer: "관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 agy judge, 실패 시 deterministic fallback으로 진행합니다."
 
+Bad remote-issue response:
+
+```text
+이슈를 만들겠습니다.
+```
+
+This is incomplete because it does not say whether related issues/labels will be scored, which judge/fallback will be used, what threshold controls selection, or what numbered choice the user can confirm.
+
 Only prepare a local issue draft instead of creating a remote issue when one of those values is unclear, credentials are unavailable, or the user explicitly asks not to create a remote issue.
 
 If the agent realizes it implemented before creating or linking the issue, it must stop implementation, create or link the issue if possible, record corrective feedback in IssueOps state, and then resume from the issue-linked plan.
@@ -179,6 +187,14 @@ When reporting back to the user after posting thread replies, include the eviden
 제가 추천하는 건 1번입니다. 진행할까요?
 ```
 
+Bad review-validity response:
+
+```text
+검증 결론: 두 리뷰 모두 실제 결함 또는 계약 누락으로 보는 게 맞고, 다음 단계는 테스트 추가 후 수정하는 것입니다.
+```
+
+This is incomplete because it does not say whether the verdict was posted in the original review threads, does not give numbered choices, and silently decides the next step instead of letting the user confirm direction.
+
 Replying to a review thread is not the same as resolving it. After a valid review is fixed, verified, committed, pushed, and answered with evidence, resolve the addressed conversation/discussion on the provider before reporting that review feedback is cleared.
 
 For GitHub inline review comments, query review threads and resolve the fixed ones after the correction is pushed:
@@ -220,6 +236,14 @@ Present cleanup choices in `1.`, `2.`, `3.` form:
 2. 보류: worktree는 유지하고 나중에 확인합니다.
 3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.
 ```
+
+Bad post-merge response:
+
+```text
+PR #14 머지 완료했습니다.
+```
+
+This is incomplete because it does not mention the remaining worktree/local branch, does not verify cleanup preconditions, and does not give the user numbered cleanup choices.
 
 Only run cleanup after the user chooses the proceed option or has explicitly instructed automatic cleanup. Before deleting, verify the target worktree is clean and the PR/MR is merged. Use:
 
