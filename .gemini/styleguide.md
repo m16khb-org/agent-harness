@@ -1,6 +1,6 @@
 # Gemini Code Assist Review Guide
 
-Use this guide when reviewing `m16khb/agent-harness` pull requests. Focus on concrete correctness, safety, and maintainability risks. Avoid generic style comments unless they hide a real defect or contract drift.
+Use this guide when reviewing `agent-harness` pull requests. Focus on concrete correctness, safety, and maintainability risks. Avoid generic style comments unless they hide a real defect or contract drift.
 
 ## Architecture Boundaries
 

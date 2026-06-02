@@ -29,7 +29,7 @@ git status --short
 Expected:
 
 ```text
-/Users/m16khb/Workspace/agent-harness.worktrees/feature-13-headroom-agent-harness-integration
+/tmp/agent-harness.worktrees/feature-13-headroom-agent-harness-integration
 feature/13-headroom-agent-harness-integration
 7f015f7
  M .agent-harness/ADR.md

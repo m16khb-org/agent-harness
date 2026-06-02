@@ -8,7 +8,7 @@
 
 **Tech Stack:** Go CLI, existing `internal/core` state directory conventions, JSONL files, focused Go unit tests and CLI smoke tests.
 
-**IssueOps Context:** Issue `https://github.com/m16khb/agent-harness/issues/1`; branch `feature/1-hook-failure-diagnostics`; worktree `/Users/m16khb/Workspace/agent-harness.worktrees/feature-1-hook-failure-diagnostics`.
+**IssueOps Context:** Issue `https://github.com/example/agent-harness/issues/1`; branch `feature/1-hook-failure-diagnostics`; worktree `/tmp/agent-harness.worktrees/feature-1-hook-failure-diagnostics`.
 
 ---
 
@@ -163,4 +163,4 @@ git rev-parse --short HEAD
 git status --short
 ```
 
-Expected: `pwd` is `/Users/m16khb/Workspace/agent-harness.worktrees/feature-1-hook-failure-diagnostics`, branch is `feature/1-hook-failure-diagnostics`, and only planned files are modified.
+Expected: `pwd` is `/tmp/agent-harness.worktrees/feature-1-hook-failure-diagnostics`, branch is `feature/1-hook-failure-diagnostics`, and only planned files are modified.
