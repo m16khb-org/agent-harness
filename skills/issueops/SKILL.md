@@ -137,13 +137,21 @@ The remote issue is the source of truth for IssueOps scope. If user feedback, re
 
 When the user asks only for review-validity verification, verify each remote review claim against the diff, code, and commands, then reply in the original review thread with the verdict before reporting back to the user. Each thread reply must say whether the review is `타당` or `타당하지 않음`, cite the concrete evidence, and state the next action. Do not leave a bare local conclusion such as "the next step is to add tests and fix it."
 
+If the verdict is `타당` and the user chooses or instructs the recommended proceed option, continue the loop instead of stopping at validation: add focused tests when the change is behavioral, apply the confirmed fix, run the relevant verification, commit, push the PR/MR branch, and reply again in the original review thread with the commit and verification evidence. If the user has not chosen a proceed option yet, present numbered choices and wait.
+
 For GitHub inline review comments, reply to the original review comment:
 
 ```bash
-gh api "repos/$OWNER/$REPO/pulls/comments/$COMMENT_ID/replies" -f body "$BODY"
+gh api "repos/$OWNER/$REPO/pulls/comments/$COMMENT_ID/replies" -f body="$BODY"
 ```
 
-For GitLab merge request discussions, add a note to the original discussion with the equivalent discussion/note API or `glab` command supported by the project. The reply must be in the review thread/discussion, not only in the PR/MR summary, issue body, local notes, or final chat response.
+For GitLab merge request discussions, reply to the original discussion thread:
+
+```bash
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID/notes" -f body="$BODY"
+```
+
+The reply must be in the review thread/discussion, not only in the PR/MR summary, issue body, local notes, or final chat response.
 
 Use this thread reply shape:
 
