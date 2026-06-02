@@ -179,14 +179,24 @@ When reporting back to the user after posting thread replies, include the eviden
 제가 추천하는 건 1번입니다. 진행할까요?
 ```
 
-For GitHub inline review comments, replying to a thread is not the same as resolving it. If branch protection requires conversation resolution, query review threads and resolve the fixed ones after the correction is pushed:
+Replying to a review thread is not the same as resolving it. After a valid review is fixed, verified, committed, pushed, and answered with evidence, resolve the addressed conversation/discussion on the provider before reporting that review feedback is cleared.
+
+For GitHub inline review comments, query review threads and resolve the fixed ones after the correction is pushed:
 
 ```bash
 gh api graphql -f owner="$OWNER" -f repo="$REPO" -F number="$PR_NUMBER" -f query='query($owner:String!, $repo:String!, $number:Int!) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { id isResolved isOutdated path } } } } }'
 gh api graphql -f threadId="$THREAD_ID" -f query='mutation($threadId:ID!) { resolveReviewThread(input:{threadId:$threadId}) { thread { id isResolved } } }'
 ```
 
-Resolve only threads whose feedback has actually been addressed or is obsolete for a verified reason. After resolving, re-check `reviewThreads` and PR/MR readiness; do not claim merge blockage is cleared until unresolved required conversations are gone and the host reports a clean merge state.
+For GitLab merge request discussions, list discussions, resolve only the addressed discussion, and re-check the discussion state:
+
+```bash
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"
+glab api --method PUT "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID" -f resolved=true
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID"
+```
+
+Resolve only threads/discussions whose feedback has actually been addressed or is obsolete for a verified reason. After resolving, re-check GitHub `reviewThreads` or GitLab MR discussions and PR/MR readiness; do not claim merge blockage is cleared until unresolved required conversations are gone and the host reports a clean merge state.
 
 ## State Commands
 
