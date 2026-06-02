@@ -223,7 +223,9 @@ For GitHub:
 ```bash
 gh pr view "$PR_NUMBER" --json state,mergedAt,headRefName,url
 git -C "$WORKTREE_PATH" status --short --branch
-git ls-remote --heads origin "$HEAD_REF_NAME"
+remote_name="$(git -C "$WORKTREE_PATH" remote | head -n 1)"
+git -C "$WORKTREE_PATH" fetch "$remote_name" --prune
+git -C "$WORKTREE_PATH" ls-remote --heads "$remote_name" "$HEAD_REF_NAME"
 ```
 
 For GitLab, use the equivalent `glab mr view` or GitLab API fields for merged state and source branch, then run the same local worktree and remote branch checks.
@@ -252,7 +254,16 @@ git worktree remove "$WORKTREE_PATH"
 git branch -d "$BRANCH_NAME"
 ```
 
-If the worktree is dirty, the PR/MR is not merged, or the branch contains unmerged commits, do not force-remove. Report the blocker and offer numbered choices.
+Do not use an unconditional fallback such as `git branch -d "$BRANCH_NAME" || git branch -D "$BRANCH_NAME"`. `git branch -d` may fail after squash or rebase merge because the local branch tip is not reachable from the updated base branch, but `git branch -D` can also delete genuinely unmerged local work. If `git branch -d` fails after the PR/MR is verified merged and the worktree is clean, report the reason and offer numbered choices:
+
+```text
+선택지:
+1. 강제 로컬 브랜치 삭제: PR/MR merge가 확인됐고 worktree가 clean이므로 `git branch -D`로 로컬 브랜치만 삭제합니다. (추천: squash/rebase merge로 `-d`만 실패한 경우)
+2. 보류: local branch를 유지하고 cleanup은 나중에 진행합니다.
+3. 추가 확인: branch commits, upstream/base ancestry, remote source branch 상태를 더 확인한 뒤 결정합니다.
+```
+
+If the worktree is dirty, the PR/MR is not merged, the remote source branch still exists unexpectedly, or the branch contains unmerged commits that are not explained by a verified squash/rebase merge, do not force-remove. Report the blocker and offer numbered choices.
 
 ## State Commands
 
