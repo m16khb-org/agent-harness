@@ -101,6 +101,8 @@ var issueOpsBenchmarkDimensions = []string{
 	"worktree_cleanup_quality",
 }
 
+const issueOpsBenchmarkMaxScore = 100.0
+
 func LoadIssueOpsBenchmarkFixtures(dir string) ([]IssueOpsBenchmarkFixture, error) {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
@@ -229,7 +231,7 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 		dimensionScore := 0.0
 		evidence := check.failure
 		if check.ok {
-			dimensionScore = 5
+			dimensionScore = issueOpsBenchmarkMaxScore
 			evidence = check.evidence
 		} else {
 			score.DeterministicFailures = append(score.DeterministicFailures, check.failure)
@@ -242,7 +244,7 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 	}
 	score.AverageScore, score.MinimumScore = summarizeIssueOpsDimensionScores(score.DimensionScores)
 	score.CriticalFailures = append(score.CriticalFailures, detectIssueOpsCriticalFailures(fixture, artifact)...)
-	score.Passed = len(score.CriticalFailures) == 0 && len(score.DeterministicFailures) == 0 && score.MinimumScore >= 5
+	score.Passed = len(score.CriticalFailures) == 0 && len(score.DeterministicFailures) == 0 && score.MinimumScore >= issueOpsBenchmarkMaxScore
 	score.OK = score.Passed
 	return score
 }
@@ -326,7 +328,7 @@ func MergeIssueOpsBenchmarkScoreWithJudge(deterministic, judge IssueOpsBenchmark
 		merged.JudgeFailures = append(merged.JudgeFailures, "judge returned no dimension scores")
 	}
 	merged.AverageScore, merged.MinimumScore = summarizeIssueOpsDimensionScores(merged.DimensionScores)
-	merged.Passed = len(merged.CriticalFailures) == 0 && len(merged.DeterministicFailures) == 0 && len(merged.JudgeFailures) == 0 && merged.MinimumScore >= 5
+	merged.Passed = len(merged.CriticalFailures) == 0 && len(merged.DeterministicFailures) == 0 && len(merged.JudgeFailures) == 0 && merged.MinimumScore >= issueOpsBenchmarkMaxScore
 	merged.OK = merged.Passed
 	return merged
 }

@@ -74,7 +74,7 @@ The first fixture set should cover at least:
 
 ## Scoring Model
 
-Each dimension is scored from 0 to 5.
+Each dimension is scored from 0 to 100.
 
 Required dimensions:
 

@@ -68,6 +68,15 @@ Check PR/MR readiness:
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
 ```
 
+Run the 100-point quality benchmark:
+
+```bash
+agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
+agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge agy --json
+```
+
+The benchmark passes only when every fixture has `average_score: 100`, `minimum_score: 100`, and `critical_failure_count: 0`. Use `--judge agy` for the real LLM gate when Antigravity quota is available; use `--judge none` only for deterministic local evidence.
+
 ## Issue Template
 
 Use this structure unless the target project already has a stronger issue template:

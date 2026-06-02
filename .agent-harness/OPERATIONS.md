@@ -98,7 +98,11 @@ agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" -
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
 agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
+agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
+agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge agy --json
 ```
+
+`issueops benchmark`는 100점 스케일을 사용한다. 통과 기준은 각 fixture와 dimension의 `minimum_score`가 `100`, `average_score`가 `100`, `critical_failure_count`가 `0`인 상태다. `--judge none`은 deterministic scorer만 실행하고, `--judge agy`는 Antigravity `agy -p` strict JSON judge를 추가로 호출한다. `agy`가 quota exhaustion으로 빈 stdout을 반환하면 real LLM 반복 검증은 quota reset 이후 재개한다.
 
 MCP에는 같은 의미의 `issueops_start`, `issueops_status`, `issueops_link_issue`, `issueops_link_plan`, `issueops_add_feedback`, `issueops_pr_readiness`가 있다. 상태 파일은 `HARNESS_STATE_DIR` 또는 `~/.local/state/agent-harness/issueops/` 아래에 저장된다.
 

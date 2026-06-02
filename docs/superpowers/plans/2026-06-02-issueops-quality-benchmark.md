@@ -211,7 +211,7 @@ func TestScoreIssueOpsBenchmarkArtifactDeterministic(t *testing.T) {
 		TDDPlan: "Write failing test before implementation.\n",
 		TaskBreakdown: "Worker A owns internal/core/issueops_benchmark.go. Worker B owns cmd/harness/issueops.go.\n",
 		SubagentPrompts: "You are not alone in the codebase. Do not revert others. Own internal/core only.\n",
-		PRDraft: "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://github.com/m16khb/agent-harness/issues/1\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
+		PRDraft: "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://example.com/acme/agent-harness/issues/1\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
 		PhaseChoices: "Proceed to plan | revise current phase | jump to issue | pause",
 		BranchName: "feature/1-issueops-quality-benchmark",
 		WorktreePath: "/repo.worktrees/feature-1-issueops-quality-benchmark",

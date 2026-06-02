@@ -26,7 +26,7 @@ func TestRunIssueOpsBenchmarkCLIAgyKeepsOneScorePerFixture(t *testing.T) {
 	fakeAgy := filepath.Join(t.TempDir(), "fake-agy.sh")
 	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh
 cat <<'EOF'
-{"ok":true,"fixture_id":"fixture","average_score":5,"minimum_score":5,"dimension_scores":[{"dimension":"intent_understanding","score":5,"evidence":"judge ok"}],"deterministic_failures":[],"judge_failures":[],"critical_failures":[],"passed":true}
+{"ok":true,"fixture_id":"fixture","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"judge ok"}],"deterministic_failures":[],"judge_failures":[],"critical_failures":[],"passed":true}
 EOF
 `), 0o755); err != nil {
 		t.Fatal(err)
