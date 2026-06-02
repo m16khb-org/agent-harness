@@ -1,0 +1,86 @@
+name: 제안
+description: 아키텍처, API, 정책, 운영 방식 변경을 제안합니다.
+title: "proposal: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        제안은 바로 구현할 작업보다 결정이 필요한 구조 변경에 사용합니다. 구현 단위가 이미 정해졌다면 구현 작업 템플릿을 사용하세요.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 배경과 문제
+      description: 현재 구조, 문서, 코드, 운영상의 문제가 무엇인지 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 제안
+      description: 바꾸려는 아키텍처, API, 정책, 운영 방식을 구체적으로 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 현재 근거
+      description: 관련 파일, 문서, 명령 결과, upstream 자료, 이전 이슈를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 대안과 기각 사유
+      description: 검토한 대안과 선택하지 않는 이유를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: 호환성과 마이그레이션
+      description: CLI/MCP/schema/hook/skill 문서 호환성, migration 필요 여부를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagram
+    attributes:
+      label: 다이어그램
+      description: 복잡한 흐름, 상태 전이, host별 경계 이해를 실제로 줄일 때만 Mermaid 등 텍스트 다이어그램을 적어 주세요. 필요 없으면 "필요 없음"이라고 적어 주세요.
+      placeholder: |
+        ```mermaid
+        flowchart LR
+          A[현재 흐름] --> B[제안 흐름]
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 완료 기준
+      description: 제안이 수락되고 구현됐다고 볼 수 있는 기준을 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: 위험과 트레이드오프
+      description: 보안, secret, workspace boundary, host drift, 운영 비용, 다이어그램이 이해를 돕거나 방해할 수 있는 지점을 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: 검증
+      description: 제안 구현 시 필요한 테스트, golden, smoke, 문서 검증을 적어 주세요.
+    validations:
+      required: true
