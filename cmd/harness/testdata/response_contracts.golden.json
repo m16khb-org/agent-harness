@@ -2156,7 +2156,7 @@
       "entries": [
         {
           "base_seed": 600,
-          "bytes": 970,
+          "bytes": 923,
           "elapsed_ms": 1100,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -2181,7 +2181,7 @@
         },
         {
           "base_seed": 600,
-          "bytes": 970,
+          "bytes": 923,
           "elapsed_ms": 1000,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -4934,7 +4934,7 @@
             "entries": [
               {
                 "base_seed": 600,
-                "bytes": 970,
+                "bytes": 923,
                 "elapsed_ms": 1100,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -4959,7 +4959,7 @@
               },
               {
                 "base_seed": 600,
-                "bytes": 970,
+                "bytes": 923,
                 "elapsed_ms": 1000,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -5092,13 +5092,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 970,
+                "bytes": 923,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 970,
+                "bytes": 923,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -5163,13 +5163,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 970,
+                "bytes": 923,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 970,
+                "bytes": 923,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -5220,13 +5220,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 970,
+                "bytes": 923,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 970,
+                "bytes": 923,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"

@@ -170,7 +170,7 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 		Plan:                   "Run: go test ./... -count=1\n",
 		TDDPlan:                "Write failing test before implementation.\n",
 		TaskBreakdown:          "Worker A owns internal/core/issueops_benchmark.go. Worker B owns cmd/harness/issueops.go.",
-		SubagentPrompts:        "You are not alone in the codebase. Do not revert others. Own internal/core only. Expected output: tests and implementation.",
+		SubagentPrompts:        "You are not alone in the codebase. Do not revert others. Own internal/core only. Expected output: tests and implementation. Before work, report pwd, branch, HEAD, and worktree path; stop on mismatch. For narrow review, use verifier or direct bounded review. If code-reviewer is required, do not spawn subagents and use a 5 minute time budget.",
 		PRDraft:                "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://github.com/m16khb/agent-harness/issues/1\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
 		PhaseChoices:           "Proceed to plan | revise current phase | jump to issue | pause",
 		BranchName:             "feature/1-issueops-quality-benchmark",

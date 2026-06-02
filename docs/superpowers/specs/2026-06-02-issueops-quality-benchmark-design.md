@@ -20,6 +20,8 @@ Without a benchmark, prompt or workflow changes can only claim improvement subje
 - IssueOps issue drafts and PR/MR drafts follow the repo-local open-source-derived guideline at `docs/superpowers/specs/issueops-issue-pr-guidelines.md`.
 - IssueOps issue drafts and PR/MR drafts avoid excessive emoji decoration while allowing sparse purposeful emoji.
 - IssueOps PR/MR drafts include developer-friendly diagrams only when useful for complex flows; unnecessary forced diagrams are a quality failure.
+- IssueOps worker prompts require `pwd`, branch, `HEAD`, and expected worktree path verification before implementation, TDD, review, QA, or subagent work starts.
+- IssueOps review prompts prefer `verifier` or direct bounded review for short reviews, and require a time budget plus no nested subagent fan-out when `code-reviewer` is used.
 
 ## Non-Goals
 
@@ -42,6 +44,8 @@ Without a benchmark, prompt or workflow changes can only claim improvement subje
 - **Worktree cleanup gate**: the completion requirement that IssueOps verifies the isolated worktree is clean, merged or safely disposable, and then presents cleanup choices before removing it.
 - **Korean issue/PR gate**: the requirement that user-facing issue drafts and PR/MR drafts are written in Korean.
 - **Open-source guideline gate**: the requirement that issue and PR/MR drafts cite and satisfy the repo-local guideline derived from GitHub, Kubernetes, React, and similar open-source contribution practices.
+- **Worker context gate**: the requirement that every worker verifies `pwd`, branch, `HEAD`, and expected worktree path before acting, and stops on mismatch.
+- **Bounded review gate**: the requirement that narrow reviews use `verifier` or direct bounded review by default, or explicitly constrain `code-reviewer` with a time budget and no nested subagents.
 
 ## Benchmark Fixture Schema
 
@@ -110,6 +114,8 @@ The deterministic scorer verifies structure and hard workflow rules:
 - Task breakdown has bounded ownership and avoids conflicting file responsibilities.
 - TDD artifact identifies failing tests before implementation work.
 - Subagent prompts include task ownership, context, expected output, and "not alone in the codebase" coordination guidance.
+- Worker prompts require initial `pwd`, branch, `HEAD`, and expected worktree path verification, and stop on mismatch.
+- Review prompts prefer `verifier` or direct bounded review for narrow reviews, or explicitly forbid nested subagent fan-out with a time budget when `code-reviewer` is used.
 - PR/MR draft includes intent, changes, verification, risks, and issue link.
 - PR/MR draft is written in Korean.
 - PR/MR draft references and follows `docs/superpowers/specs/issueops-issue-pr-guidelines.md`.
@@ -202,6 +208,15 @@ When the work is complete:
 
 Leaving completed worktrees around without a cleanup prompt is a benchmark regression. Removing a dirty or unmerged worktree without explicit user approval is a critical failure.
 
+When a worker or reviewer is launched:
+
+1. The prompt includes the expected branch, expected worktree path, and instruction to report `pwd`, branch, and `HEAD` first.
+2. The worker stops immediately if the reported values do not match the expected IssueOps worktree context.
+3. Narrow review work uses `verifier` or direct bounded review first.
+4. If `code-reviewer` is used, the prompt forbids nested subagent fan-out, sets a concrete time budget, and scopes the files or diff under review.
+
+Skipping these checks is a critical failure because it can make workers review or edit the wrong repository state.
+
 ## State And Storage
 
 Benchmark fixtures are source-controlled under `testdata/issueops/fixtures`.
@@ -219,6 +234,8 @@ Implementation should be verified with:
 - fake `agy` judge tests for valid JSON, malformed output retry, and schema failure,
 - CLI benchmark run and compare tests,
 - worktree cleanup gate tests for clean, dirty, merged, unmerged, and user-declined cleanup scenarios,
+- worker context gate tests for `pwd`, branch, `HEAD`, expected worktree path, and mismatch stop instructions,
+- bounded review gate tests for short-review verifier/direct review preference and constrained `code-reviewer` prompts,
 - response contract golden updates,
 - `go test ./... -count=1`,
 - `go build -o bin/agent-harness ./cmd/harness`,

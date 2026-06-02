@@ -93,6 +93,34 @@ func TestScoreIssueOpsBenchmarkArtifactRejectsExcessiveEmoji(t *testing.T) {
 	}
 }
 
+func TestScoreIssueOpsBenchmarkArtifactRequiresWorkerContextGate(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "worker-context", CriticalFailures: []string{"worker starts without context check"}}
+	artifact := completeBenchmarkArtifactForTest()
+	artifact.SubagentPrompts = "You are not alone in the codebase. Do not revert others. Own internal/core only. Expected output: tests and implementation."
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	if score.Passed {
+		t.Fatalf("expected missing worker context gate to fail: %+v", score)
+	}
+	if len(score.CriticalFailures) == 0 {
+		t.Fatalf("expected worker context critical failure: %+v", score)
+	}
+}
+
+func TestScoreIssueOpsBenchmarkArtifactRequiresBoundedReviewPrompt(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "review", CriticalFailures: []string{"unbounded code-reviewer review"}}
+	artifact := completeBenchmarkArtifactForTest()
+	artifact.SubagentPrompts = "You are not alone in the codebase. Do not revert others. Own internal/core only. Expected output: review report. Before work, report pwd, branch, HEAD, worktree, and stop on mismatch. Use code-reviewer for this review."
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	if score.Passed {
+		t.Fatalf("expected unbounded code-reviewer prompt to fail: %+v", score)
+	}
+	if len(score.CriticalFailures) == 0 {
+		t.Fatalf("expected bounded review critical failure: %+v", score)
+	}
+}
+
 func TestRunAndCompareIssueOpsBenchmark(t *testing.T) {
 	dir := t.TempDir()
 	fixtures := []IssueOpsBenchmarkFixture{
@@ -132,7 +160,7 @@ func completeBenchmarkArtifactForTest() IssueOpsBenchmarkArtifact {
 		Plan:                   "Run: go test ./... -count=1\n",
 		TDDPlan:                "Write failing test before implementation.\n",
 		TaskBreakdown:          "Worker A owns internal/core/issueops_benchmark.go. Worker B owns cmd/harness/issueops.go.",
-		SubagentPrompts:        "You are not alone in the codebase. Do not revert others. Own internal/core only. Expected output: tests and implementation.",
+		SubagentPrompts:        "You are not alone in the codebase. Do not revert others. Own internal/core only. Expected output: tests and implementation. Before work, report pwd, branch, HEAD, and worktree path; stop on mismatch. For narrow review, use verifier or direct bounded review. If code-reviewer is required, do not spawn subagents and use a 5 minute time budget.",
 		PRDraft:                "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://github.com/m16khb/agent-harness/issues/1\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
 		GuidelineRef:           "docs/superpowers/specs/issueops-issue-pr-guidelines.md",
 		PhaseChoices:           "Proceed to plan | revise current phase | jump to issue | pause",

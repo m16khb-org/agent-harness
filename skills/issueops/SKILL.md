@@ -23,6 +23,19 @@ Required phases:
 6. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
 7. PR/MR: draft the PR/MR only after the issue URL and plan path are linked and the relevant verification has been run.
 
+## Worker And Review Gates
+
+Every implementation, TDD, review, QA, or subagent worker prompt must require the worker to begin by reporting and verifying:
+
+- `pwd`
+- `git branch --show-current`
+- `git rev-parse --short HEAD`
+- the expected isolated worktree path
+
+If any value does not match the IssueOps branch/worktree contract, the worker must stop and report the mismatch instead of reviewing or editing.
+
+For short or narrow reviews, prefer `verifier` or a direct bounded review over `code-reviewer`. When `code-reviewer` is necessary, the prompt must set a clear time budget, forbid nested subagent fan-out, and require the reviewer to verify `pwd`, branch, `HEAD`, and worktree path before inspecting the diff.
+
 ## State Commands
 
 Start:
