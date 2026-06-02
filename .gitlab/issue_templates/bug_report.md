@@ -4,7 +4,7 @@
 
 ## 영향 표면
 
-CLI / MCP / hook / skill / installer-bootstrap / docs / tests / other 중 해당 영역을 적어 주세요.
+CLI / MCP / hook / skill / installer/bootstrap / docs / tests / other 중 해당 영역을 적어 주세요.
 
 ## 환경과 버전
 
