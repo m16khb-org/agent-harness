@@ -54,6 +54,23 @@ Use it when you want to:
 | Self-improvement | `self-verify`, `self-verify history/compare/promote/candidates`, `self-augment`, `self-augment lesson` | Run a 95-point verification gate, compare/promote checkpoints, and record safe improvement candidates or lessons. |
 | Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | Record job lifecycle state, run policy-gated read-only evidence commands, and process draft-wiki queue items; no writable shell jobs. |
 
+## Issue-Driven Development
+
+Issue-Driven Development, or IDD, is the collaboration model this harness is moving toward. SDD and TDD still matter, but the source of truth above them is the issue graph.
+
+In IDD, every meaningful decision becomes an issue or an issue update. Related decisions are linked so a teammate can reconstruct why a branch exists, which alternatives were rejected, which acceptance criteria changed, and which follow-up issues are still open. Implementation starts from an issue-based branch and an isolated git worktree, not from an ad hoc edit in the main checkout.
+
+The intended loop is:
+
+1. Capture the problem, current evidence, acceptance criteria, non-goals, verification, open decisions, and related issues in an issue.
+2. Link decision issues together when one decision depends on, blocks, supersedes, or follows from another.
+3. Derive an issue-based branch and sibling worktree, then verify `pwd`, branch, `HEAD`, and expected worktree path before any implementation, TDD, review, QA, commit, or PR/MR step.
+4. Write the plan from the issue contract, then use TDD and subagent work only inside the isolated worktree.
+5. Record feedback as issue/plan/test/implementation decisions, then update the linked issue graph instead of losing the rationale in chat.
+6. Draft the PR/MR only when the issue link, plan link, worktree evidence, verification, and cleanup status are ready.
+
+Current support is partial. `skills/issueops/SKILL.md` defines the advisory workflow, `agent-harness issueops` stores durable cycle state, MCP exposes matching tools, and the benchmark checks issue quality, branch/worktree evidence, isolation, cleanup, TDD, subagent prompts, and PR/MR draft quality. The remaining IDD work is documented in [`docs/IDD_IMPLEMENTATION_NEEDS.md`](docs/IDD_IMPLEMENTATION_NEEDS.md): durable linked issue graphs, first-class decision records, real git worktree orchestration, stricter PR/MR readiness evidence, provider integration boundaries, and stale-binary drift checks.
+
 ## Architecture
 
 ```mermaid
@@ -356,6 +373,23 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 | Evidence와 contract | `guard check`, `verify-work`, `trace analyze`, `contract schema/check` | anti-pattern을 검사하고 completion evidence matrix, trace/lifecycle evidence, CLI/MCP contract 정합성을 확인합니다. |
 | Self-improvement | `self-verify`, `self-verify history/compare/promote/candidates`, `self-augment`, `self-augment lesson` | 95점 검증 gate, checkpoint 비교/승격, 안전한 개선 후보와 lesson 기록을 수행합니다. |
 | Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | job lifecycle state를 기록하고 policy-gated read-only evidence command와 draft-wiki queue 처리를 수행합니다. writable shell job은 없습니다. |
+
+## Issue-Driven Development
+
+Issue-Driven Development, 즉 IDD는 이 하네스가 지향하는 협업 방법론입니다. SDD와 TDD는 여전히 중요하지만, 그 위의 source of truth는 issue graph입니다.
+
+IDD에서는 의미 있는 의사결정을 모두 issue 또는 issue update로 남깁니다. 관련 결정은 서로 연결해 팀 동료가 어떤 branch가 왜 생겼는지, 어떤 대안이 기각됐는지, 어떤 acceptance criteria가 바뀌었는지, 어떤 후속 issue가 남았는지 추적할 수 있게 합니다. 구현은 main checkout의 임시 수정이 아니라 issue 기반 branch와 격리된 git worktree에서 시작합니다.
+
+의도한 루프는 다음과 같습니다.
+
+1. 문제, 현재 근거, 완료 기준, 비목표, 검증, 열린 결정, 관련 issue를 issue에 기록합니다.
+2. 어떤 결정이 다른 결정을 의존, 차단, 대체, 후속 처리하는지 issue 간 링크로 남깁니다.
+3. issue 기반 branch와 sibling worktree를 만들고, 구현, TDD, review, QA, commit, PR/MR 전에 `pwd`, branch, `HEAD`, expected worktree path를 확인합니다.
+4. issue contract에서 plan을 만들고, TDD와 subagent 작업은 격리 worktree 안에서만 수행합니다.
+5. feedback을 issue/plan/test/implementation 결정으로 분류하고, chat에 근거를 잃지 않도록 linked issue graph를 갱신합니다.
+6. issue link, plan link, worktree evidence, verification, cleanup status가 준비됐을 때만 PR/MR을 작성합니다.
+
+현재 지원은 부분적입니다. `skills/issueops/SKILL.md`는 advisory workflow를 정의하고, `agent-harness issueops`는 durable cycle state를 저장하며, MCP는 같은 의미의 도구를 노출합니다. benchmark는 issue 품질, branch/worktree evidence, isolation, cleanup, TDD, subagent prompt, PR/MR draft 품질을 검사합니다. 남은 구현 필요성은 [`docs/IDD_IMPLEMENTATION_NEEDS.md`](docs/IDD_IMPLEMENTATION_NEEDS.md)에 정리했습니다. 핵심은 durable linked issue graph, first-class decision record, 실제 git worktree orchestration, 더 강한 PR/MR readiness evidence, provider integration boundary, stale binary drift check입니다.
 
 ## 아키텍처
 
