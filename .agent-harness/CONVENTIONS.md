@@ -155,6 +155,20 @@ skills/
 
 Reusable API documentation checks belong in `agent-harness api-doc check`, not in a single application repository or framework-specific hook. Keep the core prompt framework-agnostic: it may mention examples such as NestJS Swagger decorators, Go swaggo annotations, OpenAPI specs, Spring/FastAPI annotations, but must instruct reviewers to follow the target project's own convention and staged diff only. Project-specific strictness should be supplied via `--prompt-file` rather than hardcoded into harness core.
 
+## Prompt Structure Convention
+
+Reusable harness prompts follow the strong prompt shape from the user-provided example. Do not copy example-specific domain content into harness prompts; reuse the structure:
+
+- Identity: name the role and expertise the model should inhabit.
+- Objective: state the concrete outcome.
+- Operating phases: break the work into explicit ordered stages.
+- Inputs: name the data the model may use and how missing data is represented.
+- Rules: state hard constraints, safety boundaries, and decision rules.
+- Output contract: define the exact response format and forbidden wrapper text.
+- Verification checklist: require a final self-check against the prompt contract.
+
+New reusable prompts should use `internal/core.BuildStructuredPrompt` where possible. JSON packet prompts may use equivalent structured keys instead of Markdown headings, but they still need the same identity/objective/phases/inputs/rules/output/checklist shape. Existing prompt-specific strictness, such as JSON-only output or no Markdown fences, must remain stronger than the generic structure.
+
 ## Project Docs Bootstrap 컨벤션
 
 - 적용 대상 repo의 `.agent-harness/` 문서는 명시적 `agent-harness project bootstrap` 또는 `$project-bootstrap` 실행 때만 생성한다.

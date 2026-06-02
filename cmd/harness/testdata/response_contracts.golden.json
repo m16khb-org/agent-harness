@@ -549,7 +549,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 17434,
+          "bytes": 18526,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -563,14 +563,14 @@
             "9. Shared Skill 컨벤션",
             "10. 커밋 메시지 컨벤션",
             "API Documentation Gate",
+            "Prompt Structure Convention",
             "Project Docs Bootstrap 컨벤션",
             "API Documentation Convention",
             "Single-object response convention",
             "SOLID / Design Pattern 적용 지침",
             "좋은 케이스",
             "나쁜 케이스",
-            "적용 규칙",
-            "Hook 컨벤션"
+            "적용 규칙"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
           "rel_path": ".agent-harness/CONVENTIONS.md",
@@ -638,7 +638,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 16569,
+          "bytes": 17000,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -654,6 +654,7 @@
             "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",
             "Business logic error response coverage",
             "Agent-backed verification boundary",
+            "Prompt contract tests",
             "OpenAPI prompt source",
             "Contract/audit/worker verification",
             "Lifecycle state tests"
@@ -3348,7 +3349,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 17434,
+                "bytes": 18526,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -3362,14 +3363,14 @@
                   "9. Shared Skill 컨벤션",
                   "10. 커밋 메시지 컨벤션",
                   "API Documentation Gate",
+                  "Prompt Structure Convention",
                   "Project Docs Bootstrap 컨벤션",
                   "API Documentation Convention",
                   "Single-object response convention",
                   "SOLID / Design Pattern 적용 지침",
                   "좋은 케이스",
                   "나쁜 케이스",
-                  "적용 규칙",
-                  "Hook 컨벤션"
+                  "적용 규칙"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
                 "rel_path": ".agent-harness/CONVENTIONS.md",
@@ -3437,7 +3438,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 16569,
+                "bytes": 17000,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -3453,6 +3454,7 @@
                   "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",
                   "Business logic error response coverage",
                   "Agent-backed verification boundary",
+                  "Prompt contract tests",
                   "OpenAPI prompt source",
                   "Contract/audit/worker verification",
                   "Lifecycle state tests"

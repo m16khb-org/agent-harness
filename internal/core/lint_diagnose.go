@@ -97,15 +97,7 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 	}
 	logTail := strings.Join(lines, "\n")
 
-	prompt := fmt.Sprintf(`You are a senior software development diagnoser. Analyze the following command execution output that resulted in a failure (exit code %d).
-Explain:
-1. What went wrong (root cause).
-2. Exactly how to fix it (provide code snippet if possible).
-
-Keep the answer extremely concise, action-oriented, and focused. Do not repeat the log.
-
-[Execution Failure Output]
-%s`, exitCode, logTail)
+	prompt := buildLintDiagnosePrompt(exitCode, logTail)
 
 	// 4. Run agy
 	timeout := req.Timeout
@@ -130,4 +122,33 @@ Keep the answer extremely concise, action-oriented, and focused. Do not repeat t
 
 	result.Diagnosis = strings.TrimSpace(string(out))
 	return result, nil
+}
+
+func buildLintDiagnosePrompt(exitCode int, logTail string) string {
+	return BuildStructuredPrompt(StructuredPromptSpec{
+		Identity:  "You are a senior software development diagnoser.",
+		Objective: fmt.Sprintf("Analyze the command execution output that resulted in a failure with exit code %d.", exitCode),
+		Phases: []string{
+			"Identify the root cause from the failure output.",
+			"Determine the minimal concrete fix.",
+			"Return a concise action-oriented diagnosis.",
+		},
+		Inputs: []string{"Command failure output tail."},
+		Rules: []string{
+			"Do not repeat the log.",
+			"Do not speculate beyond the supplied output.",
+			"Provide a code snippet only when it materially helps apply the fix.",
+		},
+		OutputContract: []string{
+			"Explain what went wrong.",
+			"Explain exactly how to fix it.",
+			"Keep the answer extremely concise, action-oriented, and focused.",
+		},
+		VerificationChecklist: []string{
+			"The root cause is tied to evidence in the output.",
+			"The fix is directly actionable.",
+			"The response avoids log repetition.",
+		},
+		Data: []PromptDataSection{{Title: "Execution Failure Output", Content: logTail}},
+	})
 }

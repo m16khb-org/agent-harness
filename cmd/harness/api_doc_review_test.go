@@ -9,7 +9,7 @@ import (
 
 func TestBuildAPIDocReviewPromptIsFrameworkAgnostic(t *testing.T) {
 	prompt := buildAPIDocReviewPrompt([]string{"internal/api/user_handler.go", "openapi.yaml"}, "diff --git ...", "Require tenant headers.")
-	for _, want := range []string{"framework-agnostic", "swaggo", "OpenAPI/Swagger specs", "Do not force NestJS decorators onto Go", "@ApiOperation", "business logic", "404", "409", "Require tenant headers."} {
+	for _, want := range []string{"## Identity", "## Objective", "## Operating Phases", "## Output Contract", "framework-agnostic", "swaggo", "OpenAPI/Swagger specs", "Do not force NestJS decorators onto Go", "@ApiOperation", "business logic", "404", "409", "Require tenant headers."} {
 		if !strings.Contains(prompt, want) {
 			t.Fatalf("prompt missing %q:\n%s", want, prompt)
 		}

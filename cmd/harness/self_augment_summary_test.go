@@ -1118,6 +1118,11 @@ func TestSelfVerifyLLMEvalPromptForcesPlainJSONOutput(t *testing.T) {
 	if !ok {
 		t.Fatalf("prompt packet should include instruction string: %#v", packet)
 	}
+	for _, key := range []string{"identity", "objective", "operating_phases", "inputs", "rules", "output_contract", "verification_checklist"} {
+		if _, ok := packet[key]; !ok {
+			t.Fatalf("prompt packet should include structured key %q: %#v", key, packet)
+		}
+	}
 	finalContract, ok := packet["final_output_contract"].(string)
 	if !ok {
 		t.Fatalf("prompt packet should include final_output_contract string: %#v", packet)
