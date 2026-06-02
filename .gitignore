@@ -18,3 +18,6 @@ evidence
 __pycache__/
 *.pyc
 .DS_Store
+
+# Prompt examples
+GOOD_PROMPT_EXAMPLE.md
