@@ -109,6 +109,8 @@ func compatibilityContract() CompatibilityContract {
 			"guard_check":               {"ok", "repo_root", "mode", "checked_files", "findings", "summary"},
 			"trace_analysis":            {"ok", "kind", "input", "input_source", "trace_types", "finding_count", "findings", "warnings"},
 			"worker_job":                {"ok", "id", "kind", "status", "created_at", "updated_at", "no_shell"},
+			"issueops_record":           {"ok", "id", "repo", "branch", "phase", "issue_url", "plan_path", "feedback", "created_at", "updated_at"},
+			"issueops_pr_readiness":     {"ok", "ready", "missing", "issue_url", "plan_path", "branch"},
 			"command_audit":             {"ok", "kind", "audit_log_id", "log_path", "policy"},
 			"verify_work":               {"ok", "kind", "repo", "git_status", "preflight", "guard", "command", "evidence", "evidence_matrix", "suggested_commands", "warnings"},
 		},

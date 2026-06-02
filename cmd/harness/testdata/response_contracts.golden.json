@@ -163,6 +163,10 @@
           "name": "state"
         },
         {
+          "description": "track issue-driven IssueOps work cycles",
+          "name": "issueops"
+        },
+        {
           "description": "run API documentation static and agent review gates",
           "name": "api-doc"
         },
@@ -211,7 +215,7 @@
           "name": "version"
         }
       ],
-      "hash": "266b9e7c387ff3c429fb10d001dd7c758375ff00f940dc4d3d293384196d090b",
+      "hash": "aa7e24432e9f911332168a9be17e12a3e4565f635d6abaad97d883e3ccacf19d",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -226,6 +230,12 @@
         "daemon_status",
         "docs_index",
         "harness_inspect",
+        "issueops_add_feedback",
+        "issueops_link_issue",
+        "issueops_link_plan",
+        "issueops_pr_readiness",
+        "issueops_start",
+        "issueops_status",
         "lint_diagnose",
         "project_docs_bootstrap_plan",
         "project_docs_read",
@@ -314,6 +324,26 @@
           "self_verify",
           "warnings"
         ],
+        "issueops_pr_readiness": [
+          "ok",
+          "ready",
+          "missing",
+          "issue_url",
+          "plan_path",
+          "branch"
+        ],
+        "issueops_record": [
+          "ok",
+          "id",
+          "repo",
+          "branch",
+          "phase",
+          "issue_url",
+          "plan_path",
+          "feedback",
+          "created_at",
+          "updated_at"
+        ],
         "self_verification_summary": [
           "total_runs",
           "total_steps",
@@ -374,7 +404,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 27733,
+          "bytes": 29311,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -421,7 +451,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 18026,
+          "bytes": 18730,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -544,7 +574,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 22781,
+          "bytes": 23939,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -555,6 +585,7 @@
             "`--sync`",
             "2. Codex에서 사용",
             "Native skills",
+            "IssueOps",
             "MCP",
             "Lifecycle hooks",
             "3. Claude Code에서 사용",
@@ -564,8 +595,7 @@
             "4. CLI로 직접 사용",
             "Status / read-only runner / verify-work",
             "Guard checks",
-            "5. MCP smoke test",
-            "6. 자기 검증 루프 / 자가 증강 루프 요약"
+            "5. MCP smoke test"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
           "rel_path": ".agent-harness/OPERATIONS.md",
@@ -791,6 +821,13 @@
           "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
         },
         {
+          "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, feedback loops, and PR/MR drafting.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "issueops",
+          "path": "$HARNESS_ROOT/skills/issueops"
+        },
+        {
           "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -835,6 +872,62 @@
       ],
       "target_repo": "$WORKSPACE",
       "version": "0.1.0"
+    },
+    "issueops_feedback_add": {
+      "branch": "feature/contract",
+      "created_at": "$TIMESTAMP",
+      "feedback": [
+        {
+          "body": "tighten contract",
+          "created_at": "$TIMESTAMP",
+          "source": "user"
+        }
+      ],
+      "id": "$ISSUEOPS_ID",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "feedback",
+      "plan_path": "docs/superpowers/plans/contract.md",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP"
+    },
+    "issueops_link_issue": {
+      "branch": "feature/contract",
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "plan",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP"
+    },
+    "issueops_link_plan": {
+      "branch": "feature/contract",
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "implement",
+      "plan_path": "docs/superpowers/plans/contract.md",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP"
+    },
+    "issueops_pr_readiness": {
+      "branch": "feature/contract",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "missing": [],
+      "ok": true,
+      "plan_path": "docs/superpowers/plans/contract.md",
+      "ready": true
+    },
+    "issueops_start": {
+      "branch": "feature/contract",
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "ok": true,
+      "phase": "problem",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP"
     },
     "policy_audit": {
       "audit_log_id": "$AUDIT_ID",
@@ -1496,6 +1589,7 @@
         "skills": [
           "atomic-commit-push",
           "draft-wiki-promoter",
+          "issueops",
           "project-bootstrap",
           "self-augment",
           "self-verify",
@@ -2842,6 +2936,10 @@
                 "name": "state"
               },
               {
+                "description": "track issue-driven IssueOps work cycles",
+                "name": "issueops"
+              },
+              {
                 "description": "run API documentation static and agent review gates",
                 "name": "api-doc"
               },
@@ -2890,7 +2988,7 @@
                 "name": "version"
               }
             ],
-            "hash": "266b9e7c387ff3c429fb10d001dd7c758375ff00f940dc4d3d293384196d090b",
+            "hash": "aa7e24432e9f911332168a9be17e12a3e4565f635d6abaad97d883e3ccacf19d",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -2905,6 +3003,12 @@
               "daemon_status",
               "docs_index",
               "harness_inspect",
+              "issueops_add_feedback",
+              "issueops_link_issue",
+              "issueops_link_plan",
+              "issueops_pr_readiness",
+              "issueops_start",
+              "issueops_status",
               "lint_diagnose",
               "project_docs_bootstrap_plan",
               "project_docs_read",
@@ -2993,6 +3097,26 @@
                 "self_verify",
                 "warnings"
               ],
+              "issueops_pr_readiness": [
+                "ok",
+                "ready",
+                "missing",
+                "issue_url",
+                "plan_path",
+                "branch"
+              ],
+              "issueops_record": [
+                "ok",
+                "id",
+                "repo",
+                "branch",
+                "phase",
+                "issue_url",
+                "plan_path",
+                "feedback",
+                "created_at",
+                "updated_at"
+              ],
               "self_verification_summary": [
                 "total_runs",
                 "total_steps",
@@ -3060,7 +3184,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 27733,
+                "bytes": 29311,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3107,7 +3231,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 18026,
+                "bytes": 18730,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -3230,7 +3354,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 22781,
+                "bytes": 23939,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -3241,6 +3365,7 @@
                   "`--sync`",
                   "2. Codex에서 사용",
                   "Native skills",
+                  "IssueOps",
                   "MCP",
                   "Lifecycle hooks",
                   "3. Claude Code에서 사용",
@@ -3250,8 +3375,7 @@
                   "4. CLI로 직접 사용",
                   "Status / read-only runner / verify-work",
                   "Guard checks",
-                  "5. MCP smoke test",
-                  "6. 자기 검증 루프 / 자가 증강 루프 요약"
+                  "5. MCP smoke test"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
                 "rel_path": ".agent-harness/OPERATIONS.md",
@@ -3484,6 +3608,13 @@
                 "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
               },
               {
+                "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, feedback loops, and PR/MR drafting.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "issueops",
+                "path": "$HARNESS_ROOT/skills/issueops"
+              },
+              {
                 "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -3528,6 +3659,97 @@
             ],
             "target_repo": "$WORKSPACE",
             "version": "0.1.0"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_add_feedback": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "created_at": "$TIMESTAMP",
+            "feedback": [
+              {
+                "body": "tighten MCP contract",
+                "created_at": "$TIMESTAMP",
+                "source": "review"
+              }
+            ],
+            "id": "$ISSUEOPS_ID",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "feedback",
+            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_link_issue": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "plan",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_link_plan": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "implement",
+            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_pr_readiness": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "missing": [],
+            "ok": true,
+            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "ready": true
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_start": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "ok": true,
+            "phase": "problem",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP"
           },
           "type": "text"
         }
@@ -4078,6 +4300,7 @@
               "skills": [
                 "atomic-commit-push",
                 "draft-wiki-promoter",
+                "issueops",
                 "project-bootstrap",
                 "self-augment",
                 "self-verify",

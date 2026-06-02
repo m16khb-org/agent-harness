@@ -36,6 +36,13 @@ type HookRoutingRule struct {
 
 var hookRoutingRules = []HookRoutingRule{
 	{
+		Tool:           "issueops",
+		Reason:         "Use the issue-driven workflow for problem intake -> domain grill -> issue -> plan -> TDD/subagents -> feedback -> PR/MR; hooks must not create issues or PRs.",
+		Priority:       hintPriorityAction,
+		LowerKeywords:  []string{"issueops", "issue-driven", "feedback loop", "pull request", "merge request"},
+		PromptKeywords: []string{"문제 파악", "이슈 기반", "피드백 루프", "PR", "MR", "이슈"},
+	},
+	{
 		Tool:           "project_docs_record",
 		Reason:         "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.",
 		Priority:       hintPriorityAction,
@@ -322,6 +329,8 @@ func compactHintLabel(h HookUserPromptHint) string {
 		return "check OpenAPI gaps"
 	case "api_doc_review":
 		return "review API error contract"
+	case "issueops":
+		return "issueops issue-driven workflow; hooks must not create issues or PRs"
 	case "CodeGraph":
 		return "CodeGraph for symbol/call-impact lookup"
 	case "LLM Wiki":

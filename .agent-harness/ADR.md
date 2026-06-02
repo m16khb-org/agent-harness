@@ -407,3 +407,22 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
   - claude-mem observation을 자동으로 LLM Wiki에 바로 ingest | privacy/secret/false-positive 위험이 크고 사용자 승인 게이트가 없다.
   - 하네스가 llm-wiki index/query/compile을 직접 관리 | LLM Wiki 재구현 금지 정책과 충돌한다.
 - Consequences: draft-wiki CLI와 tests는 repo-local file boundary, docs index 제외, approve/reject 상태 이동, `agy` settings model 검증, llm-wiki raw-note write를 검증해야 한다. hook 연동은 PostToolUse 직접 LLM 호출이 아니라 lifecycle/user-state queue append와 `worker draft-wiki` 처리로 제한한다.
+
+## 2026-06-02 — IssueOps split
+
+- Kind: `adr`
+- Source: IssueOps implementation
+- Summary: IssueOps는 native skill이 절차를 오케스트레이션하고 CLI/MCP `issueops`가 durable state를 저장하며 hook은 routing hint만 제공한다.
+- Context: 사용자가 문제파악 -> GitHub/GitLab issue -> issue-based plan -> TDD/subagent implementation -> feedback loop -> PR/MR 흐름을 하네스로 진행하고 싶다고 요청했다.
+- Decision: `skills/issueops`를 공유 skill 원본으로 두고, `agent-harness issueops` CLI와 MCP `issueops_*` tools가 issue URL, plan path, feedback, readiness state를 저장한다. UserPromptSubmit hook은 `issueops`를 제안할 수 있지만 issue/PR/MR 생성이나 파일 수정은 수행하지 않는다.
+- Consequences: 앞으로 issue-driven 작업 루프는 skill로 절차를 시작하고 필요 시 IssueOps state id를 기록한다. contract/golden tests must include new CLI and MCP surfaces.
+- Evidence:
+  - skills/issueops/SKILL.md
+  - internal/core/issueops.go
+  - cmd/harness/issueops.go
+  - cmd/harness/main.go issueops_* MCP tools
+  - internal/core/hook_prompt.go issueops routing hint
+- Alternatives / rejected options:
+  - MCP-only workflow: 에이전트 절차를 담기 어렵고 Codex/Claude native skill routing과 맞지 않는다.
+  - Hook-driven automation: prompt hook critical path에서 remote issue/PR 생성이나 파일 수정을 수행하게 되어 안전 경계와 충돌한다.
+  - Skill-only workflow without durable state: compaction, host handoff, feedback loop 추적이 약하다.

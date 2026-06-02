@@ -66,6 +66,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 | `agent-harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/agent-harness inspect/preflight/doctor/docs/policy/state/self-verify/self-augment` 사용 |
 | `agent-harness mcp` stdio proxy | 구현됨 | Codex/Claude Code가 같은 MCP schema로 daemon에 연결 | `agent-harness` daemon을 자동 시작하고 stdio를 Unix socket으로 proxy한다. |
 | `agent-harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
+| `agent-harness issueops` | 구현됨 | issue-driven 루프의 issue, plan, feedback, PR/MR readiness 상태 추적 | native skill은 절차를 맡고 CLI/MCP는 durable 상태만 저장한다. |
 | `agent-harness worker` one-shot jobs | 부분 구현 | no-shell lifecycle job record와 draft-wiki queue 처리 | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. `worker draft-wiki`는 PostToolUse가 남긴 queue를 한 번 처리하고 `agy -p` argv만 호출한다. |
 | Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
 | Claude commands/hooks | Phase 6 | Claude Code UX 개선 | core 정책 우회 금지 |
@@ -115,15 +116,17 @@ Draft wiki staging:
 - Hook/worker 흐름: PostToolUse hook은 raw hook JSON에서 tool response/output/content 텍스트만 bounded/redacted user-state queue(`draft-wiki-queue.jsonl`)에 기록한다. hook critical path에서는 `agy`를 실행하지 않는다. `agent-harness worker draft-wiki`가 queue를 읽어 `agy -p`를 argv 실행하고 응답을 `.agent-harness/draft-wiki/draft/*.md`에 쓴다.
 - 경계: `suggest`와 `worker draft-wiki`만 `agy -p`를 호출한다. `promote --confirm`은 승인된 draft를 configured `nvk/llm-wiki` topic의 `raw/<type>/` note로 쓰고 log만 append한다. compile/query/index 관리는 upstream LLM Wiki workflow가 맡는다.
 
-현재 `agent-harness state`는 작은 에이전트 체크포인트를 JSON 파일로 저장한다. project lifecycle state는 같은 user-state root 아래 `projects/<repo-id>/`에 격리되며 target repo의 `.agent-harness/`에는 쓰지 않는다.
+현재 `agent-harness state`는 작은 에이전트 체크포인트를 JSON 파일로 저장한다. project lifecycle state는 같은 user-state root 아래 `projects/<repo-id>/`에 격리되며 target repo의 `.agent-harness/`에는 쓰지 않는다. IssueOps 상태는 같은 user-state root 아래 `issueops/<id>.json`에 저장해 host와 세션을 넘겨 이어갈 수 있게 한다.
 
 - 기본 위치: `~/.local/state/agent-harness/`
 - project lifecycle 위치: `~/.local/state/agent-harness/projects/<repo-id>/project.json` 및 `doc-upkeep-queue.jsonl`; `<repo-id>`는 repo fingerprint hash라 같은 머신의 여러 repo가 섞이지 않는다.
+- IssueOps 위치: `~/.local/state/agent-harness/issueops/<id>.json`; issue URL, plan path, feedback log, PR/MR readiness evidence만 저장한다.
 - override: `HARNESS_STATE_DIR`
 - 파일: `<key>.json`
 - key 제한: `[A-Za-z0-9._-]`, 최대 128자, `/`, `\`, `..` 금지
 - schema: current `schema_version=1`; version이 없는 legacy record는 read-compatible하고 `state migrate`로 승격한다.
 - 제공 표면: CLI `state write/read/list/prune/doctor/migrate`, MCP `state_write/state_read/state_list/state_prune/state_doctor/state_migrate`, resource `harness://state`
+- IssueOps 제공 표면: CLI `issueops start/status/link-issue/link-plan/feedback add/pr-readiness`, MCP `issueops_start/issueops_status/issueops_link_issue/issueops_link_plan/issueops_add_feedback/issueops_pr_readiness`
 - cleanup: `state prune --max-age DURATION`은 기본 dry-run이고, 실제 삭제에는 `--confirm`이 필요하다.
 - integrity: `state doctor`는 checkpoint 파일을 수정하지 않고 invalid JSON, key mismatch, byte count drift, timestamp 오류를 보고한다.
 - comprehensive diagnostics: `agent-harness doctor`는 state doctor를 포함해 install, hooks, MCP, daemon, project docs, lifecycle namespace, repo-local runtime/schema 흔적을 종합 점검한다.

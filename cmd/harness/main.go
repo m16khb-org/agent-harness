@@ -116,6 +116,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "state:", err)
 			os.Exit(1)
 		}
+	case "issueops":
+		if err := runIssueOps(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "issueops:", err)
+			os.Exit(1)
+		}
 	case "api-doc":
 		if err := runAPIDoc(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "api-doc:", err)
@@ -4790,6 +4795,53 @@ func mcpTools() []map[string]any {
 			}},
 		},
 		{
+			"name":        "issueops_start",
+			"description": "Start an IssueOps loop and persist its issue-driven workflow state under harness state.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"repo"}, "properties": map[string]any{
+				"repo":   map[string]any{"type": "string", "description": "Repository path this IssueOps loop belongs to."},
+				"branch": map[string]any{"type": "string", "description": "Optional working branch name."},
+			}},
+		},
+		{
+			"name":        "issueops_status",
+			"description": "Read a persisted IssueOps loop by id.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id": map[string]any{"type": "string", "description": "IssueOps id."},
+			}},
+		},
+		{
+			"name":        "issueops_link_issue",
+			"description": "Attach a GitHub/GitLab issue URL to an IssueOps loop and move it to the plan phase.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "issue_url"}, "properties": map[string]any{
+				"id":        map[string]any{"type": "string", "description": "IssueOps id."},
+				"issue_url": map[string]any{"type": "string", "description": "GitHub/GitLab issue URL."},
+			}},
+		},
+		{
+			"name":        "issueops_link_plan",
+			"description": "Attach the issue-driven plan path to an IssueOps loop and move it to the implementation phase.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "plan_path"}, "properties": map[string]any{
+				"id":        map[string]any{"type": "string", "description": "IssueOps id."},
+				"plan_path": map[string]any{"type": "string", "description": "Plan file path."},
+			}},
+		},
+		{
+			"name":        "issueops_add_feedback",
+			"description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "source", "body"}, "properties": map[string]any{
+				"id":     map[string]any{"type": "string", "description": "IssueOps id."},
+				"source": map[string]any{"type": "string", "description": "Feedback source, such as user, review, CI, or QA."},
+				"body":   map[string]any{"type": "string", "description": "Feedback body."},
+			}},
+		},
+		{
+			"name":        "issueops_pr_readiness",
+			"description": "Report whether an IssueOps loop has the issue and plan evidence needed before drafting a PR or MR.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id": map[string]any{"type": "string", "description": "IssueOps id."},
+			}},
+		},
+		{
 			"name":        "daemon_status",
 			"description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
@@ -5091,6 +5143,45 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 			return nil, &rpcError{Code: -32000, Message: "State migrate failed", Data: err.Error()}
 		}
 		payload = result
+	case "issueops_start":
+		result, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{
+			Repo:   stringArg(call.Arguments, "repo"),
+			Branch: stringArg(call.Arguments, "branch"),
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps start failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_status":
+		result, err := core.ReadIssueOps(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps status failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_link_issue":
+		result, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "issue_url"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps issue link failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_link_plan":
+		result, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "plan_path"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps plan link failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_add_feedback":
+		result, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "source"), stringArg(call.Arguments, "body"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps feedback failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_pr_readiness":
+		record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps PR readiness failed", Data: err.Error()}
+		}
+		payload = core.IssueOpsPRReadiness(record)
 	case "daemon_status":
 		payload = daemonStatusForMCP()
 	case "commit_suggest":

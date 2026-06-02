@@ -71,6 +71,30 @@ func TestResponseContractsGolden(t *testing.T) {
 	cliSnapshot["state_list"] = runCLIJSONContract(t, replacements, func() error {
 		return runState([]string{"list", "--json"})
 	})
+	issueopsStartStdout := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"start", "--repo", workspaceDir, "--branch", "feature/contract", "--json"})
+	})
+	var issueopsStartRaw map[string]any
+	if err := json.Unmarshal([]byte(issueopsStartStdout), &issueopsStartRaw); err != nil {
+		t.Fatalf("unmarshal issueops start JSON %q: %v", issueopsStartStdout, err)
+	}
+	cliSnapshot["issueops_start"] = normalizeContractValue(issueopsStartRaw, replacements)
+	issueopsID, ok := issueopsStartRaw["id"].(string)
+	if !ok || issueopsID == "" {
+		t.Fatalf("issueops start missing id: %#v", issueopsStartRaw)
+	}
+	cliSnapshot["issueops_link_issue"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"link-issue", "--id", issueopsID, "--issue-url", "https://gitlab.example/group/project/-/issues/1", "--json"})
+	})
+	cliSnapshot["issueops_link_plan"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"link-plan", "--id", issueopsID, "--plan-path", "docs/superpowers/plans/contract.md", "--json"})
+	})
+	cliSnapshot["issueops_feedback_add"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"feedback", "add", "--id", issueopsID, "--source", "user", "--body", "tighten contract", "--json"})
+	})
+	cliSnapshot["issueops_pr_readiness"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"pr-readiness", "--id", issueopsID, "--json"})
+	})
 
 	old := mustStateReadForContract(t, "current")
 	old.Record.Key = "old"
@@ -179,6 +203,39 @@ func TestResponseContractsGolden(t *testing.T) {
 	})
 	mcpSnapshot["state_doctor"] = runMCPToolContract(t, replacements, "state_doctor", map[string]any{})
 	mcpSnapshot["state_migrate"] = runMCPToolContract(t, replacements, "state_migrate", map[string]any{})
+	issueopsMCPStartRaw := runMCPToolContractRaw(t, "issueops_start", map[string]any{
+		"repo":   workspaceDir,
+		"branch": "feature/mcp-contract",
+	})
+	mcpSnapshot["issueops_start"] = normalizeMCPTextJSON(normalizeContractValue(issueopsMCPStartRaw, replacements), replacements)
+	issueopsMCPID, ok := issueopsMCPStartRaw["content"].([]any)[0].(map[string]any)["text"].(string)
+	if !ok || issueopsMCPID == "" {
+		t.Fatalf("MCP issueops start missing text: %#v", issueopsMCPStartRaw)
+	}
+	var issueopsMCPPayload map[string]any
+	if err := json.Unmarshal([]byte(issueopsMCPID), &issueopsMCPPayload); err != nil {
+		t.Fatalf("unmarshal MCP issueops start text: %v", err)
+	}
+	issueopsMCPID, ok = issueopsMCPPayload["id"].(string)
+	if !ok || issueopsMCPID == "" {
+		t.Fatalf("MCP issueops start missing id: %#v", issueopsMCPPayload)
+	}
+	mcpSnapshot["issueops_link_issue"] = runMCPToolContract(t, replacements, "issueops_link_issue", map[string]any{
+		"id":        issueopsMCPID,
+		"issue_url": "https://github.com/example/repo/issues/2",
+	})
+	mcpSnapshot["issueops_link_plan"] = runMCPToolContract(t, replacements, "issueops_link_plan", map[string]any{
+		"id":        issueopsMCPID,
+		"plan_path": "docs/superpowers/plans/mcp-contract.md",
+	})
+	mcpSnapshot["issueops_add_feedback"] = runMCPToolContract(t, replacements, "issueops_add_feedback", map[string]any{
+		"id":     issueopsMCPID,
+		"source": "review",
+		"body":   "tighten MCP contract",
+	})
+	mcpSnapshot["issueops_pr_readiness"] = runMCPToolContract(t, replacements, "issueops_pr_readiness", map[string]any{
+		"id": issueopsMCPID,
+	})
 	mcpSnapshot["self_augment"] = runMCPToolContract(t, replacements, "self_augment", map[string]any{
 		"target_score": 95,
 	})
@@ -297,6 +354,12 @@ func runCLIJSONContract(t *testing.T, replacements map[string]string, fn func() 
 
 func runMCPToolContract(t *testing.T, replacements map[string]string, name string, arguments map[string]any) any {
 	t.Helper()
+	value := runMCPToolContractRaw(t, name, arguments)
+	return normalizeMCPTextJSON(normalizeContractValue(value, replacements), replacements)
+}
+
+func runMCPToolContractRaw(t *testing.T, name string, arguments map[string]any) map[string]any {
+	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": arguments})
 	if err != nil {
 		t.Fatal(err)
@@ -313,7 +376,11 @@ func runMCPToolContract(t *testing.T, replacements map[string]string, name strin
 	if err := json.Unmarshal(b, &value); err != nil {
 		t.Fatal(err)
 	}
-	return normalizeMCPTextJSON(normalizeContractValue(value, replacements), replacements)
+	typed, ok := value.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected MCP result type %T", value)
+	}
+	return typed
 }
 
 func captureStdoutForContract(t *testing.T, fn func() error) string {
@@ -391,6 +458,10 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 			if key == "id" {
 				if s, ok := child.(string); ok && strings.HasPrefix(s, "job-") {
 					out[key] = "$WORKER_JOB_ID"
+					continue
+				}
+				if s, ok := child.(string); ok && strings.HasPrefix(s, "io-") {
+					out[key] = "$ISSUEOPS_ID"
 					continue
 				}
 			}

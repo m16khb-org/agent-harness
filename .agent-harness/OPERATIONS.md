@@ -7,9 +7,9 @@ description: Install, sync, runtime, and operational procedures.
 
 현재 `agent-harness`는 Codex와 Claude Code가 같은 Go binary와 MCP schema를 쓰도록 다음 표면을 제공한다.
 
-1. Codex/Claude native skills: `atomic-commit-push`, `self-augment`, `project-bootstrap`; Codex-only skills: `workflows`, `ultracode`
+1. Codex/Claude native skills: `atomic-commit-push`, `issueops`, `self-augment`, `project-bootstrap`; Codex-only skills: `workflows`, `ultracode`
 2. MCP stdio proxy: `agent-harness mcp` → shared `agent-harness daemon`
-3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/daemon/worker/self-verify/self-augment/api-doc/hook`
+3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/daemon/worker/self-verify/self-augment/api-doc/hook`
 
 ---
 
@@ -76,6 +76,7 @@ CodeGraph local index 생성을 건너뛰려면 `HARNESS_INIT_CODEGRAPH=0 agent-
 
 ```text
 Use $atomic-commit-push to review my changes, split them into atomic commits, and push safely.
+Use $issueops to run a problem -> issue -> plan -> TDD/subagent -> feedback -> PR/MR cycle.
 Use $ultracode in Codex to automatically apply workflows to substantive tasks.
 Use $workflows in Codex to run an explicit dynamic workflow with batched subagents.
 ```
@@ -84,7 +85,22 @@ Use $workflows in Codex to run an explicit dynamic workflow with batched subagen
 
 ```bash
 test -f ~/.codex/skills/atomic-commit-push/SKILL.md && echo ok
+test -f ~/.codex/skills/issueops/SKILL.md && echo ok
 ```
+
+### IssueOps
+
+`issueops`는 에이전트 실행 절차를 정의하는 native skill이고, durable 상태는 CLI/MCP `issueops` 표면이 관리한다. 훅은 이 skill을 힌트로 제안할 수 있지만 issue/PR/MR 생성이나 파일 수정은 직접 수행하지 않는다.
+
+```bash
+agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
+agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
+agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
+agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
+agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
+```
+
+MCP에는 같은 의미의 `issueops_start`, `issueops_status`, `issueops_link_issue`, `issueops_link_plan`, `issueops_add_feedback`, `issueops_pr_readiness`가 있다. 상태 파일은 `HARNESS_STATE_DIR` 또는 `~/.local/state/agent-harness/issueops/` 아래에 저장된다.
 
 ### MCP
 

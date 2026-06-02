@@ -24,6 +24,7 @@ func Commands() []Command {
 		{Name: "trace", Description: "analyze trace-like verification and lifecycle evidence"},
 		{Name: "contract", Description: "print or check CLI/MCP response compatibility contracts"},
 		{Name: "state", Description: "read and write small agent state checkpoints"},
+		{Name: "issueops", Description: "track issue-driven IssueOps work cycles"},
 		{Name: "api-doc", Description: "run API documentation static and agent review gates"},
 		{Name: "hook", Description: "run prompt-routing hooks"},
 		{Name: "project", Description: "bootstrap and maintain project operating docs"},
@@ -65,6 +66,12 @@ Usage:
   agent-harness state prune --max-age DURATION [--confirm] [--json]
   agent-harness state doctor [--json]
   agent-harness state migrate [--confirm] [--json]
+  agent-harness issueops start --repo PATH [--branch NAME] [--json]
+  agent-harness issueops status --id ID [--json]
+  agent-harness issueops link-issue --id ID --issue-url URL [--json]
+  agent-harness issueops link-plan --id ID --plan-path PATH [--json]
+  agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--json]
+  agent-harness issueops pr-readiness --id ID [--json]
   agent-harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
   agent-harness hook user-prompt|pre-tool-use|post-tool-use|pre-compact|post-compact|session-start|stop [--json]
   agent-harness project bootstrap [--repo PATH] [--sync] [--dry-run] [--json]

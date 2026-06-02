@@ -245,7 +245,7 @@ func StateDoctor() (StateDoctorResult, error) {
 		name := entry.Name()
 		path := filepath.Join(dir, name)
 		if entry.IsDir() {
-			if name == "projects" || name == "daemon" || name == "worker" {
+			if name == "projects" || name == "daemon" || name == "worker" || name == "issueops" {
 				continue
 			}
 			result.Issues = append(result.Issues, StateDoctorIssue{

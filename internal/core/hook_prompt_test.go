@@ -20,6 +20,15 @@ func TestBuildUserPromptMCPHintsForAPIWork(t *testing.T) {
 	}
 }
 
+func TestBuildUserPromptMCPHintsRoutesProblemToPR(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "문제 파악부터 GitLab 이슈, 구현 계획, TDD, 피드백 루프, MR까지 진행해줘"})
+	for _, want := range []string{"issueops", "issue-driven workflow", "hooks must not create issues or PRs"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("issueops hint missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
 func TestBuildUserPromptMCPHintsForBugRecordsCaution(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "이 회귀 버그 고쳐줘"})
 	if !strings.Contains(got.AdditionalContext, "record reusable caution") {
