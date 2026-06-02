@@ -1,0 +1,84 @@
+name: 기능 요청
+description: 사용자 관점의 새 기능이나 개선을 제안합니다.
+title: "feature: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        기능 요청은 사용자가 겪는 문제와 검증 가능한 완료 기준을 중심으로 작성해 주세요.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제
+      description: 이 기능이 없어서 어떤 사용 흐름이 막히는지 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: users
+    attributes:
+      label: 대상 사용자와 가치
+      description: 누가 이 기능을 쓰고 어떤 효과를 얻는지 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 원하는 동작
+      description: 사용자가 보게 될 CLI, MCP, hook, skill, 문서 동작을 구체적으로 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 현재 근거
+      description: 관련 이슈, 사용자 피드백, 파일, 명령 결과, 오픈소스 비교 근거를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 검토한 대안
+      description: 기존 도구, 수동 절차, upstream companion 사용 등 비교한 대안을 적어 주세요.
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 완료 기준
+      description: 구현 완료를 판단할 수 있는 체크 가능한 기준을 적어 주세요.
+      placeholder: |
+        - [ ] 사용자가 보게 될 CLI/MCP/hook/문서 동작이 명확히 정의된다.
+        - [ ] 필요한 테스트, 스모크 체크, 문서 검증이 통과한다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: 비목표
+      description: 이번 기능 요청에서 하지 않을 일을 적어 범위를 제한해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: 검증
+      description: 필요한 테스트, 빌드, 스모크 체크, 문서 검증을 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: 위험과 트레이드오프
+      description: 호환성, 보안, secret, host별 drift, 운영 위험을 적어 주세요.
+    validations:
+      required: false
