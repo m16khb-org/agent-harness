@@ -119,10 +119,10 @@ func ScoreIssueOpsRemoteCandidates(req IssueOpsRemoteScoringRequest) (IssueOpsRe
 	sortIssueOpsRemoteScoredItems(result.SelectedLabels)
 	sortIssueOpsRemoteScoredItems(result.RejectedLabels)
 	result.ApplyInstructions = issueOpsRemoteApplyInstructions(provider, result.SelectedRelatedIssues, result.SelectedLabels)
-	if len(result.SelectedRelatedIssues) == 0 {
+	if len(req.IssueCandidates) > 0 && len(result.SelectedRelatedIssues) == 0 {
 		result.Warnings = append(result.Warnings, "no related issue candidates met threshold")
 	}
-	if len(result.SelectedLabels) == 0 {
+	if len(req.LabelCandidates) > 0 && len(result.SelectedLabels) == 0 {
 		result.Warnings = append(result.Warnings, "no label candidates met threshold")
 	}
 	return result, nil
@@ -149,7 +149,8 @@ func RunIssueOpsRemoteAgyJudge(req IssueOpsRemoteAgyJudgeRequest) (IssueOpsRemot
 	for attempt := 1; attempt <= attempts; attempt++ {
 		llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Command: command, WorkDir: req.RepoRoot, Prompt: prompt, Timeout: timeout})
 		if err != nil {
-			return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring judge failed: %s", boundedIssueOpsText(string(llm.Output)))
+			lastErr = fmt.Errorf("agy remote scoring judge failed: %s: %w", boundedIssueOpsText(string(llm.Output)), err)
+			continue
 		}
 		result, err := decodeStrictIssueOpsRemoteScoringResult(llm.Output)
 		if err == nil {

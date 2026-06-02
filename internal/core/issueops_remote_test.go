@@ -67,6 +67,19 @@ func TestScoreIssueOpsRemoteCandidatesSupportsGitLabInstructions(t *testing.T) {
 	}
 }
 
+func TestScoreIssueOpsRemoteCandidatesDoesNotWarnWhenNoCandidatesExist(t *testing.T) {
+	result, err := ScoreIssueOpsRemoteCandidates(IssueOpsRemoteScoringRequest{
+		Provider: "github",
+		Issue:    IssueOpsRemoteArtifact{Title: "IssueOps remote score with no candidate data"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Warnings) != 0 {
+		t.Fatalf("empty candidate lists should not produce threshold warnings: %+v", result.Warnings)
+	}
+}
+
 func TestRunIssueOpsRemoteAgyJudgeUsesStrictJSONWrapper(t *testing.T) {
 	dir := t.TempDir()
 	fakeAgy := filepath.Join(dir, "fake-agy.sh")
@@ -113,5 +126,46 @@ func TestRunIssueOpsRemoteAgyJudgeUsesStrictJSONWrapper(t *testing.T) {
 	}
 	if len(result.SelectedRelatedIssues) != 1 || len(result.SelectedLabels) != 1 {
 		t.Fatalf("expected strict JSON result from fake agy: %+v", result)
+	}
+}
+
+func TestRunIssueOpsRemoteAgyJudgeRetriesExternalLLMFailure(t *testing.T) {
+	dir := t.TempDir()
+	counter := filepath.Join(dir, "counter")
+	fakeAgy := filepath.Join(dir, "fake-agy.sh")
+	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh
+if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
+  echo missing agy flags >&2
+  exit 2
+fi
+count=0
+if [ -f "$COUNTER_FILE" ]; then
+  count=$(cat "$COUNTER_FILE")
+fi
+count=$((count + 1))
+printf '%s' "$count" > "$COUNTER_FILE"
+if [ "$count" -eq 1 ]; then
+  echo transient failure >&2
+  exit 7
+fi
+cat <<'EOF'
+{"ok":true,"provider":"github","threshold":0.7,"selected_related_issues":[],"rejected_related_issues":[],"selected_labels":[],"rejected_labels":[],"apply_instructions":[],"warnings":[]}
+EOF
+`), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("COUNTER_FILE", counter)
+
+	result, err := RunIssueOpsRemoteAgyJudge(IssueOpsRemoteAgyJudgeRequest{
+		RepoRoot:   dir,
+		AgyCommand: fakeAgy,
+		Attempts:   2,
+		Request: IssueOpsRemoteScoringRequest{
+			Provider: "github",
+			Issue:    IssueOpsRemoteArtifact{Title: "IssueOps remote scoring retry"},
+		},
+	})
+	if err != nil || !result.OK {
+		t.Fatalf("expected retry to recover external LLM failure: result=%+v err=%v", result, err)
 	}
 }
