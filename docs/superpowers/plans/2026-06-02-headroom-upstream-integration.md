@@ -8,9 +8,9 @@
 
 **Tech Stack:** Bash installer, Go static installer-contract tests, project docs, existing `go test` and dry-run bootstrap checks.
 
-**Issue:** https://github.com/m16khb/agent-harness/issues/2
+**Issue:** https://github.com/example/agent-harness/issues/2
 
-**Branch / Worktree:** `feature/2-integrate-headroom-upstream-companion` at `/Users/m16khb/Workspace/agent-harness.worktrees/feature-2-integrate-headroom-upstream-companion`
+**Branch / Worktree:** `feature/2-integrate-headroom-upstream-companion` at `/tmp/agent-harness.worktrees/feature-2-integrate-headroom-upstream-companion`
 
 **Baseline note:** `go test ./... -count=1` currently fails before new edits in `cmd/harness` `TestResponseContractsGolden` because `response_contracts.golden.json` is stale. Do not attribute that failure to Headroom unless a focused Headroom check also fails.
 

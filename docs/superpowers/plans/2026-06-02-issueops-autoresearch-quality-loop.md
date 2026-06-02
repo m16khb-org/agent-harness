@@ -8,7 +8,7 @@
 
 **Tech Stack:** Go core and CLI in `internal/core` and `cmd/harness`; JSON candidate files; existing IssueOps benchmark state; existing usage/response contract golden tests.
 
-**IssueOps Context:** Issue https://github.com/m16khb/agent-harness/issues/9. Worktree must be `/Users/m16khb/Workspace/agent-harness.worktrees/feature-9-issueops-autoresearch-quality-loop` on branch `feature/9-issueops-autoresearch-quality-loop`.
+**IssueOps Context:** Issue https://github.com/example/agent-harness/issues/9. Worktree must be `/tmp/agent-harness.worktrees/feature-9-issueops-autoresearch-quality-loop` on branch `feature/9-issueops-autoresearch-quality-loop`.
 
 ---
 
@@ -43,7 +43,7 @@ Run:
 pwd
 git branch --show-current
 git rev-parse --short HEAD
-test "$PWD" = "/Users/m16khb/Workspace/agent-harness.worktrees/feature-9-issueops-autoresearch-quality-loop"
+test "$PWD" = "/tmp/agent-harness.worktrees/feature-9-issueops-autoresearch-quality-loop"
 test "$(git branch --show-current)" = "feature/9-issueops-autoresearch-quality-loop"
 ```
 
@@ -771,4 +771,3 @@ git log --oneline --decorate -3
 ```
 
 Expected: only intended tracked changes are present, and commits are on `feature/9-issueops-autoresearch-quality-loop`.
-

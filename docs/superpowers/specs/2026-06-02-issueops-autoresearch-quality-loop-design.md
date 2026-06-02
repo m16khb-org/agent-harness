@@ -137,4 +137,4 @@ Fake `agy` tests must cover strict JSON success, malformed output failure, schem
 
 ## Issue Link
 
-Remote issue: https://github.com/m16khb/agent-harness/issues/9
+Remote issue: https://github.com/example/agent-harness/issues/9
