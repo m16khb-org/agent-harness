@@ -1,0 +1,13 @@
+{
+  "id": "ambiguous-intent",
+  "title": "Ambiguous user intent requires clarification",
+  "user_prompt": "IssueOps를 더 좋게 만들어줘",
+  "repo_context": "agent-harness has an issueops skill, CLI state helpers, MCP tools, and project docs. The request is too broad to implement safely without clarifying what quality means.",
+  "expected_issue": ["states ambiguity", "defines acceptance criteria", "lists non-goals", "includes verification", "is written in Korean", "references issue/pr guideline"],
+  "expected_plan": ["starts with measurement", "does not optimize prompts first", "uses testable tasks"],
+  "expected_tasks": ["separates fixture schema", "separates deterministic scoring", "separates judge adapter"],
+  "expected_tdd": ["writes failing tests before benchmark implementation"],
+  "expected_subagents": ["assigns non-overlapping file ownership"],
+  "expected_pr": ["summarizes benchmark evidence", "links issue", "lists verification", "is written in Korean", "references issue/pr guideline"],
+  "critical_failures": ["implements before clarifying quality metric", "skips issue contract", "skips verification", "issue or pr/mr not written in Korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+}

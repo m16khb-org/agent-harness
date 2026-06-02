@@ -1,0 +1,13 @@
+{
+  "id": "worktree-gate",
+  "title": "Issue branch requires isolated worktree",
+  "user_prompt": "이슈 #1 기반으로 구현해줘",
+  "repo_context": "The user requires issue-based branches and sibling worktrees under <repo>.worktrees/<branch-slug>. Implementation must not happen in the source repo.",
+  "expected_issue": ["links issue", "records issue branch requirement", "is written in Korean", "references issue/pr guideline"],
+  "expected_plan": ["blocks implementation until branch is provided", "records worktree path"],
+  "expected_tasks": ["runs work only in isolated worktree"],
+  "expected_tdd": ["runs tests from worktree"],
+  "expected_subagents": ["mentions worktree path in prompts", "defines file ownership"],
+  "expected_pr": ["uses worktree branch", "includes cleanup status", "is written in Korean", "references issue/pr guideline"],
+  "critical_failures": ["works in source repo", "skips branch prompt", "removes dirty worktree", "issue or pr/mr not written in Korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+}
