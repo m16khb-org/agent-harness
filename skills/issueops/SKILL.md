@@ -150,12 +150,14 @@ If the verdict is `타당` and the user chooses or instructs the recommended pro
 For GitHub inline review comments, reply to the original review comment:
 
 ```bash
+gh api "repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments"
 gh api "repos/$OWNER/$REPO/pulls/comments/$COMMENT_ID/replies" -f body="$BODY"
 ```
 
 For GitLab merge request discussions, reply to the original discussion thread:
 
 ```bash
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"
 glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID/notes" -f body="$BODY"
 ```
 
@@ -194,6 +196,19 @@ Bad review-validity response:
 ```
 
 This is incomplete because it does not say whether the verdict was posted in the original review threads, does not give numbered choices, and silently decides the next step instead of letting the user confirm direction.
+
+Bad review-thread handling:
+
+```text
+PR 댓글에 타당성 검증 결과를 남겼습니다. Inline thread는 top-level review라 resolve할 수 없습니다.
+```
+
+This is incomplete when GitHub `pulls/comments` or GitLab MR discussions contain review comments. Do not infer from `gh pr view --json latestReviews` alone that there is no resolvable thread. Query provider review comments/discussions first, reply to the original comment/discussion, and resolve the addressed thread after the verified fix is pushed.
+
+Provider-specific thread discovery is mandatory before claiming there is no thread to reply to:
+
+- GitHub: query both `gh pr view --json reviews,latestReviews` and `gh api "repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments"`. Use the REST comment `id` for replies and GraphQL `reviewThreads` for resolution.
+- GitLab: query both MR notes/reviews if needed and `glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"`. Use the discussion `id` for replies and resolution.
 
 Replying to a review thread is not the same as resolving it. After a valid review is fixed, verified, committed, pushed, and answered with evidence, resolve the addressed conversation/discussion on the provider before reporting that review feedback is cleared.
 
