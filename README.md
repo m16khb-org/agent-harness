@@ -176,10 +176,11 @@ Default installation targets user-level host locations, including Codex hooks in
 | LLM Wiki | `nvk/llm-wiki` | Adds/updates the Codex and Claude `wiki@llm-wiki` plugin. |
 | CodeGraph | `colbymchenry/codegraph` | Installs `@colbymchenry/codegraph`, registers its MCP server for Codex/Claude, and initializes this repo's `.codegraph/` index when enabled. |
 | claude-mem | `thedotmack/claude-mem` | Runs `npx claude-mem@latest install` for Codex and Claude Code to add/update hooks, MCP, and worker wiring. |
+| Headroom | `chopratejas/headroom` / `headroom-ai` | Installs or upgrades the CLI with `pipx install --python python3.13 "headroom-ai[all]"`; it does not automatically run proxy, wrap, learn, or MCP setup. |
 
 During the migration to claude-mem, the full setup removes legacy agentmemory plugin/marketplace wiring.
 
-Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_CODEGRAPH=0` to skip local CodeGraph indexing.
+Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_CODEGRAPH=0` to skip local CodeGraph indexing. Headroom runtime use remains manual; set `HEADROOM_TELEMETRY=off` before experiments when telemetry opt-out is needed.
 
 ## Common commands
 
@@ -496,10 +497,11 @@ agent-harness update
 | LLM Wiki | `nvk/llm-wiki` | Codex/Claude `wiki@llm-wiki` plugin을 추가/갱신합니다. |
 | CodeGraph | `colbymchenry/codegraph` | `@colbymchenry/codegraph`를 설치하고 Codex/Claude MCP server를 등록하며, 설정 시 이 repo의 `.codegraph/` index를 초기화합니다. |
 | claude-mem | `thedotmack/claude-mem` | Codex/Claude Code에 `npx claude-mem@latest install`을 실행해 hooks, MCP, worker 배선을 추가/갱신합니다. |
+| Headroom | `chopratejas/headroom` / `headroom-ai` | `pipx install --python python3.13 "headroom-ai[all]"`로 CLI를 설치/갱신하며, proxy/wrap/learn/MCP 설정은 자동 실행하지 않습니다. |
 
 claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marketplace 배선을 제거합니다.
 
-같은 동작은 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`로도 켤 수 있고, local CodeGraph indexing은 `HARNESS_INIT_CODEGRAPH=0`으로 끌 수 있습니다.
+같은 동작은 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`로도 켤 수 있고, local CodeGraph indexing은 `HARNESS_INIT_CODEGRAPH=0`으로 끌 수 있습니다. Headroom runtime 사용은 수동 실험으로 남기며, telemetry opt-out이 필요하면 실험 전에 `HEADROOM_TELEMETRY=off`를 설정합니다.
 
 ## 자주 쓰는 명령
 

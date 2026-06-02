@@ -35,7 +35,7 @@ Headroom을 하네스 core나 hook에 넣지 않고, 명시적 upstream sync 경
 
 ## 원격 이슈
 
-https://github.com/m16khb/agent-harness/issues/3
+https://github.com/m16khb/agent-harness/issues/2
 
 ## 검증
 
