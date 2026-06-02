@@ -135,10 +135,33 @@ When handling remote PR/MR review feedback, first verify each reviewer claim aga
 
 The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Run the Korean Remote Artifact Gate before every remote issue body edit.
 
-When the user asks only for review-validity verification, do not end with a bare conclusion such as "the next step is to add tests and fix it." After the evidence-based verdict, explicitly present the available next actions so the user can choose or confirm direction. Include one recommended action, one narrower/safer alternative, and one stop/defer option when applicable. Example:
+When the user asks only for review-validity verification, verify each remote review claim against the diff, code, and commands, then reply in the original review thread with the verdict before reporting back to the user. Each thread reply must say whether the review is `타당` or `타당하지 않음`, cite the concrete evidence, and state the next action. Do not leave a bare local conclusion such as "the next step is to add tests and fix it."
+
+For GitHub inline review comments, reply to the original review comment:
+
+```bash
+gh api "repos/$OWNER/$REPO/pulls/comments/$COMMENT_ID/replies" -f body "$BODY"
+```
+
+For GitLab merge request discussions, add a note to the original discussion with the equivalent discussion/note API or `glab` command supported by the project. The reply must be in the review thread/discussion, not only in the PR/MR summary, issue body, local notes, or final chat response.
+
+Use this thread reply shape:
+
+```text
+타당성: 타당
+
+근거:
+- <파일:라인 또는 명령 결과 근거>
+- <계약/테스트 근거>
+
+다음 조치: <수정 진행|별도 PR 분리|보류 사유>
+```
+
+When reporting back to the user after posting thread replies, include the evidence-based verdict and explicitly present the available next actions as numbered choices so the user can choose or confirm direction. Use `1.`, `2.`, `3.` choices, not an unstructured paragraph. Include one recommended action, one narrower/safer alternative, and one stop/defer option when applicable. Example:
 
 ```text
 검증 결론: 두 리뷰 모두 타당합니다.
+스레드 답변: 각 리뷰 스레드에 타당성, 근거, 다음 조치를 답글로 남겼습니다.
 
 선택지:
 1. 진행: 테스트를 먼저 추가하고 두 결함을 수정합니다. (추천)
