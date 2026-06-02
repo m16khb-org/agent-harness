@@ -32,9 +32,19 @@ Use this guide when reviewing `m16khb/agent-harness` pull requests. Focus on con
 - For Go behavior changes, expect focused tests first, then `go test ./... -count=1` when the blast radius touches shared CLI/MCP/core behavior.
 - For configuration-only changes, verify parser validity and exact file scope.
 - For generated golden files, check that the source behavior changed intentionally and that the golden update is not hiding unrelated drift.
+- For generated or mechanical artifacts, review the source contract and generation command first. Do not comment on generated output unless it is missing, stale, or inconsistent with the source behavior.
+- For comments and docs, flag text that restates obvious code without explaining intent, assumptions, user-visible contract, or verification evidence.
+
+## Review Scope And Severity
+
+- Treat MEDIUM comments as actionable defects, missing verification, security/privacy risk, or contract drift. Avoid low-value nits that do not change behavior or reviewability.
+- Prefer one precise inline comment over several broad comments when one root cause explains multiple changed lines.
+- Do not comment on line length, formatting, import order, or style-only details when existing formatters, linters, or `git diff --check` are the right enforcement mechanism.
+- When a PR changes only templates, prompts, plans, or configuration, focus on parser validity, host compatibility, ignored/generated file scope, secret exposure, and whether the documented verification command actually succeeds.
 
 ## Review Tone
 
+- Write review summaries and inline review comments primarily in Korean. Keep commands, code identifiers, file paths, API names, and upstream project names in their original English form.
 - Lead with defects, regressions, missing verification, and contract risks.
 - Keep comments specific to changed files and cite the relevant behavior or invariant.
 - Avoid broad refactors, preference-only formatting changes, and suggestions outside the pull request's stated goal.
