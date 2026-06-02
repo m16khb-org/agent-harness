@@ -1,0 +1,96 @@
+name: 버그 리포트
+description: 재현 가능한 결함이나 회귀를 보고합니다.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        재현 가능한 결함만 이 템플릿으로 작성해 주세요. 보안 관련 내용이나 secret 원문은 이슈에 남기지 마세요.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제
+      description: 어떤 동작이 잘못됐는지 간결하게 설명해 주세요.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: 영향 표면
+      description: 문제가 가장 직접적으로 드러나는 영역을 고르세요.
+      options:
+        - CLI
+        - MCP
+        - hook
+        - skill
+        - installer/bootstrap
+        - docs
+        - tests
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 환경과 버전
+      description: OS, Go 버전, `agent-harness version`, 관련 host(Codex/Claude/GitHub/GitLab) 정보를 적어 주세요.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 재현 절차
+      description: 가능한 한 작고 정확한 단계로 적어 주세요.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 동작
+      description: 올바른 동작과 그렇게 기대하는 이유를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 동작
+      description: 실제 출력, 에러, 로그 요약을 적어 주세요. secret 원문은 제거하세요.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 현재 근거
+      description: 관련 파일, 명령 출력, PR, 이슈, 로그 위치 등 검증 가능한 근거를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: 확인한 검증
+      description: 이미 실행한 테스트, 빌드, 스모크 체크와 결과를 적어 주세요.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 추가 정보
+      description: 관련 제약, 우회 방법, 스크린샷이 필요한 경우 설명을 적어 주세요.
+    validations:
+      required: false
