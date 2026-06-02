@@ -178,3 +178,10 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - Source: manual
 - Summary: Do not edit installed upstream plugin cache files such as `~/.codex/plugins/cache/claude-mem/...`; fix duplicate or host-specific integration issues in user-owned Codex/Claude settings, wrappers, or upstream itself.
 - If an upstream memory provider is installed as a Codex plugin, do not also install the same hooks in `~/.codex/hooks.json`; that double-runs capture hooks and creates duplicated observations/summaries.
+
+## 2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup
+
+- Kind: `caution`
+- Source: PR #15 merge attempt
+- Summary: `gh pr merge --merge --delete-branch` can merge the GitHub PR remotely and then fail during local branch cleanup when the base branch, such as `main`, is already checked out in another linked worktree. In IssueOps worktree flows, run provider merge first without local cleanup flags, then verify merged state, remote source branch state, and worktree cleanliness before deleting the remote source branch, removing the feature worktree, and deleting the local branch.
+- Do not rely on provider CLI merge flags that also perform local branch/worktree cleanup from a feature worktree. For GitHub, avoid `gh pr merge "$PR_NUMBER" --merge --delete-branch`; use `gh pr merge "$PR_NUMBER" --merge`, then explicit post-merge cleanup. For GitLab, verify whether the installed `glab`/API flag is remote-only before using it; otherwise merge first and clean up remote/local state in separate commands.
