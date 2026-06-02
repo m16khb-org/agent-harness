@@ -187,9 +187,9 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			failure:  "TDD plan missing failing-test-first evidence",
 		},
 		"subagent_orchestration": {
-			ok:       containsAllFold(artifact.SubagentPrompts, "not alone", "do not revert", "own") && containsAnyFold(artifact.SubagentPrompts, "expected output", "report"),
-			evidence: "subagent prompts include coordination and ownership guidance",
-			failure:  "subagent prompts missing coordination guidance",
+			ok:       containsAllFold(artifact.SubagentPrompts, "not alone", "do not revert", "own") && containsAnyFold(artifact.SubagentPrompts, "expected output", "report") && workerPromptHasContextGate(artifact) && reviewPromptIsBounded(artifact),
+			evidence: "subagent prompts include coordination, ownership, context verification, and bounded review guidance",
+			failure:  "subagent prompts missing coordination, context verification, or bounded review guidance",
 		},
 		"implementation_readiness": {
 			ok:       strings.TrimSpace(artifact.BranchName) != "" && strings.TrimSpace(artifact.WorktreePath) != "",
@@ -428,6 +428,10 @@ func detectIssueOpsCriticalFailures(fixture IssueOpsBenchmarkFixture, artifact I
 			failures = append(failures, rule)
 		case strings.Contains(ruleText, "skips branch prompt") && strings.TrimSpace(artifact.BranchName) == "":
 			failures = append(failures, rule)
+		case strings.Contains(ruleText, "worker starts without context check") && !workerPromptHasContextGate(artifact):
+			failures = append(failures, rule)
+		case strings.Contains(ruleText, "unbounded code-reviewer") && !reviewPromptIsBounded(artifact):
+			failures = append(failures, rule)
 		case strings.Contains(ruleText, "removes dirty worktree") && containsAllFold(artifact.WorktreeCleanup, "dirty", "remove"):
 			failures = append(failures, rule)
 		case strings.Contains(ruleText, "not written in korean") && (!containsHangul(artifact.IssueDraft) || !containsHangul(artifact.PRDraft)):
@@ -445,6 +449,25 @@ func implementationInWorktree(artifact IssueOpsBenchmarkArtifact) bool {
 	worktreePath := strings.TrimSpace(artifact.WorktreePath)
 	location := strings.TrimSpace(artifact.ImplementationLocation)
 	return worktreePath != "" && location != "" && (location == worktreePath || strings.HasPrefix(location, worktreePath+string(os.PathSeparator)))
+}
+
+func workerPromptHasContextGate(artifact IssueOpsBenchmarkArtifact) bool {
+	prompt := artifact.SubagentPrompts
+	return containsAllFold(prompt, "pwd", "branch", "head") &&
+		(containsFold(prompt, "worktree") || strings.TrimSpace(artifact.WorktreePath) != "") &&
+		containsAnyFold(prompt, "stop", "halt", "중단")
+}
+
+func reviewPromptIsBounded(artifact IssueOpsBenchmarkArtifact) bool {
+	prompt := artifact.SubagentPrompts
+	if !containsAnyFold(prompt, "review", "code-reviewer", "verifier") {
+		return true
+	}
+	if containsAnyFold(prompt, "verifier", "direct bounded review", "bounded review") {
+		return true
+	}
+	return containsAnyFold(prompt, "do not spawn subagents", "no nested subagents", "nested subagent fan-out 금지") &&
+		containsAnyFold(prompt, "minute", "minutes", "time budget", "분", "시간 예산")
 }
 
 func containsAllFold(s string, needles ...string) bool {

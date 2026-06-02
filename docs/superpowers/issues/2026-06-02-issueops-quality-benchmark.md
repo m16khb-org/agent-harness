@@ -14,6 +14,8 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - 이슈와 PR/MR은 유명 오픈소스 프로젝트의 기여 가이드에서 추출한 repo-local 가이드라인을 따라야 한다.
 - 이슈와 PR/MR은 과도한 이모지를 피해야 한다. 의미 있는 소수의 이모지는 허용한다.
 - PR/MR의 다이어그램은 리뷰 이해를 실제로 줄일 때만 사용한다. 필요 없는 다이어그램을 억지로 넣는 것은 품질 저하다.
+- 모든 implementation/TDD/review/QA/subagent worker는 시작 시 `pwd`, branch, `HEAD`, expected worktree path를 확인해야 하며, 일치하지 않으면 작업을 중단해야 한다.
+- 짧거나 좁은 리뷰는 `verifier` 또는 직접 bounded review를 우선 사용하고, `code-reviewer`를 쓸 때는 nested subagent fan-out 금지, 시간 예산, worktree/branch/HEAD 확인을 prompt에 명시해야 한다.
 
 이 벤치마크와 게이트가 없으면 IssueOps prompt나 workflow 변경은 품질 개선을 주관적으로만 주장하게 된다.
 
@@ -33,6 +35,8 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - fixture schema는 user prompt, repo context, 기대 issue/plan/task/TDD/subagent/PR 품질, critical failure rule을 담는다.
 - deterministic benchmark는 필수 issue section, plan verification, TDD-before-implementation, bounded task ownership, subagent prompt quality, PR/MR field, phase choice gate, isolated worktree evidence를 검사한다.
 - deterministic benchmark는 worktree cleanup readiness, 사용자 cleanup choice, safe removal evidence를 검사한다.
+- deterministic benchmark는 worker prompt가 `pwd`, branch, `HEAD`, expected worktree path 검증을 요구하는지 검사한다.
+- deterministic benchmark는 좁은 리뷰에서 bounded review/verifier를 우선하고, `code-reviewer` 사용 시 nested subagent fan-out 금지와 시간 예산을 요구하는지 검사한다.
 - deterministic benchmark는 issue draft와 PR/MR draft가 한글로 작성됐는지 검사한다.
 - deterministic benchmark는 issue draft와 PR/MR draft가 `docs/superpowers/specs/issueops-issue-pr-guidelines.md`를 참조하고 핵심 section을 만족하는지 검사한다.
 - deterministic benchmark는 복잡도 근거 없이 억지로 넣은 다이어그램을 지양하고, 다이어그램은 review value가 명확할 때만 허용한다.
@@ -65,6 +69,8 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - IssueOps가 issue URL 생성/연결 전에 구현을 시작한다.
 - IssueOps가 issue 생성/연결 후에도 이슈 기반 브랜치명 없이 구현을 시작한다.
 - IssueOps가 source repo에서 구현, TDD, subagent 작업, 검증, 커밋, PR/MR draft를 수행한다.
+- IssueOps worker가 시작 시 `pwd`, branch, `HEAD`, expected worktree path를 검증하지 않거나, mismatch 상태에서 계속 진행한다.
+- IssueOps가 좁은 리뷰에 unbounded `code-reviewer`를 사용하거나 nested subagent fan-out 금지를 누락한다.
 - IssueOps가 dirty 또는 unmerged worktree를 명시적 승인 없이 제거한다.
 - IssueOps가 issue draft 또는 PR/MR draft를 주로 영어로 작성한다.
 - IssueOps가 open-source-derived issue/PR guideline reference를 누락하거나 핵심 section을 빠뜨린다.
@@ -105,3 +111,5 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - 사용자는 유명 오픈소스 프로젝트의 issue/PR guideline을 참고한 품질 게이트를 요구했다.
 - 사용자는 과도한 이모지를 지양하되 적절한 사용은 허용하라고 요구했다.
 - 사용자는 개발자가 이해하기 좋은 다이어그램은 필요할 때만 쓰고, 필요 없는 다이어그램을 억지로 넣지 말라고 요구했다.
+- 사용자는 리뷰 워커 지연 원인을 반영해, 짧은 리뷰는 `verifier` 또는 직접 bounded review를 쓰고 `code-reviewer` 사용 시 nested subagent fan-out 금지, 시간 예산, worktree/branch/HEAD 확인을 명시하라고 요구했다.
+- 사용자는 IssueOps worker가 시작 시 `pwd`, branch, `HEAD`를 검증하고 틀리면 중단하는 게이트를 요구했다.

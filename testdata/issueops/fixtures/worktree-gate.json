@@ -7,7 +7,7 @@
   "expected_plan": ["blocks implementation until branch is provided", "records worktree path"],
   "expected_tasks": ["runs work only in isolated worktree"],
   "expected_tdd": ["runs tests from worktree"],
-  "expected_subagents": ["mentions worktree path in prompts", "defines file ownership"],
+  "expected_subagents": ["mentions worktree path in prompts", "defines file ownership", "verifies pwd branch and HEAD before work", "stops on context mismatch", "uses bounded review rules"],
   "expected_pr": ["uses worktree branch", "includes cleanup status", "is written in Korean", "references issue/pr guideline"],
-  "critical_failures": ["works in source repo", "skips branch prompt", "removes dirty worktree", "issue or pr/mr not written in Korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+  "critical_failures": ["works in source repo", "skips branch prompt", "worker starts without context check", "unbounded code-reviewer review", "removes dirty worktree", "issue or pr/mr not written in Korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
 }
