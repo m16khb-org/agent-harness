@@ -106,7 +106,7 @@ func TestIssueOpsAgyJudgePromptRequiresDimensionScoresArray(t *testing.T) {
 func writeFakeIssueOpsAgy(t *testing.T, output string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "fake-agy.sh")
-	script := "#!/bin/sh\nif [ \"$1\" != \"-p\" ]; then echo missing -p >&2; exit 2; fi\ncat <<'EOF'\n" + output + "\nEOF\n"
+	script := "#!/bin/sh\nif [ \"$1\" != \"--dangerously-skip-permissions\" ] || [ \"$2\" != \"-p\" ]; then echo missing agy flags >&2; exit 2; fi\ncat <<'EOF'\n" + output + "\nEOF\n"
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}

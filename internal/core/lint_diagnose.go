@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -105,22 +104,14 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 		timeout = 2 * time.Minute
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	agyCmd := exec.CommandContext(ctx, agyCommand, "-p", prompt)
-	agyCmd.Dir = root
-	out, err := agyCmd.CombinedOutput()
-	if ctx.Err() == context.DeadlineExceeded {
-		return result, fmt.Errorf("agy diagnose timed out after %s", timeout)
-	}
+	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Command: agyCommand, WorkDir: root, Prompt: prompt, Timeout: timeout})
 	if err != nil {
 		// Do not return hard error if agy itself fails, just record the error in diagnosis
 		result.Diagnosis = fmt.Sprintf("[Error running agy: %v]\nOriginal Output:\n%s", err, outputStr)
 		return result, nil
 	}
 
-	result.Diagnosis = strings.TrimSpace(string(out))
+	result.Diagnosis = strings.TrimSpace(string(llm.Output))
 	return result, nil
 }
 

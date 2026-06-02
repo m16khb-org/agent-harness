@@ -29,6 +29,29 @@ When the user explicitly invokes `$issueops` and the repo remote, credentials, t
 
 Assign the created remote issue to the currently authenticated user. For GitHub, resolve the login with `gh api user --jq .login` and pass it to `gh issue create --assignee "$login"` or apply it immediately with `gh issue edit "$ISSUE_URL" --add-assignee "$login"` before linking the issue. For GitLab, use the equivalent current-user assignee field supported by the target project's CLI/API.
 
+Before creating or editing the remote issue, proactively score related issues and labels. Do not wait for the user to ask for this. Gather candidate issues and labels from the target provider, build an `issueops remote score` request, and apply only selected candidates whose score is at or above the threshold. The count is not fixed; the threshold decides the set.
+
+Provider candidate gathering:
+
+- GitHub: use `gh issue list --state all --limit N --json number,title,body,labels,url,state` and `gh label list --json name,description,color`.
+- GitLab: use the equivalent `glab issue list`/GitLab API issue fields and project label list.
+
+Run the scoring gate with the external LLM judge when available:
+
+```bash
+agent-harness issueops remote score --input issueops-remote-score.json --judge agy --json
+```
+
+Use the deterministic fallback only when the external LLM is unavailable or intentionally disabled:
+
+```bash
+agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
+```
+
+Default threshold is `0.70` unless the repo or user sets a stronger threshold. Include selected related issue references/URLs in the issue body, include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with `gh issue create --label`/`gh issue edit --add-label` or the GitLab equivalent. Do not apply rejected labels or link rejected issues.
+
+The agent must propose the operational choice instead of leaving the user to invent it. For example, after validating a need, offer: "관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 agy judge, 실패 시 deterministic fallback으로 진행합니다."
+
 Only prepare a local issue draft instead of creating a remote issue when one of those values is unclear, credentials are unavailable, or the user explicitly asks not to create a remote issue.
 
 If the agent realizes it implemented before creating or linking the issue, it must stop implementation, create or link the issue if possible, record corrective feedback in IssueOps state, and then resume from the issue-linked plan.
@@ -108,6 +131,8 @@ For short or narrow reviews, prefer `verifier` or a direct bounded review over `
 
 When handling remote PR/MR review feedback, first verify each reviewer claim against the diff, code, and commands before changing files. Apply only confirmed fixes, then reply in the original review thread with the commit and verification evidence.
 
+The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Run the Korean Remote Artifact Gate before every remote issue body edit.
+
 When the user asks only for review-validity verification, do not end with a bare conclusion such as "the next step is to add tests and fix it." After the evidence-based verdict, explicitly present the available next actions so the user can choose or confirm direction. Include one recommended action, one narrower/safer alternative, and one stop/defer option when applicable. Example:
 
 ```text
@@ -178,6 +203,15 @@ agent-harness issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CA
 ```
 
 The candidate file records the hypothesis, target dimensions, edit surface, and keep/discard criteria. The gate keeps a candidate only when the candidate benchmark passes, baseline comparison has no regression, target dimensions do not regress, and every changed path is inside the declared edit surface.
+
+Run the remote issue related-link and label scoring gate:
+
+```bash
+agent-harness issueops remote score --input issueops-remote-score.json --judge agy --json
+agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
+```
+
+All `agy -p` usage must go through the shared external LLM wrapper in the harness core. The wrapper invokes `agy --dangerously-skip-permissions -p <prompt>` so IssueOps gates do not block on permission prompts.
 
 ## Issue Template
 

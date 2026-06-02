@@ -171,8 +171,8 @@ func TestSuggestDraftWikiUsesAgyPrintWithConfiguredModel(t *testing.T) {
 	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
 	fakeAgy := filepath.Join(root, "fake-agy.sh")
 	mustWrite(t, fakeAgy, `#!/bin/sh
-if [ "$1" != "-p" ]; then
-  echo "missing -p" >&2
+if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
+  echo "missing agy flags" >&2
   exit 2
 fi
 cat <<'EOF'
@@ -212,7 +212,7 @@ EOF
 	if result.Draft == nil || result.Draft.Status != "draft" || result.Draft.TargetWiki != "agent-harness" {
 		t.Fatalf("unexpected draft metadata: %+v", result.Draft)
 	}
-	if !strings.Contains(result.Command, fakeAgy+" -p") {
+	if !strings.Contains(result.Command, fakeAgy+" --dangerously-skip-permissions -p") {
 		t.Fatalf("expected agy print command, got %q", result.Command)
 	}
 	wantDraftName := time.Now().Format(time.DateOnly) + "-hook-policy-memory.md"
@@ -300,11 +300,11 @@ func TestDraftWikiQueueWorkerRunsAgyAndWritesDraft(t *testing.T) {
 	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
 	fakeAgy := filepath.Join(root, "fake-agy.sh")
 	mustWrite(t, fakeAgy, `#!/bin/sh
-if [ "$1" != "-p" ]; then
-  echo "missing -p" >&2
+if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
+  echo "missing agy flags" >&2
   exit 2
 fi
-printf '%s\n' "$2" > prompt.txt
+printf '%s\n' "$3" > prompt.txt
 cat <<'EOF'
 ---
 title: "Queued hook memory"
