@@ -12,6 +12,46 @@ import (
 )
 
 func runHook(args []string) error {
+	stdin, restoreStdin, stdinErr := captureReplayableHookStdin()
+	if restoreStdin != nil {
+		defer restoreStdin()
+	}
+	if stdinErr != nil {
+		return stdinErr
+	}
+	err := runHookDispatch(args)
+	if err != nil {
+		recordHookFailure(args, stdin, err)
+	}
+	return err
+}
+
+func captureReplayableHookStdin() ([]byte, func(), error) {
+	stat, err := os.Stdin.Stat()
+	if err != nil || stat.Mode()&os.ModeCharDevice != 0 {
+		return nil, nil, nil
+	}
+	stdin, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read hook stdin: %w", err)
+	}
+	oldStdin := os.Stdin
+	r, w, err := os.Pipe()
+	if err != nil {
+		return nil, nil, err
+	}
+	os.Stdin = r
+	go func() {
+		_, _ = w.Write(stdin)
+		_ = w.Close()
+	}()
+	return stdin, func() {
+		os.Stdin = oldStdin
+		_ = r.Close()
+	}, nil
+}
+
+func runHookDispatch(args []string) error {
 	if len(args) == 0 {
 		hookUsage()
 		return fmt.Errorf("missing hook subcommand")
@@ -31,10 +71,47 @@ func runHook(args []string) error {
 		return runHookSessionStart(args[1:])
 	case "stop":
 		return runHookStop(args[1:])
+	case "failures":
+		return runHookFailures(args[1:])
 	default:
 		hookUsage()
 		return fmt.Errorf("unknown hook subcommand %q", args[0])
 	}
+}
+
+func recordHookFailure(args []string, stdin []byte, hookErr error) {
+	hook := "unknown"
+	if len(args) > 0 && strings.TrimSpace(args[0]) != "" {
+		hook = strings.TrimSpace(args[0])
+	}
+	cwd, _ := os.Getwd()
+	repo := hookArgValue(args, "--repo")
+	if repo == "" {
+		repo = repoFromHookInput(stdin)
+	}
+	_, _ = core.RecordHookFailureEvent(core.HookFailureEvent{
+		Hook:           hook,
+		Host:           hookArgValue(args, "--host"),
+		Repo:           repo,
+		CWD:            cwd,
+		Tool:           toolNameFromHookInput(stdin),
+		Argv:           args,
+		CommandSnippet: commandFromHookInput(stdin),
+		Error:          hookErr.Error(),
+	})
+}
+
+func hookArgValue(args []string, flagName string) string {
+	prefix := flagName + "="
+	for i, arg := range args {
+		if arg == flagName && i+1 < len(args) {
+			return args[i+1]
+		}
+		if strings.HasPrefix(arg, prefix) {
+			return strings.TrimPrefix(arg, prefix)
+		}
+	}
+	return ""
 }
 
 func hookUsage() {
@@ -46,7 +123,25 @@ func hookUsage() {
   agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
   agent-harness hook session-start [--repo PATH] [--host codex|claude] [--json]
   agent-harness hook stop [--repo PATH] [--json]
+  agent-harness hook failures [--limit N] [--json]
 `)
+}
+
+func runHookFailures(args []string) error {
+	fs := flag.NewFlagSet("hook failures", flag.ContinueOnError)
+	limit := fs.Int("limit", 20, "maximum recent hook failure events to return")
+	jsonOut := fs.Bool("json", false, "print hook failure events as JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	result, err := core.ListHookFailureEvents(*limit)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	return printJSON(result)
 }
 
 func runHookUserPrompt(args []string) error {
