@@ -31,7 +31,7 @@ backup_file() {
 merge_codex_hooks() {
   local before="$1"
   local after="$2"
-  [[ -f "$before" && -f "$after" ]] || return 0
+  [[ -f "$before" && -s "$before" && -f "$after" ]] || return 0
   python3 - "$before" "$after" <<'PY'
 import json
 import sys
@@ -68,7 +68,7 @@ PY
 merge_claude_settings() {
   local before="$1"
   local after="$2"
-  [[ -f "$before" && -f "$after" ]] || return 0
+  [[ -f "$before" && -s "$before" && -f "$after" ]] || return 0
   python3 - "$before" "$after" <<'PY'
 import json
 import sys
@@ -135,12 +135,11 @@ port = sys.argv[1]
 try:
     with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as response:
         data = json.loads(response.read().decode("utf-8"))
+    if response.status == 200 and isinstance(data, dict) and data.get("status") == "healthy" and data.get("ready") is True:
+        sys.exit(0)
 except Exception:
-    raise SystemExit(1)
-
-if response.status == 200 and data.get("status") == "healthy" and data.get("ready") is True:
-    raise SystemExit(0)
-raise SystemExit(1)
+    pass
+sys.exit(1)
 PY
 }
 
