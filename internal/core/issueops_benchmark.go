@@ -397,6 +397,16 @@ func EvaluateIssueOpsAutoresearchGate(req IssueOpsAutoresearchGateRequest) Issue
 	}
 	if len(req.Candidate.TargetDimensions) == 0 {
 		result.DiscardReasons = append(result.DiscardReasons, "target dimensions are required")
+	} else {
+		for _, target := range req.Candidate.TargetDimensions {
+			target = strings.TrimSpace(target)
+			if target == "" {
+				continue
+			}
+			if !isKnownIssueOpsBenchmarkDimension(target) {
+				result.DiscardReasons = append(result.DiscardReasons, fmt.Sprintf("invalid target dimension %q", target))
+			}
+		}
 	}
 	if len(req.Candidate.EditSurface) == 0 {
 		result.DiscardReasons = append(result.DiscardReasons, "edit surface is required")
@@ -520,10 +530,19 @@ func issueOpsPathAllowed(changedPath string, editSurface []string) bool {
 			}
 			continue
 		}
-		if ok, _ := filepath.Match(pattern, changedPath); ok {
+		if ok, _ := filepath.Match(filepath.FromSlash(pattern), filepath.FromSlash(changedPath)); ok {
 			return true
 		}
 		if changedPath == pattern {
+			return true
+		}
+	}
+	return false
+}
+
+func isKnownIssueOpsBenchmarkDimension(target string) bool {
+	for _, dimension := range issueOpsBenchmarkDimensions {
+		if dimension == target {
 			return true
 		}
 	}

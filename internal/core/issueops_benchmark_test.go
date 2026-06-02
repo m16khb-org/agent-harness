@@ -219,6 +219,26 @@ func TestEvaluateIssueOpsAutoresearchGateRejectsTargetRegression(t *testing.T) {
 	}
 }
 
+func TestEvaluateIssueOpsAutoresearchGateRejectsUnknownTargetDimension(t *testing.T) {
+	candidate := IssueOpsAutoresearchCandidate{
+		ID:               "issueops-autoresearch-loop",
+		Hypothesis:       "Target dimensions must be known benchmark dimensions.",
+		TargetDimensions: []string{"issue_qualit"},
+		EditSurface:      []string{"skills/issueops/**"},
+	}
+
+	result := EvaluateIssueOpsAutoresearchGate(IssueOpsAutoresearchGateRequest{
+		Candidate:    candidate,
+		BaselineRun:  issueOpsBenchmarkRunForGateTest("baseline", 100, 100, 0),
+		CandidateRun: issueOpsBenchmarkRunForGateTest("candidate", 100, 100, 0),
+		ChangedPaths: []string{"skills/issueops/SKILL.md"},
+	})
+
+	if result.KeepCandidate || !containsFold(strings.Join(result.DiscardReasons, "\n"), "invalid target dimension") {
+		t.Fatalf("expected unknown target dimension discard: %+v", result)
+	}
+}
+
 func TestEvaluateIssueOpsAutoresearchGateRejectsNonPassingCandidateRun(t *testing.T) {
 	candidate := IssueOpsAutoresearchCandidate{
 		ID:               "issueops-autoresearch-loop",
