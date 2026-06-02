@@ -198,6 +198,38 @@ glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID
 
 Resolve only threads/discussions whose feedback has actually been addressed or is obsolete for a verified reason. After resolving, re-check GitHub `reviewThreads` or GitLab MR discussions and PR/MR readiness; do not claim merge blockage is cleared until unresolved required conversations are gone and the host reports a clean merge state.
 
+## Post-Merge Cleanup
+
+After a PR/MR is merged, do not stop at reporting the merge. Verify merge status, remote branch status, and worktree cleanliness, then explicitly offer numbered cleanup choices to the user.
+
+For GitHub:
+
+```bash
+gh pr view "$PR_NUMBER" --json state,mergedAt,headRefName,url
+git -C "$WORKTREE_PATH" status --short --branch
+git ls-remote --heads origin "$HEAD_REF_NAME"
+```
+
+For GitLab, use the equivalent `glab mr view` or GitLab API fields for merged state and source branch, then run the same local worktree and remote branch checks.
+
+Present cleanup choices in `1.`, `2.`, `3.` form:
+
+```text
+선택지:
+1. 정리 진행: merged PR/MR worktree와 local branch를 삭제합니다. (추천)
+2. 보류: worktree는 유지하고 나중에 확인합니다.
+3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.
+```
+
+Only run cleanup after the user chooses the proceed option or has explicitly instructed automatic cleanup. Before deleting, verify the target worktree is clean and the PR/MR is merged. Use:
+
+```bash
+git worktree remove "$WORKTREE_PATH"
+git branch -d "$BRANCH_NAME"
+```
+
+If the worktree is dirty, the PR/MR is not merged, or the branch contains unmerged commits, do not force-remove. Report the blocker and offer numbered choices.
+
 ## State Commands
 
 Start:
