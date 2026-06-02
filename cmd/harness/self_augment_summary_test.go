@@ -964,6 +964,49 @@ func TestSelfVerifyLLMEvalDefaultOmittedFromJSON(t *testing.T) {
 	}
 }
 
+func TestResolveSelfVerifyLLMEvalConfigDefaultsOff(t *testing.T) {
+	config, err := resolveSelfVerifyLLMEvalConfig(false, false, "advisory", false, envLookupForSelfVerifyTest(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Enabled || config.Mode != "advisory" {
+		t.Fatalf("default LLM eval config should stay off/advisory, got %+v", config)
+	}
+}
+
+func TestResolveSelfVerifyLLMEvalConfigUsesEnvGate(t *testing.T) {
+	config, err := resolveSelfVerifyLLMEvalConfig(false, false, "advisory", false, envLookupForSelfVerifyTest(map[string]string{
+		selfVerifyLLMEvalEnv: "gate",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !config.Enabled || config.Mode != "gate" {
+		t.Fatalf("HARNESS_SELF_VERIFY_LLM_EVAL=gate should enable gate mode, got %+v", config)
+	}
+}
+
+func TestResolveSelfVerifyLLMEvalConfigCLIOverridesEnv(t *testing.T) {
+	config, err := resolveSelfVerifyLLMEvalConfig(true, false, "advisory", false, envLookupForSelfVerifyTest(map[string]string{
+		selfVerifyLLMEvalEnv: "strict",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Enabled || config.Mode != "advisory" {
+		t.Fatalf("explicit --llm-eval=false should ignore env and keep default advisory mode, got %+v", config)
+	}
+}
+
+func TestResolveSelfVerifyLLMEvalConfigRejectsInvalidEnv(t *testing.T) {
+	_, err := resolveSelfVerifyLLMEvalConfig(false, false, "advisory", false, envLookupForSelfVerifyTest(map[string]string{
+		selfVerifyLLMEvalEnv: "strict",
+	}))
+	if err == nil || !strings.Contains(err.Error(), selfVerifyLLMEvalEnv) {
+		t.Fatalf("expected env validation error naming %s, got %v", selfVerifyLLMEvalEnv, err)
+	}
+}
+
 func TestSelfVerifyLLMEvalAdvisorySuccess(t *testing.T) {
 	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":true,"score":99,"summary":"looks safe","risks":["watch flakes"],"recommended_next_actions":["ship"]}`)
 	result := SelfAugmentResult{OK: true, TerminationEligible: true, Summary: SelfAugmentSummary{MinimumGoalScore: 100}}
@@ -1060,6 +1103,13 @@ func TestRunSelfVerifyRejectsUnknownLLMEvalMode(t *testing.T) {
 	err := runSelfVerify([]string{"--llm-eval", "--llm-eval-mode=unknown", "--json"})
 	if err == nil || !strings.Contains(err.Error(), "llm-eval-mode") {
 		t.Fatalf("expected llm-eval-mode validation error, got %v", err)
+	}
+}
+
+func envLookupForSelfVerifyTest(values map[string]string) func(string) (string, bool) {
+	return func(key string) (string, bool) {
+		value, ok := values[key]
+		return value, ok
 	}
 }
 

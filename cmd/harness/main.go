@@ -659,7 +659,10 @@ func runSelfVerify(args []string) error {
 	if *targetScore < 0 || *targetScore >= 100 {
 		return fmt.Errorf("target-score must be >= 0 and < 100")
 	}
-	if err := validateSelfVerifyLLMEvalMode(*llmEvalMode); err != nil {
+	llmEvalFlagSet := flagSetVisited(fs, "llm-eval")
+	llmEvalModeFlagSet := flagSetVisited(fs, "llm-eval-mode")
+	llmEvalConfig, err := resolveSelfVerifyLLMEvalConfig(llmEvalFlagSet, *llmEval, *llmEvalMode, llmEvalModeFlagSet, os.LookupEnv)
+	if err != nil {
 		return err
 	}
 	progressReporter, err := newSelfVerifyProgressReporter(*progress, os.Stderr)
@@ -667,10 +670,10 @@ func runSelfVerify(args []string) error {
 		return err
 	}
 	result, err := selfVerifyWithProgress(*iterations, *seed, *targetScore, !*jsonOut, progressReporter)
-	if err == nil && *llmEval {
+	if err == nil && llmEvalConfig.Enabled {
 		result, err = applySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{
 			Enabled:     true,
-			Mode:        *llmEvalMode,
+			Mode:        llmEvalConfig.Mode,
 			AgyCommand:  *agyCommand,
 			TargetScore: *targetScore,
 		})
@@ -686,6 +689,16 @@ func runSelfVerify(args []string) error {
 		return saveErr
 	}
 	return err
+}
+
+func flagSetVisited(fs *flag.FlagSet, name string) bool {
+	visited := false
+	fs.Visit(func(flag *flag.Flag) {
+		if flag.Name == name {
+			visited = true
+		}
+	})
+	return visited
 }
 
 func runSelfVerifyCompare(args []string) error {
