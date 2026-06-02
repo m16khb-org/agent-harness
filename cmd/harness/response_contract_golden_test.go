@@ -433,6 +433,7 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 		out := make(map[string]any, len(v))
 		isStateCheckpoint := looksLikeStateCheckpoint(v)
 		isDynamicStateRecord := looksLikeDynamicStateRecord(v)
+		isDynamicStateHistoryEntry := looksLikeDynamicStateHistoryEntry(v)
 		isCommandRun := looksLikeCommandRunResult(v)
 		for key, child := range v {
 			if isDynamicTimeKey(key) {
@@ -447,7 +448,7 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 				out[key] = "$STATE_BYTES"
 				continue
 			}
-			if isDynamicStateRecord && key == "bytes" {
+			if (isDynamicStateRecord || isDynamicStateHistoryEntry) && key == "bytes" {
 				out[key] = "$STATE_RECORD_BYTES"
 				continue
 			}
@@ -487,10 +488,35 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 
 func looksLikeDynamicStateRecord(value map[string]any) bool {
 	keyValue, ok := value["key"].(string)
-	if !ok || (!strings.HasPrefix(keyValue, "self-augment-lesson-") && !strings.HasPrefix(keyValue, "self-verify-candidates-")) {
+	if !ok || !isDynamicStateRecordKey(keyValue) {
 		return false
 	}
 	if _, ok := value["schema_version"]; !ok {
+		return false
+	}
+	if _, ok := value["updated_at"]; !ok {
+		return false
+	}
+	if _, ok := value["bytes"]; !ok {
+		return false
+	}
+	return true
+}
+
+func isDynamicStateRecordKey(key string) bool {
+	return strings.HasPrefix(key, "self-augment-lesson-") ||
+		strings.HasPrefix(key, "self-verify-candidates-") ||
+		key == "self-verify-baseline" ||
+		key == "self-verify-candidate" ||
+		key == "self-verify-promoted"
+}
+
+func looksLikeDynamicStateHistoryEntry(value map[string]any) bool {
+	keyValue, ok := value["key"].(string)
+	if !ok || !isDynamicStateRecordKey(keyValue) {
+		return false
+	}
+	if _, ok := value["generated_at"]; !ok {
 		return false
 	}
 	if _, ok := value["updated_at"]; !ok {
