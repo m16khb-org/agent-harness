@@ -103,7 +103,7 @@ func runIssueOpsBenchmark(args []string) error {
 			artifacts[fixture.ID] = benchmarkArtifactFromFixture(fixture)
 		}
 		result, err := core.RunIssueOpsBenchmark(core.IssueOpsBenchmarkRunRequest{
-			StateRoot: core.StateDir(),
+			StateRoot: "",
 			Fixtures:  fixtures,
 			Artifacts: artifacts,
 		})
@@ -111,7 +111,7 @@ func runIssueOpsBenchmark(args []string) error {
 			return err
 		}
 		if *judge == "agy" {
-			for _, fixture := range fixtures {
+			for i, fixture := range fixtures {
 				artifact := artifacts[fixture.ID]
 				judgeScore, err := core.RunIssueOpsAgyJudge(core.IssueOpsAgyJudgeRequest{
 					RepoRoot:   ".",
@@ -122,10 +122,14 @@ func runIssueOpsBenchmark(args []string) error {
 				if err != nil {
 					return err
 				}
-				result.Scores = append(result.Scores, judgeScore)
+				result.Scores[i] = core.MergeIssueOpsBenchmarkScoreWithJudge(result.Scores[i], judgeScore)
 			}
 		} else if *judge != "none" {
 			return fmt.Errorf("unsupported issueops benchmark judge %q", *judge)
+		}
+		result = core.FinalizeIssueOpsBenchmarkRunResult(result)
+		if err := core.SaveIssueOpsBenchmarkRun(core.StateDir(), result); err != nil {
+			return err
 		}
 		if *jsonOut {
 			return printJSON(result)

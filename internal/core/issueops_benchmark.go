@@ -258,20 +258,17 @@ func RunIssueOpsBenchmark(req IssueOpsBenchmarkRunRequest) (IssueOpsBenchmarkRun
 		result.Scores = append(result.Scores, score)
 		result.CriticalFailureCount += len(score.CriticalFailures)
 	}
-	result.AverageScore, result.MinimumScore = summarizeIssueOpsRunScores(result.Scores)
-	result.OK = result.CriticalFailureCount == 0
-	for _, score := range result.Scores {
-		if !score.Passed {
-			result.OK = false
-			break
-		}
-	}
+	result = FinalizeIssueOpsBenchmarkRunResult(result)
 	if strings.TrimSpace(req.StateRoot) != "" {
-		if err := persistIssueOpsBenchmarkRun(req.StateRoot, result); err != nil {
+		if err := SaveIssueOpsBenchmarkRun(req.StateRoot, result); err != nil {
 			return IssueOpsBenchmarkRunResult{}, err
 		}
 	}
 	return result, nil
+}
+
+func SaveIssueOpsBenchmarkRun(stateRoot string, result IssueOpsBenchmarkRunResult) error {
+	return persistIssueOpsBenchmarkRun(stateRoot, result)
 }
 
 func ReadIssueOpsBenchmarkRun(stateRoot, id string) (IssueOpsBenchmarkRunResult, error) {
@@ -288,6 +285,50 @@ func ReadIssueOpsBenchmarkRun(stateRoot, id string) (IssueOpsBenchmarkRunResult,
 		return IssueOpsBenchmarkRunResult{}, err
 	}
 	return result, nil
+}
+
+func FinalizeIssueOpsBenchmarkRunResult(result IssueOpsBenchmarkRunResult) IssueOpsBenchmarkRunResult {
+	result.FixtureCount = len(result.Scores)
+	result.CriticalFailureCount = 0
+	for _, score := range result.Scores {
+		result.CriticalFailureCount += len(score.CriticalFailures)
+	}
+	result.AverageScore, result.MinimumScore = summarizeIssueOpsRunScores(result.Scores)
+	result.OK = result.CriticalFailureCount == 0
+	for _, score := range result.Scores {
+		if !score.Passed {
+			result.OK = false
+			break
+		}
+	}
+	return result
+}
+
+func MergeIssueOpsBenchmarkScoreWithJudge(deterministic, judge IssueOpsBenchmarkScore) IssueOpsBenchmarkScore {
+	merged := deterministic
+	judgeByDimension := make(map[string]IssueOpsDimensionScore)
+	for _, score := range judge.DimensionScores {
+		judgeByDimension[score.Dimension] = score
+	}
+	for i, score := range merged.DimensionScores {
+		judgeScore, ok := judgeByDimension[score.Dimension]
+		if !ok {
+			continue
+		}
+		if judgeScore.Score < score.Score {
+			merged.DimensionScores[i].Score = judgeScore.Score
+		}
+		merged.DimensionScores[i].Evidence = strings.TrimSpace(score.Evidence + "; judge: " + judgeScore.Evidence)
+	}
+	merged.JudgeFailures = append(merged.JudgeFailures, judge.JudgeFailures...)
+	merged.CriticalFailures = append(merged.CriticalFailures, judge.CriticalFailures...)
+	if len(judge.DimensionScores) == 0 {
+		merged.JudgeFailures = append(merged.JudgeFailures, "judge returned no dimension scores")
+	}
+	merged.AverageScore, merged.MinimumScore = summarizeIssueOpsDimensionScores(merged.DimensionScores)
+	merged.Passed = len(merged.CriticalFailures) == 0 && len(merged.DeterministicFailures) == 0 && len(merged.JudgeFailures) == 0 && merged.MinimumScore >= 5
+	merged.OK = merged.Passed
+	return merged
 }
 
 func CompareIssueOpsBenchmarkRuns(baseline, candidate IssueOpsBenchmarkRunResult) IssueOpsBenchmarkCompareResult {
