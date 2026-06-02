@@ -215,7 +215,7 @@
           "name": "version"
         }
       ],
-      "hash": "aa7e24432e9f911332168a9be17e12a3e4565f635d6abaad97d883e3ccacf19d",
+      "hash": "02360c6cb1fdbb16a418b5dc5db840f808e3b3c8b74023b46c41e93ba7956019",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -323,6 +323,25 @@
           "workers",
           "self_verify",
           "warnings"
+        ],
+        "issueops_benchmark_compare": [
+          "ok",
+          "improved",
+          "baseline_id",
+          "candidate_id",
+          "average_score_delta",
+          "minimum_score_delta",
+          "critical_failure_delta",
+          "regressions"
+        ],
+        "issueops_benchmark_run": [
+          "ok",
+          "id",
+          "fixture_count",
+          "average_score",
+          "minimum_score",
+          "critical_failure_count",
+          "scores"
         ],
         "issueops_pr_readiness": [
           "ok",
@@ -2988,7 +3007,7 @@
                 "name": "version"
               }
             ],
-            "hash": "aa7e24432e9f911332168a9be17e12a3e4565f635d6abaad97d883e3ccacf19d",
+            "hash": "02360c6cb1fdbb16a418b5dc5db840f808e3b3c8b74023b46c41e93ba7956019",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3096,6 +3115,25 @@
                 "workers",
                 "self_verify",
                 "warnings"
+              ],
+              "issueops_benchmark_compare": [
+                "ok",
+                "improved",
+                "baseline_id",
+                "candidate_id",
+                "average_score_delta",
+                "minimum_score_delta",
+                "critical_failure_delta",
+                "regressions"
+              ],
+              "issueops_benchmark_run": [
+                "ok",
+                "id",
+                "fixture_count",
+                "average_score",
+                "minimum_score",
+                "critical_failure_count",
+                "scores"
               ],
               "issueops_pr_readiness": [
                 "ok",

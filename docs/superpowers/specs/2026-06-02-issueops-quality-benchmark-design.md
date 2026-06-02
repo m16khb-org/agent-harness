@@ -16,6 +16,10 @@ Without a benchmark, prompt or workflow changes can only claim improvement subje
 - Benchmark compare can prove whether a candidate improves over a baseline using average score, minimum score, critical failure count, and per-dimension regressions.
 - The benchmark also checks IssueOps workflow contract quality: phase choices after every step and isolated worktree gating after issue creation.
 - IssueOps completion includes worktree cleanup readiness and removal guidance after the branch is merged, abandoned, or otherwise safe to dispose.
+- IssueOps issue drafts and PR/MR drafts are written in Korean, even when implementation details, commands, or code identifiers remain in English.
+- IssueOps issue drafts and PR/MR drafts follow the repo-local open-source-derived guideline at `docs/superpowers/specs/issueops-issue-pr-guidelines.md`.
+- IssueOps issue drafts and PR/MR drafts avoid excessive emoji decoration while allowing sparse purposeful emoji.
+- IssueOps PR/MR drafts include developer-friendly diagrams only when useful for complex flows; unnecessary forced diagrams are a quality failure.
 
 ## Non-Goals
 
@@ -36,6 +40,8 @@ Without a benchmark, prompt or workflow changes can only claim improvement subje
 - **Phase choice gate**: the requirement that each IssueOps phase ends by presenting next-step options and waiting for user choice.
 - **Isolated worktree gate**: the requirement that implementation work only begins after an issue-based branch is provided and an isolated git worktree is created.
 - **Worktree cleanup gate**: the completion requirement that IssueOps verifies the isolated worktree is clean, merged or safely disposable, and then presents cleanup choices before removing it.
+- **Korean issue/PR gate**: the requirement that user-facing issue drafts and PR/MR drafts are written in Korean.
+- **Open-source guideline gate**: the requirement that issue and PR/MR drafts cite and satisfy the repo-local guideline derived from GitHub, Kubernetes, React, and similar open-source contribution practices.
 
 ## Benchmark Fixture Schema
 
@@ -98,11 +104,17 @@ The result includes:
 The deterministic scorer verifies structure and hard workflow rules:
 
 - Issue draft includes problem, current evidence, acceptance criteria, non-goals, verification, and feedback log.
+- Issue draft is written in Korean.
+- Issue draft references and follows `docs/superpowers/specs/issueops-issue-pr-guidelines.md`.
 - Plan includes explicit tests or verification commands.
 - Task breakdown has bounded ownership and avoids conflicting file responsibilities.
 - TDD artifact identifies failing tests before implementation work.
 - Subagent prompts include task ownership, context, expected output, and "not alone in the codebase" coordination guidance.
 - PR/MR draft includes intent, changes, verification, risks, and issue link.
+- PR/MR draft is written in Korean.
+- PR/MR draft references and follows `docs/superpowers/specs/issueops-issue-pr-guidelines.md`.
+- Issue and PR/MR drafts contain no excessive emoji decoration.
+- PR/MR drafts avoid unnecessary forced diagrams and include diagrams only with clear review value.
 - Every completed phase presents next-step choices and does not silently continue.
 - After issue creation, implementation is blocked until the user provides an issue-based branch name.
 - The branch worktree path follows `<repo>.worktrees/<branch-slug>`.

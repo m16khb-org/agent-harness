@@ -154,13 +154,13 @@ Create `testdata/issueops/fixtures/ambiguous-intent.json`:
   "title": "Ambiguous user intent requires clarification",
   "user_prompt": "IssueOps를 더 좋게 만들어줘",
   "repo_context": "agent-harness has an issueops skill, CLI state helpers, MCP tools, and project docs. The request is too broad to implement safely without clarifying what quality means.",
-  "expected_issue": ["states ambiguity", "defines acceptance criteria", "lists non-goals", "includes verification"],
+  "expected_issue": ["states ambiguity", "defines acceptance criteria", "lists non-goals", "includes verification", "is written in Korean", "references issue/pr guideline"],
   "expected_plan": ["starts with measurement", "does not optimize prompts first", "uses testable tasks"],
   "expected_tasks": ["separates fixture schema", "separates deterministic scoring", "separates judge adapter"],
   "expected_tdd": ["writes failing tests before benchmark implementation"],
   "expected_subagents": ["assigns non-overlapping file ownership"],
-  "expected_pr": ["summarizes benchmark evidence", "links issue", "lists verification"],
-  "critical_failures": ["implements before clarifying quality metric", "skips issue contract", "skips verification"]
+  "expected_pr": ["summarizes benchmark evidence", "links issue", "lists verification", "is written in Korean", "references issue/pr guideline"],
+  "critical_failures": ["implements before clarifying quality metric", "skips issue contract", "skips verification", "issue or pr/mr not written in Korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
 }
 ```
 
@@ -172,13 +172,13 @@ Create `testdata/issueops/fixtures/worktree-gate.json`:
   "title": "Issue branch requires isolated worktree",
   "user_prompt": "이슈 #1 기반으로 구현해줘",
   "repo_context": "The user requires issue-based branches and sibling worktrees under <repo>.worktrees/<branch-slug>. Implementation must not happen in the source repo.",
-  "expected_issue": ["links issue", "records issue branch requirement"],
+  "expected_issue": ["links issue", "records issue branch requirement", "is written in Korean", "references issue/pr guideline"],
   "expected_plan": ["blocks implementation until branch is provided", "records worktree path"],
   "expected_tasks": ["runs work only in isolated worktree"],
   "expected_tdd": ["runs tests from worktree"],
   "expected_subagents": ["mentions worktree path in prompts", "defines file ownership"],
-  "expected_pr": ["uses worktree branch", "includes cleanup status"],
-  "critical_failures": ["works in source repo", "skips branch prompt", "removes dirty worktree"]
+  "expected_pr": ["uses worktree branch", "includes cleanup status", "is written in Korean", "references issue/pr guideline"],
+  "critical_failures": ["works in source repo", "skips branch prompt", "removes dirty worktree", "issue or pr/mr not written in Korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
 }
 ```
 
@@ -206,12 +206,12 @@ Add:
 func TestScoreIssueOpsBenchmarkArtifactDeterministic(t *testing.T) {
 	fixture := IssueOpsBenchmarkFixture{ID: "worktree", CriticalFailures: []string{"works in source repo"}}
 	artifact := IssueOpsBenchmarkArtifact{
-		IssueDraft: "## Problem\n\n## Current Evidence\n\n## Acceptance Criteria\n\n## Non-goals\n\n## Verification\n\n## Feedback Log\n",
+		IssueDraft: "## Problem\n\n문제 요약\n\n## Current Evidence\n\n현재 근거\n\n## Acceptance Criteria\n\n완료 기준\n\n## Non-goals\n\n비목표\n\n## Verification\n\n검증\n\n## Feedback Log\n\n피드백 기록\n\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
 		Plan: "Run: go test ./... -count=1\n",
 		TDDPlan: "Write failing test before implementation.\n",
 		TaskBreakdown: "Worker A owns internal/core/issueops_benchmark.go. Worker B owns cmd/harness/issueops.go.\n",
 		SubagentPrompts: "You are not alone in the codebase. Do not revert others. Own internal/core only.\n",
-		PRDraft: "Intent\nChanges\nVerification\nRisk\nIssue: https://github.com/m16khb/agent-harness/issues/1\n",
+		PRDraft: "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://github.com/m16khb/agent-harness/issues/1\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
 		PhaseChoices: "Proceed to plan | revise current phase | jump to issue | pause",
 		BranchName: "feature/1-issueops-quality-benchmark",
 		WorktreePath: "/repo.worktrees/feature-1-issueops-quality-benchmark",
@@ -294,7 +294,7 @@ var issueOpsBenchmarkDimensions = []string{
 }
 ```
 
-Use simple text checks for the first implementation. A missing required section or gate returns score `0` for that dimension and adds a deterministic failure.
+Use simple text checks for the first implementation. A missing required section, Korean issue/PR text, guideline reference, or gate returns score `0` for that dimension and adds a deterministic failure.
 
 - [ ] **Step 4: Verify deterministic scorer**
 
