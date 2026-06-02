@@ -492,7 +492,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 9911,
+          "bytes": 10303,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -2157,7 +2157,7 @@
       "entries": [
         {
           "base_seed": 600,
-          "bytes": 924,
+          "bytes": 969,
           "elapsed_ms": 1100,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -2182,7 +2182,7 @@
         },
         {
           "base_seed": 600,
-          "bytes": 924,
+          "bytes": 969,
           "elapsed_ms": 1000,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -3292,7 +3292,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 9911,
+                "bytes": 10303,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -4936,7 +4936,7 @@
             "entries": [
               {
                 "base_seed": 600,
-                "bytes": 924,
+                "bytes": 969,
                 "elapsed_ms": 1100,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -4961,7 +4961,7 @@
               },
               {
                 "base_seed": 600,
-                "bytes": 924,
+                "bytes": 969,
                 "elapsed_ms": 1000,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -5094,13 +5094,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 969,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 969,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -5165,13 +5165,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 969,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 969,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -5222,13 +5222,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 969,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 924,
+                "bytes": 969,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
