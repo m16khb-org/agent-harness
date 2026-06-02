@@ -8,7 +8,7 @@
 
 **기술 스택:** Gemini Code Assist repository configuration, YAML, Markdown.
 
-**IssueOps Context:** Issue `https://github.com/m16khb/agent-harness/issues/5`; branch `chore/5-configure-gemini-code-assist-review`; worktree `/Users/m16khb/Workspace/agent-harness.worktrees/chore-5-configure-gemini-code-assist-review`.
+**IssueOps Context:** Issue `https://github.com/m16khb/agent-harness/issues/5`; branch `chore/5-configure-gemini-code-assist-review`; expected sibling worktree `../agent-harness.worktrees/chore-5-configure-gemini-code-assist-review`.
 
 ---
 
