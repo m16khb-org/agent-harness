@@ -129,6 +129,8 @@ For short or narrow reviews, prefer `verifier` or a direct bounded review over `
 
 ## Remote Review Feedback
 
+When creating or editing a PR/MR, assign it to the currently authenticated user before reporting that the PR/MR is ready. For GitHub, resolve the login with `gh api user --jq .login` and run `gh pr edit "$PR_URL" --add-assignee "$login"` immediately after `gh pr create`, then verify with `gh pr view "$PR_URL" --json assignees`. For GitLab, use the equivalent current-user assignee field supported by the target project's CLI/API and verify the resulting assignee list.
+
 When handling remote PR/MR review feedback, first verify each reviewer claim against the diff, code, and commands before changing files. Apply only confirmed fixes, then reply in the original review thread with the commit and verification evidence.
 
 The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Run the Korean Remote Artifact Gate before every remote issue body edit.
