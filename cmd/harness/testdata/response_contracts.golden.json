@@ -215,7 +215,7 @@
           "name": "version"
         }
       ],
-      "hash": "02360c6cb1fdbb16a418b5dc5db840f808e3b3c8b74023b46c41e93ba7956019",
+      "hash": "1907b4b76215625334d94d3a5cf93273aaa09b4606a72a0ec6b26998f4eaa659",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -333,6 +333,15 @@
           "minimum_score_delta",
           "critical_failure_delta",
           "regressions"
+        ],
+        "issueops_benchmark_gate": [
+          "ok",
+          "keep_candidate",
+          "candidate_id",
+          "benchmark_compare",
+          "edit_surface_violations",
+          "target_dimension_regressions",
+          "discard_reasons"
         ],
         "issueops_benchmark_run": [
           "ok",
@@ -3008,7 +3017,7 @@
                 "name": "version"
               }
             ],
-            "hash": "02360c6cb1fdbb16a418b5dc5db840f808e3b3c8b74023b46c41e93ba7956019",
+            "hash": "1907b4b76215625334d94d3a5cf93273aaa09b4606a72a0ec6b26998f4eaa659",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3126,6 +3135,15 @@
                 "minimum_score_delta",
                 "critical_failure_delta",
                 "regressions"
+              ],
+              "issueops_benchmark_gate": [
+                "ok",
+                "keep_candidate",
+                "candidate_id",
+                "benchmark_compare",
+                "edit_surface_violations",
+                "target_dimension_regressions",
+                "discard_reasons"
               ],
               "issueops_benchmark_run": [
                 "ok",

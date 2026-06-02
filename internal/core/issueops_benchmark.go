@@ -86,6 +86,34 @@ type IssueOpsBenchmarkCompareResult struct {
 	Regressions          []string `json:"regressions"`
 }
 
+type IssueOpsAutoresearchCandidate struct {
+	ID               string   `json:"id"`
+	Hypothesis       string   `json:"hypothesis"`
+	TargetDimensions []string `json:"target_dimensions"`
+	EditSurface      []string `json:"edit_surface"`
+	BaselineCommand  string   `json:"baseline_command,omitempty"`
+	CandidateCommand string   `json:"candidate_command,omitempty"`
+	KeepCriteria     string   `json:"keep_criteria,omitempty"`
+	DiscardCriteria  string   `json:"discard_criteria,omitempty"`
+}
+
+type IssueOpsAutoresearchGateRequest struct {
+	Candidate    IssueOpsAutoresearchCandidate
+	BaselineRun  IssueOpsBenchmarkRunResult
+	CandidateRun IssueOpsBenchmarkRunResult
+	ChangedPaths []string
+}
+
+type IssueOpsAutoresearchGateResult struct {
+	OK                         bool                           `json:"ok"`
+	KeepCandidate              bool                           `json:"keep_candidate"`
+	CandidateID                string                         `json:"candidate_id"`
+	BenchmarkCompare           IssueOpsBenchmarkCompareResult `json:"benchmark_compare"`
+	EditSurfaceViolations      []string                       `json:"edit_surface_violations,omitempty"`
+	TargetDimensionRegressions []string                       `json:"target_dimension_regressions,omitempty"`
+	DiscardReasons             []string                       `json:"discard_reasons,omitempty"`
+}
+
 var issueOpsBenchmarkDimensions = []string{
 	"intent_understanding",
 	"issue_quality",
@@ -353,6 +381,55 @@ func CompareIssueOpsBenchmarkRuns(baseline, candidate IssueOpsBenchmarkRunResult
 	return result
 }
 
+func EvaluateIssueOpsAutoresearchGate(req IssueOpsAutoresearchGateRequest) IssueOpsAutoresearchGateResult {
+	compare := CompareIssueOpsBenchmarkRuns(req.BaselineRun, req.CandidateRun)
+	result := IssueOpsAutoresearchGateResult{
+		OK:               true,
+		KeepCandidate:    true,
+		CandidateID:      strings.TrimSpace(req.Candidate.ID),
+		BenchmarkCompare: compare,
+	}
+	if result.CandidateID == "" {
+		result.DiscardReasons = append(result.DiscardReasons, "candidate id is required")
+	}
+	if strings.TrimSpace(req.Candidate.Hypothesis) == "" {
+		result.DiscardReasons = append(result.DiscardReasons, "candidate hypothesis is required")
+	}
+	if len(req.Candidate.TargetDimensions) == 0 {
+		result.DiscardReasons = append(result.DiscardReasons, "target dimensions are required")
+	} else {
+		for _, target := range req.Candidate.TargetDimensions {
+			target = strings.TrimSpace(target)
+			if target == "" {
+				continue
+			}
+			if !isKnownIssueOpsBenchmarkDimension(target) {
+				result.DiscardReasons = append(result.DiscardReasons, fmt.Sprintf("invalid target dimension %q", target))
+			}
+		}
+	}
+	if len(req.Candidate.EditSurface) == 0 {
+		result.DiscardReasons = append(result.DiscardReasons, "edit surface is required")
+	}
+	if !req.CandidateRun.OK {
+		result.DiscardReasons = append(result.DiscardReasons, "candidate benchmark did not pass")
+	}
+	if !compare.OK {
+		result.DiscardReasons = append(result.DiscardReasons, "benchmark comparison regressed")
+	}
+	result.EditSurfaceViolations = issueOpsEditSurfaceViolations(req.ChangedPaths, req.Candidate.EditSurface)
+	if len(result.EditSurfaceViolations) > 0 {
+		result.DiscardReasons = append(result.DiscardReasons, "changed paths outside declared edit surface")
+	}
+	result.TargetDimensionRegressions = issueOpsTargetDimensionRegressions(req.Candidate.TargetDimensions, req.BaselineRun, req.CandidateRun)
+	if len(result.TargetDimensionRegressions) > 0 {
+		result.DiscardReasons = append(result.DiscardReasons, "target dimensions regressed")
+	}
+	result.KeepCandidate = len(result.DiscardReasons) == 0
+	result.OK = result.KeepCandidate
+	return result
+}
+
 func summarizeIssueOpsDimensionScores(scores []IssueOpsDimensionScore) (float64, float64) {
 	if len(scores) == 0 {
 		return 0, 0
@@ -405,6 +482,77 @@ func compareIssueOpsDimensionRegressions(baseline, candidate IssueOpsBenchmarkRu
 		}
 	}
 	return regressions
+}
+
+func issueOpsTargetDimensionRegressions(targets []string, baseline, candidate IssueOpsBenchmarkRunResult) []string {
+	baselineScores := issueOpsDimensionMinimums(baseline)
+	candidateScores := issueOpsDimensionMinimums(candidate)
+	var regressions []string
+	for _, target := range targets {
+		target = strings.TrimSpace(target)
+		if target == "" {
+			continue
+		}
+		if candidateScores[target] < baselineScores[target] {
+			regressions = append(regressions, target)
+		}
+	}
+	return regressions
+}
+
+func issueOpsEditSurfaceViolations(changedPaths, editSurface []string) []string {
+	if len(changedPaths) == 0 || len(editSurface) == 0 {
+		return nil
+	}
+	var violations []string
+	for _, changedPath := range changedPaths {
+		changedPath = normalizeIssueOpsPath(changedPath)
+		if changedPath == "" {
+			continue
+		}
+		if !issueOpsPathAllowed(changedPath, editSurface) {
+			violations = append(violations, changedPath)
+		}
+	}
+	return violations
+}
+
+func issueOpsPathAllowed(changedPath string, editSurface []string) bool {
+	for _, pattern := range editSurface {
+		pattern = normalizeIssueOpsPath(pattern)
+		if pattern == "" {
+			continue
+		}
+		if strings.HasSuffix(pattern, "/**") {
+			prefix := strings.TrimSuffix(pattern, "/**")
+			if changedPath == prefix || strings.HasPrefix(changedPath, prefix+"/") {
+				return true
+			}
+			continue
+		}
+		if ok, _ := filepath.Match(filepath.FromSlash(pattern), filepath.FromSlash(changedPath)); ok {
+			return true
+		}
+		if changedPath == pattern {
+			return true
+		}
+	}
+	return false
+}
+
+func isKnownIssueOpsBenchmarkDimension(target string) bool {
+	for _, dimension := range issueOpsBenchmarkDimensions {
+		if dimension == target {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeIssueOpsPath(path string) string {
+	path = strings.TrimSpace(strings.ReplaceAll(path, "\\", "/"))
+	path = strings.TrimPrefix(path, "./")
+	return strings.Trim(path, "/")
 }
 
 func issueOpsDimensionMinimums(run IssueOpsBenchmarkRunResult) map[string]float64 {

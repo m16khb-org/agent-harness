@@ -113,6 +113,7 @@ func compatibilityContract() CompatibilityContract {
 			"issueops_pr_readiness":      {"ok", "ready", "missing", "issue_url", "plan_path", "branch"},
 			"issueops_benchmark_run":     {"ok", "id", "fixture_count", "average_score", "minimum_score", "critical_failure_count", "scores"},
 			"issueops_benchmark_compare": {"ok", "improved", "baseline_id", "candidate_id", "average_score_delta", "minimum_score_delta", "critical_failure_delta", "regressions"},
+			"issueops_benchmark_gate":    {"ok", "keep_candidate", "candidate_id", "benchmark_compare", "edit_surface_violations", "target_dimension_regressions", "discard_reasons"},
 			"command_audit":              {"ok", "kind", "audit_log_id", "log_path", "policy"},
 			"verify_work":                {"ok", "kind", "repo", "git_status", "preflight", "guard", "command", "evidence", "evidence_matrix", "suggested_commands", "warnings"},
 		},
