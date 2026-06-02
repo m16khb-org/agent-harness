@@ -193,11 +193,11 @@ install_headroom_cli() {
 enable_headroom_runtime() {
   local dry_run="$1"
   if [[ "$dry_run" == "1" ]]; then
-    "$ROOT/scripts/setup-headroom-runtime.sh" --dry-run
+    bash "$ROOT/scripts/setup-headroom-runtime.sh" --dry-run
     return 0
   fi
   install_headroom_cli
-  "$ROOT/scripts/setup-headroom-runtime.sh"
+  bash "$ROOT/scripts/setup-headroom-runtime.sh"
 }
 
 

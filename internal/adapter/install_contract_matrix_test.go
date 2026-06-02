@@ -165,6 +165,7 @@ func TestInstallNativeUpstreamToolsUseHeadroom(t *testing.T) {
 		"--enable-headroom-runtime",
 		"HARNESS_ENABLE_HEADROOM_RUNTIME",
 		"scripts/setup-headroom-runtime.sh",
+		"bash \"$ROOT/scripts/setup-headroom-runtime.sh\"",
 		"headroom-ai[all]",
 		"pipx install --python python3.13 \"headroom-ai[all]\"",
 		"pipx upgrade headroom-ai",
@@ -199,6 +200,9 @@ func TestHeadroomRuntimeSetupPreservesBothHosts(t *testing.T) {
 		"verified Headroom health endpoint",
 		"HEADROOM_TELEMETRY=off",
 		"agent-harness hooks/settings",
+		"[[ -f \"$before\" && -s \"$before\" && -f \"$after\" ]] || return 0",
+		"isinstance(data, dict)",
+		"sys.exit(1)",
 	} {
 		if !strings.Contains(script, want) {
 			t.Fatalf("setup-headroom-runtime.sh missing reproducible runtime contract %q", want)
