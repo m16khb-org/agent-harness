@@ -111,6 +111,7 @@ func compatibilityContract() CompatibilityContract {
 			"worker_job":                 {"ok", "id", "kind", "status", "created_at", "updated_at", "no_shell"},
 			"issueops_record":            {"ok", "id", "repo", "branch", "phase", "issue_url", "plan_path", "feedback", "created_at", "updated_at"},
 			"issueops_pr_readiness":      {"ok", "ready", "missing", "issue_url", "plan_path", "branch"},
+			"issueops_remote_score":      {"ok", "provider", "threshold", "selected_related_issues", "rejected_related_issues", "selected_labels", "rejected_labels", "apply_instructions", "warnings"},
 			"issueops_benchmark_run":     {"ok", "id", "fixture_count", "average_score", "minimum_score", "critical_failure_count", "scores"},
 			"issueops_benchmark_compare": {"ok", "improved", "baseline_id", "candidate_id", "average_score_delta", "minimum_score_delta", "critical_failure_delta", "regressions"},
 			"issueops_benchmark_gate":    {"ok", "keep_candidate", "candidate_id", "benchmark_compare", "edit_surface_violations", "target_dimension_regressions", "discard_reasons"},

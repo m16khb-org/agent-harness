@@ -2,14 +2,14 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core"
 )
 
 const selfVerifyLLMEvalEvidenceBudgetBytes = 24 * 1024
@@ -135,21 +135,19 @@ func applySelfVerifyLLMEval(result SelfAugmentResult, opts SelfVerifyLLMEvalOpti
 		return applySelfVerifyLLMGate(result, opts.TargetScore)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	out, runErr := exec.CommandContext(ctx, agyCommand, "--dangerously-skip-permissions", "-p", evidencePacket).CombinedOutput()
+	llm, runErr := core.RunExternalLLMPrint(core.ExternalLLMPrintRequest{Command: agyCommand, Prompt: evidencePacket, Timeout: timeout})
 	eval := SelfVerifyLLMEvalResult{
 		Mode:                mode,
 		EvidencePacketBytes: evidenceBytes,
 	}
 	if runErr != nil {
-		eval.Error = boundedLLMEvalError("agy -p failed", runErr, string(out))
+		eval.Error = boundedLLMEvalError("agy -p failed", runErr, string(llm.Output))
 		result.LLMEval = &eval
 		return applySelfVerifyLLMGate(result, opts.TargetScore)
 	}
-	if err := decodeSelfVerifyLLMEval(out, &eval); err != nil {
+	if err := decodeSelfVerifyLLMEval(llm.Output, &eval); err != nil {
 		eval.OK = false
-		eval.Error = boundedLLMEvalError("parse agy JSON", err, string(out))
+		eval.Error = boundedLLMEvalError("parse agy JSON", err, string(llm.Output))
 		result.LLMEval = &eval
 		return applySelfVerifyLLMGate(result, opts.TargetScore)
 	}

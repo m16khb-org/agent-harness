@@ -1,11 +1,9 @@
 package core
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -90,7 +88,7 @@ func SuggestDraftWiki(req DraftWikiSuggestRequest) (DraftWikiSuggestResult, erro
 		DryRun:               !req.Write,
 		Executed:             false,
 		InputPath:            inputPath,
-		Command:              joinHandoffArgs([]string{agyCommand, "-p", "<prompt>"}),
+		Command:              ExternalLLMPrintCommandPreview(agyCommand),
 		AgyCommand:           agyCommand,
 		AgyModel:             agyModel,
 		AgySettingsPath:      settingsPath,
@@ -104,18 +102,11 @@ func SuggestDraftWiki(req DraftWikiSuggestRequest) (DraftWikiSuggestResult, erro
 	if timeout <= 0 {
 		timeout = 5 * time.Minute
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, agyCommand, "-p", prompt)
-	cmd.Dir = root
-	out, err := cmd.CombinedOutput()
-	if ctx.Err() == context.DeadlineExceeded {
-		return DraftWikiSuggestResult{}, fmt.Errorf("agy print timed out after %s", timeout)
-	}
+	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Command: agyCommand, WorkDir: root, Prompt: prompt, Timeout: timeout})
 	if err != nil {
-		return DraftWikiSuggestResult{}, fmt.Errorf("agy print failed: %w: %s", err, strings.TrimSpace(string(out)))
+		return DraftWikiSuggestResult{}, fmt.Errorf("agy print failed: %w: %s", err, strings.TrimSpace(string(llm.Output)))
 	}
-	draftPath, err := writeSuggestedDraft(root, req.Title, req.TargetWiki, targetType, agyModel, string(out))
+	draftPath, err := writeSuggestedDraft(root, req.Title, req.TargetWiki, targetType, agyModel, string(llm.Output))
 	if err != nil {
 		return DraftWikiSuggestResult{}, err
 	}

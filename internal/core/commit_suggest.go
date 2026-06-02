@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -81,17 +80,9 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 		timeout = 2 * time.Minute
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, agyCommand, "-p", prompt)
-	cmd.Dir = root
-	out, err := cmd.CombinedOutput()
-	if ctx.Err() == context.DeadlineExceeded {
-		return CommitSuggestResult{}, fmt.Errorf("agy commit suggest timed out after %s", timeout)
-	}
+	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Command: agyCommand, WorkDir: root, Prompt: prompt, Timeout: timeout})
 	if err != nil {
-		return CommitSuggestResult{}, fmt.Errorf("agy commit suggest failed: %w: %s", err, strings.TrimSpace(string(out)))
+		return CommitSuggestResult{}, fmt.Errorf("agy commit suggest failed: %w: %s", err, strings.TrimSpace(string(llm.Output)))
 	}
 
 	return CommitSuggestResult{
@@ -99,7 +90,7 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 		Executed:      true,
 		RepoRoot:      root,
 		Staged:        req.Staged,
-		CommitMessage: strings.TrimSpace(string(out)),
+		CommitMessage: strings.TrimSpace(string(llm.Output)),
 		AgyCommand:    agyCommand,
 		AgyModel:      agyModel,
 	}, nil
