@@ -27,6 +27,7 @@ Usage:
   agent-harness issueops link-plan --id ID --plan-path PATH [--json]
   agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--json]
   agent-harness issueops pr-readiness --id ID [--json]
+  agent-harness issueops remote score --input PATH [--judge none|agy] [--agy-command PATH] [--json]
   agent-harness issueops benchmark run --fixtures PATH [--judge none|agy] [--agy-command PATH] [--json]
   agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
   agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]

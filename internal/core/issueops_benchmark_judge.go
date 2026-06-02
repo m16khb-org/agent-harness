@@ -2,11 +2,9 @@ package core
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -40,21 +38,11 @@ func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, e
 	}
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		cmd := exec.CommandContext(ctx, command, "-p", prompt)
-		if strings.TrimSpace(req.RepoRoot) != "" {
-			cmd.Dir = req.RepoRoot
-		}
-		out, err := cmd.CombinedOutput()
-		ctxErr := ctx.Err()
-		cancel()
-		if ctxErr != nil {
-			return IssueOpsBenchmarkScore{}, fmt.Errorf("agy judge timed out after %s", timeout)
-		}
+		llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Command: command, WorkDir: req.RepoRoot, Prompt: prompt, Timeout: timeout})
 		if err != nil {
-			return IssueOpsBenchmarkScore{}, fmt.Errorf("agy judge failed: %s", boundedIssueOpsText(string(out)))
+			return IssueOpsBenchmarkScore{}, fmt.Errorf("agy judge failed: %s", boundedIssueOpsText(string(llm.Output)))
 		}
-		score, err := decodeStrictIssueOpsBenchmarkScore(out)
+		score, err := decodeStrictIssueOpsBenchmarkScore(llm.Output)
 		if err == nil {
 			return score, nil
 		}
