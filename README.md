@@ -25,6 +25,57 @@ The project philosophy is **do not reinvent the wheel**: agent-harness owns the 
 
 ---
 
+## Start here: Issue-Driven Development
+
+Issue-Driven Development, or IDD, is the top-level collaboration model for this project. SDD, TDD, subagents, reviews, and PR/MR drafting still matter, but the durable source of truth above them is the issue contract and the linked issue graph.
+
+In IDD, every meaningful decision becomes an issue, an issue update, or a linked follow-up. A reviewer should be able to reconstruct why a branch exists, which alternatives were rejected, which acceptance criteria changed, what evidence was collected, and what follow-up decisions remain open without reading a private chat transcript.
+
+The intended loop is:
+
+1. Capture the problem, current evidence, acceptance criteria, non-goals, verification, open decisions, and related issues in an issue.
+2. Link decision issues together when one decision depends on, blocks, supersedes, splits from, or follows another.
+3. Create an issue-based branch and sibling worktree, then verify `pwd`, branch, `HEAD`, and expected worktree path before implementation, TDD, review, QA, commit, or PR/MR work.
+4. Write the plan from the issue contract; use TDD and subagent work only inside the isolated worktree.
+5. Classify feedback as issue, plan, test, implementation, review, or follow-up evidence; update the issue graph when the contract changes.
+6. Draft the PR/MR only when the issue link, plan link, worktree evidence, verification, cleanup status, and review notes are ready.
+
+```mermaid
+flowchart LR
+    Problem[Problem and evidence] --> Issue[Issue contract]
+    Issue --> Links[Linked decisions]
+    Links --> Worktree[Issue branch and worktree]
+    Worktree --> Plan[Plan from issue]
+    Plan --> TDD[TDD and subagents]
+    TDD --> Feedback[Feedback classified]
+    Feedback --> Issue
+    Feedback --> PR[PR/MR readiness]
+```
+
+Current support is partial but usable. `skills/issueops/SKILL.md` defines the advisory workflow. `agent-harness issueops` stores durable cycle state. MCP exposes matching `issueops_*` tools. The benchmark checks issue quality, branch/worktree evidence, isolation, cleanup, TDD, subagent prompts, and PR/MR draft quality. Remaining IDD work is tracked in [`docs/IDD_IMPLEMENTATION_NEEDS.md`](docs/IDD_IMPLEMENTATION_NEEDS.md): durable linked issue graphs, first-class decision records, real git worktree orchestration, stronger PR/MR readiness evidence, provider integration boundaries, and stale-binary drift checks.
+
+Minimal local IssueOps state flow:
+
+```bash
+./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
+./bin/agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
+./bin/agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
+./bin/agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
+./bin/agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
+```
+
+## Command pillars
+
+Start with these commands. The rest of the harness is there to support this path.
+
+| Pillar | Type this | Use it for |
+| --- | --- | --- |
+| Install | `./bin/agent-harness bootstrap --dry-run --json` then `./bin/agent-harness bootstrap` | Build the local binary, install user-level Codex/Claude skills, hooks, MCP wiring, and optional upstream companion tools. |
+| Project memory | `./bin/agent-harness project bootstrap --repo /path/to/repo --dry-run --json` | Add or refresh AGENTS routing and `.agent-harness/` operating docs for a target repo. |
+| IssueOps | `./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json` | Start durable state for the issue -> plan -> worktree -> TDD/subagent -> feedback -> PR/MR loop. |
+| Policy | `./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | Check whether a command is safe before execution. |
+| Verification | `./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json` | Run the harness quality gate and capture evidence before claiming the harness is healthy. |
+
 ## Why this exists
 
 AI coding agents become hard to trust when every host has different prompts, tools, state, and safety rules. `agent-harness` keeps those concerns in one portable place.
@@ -37,6 +88,17 @@ Use it when you want to:
 - check command safety before execution rather than letting agents run arbitrary shell strings;
 - store small, inspectable agent checkpoints outside the repository;
 - continuously verify and improve the harness itself.
+
+## Philosophy
+
+`agent-harness` is built around a few constraints:
+
+1. **Issue first** — implementation starts from an explicit issue contract, not from an ad hoc edit.
+2. **Portable core first** — shared behavior lives in the Go core; Codex and Claude integrations stay thin.
+3. **Same contract everywhere** — CLI JSON, MCP responses, daemon responses, and host adapters must describe the same behavior.
+4. **Safe by default** — command policy, workspace boundaries, audit metadata, redaction, and dry-run/read-only paths come before writable execution.
+5. **One skill source** — `skills/<name>/` is the source of truth; user-level host skill paths point back to it.
+6. **Do not reinvent the wheel** — use upstream tools such as llm-wiki, CodeGraph, and claude-mem instead of copying their core behavior into this harness.
 
 ## What you get
 
@@ -53,23 +115,6 @@ Use it when you want to:
 | Evidence and contracts | `guard check`, `verify-work`, `trace analyze`, `contract schema/check` | Check anti-patterns, collect completion evidence matrices, analyze trace/lifecycle evidence, and keep CLI/MCP contracts aligned. |
 | Self-improvement | `self-verify`, `self-verify history/compare/promote/candidates`, `self-augment`, `self-augment lesson` | Run a 95-point verification gate, compare/promote checkpoints, and record safe improvement candidates or lessons. |
 | Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | Record job lifecycle state, run policy-gated read-only evidence commands, and process draft-wiki queue items; no writable shell jobs. |
-
-## Issue-Driven Development
-
-Issue-Driven Development, or IDD, is the collaboration model this harness is moving toward. SDD and TDD still matter, but the source of truth above them is the issue graph.
-
-In IDD, every meaningful decision becomes an issue or an issue update. Related decisions are linked so a teammate can reconstruct why a branch exists, which alternatives were rejected, which acceptance criteria changed, and which follow-up issues are still open. Implementation starts from an issue-based branch and an isolated git worktree, not from an ad hoc edit in the main checkout.
-
-The intended loop is:
-
-1. Capture the problem, current evidence, acceptance criteria, non-goals, verification, open decisions, and related issues in an issue.
-2. Link decision issues together when one decision depends on, blocks, supersedes, or follows from another.
-3. Derive an issue-based branch and sibling worktree, then verify `pwd`, branch, `HEAD`, and expected worktree path before any implementation, TDD, review, QA, commit, or PR/MR step.
-4. Write the plan from the issue contract, then use TDD and subagent work only inside the isolated worktree.
-5. Record feedback as issue/plan/test/implementation decisions, then update the linked issue graph instead of losing the rationale in chat.
-6. Draft the PR/MR only when the issue link, plan link, worktree evidence, verification, and cleanup status are ready.
-
-Current support is partial. `skills/issueops/SKILL.md` defines the advisory workflow, `agent-harness issueops` stores durable cycle state, MCP exposes matching tools, and the benchmark checks issue quality, branch/worktree evidence, isolation, cleanup, TDD, subagent prompts, and PR/MR draft quality. The remaining IDD work is documented in [`docs/IDD_IMPLEMENTATION_NEEDS.md`](docs/IDD_IMPLEMENTATION_NEEDS.md): durable linked issue graphs, first-class decision records, real git worktree orchestration, stricter PR/MR readiness evidence, provider integration boundaries, and stale-binary drift checks.
 
 ## Architecture
 
@@ -120,9 +165,11 @@ bin/agent-harness         Locally built binary
 
 The project currently has no external Go module dependencies beyond the standard library; check the current tree before assuming additional dependencies.
 
-## Quick start
+## Install and run
 
-From the repository root:
+### 1. Build the local binary
+
+From the repository root, build the binary and run basic inspection commands:
 
 ```bash
 go build -o bin/agent-harness ./cmd/harness
@@ -130,6 +177,42 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
 ```
+
+### 2. Install Codex and Claude integration
+
+Install or update user-level Codex/Claude integration after reviewing the dry run. First-time setup should use `agent-harness bootstrap`; later refreshes should use `agent-harness update`, like `claude-mem update`. Both commands rebuild this checkout, refresh host integrations, and install/update upstream companion tools by default. The installer also creates or refreshes `~/.local/bin/agent-harness`, so new shells can run `agent-harness ...` from anywhere:
+
+```bash
+./bin/agent-harness bootstrap --dry-run --json
+
+# Recommended first-time setup.
+./bin/agent-harness bootstrap
+
+# Recommended ongoing update.
+agent-harness update
+
+# Minimal/low-level path: update only agent-harness native Codex/Claude integration.
+./scripts/install-native.sh --skip-upstream-tools
+./bin/agent-harness install-native --json
+```
+
+`agent-harness update` and `agent-harness bootstrap` delegate to `./scripts/install-native.sh --with-upstream-tools` unless you opt out. The script rebuilds `bin/agent-harness` from the current checkout, refreshes `~/.local/bin/agent-harness`, and then updates host integrations. It does not run `git pull`; update the checkout yourself first when you want remote changes. Use `--skip-build` only when you intentionally want to leave the existing binary unchanged, and `--skip-upstream-tools` only for a minimal harness-only refresh.
+
+Default installation targets user-level host locations, including Codex hooks in `~/.codex/hooks.json` and Claude hooks in `~/.claude/settings.json`. It must not create project-local `.claude/skills`, `.claude/settings.json`, or `.mcp.json` files in a target repository unless project-local mode is explicitly requested.
+
+### 3. Bootstrap project docs when needed
+
+Use project bootstrap when you want a target repository to receive AGENTS routing and `.agent-harness/` operating documents:
+
+```bash
+./bin/agent-harness project bootstrap --repo /path/to/repo --dry-run --json
+./bin/agent-harness project bootstrap --repo /path/to/repo --json
+
+# Recalculate existing project docs from current templates and repo evidence.
+./bin/agent-harness project bootstrap --repo /path/to/repo --sync --json
+```
+
+### 4. Run policy, daemon, and IssueOps checks
 
 Check command policy without executing the command:
 
@@ -149,25 +232,11 @@ Smoke-test the daemon lifecycle:
 ./bin/agent-harness daemon stop --json
 ```
 
-Install or update user-level Codex/Claude integration after reviewing the dry run. First-time setup should use `agent-harness bootstrap`; later refreshes should use `agent-harness update`, like `claude-mem update`. Both commands use the recommended full path by default: they rebuild this checkout, refresh host integrations, and install/update upstream companion tools. The installer also creates/refreshes `~/.local/bin/agent-harness`, so new shells can run `agent-harness ...` from anywhere:
+Start an IssueOps state record for an issue-driven task:
 
 ```bash
-./bin/agent-harness install-native --dry-run --json
-
-# Recommended first-time full setup.
-./bin/agent-harness bootstrap
-
-# Recommended ongoing update, like `claude-mem update`.
-agent-harness update
-
-# Minimal/low-level path: update only agent-harness native Codex/Claude integration.
-./scripts/install-native.sh --skip-upstream-tools
-./bin/agent-harness install-native --json
+./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
 ```
-
-`agent-harness update` and `agent-harness bootstrap` delegate to `./scripts/install-native.sh --with-upstream-tools`. The script rebuilds `bin/agent-harness` from the current checkout every run, refreshes `~/.local/bin/agent-harness`, and then updates host integrations, so an existing install is updated in place. It does not run `git pull`; update the checkout yourself first when you want remote changes. Use `--skip-build` only when you intentionally want to leave the existing binary unchanged, and `--skip-upstream-tools` only for a minimal harness-only refresh.
-
-Default installation targets user-level host locations, including Codex hooks in `~/.codex/hooks.json` and Claude hooks in `~/.claude/settings.json`. It must not create project-local `.claude/skills`, `.claude/settings.json`, or `.mcp.json` files in a target repository unless project-local mode is explicitly requested.
 
 `--with-upstream-tools` is the recommended full setup for this harness philosophy: do not reinvent the wheel, and keep specialized capabilities on their upstream implementations. It modifies user-level Codex/Claude/plugin/MCP configuration and may use the network. It wires these upstream tools without vendoring or reimplementing them:
 
@@ -322,7 +391,7 @@ go build -o bin/agent-harness ./cmd/harness
 
 ## Documentation style note
 
-This README follows common open-source README guidance: explain what the project does, why it is useful, how to start, and where to get help. See [GitHub Docs on repository READMEs](https://docs.github.com/articles/about-readmes) and [Open Source Guides on starting a project](https://opensource.guide/starting-a-project/) for the documentation shape that informed this rewrite.
+This README follows common open-source README guidance: explain what the project does, why it is useful, how to start, and where to get help. Its agent-harness-specific shape also borrows from the public README patterns used by OMC/oh-my-codex, OMX/oh-my-codex, OmO/oh-my-openagent, and LazyCodex: a short promise, install-first usage, command pillars, built-in workflows, architecture, verification, troubleshooting, and safety boundaries. See [GitHub Docs on repository READMEs](https://docs.github.com/articles/about-readmes) and [Open Source Guides on starting a project](https://opensource.guide/starting-a-project/) for the general documentation shape behind that structure.
 
 ## License
 
@@ -344,6 +413,57 @@ No license file is present in this repository at the time of this README update.
 
 ---
 
+## 먼저 볼 것: Issue-Driven Development
+
+Issue-Driven Development, 즉 IDD는 이 프로젝트의 최상위 협업 모델입니다. SDD, TDD, subagent, review, PR/MR 작성은 여전히 중요하지만, 그 위의 durable source of truth는 issue contract와 linked issue graph입니다.
+
+IDD에서는 의미 있는 의사결정을 모두 issue, issue update, linked follow-up으로 남깁니다. 리뷰어는 비공개 chat transcript를 읽지 않고도 어떤 branch가 왜 생겼는지, 어떤 대안이 기각됐는지, 어떤 acceptance criteria가 바뀌었는지, 어떤 근거가 수집됐는지, 어떤 후속 결정이 남았는지 재구성할 수 있어야 합니다.
+
+의도한 루프는 다음과 같습니다.
+
+1. 문제, 현재 근거, 완료 기준, 비목표, 검증, 열린 결정, 관련 issue를 issue에 기록합니다.
+2. 어떤 결정이 다른 결정을 의존, 차단, 대체, 분리, 후속 처리하는지 issue 간 링크로 남깁니다.
+3. issue 기반 branch와 sibling worktree를 만들고, 구현, TDD, review, QA, commit, PR/MR 전에 `pwd`, branch, `HEAD`, expected worktree path를 확인합니다.
+4. issue contract에서 plan을 만들고, TDD와 subagent 작업은 격리 worktree 안에서만 수행합니다.
+5. feedback을 issue, plan, test, implementation, review, follow-up evidence로 분류하고, contract가 바뀌면 issue graph를 갱신합니다.
+6. issue link, plan link, worktree evidence, verification, cleanup status, review note가 준비됐을 때만 PR/MR을 작성합니다.
+
+```mermaid
+flowchart LR
+    Problem[문제와 근거] --> Issue[Issue contract]
+    Issue --> Links[Linked decisions]
+    Links --> Worktree[Issue branch와 worktree]
+    Worktree --> Plan[Issue 기반 plan]
+    Plan --> TDD[TDD와 subagents]
+    TDD --> Feedback[Feedback 분류]
+    Feedback --> Issue
+    Feedback --> PR[PR/MR readiness]
+```
+
+현재 지원은 부분적이지만 사용할 수 있습니다. `skills/issueops/SKILL.md`는 advisory workflow를 정의합니다. `agent-harness issueops`는 durable cycle state를 저장합니다. MCP는 같은 의미의 `issueops_*` 도구를 노출합니다. benchmark는 issue 품질, branch/worktree evidence, isolation, cleanup, TDD, subagent prompt, PR/MR draft 품질을 검사합니다. 남은 IDD 구현 필요성은 [`docs/IDD_IMPLEMENTATION_NEEDS.md`](docs/IDD_IMPLEMENTATION_NEEDS.md)에 정리했습니다. 핵심은 durable linked issue graph, first-class decision record, 실제 git worktree orchestration, 더 강한 PR/MR readiness evidence, provider integration boundary, stale-binary drift check입니다.
+
+최소 local IssueOps state 흐름:
+
+```bash
+./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
+./bin/agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
+./bin/agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
+./bin/agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
+./bin/agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
+```
+
+## 핵심 명령 기둥
+
+먼저 이 명령들부터 보면 됩니다. 나머지 하네스 기능은 이 흐름을 지원하기 위해 존재합니다.
+
+| 기둥 | 실행 | 용도 |
+| --- | --- | --- |
+| 설치 | `./bin/agent-harness bootstrap --dry-run --json` 후 `./bin/agent-harness bootstrap` | local binary를 build하고 user-level Codex/Claude skill, hook, MCP wiring, optional upstream companion tools를 설치합니다. |
+| 프로젝트 메모리 | `./bin/agent-harness project bootstrap --repo /path/to/repo --dry-run --json` | 대상 repo에 AGENTS routing과 `.agent-harness/` 운영 문서를 추가하거나 갱신합니다. |
+| IssueOps | `./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json` | issue -> plan -> worktree -> TDD/subagent -> feedback -> PR/MR 루프의 durable state를 시작합니다. |
+| Policy | `./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | 명령 실행 전에 안전성을 확인합니다. |
+| Verification | `./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json` | 하네스 health를 주장하기 전에 품질 gate와 근거 수집을 실행합니다. |
+
 ## 왜 필요한가
 
 AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라지면 신뢰하기 어려워집니다. `agent-harness`는 그 공통 관심사를 하나의 portable core에 모읍니다.
@@ -358,6 +478,17 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 - agent가 임의 shell string을 실행하기 전에 command safety를 먼저 판단하게 하고 싶을 때
 - 작은 agent checkpoint를 repo 밖 user state에 저장하고 싶을 때
 - 하네스 자체를 계속 검증하고 개선하고 싶을 때
+
+## 철학
+
+`agent-harness`는 몇 가지 제약을 중심으로 설계합니다.
+
+1. **Issue first** — 구현은 임시 수정이 아니라 명시적인 issue contract에서 시작합니다.
+2. **Portable core first** — 공유 동작은 Go core에 두고 Codex/Claude 통합은 얇게 유지합니다.
+3. **Same contract everywhere** — CLI JSON, MCP response, daemon response, host adapter는 같은 동작을 같은 의미로 설명해야 합니다.
+4. **Safe by default** — command policy, workspace boundary, audit metadata, redaction, dry-run/read-only 경로를 writable execution보다 먼저 둡니다.
+5. **One skill source** — `skills/<name>/`이 source of truth이고 user-level host skill 경로는 이를 가리킵니다.
+6. **바퀴를 재발명하지 않기** — llm-wiki, CodeGraph, claude-mem 같은 upstream 도구의 core behavior를 하네스 내부에 복제하지 않고 연결해서 씁니다.
 
 ## 제공 기능
 
@@ -374,23 +505,6 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 | Evidence와 contract | `guard check`, `verify-work`, `trace analyze`, `contract schema/check` | anti-pattern을 검사하고 completion evidence matrix, trace/lifecycle evidence, CLI/MCP contract 정합성을 확인합니다. |
 | Self-improvement | `self-verify`, `self-verify history/compare/promote/candidates`, `self-augment`, `self-augment lesson` | 95점 검증 gate, checkpoint 비교/승격, 안전한 개선 후보와 lesson 기록을 수행합니다. |
 | Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | job lifecycle state를 기록하고 policy-gated read-only evidence command와 draft-wiki queue 처리를 수행합니다. writable shell job은 없습니다. |
-
-## Issue-Driven Development
-
-Issue-Driven Development, 즉 IDD는 이 하네스가 지향하는 협업 방법론입니다. SDD와 TDD는 여전히 중요하지만, 그 위의 source of truth는 issue graph입니다.
-
-IDD에서는 의미 있는 의사결정을 모두 issue 또는 issue update로 남깁니다. 관련 결정은 서로 연결해 팀 동료가 어떤 branch가 왜 생겼는지, 어떤 대안이 기각됐는지, 어떤 acceptance criteria가 바뀌었는지, 어떤 후속 issue가 남았는지 추적할 수 있게 합니다. 구현은 main checkout의 임시 수정이 아니라 issue 기반 branch와 격리된 git worktree에서 시작합니다.
-
-의도한 루프는 다음과 같습니다.
-
-1. 문제, 현재 근거, 완료 기준, 비목표, 검증, 열린 결정, 관련 issue를 issue에 기록합니다.
-2. 어떤 결정이 다른 결정을 의존, 차단, 대체, 후속 처리하는지 issue 간 링크로 남깁니다.
-3. issue 기반 branch와 sibling worktree를 만들고, 구현, TDD, review, QA, commit, PR/MR 전에 `pwd`, branch, `HEAD`, expected worktree path를 확인합니다.
-4. issue contract에서 plan을 만들고, TDD와 subagent 작업은 격리 worktree 안에서만 수행합니다.
-5. feedback을 issue/plan/test/implementation 결정으로 분류하고, chat에 근거를 잃지 않도록 linked issue graph를 갱신합니다.
-6. issue link, plan link, worktree evidence, verification, cleanup status가 준비됐을 때만 PR/MR을 작성합니다.
-
-현재 지원은 부분적입니다. `skills/issueops/SKILL.md`는 advisory workflow를 정의하고, `agent-harness issueops`는 durable cycle state를 저장하며, MCP는 같은 의미의 도구를 노출합니다. benchmark는 issue 품질, branch/worktree evidence, isolation, cleanup, TDD, subagent prompt, PR/MR draft 품질을 검사합니다. 남은 구현 필요성은 [`docs/IDD_IMPLEMENTATION_NEEDS.md`](docs/IDD_IMPLEMENTATION_NEEDS.md)에 정리했습니다. 핵심은 durable linked issue graph, first-class decision record, 실제 git worktree orchestration, 더 강한 PR/MR readiness evidence, provider integration boundary, stale binary drift check입니다.
 
 ## 아키텍처
 
@@ -441,9 +555,11 @@ bin/agent-harness         로컬 build binary
 
 현재 `go.mod` 기준으로 표준 라이브러리 외부 Go module dependency는 없습니다. dependency를 가정하기 전에 현재 tree를 확인하세요.
 
-## 빠른 시작
+## 설치와 실행
 
-저장소 루트에서 실행합니다.
+### 1. 로컬 바이너리 빌드
+
+저장소 루트에서 binary를 build하고 기본 점검 명령을 실행합니다.
 
 ```bash
 go build -o bin/agent-harness ./cmd/harness
@@ -451,6 +567,42 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
 ```
+
+### 2. Codex와 Claude 통합 설치
+
+user-level Codex/Claude integration은 dry-run 확인 후 설치하거나 갱신합니다. 첫 설치는 `agent-harness bootstrap`, 이후 갱신은 `claude-mem update`처럼 `agent-harness update`를 권장합니다. 두 명령은 기본적으로 현재 checkout binary를 다시 build하고 host integration과 upstream companion tools를 함께 갱신합니다. installer는 `~/.local/bin/agent-harness`를 생성/갱신하므로 새 shell에서는 어디서든 `agent-harness ...`를 사용할 수 있습니다.
+
+```bash
+./bin/agent-harness bootstrap --dry-run --json
+
+# 권장 첫 설치: agent-harness와 upstream companion tools를 함께 세팅합니다.
+./bin/agent-harness bootstrap
+
+# 권장 갱신: claude-mem update처럼 사용합니다.
+agent-harness update
+
+# 최소 설치: agent-harness native Codex/Claude integration만 갱신합니다.
+./scripts/install-native.sh --skip-upstream-tools
+./bin/agent-harness install-native --json
+```
+
+`agent-harness update`와 `agent-harness bootstrap`은 opt-out하지 않는 한 내부적으로 `./scripts/install-native.sh --with-upstream-tools`를 호출합니다. 스크립트는 매 실행마다 현재 checkout 기준으로 `bin/agent-harness`를 다시 build하고, `~/.local/bin/agent-harness`를 갱신한 뒤 host integration을 갱신하므로, 이미 설치된 agent-harness도 제자리에서 업데이트됩니다. 단, local 변경을 덮어쓰지 않기 위해 `git pull`은 자동 실행하지 않습니다. 원격 변경까지 반영하려면 checkout을 먼저 직접 갱신하세요. 기존 binary를 의도적으로 유지하려면 `--skip-build`, 최소 harness-only 갱신이 필요하면 `--skip-upstream-tools`를 사용합니다.
+
+기본 설치는 `~/.codex/hooks.json`의 Codex hook과 `~/.claude/settings.json`의 Claude hook을 포함한 user-level host 위치만 대상으로 합니다. target repo에 project-local `.claude/skills`, `.claude/settings.json`, `.mcp.json` 파일을 만들려면 명시적인 project-local mode가 필요합니다.
+
+### 3. 필요한 경우 프로젝트 문서 부트스트랩
+
+대상 repository에 AGENTS routing과 `.agent-harness/` 운영 문서를 생성하려면 project bootstrap을 사용합니다.
+
+```bash
+./bin/agent-harness project bootstrap --repo /path/to/repo --dry-run --json
+./bin/agent-harness project bootstrap --repo /path/to/repo --json
+
+# 기존 프로젝트 문서를 현재 template과 repo evidence 기준으로 다시 계산합니다.
+./bin/agent-harness project bootstrap --repo /path/to/repo --sync --json
+```
+
+### 4. Policy, daemon, IssueOps 실행 확인
 
 명령을 실행하지 않고 command policy만 확인합니다.
 
@@ -470,25 +622,11 @@ Daemon lifecycle smoke test:
 ./bin/agent-harness daemon stop --json
 ```
 
-user-level Codex/Claude integration은 dry-run 확인 후 설치하거나 갱신합니다. 첫 설치는 `agent-harness bootstrap`, 이후 갱신은 `claude-mem update`처럼 `agent-harness update`를 권장합니다. 두 명령은 기본적으로 현재 checkout binary를 다시 build하고 host integration과 upstream companion tools를 함께 갱신합니다. installer는 `~/.local/bin/agent-harness`를 생성/갱신하므로 새 shell에서는 어디서든 `agent-harness ...`를 사용할 수 있습니다.
+issue-driven 작업의 IssueOps state record를 시작합니다.
 
 ```bash
-./bin/agent-harness install-native --dry-run --json
-
-# 권장 첫 설치: agent-harness와 upstream companion tools를 함께 세팅합니다.
-./bin/agent-harness bootstrap
-
-# 권장 갱신: claude-mem update처럼 사용합니다.
-agent-harness update
-
-# 최소 설치: agent-harness native Codex/Claude integration만 갱신합니다.
-./scripts/install-native.sh --skip-upstream-tools
-./bin/agent-harness install-native --json
+./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
 ```
-
-`agent-harness update`와 `agent-harness bootstrap`은 내부적으로 `./scripts/install-native.sh --with-upstream-tools`를 호출합니다. 스크립트는 매 실행마다 현재 checkout 기준으로 `bin/agent-harness`를 다시 build하고, `~/.local/bin/agent-harness`를 갱신한 뒤 host integration을 갱신하므로, 이미 설치된 agent-harness도 제자리에서 업데이트됩니다. 단, local 변경을 덮어쓰지 않기 위해 `git pull`은 자동 실행하지 않습니다. 원격 변경까지 반영하려면 checkout을 먼저 직접 갱신하세요. 기존 binary를 의도적으로 유지하려면 `--skip-build`, 최소 harness-only 갱신이 필요하면 `--skip-upstream-tools`를 사용합니다.
-
-기본 설치는 `~/.codex/hooks.json`의 Codex hook과 `~/.claude/settings.json`의 Claude hook을 포함한 user-level host 위치만 대상으로 합니다. target repo에 project-local `.claude/skills`, `.claude/settings.json`, `.mcp.json` 파일을 만들려면 명시적인 project-local mode가 필요합니다.
 
 `--with-upstream-tools`는 이 하네스의 철학인 “바퀴를 재발명하지 않는다”에 맞는 권장 full setup입니다. user-level Codex/Claude/plugin/MCP 설정을 바꾸고 네트워크를 사용할 수 있으며, 다음 upstream 도구를 vendoring/reimplementation 없이 연결합니다.
 
