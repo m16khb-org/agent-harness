@@ -73,8 +73,8 @@ import yaml
 for path in sorted(Path(".github/ISSUE_TEMPLATE").glob("*.yml")):
     data = yaml.safe_load(path.read_text())
     assert isinstance(data, dict), path
-    assert data.get("name"), path
     if path.name != "config.yml":
+        assert data.get("name"), path
         assert data.get("description"), path
         assert isinstance(data.get("body"), list) and data["body"], path
 print("issue form yaml ok")
