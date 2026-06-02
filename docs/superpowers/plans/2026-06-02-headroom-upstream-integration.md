@@ -8,6 +8,12 @@
 
 **Tech Stack:** Bash installer, Go static installer-contract tests, project docs, existing `go test` and dry-run bootstrap checks.
 
+**Issue:** https://github.com/m16khb/agent-harness/issues/2
+
+**Branch / Worktree:** `feature/2-integrate-headroom-upstream-companion` at `/Users/m16khb/Workspace/agent-harness.worktrees/feature-2-integrate-headroom-upstream-companion`
+
+**Baseline note:** `go test ./... -count=1` currently fails before new edits in `cmd/harness` `TestResponseContractsGolden` because `response_contracts.golden.json` is stale. Do not attribute that failure to Headroom unless a focused Headroom check also fails.
+
 ---
 
 ## File Structure
@@ -21,15 +27,17 @@
   - Add Headroom to the upstream dependency table and note opt-in behavior.
 - Modify `.agent-harness/TESTING.md`
   - Add Headroom smoke checks to optional upstream companion verification.
+- Modify `README.md`
+  - Keep the public English and Korean upstream companion tables consistent with project docs.
 
 ---
 
-### Task 1: Lock Headroom upstream contract with a failing test
+### Task 1: Confirm Headroom upstream contract test
 
 **Files:**
 - Modify: `internal/adapter/install_contract_matrix_test.go`
 
-- [ ] **Step 1: Add static contract test**
+- [x] **Step 1: Add static contract test**
 
 Add `TestInstallNativeUpstreamToolsUseHeadroom`:
 
@@ -61,7 +69,7 @@ func TestInstallNativeUpstreamToolsUseHeadroom(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify contract test**
 
 Run:
 
@@ -69,7 +77,7 @@ Run:
 go test ./internal/adapter -run TestInstallNativeUpstreamToolsUseHeadroom -count=1
 ```
 
-Expected: FAIL because Headroom is not yet wired.
+Expected: PASS once Headroom installer wiring is present.
 
 ---
 
@@ -78,7 +86,7 @@ Expected: FAIL because Headroom is not yet wired.
 **Files:**
 - Modify: `scripts/install-native.sh`
 
-- [ ] **Step 1: Add helper**
+- [x] **Step 1: Add helper**
 
 Add a helper near the upstream setup helpers:
 
@@ -97,7 +105,7 @@ install_headroom_cli() {
 }
 ```
 
-- [ ] **Step 2: Call helper from explicit upstream path**
+- [x] **Step 2: Call helper from explicit upstream path**
 
 At the end of `install_upstream_tools`, after CodeGraph setup, call:
 
@@ -105,7 +113,7 @@ At the end of `install_upstream_tools`, after CodeGraph setup, call:
 install_headroom_cli
 ```
 
-- [ ] **Step 3: Update dry-run wording**
+- [x] **Step 3: Update dry-run wording**
 
 Change the dry-run log to mention Headroom:
 
@@ -115,13 +123,13 @@ log "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-m
 
 ---
 
-### Task 3: Update docs and smoke checks
+### Task 3: Update project docs and smoke checks
 
 **Files:**
 - Modify: `.agent-harness/OPERATIONS.md`
 - Modify: `.agent-harness/TESTING.md`
 
-- [ ] **Step 1: Add Headroom to upstream dependency table**
+- [x] **Step 1: Add Headroom to upstream dependency table**
 
 Add a row:
 
@@ -129,11 +137,11 @@ Add a row:
 | Headroom | `chopratejas/headroom` / `headroom-ai` | `pipx install --python python3.13 "headroom-ai[all]"`로 CLI를 설치/갱신한다. 자동 proxy/wrap/learn은 실행하지 않는다. |
 ```
 
-- [ ] **Step 2: Add safety note**
+- [x] **Step 2: Add safety note**
 
 Document that Headroom must remain explicit opt-in and that operators should use `HEADROOM_TELEMETRY=off` for experiments.
 
-- [ ] **Step 3: Add smoke checks**
+- [x] **Step 3: Add smoke checks**
 
 Add:
 
@@ -144,12 +152,39 @@ HEADROOM_TELEMETRY=off headroom --help
 
 ---
 
-### Task 4: Verify
+### Task 4: Update README upstream tables
+
+**Files:**
+- Modify: `README.md`
+
+- [x] **Step 1: Add English Headroom row**
+
+Add this row after the claude-mem row in the English upstream tools table:
+
+```markdown
+| Headroom | `chopratejas/headroom` / `headroom-ai` | Installs or upgrades the CLI with `pipx install --python python3.13 "headroom-ai[all]"`; it does not automatically run proxy, wrap, learn, or MCP setup. |
+```
+
+- [x] **Step 2: Add Korean Headroom row**
+
+Add this row after the claude-mem row in the Korean upstream tools table:
+
+```markdown
+| Headroom | `chopratejas/headroom` / `headroom-ai` | `pipx install --python python3.13 "headroom-ai[all]"`로 CLI를 설치/갱신하며, proxy/wrap/learn/MCP 설정은 자동 실행하지 않습니다. |
+```
+
+- [x] **Step 3: Add telemetry and manual-use notes**
+
+After each table, add a short note that Headroom runtime use remains manual and experiments can set `HEADROOM_TELEMETRY=off`.
+
+---
+
+### Task 5: Verify
 
 **Files:**
 - No new files.
 
-- [ ] **Step 1: Run targeted test**
+- [x] **Step 1: Run targeted test**
 
 Run:
 
@@ -159,7 +194,7 @@ go test ./internal/adapter -run TestInstallNativeUpstreamToolsUseHeadroom -count
 
 Expected: PASS.
 
-- [ ] **Step 2: Run dry-run installer smoke**
+- [x] **Step 2: Run dry-run installer smoke**
 
 Run:
 
@@ -169,7 +204,7 @@ Run:
 
 Expected: output mentions Headroom and does not perform installation.
 
-- [ ] **Step 3: Run bootstrap dry-run smoke**
+- [x] **Step 3: Run bootstrap dry-run smoke**
 
 Run:
 
@@ -188,4 +223,4 @@ go test ./... -count=1
 go build -o bin/agent-harness ./cmd/harness
 ```
 
-Expected: both pass.
+Expected: `go build` passes. `go test ./... -count=1` and `go test ./cmd/harness -run Golden -count=1` are currently blocked by the pre-existing `TestResponseContractsGolden` mismatch recorded in the baseline note above.
