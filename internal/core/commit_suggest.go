@@ -106,24 +106,34 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 }
 
 func buildCommitSuggestPrompt(diff string) string {
-	return fmt.Sprintf(`You are an expert Git assistant. Read the following git diff and draft a Conventional + Lore Hybrid commit message that strictly adheres to the project rules.
-
----
-Commit Message Format Rules:
-1. Subject format: <type>(<scope>)!?: <summary>
-   - summary must be in imperative mood, in plain English, under 72 chars.
-   - types: feat, fix, docs, refactor, test, chore, ci, perf, style, revert.
-2. Lore body format (Strictly start with 'Lore:'):
-   - Intent: <What this commit aims to achieve>
-   - Why: <Context/reasoning behind this change>
-   - Changes:
-     - <Bullet points summarizing key changes>
-   - Verify: <Commands or actions taken to test/validate>
-   - Risk: <Remaining risks or rollback cautions, or 'Low'>
-
-Do NOT include any markdown code blocks (e.g. %s) around the commit message. Output ONLY the raw commit message itself. Do NOT output any intro or outro text.
-
-[Git Diff]
-%s
----`, "```", diff)
+	return BuildStructuredPrompt(StructuredPromptSpec{
+		Identity:  "You are an expert Git assistant.",
+		Objective: "Read the git diff and draft one Conventional + Lore Hybrid commit message that strictly adheres to the project rules.",
+		Phases: []string{
+			"Identify the intent and scope of the diff.",
+			"Choose the narrowest accurate Conventional Commit type and scope.",
+			"Summarize the durable lore: intent, why, changes, verification, and risk.",
+			"Return only the raw commit message.",
+		},
+		Inputs: []string{"Git diff."},
+		Rules: []string{
+			"Subject format: <type>(<scope>)!?: <summary>.",
+			"Subject summary must be imperative, plain English, and under 72 chars.",
+			"Allowed types: feat, fix, docs, refactor, test, chore, ci, perf, style, revert.",
+			"Lore body must strictly start with 'Lore:'.",
+			"Lore body fields: Intent, Why, Changes, Verify, Risk.",
+		},
+		OutputContract: []string{
+			"Output only the raw commit message itself.",
+			fmt.Sprintf("Do not include markdown code blocks such as %s.", "```"),
+			"Do not output intro or outro text.",
+		},
+		VerificationChecklist: []string{
+			"Subject matches Conventional Commit syntax.",
+			"Subject is under 72 characters.",
+			"Lore body contains Intent, Why, Changes, Verify, and Risk.",
+			"The message does not mention files or tests not supported by the diff.",
+		},
+		Data: []PromptDataSection{{Title: "Git Diff", Content: diff}},
+	})
 }

@@ -192,12 +192,27 @@ func buildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, agyModel, t
 	if targetWiki == "" {
 		targetWiki = "dev-fundamentals"
 	}
-	return fmt.Sprintf(`You are agent-harness draft-wiki suggester.
-
-Goal: turn the source material into one durable wiki draft if it contains reusable long-term knowledge.
-
-Return exactly one Markdown document, no surrounding code fences.
-Use this YAML frontmatter:
+	return BuildStructuredPrompt(StructuredPromptSpec{
+		Identity:  "You are the agent-harness draft-wiki suggester.",
+		Objective: "Turn the source material into one durable wiki draft if it contains reusable long-term knowledge.",
+		Phases: []string{
+			"Decide whether the source material contains reusable cross-session knowledge.",
+			"Extract durable decisions, commands, paths, and cautions without copying transient noise.",
+			"Write one reviewable Markdown draft with the required frontmatter.",
+		},
+		Inputs: []string{
+			"Source material from the draft-wiki queue.",
+			"Target wiki and target type metadata.",
+		},
+		Rules: []string{
+			"Keep only reusable cross-session knowledge.",
+			"Do not include secrets, credentials, transient logs, or private personal data.",
+			"Preserve concrete commands, paths, and decisions when they are useful later.",
+			`If the source is not worth remembering, return a short draft titled "Rejected: <reason>" explaining why.`,
+		},
+		OutputContract: []string{
+			"Return exactly one Markdown document, no surrounding code fences.",
+			fmt.Sprintf(`Use this YAML frontmatter:
 ---
 title: %q
 source: "claude-mem"
@@ -206,17 +221,16 @@ target_type: %q
 summary: "<one sentence>"
 suggester: "agy -p"
 model: %q
----
-
-Rules:
-- Keep only reusable cross-session knowledge.
-- Do not include secrets, credentials, transient logs, or private personal data.
-- Preserve concrete commands, paths, and decisions when they are useful later.
-- If the source is not worth remembering, return a short draft titled "Rejected: <reason>" explaining why.
-
-Source material:
-%s
-`, title, targetWiki, targetType, agyModel, input)
+---`, title, targetWiki, targetType, agyModel),
+		},
+		VerificationChecklist: []string{
+			"The draft has valid YAML frontmatter.",
+			"The summary is one sentence.",
+			"No secrets or transient logs are included.",
+			"The document is reviewable as a repo-local draft.",
+		},
+		Data: []PromptDataSection{{Title: "Source Material", Content: input}},
+	})
 }
 
 func writeSuggestedDraft(root, title, targetWiki, targetType, agyModel, output string) (string, error) {
