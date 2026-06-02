@@ -36,9 +36,10 @@ Environment:
   HARNESS_INSTALL_UPSTREAM_TOOLS=1  Same as --with-upstream-tools.
   HARNESS_INIT_CODEGRAPH=0          Skip `codegraph init -i` for this harness repo.
   HARNESS_SKIP_BUILD=1              Same as --skip-build.
+  HEADROOM_TELEMETRY=off            Recommended when experimenting with Headroom.
 
 Philosophy:
-  agent-harness does not reinvent llm-wiki, codegraph, or claude-mem. It can wire
+  agent-harness does not reinvent llm-wiki, codegraph, claude-mem, or Headroom. It can wire
   their upstream installers as optional dependencies while keeping harness core
   focused on shared CLI/MCP/state/policy orchestration.
 EOF
@@ -172,6 +173,19 @@ install_claude_mem_for_ide() {
     || log "warning: failed to install claude-mem for ${ide}; continuing"
 }
 
+install_headroom_cli() {
+  if ! command -v pipx >/dev/null 2>&1; then
+    log "pipx not found; skipping Headroom setup"
+    return 0
+  fi
+  log "installing/updating Headroom with telemetry opt-out guidance: HEADROOM_TELEMETRY=off"
+  if command -v headroom >/dev/null 2>&1; then
+    pipx upgrade headroom-ai >/dev/null || log "warning: failed to upgrade Headroom; continuing"
+  else
+    pipx install --python python3.13 "headroom-ai[all]" >/dev/null || log "warning: failed to install Headroom; continuing"
+  fi
+}
+
 
 preferred_shell_rc() {
   local shell_name
@@ -275,7 +289,7 @@ ensure_codegraph_on_path() {
 install_upstream_tools() {
   local dry_run="$1"
   if [[ "$dry_run" == "1" ]]; then
-    log "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem; would remove legacy agentmemory plugin wiring"
+    log "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem, Headroom; would remove legacy agentmemory plugin wiring"
     return 0
   fi
 
@@ -327,6 +341,8 @@ install_upstream_tools() {
   else
     log "npm not found; skipping CodeGraph setup"
   fi
+
+  install_headroom_cli
 }
 
 DRY_RUN=0

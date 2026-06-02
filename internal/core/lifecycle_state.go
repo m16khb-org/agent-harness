@@ -360,12 +360,12 @@ func docUpkeepEventID(repoID string, event DocUpkeepEvent, at string) string {
 }
 
 type HookToolUseLifecycleRequest struct {
-	Repo                   string   `json:"repo,omitempty"`
-	Tool                   string   `json:"tool,omitempty"`
-	Paths                  []string `json:"paths,omitempty"`
-	Command                string   `json:"command,omitempty"`
-	Source                 string   `json:"source,omitempty"`
-	EnforceCodeGraphSearch bool     `json:"enforce_codegraph_search,omitempty"`
+	Repo                 string   `json:"repo,omitempty"`
+	Tool                 string   `json:"tool,omitempty"`
+	Paths                []string `json:"paths,omitempty"`
+	Command              string   `json:"command,omitempty"`
+	Source               string   `json:"source,omitempty"`
+	EnforceSearchRouting bool     `json:"enforce_search_routing,omitempty"`
 }
 
 type HookToolUseLifecycleResult struct {
@@ -425,17 +425,30 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
-	if req.EnforceCodeGraphSearch && shouldBlockNonCodeGraphSourceSearch(result.Tool, result.Command, req.Repo) {
-		result.Decision = "block"
-		result.Reason = "Use CodeGraph first for repo-local source search: call codegraph_context for broad areas, codegraph_search for symbols, or codegraph_trace for call paths. Raw grep/rg is reserved for docs, golden fixtures, or literal evidence after CodeGraph is insufficient."
+	if req.EnforceSearchRouting {
+		if reason := searchRoutingBlockReason(result.Tool, result.Command, req.Repo); reason != "" {
+			result.Decision = "block"
+			result.Reason = reason
+		}
 	}
 	return result
 }
 
-func shouldBlockNonCodeGraphSourceSearch(tool string, command string, repo string) bool {
-	if !isShellTool(tool) {
-		return false
+func searchRoutingBlockReason(tool string, command string, repo string) string {
+	switch {
+	case isShellTool(tool):
+		if shouldBlockRawStructuralSourceSearch(command, repo) {
+			return "Use CodeGraph first for structural repo-local source search: call codegraph_context for broad areas, codegraph_search for symbols, or codegraph_trace for call paths. Keep raw grep/rg for exact strings, env keys, filenames, errors, docs, golden fixtures, or literal evidence."
+		}
+	case isCodeGraphTool(tool):
+		if looksLikeExactSearchQuery(command) {
+			return "Use rg first for exact text search such as env keys, filenames, error messages, TODO/comment/log text, or literal strings. Keep CodeGraph for symbols, call paths, module dependencies, and impact analysis."
+		}
 	}
+	return ""
+}
+
+func shouldBlockRawStructuralSourceSearch(command string, repo string) bool {
 	normalizedCommand := strings.ToLower(strings.TrimSpace(command))
 	if normalizedCommand == "" {
 		return false
@@ -445,6 +458,11 @@ func shouldBlockNonCodeGraphSourceSearch(tool string, command string, repo strin
 		return false
 	}
 	return sourceSearchNeedsCodeGraph(searchArgs, repo)
+}
+
+func isCodeGraphTool(tool string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(tool))
+	return normalized == "codegraph" || strings.HasPrefix(normalized, "codegraph_") || strings.Contains(normalized, "__codegraph__")
 }
 
 func isShellTool(tool string) bool {
@@ -457,7 +475,7 @@ func isShellTool(tool string) bool {
 }
 
 func rawTextSearchArgs(command string) ([]string, bool) {
-	tokens := strings.Fields(command)
+	tokens := splitCommandTokens(command)
 	for i, token := range tokens {
 		name := searchTokenName(token)
 		if name == "git" && i+1 < len(tokens) && searchTokenName(tokens[i+1]) == "grep" {
@@ -471,12 +489,44 @@ func rawTextSearchArgs(command string) ([]string, bool) {
 	return nil, false
 }
 
+func splitCommandTokens(command string) []string {
+	tokens := []string{}
+	var current strings.Builder
+	var quote rune
+	for _, r := range command {
+		switch {
+		case quote != 0:
+			if r == quote {
+				quote = 0
+				continue
+			}
+			current.WriteRune(r)
+		case r == '\'' || r == '"':
+			quote = r
+		case r == ' ' || r == '\t' || r == '\n' || r == '\r':
+			if current.Len() > 0 {
+				tokens = append(tokens, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteRune(r)
+		}
+	}
+	if current.Len() > 0 {
+		tokens = append(tokens, current.String())
+	}
+	return tokens
+}
+
 func searchTokenName(token string) string {
 	cleaned := strings.Trim(token, `"'`)
 	return filepath.Base(cleaned)
 }
 
 func sourceSearchNeedsCodeGraph(args []string, repo string) bool {
+	if !hasStructuralSourceSearchPattern(args) {
+		return false
+	}
 	targets := []string{}
 	for _, arg := range args {
 		target := searchTargetToken(arg)
@@ -498,6 +548,105 @@ func sourceSearchNeedsCodeGraph(args []string, repo string) bool {
 			continue
 		}
 		return true
+	}
+	return false
+}
+
+func hasStructuralSourceSearchPattern(args []string) bool {
+	for _, arg := range args {
+		pattern := searchPatternToken(arg)
+		if pattern == "" {
+			continue
+		}
+		if looksLikeStructuralSourcePattern(pattern) {
+			return true
+		}
+		if !strings.HasPrefix(pattern, "-") {
+			return false
+		}
+	}
+	return false
+}
+
+func searchPatternToken(token string) string {
+	cleaned := strings.Trim(strings.TrimSpace(token), `"',;`)
+	if cleaned == "" || strings.HasPrefix(cleaned, "-") || looksLikeSearchTarget(cleaned) {
+		return ""
+	}
+	return cleaned
+}
+
+func looksLikeStructuralSourcePattern(pattern string) bool {
+	lower := strings.ToLower(strings.TrimSpace(pattern))
+	if lower == "" {
+		return false
+	}
+	structuralNeedles := []string{
+		"func ",
+		"function ",
+		"type ",
+		"class ",
+		"interface ",
+		"struct ",
+		"enum ",
+		"def ",
+		"impl ",
+		"trait ",
+		"extends ",
+		"implements ",
+		"@controller",
+		"@injectable",
+	}
+	for _, needle := range structuralNeedles {
+		if strings.Contains(lower, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+func looksLikeExactSearchQuery(query string) bool {
+	cleaned := strings.Trim(strings.TrimSpace(query), `"',;`)
+	if cleaned == "" {
+		return false
+	}
+	lower := strings.ToLower(cleaned)
+	if strings.Contains(lower, "todo") || strings.Contains(lower, "fixme") || strings.Contains(lower, "log.") || strings.Contains(lower, "console.") || strings.Contains(lower, "comment") {
+		return true
+	}
+	if strings.Contains(cleaned, ".") && !strings.Contains(cleaned, " ") {
+		ext := strings.ToLower(filepath.Ext(cleaned))
+		switch ext {
+		case ".go", ".ts", ".tsx", ".js", ".jsx", ".py", ".rs", ".java", ".kt", ".md", ".json", ".yaml", ".yml", ".toml", ".env":
+			return true
+		}
+	}
+	if strings.Contains(cleaned, " ") && looksLikeErrorPhrase(lower) {
+		return true
+	}
+	hasUnderscore := strings.Contains(cleaned, "_")
+	hasUpper := false
+	hasLower := false
+	for _, r := range cleaned {
+		if r >= 'A' && r <= 'Z' {
+			hasUpper = true
+		}
+		if r >= 'a' && r <= 'z' {
+			hasLower = true
+		}
+	}
+	if hasUnderscore && hasUpper && !hasLower {
+		return true
+	}
+	return strings.HasSuffix(cleaned, "Error") || strings.HasSuffix(cleaned, "Exception") || strings.HasSuffix(cleaned, "Failure")
+}
+
+func looksLikeErrorPhrase(lower string) bool {
+	errorNeedles := []string{"cannot ", "can't ", "failed", "failure", "error", "undefined", "not found", "read property", "exception"}
+	for _, needle := range errorNeedles {
+		if strings.Contains(lower, needle) {
+			return true
+		}
 	}
 	return false
 }

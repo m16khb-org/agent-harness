@@ -84,6 +84,8 @@ npx -y claude-mem@latest status
 npx -y claude-mem@latest doctor
 command -v codegraph
 codegraph status --json .  # after a real --with-upstream-tools run with HARNESS_INIT_CODEGRAPH enabled
+command -v headroom
+HEADROOM_TELEMETRY=off headroom --help
 ```
 
 

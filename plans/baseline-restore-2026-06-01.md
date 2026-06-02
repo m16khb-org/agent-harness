@@ -146,16 +146,16 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
 
   Commit: NO | Message: `test(contract): refresh response contract golden` | Files: [cmd/harness/testdata/response_contracts.golden.json, evidence/task-2-golden-update.txt, evidence/task-2-golden-diff.txt, evidence/task-2-golden-green-1.txt, evidence/task-2-golden-green-2.txt, evidence/task-2-golden-tmux.txt]
 
-- [ ] 3. Preserve CodeGraph PreToolUse behavior with focused tests and CLI smoke
+- [ ] 3. Preserve hybrid search-routing PreToolUse behavior with focused tests and CLI smoke
 
-  What to do: Run focused core and CLI tests that cover the new CodeGraph-first enforcement. If a focused test fails, apply only the minimal correction in `internal/core/lifecycle_state.go` or `cmd/harness/hook_user_prompt.go`; keep the raw host PreToolUse path no-op unless `--enforce-codegraph-search` is passed.
-  Must NOT do: Do not make PreToolUse block by default, do not remove the block reason, and do not route docs/golden literal searches through CodeGraph enforcement.
+  What to do: Run focused core and CLI tests that cover the hybrid search-routing enforcement. If a focused test fails, apply only the minimal correction in `internal/core/lifecycle_state.go` or `cmd/harness/hook_user_prompt.go`; keep the raw host PreToolUse path no-op unless `--enforce-search-routing` is passed.
+  Must NOT do: Do not make PreToolUse block by default, do not remove the block reason, and do not route docs/golden literal searches through CodeGraph.
 
   Parallelization: Can parallel: YES | Wave 1 | Blocks: [7] | Blocked by: []
 
   References (executor has NO interview context - be exhaustive):
-  - API/Type: `internal/core/lifecycle_state.go:362-386` - request/result DTOs include `EnforceCodeGraphSearch` and optional `reason`.
-  - Pattern:  `internal/core/lifecycle_state.go:415-432` - enforcement changes an allow decision to block only when opt-in policy detects raw source search.
+  - API/Type: `internal/core/lifecycle_state.go:362-386` - request/result DTOs include `EnforceSearchRouting` and optional `reason`.
+  - Pattern:  `internal/core/lifecycle_state.go:415-432` - enforcement changes an allow decision to block only when opt-in policy detects a clear CodeGraph/rg routing mismatch.
   - Pattern:  `internal/core/lifecycle_state.go:435-530` - shell-tool, raw text search, and docs/fixture target classification helpers.
   - Pattern:  `cmd/harness/hook_user_prompt.go:143-178` - CLI flag wiring and host JSON behavior for PreToolUse.
   - Test:     `internal/core/lifecycle_state_test.go:139-170` - blocks bypass forms and allows docs literal code-name search.
@@ -163,24 +163,24 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   - Project:  `.agent-harness/CONVENTIONS.md:210-213` - PreToolUse output must remain event-specific, small, deterministic, and adapter-only.
 
   Acceptance criteria (agent-executable only):
-  - [ ] `go test ./internal/core -run 'TestPreToolUseCodeGraphPolicy' -count=1` exits 0 and is saved to `evidence/task-3-codegraph-core.txt`.
-  - [ ] `go test ./cmd/harness -run 'TestRunHookPreToolUse' -count=1` exits 0 and is saved to `evidence/task-3-codegraph-cli-tests.txt`.
-  - [ ] A direct CLI smoke with `--enforce-codegraph-search --json` returns JSON where `decision == "block"` and `reason` contains `CodeGraph` and `codegraph_context`.
-  - [ ] A direct CLI smoke without `--enforce-codegraph-search` returns `{}` host JSON for the same raw source-search input.
+  - [ ] `go test ./internal/core -run 'TestPreToolUseSearchRouting' -count=1` exits 0 and is saved to `evidence/task-3-search-routing-core.txt`.
+  - [ ] `go test ./cmd/harness -run 'TestRunHookPreToolUse' -count=1` exits 0 and is saved to `evidence/task-3-search-routing-cli-tests.txt`.
+  - [ ] A direct CLI smoke with `--enforce-search-routing --json` returns JSON where `decision == "block"` and `reason` points to the more efficient tool.
+  - [ ] A direct CLI smoke without `--enforce-search-routing` returns `{}` host JSON for the same raw source-search input.
 
   QA scenarios (MANDATORY - task incomplete without these):
   > Name the exact tool AND its exact invocation - not "verify it works". Browser use: use Chrome to drive the page; if Chrome is not available, download and use agent-browser (https://github.com/vercel-labs/agent-browser). Computer use: OS-level GUI automation for a non-browser desktop app.
   ```
   Scenario: enforced source search blocks
     Tool:     bash
-    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && printf '%s\n' '{"cwd":"/Users/user/Workspace/agent-harness","tool_name":"Bash","tool_input":{"command":"rg -n \"func Run\" cmd internal"}}' | go run ./cmd/harness hook pre-tool-use --enforce-codegraph-search --json | tee evidence/task-3-codegraph-block.json && python3 - <<'PY'
+    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && printf '%s\n' '{"cwd":"/Users/user/Workspace/agent-harness","tool_name":"Bash","tool_input":{"command":"rg -n \"func Run\" cmd internal"}}' | go run ./cmd/harness hook pre-tool-use --enforce-search-routing --json | tee evidence/task-3-search-routing-block.json && python3 - <<'PY'
               import json
-              data=json.load(open('evidence/task-3-codegraph-block.json'))
+              data=json.load(open('evidence/task-3-search-routing-block.json'))
               assert data['decision']=='block', data
               assert 'CodeGraph' in data.get('reason','') and 'codegraph_context' in data.get('reason',''), data
               PY
     Expected: Python assertion exits 0; JSON has `decision: block` and CodeGraph guidance.
-    Evidence: evidence/task-3-codegraph-block.json
+    Evidence: evidence/task-3-search-routing-block.json
 
   Scenario: default host output remains no-op
     Tool:     bash
@@ -254,9 +254,9 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   Parallelization: Can parallel: YES | Wave 1 | Blocks: [7] | Blocked by: []
 
   References (executor has NO interview context - be exhaustive):
-  - Pattern:  `configs/codex/hooks.json:36-43` - Codex PreToolUse template invokes `hook pre-tool-use --enforce-codegraph-search`.
+  - Pattern:  `configs/codex/hooks.json:36-43` - Codex PreToolUse template invokes `hook pre-tool-use`; search-routing enforcement is opt-in.
   - Pattern:  `configs/codex/hooks.json:69-76` - Codex UserPromptSubmit template invokes `hook user-prompt --host codex --enable-agy-hints`.
-  - Pattern:  `configs/claude/hooks.settings.json:37-46` - Claude PreToolUse template invokes `hook pre-tool-use --enforce-codegraph-search` under matcher `*`.
+  - Pattern:  `configs/claude/hooks.settings.json:37-46` - Claude PreToolUse template invokes `hook pre-tool-use --host claude` under matcher `*`; search-routing enforcement is opt-in.
   - Pattern:  `configs/claude/hooks.settings.json:71-78` - Claude UserPromptSubmit template invokes `hook user-prompt --enable-agy-hints`.
   - Project:  `.agent-harness/CONSTITUTION.md:50-57` - host adapters must not bypass core policy.
   - Project:  `.agent-harness/CONVENTIONS.md:210-213` - host-specific hook settings belong in templates; common routing remains in CLI/core.
@@ -264,7 +264,7 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   Acceptance criteria (agent-executable only):
   - [ ] `python3 -m json.tool configs/codex/hooks.json >/dev/null` exits 0 and is recorded in `evidence/task-5-config-parse.txt`.
   - [ ] `python3 -m json.tool configs/claude/hooks.settings.json >/dev/null` exits 0 and is recorded in `evidence/task-5-config-parse.txt`.
-  - [ ] A Python assertion over parsed JSON confirms both configs contain `--enforce-codegraph-search`; Codex contains `--host codex --enable-agy-hints`; Claude contains `hook user-prompt --enable-agy-hints`.
+  - [ ] A Python assertion over parsed JSON confirms neither config contains `--enforce-search-routing`; Codex contains `--host codex --enable-agy-hints`; Claude contains `hook user-prompt --enable-agy-hints`.
   - [ ] `git diff -- configs/codex/hooks.json configs/claude/hooks.settings.json` contains no unrelated timeout/matcher/schema churn.
 
   QA scenarios (MANDATORY - task incomplete without these):
@@ -278,9 +278,9 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
               claude=json.load(open("configs/claude/hooks.settings.json"))
               codex_text=json.dumps(codex)
               claude_text=json.dumps(claude)
-              assert "--enforce-codegraph-search" in codex_text, codex_text
+              assert "--enforce-search-routing" not in codex_text, codex_text
               assert "--host codex --enable-agy-hints" in codex_text, codex_text
-              assert "--enforce-codegraph-search" in claude_text, claude_text
+              assert "--enforce-search-routing" not in claude_text, claude_text
               assert "hook user-prompt --enable-agy-hints" in claude_text, claude_text
               PY' 2>&1 | tee evidence/task-5-config-parse.txt
     Expected: command exits 0; evidence file has no JSON parse error or assertion traceback.

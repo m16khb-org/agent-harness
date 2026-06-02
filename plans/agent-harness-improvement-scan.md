@@ -37,7 +37,7 @@ Make agent-harness green and reduce operator confusion by aligning tests, comman
 - `agent-harness --help`/usage, README, CLI dispatch, and contract snapshots agree on public commands.
 - Worker read-only execution parity is intentionally documented or exposed through MCP with matching tests.
 - Draft-wiki queue processing has a tested concurrency/atomicity story or a documented single-worker lock limitation.
-- Optional CodeGraph-first enforcement blocks raw source-code grep/find searches only when a deterministic PreToolUse policy is explicitly enabled.
+- Optional hybrid search-routing enforcement blocks obvious CodeGraph/rg mismatches only when a deterministic PreToolUse policy is explicitly enabled.
 - claude-mem and LLM Wiki hints already appear in UserPromptSubmit keyword routing (`internal/core/hook_prompt.go:85`, `internal/core/hook_prompt.go:88`); PostToolUse currently queues draft-wiki candidates from tool output (`cmd/harness/hook_user_prompt.go:192`) and must not invoke companion tools on the hook critical path.
 
 ### Must NOT Have
@@ -294,20 +294,20 @@ Wave 4: Final verification.
 
   **QA Scenarios**:
   ```
-  Scenario: source grep is blocked when CodeGraph enforcement is enabled
-    Tool: tmux
-    Steps: tmux new-session -d -s qa-codegraph-block 'cd /Users/user/Workspace/agent-harness && printf "{\"cwd\":\"$PWD\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rg -n RunReadOnlyCommand internal cmd\"}}" | ./bin/agent-harness hook pre-tool-use --enforce-codegraph-search --json; echo EXIT:$?'; capture pane
+  Scenario: structural source grep is blocked when search-routing enforcement is enabled
+    Tool: bash
+    Steps: cd /Users/user/Workspace/agent-harness && printf '%s\n' '{"cwd":"/Users/user/Workspace/agent-harness","tool_name":"Bash","tool_input":{"command":"rg -n \"func RunReadOnlyCommand\" internal cmd"}}' | ./bin/agent-harness hook pre-tool-use --enforce-search-routing --json
     Expected: JSON decision is block/deny and reason tells the agent to use CodeGraph first
-    Evidence: evidence/agent-harness-improvement-scan/task-7-codegraph-block.txt
+    Evidence: evidence/agent-harness-improvement-scan/task-7-search-routing-block.txt
 
   Scenario: docs/golden literal grep remains allowed
     Tool: bash
-    Steps: printf hook JSON for `rg "response_contracts" cmd/harness/testdata README.md` into `./bin/agent-harness hook pre-tool-use --enforce-codegraph-search --json`
+    Steps: printf hook JSON for `rg "response_contracts" cmd/harness/testdata README.md` into `./bin/agent-harness hook pre-tool-use --enforce-search-routing --json`
     Expected: JSON decision is allow
-    Evidence: evidence/agent-harness-improvement-scan/task-7-codegraph-allow.txt
+    Evidence: evidence/agent-harness-improvement-scan/task-7-search-routing-allow.txt
   ```
 
-  **Commit**: YES | Message: `feat(hook): add opt-in CodeGraph-first source search gate` | Files: `cmd/harness/hook_user_prompt.go`, `internal/core/lifecycle_state.go`, hook tests, install templates/docs only if enabling is requested
+  **Commit**: YES | Message: `feat(hook): add opt-in search routing gate` | Files: `cmd/harness/hook_user_prompt.go`, `internal/core/lifecycle_state.go`, hook tests, install templates/docs only if enabling is requested
 
 
 - [ ] 8. Clarify companion-tool hook timing for claude-mem and LLM Wiki recommendations
@@ -370,5 +370,5 @@ Wave 4: Final verification.
 - Public command surfaces are internally consistent.
 - Docs reflect current implementation.
 - Worker/draft-wiki safety gaps are either fixed or explicitly constrained with tests.
-- CodeGraph-first enforcement is captured as an opt-in hook hardening task with false-positive safeguards.
+- Hybrid search-routing enforcement is captured as an opt-in hook hardening task with false-positive safeguards.
 - Companion-tool recommendation timing is explicit: UserPromptSubmit for per-turn hints, SessionStart/PostCompact for stable availability/status hints, PostToolUse only for bounded draft-wiki queueing, never PreToolUse/Stop for recommendations.

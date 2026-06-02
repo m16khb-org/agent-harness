@@ -49,7 +49,7 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 
 `--sync`는 “최신화” 의도를 명시하는 단일 옵션이다.
 
-- `agent-harness bootstrap --sync`: user-level 통합을 갱신하면서 llm-wiki, CodeGraph, claude-mem 같은 upstream companion 도구도 설치/갱신한다. 네트워크와 user-level host 설정 변경이 생길 수 있다.
+- `agent-harness bootstrap --sync`: user-level 통합을 갱신하면서 llm-wiki, CodeGraph, claude-mem, Headroom 같은 upstream companion 도구도 설치/갱신한다. 네트워크와 user-level host 설정 변경이 생길 수 있다.
 - `agent-harness project bootstrap --sync`: 대상 repo의 `AGENTS.md` 라우팅 블록, `.agent-harness/*.md`, user-state repo profile metadata를 현재 템플릿/프로젝트 증거 기준으로 다시 계산해 갱신한다.
 
 낮은 수준 자동화가 필요할 때만 `scripts/install-native.sh`와 `install-native`를 직접 사용한다. 일반 사용자는 `bootstrap`과 `project bootstrap`만 기억하면 된다.
@@ -61,10 +61,13 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 | LLM Wiki | `nvk/llm-wiki` | Codex marketplace와 Claude marketplace에 `wiki@llm-wiki`를 추가/갱신한다. |
 | CodeGraph | `colbymchenry/codegraph` | `npm install -g @colbymchenry/codegraph`, Codex/Claude MCP 등록, 현재 harness repo `.codegraph/` index 초기화를 수행한다. |
 | claude-mem | `thedotmack/claude-mem` | `npx claude-mem@latest install`로 Codex/Claude hooks, MCP, worker 배선을 추가/갱신한다. |
+| Headroom | `chopratejas/headroom` / `headroom-ai` | `pipx install --python python3.13 "headroom-ai[all]"`로 CLI를 설치/갱신한다. 자동 proxy/wrap/learn은 실행하지 않는다. |
 
 claude-mem 전환 이후 full upstream setup은 기존 legacy agentmemory plugin/marketplace 배선을 제거한다.
 
 CodeGraph local index 생성을 건너뛰려면 `HARNESS_INIT_CODEGRAPH=0 agent-harness bootstrap --sync`를 사용한다.
+
+Headroom은 LLM 요청 앞단의 context optimization companion이므로 실험 시 명시적으로만 사용한다. 기본 bootstrap과 hook은 Codex/Claude 요청을 Headroom proxy나 wrapper로 자동 라우팅하지 않는다. telemetry opt-out이 필요하면 `HEADROOM_TELEMETRY=off`를 설정한 뒤 수동으로 `headroom wrap ...`, `headroom proxy ...`, MCP tool 설치를 평가한다. `headroom learn`은 AGENTS/CLAUDE 파일을 수정할 수 있으므로 별도 승인 없이 실행하지 않는다.
 
 ---
 
@@ -91,6 +94,8 @@ test -f ~/.codex/skills/issueops/SKILL.md && echo ok
 ### IssueOps
 
 `issueops`는 에이전트 실행 절차를 정의하는 native skill이고, durable 상태는 CLI/MCP `issueops` 표면이 관리한다. 훅은 이 skill을 힌트로 제안할 수 있지만 issue/PR/MR 생성이나 파일 수정은 직접 수행하지 않는다.
+
+IssueOps 작업의 탐색 기본값은 하이브리드다. 함수/클래스/호출 관계/영향 범위/모듈 의존성/route-controller-service 관계처럼 구조적 질문은 CodeGraph를 먼저 쓰고, 에러 메시지/env key/설정값/파일명/TODO/comment/log/literal string 같은 정확한 텍스트 질문은 `rg`를 먼저 쓴다. 자연어 기능 탐색은 CodeGraph로 후보를 좁힌 뒤 최소 1회 targeted `rg`로 검증하고, 수정 후에는 `rg`와 관련 테스트로 누락·회귀를 확인한다. CodeGraph index가 stale일 수 있거나 런타임 DI, reflection, dynamic import, provider wiring처럼 정적 그래프가 놓칠 수 있는 구조에서는 index refresh나 `rg` 검증 없이 결론을 내리지 않는다.
 
 ```bash
 agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
@@ -119,7 +124,7 @@ codex mcp get agent_harness
 
 ### Lifecycle hooks
 
-Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifecycle hook을 등록한다. `UserPromptSubmit`은 `agent-harness hook user-prompt --host codex`로 설치하며 매 prompt의 dynamic routing/profile/upkeep hint만 싣는다. `PreToolUse`의 `agent-harness hook pre-tool-use`는 tool 실행 직전 critical path이므로 기본 host stdout은 `{}`이고 raw `--json`에서만 allow/no-op 진단을 확인한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일을 실제로 수정할 수 있는 tool/명령만 repo별 user-state queue에 기록하고, `PreCompact`의 `agent-harness hook pre-compact`는 pending doc-upkeep 상태를 작은 compact capsule로 저장하며, `PostCompact`의 `agent-harness hook post-compact`는 capsule을 한 번만 additional context로 복원한다. `Stop`의 `agent-harness hook stop`은 Codex/Claude Stop hook schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. pending upkeep reminder는 `agent-harness hook stop --json`의 raw result로 확인하며 Stop hook stdout에 `hookSpecificOutput.additionalContext`를 쓰지 않는다. 후속 hook들은 shared docs를 직접 수정하지 않는다.
+Codex native hook이 활성화된 환경에서는 `~/.codex/hooks.json`에 lifecycle hook을 등록한다. `UserPromptSubmit`은 `agent-harness hook user-prompt --host codex`로 설치하며 매 prompt의 dynamic routing/profile/upkeep hint만 싣는다. `PreToolUse`의 `agent-harness hook pre-tool-use`는 tool 실행 직전 critical path이므로 기본 host stdout은 `{}`이고 raw `--json`에서만 allow/no-op 진단을 확인한다. 명시적으로 `--enforce-search-routing`을 붙인 경우에만 구조적 source search에 raw `rg/grep`을 쓰거나 exact string search에 CodeGraph를 쓰는 명백한 mismatch를 block한다. `PostToolUse`의 `agent-harness hook post-tool-use`는 hook/state/MCP/test 관련 파일을 실제로 수정할 수 있는 tool/명령만 repo별 user-state queue에 기록하고, `PreCompact`의 `agent-harness hook pre-compact`는 pending doc-upkeep 상태를 작은 compact capsule로 저장하며, `PostCompact`의 `agent-harness hook post-compact`는 capsule을 한 번만 additional context로 복원한다. `Stop`의 `agent-harness hook stop`은 Codex/Claude Stop hook schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. pending upkeep reminder는 `agent-harness hook stop --json`의 raw result로 확인하며 Stop hook stdout에 `hookSpecificOutput.additionalContext`를 쓰지 않는다. 후속 hook들은 shared docs를 직접 수정하지 않는다.
 
 예:
 
@@ -164,7 +169,7 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 
 ### Claude hooks
 
-기본 설치는 `~/.claude/settings.json`에 lifecycle hook을 등록한다. Claude Code의 `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, `Stop` hook은 Codex와 같은 공통 CLI/core를 호출하지만 output shape은 host에 맞춘다. Claude Code는 `systemMessage`와 model-facing `hookSpecificOutput.additionalContext`를 분리해 쓸 수 있으므로 지원 이벤트에서 readable view와 compact hint를 함께 유지할 수 있다. `PreToolUse`와 `PostToolUse`는 Claude hook matcher `*`로 모든 tool 이벤트를 받지만, PreToolUse는 기본적으로 차단하지 않고 PostToolUse는 성공한 mutating 이벤트만 근거로 관련 파일을 queue에 남긴다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in 없이 `.claude/settings.json`을 target repo에 만들지 않는다.
+기본 설치는 `~/.claude/settings.json`에 lifecycle hook을 등록한다. Claude Code의 `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, `Stop` hook은 Codex와 같은 공통 CLI/core를 호출하지만 output shape은 host에 맞춘다. Claude Code는 `systemMessage`와 model-facing `hookSpecificOutput.additionalContext`를 분리해 쓸 수 있으므로 지원 이벤트에서 readable view와 compact hint를 함께 유지할 수 있다. `PreToolUse`와 `PostToolUse`는 Claude hook matcher `*`로 모든 tool 이벤트를 받지만, PreToolUse는 기본적으로 차단하지 않는다. 명시적으로 `--enforce-search-routing`을 붙인 경우에만 search-routing mismatch를 Claude `permissionDecision: deny`로 반환한다. PostToolUse는 성공한 mutating 이벤트만 근거로 관련 파일을 queue에 남긴다. Claude project-local hook 설정은 repo에 커밋될 수 있으므로 명시 opt-in 없이 `.claude/settings.json`을 target repo에 만들지 않는다.
 
 ---
 

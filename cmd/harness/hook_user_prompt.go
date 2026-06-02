@@ -40,7 +40,7 @@ func runHook(args []string) error {
 func hookUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   agent-harness hook user-prompt [--prompt TEXT] [--host codex|claude] [--enable-agy-hints] [--json]
-  agent-harness hook pre-tool-use [--repo PATH] [--host codex|claude] [--enforce-codegraph-search] [--json]
+  agent-harness hook pre-tool-use [--repo PATH] [--host codex|claude] [--enforce-search-routing] [--json]
   agent-harness hook post-tool-use [--repo PATH] [--json]
   agent-harness hook pre-compact [--repo PATH] [--json]
   agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
@@ -144,8 +144,8 @@ func runHookPreToolUse(args []string) error {
 	fs := flag.NewFlagSet("hook pre-tool-use", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
 	host := fs.String("host", "", "hook host (codex or claude); controls host-specific block schema")
+	enforceSearchRouting := fs.Bool("enforce-search-routing", false, "block obvious CodeGraph/rg search routing mismatches")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
-	enforceCodeGraphSearch := fs.Bool("enforce-codegraph-search", false, "block raw source-code search commands and require CodeGraph first")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -158,12 +158,12 @@ func runHookPreToolUse(args []string) error {
 		parsedRepo = resolveTarget("")
 	}
 	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
-		Repo:                   parsedRepo,
-		Tool:                   toolNameFromHookInput(stdin),
-		Paths:                  pathsFromHookInput(stdin),
-		Command:                commandFromHookInput(stdin),
-		Source:                 "pre-tool-use",
-		EnforceCodeGraphSearch: *enforceCodeGraphSearch,
+		Repo:                 parsedRepo,
+		Tool:                 toolNameFromHookInput(stdin),
+		Paths:                pathsFromHookInput(stdin),
+		Command:              commandFromHookInput(stdin),
+		Source:               "pre-tool-use",
+		EnforceSearchRouting: *enforceSearchRouting,
 	})
 	if *jsonOut {
 		return printJSON(result)
@@ -434,6 +434,11 @@ func commandFromHookInput(input []byte) string {
 	}
 	if toolInput, ok := obj["tool_input"].(map[string]any); ok {
 		for _, key := range []string{"command", "cmd"} {
+			if value, ok := toolInput[key].(string); ok && strings.TrimSpace(value) != "" {
+				return strings.TrimSpace(value)
+			}
+		}
+		for _, key := range []string{"query", "pattern", "symbol", "text", "q"} {
 			if value, ok := toolInput[key].(string); ok && strings.TrimSpace(value) != "" {
 				return strings.TrimSpace(value)
 			}

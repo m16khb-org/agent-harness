@@ -157,6 +157,32 @@ func TestInstallNativeUpstreamToolsUseClaudeMem(t *testing.T) {
 	}
 }
 
+func TestInstallNativeUpstreamToolsUseHeadroom(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
+	for _, want := range []string{
+		"install_headroom_cli",
+		"headroom-ai[all]",
+		"pipx install --python python3.13 \"headroom-ai[all]\"",
+		"pipx upgrade headroom-ai",
+		"HEADROOM_TELEMETRY=off",
+		"Headroom",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("install-native.sh missing Headroom upstream contract %q", want)
+		}
+	}
+	for _, gone := range []string{
+		"headroom wrap codex",
+		"headroom wrap claude",
+		"headroom proxy --port",
+		"headroom learn",
+	} {
+		if strings.Contains(script, gone) {
+			t.Fatalf("install-native.sh must not auto-enable Headroom runtime behavior %q", gone)
+		}
+	}
+}
+
 func writeContractSkill(t *testing.T, root, name string, hosts ...string) {
 	t.Helper()
 	dir := filepath.Join(root, "skills", name)

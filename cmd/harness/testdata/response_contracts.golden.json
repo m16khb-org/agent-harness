@@ -593,7 +593,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 24587,
+          "bytes": 26401,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -638,7 +638,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17201,
+          "bytes": 17260,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -2157,7 +2157,7 @@
       "entries": [
         {
           "base_seed": 600,
-          "bytes": 923,
+          "bytes": 924,
           "elapsed_ms": 1100,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -2182,7 +2182,7 @@
         },
         {
           "base_seed": 600,
-          "bytes": 923,
+          "bytes": 924,
           "elapsed_ms": 1000,
           "failed_steps": 0,
           "generated_at": "$TIMESTAMP",
@@ -3393,7 +3393,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 24587,
+                "bytes": 26401,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -3438,7 +3438,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17201,
+                "bytes": 17260,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -4936,7 +4936,7 @@
             "entries": [
               {
                 "base_seed": 600,
-                "bytes": 923,
+                "bytes": 924,
                 "elapsed_ms": 1100,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -4961,7 +4961,7 @@
               },
               {
                 "base_seed": 600,
-                "bytes": 923,
+                "bytes": 924,
                 "elapsed_ms": 1000,
                 "failed_steps": 0,
                 "generated_at": "$TIMESTAMP",
@@ -5094,13 +5094,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -5165,13 +5165,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
@@ -5222,13 +5222,13 @@
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-baseline",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
               {
-                "bytes": 923,
+                "bytes": 924,
                 "key": "self-verify-candidate",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
