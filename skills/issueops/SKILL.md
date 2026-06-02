@@ -233,6 +233,20 @@ Resolve only threads/discussions whose feedback has actually been addressed or i
 
 After a PR/MR is merged, do not stop at reporting the merge. Verify merge status, remote branch status, and worktree cleanliness, then explicitly offer numbered cleanup choices to the user.
 
+When merging an IssueOps PR/MR from an isolated feature worktree, keep provider merge and branch/worktree cleanup as separate phases. Do not use merge commands that also try to delete local branches from the feature worktree. For GitHub, avoid:
+
+```bash
+gh pr merge "$PR_NUMBER" --merge --delete-branch
+```
+
+This can successfully merge the PR but fail during local cleanup when the base branch, such as `main`, is already checked out in another linked worktree. Instead, merge first without local cleanup:
+
+```bash
+gh pr merge "$PR_NUMBER" --merge
+```
+
+Then run the post-merge verification and cleanup flow below. For GitLab, apply the same rule: do not rely on a merge flag that also performs local branch/worktree cleanup unless the installed `glab`/API behavior is verified to be remote-only. Prefer merge first, then remote source branch deletion and local worktree cleanup as explicit separate steps.
+
 For GitHub:
 
 ```bash
@@ -265,6 +279,7 @@ This is incomplete because it does not mention the remaining worktree/local bran
 Only run cleanup after the user chooses the proceed option or has explicitly instructed automatic cleanup. Before deleting, verify the target worktree is clean and the PR/MR is merged. Use:
 
 ```bash
+git push "$remote_name" --delete "$HEAD_REF_NAME"  # only when the remote source branch still exists and should be removed
 git worktree remove "$WORKTREE_PATH"
 git branch -d "$BRANCH_NAME"
 ```
