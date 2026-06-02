@@ -215,7 +215,7 @@
           "name": "version"
         }
       ],
-      "hash": "1907b4b76215625334d94d3a5cf93273aaa09b4606a72a0ec6b26998f4eaa659",
+      "hash": "2e2dff2320264d417036c8232c2b82d14d8e4f84c24f46ddbae76c66dcde09cf",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -372,6 +372,17 @@
           "created_at",
           "updated_at"
         ],
+        "issueops_remote_score": [
+          "ok",
+          "provider",
+          "threshold",
+          "selected_related_issues",
+          "rejected_related_issues",
+          "selected_labels",
+          "rejected_labels",
+          "apply_instructions",
+          "warnings"
+        ],
         "self_verification_summary": [
           "total_runs",
           "total_steps",
@@ -501,7 +512,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 14477,
+          "bytes": 15500,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -3019,7 +3030,7 @@
                 "name": "version"
               }
             ],
-            "hash": "1907b4b76215625334d94d3a5cf93273aaa09b4606a72a0ec6b26998f4eaa659",
+            "hash": "2e2dff2320264d417036c8232c2b82d14d8e4f84c24f46ddbae76c66dcde09cf",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3176,6 +3187,17 @@
                 "created_at",
                 "updated_at"
               ],
+              "issueops_remote_score": [
+                "ok",
+                "provider",
+                "threshold",
+                "selected_related_issues",
+                "rejected_related_issues",
+                "selected_labels",
+                "rejected_labels",
+                "apply_instructions",
+                "warnings"
+              ],
               "self_verification_summary": [
                 "total_runs",
                 "total_steps",
@@ -3312,7 +3334,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 14477,
+                "bytes": 15500,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",

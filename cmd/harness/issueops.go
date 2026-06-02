@@ -58,6 +58,8 @@ func runIssueOps(args []string) error {
 		return runIssueOpsFeedback(args[1:])
 	case "benchmark":
 		return runIssueOpsBenchmark(args[1:])
+	case "remote":
+		return runIssueOpsRemote(args[1:])
 	case "pr-readiness":
 		fs := flag.NewFlagSet("issueops pr-readiness", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
@@ -81,6 +83,68 @@ func runIssueOps(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops subcommand %q", args[0])
 	}
+}
+
+func runIssueOpsRemote(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("unknown issueops remote subcommand")
+	}
+	switch args[0] {
+	case "score":
+		fs := flag.NewFlagSet("issueops remote score", flag.ContinueOnError)
+		input := fs.String("input", "", "IssueOps remote scoring request JSON file")
+		judge := fs.String("judge", "agy", "judge backend: agy or none")
+		agyCommand := fs.String("agy-command", "agy", "agy command path")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		req, err := readIssueOpsRemoteScoringRequestFile(*input)
+		if err != nil {
+			return err
+		}
+		var result core.IssueOpsRemoteScoringResult
+		switch *judge {
+		case "agy":
+			result, err = core.RunIssueOpsRemoteAgyJudge(core.IssueOpsRemoteAgyJudgeRequest{
+				RepoRoot:   ".",
+				AgyCommand: *agyCommand,
+				Request:    req,
+			})
+		case "none":
+			result, err = core.ScoreIssueOpsRemoteCandidates(req)
+		default:
+			err = fmt.Errorf("unsupported issueops remote score judge %q", *judge)
+		}
+		if err != nil {
+			return err
+		}
+		if *jsonOut {
+			return printJSON(result)
+		}
+		fmt.Printf("provider=%s threshold=%.2f related_issues=%d labels=%d\n", result.Provider, result.Threshold, len(result.SelectedRelatedIssues), len(result.SelectedLabels))
+		for _, issue := range result.SelectedRelatedIssues {
+			fmt.Printf("- related issue: %s score=%.2f\n", formatIssueOpsRemoteIssueRef(issue), issue.Score)
+		}
+		for _, label := range result.SelectedLabels {
+			fmt.Printf("- label: %s score=%.2f\n", label.Name, label.Score)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
+	}
+}
+
+func formatIssueOpsRemoteIssueRef(issue core.IssueOpsRemoteScoredItem) string {
+	ref := firstNonEmptyMain(issue.ID, issue.URL)
+	title := strings.TrimSpace(issue.Title)
+	if title == "" {
+		return firstNonEmptyMain(ref, issue.Title)
+	}
+	if ref == "" {
+		return title
+	}
+	return fmt.Sprintf("%s (%s)", ref, title)
 }
 
 func runIssueOpsBenchmark(args []string) error {
@@ -203,6 +267,32 @@ func runIssueOpsBenchmark(args []string) error {
 	}
 }
 
+func readIssueOpsRemoteScoringRequestFile(path string) (core.IssueOpsRemoteScoringRequest, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return core.IssueOpsRemoteScoringRequest{}, fmt.Errorf("input is required")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return core.IssueOpsRemoteScoringRequest{}, err
+	}
+	var req core.IssueOpsRemoteScoringRequest
+	if err := json.Unmarshal(b, &req); err != nil {
+		return core.IssueOpsRemoteScoringRequest{}, fmt.Errorf("parse input file %s: %w", path, err)
+	}
+	return req, nil
+}
+
+func firstNonEmptyMain(values ...string) string {
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
 type repeatedFlag []string
 
 func (f *repeatedFlag) String() string {
@@ -273,6 +363,7 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 			expectedIssue,
 			"- 문제 파악 단계에서 모호한 품질 기준을 명시하고, 구현 전 측정 기준과 성공 조건을 확정한다.",
 			"- 각 단계 종료 후 proceed, revise, jump, pause 선택지를 사용자에게 제공한다.",
+			"- 결론만 보고하고 선택지를 주지 않는 bad case를 명시해 에이전트가 같은 실패를 반복하지 않게 한다.",
 			"- 이슈와 PR/MR 본문은 한국어로 작성하고 과도한 이모지는 사용하지 않는다.",
 			"",
 			"## Non-goals",
@@ -305,8 +396,9 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 			"5. TDD: 격리 worktree에서 실패 테스트를 먼저 작성하고 `go test ./... -count=1`로 확인한다.",
 			"6. Subagent DD: 독립 파일 소유권을 나누고, 모든 worker prompt에 pwd/branch/HEAD/worktree 검증과 stop-on-mismatch를 주입한다.",
 			"7. Feedback loop: 각 단계 종료 후 proceed, revise, jump, pause 선택지를 제시하고 feedback add로 반영한다.",
-			"8. PR/MR: 한국어 PR/MR에 intent, changes, verification, risk, reviewer notes, issue link, cleanup status, guideline reference를 포함한다.",
-			"9. Clarification gate: 품질 기준이 모호하면 여기서 멈춘다. branch/worktree 기록은 미래 구현 준비 상태일 뿐이며, 구현/worker 실행/PR 오픈은 사용자 확인 후에만 진행한다.",
+			"8. Bad-case guard: `머지 완료했습니다`, `다음 단계는 수정입니다`처럼 선택지 없이 끝내는 응답을 실패 예시로 기록하고, 번호 선택지로 고친다.",
+			"9. PR/MR: 한국어 PR/MR에 intent, changes, verification, risk, reviewer notes, issue link, cleanup status, guideline reference를 포함한다.",
+			"10. Clarification gate: 품질 기준이 모호하면 여기서 멈춘다. branch/worktree 기록은 미래 구현 준비 상태일 뿐이며, 구현/worker 실행/PR 오픈은 사용자 확인 후에만 진행한다.",
 			"",
 			"Fixture-specific plan requirements:",
 			expectedPlan,
@@ -363,6 +455,7 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 			"- Fixture: `" + fixture.ID + "` - " + strings.TrimSpace(fixture.Title),
 			"- Target result: average_score 100, minimum_score 100, critical_failure_count 0.",
 			"- Evidence summary: 문제 파악은 모호성을 먼저 확인하고, 계획은 측정 기준과 TDD를 먼저 세우며, worker task는 fixture schema, deterministic scoring, judge adapter, CLI wiring을 각각 소유한다.",
+			"- Bad-case evidence: 결론만 보고하고 번호 선택지를 주지 않는 응답은 실패 예시로 기록되어야 한다.",
 			"- Expected issue evidence:",
 			expectedIssue,
 			"- Expected PR/MR evidence:",
@@ -377,6 +470,7 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 			"",
 			"- 이슈/PR/MR 본문은 한국어 기준이며 과도한 이모지는 없다.",
 			"- Cleanup status: worktree is clean; cleanup/remove choice is offered after merge.",
+			"- Bad case: `PR/MR 머지 완료했습니다`처럼 cleanup 선택지 없이 끝나는 보고는 불완전하다.",
 			"- Fixture-specific PR requirements:",
 			expectedPR,
 			"",

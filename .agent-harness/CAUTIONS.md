@@ -227,3 +227,10 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
   - `lsof -nP -iTCP:8787 -sTCP:LISTEN` showed a Python Headroom proxy listening on `127.0.0.1:8787`.
   - `/usr/bin/curl -i http://127.0.0.1:8787/health` returned HTTP 200 with `"status":"healthy"` and `"ready":true`.
 - Resolution: Reproducible setup must treat `/health` or `/readyz` as the final runtime evidence. `scripts/setup-headroom-runtime.sh` now verifies the health endpoint after running Headroom init/start for both Codex and Claude Code.
+
+## 2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup
+
+- Kind: `caution`
+- Source: PR #15 merge attempt
+- Summary: `gh pr merge --merge --delete-branch` can merge the GitHub PR remotely and then fail during local branch cleanup when the base branch, such as `main`, is already checked out in another linked worktree. In IssueOps worktree flows, run provider merge first without local cleanup flags, then verify merged state, remote source branch state, and worktree cleanliness before deleting the remote source branch, removing the feature worktree, and deleting the local branch.
+- Do not rely on provider CLI merge flags that also perform local branch/worktree cleanup from a feature worktree. For GitHub, avoid `gh pr merge "$PR_NUMBER" --merge --delete-branch`; use `gh pr merge "$PR_NUMBER" --merge`, then explicit post-merge cleanup. For GitLab, verify whether the installed `glab`/API flag is remote-only before using it; otherwise merge first and clean up remote/local state in separate commands.

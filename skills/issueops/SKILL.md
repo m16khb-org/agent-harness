@@ -29,6 +29,37 @@ When the user explicitly invokes `$issueops` and the repo remote, credentials, t
 
 Assign the created remote issue to the currently authenticated user. For GitHub, resolve the login with `gh api user --jq .login` and pass it to `gh issue create --assignee "$login"` or apply it immediately with `gh issue edit "$ISSUE_URL" --add-assignee "$login"` before linking the issue. For GitLab, use the equivalent current-user assignee field supported by the target project's CLI/API.
 
+Before creating or editing the remote issue, proactively score related issues and labels. Do not wait for the user to ask for this. Gather candidate issues and labels from the target provider, build an `issueops remote score` request, and apply only selected candidates whose score is at or above the threshold. The count is not fixed; the threshold decides the set.
+
+Provider candidate gathering:
+
+- GitHub: use `gh issue list --state all --limit N --json number,title,body,labels,url,state` and `gh label list --json name,description,color`.
+- GitLab: use the equivalent `glab issue list`/GitLab API issue fields and project label list.
+
+Run the scoring gate with the external LLM judge when available:
+
+```bash
+agent-harness issueops remote score --input issueops-remote-score.json --judge agy --json
+```
+
+Use the deterministic fallback only when the external LLM is unavailable or intentionally disabled:
+
+```bash
+agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
+```
+
+Default threshold is `0.70` unless the repo or user sets a stronger threshold. Include selected related issue references/URLs in the issue body, include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with `gh issue create --label`/`gh issue edit --add-label` or the GitLab equivalent. Do not apply rejected labels or link rejected issues.
+
+The agent must propose the operational choice instead of leaving the user to invent it. For example, after validating a need, offer: "관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 agy judge, 실패 시 deterministic fallback으로 진행합니다."
+
+Bad remote-issue response:
+
+```text
+이슈를 만들겠습니다.
+```
+
+This is incomplete because it does not say whether related issues/labels will be scored, which judge/fallback will be used, what threshold controls selection, or what numbered choice the user can confirm.
+
 Only prepare a local issue draft instead of creating a remote issue when one of those values is unclear, credentials are unavailable, or the user explicitly asks not to create a remote issue.
 
 If the agent realizes it implemented before creating or linking the issue, it must stop implementation, create or link the issue if possible, record corrective feedback in IssueOps state, and then resume from the issue-linked plan.
@@ -106,12 +137,49 @@ For short or narrow reviews, prefer `verifier` or a direct bounded review over `
 
 ## Remote Review Feedback
 
+When creating or editing a PR/MR, assign it to the currently authenticated user before reporting that the PR/MR is ready. For GitHub, resolve the login with `gh api user --jq .login` and run `gh pr edit "$PR_URL" --add-assignee "$login"` immediately after `gh pr create`, then verify with `gh pr view "$PR_URL" --json assignees`. For GitLab, use the equivalent current-user assignee field supported by the target project's CLI/API and verify the resulting assignee list.
+
 When handling remote PR/MR review feedback, first verify each reviewer claim against the diff, code, and commands before changing files. Apply only confirmed fixes, then reply in the original review thread with the commit and verification evidence.
 
-When the user asks only for review-validity verification, do not end with a bare conclusion such as "the next step is to add tests and fix it." After the evidence-based verdict, explicitly present the available next actions so the user can choose or confirm direction. Include one recommended action, one narrower/safer alternative, and one stop/defer option when applicable. Example:
+The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Run the Korean Remote Artifact Gate before every remote issue body edit.
+
+When the user asks only for review-validity verification, verify each remote review claim against the diff, code, and commands, then reply in the original review thread with the verdict before reporting back to the user. Each thread reply must say whether the review is `타당` or `타당하지 않음`, cite the concrete evidence, and state the next action. Do not leave a bare local conclusion such as "the next step is to add tests and fix it."
+
+If the verdict is `타당` and the user chooses or instructs the recommended proceed option, continue the loop instead of stopping at validation: add focused tests when the change is behavioral, apply the confirmed fix, run the relevant verification, commit, push the PR/MR branch, and reply again in the original review thread with the commit and verification evidence. If the user has not chosen a proceed option yet, present numbered choices and wait.
+
+For GitHub inline review comments, reply to the original review comment:
+
+```bash
+gh api "repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments"
+gh api "repos/$OWNER/$REPO/pulls/comments/$COMMENT_ID/replies" -f body="$BODY"
+```
+
+For GitLab merge request discussions, reply to the original discussion thread:
+
+```bash
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID/notes" -f body="$BODY"
+```
+
+The reply must be in the review thread/discussion, not only in the PR/MR summary, issue body, local notes, or final chat response.
+
+Use this thread reply shape:
+
+```text
+타당성: 타당
+
+근거:
+- <파일:라인 또는 명령 결과 근거>
+- <계약/테스트 근거>
+
+다음 조치: <수정 진행|별도 PR 분리|보류 사유>
+```
+
+When reporting back to the user after posting thread replies, include the evidence-based verdict and explicitly present the available next actions as numbered choices so the user can choose or confirm direction. Use `1.`, `2.`, `3.` choices, not an unstructured paragraph. Include one recommended action, one narrower/safer alternative, and one stop/defer option when applicable. Example:
 
 ```text
 검증 결론: 두 리뷰 모두 타당합니다.
+스레드 답변: 각 리뷰 스레드에 타당성, 근거, 다음 조치를 답글로 남겼습니다.
 
 선택지:
 1. 진행: 테스트를 먼저 추가하고 두 결함을 수정합니다. (추천)
@@ -121,14 +189,111 @@ When the user asks only for review-validity verification, do not end with a bare
 제가 추천하는 건 1번입니다. 진행할까요?
 ```
 
-For GitHub inline review comments, replying to a thread is not the same as resolving it. If branch protection requires conversation resolution, query review threads and resolve the fixed ones after the correction is pushed:
+Bad review-validity response:
+
+```text
+검증 결론: 두 리뷰 모두 실제 결함 또는 계약 누락으로 보는 게 맞고, 다음 단계는 테스트 추가 후 수정하는 것입니다.
+```
+
+This is incomplete because it does not say whether the verdict was posted in the original review threads, does not give numbered choices, and silently decides the next step instead of letting the user confirm direction.
+
+Bad review-thread handling:
+
+```text
+PR 댓글에 타당성 검증 결과를 남겼습니다. Inline thread는 top-level review라 resolve할 수 없습니다.
+```
+
+This is incomplete when GitHub `pulls/comments` or GitLab MR discussions contain review comments. Do not infer from `gh pr view --json latestReviews` alone that there is no resolvable thread. Query provider review comments/discussions first, reply to the original comment/discussion, and resolve the addressed thread after the verified fix is pushed.
+
+Provider-specific thread discovery is mandatory before claiming there is no thread to reply to:
+
+- GitHub: query both `gh pr view --json reviews,latestReviews` and `gh api "repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments"`. Use the REST comment `id` for replies and GraphQL `reviewThreads` for resolution.
+- GitLab: query both MR notes/reviews if needed and `glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"`. Use the discussion `id` for replies and resolution.
+
+Replying to a review thread is not the same as resolving it. After a valid review is fixed, verified, committed, pushed, and answered with evidence, resolve the addressed conversation/discussion on the provider before reporting that review feedback is cleared.
+
+For GitHub inline review comments, query review threads and resolve the fixed ones after the correction is pushed:
 
 ```bash
 gh api graphql -f owner="$OWNER" -f repo="$REPO" -F number="$PR_NUMBER" -f query='query($owner:String!, $repo:String!, $number:Int!) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { id isResolved isOutdated path } } } } }'
 gh api graphql -f threadId="$THREAD_ID" -f query='mutation($threadId:ID!) { resolveReviewThread(input:{threadId:$threadId}) { thread { id isResolved } } }'
 ```
 
-Resolve only threads whose feedback has actually been addressed or is obsolete for a verified reason. After resolving, re-check `reviewThreads` and PR/MR readiness; do not claim merge blockage is cleared until unresolved required conversations are gone and the host reports a clean merge state.
+For GitLab merge request discussions, list discussions, resolve only the addressed discussion, and re-check the discussion state:
+
+```bash
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"
+glab api --method PUT "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID" -f resolved=true
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID"
+```
+
+Resolve only threads/discussions whose feedback has actually been addressed or is obsolete for a verified reason. After resolving, re-check GitHub `reviewThreads` or GitLab MR discussions and PR/MR readiness; do not claim merge blockage is cleared until unresolved required conversations are gone and the host reports a clean merge state.
+
+## Post-Merge Cleanup
+
+After a PR/MR is merged, do not stop at reporting the merge. Verify merge status, remote branch status, and worktree cleanliness, then explicitly offer numbered cleanup choices to the user.
+
+When merging an IssueOps PR/MR from an isolated feature worktree, keep provider merge and branch/worktree cleanup as separate phases. Do not use merge commands that also try to delete local branches from the feature worktree. For GitHub, avoid:
+
+```bash
+gh pr merge "$PR_NUMBER" --merge --delete-branch
+```
+
+This can successfully merge the PR but fail during local cleanup when the base branch, such as `main`, is already checked out in another linked worktree. Instead, merge first without local cleanup:
+
+```bash
+gh pr merge "$PR_NUMBER" --merge
+```
+
+Then run the post-merge verification and cleanup flow below. For GitLab, apply the same rule: do not rely on a merge flag that also performs local branch/worktree cleanup unless the installed `glab`/API behavior is verified to be remote-only. Prefer merge first, then remote source branch deletion and local worktree cleanup as explicit separate steps.
+
+For GitHub:
+
+```bash
+gh pr view "$PR_NUMBER" --json state,mergedAt,headRefName,url
+git -C "$WORKTREE_PATH" status --short --branch
+remote_name="$(git -C "$WORKTREE_PATH" remote | head -n 1)"
+git -C "$WORKTREE_PATH" fetch "$remote_name" --prune
+git -C "$WORKTREE_PATH" ls-remote --heads "$remote_name" "$HEAD_REF_NAME"
+```
+
+For GitLab, use the equivalent `glab mr view` or GitLab API fields for merged state and source branch, then run the same local worktree and remote branch checks.
+
+Present cleanup choices in `1.`, `2.`, `3.` form:
+
+```text
+선택지:
+1. 정리 진행: merged PR/MR worktree와 local branch를 삭제합니다. (추천)
+2. 보류: worktree는 유지하고 나중에 확인합니다.
+3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.
+```
+
+Bad post-merge response:
+
+```text
+PR #14 머지 완료했습니다.
+```
+
+This is incomplete because it does not mention the remaining worktree/local branch, does not verify cleanup preconditions, and does not give the user numbered cleanup choices.
+
+Only run cleanup after the user chooses the proceed option or has explicitly instructed automatic cleanup. Before deleting, verify the target worktree is clean and the PR/MR is merged. Use:
+
+```bash
+git push "$remote_name" --delete "$HEAD_REF_NAME"  # only when the remote source branch still exists and should be removed
+git worktree remove "$WORKTREE_PATH"
+git branch -d "$BRANCH_NAME"
+```
+
+Do not use an unconditional fallback such as `git branch -d "$BRANCH_NAME" || git branch -D "$BRANCH_NAME"`. `git branch -d` may fail after squash or rebase merge because the local branch tip is not reachable from the updated base branch, but `git branch -D` can also delete genuinely unmerged local work. If `git branch -d` fails after the PR/MR is verified merged and the worktree is clean, report the reason and offer numbered choices:
+
+```text
+선택지:
+1. 강제 로컬 브랜치 삭제: PR/MR merge가 확인됐고 worktree가 clean이므로 `git branch -D`로 로컬 브랜치만 삭제합니다. (추천: squash/rebase merge로 `-d`만 실패한 경우)
+2. 보류: local branch를 유지하고 cleanup은 나중에 진행합니다.
+3. 추가 확인: branch commits, upstream/base ancestry, remote source branch 상태를 더 확인한 뒤 결정합니다.
+```
+
+If the worktree is dirty, the PR/MR is not merged, the remote source branch still exists unexpectedly, or the branch contains unmerged commits that are not explained by a verified squash/rebase merge, do not force-remove. Report the blocker and offer numbered choices.
 
 ## State Commands
 
@@ -178,6 +343,15 @@ agent-harness issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CA
 ```
 
 The candidate file records the hypothesis, target dimensions, edit surface, and keep/discard criteria. The gate keeps a candidate only when the candidate benchmark passes, baseline comparison has no regression, target dimensions do not regress, and every changed path is inside the declared edit surface.
+
+Run the remote issue related-link and label scoring gate:
+
+```bash
+agent-harness issueops remote score --input issueops-remote-score.json --judge agy --json
+agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
+```
+
+All `agy -p` usage must go through the shared external LLM wrapper in the harness core. The wrapper invokes `agy --dangerously-skip-permissions -p <prompt>` so IssueOps gates do not block on permission prompts.
 
 ## Issue Template
 
