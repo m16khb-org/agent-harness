@@ -443,7 +443,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 29311,
+          "bytes": 31827,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -512,7 +512,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 10303,
+          "bytes": 15500,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -531,7 +531,9 @@
             "MCP tool-use risks",
             "2026-05-31 — Codex PreCompact hook stdout schema",
             "2026-05-31 — PreToolUse false-positive risk",
-            "2026-05-31 — Do not patch upstream companion plugin caches"
+            "2026-05-31 — Do not patch upstream companion plugin caches",
+            "2026-06-03 — Headroom install does not imply runtime savings",
+            "2026-06-03 — Headroom Codex init can overwrite existing hooks"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
           "rel_path": ".agent-harness/CAUTIONS.md",
@@ -613,7 +615,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 26401,
+          "bytes": 27840,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -3263,7 +3265,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 29311,
+                "bytes": 31827,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3332,7 +3334,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 10303,
+                "bytes": 15500,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3351,7 +3353,9 @@
                   "MCP tool-use risks",
                   "2026-05-31 — Codex PreCompact hook stdout schema",
                   "2026-05-31 — PreToolUse false-positive risk",
-                  "2026-05-31 — Do not patch upstream companion plugin caches"
+                  "2026-05-31 — Do not patch upstream companion plugin caches",
+                  "2026-06-03 — Headroom install does not imply runtime savings",
+                  "2026-06-03 — Headroom Codex init can overwrite existing hooks"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
                 "rel_path": ".agent-harness/CAUTIONS.md",
@@ -3433,7 +3437,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 26401,
+                "bytes": 27840,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",

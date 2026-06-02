@@ -161,6 +161,11 @@ func TestInstallNativeUpstreamToolsUseHeadroom(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
 	for _, want := range []string{
 		"install_headroom_cli",
+		"enable_headroom_runtime",
+		"--enable-headroom-runtime",
+		"HARNESS_ENABLE_HEADROOM_RUNTIME",
+		"scripts/setup-headroom-runtime.sh",
+		"bash \"$ROOT/scripts/setup-headroom-runtime.sh\"",
 		"headroom-ai[all]",
 		"pipx install --python python3.13 \"headroom-ai[all]\"",
 		"pipx upgrade headroom-ai",
@@ -179,6 +184,37 @@ func TestInstallNativeUpstreamToolsUseHeadroom(t *testing.T) {
 	} {
 		if strings.Contains(script, gone) {
 			t.Fatalf("install-native.sh must not auto-enable Headroom runtime behavior %q", gone)
+		}
+	}
+}
+
+func TestHeadroomRuntimeSetupPreservesBothHosts(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "setup-headroom-runtime.sh"))
+	for _, want := range []string{
+		"merge_codex_hooks",
+		"merge_claude_settings",
+		"headroom init -g --port \"$PORT\" codex",
+		"headroom init -g --port \"$PORT\" claude",
+		"headroom install start --profile \"$PROFILE\"",
+		"headroom install status --profile \"$PROFILE\"",
+		"verified Headroom health endpoint",
+		"HEADROOM_TELEMETRY=off",
+		"agent-harness hooks/settings",
+		"[[ -f \"$before\" && -s \"$before\" && -f \"$after\" ]] || return 0",
+		"isinstance(data, dict)",
+		"sys.exit(1)",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("setup-headroom-runtime.sh missing reproducible runtime contract %q", want)
+		}
+	}
+	for _, gone := range []string{
+		"HEADROOM_TELEMETRY=off headroom learn",
+		"HEADROOM_TELEMETRY=off headroom wrap codex",
+		"HEADROOM_TELEMETRY=off headroom wrap claude",
+	} {
+		if strings.Contains(script, gone) {
+			t.Fatalf("setup-headroom-runtime.sh must not use non-durable or mutating runtime behavior %q", gone)
 		}
 	}
 }
