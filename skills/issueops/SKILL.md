@@ -52,6 +52,14 @@ Default threshold is `0.70` unless the repo or user sets a stronger threshold. I
 
 The agent must propose the operational choice instead of leaving the user to invent it. For example, after validating a need, offer: "관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 agy judge, 실패 시 deterministic fallback으로 진행합니다."
 
+Bad remote-issue response:
+
+```text
+이슈를 만들겠습니다.
+```
+
+This is incomplete because it does not say whether related issues/labels will be scored, which judge/fallback will be used, what threshold controls selection, or what numbered choice the user can confirm.
+
 Only prepare a local issue draft instead of creating a remote issue when one of those values is unclear, credentials are unavailable, or the user explicitly asks not to create a remote issue.
 
 If the agent realizes it implemented before creating or linking the issue, it must stop implementation, create or link the issue if possible, record corrective feedback in IssueOps state, and then resume from the issue-linked plan.
@@ -142,12 +150,14 @@ If the verdict is `타당` and the user chooses or instructs the recommended pro
 For GitHub inline review comments, reply to the original review comment:
 
 ```bash
+gh api "repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments"
 gh api "repos/$OWNER/$REPO/pulls/comments/$COMMENT_ID/replies" -f body="$BODY"
 ```
 
 For GitLab merge request discussions, reply to the original discussion thread:
 
 ```bash
+glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"
 glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID/notes" -f body="$BODY"
 ```
 
@@ -179,6 +189,27 @@ When reporting back to the user after posting thread replies, include the eviden
 제가 추천하는 건 1번입니다. 진행할까요?
 ```
 
+Bad review-validity response:
+
+```text
+검증 결론: 두 리뷰 모두 실제 결함 또는 계약 누락으로 보는 게 맞고, 다음 단계는 테스트 추가 후 수정하는 것입니다.
+```
+
+This is incomplete because it does not say whether the verdict was posted in the original review threads, does not give numbered choices, and silently decides the next step instead of letting the user confirm direction.
+
+Bad review-thread handling:
+
+```text
+PR 댓글에 타당성 검증 결과를 남겼습니다. Inline thread는 top-level review라 resolve할 수 없습니다.
+```
+
+This is incomplete when GitHub `pulls/comments` or GitLab MR discussions contain review comments. Do not infer from `gh pr view --json latestReviews` alone that there is no resolvable thread. Query provider review comments/discussions first, reply to the original comment/discussion, and resolve the addressed thread after the verified fix is pushed.
+
+Provider-specific thread discovery is mandatory before claiming there is no thread to reply to:
+
+- GitHub: query both `gh pr view --json reviews,latestReviews` and `gh api "repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments"`. Use the REST comment `id` for replies and GraphQL `reviewThreads` for resolution.
+- GitLab: query both MR notes/reviews if needed and `glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"`. Use the discussion `id` for replies and resolution.
+
 Replying to a review thread is not the same as resolving it. After a valid review is fixed, verified, committed, pushed, and answered with evidence, resolve the addressed conversation/discussion on the provider before reporting that review feedback is cleared.
 
 For GitHub inline review comments, query review threads and resolve the fixed ones after the correction is pushed:
@@ -197,6 +228,57 @@ glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID
 ```
 
 Resolve only threads/discussions whose feedback has actually been addressed or is obsolete for a verified reason. After resolving, re-check GitHub `reviewThreads` or GitLab MR discussions and PR/MR readiness; do not claim merge blockage is cleared until unresolved required conversations are gone and the host reports a clean merge state.
+
+## Post-Merge Cleanup
+
+After a PR/MR is merged, do not stop at reporting the merge. Verify merge status, remote branch status, and worktree cleanliness, then explicitly offer numbered cleanup choices to the user.
+
+For GitHub:
+
+```bash
+gh pr view "$PR_NUMBER" --json state,mergedAt,headRefName,url
+git -C "$WORKTREE_PATH" status --short --branch
+remote_name="$(git -C "$WORKTREE_PATH" remote | head -n 1)"
+git -C "$WORKTREE_PATH" fetch "$remote_name" --prune
+git -C "$WORKTREE_PATH" ls-remote --heads "$remote_name" "$HEAD_REF_NAME"
+```
+
+For GitLab, use the equivalent `glab mr view` or GitLab API fields for merged state and source branch, then run the same local worktree and remote branch checks.
+
+Present cleanup choices in `1.`, `2.`, `3.` form:
+
+```text
+선택지:
+1. 정리 진행: merged PR/MR worktree와 local branch를 삭제합니다. (추천)
+2. 보류: worktree는 유지하고 나중에 확인합니다.
+3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.
+```
+
+Bad post-merge response:
+
+```text
+PR #14 머지 완료했습니다.
+```
+
+This is incomplete because it does not mention the remaining worktree/local branch, does not verify cleanup preconditions, and does not give the user numbered cleanup choices.
+
+Only run cleanup after the user chooses the proceed option or has explicitly instructed automatic cleanup. Before deleting, verify the target worktree is clean and the PR/MR is merged. Use:
+
+```bash
+git worktree remove "$WORKTREE_PATH"
+git branch -d "$BRANCH_NAME"
+```
+
+Do not use an unconditional fallback such as `git branch -d "$BRANCH_NAME" || git branch -D "$BRANCH_NAME"`. `git branch -d` may fail after squash or rebase merge because the local branch tip is not reachable from the updated base branch, but `git branch -D` can also delete genuinely unmerged local work. If `git branch -d` fails after the PR/MR is verified merged and the worktree is clean, report the reason and offer numbered choices:
+
+```text
+선택지:
+1. 강제 로컬 브랜치 삭제: PR/MR merge가 확인됐고 worktree가 clean이므로 `git branch -D`로 로컬 브랜치만 삭제합니다. (추천: squash/rebase merge로 `-d`만 실패한 경우)
+2. 보류: local branch를 유지하고 cleanup은 나중에 진행합니다.
+3. 추가 확인: branch commits, upstream/base ancestry, remote source branch 상태를 더 확인한 뒤 결정합니다.
+```
+
+If the worktree is dirty, the PR/MR is not merged, the remote source branch still exists unexpectedly, or the branch contains unmerged commits that are not explained by a verified squash/rebase merge, do not force-remove. Report the blocker and offer numbered choices.
 
 ## State Commands
 
