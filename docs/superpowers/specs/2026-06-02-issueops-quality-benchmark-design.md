@@ -15,6 +15,7 @@ Without a benchmark, prompt or workflow changes can only claim improvement subje
 - Judge output must decode as strict JSON and pass schema validation; decode or schema failure is a critical failure.
 - Benchmark compare can prove whether a candidate improves over a baseline using average score, minimum score, critical failure count, and per-dimension regressions.
 - The benchmark also checks IssueOps workflow contract quality: phase choices after every step and isolated worktree gating after issue creation.
+- IssueOps completion includes worktree cleanup readiness and removal guidance after the branch is merged, abandoned, or otherwise safe to dispose.
 
 ## Non-Goals
 
@@ -34,6 +35,7 @@ Without a benchmark, prompt or workflow changes can only claim improvement subje
 - **Critical failure**: a failure that prevents passing regardless of average score.
 - **Phase choice gate**: the requirement that each IssueOps phase ends by presenting next-step options and waiting for user choice.
 - **Isolated worktree gate**: the requirement that implementation work only begins after an issue-based branch is provided and an isolated git worktree is created.
+- **Worktree cleanup gate**: the completion requirement that IssueOps verifies the isolated worktree is clean, merged or safely disposable, and then presents cleanup choices before removing it.
 
 ## Benchmark Fixture Schema
 
@@ -77,6 +79,7 @@ Required dimensions:
 - `phase_control_quality`
 - `branch_worktree_gate_quality`
 - `isolation_compliance`
+- `worktree_cleanup_quality`
 
 The result includes:
 
@@ -104,6 +107,7 @@ The deterministic scorer verifies structure and hard workflow rules:
 - After issue creation, implementation is blocked until the user provides an issue-based branch name.
 - The branch worktree path follows `<repo>.worktrees/<branch-slug>`.
 - Implementation, TDD, and subagent work reference the isolated worktree, not the source repo.
+- Completion artifacts include worktree cleanup status and final cleanup choices.
 
 These checks should run without an LLM and should be deterministic enough for CI.
 
@@ -177,6 +181,15 @@ When an issue is created or linked:
 
 Skipping this gate is a critical failure.
 
+When the work is complete:
+
+1. IssueOps checks whether the isolated worktree is clean.
+2. IssueOps verifies whether the branch has been merged, pushed, or explicitly abandoned.
+3. IssueOps presents cleanup choices instead of removing the worktree silently.
+4. IssueOps removes the worktree only after the user chooses cleanup and the safety checks pass.
+
+Leaving completed worktrees around without a cleanup prompt is a benchmark regression. Removing a dirty or unmerged worktree without explicit user approval is a critical failure.
+
 ## State And Storage
 
 Benchmark fixtures are source-controlled under `testdata/issueops/fixtures`.
@@ -193,6 +206,7 @@ Implementation should be verified with:
 - deterministic scorer tests,
 - fake `agy` judge tests for valid JSON, malformed output retry, and schema failure,
 - CLI benchmark run and compare tests,
+- worktree cleanup gate tests for clean, dirty, merged, unmerged, and user-declined cleanup scenarios,
 - response contract golden updates,
 - `go test ./... -count=1`,
 - `go build -o bin/agent-harness ./cmd/harness`,
@@ -202,4 +216,4 @@ Implementation should be verified with:
 
 - Exact default score threshold.
 - Whether benchmark results should integrate with `self-verify compare` or remain IssueOps-specific at first.
-- Whether worktree cleanup is manual, prompted, or tracked as a final phase option.
+- Exact wording of the worktree cleanup choices presented to the user.
