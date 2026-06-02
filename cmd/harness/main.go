@@ -2825,7 +2825,7 @@ func forbiddenNameHits(root string) []string {
 
 func shouldSkipForbiddenNameScanDir(name, rel string) bool {
 	switch name {
-	case ".git", "bin", ".cache", ".codex", ".codegraph", ".omc", ".omx", ".antigravitycli":
+	case ".git", "bin", "cache", ".cache", ".codex", ".codegraph", ".omc", ".omx", ".antigravitycli":
 		return true
 	}
 	return filepath.ToSlash(rel) == ".claude/hooks/.logs"

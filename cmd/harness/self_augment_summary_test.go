@@ -143,6 +143,7 @@ func TestForbiddenNameHitsSkipsRuntimeStateDirs(t *testing.T) {
 		filepath.Join(".omc", "project-memory.json"),
 		filepath.Join(".omx", "state.json"),
 		filepath.Join("bin", "agent-harness"),
+		filepath.Join("cache", "projects.json"),
 	}
 	for _, rel := range runtimeFiles {
 		path := filepath.Join(root, rel)
@@ -1137,6 +1138,8 @@ func TestSelfVerifyLLMEvalPromptForcesPlainJSONOutput(t *testing.T) {
 		"known hostile canary",
 		"Do not inspect the workspace",
 		"Do not describe planned actions",
+		"state_doctor corrupt.json fixtures",
+		"not blockers",
 		"Required top-level keys",
 		"recommended_next_actions",
 	}

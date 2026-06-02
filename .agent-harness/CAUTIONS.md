@@ -219,6 +219,14 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 
 ## 2026-06-03 — Prefer Headroom health endpoint over status wording
 
+## 2026-06-03 — Do not leave self-verify invariant failures as reports only
+
+- Kind: `caution`
+- Source: self-verify
+- Summary: When `agent-harness self-verify` fails on harness invariants, treat the failure as actionable unless the evidence proves it is physically impossible to fix in the current environment.
+- Evidence: `self-verify --progress=jsonl --json` stops at the first failed invariant step, so later coverage gaps are a consequence of early termination, not separate proof that the README or code change is safe.
+- Resolution: For forbidden legacy name hits, inspect the exact file:line evidence, generalize personal GitHub owners and absolute local paths to neutral examples, run `rg` for all forbidden needles, then rerun self-verify.
+
 - Kind: `caution`
 - Source: codex-cli
 - Summary: Headroom `install status --profile init-user` can report `Status: stopped` while a proxy is listening and `/health` is healthy, especially after repeated starts around a stale runner process.
