@@ -5,6 +5,7 @@ bin/
 data/
 .harness/
 .codegraph/
+cache/
 .omx/
 .omc/
 .codex/

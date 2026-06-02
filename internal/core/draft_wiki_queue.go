@@ -2,13 +2,11 @@ package core
 
 import (
 	"bufio"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -215,18 +213,11 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 		TargetWiki: targetWiki,
 		TargetType: targetType,
 	}, event.SourceMaterial, agyModel, targetType)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, agyCommand, "-p", prompt)
-	cmd.Dir = event.RepoRoot
-	out, err := cmd.CombinedOutput()
-	if ctx.Err() == context.DeadlineExceeded {
-		return failDraftWikiQueueEvent(event, fmt.Errorf("agy print timed out after %s", timeout))
-	}
+	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Command: agyCommand, WorkDir: event.RepoRoot, Prompt: prompt, Timeout: timeout})
 	if err != nil {
-		return failDraftWikiQueueEvent(event, fmt.Errorf("agy print failed: %w: %s", err, strings.TrimSpace(string(out))))
+		return failDraftWikiQueueEvent(event, fmt.Errorf("agy print failed: %w: %s", err, strings.TrimSpace(string(llm.Output))))
 	}
-	draftPath, err := writeSuggestedDraft(event.RepoRoot, "Draft wiki hook memory", targetWiki, targetType, agyModel, string(out))
+	draftPath, err := writeSuggestedDraft(event.RepoRoot, "Draft wiki hook memory", targetWiki, targetType, agyModel, string(llm.Output))
 	if err != nil {
 		return failDraftWikiQueueEvent(event, err)
 	}
