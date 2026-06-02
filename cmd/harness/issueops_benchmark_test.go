@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
@@ -108,6 +109,23 @@ EOF
 	}
 	if result.Provider != "gitlab" || len(result.SelectedLabels) != 1 {
 		t.Fatalf("expected GitLab agy score result: %+v", result)
+	}
+}
+
+func TestRunIssueOpsRemoteScoreCLITextShowsIssueTitleWithReference(t *testing.T) {
+	input := writeIssueOpsRemoteScoreRequestForCLITest(t, core.IssueOpsRemoteScoringRequest{
+		Provider:  "github",
+		Threshold: 0.70,
+		Issue:     core.IssueOpsRemoteArtifact{Title: "IssueOps related issue scoring"},
+		IssueCandidates: []core.IssueOpsRemoteIssueCandidate{
+			{ID: "#11", Title: "IssueOps related issue and label scoring", Score: scoreForCLITest(0.93)},
+		},
+	})
+	out := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "none"})
+	})
+	if !strings.Contains(out, "#11 (IssueOps related issue and label scoring)") {
+		t.Fatalf("text output should include issue reference and title, got:\n%s", out)
 	}
 }
 

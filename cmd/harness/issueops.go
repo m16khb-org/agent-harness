@@ -124,7 +124,7 @@ func runIssueOpsRemote(args []string) error {
 		}
 		fmt.Printf("provider=%s threshold=%.2f related_issues=%d labels=%d\n", result.Provider, result.Threshold, len(result.SelectedRelatedIssues), len(result.SelectedLabels))
 		for _, issue := range result.SelectedRelatedIssues {
-			fmt.Printf("- related issue: %s score=%.2f\n", firstNonEmptyMain(issue.ID, issue.URL, issue.Title), issue.Score)
+			fmt.Printf("- related issue: %s score=%.2f\n", formatIssueOpsRemoteIssueRef(issue), issue.Score)
 		}
 		for _, label := range result.SelectedLabels {
 			fmt.Printf("- label: %s score=%.2f\n", label.Name, label.Score)
@@ -133,6 +133,18 @@ func runIssueOpsRemote(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
 	}
+}
+
+func formatIssueOpsRemoteIssueRef(issue core.IssueOpsRemoteScoredItem) string {
+	ref := firstNonEmptyMain(issue.ID, issue.URL)
+	title := strings.TrimSpace(issue.Title)
+	if title == "" {
+		return firstNonEmptyMain(ref, issue.Title)
+	}
+	if ref == "" {
+		return title
+	}
+	return fmt.Sprintf("%s (%s)", ref, title)
 }
 
 func runIssueOpsBenchmark(args []string) error {
