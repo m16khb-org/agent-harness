@@ -178,3 +178,52 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - Source: manual
 - Summary: Do not edit installed upstream plugin cache files such as `~/.codex/plugins/cache/claude-mem/...`; fix duplicate or host-specific integration issues in user-owned Codex/Claude settings, wrappers, or upstream itself.
 - If an upstream memory provider is installed as a Codex plugin, do not also install the same hooks in `~/.codex/hooks.json`; that double-runs capture hooks and creates duplicated observations/summaries.
+
+## 2026-06-03 — Headroom install does not imply runtime savings
+
+- Kind: `caution`
+- Source: codex-cli
+- Summary: A missing or installed Headroom CLI does not by itself mean Headroom is active; runtime savings require explicit proxy or wrapper execution.
+- Context: User asked to confirm why Headroom was not operating after finding no CLI, no process, no pipx, and no Python package.
+- Resolution: Verified local environment and repo contract: pipx absence causes installer skip, and repository docs/tests intentionally avoid automatic Headroom proxy/wrap/learn/MCP activation.
+- Evidence:
+  - `command -v headroom` exited 1; `command -v pipx` exited 1; Python import failed with `ModuleNotFoundError: No module named 'headroom'`.
+  - `ps aux | rg -i '[h]eadroom|HEADROOM'` returned only the current verification commands.
+  - scripts/install-native.sh:176-186 returns success after logging `pipx not found; skipping Headroom setup` when pipx is absent.
+  - .agent-harness/OPERATIONS.md:70 says Headroom runtime use is explicit and bootstrap/hooks do not auto-route through proxy or wrapper.
+  - internal/adapter/install_contract_matrix_test.go:174-182 forbids auto-enable strings for `headroom wrap`, `headroom proxy --port`, and `headroom learn`.
+  - `go test ./internal/adapter -run 'TestInstallNativeUpstreamToolsUseHeadroom' -count=1` passed.
+
+## 2026-06-03 — Headroom Codex init can overwrite existing hooks
+
+- Kind: `caution`
+- Source: codex-cli
+- Summary: `headroom init -g codex` may rewrite `~/.codex/hooks.json`; preserve or merge existing `agent-harness` lifecycle hooks before restarting Codex.
+- Evidence:
+  - Before Headroom init, `~/.codex/hooks.json` contained `agent-harness hook post-compact`, `post-tool-use`, `pre-compact`, `pre-tool-use`, `session-start`, `stop`, and `user-prompt`.
+  - After Headroom init, the file contained only Headroom `SessionStart` and `PreToolUse` hook entries until manually merged.
+  - `python3 -m json.tool ~/.codex/hooks.json` verified the merged hook file is valid JSON.
+- Resolution: Back up `~/.codex/config.toml` and `~/.codex/hooks.json` before running Headroom init, then verify both Headroom and agent-harness hook entries remain present with `rg -n "headroom|agent-harness" ~/.codex/hooks.json`.
+
+## 2026-06-03 — Headroom first start can outlive readiness timeout
+
+- Kind: `caution`
+- Source: codex-cli
+- Summary: The first `headroom install start --profile init-user` can report `Deployment 'init-user' did not become ready after start` while the proxy continues warming up and later becomes healthy.
+- Evidence:
+  - `~/.headroom/deploy/init-user/runner.log` showed startup downloading `chopratejas/kompress-base` and `answerdotai/ModernBERT-base` assets from Hugging Face.
+  - `~/.headroom/logs/proxy.log` later showed `Kompress ONNX INT8 loaded`, `Headroom Proxy started`, and `Anonymous telemetry: DISABLED`.
+  - `HEADROOM_TELEMETRY=off headroom install status --profile init-user` later reported `Status: running` and `Healthy: yes`.
+  - `/usr/bin/curl -i http://127.0.0.1:8787/readyz` returned HTTP 200 with `"ready":true`.
+- Resolution: After a first-start readiness timeout, inspect `runner.log`/`proxy.log` and re-run `headroom install status --profile init-user` before restarting or changing configuration.
+
+## 2026-06-03 — Prefer Headroom health endpoint over status wording
+
+- Kind: `caution`
+- Source: codex-cli
+- Summary: Headroom `install status --profile init-user` can report `Status: stopped` while a proxy is listening and `/health` is healthy, especially after repeated starts around a stale runner process.
+- Evidence:
+  - `headroom install status --profile init-user` reported `Status: stopped` and `Healthy: yes` at the same time.
+  - `lsof -nP -iTCP:8787 -sTCP:LISTEN` showed a Python Headroom proxy listening on `127.0.0.1:8787`.
+  - `/usr/bin/curl -i http://127.0.0.1:8787/health` returned HTTP 200 with `"status":"healthy"` and `"ready":true`.
+- Resolution: Reproducible setup must treat `/health` or `/readyz` as the final runtime evidence. `scripts/setup-headroom-runtime.sh` now verifies the health endpoint after running Headroom init/start for both Codex and Claude Code.

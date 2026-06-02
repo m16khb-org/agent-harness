@@ -5,13 +5,14 @@ ROOT="${HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 BIN="$ROOT/bin/agent-harness"
 WITH_UPSTREAM_TOOLS="${HARNESS_INSTALL_UPSTREAM_TOOLS:-0}"
 EXPLICIT_UPSTREAM_TOOLS=0
+ENABLE_HEADROOM_RUNTIME="${HARNESS_ENABLE_HEADROOM_RUNTIME:-0}"
 INIT_CODEGRAPH="${HARNESS_INIT_CODEGRAPH:-1}"
 SKIP_BUILD="${HARNESS_SKIP_BUILD:-0}"
 HARNESS_ARGS=()
 
 usage() {
   cat <<'EOF'
-Usage: scripts/install-native.sh [agent-harness install-native flags] [--with-upstream-tools] [--skip-upstream-tools]
+Usage: scripts/install-native.sh [agent-harness install-native flags] [--with-upstream-tools] [--skip-upstream-tools] [--enable-headroom-runtime]
 
 Build and install agent-harness native Codex/Claude integrations.
 
@@ -23,6 +24,8 @@ Harness flags are passed to `agent-harness install-native`, for example:
 Optional upstream tools:
   --with-upstream-tools   Also install/update upstream llm-wiki, codegraph, and claude-mem integrations.
   --skip-upstream-tools   Do not install upstream tools, even if HARNESS_INSTALL_UPSTREAM_TOOLS=1.
+  --enable-headroom-runtime
+                         Explicitly route Codex and Claude Code through the Headroom runtime.
 
 Harness binary:
   --skip-build            Do not rebuild bin/agent-harness before installing integrations.
@@ -34,6 +37,7 @@ User command:
 
 Environment:
   HARNESS_INSTALL_UPSTREAM_TOOLS=1  Same as --with-upstream-tools.
+  HARNESS_ENABLE_HEADROOM_RUNTIME=1 Same as --enable-headroom-runtime.
   HARNESS_INIT_CODEGRAPH=0          Skip `codegraph init -i` for this harness repo.
   HARNESS_SKIP_BUILD=1              Same as --skip-build.
   HEADROOM_TELEMETRY=off            Recommended when experimenting with Headroom.
@@ -184,6 +188,16 @@ install_headroom_cli() {
   else
     pipx install --python python3.13 "headroom-ai[all]" >/dev/null || log "warning: failed to install Headroom; continuing"
   fi
+}
+
+enable_headroom_runtime() {
+  local dry_run="$1"
+  if [[ "$dry_run" == "1" ]]; then
+    "$ROOT/scripts/setup-headroom-runtime.sh" --dry-run
+    return 0
+  fi
+  install_headroom_cli
+  "$ROOT/scripts/setup-headroom-runtime.sh"
 }
 
 
@@ -360,6 +374,9 @@ for arg in "$@"; do
       WITH_UPSTREAM_TOOLS=0
       EXPLICIT_UPSTREAM_TOOLS=1
       ;;
+    --enable-headroom-runtime)
+      ENABLE_HEADROOM_RUNTIME=1
+      ;;
     --skip-build)
       SKIP_BUILD=1
       ;;
@@ -428,4 +445,8 @@ fi
 
 if is_truthy "$WITH_UPSTREAM_TOOLS"; then
   install_upstream_tools "$DRY_RUN"
+fi
+
+if is_truthy "$ENABLE_HEADROOM_RUNTIME"; then
+  enable_headroom_runtime "$DRY_RUN"
 fi
