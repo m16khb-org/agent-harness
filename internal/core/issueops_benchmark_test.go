@@ -29,7 +29,7 @@ func TestScoreIssueOpsBenchmarkArtifactDeterministic(t *testing.T) {
 	artifact := completeBenchmarkArtifactForTest()
 
 	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
-	if !score.Passed || score.AverageScore < 5 {
+	if !score.Passed || score.AverageScore < 100 {
 		t.Fatalf("expected complete artifact to pass: %+v", score)
 	}
 }
@@ -52,7 +52,7 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresKoreanIssueAndPR(t *testing.T) {
 	fixture := IssueOpsBenchmarkFixture{ID: "korean", CriticalFailures: []string{"issue or pr/mr not written in Korean"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.IssueDraft = "## Problem\n\n## Current Evidence\n\n## Acceptance Criteria\n\n## Non-goals\n\n## Verification\n\n## Feedback Log\n"
-	artifact.PRDraft = "Intent\nChanges\nVerification\nRisk\nIssue: https://github.com/m16khb/agent-harness/issues/1\n"
+	artifact.PRDraft = "Intent\nChanges\nVerification\nRisk\nIssue: https://example.com/acme/agent-harness/issues/1\n"
 
 	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
 	if score.Passed {
@@ -161,7 +161,7 @@ func completeBenchmarkArtifactForTest() IssueOpsBenchmarkArtifact {
 		TDDPlan:                "Write failing test before implementation.\n",
 		TaskBreakdown:          "Worker A owns internal/core/issueops_benchmark.go. Worker B owns cmd/harness/issueops.go.",
 		SubagentPrompts:        "You are not alone in the codebase. Do not revert others. Own internal/core only. Expected output: tests and implementation. Before work, report pwd, branch, HEAD, and worktree path; stop on mismatch. For narrow review, use verifier or direct bounded review. If code-reviewer is required, do not spawn subagents and use a 5 minute time budget.",
-		PRDraft:                "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://github.com/m16khb/agent-harness/issues/1\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
+		PRDraft:                "Intent\n의도\nChanges\n변경사항\nVerification\n검증\nRisk\n위험\nReviewer Notes\n리뷰어 참고\nIssue: https://example.com/acme/agent-harness/issues/1\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n",
 		GuidelineRef:           "docs/superpowers/specs/issueops-issue-pr-guidelines.md",
 		PhaseChoices:           "Proceed to plan | revise current phase | jump to issue | pause",
 		BranchName:             "feature/1-issueops-quality-benchmark",

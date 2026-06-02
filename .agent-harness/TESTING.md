@@ -58,6 +58,8 @@ HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify promote --from-ke
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
 ./bin/agent-harness self-augment lesson --candidate reflexion-state-memory --lesson "test lesson" --next-action "test next action" --state-key self-augment-lesson-test --json
+./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
+./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge agy --json
 grep -R "Conventional Commit\|Lore:" -n AGENTS.md .agent-harness/COMMIT_POLICY.md skills/atomic-commit-push/SKILL.md
 ```
 

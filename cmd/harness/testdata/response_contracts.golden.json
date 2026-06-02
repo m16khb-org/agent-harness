@@ -593,7 +593,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 23939,
+          "bytes": 24587,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -638,7 +638,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17000,
+          "bytes": 17201,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -842,7 +842,7 @@
         },
         {
           "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, feedback loops, and PR/MR drafting.",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "issueops",
           "path": "$HARNESS_ROOT/skills/issueops"
@@ -3393,7 +3393,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 23939,
+                "bytes": 24587,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -3438,7 +3438,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17000,
+                "bytes": 17201,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -3649,7 +3649,7 @@
               },
               {
                 "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, feedback loops, and PR/MR drafting.",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "issueops",
                 "path": "$HARNESS_ROOT/skills/issueops"
