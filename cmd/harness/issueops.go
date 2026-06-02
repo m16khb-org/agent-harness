@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"agent-harness/internal/core"
@@ -159,9 +161,73 @@ func runIssueOpsBenchmark(args []string) error {
 		}
 		fmt.Printf("improved=%v average_delta=%.2f minimum_delta=%.2f critical_failure_delta=%d\n", result.Improved, result.AverageScoreDelta, result.MinimumScoreDelta, result.CriticalFailureDelta)
 		return nil
+	case "gate":
+		fs := flag.NewFlagSet("issueops benchmark gate", flag.ContinueOnError)
+		baselineID := fs.String("baseline", "", "baseline benchmark id")
+		candidateID := fs.String("candidate", "", "candidate benchmark id")
+		candidateFile := fs.String("candidate-file", "", "IssueOps autoresearch candidate JSON file")
+		var changedPaths repeatedFlag
+		fs.Var(&changedPaths, "changed-path", "changed path to check against the candidate edit surface; repeatable")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		candidate, err := readIssueOpsAutoresearchCandidateFile(*candidateFile)
+		if err != nil {
+			return err
+		}
+		baseline, err := core.ReadIssueOpsBenchmarkRun(core.StateDir(), *baselineID)
+		if err != nil {
+			return err
+		}
+		candidateRun, err := core.ReadIssueOpsBenchmarkRun(core.StateDir(), *candidateID)
+		if err != nil {
+			return err
+		}
+		result := core.EvaluateIssueOpsAutoresearchGate(core.IssueOpsAutoresearchGateRequest{
+			Candidate:    candidate,
+			BaselineRun:  baseline,
+			CandidateRun: candidateRun,
+			ChangedPaths: changedPaths,
+		})
+		if *jsonOut {
+			return printJSON(result)
+		}
+		fmt.Printf("keep_candidate=%v ok=%v discard_reasons=%d\n", result.KeepCandidate, result.OK, len(result.DiscardReasons))
+		for _, reason := range result.DiscardReasons {
+			fmt.Printf("- discard: %s\n", reason)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown issueops benchmark subcommand %q", args[0])
 	}
+}
+
+type repeatedFlag []string
+
+func (f *repeatedFlag) String() string {
+	return strings.Join(*f, ",")
+}
+
+func (f *repeatedFlag) Set(value string) error {
+	*f = append(*f, value)
+	return nil
+}
+
+func readIssueOpsAutoresearchCandidateFile(path string) (core.IssueOpsAutoresearchCandidate, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return core.IssueOpsAutoresearchCandidate{}, fmt.Errorf("candidate-file is required")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return core.IssueOpsAutoresearchCandidate{}, err
+	}
+	var candidate core.IssueOpsAutoresearchCandidate
+	if err := json.Unmarshal(b, &candidate); err != nil {
+		return core.IssueOpsAutoresearchCandidate{}, fmt.Errorf("parse candidate file %s: %w", path, err)
+	}
+	return candidate, nil
 }
 
 func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkArtifact {
