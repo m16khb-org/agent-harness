@@ -644,7 +644,13 @@ func gitBranchFromHead(repo string) string {
 		if b, err := os.ReadFile(gitPath); err == nil {
 			line := strings.TrimSpace(string(b))
 			if rest, ok := strings.CutPrefix(line, "gitdir:"); ok {
-				headPath = filepath.Join(strings.TrimSpace(rest), "HEAD")
+				// git writes a gitdir relative to the worktree; resolve it against
+				// the repo root, not the process CWD.
+				resolved := strings.TrimSpace(rest)
+				if !filepath.IsAbs(resolved) {
+					resolved = filepath.Join(root, resolved)
+				}
+				headPath = filepath.Join(resolved, "HEAD")
 			}
 		}
 	}
