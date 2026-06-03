@@ -85,12 +85,19 @@ func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, 
 	if repo == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("repo is required")
 	}
+	branch := strings.TrimSpace(req.Branch)
+	id := newIssueOpsID(repo, branch)
+	// Identity is deterministic per (repo, branch): resume an existing record
+	// instead of minting a new one so cycles cannot accumulate as stale duplicates.
+	if existing, err := ReadIssueOps(stateRoot, id); err == nil {
+		return existing, nil
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record := IssueOpsRecord{
 		OK:        true,
-		ID:        newIssueOpsID(repo, req.Branch, now),
+		ID:        id,
 		Repo:      repo,
-		Branch:    strings.TrimSpace(req.Branch),
+		Branch:    branch,
 		Phase:     IssueOpsPhaseProblem,
 		Feedback:  []IssueOpsFeedbackItem{},
 		CreatedAt: now,
@@ -215,40 +222,39 @@ func IssueOpsStateRoot() string {
 	return filepath.Join(StateDir(), "issueops")
 }
 
-// HasActiveIssueOpsCycle reports whether a persisted IssueOps cycle exists for the
-// given repository path and has not reached the done phase. It is used by the
-// PreToolUse worktree guard to enforce isolation even when no explicit expected
-// worktree is set.
-func HasActiveIssueOpsCycle(repo string) bool {
+// ActiveIssueOpsCycleForBranch loads the single deterministic cycle for the given
+// (repo, branch) and reports it when it is not done. Because the id is derived
+// only from (repo, branch), the guard reads exactly one record — the current
+// work's cycle — and legacy timestamped records are never consulted, so stale
+// state cannot cause a false lock.
+func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
-		return false
+		return IssueOpsRecord{}, false
 	}
-	entries, err := os.ReadDir(IssueOpsStateRoot())
+	record, err := ReadIssueOps(IssueOpsStateRoot(), newIssueOpsID(repo, branch))
 	if err != nil {
-		return false
+		return IssueOpsRecord{}, false
 	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		b, err := os.ReadFile(filepath.Join(IssueOpsStateRoot(), entry.Name()))
-		if err != nil {
-			continue
-		}
-		var record IssueOpsRecord
-		if json.Unmarshal(b, &record) != nil {
-			continue
-		}
-		if strings.TrimSpace(record.Repo) == repo && record.Phase != IssueOpsPhaseDone {
-			return true
-		}
+	if record.Phase == IssueOpsPhaseDone {
+		return IssueOpsRecord{}, false
 	}
-	return false
+	return record, true
 }
 
-func newIssueOpsID(repo, branch, now string) string {
-	sum := sha256.Sum256([]byte(repo + "\x00" + branch + "\x00" + now))
+// IssueOpsPhaseExpectsWorktree reports whether a phase is a code-editing phase
+// for which isolated-worktree work is expected.
+func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
+	switch phase {
+	case IssueOpsPhaseImplement, IssueOpsPhaseFeedback, IssueOpsPhasePR:
+		return true
+	default:
+		return false
+	}
+}
+
+func newIssueOpsID(repo, branch string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(repo) + "\x00" + strings.TrimSpace(branch)))
 	return "io-" + hex.EncodeToString(sum[:])[:12]
 }
 
