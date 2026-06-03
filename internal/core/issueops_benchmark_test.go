@@ -291,6 +291,18 @@ func issueOpsBenchmarkRunWithDimensionForGateTest(id, dimension string, scoreVal
 	return FinalizeIssueOpsBenchmarkRunResult(IssueOpsBenchmarkRunResult{ID: id, Scores: []IssueOpsBenchmarkScore{score}})
 }
 
+func TestScoreIssueOpsBenchmarkArtifactAcceptsKoreanSectionLabels(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "korean-sections", CriticalFailures: []string{"works in source repo"}}
+	artifact := completeBenchmarkArtifactForTest()
+	artifact.IssueDraft = "## 문제\n\n캐시 미적용으로 동일 입력에 외부 LLM을 반복 호출한다.\n\n## 근거\n\n현재 호출 로그.\n\n## 수용 기준\n\n동일 입력은 캐시 적중한다.\n\n## 비목표\n\n원격 이슈 자동 생성은 하지 않는다.\n\n## 검증\n\ngo test ./... -count=1\n\n## 피드백 로그\n\nsource/body/분류/후속.\n\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n"
+	artifact.PRDraft = "## 의도\n\n이슈의 캐시 요구사항을 충족한다.\n\n## 변경\n\n캐시 저장소 추가.\n\n## 검증\n\ngo test ./... -count=1\n\n## 위험\n\nLLM 점수 변동.\n\n## 리뷰어 노트\n\n한국어 본문 기준.\n\nIssue: https://example.com/acme/agent-harness/issues/1\nGuideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n"
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	if !score.Passed {
+		t.Fatalf("Korean-only section labels should pass deterministic scoring: %+v", score)
+	}
+}
+
 func completeBenchmarkArtifactForTest() IssueOpsBenchmarkArtifact {
 	return IssueOpsBenchmarkArtifact{
 		ProblemSummary:         "The request needs measurable IssueOps quality gates before prompt optimization.",
