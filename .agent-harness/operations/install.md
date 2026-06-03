@@ -12,7 +12,7 @@ self-contained binary (skills and config templates are embedded via `go:embed`):
 
 ```bash
 brew tap m16khb/agent-harness https://github.com/m16khb/agent-harness
-brew install agent-harness
+brew install --cask agent-harness
 agent-harness install-native
 ```
 
@@ -26,10 +26,12 @@ Companion tools (codegraph, claude-mem, llm-wiki) and Claude Code marketplace
 plugins are not installed by this path; they remain opt-in / host-managed.
 
 Releases are produced by goreleaser on tag push (`.goreleaser.yaml`,
-`.github/workflows/release.yml`). The Homebrew formula lives in this repo under
-`Formula/`; goreleaser opens a pull request to update it on each release (no
-separate tap repo, no PAT, protected main respected). Merge that PR to publish
-the new version, then `brew upgrade agent-harness`.
+`.github/workflows/release.yml`). The Homebrew cask lives in this repo under
+`Casks/` (goreleaser uses `homebrew_casks`, the supported successor to the
+deprecated `brews`/formula path for pre-built binaries); goreleaser opens a pull
+request to update it on each release (no separate tap repo, no PAT, protected
+main respected). Merge that PR to publish the new version, then
+`brew upgrade --cask agent-harness`.
 
 ## Developer / checkout install
 
