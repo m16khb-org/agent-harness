@@ -75,4 +75,6 @@ python3 skills/issueops/scripts/remote_artifact_gate.py --kind pr --title "$TITL
 
 이 gate는 issue/PR/MR에 영어 section label, command output, code identifier, URL, 외부 project 이름이 포함되어도 반드시 실행한다.
 
+Installed PreToolUse hooks include `--enforce-korean-remote-artifacts`. The hook blocks `gh issue create/edit` and `gh pr create/edit` when it can inspect `--title` plus `--body-file` or `--body` and the text fails the same Korean language threshold. If the title/body is not inspectable, prepare the artifact in a body file, run this gate explicitly, then retry the remote command.
+
 원격 issue 본문에는 repo-local plan path를 넣지 않는다. plan 파일은 ignored/untracked일 수 있으므로 `agent-harness issueops link-plan` state와 PR/MR 본문에서 필요한 경우에만 추적한다.

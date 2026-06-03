@@ -282,6 +282,35 @@ func TestPreToolUseWorktreeGuardNoopsWithoutExpectedWorktree(t *testing.T) {
 	}
 }
 
+func TestPreToolUseKoreanRemoteArtifactGateBlocksEnglishPR(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:                t.TempDir(),
+		Tool:                "bash",
+		Command:             `gh pr create --title "Document split and IssueOps guardrails" --body "Summary Changes Verification Risk"`,
+		EnforceKoreanRemote: true,
+	})
+	if got.Decision != "block" || !strings.Contains(got.Reason, "IssueOps remote artifact gate failed") {
+		t.Fatalf("expected English PR artifact to be blocked: %+v", got)
+	}
+}
+
+func TestPreToolUseKoreanRemoteArtifactGateAllowsKoreanPRBodyFile(t *testing.T) {
+	repo := t.TempDir()
+	body := "## 요약\n\n- 문서 분할과 hook guard를 추가했습니다.\n- 검증 명령과 위험도를 한국어로 기록했습니다.\n"
+	if err := os.WriteFile(filepath.Join(repo, "pr-body.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:                repo,
+		Tool:                "bash",
+		Command:             `gh pr create --title "문서 분할과 IssueOps guardrail 추가" --body-file pr-body.md`,
+		EnforceKoreanRemote: true,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected Korean PR artifact to be allowed: %+v", got)
+	}
+}
+
 func TestNumberedNextActionsDecisionBlocksMissingChoices(t *testing.T) {
 	got := BuildNumberedNextActionsDecision("작업했습니다.", true, "stop")
 	if got.Decision != "block" || !strings.Contains(got.Reason, "numbered next actions") {
