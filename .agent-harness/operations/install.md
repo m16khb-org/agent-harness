@@ -5,6 +5,31 @@ description: Bootstrap, sync, install-native, and upstream companion tool operat
 
 # Install And Sync
 
+## Homebrew / single-binary install (no checkout, no token)
+
+For end users who do not want to clone and build, the public tap installs a
+self-contained binary (skills and config templates are embedded via `go:embed`):
+
+```bash
+brew install m16khb/tap/agent-harness
+agent-harness install-native
+```
+
+No login or token is required (the repo and tap are public). `install-native`
+registers the MCP server and hooks using the absolute binary path, so the
+agent-harness daemon auto-starts when Codex/Claude Code launches the MCP server.
+Skills are materialized from the embedded copy when no checkout is present; set
+`HARNESS_ROOT=<repo>` for the developer workflow that symlinks live repo files.
+
+Companion tools (codegraph, claude-mem, llm-wiki) and Claude Code marketplace
+plugins are not installed by this path; they remain opt-in / host-managed.
+
+Releases and the tap formula are produced by goreleaser on tag push
+(`.goreleaser.yaml`, `.github/workflows/release.yml`); cross-repo formula
+publishing needs a `HOMEBREW_TAP_TOKEN` secret and a `m16khb/homebrew-tap` repo.
+
+## Developer / checkout install
+
 Public setup UX has two primary commands:
 
 ```bash
