@@ -512,7 +512,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 11434,
+          "bytes": 12318,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -531,6 +531,7 @@
             "14. IssueOps worktree edits must be hook-guarded",
             "15. IssueOps decision replies must have numbered choices",
             "16. MCP tool-use risks",
+            "17. Audit harness flags must match the CLI contract",
             "Incident Archive"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
@@ -3419,7 +3420,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 11434,
+                "bytes": 12318,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3438,6 +3439,7 @@
                   "14. IssueOps worktree edits must be hook-guarded",
                   "15. IssueOps decision replies must have numbered choices",
                   "16. MCP tool-use risks",
+                  "17. Audit harness flags must match the CLI contract",
                   "Incident Archive"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",

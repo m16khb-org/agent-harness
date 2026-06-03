@@ -179,6 +179,15 @@ When the user must choose a route, cleanup action, feedback response, or next ph
 - Writable tools need explicit write semantics; prefer dry-run or append-only behavior.
 - Tool output is evidence, not proof: verify file existence, warnings, and command/test results before claiming completion.
 
+## 17. Audit harness flags must match the CLI contract
+
+A stability-audit failure is not automatically a harness defect; the audit framework itself can call the CLI with invalid flags.
+
+주의:
+- `self-verify --iterations=N` requires `--full`; without it the CLI exits fast with "--iterations requires --full". Observed 2026-06-03: `e2e_stability_audit.py` invoked `self-verify --iterations=10` without `--full`, so the audit reported a false self-verify failure in ~150ms while a direct quick run passed 22/22.
+- When an audit step fails suspiciously fast, reproduce the exact invocation directly and compare against the documented commands in `.agent-harness/OPERATIONS.md` / root `AGENTS.md` before concluding the harness is unstable.
+- Give the full 10-iteration self-verify a generous timeout (>=180s); the final LLM gate plus 10 seeded iterations exceed the quick-mode budget.
+
 ## Incident Archive
 
 Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents.md`. Keep this file focused on evergreen hazards and move one-off history there.
