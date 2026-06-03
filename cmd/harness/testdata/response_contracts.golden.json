@@ -733,7 +733,7 @@
           "title": "Host Operations"
         },
         {
-          "bytes": 4199,
+          "bytes": 4330,
           "headings": [
             "Install And Sync",
             "Homebrew / single-binary install (no checkout, no token)",
@@ -3643,7 +3643,7 @@
                 "title": "Host Operations"
               },
               {
-                "bytes": 4199,
+                "bytes": 4330,
                 "headings": [
                   "Install And Sync",
                   "Homebrew / single-binary install (no checkout, no token)",
