@@ -12,6 +12,16 @@ import (
 	"agent-harness/internal/port"
 )
 
+// installBinPath returns the absolute path of the running binary so registered
+// MCP/hook commands work regardless of the caller's cwd (for example a brew
+// install). It falls back to the repo bin layout only when os.Executable fails.
+func installBinPath() string {
+	if exe, err := os.Executable(); err == nil && exe != "" {
+		return exe
+	}
+	return filepath.Join(harnessRoot(), "bin", "agent-harness")
+}
+
 func runInstallNative(args []string) error {
 	fs := flag.NewFlagSet("install-native", flag.ContinueOnError)
 	projectLocal := fs.Bool("project-local", false, "also write project-local .mcp.json/.claude settings and project skill links; default is user/global only")
@@ -25,7 +35,7 @@ func runInstallNative(args []string) error {
 	if codexHome == "" && home != "" {
 		codexHome = filepath.Join(home, ".codex")
 	}
-	req := core.DefaultNativeInstallRequest(harnessRoot(), home, codexHome, filepath.Join(harnessRoot(), "bin", "agent-harness"))
+	req := core.DefaultNativeInstallRequest(harnessRoot(), home, codexHome, installBinPath())
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
 	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
