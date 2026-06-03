@@ -24,6 +24,63 @@ Keep IssueOps worktrees as siblings of the source checkout under the fixed patte
 
 Run implementation from the worktree path, not from the source checkout. Record the expected branch and worktree path in the issue-based plan and in any worker prompt. If the source checkout already contains implementation edits from before this gate, stop and ask how to move or reconcile those edits into the issue branch worktree.
 
+## Edit Target Guard
+
+Shell `pwd` and `workdir` checks do not prove that every editing tool will write to that same path. Before any manual edit, patch, generated file write, or formatting command that may rewrite files, verify the target path itself is under the expected isolated worktree.
+
+Required guard before editing:
+
+```bash
+pwd
+git branch --show-current
+git rev-parse HEAD
+test "$PWD" = "$EXPECTED_WORKTREE"
+git -C "$SOURCE_CHECKOUT" status --short
+git status --short
+```
+
+Editing rules:
+
+- Prefer absolute file paths rooted at `$EXPECTED_WORKTREE` for patch/edit tools whose working directory is ambiguous.
+- Do not use a relative patch path unless the tool is confirmed to apply relative to the expected worktree.
+- Do not edit files from the source checkout/main branch during an IssueOps implementation.
+- If a tool writes to the source checkout by mistake, stop immediately, move only your own changes into the isolated worktree, and restore the source checkout to its pre-edit clean state. Do not continue implementation until both statuses prove the source checkout is clean and the worktree contains the intended changes.
+- After each edit batch, run `git -C "$SOURCE_CHECKOUT" status --short` and `git -C "$EXPECTED_WORKTREE" status --short`.
+
+Worker and subagent prompts must include this guard whenever the worker may edit files. The worker must report the two status outputs before claiming it has changed files in the correct workspace.
+
+## Deterministic Hook Guard
+
+IssueOps sessions should enable the PreToolUse worktree guard in addition to prompt rules:
+
+```bash
+export HARNESS_SOURCE_CHECKOUT="/path/to/source-checkout"
+export HARNESS_EXPECTED_WORKTREE="/path/to/../repo.worktrees/chore-19-example"
+```
+
+Installed Codex and Claude PreToolUse hooks include `--enforce-worktree`. When `HARNESS_EXPECTED_WORKTREE` is set, the hook blocks mutating tool events whose cwd or target path is outside that worktree. Without `HARNESS_EXPECTED_WORKTREE`, the guard is a no-op so normal non-IssueOps work is not blocked.
+
+The guard is deterministic, but it only covers tool events that the host sends to PreToolUse. Keep the edit-target status checks above because some agent-side editing paths may not be represented as host hook events in every runtime.
+
+## Numbered Next-Action Guard
+
+IssueOps decision points should enable the Stop hook response-shape guard:
+
+```bash
+export HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1
+```
+
+Installed Codex and Claude Stop hooks include `--enforce-numbered-next-actions`. When the env var is set and the host provides `last_assistant_message` or a readable transcript path, the hook blocks final responses that do not include three numbered next-action choices. Without the env var, the guard is a no-op.
+
+Use this shape:
+
+```text
+선택지:
+1. 진행: <recommended next action>. (추천)
+2. 축소 진행: <narrower or lower-risk alternative>.
+3. 보류: <pause/defer option and consequence>.
+```
+
 ## Local Config And Dependency Links
 
 When the worktree needs large generated dependency directories such as `node_modules`, prefer reusing an existing dependency directory by symlink only after verifying the package manager, lockfile, platform, and dependency state match the source checkout.

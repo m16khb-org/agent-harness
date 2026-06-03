@@ -304,6 +304,43 @@ func TestRunHookPreToolUseBlocksCodeGraphForExactSearchWhenRoutingEnforced(t *te
 	}
 }
 
+func TestRunHookPreToolUseEnforcesIssueOpsWorktree(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	obj := runHookCapture(t, `{"cwd":"`+source+`","tool_name":"apply_patch","tool_input":{"file_path":"`+source+`/.agent-harness/OPERATIONS.md"}}`, func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--expected-worktree", worktree, "--source-checkout", source, "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected source checkout edit to be blocked, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseEnforcesKoreanRemoteArtifacts(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `gh pr create --title "Document split and IssueOps guardrails" --body "Summary Changes Verification Risk"`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected English PR artifact to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "IssueOps remote artifact gate failed") {
+		t.Fatalf("expected Korean remote artifact gate reason, got %q", reason)
+	}
+}
+
 func TestRunHookPostToolUseQueuesDraftWikiAndWorkerWritesDraft(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -393,6 +430,64 @@ func TestRunHookStopEmitsCodexCompatibleNoopJSON(t *testing.T) {
 	}
 	if strings.Contains(out, "hookSpecificOutput") || strings.Contains(out, "additionalContext") {
 		t.Fatalf("Stop hook output contains unsupported injection fields: %s", out)
+	}
+}
+
+func TestRunHookStopBlocksMissingNumberedNextActionsWhenExpected(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"작업을 진행했습니다."}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions"})
+	})
+	if obj["continue"] != false || obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to block missing choices, got %+v", obj)
+	}
+}
+
+func TestRunHookStopAllowsNumberedNextActionsWhenExpected(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"선택지:\n1. 진행: 검증합니다. (추천)\n2. 축소 진행: 일부만 합니다.\n3. 보류: 멈춥니다."}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("expected Stop hook to allow numbered choices with no-op output, got %+v", obj)
+	}
+}
+
+func TestRunHookStopReadsLastAssistantMessageFromTranscript(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
+	repo := t.TempDir()
+	transcript := filepath.Join(t.TempDir(), "transcript.jsonl")
+	if err := os.WriteFile(transcript, []byte(`{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"작업했습니다."}]}}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`"}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions"})
+	})
+	if obj["continue"] != false || obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to inspect transcript and block, got %+v", obj)
+	}
+}
+
+func TestRunHookStopIgnoresSystemTranscriptObjectWithAssistantText(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
+	repo := t.TempDir()
+	transcript := filepath.Join(t.TempDir(), "transcript.jsonl")
+	body := `{"type":"system","text":"assistant reminder without a final assistant response"}` + "\r\n"
+	if err := os.WriteFile(transcript, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`"}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--json"})
+	})
+	next, _ := obj["numbered_next_actions"].(map[string]any)
+	if next["decision"] != "allow" || next["reason"] != "no assistant message available to inspect" {
+		t.Fatalf("expected system transcript object to be ignored, got %+v", obj)
 	}
 }
 

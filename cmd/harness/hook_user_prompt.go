@@ -122,7 +122,7 @@ func hookUsage() {
   agent-harness hook pre-compact [--repo PATH] [--json]
   agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
   agent-harness hook session-start [--repo PATH] [--host codex|claude] [--json]
-  agent-harness hook stop [--repo PATH] [--json]
+  agent-harness hook stop [--repo PATH] [--host codex|claude] [--enforce-numbered-next-actions] [--json]
   agent-harness hook failures [--limit N] [--json]
 `)
 }
@@ -240,6 +240,10 @@ func runHookPreToolUse(args []string) error {
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
 	host := fs.String("host", "", "hook host (codex or claude); controls host-specific block schema")
 	enforceSearchRouting := fs.Bool("enforce-search-routing", false, "block obvious CodeGraph/rg search routing mismatches")
+	enforceWorktree := fs.Bool("enforce-worktree", false, "block mutating tool targets outside HARNESS_EXPECTED_WORKTREE or --expected-worktree")
+	enforceKoreanRemote := fs.Bool("enforce-korean-remote-artifacts", false, "block gh issue/pr create/edit when title/body fail the IssueOps Korean remote artifact gate")
+	expectedWorktree := fs.String("expected-worktree", os.Getenv("HARNESS_EXPECTED_WORKTREE"), "expected isolated IssueOps worktree path")
+	sourceCheckout := fs.String("source-checkout", os.Getenv("HARNESS_SOURCE_CHECKOUT"), "source checkout path for diagnostics")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -259,6 +263,10 @@ func runHookPreToolUse(args []string) error {
 		Command:              commandFromHookInput(stdin),
 		Source:               "pre-tool-use",
 		EnforceSearchRouting: *enforceSearchRouting,
+		EnforceWorktree:      *enforceWorktree,
+		EnforceKoreanRemote:  *enforceKoreanRemote,
+		ExpectedWorktree:     *expectedWorktree,
+		SourceCheckout:       *sourceCheckout,
 	})
 	if *jsonOut {
 		return printJSON(result)
@@ -486,6 +494,8 @@ func sourceFromHookInput(input []byte) string {
 func runHookStop(args []string) error {
 	fs := flag.NewFlagSet("hook stop", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
+	host := fs.String("host", "", "hook host (codex or claude); reserved for host-compatible stop output")
+	enforceNumberedNextActions := fs.Bool("enforce-numbered-next-actions", false, "block Stop when HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1 and the final response lacks 1/2/3 next-action choices")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -499,8 +509,28 @@ func runHookStop(args []string) error {
 		parsedRepo = resolveTarget("")
 	}
 	result := core.BuildLifecycleStopReminder(parsedRepo)
+	message := lastAssistantMessageFromHookInput(stdin)
+	if message == "" {
+		message = readLastAssistantMessageFromTranscript(transcriptPathFromHookInput(stdin))
+	}
+	nextActions := core.BuildNumberedNextActionsDecision(
+		message,
+		*enforceNumberedNextActions && envBool("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS"),
+		"stop",
+	)
 	if *jsonOut {
-		return printJSON(result)
+		return printJSON(map[string]any{
+			"lifecycle":             result,
+			"numbered_next_actions": nextActions,
+		})
+	}
+	_ = host
+	if nextActions.Decision == "block" {
+		return printJSON(map[string]any{
+			"continue": false,
+			"decision": "block",
+			"reason":   nextActions.Reason,
+		})
 	}
 	// Codex and Claude Stop hooks only accept the stop-control schema
 	// (for example decision/reason) or an empty object. Unlike prompt/compact
@@ -508,6 +538,106 @@ func runHookStop(args []string) error {
 	// makes Codex report "invalid stop hook JSON output". Keep the raw
 	// reminder available behind --json, but emit a no-op host payload here.
 	return printJSON(map[string]any{})
+}
+
+func lastAssistantMessageFromHookInput(input []byte) string {
+	obj := hookInputObject(input)
+	for _, key := range []string{"last_assistant_message", "lastAssistantMessage", "assistant_message", "assistantMessage", "response", "final_response"} {
+		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func transcriptPathFromHookInput(input []byte) string {
+	obj := hookInputObject(input)
+	for _, key := range []string{"transcript_path", "transcriptPath"} {
+		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func readLastAssistantMessageFromTranscript(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	lines := strings.Split(string(b), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" || !strings.Contains(strings.ToLower(line), "assistant") {
+			continue
+		}
+		var obj any
+		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+			continue
+		}
+		if text := assistantTextFromTranscriptObject(obj); text != "" {
+			return text
+		}
+	}
+	return ""
+}
+
+func assistantTextFromTranscriptObject(value any) string {
+	switch v := value.(type) {
+	case map[string]any:
+		role := ""
+		if r, ok := v["role"].(string); ok {
+			role = strings.ToLower(strings.TrimSpace(r))
+		}
+		if msg, ok := v["message"].(map[string]any); ok {
+			if r, ok := msg["role"].(string); ok && role == "" {
+				role = strings.ToLower(strings.TrimSpace(r))
+			}
+		}
+		if typ, ok := v["type"].(string); ok && role == "" {
+			role = strings.ToLower(strings.TrimSpace(typ))
+		}
+		if role != "" && role != "assistant" {
+			return ""
+		}
+		for _, key := range []string{"last_assistant_message", "text", "content", "message"} {
+			if text := transcriptTextValue(v[key]); text != "" {
+				return text
+			}
+		}
+	case []any:
+		return transcriptTextValue(v)
+	}
+	return ""
+}
+
+func transcriptTextValue(value any) string {
+	switch v := value.(type) {
+	case string:
+		return strings.TrimSpace(v)
+	case []any:
+		var parts []string
+		for _, item := range v {
+			if text := transcriptTextValue(item); text != "" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.TrimSpace(strings.Join(parts, "\n"))
+	case map[string]any:
+		if typ, ok := v["type"].(string); ok && strings.EqualFold(strings.TrimSpace(typ), "tool_use") {
+			return ""
+		}
+		for _, key := range []string{"text", "content"} {
+			if text := transcriptTextValue(v[key]); text != "" {
+				return text
+			}
+		}
+	}
+	return ""
 }
 
 func toolNameFromHookInput(input []byte) string {
