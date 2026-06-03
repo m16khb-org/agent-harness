@@ -1,0 +1,55 @@
+version: 2
+
+project_name: agent-harness
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: agent-harness
+    main: ./cmd/harness
+    binary: agent-harness
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: agent-harness
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: m16khb
+    name: agent-harness
+
+# Publishes a Homebrew formula to the public tap m16khb/homebrew-tap.
+# The formula installs the self-contained binary (skills/configs are embedded);
+# users still run `agent-harness install-native` once to wire hooks/MCP per host.
+brews:
+  - name: agent-harness
+    repository:
+      owner: m16khb
+      name: homebrew-tap
+    homepage: "https://github.com/m16khb/agent-harness"
+    description: "Shared Codex/Claude Code agent harness CLI, MCP, and hooks"
+    license: "MIT"
+    install: |
+      bin.install "agent-harness"
+    caveats: |
+      Wire the native Codex/Claude integrations (hooks, MCP, skills) with:
+        agent-harness install-native
+      The agent-harness daemon auto-starts when a host launches the MCP server.
+    test: |
+      system "#{bin}/agent-harness", "inspect", "--json"
