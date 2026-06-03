@@ -670,3 +670,30 @@ func TestActiveIssueOpsCycleForBranchIsDeterministicAndReleasesOnDone(t *testing
 		t.Fatalf("done cycle must not be reported active")
 	}
 }
+
+func TestGitBranchFromHeadResolvesRelativeLinkedWorktreeGitdir(t *testing.T) {
+	base := t.TempDir()
+	// Simulate a linked worktree: <base>/wt/.git is a file pointing to a relative
+	// gitdir, and HEAD lives under that resolved gitdir.
+	wt := filepath.Join(base, "repo.worktrees", "feat-x")
+	gitdir := filepath.Join(base, "repo", ".git", "worktrees", "feat-x")
+	if err := os.MkdirAll(wt, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(gitdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(wt, gitdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: "+rel+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitdir, "HEAD"), []byte("ref: refs/heads/feat/x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := gitBranchFromHead(wt); got != "feat/x" {
+		t.Fatalf("expected branch feat/x from relative linked-worktree gitdir, got %q", got)
+	}
+}
