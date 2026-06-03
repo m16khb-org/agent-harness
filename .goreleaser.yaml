@@ -34,14 +34,25 @@ release:
     owner: m16khb
     name: agent-harness
 
-# Publishes a Homebrew formula to the public tap m16khb/homebrew-tap.
+# Publishes the Homebrew formula into this same repo under Formula/ via a pull
+# request (no separate tap repo, no PAT). The release workflow uses the default
+# GITHUB_TOKEN; protected main is respected because the formula arrives as a PR.
+# Install after the formula PR merges:
+#   brew tap m16khb/agent-harness https://github.com/m16khb/agent-harness
+#   brew install agent-harness
 # The formula installs the self-contained binary (skills/configs are embedded);
 # users still run `agent-harness install-native` once to wire hooks/MCP per host.
 brews:
   - name: agent-harness
     repository:
       owner: m16khb
-      name: homebrew-tap
+      name: agent-harness
+      branch: "homebrew-formula-{{ .Version }}"
+      pull_request:
+        enabled: true
+        base:
+          branch: main
+    directory: Formula
     homepage: "https://github.com/m16khb/agent-harness"
     description: "Shared Codex/Claude Code agent harness CLI, MCP, and hooks"
     license: "MIT"
