@@ -36,6 +36,8 @@ Provider candidate gathering:
 - GitHub: use `gh issue list --state all --limit N --json number,title,body,labels,url,state` and `gh label list --json name,description,color`.
 - GitLab: use the equivalent `glab issue list`/GitLab API issue fields and project label list.
 
+Always inspect the current issue list and label list before deciding whether to create a new issue, link an existing issue, or create/update labels. If an existing issue already matches the requested work, link or update that issue instead of creating a duplicate. If the scoring gate selects a label that does not exist on the provider, create the missing label before issue creation or issue edit (`gh label create` for GitHub, `glab label create` or the GitLab label API for GitLab), then apply it. Do not create labels that were not selected by the scoring gate.
+
 Run the scoring gate with the external LLM judge when available:
 
 ```bash
@@ -48,7 +50,7 @@ Use the deterministic fallback only when the external LLM is unavailable or inte
 agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
 ```
 
-Default threshold is `0.70` unless the repo or user sets a stronger threshold. Include selected related issue references/URLs in the issue body, include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with `gh issue create --label`/`gh issue edit --add-label` or the GitLab equivalent. Do not apply rejected labels or link rejected issues.
+Default threshold is `0.70` unless the repo or user sets a stronger threshold. Include selected related issue references/URLs in the issue body, include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with `gh issue create --label`/`gh issue edit --add-label` or the GitLab equivalent. Do not apply rejected labels, create rejected labels, or link rejected issues.
 
 The agent must propose the operational choice instead of leaving the user to invent it. For example, after validating a need, offer: "관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 agy judge, 실패 시 deterministic fallback으로 진행합니다."
 
