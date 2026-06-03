@@ -5,14 +5,13 @@ ROOT="${HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 BIN="$ROOT/bin/agent-harness"
 WITH_UPSTREAM_TOOLS="${HARNESS_INSTALL_UPSTREAM_TOOLS:-0}"
 EXPLICIT_UPSTREAM_TOOLS=0
-ENABLE_HEADROOM_RUNTIME="${HARNESS_ENABLE_HEADROOM_RUNTIME:-0}"
 INIT_CODEGRAPH="${HARNESS_INIT_CODEGRAPH:-1}"
 SKIP_BUILD="${HARNESS_SKIP_BUILD:-0}"
 HARNESS_ARGS=()
 
 usage() {
   cat <<'EOF'
-Usage: scripts/install-native.sh [agent-harness install-native flags] [--with-upstream-tools] [--skip-upstream-tools] [--enable-headroom-runtime]
+Usage: scripts/install-native.sh [agent-harness install-native flags] [--with-upstream-tools] [--skip-upstream-tools]
 
 Build and install agent-harness native Codex/Claude integrations.
 
@@ -24,8 +23,6 @@ Harness flags are passed to `agent-harness install-native`, for example:
 Optional upstream tools:
   --with-upstream-tools   Also install/update upstream llm-wiki, codegraph, and claude-mem integrations.
   --skip-upstream-tools   Do not install upstream tools, even if HARNESS_INSTALL_UPSTREAM_TOOLS=1.
-  --enable-headroom-runtime
-                         Explicitly route Codex and Claude Code through the Headroom runtime.
 
 Harness binary:
   --skip-build            Do not rebuild bin/agent-harness before installing integrations.
@@ -37,13 +34,11 @@ User command:
 
 Environment:
   HARNESS_INSTALL_UPSTREAM_TOOLS=1  Same as --with-upstream-tools.
-  HARNESS_ENABLE_HEADROOM_RUNTIME=1 Same as --enable-headroom-runtime.
   HARNESS_INIT_CODEGRAPH=0          Skip `codegraph init -i` for this harness repo.
   HARNESS_SKIP_BUILD=1              Same as --skip-build.
-  HEADROOM_TELEMETRY=off            Recommended when experimenting with Headroom.
 
 Philosophy:
-  agent-harness does not reinvent llm-wiki, codegraph, claude-mem, or Headroom. It can wire
+  agent-harness does not reinvent llm-wiki, codegraph, or claude-mem. It can wire
   their upstream installers as optional dependencies while keeping harness core
   focused on shared CLI/MCP/state/policy orchestration.
 EOF
@@ -177,30 +172,6 @@ install_claude_mem_for_ide() {
     || log "warning: failed to install claude-mem for ${ide}; continuing"
 }
 
-install_headroom_cli() {
-  if ! command -v pipx >/dev/null 2>&1; then
-    log "pipx not found; skipping Headroom setup"
-    return 0
-  fi
-  log "installing/updating Headroom with telemetry opt-out guidance: HEADROOM_TELEMETRY=off"
-  if command -v headroom >/dev/null 2>&1; then
-    pipx upgrade headroom-ai >/dev/null || log "warning: failed to upgrade Headroom; continuing"
-  else
-    pipx install --python python3.13 "headroom-ai[all]" >/dev/null || log "warning: failed to install Headroom; continuing"
-  fi
-}
-
-enable_headroom_runtime() {
-  local dry_run="$1"
-  if [[ "$dry_run" == "1" ]]; then
-    bash "$ROOT/scripts/setup-headroom-runtime.sh" --dry-run
-    return 0
-  fi
-  install_headroom_cli
-  bash "$ROOT/scripts/setup-headroom-runtime.sh"
-}
-
-
 preferred_shell_rc() {
   local shell_name
   shell_name="$(basename "${SHELL:-}")"
@@ -303,7 +274,7 @@ ensure_codegraph_on_path() {
 install_upstream_tools() {
   local dry_run="$1"
   if [[ "$dry_run" == "1" ]]; then
-    log "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem, Headroom; would remove legacy agentmemory plugin wiring"
+    log "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem; would remove legacy agentmemory plugin wiring"
     return 0
   fi
 
@@ -356,7 +327,6 @@ install_upstream_tools() {
     log "npm not found; skipping CodeGraph setup"
   fi
 
-  install_headroom_cli
 }
 
 DRY_RUN=0
@@ -373,9 +343,6 @@ for arg in "$@"; do
     --skip-upstream-tools|--without-upstream-tools)
       WITH_UPSTREAM_TOOLS=0
       EXPLICIT_UPSTREAM_TOOLS=1
-      ;;
-    --enable-headroom-runtime)
-      ENABLE_HEADROOM_RUNTIME=1
       ;;
     --skip-build)
       SKIP_BUILD=1
@@ -445,8 +412,4 @@ fi
 
 if is_truthy "$WITH_UPSTREAM_TOOLS"; then
   install_upstream_tools "$DRY_RUN"
-fi
-
-if is_truthy "$ENABLE_HEADROOM_RUNTIME"; then
-  enable_headroom_runtime "$DRY_RUN"
 fi

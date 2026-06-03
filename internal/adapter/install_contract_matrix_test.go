@@ -157,68 +157,35 @@ func TestInstallNativeUpstreamToolsUseClaudeMem(t *testing.T) {
 	}
 }
 
-func TestInstallNativeUpstreamToolsUseHeadroom(t *testing.T) {
+func TestInstallNativeUpstreamToolsExcludeRemovedProxyCompanion(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
-	for _, want := range []string{
-		"install_headroom_cli",
-		"enable_headroom_runtime",
-		"--enable-headroom-runtime",
-		"HARNESS_ENABLE_HEADROOM_RUNTIME",
-		"scripts/setup-headroom-runtime.sh",
-		"bash \"$ROOT/scripts/setup-headroom-runtime.sh\"",
-		"headroom-ai[all]",
-		"pipx install --python python3.13 \"headroom-ai[all]\"",
-		"pipx upgrade headroom-ai",
-		"HEADROOM_TELEMETRY=off",
-		"Headroom",
-	} {
-		if !strings.Contains(script, want) {
-			t.Fatalf("install-native.sh missing Headroom upstream contract %q", want)
-		}
-	}
+	removed := strings.Join([]string{"head", "room"}, "")
+	removedTitle := strings.Join([]string{"Head", "room"}, "")
 	for _, gone := range []string{
-		"headroom wrap codex",
-		"headroom wrap claude",
-		"headroom proxy --port",
-		"headroom learn",
+		"install_" + removed + "_cli",
+		"enable_" + removed + "_runtime",
+		"--enable-" + removed + "-runtime",
+		"HARNESS_ENABLE_" + strings.ToUpper(removed) + "_RUNTIME",
+		"scripts/setup-" + removed + "-runtime.sh",
+		"bash \"$ROOT/scripts/setup-" + removed + "-runtime.sh\"",
+		removed + "-ai[all]",
+		"pipx install --python python3.13 \"" + removed + "-ai[all]\"",
+		"pipx upgrade " + removed + "-ai",
+		strings.ToUpper(removed) + "_TELEMETRY=off",
+		removedTitle,
+		removed,
+		removed + " wrap codex",
+		removed + " wrap claude",
+		removed + " proxy --port",
+		removed + " learn",
 	} {
 		if strings.Contains(script, gone) {
-			t.Fatalf("install-native.sh must not auto-enable Headroom runtime behavior %q", gone)
+			t.Fatalf("install-native.sh must not retain removed proxy companion integration %q", gone)
 		}
 	}
-}
 
-func TestHeadroomRuntimeSetupPreservesBothHosts(t *testing.T) {
-	script := readFile(t, filepath.Join("..", "..", "scripts", "setup-headroom-runtime.sh"))
-	for _, want := range []string{
-		"merge_codex_hooks",
-		"normalize_codex_headroom_provider",
-		"merge_claude_settings",
-		"headroom init -g --port \"$PORT\" codex",
-		"headroom init -g --port \"$PORT\" claude",
-		"Codex Headroom model_provider was not written at top level",
-		"Codex Headroom openai_base_url was not written at top level",
-		"headroom install start --profile \"$PROFILE\"",
-		"headroom install status --profile \"$PROFILE\"",
-		"verified Headroom health endpoint",
-		"HEADROOM_TELEMETRY=off",
-		"agent-harness hooks/settings",
-		"[[ -f \"$before\" && -s \"$before\" && -f \"$after\" ]] || return 0",
-		"isinstance(data, dict)",
-		"sys.exit(1)",
-	} {
-		if !strings.Contains(script, want) {
-			t.Fatalf("setup-headroom-runtime.sh missing reproducible runtime contract %q", want)
-		}
-	}
-	for _, gone := range []string{
-		"HEADROOM_TELEMETRY=off headroom learn",
-		"HEADROOM_TELEMETRY=off headroom wrap codex",
-		"HEADROOM_TELEMETRY=off headroom wrap claude",
-	} {
-		if strings.Contains(script, gone) {
-			t.Fatalf("setup-headroom-runtime.sh must not use non-durable or mutating runtime behavior %q", gone)
-		}
+	if _, err := os.Stat(filepath.Join("..", "..", "scripts", "setup-"+removed+"-runtime.sh")); !os.IsNotExist(err) {
+		t.Fatalf("removed proxy companion setup script must be removed, stat error: %v", err)
 	}
 }
 
