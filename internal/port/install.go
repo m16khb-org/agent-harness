@@ -1,7 +1,5 @@
 package port
 
-import "io/fs"
-
 // NativeInstallRequest describes one host-neutral installation run.
 // Core code owns orchestration; host adapters own concrete files for each host.
 type NativeInstallRequest struct {
@@ -12,11 +10,6 @@ type NativeInstallRequest struct {
 	SkillNames   []string `json:"skill_names"`
 	ProjectLocal bool     `json:"project_local"`
 	DryRun       bool     `json:"dry_run,omitempty"`
-	// EmbeddedSkills, when non-nil, is the skill source for a packaged binary that
-	// has no repository checkout. In this mode adapters copy skills into the host
-	// skill directories (instead of symlinking from Root) and skip writing the
-	// repo-only config templates. Not serialized.
-	EmbeddedSkills fs.FS `json:"-"`
 }
 
 // NativeInstallResult is the aggregate result of all host installers.

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -12,109 +11,13 @@ import (
 )
 
 func PlanHostSkillLinks(root, destRoot string, skillNames []string, host string, dryRun bool) ([]string, []port.InstallLink, []string, []error) {
-	return PlanHostSkills(root, nil, destRoot, skillNames, host, dryRun)
-}
-
-// PlanHostSkills installs enabled skills for a host. When embedded is nil it
-// symlinks from <root>/skills (developer/checkout mode); when embedded is set it
-// copies each skill tree from the embedded FS into destRoot (packaged-binary
-// mode). Host filtering reads each skill's install.json from the same source.
-func PlanHostSkills(root string, embedded fs.FS, destRoot string, skillNames []string, host string, dryRun bool) ([]string, []port.InstallLink, []string, []error) {
-	source := embedded
-	if source == nil {
-		source = os.DirFS(filepath.Join(root, "skills"))
-	}
-	enabledSkills, skippedSkills := skillNamesForHostFS(source, skillNames, host)
+	enabledSkills, skippedSkills := SkillNamesForHost(root, skillNames, host)
 	messages := make([]string, 0, len(skippedSkills))
 	for _, skillName := range skippedSkills {
 		messages = append(messages, "skip skill for "+host+": "+skillName)
 	}
-	var links []port.InstallLink
-	var errs []error
-	if embedded == nil {
-		links, errs = PlanSkillLinks(root, destRoot, enabledSkills, dryRun)
-		return enabledSkills, links, messages, errs
-	}
-	for _, skillName := range enabledSkills {
-		link, err := copySkillFromFS(embedded, skillName, filepath.Join(destRoot, skillName), dryRun)
-		links = append(links, link)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
+	links, errs := PlanSkillLinks(root, destRoot, enabledSkills, dryRun)
 	return enabledSkills, links, messages, errs
-}
-
-// copySkillFromFS materializes one embedded skill tree at dest, replacing any
-// prior symlink or copy so packaged upgrades stay clean.
-func copySkillFromFS(srcFS fs.FS, skillName, dest string, dryRun bool) (port.InstallLink, error) {
-	link := port.InstallLink{Path: dest, Target: "embedded:" + skillName}
-	if skillName == "" {
-		return link, fmt.Errorf("refusing to copy skill with empty name into %s", dest)
-	}
-	if dryRun {
-		link.WouldCreate = true
-		return link, nil
-	}
-	if err := os.RemoveAll(dest); err != nil {
-		return link, err
-	}
-	err := fs.WalkDir(srcFS, skillName, func(p string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		rel, err := filepath.Rel(skillName, p)
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(dest, rel)
-		if d.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		data, err := fs.ReadFile(srcFS, p)
-		if err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		return os.WriteFile(target, data, 0o644)
-	})
-	if err != nil {
-		return link, err
-	}
-	link.Created = true
-	return link, nil
-}
-
-func skillNamesForHostFS(source fs.FS, skillNames []string, host string) (enabled, skipped []string) {
-	for _, skillName := range skillNames {
-		if skillEnabledForHostFS(source, skillName, host) {
-			enabled = append(enabled, skillName)
-		} else {
-			skipped = append(skipped, skillName)
-		}
-	}
-	return enabled, skipped
-}
-
-func skillEnabledForHostFS(source fs.FS, skillName, host string) bool {
-	b, err := fs.ReadFile(source, skillName+"/install.json")
-	if err != nil {
-		return true
-	}
-	var cfg struct {
-		Hosts []string `json:"hosts"`
-	}
-	if err := json.Unmarshal(b, &cfg); err != nil || len(cfg.Hosts) == 0 {
-		return true
-	}
-	for _, allowed := range cfg.Hosts {
-		if allowed == host {
-			return true
-		}
-	}
-	return false
 }
 
 func PlanSkillLinks(root, destRoot string, skillNames []string, dryRun bool) ([]port.InstallLink, []error) {
