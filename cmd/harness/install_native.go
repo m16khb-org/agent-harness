@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	assets "agent-harness"
 	claudeadapter "agent-harness/internal/adapter/claude"
@@ -18,9 +19,27 @@ import (
 // install). It falls back to the repo bin layout only when os.Executable fails.
 func installBinPath() string {
 	if exe, err := os.Executable(); err == nil && exe != "" {
-		return exe
+		return stableExecutablePath(exe)
 	}
 	return filepath.Join(harnessRoot(), "bin", "agent-harness")
+}
+
+// stableExecutablePath maps a version-pinned Homebrew Cellar path back to the
+// stable `<prefix>/bin/<name>` symlink, which brew keeps pointing at the current
+// version. Without this, a registered command captured from a Cellar path would
+// break after `brew upgrade` (the old versioned directory is removed). Paths that
+// are not under a Cellar directory, or whose bin symlink is absent, are returned
+// unchanged.
+func stableExecutablePath(exe string) string {
+	idx := strings.Index(exe, "/Cellar/")
+	if idx < 0 {
+		return exe
+	}
+	stable := filepath.Join(exe[:idx], "bin", filepath.Base(exe))
+	if info, err := os.Lstat(stable); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		return stable
+	}
+	return exe
 }
 
 func runInstallNative(args []string) error {
