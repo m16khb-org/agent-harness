@@ -149,6 +149,44 @@ return{continue:!0,suppressOutput:!0,exitCode:Ke.SUCCESS}
 	}
 }
 
+func TestCodexInstallerPatchesClaudeMemCodexHooksIdempotently(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	writeAdapterTestSkill(t, root, "alpha")
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req.SkillNames = []string{"alpha"}
+
+	codexHooksPath := filepath.Join(req.CodexHome, "plugins", "cache", "claude-mem-local", "claude-mem", "13.4.0", "hooks", "codex-hooks.json")
+	writeFile(t, codexHooksPath, `{"hooks":{"PostToolUse":[{"hooks":[{"command":"node \"$_P/scripts/bun-runner.js\" \"$_P/scripts/worker-service.cjs\" hook codex observation"}]}]}}`)
+
+	first, err := NewInstaller().Install(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsMessage(first.Messages, "patched Codex plugin hook compatibility") {
+		t.Fatalf("first install patch message missing: %+v", first.Messages)
+	}
+	second, err := NewInstaller().Install(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if containsMessage(second.Messages, "patched Codex plugin hook compatibility") {
+		t.Fatalf("second install should not patch already-compatible hooks: %+v", second.Messages)
+	}
+
+	b, err := os.ReadFile(codexHooksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(b)
+	if count := strings.Count(text, `hook codex observation || true`); count != 1 {
+		t.Fatalf("expected one non-blocking hook command, got %d:\n%s", count, text)
+	}
+	if strings.Contains(text, `|| true || true`) {
+		t.Fatalf("hook command accumulated duplicate non-blocking suffix:\n%s", text)
+	}
+}
+
 func TestCodexInstallerDryRunPlansPluginHookCompatibilityPatch(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()

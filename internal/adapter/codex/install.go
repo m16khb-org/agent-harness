@@ -177,6 +177,7 @@ func applyHookCompatibilityPatch(path, kind string, replacements []textReplaceme
 	for _, replacement := range replacements {
 		next = strings.ReplaceAll(next, replacement.Old, replacement.New)
 	}
+	next = collapseDuplicateShellTrueFallbacks(next)
 	if next == text {
 		return file, false, nil
 	}
@@ -197,6 +198,13 @@ func applyHookCompatibilityPatch(path, kind string, replacements []textReplaceme
 	}
 	file.Written = true
 	return file, true, nil
+}
+
+func collapseDuplicateShellTrueFallbacks(text string) string {
+	for strings.Contains(text, " || true || true") {
+		text = strings.ReplaceAll(text, " || true || true", " || true")
+	}
+	return text
 }
 
 func writeCodexHooks(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
