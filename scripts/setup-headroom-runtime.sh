@@ -125,6 +125,56 @@ validate_json_file() {
   python3 -m json.tool "$path" >/dev/null
 }
 
+normalize_codex_headroom_provider() {
+  local path="$1"
+  [[ -f "$path" ]] || return 0
+  python3 - "$path" "$PORT" <<'PY'
+import re
+import sys
+import tomllib
+from pathlib import Path
+
+path = Path(sys.argv[1])
+port = sys.argv[2]
+lines = path.read_text().splitlines()
+
+drop = re.compile(r'^(model_provider|openai_base_url|codex_hooks)\s*=')
+table = ""
+kept = []
+for line in lines:
+    stripped = line.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        table = stripped.strip("[]")
+    if drop.match(stripped) and table in ("", "mcp_servers.headroom", "model_providers.headroom"):
+        continue
+    kept.append(line)
+
+insert_at = 0
+while insert_at < len(kept):
+    stripped = kept[insert_at].strip()
+    if stripped.startswith("["):
+        break
+    insert_at += 1
+
+block = [
+    "# --- Headroom init provider ---",
+    'model_provider = "headroom"',
+    f'openai_base_url = "http://127.0.0.1:{port}/v1"',
+    "codex_hooks = true",
+    "# --- end Headroom init provider ---",
+    "",
+]
+updated = kept[:insert_at] + block + kept[insert_at:]
+path.write_text("\n".join(updated).rstrip() + "\n")
+
+data = tomllib.loads(path.read_text())
+if data.get("model_provider") != "headroom":
+    raise SystemExit("Codex Headroom model_provider was not written at top level")
+if data.get("openai_base_url") != f"http://127.0.0.1:{port}/v1":
+    raise SystemExit("Codex Headroom openai_base_url was not written at top level")
+PY
+}
+
 headroom_health_ok() {
   python3 - "$PORT" <<'PY'
 import json
@@ -193,6 +243,7 @@ backup_file "$HOME/.claude.json" "$stamp"
 if command -v codex >/dev/null 2>&1; then
   log "configuring Headroom runtime for Codex"
   HEADROOM_TELEMETRY=off headroom init -g --port "$PORT" codex
+  normalize_codex_headroom_provider "$HOME/.codex/config.toml"
   merge_codex_hooks "$codex_hooks_before" "$HOME/.codex/hooks.json"
   validate_json_file "$HOME/.codex/hooks.json"
 else
