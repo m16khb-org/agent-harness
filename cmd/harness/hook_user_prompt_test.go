@@ -316,6 +316,31 @@ func TestRunHookPreToolUseEnforcesIssueOpsWorktree(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseEnforcesKoreanRemoteArtifacts(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `gh pr create --title "Document split and IssueOps guardrails" --body "Summary Changes Verification Risk"`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected English PR artifact to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "IssueOps remote artifact gate failed") {
+		t.Fatalf("expected Korean remote artifact gate reason, got %q", reason)
+	}
+}
+
 func TestRunHookPostToolUseQueuesDraftWikiAndWorkerWritesDraft(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

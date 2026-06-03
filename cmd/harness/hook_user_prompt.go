@@ -241,6 +241,7 @@ func runHookPreToolUse(args []string) error {
 	host := fs.String("host", "", "hook host (codex or claude); controls host-specific block schema")
 	enforceSearchRouting := fs.Bool("enforce-search-routing", false, "block obvious CodeGraph/rg search routing mismatches")
 	enforceWorktree := fs.Bool("enforce-worktree", false, "block mutating tool targets outside HARNESS_EXPECTED_WORKTREE or --expected-worktree")
+	enforceKoreanRemote := fs.Bool("enforce-korean-remote-artifacts", false, "block gh issue/pr create/edit when title/body fail the IssueOps Korean remote artifact gate")
 	expectedWorktree := fs.String("expected-worktree", os.Getenv("HARNESS_EXPECTED_WORKTREE"), "expected isolated IssueOps worktree path")
 	sourceCheckout := fs.String("source-checkout", os.Getenv("HARNESS_SOURCE_CHECKOUT"), "source checkout path for diagnostics")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
@@ -263,6 +264,7 @@ func runHookPreToolUse(args []string) error {
 		Source:               "pre-tool-use",
 		EnforceSearchRouting: *enforceSearchRouting,
 		EnforceWorktree:      *enforceWorktree,
+		EnforceKoreanRemote:  *enforceKoreanRemote,
 		ExpectedWorktree:     *expectedWorktree,
 		SourceCheckout:       *sourceCheckout,
 	})
