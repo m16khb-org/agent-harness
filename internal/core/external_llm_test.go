@@ -3,12 +3,16 @@ package core
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestRunExternalLLMPrintTimeoutKillsProcessGroup(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script timeout fixture is POSIX-only")
+	}
 	dir := t.TempDir()
 	fake := filepath.Join(dir, "fake-agy.sh")
 	script := `#!/bin/sh
