@@ -7,7 +7,7 @@ description: Install, sync, runtime, and operational procedures.
 
 현재 `agent-harness`는 Codex와 Claude Code가 같은 Go binary와 MCP schema를 쓰도록 다음 표면을 제공한다.
 
-1. Codex/Claude native skills: `atomic-commit-push`, `issueops`, `self-augment`, `project-bootstrap`; Codex-only skills: `workflows`, `ultracode`
+1. Codex/Claude native skills: `atomic-commit-push`, `issueops`, `self-augment`, `project-bootstrap`; Codex-only skills: `workflows`
 2. MCP stdio proxy: `agent-harness mcp` → shared `agent-harness daemon`
 3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/daemon/worker/self-verify/self-augment/api-doc/hook`
 
@@ -103,7 +103,6 @@ curl http://127.0.0.1:8787/health
 ```text
 Use $atomic-commit-push to review my changes, split them into atomic commits, and push safely.
 Use $issueops to run a problem -> issue -> plan -> TDD/subagent -> feedback -> PR/MR cycle.
-Use $ultracode in Codex to automatically apply workflows to substantive tasks.
 Use $workflows in Codex to run an explicit dynamic workflow with batched subagents.
 ```
 
