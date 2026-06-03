@@ -532,7 +532,10 @@ func runHookStop(args []string) error {
 		*enforceNumberedNextActions && envBool("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS"),
 		"stop",
 	)
-	autoProceedEnabled := *autoProceedNextActions && envBool("HARNESS_NEXT_ACTION_AUTO_PROCEED")
+	// Suppress auto-proceed when the host reports stop_hook_active: Claude/Codex set
+	// this true on a stop that is itself a continuation of a prior stop-hook block, and
+	// the documented contract is to return success while it is true to avoid loops.
+	autoProceedEnabled := *autoProceedNextActions && envBool("HARNESS_NEXT_ACTION_AUTO_PROCEED") && !hookInputBool(stdin, "stop_hook_active")
 	autoProceed := core.EvaluateNextActionAutoProceed(message, envFloat("HARNESS_NEXT_ACTION_AUTO_PROCEED_THRESHOLD"))
 	if *jsonOut {
 		return printJSON(map[string]any{
@@ -771,6 +774,13 @@ func addHookPath(out *[]string, seen map[string]bool, value string) {
 	}
 	seen[value] = true
 	*out = append(*out, value)
+}
+
+func hookInputBool(input []byte, key string) bool {
+	if v, ok := hookInputObject(input)[key].(bool); ok {
+		return v
+	}
+	return false
 }
 
 func hookInputObject(input []byte) map[string]any {

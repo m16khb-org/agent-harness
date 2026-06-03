@@ -465,6 +465,36 @@ func TestEvaluateNextActionAutoProceedAdvancesRecommendedSafeAction(t *testing.T
 	}
 }
 
+func TestEvaluateNextActionAutoProceedNeverAdvancesMerge(t *testing.T) {
+	message := strings.Join([]string{
+		"리뷰가 통과했습니다.",
+		"선택지:",
+		"1. 진행: PR을 머지하고 이슈를 닫습니다. (추천)",
+		"2. 보류: 추가 확인을 기다립니다.",
+		"3. 축소: 일부만 merge 합니다.",
+	}, "\n")
+	result := EvaluateNextActionAutoProceed(message, 0)
+	if result.AutoProceed {
+		t.Fatalf("merge is irreversible and must not auto-proceed, got %+v", result)
+	}
+	if result.BlockedByGuard == "" {
+		t.Fatalf("expected destructive guard for merge, got %+v", result)
+	}
+}
+
+func TestEvaluateNextActionAutoProceedAllowsEnforceForwardAction(t *testing.T) {
+	message := strings.Join([]string{
+		"선택지:",
+		"1. 진행: 새 모듈에 테스트 커버리지를 enforce 합니다. (추천)",
+		"2. 축소 진행: 일부만 검증합니다.",
+		"3. 보류: 멈춥니다.",
+	}, "\n")
+	result := EvaluateNextActionAutoProceed(message, 0)
+	if !result.AutoProceed {
+		t.Fatalf("'enforce' must not be misread as destructive 'force'; should auto-proceed, got %+v", result)
+	}
+}
+
 func TestEvaluateNextActionAutoProceedNeverAdvancesDestructiveCleanup(t *testing.T) {
 	message := strings.Join([]string{
 		"머지 상태를 확인했습니다.",
