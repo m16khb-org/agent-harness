@@ -492,6 +492,9 @@ func TestRunHookStopDoesNotAutoProceedWhenStopHookActive(t *testing.T) {
 
 func TestRunHookStopDoesNotAutoProceedWhenDisabled(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	// Explicitly disable the opt-in env so the test is hermetic regardless of the
+	// ambient environment (operators may export HARNESS_NEXT_ACTION_AUTO_PROCEED=1).
+	t.Setenv("HARNESS_NEXT_ACTION_AUTO_PROCEED", "0")
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
