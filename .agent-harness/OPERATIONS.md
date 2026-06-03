@@ -49,7 +49,7 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 
 `--sync`는 “최신화” 의도를 명시하는 단일 옵션이다.
 
-- `agent-harness bootstrap --sync`: user-level 통합을 갱신하면서 llm-wiki, CodeGraph, claude-mem, Headroom 같은 upstream companion 도구도 설치/갱신한다. 네트워크와 user-level host 설정 변경이 생길 수 있다.
+- `agent-harness bootstrap --sync`: user-level 통합을 갱신하면서 llm-wiki, CodeGraph, claude-mem 같은 upstream companion 도구도 설치/갱신한다. 네트워크와 user-level host 설정 변경이 생길 수 있다.
 - `agent-harness project bootstrap --sync`: 대상 repo의 `AGENTS.md` 라우팅 블록, `.agent-harness/*.md`, user-state repo profile metadata를 현재 템플릿/프로젝트 증거 기준으로 다시 계산해 갱신한다.
 
 낮은 수준 자동화가 필요할 때만 `scripts/install-native.sh`와 `install-native`를 직접 사용한다. 일반 사용자는 `bootstrap`과 `project bootstrap`만 기억하면 된다.
@@ -61,36 +61,10 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 | LLM Wiki | `nvk/llm-wiki` | Codex marketplace와 Claude marketplace에 `wiki@llm-wiki`를 추가/갱신한다. |
 | CodeGraph | `colbymchenry/codegraph` | `npm install -g @colbymchenry/codegraph`, Codex/Claude MCP 등록, 현재 harness repo `.codegraph/` index 초기화를 수행한다. |
 | claude-mem | `thedotmack/claude-mem` | `npx claude-mem@latest install`로 Codex/Claude hooks, MCP, worker 배선을 추가/갱신한다. |
-| Headroom | `chopratejas/headroom` / `headroom-ai` | `pipx install --python python3.13 "headroom-ai[all]"`로 CLI를 설치/갱신한다. 자동 proxy/wrap/learn은 실행하지 않는다. |
 
 claude-mem 전환 이후 full upstream setup은 기존 legacy agentmemory plugin/marketplace 배선을 제거한다.
 
 CodeGraph local index 생성을 건너뛰려면 `HARNESS_INIT_CODEGRAPH=0 agent-harness bootstrap --sync`를 사용한다.
-
-Headroom은 LLM 요청 앞단의 context optimization companion이므로 실험 시 명시적으로만 사용한다. 기본 bootstrap과 hook은 Codex/Claude 요청을 Headroom proxy나 wrapper로 자동 라우팅하지 않는다. telemetry opt-out이 필요하면 `HEADROOM_TELEMETRY=off`를 설정한 뒤 수동으로 `headroom wrap ...`, `headroom proxy ...`, MCP tool 설치를 평가한다. `headroom learn`은 AGENTS/CLAUDE 파일을 수정할 수 있으므로 별도 승인 없이 실행하지 않는다.
-
-Reproducible Headroom token-saving setup은 명시적 operator action으로만 수행한다. 다른 머신에서도 같은 설정을 만들 때는 harness wrapper를 우선 사용한다.
-
-```bash
-scripts/install-native.sh --with-upstream-tools --enable-headroom-runtime
-```
-
-이 wrapper는 `headroom init -g codex`와 `headroom init -g claude`를 모두 실행하고, 실행 전 host 설정을 백업한 뒤 기존 `agent-harness hook ...` entries/settings를 다시 merge한다. Headroom CLI가 이미 설치된 환경에서 runtime만 재적용하려면 다음 명령을 사용한다.
-
-```bash
-scripts/setup-headroom-runtime.sh
-```
-
-검증 기준:
-
-```bash
-python3 -m json.tool ~/.codex/hooks.json >/dev/null
-python3 -m json.tool ~/.claude/settings.json >/dev/null
-rg -n "headroom|agent-harness" ~/.codex/config.toml ~/.codex/hooks.json ~/.claude/settings.json ~/.claude.json
-curl http://127.0.0.1:8787/health
-```
-
-첫 `headroom install start --profile init-user`는 Hugging Face 모델 다운로드와 compressor 초기화 때문에 readiness timeout을 낼 수 있다. 또한 반복 start 후 `headroom install status --profile init-user`가 `Status: stopped`와 `Healthy: yes`를 동시에 표시할 수 있다. 이 경우 status 문구만 보지 말고 `~/.headroom/deploy/init-user/runner.log`, `~/.headroom/logs/proxy.log`, `lsof -nP -iTCP:8787 -sTCP:LISTEN`, `curl http://127.0.0.1:8787/health`로 실제 health를 확인한다.
 
 ---
 

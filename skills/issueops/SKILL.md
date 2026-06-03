@@ -74,12 +74,12 @@ After the issue is created or linked and before implementation, derive the worki
 - `release/` only for release preparation.
 - `chore/` for tooling, documentation, maintenance, or workflow-only changes.
 
-The branch slug must include the issue number when available and a short kebab-case issue title, for example `feature/3-headroom-upstream-integration` or `chore/12-tighten-issueops-worktree-contract`.
+The branch slug must include the issue number when available and a short kebab-case issue title, for example `feature/3-webhook-delivery` or `chore/12-tighten-issueops-worktree-contract`.
 
 Create an isolated git worktree before implementation, TDD, subagent work, verification, commit, or PR/MR drafting:
 
 ```bash
-branch_slug="feature/3-headroom-upstream-integration"
+branch_slug="feature/3-webhook-delivery"
 worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
 git worktree add -b "$branch_slug" "$worktree_path"
 ```

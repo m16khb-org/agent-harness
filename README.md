@@ -245,11 +245,10 @@ Start an IssueOps state record for an issue-driven task:
 | LLM Wiki | `nvk/llm-wiki` | Adds/updates the Codex and Claude `wiki@llm-wiki` plugin. |
 | CodeGraph | `colbymchenry/codegraph` | Installs `@colbymchenry/codegraph`, registers its MCP server for Codex/Claude, and initializes this repo's `.codegraph/` index when enabled. |
 | claude-mem | `thedotmack/claude-mem` | Runs `npx claude-mem@latest install` for Codex and Claude Code to add/update hooks, MCP, and worker wiring. |
-| Headroom | `chopratejas/headroom` / `headroom-ai` | Installs or upgrades the CLI with `pipx install --python python3.13 "headroom-ai[all]"`; runtime routing remains explicit via `--enable-headroom-runtime`. |
 
 During the migration to claude-mem, the full setup removes legacy agentmemory plugin/marketplace wiring.
 
-Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_CODEGRAPH=0` to skip local CodeGraph indexing. To reproducibly route both Codex and Claude Code through Headroom, run `scripts/install-native.sh --with-upstream-tools --enable-headroom-runtime` or set `HARNESS_ENABLE_HEADROOM_RUNTIME=1`. This backs up host config, runs durable Headroom init for both hosts, merges existing `agent-harness` hooks/settings back into place, starts profile `init-user`, and verifies `http://127.0.0.1:8787/health`. It does not run `headroom learn`.
+Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_CODEGRAPH=0` to skip local CodeGraph indexing.
 
 ## Common commands
 
@@ -634,11 +633,10 @@ issue-driven 작업의 IssueOps state record를 시작합니다.
 | LLM Wiki | `nvk/llm-wiki` | Codex/Claude `wiki@llm-wiki` plugin을 추가/갱신합니다. |
 | CodeGraph | `colbymchenry/codegraph` | `@colbymchenry/codegraph`를 설치하고 Codex/Claude MCP server를 등록하며, 설정 시 이 repo의 `.codegraph/` index를 초기화합니다. |
 | claude-mem | `thedotmack/claude-mem` | Codex/Claude Code에 `npx claude-mem@latest install`을 실행해 hooks, MCP, worker 배선을 추가/갱신합니다. |
-| Headroom | `chopratejas/headroom` / `headroom-ai` | `pipx install --python python3.13 "headroom-ai[all]"`로 CLI를 설치/갱신하며, runtime routing은 `--enable-headroom-runtime`로 명시 opt-in합니다. |
 
 claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marketplace 배선을 제거합니다.
 
-같은 동작은 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`로도 켤 수 있고, local CodeGraph indexing은 `HARNESS_INIT_CODEGRAPH=0`으로 끌 수 있습니다. Codex와 Claude Code 양쪽을 Headroom으로 재현 가능하게 라우팅하려면 `scripts/install-native.sh --with-upstream-tools --enable-headroom-runtime` 또는 `HARNESS_ENABLE_HEADROOM_RUNTIME=1`을 사용합니다. 이 경로는 host config를 백업하고, 양쪽 host에 durable Headroom init을 실행한 뒤 기존 `agent-harness` hooks/settings를 merge하며, profile `init-user`를 시작하고 `http://127.0.0.1:8787/health`를 검증합니다. `headroom learn`은 실행하지 않습니다.
+같은 동작은 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`로도 켤 수 있고, local CodeGraph indexing은 `HARNESS_INIT_CODEGRAPH=0`으로 끌 수 있습니다.
 
 ## 자주 쓰는 명령
 

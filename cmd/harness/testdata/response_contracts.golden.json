@@ -443,7 +443,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 31827,
+          "bytes": 29311,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -512,7 +512,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 17405,
+          "bytes": 12079,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -532,8 +532,8 @@
             "2026-05-31 — Codex PreCompact hook stdout schema",
             "2026-05-31 — PreToolUse false-positive risk",
             "2026-05-31 — Do not patch upstream companion plugin caches",
-            "2026-06-03 — Headroom install does not imply runtime savings",
-            "2026-06-03 — Headroom Codex init can overwrite existing hooks"
+            "2026-06-03 — Do not leave self-verify invariant failures as reports only",
+            "2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
           "rel_path": ".agent-harness/CAUTIONS.md",
@@ -615,7 +615,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 27748,
+          "bytes": 25594,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -660,7 +660,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17260,
+          "bytes": 17201,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -3257,7 +3257,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 31827,
+                "bytes": 29311,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3326,7 +3326,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 17405,
+                "bytes": 12079,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3346,8 +3346,8 @@
                   "2026-05-31 — Codex PreCompact hook stdout schema",
                   "2026-05-31 — PreToolUse false-positive risk",
                   "2026-05-31 — Do not patch upstream companion plugin caches",
-                  "2026-06-03 — Headroom install does not imply runtime savings",
-                  "2026-06-03 — Headroom Codex init can overwrite existing hooks"
+                  "2026-06-03 — Do not leave self-verify invariant failures as reports only",
+                  "2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
                 "rel_path": ".agent-harness/CAUTIONS.md",
@@ -3429,7 +3429,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 27748,
+                "bytes": 25594,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -3474,7 +3474,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17260,
+                "bytes": 17201,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
