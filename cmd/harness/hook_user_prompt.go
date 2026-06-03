@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"agent-harness/internal/core"
@@ -122,7 +123,7 @@ func hookUsage() {
   agent-harness hook pre-compact [--repo PATH] [--json]
   agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
   agent-harness hook session-start [--repo PATH] [--host codex|claude] [--json]
-  agent-harness hook stop [--repo PATH] [--host codex|claude] [--enforce-numbered-next-actions] [--json]
+  agent-harness hook stop [--repo PATH] [--host codex|claude] [--enforce-numbered-next-actions] [--auto-proceed-next-actions] [--json]
   agent-harness hook failures [--limit N] [--json]
 `)
 }
@@ -210,6 +211,18 @@ func envBool(name string) bool {
 	default:
 		return false
 	}
+}
+
+func envFloat(name string) float64 {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return 0
+	}
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0
+	}
+	return value
 }
 
 func repoFromHookInput(input []byte) string {
@@ -496,6 +509,7 @@ func runHookStop(args []string) error {
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
 	host := fs.String("host", "", "hook host (codex or claude); reserved for host-compatible stop output")
 	enforceNumberedNextActions := fs.Bool("enforce-numbered-next-actions", false, "block Stop when HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1 and the final response lacks 1/2/3 next-action choices")
+	autoProceedNextActions := fs.Bool("auto-proceed-next-actions", false, "when HARNESS_NEXT_ACTION_AUTO_PROCEED=1, auto-continue the recommended next action if it scores at/above threshold and is reversible, instead of stopping for user selection")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -518,13 +532,30 @@ func runHookStop(args []string) error {
 		*enforceNumberedNextActions && envBool("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS"),
 		"stop",
 	)
+	// Suppress auto-proceed when the host reports stop_hook_active: Claude/Codex set
+	// this true on a stop that is itself a continuation of a prior stop-hook block, and
+	// the documented contract is to return success while it is true to avoid loops.
+	autoProceedEnabled := *autoProceedNextActions && envBool("HARNESS_NEXT_ACTION_AUTO_PROCEED") && !hookInputBool(stdin, "stop_hook_active")
+	autoProceed := core.EvaluateNextActionAutoProceed(message, envFloat("HARNESS_NEXT_ACTION_AUTO_PROCEED_THRESHOLD"))
 	if *jsonOut {
 		return printJSON(map[string]any{
 			"lifecycle":             result,
 			"numbered_next_actions": nextActions,
+			"auto_proceed":          autoProceed,
+			"auto_proceed_enabled":  autoProceedEnabled,
 		})
 	}
 	_ = host
+	// Auto-proceed takes precedence: when the recommended next action is a
+	// confident, reversible forward step, block the Stop with a continue
+	// directive so the agent advances without a user selection round-trip.
+	if autoProceedEnabled && autoProceed.AutoProceed {
+		return printJSON(map[string]any{
+			"continue": true,
+			"decision": "block",
+			"reason":   fmt.Sprintf("다음 동작 자동 진행(점수 %.2f ≥ 임계값 %.2f): %q 을(를) 사용자 확인 없이 즉시 실행하세요. 동일 선택지를 다시 제시하지 말고, 작업을 진행한 뒤 완료를 보고하거나 새로운 결정 지점에서만 멈추세요.", autoProceed.TopScore, autoProceed.Threshold, autoProceed.SelectedText),
+		})
+	}
 	if nextActions.Decision == "block" {
 		return printJSON(map[string]any{
 			"continue": false,
@@ -743,6 +774,13 @@ func addHookPath(out *[]string, seen map[string]bool, value string) {
 	}
 	seen[value] = true
 	*out = append(*out, value)
+}
+
+func hookInputBool(input []byte, key string) bool {
+	if v, ok := hookInputObject(input)[key].(bool); ok {
+		return v
+	}
+	return false
 }
 
 func hookInputObject(input []byte) map[string]any {

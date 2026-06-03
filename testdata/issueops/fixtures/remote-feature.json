@@ -1,0 +1,13 @@
+{
+  "id": "remote-feature",
+  "title": "Remote-first feature with related issue and label scoring",
+  "user_prompt": "agy 외부 LLM 게이트 결과를 캐시해서 같은 입력은 재호출하지 않게 해줘",
+  "repo_context": "agent-harness has a remote issue scoring gate, an external LLM wrapper, and GitHub credentials are discoverable. There are existing issues about external LLM cost and a performance label.",
+  "expected_issue": ["states the caching problem", "defines acceptance criteria", "lists non-goals", "includes verification", "scores related issues and labels by threshold", "is written in Korean", "references issue/pr guideline"],
+  "expected_plan": ["starts with a failing test for cache hit", "defines cache key from prompt and command", "uses go test verification"],
+  "expected_tasks": ["separates cache store", "separates wrapper integration", "separates metrics"],
+  "expected_tdd": ["writes a failing cache-hit test before implementation"],
+  "expected_subagents": ["assigns non-overlapping file ownership", "verifies pwd branch and HEAD before work", "uses verifier or bounded review for narrow reviews"],
+  "expected_pr": ["summarizes cache evidence", "links issue", "lists verification", "is written in Korean", "references issue/pr guideline"],
+  "critical_failures": ["creates remote issue before scoring related issues", "skips branch prompt and works in source repo", "worker starts without context check", "unbounded code-reviewer review", "issue or pr/mr not written in Korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+}

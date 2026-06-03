@@ -16,10 +16,35 @@ type IssueOpsPhase string
 
 const (
 	IssueOpsPhaseProblem   IssueOpsPhase = "problem"
+	IssueOpsPhaseGrill     IssueOpsPhase = "grill"
 	IssueOpsPhasePlan      IssueOpsPhase = "plan"
 	IssueOpsPhaseImplement IssueOpsPhase = "implement"
 	IssueOpsPhaseFeedback  IssueOpsPhase = "feedback"
+	IssueOpsPhasePR        IssueOpsPhase = "pr"
+	IssueOpsPhaseDone      IssueOpsPhase = "done"
 )
+
+// IssueOpsPhases lists every known IssueOps phase in lifecycle order, mirroring
+// the SKILL.md required phases (problem intake, domain grill, issue/plan,
+// implementation, feedback, PR/MR, done).
+var IssueOpsPhases = []IssueOpsPhase{
+	IssueOpsPhaseProblem,
+	IssueOpsPhaseGrill,
+	IssueOpsPhasePlan,
+	IssueOpsPhaseImplement,
+	IssueOpsPhaseFeedback,
+	IssueOpsPhasePR,
+	IssueOpsPhaseDone,
+}
+
+func knownIssueOpsPhase(phase IssueOpsPhase) bool {
+	for _, known := range IssueOpsPhases {
+		if known == phase {
+			return true
+		}
+	}
+	return false
+}
 
 type IssueOpsStartRequest struct {
 	Repo   string `json:"repo"`
@@ -27,9 +52,10 @@ type IssueOpsStartRequest struct {
 }
 
 type IssueOpsFeedbackItem struct {
-	Source    string `json:"source"`
-	Body      string `json:"body"`
-	CreatedAt string `json:"created_at"`
+	Source         string `json:"source"`
+	Body           string `json:"body"`
+	Classification string `json:"classification,omitempty"`
+	CreatedAt      string `json:"created_at"`
 }
 
 type IssueOpsRecord struct {
@@ -125,9 +151,10 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
-func AddIssueOpsFeedback(stateRoot, id, source, body string) (IssueOpsRecord, error) {
+func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
 	source = strings.TrimSpace(source)
 	body = strings.TrimSpace(body)
+	classification = strings.TrimSpace(classification)
 	if source == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("feedback source is required")
 	}
@@ -139,10 +166,31 @@ func AddIssueOpsFeedback(stateRoot, id, source, body string) (IssueOpsRecord, er
 		return record, err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	record.Feedback = append(record.Feedback, IssueOpsFeedbackItem{Source: source, Body: body, CreatedAt: now})
+	record.Feedback = append(record.Feedback, IssueOpsFeedbackItem{Source: source, Body: body, Classification: classification, CreatedAt: now})
 	record.Phase = IssueOpsPhaseFeedback
 	record.UpdatedAt = now
 	return writeIssueOps(stateRoot, record)
+}
+
+// AdvanceIssueOpsPhase moves an IssueOps loop to an explicitly named phase. The
+// workflow is advisory, so any known phase is accepted; the only hard gate is
+// that the pr phase requires issue + plan evidence (PR/MR drafting precondition).
+func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
+	phase := IssueOpsPhase(strings.TrimSpace(to))
+	if !knownIssueOpsPhase(phase) {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("unknown issueops phase %q", to)
+	}
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return record, err
+	}
+	if phase == IssueOpsPhasePR {
+		if ready := IssueOpsPRReadiness(record); !ready.Ready {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
+		}
+	}
+	record.Phase = phase
+	return touchAndWriteIssueOps(stateRoot, record)
 }
 
 func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {

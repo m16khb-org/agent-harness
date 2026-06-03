@@ -46,6 +46,7 @@ Load these files only when the phase applies:
 - No broad review sweeps: subagent reviews must have explicit included paths, excluded large/generated paths, a time budget, and a fallback direct verification path.
 - Cleanup choices: after a PR/MR is merged, verify merge/worktree/branch status and present numbered cleanup choices before deleting local worktrees or branches.
 - Numbered next actions: at user decision points and after reporting review/feedback/cleanup status, end with `선택지:` and three numbered choices. Strict sessions may set `HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1`; installed Stop hooks are strict-ready and can block missing choices.
+- Auto-proceed gate: to reduce friction, the recommended next action is scored. When `HARNESS_NEXT_ACTION_AUTO_PROCEED=1`, the Stop hook auto-continues the recommended option (instead of stopping for a selection) only if it is explicitly marked 추천/recommended, uses a forward/constructive verb, is reversible (non-destructive), and scores at or above the threshold (`HARNESS_NEXT_ACTION_AUTO_PROCEED_THRESHOLD`, default 0.80). Destructive or ambiguous choices (cleanup deletes, force pushes, PR/MR merges, materially different interpretations) never auto-proceed and always stop for the user. Mark exactly one recommended option so the gate has a clear winner.
 - Worker identity check: every implementation, TDD, review, QA, or subagent worker must first report and verify `pwd`, branch, `HEAD`, and the expected isolated worktree path before inspecting or changing anything.
 - Remote artifact ownership: created issues and PRs/MRs must be assigned to the currently authenticated user when the provider supports assignment, and assignment must be verified before reporting readiness.
 - Remote issue source of truth: when feedback changes scope, acceptance criteria, non-goals, verification, labels, related links, or implementation contract, update the remote issue body before continuing.
@@ -113,11 +114,20 @@ agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
 ```
 
-Record feedback:
+Advance the lifecycle phase (problem, grill, plan, implement, feedback, pr, done). The `pr` phase requires a linked issue and plan:
 
 ```bash
-agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
+agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill --json
+agent-harness issueops phase --id "$ISSUEOPS_ID" --to pr --json
 ```
+
+Record feedback, optionally classifying each item (contract_change, defect, question, noise) so contract-changing feedback is distinguishable:
+
+```bash
+agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source review --body "$FEEDBACK" --classification contract_change --json
+```
+
+Remote scoring runs deterministically and is also available as the MCP tool `issueops_remote_score` for cross-host (Codex/Claude) use; the agy judge path stays CLI/`remote score --judge agy`. Benchmark commands (`benchmark run|compare|gate`) are CLI-only developer/autoresearch tooling, not a runtime MCP gate.
 
 ## Stop Conditions
 
