@@ -330,6 +330,18 @@ func TestNumberedNextActionsDecisionAllowsChoices(t *testing.T) {
 	}
 }
 
+func TestNumberedNextActionsDecisionAllowsMarkdownListChoices(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(`완료했습니다.
+
+선택지:
+- 1. 진행: 다음 검증을 실행합니다. (추천)
+* 2. 축소 진행: 작은 범위만 확인합니다.
++ 3. 보류: 여기서 멈춥니다.`, true, "stop")
+	if got.Decision != "allow" {
+		t.Fatalf("expected markdown list numbered choices to allow, got %+v", got)
+	}
+}
+
 func TestNumberedNextActionsDecisionNoopsWhenDisabled(t *testing.T) {
 	got := BuildNumberedNextActionsDecision("작업했습니다.", false, "stop")
 	if got.Decision != "allow" {

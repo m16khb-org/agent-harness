@@ -569,7 +569,7 @@ func readLastAssistantMessageFromTranscript(path string) string {
 	if err != nil {
 		return ""
 	}
-	lines := strings.Split(strings.ReplaceAll(string(b), "\r\n", "\n"), "\n")
+	lines := strings.Split(string(b), "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := strings.TrimSpace(lines[i])
 		if line == "" || !strings.Contains(strings.ToLower(line), "assistant") {
@@ -597,6 +597,9 @@ func assistantTextFromTranscriptObject(value any) string {
 			if r, ok := msg["role"].(string); ok && role == "" {
 				role = strings.ToLower(strings.TrimSpace(r))
 			}
+		}
+		if typ, ok := v["type"].(string); ok && role == "" {
+			role = strings.ToLower(strings.TrimSpace(typ))
 		}
 		if role != "" && role != "assistant" {
 			return ""
