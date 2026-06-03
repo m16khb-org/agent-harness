@@ -172,7 +172,7 @@ func claudeHookCommand(binPath, subcommand string) string {
 		cmd += " --host claude --enforce-worktree --enforce-korean-remote-artifacts"
 	}
 	if subcommand == "stop" {
-		cmd += " --host claude --enforce-numbered-next-actions"
+		cmd += " --host claude --enforce-numbered-next-actions --auto-proceed-next-actions"
 	}
 	return cmd
 }

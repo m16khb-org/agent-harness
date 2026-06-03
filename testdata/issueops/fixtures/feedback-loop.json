@@ -1,0 +1,13 @@
+{
+  "id": "feedback-loop",
+  "title": "Review feedback changes the contract mid-cycle",
+  "user_prompt": "리뷰에서 에러 컨텍스트 보존이 빠졌다고 지적받았어, 반영해줘",
+  "repo_context": "An IssueOps cycle already has a linked issue and plan. A reviewer left a comment that the decode error loses context, which changes the acceptance criteria.",
+  "expected_issue": ["records the contract change", "updates acceptance criteria", "lists non-goals", "includes verification", "is written in Korean", "references issue/pr guideline"],
+  "expected_plan": ["adds a failing test for preserved error context", "updates the issue body before continuing", "uses go test verification"],
+  "expected_tasks": ["separates error wrapping", "separates test update", "separates review reply"],
+  "expected_tdd": ["writes a failing test that asserts wrapped error context before the fix"],
+  "expected_subagents": ["assigns non-overlapping file ownership", "verifies pwd branch and HEAD before work", "uses verifier or bounded review for narrow reviews"],
+  "expected_pr": ["summarizes the contract change", "links issue", "lists verification", "answers the review thread", "is written in Korean", "references issue/pr guideline"],
+  "critical_failures": ["reports feedback cleared without replying in the review thread", "skips updating the remote issue when scope changes", "worker starts without context check", "unbounded code-reviewer review", "issue or pr/mr not written in Korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+}

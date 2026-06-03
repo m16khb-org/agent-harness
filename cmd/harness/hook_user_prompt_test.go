@@ -447,6 +447,61 @@ func TestRunHookStopAllowsNumberedNextActionsWhenExpected(t *testing.T) {
 	}
 }
 
+func TestRunHookStopAutoProceedsRecommendedSafeAction(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_NEXT_ACTION_AUTO_PROCEED", "1")
+	repo := t.TempDir()
+	msg := "선택지:\\n1. 진행: 다음 테스트를 추가하고 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 검증합니다.\\n3. 보류: 멈춥니다."
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--auto-proceed-next-actions"})
+	})
+	if obj["continue"] != true || obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to auto-continue recommended safe action, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "자동 진행") {
+		t.Fatalf("expected auto-proceed directive in reason, got %q", reason)
+	}
+}
+
+func TestRunHookStopDoesNotAutoProceedDestructiveCleanup(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_NEXT_ACTION_AUTO_PROCEED", "1")
+	repo := t.TempDir()
+	msg := "선택지:\\n1. 정리 진행: merged worktree와 branch를 삭제합니다. (추천)\\n2. 보류: 유지합니다.\\n3. 확장 정리: 전체를 점검합니다."
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--auto-proceed-next-actions"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("destructive recommended action must not auto-proceed, got %+v", obj)
+	}
+}
+
+func TestRunHookStopDoesNotAutoProceedWhenStopHookActive(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_NEXT_ACTION_AUTO_PROCEED", "1")
+	repo := t.TempDir()
+	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","stop_hook_active":true,"last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--auto-proceed-next-actions"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("stop_hook_active must suppress auto-proceed to avoid loops, got %+v", obj)
+	}
+}
+
+func TestRunHookStopDoesNotAutoProceedWhenDisabled(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--auto-proceed-next-actions"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("auto-proceed must stay opt-in via env; got %+v", obj)
+	}
+}
+
 func TestRunHookStopReadsLastAssistantMessageFromTranscript(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
