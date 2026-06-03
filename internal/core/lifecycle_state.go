@@ -568,9 +568,12 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 	}
 	expected := cleanAbsPath(req.ExpectedWorktree)
 	if expected == "" {
-		// No explicit expected worktree: derive enforcement from an active IssueOps
-		// cycle for this repo so late-promoted cycles still require isolation.
-		if !HasActiveIssueOpsCycle(req.Repo) {
+		// No explicit expected worktree: judge by the current work's own cycle.
+		// The cycle id is deterministic per (repo, branch), so only this branch's
+		// record is consulted; legacy/stale records have different ids and are
+		// never read, and a done cycle releases the source checkout.
+		rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, gitBranchFromHead(req.Repo))
+		if !ok || !IssueOpsPhaseExpectsWorktree(rec.Phase) {
 			return ""
 		}
 		targets := worktreeGuardEditTargets(req)
@@ -579,7 +582,7 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 		for _, target := range targets {
 			if !isInsideWorktreesPath(target) {
-				return "an IssueOps cycle is active for this repo; edit from an isolated worktree (.../<repo>.worktrees/<branch>) instead of the source checkout"
+				return "the IssueOps cycle for this branch is in the " + string(rec.Phase) + " phase; edit from its isolated worktree (.../<repo>.worktrees/<branch>) instead of the source checkout"
 			}
 		}
 		return ""
@@ -625,6 +628,35 @@ func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 		}
 	}
 	return targets
+}
+
+// gitBranchFromHead returns the current branch of the checkout at repo by reading
+// HEAD, resolving the linked-worktree gitdir indirection when .git is a file.
+// It returns "" for a detached HEAD or when HEAD cannot be read.
+func gitBranchFromHead(repo string) string {
+	root := cleanAbsPath(repo)
+	if root == "" {
+		return ""
+	}
+	gitPath := filepath.Join(root, ".git")
+	headPath := filepath.Join(gitPath, "HEAD")
+	if info, err := os.Stat(gitPath); err == nil && !info.IsDir() {
+		if b, err := os.ReadFile(gitPath); err == nil {
+			line := strings.TrimSpace(string(b))
+			if rest, ok := strings.CutPrefix(line, "gitdir:"); ok {
+				headPath = filepath.Join(strings.TrimSpace(rest), "HEAD")
+			}
+		}
+	}
+	b, err := os.ReadFile(headPath)
+	if err != nil {
+		return ""
+	}
+	head := strings.TrimSpace(string(b))
+	if rest, ok := strings.CutPrefix(head, "ref: refs/heads/"); ok {
+		return strings.TrimSpace(rest)
+	}
+	return ""
 }
 
 // isInsideWorktreesPath reports whether any path segment ends with ".worktrees",
