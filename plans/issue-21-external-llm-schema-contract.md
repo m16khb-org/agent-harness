@@ -10,7 +10,8 @@ Make structured `agy -p` usage reliable when the provider has no native structur
 - Add shared core helpers for structured external LLM prompts and JSON extraction.
 - Apply the helpers to IssueOps remote scoring and IssueOps benchmark judge.
 - Keep self-verify's existing noisy JSON extraction behavior, but align prompt schema wording or parser helper use where it is low risk.
-- Do not force JSON-only behavior onto draft wiki free-form writing paths.
+- Also enforce the schema contract on commit suggest, lint diagnose, and draft wiki suggestion paths.
+- Add follow-up verification coverage for the actual `agy -p` invocation mode/model settings.
 
 ## Steps
 
@@ -31,10 +32,16 @@ Make structured `agy -p` usage reliable when the provider has no native structur
    - Update IssueOps benchmark judge prompt and decoder.
    - Preserve execution class and read-only normalization.
 
-4. Verify real-world behavior.
+4. Wire remaining `agy -p` paths.
+   - Update commit suggest, lint diagnose, and draft wiki prompts with field/type schemas.
+   - Parse their responses from strict JSON or fenced `json` JSON.
+   - Preserve generated user-facing content inside a typed string field.
+
+5. Verify real-world behavior.
    - Run focused Go tests.
    - Run full Go tests.
-   - If `agy` is installed and usable, run a tiny read-only schema smoke prompt. If unavailable, record the fake `agy` evidence.
+   - Run real production-prompt `agy` checks across the affected commands.
+   - Record follow-up evidence for whether print-mode `agy` uses the configured `Gemini 3.5 Flash (Medium)` and fast mode settings.
 
 ## Verification
 
@@ -47,6 +54,6 @@ git diff --check
 
 ## IssueOps Notes
 
-- Remote issue: https://github.com/m16khb/agent-harness/issues/21
-- Expected worktree: `/Users/m16khb/Workspace/agent-harness.worktrees/fix-21-external-llm-schema-contract`
+- Remote issue: `#21`
+- Expected worktree: `../agent-harness.worktrees/fix-21-external-llm-schema-contract`
 - Source checkout must remain clean on `main`.

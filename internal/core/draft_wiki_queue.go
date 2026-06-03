@@ -217,7 +217,11 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 	if err != nil {
 		return failDraftWikiQueueEvent(event, fmt.Errorf("agy print failed: %w: %s", err, strings.TrimSpace(string(llm.Output))))
 	}
-	draftPath, err := writeSuggestedDraft(event.RepoRoot, "Draft wiki hook memory", targetWiki, targetType, agyModel, string(llm.Output))
+	draftBody, err := decodeDraftWikiSuggestAgyOutput(llm.Output)
+	if err != nil {
+		return failDraftWikiQueueEvent(event, err)
+	}
+	draftPath, err := writeSuggestedDraft(event.RepoRoot, "Draft wiki hook memory", targetWiki, targetType, agyModel, draftBody)
 	if err != nil {
 		return failDraftWikiQueueEvent(event, err)
 	}

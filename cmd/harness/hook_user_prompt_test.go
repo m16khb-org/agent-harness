@@ -355,17 +355,7 @@ if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
   exit 2
 fi
 cat <<'EOF'
----
-title: "Hook queued draft"
-source: "claude-mem"
-target_wiki: "agent-harness"
-target_type: "notes"
-summary: "PostToolUse hooks queue draft-wiki work for the worker."
----
-
-# Hook queued draft
-
-The hook records a queue item and the worker calls agy -p to produce this draft.
+{"body_markdown":"---\ntitle: \"Hook queued draft\"\nsource: \"claude-mem\"\ntarget_wiki: \"agent-harness\"\ntarget_type: \"notes\"\nsummary: \"PostToolUse hooks queue draft-wiki work for the worker.\"\n---\n\n# Hook queued draft\n\nThe hook records a queue item and the worker calls agy -p to produce this draft."}
 EOF
 `), 0o755); err != nil {
 		t.Fatal(err)
