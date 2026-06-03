@@ -1118,11 +1118,22 @@ var nextActionForwardVerbs = []string{
 	"proceed", "continue", "implement", "add", "write", "verify", "run", "apply", "fix", "update",
 }
 
-var nextActionDestructiveNeedles = []string{
-	"삭제", "제거", "지우", "되돌리", "덮어", "초기화", "닫기", "강제",
-	"delete", "remove", "drop", "reset", "revert", "overwrite", "force", "discard", "purge", "close",
+// nextActionDestructiveWordNeedles are matched on ASCII word boundaries so that
+// "force" does not match "enforce"/"reinforce" and "merge" does not match
+// "merged" status text. "merge" is included because merging a PR/MR is effectively
+// irreversible and must never auto-proceed.
+var nextActionDestructiveWordNeedles = []string{
+	"delete", "remove", "drop", "reset", "revert", "overwrite", "force", "discard", "purge", "close", "merge",
+}
+
+// nextActionDestructiveRawNeedles are matched as substrings: Korean terms (no ASCII
+// word boundary) and command fragments that carry their own delimiters.
+var nextActionDestructiveRawNeedles = []string{
+	"삭제", "제거", "지우", "되돌리", "덮어", "초기화", "닫기", "강제", "병합", "머지",
 	"rm ", "--force", "-f ", "reset --hard", "push --force", "force-push",
 }
+
+var nextActionDestructiveWordRe = regexp.MustCompile(`(?i)\b(?:` + strings.Join(nextActionDestructiveWordNeedles, "|") + `)\b`)
 
 func nextActionIsRecommended(text string) bool {
 	lower := strings.ToLower(text)
@@ -1131,12 +1142,12 @@ func nextActionIsRecommended(text string) bool {
 
 func nextActionIsDestructive(text string) bool {
 	lower := strings.ToLower(text)
-	for _, needle := range nextActionDestructiveNeedles {
+	for _, needle := range nextActionDestructiveRawNeedles {
 		if strings.Contains(lower, strings.ToLower(needle)) {
 			return true
 		}
 	}
-	return false
+	return nextActionDestructiveWordRe.MatchString(text)
 }
 
 func nextActionHasForwardVerb(text string) bool {
