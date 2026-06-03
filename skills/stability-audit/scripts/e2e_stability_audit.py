@@ -359,7 +359,7 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
         details.append({"cmd": cmd, "ok": step_ok, "stderr_tail": res["stderr"][-1000:], "stdout_tail": res["stdout"][-1000:], "duration_ms": res["duration_ms"]})
     if self_verify:
         with tempfile.TemporaryDirectory() as td:
-            res = run([str(BIN), "self-verify", "--iterations=10", "--seed=100", "--target-score=95", "--json"], env={"HARNESS_STATE_DIR": td}, timeout=120)
+            res = run([str(BIN), "self-verify", "--full", "--iterations=10", "--seed=100", "--target-score=95", "--json"], env={"HARNESS_STATE_DIR": td}, timeout=180)
             parsed = None
             step_ok = res["returncode"] == 0
             if step_ok:
