@@ -5,11 +5,9 @@ description: Codex-only dynamic workflow execution with batched subagents. Use w
 
 # Workflows
 
-## Relationship to ultracode
+## Scope
 
-`workflows` is the base orchestration primitive. It runs an explicit workflow for the current task.
-
-`ultracode` is the higher-level mode: it uses workflows automatically for every substantive task instead of waiting for the user to ask for a workflow each time.
+`workflows` is the Codex orchestration primitive. It runs an explicit workflow for the current task.
 
 ## Evidence-backed model
 
@@ -60,4 +58,4 @@ Scale facts from Claude Code docs: up to 16 concurrent agents and 1,000 total ag
 
 ## Reference
 
-Read `references/claude-code-workflows-research.md` when exact Claude Code behavior, limits, permissions, or ultracode relationship matters.
+Read `references/claude-code-workflows-research.md` when exact Claude Code behavior, limits, permissions, or effort-mode relationship matters.

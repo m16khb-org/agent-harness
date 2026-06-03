@@ -615,7 +615,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 27840,
+          "bytes": 27748,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -896,13 +896,6 @@
           "has_skill_md": true,
           "name": "stability-audit",
           "path": "$HARNESS_ROOT/skills/stability-audit"
-        },
-        {
-          "description": "Codex-only ultracode execution. Emulate Claude Code /effort ultracode by using xhigh-style controller reasoning and automatically applying the workflows orchestration pattern to substantive tasks. Use when the user says ultracode, $ultracode, xhigh workflow orchestration, maximum thoroughness, broad autonomous workflow execution, or wants Claude Code ultracode behavior in Codex.",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "ultracode",
-          "path": "$HARNESS_ROOT/skills/ultracode"
         },
         {
           "description": "Codex-only dynamic workflow execution with batched subagents. Use when the user says workflows, dynamic workflows, run a workflow, use a workflow, fan out agents, launch subagents, coordinate parallel agents, perform a broad audit/migration/research sweep, or asks for Claude Code dynamic workflows behavior in Codex.",
@@ -1636,7 +1629,6 @@
           "self-augment",
           "self-verify",
           "stability-audit",
-          "ultracode",
           "workflows"
         ]
       },
@@ -3437,7 +3429,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 27840,
+                "bytes": 27748,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -3725,13 +3717,6 @@
                 "has_skill_md": true,
                 "name": "stability-audit",
                 "path": "$HARNESS_ROOT/skills/stability-audit"
-              },
-              {
-                "description": "Codex-only ultracode execution. Emulate Claude Code /effort ultracode by using xhigh-style controller reasoning and automatically applying the workflows orchestration pattern to substantive tasks. Use when the user says ultracode, $ultracode, xhigh workflow orchestration, maximum thoroughness, broad autonomous workflow execution, or wants Claude Code ultracode behavior in Codex.",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "ultracode",
-                "path": "$HARNESS_ROOT/skills/ultracode"
               },
               {
                 "description": "Codex-only dynamic workflow execution with batched subagents. Use when the user says workflows, dynamic workflows, run a workflow, use a workflow, fan out agents, launch subagents, coordinate parallel agents, perform a broad audit/migration/research sweep, or asks for Claude Code dynamic workflows behavior in Codex.",
@@ -4389,7 +4374,6 @@
                 "self-augment",
                 "self-verify",
                 "stability-audit",
-                "ultracode",
                 "workflows"
               ]
             },

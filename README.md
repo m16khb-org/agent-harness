@@ -111,7 +111,7 @@ Use it when you want to:
 | State checkpoints | `state write/read/list/prune/doctor/migrate` | Store small JSON checkpoints in user state, not tracked repo files. |
 | Project docs and draft wiki | `project bootstrap/docs/route-docs/record`, `project draft-wiki ...`; MCP `project_docs_*` | Generate, index, route, update, append, stage, approve, reject, and promote project operating knowledge under `.agent-harness/`. |
 | API docs gate | `api-doc check/static-check/review` | Catch endpoint/DTO/OpenAPI documentation drift. |
-| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/ultracode`, `skills/project-bootstrap`, `skills/draft-wiki-promoter`, `skills/stability-audit`, `skills/self-verify`, `skills/self-augment` | Codex and Claude Code use one source tree; host-targeted skills can opt into one host. |
+| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/project-bootstrap`, `skills/draft-wiki-promoter`, `skills/stability-audit`, `skills/self-verify`, `skills/self-augment` | Codex and Claude Code use one source tree; host-targeted skills can opt into one host. |
 | Evidence and contracts | `guard check`, `verify-work`, `trace analyze`, `contract schema/check` | Check anti-patterns, collect completion evidence matrices, analyze trace/lifecycle evidence, and keep CLI/MCP contracts aligned. |
 | Self-improvement | `self-verify`, `self-verify history/compare/promote/candidates`, `self-augment`, `self-augment lesson` | Run a 95-point verification gate, compare/promote checkpoints, and record safe improvement candidates or lessons. |
 | Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | Record job lifecycle state, run policy-gated read-only evidence commands, and process draft-wiki queue items; no writable shell jobs. |
@@ -326,7 +326,6 @@ test -f ~/.claude/settings.json && rg "hook (session-start|user-prompt|pre-tool-
 | --- | --- |
 | `atomic-commit-push` | Review local changes, split focused commits, and push safely with a Conventional Commit subject plus Lore body. |
 | `workflows` | Codex-only explicit dynamic workflow runner with batched subagents, ledger, verification, and synthesis. |
-| `ultracode` | Codex-only mode that automatically applies workflows to substantive tasks, matching Claude Code ultracode’s direction. |
 | `project-bootstrap` | Generate or update repo-local agent operating docs from repository evidence. |
 | `draft-wiki-promoter` | Review, approve/reject, and promote `.agent-harness/draft-wiki` candidates into upstream llm-wiki notes. |
 | `stability-audit` | Run exhaustive install/update, hook, MCP, daemon, worker, state, and process-hygiene audits. |
@@ -391,7 +390,7 @@ go build -o bin/agent-harness ./cmd/harness
 
 ## Documentation style note
 
-This README follows common open-source README guidance: explain what the project does, why it is useful, how to start, and where to get help. Its agent-harness-specific shape also borrows from the public README patterns used by OMC/oh-my-codex, OMX/oh-my-codex, OmO/oh-my-openagent, and LazyCodex: a short promise, install-first usage, command pillars, built-in workflows, architecture, verification, troubleshooting, and safety boundaries. See [GitHub Docs on repository READMEs](https://docs.github.com/articles/about-readmes) and [Open Source Guides on starting a project](https://opensource.guide/starting-a-project/) for the general documentation shape behind that structure.
+This README follows common open-source README guidance: explain what the project does, why it is useful, how to start, and where to get help. Its agent-harness-specific shape uses a short promise, install-first usage, command pillars, built-in workflows, architecture, verification, troubleshooting, and safety boundaries. See [GitHub Docs on repository READMEs](https://docs.github.com/articles/about-readmes) and [Open Source Guides on starting a project](https://opensource.guide/starting-a-project/) for the general documentation shape behind that structure.
 
 ## License
 
@@ -501,7 +500,7 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 | State checkpoint | `state write/read/list/prune/doctor/migrate` | 작은 JSON checkpoint를 repo가 아니라 user state에 저장합니다. |
 | Project docs와 draft wiki | `project bootstrap/docs/route-docs/record`, `project draft-wiki ...`; MCP `project_docs_*` | `.agent-harness/` 운영 지식을 생성, 색인, 라우팅, 갱신, append, stage, approve/reject, promote합니다. |
 | API docs gate | `api-doc check/static-check/review` | endpoint/DTO/OpenAPI 문서 drift를 찾습니다. |
-| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/ultracode`, `skills/project-bootstrap`, `skills/draft-wiki-promoter`, `skills/stability-audit`, `skills/self-verify`, `skills/self-augment` | Codex와 Claude Code가 하나의 source tree를 사용하며 host-targeted skill은 한 host에만 설치할 수 있습니다. |
+| Shared skills | `skills/atomic-commit-push`, `skills/workflows`, `skills/project-bootstrap`, `skills/draft-wiki-promoter`, `skills/stability-audit`, `skills/self-verify`, `skills/self-augment` | Codex와 Claude Code가 하나의 source tree를 사용하며 host-targeted skill은 한 host에만 설치할 수 있습니다. |
 | Evidence와 contract | `guard check`, `verify-work`, `trace analyze`, `contract schema/check` | anti-pattern을 검사하고 completion evidence matrix, trace/lifecycle evidence, CLI/MCP contract 정합성을 확인합니다. |
 | Self-improvement | `self-verify`, `self-verify history/compare/promote/candidates`, `self-augment`, `self-augment lesson` | 95점 검증 gate, checkpoint 비교/승격, 안전한 개선 후보와 lesson 기록을 수행합니다. |
 | Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | job lifecycle state를 기록하고 policy-gated read-only evidence command와 draft-wiki queue 처리를 수행합니다. writable shell job은 없습니다. |
@@ -716,7 +715,6 @@ test -f ~/.claude/settings.json && rg "hook (session-start|user-prompt|pre-tool-
 | --- | --- |
 | `atomic-commit-push` | local change를 검토하고 focused commit으로 나누며 Conventional Commit subject + Lore body 형식으로 안전하게 push합니다. |
 | `workflows` | Codex 전용 explicit dynamic workflow runner로 batched subagent, ledger, 검증, synthesis를 수행합니다. |
-| `ultracode` | Claude Code ultracode 방향과 맞게 substantive task에 workflows를 자동 적용하는 Codex 전용 mode입니다. |
 | `project-bootstrap` | repository evidence를 바탕으로 repo-local agent operating docs를 생성하거나 갱신합니다. |
 | `draft-wiki-promoter` | `.agent-harness/draft-wiki` 후보를 검토하고 approve/reject한 뒤 upstream llm-wiki note로 promote합니다. |
 | `stability-audit` | install/update, hook, MCP, daemon, worker, state, process hygiene를 끝까지 audit합니다. |

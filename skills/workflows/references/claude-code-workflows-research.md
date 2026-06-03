@@ -17,7 +17,7 @@ Verified on 2026-05-31 against official Anthropic pages and local Claude Code 2.
 
 - **Workflows** are the orchestration primitive: Claude writes/runs a workflow script that coordinates subagents.
 - **Ultracode** uses workflows: `/effort ultracode` sets xhigh effort and lets Claude decide automatically when to use a workflow for substantive tasks.
-- Therefore, in Codex, `$workflows` should be the explicit workflow runner and `$ultracode` should be the automatic higher-level mode that invokes the workflows pattern.
+- Codex keeps only `$workflows` as an explicit workflow runner; there is no separate ultracode shim in this harness.
 
 ## Official behavior summary
 
@@ -48,6 +48,4 @@ Claude Code 2.1.158 bundle strings include:
 Codex cannot reuse Claude Code's proprietary workflow runtime. The correct adaptation is skill-level orchestration:
 
 - `$workflows`: explicit controller-led workflow for a task.
-- `$ultracode`: automatic high-effort controller mode that decides when to run one or more workflows.
 - `workflows` owns the phase/batch/ledger/reduce protocol.
-- `ultracode` owns the decision to apply that protocol automatically to substantive tasks.
