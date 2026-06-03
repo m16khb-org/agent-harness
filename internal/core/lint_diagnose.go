@@ -26,6 +26,10 @@ type LintDiagnoseResult struct {
 	AgyModel    string   `json:"agy_model"`
 }
 
+type lintDiagnoseAgyResponse struct {
+	Diagnosis string `json:"diagnosis"`
+}
+
 func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 	root, err := normalizeRepoRoot(req.RepoRoot)
 	if err != nil {
@@ -110,8 +114,13 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 		result.Diagnosis = fmt.Sprintf("[Error running agy: %v]\nOriginal Output:\n%s", err, outputStr)
 		return result, nil
 	}
+	var response lintDiagnoseAgyResponse
+	if err := DecodeExternalLLMStructuredJSONObject("agy lint diagnose", llm.Output, &response); err != nil {
+		result.Diagnosis = fmt.Sprintf("[Error parsing agy JSON: %v]\nOriginal Output:\n%s", err, outputStr)
+		return result, nil
+	}
 
-	result.Diagnosis = strings.TrimSpace(string(llm.Output))
+	result.Diagnosis = strings.TrimSpace(response.Diagnosis)
 	return result, nil
 }
 
@@ -122,7 +131,7 @@ func buildLintDiagnosePrompt(exitCode int, logTail string) string {
 		Phases: []string{
 			"Identify the root cause from the failure output.",
 			"Determine the minimal concrete fix.",
-			"Return a concise action-oriented diagnosis.",
+			"Return a concise action-oriented diagnosis inside the response schema.",
 		},
 		Inputs: []string{"Command failure output tail."},
 		Rules: []string{
@@ -131,15 +140,26 @@ func buildLintDiagnosePrompt(exitCode int, logTail string) string {
 			"Provide a code snippet only when it materially helps apply the fix.",
 		},
 		OutputContract: []string{
-			"Explain what went wrong.",
-			"Explain exactly how to fix it.",
-			"Keep the answer extremely concise, action-oriented, and focused.",
+			"Return one JSON object matching the response schema.",
+			"diagnosis must explain what went wrong and exactly how to fix it.",
+			"diagnosis must be extremely concise, action-oriented, and focused.",
 		},
 		VerificationChecklist: []string{
 			"The root cause is tied to evidence in the output.",
 			"The fix is directly actionable.",
 			"The response avoids log repetition.",
 		},
-		Data: []PromptDataSection{{Title: "Execution Failure Output", Content: logTail}},
+		Data: []PromptDataSection{
+			BuildExternalLLMJSONSchemaSection(lintDiagnoseResponseSchemaExample(), []string{
+				"diagnosis: string, required, concise root cause and fix guidance.",
+			}),
+			{Title: "Execution Failure Output", Content: logTail},
+		},
 	})
+}
+
+func lintDiagnoseResponseSchemaExample() string {
+	return `{
+  "diagnosis": "Root cause tied to the log. Minimal fix to apply."
+}`
 }
