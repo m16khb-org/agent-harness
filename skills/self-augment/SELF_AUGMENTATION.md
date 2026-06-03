@@ -16,8 +16,8 @@ Verify that the harness produces consistent results across Codex and Claude Code
 ### CLI/MCP surface
 
 ```bash
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-verify history --prefix self-verify --json
 ./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json

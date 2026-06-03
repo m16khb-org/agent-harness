@@ -512,7 +512,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 12079,
+          "bytes": 12866,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -553,7 +553,7 @@
           "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
         },
         {
-          "bytes": 5029,
+          "bytes": 5751,
           "headings": [
             "프로젝트 헌법",
             "제0장: 문서 우선순위",
@@ -615,7 +615,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 25594,
+          "bytes": 25585,
           "headings": [
             "하네스 사용법",
             "1. 설치/동기화",
@@ -643,7 +643,7 @@
           "title": "하네스 사용법"
         },
         {
-          "bytes": 8027,
+          "bytes": 8009,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -660,7 +660,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17201,
+          "bytes": 17176,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -686,7 +686,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 12985,
+          "bytes": 12976,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -746,7 +746,7 @@
           "title": "Mermaid 다이어그램 작성 가이드라인"
         },
         {
-          "bytes": 7284,
+          "bytes": 7275,
           "headings": [
             "Self-verification and self-augmentation loops",
             "1. Self-verification loop",
@@ -767,7 +767,7 @@
           "title": "Self-verification and self-augmentation loops"
         },
         {
-          "bytes": 4601,
+          "bytes": 4728,
           "headings": [
             "Self-augmentation loop",
             "Goal",
@@ -794,7 +794,7 @@
           "title": "Self-verification candidate catalog"
         },
         {
-          "bytes": 2223,
+          "bytes": 2524,
           "headings": [
             "Self-verification loop",
             "Goal",
@@ -1342,7 +1342,7 @@
           "verify_with": [
             "go test ./...",
             "MCP/CLI golden",
-            "harness self-verify --iterations=10 --target-score=95"
+            "harness self-verify --full --iterations=10 --target-score=95"
           ],
           "why_now": [
             "현재 self-augment가 실제로는 검증 루프 역할을 한다",
@@ -1720,7 +1720,7 @@
         "QA gate including docs, skills, native integration, and MCP/state smoke",
         "go test ./... -count=1",
         "go test -race ./... -count=1 when touched Go behavior is concurrency or policy sensitive",
-        "./bin/agent-harness self-verify --iterations=10 --target-score=95 --json"
+        "./bin/agent-harness self-verify --target-score=95 --json"
       ],
       "warnings": []
     },
@@ -3326,7 +3326,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 12079,
+                "bytes": 12866,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3367,7 +3367,7 @@
                 "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
               },
               {
-                "bytes": 5029,
+                "bytes": 5751,
                 "headings": [
                   "프로젝트 헌법",
                   "제0장: 문서 우선순위",
@@ -3429,7 +3429,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 25594,
+                "bytes": 25585,
                 "headings": [
                   "하네스 사용법",
                   "1. 설치/동기화",
@@ -3457,7 +3457,7 @@
                 "title": "하네스 사용법"
               },
               {
-                "bytes": 8027,
+                "bytes": 8009,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -3474,7 +3474,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17201,
+                "bytes": 17176,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -3500,7 +3500,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 12985,
+                "bytes": 12976,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
@@ -3560,7 +3560,7 @@
                 "title": "Mermaid 다이어그램 작성 가이드라인"
               },
               {
-                "bytes": 7284,
+                "bytes": 7275,
                 "headings": [
                   "Self-verification and self-augmentation loops",
                   "1. Self-verification loop",
@@ -3581,7 +3581,7 @@
                 "title": "Self-verification and self-augmentation loops"
               },
               {
-                "bytes": 4601,
+                "bytes": 4728,
                 "headings": [
                   "Self-augmentation loop",
                   "Goal",
@@ -3608,7 +3608,7 @@
                 "title": "Self-verification candidate catalog"
               },
               {
-                "bytes": 2223,
+                "bytes": 2524,
                 "headings": [
                   "Self-verification loop",
                   "Goal",
@@ -4087,7 +4087,7 @@
                 "verify_with": [
                   "go test ./...",
                   "MCP/CLI golden",
-                  "harness self-verify --iterations=10 --target-score=95"
+                  "harness self-verify --full --iterations=10 --target-score=95"
                 ],
                 "why_now": [
                   "현재 self-augment가 실제로는 검증 루프 역할을 한다",
@@ -4465,7 +4465,7 @@
               "QA gate including docs, skills, native integration, and MCP/state smoke",
               "go test ./... -count=1",
               "go test -race ./... -count=1 when touched Go behavior is concurrency or policy sensitive",
-              "./bin/agent-harness self-verify --iterations=10 --target-score=95 --json"
+              "./bin/agent-harness self-verify --target-score=95 --json"
             ],
             "warnings": []
           },

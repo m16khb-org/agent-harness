@@ -74,7 +74,7 @@ Start with these commands. The rest of the harness is there to support this path
 | Project memory | `./bin/agent-harness project bootstrap --repo /path/to/repo --dry-run --json` | Add or refresh AGENTS routing and `.agent-harness/` operating docs for a target repo. |
 | IssueOps | `./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json` | Start durable state for the issue -> plan -> worktree -> TDD/subagent -> feedback -> PR/MR loop. |
 | Policy | `./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | Check whether a command is safe before execution. |
-| Verification | `./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json` | Run the harness quality gate and capture evidence before claiming the harness is healthy. |
+| Verification | `./bin/agent-harness self-verify --seed=100 --target-score=95 --json` | Run the quick harness quality gate and capture evidence before claiming the harness is healthy. Use `--full --iterations=10` for the full gate. |
 
 ## Why this exists
 
@@ -289,7 +289,7 @@ Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_C
 ./bin/agent-harness trace analyze --input self-verify-latest --json
 
 # Harness verification and improvement loops
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ```
@@ -460,7 +460,7 @@ flowchart LR
 | 프로젝트 메모리 | `./bin/agent-harness project bootstrap --repo /path/to/repo --dry-run --json` | 대상 repo에 AGENTS routing과 `.agent-harness/` 운영 문서를 추가하거나 갱신합니다. |
 | IssueOps | `./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json` | issue -> plan -> worktree -> TDD/subagent -> feedback -> PR/MR 루프의 durable state를 시작합니다. |
 | Policy | `./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | 명령 실행 전에 안전성을 확인합니다. |
-| Verification | `./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json` | 하네스 health를 주장하기 전에 품질 gate와 근거 수집을 실행합니다. |
+| Verification | `./bin/agent-harness self-verify --seed=100 --target-score=95 --json` | 하네스 health를 주장하기 전에 quick 품질 gate와 근거 수집을 실행합니다. full gate는 `--full --iterations=10`을 사용합니다. |
 
 ## 왜 필요한가
 
@@ -677,7 +677,7 @@ claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marke
 ./bin/agent-harness trace analyze --input self-verify-latest --json
 
 # 하네스 자체 검증과 개선 루프
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ```

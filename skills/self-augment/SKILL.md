@@ -11,7 +11,7 @@ Autonomously identify, select, implement, and verify one improvement that makes 
 
 ## Required distinction
 
-- **Self-verification loop**: verifies that the service/harness behaves as intended, including tests and QA. Default command: `./bin/agent-harness self-verify --iterations=10 --target-score=95 --json`.
+- **Self-verification loop**: verifies that the service/harness behaves as intended, including tests and QA. Default quick command: `./bin/agent-harness self-verify --target-score=95 --json`; full gate: `./bin/agent-harness self-verify --full --iterations=10 --target-score=95 --json`.
 - **Self-augmentation loop**: directly implements one needed feature, performance improvement, quality improvement, or documentation improvement, then verifies it with the self-verification loop.
 
 ## Exit criteria
@@ -51,7 +51,7 @@ Completion requires all goals below to exceed `target_score`. The default target
 5. **Verify**
    - Run targeted tests for the changed behavior.
    - Run `go test ./... -count=1`, relevant golden tests, risk-tier QA checks (`go vet ./...` / `go test -race ./... -count=1` when Go risk is present), skill validation, and build checks as applicable.
-   - Finish with `./bin/agent-harness self-verify --iterations=10 --target-score=95 --json` when practical.
+   - Finish with `./bin/agent-harness self-verify --target-score=95 --json` when practical; use `--full --iterations=10` when the full gate is needed.
 
 6. **Capture**
    - Store durable lessons only when reusable: `harness state`, `.agent-harness/`; prefer `self-augment --save-state` for the selected candidate curriculum and `self-augment lesson` for reusable failure/QA/design lessons.

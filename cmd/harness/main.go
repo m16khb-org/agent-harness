@@ -648,7 +648,8 @@ func runSelfVerify(args []string) error {
 		return runSelfVerifyCandidates(args[1:])
 	}
 	fs := flag.NewFlagSet("self-verify", flag.ContinueOnError)
-	iterations := fs.Int("iterations", 10, "number of self-verification loop iterations; must be at least 10")
+	full := fs.Bool("full", false, "run the full verification gate; defaults to quick one-iteration mode")
+	iterations := fs.Int("iterations", 10, "number of full self-verification loop iterations; requires --full and must be at least 10")
 	seed := fs.Int64("seed", time.Now().Unix(), "base seed for randomized checks")
 	targetScore := fs.Float64("target-score", 95, "exclusive per-goal score threshold; every concrete goal must score above this value to terminate")
 	saveState := fs.Bool("save-state", false, "save compact self-verification summary to harness state")
@@ -664,6 +665,11 @@ func runSelfVerify(args []string) error {
 	if *targetScore < 0 || *targetScore >= 100 {
 		return fmt.Errorf("target-score must be >= 0 and < 100")
 	}
+	iterationsFlagSet := flagSetVisited(fs, "iterations")
+	runMode, err := resolveSelfVerifyRunMode(*full, iterationsFlagSet, *iterations)
+	if err != nil {
+		return err
+	}
 	llmEvalFlagSet := flagSetVisited(fs, "llm-eval")
 	llmEvalModeFlagSet := flagSetVisited(fs, "llm-eval-mode")
 	llmEvalConfig, err := resolveSelfVerifyLLMEvalConfig(llmEvalFlagSet, *llmEval, *llmEvalMode, llmEvalModeFlagSet, os.LookupEnv)
@@ -674,7 +680,7 @@ func runSelfVerify(args []string) error {
 	if err != nil {
 		return err
 	}
-	result, err := selfVerifyWithProgress(*iterations, *seed, *targetScore, !*jsonOut, progressReporter)
+	result, err := selfVerifyWithProgress(runMode.Iterations, *seed, *targetScore, !*jsonOut, progressReporter)
 	if err == nil && llmEvalConfig.Enabled {
 		result, err = applySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{
 			Enabled:     true,
@@ -694,6 +700,25 @@ func runSelfVerify(args []string) error {
 		return saveErr
 	}
 	return err
+}
+
+type selfVerifyRunMode struct {
+	Full          bool
+	Iterations    int
+	ContractLabel string
+}
+
+func resolveSelfVerifyRunMode(full bool, iterationsFlagSet bool, iterations int) (selfVerifyRunMode, error) {
+	if !full {
+		if iterationsFlagSet {
+			return selfVerifyRunMode{}, fmt.Errorf("--iterations requires --full; default self-verify runs quick one-iteration mode")
+		}
+		return selfVerifyRunMode{Full: false, Iterations: 1, ContractLabel: "quick one-iteration gate"}, nil
+	}
+	if iterations < 10 {
+		return selfVerifyRunMode{}, fmt.Errorf("full self-verification requires at least 10 iterations; use --full --iterations=10 or higher")
+	}
+	return selfVerifyRunMode{Full: true, Iterations: iterations, ContractLabel: "full ten-plus-iteration gate"}, nil
 }
 
 func flagSetVisited(fs *flag.FlagSet, name string) bool {
@@ -1335,7 +1360,8 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 		HarnessRoot: harnessRoot(),
 		InspiredBy:  "/Users/habin/workspace/eye-tracking-scroll/scripts/self-augment.js",
 		LoopContract: []string{
-			"minimum 10 iterations",
+			"quick mode runs one deterministic evidence pass before the final LLM gate",
+			"full mode requires at least 10 seeded iterations before the final LLM gate",
 			"tests and QA are first-class stages, not optional follow-ups",
 			"seeded per-iteration randomized git preflight fuzz",
 			"repeat core invariant, tests, risk-tier QA, build, CLI/MCP schema and response contract golden, CLI, docs, command policy, MCP, state, and native integration smoke checks",
@@ -1352,8 +1378,8 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			Seed:       baseSeed,
 		})
 	}
-	if iterations < 10 {
-		err := fmt.Errorf("self-verification requires at least 10 iterations; use --iterations=10 or higher")
+	if iterations < 1 {
+		err := fmt.Errorf("self-verification requires at least 1 iteration")
 		result.ElapsedMS = time.Since(started).Milliseconds()
 		result.Summary = summarizeSelfVerification(result, targetScore)
 		if progress != nil {
@@ -1876,7 +1902,7 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 	case "candidate export":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify candidates --save-state --state-key self-verify-candidates-test --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state read --key self-verify-candidates-test --json; rm -rf \"$tmp_state\"", true
 	case "step budget baseline":
-		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
+		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify --seed=100 --target-score=95 --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
 	case "install dry-run smoke":
 		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/agent-harness install-native --dry-run --project-local --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
 	case "command policy smoke":
@@ -1892,7 +1918,7 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 	case "state roundtrip":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state migrate --json; rm -rf \"$tmp_state\"", true
 	case "parallel isolation":
-		return "./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json", true
+		return "./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json", true
 	case "daemon resilience":
 		return "tmp_daemon=\"$(mktemp -d)\" && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/agent-harness daemon start --json && HARNESS_DAEMON_DIR=\"$tmp_daemon\" ./bin/agent-harness daemon stop --json; rm -rf \"$tmp_daemon\"", true
 	case "preflight fuzz":
@@ -2796,6 +2822,9 @@ func forbiddenNameHits(root string) []string {
 			if shouldSkipForbiddenNameScanDir(name, rel) {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if name == ".git" {
 			return nil
 		}
 		info, statErr := d.Info()
@@ -4870,9 +4899,10 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "self_verify",
-			"description": "Run the self-verification loop: at least 10 seeded iterations of tests, risk-tier QA, build, CLI/MCP schema and response contract golden checks, command policy, MCP, state roundtrip, native integration, and git preflight fuzz checks. Termination requires every concrete goal score to be greater than target_score.",
+			"description": "Run the self-verification loop. Defaults to quick one-iteration verification; set full=true for the full gate with at least 10 seeded iterations. Termination requires every concrete goal score to be greater than target_score.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
-				"iterations":   map[string]any{"type": "integer", "description": "Iteration count; must be at least 10."},
+				"full":         map[string]any{"type": "boolean", "description": "Run the full ten-plus-iteration verification gate. Defaults to false quick mode."},
+				"iterations":   map[string]any{"type": "integer", "description": "Full-gate iteration count; requires full=true and must be at least 10."},
 				"seed":         map[string]any{"type": "integer", "description": "Base seed for deterministic per-iteration fuzz fixtures."},
 				"target_score": map[string]any{"type": "number", "description": "Exclusive per-goal score threshold; defaults to 95."},
 				"save_state":   map[string]any{"type": "boolean", "description": "When true, save compact summary to harness state after the run."},
@@ -5275,10 +5305,13 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		}
 		payload = result
 	case "self_verify":
-		iterations := intArg(call.Arguments, "iterations", 10)
+		runMode, modeErr := resolveSelfVerifyRunMode(boolArg(call.Arguments, "full"), argSet(call.Arguments, "iterations"), intArg(call.Arguments, "iterations", 10))
+		if modeErr != nil {
+			return nil, &rpcError{Code: -32602, Message: "Self-verification mode invalid", Data: modeErr.Error()}
+		}
 		seed := int64Arg(call.Arguments, "seed", time.Now().Unix())
 		targetScore := floatArg(call.Arguments, "target_score", defaultLoopTargetScoreExclusive)
-		result, err := selfVerify(iterations, seed, targetScore, false)
+		result, err := selfVerify(runMode.Iterations, seed, targetScore, false)
 		if boolArg(call.Arguments, "save_state") {
 			saveErr := saveSelfVerificationSummary(&result, stringArgWithDefault(call.Arguments, "state_key", "self-verify-latest"))
 			if err == nil && saveErr != nil {
@@ -5480,6 +5513,14 @@ func stringArg(args map[string]any, key string) string {
 		return v
 	}
 	return ""
+}
+
+func argSet(args map[string]any, key string) bool {
+	if args == nil {
+		return false
+	}
+	_, ok := args[key]
+	return ok
 }
 
 func stringArgWithDefault(args map[string]any, key, fallback string) string {

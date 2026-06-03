@@ -56,6 +56,12 @@ description: Instruction priority, safety, and accuracy principles.
 - worker daemon은 권한이 제한된 local IPC를 사용하고, stale lock/orphan process 복구 방안을 갖춘다.
 - Codex plugin이나 Claude hook은 core 정책을 우회하지 않는다.
 
+문제 해결 원칙:
+
+- 실패나 사용자 불편을 처리할 때는 눈에 보이는 증상만 덮고 끝내지 않는다. 재현 근거, 호출 경로, 상태 전이, 정책 경계, 문서 계약을 따라가며 문제가 발생한 근본 원인을 확인한 뒤 그 원인을 제거한다.
+- 임시 우회, 출력 문구 보정, 테스트 기대값 완화, 문서만 변경하는 대응은 근본 원인이 이미 제거됐거나 현재 범위에서 물리적으로 제거할 수 없다는 근거가 있을 때만 허용한다.
+- 수정 뒤에는 같은 실패가 재발하지 않음을 보여주는 targeted test, command smoke, grep evidence, 로그/상태 확인 중 작업 성격에 맞는 검증을 남긴다.
+
 ---
 
 ## 제3장: 아키텍처 원칙
