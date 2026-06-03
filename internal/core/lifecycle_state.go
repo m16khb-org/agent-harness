@@ -563,22 +563,28 @@ func scoreKoreanRemoteArtifactLanguage(text string) (int, int) {
 }
 
 func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
-	expected := cleanAbsPath(req.ExpectedWorktree)
-	if expected == "" {
-		return ""
-	}
 	if !toolUseMayMutateLifecycleFiles(req.Tool, req.Command) {
 		return ""
 	}
-	targets := []string{}
-	if repo := cleanAbsPath(req.Repo); repo != "" {
-		targets = append(targets, repo)
-	}
-	for _, path := range req.Paths {
-		if target := resolveHookTargetPath(req.Repo, path); target != "" {
-			targets = append(targets, target)
+	expected := cleanAbsPath(req.ExpectedWorktree)
+	if expected == "" {
+		// No explicit expected worktree: derive enforcement from an active IssueOps
+		// cycle for this repo so late-promoted cycles still require isolation.
+		if !HasActiveIssueOpsCycle(req.Repo) {
+			return ""
 		}
+		targets := worktreeGuardEditTargets(req)
+		if len(targets) == 0 {
+			return ""
+		}
+		for _, target := range targets {
+			if !isInsideWorktreesPath(target) {
+				return "an IssueOps cycle is active for this repo; edit from an isolated worktree (.../<repo>.worktrees/<branch>) instead of the source checkout"
+			}
+		}
+		return ""
 	}
+	targets := worktreeGuardTargets(req)
 	if len(targets) == 0 {
 		return ""
 	}
@@ -588,6 +594,48 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 	}
 	return ""
+}
+
+func worktreeGuardTargets(req HookToolUseLifecycleRequest) []string {
+	targets := []string{}
+	if repo := cleanAbsPath(req.Repo); repo != "" {
+		targets = append(targets, repo)
+	}
+	for _, path := range req.Paths {
+		if target := resolveHookTargetPath(req.Repo, path); target != "" {
+			targets = append(targets, target)
+		}
+	}
+	return targets
+}
+
+// worktreeGuardEditTargets prefers explicit edit paths and only falls back to the
+// repo cwd when none are given. This lets an absolute edit into the isolated
+// worktree pass even while the shell cwd is still the source checkout.
+func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
+	targets := []string{}
+	for _, path := range req.Paths {
+		if target := resolveHookTargetPath(req.Repo, path); target != "" {
+			targets = append(targets, target)
+		}
+	}
+	if len(targets) == 0 {
+		if repo := cleanAbsPath(req.Repo); repo != "" {
+			targets = append(targets, repo)
+		}
+	}
+	return targets
+}
+
+// isInsideWorktreesPath reports whether any path segment ends with ".worktrees",
+// matching the IssueOps sibling worktree convention `<repo>.worktrees/<branch>`.
+func isInsideWorktreesPath(target string) bool {
+	for _, segment := range strings.Split(filepath.ToSlash(target), "/") {
+		if strings.HasSuffix(segment, ".worktrees") {
+			return true
+		}
+	}
+	return false
 }
 
 func resolveHookTargetPath(repo, path string) string {

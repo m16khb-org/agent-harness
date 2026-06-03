@@ -545,3 +545,79 @@ func TestEvaluateNextActionAutoProceedRespectsHighThreshold(t *testing.T) {
 		t.Fatalf("threshold above max must block auto-proceed, got %+v", result)
 	}
 }
+
+func TestWorktreeGuardEnforcesIsolationWhenIssueOpsCycleActive(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	src := "/Users/dev/proj"
+	if _, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: src, Branch: "feat/x"}); err != nil {
+		t.Fatal(err)
+	}
+	// Editing inside the source checkout while a cycle is active must be blocked
+	// even without HARNESS_EXPECTED_WORKTREE.
+	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: src, Tool: "Edit", Paths: []string{src + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if blocked.Decision != "block" {
+		t.Fatalf("active cycle + source-checkout edit should block, got %+v", blocked)
+	}
+	// Editing an absolute path inside the sibling isolated worktree must pass.
+	wtTarget := "/Users/dev/proj.worktrees/feat-x/internal/x.go"
+	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: src, Tool: "Edit", Paths: []string{wtTarget}, EnforceWorktree: true,
+	})
+	if allowed.Decision == "block" {
+		t.Fatalf("edit targeting the isolated worktree should pass, got %+v", allowed)
+	}
+}
+
+func TestWorktreeGuardNoBlockWithoutActiveCycle(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	src := "/Users/dev/proj"
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: src, Tool: "Edit", Paths: []string{src + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("no active cycle should not block, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardNoBlockWhenCycleDone(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	src := "/Users/dev/proj"
+	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: src, Branch: "feat/x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsIssue(IssueOpsStateRoot(), rec.ID, "https://example.com/o/r/issues/1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), rec.ID, "plans/x.md"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(IssueOpsPhaseDone)); err != nil {
+		t.Fatal(err)
+	}
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: src, Tool: "Edit", Paths: []string{src + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("done cycle should release the source checkout, got %+v", res)
+	}
+}
+
+func TestHasActiveIssueOpsCycleMatchesRepoAndPhase(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	src := "/Users/dev/proj"
+	if HasActiveIssueOpsCycle(src) {
+		t.Fatalf("no cycle yet")
+	}
+	if _, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: src, Branch: "main"}); err != nil {
+		t.Fatal(err)
+	}
+	if !HasActiveIssueOpsCycle(src) {
+		t.Fatalf("active cycle should be detected")
+	}
+	if HasActiveIssueOpsCycle("/Users/dev/other") {
+		t.Fatalf("must not match a different repo")
+	}
+}
