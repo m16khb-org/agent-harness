@@ -733,9 +733,11 @@
           "title": "Host Operations"
         },
         {
-          "bytes": 2911,
+          "bytes": 4199,
           "headings": [
             "Install And Sync",
+            "Homebrew / single-binary install (no checkout, no token)",
+            "Developer / checkout install",
             "Install or refresh user-level Codex/Claude integration for this checkout.",
             "Also refresh opt-in upstream companion tools.",
             "Initialize project docs/profile for a target repository.",
@@ -3641,9 +3643,11 @@
                 "title": "Host Operations"
               },
               {
-                "bytes": 2911,
+                "bytes": 4199,
                 "headings": [
                   "Install And Sync",
+                  "Homebrew / single-binary install (no checkout, no token)",
+                  "Developer / checkout install",
                   "Install or refresh user-level Codex/Claude integration for this checkout.",
                   "Also refresh opt-in upstream companion tools.",
                   "Initialize project docs/profile for a target repository.",
