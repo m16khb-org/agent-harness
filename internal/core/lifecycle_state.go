@@ -990,6 +990,165 @@ func BuildNumberedNextActionsDecision(message string, enforce bool, source strin
 	return result
 }
 
+const defaultNextActionAutoProceedThreshold = 0.80
+
+// NextActionCandidate is a parsed numbered next-action option with auto-proceed signals.
+type NextActionCandidate struct {
+	Index       int     `json:"index"`
+	Text        string  `json:"text"`
+	Recommended bool    `json:"recommended"`
+	Destructive bool    `json:"destructive"`
+	Score       float64 `json:"score"`
+}
+
+// NextActionAutoProceedResult reports whether the recommended next action is
+// confident and safe enough to advance without stopping for user selection.
+type NextActionAutoProceedResult struct {
+	OK             bool                  `json:"ok"`
+	AutoProceed    bool                  `json:"auto_proceed"`
+	Threshold      float64               `json:"threshold"`
+	TopScore       float64               `json:"top_score"`
+	SelectedIndex  int                   `json:"selected_index,omitempty"`
+	SelectedText   string                `json:"selected_text,omitempty"`
+	Reason         string                `json:"reason"`
+	BlockedByGuard string                `json:"blocked_by_guard,omitempty"`
+	Candidates     []NextActionCandidate `json:"candidates"`
+}
+
+// EvaluateNextActionAutoProceed scores parsed next-action choices and decides
+// whether the recommended option can be executed automatically. Auto-proceed
+// requires an explicit recommendation marker, a forward/constructive verb, and
+// a reversible (non-destructive) action. Destructive or ambiguous choices never
+// auto-proceed, preserving user-decision safety at cleanup/interpretation gates.
+func EvaluateNextActionAutoProceed(message string, threshold float64) NextActionAutoProceedResult {
+	if threshold <= 0 {
+		threshold = defaultNextActionAutoProceedThreshold
+	}
+	result := NextActionAutoProceedResult{OK: true, Threshold: threshold, Candidates: []NextActionCandidate{}}
+	candidates := parseNextActionCandidates(message)
+	if len(candidates) < 2 {
+		result.Reason = "no numbered next-action choices to evaluate"
+		return result
+	}
+	result.Candidates = candidates
+
+	recommended := selectRecommendedNextAction(candidates)
+	if recommended == nil {
+		result.Reason = "no explicitly recommended next action; user decision required"
+		return result
+	}
+	result.SelectedIndex = recommended.Index
+	result.SelectedText = recommended.Text
+	result.TopScore = recommended.Score
+	if recommended.Destructive {
+		result.BlockedByGuard = "destructive_action"
+		result.Reason = "recommended action is destructive or irreversible; user decision required"
+		return result
+	}
+	if recommended.Score >= threshold {
+		result.AutoProceed = true
+		result.Reason = fmt.Sprintf("recommended action scored %.2f >= threshold %.2f and is reversible", recommended.Score, threshold)
+		return result
+	}
+	result.Reason = fmt.Sprintf("recommended action scored %.2f below threshold %.2f; user decision required", recommended.Score, threshold)
+	return result
+}
+
+func parseNextActionCandidates(message string) []NextActionCandidate {
+	lines := strings.Split(strings.ReplaceAll(message, "\r\n", "\n"), "\n")
+	candidates := []NextActionCandidate{}
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		for i := 1; i <= 9; i++ {
+			prefixDot := fmt.Sprintf("%d.", i)
+			prefixParen := fmt.Sprintf("%d)", i)
+			var rest string
+			switch {
+			case strings.HasPrefix(trimmed, prefixDot):
+				rest = strings.TrimSpace(strings.TrimPrefix(trimmed, prefixDot))
+			case strings.HasPrefix(trimmed, prefixParen):
+				rest = strings.TrimSpace(strings.TrimPrefix(trimmed, prefixParen))
+			default:
+				continue
+			}
+			if rest == "" {
+				continue
+			}
+			candidate := NextActionCandidate{
+				Index:       i,
+				Text:        rest,
+				Recommended: nextActionIsRecommended(rest),
+				Destructive: nextActionIsDestructive(rest),
+			}
+			candidate.Score = scoreNextActionCandidate(candidate)
+			candidates = append(candidates, candidate)
+			break
+		}
+	}
+	return candidates
+}
+
+func selectRecommendedNextAction(candidates []NextActionCandidate) *NextActionCandidate {
+	for i := range candidates {
+		if candidates[i].Recommended {
+			return &candidates[i]
+		}
+	}
+	return nil
+}
+
+func scoreNextActionCandidate(candidate NextActionCandidate) float64 {
+	if candidate.Destructive {
+		return 0
+	}
+	score := 0.0
+	if candidate.Recommended {
+		score += 0.55
+	}
+	if nextActionHasForwardVerb(candidate.Text) {
+		score += 0.30
+	}
+	// Reversible, non-destructive bonus.
+	score += 0.15
+	return clampScore(score)
+}
+
+var nextActionForwardVerbs = []string{
+	"진행", "계속", "구현", "추가", "작성", "검증", "실행", "수정", "반영", "적용",
+	"proceed", "continue", "implement", "add", "write", "verify", "run", "apply", "fix", "update",
+}
+
+var nextActionDestructiveNeedles = []string{
+	"삭제", "제거", "지우", "되돌리", "덮어", "초기화", "닫기", "강제",
+	"delete", "remove", "drop", "reset", "revert", "overwrite", "force", "discard", "purge", "close",
+	"rm ", "--force", "-f ", "reset --hard", "push --force", "force-push",
+}
+
+func nextActionIsRecommended(text string) bool {
+	lower := strings.ToLower(text)
+	return strings.Contains(text, "추천") || strings.Contains(lower, "(recommended)") || strings.Contains(lower, "recommended")
+}
+
+func nextActionIsDestructive(text string) bool {
+	lower := strings.ToLower(text)
+	for _, needle := range nextActionDestructiveNeedles {
+		if strings.Contains(lower, strings.ToLower(needle)) {
+			return true
+		}
+	}
+	return false
+}
+
+func nextActionHasForwardVerb(text string) bool {
+	lower := strings.ToLower(text)
+	for _, verb := range nextActionForwardVerbs {
+		if strings.Contains(lower, strings.ToLower(verb)) {
+			return true
+		}
+	}
+	return false
+}
+
 func hasNumberedNextActions(message string) bool {
 	lines := strings.Split(strings.ReplaceAll(message, "\r\n", "\n"), "\n")
 	seen := map[int]bool{}

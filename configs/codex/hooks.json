@@ -59,7 +59,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook stop --enforce-numbered-next-actions",
+            "command": "'./bin/agent-harness' hook stop --enforce-numbered-next-actions --auto-proceed-next-actions",
             "timeout": 5,
             "type": "command"
           }
