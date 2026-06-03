@@ -48,13 +48,13 @@ HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state migrate --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon status --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon start --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon stop --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-smoke --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify --seed=100 --target-score=95 --save-state --state-key self-verify-smoke --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify history --prefix self-verify --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify history --prefix self-verify --retention-limit 1 --prune-retention --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify compare --baseline-key self-verify-smoke --candidate-key self-verify-smoke --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify promote --from-key self-verify-smoke --baseline-key self-verify-baseline --json
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
 ./bin/agent-harness self-augment lesson --candidate reflexion-state-memory --lesson "test lesson" --next-action "test next action" --state-key self-augment-lesson-test --json

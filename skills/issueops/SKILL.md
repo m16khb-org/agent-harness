@@ -7,165 +7,55 @@ description: Run an issue-driven work cycle from problem discovery through domai
 
 Use this skill when the user wants a repeatable cycle from a vague problem to a GitHub/GitLab issue, implementation plan, tested change, feedback loop, and PR/MR.
 
-## Contract
+This file is the phase router. Load only the referenced phase document needed for the current step.
 
-The workflow is advisory and agent-driven. Hooks may suggest this skill, but hooks must not create issues, edit files, run tests, or open PRs/MRs by themselves.
+## Core Contract
 
-The cycle has one durable state record. Use `agent-harness issueops ... --json` or the matching MCP tools when the cycle needs to survive compaction, handoff, or another host.
+The workflow is advisory and agent-driven. Hooks may suggest this skill, but hooks must not create issues, edit files, run tests, wait on background jobs, or open PRs/MRs by themselves.
+
+The cycle has one durable state record. Use `agent-harness issueops ... --json` or matching MCP tools when the cycle needs to survive compaction, handoff, or another host.
 
 Required phases:
 
 1. Problem intake: use `superpowers:brainstorming` to clarify the actual problem, constraints, success criteria, and ambiguity.
-2. Domain grill: use `grill-with-docs` to challenge terminology, existing domain model fit, and documentation updates before committing to an issue.
-3. Issue contract: create or prepare a GitHub/GitLab issue that states the problem, acceptance criteria, non-goals, verification, and open decisions.
-4. Plan: use `superpowers:writing-plans` to produce an issue-based implementation plan under the target repo's planning convention.
-5. Implementation: use `superpowers:test-driven-development` for behavior changes and `superpowers:subagent-driven-development` when independent tasks can be split safely.
+2. Domain grill: challenge terminology, existing domain model fit, and documentation updates before committing to an issue.
+3. Issue contract: create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions.
+4. Plan: produce an issue-based implementation plan under the target repo's planning convention.
+5. Implementation: use TDD for behavior changes and subagents only for bounded independent work.
 6. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
-7. PR/MR: draft the PR/MR only after the issue URL and plan path are linked and the relevant verification has been run.
+7. PR/MR: draft only after the issue URL and plan path are linked and relevant verification has run.
 
-## Remote Issue First
+## Reference Map
 
-When the user explicitly invokes `$issueops` and the repo remote, credentials, target project, branch target, and issue ownership are discoverable, create the remote GitHub/GitLab issue before planning or implementation. Then immediately link it with `agent-harness issueops link-issue`.
+Load these files only when the phase applies:
 
-Assign the created remote issue to the currently authenticated user. For GitHub, resolve the login with `gh api user --jq .login` and pass it to `gh issue create --assignee "$login"` or apply it immediately with `gh issue edit "$ISSUE_URL" --add-assignee "$login"` before linking the issue. For GitLab, use the equivalent current-user assignee field supported by the target project's CLI/API.
+- `references/remote-issue.md`: remote issue first, related issue/label scoring, external LLM judge contract, Korean remote artifact gate, issue template.
+- `references/worktree-context.md`: branch/worktree contract, local config symlink rules, context routing.
+- `references/review-feedback.md`: worker prompt requirements, bounded subagent review rules, remote review feedback replies and thread resolution.
+- `references/cleanup-state.md`: post-merge cleanup, state commands, benchmark commands, stop conditions.
 
-Before creating or editing the remote issue, proactively score related issues and labels. Do not wait for the user to ask for this. Gather candidate issues and labels from the target provider, build an `issueops remote score` request, and apply only selected candidates whose score is at or above the threshold. The count is not fixed; the threshold decides the set.
+## Always-On Rules
 
-Provider candidate gathering:
+- Remote issue first: when `$issueops` is explicitly invoked and repo remote, credentials, target project, branch target, and issue ownership are discoverable, create or link the remote issue before planning or implementation.
+- Worktree first: after issue link and before implementation, create an isolated worktree under `../<repo>.worktrees/<branch-slug-with-slashes-replaced>` and run implementation from that path.
+- State first: link the issue and plan in IssueOps state before PR/MR drafting.
+- TDD first: for behavior changes, write or update focused tests before production changes.
+- Verify before remote writes: run the Korean Remote Artifact Gate before creating or editing remote issues, PRs, or MRs.
+- No broad review sweeps: subagent reviews must have explicit included paths, excluded large/generated paths, a time budget, and a fallback direct verification path.
+- Cleanup choices: after a PR/MR is merged, verify merge/worktree/branch status and present numbered cleanup choices before deleting local worktrees or branches.
+- Worker identity check: every implementation, TDD, review, QA, or subagent worker must first report and verify `pwd`, branch, `HEAD`, and the expected isolated worktree path before inspecting or changing anything.
+- Remote artifact ownership: created issues and PRs/MRs must be assigned to the currently authenticated user when the provider supports assignment, and assignment must be verified before reporting readiness.
+- Remote issue source of truth: when feedback changes scope, acceptance criteria, non-goals, verification, labels, related links, or implementation contract, update the remote issue body before continuing.
+- Review thread accountability: remote review feedback must be answered in the original review thread/discussion with verdict, evidence, and next action; do not report feedback cleared until addressed threads are replied to, resolved when appropriate, and re-checked.
+- External LLM wrapper: all IssueOps `agy -p` usage must go through the shared harness external LLM wrapper and remain read-only judgment.
 
-- GitHub: use `gh issue list --state all --limit N --json number,title,body,labels,url,state` and `gh label list --json name,description,color`.
-- GitLab: use the equivalent `glab issue list`/GitLab API issue fields and project label list.
-
-Always inspect the current issue list and label list before deciding whether to create a new issue, link an existing issue, or create/update labels. If an existing issue already matches the requested work, link or update that issue instead of creating a duplicate. If the scoring gate selects a label that does not exist on the provider, create the missing label before issue creation or issue edit (`gh label create` for GitHub, `glab label create` or the GitLab label API for GitLab), then apply it. Do not create labels that were not selected by the scoring gate.
-
-Run the scoring gate with the external LLM judge when available:
-
-```bash
-agent-harness issueops remote score --input issueops-remote-score.json --judge agy --json
-```
-
-Use the deterministic fallback only when the external LLM is unavailable or intentionally disabled:
-
-```bash
-agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
-```
-
-Default threshold is `0.70` unless the repo or user sets a stronger threshold. Include selected related issue references/URLs in the issue body, include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with `gh issue create --label`/`gh issue edit --add-label` or the GitLab equivalent. Do not apply rejected labels, create rejected labels, or link rejected issues.
-
-The agent must propose the operational choice instead of leaving the user to invent it. For example, after validating a need, offer: "관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 agy judge, 실패 시 deterministic fallback으로 진행합니다."
-
-Bad remote-issue response:
+Use this remote issue scoring choice shape before creating or editing an issue:
 
 ```text
-이슈를 만들겠습니다.
+관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 agy judge, 실패 시 deterministic fallback으로 진행합니다.
 ```
 
-This is incomplete because it does not say whether related issues/labels will be scored, which judge/fallback will be used, what threshold controls selection, or what numbered choice the user can confirm.
-
-Only prepare a local issue draft instead of creating a remote issue when one of those values is unclear, credentials are unavailable, or the user explicitly asks not to create a remote issue.
-
-If the agent realizes it implemented before creating or linking the issue, it must stop implementation, create or link the issue if possible, record corrective feedback in IssueOps state, and then resume from the issue-linked plan.
-
-## Branch And Worktree Contract
-
-After the issue is created or linked and before implementation, derive the working branch from the issue using a branch prefix convention. Use the target repo's convention when documented; otherwise choose the narrowest accurate prefix:
-
-- `feature/` for new capabilities or integrations.
-- `bugfix/` for ordinary defects.
-- `hotfix/` only for urgent production patches.
-- `release/` only for release preparation.
-- `chore/` for tooling, documentation, maintenance, or workflow-only changes.
-
-The branch slug must include the issue number when available and a short kebab-case issue title, for example `feature/3-webhook-delivery` or `chore/12-tighten-issueops-worktree-contract`.
-
-Create an isolated git worktree before implementation, TDD, subagent work, verification, commit, or PR/MR drafting:
-
-```bash
-branch_slug="feature/3-webhook-delivery"
-worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
-git worktree add -b "$branch_slug" "$worktree_path"
-```
-
-Keep IssueOps worktrees as siblings of the source checkout under the fixed pattern `../<repo>.worktrees/<branch-slug-with-slashes-replaced>`. Do not create ad hoc worktree paths inside the repo or under temporary directories unless the user explicitly asks for a different location.
-
-When the worktree needs large generated dependency directories such as `node_modules`, prefer reusing an existing dependency directory by symlink only after verifying the package manager, lockfile, platform, and dependency state match the source checkout. Example:
-
-```bash
-test -d "$PWD/node_modules"
-test -f "$PWD/package-lock.json" || test -f "$PWD/pnpm-lock.yaml" || test -f "$PWD/yarn.lock"
-ln -s "$PWD/node_modules" "$worktree_path/node_modules"
-```
-
-Do not symlink dependency directories when the worktree uses a different lockfile, package manager, Node version, platform-specific native modules, or when installing fresh dependencies would be safer. Never commit generated dependency symlinks or dependency directories; keep them ignored or remove them before PR/MR cleanup.
-
-Local config files may also be symlinked into the worktree when the task needs them and the source checkout already has the correct local-only configuration. Common candidates include `.env`, `.env.local`, `.mcp.json`, `dbhub.toml`, and other documented untracked local config files. Verify each candidate exists, is intended for local development, and is ignored or otherwise excluded from commits before linking it:
-
-```bash
-for config in .env .env.local .mcp.json dbhub.toml; do
-  if [[ -e "$PWD/$config" ]]; then
-    git check-ignore -q "$config" || printf 'review before linking tracked or unignored config: %s\n' "$config" >&2
-    ln -s "$PWD/$config" "$worktree_path/$config"
-  fi
-done
-```
-
-Do not symlink secret-bearing config into a worktree for review, PR/MR drafting, or artifact generation unless the command actually needs it. Never print config contents in prompts, logs, issue bodies, PR/MR bodies, or test output. If a config file is tracked, unignored, environment-specific in a way that changes behavior, or contains credentials that are not needed for the task, stop and ask before linking it.
-
-Run implementation from the worktree path, not from the source checkout. Record the expected branch and worktree path in the issue-based plan and in any worker prompt. If the source checkout already contains implementation edits from before this gate, stop and ask how to move or reconcile those edits into the issue branch worktree.
-
-## Context Routing
-
-Use CodeGraph as the default context layer for structural work, with `rg` as the fallback and exact-search tool.
-
-- Start with CodeGraph for functions, classes, call relationships, dependency paths, impact analysis, module boundaries, and route/controller/service relationships.
-- Start with `rg` for exact strings: error messages, env keys, config values, filenames, TODOs, comments, logs, and literal function names.
-- For natural-language feature location, use CodeGraph first, then run at least one targeted `rg` check before editing or claiming there are no usages.
-- After edits, use `rg` plus the relevant tests to catch missed references or regressions.
-- Treat CodeGraph as advisory when its index may be stale or when the target uses dynamic wiring such as runtime DI, reflection, dynamic imports, or framework provider registration. Refresh or verify the index before relying on it.
-- Keep graph results small and targeted; oversized call/dependency graphs waste more context than direct text search.
-
-## Worker And Review Gates
-
-Every implementation, TDD, review, QA, or subagent worker prompt must require the worker to begin by reporting and verifying:
-
-- `pwd`
-- `git branch --show-current`
-- `git rev-parse --short HEAD`
-- the expected isolated worktree path
-
-If any value does not match the IssueOps branch/worktree contract, the worker must stop and report the mismatch instead of reviewing or editing.
-
-For short or narrow reviews, prefer `verifier` or a direct bounded review over `code-reviewer`. When `code-reviewer` is necessary, the prompt must set a clear time budget, forbid nested subagent fan-out, and require the reviewer to verify `pwd`, branch, `HEAD`, and worktree path before inspecting the diff.
-
-## Remote Review Feedback
-
-When creating or editing a PR/MR, assign it to the currently authenticated user before reporting that the PR/MR is ready. For GitHub, resolve the login with `gh api user --jq .login` and run `gh pr edit "$PR_URL" --add-assignee "$login"` immediately after `gh pr create`, then verify with `gh pr view "$PR_URL" --json assignees`. For GitLab, use the equivalent current-user assignee field supported by the target project's CLI/API and verify the resulting assignee list.
-
-When handling remote PR/MR review feedback, first verify each reviewer claim against the diff, code, and commands before changing files. Apply only confirmed fixes, then reply in the original review thread with the commit and verification evidence.
-
-The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Run the Korean Remote Artifact Gate before every remote issue body edit.
-
-When the user asks only for review-validity verification, verify each remote review claim against the diff, code, and commands, then reply in the original review thread with the verdict before reporting back to the user. Each thread reply must say whether the review is `타당` or `타당하지 않음`, cite the concrete evidence, and state the next action. Do not leave a bare local conclusion such as "the next step is to add tests and fix it."
-
-If the verdict is `타당` and the user chooses or instructs the recommended proceed option, continue the loop instead of stopping at validation: add focused tests when the change is behavioral, apply the confirmed fix, run the relevant verification, commit, push the PR/MR branch, and reply again in the original review thread with the commit and verification evidence. If the user has not chosen a proceed option yet, present numbered choices and wait.
-
-For GitHub inline review comments, reply to the original review comment:
-
-```bash
-gh api "repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments"
-gh api "repos/$OWNER/$REPO/pulls/comments/$COMMENT_ID/replies" -f body="$BODY"
-```
-
-For GitLab merge request discussions, reply to the original discussion thread:
-
-```bash
-glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"
-glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID/notes" -f body="$BODY"
-```
-
-The reply must be in the review thread/discussion, not only in the PR/MR summary, issue body, local notes, or final chat response.
-
-Use this thread reply shape:
+Use this review thread reply shape:
 
 ```text
 타당성: 타당
@@ -177,91 +67,16 @@ Use this thread reply shape:
 다음 조치: <수정 진행|별도 PR 분리|보류 사유>
 ```
 
-When reporting back to the user after posting thread replies, include the evidence-based verdict and explicitly present the available next actions as numbered choices so the user can choose or confirm direction. Use `1.`, `2.`, `3.` choices, not an unstructured paragraph. Include one recommended action, one narrower/safer alternative, and one stop/defer option when applicable. Example:
+After posting review-thread replies, report numbered next actions:
 
 ```text
-검증 결론: 두 리뷰 모두 타당합니다.
-스레드 답변: 각 리뷰 스레드에 타당성, 근거, 다음 조치를 답글로 남겼습니다.
-
 선택지:
-1. 진행: 테스트를 먼저 추가하고 두 결함을 수정합니다. (추천)
-2. 축소 진행: target dimension 검증만 먼저 수정하고 path separator는 별도 PR로 분리합니다.
+1. 진행: 테스트를 먼저 추가하고 결함을 수정합니다. (추천)
+2. 축소 진행: 일부 검증만 먼저 수정하고 나머지는 별도 PR로 분리합니다.
 3. 보류: 현재 PR에는 수정하지 않고 리뷰 스레드에 검증 결과만 답변합니다.
-
-제가 추천하는 건 1번입니다. 진행할까요?
 ```
 
-Bad review-validity response:
-
-```text
-검증 결론: 두 리뷰 모두 실제 결함 또는 계약 누락으로 보는 게 맞고, 다음 단계는 테스트 추가 후 수정하는 것입니다.
-```
-
-This is incomplete because it does not say whether the verdict was posted in the original review threads, does not give numbered choices, and silently decides the next step instead of letting the user confirm direction.
-
-Bad review-thread handling:
-
-```text
-PR 댓글에 타당성 검증 결과를 남겼습니다. Inline thread는 top-level review라 resolve할 수 없습니다.
-```
-
-This is incomplete when GitHub `pulls/comments` or GitLab MR discussions contain review comments. Do not infer from `gh pr view --json latestReviews` alone that there is no resolvable thread. Query provider review comments/discussions first, reply to the original comment/discussion, and resolve the addressed thread after the verified fix is pushed.
-
-Provider-specific thread discovery is mandatory before claiming there is no thread to reply to:
-
-- GitHub: query both `gh pr view --json reviews,latestReviews` and `gh api "repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments"`. Use the REST comment `id` for replies and GraphQL `reviewThreads` for resolution.
-- GitLab: query both MR notes/reviews if needed and `glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"`. Use the discussion `id` for replies and resolution.
-
-Replying to a review thread is not the same as resolving it. After a valid review is fixed, verified, committed, pushed, and answered with evidence, resolve the addressed conversation/discussion on the provider before reporting that review feedback is cleared.
-
-For GitHub inline review comments, query review threads and resolve the fixed ones after the correction is pushed:
-
-```bash
-gh api graphql -f owner="$OWNER" -f repo="$REPO" -F number="$PR_NUMBER" -f query='query($owner:String!, $repo:String!, $number:Int!) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { id isResolved isOutdated path } } } } }'
-gh api graphql -f threadId="$THREAD_ID" -f query='mutation($threadId:ID!) { resolveReviewThread(input:{threadId:$threadId}) { thread { id isResolved } } }'
-```
-
-For GitLab merge request discussions, list discussions, resolve only the addressed discussion, and re-check the discussion state:
-
-```bash
-glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions"
-glab api --method PUT "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID" -f resolved=true
-glab api "projects/$PROJECT_ID/merge_requests/$MR_IID/discussions/$DISCUSSION_ID"
-```
-
-Resolve only threads/discussions whose feedback has actually been addressed or is obsolete for a verified reason. After resolving, re-check GitHub `reviewThreads` or GitLab MR discussions and PR/MR readiness; do not claim merge blockage is cleared until unresolved required conversations are gone and the host reports a clean merge state.
-
-## Post-Merge Cleanup
-
-After a PR/MR is merged, do not stop at reporting the merge. Verify merge status, remote branch status, and worktree cleanliness, then explicitly offer numbered cleanup choices to the user.
-
-When merging an IssueOps PR/MR from an isolated feature worktree, keep provider merge and branch/worktree cleanup as separate phases. Do not use merge commands that also try to delete local branches from the feature worktree. For GitHub, avoid:
-
-```bash
-gh pr merge "$PR_NUMBER" --merge --delete-branch
-```
-
-This can successfully merge the PR but fail during local cleanup when the base branch, such as `main`, is already checked out in another linked worktree. Instead, merge first without local cleanup:
-
-```bash
-gh pr merge "$PR_NUMBER" --merge
-```
-
-Then run the post-merge verification and cleanup flow below. For GitLab, apply the same rule: do not rely on a merge flag that also performs local branch/worktree cleanup unless the installed `glab`/API behavior is verified to be remote-only. Prefer merge first, then remote source branch deletion and local worktree cleanup as explicit separate steps.
-
-For GitHub:
-
-```bash
-gh pr view "$PR_NUMBER" --json state,mergedAt,headRefName,url
-git -C "$WORKTREE_PATH" status --short --branch
-remote_name="$(git -C "$WORKTREE_PATH" remote | head -n 1)"
-git -C "$WORKTREE_PATH" fetch "$remote_name" --prune
-git -C "$WORKTREE_PATH" ls-remote --heads "$remote_name" "$HEAD_REF_NAME"
-```
-
-For GitLab, use the equivalent `glab mr view` or GitLab API fields for merged state and source branch, then run the same local worktree and remote branch checks.
-
-Present cleanup choices in `1.`, `2.`, `3.` form:
+Use this cleanup choice shape:
 
 ```text
 선택지:
@@ -270,51 +85,29 @@ Present cleanup choices in `1.`, `2.`, `3.` form:
 3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.
 ```
 
-Bad post-merge response:
+## Background LLM Gates
 
-```text
-PR #14 머지 완료했습니다.
-```
+Remote scoring is a `background_join` LLM gate. It may run while local planning or implementation continues, but the main IssueOps loop must join the result before any remote artifact write: issue create/edit, label create/apply, PR/MR create/edit, assignment, or comment.
 
-This is incomplete because it does not mention the remaining worktree/local branch, does not verify cleanup preconditions, and does not give the user numbered cleanup choices.
+Do not put polling or waiting in lifecycle hooks. Hooks may surface a status hint only. Completion is decided by the main loop at the join point by checking the stored job/result status and requiring success before the remote write.
 
-Only run cleanup after the user chooses the proceed option or has explicitly instructed automatic cleanup. Before deleting, verify the target worktree is clean and the PR/MR is merged. Use:
+External LLM judges are read-only evaluators. Their prompts must forbid workspace inspection, tool execution, file changes, git actions, issue/label/PR/MR mutation, comments, assignment, closing/reopening, or state changes. They may only return judgment JSON that the main loop applies after validation.
 
-```bash
-git push "$remote_name" --delete "$HEAD_REF_NAME"  # only when the remote source branch still exists and should be removed
-git worktree remove "$WORKTREE_PATH"
-git branch -d "$BRANCH_NAME"
-```
+## Operational Start
 
-Do not use an unconditional fallback such as `git branch -d "$BRANCH_NAME" || git branch -D "$BRANCH_NAME"`. `git branch -d` may fail after squash or rebase merge because the local branch tip is not reachable from the updated base branch, but `git branch -D` can also delete genuinely unmerged local work. If `git branch -d` fails after the PR/MR is verified merged and the worktree is clean, report the reason and offer numbered choices:
-
-```text
-선택지:
-1. 강제 로컬 브랜치 삭제: PR/MR merge가 확인됐고 worktree가 clean이므로 `git branch -D`로 로컬 브랜치만 삭제합니다. (추천: squash/rebase merge로 `-d`만 실패한 경우)
-2. 보류: local branch를 유지하고 cleanup은 나중에 진행합니다.
-3. 추가 확인: branch commits, upstream/base ancestry, remote source branch 상태를 더 확인한 뒤 결정합니다.
-```
-
-If the worktree is dirty, the PR/MR is not merged, the remote source branch still exists unexpectedly, or the branch contains unmerged commits that are not explained by a verified squash/rebase merge, do not force-remove. Report the blocker and offer numbered choices.
-
-## State Commands
-
-Start:
+Start or resume state:
 
 ```bash
 agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
+agent-harness issueops status --id "$ISSUEOPS_ID" --json
 ```
 
-Link the issue:
+Remote issue and plan linkage:
 
 ```bash
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
-```
-
-Link the plan:
-
-```bash
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
+agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
 ```
 
 Record feedback:
@@ -323,80 +116,9 @@ Record feedback:
 agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
 ```
 
-Check PR/MR readiness:
-
-```bash
-agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
-```
-
-Run the 100-point quality benchmark:
-
-```bash
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge agy --json
-```
-
-The benchmark passes only when every fixture has `average_score: 100`, `minimum_score: 100`, and `critical_failure_count: 0`. Use `--judge agy` for the real LLM gate when Antigravity quota is available; use `--judge none` only for deterministic local evidence.
-
-Run the autoresearch keep/discard gate for IssueOps improvement candidates:
-
-```bash
-agent-harness issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CANDIDATE_ID" --candidate-file candidate.json --changed-path skills/issueops/SKILL.md --json
-```
-
-The candidate file records the hypothesis, target dimensions, edit surface, and keep/discard criteria. The gate keeps a candidate only when the candidate benchmark passes, baseline comparison has no regression, target dimensions do not regress, and every changed path is inside the declared edit surface.
-
-Run the remote issue related-link and label scoring gate:
-
-```bash
-agent-harness issueops remote score --input issueops-remote-score.json --judge agy --json
-agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
-```
-
-All `agy -p` usage must go through the shared external LLM wrapper in the harness core. The wrapper invokes `agy --dangerously-skip-permissions -p <prompt>` so IssueOps gates do not block on permission prompts.
-
-## Issue Template
-
-Use this structure unless the target project already has a stronger issue template:
-
-```markdown
-## Problem
-
-## Current Evidence
-
-## Acceptance Criteria
-
-## Non-goals
-
-
-## Verification
-
-## Feedback Log
-```
-
-## Korean Remote Artifact Gate
-
-IssueOps가 원격에 생성하거나 수정하는 issue와 PR/MR 제목·본문은 한글 중심이어야 한다. 명령어, 코드 식별자, 파일 경로, URL, upstream/project 이름은 영어 원문을 유지할 수 있다.
-
-IssueOps cycle에서 `gh issue create`, `gh issue edit`, `gh pr create`, `gh pr edit` 또는 GitLab equivalent를 실행하기 전에는 매번 다음 gate를 통과해야 한다.
-
-1. 제목과 본문을 임시 파일 또는 heredoc으로 준비한다.
-2. bundled language gate를 실행한다.
-
-```bash
-python3 skills/issueops/scripts/remote_artifact_gate.py --kind issue --title "$TITLE" --body-file "$BODY_FILE"
-python3 skills/issueops/scripts/remote_artifact_gate.py --kind pr --title "$TITLE" --body-file "$BODY_FILE"
-```
-
-3. gate가 실패하면 원격 artifact를 생성하거나 수정하지 말고 한글 중심으로 다시 작성한다.
-
-이 gate는 issue/PR/MR에 영어 section label, command output, code identifier, URL, 외부 project 이름이 포함되어도 반드시 실행한다.
-
-원격 issue 본문에는 repo-local plan path를 넣지 않는다. plan 파일은 ignored/untracked일 수 있으므로 `agent-harness issueops link-plan` state와 PR/MR 본문에서 필요한 경우에만 추적한다.
-
 ## Stop Conditions
 
-Stop and ask the user before creating or updating remote issues, PRs, or MRs if credentials, target project, branch target, or issue ownership are unclear.
+Stop and ask before creating or updating remote issues, PRs, or MRs if credentials, target project, branch target, or issue ownership are unclear.
 
 Stop before implementation if brainstorming or grilling exposes materially different interpretations. Present the interpretations and ask for the intended one.
 

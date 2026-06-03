@@ -323,7 +323,7 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 			"QA gate including docs, skills, native integration, and MCP/state smoke",
 			"go test ./... -count=1",
 			"go test -race ./... -count=1 when touched Go behavior is concurrency or policy sensitive",
-			"./bin/agent-harness self-verify --iterations=10 --target-score=95 --json",
+			"./bin/agent-harness self-verify --target-score=95 --json",
 		},
 		Warnings:    warnings,
 		RepoSignals: signals,
@@ -604,7 +604,7 @@ func selfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			Impact: 99, Feasibility: 98, Novelty: 93, Risk: 8,
 			WhyNow:       []string{"현재 self-augment가 실제로는 검증 루프 역할을 한다", "사용자가 테스트와 QA 포함 및 95점 게이트를 요구했다"},
 			ExpectedGain: []string{"루프 이름/책임 혼동 제거", "검증 없는 종료 방지", "CLI/MCP/native skill 계약 일치"},
-			VerifyWith:   []string{"go test ./...", "MCP/CLI golden", "harness self-verify --iterations=10 --target-score=95"},
+			VerifyWith:   []string{"go test ./...", "MCP/CLI golden", "harness self-verify --full --iterations=10 --target-score=95"},
 		},
 		{
 			ID: "agent-skill-executor", Title: "Provide the self-augmentation loop as a native skill executor that creates real improvement diffs", Category: "feature",

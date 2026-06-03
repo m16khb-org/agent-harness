@@ -44,6 +44,9 @@ func TestScoreIssueOpsRemoteCandidatesSelectsThresholdMatches(t *testing.T) {
 	if !containsFold(strings.Join(result.ApplyInstructions, "\n"), "gh issue") {
 		t.Fatalf("expected GitHub apply instruction: %+v", result.ApplyInstructions)
 	}
+	if result.ExecutionClass != "background_join" || !result.ReadOnly {
+		t.Fatalf("expected background join read-only classification: %+v", result)
+	}
 }
 
 func TestScoreIssueOpsRemoteCandidatesSupportsGitLabInstructions(t *testing.T) {
@@ -126,6 +129,32 @@ func TestRunIssueOpsRemoteAgyJudgeUsesStrictJSONWrapper(t *testing.T) {
 	}
 	if len(result.SelectedRelatedIssues) != 1 || len(result.SelectedLabels) != 1 {
 		t.Fatalf("expected strict JSON result from fake agy: %+v", result)
+	}
+	if result.ExecutionClass != "background_join" || !result.ReadOnly {
+		t.Fatalf("expected agy result to be normalized with background read-only classification: %+v", result)
+	}
+}
+
+func TestIssueOpsRemoteAgyJudgePromptRequiresReadOnlyBackgroundJoin(t *testing.T) {
+	prompt, err := buildIssueOpsRemoteAgyJudgePrompt(IssueOpsRemoteScoringRequest{
+		Provider: "github",
+		Issue:    IssueOpsRemoteArtifact{Title: "IssueOps remote scoring prompt hardening"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	required := []string{
+		"read-only evaluator",
+		"background_join",
+		"main work may continue",
+		"join before creating or editing remote issues, labels, pull requests, or merge requests",
+		"Do not create, edit, delete, label, assign, comment on, close, reopen, stage, commit, push",
+		"Do not inspect the workspace, run tools, or read files",
+	}
+	for _, want := range required {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("prompt should contain %q:\n%s", want, prompt)
+		}
 	}
 }
 
