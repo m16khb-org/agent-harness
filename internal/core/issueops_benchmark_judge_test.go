@@ -20,6 +20,19 @@ func TestIssueOpsAgyJudgeParsesStrictJSON(t *testing.T) {
 	}
 }
 
+func TestIssueOpsAgyJudgeParsesFencedJSON(t *testing.T) {
+	fake := writeFakeIssueOpsAgy(t, "```json\n"+`{"ok":true,"fixture_id":"fixture","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"matches request"}],"deterministic_failures":[],"judge_failures":[],"critical_failures":[],"passed":true}`+"\n```")
+	result, err := RunIssueOpsAgyJudge(IssueOpsAgyJudgeRequest{
+		RepoRoot:   t.TempDir(),
+		AgyCommand: fake,
+		Fixture:    IssueOpsBenchmarkFixture{ID: "fixture"},
+		Artifact:   IssueOpsBenchmarkArtifact{ProblemSummary: "summary"},
+	})
+	if err != nil || !result.OK || len(result.DimensionScores) != 1 {
+		t.Fatalf("expected fenced JSON judge result err=%v result=%+v", err, result)
+	}
+}
+
 func TestIssueOpsAgyJudgeRejectsNoisyOutput(t *testing.T) {
 	fake := writeFakeIssueOpsAgy(t, `I will judge now. {"ok":true}`)
 	_, err := RunIssueOpsAgyJudge(IssueOpsAgyJudgeRequest{
@@ -122,6 +135,19 @@ func TestIssueOpsAgyJudgeRejectsDimensionScoreObjectWithOutputEvidence(t *testin
 	}
 }
 
+func TestIssueOpsAgyJudgeRejectsFencedUnknownField(t *testing.T) {
+	fake := writeFakeIssueOpsAgy(t, "```json\n"+`{"ok":true,"fixture_id":"fixture","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"matches request"}],"deterministic_failures":[],"judge_failures":[],"critical_failures":[],"passed":true,"unexpected":true}`+"\n```")
+	_, err := RunIssueOpsAgyJudge(IssueOpsAgyJudgeRequest{
+		RepoRoot:   t.TempDir(),
+		AgyCommand: fake,
+		Fixture:    IssueOpsBenchmarkFixture{ID: "fixture"},
+		Attempts:   1,
+	})
+	if err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("expected unknown field error, got %v", err)
+	}
+}
+
 func TestIssueOpsAgyJudgePromptRequiresDimensionScoresArray(t *testing.T) {
 	prompt, err := buildIssueOpsAgyJudgePrompt(
 		IssueOpsBenchmarkFixture{ID: "fixture", Title: "Fixture", UserPrompt: "prompt", RepoContext: "context", CriticalFailures: []string{"failure"}},
@@ -135,6 +161,13 @@ func TestIssueOpsAgyJudgePromptRequiresDimensionScoresArray(t *testing.T) {
 		"Never encode dimension_scores as an object",
 		`"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"short evidence"}]`,
 		"Every rubric dimension appears exactly once in dimension_scores as an array item",
+		"```json",
+		"Response Schema",
+		"Field Types",
+		"Return exactly this JSON object shape",
+		"ok: boolean",
+		"dimension_scores: array of objects",
+		"dimension_scores[].score: number",
 	} {
 		if !strings.Contains(prompt, want) {
 			t.Fatalf("prompt missing %q:\n%s", want, prompt)
