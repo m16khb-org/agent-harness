@@ -215,7 +215,7 @@
           "name": "version"
         }
       ],
-      "hash": "2e2dff2320264d417036c8232c2b82d14d8e4f84c24f46ddbae76c66dcde09cf",
+      "hash": "99463cb471583945393e20351c6cadc44b2ac5ed82211b7bf707c0fe12e5b3e4",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -234,6 +234,8 @@
         "issueops_link_issue",
         "issueops_link_plan",
         "issueops_pr_readiness",
+        "issueops_remote_score",
+        "issueops_set_phase",
         "issueops_start",
         "issueops_status",
         "lint_diagnose",
@@ -488,7 +490,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 18730,
+          "bytes": 19079,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -3113,7 +3115,7 @@
                 "name": "version"
               }
             ],
-            "hash": "2e2dff2320264d417036c8232c2b82d14d8e4f84c24f46ddbae76c66dcde09cf",
+            "hash": "99463cb471583945393e20351c6cadc44b2ac5ed82211b7bf707c0fe12e5b3e4",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3132,6 +3134,8 @@
               "issueops_link_issue",
               "issueops_link_plan",
               "issueops_pr_readiness",
+              "issueops_remote_score",
+              "issueops_set_phase",
               "issueops_start",
               "issueops_status",
               "lint_diagnose",
@@ -3393,7 +3397,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 18730,
+                "bytes": 19079,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",

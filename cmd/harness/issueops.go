@@ -54,6 +54,16 @@ func runIssueOps(args []string) error {
 		}
 		record, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), *id, *planPath)
 		return printIssueOpsResult(record, *jsonOut, err)
+	case "phase":
+		fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		to := fs.String("to", "", "target phase: problem, grill, plan, implement, feedback, pr, done")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		record, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), *id, *to)
+		return printIssueOpsResult(record, *jsonOut, err)
 	case "feedback":
 		return runIssueOpsFeedback(args[1:])
 	case "benchmark":
@@ -543,11 +553,12 @@ func runIssueOpsFeedback(args []string) error {
 	id := fs.String("id", "", "issueops id")
 	source := fs.String("source", "", "feedback source")
 	body := fs.String("body", "", "feedback body")
+	classification := fs.String("classification", "", "optional feedback classification, such as contract_change, defect, question, or noise")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
-	record, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), *id, *source, *body)
+	record, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), *id, *source, *body, *classification)
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 

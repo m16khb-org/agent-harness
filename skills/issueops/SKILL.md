@@ -114,11 +114,20 @@ agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
 ```
 
-Record feedback:
+Advance the lifecycle phase (problem, grill, plan, implement, feedback, pr, done). The `pr` phase requires a linked issue and plan:
 
 ```bash
-agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
+agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill --json
+agent-harness issueops phase --id "$ISSUEOPS_ID" --to pr --json
 ```
+
+Record feedback, optionally classifying each item (contract_change, defect, question, noise) so contract-changing feedback is distinguishable:
+
+```bash
+agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source review --body "$FEEDBACK" --classification contract_change --json
+```
+
+Remote scoring runs deterministically and is also available as the MCP tool `issueops_remote_score` for cross-host (Codex/Claude) use; the agy judge path stays CLI/`remote score --judge agy`. Benchmark commands (`benchmark run|compare|gate`) are CLI-only developer/autoresearch tooling, not a runtime MCP gate.
 
 ## Stop Conditions
 
