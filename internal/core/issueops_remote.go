@@ -222,6 +222,15 @@ func decodeStrictIssueOpsRemoteScoringResult(out []byte) (IssueOpsRemoteScoringR
 	if !result.OK {
 		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring output not ok")
 	}
+	if result.ExecutionClass != "background_join" {
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring execution_class must be background_join")
+	}
+	if !result.ReadOnly {
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring read_only must be true")
+	}
+	if result.JoinBefore != "remote_artifact_write" {
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring join_before must be remote_artifact_write")
+	}
 	return result, nil
 }
 

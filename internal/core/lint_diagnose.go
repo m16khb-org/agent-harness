@@ -120,7 +120,12 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 		return result, nil
 	}
 
-	result.Diagnosis = strings.TrimSpace(response.Diagnosis)
+	diagnosis := strings.TrimSpace(response.Diagnosis)
+	if diagnosis == "" {
+		result.Diagnosis = fmt.Sprintf("[Error parsing agy JSON: missing diagnosis]\nOriginal Output:\n%s", outputStr)
+		return result, nil
+	}
+	result.Diagnosis = diagnosis
 	return result, nil
 }
 

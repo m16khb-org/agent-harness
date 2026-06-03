@@ -91,7 +91,7 @@ if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
   exit 2
 fi
 cat <<'EOF'
-{"ok":true,"provider":"gitlab","threshold":0.7,"selected_related_issues":[{"id":"#11","score":0.91,"threshold":0.7,"selected":true,"evidence":["same IssueOps workflow"],"apply_hint":"link in issue body: #11"}],"rejected_related_issues":[],"selected_labels":[{"name":"enhancement","score":0.94,"threshold":0.7,"selected":true,"evidence":["feature request"],"apply_hint":"apply GitLab label: enhancement"}],"rejected_labels":[],"apply_instructions":["apply selected labels with the GitLab issue labels field or glab issue create --label: enhancement"],"warnings":[]}
+{"ok":true,"provider":"gitlab","threshold":0.7,"execution_class":"background_join","read_only":true,"join_before":"remote_artifact_write","selected_related_issues":[{"id":"#11","score":0.91,"threshold":0.7,"selected":true,"evidence":["same IssueOps workflow"],"apply_hint":"link in issue body: #11"}],"rejected_related_issues":[],"selected_labels":[{"name":"enhancement","score":0.94,"threshold":0.7,"selected":true,"evidence":["feature request"],"apply_hint":"apply GitLab label: enhancement"}],"rejected_labels":[],"apply_instructions":["apply selected labels with the GitLab issue labels field or glab issue create --label: enhancement"],"warnings":[]}
 EOF
 `), 0o755); err != nil {
 		t.Fatal(err)
