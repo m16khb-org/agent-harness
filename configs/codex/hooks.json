@@ -37,7 +37,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook pre-tool-use",
+            "command": "'./bin/agent-harness' hook pre-tool-use --enforce-worktree",
             "timeout": 5,
             "type": "command"
           }
@@ -59,7 +59,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook stop",
+            "command": "'./bin/agent-harness' hook stop --enforce-numbered-next-actions",
             "timeout": 5,
             "type": "command"
           }

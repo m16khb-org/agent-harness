@@ -366,6 +366,9 @@ type HookToolUseLifecycleRequest struct {
 	Command              string   `json:"command,omitempty"`
 	Source               string   `json:"source,omitempty"`
 	EnforceSearchRouting bool     `json:"enforce_search_routing,omitempty"`
+	EnforceWorktree      bool     `json:"enforce_worktree,omitempty"`
+	ExpectedWorktree     string   `json:"expected_worktree,omitempty"`
+	SourceCheckout       string   `json:"source_checkout,omitempty"`
 }
 
 type HookToolUseLifecycleResult struct {
@@ -390,6 +393,13 @@ type LifecycleStopReminderResult struct {
 	ShouldInject      bool   `json:"should_inject"`
 	AdditionalContext string `json:"additional_context,omitempty"`
 	PendingCount      int    `json:"pending_count"`
+}
+
+type NumberedNextActionsDecisionResult struct {
+	OK       bool   `json:"ok"`
+	Decision string `json:"decision"`
+	Reason   string `json:"reason,omitempty"`
+	Source   string `json:"source"`
 }
 
 type LifecycleCompactCapsule struct {
@@ -431,7 +441,87 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 			result.Reason = reason
 		}
 	}
+	if result.Decision != "block" && req.EnforceWorktree {
+		if reason := worktreeGuardBlockReason(req); reason != "" {
+			result.Decision = "block"
+			result.Reason = reason
+		}
+	}
 	return result
+}
+
+func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
+	expected := cleanAbsPath(req.ExpectedWorktree)
+	if expected == "" {
+		return ""
+	}
+	if !toolUseMayMutateLifecycleFiles(req.Tool, req.Command) {
+		return ""
+	}
+	targets := []string{}
+	if repo := cleanAbsPath(req.Repo); repo != "" {
+		targets = append(targets, repo)
+	}
+	for _, path := range req.Paths {
+		if target := resolveHookTargetPath(req.Repo, path); target != "" {
+			targets = append(targets, target)
+		}
+	}
+	if len(targets) == 0 {
+		return ""
+	}
+	for _, target := range targets {
+		if !pathWithin(target, expected) {
+			return "mutating tool target is outside expected IssueOps worktree; set cwd/target path to the isolated worktree before editing"
+		}
+	}
+	return ""
+}
+
+func resolveHookTargetPath(repo, path string) string {
+	p := strings.TrimSpace(path)
+	if p == "" {
+		return ""
+	}
+	if filepath.IsAbs(p) {
+		return cleanAbsPath(p)
+	}
+	base := cleanAbsPath(repo)
+	if base == "" {
+		return ""
+	}
+	return cleanAbsPath(filepath.Join(base, p))
+}
+
+func cleanAbsPath(path string) string {
+	p := strings.TrimSpace(path)
+	if p == "" {
+		return ""
+	}
+	if !filepath.IsAbs(p) {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return filepath.Clean(p)
+		}
+		p = abs
+	}
+	return filepath.Clean(p)
+}
+
+func pathWithin(path, root string) bool {
+	p := cleanAbsPath(path)
+	r := cleanAbsPath(root)
+	if p == "" || r == "" {
+		return false
+	}
+	if p == r {
+		return true
+	}
+	rel, err := filepath.Rel(r, p)
+	if err != nil {
+		return false
+	}
+	return rel != "." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && rel != ".."
 }
 
 func searchRoutingBlockReason(tool string, command string, repo string) string {
@@ -763,6 +853,47 @@ func BuildLifecycleStopReminder(repo string) LifecycleStopReminderResult {
 	}
 	b.WriteString("Use project_docs_record for ADR/caution entries or project_docs_read/project_docs_update for evidence-preserving doc refreshes.")
 	return LifecycleStopReminderResult{OK: true, ShouldInject: true, AdditionalContext: strings.TrimSpace(b.String()), PendingCount: len(events)}
+}
+
+func BuildNumberedNextActionsDecision(message string, enforce bool, source string) NumberedNextActionsDecisionResult {
+	result := NumberedNextActionsDecisionResult{
+		OK:       true,
+		Decision: "allow",
+		Source:   strings.TrimSpace(source),
+	}
+	if !enforce {
+		return result
+	}
+	message = strings.TrimSpace(message)
+	if message == "" {
+		result.Decision = "allow"
+		result.Reason = "no assistant message available to inspect"
+		return result
+	}
+	if hasNumberedNextActions(message) {
+		return result
+	}
+	result.Decision = "block"
+	result.Reason = "IssueOps response must end with numbered next actions: 1. proceed/recommended, 2. narrower alternative, 3. pause/defer"
+	return result
+}
+
+func hasNumberedNextActions(message string) bool {
+	lines := strings.Split(strings.ReplaceAll(message, "\r\n", "\n"), "\n")
+	seen := map[int]bool{}
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if len(trimmed) < 2 {
+			continue
+		}
+		for i := 1; i <= 3; i++ {
+			prefix := fmt.Sprintf("%d.", i)
+			if strings.HasPrefix(trimmed, prefix) || strings.HasPrefix(trimmed, fmt.Sprintf("%d)", i)) {
+				seen[i] = true
+			}
+		}
+	}
+	return seen[1] && seen[2] && seen[3]
 }
 
 func BuildLifecyclePreCompactCapsule(repo string) LifecycleCompactResult {

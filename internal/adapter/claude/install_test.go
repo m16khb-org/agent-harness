@@ -131,10 +131,14 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 		}
 	}
 	preToolUse := hooks["PreToolUse"].([]any)[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
-	if !strings.Contains(preToolUse, "hook pre-tool-use --host claude") {
+	if !strings.Contains(preToolUse, "hook pre-tool-use --host claude --enforce-worktree") {
 		t.Fatalf("PreToolUse should preserve Claude host schema: %s", preToolUse)
 	}
 	if strings.Contains(preToolUse, "--enforce-search-routing") {
 		t.Fatalf("PreToolUse must not enable blocking search routing enforcement by default: %s", preToolUse)
+	}
+	stop := hooks["Stop"].([]any)[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
+	if !strings.Contains(stop, "hook stop --host claude --enforce-numbered-next-actions") {
+		t.Fatalf("Stop should be strict-ready for numbered next actions: %s", stop)
 	}
 }
