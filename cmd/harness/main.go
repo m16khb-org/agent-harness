@@ -136,6 +136,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "project:", err)
 			os.Exit(1)
 		}
+	case "install":
+		if err := runInstall(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "install:", err)
+			os.Exit(1)
+		}
 	case "install-native":
 		if err := runInstallNative(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "install-native:", err)

@@ -70,7 +70,7 @@ Start with these commands. The rest of the harness is there to support this path
 
 | Pillar | Type this | Use it for |
 | --- | --- | --- |
-| Install | `./bin/agent-harness bootstrap --dry-run --json` then `./bin/agent-harness bootstrap` | Build the local binary, install user-level Codex/Claude skills, hooks, MCP wiring, and optional upstream companion tools. |
+| Install | `./install.sh` from a fresh clone, then `agent-harness update` later | Build the local binary, install user-level Codex/Claude skills, hooks, MCP wiring, PATH shim, and optional upstream companion tools. |
 | Project memory | `./bin/agent-harness project bootstrap --repo /path/to/repo --dry-run --json` | Add or refresh AGENTS routing and `.agent-harness/` operating docs for a target repo. |
 | IssueOps | `./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json` | Start durable state for the issue -> plan -> worktree -> TDD/subagent -> feedback -> PR/MR loop. |
 | Policy | `./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | Check whether a command is safe before execution. |
@@ -104,7 +104,7 @@ Use it when you want to:
 
 | Area | Commands / files | What it does |
 | --- | --- | --- |
-| Install and inspection | `bootstrap`, `update`, `install-native`, `inspect`, `preflight`, `status`, `version` | Build/update user-level Codex/Claude integrations, inspect the installation, and summarize health. |
+| Install and inspection | `install`, `bootstrap`, `update`, `install-native`, `inspect`, `preflight`, `status`, `version` | Build/update user-level Codex/Claude integrations, inspect the installation, and summarize health. |
 | MCP backend | `agent-harness mcp`, `daemon start/status/stop` | Run a stdio MCP proxy backed by a user-level daemon so Codex and Claude see the same tools. |
 | Command policy | `policy check`, `policy fake-run`, `policy run --read-only`, `policy audit` | Evaluate argv, workspace root, cwd, timeout, env allowlists, shell/write/network intent, read-only execution, and audit metadata. |
 | Doctor | `doctor` | Diagnose install, hooks, MCP, daemon, user-state, lifecycle namespace, and project docs. |
@@ -153,7 +153,8 @@ configs/codex/            Codex MCP and hook templates
 configs/claude/           Claude MCP template
 skills/                   Shared native skills used by Codex and Claude Code
 .agent-harness/           Project operating docs, ADRs, cautions, testing rules
-scripts/install-native.sh Native install convenience script
+install.sh                 First-run installer for fresh clones
+scripts/install-native.sh Native install compatibility script
 bin/agent-harness         Locally built binary
 ```
 
@@ -180,21 +181,27 @@ go build -o bin/agent-harness ./cmd/harness
 
 ### 2. Install Codex and Claude integration
 
-Install or update user-level Codex/Claude integration after reviewing the dry run. First-time setup should use `agent-harness bootstrap`; later refreshes should use `agent-harness update`, like `claude-mem update`. Both commands rebuild this checkout, refresh host integrations, and install/update upstream companion tools by default. The installer also creates or refreshes `~/.local/bin/agent-harness`, so new shells can run `agent-harness ...` from anywhere:
+Install or update user-level Codex/Claude integration after reviewing the choices. From a fresh clone, use `./install.sh`; it builds `bin/agent-harness` and opens the interactive installer when run in a terminal. Later refreshes should use `agent-harness update`, like `claude-mem update`. The installer creates or refreshes `~/.local/bin/agent-harness`, so new shells can run `agent-harness ...` from anywhere:
 
 ```bash
-./bin/agent-harness bootstrap --dry-run --json
+# Fresh clone, interactive.
+./install.sh
 
-# Recommended first-time setup.
-./bin/agent-harness bootstrap
+# Scriptable dry-run.
+./install.sh --dry-run --json
+
+# Direct CLI after the binary exists.
+./bin/agent-harness install --interactive
 
 # Recommended ongoing update.
 agent-harness update
 
 # Minimal/low-level path: update only agent-harness native Codex/Claude integration.
 ./scripts/install-native.sh --skip-upstream-tools
-./bin/agent-harness install-native --json
+./bin/agent-harness install --json
 ```
+
+`agent-harness install` owns PATH and environment setup. Normal users should not export `HARNESS_ROOT`; the installer records it in Codex/Claude MCP config. `CODEX_HOME` is read when already set and otherwise defaults to `~/.codex`. Choose PATH behavior with `--path-mode=auto|manual|skip` or through `--interactive`.
 
 `agent-harness update` and `agent-harness bootstrap` delegate to `./scripts/install-native.sh --with-upstream-tools` unless you opt out. The script rebuilds `bin/agent-harness` from the current checkout, refreshes `~/.local/bin/agent-harness`, and then updates host integrations. It does not run `git pull`; update the checkout yourself first when you want remote changes. Use `--skip-build` only when you intentionally want to leave the existing binary unchanged, and `--skip-upstream-tools` only for a minimal harness-only refresh.
 
@@ -298,7 +305,7 @@ Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_C
 
 ### Codex
 
-`install-native` links shared skills into user-level Codex skill paths and registers the MCP server plus SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks.
+`install` links shared skills into user-level Codex skill paths and registers the MCP server plus SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks.
 
 Useful checks:
 
@@ -309,7 +316,7 @@ codex mcp get agent_harness
 
 ### Claude Code
 
-`install-native` links the same shared skills into user-level Claude skill paths, registers a user-scope MCP server, and installs SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks in `~/.claude/settings.json`.
+`install` links the same shared skills into user-level Claude skill paths, registers a user-scope MCP server, and installs SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks in `~/.claude/settings.json`.
 
 Useful checks:
 
@@ -456,7 +463,7 @@ flowchart LR
 
 | 기둥 | 실행 | 용도 |
 | --- | --- | --- |
-| 설치 | `./bin/agent-harness bootstrap --dry-run --json` 후 `./bin/agent-harness bootstrap` | local binary를 build하고 user-level Codex/Claude skill, hook, MCP wiring, optional upstream companion tools를 설치합니다. |
+| 설치 | fresh clone에서는 `./install.sh`, 이후에는 `agent-harness update` | local binary를 build하고 user-level Codex/Claude skill, hook, MCP wiring, PATH shim, optional upstream companion tools를 설치합니다. |
 | 프로젝트 메모리 | `./bin/agent-harness project bootstrap --repo /path/to/repo --dry-run --json` | 대상 repo에 AGENTS routing과 `.agent-harness/` 운영 문서를 추가하거나 갱신합니다. |
 | IssueOps | `./bin/agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json` | issue -> plan -> worktree -> TDD/subagent -> feedback -> PR/MR 루프의 durable state를 시작합니다. |
 | Policy | `./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | 명령 실행 전에 안전성을 확인합니다. |
@@ -492,7 +499,7 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 
 | 영역 | 명령 / 파일 | 역할 |
 | --- | --- | --- |
-| 설치와 점검 | `bootstrap`, `update`, `install-native`, `inspect`, `preflight`, `status`, `version` | user-level Codex/Claude integration을 build/update하고 설치 상태와 health를 확인합니다. |
+| 설치와 점검 | `install`, `bootstrap`, `update`, `install-native`, `inspect`, `preflight`, `status`, `version` | user-level Codex/Claude integration을 build/update하고 설치 상태와 health를 확인합니다. |
 | MCP backend | `agent-harness mcp`, `daemon start/status/stop` | user-level daemon 뒤의 stdio MCP proxy를 실행해 Codex와 Claude가 같은 tool을 보게 합니다. |
 | Command policy | `policy check`, `policy fake-run`, `policy run --read-only`, `policy audit` | argv, workspace root, cwd, timeout, env allowlist, shell/write/network intent, read-only 실행, audit metadata를 평가합니다. |
 | Doctor | `doctor` | install, hook, MCP, daemon, user-state, lifecycle namespace, project docs를 종합 진단합니다. |
@@ -541,7 +548,8 @@ configs/codex/            Codex MCP와 hook template
 configs/claude/           Claude MCP template
 skills/                   Codex와 Claude Code가 공유하는 native skill 원본
 .agent-harness/           project operating docs, ADR, caution, testing rule
-scripts/install-native.sh native install 편의 스크립트
+install.sh                 fresh clone 첫 실행 installer
+scripts/install-native.sh native install compatibility script
 bin/agent-harness         로컬 build binary
 ```
 
@@ -568,21 +576,27 @@ go build -o bin/agent-harness ./cmd/harness
 
 ### 2. Codex와 Claude 통합 설치
 
-user-level Codex/Claude integration은 dry-run 확인 후 설치하거나 갱신합니다. 첫 설치는 `agent-harness bootstrap`, 이후 갱신은 `claude-mem update`처럼 `agent-harness update`를 권장합니다. 두 명령은 기본적으로 현재 checkout binary를 다시 build하고 host integration과 upstream companion tools를 함께 갱신합니다. installer는 `~/.local/bin/agent-harness`를 생성/갱신하므로 새 shell에서는 어디서든 `agent-harness ...`를 사용할 수 있습니다.
+user-level Codex/Claude integration은 선택지를 확인한 뒤 설치하거나 갱신합니다. fresh clone에서는 아직 `agent-harness` 명령이 없으므로 `./install.sh`를 실행합니다. 이 스크립트는 `bin/agent-harness`를 build하고 터미널에서는 interactive installer를 엽니다. 이후 갱신은 `claude-mem update`처럼 `agent-harness update`를 권장합니다. installer는 `~/.local/bin/agent-harness`를 생성/갱신하므로 새 shell에서는 어디서든 `agent-harness ...`를 사용할 수 있습니다.
 
 ```bash
-./bin/agent-harness bootstrap --dry-run --json
+# fresh clone 첫 설치: interactive TUI.
+./install.sh
 
-# 권장 첫 설치: agent-harness와 upstream companion tools를 함께 세팅합니다.
-./bin/agent-harness bootstrap
+# 자동화용 dry-run.
+./install.sh --dry-run --json
+
+# binary가 생긴 뒤 직접 실행.
+./bin/agent-harness install --interactive
 
 # 권장 갱신: claude-mem update처럼 사용합니다.
 agent-harness update
 
 # 최소 설치: agent-harness native Codex/Claude integration만 갱신합니다.
 ./scripts/install-native.sh --skip-upstream-tools
-./bin/agent-harness install-native --json
+./bin/agent-harness install --json
 ```
+
+`agent-harness install`이 PATH와 환경변수 설정을 소유합니다. 일반 사용자는 `HARNESS_ROOT`를 직접 export하지 않습니다. installer가 Codex/Claude MCP config에 `HARNESS_ROOT`를 기록합니다. `CODEX_HOME`은 이미 설정되어 있으면 존중하고, 없으면 `~/.codex`를 사용합니다. PATH 동작은 `--path-mode=auto|manual|skip` 또는 `--interactive`에서 선택합니다.
 
 `agent-harness update`와 `agent-harness bootstrap`은 opt-out하지 않는 한 내부적으로 `./scripts/install-native.sh --with-upstream-tools`를 호출합니다. 스크립트는 매 실행마다 현재 checkout 기준으로 `bin/agent-harness`를 다시 build하고, `~/.local/bin/agent-harness`를 갱신한 뒤 host integration을 갱신하므로, 이미 설치된 agent-harness도 제자리에서 업데이트됩니다. 단, local 변경을 덮어쓰지 않기 위해 `git pull`은 자동 실행하지 않습니다. 원격 변경까지 반영하려면 checkout을 먼저 직접 갱신하세요. 기존 binary를 의도적으로 유지하려면 `--skip-build`, 최소 harness-only 갱신이 필요하면 `--skip-upstream-tools`를 사용합니다.
 
@@ -686,7 +700,7 @@ claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marke
 
 ### Codex
 
-`install-native`는 shared skill을 user-level Codex skill 경로에 연결하고 MCP server 및 SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hook을 등록합니다.
+`install`은 shared skill을 user-level Codex skill 경로에 연결하고 MCP server 및 SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hook을 등록합니다.
 
 확인 명령:
 
@@ -697,7 +711,7 @@ codex mcp get agent_harness
 
 ### Claude Code
 
-`install-native`는 같은 shared skill을 user-level Claude skill 경로에 연결하고 user-scope MCP server와 `~/.claude/settings.json`의 SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hook을 등록합니다.
+`install`은 같은 shared skill을 user-level Claude skill 경로에 연결하고 user-scope MCP server와 `~/.claude/settings.json`의 SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hook을 등록합니다.
 
 확인 명령:
 
