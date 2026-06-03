@@ -1,0 +1,90 @@
+---
+name: cli-and-mcp.md
+description: Direct CLI, daemon-backed MCP, policy, guard, worker, and command smoke operations.
+---
+
+# CLI And MCP Operations
+
+## Direct CLI
+
+```bash
+agent-harness version
+agent-harness inspect --json
+agent-harness status --json
+agent-harness preflight --json /path/to/git-repo
+agent-harness docs --json
+agent-harness doctor --repo . --json
+agent-harness guard check --staged --json
+agent-harness verify-work --json -- git status --short
+```
+
+## Command Policy
+
+```bash
+agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+agent-harness policy run --read-only --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+agent-harness policy fake-run --workspace-root "$PWD" --cwd "$PWD" --write --json -- touch marker
+```
+
+`policy run --read-only` executes only argv-form allowlisted read-only commands with workspace/cwd policy, timeout, env allowlist, audit metadata, redaction, and bounded stdout/stderr. It does not open write, network, arbitrary shell, or background execution. Use `policy fake-run` for write-intent planning.
+
+`guard check` is a portable quality gate. It blocks clear anti-patterns, warns on likely quality smells, and marks context-dependent cases for review. Current rules include secret-like paths, test sleeps, real external URLs in tests, ambiguous test names, snapshot/golden review needs, production-only changes, CLI/MCP/adapter contract changes without golden updates, and likely duplicate helpers.
+
+## State
+
+```bash
+agent-harness state write --key checkpoint-1 --value "작업 메모" --json
+agent-harness state read --key checkpoint-1 --json
+agent-harness state list --json
+agent-harness state prune --max-age 720h --json
+agent-harness state prune --max-age 720h --confirm --json
+agent-harness state doctor --json
+agent-harness state migrate --json
+agent-harness state migrate --confirm --json
+```
+
+State commands use user-state storage, not target repo source files.
+
+## Daemon And MCP
+
+```bash
+agent-harness daemon start --json
+agent-harness daemon status --json
+agent-harness daemon stop --json
+agent-harness mcp
+```
+
+MCP smoke:
+
+```bash
+tmp_state="$(mktemp -d)"
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"harness://commit-policy"}}' \
+  | HARNESS_STATE_DIR="$tmp_state" HARNESS_DAEMON_DIR="$tmp_state/daemon" agent-harness mcp
+HARNESS_DAEMON_DIR="$tmp_state/daemon" agent-harness daemon stop --json
+rm -rf "$tmp_state"
+```
+
+## Worker
+
+```bash
+agent-harness worker enqueue --kind smoke --payload "TOKEN=redacted" --json
+agent-harness worker status --id "$JOB_ID" --json
+agent-harness worker list --json
+agent-harness worker cancel --id "$JOB_ID" --json
+agent-harness worker run --read-only --kind smoke --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+```
+
+`worker` currently records lifecycle jobs and can run policy-gated read-only evidence commands. It is not a general writable shell runner. Future process execution must pass command policy, audit logging, timeout/cancellation, and redaction checks.
+
+## Contract And Audit
+
+```bash
+agent-harness contract schema --json
+agent-harness contract check --json
+HARNESS_AUDIT_LOG="$(mktemp)" agent-harness policy audit --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+```
+
+`policy audit` appends redacted JSONL policy decisions and does not execute the command.
