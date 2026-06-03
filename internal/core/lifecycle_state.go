@@ -995,6 +995,10 @@ func hasNumberedNextActions(message string) bool {
 	seen := map[int]bool{}
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
+		trimmed = strings.TrimPrefix(trimmed, "- ")
+		trimmed = strings.TrimPrefix(trimmed, "* ")
+		trimmed = strings.TrimPrefix(trimmed, "+ ")
+		trimmed = strings.TrimSpace(trimmed)
 		if len(trimmed) < 2 {
 			continue
 		}

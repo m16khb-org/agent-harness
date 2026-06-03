@@ -473,6 +473,24 @@ func TestRunHookStopReadsLastAssistantMessageFromTranscript(t *testing.T) {
 	}
 }
 
+func TestRunHookStopIgnoresSystemTranscriptObjectWithAssistantText(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
+	repo := t.TempDir()
+	transcript := filepath.Join(t.TempDir(), "transcript.jsonl")
+	body := `{"type":"system","text":"assistant reminder without a final assistant response"}` + "\r\n"
+	if err := os.WriteFile(transcript, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`"}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--json"})
+	})
+	next, _ := obj["numbered_next_actions"].(map[string]any)
+	if next["decision"] != "allow" || next["reason"] != "no assistant message available to inspect" {
+		t.Fatalf("expected system transcript object to be ignored, got %+v", obj)
+	}
+}
+
 func captureStdoutForTest(t *testing.T, fn func()) string {
 	t.Helper()
 	old := os.Stdout
