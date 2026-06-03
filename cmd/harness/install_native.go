@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	assets "agent-harness"
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
 	"agent-harness/internal/core"
@@ -35,9 +36,19 @@ func runInstallNative(args []string) error {
 	if codexHome == "" && home != "" {
 		codexHome = filepath.Join(home, ".codex")
 	}
-	req := core.DefaultNativeInstallRequest(harnessRoot(), home, codexHome, installBinPath())
+	root := harnessRoot()
+	req := core.DefaultNativeInstallRequest(root, home, codexHome, installBinPath())
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
+	// No repository skills (packaged binary, e.g. brew): install from embedded assets.
+	if _, err := core.ListSkillNames(root); err != nil {
+		if names, nerr := assets.SkillNames(); nerr == nil && len(names) > 0 {
+			if skillsFS, ferr := assets.SkillsFS(); ferr == nil {
+				req.EmbeddedSkills = skillsFS
+				req.SkillNames = names
+			}
+		}
+	}
 	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
 	if *jsonOut {
 		_ = printJSON(result)

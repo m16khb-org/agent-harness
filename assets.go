@@ -8,6 +8,7 @@ package assets
 import (
 	"embed"
 	"io/fs"
+	"sort"
 )
 
 //go:embed skills configs
@@ -26,4 +27,28 @@ func ConfigsFS() (fs.FS, error) {
 // Embedded exposes the raw embedded filesystem (skills/ and configs/ at the root).
 func Embedded() fs.FS {
 	return embedded
+}
+
+// SkillNames lists embedded skills that contain a SKILL.md, sorted for
+// deterministic install ordering. Used when no repository checkout is present.
+func SkillNames() ([]string, error) {
+	skills, err := SkillsFS()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := fs.ReadDir(skills, ".")
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if _, err := fs.Stat(skills, entry.Name()+"/SKILL.md"); err == nil {
+			names = append(names, entry.Name())
+		}
+	}
+	sort.Strings(names)
+	return names, nil
 }

@@ -22,7 +22,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	result := port.HostInstallResult{Host: "codex", OK: true, DryRun: req.DryRun}
 	var errs []error
 
-	_, links, messages, skillErrs := installutil.PlanHostSkillLinks(req.Root, filepath.Join(req.CodexHome, "skills"), req.SkillNames, "codex", req.DryRun)
+	_, links, messages, skillErrs := installutil.PlanHostSkills(req.Root, req.EmbeddedSkills, filepath.Join(req.CodexHome, "skills"), req.SkillNames, "codex", req.DryRun)
 	result.Messages = append(result.Messages, messages...)
 	result.Links = append(result.Links, links...)
 	errs = append(errs, skillErrs...)
@@ -34,11 +34,16 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 		errs = append(errs, err)
 	}
 
-	templatePath := filepath.Join(req.Root, "configs", "codex", "mcp.config.toml")
-	file, err = installutil.WriteTextPlan(templatePath, "codex_mcp_template", codexTemplate(req), 0o644, req.DryRun)
-	result.Files = append(result.Files, file)
-	if err != nil {
-		errs = append(errs, err)
+	// configs/ templates are repo-only developer artifacts; a packaged binary
+	// (embedded skills) skips them. The host config.toml and hooks.json above are
+	// generated in Go and do not depend on these files.
+	if req.EmbeddedSkills == nil {
+		templatePath := filepath.Join(req.Root, "configs", "codex", "mcp.config.toml")
+		file, err = installutil.WriteTextPlan(templatePath, "codex_mcp_template", codexTemplate(req), 0o644, req.DryRun)
+		result.Files = append(result.Files, file)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	hooksPath := filepath.Join(req.CodexHome, "hooks.json")
@@ -48,11 +53,13 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 		errs = append(errs, err)
 	}
 
-	hooksTemplatePath := filepath.Join(req.Root, "configs", "codex", "hooks.json")
-	file, err = installutil.WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/agent-harness"), 0o644, req.DryRun)
-	result.Files = append(result.Files, file)
-	if err != nil {
-		errs = append(errs, err)
+	if req.EmbeddedSkills == nil {
+		hooksTemplatePath := filepath.Join(req.Root, "configs", "codex", "hooks.json")
+		file, err = installutil.WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/agent-harness"), 0o644, req.DryRun)
+		result.Files = append(result.Files, file)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	patchedFiles, patchMessages, err := patchCodexPluginHookCompatibility(req)
