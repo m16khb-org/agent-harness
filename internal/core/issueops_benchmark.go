@@ -197,7 +197,7 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			failure:  "missing problem summary or issue draft",
 		},
 		"issue_quality": {
-			ok:       containsAllFold(artifact.IssueDraft, "problem", "current evidence", "acceptance criteria", "non-goals", "verification", "feedback log") && containsHangul(artifact.IssueDraft) && hasIssueOpsGuidelineRef(artifact),
+			ok:       hasAllIssueOpsConcepts(artifact.IssueDraft, issueOpsIssueSectionConcepts) && containsHangul(artifact.IssueDraft) && hasIssueOpsGuidelineRef(artifact),
 			evidence: "issue draft includes required sections, Korean text, and guideline reference",
 			failure:  "issue draft missing required sections, Korean text, or guideline reference",
 		},
@@ -227,7 +227,7 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			failure:  "branch or worktree evidence missing",
 		},
 		"pr_mr_quality": {
-			ok:       containsAllFold(artifact.PRDraft, "intent", "changes", "verification", "risk", "reviewer notes") && containsAnyFold(artifact.PRDraft, "issue:", "fixes", "closes") && containsHangul(artifact.PRDraft) && hasIssueOpsGuidelineRef(artifact),
+			ok:       hasAllIssueOpsConcepts(artifact.PRDraft, issueOpsPRSectionConcepts) && containsAnyFold(artifact.PRDraft, "issue:", "fixes", "closes", "이슈:") && containsHangul(artifact.PRDraft) && hasIssueOpsGuidelineRef(artifact),
 			evidence: "PR/MR draft includes required sections, issue link, Korean text, reviewer notes, and guideline reference",
 			failure:  "PR/MR draft missing required sections, issue link, Korean text, reviewer notes, or guideline reference",
 		},
@@ -618,6 +618,36 @@ func reviewPromptIsBounded(artifact IssueOpsBenchmarkArtifact) bool {
 	}
 	return containsAnyFold(prompt, "do not spawn subagents", "no nested subagents", "nested subagent fan-out 금지") &&
 		containsAnyFold(prompt, "minute", "minutes", "time budget", "분", "시간 예산")
+}
+
+// issueOpsIssueSectionConcepts and issueOpsPRSectionConcepts list the required
+// sections for issue and PR/MR drafts. Each concept may be expressed with any of
+// its English or Korean variants, so the deterministic gate is language-fair and
+// not coupled to English section headers.
+var issueOpsIssueSectionConcepts = [][]string{
+	{"problem", "문제"},
+	{"current evidence", "근거", "현재 상태", "현재 증거"},
+	{"acceptance criteria", "수용 기준", "완료 기준", "인수 기준"},
+	{"non-goals", "비목표", "비-목표"},
+	{"verification", "검증"},
+	{"feedback log", "피드백 로그", "피드백 기록"},
+}
+
+var issueOpsPRSectionConcepts = [][]string{
+	{"intent", "의도"},
+	{"changes", "변경"},
+	{"verification", "검증"},
+	{"risk", "위험", "리스크"},
+	{"reviewer notes", "리뷰어 노트", "리뷰 노트", "리뷰어 참고"},
+}
+
+func hasAllIssueOpsConcepts(s string, concepts [][]string) bool {
+	for _, variants := range concepts {
+		if !containsAnyFold(s, variants...) {
+			return false
+		}
+	}
+	return true
 }
 
 func containsAllFold(s string, needles ...string) bool {
