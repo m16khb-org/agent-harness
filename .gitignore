@@ -1,5 +1,6 @@
 # Local build outputs
 bin/
+dist/
 
 # Runtime/local state
 data/
