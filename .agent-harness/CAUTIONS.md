@@ -151,53 +151,33 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - For Codex, keep the project-doc catalog in `additionalContext` because the agent needs it, but avoid route/action/profile/pending-upkeep status prose there.
 - Keep project-doc frontmatter descriptions concise English metadata; `project bootstrap` and `project bootstrap --sync` use this canonical metadata, so verbose descriptions multiply across every target repo.
 
-## MCP tool-use risks
+## 14. IssueOps worktree edits must be hook-guarded
+
+IssueOps worktree isolation cannot rely on the model remembering `pwd` or shell `workdir`. Some edit tools can apply relative paths from a different checkout than the shell command just verified.
+
+주의:
+- IssueOps sessions set `HARNESS_SOURCE_CHECKOUT` and `HARNESS_EXPECTED_WORKTREE` before implementation.
+- Installed Codex and Claude PreToolUse hooks include `--enforce-worktree` and block mutating tool events outside the expected worktree when that env is set.
+- Manual edit rules still require absolute paths rooted at the expected worktree and status checks for both source checkout and worktree, because host hook coverage can differ by runtime.
+- If a source checkout receives implementation edits by mistake, stop, move only your own changes into the IssueOps worktree, and verify the source checkout is clean before continuing.
+
+## 15. IssueOps decision replies must have numbered choices
+
+When the user must choose a route, cleanup action, feedback response, or next phase, free-form prose is too easy to miss. Prompt discipline alone is insufficient.
+
+주의:
+- IssueOps strict sessions set `HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1`.
+- Installed Codex and Claude Stop hooks include `--enforce-numbered-next-actions`; when the env var is set and the host exposes `last_assistant_message` or a transcript path, missing `1.`, `2.`, and `3.` choices are blocked.
+- Keep the three choices concrete: recommended proceed, narrower/lower-risk alternative, and pause/defer.
+- If the host does not expose the final assistant message to Stop hook input, the guard must no-op and record diagnostics rather than guessing.
+
+## 16. MCP tool-use risks
 
 - Broad tool descriptions make agents over-call tools or pass wrong arguments.
 - Always injecting all project documents at session start wastes context and can hide task-specific evidence.
 - Writable tools need explicit write semantics; prefer dry-run or append-only behavior.
 - Tool output is evidence, not proof: verify file existence, warnings, and command/test results before claiming completion.
 
-## 2026-05-31 — Codex PreCompact hook stdout schema
+## Incident Archive
 
-- Kind: `caution`
-- Source: cli
-- Summary: Codex 0.135 PreCompact and PostCompact hook output rejects hookSpecificOutput/additionalContext; compact hook stdout must stay in compact-control shape such as {}, suppressOutput-only, or systemMessage. Model-facing additionalContext injection belongs to SessionStart/UserPromptSubmit/PostToolUse-style hooks whose installed Codex schema explicitly allows it.
-
-## 2026-05-31 — PreToolUse false-positive risk
-
-- Kind: `caution`
-- Source: codex/claude runtime evidence
-- Summary: Codex 0.135.0 and Claude Code 2.1.158 both expose PreToolUse, but the hook runs before every matched tool call and can block or rewrite execution. Keep agent-harness PreToolUse host stdout as `{}` by default and expose only raw `--json` diagnostics until a deterministic policy has host-schema tests and false-positive coverage.
-- Do not record lifecycle upkeep from PreToolUse; the tool may not succeed. Use PostToolUse only for observed successful mutating changes, not read-only searches whose output happens to mention lifecycle-relevant paths.
-- Follow-up: when an agent-harness hook process exits non-zero, record a redacted JSONL failure event in user state with hook subcommand, host, cwd/repo, tool name, argv, relevant command/query snippet, and error. Codex UI may only show `PreToolUse hook (failed) error: hook exited with code 1`, which is insufficient to distinguish user hooks from plugin hooks or payload-specific failures.
-
-## 2026-05-31 — Do not patch upstream companion plugin caches
-
-- Kind: `caution`
-- Source: manual
-- Summary: Do not edit installed upstream plugin cache files such as `~/.codex/plugins/cache/claude-mem/...`; fix duplicate or host-specific integration issues in user-owned Codex/Claude settings, wrappers, or upstream itself.
-- If an upstream memory provider is installed as a Codex plugin, do not also install the same hooks in `~/.codex/hooks.json`; that double-runs capture hooks and creates duplicated observations/summaries.
-
-## 2026-06-03 — Do not leave self-verify invariant failures as reports only
-
-- Kind: `caution`
-- Source: self-verify
-- Summary: When `agent-harness self-verify` fails on harness invariants, treat the failure as actionable unless the evidence proves it is physically impossible to fix in the current environment.
-- Evidence: `self-verify --progress=jsonl --json` stops at the first failed invariant step, so later coverage gaps are a consequence of early termination, not separate proof that the README or code change is safe.
-- Resolution: For forbidden legacy name hits, inspect the exact file:line evidence, generalize personal GitHub owners and absolute local paths to neutral examples, run `rg` for all forbidden needles, then rerun self-verify.
-
-## 2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup
-
-- Kind: `caution`
-- Source: PR #15 merge attempt
-- Summary: `gh pr merge --merge --delete-branch` can merge the GitHub PR remotely and then fail during local branch cleanup when the base branch, such as `main`, is already checked out in another linked worktree. In IssueOps worktree flows, run provider merge first without local cleanup flags, then verify merged state, remote source branch state, and worktree cleanliness before deleting the remote source branch, removing the feature worktree, and deleting the local branch.
-- Do not rely on provider CLI merge flags that also perform local branch/worktree cleanup from a feature worktree. For GitHub, avoid `gh pr merge "$PR_NUMBER" --merge --delete-branch`; use `gh pr merge "$PR_NUMBER" --merge`, then explicit post-merge cleanup. For GitLab, verify whether the installed `glab`/API flag is remote-only before using it; otherwise merge first and clean up remote/local state in separate commands.
-
-## 2026-06-03 — Do not stop at cosmetic symptom fixes
-
-- Kind: `caution`
-- Source: user directive
-- Summary: When fixing a failure, degraded workflow, confusing output, or repeated user pain point, do not stop after patching the visible symptom. Trace the reproduction, call path, state transition, policy boundary, and documented contract until the root cause is identified and removed.
-- Avoid: changing only wording, loosening tests, adding one-off guards, hiding errors, or documenting around broken behavior unless evidence shows the root cause is already fixed or cannot be fixed in the current scope.
-- Verify: add or run a targeted regression test, command smoke, grep evidence, or log/state check that proves the same class of failure no longer reaches the user-facing path.
+Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents.md`. Keep this file focused on evergreen hazards and move one-off history there.

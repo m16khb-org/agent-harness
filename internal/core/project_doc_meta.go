@@ -17,7 +17,7 @@ var docMetaDescriptions = map[string]string{
 	"TESTING.md":        "Verification standards, test practices, and required checks.",
 	"COMMIT_POLICY.md":  "Commit message format, scope, and decision-record rules.",
 	"CAUTIONS.md":       "Recurring mistakes, operational cautions, and avoidance guidance.",
-	"OPERATIONS.md":     "Install, sync, runtime, and operational procedures.",
+	"OPERATIONS.md":     "Operations quick-start, reference map, and runtime procedures.",
 	"OPEN_API_SPEC.md":  "Endpoint, DTO, and OpenAPI documentation gate rules.",
 	"AGENT_WORKFLOW.md": "Agent start, execution, verification, and completion flow.",
 }
