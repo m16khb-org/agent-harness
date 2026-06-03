@@ -23,6 +23,11 @@ func TestCoreLLMPromptsUseStructuredContract(t *testing.T) {
 				t.Fatalf("%s prompt missing %q:\n%s", name, heading, prompt)
 			}
 		}
+		for _, want := range []string{"## Response Schema", "Field Types", "```json"} {
+			if !strings.Contains(prompt, want) {
+				t.Fatalf("%s prompt missing schema contract %q:\n%s", name, want, prompt)
+			}
+		}
 	}
 }
 

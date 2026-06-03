@@ -354,6 +354,7 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 			"",
 			"- 사용자 요청: " + problem,
 			"- 저장소 맥락: " + strings.TrimSpace(fixture.RepoContext),
+			"- 관련 이슈 링크: https://example.com/acme/agent-harness/issues/" + issueNumber,
 			"- 브랜치 요구사항: issue #" + issueNumber + " 기반 `" + branchName + "`",
 			"- 격리 worktree: `" + worktreePath + "`",
 			"- 가이드라인: `" + guideline + "`",
@@ -477,12 +478,24 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 			"Issue: https://example.com/acme/agent-harness/issues/" + issueNumber,
 			"Guideline: " + guideline + "\n",
 		}, "\n"),
-		PhaseChoices:           "Proceed to next phase | revise current phase | jump to issue/plan/implementation/feedback/PR phase | pause for user decision",
+		PhaseChoices: strings.Join([]string{
+			"선택지:",
+			"1. Proceed: 다음 IssueOps phase로 진행한다. (추천)",
+			"2. Revise: 현재 phase의 issue/plan/task contract를 수정한다.",
+			"3. Jump: issue, plan, implementation, feedback, PR phase 중 필요한 단계로 이동한다.",
+			"4. Pause: 사용자 결정 전까지 진행을 멈춘다.",
+		}, "\n"),
 		BranchName:             branchName,
 		WorktreePath:           worktreePath,
 		ImplementationLocation: worktreePath,
-		WorktreeCleanup:        "clean worktree confirmed; cleanup/remove choices offered and present after merge",
-		GuidelineRef:           guideline,
+		WorktreeCleanup: strings.Join([]string{
+			"clean worktree confirmed after merge; cleanup/remove choices are offered and present.",
+			"선택지:",
+			"1. Cleanup: merged worktree and local branch를 삭제한다. (추천)",
+			"2. Keep: worktree를 보존하고 나중에 확인한다.",
+			"3. Inspect: stale IssueOps worktree 전체를 점검한 뒤 삭제 후보를 제시한다.",
+		}, "\n"),
+		GuidelineRef: guideline,
 	}
 }
 

@@ -176,7 +176,7 @@ if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
   exit 2
 fi
 cat <<'EOF'
----
+`+draftWikiAgyJSONForTest(t, `---
 title: "Hook policy memory"
 source: "claude-mem"
 target_wiki: "agent-harness"
@@ -186,7 +186,7 @@ summary: "Hooks should enqueue work instead of running long LLM calls inline."
 
 # Hook policy memory
 
-PostToolUse hooks should record events and leave LLM summarization to a worker.
+PostToolUse hooks should record events and leave LLM summarization to a worker.`)+`
 EOF
 `)
 	if err := os.Chmod(fakeAgy, 0o755); err != nil {
@@ -232,7 +232,7 @@ func TestSuggestDraftWikiStripsAgyModeBanner(t *testing.T) {
 cat <<'EOF'
 ULTRAWORK MODE ENABLED!
 
----
+`+draftWikiAgyJSONForTest(t, `---
 title: "Banner-safe draft"
 source: "claude-mem"
 target_wiki: "agent-harness"
@@ -242,7 +242,7 @@ summary: "Agy mode banners are not part of the draft."
 
 # Banner-safe draft
 
-The useful draft body remains.
+The useful draft body remains.`)+`
 EOF
 `)
 	if err := os.Chmod(fakeAgy, 0o755); err != nil {
@@ -306,7 +306,7 @@ if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
 fi
 printf '%s\n' "$3" > prompt.txt
 cat <<'EOF'
----
+`+draftWikiAgyJSONForTest(t, `---
 title: "Queued hook memory"
 source: "claude-mem"
 target_wiki: "agent-harness"
@@ -316,7 +316,7 @@ summary: "The hook queues draft-wiki work and the worker performs agy summarizat
 
 # Queued hook memory
 
-PostToolUse hooks enqueue draft-wiki work; the worker calls agy -p outside the hook critical path.
+PostToolUse hooks enqueue draft-wiki work; the worker calls agy -p outside the hook critical path.`)+`
 EOF
 `)
 	if err := os.Chmod(fakeAgy, 0o755); err != nil {
@@ -479,7 +479,7 @@ func TestDraftWikiQueueReportsMalformedLinesAndContinues(t *testing.T) {
 	fakeAgy := filepath.Join(root, "fake-agy.sh")
 	mustWrite(t, fakeAgy, `#!/bin/sh
 cat <<'EOF'
----
+`+draftWikiAgyJSONForTest(t, `---
 title: "Malformed queue still processes"
 source: "claude-mem"
 target_wiki: "agent-harness"
@@ -489,7 +489,7 @@ summary: "Valid queued events continue after malformed lines."
 
 # Malformed queue still processes
 
-Valid queued events continue after malformed lines.
+Valid queued events continue after malformed lines.`)+`
 EOF
 `)
 	if err := os.Chmod(fakeAgy, 0o755); err != nil {
@@ -595,7 +595,7 @@ func TestDraftWikiQueueConcurrentWorkersProcessOneEventOnce(t *testing.T) {
 printf 'invoke\n' >> "`+invocations+`"
 sleep 0.2
 cat <<'EOF'
----
+`+draftWikiAgyJSONForTest(t, `---
 title: "Concurrent queue event"
 source: "claude-mem"
 target_wiki: "agent-harness"
@@ -605,7 +605,7 @@ summary: "One concurrent worker should process the queued event."
 
 # Concurrent queue event
 
-Only one worker should process this event.
+Only one worker should process this event.`)+`
 EOF
 `)
 	if err := os.Chmod(fakeAgy, 0o755); err != nil {
@@ -680,4 +680,13 @@ func writeTestLLMWikiHub(t *testing.T) (configPath, hub string) {
 	configPath = filepath.Join(root, "llm-wiki-config.json")
 	mustWrite(t, configPath, `{"hub_path":"`+filepath.ToSlash(hub)+`"}`)
 	return configPath, hub
+}
+
+func draftWikiAgyJSONForTest(t *testing.T, bodyMarkdown string) string {
+	t.Helper()
+	b, err := json.Marshal(draftWikiSuggestAgyResponse{BodyMarkdown: bodyMarkdown})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return "```json\n" + string(b) + "\n```"
 }

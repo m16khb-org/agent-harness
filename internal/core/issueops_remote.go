@@ -1,10 +1,8 @@
 package core
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"sort"
 	"strings"
 	"time"
@@ -176,7 +174,7 @@ func buildIssueOpsRemoteAgyJudgePrompt(req IssueOpsRemoteScoringRequest) (string
 			"Read the new issue title/body and all candidate issues/labels.",
 			"Assign each candidate a score from 0.00 to 1.00 using concrete evidence.",
 			"Select only candidates with score >= threshold; reject all others with a reason.",
-			"Return strict JSON matching the output contract.",
+			"Return JSON matching the response schema exactly.",
 		},
 		Inputs: []string{
 			"IssueOps remote scoring request JSON.",
@@ -196,54 +194,103 @@ func buildIssueOpsRemoteAgyJudgePrompt(req IssueOpsRemoteScoringRequest) (string
 			"Do not add top-level fields outside the schema.",
 		},
 		OutputContract: []string{
-			"Return JSON only. Do not include prose before or after the JSON object.",
+			"Return JSON only. Do not include prose before or after the JSON object or fenced json block.",
 			"Return one JSON object matching IssueOpsRemoteScoringResult: ok, provider, threshold, execution_class, read_only, join_before, selected_related_issues, rejected_related_issues, selected_labels, rejected_labels, apply_instructions, warnings.",
 			"Set execution_class to background_join, read_only to true, and join_before to remote_artifact_write.",
 			"Every scored item must include score, threshold, selected, and evidence.",
 			"Selected related issues must include id or url when available. Selected labels must include name.",
-			"Use [] for empty arrays. The first byte must be { and the final byte must be }.",
+			"Use [] for empty arrays. Prefer raw JSON. When native structured output is unavailable, return only a fenced json block matching the response schema.",
 		},
 		VerificationChecklist: []string{
 			"No candidate below threshold is selected.",
 			"Every selected candidate has evidence and an apply_hint.",
 			"Provider-specific apply_instructions are present when there are selected issues or labels.",
-			"Output is strict JSON with no Markdown wrapper.",
+			"Output is raw JSON or one fenced json block, with no prose.",
 		},
-		Data: []PromptDataSection{{Title: "Request JSON", Content: string(payload)}},
+		Data: []PromptDataSection{
+			BuildExternalLLMJSONSchemaSection(issueOpsRemoteScoringResponseSchemaExample(), issueOpsRemoteScoringFieldTypes()),
+			{Title: "Request JSON", Content: string(payload)},
+		},
 	}), nil
 }
 
 func decodeStrictIssueOpsRemoteScoringResult(out []byte) (IssueOpsRemoteScoringResult, error) {
-	trimmed := bytes.TrimSpace(out)
-	if len(trimmed) == 0 {
-		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring judge returned empty output")
-	}
-	if trimmed[0] != '{' || trimmed[len(trimmed)-1] != '}' {
-		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring output must be strict JSON object: %s", boundedIssueOpsText(string(trimmed)))
-	}
-	decoder := json.NewDecoder(bytes.NewReader(trimmed))
-	decoder.DisallowUnknownFields()
 	var result IssueOpsRemoteScoringResult
-	if err := decoder.Decode(&result); err != nil {
-		return IssueOpsRemoteScoringResult{}, fmt.Errorf("decode agy remote scoring output: %w: %s", err, boundedIssueOpsText(string(trimmed)))
-	}
-	if err := ensureIssueOpsRemoteDecoderEOF(decoder); err != nil {
+	if err := DecodeExternalLLMStructuredJSONObject("agy remote scoring", out, &result); err != nil {
 		return IssueOpsRemoteScoringResult{}, err
 	}
 	if !result.OK {
 		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring output not ok")
 	}
+	if result.ExecutionClass != "background_join" {
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring execution_class must be background_join")
+	}
+	if !result.ReadOnly {
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring read_only must be true")
+	}
+	if result.JoinBefore != "remote_artifact_write" {
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("agy remote scoring join_before must be remote_artifact_write")
+	}
 	return result, nil
 }
 
-func ensureIssueOpsRemoteDecoderEOF(decoder *json.Decoder) error {
-	var extra any
-	if err := decoder.Decode(&extra); err == nil {
-		return fmt.Errorf("agy remote scoring output contained trailing JSON")
-	} else if err != io.EOF {
-		return fmt.Errorf("agy remote scoring output contained trailing data: %w", err)
+func issueOpsRemoteScoringResponseSchemaExample() string {
+	example := IssueOpsRemoteScoringResult{
+		OK:             true,
+		Provider:       "github",
+		Threshold:      0.70,
+		ExecutionClass: "background_join",
+		ReadOnly:       true,
+		JoinBefore:     "remote_artifact_write",
+		SelectedRelatedIssues: []IssueOpsRemoteScoredItem{{
+			ID:        "#123",
+			Title:     "Related IssueOps workflow issue",
+			URL:       "https://github.com/example/repo/issues/123",
+			Score:     0.91,
+			Threshold: 0.70,
+			Selected:  true,
+			Evidence:  []string{"shared workflow and component"},
+			ApplyHint: "link in issue body: #123",
+		}},
+		RejectedRelatedIssues: []IssueOpsRemoteScoredItem{},
+		SelectedLabels: []IssueOpsRemoteScoredItem{{
+			Name:      "enhancement",
+			Score:     0.88,
+			Threshold: 0.70,
+			Selected:  true,
+			Evidence:  []string{"feature request label matches requested work"},
+			ApplyHint: "apply GitHub label: enhancement",
+		}},
+		RejectedLabels:    []IssueOpsRemoteScoredItem{},
+		ApplyInstructions: []string{"include selected related issues in the issue body", "apply selected labels with gh issue create --label enhancement"},
+		Warnings:          []string{},
 	}
-	return nil
+	b, err := json.MarshalIndent(example, "", "  ")
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
+}
+
+func issueOpsRemoteScoringFieldTypes() []string {
+	return []string{
+		"ok: boolean, required, must be true for accepted judgments.",
+		"provider: string, required, one of github or gitlab.",
+		"threshold: number, required, score cutoff from 0.00 to 1.00.",
+		"execution_class: string, required, must be background_join.",
+		"read_only: boolean, required, must be true.",
+		"join_before: string, required, must be remote_artifact_write.",
+		"selected_related_issues: array of scored item objects, required.",
+		"rejected_related_issues: array of scored item objects, required, use [] when empty.",
+		"selected_labels: array of scored item objects, required.",
+		"rejected_labels: array of scored item objects, required, use [] when empty.",
+		"apply_instructions: array of strings, required.",
+		"warnings: array of strings, required, use [] when empty.",
+		"scored item id/name/title/url/apply_hint/reject_reason: strings when present.",
+		"scored item score and threshold: numbers from 0.00 to 1.00.",
+		"scored item selected: boolean.",
+		"scored item evidence: array of strings, required.",
+	}
 }
 
 func normalizeIssueOpsRemoteScoringResult(result IssueOpsRemoteScoringResult) IssueOpsRemoteScoringResult {
