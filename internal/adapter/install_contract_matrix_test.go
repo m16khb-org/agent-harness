@@ -192,9 +192,12 @@ func TestHeadroomRuntimeSetupPreservesBothHosts(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "setup-headroom-runtime.sh"))
 	for _, want := range []string{
 		"merge_codex_hooks",
+		"normalize_codex_headroom_provider",
 		"merge_claude_settings",
 		"headroom init -g --port \"$PORT\" codex",
 		"headroom init -g --port \"$PORT\" claude",
+		"Codex Headroom model_provider was not written at top level",
+		"Codex Headroom openai_base_url was not written at top level",
 		"headroom install start --profile \"$PROFILE\"",
 		"headroom install status --profile \"$PROFILE\"",
 		"verified Headroom health endpoint",

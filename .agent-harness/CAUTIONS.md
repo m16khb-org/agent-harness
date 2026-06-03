@@ -236,6 +236,17 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
   - `/usr/bin/curl -i http://127.0.0.1:8787/health` returned HTTP 200 with `"status":"healthy"` and `"ready":true`.
 - Resolution: Reproducible setup must treat `/health` or `/readyz` as the final runtime evidence. `scripts/setup-headroom-runtime.sh` now verifies the health endpoint after running Headroom init/start for both Codex and Claude Code.
 
+## 2026-06-03 — Headroom Codex provider keys must be top-level TOML
+
+- Kind: `caution`
+- Source: codex-cli
+- Summary: A healthy Headroom proxy does not imply Codex traffic is routed through it; `model_provider` and `openai_base_url` must parse as top-level `~/.codex/config.toml` keys, not as fields under `[mcp_servers.headroom]`.
+- Evidence:
+  - Before repair, `tomllib` parsing showed `top_model_provider: null`, `top_openai_base_url: null`, and `mcp_servers.headroom` contained `model_provider` plus `openai_base_url`.
+  - Headroom `/stats` showed `api_requests: 0`, `tokens_saved: 0`, and no `/v1/responses` traffic despite healthy `/health`.
+  - After `scripts/setup-headroom-runtime.sh` normalized the config, `codex exec` reported `provider: headroom`, `/stats` showed `api_requests: 15`, `tokens_saved: 3720`, and `proxy_inbound.by_path["/v1/responses"]: 8`.
+- Resolution: `scripts/setup-headroom-runtime.sh` now normalizes Codex Headroom provider keys after `headroom init -g codex` and verifies the parsed top-level TOML values before reporting success. Existing interactive Codex sessions still need restart to load the repaired config.
+
 ## 2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup
 
 - Kind: `caution`
