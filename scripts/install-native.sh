@@ -28,9 +28,9 @@ Harness binary:
   --skip-build            Do not rebuild bin/agent-harness before installing integrations.
 
 User command:
-  Creates/refreshes ~/.local/bin/agent-harness -> bin/agent-harness and adds
-  ~/.local/bin to the detected shell rc when it is not already on PATH. Managed
-  alias blocks from older installers are removed to keep one command surface.
+  PATH setup is handled by `agent-harness install --path-mode=auto|manual|skip`.
+  The default auto mode creates ~/.local/bin/agent-harness and adds ~/.local/bin
+  to the detected shell rc when it is not already on PATH.
 
 Environment:
   HARNESS_INSTALL_UPSTREAM_TOOLS=1  Same as --with-upstream-tools.
@@ -172,89 +172,6 @@ install_claude_mem_for_ide() {
     || log "warning: failed to install claude-mem for ${ide}; continuing"
 }
 
-preferred_shell_rc() {
-  local shell_name
-  shell_name="$(basename "${SHELL:-}")"
-  case "$shell_name" in
-    zsh) printf '%s\n' "$HOME/.zshrc" ;;
-    bash) printf '%s\n' "$HOME/.bashrc" ;;
-    *)
-      if [[ -f "$HOME/.zshrc" ]]; then
-        printf '%s\n' "$HOME/.zshrc"
-      elif [[ -f "$HOME/.bashrc" ]]; then
-        printf '%s\n' "$HOME/.bashrc"
-      else
-        printf '%s\n' "$HOME/.profile"
-      fi
-      ;;
-  esac
-}
-
-path_contains_local_bin() {
-  case ":${PATH:-}:" in
-    *":$HOME/.local/bin:"*) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-remove_managed_alias_block() {
-  local rc_file="$1"
-  local begin_marker="# agent-harness: begin managed alias"
-  local end_marker="# agent-harness: end managed alias"
-  [[ -f "$rc_file" ]] || return 0
-  python3 - "$rc_file" "$begin_marker" "$end_marker" <<'PYINNER'
-from pathlib import Path
-import sys
-path = Path(sys.argv[1])
-begin, end = sys.argv[2], sys.argv[3]
-text = path.read_text() if path.exists() else ""
-if begin in text and end in text:
-    before, rest = text.split(begin, 1)
-    _, after = rest.split(end, 1)
-    text = before.rstrip() + "\n" + after.lstrip("\n")
-    path.write_text(text)
-PYINNER
-}
-
-ensure_agent_harness_command() {
-  local dry_run="$1"
-  local user_bin="$HOME/.local/bin"
-  local command_path="$user_bin/agent-harness"
-  local rc_file marker line
-  marker="# agent-harness: add user-local bin to PATH"
-  line='export PATH="$HOME/.local/bin:$PATH"'
-  rc_file="$(preferred_shell_rc)"
-
-  if [[ "$dry_run" == "1" ]]; then
-    log "dry-run: would link ${command_path} -> ${BIN}"
-    if ! path_contains_local_bin; then
-      log "dry-run: would add ~/.local/bin to PATH in ${rc_file}"
-    fi
-    log "dry-run: would remove older managed alias block from ${rc_file} if present"
-    return 0
-  fi
-
-  mkdir -p "$user_bin"
-  ln -sf "$BIN" "$command_path"
-  log "linked command ${command_path} -> ${BIN}"
-
-  touch "$rc_file"
-  remove_managed_alias_block "$rc_file"
-
-  if path_contains_local_bin; then
-    return 0
-  fi
-
-  if grep -Fq "$marker" "$rc_file" || grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "$rc_file" || grep -Fq "export PATH=\"$HOME/.local/bin:\$PATH\"" "$rc_file"; then
-    return 0
-  fi
-  {
-    printf '\n%s\n' "$marker"
-    printf '%s\n' "$line"
-  } >>"$rc_file"
-  log "added ~/.local/bin to PATH in ${rc_file}; restart shell or run: export PATH=\"$HOME/.local/bin:$PATH\""
-}
-
 ensure_codegraph_on_path() {
   if command -v codegraph >/dev/null 2>&1; then
     return 0
@@ -374,8 +291,6 @@ else
   log "building agent-harness binary"
   (cd "$ROOT" && go build -o bin/agent-harness ./cmd/harness)
 fi
-
-ensure_agent_harness_command "$DRY_RUN"
 
 if [[ -x "$BIN" ]]; then
   if ((${#HARNESS_ARGS[@]})); then

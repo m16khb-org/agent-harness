@@ -25,6 +25,8 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	withoutUpstream := fs.Bool("without-upstream-tools", false, "skip upstream companion tool setup")
 	projectLocal := fs.Bool("project-local", false, "also write explicit project-local files")
 	dryRun := fs.Bool("dry-run", false, "show install plan without writing")
+	pathMode := fs.String("path-mode", "", "manage ~/.local/bin PATH setup: auto, manual, or skip")
+	interactive := fs.Bool("interactive", false, "ask for install choices before applying the plan")
 	jsonOut := fs.Bool("json", false, "print JSON from install-native")
 	skipBuild := fs.Bool("skip-build", false, "do not rebuild bin/agent-harness")
 	if err := fs.Parse(args); err != nil {
@@ -53,6 +55,12 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	}
 	if *dryRun {
 		scriptArgs = append(scriptArgs, "--dry-run")
+	}
+	if *pathMode != "" {
+		scriptArgs = append(scriptArgs, "--path-mode="+*pathMode)
+	}
+	if *interactive {
+		scriptArgs = append(scriptArgs, "--interactive")
 	}
 	if *jsonOut {
 		scriptArgs = append(scriptArgs, "--json")

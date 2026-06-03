@@ -180,6 +180,10 @@
         },
         {
           "description": "install shared native skills and MCP config",
+          "name": "install"
+        },
+        {
+          "description": "compatibility alias for install",
           "name": "install-native"
         },
         {
@@ -215,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "99463cb471583945393e20351c6cadc44b2ac5ed82211b7bf707c0fe12e5b3e4",
+      "hash": "5703382fbb8f81467147dcfd3f0a9f8bfc6e663dd675246b0af3a865139a6ba0",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -733,10 +737,12 @@
           "title": "Host Operations"
         },
         {
-          "bytes": 2911,
+          "bytes": 3850,
           "headings": [
             "Install And Sync",
-            "Install or refresh user-level Codex/Claude integration for this checkout.",
+            "First run from a fresh clone, before agent-harness is on PATH.",
+            "Scriptable install or refresh after agent-harness is on PATH.",
+            "Ongoing refresh from the current checkout.",
             "Also refresh opt-in upstream companion tools.",
             "Initialize project docs/profile for a target repository.",
             "Refresh existing project docs/profile from current templates and evidence.",
@@ -3081,6 +3087,10 @@
               },
               {
                 "description": "install shared native skills and MCP config",
+                "name": "install"
+              },
+              {
+                "description": "compatibility alias for install",
                 "name": "install-native"
               },
               {
@@ -3116,7 +3126,7 @@
                 "name": "version"
               }
             ],
-            "hash": "99463cb471583945393e20351c6cadc44b2ac5ed82211b7bf707c0fe12e5b3e4",
+            "hash": "5703382fbb8f81467147dcfd3f0a9f8bfc6e663dd675246b0af3a865139a6ba0",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3641,10 +3651,12 @@
                 "title": "Host Operations"
               },
               {
-                "bytes": 2911,
+                "bytes": 3850,
                 "headings": [
                   "Install And Sync",
-                  "Install or refresh user-level Codex/Claude integration for this checkout.",
+                  "First run from a fresh clone, before agent-harness is on PATH.",
+                  "Scriptable install or refresh after agent-harness is on PATH.",
+                  "Ongoing refresh from the current checkout.",
                   "Also refresh opt-in upstream companion tools.",
                   "Initialize project docs/profile for a target repository.",
                   "Refresh existing project docs/profile from current templates and evidence.",
