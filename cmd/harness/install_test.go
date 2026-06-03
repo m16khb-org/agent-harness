@@ -110,6 +110,19 @@ func TestInstallCommandInteractiveDryRunSelectsProjectLocalAndManualPathMode(t *
 	}
 }
 
+func TestValidateInteractiveInstallInputRejectsPipe(t *testing.T) {
+	t.Setenv("AGENT_HARNESS_INSTALL_HELPER", "")
+	stdin, stdout, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdin.Close()
+	defer stdout.Close()
+	if err := validateInteractiveInstallInput(stdin); err == nil || !strings.Contains(err.Error(), "requires a terminal") {
+		t.Fatalf("validateInteractiveInstallInput error = %v, want terminal requirement", err)
+	}
+}
+
 func TestInstallNativeAliasAcceptsPathMode(t *testing.T) {
 	if os.Getenv("AGENT_HARNESS_INSTALL_HELPER") == "1" {
 		return

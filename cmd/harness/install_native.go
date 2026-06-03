@@ -15,6 +15,7 @@ import (
 	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/core"
 	"agent-harness/internal/port"
+	"golang.org/x/term"
 )
 
 const shellPathRCMarker = "# agent-harness: add user-local bin to PATH"
@@ -37,7 +38,18 @@ func runInstallCommand(commandName string, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	home, err := installUserHomeDir()
+	if err != nil {
+		return err
+	}
+	codexHome := os.Getenv("CODEX_HOME")
+	if codexHome == "" {
+		codexHome = filepath.Join(home, ".codex")
+	}
 	if *interactive {
+		if err := validateInteractiveInstallInput(os.Stdin); err != nil {
+			return err
+		}
 		choices, err := promptInstallChoices(*projectLocal, *dryRun, *pathMode, os.Stdin, os.Stderr)
 		if err != nil {
 			return err
@@ -48,11 +60,6 @@ func runInstallCommand(commandName string, args []string) error {
 	}
 	if !validInstallPathMode(*pathMode) {
 		return fmt.Errorf("invalid --path-mode %q: expected auto, manual, or skip", *pathMode)
-	}
-	home, _ := os.UserHomeDir()
-	codexHome := os.Getenv("CODEX_HOME")
-	if codexHome == "" && home != "" {
-		codexHome = filepath.Join(home, ".codex")
 	}
 	req := core.DefaultNativeInstallRequest(harnessRoot(), home, codexHome, filepath.Join(harnessRoot(), "bin", "agent-harness"))
 	req.ProjectLocal = *projectLocal
@@ -68,6 +75,27 @@ func runInstallCommand(commandName string, args []string) error {
 	}
 	printInstallNativeResult(result)
 	return err
+}
+
+func installUserHomeDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("determine user home directory: %w", err)
+	}
+	if home == "" {
+		return "", errors.New("determine user home directory: empty path")
+	}
+	return home, nil
+}
+
+func validateInteractiveInstallInput(stdin *os.File) error {
+	if os.Getenv("AGENT_HARNESS_INSTALL_HELPER") == "1" {
+		return nil
+	}
+	if !term.IsTerminal(int(stdin.Fd())) {
+		return errors.New("--interactive requires a terminal stdin")
+	}
+	return nil
 }
 
 func printInstallNativeResult(result port.NativeInstallResult) {
