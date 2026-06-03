@@ -195,8 +195,8 @@ Claude Code 세션 안에서는 다음으로 상태를 볼 수 있다.
 ./bin/agent-harness daemon start --json
 ./bin/agent-harness daemon status --json
 ./bin/agent-harness daemon stop --json
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-verify candidates --save-state --state-key self-verify-candidates-latest --json
 ./bin/agent-harness self-verify history --prefix self-verify --json

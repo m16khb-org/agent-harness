@@ -12,14 +12,17 @@ Verify that the harness behaves consistently across Codex and Claude Code, and t
 ## Commands
 
 ```bash
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
-./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
-HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-verify history --prefix self-verify --json
 ./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
 ./bin/agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
 ```
+
+Default `self-verify` is quick mode: one deterministic evidence pass followed by the final LLM evaluator when LLM eval is enabled. Use `--full` for the full ten-plus-iteration gate. Passing `--iterations` without `--full` is invalid.
 
 `HARNESS_SELF_VERIFY_LLM_EVAL` defaults to off. Set it to `advisory` or `gate` to run the `agy --dangerously-skip-permissions -p` LLM evaluator after deterministic self-verification; explicit CLI flags (`--llm-eval`, `--llm-eval=false`, `--llm-eval-mode`) override the environment.
 

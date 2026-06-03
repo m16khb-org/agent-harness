@@ -665,11 +665,15 @@
     "name": "self_augment_lesson"
   },
   {
-    "description": "Run the self-verification loop: at least 10 seeded iterations of tests, risk-tier QA, build, CLI/MCP schema and response contract golden checks, command policy, MCP, state roundtrip, native integration, and git preflight fuzz checks. Termination requires every concrete goal score to be greater than target_score.",
+    "description": "Run the self-verification loop. Defaults to quick one-iteration verification; set full=true for the full gate with at least 10 seeded iterations. Termination requires every concrete goal score to be greater than target_score.",
     "inputSchema": {
       "properties": {
+        "full": {
+          "description": "Run the full ten-plus-iteration verification gate. Defaults to false quick mode.",
+          "type": "boolean"
+        },
         "iterations": {
-          "description": "Iteration count; must be at least 10.",
+          "description": "Full-gate iteration count; requires full=true and must be at least 10.",
           "type": "integer"
         },
         "save_state": {

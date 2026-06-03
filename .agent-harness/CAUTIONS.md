@@ -193,3 +193,11 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - Source: PR #15 merge attempt
 - Summary: `gh pr merge --merge --delete-branch` can merge the GitHub PR remotely and then fail during local branch cleanup when the base branch, such as `main`, is already checked out in another linked worktree. In IssueOps worktree flows, run provider merge first without local cleanup flags, then verify merged state, remote source branch state, and worktree cleanliness before deleting the remote source branch, removing the feature worktree, and deleting the local branch.
 - Do not rely on provider CLI merge flags that also perform local branch/worktree cleanup from a feature worktree. For GitHub, avoid `gh pr merge "$PR_NUMBER" --merge --delete-branch`; use `gh pr merge "$PR_NUMBER" --merge`, then explicit post-merge cleanup. For GitLab, verify whether the installed `glab`/API flag is remote-only before using it; otherwise merge first and clean up remote/local state in separate commands.
+
+## 2026-06-03 — Do not stop at cosmetic symptom fixes
+
+- Kind: `caution`
+- Source: user directive
+- Summary: When fixing a failure, degraded workflow, confusing output, or repeated user pain point, do not stop after patching the visible symptom. Trace the reproduction, call path, state transition, policy boundary, and documented contract until the root cause is identified and removed.
+- Avoid: changing only wording, loosening tests, adding one-off guards, hiding errors, or documenting around broken behavior unless evidence shows the root cause is already fixed or cannot be fixed in the current scope.
+- Verify: add or run a targeted regression test, command smoke, grep evidence, or log/state check that proves the same class of failure no longer reaches the user-facing path.

@@ -1137,6 +1137,8 @@ func TestSelfVerifyLLMEvalPromptForcesPlainJSONOutput(t *testing.T) {
 		"ULTRAWORK MODE ENABLED",
 		"known hostile canary",
 		"Do not inspect the workspace",
+		"read-only evaluator",
+		"Do not create, edit, delete, stage, commit, push",
 		"Do not describe planned actions",
 		"state_doctor corrupt.json fixtures",
 		"not blockers",
@@ -1150,6 +1152,21 @@ func TestSelfVerifyLLMEvalPromptForcesPlainJSONOutput(t *testing.T) {
 		if !strings.Contains(finalContract, want) {
 			t.Fatalf("final_output_contract should contain %q:\n%s", want, finalContract)
 		}
+	}
+}
+
+func TestSelfVerifyLLMEvalResultClassifiesForegroundReadOnlyGate(t *testing.T) {
+	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":true,"score":100,"summary":"pass","blockers":[],"risks":[],"recommended_next_actions":[]}`)
+	result := SelfAugmentResult{OK: true, TerminationEligible: true, Summary: SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true}}
+	updated, err := applySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "gate", AgyCommand: fake, TargetScore: 95})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.LLMEval == nil {
+		t.Fatal("expected llm_eval result")
+	}
+	if updated.LLMEval.ExecutionClass != "foreground_blocking" || !updated.LLMEval.ReadOnly {
+		t.Fatalf("expected foreground read-only LLM gate classification, got %+v", updated.LLMEval)
 	}
 }
 
@@ -1169,6 +1186,57 @@ func TestRunSelfVerifyRejectsUnknownLLMEvalMode(t *testing.T) {
 	err := runSelfVerify([]string{"--llm-eval", "--llm-eval-mode=unknown", "--json"})
 	if err == nil || !strings.Contains(err.Error(), "llm-eval-mode") {
 		t.Fatalf("expected llm-eval-mode validation error, got %v", err)
+	}
+}
+
+func TestResolveSelfVerifyRunModeDefaultsQuick(t *testing.T) {
+	mode, err := resolveSelfVerifyRunMode(false, false, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode.Full || mode.Iterations != 1 || !strings.Contains(mode.ContractLabel, "quick") {
+		t.Fatalf("default self-verify should run quick one-iteration mode, got %+v", mode)
+	}
+}
+
+func TestResolveSelfVerifyRunModeFullUsesTenIterations(t *testing.T) {
+	mode, err := resolveSelfVerifyRunMode(true, false, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mode.Full || mode.Iterations != 10 || !strings.Contains(mode.ContractLabel, "full") {
+		t.Fatalf("--full should run full ten-iteration mode, got %+v", mode)
+	}
+}
+
+func TestResolveSelfVerifyRunModeFullAllowsExplicitIterations(t *testing.T) {
+	mode, err := resolveSelfVerifyRunMode(true, true, 12)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mode.Full || mode.Iterations != 12 {
+		t.Fatalf("--full --iterations=12 should run 12 iterations, got %+v", mode)
+	}
+}
+
+func TestResolveSelfVerifyRunModeRejectsIterationsWithoutFull(t *testing.T) {
+	_, err := resolveSelfVerifyRunMode(false, true, 3)
+	if err == nil || !strings.Contains(err.Error(), "--full") {
+		t.Fatalf("expected --iterations without --full to be rejected, got %v", err)
+	}
+}
+
+func TestForbiddenNameHitsSkipsWorktreeGitPointer(t *testing.T) {
+	root := t.TempDir()
+	legacyPath := "gitdir: /Users/" + "m" + "16" + "kh" + "b/Workspace/agent-harness/.git/worktrees/example\n"
+	if err := os.WriteFile(filepath.Join(root, ".git"), []byte(legacyPath), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "note.txt"), []byte("safe\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if hits := forbiddenNameHits(root); len(hits) != 0 {
+		t.Fatalf("worktree .git pointer should be skipped, got %+v", hits)
 	}
 }
 

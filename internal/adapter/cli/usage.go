@@ -90,7 +90,7 @@ Usage:
   agent-harness install-native [--project-local] [--dry-run] [--json]
   agent-harness update [--dry-run] [--json]
   agent-harness bootstrap [--sync] [--dry-run] [--json]
-  agent-harness self-verify [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--llm-eval] [--llm-eval-mode=advisory|gate] [--agy-command PATH] [--save-state] [--state-key KEY] [--json]
+  agent-harness self-verify [--full] [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--llm-eval] [--llm-eval-mode=advisory|gate] [--agy-command PATH] [--save-state] [--state-key KEY] [--json]
   agent-harness self-verify history [--prefix PREFIX] [--limit N] [--retention-limit N] [--prune-retention] [--confirm] [--json]
   agent-harness self-verify compare --baseline-key KEY --candidate-key KEY [--max-elapsed-regression-pct N] [--fail-on-regression] [--json]
   agent-harness self-verify promote --from-key KEY --baseline-key KEY [--confirm] [--json]
