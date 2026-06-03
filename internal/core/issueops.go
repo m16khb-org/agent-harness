@@ -215,6 +215,38 @@ func IssueOpsStateRoot() string {
 	return filepath.Join(StateDir(), "issueops")
 }
 
+// HasActiveIssueOpsCycle reports whether a persisted IssueOps cycle exists for the
+// given repository path and has not reached the done phase. It is used by the
+// PreToolUse worktree guard to enforce isolation even when no explicit expected
+// worktree is set.
+func HasActiveIssueOpsCycle(repo string) bool {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return false
+	}
+	entries, err := os.ReadDir(IssueOpsStateRoot())
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(IssueOpsStateRoot(), entry.Name()))
+		if err != nil {
+			continue
+		}
+		var record IssueOpsRecord
+		if json.Unmarshal(b, &record) != nil {
+			continue
+		}
+		if strings.TrimSpace(record.Repo) == repo && record.Phase != IssueOpsPhaseDone {
+			return true
+		}
+	}
+	return false
+}
+
 func newIssueOpsID(repo, branch, now string) string {
 	sum := sha256.Sum256([]byte(repo + "\x00" + branch + "\x00" + now))
 	return "io-" + hex.EncodeToString(sum[:])[:12]
