@@ -4858,9 +4858,18 @@ func mcpTools() []map[string]any {
 			"name":        "issueops_add_feedback",
 			"description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "source", "body"}, "properties": map[string]any{
-				"id":     map[string]any{"type": "string", "description": "IssueOps id."},
-				"source": map[string]any{"type": "string", "description": "Feedback source, such as user, review, CI, or QA."},
-				"body":   map[string]any{"type": "string", "description": "Feedback body."},
+				"id":             map[string]any{"type": "string", "description": "IssueOps id."},
+				"source":         map[string]any{"type": "string", "description": "Feedback source, such as user, review, CI, or QA."},
+				"body":           map[string]any{"type": "string", "description": "Feedback body."},
+				"classification": map[string]any{"type": "string", "description": "Optional feedback classification, such as contract_change, defect, question, or noise."},
+			}},
+		},
+		{
+			"name":        "issueops_set_phase",
+			"description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, feedback, pr, done). The pr phase requires linked issue and plan evidence.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "phase"}, "properties": map[string]any{
+				"id":    map[string]any{"type": "string", "description": "IssueOps id."},
+				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, implement, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "implement", "feedback", "pr", "done"}},
 			}},
 		},
 		{
@@ -4868,6 +4877,34 @@ func mcpTools() []map[string]any {
 			"description": "Report whether an IssueOps loop has the issue and plan evidence needed before drafting a PR or MR.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
 				"id": map[string]any{"type": "string", "description": "IssueOps id."},
+			}},
+		},
+		{
+			"name":        "issueops_remote_score",
+			"description": "Deterministically score related issue and label candidates for a new IssueOps issue and select only those at/above the threshold. Read-only background_join gate; join before any remote artifact write.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"issue"}, "properties": map[string]any{
+				"provider":  map[string]any{"type": "string", "description": "Remote provider: github or gitlab. Defaults to github.", "enum": []string{"github", "gitlab"}},
+				"threshold": map[string]any{"type": "number", "description": "Selection cutoff from 0 to 1. Defaults to 0.70."},
+				"issue": map[string]any{"type": "object", "description": "The new issue artifact being scored.", "required": []string{"title", "body"}, "properties": map[string]any{
+					"provider": map[string]any{"type": "string"},
+					"title":    map[string]any{"type": "string"},
+					"body":     map[string]any{"type": "string"},
+				}},
+				"issue_candidates": map[string]any{"type": "array", "description": "Existing related issue candidates to score.", "items": map[string]any{"type": "object", "properties": map[string]any{
+					"id":     map[string]any{"type": "string"},
+					"title":  map[string]any{"type": "string"},
+					"body":   map[string]any{"type": "string"},
+					"url":    map[string]any{"type": "string"},
+					"state":  map[string]any{"type": "string"},
+					"labels": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+					"score":  map[string]any{"type": "number"},
+				}}},
+				"label_candidates": map[string]any{"type": "array", "description": "Label candidates to score.", "items": map[string]any{"type": "object", "properties": map[string]any{
+					"name":        map[string]any{"type": "string"},
+					"description": map[string]any{"type": "string"},
+					"aliases":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+					"score":       map[string]any{"type": "number"},
+				}}},
 			}},
 		},
 		{
@@ -5201,9 +5238,25 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		}
 		payload = result
 	case "issueops_add_feedback":
-		result, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "source"), stringArg(call.Arguments, "body"))
+		result, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "source"), stringArg(call.Arguments, "body"), stringArg(call.Arguments, "classification"))
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps feedback failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_set_phase":
+		result, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "phase"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps phase advance failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_remote_score":
+		req, err := issueOpsRemoteScoringRequestFromMCP(call.Arguments)
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps remote score failed", Data: err.Error()}
+		}
+		result, err := core.ScoreIssueOpsRemoteCandidates(req)
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps remote score failed", Data: err.Error()}
 		}
 		payload = result
 	case "issueops_pr_readiness":
@@ -5513,6 +5566,21 @@ func stringArg(args map[string]any, key string) string {
 		return v
 	}
 	return ""
+}
+
+// issueOpsRemoteScoringRequestFromMCP decodes MCP tool arguments into the
+// IssueOps remote scoring request via a JSON round-trip so the MCP schema
+// mirrors the CLI request shape exactly.
+func issueOpsRemoteScoringRequestFromMCP(args map[string]any) (core.IssueOpsRemoteScoringRequest, error) {
+	var req core.IssueOpsRemoteScoringRequest
+	b, err := json.Marshal(args)
+	if err != nil {
+		return req, err
+	}
+	if err := json.Unmarshal(b, &req); err != nil {
+		return req, fmt.Errorf("invalid issueops remote scoring request: %w", err)
+	}
+	return req, nil
 }
 
 func argSet(args map[string]any, key string) bool {

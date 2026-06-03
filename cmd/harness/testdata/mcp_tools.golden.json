@@ -560,6 +560,10 @@
           "description": "Feedback body.",
           "type": "string"
         },
+        "classification": {
+          "description": "Optional feedback classification, such as contract_change, defect, question, or noise.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
           "type": "string"
@@ -579,6 +583,36 @@
     "name": "issueops_add_feedback"
   },
   {
+    "description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, feedback, pr, done). The pr phase requires linked issue and plan evidence.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "phase": {
+          "description": "Target phase: problem, grill, plan, implement, feedback, pr, or done.",
+          "enum": [
+            "problem",
+            "grill",
+            "plan",
+            "implement",
+            "feedback",
+            "pr",
+            "done"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "phase"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_set_phase"
+  },
+  {
     "description": "Report whether an IssueOps loop has the issue and plan evidence needed before drafting a PR or MR.",
     "inputSchema": {
       "properties": {
@@ -593,6 +627,106 @@
       "type": "object"
     },
     "name": "issueops_pr_readiness"
+  },
+  {
+    "description": "Deterministically score related issue and label candidates for a new IssueOps issue and select only those at/above the threshold. Read-only background_join gate; join before any remote artifact write.",
+    "inputSchema": {
+      "properties": {
+        "issue": {
+          "description": "The new issue artifact being scored.",
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "body"
+          ],
+          "type": "object"
+        },
+        "issue_candidates": {
+          "description": "Existing related issue candidates to score.",
+          "items": {
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "labels": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "score": {
+                "type": "number"
+              },
+              "state": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "label_candidates": {
+          "description": "Label candidates to score.",
+          "items": {
+            "properties": {
+              "aliases": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "description": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "score": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "provider": {
+          "description": "Remote provider: github or gitlab. Defaults to github.",
+          "enum": [
+            "github",
+            "gitlab"
+          ],
+          "type": "string"
+        },
+        "threshold": {
+          "description": "Selection cutoff from 0 to 1. Defaults to 0.70.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "issue"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_remote_score"
   },
   {
     "description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
