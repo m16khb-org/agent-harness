@@ -238,6 +238,117 @@ func TestPreToolUseSearchRoutingAllowsCodeGraphForStructuralSearch(t *testing.T)
 	}
 }
 
+func TestPreToolUseWorktreeGuardBlocksSourceCheckoutMutation(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:             source,
+		Tool:             "apply_patch",
+		Paths:            []string{filepath.Join(source, ".agent-harness", "OPERATIONS.md")},
+		EnforceWorktree:  true,
+		ExpectedWorktree: worktree,
+		SourceCheckout:   source,
+	})
+	if got.Decision != "block" || !strings.Contains(got.Reason, "expected IssueOps worktree") {
+		t.Fatalf("expected source checkout mutation to be blocked: %+v", got)
+	}
+}
+
+func TestPreToolUseWorktreeGuardAllowsExpectedWorktreeMutation(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:             worktree,
+		Tool:             "apply_patch",
+		Paths:            []string{filepath.Join(worktree, ".agent-harness", "OPERATIONS.md")},
+		EnforceWorktree:  true,
+		ExpectedWorktree: worktree,
+		SourceCheckout:   source,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected worktree mutation to be allowed: %+v", got)
+	}
+}
+
+func TestPreToolUseWorktreeGuardNoopsWithoutExpectedWorktree(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:            t.TempDir(),
+		Tool:            "apply_patch",
+		Paths:           []string{".agent-harness/OPERATIONS.md"},
+		EnforceWorktree: true,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("missing expected worktree should not block: %+v", got)
+	}
+}
+
+func TestPreToolUseKoreanRemoteArtifactGateBlocksEnglishPR(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:                t.TempDir(),
+		Tool:                "bash",
+		Command:             `gh pr create --title "Document split and IssueOps guardrails" --body "Summary Changes Verification Risk"`,
+		EnforceKoreanRemote: true,
+	})
+	if got.Decision != "block" || !strings.Contains(got.Reason, "IssueOps remote artifact gate failed") {
+		t.Fatalf("expected English PR artifact to be blocked: %+v", got)
+	}
+}
+
+func TestPreToolUseKoreanRemoteArtifactGateAllowsKoreanPRBodyFile(t *testing.T) {
+	repo := t.TempDir()
+	body := "## 요약\n\n- 문서 분할과 hook guard를 추가했습니다.\n- 검증 명령과 위험도를 한국어로 기록했습니다.\n"
+	if err := os.WriteFile(filepath.Join(repo, "pr-body.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:                repo,
+		Tool:                "bash",
+		Command:             `gh pr create --title "문서 분할과 IssueOps guardrail 추가" --body-file pr-body.md`,
+		EnforceKoreanRemote: true,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected Korean PR artifact to be allowed: %+v", got)
+	}
+}
+
+func TestNumberedNextActionsDecisionBlocksMissingChoices(t *testing.T) {
+	got := BuildNumberedNextActionsDecision("작업했습니다.", true, "stop")
+	if got.Decision != "block" || !strings.Contains(got.Reason, "numbered next actions") {
+		t.Fatalf("expected missing numbered next actions to block, got %+v", got)
+	}
+}
+
+func TestNumberedNextActionsDecisionAllowsChoices(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(`완료했습니다.
+
+선택지:
+1. 진행: 다음 검증을 실행합니다. (추천)
+2. 축소 진행: 작은 범위만 확인합니다.
+3. 보류: 여기서 멈춥니다.`, true, "stop")
+	if got.Decision != "allow" {
+		t.Fatalf("expected numbered choices to allow, got %+v", got)
+	}
+}
+
+func TestNumberedNextActionsDecisionAllowsMarkdownListChoices(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(`완료했습니다.
+
+선택지:
+- 1. 진행: 다음 검증을 실행합니다. (추천)
+* 2. 축소 진행: 작은 범위만 확인합니다.
++ 3. 보류: 여기서 멈춥니다.`, true, "stop")
+	if got.Decision != "allow" {
+		t.Fatalf("expected markdown list numbered choices to allow, got %+v", got)
+	}
+}
+
+func TestNumberedNextActionsDecisionNoopsWhenDisabled(t *testing.T) {
+	got := BuildNumberedNextActionsDecision("작업했습니다.", false, "stop")
+	if got.Decision != "allow" {
+		t.Fatalf("expected disabled guard to allow, got %+v", got)
+	}
+}
+
 func TestRecordLifecycleToolUseQueuesRelevantDocUpkeep(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

@@ -443,7 +443,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 29311,
+          "bytes": 9944,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -462,9 +462,7 @@
             "4. MVP 범위",
             "5. 주요 위험과 대응",
             "6. 다음 작업 제안",
-            "LLM Wiki 정책",
-            "2026-05-29 — Upstream companion tools are opt-in dependencies",
-            "ADR note: MCP-backed project memory records"
+            "7. Decision Log Index"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
           "rel_path": ".agent-harness/ADR.md",
@@ -512,7 +510,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 12866,
+          "bytes": 10116,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -528,12 +526,10 @@
             "11. LLM Wiki 재구현 금지",
             "12. Daemon lifecycle drift",
             "13. Codex vs Claude Code hook rendering drift",
-            "MCP tool-use risks",
-            "2026-05-31 — Codex PreCompact hook stdout schema",
-            "2026-05-31 — PreToolUse false-positive risk",
-            "2026-05-31 — Do not patch upstream companion plugin caches",
-            "2026-06-03 — Do not leave self-verify invariant failures as reports only",
-            "2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup"
+            "14. IssueOps worktree edits must be hook-guarded",
+            "15. IssueOps decision replies must have numbered choices",
+            "16. MCP tool-use risks",
+            "Incident Archive"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
           "rel_path": ".agent-harness/CAUTIONS.md",
@@ -615,32 +611,17 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 25585,
+          "bytes": 2980,
           "headings": [
-            "하네스 사용법",
-            "1. 설치/동기화",
-            "내 머신의 Codex/Claude user-level 통합 설치/갱신",
-            "upstream companion 도구 버전까지 함께 최신화",
-            "대상 레포에 AGENTS.md 라우팅 블록과 .agent-harness/*.md 생성",
-            "기존 프로젝트 문서까지 최신 템플릿/증거 기준으로 갱신",
-            "`--sync`",
-            "2. Codex에서 사용",
-            "Native skills",
-            "IssueOps",
-            "MCP",
-            "Lifecycle hooks",
-            "3. Claude Code에서 사용",
-            "Native skills",
-            "MCP",
-            "Claude hooks",
-            "4. CLI로 직접 사용",
-            "Status / read-only runner / verify-work",
-            "Guard checks",
-            "5. MCP smoke test"
+            "Operations Map",
+            "Core Surfaces",
+            "Daily Commands",
+            "Invariants",
+            "Quick Smoke"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
           "rel_path": ".agent-harness/OPERATIONS.md",
-          "title": "하네스 사용법"
+          "title": "Operations Map"
         },
         {
           "bytes": 8009,
@@ -684,6 +665,109 @@
           "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
           "rel_path": ".agent-harness/TESTING.md",
           "title": "테스트 컨벤션"
+        },
+        {
+          "bytes": 20674,
+          "headings": [
+            "ADR History Archive",
+            "LLM Wiki 정책",
+            "2026-05-29 — Upstream companion tools are opt-in dependencies",
+            "ADR note: MCP-backed project memory records",
+            "ADR note: Adapter 분리, compatibility contract, audit log, worker MVP",
+            "2026-05-29 — Return quality gate failures as normal MCP payloads",
+            "2026-05-29 — Public command identity follows project identity",
+            "2026-05-29 — Simple bootstrap/project-bootstrap commands",
+            "2026-05-30 — Static project-doc catalog injection (작업 레포 .agent-harness 메뉴)",
+            "2026-05-30 — Host-specific UserPromptSubmit display contract",
+            "2026-05-31 — Shared PreToolUse hook and prompt/tool lifecycle split",
+            "2026-05-31 — Repo-local draft wiki staging before upstream LLM Wiki ingest",
+            "2026-06-02 — IssueOps split"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
+          "rel_path": ".agent-harness/archive/adr-history.md",
+          "title": "ADR History Archive"
+        },
+        {
+          "bytes": 4929,
+          "headings": [
+            "Cautions Incident Archive",
+            "2026-05-31 — Codex PreCompact hook stdout schema",
+            "2026-05-31 — PreToolUse false-positive risk",
+            "2026-05-31 — Do not patch upstream companion plugin caches",
+            "2026-06-03 — Do not leave self-verify invariant failures as reports only",
+            "2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup",
+            "2026-06-03 — Do not stop at cosmetic symptom fixes"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
+          "rel_path": ".agent-harness/archive/cautions-incidents.md",
+          "title": "Cautions Incident Archive"
+        },
+        {
+          "bytes": 3620,
+          "headings": [
+            "CLI And MCP Operations",
+            "Direct CLI",
+            "Command Policy",
+            "State",
+            "Daemon And MCP",
+            "Worker",
+            "Contract And Audit"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
+          "rel_path": ".agent-harness/operations/cli-and-mcp.md",
+          "title": "CLI And MCP Operations"
+        },
+        {
+          "bytes": 2999,
+          "headings": [
+            "Host Operations",
+            "Codex",
+            "Claude Code",
+            "IssueOps Host Rule"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
+          "rel_path": ".agent-harness/operations/hosts.md",
+          "title": "Host Operations"
+        },
+        {
+          "bytes": 2911,
+          "headings": [
+            "Install And Sync",
+            "Install or refresh user-level Codex/Claude integration for this checkout.",
+            "Also refresh opt-in upstream companion tools.",
+            "Initialize project docs/profile for a target repository.",
+            "Refresh existing project docs/profile from current templates and evidence.",
+            "`--sync`",
+            "Upstream Companion Tools"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/install.md",
+          "rel_path": ".agent-harness/operations/install.md",
+          "title": "Install And Sync"
+        },
+        {
+          "bytes": 3558,
+          "headings": [
+            "Project Docs Operations",
+            "Project Bootstrap",
+            "MCP Project Docs",
+            "LLM Wiki Policy"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
+          "rel_path": ".agent-harness/operations/project-docs.md",
+          "title": "Project Docs Operations"
+        },
+        {
+          "bytes": 3809,
+          "headings": [
+            "Verification Operations",
+            "Self-Verify",
+            "Self-Augment",
+            "API Documentation Gate",
+            "General Verification"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+          "rel_path": ".agent-harness/operations/verification.md",
+          "title": "Verification Operations"
         },
         {
           "bytes": 12976,
@@ -825,6 +909,13 @@
         "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
         "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
         "$HARNESS_ROOT/.agent-harness/TESTING.md",
+        "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
+        "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
+        "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
+        "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
+        "$HARNESS_ROOT/.agent-harness/operations/install.md",
+        "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
+        "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
         "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -1600,7 +1691,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 18,
+        "docs_indexed": 25,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -3257,7 +3348,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 29311,
+                "bytes": 9944,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3276,9 +3367,7 @@
                   "4. MVP 범위",
                   "5. 주요 위험과 대응",
                   "6. 다음 작업 제안",
-                  "LLM Wiki 정책",
-                  "2026-05-29 — Upstream companion tools are opt-in dependencies",
-                  "ADR note: MCP-backed project memory records"
+                  "7. Decision Log Index"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
                 "rel_path": ".agent-harness/ADR.md",
@@ -3326,7 +3415,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 12866,
+                "bytes": 10116,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3342,12 +3431,10 @@
                   "11. LLM Wiki 재구현 금지",
                   "12. Daemon lifecycle drift",
                   "13. Codex vs Claude Code hook rendering drift",
-                  "MCP tool-use risks",
-                  "2026-05-31 — Codex PreCompact hook stdout schema",
-                  "2026-05-31 — PreToolUse false-positive risk",
-                  "2026-05-31 — Do not patch upstream companion plugin caches",
-                  "2026-06-03 — Do not leave self-verify invariant failures as reports only",
-                  "2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup"
+                  "14. IssueOps worktree edits must be hook-guarded",
+                  "15. IssueOps decision replies must have numbered choices",
+                  "16. MCP tool-use risks",
+                  "Incident Archive"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
                 "rel_path": ".agent-harness/CAUTIONS.md",
@@ -3429,32 +3516,17 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 25585,
+                "bytes": 2980,
                 "headings": [
-                  "하네스 사용법",
-                  "1. 설치/동기화",
-                  "내 머신의 Codex/Claude user-level 통합 설치/갱신",
-                  "upstream companion 도구 버전까지 함께 최신화",
-                  "대상 레포에 AGENTS.md 라우팅 블록과 .agent-harness/*.md 생성",
-                  "기존 프로젝트 문서까지 최신 템플릿/증거 기준으로 갱신",
-                  "`--sync`",
-                  "2. Codex에서 사용",
-                  "Native skills",
-                  "IssueOps",
-                  "MCP",
-                  "Lifecycle hooks",
-                  "3. Claude Code에서 사용",
-                  "Native skills",
-                  "MCP",
-                  "Claude hooks",
-                  "4. CLI로 직접 사용",
-                  "Status / read-only runner / verify-work",
-                  "Guard checks",
-                  "5. MCP smoke test"
+                  "Operations Map",
+                  "Core Surfaces",
+                  "Daily Commands",
+                  "Invariants",
+                  "Quick Smoke"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
                 "rel_path": ".agent-harness/OPERATIONS.md",
-                "title": "하네스 사용법"
+                "title": "Operations Map"
               },
               {
                 "bytes": 8009,
@@ -3498,6 +3570,109 @@
                 "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
                 "rel_path": ".agent-harness/TESTING.md",
                 "title": "테스트 컨벤션"
+              },
+              {
+                "bytes": 20674,
+                "headings": [
+                  "ADR History Archive",
+                  "LLM Wiki 정책",
+                  "2026-05-29 — Upstream companion tools are opt-in dependencies",
+                  "ADR note: MCP-backed project memory records",
+                  "ADR note: Adapter 분리, compatibility contract, audit log, worker MVP",
+                  "2026-05-29 — Return quality gate failures as normal MCP payloads",
+                  "2026-05-29 — Public command identity follows project identity",
+                  "2026-05-29 — Simple bootstrap/project-bootstrap commands",
+                  "2026-05-30 — Static project-doc catalog injection (작업 레포 .agent-harness 메뉴)",
+                  "2026-05-30 — Host-specific UserPromptSubmit display contract",
+                  "2026-05-31 — Shared PreToolUse hook and prompt/tool lifecycle split",
+                  "2026-05-31 — Repo-local draft wiki staging before upstream LLM Wiki ingest",
+                  "2026-06-02 — IssueOps split"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
+                "rel_path": ".agent-harness/archive/adr-history.md",
+                "title": "ADR History Archive"
+              },
+              {
+                "bytes": 4929,
+                "headings": [
+                  "Cautions Incident Archive",
+                  "2026-05-31 — Codex PreCompact hook stdout schema",
+                  "2026-05-31 — PreToolUse false-positive risk",
+                  "2026-05-31 — Do not patch upstream companion plugin caches",
+                  "2026-06-03 — Do not leave self-verify invariant failures as reports only",
+                  "2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup",
+                  "2026-06-03 — Do not stop at cosmetic symptom fixes"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
+                "rel_path": ".agent-harness/archive/cautions-incidents.md",
+                "title": "Cautions Incident Archive"
+              },
+              {
+                "bytes": 3620,
+                "headings": [
+                  "CLI And MCP Operations",
+                  "Direct CLI",
+                  "Command Policy",
+                  "State",
+                  "Daemon And MCP",
+                  "Worker",
+                  "Contract And Audit"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
+                "rel_path": ".agent-harness/operations/cli-and-mcp.md",
+                "title": "CLI And MCP Operations"
+              },
+              {
+                "bytes": 2999,
+                "headings": [
+                  "Host Operations",
+                  "Codex",
+                  "Claude Code",
+                  "IssueOps Host Rule"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
+                "rel_path": ".agent-harness/operations/hosts.md",
+                "title": "Host Operations"
+              },
+              {
+                "bytes": 2911,
+                "headings": [
+                  "Install And Sync",
+                  "Install or refresh user-level Codex/Claude integration for this checkout.",
+                  "Also refresh opt-in upstream companion tools.",
+                  "Initialize project docs/profile for a target repository.",
+                  "Refresh existing project docs/profile from current templates and evidence.",
+                  "`--sync`",
+                  "Upstream Companion Tools"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/install.md",
+                "rel_path": ".agent-harness/operations/install.md",
+                "title": "Install And Sync"
+              },
+              {
+                "bytes": 3558,
+                "headings": [
+                  "Project Docs Operations",
+                  "Project Bootstrap",
+                  "MCP Project Docs",
+                  "LLM Wiki Policy"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
+                "rel_path": ".agent-harness/operations/project-docs.md",
+                "title": "Project Docs Operations"
+              },
+              {
+                "bytes": 3809,
+                "headings": [
+                  "Verification Operations",
+                  "Self-Verify",
+                  "Self-Augment",
+                  "API Documentation Gate",
+                  "General Verification"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+                "rel_path": ".agent-harness/operations/verification.md",
+                "title": "Verification Operations"
               },
               {
                 "bytes": 12976,
@@ -3646,6 +3821,13 @@
               "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
               "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
               "$HARNESS_ROOT/.agent-harness/TESTING.md",
+              "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
+              "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
+              "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
+              "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
+              "$HARNESS_ROOT/.agent-harness/operations/install.md",
+              "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
+              "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
               "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -4345,7 +4527,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 18,
+              "docs_indexed": 25,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
