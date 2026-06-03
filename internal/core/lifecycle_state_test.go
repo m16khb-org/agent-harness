@@ -441,3 +441,77 @@ func TestLifecyclePreCompactNoPendingUpkeepDoesNotWriteCapsule(t *testing.T) {
 		t.Fatalf("pre-compact without pending upkeep should not write capsule, stat error: %v", err)
 	}
 }
+
+func TestEvaluateNextActionAutoProceedAdvancesRecommendedSafeAction(t *testing.T) {
+	message := strings.Join([]string{
+		"구현을 마쳤습니다.",
+		"선택지:",
+		"1. 진행: 다음 단계 테스트를 추가하고 구현을 계속합니다. (추천)",
+		"2. 축소 진행: 일부만 먼저 검증합니다.",
+		"3. 보류: 현재 상태로 멈추고 사용자 확인을 기다립니다.",
+	}, "\n")
+	result := EvaluateNextActionAutoProceed(message, 0)
+	if !result.OK {
+		t.Fatalf("expected ok result, got %+v", result)
+	}
+	if !result.AutoProceed {
+		t.Fatalf("recommended safe reversible action should auto-proceed, got %+v", result)
+	}
+	if result.SelectedIndex != 1 {
+		t.Fatalf("expected selected index 1, got %d", result.SelectedIndex)
+	}
+	if result.TopScore < result.Threshold {
+		t.Fatalf("top score %.2f should meet threshold %.2f", result.TopScore, result.Threshold)
+	}
+}
+
+func TestEvaluateNextActionAutoProceedNeverAdvancesDestructiveCleanup(t *testing.T) {
+	message := strings.Join([]string{
+		"머지 상태를 확인했습니다.",
+		"선택지:",
+		"1. 정리 진행: merged PR worktree와 local branch를 삭제합니다. (추천)",
+		"2. 보류: worktree는 유지합니다.",
+		"3. 확장 정리: 전체 stale worktree를 점검합니다.",
+	}, "\n")
+	result := EvaluateNextActionAutoProceed(message, 0)
+	if result.AutoProceed {
+		t.Fatalf("destructive recommended action must not auto-proceed, got %+v", result)
+	}
+	if result.BlockedByGuard == "" {
+		t.Fatalf("expected a guard reason for destructive action, got %+v", result)
+	}
+}
+
+func TestEvaluateNextActionAutoProceedStopsOnAmbiguousChoices(t *testing.T) {
+	message := strings.Join([]string{
+		"해석이 갈립니다.",
+		"선택지:",
+		"1. 해석 A로 구현합니다.",
+		"2. 해석 B로 구현합니다.",
+		"3. 해석 C로 구현합니다.",
+	}, "\n")
+	result := EvaluateNextActionAutoProceed(message, 0)
+	if result.AutoProceed {
+		t.Fatalf("no explicit recommendation should not auto-proceed, got %+v", result)
+	}
+}
+
+func TestEvaluateNextActionAutoProceedNoChoicesDoesNotProceed(t *testing.T) {
+	result := EvaluateNextActionAutoProceed("작업을 완료했습니다.", 0)
+	if result.AutoProceed {
+		t.Fatalf("message without numbered choices must not auto-proceed, got %+v", result)
+	}
+}
+
+func TestEvaluateNextActionAutoProceedRespectsHighThreshold(t *testing.T) {
+	message := strings.Join([]string{
+		"선택지:",
+		"1. 진행: 구현을 계속합니다. (추천)",
+		"2. 축소 진행: 일부만 검증합니다.",
+		"3. 보류: 멈춥니다.",
+	}, "\n")
+	result := EvaluateNextActionAutoProceed(message, 1.01)
+	if result.AutoProceed {
+		t.Fatalf("threshold above max must block auto-proceed, got %+v", result)
+	}
+}
