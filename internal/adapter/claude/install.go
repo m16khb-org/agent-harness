@@ -22,7 +22,7 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	result := port.HostInstallResult{Host: "claude", OK: true, DryRun: req.DryRun}
 	var errs []error
 
-	enabledSkills, links, messages, skillErrs := installutil.PlanHostSkillLinks(req.Root, filepath.Join(req.Home, ".claude", "skills"), req.SkillNames, "claude", req.DryRun)
+	enabledSkills, links, messages, skillErrs := installutil.PlanHostSkills(req.Root, req.EmbeddedSkills, filepath.Join(req.Home, ".claude", "skills"), req.SkillNames, "claude", req.DryRun)
 	result.Messages = append(result.Messages, messages...)
 	result.Links = append(result.Links, links...)
 	errs = append(errs, skillErrs...)
@@ -35,17 +35,22 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	}
 
 	mcpConfig := claudeProjectMCPConfig()
-	file, err = installutil.WriteJSONPlan(filepath.Join(req.Root, "configs", "claude", "mcp.project.json"), "claude_project_mcp_template", mcpConfig, 0o644, req.DryRun)
-	result.Files = append(result.Files, file)
-	if err != nil {
-		errs = append(errs, err)
-	}
+	// The configs/ templates are developer reference artifacts inside the repo.
+	// A packaged binary (embedded skills, no writable checkout) skips them; the
+	// host settings and MCP config above are generated in Go and do not need them.
+	if req.EmbeddedSkills == nil {
+		file, err = installutil.WriteJSONPlan(filepath.Join(req.Root, "configs", "claude", "mcp.project.json"), "claude_project_mcp_template", mcpConfig, 0o644, req.DryRun)
+		result.Files = append(result.Files, file)
+		if err != nil {
+			errs = append(errs, err)
+		}
 
-	hooksTemplatePath := filepath.Join(req.Root, "configs", "claude", "hooks.settings.json")
-	file, err = installutil.WriteJSONPlan(hooksTemplatePath, "claude_hooks_template", claudeSettingsConfig("./bin/agent-harness"), 0o644, req.DryRun)
-	result.Files = append(result.Files, file)
-	if err != nil {
-		errs = append(errs, err)
+		hooksTemplatePath := filepath.Join(req.Root, "configs", "claude", "hooks.settings.json")
+		file, err = installutil.WriteJSONPlan(hooksTemplatePath, "claude_hooks_template", claudeSettingsConfig("./bin/agent-harness"), 0o644, req.DryRun)
+		result.Files = append(result.Files, file)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	if req.ProjectLocal {
