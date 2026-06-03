@@ -40,12 +40,16 @@ func runInstallNative(args []string) error {
 	req := core.DefaultNativeInstallRequest(root, home, codexHome, installBinPath())
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
-	// No repository skills (packaged binary, e.g. brew): install from embedded assets.
-	if _, err := core.ListSkillNames(root); err != nil {
-		if names, nerr := assets.SkillNames(); nerr == nil && len(names) > 0 {
+	// No repository skills (packaged binary, e.g. brew): install from embedded
+	// assets. The signal is "no checkout skills found", which includes both a
+	// read error and an existing-but-empty skills directory.
+	embedMode := false
+	if names, err := core.ListSkillNames(root); err != nil || len(names) == 0 {
+		if embeddedNames, nerr := assets.SkillNames(); nerr == nil && len(embeddedNames) > 0 {
 			if skillsFS, ferr := assets.SkillsFS(); ferr == nil {
 				req.EmbeddedSkills = skillsFS
-				req.SkillNames = names
+				req.SkillNames = embeddedNames
+				embedMode = true
 			}
 		}
 	}
@@ -54,11 +58,11 @@ func runInstallNative(args []string) error {
 		_ = printJSON(result)
 		return err
 	}
-	printInstallNativeResult(result)
+	printInstallNativeResult(result, embedMode)
 	return err
 }
 
-func printInstallNativeResult(result port.NativeInstallResult) {
+func printInstallNativeResult(result port.NativeInstallResult, embedMode bool) {
 	mode := "user/global only"
 	if result.ProjectLocal {
 		mode = "user/global + explicit project-local"
@@ -70,13 +74,21 @@ func printInstallNativeResult(result port.NativeInstallResult) {
 	}
 	fmt.Printf("- mode: %s\n", mode)
 	fmt.Printf("- binary: %s\n", result.BinPath)
-	fmt.Printf("- Codex user skills: %s/skills/* -> %s/skills/*\n", result.CodexHome, result.Root)
-	fmt.Printf("- Claude user skills: %s -> %s/skills/*\n", filepath.Join(result.Home, ".claude", "skills", "*"), result.Root)
+	if embedMode {
+		fmt.Printf("- source: embedded assets (no repository checkout)\n")
+		fmt.Printf("- Codex user skills: copied to %s\n", filepath.Join(result.CodexHome, "skills", "*"))
+		fmt.Printf("- Claude user skills: copied to %s\n", filepath.Join(result.Home, ".claude", "skills", "*"))
+	} else {
+		fmt.Printf("- Codex user skills: %s/skills/* -> %s/skills/*\n", result.CodexHome, result.Root)
+		fmt.Printf("- Claude user skills: %s -> %s/skills/*\n", filepath.Join(result.Home, ".claude", "skills", "*"), result.Root)
+	}
 	fmt.Printf("- Codex MCP config: %s\n", filepath.Join(result.CodexHome, "config.toml"))
 	fmt.Printf("- Codex UserPromptSubmit hook: %s\n", filepath.Join(result.CodexHome, "hooks.json"))
-	fmt.Printf("- Claude project MCP template: %s\n", filepath.Join(result.Root, "configs", "claude", "mcp.project.json"))
-	fmt.Printf("- Codex MCP template: %s\n", filepath.Join(result.Root, "configs", "codex", "mcp.config.toml"))
-	fmt.Printf("- Codex hook template: %s\n", filepath.Join(result.Root, "configs", "codex", "hooks.json"))
+	if !embedMode {
+		fmt.Printf("- Claude project MCP template: %s\n", filepath.Join(result.Root, "configs", "claude", "mcp.project.json"))
+		fmt.Printf("- Codex MCP template: %s\n", filepath.Join(result.Root, "configs", "codex", "mcp.config.toml"))
+		fmt.Printf("- Codex hook template: %s\n", filepath.Join(result.Root, "configs", "codex", "hooks.json"))
+	}
 	if result.ProjectLocal {
 		fmt.Printf("- Project-local Claude MCP config: %s\n", filepath.Join(result.Root, ".mcp.json"))
 		fmt.Printf("- Project-local Claude skills: %s\n", filepath.Join(result.Root, ".claude", "skills", "*"))

@@ -49,6 +49,9 @@ func PlanHostSkills(root string, embedded fs.FS, destRoot string, skillNames []s
 // prior symlink or copy so packaged upgrades stay clean.
 func copySkillFromFS(srcFS fs.FS, skillName, dest string, dryRun bool) (port.InstallLink, error) {
 	link := port.InstallLink{Path: dest, Target: "embedded:" + skillName}
+	if skillName == "" {
+		return link, fmt.Errorf("refusing to copy skill with empty name into %s", dest)
+	}
 	if dryRun {
 		link.WouldCreate = true
 		return link, nil

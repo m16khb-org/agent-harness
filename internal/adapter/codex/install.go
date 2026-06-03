@@ -414,7 +414,7 @@ func hookGroupContainsAgentHarness(group any) bool {
 
 func shellQuote(value string) string {
 	if value == "" {
-		return "harness"
+		return "''"
 	}
 	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
