@@ -545,3 +545,155 @@ func TestEvaluateNextActionAutoProceedRespectsHighThreshold(t *testing.T) {
 		t.Fatalf("threshold above max must block auto-proceed, got %+v", result)
 	}
 }
+
+func guardRepoWithCycle(t *testing.T, branch string, phase IssueOpsPhase) string {
+	t.Helper()
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if phase != IssueOpsPhaseProblem {
+		if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(phase)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return repo
+}
+
+func TestWorktreeGuardBlocksSourceEditInImplementPhase(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
+	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if blocked.Decision != "block" {
+		t.Fatalf("implement-phase source-checkout edit should block, got %+v", blocked)
+	}
+	wtTarget := "/Users/dev/proj.worktrees/feat-x/internal/x.go"
+	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{wtTarget}, EnforceWorktree: true,
+	})
+	if allowed.Decision == "block" {
+		t.Fatalf("edit targeting the isolated worktree should pass, got %+v", allowed)
+	}
+}
+
+func TestWorktreeGuardNoBlockWithoutCycle(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("no cycle for this branch should not block, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardNoBlockWhenCycleDone(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
+	id := newIssueOpsID(repo, "feat/x")
+	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(IssueOpsPhaseDone)); err != nil {
+		t.Fatal(err)
+	}
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("done cycle should release the source checkout, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardNoBlockInPlanningPhase(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseGrill)
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("planning phase expects no worktree yet; should not block, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardIgnoresOtherBranchCycle(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	// Active implement cycle for a different branch must not lock edits on main.
+	repo := guardRepoWithCycle(t, "feat/other", IssueOpsPhaseImplement)
+	_ = os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("a cycle for a different branch must not lock the current branch, got %+v", res)
+	}
+}
+
+func TestActiveIssueOpsCycleForBranchIsDeterministicAndReleasesOnDone(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if _, ok := ActiveIssueOpsCycleForBranch(repo, "main"); ok {
+		t.Fatalf("no cycle yet")
+	}
+	first, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Re-starting the same (repo, branch) must resume the same record, not duplicate.
+	second, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.ID != second.ID {
+		t.Fatalf("start must be idempotent per (repo, branch): %s != %s", first.ID, second.ID)
+	}
+	if _, ok := ActiveIssueOpsCycleForBranch(repo, "main"); !ok {
+		t.Fatalf("active cycle should be found")
+	}
+	if _, ok := ActiveIssueOpsCycleForBranch(repo, "other"); ok {
+		t.Fatalf("a different branch must not match")
+	}
+	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), first.ID, string(IssueOpsPhaseDone)); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := ActiveIssueOpsCycleForBranch(repo, "main"); ok {
+		t.Fatalf("done cycle must not be reported active")
+	}
+}
+
+func TestGitBranchFromHeadResolvesRelativeLinkedWorktreeGitdir(t *testing.T) {
+	base := t.TempDir()
+	// Simulate a linked worktree: <base>/wt/.git is a file pointing to a relative
+	// gitdir, and HEAD lives under that resolved gitdir.
+	wt := filepath.Join(base, "repo.worktrees", "feat-x")
+	gitdir := filepath.Join(base, "repo", ".git", "worktrees", "feat-x")
+	if err := os.MkdirAll(wt, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(gitdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(wt, gitdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: "+rel+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitdir, "HEAD"), []byte("ref: refs/heads/feat/x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := gitBranchFromHead(wt); got != "feat/x" {
+		t.Fatalf("expected branch feat/x from relative linked-worktree gitdir, got %q", got)
+	}
+}
