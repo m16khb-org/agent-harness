@@ -121,6 +121,56 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresBoundedReviewPrompt(t *testing.T)
 	}
 }
 
+func TestScoreIssueOpsBenchmarkArtifactIncludesEvidenceContractDimensions(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "evidence-contract", CriticalFailures: []string{"skips verification"}}
+	artifact := completeBenchmarkArtifactForTest()
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	for _, dimension := range []string{
+		"domain_contract_quality",
+		"api_doc_gate_quality",
+		"live_evidence_quality",
+		"review_feedback_accountability",
+		"completion_hygiene_quality",
+	} {
+		found := false
+		for _, dimensionScore := range score.DimensionScores {
+			if dimensionScore.Dimension == dimension {
+				found = true
+				if dimensionScore.Score < 100 {
+					t.Fatalf("expected %s to pass for complete artifact: %+v", dimension, score)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("expected score to include %s dimension: %+v", dimension, score)
+		}
+	}
+}
+
+func TestScoreIssueOpsBenchmarkArtifactDetectsEvidenceCriticalFailures(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "evidence-critical", CriticalFailures: []string{
+		"skips domain contract evidence",
+		"skips api doc gate",
+		"skips live evidence matrix",
+		"skips review feedback accountability",
+		"skips completion hygiene",
+	}}
+	artifact := completeBenchmarkArtifactForTest()
+	artifact.DomainContractEvidence = ""
+	artifact.APIDocGateEvidence = ""
+	artifact.LiveEvidenceMatrix = ""
+	artifact.ReviewFeedbackEvidence = ""
+	artifact.CompletionHygiene = ""
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	for _, want := range fixture.CriticalFailures {
+		if !containsString(score.CriticalFailures, want) {
+			t.Fatalf("expected critical failure %q in %+v", want, score)
+		}
+	}
+}
+
 func TestRunAndCompareIssueOpsBenchmark(t *testing.T) {
 	dir := t.TempDir()
 	fixtures := []IssueOpsBenchmarkFixture{
@@ -318,5 +368,10 @@ func completeBenchmarkArtifactForTest() IssueOpsBenchmarkArtifact {
 		WorktreePath:           "/repo.worktrees/feature-1-issueops-quality-benchmark",
 		ImplementationLocation: "/repo.worktrees/feature-1-issueops-quality-benchmark",
 		WorktreeCleanup:        "clean worktree; cleanup choices offered after merge",
+		DomainContractEvidence: "Invariant: preserve the user-visible contract. Exact mechanism: compare the documented mechanism with source file:line evidence. Equivalent behavior: record when another path enforces the same invariant. Source: internal/core/example.go:12.",
+		APIDocGateEvidence:     "Changed endpoint list is reviewed. Public error responses are mapped. Static check: api_doc_static_check. Review: api_doc_review for OpenAPI/Swagger/API doc parity.",
+		LiveEvidenceMatrix:     "Environment matrix covers dev, stg, and prod. Repo config evidence is compared with runtime evidence. Remediation order is recorded before edits.",
+		ReviewFeedbackEvidence: "Classification: valid defect. Verification: command and file:line evidence. Thread reply: posted with verdict. Resolution: re-checked after fix.",
+		CompletionHygiene:      "Final diff reviewed, target branch verified, remote artifact issue/PR/MR refreshed, single commit policy checked, cleanup status recorded.",
 	}
 }

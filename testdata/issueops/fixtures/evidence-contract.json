@@ -1,0 +1,13 @@
+{
+  "id": "evidence-contract",
+  "title": "IssueOps requires portable evidence contracts before implementation",
+  "user_prompt": "이 장애 원인을 dev/stg/prod까지 확인하고 이슈 기반으로 고쳐줘",
+  "repo_context": "The target repository has endpoint, runtime, and review-feedback surfaces. A good IssueOps cycle must separate domain invariants from exact implementation mechanisms, verify API documentation when endpoint contracts change, compare repo/config evidence with live runtime evidence, answer review threads with verdicts, and refresh the final remote artifact before cleanup.",
+  "expected_issue": ["states the domain invariant", "separates exact mechanism from equivalent behavior", "lists current evidence", "defines acceptance criteria", "includes verification", "is written in Korean", "references issue/pr guideline"],
+  "expected_plan": ["records changed endpoints or states none", "runs API doc static and review gates when endpoints change", "builds an environment evidence matrix", "uses targeted tests before broad checks"],
+  "expected_tasks": ["separates domain contract work", "separates API documentation gate work", "separates live runtime verification", "separates review-thread replies", "separates completion hygiene"],
+  "expected_tdd": ["writes failing tests for the changed behavior before implementation"],
+  "expected_subagents": ["assigns non-overlapping file ownership", "verifies pwd branch and HEAD before work", "uses verifier or bounded review for narrow reviews"],
+  "expected_pr": ["summarizes final diff", "names target branch", "links issue", "lists API doc and live evidence", "states review thread status", "is written in Korean", "references issue/pr guideline"],
+  "critical_failures": ["skips domain contract evidence", "skips api doc gate", "skips live evidence matrix", "skips review feedback accountability", "skips completion hygiene", "worker starts without context check", "unbounded code-reviewer review", "issue or pr/mr not written in Korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+}

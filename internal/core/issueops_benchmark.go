@@ -39,6 +39,11 @@ type IssueOpsBenchmarkArtifact struct {
 	ImplementationLocation string `json:"implementation_location,omitempty"`
 	WorktreeCleanup        string `json:"worktree_cleanup,omitempty"`
 	GuidelineRef           string `json:"guideline_ref,omitempty"`
+	DomainContractEvidence string `json:"domain_contract_evidence,omitempty"`
+	APIDocGateEvidence     string `json:"api_doc_gate_evidence,omitempty"`
+	LiveEvidenceMatrix     string `json:"live_evidence_matrix,omitempty"`
+	ReviewFeedbackEvidence string `json:"review_feedback_evidence,omitempty"`
+	CompletionHygiene      string `json:"completion_hygiene,omitempty"`
 }
 
 type IssueOpsDimensionScore struct {
@@ -117,15 +122,20 @@ type IssueOpsAutoresearchGateResult struct {
 var issueOpsBenchmarkDimensions = []string{
 	"intent_understanding",
 	"issue_quality",
+	"domain_contract_quality",
 	"plan_quality",
+	"api_doc_gate_quality",
+	"live_evidence_quality",
 	"task_decomposition",
 	"tdd_quality",
 	"subagent_orchestration",
+	"review_feedback_accountability",
 	"implementation_readiness",
 	"pr_mr_quality",
 	"phase_control_quality",
 	"branch_worktree_gate_quality",
 	"isolation_compliance",
+	"completion_hygiene_quality",
 	"worktree_cleanup_quality",
 }
 
@@ -201,10 +211,25 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			evidence: "issue draft includes required sections, Korean text, and guideline reference",
 			failure:  "issue draft missing required sections, Korean text, or guideline reference",
 		},
+		"domain_contract_quality": {
+			ok:       issueOpsDomainContractEvidenceComplete(artifact),
+			evidence: "domain contract evidence separates invariants, exact mechanisms, equivalent behavior, and source lines",
+			failure:  "domain contract evidence missing invariants, exact mechanisms, equivalent behavior, or source lines",
+		},
 		"plan_quality": {
 			ok:       containsAnyFold(artifact.Plan, "go test", "verify", "verification", "test"),
 			evidence: "plan includes verification commands or tests",
 			failure:  "plan missing verification commands",
+		},
+		"api_doc_gate_quality": {
+			ok:       issueOpsAPIDocGateEvidenceComplete(artifact),
+			evidence: "API documentation gate evidence covers changed endpoints, public error responses, and static plus review checks",
+			failure:  "API documentation gate evidence missing changed endpoints, public error responses, static check, or review check",
+		},
+		"live_evidence_quality": {
+			ok:       issueOpsLiveEvidenceMatrixComplete(artifact),
+			evidence: "live evidence matrix separates environments, repo/config evidence, runtime evidence, and remediation order",
+			failure:  "live evidence matrix missing environments, repo/config evidence, runtime evidence, or remediation order",
 		},
 		"task_decomposition": {
 			ok:       containsAllFold(artifact.TaskBreakdown, "owns") && containsAnyFold(artifact.TaskBreakdown, "worker", "task"),
@@ -220,6 +245,11 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			ok:       containsAllFold(artifact.SubagentPrompts, "not alone", "do not revert", "own") && containsAnyFold(artifact.SubagentPrompts, "expected output", "report") && workerPromptHasContextGate(artifact) && reviewPromptIsBounded(artifact),
 			evidence: "subagent prompts include coordination, ownership, context verification, and bounded review guidance",
 			failure:  "subagent prompts missing coordination, context verification, or bounded review guidance",
+		},
+		"review_feedback_accountability": {
+			ok:       issueOpsReviewFeedbackEvidenceComplete(artifact),
+			evidence: "review feedback evidence classifies claims, cites verification, records thread replies, and tracks resolution",
+			failure:  "review feedback evidence missing claim classification, verification, thread replies, or resolution status",
 		},
 		"implementation_readiness": {
 			ok:       strings.TrimSpace(artifact.BranchName) != "" && strings.TrimSpace(artifact.WorktreePath) != "",
@@ -245,6 +275,11 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			ok:       implementationInWorktree(artifact),
 			evidence: "implementation location is inside the isolated worktree",
 			failure:  "implementation location is outside the isolated worktree",
+		},
+		"completion_hygiene_quality": {
+			ok:       issueOpsCompletionHygieneComplete(artifact),
+			evidence: "completion hygiene records final diff, target branch, remote artifact refresh, single-commit policy, and cleanup status",
+			failure:  "completion hygiene missing final diff, target branch, remote artifact refresh, single-commit policy, or cleanup status",
 		},
 		"worktree_cleanup_quality": {
 			ok:       containsAnyFold(artifact.WorktreeCleanup, "clean") && containsAnyFold(artifact.WorktreeCleanup, "cleanup", "remove") && containsAnyFold(artifact.WorktreeCleanup, "choice", "offered", "present"),
@@ -590,6 +625,16 @@ func detectIssueOpsCriticalFailures(fixture IssueOpsBenchmarkFixture, artifact I
 			failures = append(failures, rule)
 		case strings.Contains(ruleText, "excessive emoji") && hasExcessiveEmoji(artifact.IssueDraft+"\n"+artifact.PRDraft):
 			failures = append(failures, rule)
+		case strings.Contains(ruleText, "domain contract") && !issueOpsDomainContractEvidenceComplete(artifact):
+			failures = append(failures, rule)
+		case strings.Contains(ruleText, "api doc") && !issueOpsAPIDocGateEvidenceComplete(artifact):
+			failures = append(failures, rule)
+		case strings.Contains(ruleText, "live evidence") && !issueOpsLiveEvidenceMatrixComplete(artifact):
+			failures = append(failures, rule)
+		case strings.Contains(ruleText, "review feedback") && !issueOpsReviewFeedbackEvidenceComplete(artifact):
+			failures = append(failures, rule)
+		case strings.Contains(ruleText, "completion hygiene") && !issueOpsCompletionHygieneComplete(artifact):
+			failures = append(failures, rule)
 		}
 	}
 	return failures
@@ -599,6 +644,31 @@ func implementationInWorktree(artifact IssueOpsBenchmarkArtifact) bool {
 	worktreePath := strings.TrimSpace(artifact.WorktreePath)
 	location := strings.TrimSpace(artifact.ImplementationLocation)
 	return worktreePath != "" && location != "" && (location == worktreePath || strings.HasPrefix(location, worktreePath+string(os.PathSeparator)))
+}
+
+func issueOpsDomainContractEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+	return containsAllFold(artifact.DomainContractEvidence, "invariant", "exact mechanism", "equivalent behavior", "source") &&
+		containsAnyFold(artifact.DomainContractEvidence, "file:", "line", ":")
+}
+
+func issueOpsAPIDocGateEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+	return containsAllFold(artifact.APIDocGateEvidence, "changed endpoint", "public error", "static check", "review") &&
+		containsAnyFold(artifact.APIDocGateEvidence, "openapi", "swagger", "api-doc", "api doc")
+}
+
+func issueOpsLiveEvidenceMatrixComplete(artifact IssueOpsBenchmarkArtifact) bool {
+	return containsAllFold(artifact.LiveEvidenceMatrix, "environment", "repo config", "runtime", "remediation order") &&
+		containsAnyFold(artifact.LiveEvidenceMatrix, "dev", "stg", "prod", "local", "production")
+}
+
+func issueOpsReviewFeedbackEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+	return containsAllFold(artifact.ReviewFeedbackEvidence, "classification", "verification", "thread reply", "resolution") &&
+		containsAnyFold(artifact.ReviewFeedbackEvidence, "valid", "stale", "noise", "contract_change", "defect")
+}
+
+func issueOpsCompletionHygieneComplete(artifact IssueOpsBenchmarkArtifact) bool {
+	return containsAllFold(artifact.CompletionHygiene, "final diff", "target branch", "remote artifact", "single commit", "cleanup") &&
+		containsAnyFold(artifact.CompletionHygiene, "pr", "mr", "issue")
 }
 
 func workerPromptHasContextGate(artifact IssueOpsBenchmarkArtifact) bool {

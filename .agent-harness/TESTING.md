@@ -63,6 +63,8 @@ HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify promote --from-ke
 grep -R "Conventional Commit\|Lore:" -n AGENTS.md .agent-harness/COMMIT_POLICY.md skills/atomic-commit-push/SKILL.md
 ```
 
+IssueOps benchmark fixtures must stay repo-agnostic. They should score portable workflow evidence rather than one target repository's domain facts: domain invariants vs exact/equivalent mechanisms, API-doc gate evidence, live runtime evidence matrices, review-feedback accountability, and completion hygiene. A passing deterministic benchmark means `average_score == 100`, `minimum_score == 100`, and `critical_failure_count == 0`.
+
 확인할 것:
 
 Native integration smoke:

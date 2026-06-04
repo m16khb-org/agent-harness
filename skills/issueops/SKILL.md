@@ -30,6 +30,7 @@ Required phases:
 Load these files only when the phase applies:
 
 - `references/remote-issue.md`: remote issue first, related issue/label scoring, external LLM judge contract, Korean remote artifact gate, issue template.
+- `references/evidence-contract.md`: portable domain contract, API documentation, live evidence, review accountability, and completion hygiene rules.
 - `references/worktree-context.md`: branch/worktree contract, local config symlink rules, context routing.
 - `references/review-feedback.md`: worker prompt requirements, bounded subagent review rules, remote review feedback replies and thread resolution.
 - `references/cleanup-state.md`: post-merge cleanup, state commands, benchmark commands, stop conditions.
@@ -41,6 +42,7 @@ Load these files only when the phase applies:
 - Edit-target guard: shell cwd checks are not enough. Before any file edit, ensure the edit tool target path is inside the expected isolated worktree; after the edit, verify the source checkout/main branch remains clean and the worktree owns the change.
 - State first: link the issue and plan in IssueOps state before PR/MR drafting.
 - TDD first: for behavior changes, write or update focused tests before production changes.
+- Evidence contract first: before implementation, record the domain invariant, exact mechanism, equivalent behavior if any, source evidence, changed endpoint/API-doc needs, live runtime matrix needs, review-thread obligations, and completion hygiene checks. Load `references/evidence-contract.md` when any of those surfaces apply.
 - Verify before remote writes: run the Korean Remote Artifact Gate before creating or editing remote issues, PRs, or MRs.
 - Korean remote hook guard: installed PreToolUse hooks include `--enforce-korean-remote-artifacts` and block `gh issue/pr create/edit` when an inspectable title/body fails the Korean remote artifact gate.
 - VCS linking hook guard: installed PreToolUse hooks include `--enforce-vcs-issue-linking` and block `gh`/`glab` issue create/edit when the body carries a `Plan Link` section or, on GitLab, a `Related Issues` body section (related issues belong in native linked items). The same guard blocks remote issue/PR/MR create commands without labels; copy linked issue labels for PR/MR create or pass an explicit manual label. See `references/remote-issue.md` → "Provider-Specific Linking And Hierarchy".
@@ -52,6 +54,7 @@ Load these files only when the phase applies:
 - Remote artifact ownership: created issues and PRs/MRs must be assigned to the currently authenticated user when the provider supports assignment, and assignment must be verified before reporting readiness.
 - Remote issue source of truth: when feedback changes scope, acceptance criteria, non-goals, verification, labels, related links, or implementation contract, update the remote issue body before continuing.
 - Review thread accountability: remote review feedback must be answered in the original review thread/discussion with verdict, evidence, and next action; do not report feedback cleared until addressed threads are replied to, resolved when appropriate, and re-checked.
+- Completion hygiene: before reporting done, verify the final diff, target branch, remote issue/PR/MR prose freshness, single-commit or declared commit policy, and cleanup/worktree status.
 - External LLM wrapper: all IssueOps `agy -p` usage must go through the shared harness external LLM wrapper and remain read-only judgment.
 
 Use this remote issue scoring choice shape before creating or editing an issue:

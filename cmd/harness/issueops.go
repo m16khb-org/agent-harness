@@ -516,6 +516,37 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 			"3. Inspect: stale IssueOps worktree 전체를 점검한 뒤 삭제 후보를 제시한다.",
 		}, "\n"),
 		GuidelineRef: guideline,
+		DomainContractEvidence: strings.Join([]string{
+			"Invariant: preserve the user-visible behavior described by the issue.",
+			"Exact mechanism: compare the documented mechanism with source file:line evidence before implementation.",
+			"Equivalent behavior: if the exact mechanism is absent, record whether another verified path enforces the same invariant.",
+			"Source: current files, docs, logs, or command output must be cited before claiming completion.",
+		}, "\n"),
+		APIDocGateEvidence: strings.Join([]string{
+			"Changed endpoint list is recorded, or the plan states that no endpoint contract changed.",
+			"Public error responses are checked against service/usecase/error-mapping behavior.",
+			"Static check: api_doc_static_check or the target repo's equivalent API doc command.",
+			"Review: api_doc_review for OpenAPI/Swagger/API doc parity when endpoint contracts change.",
+		}, "\n"),
+		LiveEvidenceMatrix: strings.Join([]string{
+			"Environment matrix covers dev, stg, prod, or the target repo's equivalent runtime surfaces.",
+			"Repo config evidence is compared with runtime evidence before assigning root cause.",
+			"Runtime evidence records live config, logs, deployed code, or external service probes where available.",
+			"Remediation order is recorded before edits when multiple fixes are needed.",
+		}, "\n"),
+		ReviewFeedbackEvidence: strings.Join([]string{
+			"Classification: valid_review, stale_review, contract_change, defect, question, noise, rollout_evidence_missing, or environment_debt.",
+			"Verification: file/line, command output, diff evidence, or live evidence decides validity.",
+			"Thread reply: original review thread gets a verdict and evidence.",
+			"Resolution: unresolved, fixed, resolved, obsolete, or split to follow-up is re-checked.",
+		}, "\n"),
+		CompletionHygiene: strings.Join([]string{
+			"Final diff is reviewed from the actual worktree.",
+			"Target branch and source branch are verified before remote artifact updates.",
+			"Remote artifact issue/PR/MR body is refreshed against the final implementation.",
+			"Single commit policy is checked, or multiple commits are explicitly justified.",
+			"Cleanup status is recorded with worktree and branch checks.",
+		}, "\n"),
 	}
 }
 
