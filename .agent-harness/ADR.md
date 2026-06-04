@@ -276,3 +276,4 @@ Archived entries:
 - 2026-05-31: shared PreToolUse hook and prompt/tool lifecycle split.
 - 2026-05-31: repo-local draft wiki staging before upstream LLM Wiki ingest.
 - 2026-06-02: IssueOps split.
+- 2026-06-04: auto-proceed gate is the static heuristic + UserPromptSubmit policy injection; the external-LLM gate is disconnected (agy latency ~13-25s too high for the Stop hook), code preserved unused.

@@ -169,3 +169,21 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
   - MCP-only workflow: 에이전트 절차를 담기 어렵고 Codex/Claude native skill routing과 맞지 않는다.
   - Hook-driven automation: prompt hook critical path에서 remote issue/PR 생성이나 파일 수정을 수행하게 되어 안전 경계와 충돌한다.
   - Skill-only workflow without durable state: compaction, host handoff, feedback loop 추적이 약하다.
+
+## 2026-06-04 — Auto-proceed gate is heuristic + prompt injection, not an external LLM call
+
+- Kind: `adr`
+- Source: Stop-hook auto-proceed iteration (this session)
+- Summary: The Stop-hook auto-proceed decision uses ONLY the static heuristic (`EvaluateNextActionAutoProceed`). The external-LLM gate (`EvaluateNextActionAutoProceedLLM`) is disconnected from every live path; the gate's intent is delivered to the main agent as a per-turn policy injected via the UserPromptSubmit hook (`nextActionPolicyHint`).
+- Context: An external-LLM gate (agy → Gemini 3.5 Flash Fast) was built to judge whether a recommended next action is safe to auto-execute. Measured real-world latency was ~13-25s per call, which exceeds a Stop hook's usable budget (host timeout was raised 5→30 to fit it, but every auto-proceed turn then paid ~14s and frequently hit the 25s internal timeout). This is unusable in practice.
+- Decision: Disconnect the LLM gate from the live Stop hook. Auto-proceed is decided by the fast static heuristic alone. The judgment intent moves "up front" into the main agent via prompting: the UserPromptSubmit hook injects a concise next-action/auto-proceed policy every turn so the agent frames its own turn-ending choices (mark `(추천)` only on safe/reversible/confident forward steps; present destructive/irreversible/uncertain actions without recommending them), and the heuristic gate acts on that framing with zero external latency. When auto-proceed does not engage, the Stop hook emits a non-blocking `systemMessage` so the user is told to choose (both Claude and Codex). The Stop hook host timeout is reverted 30→5. The LLM gate code and its tests are preserved (unused) for possible future use behind a faster model.
+- Consequences: No per-turn external LLM latency. Auto-proceed quality now depends on (a) heuristic quality and (b) the agent following the injected policy — keep the policy text and `nextActionForwardVerbs`/`nextActionDestructive*` lists aligned. continue:true contract and stop_hook_active anti-loop guard are unchanged; CC/Codex parity holds because all of this is shared core. Do not re-wire `EvaluateNextActionAutoProceedLLM` into a latency-bounded hook without re-checking the model's real latency against the hook timeout.
+- Evidence:
+  - cmd/harness/hook_user_prompt.go (runHookStop: heuristic-only auto-proceed + systemMessage notice; no LLM call)
+  - internal/core/hook_prompt.go (const nextActionPolicyHint, appended in renderHookMCPHintContext)
+  - internal/core/next_action_autoproceed_llm.go (DEPRECATED/UNUSED note; preserved)
+  - internal/adapter/claude/install.go:149, internal/adapter/codex/install.go:332 (Stop Timeout reverted to 5)
+- Alternatives / rejected options:
+  - Synchronous LLM gate in the Stop hook with a raised timeout: ~14s per auto-proceed turn and frequent timeouts; unusable UX.
+  - Async/advisory LLM logging: adds no runtime gating benefit for the current turn.
+  - Deleting the LLM gate code outright: kept instead, since a faster model could make it viable later.
