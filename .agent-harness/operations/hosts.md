@@ -29,7 +29,7 @@ Codex lifecycle hooks live in `~/.codex/hooks.json`. `UserPromptSubmit` invokes 
 Hook behavior:
 
 - `UserPromptSubmit`: dynamic routing/profile/upkeep hint only.
-- `PreToolUse`: installed with worktree, Korean remote artifact, VCS issue-linking, and GitOps kubectl guards. The worktree guard is a no-op unless an IssueOps cycle or `HARNESS_EXPECTED_WORKTREE` applies; the kubectl guard blocks direct mutating cluster commands while allowing read-only inspection. Raw `--json` exposes diagnostics.
+- `PreToolUse`: installed with worktree, Korean remote artifact, VCS issue-linking, and GitOps kubectl guards. The worktree guard is a no-op unless an IssueOps cycle or `HARNESS_EXPECTED_WORKTREE` applies; the kubectl guard blocks direct mutating cluster commands, asks for confirmation on live access such as `exec` and `port-forward`, and allows read-only inspection plus dry-runs. Raw `--json` exposes diagnostics.
 - `--enforce-search-routing`: optional deterministic block for obvious CodeGraph/rg routing mismatches.
 - `PostToolUse`: records only successful mutating tool evidence into repo-scoped user state.
 - `PreCompact`/`PostCompact`: save and restore a small pending-upkeep capsule once.

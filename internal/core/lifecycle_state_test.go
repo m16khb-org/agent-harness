@@ -352,6 +352,23 @@ func TestPreToolUseGitOpsKubectlBlocksMutatingCommands(t *testing.T) {
 	}
 }
 
+func TestPreToolUseGitOpsKubectlAsksForLiveAccessCommands(t *testing.T) {
+	for _, command := range []string{
+		`kubectl exec -it pod/api-0 -- sh`,
+		`kubectl port-forward svc/api 8080:80 -n prod`,
+		`kubectl get pods && kubectl exec deployment/api -- env`,
+	} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Tool:                 "bash",
+			Command:              command,
+			EnforceGitOpsKubectl: true,
+		})
+		if got.Decision != "ask" || !strings.Contains(got.Reason, "kubectl") || !strings.Contains(got.Reason, "confirm") {
+			t.Fatalf("expected live kubectl access to ask for confirmation: %q -> %+v", command, got)
+		}
+	}
+}
+
 func TestPreToolUseGitOpsKubectlAllowsReadOnlyCommands(t *testing.T) {
 	for _, command := range []string{
 		`kubectl get pods -n prod`,

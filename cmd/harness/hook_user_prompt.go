@@ -288,12 +288,17 @@ func runHookPreToolUse(args []string) error {
 	if *jsonOut {
 		return printJSON(result)
 	}
-	if result.Decision == "block" {
-		if strings.EqualFold(strings.TrimSpace(*host), "claude") {
+	if result.Decision == "block" || result.Decision == "ask" {
+		hostName := strings.TrimSpace(*host)
+		if result.Decision == "ask" || strings.EqualFold(hostName, "claude") {
+			permissionDecision := result.Decision
+			if permissionDecision == "block" {
+				permissionDecision = "deny"
+			}
 			return printJSON(map[string]any{
 				"hookSpecificOutput": map[string]any{
 					"hookEventName":            "PreToolUse",
-					"permissionDecision":       "deny",
+					"permissionDecision":       permissionDecision,
 					"permissionDecisionReason": result.Reason,
 				},
 			})

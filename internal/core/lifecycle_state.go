@@ -464,8 +464,8 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		}
 	}
 	if result.Decision != "block" && req.EnforceGitOpsKubectl {
-		if reason := gitOpsKubectlBlockReason(req.Tool, req.Command); reason != "" {
-			result.Decision = "block"
+		if decision, reason := gitOpsKubectlDecision(req.Tool, req.Command); decision != "" {
+			result.Decision = decision
 			result.Reason = reason
 		}
 	}
@@ -616,9 +616,9 @@ func vcsIssueLinkingBlockReason(req HookToolUseLifecycleRequest) string {
 	return ""
 }
 
-func gitOpsKubectlBlockReason(tool string, command string) string {
+func gitOpsKubectlDecision(tool string, command string) (string, string) {
 	if !isShellTool(tool) {
-		return ""
+		return "", ""
 	}
 	tokens := splitCommandTokens(command)
 	for i, token := range tokens {
@@ -626,11 +626,14 @@ func gitOpsKubectlBlockReason(tool string, command string) string {
 			continue
 		}
 		verb, subverb := kubectlVerb(tokens[i+1:])
+		if kubectlLiveAccessNeedsConfirmation(verb) {
+			return "ask", "kubectl live cluster access requires explicit user confirmation: exec and port-forward can expose live workloads or local ports. Confirm before running this command."
+		}
 		if kubectlMutationBlocked(verb, subverb, tokens[i+1:]) {
-			return "GitOps is the source of truth for cluster changes: do not run direct mutating kubectl commands from the agent. Edit Kubernetes manifests in git and use the repo's GitOps review/apply path instead."
+			return "block", "GitOps is the source of truth for cluster changes: do not run direct mutating kubectl commands from the agent. Edit Kubernetes manifests in git and use the repo's GitOps review/apply path instead."
 		}
 	}
-	return ""
+	return "", ""
 }
 
 func kubectlVerb(args []string) (string, string) {
@@ -689,10 +692,19 @@ func kubectlMutationBlocked(verb string, subverb string, args []string) bool {
 		return false
 	}
 	switch verb {
-	case "apply", "annotate", "autoscale", "cordon", "create", "delete", "drain", "edit", "exec", "expose", "label", "patch", "port-forward", "replace", "run", "scale", "set", "taint", "uncordon":
+	case "apply", "annotate", "autoscale", "cordon", "create", "delete", "drain", "edit", "expose", "label", "patch", "replace", "run", "scale", "set", "taint", "uncordon":
 		return true
 	case "rollout":
 		return subverb == "restart" || subverb == "undo" || subverb == "pause" || subverb == "resume"
+	default:
+		return false
+	}
+}
+
+func kubectlLiveAccessNeedsConfirmation(verb string) bool {
+	switch verb {
+	case "exec", "port-forward":
+		return true
 	default:
 		return false
 	}

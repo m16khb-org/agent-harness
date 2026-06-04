@@ -380,6 +380,74 @@ func TestRunHookPreToolUseEnforcesGitOpsKubectl(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseAsksForKubectlLiveAccess(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `kubectl port-forward svc/api 8080:80 -n prod`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-gitops-kubectl", "--json"})
+	})
+	if obj["decision"] != "ask" {
+		t.Fatalf("expected kubectl live access to ask for confirmation, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseCodexHostAsksForKubectlLiveAccess(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `kubectl port-forward svc/api 8080:80 -n prod`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-gitops-kubectl"})
+	})
+	if obj["decision"] != nil {
+		t.Fatalf("Codex host ask must not use legacy decision field, got %+v", obj)
+	}
+	hso, _ := obj["hookSpecificOutput"].(map[string]any)
+	if hso["hookEventName"] != "PreToolUse" || hso["permissionDecision"] != "ask" {
+		t.Fatalf("expected Codex PreToolUse ask decision, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseClaudeHostAsksForKubectlLiveAccess(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `kubectl exec -it pod/api-0 -- sh`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "claude", "--enforce-gitops-kubectl"})
+	})
+	hso, _ := obj["hookSpecificOutput"].(map[string]any)
+	if hso["hookEventName"] != "PreToolUse" || hso["permissionDecision"] != "ask" {
+		t.Fatalf("expected Claude PreToolUse ask decision, got %+v", obj)
+	}
+}
+
 func TestRunHookPreToolUseBlocksPlanLinkSectionInIssueBody(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
