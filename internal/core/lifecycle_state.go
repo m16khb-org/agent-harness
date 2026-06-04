@@ -494,14 +494,15 @@ func koreanRemoteArtifactBlockReason(req HookToolUseLifecycleRequest) string {
 		return ""
 	}
 	if strings.TrimSpace(artifact.title) == "" || strings.TrimSpace(artifact.body) == "" {
-		return "IssueOps remote artifact gate requires inspectable Korean title and body before gh issue/pr create/edit; provide --title and --body-file/--body after running the Korean gate"
+		return "IssueOps remote artifact gate requires inspectable Korean title and body before issue/pr/mr create/edit; provide --title and --body-file/--body after running the Korean gate"
 	}
 	hangul, englishWords := scoreKoreanRemoteArtifactLanguage(artifact.title + "\n" + artifact.body)
+	cli := remoteArtifactCLIName(artifact)
 	if hangul < 20 {
-		return fmt.Sprintf("IssueOps remote artifact gate failed: expected at least 20 Hangul chars before gh %s %s, got %d", artifact.kind, artifact.action, hangul)
+		return fmt.Sprintf("IssueOps remote artifact gate failed: expected at least 20 Hangul chars before %s %s %s, got %d", cli, artifact.kind, artifact.action, hangul)
 	}
 	if hangul > 0 && float64(englishWords)/float64(hangul) > 1.2 {
-		return fmt.Sprintf("IssueOps remote artifact gate failed: English prose ratio too high before gh %s %s (english_words=%d, hangul_chars=%d)", artifact.kind, artifact.action, englishWords, hangul)
+		return fmt.Sprintf("IssueOps remote artifact gate failed: English prose ratio too high before %s %s %s (english_words=%d, hangul_chars=%d)", cli, artifact.kind, artifact.action, englishWords, hangul)
 	}
 	return ""
 }
@@ -514,6 +515,17 @@ type remoteArtifactCommand struct {
 	body      string
 	labels    []string
 	assignees []string
+}
+
+func remoteArtifactCLIName(artifact remoteArtifactCommand) string {
+	switch artifact.provider {
+	case "gitlab":
+		return "glab"
+	case "github":
+		return "gh"
+	default:
+		return "remote"
+	}
 }
 
 func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCommand, bool) {

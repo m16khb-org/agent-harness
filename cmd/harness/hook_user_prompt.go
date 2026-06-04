@@ -705,6 +705,9 @@ func commandFromHookInput(input []byte) string {
 				return strings.TrimSpace(value)
 			}
 		}
+		if command := mcpRemoteArtifactCommandFromHookObject(obj, toolInput); command != "" {
+			return command
+		}
 		for _, key := range []string{"query", "pattern", "symbol", "text", "q"} {
 			if value, ok := toolInput[key].(string); ok && strings.TrimSpace(value) != "" {
 				return strings.TrimSpace(value)
@@ -712,6 +715,115 @@ func commandFromHookInput(input []byte) string {
 		}
 	}
 	return ""
+}
+
+func mcpRemoteArtifactCommandFromHookObject(obj map[string]any, toolInput map[string]any) string {
+	tool := strings.ToLower(toolNameFromHookObject(obj))
+	if tool == "" || (!strings.Contains(tool, "issue") && !strings.Contains(tool, "merge") && !strings.Contains(tool, "pull") && !strings.Contains(tool, "_mr") && !strings.Contains(tool, "_pr")) {
+		return ""
+	}
+	cli := ""
+	switch {
+	case strings.Contains(tool, "gitlab") || strings.Contains(tool, "glab"):
+		cli = "glab"
+	case strings.Contains(tool, "github") || strings.Contains(tool, "gh"):
+		cli = "gh"
+	default:
+		return ""
+	}
+	kind := ""
+	switch {
+	case strings.Contains(tool, "merge_request") || strings.Contains(tool, "merge-request") || strings.Contains(tool, "_mr") || strings.HasSuffix(tool, "mr"):
+		kind = "mr"
+	case strings.Contains(tool, "pull_request") || strings.Contains(tool, "pull-request") || strings.Contains(tool, "_pr") || strings.HasSuffix(tool, "pr"):
+		kind = "pr"
+	case strings.Contains(tool, "issue"):
+		kind = "issue"
+	default:
+		return ""
+	}
+	action := ""
+	switch {
+	case strings.Contains(tool, "create") || strings.Contains(tool, "open"):
+		action = "create"
+	case strings.Contains(tool, "update"):
+		action = "update"
+	case strings.Contains(tool, "edit"):
+		action = "edit"
+	default:
+		return ""
+	}
+	var args []string
+	args = append(args, cli, kind, action)
+	if title := firstStringValue(toolInput, "title", "name", "subject"); title != "" {
+		args = append(args, "--title", shellQuoteArg(title))
+	}
+	if body := firstStringValue(toolInput, "body", "description", "content", "markdown"); body != "" {
+		if cli == "glab" {
+			args = append(args, "--description", shellQuoteArg(body))
+		} else {
+			args = append(args, "--body", shellQuoteArg(body))
+		}
+	}
+	for _, label := range stringListValue(toolInput, "label", "labels", "add_label", "add_labels") {
+		args = append(args, "--label", shellQuoteArg(label))
+	}
+	for _, assignee := range stringListValue(toolInput, "assignee", "assignees", "add_assignee", "add_assignees") {
+		args = append(args, "--assignee", shellQuoteArg(assignee))
+	}
+	return strings.Join(args, " ")
+}
+
+func toolNameFromHookObject(obj map[string]any) string {
+	for _, key := range []string{"tool_name", "tool", "name"} {
+		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func firstStringValue(values map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value, ok := values[key].(string); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func stringListValue(values map[string]any, keys ...string) []string {
+	var out []string
+	for _, key := range keys {
+		switch value := values[key].(type) {
+		case string:
+			for _, part := range strings.Split(value, ",") {
+				if part = strings.TrimSpace(part); part != "" {
+					out = append(out, part)
+				}
+			}
+		case []any:
+			for _, item := range value {
+				if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
+					out = append(out, strings.TrimSpace(s))
+				}
+			}
+		case []string:
+			for _, item := range value {
+				if strings.TrimSpace(item) != "" {
+					out = append(out, strings.TrimSpace(item))
+				}
+			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
+	return out
+}
+
+func shellQuoteArg(value string) string {
+	return strconv.Quote(value)
 }
 
 func draftWikiMaterialFromHookInput(input []byte) string {

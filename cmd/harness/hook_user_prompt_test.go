@@ -636,6 +636,91 @@ func TestRunHookPreToolUseBlocksGitLabRelatedIssuesBodySection(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseBlocksEnglishMCPRemoteArtifact(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	for _, tc := range []struct {
+		name  string
+		tool  string
+		input map[string]any
+	}{
+		{
+			name: "gitlab issue",
+			tool: "mcp__glab__create_issue",
+			input: map[string]any{
+				"title":       "Investigate routing regression",
+				"description": "The implementation should verify the failing route and update the service contract.",
+				"labels":      []any{"bug"},
+				"assignee":    "@me",
+			},
+		},
+		{
+			name: "gitlab mr",
+			tool: "mcp__gitlab__create_merge_request",
+			input: map[string]any{
+				"title":       "Fix adult routing regression",
+				"description": "This merge request updates the service and documents the verification evidence.",
+				"labels":      []any{"bug"},
+				"assignee":    "@me",
+			},
+		},
+		{
+			name: "github pr",
+			tool: "mcp__github__create_pull_request",
+			input: map[string]any{
+				"title":    "Fix adult routing regression",
+				"body":     "This pull request updates the service and documents the verification evidence.",
+				"labels":   []any{"bug"},
+				"assignee": "@me",
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload, err := json.Marshal(map[string]any{
+				"cwd":        repo,
+				"tool_name":  tc.tool,
+				"tool_input": tc.input,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			obj := runHookCapture(t, string(payload), func() error {
+				return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts", "--json"})
+			})
+			if obj["decision"] != "block" {
+				t.Fatalf("expected English MCP remote artifact creation to be blocked, got %+v", obj)
+			}
+			if reason, _ := obj["reason"].(string); !strings.Contains(reason, "IssueOps remote artifact gate failed") {
+				t.Fatalf("expected Korean gate reason, got %q", reason)
+			}
+		})
+	}
+}
+
+func TestRunHookPreToolUseAllowsKoreanGitLabMCPRemoteArtifact(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "mcp__glab__create_issue",
+		"tool_input": map[string]any{
+			"title":       "성인 라우팅 회귀 원인 조사",
+			"description": "문제 배경과 재현 경로를 정리하고, 변경 후 검증 명령과 운영 확인 결과를 이슈 본문에 기록합니다.",
+			"labels":      []any{"bug"},
+			"assignee":    "@me",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected Korean GitLab MCP issue creation to be allowed, got %+v", obj)
+	}
+}
+
 func TestRunHookPreToolUseAllowsGitHubRelatedIssuesBodySection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
