@@ -553,6 +553,27 @@
     "name": "issueops_link_plan"
   },
   {
+    "description": "Attach the exact issue-driven worktree path that mutating tool guards must target.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "worktree_path": {
+          "description": "Expected isolated worktree path.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "worktree_path"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_link_worktree"
+  },
+  {
     "description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
     "inputSchema": {
       "properties": {
@@ -613,12 +634,16 @@
     "name": "issueops_set_phase"
   },
   {
-    "description": "Report whether an IssueOps loop has the issue and plan evidence needed before drafting a PR or MR.",
+    "description": "Report whether an IssueOps loop has the issue, plan, exact worktree, clean git state, and upstream sync needed before drafting a PR or MR.",
     "inputSchema": {
       "properties": {
         "id": {
           "description": "IssueOps id.",
           "type": "string"
+        },
+        "strict": {
+          "description": "When true, require linked worktree path, clean git status, matching branch, existing plan path, upstream, and 0/0 divergence.",
+          "type": "boolean"
         }
       },
       "required": [

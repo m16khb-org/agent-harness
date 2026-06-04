@@ -78,7 +78,8 @@ agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$F
 Check PR/MR readiness:
 
 ```bash
-agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
+agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
+agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 ```
 
 ## Benchmark Commands

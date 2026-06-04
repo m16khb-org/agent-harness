@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"agent-harness/internal/core"
 )
 
 func hookTempRepoWithDoc(t *testing.T) string {
@@ -327,6 +329,89 @@ func TestRunHookPreToolUseEnforcesIssueOpsWorktree(t *testing.T) {
 	})
 	if obj["decision"] != "block" {
 		t.Fatalf("expected source checkout edit to be blocked, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/feature/issue-worktree\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: source, Branch: "feature/issue-worktree"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, "plans/issue-worktree.md"); err != nil {
+		t.Fatal(err)
+	}
+	worktree := filepath.Join(filepath.Dir(source), "agent-harness.worktrees", "feature-issue-worktree")
+	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "apply_patch",
+		"tool_input": map[string]any{
+			"file_path": filepath.Join(source, "internal", "core", "issueops.go"),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected linked IssueOps worktree guard to block source checkout edit, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "linked IssueOps worktree") {
+		t.Fatalf("expected linked worktree reason, got %q", reason)
+	}
+}
+
+func TestRunHookPreToolUseBlocksMainCheckoutForLinkedIssueBranch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: source, Branch: "feature/issue-worktree"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), record.ID, string(core.IssueOpsPhaseImplement)); err != nil {
+		t.Fatal(err)
+	}
+	worktree := filepath.Join(filepath.Dir(source), "agent-harness.worktrees", "feature-issue-worktree")
+	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "Edit",
+		"tool_input": map[string]any{
+			"file_path": filepath.Join(source, "internal", "core", "issueops.go"),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected main checkout edit to be blocked by linked issue branch worktree, got %+v", obj)
 	}
 }
 

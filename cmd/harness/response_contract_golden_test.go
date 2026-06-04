@@ -89,6 +89,9 @@ func TestResponseContractsGolden(t *testing.T) {
 	cliSnapshot["issueops_link_plan"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-plan", "--id", issueopsID, "--plan-path", "docs/superpowers/plans/contract.md", "--json"})
 	})
+	cliSnapshot["issueops_link_worktree"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"link-worktree", "--id", issueopsID, "--worktree-path", "/tmp/agent-harness-contract.worktree", "--json"})
+	})
 	cliSnapshot["issueops_feedback_add"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"feedback", "add", "--id", issueopsID, "--source", "user", "--body", "tighten contract", "--json"})
 	})
@@ -227,6 +230,10 @@ func TestResponseContractsGolden(t *testing.T) {
 	mcpSnapshot["issueops_link_plan"] = runMCPToolContract(t, replacements, "issueops_link_plan", map[string]any{
 		"id":        issueopsMCPID,
 		"plan_path": "docs/superpowers/plans/mcp-contract.md",
+	})
+	mcpSnapshot["issueops_link_worktree"] = runMCPToolContract(t, replacements, "issueops_link_worktree", map[string]any{
+		"id":            issueopsMCPID,
+		"worktree_path": "/tmp/agent-harness-mcp-contract.worktree",
 	})
 	mcpSnapshot["issueops_add_feedback"] = runMCPToolContract(t, replacements, "issueops_add_feedback", map[string]any{
 		"id":     issueopsMCPID,

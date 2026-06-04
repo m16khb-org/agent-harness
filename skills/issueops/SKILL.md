@@ -100,10 +100,11 @@ External LLM judges are read-only evaluators. Their prompts must forbid workspac
 
 ## Operational Start
 
-Start or resume state:
+Start or resume state after deriving the issue branch slug. The IssueOps branch must be the issue branch, not the source checkout's current branch:
 
 ```bash
-agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
+branch_slug="feature/3-webhook-delivery"
+agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
 agent-harness issueops status --id "$ISSUEOPS_ID" --json
 ```
 
@@ -112,7 +113,8 @@ Remote issue and plan linkage:
 ```bash
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
-agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --json
+agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
+agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 ```
 
 Advance the lifecycle phase (problem, grill, plan, implement, feedback, pr, done). The `pr` phase requires a linked issue and plan:
@@ -136,6 +138,6 @@ Stop and ask before creating or updating remote issues, PRs, or MRs if credentia
 
 Stop before implementation if brainstorming or grilling exposes materially different interpretations. Present the interpretations and ask for the intended one.
 
-Do not move to PR/MR drafting when `issueops pr-readiness` reports missing `issue_url` or `plan_path`.
+Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports missing `issue_url`, `plan_path`, `worktree_path`, `worktree_exists`, `branch_match`, `worktree_clean`, `upstream`, `upstream_synced`, or `plan_exists`.
 
 Before PR/MR create, verify the linked issue labels and pass them to the provider create command. If the linked issue has no labels, create or apply an explicit manual label first, or stop and record label-decision feedback; never create the PR/MR with an empty label set.

@@ -59,25 +59,29 @@ type IssueOpsFeedbackItem struct {
 }
 
 type IssueOpsRecord struct {
-	OK        bool                   `json:"ok"`
-	ID        string                 `json:"id"`
-	Repo      string                 `json:"repo"`
-	Branch    string                 `json:"branch,omitempty"`
-	Phase     IssueOpsPhase          `json:"phase"`
-	IssueURL  string                 `json:"issue_url,omitempty"`
-	PlanPath  string                 `json:"plan_path,omitempty"`
-	Feedback  []IssueOpsFeedbackItem `json:"feedback,omitempty"`
-	CreatedAt string                 `json:"created_at"`
-	UpdatedAt string                 `json:"updated_at"`
+	OK           bool                   `json:"ok"`
+	ID           string                 `json:"id"`
+	Repo         string                 `json:"repo"`
+	Branch       string                 `json:"branch,omitempty"`
+	Phase        IssueOpsPhase          `json:"phase"`
+	IssueURL     string                 `json:"issue_url,omitempty"`
+	PlanPath     string                 `json:"plan_path,omitempty"`
+	WorktreePath string                 `json:"worktree_path,omitempty"`
+	Feedback     []IssueOpsFeedbackItem `json:"feedback,omitempty"`
+	CreatedAt    string                 `json:"created_at"`
+	UpdatedAt    string                 `json:"updated_at"`
 }
 
 type IssueOpsReadiness struct {
-	OK       bool     `json:"ok"`
-	Ready    bool     `json:"ready"`
-	Missing  []string `json:"missing"`
-	IssueURL string   `json:"issue_url,omitempty"`
-	PlanPath string   `json:"plan_path,omitempty"`
-	Branch   string   `json:"branch,omitempty"`
+	OK           bool     `json:"ok"`
+	Ready        bool     `json:"ready"`
+	Strict       bool     `json:"strict,omitempty"`
+	Missing      []string `json:"missing"`
+	IssueURL     string   `json:"issue_url,omitempty"`
+	PlanPath     string   `json:"plan_path,omitempty"`
+	WorktreePath string   `json:"worktree_path,omitempty"`
+	Branch       string   `json:"branch,omitempty"`
+	Warnings     []string `json:"warnings,omitempty"`
 }
 
 func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
@@ -158,6 +162,22 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
+func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
+	path := strings.TrimSpace(worktreePath)
+	if path == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("worktree_path is required")
+	}
+	if strings.Contains(path, "\x00") || strings.Contains(path, "..") {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("worktree_path must not contain path traversal")
+	}
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return record, err
+	}
+	record.WorktreePath = path
+	return touchAndWriteIssueOps(stateRoot, record)
+}
+
 func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
 	source = strings.TrimSpace(source)
 	body = strings.TrimSpace(body)
@@ -209,13 +229,91 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		missing = append(missing, "plan_path")
 	}
 	return IssueOpsReadiness{
-		OK:       true,
-		Ready:    len(missing) == 0,
-		Missing:  missing,
-		IssueURL: record.IssueURL,
-		PlanPath: record.PlanPath,
-		Branch:   record.Branch,
+		OK:           true,
+		Ready:        len(missing) == 0,
+		Missing:      missing,
+		IssueURL:     record.IssueURL,
+		PlanPath:     record.PlanPath,
+		WorktreePath: record.WorktreePath,
+		Branch:       record.Branch,
 	}
+}
+
+func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
+	ready := IssueOpsPRReadiness(record)
+	ready.Strict = true
+	missing := append([]string{}, ready.Missing...)
+	warnings := []string{}
+
+	gitRoot := issueOpsStrictGitRoot(record)
+	if gitRoot == "" {
+		missing = append(missing, "repo")
+	} else if code, out, _ := GitCmd(gitRoot, "rev-parse", "--is-inside-work-tree"); code != 0 || strings.TrimSpace(out) != "true" {
+		missing = append(missing, "repo_git")
+	} else {
+		branch := strings.TrimSpace(GitOut(gitRoot, "branch", "--show-current"))
+		if strings.TrimSpace(record.Branch) != "" && branch != strings.TrimSpace(record.Branch) {
+			missing = append(missing, "branch_match")
+			warnings = append(warnings, "current branch "+branch+" does not match IssueOps branch "+strings.TrimSpace(record.Branch))
+		}
+		if strings.TrimSpace(GitOut(gitRoot, "status", "--porcelain=v1")) != "" {
+			missing = append(missing, "worktree_clean")
+		}
+		upstream := strings.TrimSpace(GitOut(gitRoot, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"))
+		if upstream == "" {
+			missing = append(missing, "upstream")
+		} else {
+			counts := strings.Fields(GitOut(gitRoot, "rev-list", "--left-right", "--count", "HEAD...@{u}"))
+			if len(counts) != 2 || counts[0] != "0" || counts[1] != "0" {
+				missing = append(missing, "upstream_synced")
+				if len(counts) == 2 {
+					warnings = append(warnings, "branch divergence against upstream: ahead="+counts[0]+" behind="+counts[1])
+				}
+			}
+		}
+	}
+
+	if path := strings.TrimSpace(record.PlanPath); path != "" && !issueOpsPlanPathExists(gitRoot, path) {
+		missing = append(missing, "plan_exists")
+	}
+	if path := strings.TrimSpace(record.WorktreePath); path == "" {
+		missing = append(missing, "worktree_path")
+	} else if !issueOpsWorktreePathValid(path) {
+		missing = append(missing, "worktree_exists")
+	}
+
+	ready.Missing = uniqSorted(missing)
+	ready.Warnings = warnings
+	ready.Ready = len(ready.Missing) == 0
+	return ready
+}
+
+func issueOpsStrictGitRoot(record IssueOpsRecord) string {
+	if path := strings.TrimSpace(record.WorktreePath); path != "" {
+		return path
+	}
+	return strings.TrimSpace(record.Repo)
+}
+
+func issueOpsWorktreePathValid(path string) bool {
+	path = strings.TrimSpace(path)
+	if path == "" || strings.Contains(path, "\x00") {
+		return false
+	}
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+func issueOpsPlanPathExists(repo, path string) bool {
+	path = strings.TrimSpace(path)
+	if path == "" || strings.Contains(path, "\x00") {
+		return false
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(strings.TrimSpace(repo), path)
+	}
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 func IssueOpsStateRoot() string {
@@ -243,6 +341,36 @@ func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
 		return IssueOpsRecord{}, false
 	}
 	return record, true
+}
+
+func ActiveIssueOpsCyclesForRepo(repo string) []IssueOpsRecord {
+	repo = cleanAbsPath(repo)
+	if repo == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(IssueOpsStateRoot())
+	if err != nil {
+		return nil
+	}
+	records := []IssueOpsRecord{}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		id := strings.TrimSuffix(entry.Name(), ".json")
+		record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+		if err != nil {
+			continue
+		}
+		if cleanAbsPath(record.Repo) != repo || record.Phase == IssueOpsPhaseDone {
+			continue
+		}
+		if issueOpsPlanBranchMismatchesRecord(record) {
+			continue
+		}
+		records = append(records, record)
+	}
+	return records
 }
 
 func issueOpsPlanBranchMismatchesRecord(record IssueOpsRecord) bool {

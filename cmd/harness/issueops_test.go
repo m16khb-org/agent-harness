@@ -42,6 +42,17 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("plan link should move to implement phase: %#v", planRecord)
 	}
 
+	worktree := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", "/repo/example.worktrees/feature-demo", "--json"})
+	})
+	var worktreeRecord map[string]any
+	if err := json.Unmarshal([]byte(worktree), &worktreeRecord); err != nil {
+		t.Fatalf("worktree link should return JSON: %v\n%s", err, worktree)
+	}
+	if worktreeRecord["worktree_path"] != "/repo/example.worktrees/feature-demo" {
+		t.Fatalf("worktree link should persist exact path: %#v", worktreeRecord)
+	}
+
 	feedback := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"feedback", "add", "--id", id, "--source", "user", "--body", "tighten acceptance criteria", "--json"})
 	})

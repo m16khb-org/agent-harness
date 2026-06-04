@@ -1,6 +1,8 @@
 package core
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -34,6 +36,14 @@ func TestIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("plan link should move to implement phase: %+v", record)
 	}
 
+	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, "/repo/example.worktrees/feature-demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.WorktreePath != "/repo/example.worktrees/feature-demo" {
+		t.Fatalf("worktree path should be persisted: %+v", record)
+	}
+
 	record, err = AddIssueOpsFeedback(stateRoot, record.ID, "user", "tighten acceptance criteria", "")
 	if err != nil {
 		t.Fatal(err)
@@ -51,6 +61,65 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	}
 	if ready := IssueOpsPRReadiness(reloaded); !ready.Ready || len(ready.Missing) != 0 {
 		t.Fatalf("cycle with issue and plan should be PR-ready for drafting: %+v", ready)
+	}
+}
+
+func TestIssueOpsStrictPRReadinessRequiresCleanSyncedRepo(t *testing.T) {
+	repo := initIssueOpsRepo(t)
+	record := IssueOpsRecord{
+		OK:           true,
+		Repo:         repo,
+		Branch:       "main",
+		IssueURL:     "https://gitlab.example/group/project/-/issues/1",
+		PlanPath:     "plans/demo.md",
+		WorktreePath: repo,
+	}
+
+	ready := IssueOpsStrictPRReadiness(record)
+	if !ready.Ready || len(ready.Missing) != 0 {
+		t.Fatalf("clean synced repo should be strict-ready: %+v", ready)
+	}
+
+	if err := os.WriteFile(filepath.Join(repo, "feature.txt"), []byte("dirty\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ready = IssueOpsStrictPRReadiness(record)
+	if ready.Ready || !containsString(ready.Missing, "worktree_clean") {
+		t.Fatalf("dirty worktree should block strict readiness: %+v", ready)
+	}
+}
+
+func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
+	repo := initIssueOpsRepo(t)
+	branch := "feature/issue-worktree"
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
+		t.Fatalf("git checkout branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "push", "-q", "-u", "origin", branch); code != 0 {
+		t.Fatalf("git push branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "main"); code != 0 {
+		t.Fatalf("git checkout main failed: %s", stderr)
+	}
+	worktree := filepath.Join(t.TempDir(), "issue-worktree")
+	if code, _, stderr := GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
+		t.Fatalf("git worktree add failed: %s", stderr)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "source-dirty.txt"), []byte("dirty source\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	record := IssueOpsRecord{
+		OK:           true,
+		Repo:         repo,
+		Branch:       branch,
+		IssueURL:     "https://gitlab.example/group/project/-/issues/2",
+		PlanPath:     "plans/demo.md",
+		WorktreePath: worktree,
+	}
+
+	ready := IssueOpsStrictPRReadiness(record)
+	if !ready.Ready || len(ready.Missing) != 0 {
+		t.Fatalf("strict readiness should inspect the linked worktree, not dirty source checkout: %+v", ready)
 	}
 }
 
@@ -123,5 +192,49 @@ func TestIssueOpsRejectsUnsafeInputs(t *testing.T) {
 	}
 	if _, err := LinkIssueOpsIssue(stateRoot, record.ID, "TOKEN=secret-value"); err == nil || !strings.Contains(err.Error(), "issue_url") {
 		t.Fatalf("expected issue URL validation error, got %v", err)
+	}
+}
+
+func initIssueOpsRepo(t *testing.T) string {
+	t.Helper()
+	repo := t.TempDir()
+	remote := t.TempDir()
+	if code, _, stderr := GitCmd(remote, "init", "--bare", "-q"); code != 0 {
+		t.Fatalf("git init bare failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "init", "-q", "-b", "main"); code != 0 {
+		t.Fatalf("git init failed: %s", stderr)
+	}
+	for _, args := range [][]string{
+		{"config", "user.name", "IssueOps Test"},
+		{"config", "user.email", "issueops@example.test"},
+		{"remote", "add", "origin", remote},
+	} {
+		if code, _, stderr := GitCmd(repo, args...); code != 0 {
+			t.Fatalf("git %v failed: %s", args, stderr)
+		}
+	}
+	writeIssueOpsFile(t, repo, "README.md", "readme\n")
+	writeIssueOpsFile(t, repo, "plans/demo.md", "plan\n")
+	if code, _, stderr := GitCmd(repo, "add", "README.md", "plans/demo.md"); code != 0 {
+		t.Fatalf("git add failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "commit", "-q", "-m", "initial"); code != 0 {
+		t.Fatalf("git commit failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "push", "-q", "-u", "origin", "main"); code != 0 {
+		t.Fatalf("git push failed: %s", stderr)
+	}
+	return repo
+}
+
+func writeIssueOpsFile(t *testing.T, repo, rel, content string) {
+	t.Helper()
+	path := filepath.Join(repo, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }

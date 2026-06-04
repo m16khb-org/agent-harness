@@ -219,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "5703382fbb8f81467147dcfd3f0a9f8bfc6e663dd675246b0af3a865139a6ba0",
+      "hash": "e6cf9c22417c2b09215f9801bcd754310f88baf6ec7e50f8227a33c54ded3467",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -237,6 +237,7 @@
         "issueops_add_feedback",
         "issueops_link_issue",
         "issueops_link_plan",
+        "issueops_link_worktree",
         "issueops_pr_readiness",
         "issueops_remote_score",
         "issueops_set_phase",
@@ -494,7 +495,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 19079,
+          "bytes": 19300,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -1025,7 +1026,8 @@
       "phase": "feedback",
       "plan_path": "docs/superpowers/plans/contract.md",
       "repo": "$WORKSPACE",
-      "updated_at": "$TIMESTAMP"
+      "updated_at": "$TIMESTAMP",
+      "worktree_path": "/tmp/agent-harness-contract.worktree"
     },
     "issueops_link_issue": {
       "branch": "feature/contract",
@@ -1048,13 +1050,26 @@
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP"
     },
+    "issueops_link_worktree": {
+      "branch": "feature/contract",
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "implement",
+      "plan_path": "docs/superpowers/plans/contract.md",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP",
+      "worktree_path": "/tmp/agent-harness-contract.worktree"
+    },
     "issueops_pr_readiness": {
       "branch": "feature/contract",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "missing": [],
       "ok": true,
       "plan_path": "docs/superpowers/plans/contract.md",
-      "ready": true
+      "ready": true,
+      "worktree_path": "/tmp/agent-harness-contract.worktree"
     },
     "issueops_start": {
       "branch": "feature/contract",
@@ -3127,7 +3142,7 @@
                 "name": "version"
               }
             ],
-            "hash": "5703382fbb8f81467147dcfd3f0a9f8bfc6e663dd675246b0af3a865139a6ba0",
+            "hash": "e6cf9c22417c2b09215f9801bcd754310f88baf6ec7e50f8227a33c54ded3467",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3145,6 +3160,7 @@
               "issueops_add_feedback",
               "issueops_link_issue",
               "issueops_link_plan",
+              "issueops_link_worktree",
               "issueops_pr_readiness",
               "issueops_remote_score",
               "issueops_set_phase",
@@ -3409,7 +3425,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 19079,
+                "bytes": 19300,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -3954,7 +3970,8 @@
             "phase": "feedback",
             "plan_path": "docs/superpowers/plans/mcp-contract.md",
             "repo": "$WORKSPACE",
-            "updated_at": "$TIMESTAMP"
+            "updated_at": "$TIMESTAMP",
+            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
           },
           "type": "text"
         }
@@ -3995,6 +4012,25 @@
         }
       ]
     },
+    "issueops_link_worktree": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "implement",
+            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP",
+            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
+          },
+          "type": "text"
+        }
+      ]
+    },
     "issueops_pr_readiness": {
       "content": [
         {
@@ -4004,7 +4040,8 @@
             "missing": [],
             "ok": true,
             "plan_path": "docs/superpowers/plans/mcp-contract.md",
-            "ready": true
+            "ready": true,
+            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
           },
           "type": "text"
         }

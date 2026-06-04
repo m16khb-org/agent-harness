@@ -54,6 +54,16 @@ func runIssueOps(args []string) error {
 		}
 		record, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), *id, *planPath)
 		return printIssueOpsResult(record, *jsonOut, err)
+	case "link-worktree":
+		fs := flag.NewFlagSet("issueops link-worktree", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		worktreePath := fs.String("worktree-path", "", "issue-driven worktree path")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		record, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), *id, *worktreePath)
+		return printIssueOpsResult(record, *jsonOut, err)
 	case "phase":
 		fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
@@ -73,6 +83,7 @@ func runIssueOps(args []string) error {
 	case "pr-readiness":
 		fs := flag.NewFlagSet("issueops pr-readiness", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
+		strict := fs.Bool("strict", false, "verify git cleanliness, upstream sync, plan path, and linked worktree path")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if err := fs.Parse(args[1:]); err != nil {
 			return err
@@ -82,6 +93,9 @@ func runIssueOps(args []string) error {
 			return err
 		}
 		readiness := core.IssueOpsPRReadiness(record)
+		if *strict {
+			readiness = core.IssueOpsStrictPRReadiness(record)
+		}
 		if *jsonOut {
 			return printJSON(readiness)
 		}

@@ -4878,6 +4878,14 @@ func mcpTools() []map[string]any {
 			}},
 		},
 		{
+			"name":        "issueops_link_worktree",
+			"description": "Attach the exact issue-driven worktree path that mutating tool guards must target.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "worktree_path"}, "properties": map[string]any{
+				"id":            map[string]any{"type": "string", "description": "IssueOps id."},
+				"worktree_path": map[string]any{"type": "string", "description": "Expected isolated worktree path."},
+			}},
+		},
+		{
 			"name":        "issueops_add_feedback",
 			"description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "source", "body"}, "properties": map[string]any{
@@ -4897,9 +4905,10 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "issueops_pr_readiness",
-			"description": "Report whether an IssueOps loop has the issue and plan evidence needed before drafting a PR or MR.",
+			"description": "Report whether an IssueOps loop has the issue, plan, exact worktree, clean git state, and upstream sync needed before drafting a PR or MR.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
-				"id": map[string]any{"type": "string", "description": "IssueOps id."},
+				"id":     map[string]any{"type": "string", "description": "IssueOps id."},
+				"strict": map[string]any{"type": "boolean", "description": "When true, require linked worktree path, clean git status, matching branch, existing plan path, upstream, and 0/0 divergence."},
 			}},
 		},
 		{
@@ -5260,6 +5269,12 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps plan link failed", Data: err.Error()}
 		}
 		payload = result
+	case "issueops_link_worktree":
+		result, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "worktree_path"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps worktree link failed", Data: err.Error()}
+		}
+		payload = result
 	case "issueops_add_feedback":
 		result, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "source"), stringArg(call.Arguments, "body"), stringArg(call.Arguments, "classification"))
 		if err != nil {
@@ -5287,7 +5302,11 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps PR readiness failed", Data: err.Error()}
 		}
-		payload = core.IssueOpsPRReadiness(record)
+		if boolArg(call.Arguments, "strict") {
+			payload = core.IssueOpsStrictPRReadiness(record)
+		} else {
+			payload = core.IssueOpsPRReadiness(record)
+		}
 	case "daemon_status":
 		payload = daemonStatusForMCP()
 	case "commit_suggest":

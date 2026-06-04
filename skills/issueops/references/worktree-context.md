@@ -16,13 +16,17 @@ Create an isolated git worktree before implementation, TDD, subagent work, verif
 
 ```bash
 branch_slug="feature/3-webhook-delivery"
+agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
 worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
 git worktree add -b "$branch_slug" "$worktree_path"
+agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$(cd "$worktree_path" && pwd)" --json
 ```
 
 Keep IssueOps worktrees as siblings of the source checkout under the fixed pattern `../<repo>.worktrees/<branch-slug-with-slashes-replaced>`. Do not create ad hoc worktree paths inside the repo or under temporary directories unless the user explicitly asks for a different location.
 
 Run implementation from the worktree path, not from the source checkout. Record the expected branch and worktree path in the issue-based plan and in any worker prompt. If the source checkout already contains implementation edits from before this gate, stop and ask how to move or reconcile those edits into the issue branch worktree.
+
+The linked worktree path is authoritative. Once `issueops link-worktree` is recorded, the lifecycle PreToolUse guard blocks mutating tool targets outside that exact path, including the source checkout on `main` and another sibling worktree for a different issue branch.
 
 ## Edit Target Guard
 
@@ -58,7 +62,7 @@ export HARNESS_SOURCE_CHECKOUT="/path/to/source-checkout"
 export HARNESS_EXPECTED_WORKTREE="/path/to/../repo.worktrees/chore-19-example"
 ```
 
-Installed Codex and Claude PreToolUse hooks include `--enforce-worktree`. When `HARNESS_EXPECTED_WORKTREE` is set, the hook blocks mutating tool events whose cwd or target path is outside that worktree. Without `HARNESS_EXPECTED_WORKTREE`, the guard is a no-op so normal non-IssueOps work is not blocked.
+Installed Codex and Claude PreToolUse hooks include `--enforce-worktree`. When `HARNESS_EXPECTED_WORKTREE` is set, the hook blocks mutating tool events whose cwd or target path is outside that worktree. When an active IssueOps cycle has a linked worktree path, the hook also blocks mutating targets outside that exact linked path. Without `HARNESS_EXPECTED_WORKTREE` or linked IssueOps worktree state, the guard falls back to blocking source-checkout edits during implement/feedback/pr phases and otherwise does not affect normal non-IssueOps work.
 
 The guard is deterministic, but it only covers tool events that the host sends to PreToolUse. Keep the edit-target status checks above because some agent-side editing paths may not be represented as host hook events in every runtime.
 
