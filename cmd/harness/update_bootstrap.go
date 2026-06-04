@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 )
 
+var installScriptCommandRunner = runInstallScriptExec
+var postInstallDaemonRefresh = refreshRunningDaemonAfterInstall
+
 func runUpdate(args []string) error {
 	return runInstallScriptCommand("update", args)
 }
@@ -69,12 +72,14 @@ func runInstallScriptCommand(commandName string, args []string) error {
 		scriptArgs = append(scriptArgs, "--skip-build")
 	}
 
-	cmd := exec.Command(script, scriptArgs...)
-	cmd.Dir = harnessRoot()
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	return cmd.Run()
+	if err := installScriptCommandRunner(script, scriptArgs...); err != nil {
+		return err
+	}
+	if *dryRun {
+		return nil
+	}
+	_, err := postInstallDaemonRefresh()
+	return err
 }
 
 func hasInstallFlag(args []string, name string) bool {
@@ -85,4 +90,26 @@ func hasInstallFlag(args []string, name string) bool {
 		}
 	}
 	return false
+}
+
+func runInstallScriptExec(script string, args ...string) error {
+	cmd := exec.Command(script, args...)
+	cmd.Dir = harnessRoot()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
+}
+
+func refreshRunningDaemonAfterInstall() (bool, error) {
+	if status := checkDaemonStatus(); !status.Running {
+		return false, nil
+	}
+	if _, err := stopDaemon(); err != nil {
+		return true, err
+	}
+	if _, err := ensureDaemonRunning(); err != nil {
+		return true, err
+	}
+	return true, nil
 }

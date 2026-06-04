@@ -32,7 +32,7 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 
 `install` owns environment setup. Normal users should not export `HARNESS_ROOT` manually; the installer writes it into Codex/Claude MCP configuration. `CODEX_HOME` is honored when already set and otherwise defaults to `~/.codex`. PATH setup is selected with `--path-mode=auto|manual|skip`, and the default `auto` mode plans or writes `~/.local/bin/agent-harness` plus a shell rc PATH line when needed.
 
-`bootstrap` and `update` use the current `agent-harness` checkout. They build `bin/agent-harness`, refresh the `~/.local/bin/agent-harness` shim through the same installer path, and run native host installation. They do not run `git pull`.
+`bootstrap` and `update` use the current `agent-harness` checkout. They build `bin/agent-harness`, refresh the `~/.local/bin/agent-harness` shim through the same installer path, run native host installation, refresh MCP registration, and restart the shared daemon when it is already running so the MCP backend uses the rebuilt binary. They do not run `git pull`.
 
 Default user-level install updates:
 
