@@ -685,7 +685,7 @@ func kubectlMutationBlocked(verb string, subverb string, args []string) bool {
 	if verb == "" {
 		return false
 	}
-	if kubectlClientDryRun(args) {
+	if kubectlDryRun(args) {
 		return false
 	}
 	switch verb {
@@ -698,12 +698,12 @@ func kubectlMutationBlocked(verb string, subverb string, args []string) bool {
 	}
 }
 
-func kubectlClientDryRun(args []string) bool {
+func kubectlDryRun(args []string) bool {
 	for i, arg := range args {
 		switch {
-		case arg == "--dry-run=client":
+		case arg == "--dry-run=client", arg == "--dry-run=server":
 			return true
-		case arg == "--dry-run" && i+1 < len(args) && args[i+1] == "client":
+		case arg == "--dry-run" && i+1 < len(args) && (args[i+1] == "client" || args[i+1] == "server"):
 			return true
 		}
 	}

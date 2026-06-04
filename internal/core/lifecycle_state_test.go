@@ -358,6 +358,8 @@ func TestPreToolUseGitOpsKubectlAllowsReadOnlyCommands(t *testing.T) {
 		`kubectl logs deployment/api -n prod --tail=100`,
 		`kubectl diff -f k8s/`,
 		`kubectl apply --dry-run=client -f k8s/deployment.yaml`,
+		`kubectl apply --dry-run=server -f k8s/deployment.yaml`,
+		`kubectl apply --dry-run server -f k8s/deployment.yaml`,
 	} {
 		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 			Tool:                 "bash",
