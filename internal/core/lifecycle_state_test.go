@@ -673,6 +673,81 @@ func TestEvaluateNextActionAutoProceedNoChoicesDoesNotProceed(t *testing.T) {
 	}
 }
 
+func TestEvaluateNextActionAutoProceedVetoesNewDestructiveVerbs(t *testing.T) {
+	// Each recommended action carries one of the broadened destructive signals and
+	// must be hard-vetoed (no auto-proceed, destructive guard set).
+	cases := map[string]string{
+		"deploy": "1. 진행: 프로덕션에 deploy 합니다. (추천)\n2. 보류: 멈춥니다.",
+		"push":   "1. 진행: 변경을 origin에 push 합니다. (추천)\n2. 보류: 멈춥니다.",
+		"배포":     "1. 진행: 운영 환경에 배포합니다. (추천)\n2. 보류: 멈춥니다.",
+		"결제":     "1. 진행: 결제를 확정합니다. (추천)\n2. 보류: 멈춥니다.",
+	}
+	for name, msg := range cases {
+		t.Run(name, func(t *testing.T) {
+			result := EvaluateNextActionAutoProceed("선택지:\n"+msg, 0)
+			if result.AutoProceed {
+				t.Fatalf("destructive %q must not auto-proceed, got %+v", name, result)
+			}
+			if result.BlockedByGuard != "destructive_action" {
+				t.Fatalf("expected destructive guard for %q, got %+v", name, result)
+			}
+		})
+	}
+}
+
+func TestEvaluateNextActionAutoProceedDampensAmbiguousRecommendation(t *testing.T) {
+	// A recommended action with a forward verb but hedging language must stay below
+	// threshold so the agent defers to the user instead of guessing.
+	for _, hedge := range []string{"maybe", "아마도", "검토 필요", "TBD"} {
+		message := strings.Join([]string{
+			"선택지:",
+			"1. 진행: 구현을 계속합니다. " + hedge + " (추천)",
+			"2. 축소 진행: 일부만 검증합니다.",
+			"3. 보류: 멈춥니다.",
+		}, "\n")
+		result := EvaluateNextActionAutoProceed(message, 0)
+		if result.AutoProceed {
+			t.Fatalf("ambiguous recommendation %q must not auto-proceed, got %+v", hedge, result)
+		}
+		if result.TopScore >= result.Threshold {
+			t.Fatalf("ambiguous recommendation %q score %.2f should be below threshold %.2f", hedge, result.TopScore, result.Threshold)
+		}
+	}
+}
+
+func TestEvaluateNextActionAutoProceedRewardsSafeVerifyAction(t *testing.T) {
+	message := strings.Join([]string{
+		"선택지:",
+		"1. 검증: 전체 테스트를 실행하고 빌드를 확인합니다. (추천)",
+		"2. 축소: 일부만 봅니다.",
+		"3. 보류: 멈춥니다.",
+	}, "\n")
+	result := EvaluateNextActionAutoProceed(message, 0)
+	if !result.AutoProceed {
+		t.Fatalf("safe verify/test/build action should auto-proceed, got %+v", result)
+	}
+	if result.TopScore < result.Threshold {
+		t.Fatalf("safe verify action score %.2f should clear threshold %.2f", result.TopScore, result.Threshold)
+	}
+}
+
+func TestEvaluateNextActionAutoProceedRecommendedWithoutForwardVerbStaysBelowThreshold(t *testing.T) {
+	// recommended + reversible but no forward/safe verb: should NOT auto-proceed.
+	message := strings.Join([]string{
+		"선택지:",
+		"1. 결과를 사용자에게 그대로 보고합니다. (추천)",
+		"2. 다른 관점을 제시합니다.",
+		"3. 멈춥니다.",
+	}, "\n")
+	result := EvaluateNextActionAutoProceed(message, 0)
+	if result.AutoProceed {
+		t.Fatalf("recommended action without a forward verb must not auto-proceed, got %+v", result)
+	}
+	if result.TopScore >= result.Threshold {
+		t.Fatalf("recommended-without-verb score %.2f should stay below threshold %.2f", result.TopScore, result.Threshold)
+	}
+}
+
 func TestEvaluateNextActionAutoProceedRespectsHighThreshold(t *testing.T) {
 	message := strings.Join([]string{
 		"선택지:",

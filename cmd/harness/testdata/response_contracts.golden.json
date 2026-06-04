@@ -450,7 +450,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 9944,
+          "bytes": 10148,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -517,7 +517,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 14467,
+          "bytes": 17408,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -538,7 +538,7 @@
             "16. MCP tool-use risks",
             "17. Audit harness flags must match the CLI contract",
             "18. Verify git identity before contributor-sensitive pushes",
-            "Incident Archive"
+            "19. Stop hook output: `continue:false` hard-stops; use `decision:block` + `reason` to continue in-turn"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
           "rel_path": ".agent-harness/CAUTIONS.md",
@@ -676,7 +676,7 @@
           "title": "테스트 컨벤션"
         },
         {
-          "bytes": 20674,
+          "bytes": 23725,
           "headings": [
             "ADR History Archive",
             "LLM Wiki 정책",
@@ -690,7 +690,8 @@
             "2026-05-30 — Host-specific UserPromptSubmit display contract",
             "2026-05-31 — Shared PreToolUse hook and prompt/tool lifecycle split",
             "2026-05-31 — Repo-local draft wiki staging before upstream LLM Wiki ingest",
-            "2026-06-02 — IssueOps split"
+            "2026-06-02 — IssueOps split",
+            "2026-06-04 — Auto-proceed gate is heuristic + prompt injection, not an external LLM call"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
           "rel_path": ".agent-harness/archive/adr-history.md",
@@ -945,7 +946,7 @@
         "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
         "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
         "project_claude_mcp_config": true,
-        "project_claude_skill": false,
+        "project_claude_skill": "$PROJECT_SKILL_PRESENCE",
         "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
       },
       "ok": true,
@@ -3380,7 +3381,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 9944,
+                "bytes": 10148,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3447,7 +3448,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 14467,
+                "bytes": 17408,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3468,7 +3469,7 @@
                   "16. MCP tool-use risks",
                   "17. Audit harness flags must match the CLI contract",
                   "18. Verify git identity before contributor-sensitive pushes",
-                  "Incident Archive"
+                  "19. Stop hook output: `continue:false` hard-stops; use `decision:block` + `reason` to continue in-turn"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
                 "rel_path": ".agent-harness/CAUTIONS.md",
@@ -3606,7 +3607,7 @@
                 "title": "테스트 컨벤션"
               },
               {
-                "bytes": 20674,
+                "bytes": 23725,
                 "headings": [
                   "ADR History Archive",
                   "LLM Wiki 정책",
@@ -3620,7 +3621,8 @@
                   "2026-05-30 — Host-specific UserPromptSubmit display contract",
                   "2026-05-31 — Shared PreToolUse hook and prompt/tool lifecycle split",
                   "2026-05-31 — Repo-local draft wiki staging before upstream LLM Wiki ingest",
-                  "2026-06-02 — IssueOps split"
+                  "2026-06-02 — IssueOps split",
+                  "2026-06-04 — Auto-proceed gate is heuristic + prompt injection, not an external LLM call"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
                 "rel_path": ".agent-harness/archive/adr-history.md",
@@ -3882,7 +3884,7 @@
               "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
               "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
               "project_claude_mcp_config": true,
-              "project_claude_skill": false,
+              "project_claude_skill": "$PROJECT_SKILL_PRESENCE",
               "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
             },
             "ok": true,

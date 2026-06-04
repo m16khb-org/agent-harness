@@ -1567,6 +1567,22 @@ func selectRecommendedNextAction(candidates []NextActionCandidate) *NextActionCa
 	return nil
 }
 
+// scoreNextActionCandidate assigns a 0..1 auto-proceed confidence to a parsed
+// next-action option. The calibration is deliberately discerning because this
+// heuristic is the fallback when the external-LLM auto-proceed gate is
+// unavailable, so its verdict must be safe on its own:
+//
+//   - Destructive/irreversible → 0 (hard veto; never auto-proceeds).
+//   - Ambiguous/hedged recommendation → dampened well below threshold so an
+//     uncertain "forward" step still stops for the user.
+//   - recommended + a clear forward/safe verb (reversible, non-ambiguous) ≈ 1.0,
+//     comfortably clearing the 0.80 threshold.
+//   - recommended + reversible but NO forward verb stays just under 0.80 so it
+//     does NOT auto-proceed (unchanged from prior behavior).
+//
+// Weights: recommended 0.55, forward/safe verb 0.30, reversible baseline 0.15.
+// Only the recommended candidate is ever auto-proceeded by the caller, but the
+// score is computed uniformly so debug output reflects every option.
 func scoreNextActionCandidate(candidate NextActionCandidate) float64 {
 	if candidate.Destructive {
 		return 0
@@ -1578,29 +1594,53 @@ func scoreNextActionCandidate(candidate NextActionCandidate) float64 {
 	if nextActionHasForwardVerb(candidate.Text) {
 		score += 0.30
 	}
-	// Reversible, non-destructive bonus.
+	// Reversible, non-destructive baseline. recommended (0.55) + reversible
+	// baseline (0.15) = 0.70, which stays just below the 0.80 threshold so a
+	// recommended option with no forward verb does not auto-proceed.
 	score += 0.15
+	// Ambiguity/uncertainty dampening: hedged language signals the action is not
+	// a confident forward step. Subtract enough to push even a recommended +
+	// forward-verb candidate (1.00) below the 0.80 threshold so it stops for the
+	// user instead of auto-proceeding on a guess.
+	if nextActionIsAmbiguous(candidate.Text) {
+		score -= 0.45
+	}
 	return clampScore(score)
 }
 
+// nextActionForwardVerbs reward low-risk forward / verification / local-only
+// steps in English and Korean. These are read-only or reversible-by-default
+// actions that are safe to auto-execute when explicitly recommended.
 var nextActionForwardVerbs = []string{
-	"진행", "계속", "구현", "추가", "작성", "검증", "실행", "수정", "반영", "적용",
-	"proceed", "continue", "implement", "add", "write", "verify", "run", "apply", "fix", "update",
+	"진행", "계속", "구현", "추가", "작성", "검증", "테스트", "빌드", "린트", "확인", "점검", "실행", "수정", "반영", "적용",
+	"proceed", "continue", "implement", "add", "write", "verify", "test", "lint", "build", "check", "inspect", "dry-run", "dry run", "run", "apply", "fix", "update",
+}
+
+// nextActionAmbiguityNeedles are hedging/uncertainty markers in English and
+// Korean. Their presence dampens the score below threshold: an action the agent
+// is unsure about is not a confident forward step and must defer to the user.
+var nextActionAmbiguityNeedles = []string{
+	"아마도", "아마", "확실치", "확실하지", "추정", "미확인", "검토 필요", "검토필요",
+	"maybe", "perhaps", "might", "not sure", "unsure", "tbd", "???",
 }
 
 // nextActionDestructiveWordNeedles are matched on ASCII word boundaries so that
 // "force" does not match "enforce"/"reinforce" and "merge" does not match
-// "merged" status text. "merge" is included because merging a PR/MR is effectively
-// irreversible and must never auto-proceed.
+// "merged" status text. These are outbound / irreversible operations — pushing,
+// deploying, releasing, publishing, merging, rebasing, dropping/truncating data,
+// deleting, sending notifications, payments, rollouts, and infra apply/delete —
+// that must force score 0 and never auto-proceed.
 var nextActionDestructiveWordNeedles = []string{
-	"delete", "remove", "drop", "reset", "revert", "overwrite", "force", "discard", "purge", "close", "merge",
+	"delete", "remove", "drop", "truncate", "reset", "revert", "rollback", "rollout", "overwrite", "force", "discard", "purge", "close", "merge", "rebase",
+	"push", "deploy", "release", "publish", "ship", "send", "email", "notify", "payment", "charge", "refund", "terraform", "kubectl", "prod", "production",
 }
 
 // nextActionDestructiveRawNeedles are matched as substrings: Korean terms (no ASCII
 // word boundary) and command fragments that carry their own delimiters.
 var nextActionDestructiveRawNeedles = []string{
 	"삭제", "제거", "지우", "되돌리", "덮어", "초기화", "닫기", "강제", "병합", "머지",
-	"rm ", "--force", "-f ", "reset --hard", "push --force", "force-push",
+	"푸시", "배포", "릴리즈", "게시", "전송", "결제", "환불", "운영", "프로덕션", "롤백", "롤아웃",
+	"rm ", "--force", "-f ", "reset --hard", "push --force", "force-push", "terraform apply", "kubectl apply", "kubectl delete",
 }
 
 var nextActionDestructiveWordRe = regexp.MustCompile(`(?i)\b(?:` + strings.Join(nextActionDestructiveWordNeedles, "|") + `)\b`)
@@ -1618,6 +1658,16 @@ func nextActionIsDestructive(text string) bool {
 		}
 	}
 	return nextActionDestructiveWordRe.MatchString(text)
+}
+
+func nextActionIsAmbiguous(text string) bool {
+	lower := strings.ToLower(text)
+	for _, needle := range nextActionAmbiguityNeedles {
+		if strings.Contains(lower, strings.ToLower(needle)) {
+			return true
+		}
+	}
+	return false
 }
 
 func nextActionHasForwardVerb(text string) bool {

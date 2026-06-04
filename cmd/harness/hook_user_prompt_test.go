@@ -876,16 +876,21 @@ func TestRunHookStopAllowsNumberedNextActionsWhenExpected(t *testing.T) {
 	}
 }
 
+// writeFakeAgyOnPath puts an executable `agy` shell script on PATH that prints
+// the given output (after asserting the agy print-mode flags), so the LLM
+// auto-proceed gate is hermetic and never invokes a real model.
 func TestRunHookStopAutoProceedsRecommendedSafeAction(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	t.Setenv("HARNESS_NEXT_ACTION_AUTO_PROCEED", "1")
+	// Auto-proceed uses the static heuristic gate only (the external-LLM gate is no
+	// longer wired into the Stop hook). A safe, reversible, recommended forward step
+	// scores at/above threshold and auto-continues with continue:true + block.
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 다음 테스트를 추가하고 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 검증합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--auto-proceed-next-actions"})
 	})
 	if obj["continue"] != true || obj["decision"] != "block" {
-		t.Fatalf("expected Stop hook to auto-continue recommended safe action, got %+v", obj)
+		t.Fatalf("expected Stop hook to auto-continue recommended safe action with the flag alone, got %+v", obj)
 	}
 	reason, _ := obj["reason"].(string)
 	if !strings.Contains(reason, "자동 진행") {
@@ -895,20 +900,22 @@ func TestRunHookStopAutoProceedsRecommendedSafeAction(t *testing.T) {
 
 func TestRunHookStopDoesNotAutoProceedDestructiveCleanup(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	t.Setenv("HARNESS_NEXT_ACTION_AUTO_PROCEED", "1")
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 정리 진행: merged worktree와 branch를 삭제합니다. (추천)\\n2. 보류: 유지합니다.\\n3. 확장 정리: 전체를 점검합니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--auto-proceed-next-actions"})
 	})
-	if len(obj) != 0 {
+	if obj["continue"] == true || obj["decision"] == "block" {
 		t.Fatalf("destructive recommended action must not auto-proceed, got %+v", obj)
+	}
+	sysMsg, _ := obj["systemMessage"].(string)
+	if !strings.Contains(sysMsg, "자동 진행 미적용") || !strings.Contains(sysMsg, "destructive or irreversible") {
+		t.Fatalf("expected destructive auto-proceed block notification in systemMessage, got %+v", obj)
 	}
 }
 
 func TestRunHookStopDoesNotAutoProceedWhenStopHookActive(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	t.Setenv("HARNESS_NEXT_ACTION_AUTO_PROCEED", "1")
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","stop_hook_active":true,"last_assistant_message":"`+msg+`"}`, func() error {
@@ -919,18 +926,19 @@ func TestRunHookStopDoesNotAutoProceedWhenStopHookActive(t *testing.T) {
 	}
 }
 
-func TestRunHookStopDoesNotAutoProceedWhenDisabled(t *testing.T) {
+func TestRunHookStopDoesNotAutoProceedWithoutFlag(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	// Explicitly disable the opt-in env so the test is hermetic regardless of the
-	// ambient environment (operators may export HARNESS_NEXT_ACTION_AUTO_PROCEED=1).
-	t.Setenv("HARNESS_NEXT_ACTION_AUTO_PROCEED", "0")
+	// The --auto-proceed-next-actions flag is the sole on/off switch. Even with a
+	// valid recommended, reversible choice present, omitting the flag must not
+	// auto-proceed. The ambient HARNESS_NEXT_ACTION_AUTO_PROCEED env is irrelevant
+	// now that the env opt-in was removed, so the result is hermetic without setting it.
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
-		return runHookStop([]string{"--auto-proceed-next-actions"})
+		return runHookStop([]string{"--enforce-numbered-next-actions"})
 	})
 	if len(obj) != 0 {
-		t.Fatalf("auto-proceed must stay opt-in via env; got %+v", obj)
+		t.Fatalf("auto-proceed must require the --auto-proceed-next-actions flag; got %+v", obj)
 	}
 }
 

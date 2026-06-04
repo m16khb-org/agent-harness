@@ -7,6 +7,21 @@ import (
 	"testing"
 )
 
+func TestBuildUserPromptMCPHintsInjectsNextActionPolicy(t *testing.T) {
+	// The next-action / auto-proceed policy replaces the external-LLM gate: it is
+	// injected into every non-empty user prompt so the main agent frames its own
+	// turn-ending choices for the cheap heuristic Stop gate to act on.
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "아무 작업이나 진행해줘"})
+	if !got.OK || !got.ShouldInject {
+		t.Fatalf("expected next-action policy to inject for a non-empty prompt: %+v", got)
+	}
+	for _, want := range []string{"next-action:", "선택지:", "(추천)", "destructive", "user confirmation"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("next-action policy missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
 func TestBuildUserPromptMCPHintsForAPIWork(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
 	if !got.OK || !got.ShouldInject {

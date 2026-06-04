@@ -520,7 +520,7 @@ func runHookStop(args []string) error {
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
 	host := fs.String("host", "", "hook host (codex or claude); reserved for host-compatible stop output")
 	enforceNumberedNextActions := fs.Bool("enforce-numbered-next-actions", false, "block Stop when the final response lacks 1/2/3 next-action choices")
-	autoProceedNextActions := fs.Bool("auto-proceed-next-actions", false, "when HARNESS_NEXT_ACTION_AUTO_PROCEED=1, auto-continue the recommended next action if it scores at/above threshold and is reversible, instead of stopping for user selection")
+	autoProceedNextActions := fs.Bool("auto-proceed-next-actions", false, "auto-continue the recommended next action when it scores at/above threshold and is reversible, instead of stopping for user selection; the flag itself is the on/off switch (remove it from the installed Stop hook command to disable)")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -543,10 +543,13 @@ func runHookStop(args []string) error {
 		*enforceNumberedNextActions,
 		"stop",
 	)
-	// Suppress auto-proceed when the host reports stop_hook_active: Claude/Codex set
-	// this true on a stop that is itself a continuation of a prior stop-hook block, and
-	// the documented contract is to return success while it is true to avoid loops.
-	autoProceedEnabled := *autoProceedNextActions && envBool("HARNESS_NEXT_ACTION_AUTO_PROCEED") && !hookInputBool(stdin, "stop_hook_active")
+	// The --auto-proceed-next-actions flag is the sole on/off switch; no env opt-in
+	// is required (the installer always adds the flag, so removing it from the
+	// installed Stop hook command is how an operator disables auto-proceed).
+	// Still suppress auto-proceed when the host reports stop_hook_active: Claude/Codex
+	// set this true on a stop that is itself a continuation of a prior stop-hook block,
+	// and the documented contract is to return success while it is true to avoid loops.
+	autoProceedEnabled := *autoProceedNextActions && !hookInputBool(stdin, "stop_hook_active")
 	autoProceed := core.EvaluateNextActionAutoProceed(message, envFloat("HARNESS_NEXT_ACTION_AUTO_PROCEED_THRESHOLD"))
 	if *jsonOut {
 		return printJSON(map[string]any{
@@ -557,6 +560,16 @@ func runHookStop(args []string) error {
 		})
 	}
 	_ = host
+	// Auto-proceed uses the static heuristic gate ONLY. The external-LLM gate
+	// (core.EvaluateNextActionAutoProceedLLM) is intentionally NOT called here: a
+	// synchronous agy/Gemini call measured ~13-25s, which is unusable inside a Stop
+	// hook's latency budget. The gate's intent — judging whether the recommended
+	// next action is a safe, reversible forward step — is instead delivered to the
+	// main agent as prompting via the UserPromptSubmit hook (see hook_prompt.go), so
+	// the agent frames its own next-action choices well and the cheap heuristic gate
+	// can act on them with no external latency. The LLM gate code is preserved
+	// (currently unused) for possible future use behind a faster model.
+	//
 	// Auto-proceed takes precedence: when the recommended next action is a
 	// confident, reversible forward step, block the Stop with a continue
 	// directive so the agent advances without a user selection round-trip.
@@ -587,11 +600,35 @@ func runHookStop(args []string) error {
 			"reason":   nextActions.Reason,
 		})
 	}
+	// When auto-proceed is enabled and the agent did present numbered choices but the
+	// heuristic gate did not engage (recommended action scored below threshold, was
+	// destructive/irreversible, or had no clear recommendation), do not stop SILENTLY.
+	// Verified host behavior: a non-blocking Stop hook's systemMessage is NOT surfaced
+	// to the user (only blocking output reaches them — e.g. decision:block reason shows
+	// as "Stop hook feedback", and stopReason "is shown when continue is false" per the
+	// Claude 2.1.x hook docs). Since here we WANT the turn to stop so the user chooses,
+	// continue:false is the correct, intended hard stop (the opposite case — recovering
+	// to present choices — uses continue:true; see the enforce branch above). Emit
+	// continue:false + stopReason as the proven user-visible channel, and also set
+	// systemMessage as a cross-host fallback. The agent's choices are already in the
+	// response; this only adds the "auto-proceed did not fire, you choose" notice.
+	if autoProceedEnabled && len(autoProceed.Candidates) >= 2 && !autoProceed.AutoProceed {
+		reason := strings.TrimSpace(autoProceed.Reason)
+		if reason == "" {
+			reason = "recommended next action did not qualify for auto-proceed"
+		}
+		notice := fmt.Sprintf("자동 진행 미적용: %s. 응답의 번호 선택지 중 하나를 직접 골라 주세요.", reason)
+		return printJSON(map[string]any{
+			"continue":      false,
+			"stopReason":    notice,
+			"systemMessage": notice,
+		})
+	}
 	// Codex and Claude Stop hooks only accept the stop-control schema
-	// (for example decision/reason) or an empty object. Unlike prompt/compact
-	// hooks, Stop cannot inject additionalContext; returning hookSpecificOutput
-	// makes Codex report "invalid stop hook JSON output". Keep the raw
-	// reminder available behind --json, but emit a no-op host payload here.
+	// (for example decision/reason/systemMessage) or an empty object. Unlike
+	// prompt/compact hooks, Stop cannot inject additionalContext; returning
+	// hookSpecificOutput makes Codex report "invalid stop hook JSON output". Keep the
+	// raw reminder available behind --json, but emit a no-op host payload here.
 	return printJSON(map[string]any{})
 }
 

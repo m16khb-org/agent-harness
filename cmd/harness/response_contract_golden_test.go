@@ -463,6 +463,15 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 				out[key] = "$AUDIT_ID"
 				continue
 			}
+			// project_claude_skill / project_codex_skill report whether a repo-local
+			// .claude/.codex skill link happens to exist on the running machine. These
+			// links are gitignored, project-local install artifacts, so their presence
+			// is machine state, not committed contract. Normalize them so the golden
+			// does not flake for developers who have project-local skills installed.
+			if key == "project_claude_skill" || key == "project_codex_skill" {
+				out[key] = "$PROJECT_SKILL_PRESENCE"
+				continue
+			}
 			if key == "id" {
 				if s, ok := child.(string); ok && strings.HasPrefix(s, "job-") {
 					out[key] = "$WORKER_JOB_ID"
