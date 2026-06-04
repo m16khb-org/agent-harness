@@ -26,6 +26,8 @@ func runProjectDraftWiki(args []string) error {
 		return runProjectDraftWikiReject(args[1:])
 	case "promote":
 		return runProjectDraftWikiPromote(args[1:])
+	case "prune":
+		return runProjectDraftWikiPrune(args[1:])
 	default:
 		projectDraftWikiUsage()
 		return fmt.Errorf("unknown draft-wiki subcommand %q", args[0])
@@ -40,6 +42,7 @@ func projectDraftWikiUsage() {
   agent-harness project draft-wiki approve [--repo PATH] [--json] PATH
   agent-harness project draft-wiki reject [--repo PATH] [--json] PATH
   agent-harness project draft-wiki promote [--repo PATH] [--target-wiki NAME] [--target-type notes] [--confirm] [--json] PATH
+  agent-harness project draft-wiki prune [--repo PATH] [--all] [--keep N] [--json]
 `)
 }
 
@@ -209,6 +212,49 @@ func runProjectDraftWikiPromote(args []string) error {
 		fmt.Printf("promoted draft to llm-wiki raw note: %s\n", result.LLMWikiRawPath)
 	}
 	fmt.Printf("handoff: %s\n", result.HandoffCommand)
+	return nil
+}
+
+func runProjectDraftWikiPrune(args []string) error {
+	fs := flag.NewFlagSet("project draft-wiki prune", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "target repository path")
+	all := fs.Bool("all", false, "prune every project draft-wiki queue under the harness state dir")
+	keep := fs.Int("keep", 0, "number of newest queue events to keep")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		if fs.NArg() != 1 || *all {
+			return fmt.Errorf("unexpected prune argument(s)")
+		}
+		*repo = fs.Arg(0)
+	}
+	if *keep < 0 {
+		return fmt.Errorf("--keep must be >= 0")
+	}
+	if *all {
+		result, err := core.PruneAllDraftWikiQueues("", *keep)
+		if err != nil {
+			return err
+		}
+		if *jsonOut {
+			return printJSON(result)
+		}
+		fmt.Printf("pruned %d draft-wiki queue event(s); before=%d after=%d keep=%d queues=%d\n", result.Pruned, result.Before, result.After, result.Keep, len(result.Queues))
+		for _, queue := range result.Queues {
+			fmt.Printf("- %s before=%d after=%d pruned=%d\n", queue.Path, queue.Before, queue.After, queue.Pruned)
+		}
+		return nil
+	}
+	result, err := core.PruneDraftWikiQueue(*repo, *keep)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	fmt.Printf("pruned %s: before=%d after=%d pruned=%d keep=%d\n", result.Path, result.Before, result.After, result.Pruned, result.Keep)
 	return nil
 }
 

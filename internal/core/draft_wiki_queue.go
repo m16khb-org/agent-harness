@@ -14,6 +14,7 @@ import (
 
 const draftWikiQueueFile = "draft-wiki-queue.jsonl"
 const draftWikiQueueLockFile = "draft-wiki-queue.lock"
+const maxDraftWikiQueueEvents = 200
 
 type DraftWikiQueueAppendRequest struct {
 	RepoRoot       string   `json:"repo_root"`
@@ -78,6 +79,30 @@ type DraftWikiQueueProcessResult struct {
 	Events          []DraftWikiQueueEvent `json:"events"`
 }
 
+type DraftWikiQueuePruneResult struct {
+	OK              bool   `json:"ok"`
+	Kind            string `json:"kind"`
+	RepoRoot        string `json:"repo_root,omitempty"`
+	RepoID          string `json:"repo_id,omitempty"`
+	ProjectStateDir string `json:"project_state_dir,omitempty"`
+	Path            string `json:"path"`
+	Keep            int    `json:"keep"`
+	Before          int    `json:"before"`
+	After           int    `json:"after"`
+	Pruned          int    `json:"pruned"`
+}
+
+type DraftWikiQueuePruneAllResult struct {
+	OK       bool                        `json:"ok"`
+	Kind     string                      `json:"kind"`
+	StateDir string                      `json:"state_dir"`
+	Keep     int                         `json:"keep"`
+	Before   int                         `json:"before"`
+	After    int                         `json:"after"`
+	Pruned   int                         `json:"pruned"`
+	Queues   []DraftWikiQueuePruneResult `json:"queues"`
+}
+
 func AppendDraftWikiQueueEvent(req DraftWikiQueueAppendRequest) (DraftWikiQueueAppendResult, error) {
 	plan, path, err := draftWikiQueuePath(req.RepoRoot, true)
 	if err != nil {
@@ -113,7 +138,61 @@ func AppendDraftWikiQueueEvent(req DraftWikiQueueAppendRequest) (DraftWikiQueueA
 	if err := appendDraftWikiQueueEvent(path, event); err != nil {
 		return DraftWikiQueueAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: path}, err
 	}
+	if err := capDraftWikiQueueEvents(path, maxDraftWikiQueueEvents); err != nil {
+		return DraftWikiQueueAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: path}, err
+	}
 	return DraftWikiQueueAppendResult{OK: true, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: path, Event: draftWikiQueueEventForResponse(event)}, nil
+}
+
+func PruneDraftWikiQueue(repoRoot string, keep int) (DraftWikiQueuePruneResult, error) {
+	plan, path, err := draftWikiQueuePath(repoRoot, true)
+	if err != nil {
+		return DraftWikiQueuePruneResult{OK: false}, err
+	}
+	result, err := pruneDraftWikiQueuePath(path, keep)
+	result.RepoRoot = plan.RepoRoot
+	result.RepoID = plan.RepoID
+	result.ProjectStateDir = plan.ProjectStateDir
+	return result, err
+}
+
+func PruneAllDraftWikiQueues(stateDir string, keep int) (DraftWikiQueuePruneAllResult, error) {
+	if strings.TrimSpace(stateDir) == "" {
+		stateDir = StateDir()
+	}
+	result := DraftWikiQueuePruneAllResult{OK: true, Kind: "draft_wiki_queue_prune_all", StateDir: stateDir, Keep: keep, Queues: []DraftWikiQueuePruneResult{}}
+	projectsDir := filepath.Join(stateDir, "projects")
+	entries, err := os.ReadDir(projectsDir)
+	if os.IsNotExist(err) {
+		return result, nil
+	}
+	if err != nil {
+		result.OK = false
+		return result, err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(projectsDir, entry.Name(), draftWikiQueueFile)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			result.OK = false
+			return result, err
+		}
+		queue, err := pruneDraftWikiQueuePath(path, keep)
+		queue.ProjectStateDir = filepath.Dir(path)
+		if err != nil {
+			result.OK = false
+			return result, err
+		}
+		result.Before += queue.Before
+		result.After += queue.After
+		result.Pruned += queue.Pruned
+		result.Queues = append(result.Queues, queue)
+	}
+	return result, nil
 }
 
 func ProcessDraftWikiQueue(req DraftWikiQueueProcessRequest) (DraftWikiQueueProcessResult, error) {
@@ -280,6 +359,71 @@ func appendDraftWikiQueueEvent(path string, event DraftWikiQueueEvent) error {
 	}
 	_, err = f.Write(append(b, '\n'))
 	return err
+}
+
+func capDraftWikiQueueEvents(path string, keep int) error {
+	if keep <= 0 {
+		return nil
+	}
+	count, err := countDraftWikiQueueLines(path, keep*2+1)
+	if err != nil {
+		return err
+	}
+	if count <= keep*2 {
+		return nil
+	}
+	_, err = pruneDraftWikiQueuePath(path, keep)
+	return err
+}
+
+func pruneDraftWikiQueuePath(path string, keep int) (DraftWikiQueuePruneResult, error) {
+	result := DraftWikiQueuePruneResult{OK: true, Kind: "draft_wiki_queue_prune", Path: path, Keep: keep}
+	events, _, err := readDraftWikiQueueEvents(path)
+	if err != nil {
+		result.OK = false
+		return result, err
+	}
+	result.Before = len(events)
+	if keep < 0 {
+		keep = 0
+		result.Keep = 0
+	}
+	if keep > 0 && len(events) > keep {
+		events = events[len(events)-keep:]
+	} else if keep == 0 {
+		events = []DraftWikiQueueEvent{}
+	}
+	result.After = len(events)
+	result.Pruned = result.Before - result.After
+	if err := rewriteDraftWikiQueueEventsFunc(path, events); err != nil {
+		result.OK = false
+		return result, err
+	}
+	return result, nil
+}
+
+func countDraftWikiQueueLines(path string, limit int) (int, error) {
+	f, err := os.Open(path)
+	if os.IsNotExist(err) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 64*1024), 2*1024*1024)
+	count := 0
+	for scanner.Scan() {
+		if strings.TrimSpace(scanner.Text()) == "" {
+			continue
+		}
+		count++
+		if limit > 0 && count >= limit {
+			return count, nil
+		}
+	}
+	return count, scanner.Err()
 }
 
 func readDraftWikiQueueEvents(path string) ([]DraftWikiQueueEvent, []string, error) {

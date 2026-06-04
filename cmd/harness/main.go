@@ -319,7 +319,7 @@ func projectUsage() {
   agent-harness project docs [--repo PATH] [--json]
   agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
   agent-harness project record --kind caution|adr --title TEXT --summary TEXT [--repo PATH] [--json]
-  agent-harness project draft-wiki init|list|suggest|approve|reject|promote ...
+  agent-harness project draft-wiki init|list|suggest|approve|reject|promote|prune ...
   agent-harness project commit-suggest [--repo PATH] [--staged] [--agy-command CMD] [--json]
   agent-harness project lint-diagnose [--repo PATH] [--agy-command CMD] [--json] -- <command_to_run...>
 `)
