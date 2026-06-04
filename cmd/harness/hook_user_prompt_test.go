@@ -828,7 +828,6 @@ func TestRunHookStopEmitsCodexCompatibleNoopJSON(t *testing.T) {
 
 func TestRunHookStopBlocksMissingNumberedNextActionsWhenExpected(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
 	repo := t.TempDir()
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"작업을 진행했습니다."}`, func() error {
 		return runHookStop([]string{"--enforce-numbered-next-actions"})
@@ -838,9 +837,23 @@ func TestRunHookStopBlocksMissingNumberedNextActionsWhenExpected(t *testing.T) {
 	}
 }
 
+func TestRunHookStopBlockReasonTellsAgentToPresentContextSpecificChoices(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	message := "완료했습니다.\n\nCommit: 18172349f3 fix(dmm): use persona tags for ranking registration\nIssueOps phase: pr, strict readiness 통과"
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+strings.ReplaceAll(message, "\n", "\\n")+`"}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions"})
+	})
+	if obj["continue"] != false || obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to block missing choices, got %+v", obj)
+	}
+	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "caused the block") || !strings.Contains(reason, "context-specific") {
+		t.Fatalf("expected Stop hook reason to tell the agent why it blocked and to create context-specific choices, got %q", reason)
+	}
+}
+
 func TestRunHookStopAllowsNumberedNextActionsWhenExpected(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
 	repo := t.TempDir()
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"선택지:\n1. 진행: 검증합니다. (추천)\n2. 축소 진행: 일부만 합니다.\n3. 보류: 멈춥니다."}`, func() error {
 		return runHookStop([]string{"--enforce-numbered-next-actions"})
@@ -910,7 +923,6 @@ func TestRunHookStopDoesNotAutoProceedWhenDisabled(t *testing.T) {
 
 func TestRunHookStopReadsLastAssistantMessageFromTranscript(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
 	repo := t.TempDir()
 	transcript := filepath.Join(t.TempDir(), "transcript.jsonl")
 	if err := os.WriteFile(transcript, []byte(`{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"작업했습니다."}]}}`+"\n"), 0o600); err != nil {
@@ -926,7 +938,6 @@ func TestRunHookStopReadsLastAssistantMessageFromTranscript(t *testing.T) {
 
 func TestRunHookStopIgnoresSystemTranscriptObjectWithAssistantText(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	t.Setenv("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS", "1")
 	repo := t.TempDir()
 	transcript := filepath.Join(t.TempDir(), "transcript.jsonl")
 	body := `{"type":"system","text":"assistant reminder without a final assistant response"}` + "\r\n"

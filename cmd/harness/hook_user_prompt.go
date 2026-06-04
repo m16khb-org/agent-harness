@@ -519,7 +519,7 @@ func runHookStop(args []string) error {
 	fs := flag.NewFlagSet("hook stop", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
 	host := fs.String("host", "", "hook host (codex or claude); reserved for host-compatible stop output")
-	enforceNumberedNextActions := fs.Bool("enforce-numbered-next-actions", false, "block Stop when HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1 and the final response lacks 1/2/3 next-action choices")
+	enforceNumberedNextActions := fs.Bool("enforce-numbered-next-actions", false, "block Stop when the final response lacks 1/2/3 next-action choices")
 	autoProceedNextActions := fs.Bool("auto-proceed-next-actions", false, "when HARNESS_NEXT_ACTION_AUTO_PROCEED=1, auto-continue the recommended next action if it scores at/above threshold and is reversible, instead of stopping for user selection")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
@@ -540,7 +540,7 @@ func runHookStop(args []string) error {
 	}
 	nextActions := core.BuildNumberedNextActionsDecision(
 		message,
-		*enforceNumberedNextActions && envBool("HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS"),
+		*enforceNumberedNextActions,
 		"stop",
 	)
 	// Suppress auto-proceed when the host reports stop_hook_active: Claude/Codex set

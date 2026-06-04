@@ -1495,8 +1495,12 @@ func BuildNumberedNextActionsDecision(message string, enforce bool, source strin
 		return result
 	}
 	result.Decision = "block"
-	result.Reason = "IssueOps response must end with numbered next actions: 1. proceed/recommended, 2. narrower alternative, 3. pause/defer"
+	result.Reason = missingNumberedNextActionsReason()
 	return result
+}
+
+func missingNumberedNextActionsReason() string {
+	return "Stop hook blocked because the final response lacks numbered next actions. Continue by briefly explaining that missing next-action choices caused the block, then present a context-specific `선택지:` section with exactly three numbered options and exactly one `(추천)` option."
 }
 
 const defaultNextActionAutoProceedThreshold = 0.80
