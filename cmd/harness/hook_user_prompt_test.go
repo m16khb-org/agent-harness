@@ -832,8 +832,21 @@ func TestRunHookStopBlocksMissingNumberedNextActionsWhenExpected(t *testing.T) {
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"작업을 진행했습니다."}`, func() error {
 		return runHookStop([]string{"--enforce-numbered-next-actions"})
 	})
-	if obj["continue"] != false || obj["decision"] != "block" {
-		t.Fatalf("expected Stop hook to block missing choices, got %+v", obj)
+	// continue must stay true so the agent continues in-turn and presents the
+	// choices; continue:false would hard-stop and surface the reason to the user.
+	if obj["continue"] != true || obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to block missing choices with an in-turn continuation, got %+v", obj)
+	}
+}
+
+func TestRunHookStopAllowsStopWhenStopHookActiveMissingChoices(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","stop_hook_active":true,"last_assistant_message":"작업을 진행했습니다."}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("stop_hook_active must suppress the next-action block to avoid loops, got %+v", obj)
 	}
 }
 
@@ -844,8 +857,8 @@ func TestRunHookStopBlockReasonTellsAgentToPresentContextSpecificChoices(t *test
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+strings.ReplaceAll(message, "\n", "\\n")+`"}`, func() error {
 		return runHookStop([]string{"--enforce-numbered-next-actions"})
 	})
-	if obj["continue"] != false || obj["decision"] != "block" {
-		t.Fatalf("expected Stop hook to block missing choices, got %+v", obj)
+	if obj["continue"] != true || obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to block missing choices with an in-turn continuation, got %+v", obj)
 	}
 	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "caused the block") || !strings.Contains(reason, "context-specific") {
 		t.Fatalf("expected Stop hook reason to tell the agent why it blocked and to create context-specific choices, got %q", reason)
@@ -931,8 +944,8 @@ func TestRunHookStopReadsLastAssistantMessageFromTranscript(t *testing.T) {
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`"}`, func() error {
 		return runHookStop([]string{"--enforce-numbered-next-actions"})
 	})
-	if obj["continue"] != false || obj["decision"] != "block" {
-		t.Fatalf("expected Stop hook to inspect transcript and block, got %+v", obj)
+	if obj["continue"] != true || obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to inspect transcript and block with an in-turn continuation, got %+v", obj)
 	}
 }
 

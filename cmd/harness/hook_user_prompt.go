@@ -567,9 +567,22 @@ func runHookStop(args []string) error {
 			"reason":   fmt.Sprintf("다음 동작 자동 진행(점수 %.2f ≥ 임계값 %.2f): %q 을(를) 사용자 확인 없이 즉시 실행하세요. 동일 선택지를 다시 제시하지 말고, 작업을 진행한 뒤 완료를 보고하거나 새로운 결정 지점에서만 멈추세요.", autoProceed.TopScore, autoProceed.Threshold, autoProceed.SelectedText),
 		})
 	}
-	if nextActions.Decision == "block" {
+	// Block a Stop that lacks numbered next actions, but drive an IN-TURN
+	// continuation rather than a hard stop. Verified against the host schemas:
+	// Claude 2.1.162 embedded hook docs ("continue - Set to false to block/stop")
+	// and Codex 0.137.0 stop.command.output schema both treat continue:false as a
+	// hard stop that takes precedence over decision, while decision:"block" + reason
+	// makes the agent continue and act on the reason. Sending continue:false here
+	// (the prior behavior) caused the agent to halt and surface the block reason to
+	// the user instead of presenting the choices itself. Use continue:true like the
+	// auto-proceed branch above so the agent stays in-turn and emits the choices.
+	//
+	// Guard with stop_hook_active: hosts set it true when this Stop is itself a
+	// continuation of a prior stop-hook block. The documented anti-loop contract is
+	// to allow the stop while it is true, so a non-complying agent cannot loop.
+	if nextActions.Decision == "block" && !hookInputBool(stdin, "stop_hook_active") {
 		return printJSON(map[string]any{
-			"continue": false,
+			"continue": true,
 			"decision": "block",
 			"reason":   nextActions.Reason,
 		})
