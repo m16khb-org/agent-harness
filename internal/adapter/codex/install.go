@@ -373,7 +373,7 @@ func mergeHookConfig(config map[string]any, binPath string) map[string]any {
 		groups := []any{}
 		if existing, ok := hooks[spec.Event].([]any); ok {
 			for _, group := range existing {
-				if !hookGroupContainsAgentHarness(group) {
+				if hookGroupHasHooks(group) && !hookGroupContainsAgentHarness(group) {
 					groups = append(groups, group)
 				}
 			}
@@ -382,6 +382,15 @@ func mergeHookConfig(config map[string]any, binPath string) map[string]any {
 		hooks[spec.Event] = groups
 	}
 	return config
+}
+
+func hookGroupHasHooks(group any) bool {
+	m, ok := group.(map[string]any)
+	if !ok {
+		return false
+	}
+	hooks, ok := m["hooks"].([]any)
+	return ok && len(hooks) > 0
 }
 
 func hookGroupContainsAgentHarness(group any) bool {

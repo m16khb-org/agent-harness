@@ -1,6 +1,7 @@
 package codex
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,6 +68,41 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	}
 	if strings.Contains(string(hooks), "hook pre-tool-use --enforce-search-routing") {
 		t.Fatalf("Codex installer must not enable blocking search routing enforcement by default:\n%s", string(hooks))
+	}
+}
+
+func TestCodexInstallerDropsEmptyHookGroups(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	writeAdapterTestSkill(t, root, "alpha")
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req.SkillNames = []string{"alpha"}
+	hooksPath := filepath.Join(home, ".codex", "hooks.json")
+	writeFile(t, hooksPath, `{"hooks":{"PostToolUse":[{"matcher":"Write|Edit|Bash","hooks":[]}],"PreToolUse":[{"matcher":"Read","hooks":[{"type":"command","command":"echo preserved","timeout":1}]}]}}`)
+
+	if _, err := NewInstaller().Install(req); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(hooksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var parsed struct {
+		Hooks map[string][]map[string]any `json:"hooks"`
+	}
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		t.Fatal(err)
+	}
+	for event, groups := range parsed.Hooks {
+		for _, group := range groups {
+			hooks, _ := group["hooks"].([]any)
+			if len(hooks) == 0 {
+				t.Fatalf("installer preserved empty hook group for %s:\n%s", event, string(b))
+			}
+		}
+	}
+	if !strings.Contains(string(b), "echo preserved") {
+		t.Fatalf("installer dropped non-empty third-party hook group:\n%s", string(b))
 	}
 }
 
