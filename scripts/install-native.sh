@@ -168,8 +168,23 @@ install_claude_mem_for_ide() {
     return 0
   fi
   log "installing/updating claude-mem for ${ide}"
-  npx -y claude-mem@latest install --ide "$ide" --provider claude --runtime worker --no-auto-start >/dev/null \
-    || log "warning: failed to install claude-mem for ${ide}; continuing"
+  # claude-mem decides interactive vs non-interactive from process.stdin.isTTY: with a TTY
+  # stdin it shows an "Overwrite existing installation? Yes/No" confirm and blocks forever
+  # (stdout is /dev/null here, so the prompt is invisible and the install appears to hang).
+  # Redirect stdin from /dev/null so it takes the non-TTY path and auto-skips the prompt.
+  #
+  # On a successful install claude-mem still prints a benign warning for the Codex
+  # local marketplace: `codex plugin marketplace upgrade claude-mem-local` only works on
+  # Git marketplaces, but claude-mem registers claude-mem-local as source_type=local, so
+  # the best-effort upgrade fails with "is not configured as a Git marketplace". The
+  # plugin is installed and enabled regardless (exit 0). Capture combined output and
+  # suppress it on success; surface the full log only when the install actually fails.
+  local cm_out
+  if cm_out="$(npx -y claude-mem@latest install --ide "$ide" --provider claude --runtime worker --no-auto-start </dev/null 2>&1)"; then
+    return 0
+  fi
+  log "warning: failed to install claude-mem for ${ide}; continuing"
+  printf '%s\n' "$cm_out" >&2
 }
 
 ensure_codegraph_on_path() {
