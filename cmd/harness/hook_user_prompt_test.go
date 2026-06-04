@@ -905,12 +905,19 @@ func TestRunHookStopDoesNotAutoProceedDestructiveCleanup(t *testing.T) {
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--auto-proceed-next-actions"})
 	})
-	if obj["continue"] == true || obj["decision"] == "block" {
-		t.Fatalf("destructive recommended action must not auto-proceed, got %+v", obj)
+	// A destructive recommended action must NOT auto-proceed. Instead the hook relays a
+	// non-auto-proceed notice to the user via decision:block (the only reliably visible
+	// Stop channel) with an instruction to notify-and-stop — distinguished from a real
+	// auto-proceed by the "자동 진행 미적용" prefix (vs "다음 동작 자동 진행(점수").
+	reason, _ := obj["reason"].(string)
+	if obj["decision"] != "block" {
+		t.Fatalf("expected a notify block for destructive action, got %+v", obj)
 	}
-	sysMsg, _ := obj["systemMessage"].(string)
-	if !strings.Contains(sysMsg, "자동 진행 미적용") || !strings.Contains(sysMsg, "destructive or irreversible") {
-		t.Fatalf("expected destructive auto-proceed block notification in systemMessage, got %+v", obj)
+	if !strings.Contains(reason, "자동 진행 미적용") || !strings.Contains(reason, "destructive or irreversible") {
+		t.Fatalf("expected destructive non-auto-proceed notice in reason, got %+v", obj)
+	}
+	if strings.Contains(reason, "다음 동작 자동 진행(점수") {
+		t.Fatalf("destructive action must not produce an auto-proceed directive, got %+v", obj)
 	}
 }
 

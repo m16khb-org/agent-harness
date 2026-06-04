@@ -602,26 +602,26 @@ func runHookStop(args []string) error {
 	}
 	// When auto-proceed is enabled and the agent did present numbered choices but the
 	// heuristic gate did not engage (recommended action scored below threshold, was
-	// destructive/irreversible, or had no clear recommendation), do not stop SILENTLY.
-	// Verified host behavior: a non-blocking Stop hook's systemMessage is NOT surfaced
-	// to the user (only blocking output reaches them — e.g. decision:block reason shows
-	// as "Stop hook feedback", and stopReason "is shown when continue is false" per the
-	// Claude 2.1.x hook docs). Since here we WANT the turn to stop so the user chooses,
-	// continue:false is the correct, intended hard stop (the opposite case — recovering
-	// to present choices — uses continue:true; see the enforce branch above). Emit
-	// continue:false + stopReason as the proven user-visible channel, and also set
-	// systemMessage as a cross-host fallback. The agent's choices are already in the
-	// response; this only adds the "auto-proceed did not fire, you choose" notice.
+	// destructive/irreversible, or had no clear recommendation), do not stop SILENTLY —
+	// tell the user it did not auto-proceed.
+	//
+	// Verified host behavior (2026-06-04): the ONLY Stop output reliably surfaced to the
+	// user is decision:"block" + reason (rendered as "Stop hook feedback"). A
+	// non-blocking systemMessage and continue:false + stopReason were both observed to
+	// produce no visible notice. decision:"block" re-invokes the agent in-turn, so the
+	// reason instructs the agent to relay the non-auto-proceed notice to the user and
+	// then stop. The follow-up Stop carries stop_hook_active=true, which makes
+	// autoProceedEnabled false above, so this branch does not fire again and the relay
+	// turn ends without looping.
 	if autoProceedEnabled && len(autoProceed.Candidates) >= 2 && !autoProceed.AutoProceed {
 		reason := strings.TrimSpace(autoProceed.Reason)
 		if reason == "" {
 			reason = "recommended next action did not qualify for auto-proceed"
 		}
-		notice := fmt.Sprintf("자동 진행 미적용: %s. 응답의 번호 선택지 중 하나를 직접 골라 주세요.", reason)
 		return printJSON(map[string]any{
-			"continue":      false,
-			"stopReason":    notice,
-			"systemMessage": notice,
+			"continue": true,
+			"decision": "block",
+			"reason":   fmt.Sprintf("자동 진행 미적용: %s. 사용자에게 자동 진행되지 않았다는 사실과 이 사유를 한 줄로 알리고, 직전 응답의 번호 선택지 중 하나를 직접 골라 달라고 요청한 뒤, 추가 작업 없이 멈춰라. 새 선택지를 만들지 마라.", reason),
 		})
 	}
 	// Codex and Claude Stop hooks only accept the stop-control schema
