@@ -189,8 +189,8 @@ func buildIssueOpsRemoteAgyJudgePrompt(req IssueOpsRemoteScoringRequest) (string
 			"Do not force a fixed number of related issues or labels. Selection is threshold-based only.",
 			"Treat apply instructions that merely say to create an issue, without threshold-based related issue/label application and an explicit next-action choice, as incomplete.",
 			"Use evidence strings that cite overlap, shared workflow, shared component, or shared issue type.",
-			"For GitHub, apply hints should mention issue body references and gh issue label application.",
-			"For GitLab, apply hints should mention issue body references and GitLab/glab label application.",
+			"For GitHub, related-issue apply hints should mention issue body references (#123 or URLs) and gh issue label application.",
+			"For GitLab, related-issue apply hints should mention attaching GitLab linked items via the issue links API (not a body section) and GitLab/glab label application.",
 			"Do not add top-level fields outside the schema.",
 		},
 		OutputContract: []string{
@@ -421,7 +421,7 @@ func issueOpsRemoteApplyInstructions(provider string, issues, labels []IssueOpsR
 		case "github":
 			instructions = append(instructions, "include selected related issues in the issue body; use GitHub issue references such as #123 or full URLs")
 		case "gitlab":
-			instructions = append(instructions, "include selected related issues in the issue body; use GitLab issue references such as #123 or full URLs")
+			instructions = append(instructions, "attach selected related issues as GitLab linked items, not a body section; create each link with glab api projects/:id/issues/:iid/links -X POST -f target_project_id=... -f target_issue_iid=... -f link_type=relates_to")
 		}
 	}
 	if len(labels) > 0 {
@@ -440,6 +440,12 @@ func issueOpsRemoteApplyInstructions(provider string, issues, labels []IssueOpsR
 }
 
 func issueOpsRemoteIssueApplyHint(provider string, item IssueOpsRemoteScoredItem) string {
+	if provider == "gitlab" {
+		if ref := firstNonEmpty(item.URL, item.ID); ref != "" {
+			return "attach as GitLab linked item via issue links API: " + ref
+		}
+		return "attach selected related issue as a GitLab linked item via the issue links API"
+	}
 	if item.URL != "" {
 		return "link in issue body: " + item.URL
 	}

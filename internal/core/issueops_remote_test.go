@@ -70,6 +70,34 @@ func TestScoreIssueOpsRemoteCandidatesSupportsGitLabInstructions(t *testing.T) {
 	}
 }
 
+func TestScoreIssueOpsRemoteCandidatesGitLabRelatedIssuesUseLinkedItems(t *testing.T) {
+	relatedScore := 0.92
+	result, err := ScoreIssueOpsRemoteCandidates(IssueOpsRemoteScoringRequest{
+		Provider:  "gitlab",
+		Threshold: 0.70,
+		Issue:     IssueOpsRemoteArtifact{Title: "IssueOps GitLab linked item 연결"},
+		IssueCandidates: []IssueOpsRemoteIssueCandidate{
+			{ID: "#9", Title: "IssueOps autoresearch quality gate", URL: "https://gitlab.example.com/group/repo/-/issues/9", Score: &relatedScore},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.SelectedRelatedIssues) != 1 {
+		t.Fatalf("expected one selected GitLab related issue: %+v", result.SelectedRelatedIssues)
+	}
+	joined := strings.Join(result.ApplyInstructions, "\n")
+	if !containsFold(joined, "linked item") || !containsFold(joined, "/links") {
+		t.Fatalf("expected GitLab linked-item apply instruction: %+v", result.ApplyInstructions)
+	}
+	if containsFold(joined, "in the issue body") {
+		t.Fatalf("GitLab related issues must not be instructed into the issue body: %+v", result.ApplyInstructions)
+	}
+	if hint := result.SelectedRelatedIssues[0].ApplyHint; !containsFold(hint, "linked item") {
+		t.Fatalf("expected GitLab linked-item apply hint: %q", hint)
+	}
+}
+
 func TestScoreIssueOpsRemoteCandidatesDoesNotWarnWhenNoCandidatesExist(t *testing.T) {
 	result, err := ScoreIssueOpsRemoteCandidates(IssueOpsRemoteScoringRequest{
 		Provider: "github",

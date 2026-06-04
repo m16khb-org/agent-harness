@@ -27,7 +27,7 @@ Use deterministic fallback only when the external LLM is unavailable or intentio
 agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
 ```
 
-Default threshold is `0.70` unless the repo or user sets a stronger threshold. Include selected related issue references/URLs in the issue body, include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with provider CLI/API commands. Do not apply rejected labels, create rejected labels, or link rejected issues.
+Default threshold is `0.70` unless the repo or user sets a stronger threshold. Attach selected related issues with the provider-native mechanism described in "Provider-Specific Linking And Hierarchy" below (GitHub body references vs GitLab linked items) — do not reuse one provider's style for the other. Include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with provider CLI/API commands. Do not apply rejected labels, create rejected labels, or link rejected issues.
 
 The agent must propose the operational choice instead of leaving the user to invent it. Example:
 
@@ -56,6 +56,25 @@ Use this structure unless the target project already has a stronger issue templa
 
 ## Feedback Log
 ```
+
+Do not add a `## Plan Link` / `## Plan` section or a `TBD` placeholder to the remote issue body. Plan tracking lives in `agent-harness issueops link-plan` state and, when needed, the PR/MR body — never as an issue-body section (see the Korean gate's plan-path rule below).
+
+## Provider-Specific Linking And Hierarchy
+
+GitHub and GitLab expose similar concepts through different mechanisms. Never apply one provider's mechanism to the other; detect the provider first, then use its native feature. `gh` and `glab` have no first-class subcommand for most of these, so use `gh api` / `glab api`.
+
+| Concept | GitHub mechanism | GitLab mechanism |
+| --- | --- | --- |
+| Related / non-hierarchical link | Cross-reference in the issue body (`#123` or full URL). GitHub has no native "linked items" relation, so body references are correct. | Native **linked items** (relation), not a body section. Create with `glab api projects/:id/issues/:iid/links -X POST -f target_project_id=<id> -f target_issue_iid=<iid> -f link_type=relates_to` (`relates_to` \| `blocks` \| `is_blocked_by`). |
+| Parent → child work breakdown (tasks) | **Sub-issues**. `gh issue` has no native subcommand; use `gh api -X POST repos/{owner}/{repo}/issues/{parent}/sub_issues -F sub_issue_id=<child numeric id>` (the database id, not the `#number`). | **Child items** (work-item hierarchy / tasks), not GitHub sub-issues and not plain links. Add children through the work-items API for the parent issue; treat the issue's "Tasks"/child items list as the place a task belongs. |
+| Labels | `gh issue create --label` / `gh issue edit --add-label`. | `glab issue create --label` / GitLab issue labels field. |
+| Assignee | `gh issue create --assignee` / `gh issue edit --add-assignee`. | GitLab assignee field via `glab`/API. |
+
+Rules:
+
+- When the scoring gate selects related issues, attach them as **GitLab linked items** on GitLab and as **body cross-references** on GitHub. Do not put a `## Related Issues` body section on GitLab when a linked item is the correct home; do not invent a linked-items relation on GitHub where none exists.
+- When breaking work into tasks/subtasks on the remote, add them as **GitHub sub-issues** or **GitLab child items** for the parent issue — match the provider. Do not flatten a hierarchy into plain `relates_to` links or body bullet lists when the provider supports a real parent/child relation.
+- If a provider mechanism is unavailable (API/permission/feature flag), say so explicitly, fall back to the closest documented mechanism, and record the limitation in IssueOps feedback rather than silently using the other provider's style.
 
 ## Korean Remote Artifact Gate
 
