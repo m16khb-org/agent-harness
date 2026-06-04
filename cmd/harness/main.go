@@ -4613,7 +4613,7 @@ func indentLines(s string) string {
 }
 
 func runMCP() error {
-	if os.Getenv("HARNESS_MCP_DIRECT") == "1" || os.Getenv("HARNESS_DAEMON_DISABLE") == "1" {
+	if os.Getenv("HARNESS_MCP_DIRECT") == "1" {
 		return serveMCPStream(os.Stdin, os.Stdout, os.Stderr)
 	}
 	return runMCPProxy()
