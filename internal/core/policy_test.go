@@ -157,6 +157,33 @@ func TestRunReadOnlyCommandExecutesAllowedArgvOnly(t *testing.T) {
 	}
 }
 
+func TestRunReadOnlyCommandUsesEmptyEnvUnlessAllowlisted(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("AGENT_HARNESS_ENV_LEAK_TEST", "leaked")
+	argv := []string{"awk", `BEGIN { print ENVIRON["AGENT_HARNESS_ENV_LEAK_TEST"] }`}
+
+	defaultEnv := RunReadOnlyCommand(CommandPolicyRequest{
+		WorkspaceRoot: root,
+		CWD:           root,
+		Argv:          argv,
+		Timeout:       "30s",
+	})
+	if !defaultEnv.OK || defaultEnv.Stdout != "\n" {
+		t.Fatalf("default read-only env should not inherit parent env: %+v", defaultEnv)
+	}
+
+	allowlisted := RunReadOnlyCommand(CommandPolicyRequest{
+		WorkspaceRoot: root,
+		CWD:           root,
+		Argv:          argv,
+		Timeout:       "30s",
+		EnvAllowlist:  []string{"AGENT_HARNESS_ENV_LEAK_TEST"},
+	})
+	if !allowlisted.OK || allowlisted.Stdout != "leaked\n" {
+		t.Fatalf("allowlisted env was not exposed: %+v", allowlisted)
+	}
+}
+
 func TestCommandPolicyRedactsAndDeniesSecretLikeArgs(t *testing.T) {
 	root := t.TempDir()
 	result := EvaluateCommandPolicy(CommandPolicyRequest{

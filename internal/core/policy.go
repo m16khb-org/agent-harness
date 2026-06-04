@@ -357,14 +357,11 @@ func RunReadOnlyCommand(req CommandPolicyRequest) CommandRunResult {
 }
 
 func commandEnv(allowlist []string) []string {
-	if len(allowlist) == 0 {
-		return os.Environ()
-	}
 	allowed := map[string]bool{}
 	for _, name := range cleanEnvAllowlist(allowlist) {
 		allowed[name] = true
 	}
-	var env []string
+	env := []string{}
 	for _, entry := range os.Environ() {
 		name, _, ok := strings.Cut(entry, "=")
 		if ok && allowed[name] {
