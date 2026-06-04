@@ -23,14 +23,16 @@ def find_harness_binary() -> str:
     script = Path(__file__).resolve()
     # skills/atomic-commit-push/scripts/api_doc_gate.py -> repo root
     repo_root = script.parents[3]
-    local_bin = repo_root / "bin" / "harness"
-    if local_bin.exists():
-        return str(local_bin)
+    for name in ("agent-harness", "harness"):
+        local_bin = repo_root / "bin" / name
+        if local_bin.exists():
+            return str(local_bin)
 
-    found = shutil.which("harness")
-    if found:
-        return found
-    return "harness"
+    for name in ("agent-harness", "harness"):
+        found = shutil.which(name)
+        if found:
+            return found
+    return "agent-harness"
 
 
 def main(argv: list[str]) -> int:
