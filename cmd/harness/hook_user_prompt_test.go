@@ -377,7 +377,7 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	}
 }
 
-func TestRunHookPreToolUseBlocksMainCheckoutForLinkedIssueBranch(t *testing.T) {
+func TestRunHookPreToolUseIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
@@ -410,8 +410,8 @@ func TestRunHookPreToolUseBlocksMainCheckoutForLinkedIssueBranch(t *testing.T) {
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
-	if obj["decision"] != "block" {
-		t.Fatalf("expected main checkout edit to be blocked by linked issue branch worktree, got %+v", obj)
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected other branch linked worktree to be ignored, got %+v", obj)
 	}
 }
 

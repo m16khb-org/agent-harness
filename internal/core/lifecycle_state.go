@@ -901,7 +901,7 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 			return ""
 		}
 		if !ok || !IssueOpsPhaseExpectsWorktree(rec.Phase) {
-			return linkedIssueOpsWorktreeBlockReason(req, targets)
+			return ""
 		}
 		if linked := cleanAbsPath(rec.WorktreePath); linked != "" {
 			for _, target := range targets {
@@ -910,9 +910,6 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 				}
 			}
 			return ""
-		}
-		if reason := linkedIssueOpsWorktreeBlockReason(req, targets); reason != "" {
-			return reason
 		}
 		for _, target := range targets {
 			if pathWithin(target, req.Repo) && !isInsideWorktreesPath(target) {
@@ -931,46 +928,6 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 	}
 	return ""
-}
-
-func linkedIssueOpsWorktreeBlockReason(req HookToolUseLifecycleRequest, targets []string) string {
-	repo := cleanAbsPath(req.Repo)
-	if repo == "" {
-		return ""
-	}
-	linkedWorktrees := []string{}
-	for _, record := range ActiveIssueOpsCyclesForRepo(repo) {
-		if !IssueOpsPhaseExpectsWorktree(record.Phase) {
-			continue
-		}
-		if linked := cleanAbsPath(record.WorktreePath); linked != "" {
-			linkedWorktrees = append(linkedWorktrees, linked)
-		}
-	}
-	if len(linkedWorktrees) == 0 {
-		return ""
-	}
-	for _, target := range targets {
-		if linkedIssueOpsTargetAllowed(target, linkedWorktrees) {
-			continue
-		}
-		if pathWithin(target, repo) && !isInsideWorktreesPath(target) {
-			return "mutating tool target is outside the linked IssueOps worktree; run issue-based work from " + linkedWorktrees[0] + " and target files under that exact worktree"
-		}
-		if isInsideWorktreesPath(target) {
-			return "mutating tool target is outside the linked IssueOps worktree; run issue-based work from " + linkedWorktrees[0] + " and target files under that exact worktree"
-		}
-	}
-	return ""
-}
-
-func linkedIssueOpsTargetAllowed(target string, linkedWorktrees []string) bool {
-	for _, linked := range linkedWorktrees {
-		if pathWithin(target, linked) {
-			return true
-		}
-	}
-	return false
 }
 
 func worktreeGuardTargets(req HookToolUseLifecycleRequest) []string {

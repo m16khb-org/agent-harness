@@ -750,7 +750,7 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCycleHasExactWorktree(t *testing.T)
 	}
 }
 
-func TestWorktreeGuardBlocksMainCheckoutWhenLinkedCycleIsOnIssueBranch(t *testing.T) {
+func TestWorktreeGuardIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "main", IssueOpsPhaseProblem)
 	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feat/x"})
@@ -768,8 +768,8 @@ func TestWorktreeGuardBlocksMainCheckoutWhenLinkedCycleIsOnIssueBranch(t *testin
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, "internal", "x.go")}, EnforceWorktree: true,
 	})
-	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, "linked IssueOps worktree") {
-		t.Fatalf("main checkout edit should block when repo has active linked issue worktree: %+v", blocked)
+	if blocked.Decision != "allow" {
+		t.Fatalf("other branch linked worktree should not lock current checkout: %+v", blocked)
 	}
 
 	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
@@ -780,7 +780,7 @@ func TestWorktreeGuardBlocksMainCheckoutWhenLinkedCycleIsOnIssueBranch(t *testin
 	}
 }
 
-func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *testing.T) {
+func TestWorktreeGuardIgnoresOtherBranchLinkedCycleWhenCurrentBranchCycleIsUnlinked(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "main", IssueOpsPhaseImplement)
 	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feat/x"})
@@ -799,8 +799,8 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *tes
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{other}, EnforceWorktree: true,
 	})
-	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, "linked IssueOps worktree") {
-		t.Fatalf("other worktree edit should block when any active cycle has a linked worktree: %+v", blocked)
+	if blocked.Decision != "allow" {
+		t.Fatalf("other branch linked worktree should not lock unrelated worktree target: %+v", blocked)
 	}
 }
 

@@ -343,36 +343,6 @@ func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
 	return record, true
 }
 
-func ActiveIssueOpsCyclesForRepo(repo string) []IssueOpsRecord {
-	repo = cleanAbsPath(repo)
-	if repo == "" {
-		return nil
-	}
-	entries, err := os.ReadDir(IssueOpsStateRoot())
-	if err != nil {
-		return nil
-	}
-	records := []IssueOpsRecord{}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		id := strings.TrimSuffix(entry.Name(), ".json")
-		record, err := ReadIssueOps(IssueOpsStateRoot(), id)
-		if err != nil {
-			continue
-		}
-		if cleanAbsPath(record.Repo) != repo || record.Phase == IssueOpsPhaseDone {
-			continue
-		}
-		if issueOpsPlanBranchMismatchesRecord(record) {
-			continue
-		}
-		records = append(records, record)
-	}
-	return records
-}
-
 func issueOpsPlanBranchMismatchesRecord(record IssueOpsRecord) bool {
 	planPath := cleanAbsPath(record.PlanPath)
 	repo := cleanAbsPath(record.Repo)
