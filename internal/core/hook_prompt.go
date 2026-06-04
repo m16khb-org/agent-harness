@@ -43,6 +43,13 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords: []string{"문제 파악", "이슈 기반", "피드백 루프", "PR", "MR", "이슈"},
 	},
 	{
+		Tool:           "vcs_remote_auth",
+		Reason:         "For VCS remote work, use an authenticated CLI token first; if the token is unavailable or the CLI returns auth/permission errors, use the configured MCP fallback. Do not print tokens.",
+		Priority:       hintPriorityAction,
+		LowerKeywords:  []string{"github", "gitlab", "gh ", "glab", "pull request", "merge request", " pr", " mr", "issue"},
+		PromptKeywords: []string{"PR", "MR", "이슈", "깃허브", "깃랩", "머지리퀘스트", "풀리퀘스트"},
+	},
+	{
 		Tool:           "project_docs_record",
 		Reason:         "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.",
 		Priority:       hintPriorityAction,
@@ -331,6 +338,8 @@ func compactHintLabel(h HookUserPromptHint) string {
 		return "review API error contract"
 	case "issueops":
 		return "issueops issue-driven workflow; hooks must not create issues or PRs"
+	case "vcs_remote_auth":
+		return "VCS remote work: use authenticated CLI first; on missing token or auth/permission error use MCP fallback; do not print tokens"
 	case "CodeGraph":
 		return "CodeGraph for structural lookup; rg for exact strings"
 	case "LLM Wiki":
