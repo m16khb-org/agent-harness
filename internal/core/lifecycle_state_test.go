@@ -323,15 +323,32 @@ func TestPreToolUseVCSLinkingBlocksRemoteCreateWithoutLabels(t *testing.T) {
 	}
 }
 
-func TestPreToolUseVCSLinkingAllowsRemoteCreateWithLabels(t *testing.T) {
+func TestPreToolUseVCSLinkingBlocksRemoteCreateWithoutAssignee(t *testing.T) {
 	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo:              t.TempDir(),
 		Tool:              "bash",
-		Command:           `glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨을 복사해 MR 라벨 누락을 방지합니다." --label bug`,
+		Command:           `glab mr create --title "IssueOps 담당자 검증" --description "라벨은 있지만 담당자 없는 MR 생성을 막습니다." --label bug`,
 		EnforceVCSLinking: true,
 	})
-	if got.Decision != "allow" {
-		t.Fatalf("expected labeled remote create to be allowed: %+v", got)
+	if got.Decision != "block" || !strings.Contains(got.Reason, "assignee") {
+		t.Fatalf("expected unassigned remote create to be blocked: %+v", got)
+	}
+}
+
+func TestPreToolUseVCSLinkingAllowsRemoteCreateWithLabelsAndAssignee(t *testing.T) {
+	for _, command := range []string{
+		`glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨을 복사해 MR 라벨 누락을 방지합니다." --label bug --assignee m16khb`,
+		`gh pr create --title "IssueOps 라벨 검증" --body "라벨과 담당자를 함께 지정합니다." -l bug -a @me`,
+	} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:              t.TempDir(),
+			Tool:              "bash",
+			Command:           command,
+			EnforceVCSLinking: true,
+		})
+		if got.Decision != "allow" {
+			t.Fatalf("expected labeled and assigned remote create to be allowed: %q -> %+v", command, got)
+		}
 	}
 }
 

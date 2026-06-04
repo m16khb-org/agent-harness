@@ -500,12 +500,13 @@ func koreanRemoteArtifactBlockReason(req HookToolUseLifecycleRequest) string {
 }
 
 type remoteArtifactCommand struct {
-	provider string
-	kind     string
-	action   string
-	title    string
-	body     string
-	labels   []string
+	provider  string
+	kind      string
+	action    string
+	title     string
+	body      string
+	labels    []string
+	assignees []string
 }
 
 func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCommand, bool) {
@@ -570,6 +571,17 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--labels="))
 			case strings.HasPrefix(arg, "--add-label="):
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--add-label="))
+			case arg == "--assignee" || arg == "-a" || arg == "--assignees" || arg == "--add-assignee":
+				if j+1 < len(args) {
+					artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, args[j+1])
+					j++
+				}
+			case strings.HasPrefix(arg, "--assignee="):
+				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee="))
+			case strings.HasPrefix(arg, "--assignees="):
+				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignees="))
+			case strings.HasPrefix(arg, "--add-assignee="):
+				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--add-assignee="))
 			}
 		}
 		return artifact, true
@@ -578,13 +590,17 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 }
 
 func appendRemoteArtifactLabels(labels []string, raw string) []string {
-	for _, label := range strings.Split(raw, ",") {
-		label = strings.TrimSpace(label)
-		if label != "" {
-			labels = append(labels, label)
+	return appendRemoteArtifactListValues(labels, raw)
+}
+
+func appendRemoteArtifactListValues(values []string, raw string) []string {
+	for _, value := range strings.Split(raw, ",") {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			values = append(values, value)
 		}
 	}
-	return labels
+	return values
 }
 
 var (
@@ -612,6 +628,9 @@ func vcsIssueLinkingBlockReason(req HookToolUseLifecycleRequest) string {
 	}
 	if artifact.action == "create" && len(artifact.labels) == 0 {
 		return fmt.Sprintf("IssueOps remote %s create must include labels before %s %s create; copy the linked issue labels or pass an explicit manual label flag", artifact.kind, artifact.provider, artifact.kind)
+	}
+	if artifact.action == "create" && len(artifact.assignees) == 0 {
+		return fmt.Sprintf("IssueOps remote %s create must include an assignee before %s %s create; assign the artifact to the currently authenticated user and verify the assignee list before reporting readiness", artifact.kind, artifact.provider, artifact.kind)
 	}
 	return ""
 }

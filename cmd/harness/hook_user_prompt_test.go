@@ -355,6 +355,31 @@ func TestRunHookPreToolUseEnforcesKoreanRemoteArtifacts(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseEnforcesRemoteCreateAssignee(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `glab mr create --title "IssueOps 담당자 검증" --description "라벨은 있지만 담당자 없는 MR 생성을 막습니다." --label bug`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected missing assignee to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "assignee") {
+		t.Fatalf("expected assignee reason, got %q", reason)
+	}
+}
+
 func TestRunHookPreToolUseEnforcesGitOpsKubectl(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -458,7 +483,7 @@ func TestRunHookPreToolUseBlocksPlanLinkSectionInIssueBody(t *testing.T) {
 	payload, err := json.Marshal(map[string]any{
 		"cwd":        repo,
 		"tool_name":  "Bash",
-		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md --label bug`},
+		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md --label bug --assignee @me`},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -508,7 +533,7 @@ func TestRunHookPreToolUseAllowsGitHubRelatedIssuesBodySection(t *testing.T) {
 	payload, err := json.Marshal(map[string]any{
 		"cwd":        repo,
 		"tool_name":  "Bash",
-		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md --label bug`},
+		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md --label bug --assignee @me`},
 	})
 	if err != nil {
 		t.Fatal(err)
