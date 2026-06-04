@@ -239,7 +239,40 @@ func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
 	if record.Phase == IssueOpsPhaseDone {
 		return IssueOpsRecord{}, false
 	}
+	if issueOpsPlanBranchMismatchesRecord(record) {
+		return IssueOpsRecord{}, false
+	}
 	return record, true
+}
+
+func issueOpsPlanBranchMismatchesRecord(record IssueOpsRecord) bool {
+	planPath := cleanAbsPath(record.PlanPath)
+	repo := cleanAbsPath(record.Repo)
+	if planPath == "" || repo == "" || pathWithin(planPath, repo) || !isInsideWorktreesPath(planPath) {
+		return false
+	}
+	branch := gitBranchFromAncestor(planPath)
+	return branch != "" && branch != strings.TrimSpace(record.Branch)
+}
+
+func gitBranchFromAncestor(path string) string {
+	current := cleanAbsPath(path)
+	if current == "" {
+		return ""
+	}
+	if info, err := os.Stat(current); err == nil && !info.IsDir() {
+		current = filepath.Dir(current)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(current, ".git")); err == nil {
+			return gitBranchFromHead(current)
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return ""
+		}
+		current = parent
+	}
 }
 
 // IssueOpsPhaseExpectsWorktree reports whether a phase is a code-editing phase

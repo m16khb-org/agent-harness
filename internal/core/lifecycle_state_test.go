@@ -639,6 +639,64 @@ func TestWorktreeGuardIgnoresOtherBranchCycle(t *testing.T) {
 	}
 }
 
+func TestWorktreeGuardIgnoresMismatchedWorktreePlanBranch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "development", IssueOpsPhasePlan)
+	recordID := newIssueOpsID(repo, "development")
+
+	worktree := filepath.Join(filepath.Dir(repo), "repo.worktrees", "bugfix-2361")
+	gitdir := filepath.Join(repo, ".git", "worktrees", "bugfix-2361")
+	if err := os.MkdirAll(filepath.Join(worktree, "docs", "plans"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(gitdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(worktree, gitdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, ".git"), []byte("gitdir: "+rel+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitdir, "HEAD"), []byte("ref: refs/heads/bugfix/2361\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), recordID, filepath.Join(worktree, "docs", "plans", "2361.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("mismatched worktree plan branch should not lock source checkout, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardAllowsTempFileBashWrites(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Bash", Command: "cat > /tmp/mr-body.md <<EOF\nbody\nEOF", EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("temp file bash writes should not be treated as source checkout edits, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardAllowsBashCommandThatChangesIntoWorktree(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
+	worktree := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Bash", Command: "cd " + worktree + " && printf body > /tmp/mr-body.md", EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("bash command scoped to isolated worktree should pass, got %+v", res)
+	}
+}
+
 func TestActiveIssueOpsCycleForBranchIsDeterministicAndReleasesOnDone(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

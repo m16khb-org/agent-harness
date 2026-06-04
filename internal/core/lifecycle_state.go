@@ -630,7 +630,7 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 			return ""
 		}
 		for _, target := range targets {
-			if !isInsideWorktreesPath(target) {
+			if pathWithin(target, req.Repo) && !isInsideWorktreesPath(target) {
 				return "the IssueOps cycle for this branch is in the " + string(rec.Phase) + " phase; edit from its isolated worktree (.../<repo>.worktrees/<branch>) instead of the source checkout"
 			}
 		}
@@ -671,12 +671,61 @@ func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 			targets = append(targets, target)
 		}
 	}
+	if len(targets) == 0 && isShellTool(req.Tool) {
+		for _, path := range shellCommandWorktreeGuardPaths(req.Command) {
+			if target := resolveHookTargetPath(req.Repo, path); target != "" {
+				targets = append(targets, target)
+			}
+		}
+	}
 	if len(targets) == 0 {
 		if repo := cleanAbsPath(req.Repo); repo != "" {
 			targets = append(targets, repo)
 		}
 	}
 	return targets
+}
+
+func shellCommandWorktreeGuardPaths(command string) []string {
+	tokens := splitCommandTokens(command)
+	out := []string{}
+	seen := map[string]bool{}
+	for i, token := range tokens {
+		switch token {
+		case "cd":
+			if i+1 < len(tokens) {
+				addWorktreeGuardPath(&out, seen, tokens[i+1])
+			}
+		case "-C":
+			if i > 0 && searchTokenName(tokens[i-1]) == "git" && i+1 < len(tokens) {
+				addWorktreeGuardPath(&out, seen, tokens[i+1])
+			}
+		case ">", ">>", "1>", "1>>", "2>", "2>>":
+			if i+1 < len(tokens) {
+				addWorktreeGuardPath(&out, seen, tokens[i+1])
+			}
+		default:
+			for _, prefix := range []string{">>", ">", "1>>", "1>", "2>>", "2>"} {
+				if strings.HasPrefix(token, prefix) && len(token) > len(prefix) {
+					addWorktreeGuardPath(&out, seen, strings.TrimPrefix(token, prefix))
+					break
+				}
+			}
+		}
+	}
+	return out
+}
+
+func addWorktreeGuardPath(out *[]string, seen map[string]bool, value string) {
+	path := strings.TrimSpace(value)
+	if path == "" || strings.HasPrefix(path, "-") || strings.Contains(path, "$(") || strings.Contains(path, "`") {
+		return
+	}
+	if seen[path] {
+		return
+	}
+	seen[path] = true
+	*out = append(*out, path)
 }
 
 // gitBranchFromHead returns the current branch of the checkout at repo by reading
