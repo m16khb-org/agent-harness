@@ -369,6 +369,7 @@ type HookToolUseLifecycleRequest struct {
 	EnforceSearchRouting bool     `json:"enforce_search_routing,omitempty"`
 	EnforceWorktree      bool     `json:"enforce_worktree,omitempty"`
 	EnforceKoreanRemote  bool     `json:"enforce_korean_remote,omitempty"`
+	EnforceVCSLinking    bool     `json:"enforce_vcs_linking,omitempty"`
 	ExpectedWorktree     string   `json:"expected_worktree,omitempty"`
 	SourceCheckout       string   `json:"source_checkout,omitempty"`
 }
@@ -455,6 +456,12 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 			result.Reason = reason
 		}
 	}
+	if result.Decision != "block" && req.EnforceVCSLinking {
+		if reason := vcsIssueLinkingBlockReason(req); reason != "" {
+			result.Decision = "block"
+			result.Reason = reason
+		}
+	}
 	return result
 }
 
@@ -486,24 +493,36 @@ func koreanRemoteArtifactBlockReason(req HookToolUseLifecycleRequest) string {
 }
 
 type remoteArtifactCommand struct {
-	kind   string
-	action string
-	title  string
-	body   string
+	provider string
+	kind     string
+	action   string
+	title    string
+	body     string
 }
 
 func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCommand, bool) {
 	tokens := splitCommandTokens(command)
 	for i := 0; i+2 < len(tokens); i++ {
-		if searchTokenName(tokens[i]) != "gh" {
+		cli := searchTokenName(tokens[i])
+		provider := ""
+		switch cli {
+		case "gh":
+			provider = "github"
+		case "glab":
+			provider = "gitlab"
+		default:
 			continue
 		}
 		kind := strings.ToLower(strings.TrimSpace(tokens[i+1]))
 		action := strings.ToLower(strings.TrimSpace(tokens[i+2]))
-		if (kind != "issue" && kind != "pr") || (action != "create" && action != "edit") {
+		// gh uses issue/pr + create/edit; glab uses issue/mr + create/edit/update.
+		if kind != "issue" && kind != "pr" && kind != "mr" {
 			continue
 		}
-		artifact := remoteArtifactCommand{kind: kind, action: action}
+		if action != "create" && action != "edit" && action != "update" {
+			continue
+		}
+		artifact := remoteArtifactCommand{provider: provider, kind: kind, action: action}
 		args := tokens[i+3:]
 		for j := 0; j < len(args); j++ {
 			arg := args[j]
@@ -515,13 +534,16 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 				}
 			case strings.HasPrefix(arg, "--title="):
 				artifact.title = strings.TrimPrefix(arg, "--title=")
-			case arg == "--body" || arg == "-b":
+			// gh: --body/-b and --body-file/-F. glab: --description/-d.
+			case arg == "--body" || arg == "-b" || arg == "--description" || arg == "-d":
 				if j+1 < len(args) {
 					artifact.body = args[j+1]
 					j++
 				}
 			case strings.HasPrefix(arg, "--body="):
 				artifact.body = strings.TrimPrefix(arg, "--body=")
+			case strings.HasPrefix(arg, "--description="):
+				artifact.body = strings.TrimPrefix(arg, "--description=")
 			case arg == "--body-file" || arg == "-F":
 				if j+1 < len(args) {
 					artifact.body = readRemoteArtifactBodyFile(repo, args[j+1])
@@ -534,6 +556,33 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 		return artifact, true
 	}
 	return remoteArtifactCommand{}, false
+}
+
+var (
+	planLinkHeadingRe = regexp.MustCompile(`(?mi)^#{1,6}\s*(Plan Link|Plan link|계획\s*링크)\s*$`)
+	relatedHeadingRe  = regexp.MustCompile(`(?mi)^#{1,6}\s*(Related Issues|Related issues|관련\s*이슈)\s*$`)
+)
+
+// vcsIssueLinkingBlockReason enforces the provider-specific IssueOps linking
+// rules in skills/issueops/references/remote-issue.md: no Plan Link section on
+// any provider, and on GitLab related issues belong in native linked items
+// rather than a body "Related Issues" section.
+func vcsIssueLinkingBlockReason(req HookToolUseLifecycleRequest) string {
+	artifact, ok := parseGHRemoteArtifactCommand(req.Command, req.Repo)
+	if !ok {
+		return ""
+	}
+	body := artifact.body
+	if strings.TrimSpace(body) == "" {
+		return ""
+	}
+	if planLinkHeadingRe.MatchString(body) {
+		return fmt.Sprintf("IssueOps issue body must not contain a Plan Link section before %s %s %s; plan tracking lives in issueops link-plan state and the PR/MR body, not the issue body", artifact.provider, artifact.kind, artifact.action)
+	}
+	if artifact.provider == "gitlab" && (artifact.kind == "issue") && relatedHeadingRe.MatchString(body) {
+		return fmt.Sprintf("GitLab related issues must be attached as native linked items, not a body Related Issues section, before glab %s %s; use glab api projects/:id/issues/:iid/links with link_type=relates_to", artifact.kind, artifact.action)
+	}
+	return ""
 }
 
 func readRemoteArtifactBodyFile(repo string, path string) string {

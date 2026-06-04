@@ -43,6 +43,7 @@ Load these files only when the phase applies:
 - TDD first: for behavior changes, write or update focused tests before production changes.
 - Verify before remote writes: run the Korean Remote Artifact Gate before creating or editing remote issues, PRs, or MRs.
 - Korean remote hook guard: installed PreToolUse hooks include `--enforce-korean-remote-artifacts` and block `gh issue/pr create/edit` when an inspectable title/body fails the Korean remote artifact gate.
+- VCS linking hook guard: installed PreToolUse hooks include `--enforce-vcs-issue-linking` and block `gh`/`glab` issue create/edit when the body carries a `Plan Link` section or, on GitLab, a `Related Issues` body section (related issues belong in native linked items). See `references/remote-issue.md` → "Provider-Specific Linking And Hierarchy".
 - No broad review sweeps: subagent reviews must have explicit included paths, excluded large/generated paths, a time budget, and a fallback direct verification path.
 - Cleanup choices: after a PR/MR is merged, verify merge/worktree/branch status and present numbered cleanup choices before deleting local worktrees or branches.
 - Numbered next actions: at user decision points and after reporting review/feedback/cleanup status, end with `선택지:` and three numbered choices. Strict sessions may set `HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1`; installed Stop hooks are strict-ready and can block missing choices.

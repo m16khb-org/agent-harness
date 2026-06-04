@@ -341,6 +341,79 @@ func TestRunHookPreToolUseEnforcesKoreanRemoteArtifacts(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseBlocksPlanLinkSectionInIssueBody(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bodyFile := filepath.Join(repo, "body.md")
+	if err := os.WriteFile(bodyFile, []byte("## Problem\n\n문제 설명입니다.\n\n## Plan Link\n\nTBD\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"cwd":        repo,
+		"tool_name":  "Bash",
+		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md`},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected Plan Link section to be blocked, got %+v", obj)
+	}
+	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "Plan Link") {
+		t.Fatalf("expected Plan Link reason, got %q", reason)
+	}
+}
+
+func TestRunHookPreToolUseBlocksGitLabRelatedIssuesBodySection(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": "glab issue create --title 이슈 --description \"## Problem\n\n설명\n\n## Related Issues\n\n- #1\"",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected GitLab Related Issues body section to be blocked, got %+v", obj)
+	}
+	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "linked items") {
+		t.Fatalf("expected GitLab linked items reason, got %q", reason)
+	}
+}
+
+func TestRunHookPreToolUseAllowsGitHubRelatedIssuesBodySection(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bodyFile := filepath.Join(repo, "body.md")
+	if err := os.WriteFile(bodyFile, []byte("## Problem\n\n설명입니다.\n\n## Related Issues\n\n- #1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"cwd":        repo,
+		"tool_name":  "Bash",
+		"tool_input": map[string]any{"command": `gh issue create --title "이슈" --body-file body.md`},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] == "block" {
+		t.Fatalf("GitHub body references are valid and must not be blocked, got %+v", obj)
+	}
+}
+
 func TestRunHookPostToolUseQueuesDraftWikiAndWorkerWritesDraft(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

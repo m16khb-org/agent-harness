@@ -38,7 +38,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook pre-tool-use --host claude --enforce-worktree --enforce-korean-remote-artifacts",
+            "command": "'./bin/agent-harness' hook pre-tool-use --host claude --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking",
             "timeout": 5,
             "type": "command"
           }
