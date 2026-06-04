@@ -37,7 +37,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook pre-tool-use --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-gitops-kubectl",
+            "command": "'./bin/agent-harness' hook pre-tool-use --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl",
             "timeout": 5,
             "type": "command"
           }

@@ -118,7 +118,7 @@ func hookArgValue(args []string, flagName string) string {
 func hookUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   agent-harness hook user-prompt [--prompt TEXT] [--host codex|claude] [--enable-agy-hints] [--json]
-  agent-harness hook pre-tool-use [--repo PATH] [--host codex|claude] [--enforce-search-routing] [--enforce-worktree] [--enforce-gitops-kubectl] [--json]
+  agent-harness hook pre-tool-use [--repo PATH] [--host codex|claude] [--enforce-search-routing] [--enforce-worktree] [--enforce-staged-checks] [--enforce-gitops-kubectl] [--json]
   agent-harness hook post-tool-use [--repo PATH] [--json]
   agent-harness hook pre-compact [--repo PATH] [--json]
   agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
@@ -257,6 +257,7 @@ func runHookPreToolUse(args []string) error {
 	enforceKoreanRemote := fs.Bool("enforce-korean-remote-artifacts", false, "block gh issue/pr create/edit when title/body fail the IssueOps Korean remote artifact gate")
 	enforceVCSLinking := fs.Bool("enforce-vcs-issue-linking", false, "block gh/glab remote create without labels and issue create/edit bodies that violate provider-specific IssueOps linking rules")
 	enforceGitOpsKubectl := fs.Bool("enforce-gitops-kubectl", false, "block direct mutating kubectl commands so cluster changes go through GitOps")
+	enforceStagedChecks := fs.Bool("enforce-staged-checks", false, "ask before broad lint/format checks that should use staged or changed-file scope")
 	expectedWorktree := fs.String("expected-worktree", os.Getenv("HARNESS_EXPECTED_WORKTREE"), "expected isolated IssueOps worktree path")
 	sourceCheckout := fs.String("source-checkout", os.Getenv("HARNESS_SOURCE_CHECKOUT"), "source checkout path for diagnostics")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
@@ -282,6 +283,7 @@ func runHookPreToolUse(args []string) error {
 		EnforceKoreanRemote:  *enforceKoreanRemote,
 		EnforceVCSLinking:    *enforceVCSLinking,
 		EnforceGitOpsKubectl: *enforceGitOpsKubectl,
+		EnforceStagedChecks:  *enforceStagedChecks,
 		ExpectedWorktree:     *expectedWorktree,
 		SourceCheckout:       *sourceCheckout,
 	})

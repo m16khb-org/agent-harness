@@ -426,6 +426,34 @@ func TestRunHookPreToolUseAsksForKubectlLiveAccess(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseAsksForBroadStagedChecks(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, "package.json"), []byte(`{"scripts":{"lint:check":"biome check apps libs"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `npm run lint:check`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-staged-checks", "--json"})
+	})
+	if obj["decision"] != "ask" {
+		t.Fatalf("expected broad staged check to ask for confirmation, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "staged") || !strings.Contains(reason, "apps/libs") {
+		t.Fatalf("expected staged check reason, got %q", reason)
+	}
+}
+
 func TestRunHookPreToolUseCodexHostAsksForKubectlLiveAccess(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

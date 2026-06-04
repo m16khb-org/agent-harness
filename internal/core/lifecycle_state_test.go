@@ -406,6 +406,51 @@ func TestPreToolUseGitOpsKubectlAllowsReadOnlyCommands(t *testing.T) {
 	}
 }
 
+func TestPreToolUseStagedChecksAsksForBroadBiomeCommands(t *testing.T) {
+	for _, command := range []string{
+		`npx biome check apps libs`,
+		`biome format --check apps libs`,
+		`npm run lint:check`,
+	} {
+		repo := t.TempDir()
+		if err := os.WriteFile(filepath.Join(repo, "package.json"), []byte(`{"scripts":{"lint:check":"biome check apps libs"}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:                repo,
+			Tool:                "bash",
+			Command:             command,
+			EnforceStagedChecks: true,
+		})
+		if got.Decision != "ask" || !strings.Contains(got.Reason, "staged") {
+			t.Fatalf("expected broad staged check to ask for confirmation: %q -> %+v", command, got)
+		}
+	}
+}
+
+func TestPreToolUseStagedChecksAllowsScopedBiomeCommands(t *testing.T) {
+	for _, command := range []string{
+		`npx biome check --staged --no-errors-on-unmatched`,
+		`biome format --staged`,
+		`biome check scripts/check-swagger-rules.js package.json`,
+		`npm run lint:check`,
+	} {
+		repo := t.TempDir()
+		if err := os.WriteFile(filepath.Join(repo, "package.json"), []byte(`{"scripts":{"lint:check":"biome check --staged --no-errors-on-unmatched"}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:                repo,
+			Tool:                "bash",
+			Command:             command,
+			EnforceStagedChecks: true,
+		})
+		if got.Decision != "allow" {
+			t.Fatalf("expected scoped staged check to be allowed: %q -> %+v", command, got)
+		}
+	}
+}
+
 func TestNumberedNextActionsDecisionBlocksMissingChoices(t *testing.T) {
 	got := BuildNumberedNextActionsDecision("작업했습니다.", true, "stop")
 	if got.Decision != "block" || !strings.Contains(got.Reason, "numbered next actions") {
