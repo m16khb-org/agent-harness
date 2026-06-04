@@ -582,7 +582,7 @@ func TestLifecyclePreCompactNoPendingUpkeepDoesNotWriteCapsule(t *testing.T) {
 	}
 }
 
-func TestEvaluateNextActionAutoProceedAdvancesRecommendedSafeAction(t *testing.T) {
+func TestEvaluateNextActionAutoProceedRequiresAgentJudgementForRecommendedSafeAction(t *testing.T) {
 	message := strings.Join([]string{
 		"구현을 마쳤습니다.",
 		"선택지:",
@@ -594,8 +594,11 @@ func TestEvaluateNextActionAutoProceedAdvancesRecommendedSafeAction(t *testing.T
 	if !result.OK {
 		t.Fatalf("expected ok result, got %+v", result)
 	}
-	if !result.AutoProceed {
-		t.Fatalf("recommended safe reversible action should auto-proceed, got %+v", result)
+	if result.AutoProceed {
+		t.Fatalf("recommended safe reversible action should not auto-proceed without agent judgement, got %+v", result)
+	}
+	if !result.AgentJudgementRequired {
+		t.Fatalf("recommended safe reversible action should require agent judgement, got %+v", result)
 	}
 	if result.SelectedIndex != 1 {
 		t.Fatalf("expected selected index 1, got %d", result.SelectedIndex)
@@ -630,8 +633,11 @@ func TestEvaluateNextActionAutoProceedAllowsEnforceForwardAction(t *testing.T) {
 		"3. 보류: 멈춥니다.",
 	}, "\n")
 	result := EvaluateNextActionAutoProceed(message, 0)
-	if !result.AutoProceed {
-		t.Fatalf("'enforce' must not be misread as destructive 'force'; should auto-proceed, got %+v", result)
+	if result.AutoProceed {
+		t.Fatalf("'enforce' must not directly auto-proceed without agent judgement, got %+v", result)
+	}
+	if !result.AgentJudgementRequired {
+		t.Fatalf("'enforce' must not be misread as destructive 'force'; should require agent judgement, got %+v", result)
 	}
 }
 
@@ -715,7 +721,7 @@ func TestEvaluateNextActionAutoProceedDampensAmbiguousRecommendation(t *testing.
 	}
 }
 
-func TestEvaluateNextActionAutoProceedRewardsSafeVerifyAction(t *testing.T) {
+func TestEvaluateNextActionAutoProceedRequiresAgentJudgementForSafeVerifyAction(t *testing.T) {
 	message := strings.Join([]string{
 		"선택지:",
 		"1. 검증: 전체 테스트를 실행하고 빌드를 확인합니다. (추천)",
@@ -723,8 +729,11 @@ func TestEvaluateNextActionAutoProceedRewardsSafeVerifyAction(t *testing.T) {
 		"3. 보류: 멈춥니다.",
 	}, "\n")
 	result := EvaluateNextActionAutoProceed(message, 0)
-	if !result.AutoProceed {
-		t.Fatalf("safe verify/test/build action should auto-proceed, got %+v", result)
+	if result.AutoProceed {
+		t.Fatalf("safe verify/test/build action should not directly auto-proceed, got %+v", result)
+	}
+	if !result.AgentJudgementRequired {
+		t.Fatalf("safe verify/test/build action should require agent judgement, got %+v", result)
 	}
 	if result.TopScore < result.Threshold {
 		t.Fatalf("safe verify action score %.2f should clear threshold %.2f", result.TopScore, result.Threshold)

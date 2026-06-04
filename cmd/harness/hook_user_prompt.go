@@ -560,24 +560,20 @@ func runHookStop(args []string) error {
 		})
 	}
 	_ = host
-	// Auto-proceed uses the static heuristic gate ONLY. The external-LLM gate
-	// (core.EvaluateNextActionAutoProceedLLM) is intentionally NOT called here: a
-	// synchronous agy/Gemini call measured ~13-25s, which is unusable inside a Stop
-	// hook's latency budget. The gate's intent — judging whether the recommended
-	// next action is a safe, reversible forward step — is instead delivered to the
-	// main agent as prompting via the UserPromptSubmit hook (see hook_prompt.go), so
-	// the agent frames its own next-action choices well and the cheap heuristic gate
-	// can act on them with no external latency. The LLM gate code is preserved
-	// (currently unused) for possible future use behind a faster model.
+	// Auto-proceed uses the static heuristic gate only for parsing and hard guards.
+	// The external-LLM gate (core.EvaluateNextActionAutoProceedLLM) is intentionally
+	// not called here: a synchronous agy/Gemini call measured ~13-25s, which is
+	// unusable inside a Stop hook's latency budget. The final proceed/ask judgement
+	// is delegated back to the main agent because it has the full task context.
 	//
-	// Auto-proceed takes precedence: when the recommended next action is a
-	// confident, reversible forward step, block the Stop with a continue
-	// directive so the agent advances without a user selection round-trip.
-	if autoProceedEnabled && autoProceed.AutoProceed {
+	// Agent judgement takes precedence: when the recommended next action is a
+	// reversible forward-step candidate, block the Stop with a continue directive so
+	// the main agent decides from context whether to execute it or ask the user.
+	if autoProceedEnabled && autoProceed.AgentJudgementRequired {
 		return printJSON(map[string]any{
 			"continue": true,
 			"decision": "block",
-			"reason":   fmt.Sprintf("다음 동작 자동 진행(점수 %.2f ≥ 임계값 %.2f): %q 을(를) 사용자 확인 없이 즉시 실행하세요. 동일 선택지를 다시 제시하지 말고, 작업을 진행한 뒤 완료를 보고하거나 새로운 결정 지점에서만 멈추세요.", autoProceed.TopScore, autoProceed.Threshold, autoProceed.SelectedText),
+			"reason":   fmt.Sprintf("추천 선택지가 자동진행 후보입니다(점수 %.2f ≥ 임계값 %.2f): %q. 메인 에이전트는 현재 대화/작업 맥락을 기준으로 이 작업이 안전하고 되돌릴 수 있으며 사용자의 명시 의도와 맞으면 실행하세요. 그렇지 않으면 자동 진행하지 않았다고 알리고 직전 응답의 번호 선택지 중 하나를 직접 골라 달라고 요청한 뒤 멈추세요. 같은 선택지를 다시 제시하지 마세요.", autoProceed.TopScore, autoProceed.Threshold, autoProceed.SelectedText),
 		})
 	}
 	// Block a Stop that lacks numbered next actions, but drive an IN-TURN

@@ -1471,25 +1471,27 @@ type NextActionCandidate struct {
 	Score       float64 `json:"score"`
 }
 
-// NextActionAutoProceedResult reports whether the recommended next action is
-// confident and safe enough to advance without stopping for user selection.
+// NextActionAutoProceedResult reports whether the recommended next action is a
+// guarded candidate for context-aware auto-proceed judgement by the main agent.
 type NextActionAutoProceedResult struct {
-	OK             bool                  `json:"ok"`
-	AutoProceed    bool                  `json:"auto_proceed"`
-	Threshold      float64               `json:"threshold"`
-	TopScore       float64               `json:"top_score"`
-	SelectedIndex  int                   `json:"selected_index,omitempty"`
-	SelectedText   string                `json:"selected_text,omitempty"`
-	Reason         string                `json:"reason"`
-	BlockedByGuard string                `json:"blocked_by_guard,omitempty"`
-	Candidates     []NextActionCandidate `json:"candidates"`
+	OK                     bool                  `json:"ok"`
+	AutoProceed            bool                  `json:"auto_proceed"`
+	AgentJudgementRequired bool                  `json:"agent_judgement_required"`
+	Threshold              float64               `json:"threshold"`
+	TopScore               float64               `json:"top_score"`
+	SelectedIndex          int                   `json:"selected_index,omitempty"`
+	SelectedText           string                `json:"selected_text,omitempty"`
+	Reason                 string                `json:"reason"`
+	BlockedByGuard         string                `json:"blocked_by_guard,omitempty"`
+	Candidates             []NextActionCandidate `json:"candidates"`
 }
 
 // EvaluateNextActionAutoProceed scores parsed next-action choices and decides
-// whether the recommended option can be executed automatically. Auto-proceed
-// requires an explicit recommendation marker, a forward/constructive verb, and
-// a reversible (non-destructive) action. Destructive or ambiguous choices never
-// auto-proceed, preserving user-decision safety at cleanup/interpretation gates.
+// whether the recommended option is eligible for the main agent's context-aware
+// auto-proceed judgement. Eligibility requires an explicit recommendation marker,
+// a forward/constructive verb, and a reversible (non-destructive) action.
+// Destructive or ambiguous choices never reach agent judgement, preserving
+// user-decision safety at cleanup/interpretation gates.
 func EvaluateNextActionAutoProceed(message string, threshold float64) NextActionAutoProceedResult {
 	if threshold <= 0 {
 		threshold = defaultNextActionAutoProceedThreshold
@@ -1516,8 +1518,8 @@ func EvaluateNextActionAutoProceed(message string, threshold float64) NextAction
 		return result
 	}
 	if recommended.Score >= threshold {
-		result.AutoProceed = true
-		result.Reason = fmt.Sprintf("recommended action scored %.2f >= threshold %.2f and is reversible", recommended.Score, threshold)
+		result.AgentJudgementRequired = true
+		result.Reason = fmt.Sprintf("recommended action scored %.2f >= threshold %.2f and is reversible; agent judgement required", recommended.Score, threshold)
 		return result
 	}
 	result.Reason = fmt.Sprintf("recommended action scored %.2f below threshold %.2f; user decision required", recommended.Score, threshold)

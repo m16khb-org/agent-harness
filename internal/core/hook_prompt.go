@@ -27,11 +27,10 @@ const (
 
 // nextActionPolicyHint carries the next-action / auto-proceed policy to the main
 // agent every turn via UserPromptSubmit. This replaces the external-LLM auto-proceed
-// gate (too slow at ~13-25s for a Stop hook): instead of an external model judging
-// the agent's choices after the fact, the agent is told the rules up front so it
-// frames its own turn-ending choices correctly, and the cheap static heuristic gate
-// in the Stop hook acts on them. Keep it one concise line.
-const nextActionPolicyHint = "next-action: end any turn that needs a user decision with a '선택지:' block — exactly 3 numbered options and exactly one '(추천)'. The Stop hook auto-continues the '(추천)' option WITHOUT waiting only when its text (a) contains a forward/verify verb (진행·계속·구현·추가·작성·검증·테스트·빌드·린트·확인·점검·실행·수정·반영·적용 / proceed·continue·implement·add·write·verify·test·build·check·inspect·run·apply·fix·update), AND (b) has no destructive/irreversible word (삭제·제거·되돌리·초기화·병합·배포·릴리즈·게시·전송·결제·환불·강제·푸시·운영 / delete·remove·drop·truncate·reset·revert·rollback·merge·rebase·push·deploy·release·publish·send·payment·prod), AND (c) is not hedged/uncertain (아마·확실치·미확인·maybe·might·unsure). So phrase a safe, reversible recommended step with one of those forward verbs. For destructive/irreversible/uncertain actions, present the option but do NOT mark it '(추천)' — it will stop for explicit user confirmation."
+// gate (too slow at ~13-25s for a Stop hook): the Stop hook only parses choices
+// and applies hard guards, then asks the main agent to use conversation context for
+// the final proceed-or-ask judgement. Keep it one concise line.
+const nextActionPolicyHint = "next-action: end any turn that needs a user decision with a '선택지:' block — exactly 3 numbered options and exactly one '(추천)'. The Stop hook treats the '(추천)' option as an auto-proceed candidate only when its text (a) contains a forward/verify verb (진행·계속·구현·추가·작성·검증·테스트·빌드·린트·확인·점검·실행·수정·반영·적용 / proceed·continue·implement·add·write·verify·test·build·check·inspect·run·apply·fix·update), AND (b) has no destructive/irreversible word (삭제·제거·되돌리·초기화·병합·배포·릴리즈·게시·전송·결제·환불·강제·푸시·운영 / delete·remove·drop·truncate·reset·revert·rollback·merge·rebase·push·deploy·release·publish·send·payment·prod), AND (c) is not hedged/uncertain (아마·확실치·미확인·maybe·might·unsure). When the hook re-enters the main agent, use current context to proceed only if the recommended action is safe, reversible, and aligned with user intent; otherwise ask for user confirmation. For destructive/irreversible/uncertain actions, present the option but do NOT mark it '(추천)' — it will stop for explicit user confirmation."
 
 type HookRoutingRule struct {
 	Tool            string

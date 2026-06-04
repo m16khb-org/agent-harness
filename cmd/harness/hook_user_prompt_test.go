@@ -879,22 +879,25 @@ func TestRunHookStopAllowsNumberedNextActionsWhenExpected(t *testing.T) {
 // writeFakeAgyOnPath puts an executable `agy` shell script on PATH that prints
 // the given output (after asserting the agy print-mode flags), so the LLM
 // auto-proceed gate is hermetic and never invokes a real model.
-func TestRunHookStopAutoProceedsRecommendedSafeAction(t *testing.T) {
+func TestRunHookStopAsksAgentToJudgeRecommendedSafeAction(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	// Auto-proceed uses the static heuristic gate only (the external-LLM gate is no
-	// longer wired into the Stop hook). A safe, reversible, recommended forward step
-	// scores at/above threshold and auto-continues with continue:true + block.
+	// A safe, reversible, recommended forward step becomes an agent-judgement
+	// candidate: the Stop hook re-enters the main agent, which has the task context
+	// needed to decide whether to proceed or ask the user.
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 다음 테스트를 추가하고 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 검증합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--auto-proceed-next-actions"})
 	})
 	if obj["continue"] != true || obj["decision"] != "block" {
-		t.Fatalf("expected Stop hook to auto-continue recommended safe action with the flag alone, got %+v", obj)
+		t.Fatalf("expected Stop hook to re-enter agent judgement for recommended safe action, got %+v", obj)
 	}
 	reason, _ := obj["reason"].(string)
-	if !strings.Contains(reason, "자동 진행") {
-		t.Fatalf("expected auto-proceed directive in reason, got %q", reason)
+	if !strings.Contains(reason, "메인 에이전트") || !strings.Contains(reason, "현재 대화/작업 맥락") {
+		t.Fatalf("expected agent-judgement directive in reason, got %q", reason)
+	}
+	if strings.Contains(reason, "사용자 확인 없이 즉시 실행") {
+		t.Fatalf("agent judgement reason must not force immediate execution, got %q", reason)
 	}
 }
 
