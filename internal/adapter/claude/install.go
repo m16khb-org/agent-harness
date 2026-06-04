@@ -169,7 +169,7 @@ func claudeHookGroup(spec claudeLifecycleHookSpec) map[string]any {
 func claudeHookCommand(binPath, subcommand string) string {
 	cmd := fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
 	if subcommand == "pre-tool-use" {
-		cmd += " --host claude --enforce-worktree --enforce-korean-remote-artifacts"
+		cmd += " --host claude --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-gitops-kubectl"
 	}
 	if subcommand == "stop" {
 		cmd += " --host claude --enforce-numbered-next-actions --auto-proceed-next-actions"

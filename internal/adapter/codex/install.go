@@ -353,7 +353,7 @@ func codexHookCommand(binPath, subcommand string) string {
 	case "user-prompt", "session-start", "post-compact":
 		cmd += " --host codex"
 	case "pre-tool-use":
-		cmd += " --enforce-worktree --enforce-korean-remote-artifacts"
+		cmd += " --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-gitops-kubectl"
 	case "stop":
 		cmd += " --enforce-numbered-next-actions --auto-proceed-next-actions"
 	}

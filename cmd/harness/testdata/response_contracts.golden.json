@@ -516,7 +516,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 12318,
+          "bytes": 12660,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -725,7 +725,7 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 2999,
+          "bytes": 3194,
           "headings": [
             "Host Operations",
             "Codex",
@@ -3430,7 +3430,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 12318,
+                "bytes": 12660,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3639,7 +3639,7 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 2999,
+                "bytes": 3194,
                 "headings": [
                   "Host Operations",
                   "Codex",

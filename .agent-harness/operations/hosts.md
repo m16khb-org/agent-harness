@@ -29,7 +29,7 @@ Codex lifecycle hooks live in `~/.codex/hooks.json`. `UserPromptSubmit` invokes 
 Hook behavior:
 
 - `UserPromptSubmit`: dynamic routing/profile/upkeep hint only.
-- `PreToolUse`: installed with `--enforce-worktree`; it is a no-op unless `HARNESS_EXPECTED_WORKTREE` is set. Raw `--json` exposes diagnostics.
+- `PreToolUse`: installed with worktree, Korean remote artifact, VCS issue-linking, and GitOps kubectl guards. The worktree guard is a no-op unless an IssueOps cycle or `HARNESS_EXPECTED_WORKTREE` applies; the kubectl guard blocks direct mutating cluster commands while allowing read-only inspection. Raw `--json` exposes diagnostics.
 - `--enforce-search-routing`: optional deterministic block for obvious CodeGraph/rg routing mismatches.
 - `PostToolUse`: records only successful mutating tool evidence into repo-scoped user state.
 - `PreCompact`/`PostCompact`: save and restore a small pending-upkeep capsule once.
@@ -69,7 +69,7 @@ Inside Claude Code:
 
 Default install registers user-scope MCP server `agent_harness`. This repo's dogfood `.mcp.json` uses `agent_harness_project` to avoid scope collisions.
 
-Claude hooks live in `~/.claude/settings.json`. They call the same shared CLI/core as Codex, but Claude can separate readable `systemMessage` from model-facing `hookSpecificOutput.additionalContext`. `PreToolUse` and `PostToolUse` use matcher `*`; `PreToolUse` runs the deterministic worktree guard only when `HARNESS_EXPECTED_WORKTREE` is set. `Stop` can enforce numbered next-action choices when `HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1`.
+Claude hooks live in `~/.claude/settings.json`. They call the same shared CLI/core as Codex, but Claude can separate readable `systemMessage` from model-facing `hookSpecificOutput.additionalContext`. `PreToolUse` and `PostToolUse` use matcher `*`; `PreToolUse` runs deterministic worktree, remote artifact, issue-linking, and GitOps kubectl guards. `Stop` can enforce numbered next-action choices when `HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1`.
 
 Claude project-local hooks can be committed, so do not create `.claude/settings.json` in target repos without explicit opt-in.
 

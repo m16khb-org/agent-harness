@@ -355,6 +355,31 @@ func TestRunHookPreToolUseEnforcesKoreanRemoteArtifacts(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseEnforcesGitOpsKubectl(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `kubectl patch deployment/api -n prod -p '{"spec":{"replicas":1}}'`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-gitops-kubectl", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected direct kubectl mutation to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "GitOps") || !strings.Contains(reason, "kubectl") {
+		t.Fatalf("expected GitOps kubectl reason, got %q", reason)
+	}
+}
+
 func TestRunHookPreToolUseBlocksPlanLinkSectionInIssueBody(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

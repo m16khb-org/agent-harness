@@ -311,6 +311,41 @@ func TestPreToolUseKoreanRemoteArtifactGateAllowsKoreanPRBodyFile(t *testing.T) 
 	}
 }
 
+func TestPreToolUseGitOpsKubectlBlocksMutatingCommands(t *testing.T) {
+	for _, command := range []string{
+		`kubectl apply -f k8s/deployment.yaml`,
+		`/usr/local/bin/kubectl delete pod api-0 -n prod`,
+		`kubectl get pods && kubectl rollout restart deployment/api -n prod`,
+	} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Tool:                 "bash",
+			Command:              command,
+			EnforceGitOpsKubectl: true,
+		})
+		if got.Decision != "block" || !strings.Contains(got.Reason, "GitOps") {
+			t.Fatalf("expected mutating kubectl command to be blocked: %q -> %+v", command, got)
+		}
+	}
+}
+
+func TestPreToolUseGitOpsKubectlAllowsReadOnlyCommands(t *testing.T) {
+	for _, command := range []string{
+		`kubectl get pods -n prod`,
+		`kubectl logs deployment/api -n prod --tail=100`,
+		`kubectl diff -f k8s/`,
+		`kubectl apply --dry-run=client -f k8s/deployment.yaml`,
+	} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Tool:                 "bash",
+			Command:              command,
+			EnforceGitOpsKubectl: true,
+		})
+		if got.Decision != "allow" {
+			t.Fatalf("expected read-only kubectl command to be allowed: %q -> %+v", command, got)
+		}
+	}
+}
+
 func TestNumberedNextActionsDecisionBlocksMissingChoices(t *testing.T) {
 	got := BuildNumberedNextActionsDecision("작업했습니다.", true, "stop")
 	if got.Decision != "block" || !strings.Contains(got.Reason, "numbered next actions") {
