@@ -169,8 +169,8 @@ IssueOps worktree isolation cannot rely on the model remembering `pwd` or shell 
 When the user must choose a route, cleanup action, feedback response, or next phase, free-form prose is too easy to miss. Prompt discipline alone is insufficient.
 
 주의:
-- IssueOps strict sessions set `HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1`.
-- Installed Codex and Claude Stop hooks include `--enforce-numbered-next-actions`; when the env var is set and the host exposes `last_assistant_message` or a transcript path, missing `1.`, `2.`, and `3.` choices are blocked.
+- Installed Codex and Claude Stop hooks include `--enforce-numbered-next-actions`; when the host exposes `last_assistant_message` or a transcript path, missing `1.`, `2.`, and `3.` choices are blocked.
+- The Stop hook should explain the missing choices to the agent and instruct the agent to present context-specific next actions; it should not synthesize fixed choices itself.
 - Keep the three choices concrete: recommended proceed, narrower/lower-risk alternative, and pause/defer.
 - If the host does not expose the final assistant message to Stop hook input, the guard must no-op and record diagnostics rather than guessing.
 

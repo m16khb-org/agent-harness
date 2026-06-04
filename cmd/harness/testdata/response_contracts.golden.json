@@ -517,7 +517,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 14152,
+          "bytes": 14467,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -727,7 +727,7 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 3465,
+          "bytes": 3694,
           "headings": [
             "Host Operations",
             "Codex",
@@ -739,7 +739,7 @@
           "title": "Host Operations"
         },
         {
-          "bytes": 3850,
+          "bytes": 3973,
           "headings": [
             "Install And Sync",
             "First run from a fresh clone, before agent-harness is on PATH.",
@@ -3447,7 +3447,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 14152,
+                "bytes": 14467,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3657,7 +3657,7 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 3465,
+                "bytes": 3694,
                 "headings": [
                   "Host Operations",
                   "Codex",
@@ -3669,7 +3669,7 @@
                 "title": "Host Operations"
               },
               {
-                "bytes": 3850,
+                "bytes": 3973,
                 "headings": [
                   "Install And Sync",
                   "First run from a fresh clone, before agent-harness is on PATH.",

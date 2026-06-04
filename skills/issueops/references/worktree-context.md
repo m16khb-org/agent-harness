@@ -68,13 +68,7 @@ The guard is deterministic, but it only covers tool events that the host sends t
 
 ## Numbered Next-Action Guard
 
-IssueOps decision points should enable the Stop hook response-shape guard:
-
-```bash
-export HARNESS_EXPECT_NUMBERED_NEXT_ACTIONS=1
-```
-
-Installed Codex and Claude Stop hooks include `--enforce-numbered-next-actions`. When the env var is set and the host provides `last_assistant_message` or a readable transcript path, the hook blocks final responses that do not include three numbered next-action choices. Without the env var, the guard is a no-op.
+Installed Codex and Claude Stop hooks include `--enforce-numbered-next-actions`. When the host provides `last_assistant_message` or a readable transcript path, the hook blocks final responses that do not include three numbered next-action choices. The hook reason tells the agent why it was blocked; the agent must then present context-specific choices.
 
 Use this shape:
 
