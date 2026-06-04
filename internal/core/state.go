@@ -245,7 +245,7 @@ func StateDoctor() (StateDoctorResult, error) {
 		name := entry.Name()
 		path := filepath.Join(dir, name)
 		if entry.IsDir() {
-			if name == "projects" || name == "daemon" || name == "worker" || name == "issueops" {
+			if isHarnessOwnedStateDirectory(name) {
 				continue
 			}
 			result.Issues = append(result.Issues, StateDoctorIssue{
@@ -257,6 +257,9 @@ func StateDoctor() (StateDoctorResult, error) {
 			continue
 		}
 		if !strings.HasSuffix(name, ".json") {
+			if isHarnessOwnedStateFile(name) {
+				continue
+			}
 			result.Issues = append(result.Issues, StateDoctorIssue{
 				Path:     path,
 				Severity: "warning",
@@ -373,6 +376,24 @@ func StateDoctor() (StateDoctorResult, error) {
 	result.OK = true
 	result.Healthy = len(result.Issues) == 0
 	return result, nil
+}
+
+func isHarnessOwnedStateDirectory(name string) bool {
+	switch name {
+	case "projects", "daemon", "worker", "issueops", "issueops-benchmarks":
+		return true
+	default:
+		return false
+	}
+}
+
+func isHarnessOwnedStateFile(name string) bool {
+	switch name {
+	case hookFailureLogFile:
+		return true
+	default:
+		return false
+	}
 }
 
 func StateMigrate(confirm bool) (StateMigrateResult, error) {

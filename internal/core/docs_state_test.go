@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -203,6 +204,44 @@ func TestStateDoctorEmptyDirIsHealthy(t *testing.T) {
 	}
 	if !result.OK || !result.Healthy || result.Checked != 0 || len(result.Issues) != 0 {
 		t.Fatalf("unexpected empty doctor result: %+v", result)
+	}
+}
+
+func TestStateDoctorAllowsHarnessOwnedAuxiliaryState(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	if _, err := StateWrite("good", "good content"); err != nil {
+		t.Fatalf("StateWrite good: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "hook-failures.jsonl"), []byte(`{"hook":"pre-tool-use","error":"failed"}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "issueops-benchmarks"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "unknown.jsonl"), []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "unknown-dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := StateDoctor()
+	if err != nil {
+		t.Fatalf("StateDoctor: %v", err)
+	}
+	if result.Healthy {
+		t.Fatalf("unknown auxiliary state should still keep doctor unhealthy: %+v", result)
+	}
+	for _, issue := range result.Issues {
+		if strings.Contains(issue.Path, "hook-failures.jsonl") || strings.Contains(issue.Path, "issueops-benchmarks") {
+			t.Fatalf("harness-owned auxiliary state should not warn: %+v", result.Issues)
+		}
+	}
+	for _, code := range []string{"unexpected_file", "unexpected_directory"} {
+		if !stateDoctorHasIssue(result.Issues, code) {
+			t.Fatalf("missing issue %s for unknown auxiliary state: %+v", code, result.Issues)
+		}
 	}
 }
 
