@@ -516,7 +516,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 12660,
+          "bytes": 13509,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -536,6 +536,7 @@
             "15. IssueOps decision replies must have numbered choices",
             "16. MCP tool-use risks",
             "17. Audit harness flags must match the CLI contract",
+            "18. Verify git identity before contributor-sensitive pushes",
             "Incident Archive"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
@@ -3430,7 +3431,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 12660,
+                "bytes": 13509,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3450,6 +3451,7 @@
                   "15. IssueOps decision replies must have numbered choices",
                   "16. MCP tool-use risks",
                   "17. Audit harness flags must match the CLI contract",
+                  "18. Verify git identity before contributor-sensitive pushes",
                   "Incident Archive"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
