@@ -125,6 +125,7 @@ func ScoreIssueOpsRemoteCandidates(req IssueOpsRemoteScoringRequest) (IssueOpsRe
 	}
 	if len(req.LabelCandidates) > 0 && len(result.SelectedLabels) == 0 {
 		result.Warnings = append(result.Warnings, "no label candidates met threshold")
+		result.ApplyInstructions = append(result.ApplyInstructions, "stop before remote artifact writes and choose an explicit manual label or rerun scoring with corrected candidates; do not create an unlabeled issue, pull request, or merge request")
 	}
 	return result, nil
 }

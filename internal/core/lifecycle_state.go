@@ -505,6 +505,7 @@ type remoteArtifactCommand struct {
 	action   string
 	title    string
 	body     string
+	labels   []string
 }
 
 func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCommand, bool) {
@@ -558,11 +559,32 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 				}
 			case strings.HasPrefix(arg, "--body-file="):
 				artifact.body = readRemoteArtifactBodyFile(repo, strings.TrimPrefix(arg, "--body-file="))
+			case arg == "--label" || arg == "-l" || arg == "--labels" || arg == "--add-label":
+				if j+1 < len(args) {
+					artifact.labels = appendRemoteArtifactLabels(artifact.labels, args[j+1])
+					j++
+				}
+			case strings.HasPrefix(arg, "--label="):
+				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--label="))
+			case strings.HasPrefix(arg, "--labels="):
+				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--labels="))
+			case strings.HasPrefix(arg, "--add-label="):
+				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--add-label="))
 			}
 		}
 		return artifact, true
 	}
 	return remoteArtifactCommand{}, false
+}
+
+func appendRemoteArtifactLabels(labels []string, raw string) []string {
+	for _, label := range strings.Split(raw, ",") {
+		label = strings.TrimSpace(label)
+		if label != "" {
+			labels = append(labels, label)
+		}
+	}
+	return labels
 }
 
 var (
@@ -580,14 +602,16 @@ func vcsIssueLinkingBlockReason(req HookToolUseLifecycleRequest) string {
 		return ""
 	}
 	body := artifact.body
-	if strings.TrimSpace(body) == "" {
-		return ""
+	if strings.TrimSpace(body) != "" {
+		if planLinkHeadingRe.MatchString(body) {
+			return fmt.Sprintf("IssueOps issue body must not contain a Plan Link section before %s %s %s; plan tracking lives in issueops link-plan state and the PR/MR body, not the issue body", artifact.provider, artifact.kind, artifact.action)
+		}
+		if artifact.provider == "gitlab" && (artifact.kind == "issue") && relatedHeadingRe.MatchString(body) {
+			return fmt.Sprintf("GitLab related issues must be attached as native linked items, not a body Related Issues section, before glab %s %s; use glab api projects/:id/issues/:iid/links with link_type=relates_to", artifact.kind, artifact.action)
+		}
 	}
-	if planLinkHeadingRe.MatchString(body) {
-		return fmt.Sprintf("IssueOps issue body must not contain a Plan Link section before %s %s %s; plan tracking lives in issueops link-plan state and the PR/MR body, not the issue body", artifact.provider, artifact.kind, artifact.action)
-	}
-	if artifact.provider == "gitlab" && (artifact.kind == "issue") && relatedHeadingRe.MatchString(body) {
-		return fmt.Sprintf("GitLab related issues must be attached as native linked items, not a body Related Issues section, before glab %s %s; use glab api projects/:id/issues/:iid/links with link_type=relates_to", artifact.kind, artifact.action)
+	if artifact.action == "create" && len(artifact.labels) == 0 {
+		return fmt.Sprintf("IssueOps remote %s create must include labels before %s %s create; copy the linked issue labels or pass an explicit manual label flag", artifact.kind, artifact.provider, artifact.kind)
 	}
 	return ""
 }

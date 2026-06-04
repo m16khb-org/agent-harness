@@ -27,7 +27,7 @@ Use deterministic fallback only when the external LLM is unavailable or intentio
 agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
 ```
 
-Default threshold is `0.70` unless the repo or user sets a stronger threshold. Attach selected related issues with the provider-native mechanism described in "Provider-Specific Linking And Hierarchy" below (GitHub body references vs GitLab linked items) — do not reuse one provider's style for the other. Include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with provider CLI/API commands. Do not apply rejected labels, create rejected labels, or link rejected issues.
+Default threshold is `0.70` unless the repo or user sets a stronger threshold. Attach selected related issues with the provider-native mechanism described in "Provider-Specific Linking And Hierarchy" below (GitHub body references vs GitLab linked items) — do not reuse one provider's style for the other. Include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with provider CLI/API commands. Do not apply rejected labels, create rejected labels, or link rejected issues. If label candidates existed but none met threshold, do not create an unlabeled remote artifact; stop before remote writes and either rerun scoring with corrected candidates or choose an explicit manual label with the reason recorded in IssueOps feedback.
 
 The agent must propose the operational choice instead of leaving the user to invent it. Example:
 
@@ -74,6 +74,7 @@ Rules:
 
 - When the scoring gate selects related issues, attach them as **GitLab linked items** on GitLab and as **body cross-references** on GitHub. Do not put a `## Related Issues` body section on GitLab when a linked item is the correct home; do not invent a linked-items relation on GitHub where none exists.
 - When breaking work into tasks/subtasks on the remote, add them as **GitHub sub-issues** or **GitLab child items** for the parent issue — match the provider. Do not flatten a hierarchy into plain `relates_to` links or body bullet lists when the provider supports a real parent/child relation.
+- When creating a PR/MR, copy labels from the linked issue into the provider create command. If the linked issue is unlabeled, apply an explicit manual label to the issue first or stop and record why no label can be chosen; do not create an unlabeled PR/MR.
 - If a provider mechanism is unavailable (API/permission/feature flag), say so explicitly, fall back to the closest documented mechanism, and record the limitation in IssueOps feedback rather than silently using the other provider's style.
 
 ## Korean Remote Artifact Gate
@@ -96,6 +97,6 @@ python3 skills/issueops/scripts/remote_artifact_gate.py --kind pr --title "$TITL
 
 Installed PreToolUse hooks include `--enforce-korean-remote-artifacts`. The hook blocks `gh issue create/edit` and `gh pr create/edit` when it can inspect `--title` plus `--body-file` or `--body` and the text fails the same Korean language threshold. If the title/body is not inspectable, prepare the artifact in a body file, run this gate explicitly, then retry the remote command.
 
-Installed PreToolUse hooks also include `--enforce-vcs-issue-linking`. It inspects the same body (gh `--body`/`--body-file`, glab `--description`) and blocks issue create/edit when the body contains a `Plan Link` section (on any provider) or a `Related Issues` section on GitLab (where related issues belong in native linked items per the table above). Attach GitLab related issues with the issue links API and drop the Plan Link section, then retry.
+Installed PreToolUse hooks also include `--enforce-vcs-issue-linking`. It inspects the same body (gh `--body`/`--body-file`, glab `--description`) and blocks issue create/edit when the body contains a `Plan Link` section (on any provider) or a `Related Issues` section on GitLab (where related issues belong in native linked items per the table above). It also blocks issue/PR/MR create commands when no label flag is inspectable. Attach GitLab related issues with the issue links API, drop the Plan Link section, and include copied or explicit labels before retrying.
 
 원격 issue 본문에는 repo-local plan path를 넣지 않는다. plan 파일은 ignored/untracked일 수 있으므로 `agent-harness issueops link-plan` state와 PR/MR 본문에서 필요한 경우에만 추적한다.

@@ -311,6 +311,30 @@ func TestPreToolUseKoreanRemoteArtifactGateAllowsKoreanPRBodyFile(t *testing.T) 
 	}
 }
 
+func TestPreToolUseVCSLinkingBlocksRemoteCreateWithoutLabels(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:              t.TempDir(),
+		Tool:              "bash",
+		Command:           `glab mr create --title "IssueOps 라벨 검증" --description "라벨 없는 MR 생성을 막고 이슈 라벨 복사 또는 수동 라벨 적용을 강제합니다."`,
+		EnforceVCSLinking: true,
+	})
+	if got.Decision != "block" || !strings.Contains(got.Reason, "label") {
+		t.Fatalf("expected unlabeled remote create to be blocked: %+v", got)
+	}
+}
+
+func TestPreToolUseVCSLinkingAllowsRemoteCreateWithLabels(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:              t.TempDir(),
+		Tool:              "bash",
+		Command:           `glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨을 복사해 MR 라벨 누락을 방지합니다." --label bug`,
+		EnforceVCSLinking: true,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected labeled remote create to be allowed: %+v", got)
+	}
+}
+
 func TestPreToolUseGitOpsKubectlBlocksMutatingCommands(t *testing.T) {
 	for _, command := range []string{
 		`kubectl apply -f k8s/deployment.yaml`,
