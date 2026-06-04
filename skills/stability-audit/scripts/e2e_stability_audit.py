@@ -25,28 +25,46 @@ BIN = ROOT / "bin" / "agent-harness"
 LEGACY_BIN_RE = re.compile(r"/bin/harness (daemon --internal|mcp)\b")
 HARNESS_DAEMON_RE = re.compile(r"agent-harness daemon --internal")
 TEMP_WATCHER_RE = re.compile(r"scripts/codegraph-watcher\.mjs .*/T/tmp\.")
+FULL_SELF_VERIFY_TIMEOUT_SECONDS = 900
 
 
-def run(cmd: list[str], *, env: dict[str, str] | None = None, input_text: str | None = None, timeout: int = 60) -> dict[str, Any]:
+def run(cmd: list[str], *, env: dict[str, str] | None = None, input_text: str | None = None, timeout: float = 60) -> dict[str, Any]:
     merged = os.environ.copy()
     if env:
         merged.update(env)
     start = time.time()
-    proc = subprocess.run(
-        cmd,
-        input=input_text,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=merged,
-        timeout=timeout,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            input=input_text,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=merged,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout or ""
+        stderr = exc.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode(errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode(errors="replace")
+        return {
+            "cmd": cmd,
+            "returncode": -1,
+            "stdout": stdout,
+            "stderr": f"{stderr}\ncommand timed out after {timeout} seconds".strip(),
+            "duration_ms": int((time.time() - start) * 1000),
+            "timeout": True,
+        }
     return {
         "cmd": cmd,
         "returncode": proc.returncode,
         "stdout": proc.stdout,
         "stderr": proc.stderr,
         "duration_ms": int((time.time() - start) * 1000),
+        "timeout": False,
     }
 
 
@@ -359,7 +377,11 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
         details.append({"cmd": cmd, "ok": step_ok, "stderr_tail": res["stderr"][-1000:], "stdout_tail": res["stdout"][-1000:], "duration_ms": res["duration_ms"]})
     if self_verify:
         with tempfile.TemporaryDirectory() as td:
-            res = run([str(BIN), "self-verify", "--full", "--iterations=10", "--seed=100", "--target-score=95", "--json"], env={"HARNESS_STATE_DIR": td}, timeout=180)
+            res = run(
+                [str(BIN), "self-verify", "--full", "--iterations=10", "--seed=100", "--target-score=95", "--json"],
+                env={"HARNESS_STATE_DIR": td},
+                timeout=FULL_SELF_VERIFY_TIMEOUT_SECONDS,
+            )
             parsed = None
             step_ok = res["returncode"] == 0
             if step_ok:
