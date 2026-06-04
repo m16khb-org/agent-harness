@@ -2832,6 +2832,9 @@ func forbiddenNameHits(root string) []string {
 		if name == ".git" {
 			return nil
 		}
+		if name == "LICENSE" {
+			return nil
+		}
 		info, statErr := d.Info()
 		if statErr != nil || info.Size() > 2*1024*1024 {
 			return nil
@@ -2840,7 +2843,7 @@ func forbiddenNameHits(root string) []string {
 		if readErr != nil || bytes.Contains(b, []byte{0}) {
 			return nil
 		}
-		text := string(b)
+		text := allowCurrentOwnerHandle(string(b))
 		for _, needle := range forbiddenLegacyNeedles() {
 			if strings.Contains(text, needle) {
 				rel, _ := filepath.Rel(root, path)
@@ -2869,8 +2872,23 @@ func forbiddenLegacyNeedles() []string {
 	return []string{"m" + "16kh", "m" + "16h", "M" + "16H", "m" + "16"}
 }
 
+// currentOwnerHandle is the project's legitimate current owner handle. It is a
+// superset of a shorter forbidden legacy needle, so a plain substring scan would
+// otherwise flag legitimate occurrences such as the LICENSE copyright line or
+// clone URLs documented in plans.
+func currentOwnerHandle() string {
+	return "m" + "16khb"
+}
+
+// allowCurrentOwnerHandle masks the legitimate current-owner handle before the
+// legacy-name scan so it does not register as a forbidden legacy hit. The
+// shorter legacy needles remain detectable in any other context.
+func allowCurrentOwnerHandle(text string) string {
+	return strings.ReplaceAll(text, currentOwnerHandle(), "$CURRENT_OWNER")
+}
+
 func containsForbiddenLegacyOutsideRuntimePaths(text, root string) bool {
-	sanitized := text
+	sanitized := allowCurrentOwnerHandle(text)
 	replacements := []string{}
 	if abs, err := filepath.Abs(root); err == nil {
 		replacements = append(replacements, abs)
