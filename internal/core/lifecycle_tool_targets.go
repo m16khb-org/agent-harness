@@ -41,7 +41,8 @@ func bashCommandMayMutate(command string) bool {
 	}
 	for _, needle := range []string{
 		"tee ", "sed -i", "perl -pi", "gofmt -w", "goimports -w",
-		"git apply", "touch ", "mkdir ", "rm ", "mv ", "cp ", "chmod ", "chown ",
+		"git apply", "git checkout -b", "git switch -c", "git worktree add",
+		"touch ", "mkdir ", "rm ", "mv ", "cp ", "chmod ", "chown ",
 	} {
 		if strings.Contains(c, needle) {
 			return true

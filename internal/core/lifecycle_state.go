@@ -911,6 +911,14 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 	}
 	expected := cleanAbsPath(req.ExpectedWorktree)
 	if expected == "" {
+		if branch := localIssueOpsBranchCreation(req.Command); branch != "" {
+			if rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, branch); ok && rec.WorktreePath != "" {
+				return "IssueOps branch " + branch + " must not be checked out in the source checkout; create or use the linked isolated worktree " + cleanAbsPath(rec.WorktreePath)
+			}
+			if _, ok := ActiveIssueOpsCycleForBranch(req.Repo, branch); ok {
+				return "IssueOps branch " + branch + " must not be checked out in the source checkout; create the provider-linked branch, add the sibling worktree, then run issueops link-worktree before implementation"
+			}
+		}
 		// No explicit expected worktree: judge by the current work's own cycle.
 		// The cycle id is deterministic per (repo, branch), so only this branch's
 		// record is consulted; legacy/stale records have different ids and are
@@ -925,6 +933,14 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 		linked := cleanAbsPath(rec.WorktreePath)
 		if linked == "" {
+			if issueOpsWorktreePreparationCommand(req.Command) {
+				return ""
+			}
+			for _, target := range targets {
+				if sourceCheckoutTargetNeedsLinkedWorktree(target, req.Repo) {
+					return "IssueOps " + string(rec.Phase) + " phase requires a linked isolated worktree before mutating source files; create the sibling worktree and run issueops link-worktree for " + rec.ID
+				}
+			}
 			return ""
 		}
 		for _, target := range targets {
@@ -944,6 +960,70 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 	}
 	return ""
+}
+
+func sourceCheckoutTargetNeedsLinkedWorktree(target, repo string) bool {
+	t := cleanAbsPath(target)
+	r := cleanAbsPath(repo)
+	if t == "" || r == "" {
+		return false
+	}
+	if pathWithin(t, r) {
+		return true
+	}
+	return isInsideWorktreesPath(t)
+}
+
+func localIssueOpsBranchCreation(command string) string {
+	tokens := splitCommandTokens(command)
+	for i, token := range tokens {
+		if searchTokenName(token) != "git" || i+1 >= len(tokens) {
+			continue
+		}
+		switch searchTokenName(tokens[i+1]) {
+		case "checkout":
+			for j := i + 2; j < len(tokens); j++ {
+				if tokens[j] == "-b" || tokens[j] == "-B" {
+					if j+1 < len(tokens) {
+						return strings.TrimSpace(tokens[j+1])
+					}
+					return ""
+				}
+			}
+		case "switch":
+			for j := i + 2; j < len(tokens); j++ {
+				if tokens[j] == "-c" || tokens[j] == "-C" || strings.HasPrefix(tokens[j], "--create") {
+					if strings.Contains(tokens[j], "=") {
+						_, value, _ := strings.Cut(tokens[j], "=")
+						return strings.TrimSpace(value)
+					}
+					if j+1 < len(tokens) {
+						return strings.TrimSpace(tokens[j+1])
+					}
+					return ""
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func issueOpsWorktreePreparationCommand(command string) bool {
+	tokens := splitCommandTokens(command)
+	for i, token := range tokens {
+		if searchTokenName(token) != "git" || i+2 >= len(tokens) {
+			continue
+		}
+		if searchTokenName(tokens[i+1]) != "worktree" || searchTokenName(tokens[i+2]) != "add" {
+			continue
+		}
+		for _, value := range gitWorktreeAddTargets(tokens[i+3:]) {
+			if isInsideWorktreesPath(resolveHookTargetPath("", value)) || strings.Contains(filepath.ToSlash(value), ".worktrees/") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func mcpWorktreeRootBlockReason(req HookToolUseLifecycleRequest) string {
@@ -1019,6 +1099,12 @@ func shellCommandWorktreeGuardPaths(command string) []string {
 			if i > 0 && searchTokenName(tokens[i-1]) == "git" && i+1 < len(tokens) {
 				addWorktreeGuardPath(&out, seen, tokens[i+1])
 			}
+		case "add":
+			if i > 1 && searchTokenName(tokens[i-2]) == "git" && searchTokenName(tokens[i-1]) == "worktree" {
+				for _, value := range gitWorktreeAddTargets(tokens[i+1:]) {
+					addWorktreeGuardPath(&out, seen, value)
+				}
+			}
 		case ">", ">>", "1>", "1>>", "2>", "2>>":
 			if i+1 < len(tokens) {
 				addWorktreeGuardPath(&out, seen, tokens[i+1])
@@ -1031,6 +1117,31 @@ func shellCommandWorktreeGuardPaths(command string) []string {
 				}
 			}
 		}
+	}
+	return out
+}
+
+func gitWorktreeAddTargets(args []string) []string {
+	out := []string{}
+	for i := 0; i < len(args); i++ {
+		token := strings.TrimSpace(args[i])
+		if token == "" {
+			continue
+		}
+		if token == "--" {
+			if i+1 < len(args) {
+				out = append(out, args[i+1])
+			}
+			return out
+		}
+		if strings.HasPrefix(token, "-") {
+			if token == "-b" || token == "-B" {
+				i++
+			}
+			continue
+		}
+		out = append(out, token)
+		return out
 	}
 	return out
 }

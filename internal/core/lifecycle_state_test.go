@@ -767,14 +767,44 @@ func guardRepoWithCycle(t *testing.T, branch string, phase IssueOpsPhase) string
 	return repo
 }
 
-func TestWorktreeGuardNoBlockWhenImplementCycleHasNoLinkedWorktree(t *testing.T) {
+func TestWorktreeGuardBlocksSourceEditWhenImplementCycleHasNoLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "development", IssueOpsPhaseImplement)
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
 	})
-	if res.Decision == "block" {
-		t.Fatalf("unlinked implement cycle should not permanently lock the source checkout, got %+v", res)
+	if res.Decision != "block" || !strings.Contains(res.Reason, "requires a linked isolated worktree") {
+		t.Fatalf("unlinked implement cycle should block source checkout edits, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardAllowsWorktreeAddBeforeLinkWorktree(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "development", IssueOpsPhaseImplement)
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Bash", Command: "git worktree add ../repo.worktrees/development origin/development", EnforceWorktree: true,
+	})
+	if res.Decision != "allow" {
+		t.Fatalf("worktree preparation command should pass before link-worktree, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardBlocksLocalCheckoutOfIssueOpsBranch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "main", IssueOpsPhasePlan)
+	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feature/issue-work"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(IssueOpsPhaseImplement)); err != nil {
+		t.Fatal(err)
+	}
+
+	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Bash", Command: "git checkout -b feature/issue-work", EnforceWorktree: true,
+	})
+	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, "must not be checked out in the source checkout") {
+		t.Fatalf("local checkout of IssueOps branch should block: %+v", blocked)
 	}
 }
 
@@ -872,7 +902,7 @@ func TestWorktreeGuardIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
 	}
 }
 
-func TestWorktreeGuardIgnoresOtherBranchLinkedCycleWhenCurrentBranchCycleIsUnlinked(t *testing.T) {
+func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "main", IssueOpsPhaseImplement)
 	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feat/x"})
@@ -891,8 +921,8 @@ func TestWorktreeGuardIgnoresOtherBranchLinkedCycleWhenCurrentBranchCycleIsUnlin
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{other}, EnforceWorktree: true,
 	})
-	if blocked.Decision != "allow" {
-		t.Fatalf("other branch linked worktree should not lock unrelated worktree target: %+v", blocked)
+	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, "requires a linked isolated worktree") {
+		t.Fatalf("unlinked current branch cycle should block unrelated worktree edits: %+v", blocked)
 	}
 }
 
@@ -996,15 +1026,15 @@ func TestWorktreeGuardAllowsTempFileBashWrites(t *testing.T) {
 	}
 }
 
-func TestWorktreeGuardAllowsBashCommandThatChangesIntoWorktree(t *testing.T) {
+func TestWorktreeGuardBlocksBashCommandThatChangesIntoUnlinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
 	worktree := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Bash", Command: "cd " + worktree + " && printf body > /tmp/mr-body.md", EnforceWorktree: true,
 	})
-	if res.Decision == "block" {
-		t.Fatalf("bash command scoped to isolated worktree should pass, got %+v", res)
+	if res.Decision != "block" || !strings.Contains(res.Reason, "requires a linked isolated worktree") {
+		t.Fatalf("bash command scoped to unlinked worktree should block, got %+v", res)
 	}
 }
 
