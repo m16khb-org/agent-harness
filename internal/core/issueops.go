@@ -48,6 +48,15 @@ func knownIssueOpsPhase(phase IssueOpsPhase) bool {
 	return false
 }
 
+func issueOpsPhaseRank(phase IssueOpsPhase) int {
+	for i, known := range IssueOpsPhases {
+		if known == phase {
+			return i + 1
+		}
+	}
+	return 0
+}
+
 type IssueOpsStartRequest struct {
 	Repo   string `json:"repo"`
 	Branch string `json:"branch,omitempty"`
@@ -189,7 +198,9 @@ func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
 		return record, err
 	}
 	record.IssueURL = u
-	record.Phase = IssueOpsPhasePlan
+	if issueOpsPhaseRank(record.Phase) < issueOpsPhaseRank(IssueOpsPhasePlan) {
+		record.Phase = IssueOpsPhasePlan
+	}
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
@@ -495,6 +506,11 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	}
 	if record.Phase == IssueOpsPhaseDone {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot leave done phase")
+	}
+	if phase == IssueOpsPhaseImplement {
+		if ready := IssueOpsAISlopCleanReadiness(record); !ready.Ready {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter implement phase: missing %s", strings.Join(ready.Missing, ", "))
+		}
 	}
 	if phase == IssueOpsPhaseAISlopClean {
 		if ready := IssueOpsAISlopCleanReadiness(record); !ready.Ready {

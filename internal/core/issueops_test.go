@@ -684,6 +684,9 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean)); err == nil || !strings.Contains(err.Error(), "missing") {
 		t.Fatalf("ai-slop-clean without issue/plan/worktree should be rejected, got %v", err)
 	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "cannot enter implement phase") {
+		t.Fatalf("implement phase without issue/plan/worktree should be rejected, got %v", err)
+	}
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseFeedback)); err == nil || !strings.Contains(err.Error(), "before ai-slop-clean") {
 		t.Fatalf("feedback phase before ai-slop-clean should be rejected, got %v", err)
 	}
@@ -716,6 +719,10 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
 	if err != nil || record.Phase != IssueOpsPhaseAISlopClean {
 		t.Fatalf("expected ai-slop-clean phase, got %+v err=%v", record, err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
+	if err != nil || record.Phase != IssueOpsPhaseAISlopClean {
+		t.Fatalf("late issue link refresh should not move phase backward, got %+v err=%v", record, err)
 	}
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR))
 	if err != nil || record.Phase != IssueOpsPhasePR {
