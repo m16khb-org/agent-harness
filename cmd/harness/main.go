@@ -4895,6 +4895,20 @@ func mcpTools() []map[string]any {
 			}},
 		},
 		{
+			"name":        "issueops_prepare_branch",
+			"description": "Record provider-linked issue branch preparation and expose the required MCP-first, provider API fallback, fail-closed order. This must be used before creating a local worktree for an IssueOps issue branch.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "provider", "issue_url", "branch", "base_branch"}, "properties": map[string]any{
+				"id":                map[string]any{"type": "string", "description": "IssueOps id."},
+				"provider":          map[string]any{"type": "string", "description": "Remote provider: github or gitlab.", "enum": []string{"github", "gitlab"}},
+				"issue_url":         map[string]any{"type": "string", "description": "GitHub/GitLab issue URL."},
+				"branch":            map[string]any{"type": "string", "description": "Provider-linked branch name. GitLab branches must start with the issue number followed by a hyphen."},
+				"base_branch":       map[string]any{"type": "string", "description": "Remote base branch or ref."},
+				"base_sha":          map[string]any{"type": "string", "description": "Optional resolved base commit SHA."},
+				"remote_branch_url": map[string]any{"type": "string", "description": "Optional provider branch URL after creation."},
+				"link_verified":     map[string]any{"type": "boolean", "description": "Whether the provider issue UI/API was verified to show the branch link."},
+			}},
+		},
+		{
 			"name":        "issueops_add_feedback",
 			"description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "source", "body"}, "properties": map[string]any{
@@ -5288,6 +5302,20 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		result, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "child_url"), stringArg(call.Arguments, "title"))
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps child link failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_prepare_branch":
+		result, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), core.IssueOpsBranchPrepareRequest{
+			Provider:        stringArg(call.Arguments, "provider"),
+			IssueURL:        stringArg(call.Arguments, "issue_url"),
+			Branch:          stringArg(call.Arguments, "branch"),
+			BaseBranch:      stringArg(call.Arguments, "base_branch"),
+			BaseSHA:         stringArg(call.Arguments, "base_sha"),
+			RemoteBranchURL: stringArg(call.Arguments, "remote_branch_url"),
+			LinkVerified:    boolArg(call.Arguments, "link_verified"),
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps branch prepare failed", Data: err.Error()}
 		}
 		payload = result
 	case "issueops_add_feedback":

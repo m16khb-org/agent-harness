@@ -219,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "9beae6f6f2d3ac5e295837c5b31abb52005ce82d30b8a4a05f50aa99774b0135",
+      "hash": "8c12c3380551dceb3a21cbaf8af6a722ae6ab4cd74986527eff51e50943eaa2e",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -240,6 +240,7 @@
         "issueops_link_plan",
         "issueops_link_worktree",
         "issueops_pr_readiness",
+        "issueops_prepare_branch",
         "issueops_remote_score",
         "issueops_set_phase",
         "issueops_start",
@@ -376,6 +377,7 @@
           "phase",
           "issue_url",
           "plan_path",
+          "branch_prepare",
           "feedback",
           "created_at",
           "updated_at"
@@ -496,7 +498,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 19659,
+          "bytes": 19919,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -518,7 +520,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 19313,
+          "bytes": 20247,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -528,18 +530,18 @@
             "5. Worker lifecycle 문제",
             "6. State 위치 혼동",
             "7. MCP schema drift",
-            "8. Shared skill drift",
-            "9. 자기 검증/자가 증강 drift",
-            "10. 과도한 초기 추상화",
-            "11. LLM Wiki 재구현 금지",
-            "12. Daemon lifecycle drift",
-            "13. Codex vs Claude Code hook rendering drift",
-            "14. IssueOps worktree edits must be hook-guarded",
-            "15. IssueOps decision replies must have numbered choices",
-            "16. MCP tool-use risks",
-            "17. Audit harness flags must match the CLI contract",
-            "18. Verify git identity before contributor-sensitive pushes",
-            "19. Stop hook output: `continue:false` hard-stops; use `decision:block` + `reason` to continue in-turn"
+            "8. IssueOps local-only branch 착각",
+            "9. Shared skill drift",
+            "10. 자기 검증/자가 증강 drift",
+            "11. 과도한 초기 추상화",
+            "12. LLM Wiki 재구현 금지",
+            "13. Daemon lifecycle drift",
+            "14. Codex vs Claude Code hook rendering drift",
+            "15. IssueOps worktree edits must be hook-guarded",
+            "16. IssueOps decision replies must have numbered choices",
+            "17. MCP tool-use risks",
+            "18. Audit harness flags must match the CLI contract",
+            "19. Verify git identity before contributor-sensitive pushes"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
           "rel_path": ".agent-harness/CAUTIONS.md",
@@ -1013,7 +1015,52 @@
       "version": "0.1.0"
     },
     "issueops_feedback_add": {
-      "branch": "feature/contract",
+      "branch": "1-contract-branch",
+      "branch_prepare": {
+        "base_branch": "main",
+        "branch": "1-contract-branch",
+        "created_at": "$TIMESTAMP",
+        "issue_url": "https://gitlab.example/group/project/-/issues/1",
+        "link_verified": false,
+        "provider": "gitlab",
+        "steps": [
+          {
+            "description": "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
+            "order": 1,
+            "strategy": "mcp",
+            "tool": "mcp__glab.glab_api",
+            "tool_arguments": {
+              "endpoint": "projects/:fullpath/repository/branches",
+              "field": [
+                "branch=1-contract-branch",
+                "ref=main"
+              ],
+              "method": "POST"
+            }
+          },
+          {
+            "command": [
+              "glab",
+              "api",
+              "projects/:fullpath/repository/branches",
+              "-X",
+              "POST",
+              "-f",
+              "branch=1-contract-branch",
+              "-f",
+              "ref=main"
+            ],
+            "description": "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
+            "order": 2,
+            "strategy": "fallback_api"
+          },
+          {
+            "description": "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
+            "order": 3,
+            "strategy": "fail"
+          }
+        ]
+      },
       "created_at": "$TIMESTAMP",
       "feedback": [
         {
@@ -1041,7 +1088,7 @@
       "worktree_path": "/tmp/agent-harness-contract.worktree"
     },
     "issueops_link_child": {
-      "branch": "feature/contract",
+      "branch": "1-contract-branch",
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
       "issue_links": [
@@ -1062,7 +1109,7 @@
       "worktree_path": "/tmp/agent-harness-contract.worktree"
     },
     "issueops_link_issue": {
-      "branch": "feature/contract",
+      "branch": "1-contract-branch",
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
@@ -1072,7 +1119,7 @@
       "updated_at": "$TIMESTAMP"
     },
     "issueops_link_plan": {
-      "branch": "feature/contract",
+      "branch": "1-contract-branch",
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
@@ -1083,7 +1130,7 @@
       "updated_at": "$TIMESTAMP"
     },
     "issueops_link_worktree": {
-      "branch": "feature/contract",
+      "branch": "1-contract-branch",
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
@@ -1095,7 +1142,7 @@
       "worktree_path": "/tmp/agent-harness-contract.worktree"
     },
     "issueops_pr_readiness": {
-      "branch": "feature/contract",
+      "branch": "1-contract-branch",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "missing": [],
       "ok": true,
@@ -1103,8 +1150,74 @@
       "ready": true,
       "worktree_path": "/tmp/agent-harness-contract.worktree"
     },
+    "issueops_prepare_branch": {
+      "branch": "1-contract-branch",
+      "branch_prepare": {
+        "base_branch": "main",
+        "branch": "1-contract-branch",
+        "created_at": "$TIMESTAMP",
+        "issue_url": "https://gitlab.example/group/project/-/issues/1",
+        "link_verified": false,
+        "provider": "gitlab",
+        "steps": [
+          {
+            "description": "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
+            "order": 1,
+            "strategy": "mcp",
+            "tool": "mcp__glab.glab_api",
+            "tool_arguments": {
+              "endpoint": "projects/:fullpath/repository/branches",
+              "field": [
+                "branch=1-contract-branch",
+                "ref=main"
+              ],
+              "method": "POST"
+            }
+          },
+          {
+            "command": [
+              "glab",
+              "api",
+              "projects/:fullpath/repository/branches",
+              "-X",
+              "POST",
+              "-f",
+              "branch=1-contract-branch",
+              "-f",
+              "ref=main"
+            ],
+            "description": "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
+            "order": 2,
+            "strategy": "fallback_api"
+          },
+          {
+            "description": "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
+            "order": 3,
+            "strategy": "fail"
+          }
+        ]
+      },
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "issue_links": [
+        {
+          "created_at": "$TIMESTAMP",
+          "provider": "gitlab",
+          "title": "contract child",
+          "type": "child",
+          "url": "https://gitlab.example/group/project/-/issues/2"
+        }
+      ],
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "implement",
+      "plan_path": "docs/superpowers/plans/contract.md",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP",
+      "worktree_path": "/tmp/agent-harness-contract.worktree"
+    },
     "issueops_start": {
-      "branch": "feature/contract",
+      "branch": "1-contract-branch",
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
       "ok": true,
@@ -3174,7 +3287,7 @@
                 "name": "version"
               }
             ],
-            "hash": "9beae6f6f2d3ac5e295837c5b31abb52005ce82d30b8a4a05f50aa99774b0135",
+            "hash": "8c12c3380551dceb3a21cbaf8af6a722ae6ab4cd74986527eff51e50943eaa2e",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3195,6 +3308,7 @@
               "issueops_link_plan",
               "issueops_link_worktree",
               "issueops_pr_readiness",
+              "issueops_prepare_branch",
               "issueops_remote_score",
               "issueops_set_phase",
               "issueops_start",
@@ -3331,6 +3445,7 @@
                 "phase",
                 "issue_url",
                 "plan_path",
+                "branch_prepare",
                 "feedback",
                 "created_at",
                 "updated_at"
@@ -3458,7 +3573,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 19659,
+                "bytes": 19919,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -3480,7 +3595,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 19313,
+                "bytes": 20247,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3490,18 +3605,18 @@
                   "5. Worker lifecycle 문제",
                   "6. State 위치 혼동",
                   "7. MCP schema drift",
-                  "8. Shared skill drift",
-                  "9. 자기 검증/자가 증강 drift",
-                  "10. 과도한 초기 추상화",
-                  "11. LLM Wiki 재구현 금지",
-                  "12. Daemon lifecycle drift",
-                  "13. Codex vs Claude Code hook rendering drift",
-                  "14. IssueOps worktree edits must be hook-guarded",
-                  "15. IssueOps decision replies must have numbered choices",
-                  "16. MCP tool-use risks",
-                  "17. Audit harness flags must match the CLI contract",
-                  "18. Verify git identity before contributor-sensitive pushes",
-                  "19. Stop hook output: `continue:false` hard-stops; use `decision:block` + `reason` to continue in-turn"
+                  "8. IssueOps local-only branch 착각",
+                  "9. Shared skill drift",
+                  "10. 자기 검증/자가 증강 drift",
+                  "11. 과도한 초기 추상화",
+                  "12. LLM Wiki 재구현 금지",
+                  "13. Daemon lifecycle drift",
+                  "14. Codex vs Claude Code hook rendering drift",
+                  "15. IssueOps worktree edits must be hook-guarded",
+                  "16. IssueOps decision replies must have numbered choices",
+                  "17. MCP tool-use risks",
+                  "18. Audit harness flags must match the CLI contract",
+                  "19. Verify git identity before contributor-sensitive pushes"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
                 "rel_path": ".agent-harness/CAUTIONS.md",
@@ -3990,6 +4105,41 @@
         {
           "json": {
             "branch": "feature/mcp-contract",
+            "branch_prepare": {
+              "base_branch": "main",
+              "branch": "feature/mcp-contract",
+              "created_at": "$TIMESTAMP",
+              "issue_url": "https://github.com/example/repo/issues/2",
+              "link_verified": false,
+              "provider": "github",
+              "steps": [
+                {
+                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
+                  "order": 1,
+                  "strategy": "mcp_unavailable"
+                },
+                {
+                  "command": [
+                    "gh",
+                    "issue",
+                    "develop",
+                    "https://github.com/example/repo/issues/2",
+                    "--base",
+                    "main",
+                    "--name",
+                    "feature/mcp-contract"
+                  ],
+                  "description": "Create a GitHub linked development branch through gh issue develop.",
+                  "order": 2,
+                  "strategy": "fallback_api"
+                },
+                {
+                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+                  "order": 3,
+                  "strategy": "fail"
+                }
+              ]
+            },
             "created_at": "$TIMESTAMP",
             "feedback": [
               {
@@ -4112,6 +4262,69 @@
             "ok": true,
             "plan_path": "docs/superpowers/plans/mcp-contract.md",
             "ready": true,
+            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_prepare_branch": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "branch_prepare": {
+              "base_branch": "main",
+              "branch": "feature/mcp-contract",
+              "created_at": "$TIMESTAMP",
+              "issue_url": "https://github.com/example/repo/issues/2",
+              "link_verified": false,
+              "provider": "github",
+              "steps": [
+                {
+                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
+                  "order": 1,
+                  "strategy": "mcp_unavailable"
+                },
+                {
+                  "command": [
+                    "gh",
+                    "issue",
+                    "develop",
+                    "https://github.com/example/repo/issues/2",
+                    "--base",
+                    "main",
+                    "--name",
+                    "feature/mcp-contract"
+                  ],
+                  "description": "Create a GitHub linked development branch through gh issue develop.",
+                  "order": 2,
+                  "strategy": "fallback_api"
+                },
+                {
+                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+                  "order": 3,
+                  "strategy": "fail"
+                }
+              ]
+            },
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "issue_links": [
+              {
+                "created_at": "$TIMESTAMP",
+                "provider": "github",
+                "title": "MCP contract child",
+                "type": "child",
+                "url": "https://github.com/example/repo/issues/3"
+              }
+            ],
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "implement",
+            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP",
             "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
           },
           "type": "text"

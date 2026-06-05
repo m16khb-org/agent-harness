@@ -109,7 +109,7 @@ func compatibilityContract() CompatibilityContract {
 			"guard_check":                {"ok", "repo_root", "mode", "checked_files", "findings", "summary"},
 			"trace_analysis":             {"ok", "kind", "input", "input_source", "trace_types", "finding_count", "findings", "warnings"},
 			"worker_job":                 {"ok", "id", "kind", "status", "created_at", "updated_at", "no_shell"},
-			"issueops_record":            {"ok", "id", "repo", "branch", "phase", "issue_url", "plan_path", "feedback", "created_at", "updated_at"},
+			"issueops_record":            {"ok", "id", "repo", "branch", "phase", "issue_url", "plan_path", "branch_prepare", "feedback", "created_at", "updated_at"},
 			"issueops_pr_readiness":      {"ok", "ready", "missing", "issue_url", "plan_path", "branch"},
 			"issueops_remote_score":      {"ok", "provider", "threshold", "selected_related_issues", "rejected_related_issues", "selected_labels", "rejected_labels", "apply_instructions", "warnings"},
 			"issueops_benchmark_run":     {"ok", "id", "fixture_count", "average_score", "minimum_score", "critical_failure_count", "scores"},

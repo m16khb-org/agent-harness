@@ -75,6 +75,8 @@ func runIssueOps(args []string) error {
 		}
 		record, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), *id, *childURL, *title)
 		return printIssueOpsResult(record, *jsonOut, err)
+	case "branch":
+		return runIssueOpsBranch(args[1:])
 	case "phase":
 		fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
@@ -118,6 +120,35 @@ func runIssueOps(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops subcommand %q", args[0])
 	}
+}
+
+func runIssueOpsBranch(args []string) error {
+	if len(args) == 0 || args[0] != "prepare" {
+		return fmt.Errorf("unknown issueops branch subcommand")
+	}
+	fs := flag.NewFlagSet("issueops branch prepare", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	provider := fs.String("provider", "", "remote provider: github or gitlab")
+	issueURL := fs.String("issue-url", "", "GitHub/GitLab issue URL")
+	branch := fs.String("branch", "", "provider-linked branch name")
+	baseBranch := fs.String("base-branch", "", "remote base branch or ref")
+	baseSHA := fs.String("base-sha", "", "optional resolved base commit SHA")
+	remoteBranchURL := fs.String("remote-branch-url", "", "optional provider branch URL after creation")
+	linkVerified := fs.Bool("link-verified", false, "record that the provider issue shows the branch link")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
+	}
+	record, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), *id, core.IssueOpsBranchPrepareRequest{
+		Provider:        *provider,
+		IssueURL:        *issueURL,
+		Branch:          *branch,
+		BaseBranch:      *baseBranch,
+		BaseSHA:         *baseSHA,
+		RemoteBranchURL: *remoteBranchURL,
+		LinkVerified:    *linkVerified,
+	})
+	return printIssueOpsResult(record, *jsonOut, err)
 }
 
 func runIssueOpsRemote(args []string) error {

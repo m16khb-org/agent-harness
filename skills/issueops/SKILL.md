@@ -106,7 +106,7 @@ External LLM judges are read-only evaluators. Their prompts must forbid workspac
 Start or resume state after deriving the issue branch slug. The IssueOps branch must be the issue branch, not the source checkout's current branch:
 
 ```bash
-branch_slug="feature/3-webhook-delivery"
+branch_slug="3-webhook-delivery"
 agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
 agent-harness issueops status --id "$ISSUEOPS_ID" --json
 ```
@@ -115,11 +115,14 @@ Remote issue and plan linkage:
 
 ```bash
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
+agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" --issue-url "$ISSUE_URL" --branch "$branch_slug" --base-branch "$BASE_BRANCH" --link-verified --json
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
 agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
 agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$CHILD_ISSUE_URL" --title "$CHILD_TITLE" --json
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 ```
+
+`branch prepare` records the required provider-linked branch contract before local worktree creation: use the provider MCP first, use the provider API/CLI fallback second, and fail closed if both cannot create a branch that the issue shows as linked. For GitLab, branch names must start with the issue or task number followed by a hyphen, for example `123-fix-login`; a local-only branch such as `feature/123-fix-login` is not equivalent to GitLab's issue branch creation.
 
 `link-child` records a provider-native child work item after it exists remotely. On GitHub that child should be a sub-issue; on GitLab it should be a child item/task. The command does not create remote issues and must not be used as a substitute for the provider-specific hierarchy rules.
 

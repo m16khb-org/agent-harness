@@ -72,7 +72,7 @@ func TestResponseContractsGolden(t *testing.T) {
 		return runState([]string{"list", "--json"})
 	})
 	issueopsStartStdout := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", workspaceDir, "--branch", "feature/contract", "--json"})
+		return runIssueOps([]string{"start", "--repo", workspaceDir, "--branch", "1-contract-branch", "--json"})
 	})
 	var issueopsStartRaw map[string]any
 	if err := json.Unmarshal([]byte(issueopsStartStdout), &issueopsStartRaw); err != nil {
@@ -94,6 +94,9 @@ func TestResponseContractsGolden(t *testing.T) {
 	})
 	cliSnapshot["issueops_link_child"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-child", "--id", issueopsID, "--child-url", "https://gitlab.example/group/project/-/issues/2", "--title", "contract child", "--json"})
+	})
+	cliSnapshot["issueops_prepare_branch"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"branch", "prepare", "--id", issueopsID, "--provider", "gitlab", "--issue-url", "https://gitlab.example/group/project/-/issues/1", "--branch", "1-contract-branch", "--base-branch", "main", "--json"})
 	})
 	cliSnapshot["issueops_feedback_add"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"feedback", "add", "--id", issueopsID, "--source", "user", "--body", "tighten contract", "--json"})
@@ -242,6 +245,13 @@ func TestResponseContractsGolden(t *testing.T) {
 		"id":        issueopsMCPID,
 		"child_url": "https://github.com/example/repo/issues/3",
 		"title":     "MCP contract child",
+	})
+	mcpSnapshot["issueops_prepare_branch"] = runMCPToolContract(t, replacements, "issueops_prepare_branch", map[string]any{
+		"id":          issueopsMCPID,
+		"provider":    "github",
+		"issue_url":   "https://github.com/example/repo/issues/2",
+		"branch":      "feature/mcp-contract",
+		"base_branch": "main",
 	})
 	mcpSnapshot["issueops_add_feedback"] = runMCPToolContract(t, replacements, "issueops_add_feedback", map[string]any{
 		"id":     issueopsMCPID,

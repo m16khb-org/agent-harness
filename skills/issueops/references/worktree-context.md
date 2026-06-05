@@ -10,15 +10,24 @@ After the issue is created or linked and before implementation, derive the worki
 - `release/` only for release preparation.
 - `chore/` for tooling, documentation, maintenance, or workflow-only changes.
 
-The branch slug must include the issue number when available and a short kebab-case issue title, for example `feature/3-webhook-delivery` or `chore/12-tighten-issueops-worktree-contract`.
+The branch slug must include the issue number when available and a short kebab-case issue title, for example `feature/3-webhook-delivery` or `chore/12-tighten-issueops-worktree-contract`. For GitLab, the branch name must start with the issue or task number followed by a hyphen, such as `3-webhook-delivery`; GitLab uses that prefix to connect the branch to the issue or task. If the local naming convention wants `feature/`, keep that as a worktree path label, not as the provider branch name.
+
+Create the provider-linked branch before creating a local worktree. The IssueOps branch preparation contract is MCP-first, provider API fallback, then fail closed:
+
+- GitLab: use MCP `mcp__glab.glab_api` to create `POST projects/:fullpath/repository/branches` with `branch=<issue-number>-<slug>` and `ref=<base-branch>`. If MCP is unavailable or fails, use `glab api projects/:fullpath/repository/branches -X POST -f branch=<branch> -f ref=<base-branch>`. If both fail, stop.
+- GitHub: use a GitHub MCP linked-branch tool only when one is exposed. If no such MCP tool is exposed, use `gh issue develop "$ISSUE_URL" --base "$BASE_BRANCH" --name "$branch_slug"`. If linked branch creation fails, stop.
+- After creation, verify through the provider UI/API/CLI that the issue lists the branch before creating the local worktree.
 
 Create an isolated git worktree before implementation, TDD, subagent work, verification, commit, or PR/MR drafting:
 
 ```bash
-branch_slug="feature/3-webhook-delivery"
+branch_slug="3-webhook-delivery"
+base_branch="main"
 agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
+agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider gitlab --issue-url "$ISSUE_URL" --branch "$branch_slug" --base-branch "$base_branch" --link-verified --json
 worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
-git worktree add -b "$branch_slug" "$worktree_path"
+git fetch origin "$branch_slug"
+git worktree add --track -b "$branch_slug" "$worktree_path" "origin/$branch_slug"
 agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$(cd "$worktree_path" && pwd)" --json
 ```
 

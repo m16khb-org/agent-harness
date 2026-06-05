@@ -40,6 +40,34 @@ func TestMCPIssueOpsLinkChild(t *testing.T) {
 	}
 }
 
+func TestMCPIssueOpsPrepareBranch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "123-provider-linked-branch"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	record := callMCPToolForIssueOpsTest(t, "issueops_prepare_branch", map[string]any{
+		"id":          id,
+		"provider":    "gitlab",
+		"issue_url":   "https://gitlab.example/group/project/-/issues/123",
+		"branch":      "123-provider-linked-branch",
+		"base_branch": "main",
+	})
+	prepare, ok := record["branch_prepare"].(map[string]any)
+	if !ok || prepare["provider"] != "gitlab" || prepare["branch"] != "123-provider-linked-branch" {
+		t.Fatalf("unexpected branch prepare payload: %#v", record)
+	}
+	steps, ok := prepare["steps"].([]any)
+	if !ok || len(steps) != 3 {
+		t.Fatalf("expected provider fallback steps: %#v", prepare)
+	}
+	first, ok := steps[0].(map[string]any)
+	if !ok || first["strategy"] != "mcp" || first["tool"] != "mcp__glab.glab_api" {
+		t.Fatalf("first branch prepare step must use GitLab MCP: %#v", steps[0])
+	}
+}
+
 func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) map[string]any {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})

@@ -9,7 +9,7 @@ import (
 func TestRunIssueOpsLifecycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	start := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", "/repo/example", "--branch", "feature/demo", "--json"})
+		return runIssueOps([]string{"start", "--repo", "/repo/example", "--branch", "feature/provider-linked-branch", "--json"})
 	})
 	var record map[string]any
 	if err := json.Unmarshal([]byte(start), &record); err != nil {
@@ -51,6 +51,22 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 	if worktreeRecord["worktree_path"] != "/repo/example.worktrees/feature-demo" {
 		t.Fatalf("worktree link should persist exact path: %#v", worktreeRecord)
+	}
+
+	branch := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/provider-linked-branch", "--base-branch", "main", "--json"})
+	})
+	var branchRecord map[string]any
+	if err := json.Unmarshal([]byte(branch), &branchRecord); err != nil {
+		t.Fatalf("branch prepare should return JSON: %v\n%s", err, branch)
+	}
+	prepare, ok := branchRecord["branch_prepare"].(map[string]any)
+	if !ok || prepare["provider"] != "github" || prepare["branch"] != "feature/provider-linked-branch" {
+		t.Fatalf("branch prepare should persist provider-linked contract: %#v", branchRecord)
+	}
+	steps, ok := prepare["steps"].([]any)
+	if !ok || len(steps) != 3 {
+		t.Fatalf("branch prepare should include fallback steps: %#v", prepare)
 	}
 
 	child := captureStdoutForContract(t, func() error {

@@ -66,19 +66,51 @@ type IssueOpsIssueLink struct {
 	CreatedAt string `json:"created_at"`
 }
 
+type IssueOpsBranchPrepareStep struct {
+	Order         int            `json:"order"`
+	Strategy      string         `json:"strategy"`
+	Tool          string         `json:"tool,omitempty"`
+	ToolArguments map[string]any `json:"tool_arguments,omitempty"`
+	Command       []string       `json:"command,omitempty"`
+	Description   string         `json:"description"`
+}
+
+type IssueOpsBranchPrepare struct {
+	Provider        string                      `json:"provider"`
+	IssueURL        string                      `json:"issue_url"`
+	Branch          string                      `json:"branch"`
+	BaseBranch      string                      `json:"base_branch"`
+	BaseSHA         string                      `json:"base_sha,omitempty"`
+	RemoteBranchURL string                      `json:"remote_branch_url,omitempty"`
+	LinkVerified    bool                        `json:"link_verified"`
+	Steps           []IssueOpsBranchPrepareStep `json:"steps"`
+	CreatedAt       string                      `json:"created_at"`
+}
+
+type IssueOpsBranchPrepareRequest struct {
+	Provider        string `json:"provider"`
+	IssueURL        string `json:"issue_url"`
+	Branch          string `json:"branch"`
+	BaseBranch      string `json:"base_branch"`
+	BaseSHA         string `json:"base_sha,omitempty"`
+	RemoteBranchURL string `json:"remote_branch_url,omitempty"`
+	LinkVerified    bool   `json:"link_verified,omitempty"`
+}
+
 type IssueOpsRecord struct {
-	OK           bool                   `json:"ok"`
-	ID           string                 `json:"id"`
-	Repo         string                 `json:"repo"`
-	Branch       string                 `json:"branch,omitempty"`
-	Phase        IssueOpsPhase          `json:"phase"`
-	IssueURL     string                 `json:"issue_url,omitempty"`
-	PlanPath     string                 `json:"plan_path,omitempty"`
-	WorktreePath string                 `json:"worktree_path,omitempty"`
-	IssueLinks   []IssueOpsIssueLink    `json:"issue_links,omitempty"`
-	Feedback     []IssueOpsFeedbackItem `json:"feedback,omitempty"`
-	CreatedAt    string                 `json:"created_at"`
-	UpdatedAt    string                 `json:"updated_at"`
+	OK            bool                   `json:"ok"`
+	ID            string                 `json:"id"`
+	Repo          string                 `json:"repo"`
+	Branch        string                 `json:"branch,omitempty"`
+	Phase         IssueOpsPhase          `json:"phase"`
+	IssueURL      string                 `json:"issue_url,omitempty"`
+	PlanPath      string                 `json:"plan_path,omitempty"`
+	WorktreePath  string                 `json:"worktree_path,omitempty"`
+	IssueLinks    []IssueOpsIssueLink    `json:"issue_links,omitempty"`
+	BranchPrepare *IssueOpsBranchPrepare `json:"branch_prepare,omitempty"`
+	Feedback      []IssueOpsFeedbackItem `json:"feedback,omitempty"`
+	CreatedAt     string                 `json:"created_at"`
+	UpdatedAt     string                 `json:"updated_at"`
 }
 
 type IssueOpsReadiness struct {
@@ -212,6 +244,68 @@ func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, e
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
+func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
+	provider := strings.ToLower(strings.TrimSpace(req.Provider))
+	issueURL := strings.TrimSpace(req.IssueURL)
+	if issueURL == "" {
+		record, err := ReadIssueOps(stateRoot, id)
+		if err != nil {
+			return record, err
+		}
+		issueURL = strings.TrimSpace(record.IssueURL)
+	}
+	if err := validateIssueURL(issueURL); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
+	if provider == "" {
+		provider = issueOpsProviderFromURL(issueURL)
+	}
+	if provider != "github" && provider != "gitlab" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("provider must be github or gitlab")
+	}
+	branch := strings.TrimSpace(req.Branch)
+	if branch == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("branch is required")
+	}
+	baseBranch := strings.TrimSpace(req.BaseBranch)
+	if baseBranch == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("base_branch is required")
+	}
+	if provider == "gitlab" {
+		if issueNumber := issueOpsIssueNumber(issueURL); issueNumber != "" && !strings.HasPrefix(branch, issueNumber+"-") {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("gitlab branch for issue %s must start with %s-", issueNumber, issueNumber)
+		}
+	}
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return record, err
+	}
+	if strings.TrimSpace(record.Branch) == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("issueops record must be started with branch before branch prepare")
+	}
+	if record.Branch != branch {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("branch does not match IssueOps record branch")
+	}
+	if strings.TrimSpace(record.IssueURL) == "" {
+		record.IssueURL = issueURL
+	} else if record.IssueURL != issueURL {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("issue_url does not match linked IssueOps issue")
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	record.BranchPrepare = &IssueOpsBranchPrepare{
+		Provider:        provider,
+		IssueURL:        issueURL,
+		Branch:          branch,
+		BaseBranch:      baseBranch,
+		BaseSHA:         strings.TrimSpace(req.BaseSHA),
+		RemoteBranchURL: strings.TrimSpace(req.RemoteBranchURL),
+		LinkVerified:    req.LinkVerified,
+		Steps:           issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch),
+		CreatedAt:       now,
+	}
+	return touchAndWriteIssueOps(stateRoot, record)
+}
+
 func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
 	source = strings.TrimSpace(source)
 	body = strings.TrimSpace(body)
@@ -231,6 +325,57 @@ func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (Is
 	record.Phase = IssueOpsPhaseFeedback
 	record.UpdatedAt = now
 	return writeIssueOps(stateRoot, record)
+}
+
+func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch string) []IssueOpsBranchPrepareStep {
+	switch provider {
+	case "gitlab":
+		return []IssueOpsBranchPrepareStep{
+			{
+				Order:    1,
+				Strategy: "mcp",
+				Tool:     "mcp__glab.glab_api",
+				ToolArguments: map[string]any{
+					"endpoint": "projects/:fullpath/repository/branches",
+					"method":   "POST",
+					"field":    []string{"branch=" + branch, "ref=" + baseBranch},
+				},
+				Description: "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
+			},
+			{
+				Order:       2,
+				Strategy:    "fallback_api",
+				Command:     []string{"glab", "api", "projects/:fullpath/repository/branches", "-X", "POST", "-f", "branch=" + branch, "-f", "ref=" + baseBranch},
+				Description: "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
+			},
+			{
+				Order:       3,
+				Strategy:    "fail",
+				Description: "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
+			},
+		}
+	case "github":
+		return []IssueOpsBranchPrepareStep{
+			{
+				Order:       1,
+				Strategy:    "mcp_unavailable",
+				Description: "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
+			},
+			{
+				Order:       2,
+				Strategy:    "fallback_api",
+				Command:     []string{"gh", "issue", "develop", issueURL, "--base", baseBranch, "--name", branch},
+				Description: "Create a GitHub linked development branch through gh issue develop.",
+			},
+			{
+				Order:       3,
+				Strategy:    "fail",
+				Description: "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+			},
+		}
+	default:
+		return nil
+	}
 }
 
 // AdvanceIssueOpsPhase moves an IssueOps loop to an explicitly named phase. The
@@ -517,6 +662,26 @@ func issueOpsProviderFromURL(issueURL string) string {
 	}
 	if strings.Contains(host, "gitlab") || strings.Contains(path, "/-/issues/") {
 		return "gitlab"
+	}
+	return ""
+}
+
+func issueOpsIssueNumber(issueURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(issueURL))
+	if err != nil {
+		return ""
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	for i, part := range parts {
+		if part == "issues" && i+1 < len(parts) {
+			number := parts[i+1]
+			for _, r := range number {
+				if r < '0' || r > '9' {
+					return ""
+				}
+			}
+			return number
+		}
 	}
 	return ""
 }

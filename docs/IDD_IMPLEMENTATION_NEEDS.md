@@ -36,11 +36,11 @@ IDD should make these records durable and inspectable:
 | Area | Current state | Evidence |
 | --- | --- | --- |
 | Advisory workflow | Present. The `issueops` skill describes problem intake, issue contract, planning, TDD/subagent implementation, feedback, and PR/MR drafting. | `skills/issueops/SKILL.md` |
-| Durable cycle state | Present but still limited. State stores `repo`, `branch`, `phase`, `issue_url`, `plan_path`, `worktree_path`, child issue links, feedback items, and timestamps. | `internal/core/issueops.go` |
-| CLI state commands | Present in current source. Commands include `start`, `status`, `link-issue`, `link-plan`, `link-worktree`, `link-child`, `feedback add`, `pr-readiness`, and benchmark commands. | `cmd/harness/issueops.go`, `internal/adapter/cli/usage.go` |
-| MCP tools | Partial. Tests cover MCP start/status and child linking, and architecture docs describe matching IssueOps MCP tools. | `cmd/harness/issueops_mcp_test.go`, `.agent-harness/ARCHITECTURE.md` |
+| Durable cycle state | Present but still limited. State stores `repo`, `branch`, `phase`, `issue_url`, `plan_path`, `worktree_path`, child issue links, provider branch preparation, feedback items, and timestamps. | `internal/core/issueops.go` |
+| CLI state commands | Present in current source. Commands include `start`, `status`, `link-issue`, `link-plan`, `link-worktree`, `link-child`, `branch prepare`, `feedback add`, `pr-readiness`, and benchmark commands. | `cmd/harness/issueops.go`, `internal/adapter/cli/usage.go` |
+| MCP tools | Partial. Tests cover MCP start/status, child linking, and provider branch preparation; architecture docs describe matching IssueOps MCP tools. | `cmd/harness/issueops_mcp_test.go`, `.agent-harness/ARCHITECTURE.md` |
 | Readiness check | Present but too shallow for IDD. It only requires `issue_url` and `plan_path`. | `internal/core/issueops.go` |
-| Worktree expectations | Present as advisory/benchmark evidence, not as executable git orchestration. | `skills/issueops/SKILL.md`, `internal/core/issueops_benchmark.go` |
+| Worktree expectations | Present as advisory/benchmark evidence, not as executable git orchestration. Branch preparation now records the required provider-linked branch order before local worktree creation. | `skills/issueops/SKILL.md`, `internal/core/issueops_benchmark.go`, `internal/core/issueops.go` |
 | Quality benchmark | Present. Deterministic scoring covers branch/worktree gate quality, isolation, cleanup, TDD, subagent orchestration, and PR/MR quality. | `internal/core/issueops_benchmark.go` |
 | Provider writes | Intentionally absent. Hooks and core do not create remote issues or PR/MRs. | `skills/issueops/SKILL.md`, docs architecture |
 

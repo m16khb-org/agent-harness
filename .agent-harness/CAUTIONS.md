@@ -80,13 +80,25 @@ persistent worker는 편하지만 stale lock, orphan process, socket 권한, 오
 CLI와 MCP가 서로 다른 응답 의미를 갖기 시작하면 host별 동작이 갈라진다.
 
 주의:
+- 새 CLI state command를 추가하면 MCP tool, response contract golden, usage golden을 함께 갱신한다.
+- MCP tool이 직접 외부 provider를 호출하지 못하는 경우에도 agent-facing contract에 호출 순서와 실패 조건을 명시한다.
 - CLI JSON과 MCP response는 같은 core DTO를 공유한다.
 - schema 변경은 golden test와 migration note를 남긴다.
 - tool 이름과 field 이름은 안정적으로 유지한다.
 
 ---
 
-## 8. Shared skill drift
+## 8. IssueOps local-only branch 착각
+
+IssueOps 이슈 브랜치를 `git worktree add -b`로 바로 만들면 GitHub/GitLab 이슈 화면에 branch 생성 기록이 남지 않는다.
+
+주의:
+- 이슈 기반 worktree를 만들기 전에 provider-linked branch를 먼저 생성한다.
+- GitLab은 branch name이 issue/task number와 hyphen으로 시작해야 이슈/태스크와 연결된다. 예: `123-fix-login`.
+- GitHub는 linked development branch 생성을 위해 `gh issue develop` 또는 노출된 GitHub MCP linked-branch tool을 사용한다.
+- IssueOps branch prepare contract는 MCP 먼저, provider API/CLI fallback, 둘 다 실패하면 중단 순서다.
+
+## 9. Shared skill drift
 
 Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용이 갈라진다.
 
@@ -98,7 +110,7 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 ---
 
-## 9. 자기 검증/자가 증강 drift
+## 10. 자기 검증/자가 증강 drift
 
 자기 검증 루프가 실제 native integration과 QA gate를 검증하지 않으면 문서만 통과하는 가짜 안정성이 생긴다. 자가 증강 루프가 실제 diff를 만들지 않으면 단순 분석 루프로 퇴화한다.
 
@@ -109,7 +121,7 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 ---
 
-## 10. 과도한 초기 추상화
+## 11. 과도한 초기 추상화
 
 처음부터 remote server, distributed queue, plugin marketplace packaging을 만들면 개인 하네스 MVP가 늦어진다.
 
@@ -119,7 +131,7 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 ---
 
-## 11. LLM Wiki 재구현 금지
+## 12. LLM Wiki 재구현 금지
 
 `agent-harness`는 llm-wiki vault, 검색, capture, SessionStart 주입을 직접 구현하지 않는다. LLM Wiki 기능이 필요하면 upstream `nvk/llm-wiki` plugin/portable AGENTS.md를 설치해 사용한다. 하네스 MCP/CLI에는 llm-wiki 전용 tool/resource를 다시 추가하지 않는다.
 
@@ -131,7 +143,7 @@ draft-wiki는 이 예외가 아니라 별도 staging area다. `.agent-harness/dr
 
 draft-wiki queue는 hook 휴리스틱이 자동 생성하지 않는다. UserPromptSubmit은 메인 에이전트에게 장기 재사용 가치 판단 책임과 명시 queue 명령만 알려주고, 메인 에이전트가 의미 있는 후보라고 판단한 경우에만 `agent-harness project draft-wiki queue --stdin`(heredoc 권장) 또는 `--input`으로 적재한다. `agent-harness worker draft-wiki`가 나중에 `agy -p`를 argv로 호출해 draft를 쓴다. hook stdout에는 host-compatible no-op shape를 유지하고, queue/draft 생성 여부는 명시 queue command, queue file, draft file, worker result로 검증한다.
 
-## 12. Daemon lifecycle drift
+## 13. Daemon lifecycle drift
 
 `agent-harness mcp`가 daemon을 자동 시작하므로 오래된 binary가 이미 떠 있으면 새 코드 검증과 실제 MCP 동작이 갈라질 수 있다. `agent-harness update`와 `agent-harness bootstrap`은 실행 중인 daemon을 post-install 단계에서 재시작하지만, 수동 `go build`나 `install-native`만 실행한 경우에는 daemon이 그대로 남을 수 있다.
 
@@ -140,7 +152,7 @@ draft-wiki queue는 hook 휴리스틱이 자동 생성하지 않는다. UserProm
 - 테스트는 `HARNESS_DAEMON_DIR=$(mktemp -d)/daemon`으로 실제 user daemon과 분리한다.
 - daemon socket/pid/log는 user state dir에 두고 repo나 wiki vault에 쓰지 않는다.
 
-## 13. Codex vs Claude Code hook rendering drift
+## 14. Codex vs Claude Code hook rendering drift
 
 Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not render it the same way.
 
@@ -151,7 +163,7 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - For Codex, keep the project-doc catalog in `additionalContext` because the agent needs it, but avoid route/action/profile/pending-upkeep status prose there.
 - Keep project-doc frontmatter descriptions concise English metadata; `project bootstrap` and `project bootstrap --sync` use this canonical metadata, so verbose descriptions multiply across every target repo.
 
-## 14. IssueOps worktree edits must be hook-guarded
+## 15. IssueOps worktree edits must be hook-guarded
 
 IssueOps worktree isolation cannot rely on the model remembering `pwd` or shell `workdir`. Some edit tools can apply relative paths from a different checkout than the shell command just verified.
 
@@ -164,7 +176,7 @@ IssueOps worktree isolation cannot rely on the model remembering `pwd` or shell 
 - If a source checkout receives implementation edits by mistake, stop, move only your own changes into the IssueOps worktree, and verify the source checkout is clean before continuing.
 - Late-promotion gap: when work starts under `/goal`, ralph, or ad-hoc edits and is only promoted to IssueOps at the issue/PR phase, the worktree-first trigger ("`$issueops` explicitly invoked") never fires, so implementation can land in the source checkout on a feature branch without an isolated worktree. Observed 2026-06-03: gap-closure work was committed directly on `feat/...` in the main checkout; main ref stayed clean but the isolation contract was skipped. Mitigation: when a cycle is promoted to IssueOps, either move remaining work into an isolated worktree or explicitly record the deviation. Implemented (issue #25): the `--enforce-worktree` PreToolUse guard judges by the current work's own cycle. IssueOps cycle ids are deterministic per (repo, branch) and `issueops start` resumes instead of duplicating, so cycles cannot accumulate as stale duplicates. The guard reads the current branch from `.git/HEAD` and loads only that branch's cycle (`ActiveIssueOpsCycleForBranch`). It only blocks mutating edits when that active code-editing phase cycle has a concrete `worktree_path`; an `implement`/`feedback`/`pr` cycle with no linked worktree is advisory state, not a satisfiable isolation target, and must not permanently lock the source checkout. Legacy timestamp-id records and other branches' cycles have different ids and are never read, so they cannot cause a false linked-worktree lock; marking the cycle `done` releases the source checkout.
 
-## 15. IssueOps decision replies must have numbered choices
+## 16. IssueOps decision replies must have numbered choices
 
 When the user must choose a route, cleanup action, feedback response, or next phase, free-form prose is too easy to miss. Prompt discipline alone is insufficient.
 
@@ -174,14 +186,14 @@ When the user must choose a route, cleanup action, feedback response, or next ph
 - Keep the three choices concrete: recommended proceed, narrower/lower-risk alternative, and pause/defer.
 - If the host does not expose the final assistant message to Stop hook input, the guard must no-op and record diagnostics rather than guessing.
 
-## 16. MCP tool-use risks
+## 17. MCP tool-use risks
 
 - Broad tool descriptions make agents over-call tools or pass wrong arguments.
 - Always injecting all project documents at session start wastes context and can hide task-specific evidence.
 - Writable tools need explicit write semantics; prefer dry-run or append-only behavior.
 - Tool output is evidence, not proof: verify file existence, warnings, and command/test results before claiming completion.
 
-## 17. Audit harness flags must match the CLI contract
+## 18. Audit harness flags must match the CLI contract
 
 A stability-audit failure is not automatically a harness defect; the audit framework itself can call the CLI with invalid flags.
 
@@ -190,7 +202,7 @@ A stability-audit failure is not automatically a harness defect; the audit frame
 - When an audit step fails suspiciously fast, reproduce the exact invocation directly and compare against the documented commands in `.agent-harness/OPERATIONS.md` / root `AGENTS.md` before concluding the harness is unstable.
 - Give the full 10-iteration self-verify a generous timeout (>=180s); the final LLM gate plus 10 seeded iterations exceed the quick-mode budget.
 
-## 18. Verify git identity before contributor-sensitive pushes
+## 19. Verify git identity before contributor-sensitive pushes
 
 GitHub contributor attribution follows commit author/committer email, not just the displayed author name.
 
@@ -200,7 +212,7 @@ GitHub contributor attribution follows commit author/committer email, not just t
 - If a tool may bypass repo-local config, set `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, and `GIT_COMMITTER_EMAIL` explicitly for the commit command.
 - After push, verify `git log --all --format='%an <%ae> %cn <%ce>' | rg 'bubbletap'` is empty and check GitHub contributors when attribution matters.
 
-## 19. Stop hook output: `continue:false` hard-stops; use `decision:block` + `reason` to continue in-turn
+## 20. Stop hook output: `continue:false` hard-stops; use `decision:block` + `reason` to continue in-turn
 
 A Stop hook that wants the agent to *recover and keep going* (for example, to present the missing numbered choices) must NOT set `continue:false`. Doing so halts the agent and surfaces the reason to the user, instead of letting the agent act on it in-turn.
 
