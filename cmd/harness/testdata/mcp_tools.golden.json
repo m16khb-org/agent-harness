@@ -816,6 +816,26 @@
     "name": "issueops_pr_readiness"
   },
   {
+    "description": "Report whether a merged IssueOps PR/MR is ready for local cleanup before deleting worktrees or branches.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "merged": {
+          "description": "Whether the remote PR/MR merge was verified before cleanup.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_cleanup_status"
+  },
+  {
     "description": "Deterministically score related issue and label candidates for a new IssueOps issue and select only those at/above the threshold. Read-only background_join gate; join before any remote artifact write.",
     "inputSchema": {
       "properties": {

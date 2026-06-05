@@ -96,6 +96,8 @@ func runIssueOps(args []string) error {
 		return printIssueOpsResult(record, *jsonOut, err)
 	case "feedback":
 		return runIssueOpsFeedback(args[1:])
+	case "cleanup":
+		return runIssueOpsCleanup(args[1:])
 	case "benchmark":
 		return runIssueOpsBenchmark(args[1:])
 	case "remote":
@@ -154,6 +156,7 @@ func issueOpsUsage() {
   agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] [--json]
   agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
+  agent-harness issueops cleanup status --id ID [--merged] [--json]
   agent-harness issueops remote score --input PATH [--judge none|agy] [--json]
   agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]
 `)
@@ -883,6 +886,43 @@ func runIssueOpsFeedback(args []string) error {
 		return printIssueOpsResult(record, *jsonOut, err)
 	default:
 		return fmt.Errorf("unknown issueops feedback subcommand")
+	}
+}
+
+func runIssueOpsCleanup(args []string) error {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]")
+		return nil
+	}
+	switch args[0] {
+	case "status":
+		fs := flag.NewFlagSet("issueops cleanup status", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		merged := fs.Bool("merged", false, "confirm the remote PR/MR was verified merged before cleanup")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		status, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), *id, core.IssueOpsCleanupStatusRequest{Merged: *merged})
+		if err != nil {
+			return err
+		}
+		if *jsonOut {
+			return printJSON(status)
+		}
+		fmt.Printf("ready: %v\n", status.Ready)
+		for _, missing := range status.Missing {
+			fmt.Printf("- missing: %s\n", missing)
+		}
+		if len(status.Choices) > 0 {
+			fmt.Println("선택지:")
+			for _, choice := range status.Choices {
+				fmt.Println(choice)
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown issueops cleanup subcommand")
 	}
 }
 

@@ -4955,6 +4955,14 @@ func mcpTools() []map[string]any {
 			}},
 		},
 		{
+			"name":        "issueops_cleanup_status",
+			"description": "Report whether a merged IssueOps PR/MR is ready for local cleanup before deleting worktrees or branches.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id":     map[string]any{"type": "string", "description": "IssueOps id."},
+				"merged": map[string]any{"type": "boolean", "description": "Whether the remote PR/MR merge was verified before cleanup."},
+			}},
+		},
+		{
 			"name":        "issueops_remote_score",
 			"description": "Deterministically score related issue and label candidates for a new IssueOps issue and select only those at/above the threshold. Read-only background_join gate; join before any remote artifact write.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"issue"}, "properties": map[string]any{
@@ -5392,6 +5400,14 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		} else {
 			payload = core.IssueOpsPRReadiness(record)
 		}
+	case "issueops_cleanup_status":
+		result, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), core.IssueOpsCleanupStatusRequest{
+			Merged: boolArg(call.Arguments, "merged"),
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps cleanup status failed", Data: err.Error()}
+		}
+		payload = result
 	case "daemon_status":
 		payload = daemonStatusForMCP()
 	case "commit_suggest":

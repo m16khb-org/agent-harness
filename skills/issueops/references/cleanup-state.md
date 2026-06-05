@@ -28,6 +28,12 @@ git -C "$WORKTREE_PATH" ls-remote --heads "$remote_name" "$HEAD_REF_NAME"
 
 For GitLab, use equivalent `glab mr view` or GitLab API fields for merged state and source branch, then run the same local worktree and remote branch checks.
 
+After provider merge evidence is confirmed, run the harness cleanup status check. It is read-only: it does not remove branches or worktrees. It blocks cleanup readiness when merge evidence is missing, the worktree is dirty, the worktree branch does not match the IssueOps branch, the remote artifact was not verified, or the remote source branch still exists.
+
+```bash
+agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
+```
+
 Present cleanup choices in `1.`, `2.`, `3.` form:
 
 ```text

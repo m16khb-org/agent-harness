@@ -135,6 +135,27 @@ func TestMCPIssueOpsVerifyRemoteArtifactRejectsBeforePR(t *testing.T) {
 	}
 }
 
+func TestMCPIssueOpsCleanupStatusReportsMissingEvidence(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	status := callMCPToolForIssueOpsTest(t, "issueops_cleanup_status", map[string]any{"id": id})
+	if status["ready"] == true {
+		t.Fatalf("cleanup status must not be ready without merge/worktree evidence: %#v", status)
+	}
+	missing, ok := status["missing"].([]any)
+	if !ok || len(missing) == 0 {
+		t.Fatalf("cleanup status should explain missing evidence: %#v", status)
+	}
+	choices, ok := status["choices"].([]any)
+	if !ok || len(choices) != 3 {
+		t.Fatalf("cleanup status should expose three cleanup choices: %#v", status)
+	}
+}
+
 func TestMCPIssueOpsRemoteScoreAcceptsCandidateAliases(t *testing.T) {
 	result := callMCPToolForIssueOpsTest(t, "issueops_remote_score", map[string]any{
 		"provider": "github",

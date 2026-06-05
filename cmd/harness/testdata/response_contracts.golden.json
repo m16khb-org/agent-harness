@@ -219,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "8c3ee06f37e1077bc6595138a992841715210f59b95a9904b6a04044f38f9f76",
+      "hash": "ff345abf0c430bb6d1b5e573065679626aefbd35983218f711d8ebc2f0ee5c52",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -235,6 +235,7 @@
         "docs_index",
         "harness_inspect",
         "issueops_add_feedback",
+        "issueops_cleanup_status",
         "issueops_link_child",
         "issueops_link_issue",
         "issueops_link_plan",
@@ -362,6 +363,18 @@
           "minimum_score",
           "critical_failure_count",
           "scores"
+        ],
+        "issueops_cleanup_status": [
+          "ok",
+          "ready",
+          "id",
+          "merged",
+          "missing",
+          "warnings",
+          "choices",
+          "worktree_path",
+          "branch",
+          "remote_artifact_url"
         ],
         "issueops_pr_readiness": [
           "ok",
@@ -3493,7 +3506,7 @@
                 "name": "version"
               }
             ],
-            "hash": "8c3ee06f37e1077bc6595138a992841715210f59b95a9904b6a04044f38f9f76",
+            "hash": "ff345abf0c430bb6d1b5e573065679626aefbd35983218f711d8ebc2f0ee5c52",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3509,6 +3522,7 @@
               "docs_index",
               "harness_inspect",
               "issueops_add_feedback",
+              "issueops_cleanup_status",
               "issueops_link_child",
               "issueops_link_issue",
               "issueops_link_plan",
@@ -3636,6 +3650,18 @@
                 "minimum_score",
                 "critical_failure_count",
                 "scores"
+              ],
+              "issueops_cleanup_status": [
+                "ok",
+                "ready",
+                "id",
+                "merged",
+                "missing",
+                "warnings",
+                "choices",
+                "worktree_path",
+                "branch",
+                "remote_artifact_url"
               ],
               "issueops_pr_readiness": [
                 "ok",

@@ -142,6 +142,12 @@ agent-harness issueops remote verify-artifact --id "$ISSUEOPS_ID" --provider "$P
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to done --json
 ```
 
+Post-merge cleanup status is a read-only verification step. Run it after the provider reports the PR/MR merged and before deleting worktrees or branches:
+
+```bash
+agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
+```
+
 Record feedback, optionally classifying each item (contract_change, defect, question, noise) so contract-changing feedback is distinguishable:
 
 ```bash
