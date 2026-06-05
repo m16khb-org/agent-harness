@@ -1086,7 +1086,10 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 		return ""
 	}
-	targets := worktreeGuardTargets(req)
+	if issueOpsWorktreePreparationCommand(req.Command) {
+		return ""
+	}
+	targets := worktreeGuardEditTargets(req)
 	if len(targets) == 0 {
 		return ""
 	}
@@ -1299,7 +1302,7 @@ func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 		}
 	}
 	if len(targets) == 0 && isShellTool(req.Tool) {
-		for _, path := range shellCommandWorktreeGuardPaths(req.Command) {
+		for _, path := range shellCommandWorktreeGuardPaths(req.Repo, req.Command) {
 			if target := resolveHookTargetPath(req.Repo, path); target != "" {
 				targets = append(targets, target)
 			}
@@ -1313,40 +1316,59 @@ func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 	return targets
 }
 
-func shellCommandWorktreeGuardPaths(command string) []string {
+func shellCommandWorktreeGuardPaths(repo, command string) []string {
 	tokens := splitCommandTokens(command)
 	out := []string{}
 	seen := map[string]bool{}
+	currentDir := cleanAbsPath(repo)
 	for i, token := range tokens {
 		switch token {
 		case "cd":
 			if i+1 < len(tokens) {
-				addWorktreeGuardPath(&out, seen, tokens[i+1])
+				if path := resolveShellWorktreeGuardPath(currentDir, tokens[i+1]); path != "" {
+					addWorktreeGuardPath(&out, seen, path)
+					currentDir = path
+				}
 			}
 		case "-C":
 			if i > 0 && searchTokenName(tokens[i-1]) == "git" && i+1 < len(tokens) {
-				addWorktreeGuardPath(&out, seen, tokens[i+1])
+				addWorktreeGuardPath(&out, seen, resolveShellWorktreeGuardPath(currentDir, tokens[i+1]))
 			}
 		case "add":
 			if i > 1 && searchTokenName(tokens[i-2]) == "git" && searchTokenName(tokens[i-1]) == "worktree" {
 				for _, value := range gitWorktreeAddTargets(tokens[i+1:]) {
-					addWorktreeGuardPath(&out, seen, value)
+					addWorktreeGuardPath(&out, seen, resolveShellWorktreeGuardPath(currentDir, value))
 				}
 			}
 		case ">", ">>", "1>", "1>>", "2>", "2>>":
 			if i+1 < len(tokens) {
-				addWorktreeGuardPath(&out, seen, tokens[i+1])
+				addWorktreeGuardPath(&out, seen, resolveShellWorktreeGuardPath(currentDir, tokens[i+1]))
 			}
 		default:
 			for _, prefix := range []string{">>", ">", "1>>", "1>", "2>>", "2>"} {
 				if strings.HasPrefix(token, prefix) && len(token) > len(prefix) {
-					addWorktreeGuardPath(&out, seen, strings.TrimPrefix(token, prefix))
+					addWorktreeGuardPath(&out, seen, resolveShellWorktreeGuardPath(currentDir, strings.TrimPrefix(token, prefix)))
 					break
 				}
 			}
 		}
 	}
 	return out
+}
+
+func resolveShellWorktreeGuardPath(currentDir, value string) string {
+	path := strings.TrimSpace(value)
+	if path == "" || strings.HasPrefix(path, "-") || strings.Contains(path, "$(") || strings.Contains(path, "`") {
+		return ""
+	}
+	if filepath.IsAbs(path) {
+		return cleanAbsPath(path)
+	}
+	base := cleanAbsPath(currentDir)
+	if base == "" {
+		return path
+	}
+	return cleanAbsPath(filepath.Join(base, path))
 }
 
 func gitWorktreeAddTargets(args []string) []string {

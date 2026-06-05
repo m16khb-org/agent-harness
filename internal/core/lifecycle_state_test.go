@@ -270,6 +270,70 @@ func TestPreToolUseWorktreeGuardAllowsExpectedWorktreeMutation(t *testing.T) {
 	}
 }
 
+func TestPreToolUseWorktreeGuardAllowsExpectedWorktreePreparation(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:             source,
+		Tool:             "Bash",
+		Command:          "git worktree add " + shellQuote(worktree) + " chore-19-docs",
+		EnforceWorktree:  true,
+		ExpectedWorktree: worktree,
+		SourceCheckout:   source,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected worktree preparation command to be allowed with explicit expected worktree: %+v", got)
+	}
+}
+
+func TestPreToolUseWorktreeGuardAllowsExpectedWorktreeAbsoluteTargetFromSourceRepo(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:             source,
+		Tool:             "Edit",
+		Paths:            []string{filepath.Join(worktree, ".agent-harness", "OPERATIONS.md")},
+		EnforceWorktree:  true,
+		ExpectedWorktree: worktree,
+		SourceCheckout:   source,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected absolute worktree target to be allowed even when repo is source checkout: %+v", got)
+	}
+}
+
+func TestPreToolUseWorktreeGuardAllowsShellRedirectAfterCdIntoExpectedWorktree(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:             source,
+		Tool:             "Bash",
+		Command:          "cd " + shellQuote(worktree) + " && printf smoke > .issueops-hook-smoke",
+		EnforceWorktree:  true,
+		ExpectedWorktree: worktree,
+		SourceCheckout:   source,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected shell redirect after cd into worktree to be allowed: %+v", got)
+	}
+}
+
+func TestPreToolUseWorktreeGuardBlocksShellRedirectAfterCdIntoSourceCheckout(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:             source,
+		Tool:             "Bash",
+		Command:          "cd " + shellQuote(source) + " && printf smoke > .issueops-hook-smoke",
+		EnforceWorktree:  true,
+		ExpectedWorktree: worktree,
+		SourceCheckout:   source,
+	})
+	if got.Decision != "block" || !strings.Contains(got.Reason, "expected IssueOps worktree") {
+		t.Fatalf("expected shell redirect after cd into source checkout to be blocked: %+v", got)
+	}
+}
+
 func TestPreToolUseWorktreeGuardRequiresCodeGraphProjectPath(t *testing.T) {
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
