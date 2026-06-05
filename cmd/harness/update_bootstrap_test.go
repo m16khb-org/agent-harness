@@ -28,6 +28,20 @@ func stubPostInstallMCPProxyRefresh(t *testing.T, fn func() (int, error)) func()
 	return func() { postInstallMCPProxyRefresh = previous }
 }
 
+func stubDaemonProcessLister(t *testing.T, fn func() ([]daemonProcess, error)) func() {
+	t.Helper()
+	previous := daemonProcessLister
+	daemonProcessLister = fn
+	return func() { daemonProcessLister = previous }
+}
+
+func stubDaemonProcessTerminator(t *testing.T, fn func(int) error) func() {
+	t.Helper()
+	previous := daemonProcessTerminator
+	daemonProcessTerminator = fn
+	return func() { daemonProcessTerminator = previous }
+}
+
 func TestRunInstallScriptCommandRefreshesRuntimeProcessesAfterUpdate(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HARNESS_ROOT", root)
@@ -113,5 +127,49 @@ func TestParseMCPProxyProcessOnlyMatchesCurrentHarnessMCP(t *testing.T) {
 		if got, ok := parseMCPProxyProcess(line, binary); ok {
 			t.Fatalf("unexpected match for %q: %+v", line, got)
 		}
+	}
+}
+
+func TestParseDaemonProcessOnlyMatchesCurrentHarnessDaemon(t *testing.T) {
+	binary := filepath.Join(t.TempDir(), "bin", "agent-harness")
+	match, ok := parseDaemonProcess("  123 "+binary+" daemon --internal", binary)
+	if !ok || match.PID != 123 || match.Command != binary+" daemon --internal" {
+		t.Fatalf("expected daemon match, got match=%+v ok=%v", match, ok)
+	}
+	for _, line := range []string{
+		"124 " + binary + " mcp",
+		"125 " + binary + " daemon start",
+		"126 /other/bin/agent-harness daemon --internal",
+		"not-a-pid " + binary + " daemon --internal",
+	} {
+		if got, ok := parseDaemonProcess(line, binary); ok {
+			t.Fatalf("unexpected match for %q: %+v", line, got)
+		}
+	}
+}
+
+func TestTerminateStaleDaemonProcessesSkipsCurrentProcess(t *testing.T) {
+	currentPID := os.Getpid()
+	restoreList := stubDaemonProcessLister(t, func() ([]daemonProcess, error) {
+		return []daemonProcess{
+			{PID: currentPID, Command: "agent-harness daemon --internal"},
+			{PID: 12345, Command: "agent-harness daemon --internal"},
+			{PID: 12346, Command: "agent-harness daemon --internal"},
+		}, nil
+	})
+	defer restoreList()
+	var terminated []int
+	restoreTerminate := stubDaemonProcessTerminator(t, func(pid int) error {
+		terminated = append(terminated, pid)
+		return nil
+	})
+	defer restoreTerminate()
+
+	count, err := terminateStaleDaemonProcesses()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 || !reflect.DeepEqual(terminated, []int{12345, 12346}) {
+		t.Fatalf("unexpected daemon cleanup result count=%d terminated=%v", count, terminated)
 	}
 }
