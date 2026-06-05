@@ -565,6 +565,56 @@ func TestRunHookPreToolUseEnforcesKoreanRemoteArtifacts(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseAllowsRemoteArtifactEditWithoutBody(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `glab issue edit 123 --add-label bug`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("remote artifact edit without body should not require title/body text, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseInspectsGitLabDescriptionFile(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bodyFile := filepath.Join(repo, "issue.md")
+	if err := os.WriteFile(bodyFile, []byte("This issue body is English prose and should be blocked before remote creation.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": `glab issue create --title "Remote artifact check" --description-file issue.md --label bug --assignee habin`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected English GitLab description file to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "IssueOps remote artifact gate failed") {
+		t.Fatalf("expected Korean remote artifact gate reason, got %q", reason)
+	}
+}
+
 func TestRunHookPreToolUseEnforcesRemoteCreateAssignee(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -1194,6 +1244,24 @@ func TestRunHookStopRelaysRecommendedNextActionFactsToMainAgent(t *testing.T) {
 		if strings.Contains(reason, banned) {
 			t.Fatalf("Stop hook reason must not include hook judgement wording %q: %q", banned, reason)
 		}
+	}
+}
+
+func TestRunHookStopRelaysSameNextActionChoicesOnlyOnce(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := "사용자 결정이 필요한 상태입니다.\\n\\n선택지:\\n1. (추천) 사용자가 외부 담당자에게 문의문을 전달하고 답변을 공유한다.\\n2. 임시 조치 변경안을 검토하라고 지시한다.\\n3. 식별자 분리 설계안을 검토하라고 지시한다."
+	first := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if first["continue"] != true || first["decision"] != "block" {
+		t.Fatalf("expected first Stop hook call to relay next-action facts, got %+v", first)
+	}
+	second := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if len(second) != 0 {
+		t.Fatalf("duplicate next-action choices must not re-enter the agent, got %+v", second)
 	}
 }
 

@@ -546,6 +546,10 @@ func runHookStop(args []string) error {
 	// explicit next-action judgement point and sends the observed facts to the main
 	// agent, which owns safety, reversibility, alignment, and proceed/ask judgement.
 	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent && !stopHookActive {
+		relayRecord := core.RecordStopNextActionRelay(parsedRepo, nextActionTrigger)
+		if !relayRecord.ShouldRelay {
+			return printJSON(map[string]any{})
+		}
 		return printJSON(map[string]any{
 			"continue": true,
 			"decision": "block",

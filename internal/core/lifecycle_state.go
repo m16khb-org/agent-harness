@@ -18,6 +18,7 @@ const ProjectLifecycleSchemaVersion = 1
 const projectLifecycleProfileFile = "project.json"
 const docUpkeepQueueFile = "doc-upkeep-queue.jsonl"
 const compactCapsuleFile = "compact-capsule.json"
+const stopNextActionRelayFile = "stop-next-action-relay.json"
 
 type ProjectFingerprint struct {
 	RepoRoot      string `json:"repo_root"`
@@ -408,6 +409,23 @@ type NumberedNextActionsDecisionResult struct {
 	Source   string `json:"source"`
 }
 
+type StopNextActionRelayRecord struct {
+	SchemaVersion    int    `json:"schema_version"`
+	Fingerprint      string `json:"fingerprint"`
+	RecommendedIndex int    `json:"recommended_index,omitempty"`
+	RecommendedText  string `json:"recommended_text,omitempty"`
+	UpdatedAt        string `json:"updated_at"`
+}
+
+type StopNextActionRelayResult struct {
+	OK          bool     `json:"ok"`
+	ShouldRelay bool     `json:"should_relay"`
+	Fingerprint string   `json:"fingerprint,omitempty"`
+	Path        string   `json:"path,omitempty"`
+	Reason      string   `json:"reason,omitempty"`
+	Warnings    []string `json:"warnings,omitempty"`
+}
+
 type LifecycleCompactCapsule struct {
 	SchemaVersion     int              `json:"schema_version"`
 	RepoRoot          string           `json:"repo_root"`
@@ -503,13 +521,17 @@ func koreanRemoteArtifactBlockReason(req HookToolUseLifecycleRequest) string {
 	if !ok {
 		return ""
 	}
-	if strings.TrimSpace(artifact.title) == "" || strings.TrimSpace(artifact.body) == "" {
+	text := strings.TrimSpace(artifact.title + "\n" + artifact.body)
+	if artifact.action == "create" && (strings.TrimSpace(artifact.title) == "" || strings.TrimSpace(artifact.body) == "") {
 		if artifact.createFromIssue {
 			return ""
 		}
 		return "IssueOps remote artifact gate requires inspectable Korean title and body before issue/pr/mr create/edit; provide --title and --body-file/--body after running the Korean gate"
 	}
-	hangul, englishWords := scoreKoreanRemoteArtifactLanguage(artifact.title + "\n" + artifact.body)
+	if artifact.action != "create" && text == "" {
+		return ""
+	}
+	hangul, englishWords := scoreKoreanRemoteArtifactLanguage(text)
 	cli := remoteArtifactCLIName(artifact)
 	if hangul < 20 {
 		return fmt.Sprintf("IssueOps remote artifact gate failed: expected at least 20 Hangul chars before %s %s %s, got %d", cli, artifact.kind, artifact.action, hangul)
@@ -607,13 +629,15 @@ func parseRemoteArtifactArgs(artifact *remoteArtifactCommand, repo string, args 
 			artifact.body = strings.TrimPrefix(arg, "--body=")
 		case strings.HasPrefix(arg, "--description="):
 			artifact.body = strings.TrimPrefix(arg, "--description=")
-		case arg == "--body-file" || arg == "-F":
+		case arg == "--body-file" || arg == "-F" || arg == "--description-file":
 			if j+1 < len(args) {
 				artifact.body = readRemoteArtifactBodyFile(repo, args[j+1])
 				j++
 			}
 		case strings.HasPrefix(arg, "--body-file="):
 			artifact.body = readRemoteArtifactBodyFile(repo, strings.TrimPrefix(arg, "--body-file="))
+		case strings.HasPrefix(arg, "--description-file="):
+			artifact.body = readRemoteArtifactBodyFile(repo, strings.TrimPrefix(arg, "--description-file="))
 		case arg == "--label" || arg == "-l" || arg == "--labels" || arg == "--add-label":
 			if j+1 < len(args) {
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, args[j+1])
@@ -1863,6 +1887,67 @@ func BuildNextActionJudgementTrigger(message string) NextActionJudgementTriggerR
 		result.Reason = "next-action choices found with multiple explicit recommendations"
 	}
 	return result
+}
+
+func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTriggerResult) StopNextActionRelayResult {
+	fingerprint := stopNextActionRelayFingerprint(trigger)
+	result := StopNextActionRelayResult{OK: true, ShouldRelay: true, Fingerprint: fingerprint}
+	if strings.TrimSpace(fingerprint) == "" {
+		result.Reason = "no_next_action_fingerprint"
+		return result
+	}
+	plan, err := ValidateProjectLifecycleState(repoRoot)
+	if err != nil {
+		result.Warnings = append(result.Warnings, "project_lifecycle_state_error")
+		return result
+	}
+	if !plan.Exists {
+		plan, err = InitProjectLifecycleState(repoRoot, true)
+		if err != nil {
+			result.Warnings = append(result.Warnings, "project_lifecycle_state_init_error")
+			return result
+		}
+	}
+	if !plan.NamespaceValid {
+		result.Warnings = append(result.Warnings, "project_lifecycle_namespace_mismatch")
+		return result
+	}
+	path := filepath.Join(plan.ProjectStateDir, stopNextActionRelayFile)
+	result.Path = path
+	var previous StopNextActionRelayRecord
+	if b, err := os.ReadFile(path); err == nil {
+		if err := json.Unmarshal(b, &previous); err == nil && previous.SchemaVersion == ProjectLifecycleSchemaVersion && previous.Fingerprint == fingerprint {
+			result.ShouldRelay = false
+			result.Reason = "duplicate_next_action_relay"
+			return result
+		}
+	}
+	record := StopNextActionRelayRecord{
+		SchemaVersion:    ProjectLifecycleSchemaVersion,
+		Fingerprint:      fingerprint,
+		RecommendedIndex: trigger.RecommendedIndex,
+		RecommendedText:  trigger.RecommendedText,
+		UpdatedAt:        time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	if err := writeJSONAtomic(path, record, 0o600); err != nil {
+		result.Warnings = append(result.Warnings, "stop_next_action_relay_write_error")
+		return result
+	}
+	result.Reason = "recorded_next_action_relay"
+	return result
+}
+
+func stopNextActionRelayFingerprint(trigger NextActionJudgementTriggerResult) string {
+	if len(trigger.Candidates) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("stop-next-action-relay:v1\n")
+	for _, candidate := range trigger.Candidates {
+		b.WriteString(fmt.Sprintf("%d|%t|%s\n", candidate.Index, candidate.Recommended, strings.TrimSpace(candidate.Text)))
+	}
+	sum := sha256.Sum256([]byte(b.String()))
+	return hex.EncodeToString(sum[:])
 }
 
 // NextActionAutoProceedResult reports whether the recommended next action is a
