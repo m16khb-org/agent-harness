@@ -166,6 +166,7 @@ func runHookUserPrompt(args []string) error {
 	if repo == "" {
 		repo = resolveTarget("")
 	}
+	core.ClearStopNextActionRelay(repo)
 	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo, EnableAgyHints: *enableAgyHints || envBool("HARNESS_ENABLE_AGY_HINTS")})
 	if *jsonOut {
 		return printJSON(result)
@@ -331,6 +332,7 @@ func runHookPostToolUse(args []string) error {
 	if parsedRepo == "" {
 		parsedRepo = resolveTarget("")
 	}
+	core.ClearStopNextActionRelay(parsedRepo)
 	tool := toolNameFromHookInput(stdin)
 	paths := pathsFromHookInput(stdin)
 	command := commandFromHookInput(stdin)

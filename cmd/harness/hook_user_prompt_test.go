@@ -1288,6 +1288,67 @@ func TestRunHookStopRelaysSameNextActionChoicesOnlyOnce(t *testing.T) {
 	}
 }
 
+func TestRunHookStopSuppressesRephrasedNextActionChoicesUntilProgress(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	firstMsg := "현재는 사용자 액션이 필요합니다.\\n\\n선택지:\\n1. (추천) 사용자가 FANZA 담당자에게 문의문을 전달하고 답변을 공유한다.\\n2. FANZA 답변 전 임시 변경안을 검토하라고 지시한다.\\n3. FANZA용 character_id 분리 설계를 검토하라고 지시한다."
+	secondMsg := "같은 외부 확인 지점입니다.\\n\\n선택지:\\n1. (추천) 사용자가 담당자에게 문의문을 전달하고, 답변을 여기로 공유한다.\\n2. 임시 조치로 DELETE 중단 변경안을 검토하라고 지시한다.\\n3. 동일 id 복구 불가를 전제로 분리 설계안을 검토하라고 지시한다."
+	first := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+firstMsg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if first["continue"] != true || first["decision"] != "block" {
+		t.Fatalf("expected first Stop hook call to relay next-action facts, got %+v", first)
+	}
+	second := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+secondMsg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if len(second) != 0 {
+		t.Fatalf("rephrased unresolved next-action choices must not re-enter the agent before progress, got %+v", second)
+	}
+}
+
+func TestRunHookPostToolUseClearsSuppressedNextActionRelay(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
+	first := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if first["continue"] != true || first["decision"] != "block" {
+		t.Fatalf("expected first Stop hook call to relay next-action facts, got %+v", first)
+	}
+	runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Bash","command":"true"}`, func() error {
+		return runHookPostToolUse(nil)
+	})
+	afterProgress := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if afterProgress["continue"] != true || afterProgress["decision"] != "block" {
+		t.Fatalf("expected PostToolUse to clear relay suppression, got %+v", afterProgress)
+	}
+}
+
+func TestRunHookUserPromptClearsSuppressedNextActionRelay(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
+	first := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if first["continue"] != true || first["decision"] != "block" {
+		t.Fatalf("expected first Stop hook call to relay next-action facts, got %+v", first)
+	}
+	runHookCapture(t, `{"cwd":"`+repo+`","prompt":"계속 진행해"}`, func() error {
+		return runHookUserPrompt(nil)
+	})
+	afterPrompt := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if afterPrompt["continue"] != true || afterPrompt["decision"] != "block" {
+		t.Fatalf("expected UserPromptSubmit to clear relay suppression, got %+v", afterPrompt)
+	}
+}
+
 func TestRunHookStopKeepsAutoProceedFlagAsRelayAlias(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
