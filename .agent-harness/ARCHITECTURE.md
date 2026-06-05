@@ -227,8 +227,9 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 - LLM Wiki: `nvk/llm-wiki` plugin을 설치/갱신한다. wiki vault, research, query, compile 기능을 하네스에 복제하지 않는다.
 - CodeGraph: `colbymchenry/codegraph` CLI/MCP를 설치/설정한다. symbol graph, AST parser, impact analysis를 하네스에 재구현하지 않는다.
 - claude-mem: `thedotmack/claude-mem` upstream installer를 통해 Codex/Claude hooks, MCP, worker 배선을 설치/갱신한다. memory capture/compression/store logic을 하네스 core에 넣지 않는다.
+- LazyCodex: `code-yeongyu/oh-my-openagent` / `lazycodex-ai` installer를 통해 Codex Light LazyCodex/OMO skills, hooks, LSP/AST tooling을 설치/갱신한다. 해당 skill/hook/tool 동작을 하네스 core에 복제하지 않는다.
 
-`scripts/install-native.sh --with-upstream-tools`는 이 세 도구를 user-level dependency로 연결하는 convenience path다. 기본 설치는 여전히 하네스 자체의 user/global Codex/Claude integration만 수행하며, upstream 설치는 네트워크와 user-level host 설정 변경이 필요하므로 명시 opt-in이다.
+`scripts/install-native.sh --with-upstream-tools`는 이 upstream 도구들을 user-level dependency로 연결하는 convenience path다. 기본 설치는 여전히 하네스 자체의 user/global Codex/Claude integration만 수행하며, upstream 설치는 네트워크와 user-level host 설정 변경이 필요하므로 명시 opt-in이다.
 
 ## MCP tool design guidance
 

@@ -6,7 +6,7 @@ Claude Code에서 이 저장소를 열면 먼저 `AGENTS.md`를 읽고 동일한
 - 상세 문서: `.agent-harness/`
 - Claude Code native skills: 기본은 `~/.claude/skills/*` (`atomic-commit-push`, `self-verify`, `self-augment`, `project-bootstrap`). `.claude/skills/*`는 명시적 project-local attach 때만 사용한다.
 - Claude Code MCP: 기본은 user-scope `agent_harness` 서버가 중앙 `bin/agent-harness mcp`를 실행하고 shared daemon에 proxy한다. 이 레포의 `.mcp.json`은 dogfood/project-local 템플릿이다.
-- 철학: **바퀴를 재발명하지 않는다**. LLM Wiki, CodeGraph, claude-mem 같은 전문 기능은 하네스가 재구현하지 않고 upstream plugin/CLI를 사용한다. 필요하면 `./scripts/install-native.sh --with-upstream-tools`로 함께 설치/갱신한다.
+- 철학: **바퀴를 재발명하지 않는다**. LLM Wiki, CodeGraph, claude-mem, LazyCodex 같은 전문 기능은 하네스가 재구현하지 않고 upstream plugin/CLI를 사용한다. 필요하면 `./scripts/install-native.sh --with-upstream-tools`로 함께 설치/갱신한다.
 - 사용법은 `.agent-harness/OPERATIONS.md`를 따른다.
 
 ## API docs

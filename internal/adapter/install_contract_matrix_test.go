@@ -157,6 +157,20 @@ func TestInstallNativeUpstreamToolsUseClaudeMem(t *testing.T) {
 	}
 }
 
+func TestInstallNativeUpstreamToolsUseLazyCodex(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
+	for _, want := range []string{
+		"lazycodex-ai",
+		"npx -y lazycodex-ai@latest install --no-tui",
+		"install_lazycodex",
+		"dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem, lazycodex-ai",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("install-native.sh missing LazyCodex upstream contract %q", want)
+		}
+	}
+}
+
 func TestInstallNativeUpstreamToolsExcludeRemovedProxyCompanion(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
 	removed := strings.Join([]string{"head", "room"}, "")

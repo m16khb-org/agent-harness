@@ -21,7 +21,7 @@ Harness flags are passed to `agent-harness install-native`, for example:
   --json
 
 Optional upstream tools:
-  --with-upstream-tools   Also install/update upstream llm-wiki, codegraph, and claude-mem integrations.
+  --with-upstream-tools   Also install/update upstream llm-wiki, codegraph, claude-mem, and lazycodex-ai integrations.
   --skip-upstream-tools   Do not install upstream tools, even if HARNESS_INSTALL_UPSTREAM_TOOLS=1.
 
 Harness binary:
@@ -38,9 +38,9 @@ Environment:
   HARNESS_SKIP_BUILD=1              Same as --skip-build.
 
 Philosophy:
-  agent-harness does not reinvent llm-wiki, codegraph, or claude-mem. It can wire
-  their upstream installers as optional dependencies while keeping harness core
-  focused on shared CLI/MCP/state/policy orchestration.
+  agent-harness does not reinvent llm-wiki, codegraph, claude-mem, or LazyCodex.
+  It can wire their upstream installers as optional dependencies while keeping
+  harness core focused on shared CLI/MCP/state/policy orchestration.
 EOF
 }
 
@@ -187,6 +187,20 @@ install_claude_mem_for_ide() {
   printf '%s\n' "$cm_out" >&2
 }
 
+install_lazycodex() {
+  if ! command -v npm >/dev/null 2>&1; then
+    log "npm not found; skipping LazyCodex setup"
+    return 0
+  fi
+  log "installing/updating LazyCodex Codex integration"
+  local lazycodex_out
+  if lazycodex_out="$(npx -y lazycodex-ai@latest install --no-tui </dev/null 2>&1)"; then
+    return 0
+  fi
+  log "warning: failed to install LazyCodex; continuing"
+  printf '%s\n' "$lazycodex_out" >&2
+}
+
 ensure_codegraph_on_path() {
   if command -v codegraph >/dev/null 2>&1; then
     return 0
@@ -206,12 +220,12 @@ ensure_codegraph_on_path() {
 install_upstream_tools() {
   local dry_run="$1"
   if [[ "$dry_run" == "1" ]]; then
-    log "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem; would remove legacy agentmemory plugin wiring"
+    log "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem, lazycodex-ai; would remove legacy agentmemory plugin wiring"
     return 0
   fi
 
   if command -v codex >/dev/null 2>&1; then
-    log "setting up Codex plugins: llm-wiki, claude-mem"
+    log "setting up Codex plugins: llm-wiki, claude-mem, LazyCodex"
     ensure_codex_marketplace "llm-wiki" "nvk/llm-wiki"
     ensure_codex_plugin "wiki@llm-wiki"
 
@@ -219,8 +233,9 @@ install_upstream_tools() {
     remove_codex_marketplace "agentmemory"
     install_claude_mem_for_ide "codex-cli"
     ensure_codex_plugin "claude-mem@claude-mem-local"
+    install_lazycodex
   else
-    log "codex not found; skipping Codex llm-wiki/claude-mem plugin setup"
+    log "codex not found; skipping Codex llm-wiki/claude-mem/LazyCodex plugin setup"
   fi
 
   if command -v claude >/dev/null 2>&1; then

@@ -19,7 +19,7 @@
 
 The project is intentionally not “just a Codex plugin” or “just Claude commands.” The reusable behavior lives in a host-neutral Go core; host integrations are thin adapters that call that core.
 
-The project philosophy is **do not reinvent the wheel**: agent-harness owns the small shared core for orchestration, policy, state, project docs, and install glue. Specialized knowledge/retrieval tools stay upstream — for example `nvk/llm-wiki`, `colbymchenry/codegraph`, and `thedotmack/claude-mem` are installed or configured as optional dependencies instead of being reimplemented inside the harness.
+The project philosophy is **do not reinvent the wheel**: agent-harness owns the small shared core for orchestration, policy, state, project docs, and install glue. Specialized knowledge/retrieval/agent-tooling stays upstream — for example `nvk/llm-wiki`, `colbymchenry/codegraph`, `thedotmack/claude-mem`, and `code-yeongyu/oh-my-openagent`/`lazycodex-ai` are installed or configured as optional dependencies instead of being reimplemented inside the harness.
 
 > Status: early but functional MVP. The CLI, daemon-backed MCP proxy, policy checker, read-only command evidence runner, state checkpoints, project-doc and draft-wiki tools, lifecycle hooks, guard/verify-work/trace evidence gates, API-doc review gate, native skill installer, self-verification loop, and self-augmentation loop are implemented. The worker surface is still **state-first and policy-gated**: it can record lifecycle jobs, run argv-only read-only evidence commands, and process draft-wiki queue items, but it is not a general writable shell runner.
 
@@ -98,7 +98,7 @@ Use it when you want to:
 3. **Same contract everywhere** — CLI JSON, MCP responses, daemon responses, and host adapters must describe the same behavior.
 4. **Safe by default** — command policy, workspace boundaries, audit metadata, redaction, and dry-run/read-only paths come before writable execution.
 5. **One skill source** — `skills/<name>/` is the source of truth; user-level host skill paths point back to it.
-6. **Do not reinvent the wheel** — use upstream tools such as llm-wiki, CodeGraph, and claude-mem instead of copying their core behavior into this harness.
+6. **Do not reinvent the wheel** — use upstream tools such as llm-wiki, CodeGraph, claude-mem, and LazyCodex instead of copying their core behavior into this harness.
 
 ## What you get
 
@@ -140,7 +140,7 @@ Design rules:
 3. **Safe by default** — command policy, workspace boundaries, audit records, redaction, and dry-run/default no-shell behavior come first.
 4. **One skill source** — `skills/<name>/` is the source of truth; user-level Codex/Claude skill paths point back to it.
 5. **Incremental worker** — worker functionality starts with lifecycle state and argv-only read-only evidence before any writable or long-running process execution.
-6. **Do not reinvent the wheel** — integrate upstream tools such as llm-wiki, CodeGraph, and claude-mem through their own installers/plugins; do not copy their core behavior into agent-harness.
+6. **Do not reinvent the wheel** — integrate upstream tools such as llm-wiki, CodeGraph, claude-mem, and LazyCodex through their own installers/plugins; do not copy their core behavior into agent-harness.
 
 ## Repository map
 
@@ -252,6 +252,7 @@ Start an IssueOps state record for an issue-driven task:
 | LLM Wiki | `nvk/llm-wiki` | Adds/updates the Codex and Claude `wiki@llm-wiki` plugin. |
 | CodeGraph | `colbymchenry/codegraph` | Installs `@colbymchenry/codegraph`, registers its MCP server for Codex/Claude, and initializes this repo's `.codegraph/` index when enabled. |
 | claude-mem | `thedotmack/claude-mem` | Runs `npx claude-mem@latest install` for Codex and Claude Code to add/update hooks, MCP, and worker wiring. |
+| LazyCodex | `code-yeongyu/oh-my-openagent` / `lazycodex-ai` | Runs `npx lazycodex-ai@latest install --no-tui` to add/update the Codex Light LazyCodex/OMO skill and hook surface. |
 
 During the migration to claude-mem, the full setup removes legacy agentmemory plugin/marketplace wiring.
 
@@ -476,7 +477,7 @@ flowchart LR
 
 AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라지면 신뢰하기 어려워집니다. `agent-harness`는 그 공통 관심사를 하나의 portable core에 모읍니다.
 
-하네스의 철학은 **바퀴를 재발명하지 않는다**입니다. agent-harness는 orchestration, policy, state, project docs, install glue 같은 작은 공통 core를 맡고, 전문 knowledge/retrieval 기능은 upstream을 그대로 연결합니다. 예를 들어 `nvk/llm-wiki`, `colbymchenry/codegraph`, `thedotmack/claude-mem`는 하네스 내부에 복제하지 않고 optional dependency로 설치/설정합니다.
+하네스의 철학은 **바퀴를 재발명하지 않는다**입니다. agent-harness는 orchestration, policy, state, project docs, install glue 같은 작은 공통 core를 맡고, 전문 knowledge/retrieval/agent-tooling 기능은 upstream을 그대로 연결합니다. 예를 들어 `nvk/llm-wiki`, `colbymchenry/codegraph`, `thedotmack/claude-mem`, `code-yeongyu/oh-my-openagent`/`lazycodex-ai`는 하네스 내부에 복제하지 않고 optional dependency로 설치/설정합니다.
 
 다음이 필요할 때 사용합니다.
 
@@ -496,7 +497,7 @@ AI 코딩 에이전트는 host마다 prompt, tool, state, safety rule이 달라�
 3. **Same contract everywhere** — CLI JSON, MCP response, daemon response, host adapter는 같은 동작을 같은 의미로 설명해야 합니다.
 4. **Safe by default** — command policy, workspace boundary, audit metadata, redaction, dry-run/read-only 경로를 writable execution보다 먼저 둡니다.
 5. **One skill source** — `skills/<name>/`이 source of truth이고 user-level host skill 경로는 이를 가리킵니다.
-6. **바퀴를 재발명하지 않기** — llm-wiki, CodeGraph, claude-mem 같은 upstream 도구의 core behavior를 하네스 내부에 복제하지 않고 연결해서 씁니다.
+6. **바퀴를 재발명하지 않기** — llm-wiki, CodeGraph, claude-mem, LazyCodex 같은 upstream 도구의 core behavior를 하네스 내부에 복제하지 않고 연결해서 씁니다.
 
 ## 제공 기능
 
@@ -538,7 +539,7 @@ flowchart LR
 3. **Safe by default** — command policy, workspace boundary, audit record, redaction, dry-run/no-shell 기본값을 먼저 둡니다.
 4. **One skill source** — `skills/<name>/`이 원본이고 user-level Codex/Claude skill 경로는 이를 가리킵니다.
 5. **Incremental worker** — worker는 writable/long-running process 실행보다 lifecycle state와 argv-only read-only evidence부터 검증합니다.
-6. **바퀴를 재발명하지 않기** — llm-wiki, CodeGraph, claude-mem 같은 upstream 도구는 각자의 installer/plugin으로 연결하고 core 동작을 agent-harness에 복제하지 않습니다.
+6. **바퀴를 재발명하지 않기** — llm-wiki, CodeGraph, claude-mem, LazyCodex 같은 upstream 도구는 각자의 installer/plugin으로 연결하고 core 동작을 agent-harness에 복제하지 않습니다.
 
 ## 저장소 구조
 
@@ -650,6 +651,7 @@ issue-driven 작업의 IssueOps state record를 시작합니다.
 | LLM Wiki | `nvk/llm-wiki` | Codex/Claude `wiki@llm-wiki` plugin을 추가/갱신합니다. |
 | CodeGraph | `colbymchenry/codegraph` | `@colbymchenry/codegraph`를 설치하고 Codex/Claude MCP server를 등록하며, 설정 시 이 repo의 `.codegraph/` index를 초기화합니다. |
 | claude-mem | `thedotmack/claude-mem` | Codex/Claude Code에 `npx claude-mem@latest install`을 실행해 hooks, MCP, worker 배선을 추가/갱신합니다. |
+| LazyCodex | `code-yeongyu/oh-my-openagent` / `lazycodex-ai` | `npx lazycodex-ai@latest install --no-tui`로 Codex Light LazyCodex/OMO skill과 hook surface를 추가/갱신합니다. |
 
 claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marketplace 배선을 제거합니다.
 

@@ -516,7 +516,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 20018,
+          "bytes": 20263,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -641,7 +641,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 2980,
+          "bytes": 2991,
           "headings": [
             "Operations Map",
             "Core Surfaces",
@@ -654,7 +654,7 @@
           "title": "Operations Map"
         },
         {
-          "bytes": 8009,
+          "bytes": 8212,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -803,7 +803,7 @@
           "title": "Verification Operations"
         },
         {
-          "bytes": 12976,
+          "bytes": 12987,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -825,7 +825,7 @@
           "title": "AGENTS.md"
         },
         {
-          "bytes": 1315,
+          "bytes": 1326,
           "headings": [
             "CLAUDE.md",
             "API docs"
@@ -3811,7 +3811,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 20018,
+                "bytes": 20263,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -3936,7 +3936,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 2980,
+                "bytes": 2991,
                 "headings": [
                   "Operations Map",
                   "Core Surfaces",
@@ -3949,7 +3949,7 @@
                 "title": "Operations Map"
               },
               {
-                "bytes": 8009,
+                "bytes": 8212,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -4098,7 +4098,7 @@
                 "title": "Verification Operations"
               },
               {
-                "bytes": 12976,
+                "bytes": 12987,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
@@ -4120,7 +4120,7 @@
                 "title": "AGENTS.md"
               },
               {
-                "bytes": 1315,
+                "bytes": 1326,
                 "headings": [
                   "CLAUDE.md",
                   "API docs"

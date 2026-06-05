@@ -40,6 +40,7 @@ description: Chosen languages, runtimes, tools, and rationale.
 | LLM Wiki | `nvk/llm-wiki` | research/query/compile 가능한 Markdown wiki workflow | `scripts/install-native.sh --with-upstream-tools`가 Codex/Claude plugin을 설치/갱신 |
 | CodeGraph | `@colbymchenry/codegraph` | AST 기반 symbol graph와 MCP code intelligence | `npm install -g @colbymchenry/codegraph`, `codegraph install`, `codegraph init -i` |
 | claude-mem | `thedotmack/claude-mem` | session memory capture/compression | `npx claude-mem@latest install`로 Codex/Claude hooks, MCP, worker 설치/갱신 |
+| LazyCodex | `code-yeongyu/oh-my-openagent` / `lazycodex-ai` | Codex Light LazyCodex/OMO skills, hooks, LSP/AST tooling | `npx lazycodex-ai@latest install --no-tui`로 Codex integration 설치/갱신 |
 
 이 optional path는 네트워크와 user-level host 설정 변경을 수반하므로 기본 install-native에는 포함하지 않고 `--with-upstream-tools` 또는 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`일 때만 실행한다.
 
