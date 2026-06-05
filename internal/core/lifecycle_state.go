@@ -1242,7 +1242,7 @@ func issueOpsWorktreePreparationCommand(command string) bool {
 }
 
 func mcpWorktreeRootBlockReason(req HookToolUseLifecycleRequest) string {
-	expected := cleanAbsPath(req.ExpectedWorktree)
+	expected := expectedIssueOpsWorktreeForMCPGuard(req)
 	if expected == "" {
 		return ""
 	}
@@ -1258,6 +1258,19 @@ func mcpWorktreeRootBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 	case strings.Contains(tool, "filesystem") || strings.Contains(tool, "serena"):
 		return "source-root-bound MCP tool is not allowed during IssueOps worktree implementation; use native absolute-path file tools, rg rooted at the IssueOps worktree, git -C, or CodeGraph with projectPath " + expected
+	}
+	return ""
+}
+
+func expectedIssueOpsWorktreeForMCPGuard(req HookToolUseLifecycleRequest) string {
+	if expected := cleanAbsPath(req.ExpectedWorktree); expected != "" {
+		return expected
+	}
+	if rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, gitBranchFromHead(req.Repo)); ok && IssueOpsPhaseExpectsWorktree(rec.Phase) {
+		return cleanAbsPath(rec.WorktreePath)
+	}
+	if rec, ok := ActiveIssueOpsLinkedWorktreeCycleForRepo(req.Repo); ok && IssueOpsPhaseExpectsWorktree(rec.Phase) {
+		return cleanAbsPath(rec.WorktreePath)
 	}
 	return ""
 }

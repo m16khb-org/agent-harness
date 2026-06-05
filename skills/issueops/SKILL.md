@@ -132,12 +132,14 @@ agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 
 `link-child` records a provider-native child work item after it exists remotely. On GitHub that child should be a sub-issue; on GitLab it should be a child item/task. The command does not create remote issues and must not be used as a substitute for the provider-specific hierarchy rules.
 
-Advance the lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The `ai-slop-clean` phase requires linked issue, provider-linked branch, plan, and an existing linked worktree. The `pr` phase requires strict PR readiness, including ai-slop-clean evidence. The `done` phase requires the loop to have already entered `pr`:
+Advance the lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The `ai-slop-clean` phase requires linked issue, provider-linked branch, plan, an existing linked worktree, and implementation changes under that worktree. The `pr` phase requires strict PR readiness, including ai-slop-clean evidence. The `done` phase requires the loop to have already entered `pr` and a verified remote PR/MR artifact with provider URL, label, and assignee evidence:
 
 ```bash
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill --json
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to ai-slop-clean --json
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to pr --json
+agent-harness issueops remote verify-artifact --id "$ISSUEOPS_ID" --provider "$PROVIDER" --kind pr|mr --url "$PR_URL" --label "$LABEL" --assignee "$ASSIGNEE" --json
+agent-harness issueops phase --id "$ISSUEOPS_ID" --to done --json
 ```
 
 Record feedback, optionally classifying each item (contract_change, defect, question, noise) so contract-changing feedback is distinguishable:
