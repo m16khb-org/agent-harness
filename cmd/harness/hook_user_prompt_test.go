@@ -1407,6 +1407,28 @@ func TestRunHookUserPromptClearsSuppressedNextActionRelay(t *testing.T) {
 	}
 }
 
+func TestRunHookUserPromptDoesNotClearRelayForStopHookContinuationPrompt(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
+	first := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if first["continue"] != true || first["decision"] != "block" {
+		t.Fatalf("expected first Stop hook call to relay next-action facts, got %+v", first)
+	}
+	hookPrompt := `<hook_prompt hook_run_id="stop:6:/Users/habin/.codex/hooks.json">다음 행동 판단 지점에 도달했습니다. 훅이 관찰한 근거를 메인 에이전트가 직접 판단하세요.</hook_prompt>`
+	runHookCapture(t, `{"cwd":"`+repo+`","prompt":"`+hookPrompt+`"}`, func() error {
+		return runHookUserPrompt(nil)
+	})
+	afterHookPrompt := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if len(afterHookPrompt) != 0 {
+		t.Fatalf("Stop hook continuation prompt must not clear relay suppression, got %+v", afterHookPrompt)
+	}
+}
+
 func TestRunHookStopKeepsAutoProceedFlagAsRelayAlias(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

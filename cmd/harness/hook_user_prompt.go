@@ -166,7 +166,9 @@ func runHookUserPrompt(args []string) error {
 	if repo == "" {
 		repo = resolveTarget("")
 	}
-	core.ClearStopNextActionRelay(repo)
+	if !isStopHookContinuationPrompt(prompt) {
+		core.ClearStopNextActionRelay(repo)
+	}
 	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo, EnableAgyHints: *enableAgyHints || envBool("HARNESS_ENABLE_AGY_HINTS")})
 	if *jsonOut {
 		return printJSON(result)
@@ -203,6 +205,13 @@ func promptFromHookInput(input []byte) string {
 		}
 	}
 	return ""
+}
+
+func isStopHookContinuationPrompt(prompt string) bool {
+	trimmed := strings.TrimSpace(prompt)
+	return strings.HasPrefix(trimmed, `<hook_prompt `) &&
+		strings.Contains(trimmed, `hook_run_id="stop:`) &&
+		strings.Contains(trimmed, `</hook_prompt>`)
 }
 
 func envBool(name string) bool {
