@@ -5427,7 +5427,7 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		}
 	case "issueops_cleanup_status":
 		result, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), core.IssueOpsCleanupStatusRequest{
-			Merged: boolArg(call.Arguments, "merged"),
+			Merged: issueOpsCleanupMerged(stringArg(call.Arguments, "id"), boolArg(call.Arguments, "merged")),
 		})
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps cleanup status failed", Data: err.Error()}

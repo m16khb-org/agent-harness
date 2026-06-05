@@ -54,6 +54,24 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *tes
 	}
 }
 
+func TestVerifyIssueOpsRemoteArtifactMergedLiveRequiresMergedGitHubPR(t *testing.T) {
+	installFakeGHForRemoteArtifactTest(t)
+	if err := verifyIssueOpsRemoteArtifactMergedLive(core.IssueOpsRemoteArtifactVerification{
+		Provider: "github",
+		Kind:     "pr",
+		URL:      "https://github.com/example/repo/pull/2",
+	}); err == nil || !strings.Contains(err.Error(), "not verified merged") {
+		t.Fatalf("expected closed unmerged GitHub PR to fail cleanup merge verification, got %v", err)
+	}
+	if err := verifyIssueOpsRemoteArtifactMergedLive(core.IssueOpsRemoteArtifactVerification{
+		Provider: "github",
+		Kind:     "pr",
+		URL:      "https://github.com/example/repo/pull/3",
+	}); err != nil {
+		t.Fatalf("expected merged GitHub PR to pass cleanup merge verification: %v", err)
+	}
+}
+
 func installFakeGHForRemoteArtifactTest(t *testing.T) {
 	t.Helper()
 	bin := t.TempDir()
@@ -62,6 +80,14 @@ func installFakeGHForRemoteArtifactTest(t *testing.T) {
 case "$3" in
   *"/pull/1")
     printf '%s\n' '{"url":"https://github.com/example/repo/pull/1","labels":[{"name":"bug"}],"assignees":[{"login":"habin","name":"Habin"}],"state":"OPEN"}'
+    exit 0
+    ;;
+  *"/pull/2")
+    printf '%s\n' '{"url":"https://github.com/example/repo/pull/2","labels":[{"name":"bug"}],"assignees":[{"login":"habin","name":"Habin"}],"state":"CLOSED","mergedAt":null}'
+    exit 0
+    ;;
+  *"/pull/3")
+    printf '%s\n' '{"url":"https://github.com/example/repo/pull/3","labels":[{"name":"bug"}],"assignees":[{"login":"habin","name":"Habin"}],"state":"MERGED","mergedAt":"2026-06-05T11:00:00Z"}'
     exit 0
     ;;
   *)

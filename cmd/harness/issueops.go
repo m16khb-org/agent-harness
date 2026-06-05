@@ -936,7 +936,8 @@ func runIssueOpsCleanup(args []string) error {
 		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		status, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), *id, core.IssueOpsCleanupStatusRequest{Merged: *merged})
+		verifiedMerged := issueOpsCleanupMerged(*id, *merged)
+		status, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), *id, core.IssueOpsCleanupStatusRequest{Merged: verifiedMerged})
 		if err != nil {
 			if *jsonOut {
 				if printErr := printIssueOpsErrorJSON(err); printErr != nil {
@@ -962,6 +963,17 @@ func runIssueOpsCleanup(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops cleanup subcommand")
 	}
+}
+
+func issueOpsCleanupMerged(id string, requested bool) bool {
+	if !requested {
+		return false
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	if err != nil || record.RemoteArtifact == nil {
+		return false
+	}
+	return verifyIssueOpsRemoteArtifactMergedLive(*record.RemoteArtifact) == nil
 }
 
 func printIssueOpsResult(record core.IssueOpsRecord, jsonOut bool, err error) error {

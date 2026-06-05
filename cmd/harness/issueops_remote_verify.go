@@ -16,6 +16,7 @@ type liveRemoteArtifact struct {
 	URL       string
 	Labels    []string
 	Assignees []string
+	Merged    bool
 }
 
 func verifyIssueOpsRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
@@ -49,14 +50,44 @@ func verifyIssueOpsRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificatio
 	return nil
 }
 
+func verifyIssueOpsRemoteArtifactMergedLive(artifact core.IssueOpsRemoteArtifactVerification) error {
+	provider := strings.ToLower(strings.TrimSpace(artifact.Provider))
+	kind := strings.ToLower(strings.TrimSpace(artifact.Kind))
+	switch kind {
+	case "pull_request":
+		kind = "pr"
+	case "merge_request":
+		kind = "mr"
+	}
+	var live liveRemoteArtifact
+	var err error
+	switch provider + ":" + kind {
+	case "github:pr":
+		live, err = fetchGitHubPullRequestArtifact(strings.TrimSpace(artifact.URL))
+	case "gitlab:mr":
+		live, err = fetchGitLabMergeRequestArtifact(strings.TrimSpace(artifact.URL))
+	default:
+		return fmt.Errorf("unsupported remote artifact for merge verification: %s:%s", provider, kind)
+	}
+	if err != nil {
+		return err
+	}
+	if !live.Merged {
+		return fmt.Errorf("remote artifact is not verified merged: %s", artifact.URL)
+	}
+	return nil
+}
+
 func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, error) {
-	out, err := exec.Command("gh", "pr", "view", artifactURL, "--json", "url,labels,assignees,state").Output()
+	out, err := exec.Command("gh", "pr", "view", artifactURL, "--json", "url,labels,assignees,state,mergedAt").Output()
 	if err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("verify GitHub PR through gh failed: %w", commandOutputError(err))
 	}
 	var payload struct {
-		URL    string `json:"url"`
-		Labels []struct {
+		URL      string `json:"url"`
+		State    string `json:"state"`
+		MergedAt string `json:"mergedAt"`
+		Labels   []struct {
 			Name string `json:"name"`
 		} `json:"labels"`
 		Assignees []struct {
@@ -67,7 +98,7 @@ func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, err
 	if err := json.Unmarshal(out, &payload); err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("decode GitHub PR verification: %w", err)
 	}
-	artifact := liveRemoteArtifact{URL: payload.URL}
+	artifact := liveRemoteArtifact{URL: payload.URL, Merged: strings.EqualFold(payload.State, "MERGED") || strings.TrimSpace(payload.MergedAt) != ""}
 	for _, label := range payload.Labels {
 		artifact.Labels = append(artifact.Labels, label.Name)
 	}
@@ -94,6 +125,8 @@ func fetchGitLabMergeRequestArtifact(artifactURL string) (liveRemoteArtifact, er
 	}
 	var payload struct {
 		WebURL    string   `json:"web_url"`
+		State     string   `json:"state"`
+		MergedAt  string   `json:"merged_at"`
 		Labels    []string `json:"labels"`
 		Assignees []struct {
 			ID       int    `json:"id"`
@@ -104,7 +137,7 @@ func fetchGitLabMergeRequestArtifact(artifactURL string) (liveRemoteArtifact, er
 	if err := json.Unmarshal(out, &payload); err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("decode GitLab MR verification: %w", err)
 	}
-	artifact := liveRemoteArtifact{URL: payload.WebURL, Labels: payload.Labels}
+	artifact := liveRemoteArtifact{URL: payload.WebURL, Labels: payload.Labels, Merged: strings.EqualFold(payload.State, "merged") || strings.TrimSpace(payload.MergedAt) != ""}
 	for _, assignee := range payload.Assignees {
 		if assignee.ID != 0 {
 			artifact.Assignees = append(artifact.Assignees, strconv.Itoa(assignee.ID))
