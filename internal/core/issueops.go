@@ -210,6 +210,9 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 	if !issueOpsPlanPathExists(record.Repo, path) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("plan_path does not exist: %s", path)
 	}
+	if worktree := strings.TrimSpace(record.WorktreePath); worktree != "" && !issueOpsPlanPathInsideWorktree(worktree, path) {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("plan_path must be inside linked worktree: %s", worktree)
+	}
 	record.PlanPath = path
 	record.Phase = IssueOpsPhaseImplement
 	return touchAndWriteIssueOps(stateRoot, record)
@@ -235,6 +238,9 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 	}
 	if err := validateIssueOpsIsolatedWorktreePath(record, path); err != nil {
 		return IssueOpsRecord{OK: false}, err
+	}
+	if planPath := strings.TrimSpace(record.PlanPath); planPath != "" && !issueOpsPlanPathInsideWorktree(path, planPath) {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("plan_path must be inside linked worktree: %s", path)
 	}
 	record.WorktreePath = path
 	return touchAndWriteIssueOps(stateRoot, record)
@@ -486,6 +492,9 @@ func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if strings.TrimSpace(record.PlanPath) != "" && !issueOpsPlanPathExists(issueOpsPlanExistenceRoot(record), record.PlanPath) {
 		missing = append(missing, "plan_exists")
 	}
+	if !issueOpsPlanInLinkedWorktree(record) {
+		missing = append(missing, "plan_in_worktree")
+	}
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
@@ -504,6 +513,9 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	}
 	if strings.TrimSpace(record.PlanPath) != "" && !issueOpsPlanPathExists(issueOpsPlanExistenceRoot(record), record.PlanPath) {
 		missing = append(missing, "plan_exists")
+	}
+	if !issueOpsPlanInLinkedWorktree(record) {
+		missing = append(missing, "plan_in_worktree")
 	}
 	if strings.TrimSpace(record.AISlopCleanAt) == "" {
 		missing = append(missing, "ai_slop_clean")
@@ -588,6 +600,9 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if path := strings.TrimSpace(record.PlanPath); path != "" && !issueOpsPlanPathExists(gitRoot, path) {
 		missing = append(missing, "plan_exists")
 	}
+	if !issueOpsPlanInLinkedWorktree(record) {
+		missing = append(missing, "plan_in_worktree")
+	}
 	if path := strings.TrimSpace(record.WorktreePath); path == "" {
 		missing = append(missing, "worktree_path")
 	} else if !issueOpsWorktreePathValid(path) {
@@ -644,6 +659,26 @@ func issueOpsPlanPathExists(repo, path string) bool {
 	return err == nil && !info.IsDir()
 }
 
+func issueOpsPlanInLinkedWorktree(record IssueOpsRecord) bool {
+	planPath := strings.TrimSpace(record.PlanPath)
+	worktree := strings.TrimSpace(record.WorktreePath)
+	if planPath == "" || worktree == "" {
+		return true
+	}
+	return issueOpsPlanPathInsideWorktree(worktree, planPath)
+}
+
+func issueOpsPlanPathInsideWorktree(worktree, planPath string) bool {
+	planPath = strings.TrimSpace(planPath)
+	if planPath == "" || strings.Contains(planPath, "\x00") {
+		return false
+	}
+	if !filepath.IsAbs(planPath) {
+		return true
+	}
+	return pathWithin(planPath, worktree)
+}
+
 func IssueOpsStateRoot() string {
 	return filepath.Join(StateDir(), "issueops")
 }
@@ -669,6 +704,41 @@ func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
 		return IssueOpsRecord{}, false
 	}
 	return record, true
+}
+
+func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (IssueOpsRecord, bool) {
+	repo = cleanAbsPath(repo)
+	if repo == "" {
+		return IssueOpsRecord{}, false
+	}
+	entries, err := os.ReadDir(IssueOpsStateRoot())
+	if err != nil {
+		return IssueOpsRecord{}, false
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		id := strings.TrimSuffix(entry.Name(), ".json")
+		record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+		if err != nil {
+			continue
+		}
+		if cleanAbsPath(record.Repo) != repo {
+			continue
+		}
+		if record.Phase == IssueOpsPhaseDone {
+			continue
+		}
+		if issueOpsPlanBranchMismatchesRecord(record) {
+			continue
+		}
+		if worktree := strings.TrimSpace(record.WorktreePath); worktree == "" || !issueOpsWorktreePathValid(worktree) {
+			continue
+		}
+		return record, true
+	}
+	return IssueOpsRecord{}, false
 }
 
 func issueOpsPlanBranchMismatchesRecord(record IssueOpsRecord) bool {

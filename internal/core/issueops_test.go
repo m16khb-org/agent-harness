@@ -445,6 +445,58 @@ func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 	}
 }
 
+func TestIssueOpsPlanMustStayInsideLinkedWorktree(t *testing.T) {
+	stateRoot := t.TempDir()
+	repo := initIssueOpsRepo(t)
+	branch := "12-issue-worktree"
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
+		t.Fatalf("git checkout branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "push", "-q", "-u", "origin", branch); code != 0 {
+		t.Fatalf("git push branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "main"); code != 0 {
+		t.Fatalf("git checkout main failed: %s", stderr)
+	}
+	worktree := issueOpsWorktreePathForTest(repo, "issue-worktree")
+	if code, _, stderr := GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
+		t.Fatalf("git worktree add failed: %s", stderr)
+	}
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://gitlab.example/group/project/-/issues/12")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "gitlab",
+		IssueURL:     record.IssueURL,
+		Branch:       branch,
+		BaseBranch:   "main",
+		LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourcePlan := filepath.Join(repo, "plans", "demo.md")
+	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, sourcePlan); err == nil || !strings.Contains(err.Error(), "inside linked worktree") {
+		t.Fatalf("source checkout plan should not link after worktree, got %v", err)
+	}
+
+	record.PlanPath = sourcePlan
+	record.AISlopCleanAt = "2026-06-05T00:00:00Z"
+	ready := IssueOpsStrictPRReadiness(record)
+	if ready.Ready || !containsString(ready.Missing, "plan_in_worktree") {
+		t.Fatalf("source checkout plan should block strict readiness: %+v", ready)
+	}
+}
+
 func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)

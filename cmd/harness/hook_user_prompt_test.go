@@ -460,7 +460,7 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	}
 }
 
-func TestRunHookPreToolUseIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
+func TestRunHookPreToolUseBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
@@ -508,8 +508,29 @@ func TestRunHookPreToolUseIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected linked IssueOps worktree from another branch to block source checkout edit, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "linked IssueOps worktree") {
+		t.Fatalf("expected linked worktree reason, got %q", reason)
+	}
+
+	payload, err = json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "Edit",
+		"tool_input": map[string]any{
+			"file_path": filepath.Join(worktree, "internal", "core", "issueops.go"),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj = runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
+	})
 	if obj["decision"] != "allow" {
-		t.Fatalf("expected other branch linked worktree to be ignored, got %+v", obj)
+		t.Fatalf("expected linked IssueOps worktree edit to be allowed, got %+v", obj)
 	}
 }
 

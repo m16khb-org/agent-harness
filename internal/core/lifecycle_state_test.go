@@ -1028,7 +1028,7 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCycleHasExactWorktree(t *testing.T)
 	}
 }
 
-func TestWorktreeGuardIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
+func TestWorktreeGuardBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-current", IssueOpsPhaseProblem)
 	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "1-x"})
@@ -1050,8 +1050,8 @@ func TestWorktreeGuardIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, "internal", "x.go")}, EnforceWorktree: true,
 	})
-	if blocked.Decision != "allow" {
-		t.Fatalf("other branch linked worktree should not lock current checkout: %+v", blocked)
+	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, "linked IssueOps worktree") {
+		t.Fatalf("other branch linked worktree should block source checkout edits: %+v", blocked)
 	}
 
 	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{

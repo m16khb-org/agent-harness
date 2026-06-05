@@ -990,6 +990,14 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 			return ""
 		}
 		if !ok || !IssueOpsPhaseExpectsWorktree(rec.Phase) {
+			if linkedRec, linkedOK := ActiveIssueOpsLinkedWorktreeCycleForRepo(req.Repo); linkedOK {
+				linked := cleanAbsPath(linkedRec.WorktreePath)
+				for _, target := range targets {
+					if sourceCheckoutTargetNeedsLinkedWorktree(target, req.Repo) && !pathWithin(target, linked) {
+						return "mutating tool target is outside the linked IssueOps worktree for " + linkedRec.ID + "; run issue-based work from " + linked + " or mark the stale cycle done"
+					}
+				}
+			}
 			return ""
 		}
 		linked := cleanAbsPath(rec.WorktreePath)
