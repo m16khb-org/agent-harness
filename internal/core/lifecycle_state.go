@@ -504,6 +504,9 @@ func koreanRemoteArtifactBlockReason(req HookToolUseLifecycleRequest) string {
 		return ""
 	}
 	if strings.TrimSpace(artifact.title) == "" || strings.TrimSpace(artifact.body) == "" {
+		if artifact.createFromIssue {
+			return ""
+		}
 		return "IssueOps remote artifact gate requires inspectable Korean title and body before issue/pr/mr create/edit; provide --title and --body-file/--body after running the Korean gate"
 	}
 	hangul, englishWords := scoreKoreanRemoteArtifactLanguage(artifact.title + "\n" + artifact.body)
@@ -620,6 +623,17 @@ func parseRemoteArtifactArgs(artifact *remoteArtifactCommand, repo string, args 
 			artifact.labels = appendRemoteArtifactLabels(artifact.labels, "copied-from-linked-issue")
 		case arg == "--with-labels":
 			artifact.labels = appendRemoteArtifactLabels(artifact.labels, "copied-from-linked-issue")
+		case arg == "--related-issue" || arg == "-i":
+			if artifact.provider == "gitlab" && artifact.kind == "mr" {
+				artifact.createFromIssue = true
+			}
+			if j+1 < len(args) {
+				j++
+			}
+		case strings.HasPrefix(arg, "--related-issue="):
+			if artifact.provider == "gitlab" && artifact.kind == "mr" {
+				artifact.createFromIssue = true
+			}
 		case strings.HasPrefix(arg, "--label="):
 			artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--label="))
 		case strings.HasPrefix(arg, "--labels="):

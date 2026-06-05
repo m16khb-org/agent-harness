@@ -462,6 +462,36 @@ func TestPreToolUseVCSLinkingAllowsRemoteCreateWithLabelsAndAssignee(t *testing.
 	}
 }
 
+func TestPreToolUseKoreanRemoteArtifactGateAllowsGitLabIssueBasedMR(t *testing.T) {
+	for _, command := range []string{
+		`glab mr for 2385 --with-labels --assignee 100`,
+		`glab mr create --related-issue 2385 --copy-issue-labels --assignee-id 100`,
+	} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:                t.TempDir(),
+			Tool:                "bash",
+			Command:             command,
+			EnforceKoreanRemote: true,
+			EnforceVCSLinking:   true,
+		})
+		if got.Decision != "allow" {
+			t.Fatalf("expected issue-based GitLab MR create to be allowed with labels and numeric assignee: %q -> %+v", command, got)
+		}
+	}
+}
+
+func TestPreToolUseGitLabRelatedIssueMRRequiresNumericAssignee(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:              t.TempDir(),
+		Tool:              "bash",
+		Command:           `glab mr create --related-issue 2385 --copy-issue-labels --assignee m16khb`,
+		EnforceVCSLinking: true,
+	})
+	if got.Decision != "block" || !strings.Contains(got.Reason, "numeric assignee") {
+		t.Fatalf("expected GitLab issue-based MR create to require numeric assignee id, got %+v", got)
+	}
+}
+
 func TestPreToolUseGitOpsKubectlBlocksMutatingCommands(t *testing.T) {
 	for _, command := range []string{
 		`kubectl apply -f k8s/deployment.yaml`,

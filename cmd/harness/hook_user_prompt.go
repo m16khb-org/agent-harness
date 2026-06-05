@@ -802,6 +802,9 @@ func mcpRemoteArtifactCommandFromHookObject(obj map[string]any, toolInput map[st
 	if boolValue(toolInput, "with_labels", "withLabels") {
 		args = append(args, "--with-labels")
 	}
+	if relatedIssue := firstStringValue(toolInput, "related_issue", "relatedIssue", "issue", "issue_iid", "issueIid"); relatedIssue != "" && cli == "glab" && kind == "mr" {
+		args = append(args, "--related-issue", shellQuoteArg(relatedIssue))
+	}
 	for _, assignee := range stringListValue(toolInput, "assignee", "assignees", "add_assignee", "add_assignees") {
 		args = append(args, "--assignee", shellQuoteArg(assignee))
 	}
