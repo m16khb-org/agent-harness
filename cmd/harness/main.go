@@ -5386,13 +5386,21 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		}
 		payload = result
 	case "issueops_verify_remote_artifact":
-		result, err := core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), core.IssueOpsRemoteArtifactVerificationRequest{
+		req := core.IssueOpsRemoteArtifactVerificationRequest{
 			Provider:  stringArg(call.Arguments, "provider"),
 			Kind:      stringArg(call.Arguments, "kind"),
 			URL:       stringArg(call.Arguments, "url"),
 			Labels:    stringSliceArg(call.Arguments, "labels"),
 			Assignees: stringSliceArg(call.Arguments, "assignees"),
-		})
+		}
+		_, err := core.ValidateIssueOpsRemoteArtifactVerification(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), req)
+		var result core.IssueOpsRecord
+		if err == nil {
+			err = verifyIssueOpsRemoteArtifactLive(req)
+		}
+		if err == nil {
+			result, err = core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), req)
+		}
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps remote artifact verification failed", Data: err.Error()}
 		}

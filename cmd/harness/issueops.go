@@ -437,13 +437,21 @@ func runIssueOpsRemote(args []string) error {
 		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		record, err := core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), *id, core.IssueOpsRemoteArtifactVerificationRequest{
+		req := core.IssueOpsRemoteArtifactVerificationRequest{
 			Provider:  *provider,
 			Kind:      *kind,
 			URL:       *url,
 			Labels:    labels,
 			Assignees: assignees,
-		})
+		}
+		_, err := core.ValidateIssueOpsRemoteArtifactVerification(core.IssueOpsStateRoot(), *id, req)
+		var record core.IssueOpsRecord
+		if err == nil {
+			err = verifyIssueOpsRemoteArtifactLive(req)
+		}
+		if err == nil {
+			record, err = core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), *id, req)
+		}
 		return printIssueOpsResult(record, *jsonOut, err)
 	default:
 		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
