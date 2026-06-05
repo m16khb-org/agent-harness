@@ -841,6 +841,17 @@ func issueOpsGuardWorktreePathForTest(repo, slug string) string {
 	return filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", slug)
 }
 
+func writeIssueOpsGuardFileForTest(t *testing.T, root, rel, content string) {
+	t.Helper()
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestWorktreeGuardBlocksSourceEditWhenImplementCycleHasNoLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "feature/development", IssueOpsPhaseImplement)
@@ -860,6 +871,28 @@ func TestWorktreeGuardAllowsWorktreeAddBeforeLinkWorktree(t *testing.T) {
 	})
 	if res.Decision != "allow" {
 		t.Fatalf("worktree preparation command should pass before link-worktree, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardBlocksBranchCreationWithoutSourceRef(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "feature/current", IssueOpsPhasePlan)
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Bash", Command: "git switch -c feature/new-work", EnforceWorktree: true,
+	})
+	if res.Decision != "block" || !strings.Contains(res.Reason, "source ref") || !strings.Contains(res.Reason, "ask the user") {
+		t.Fatalf("branch creation without source ref should block with user-source guidance, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardBlocksWorktreeBranchCreationWithoutSourceRef(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "feature/current", IssueOpsPhasePlan)
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Bash", Command: "git worktree add -b feature/new-work ../repo.worktrees/feature-new-work", EnforceWorktree: true,
+	})
+	if res.Decision != "block" || !strings.Contains(res.Reason, "source ref") || !strings.Contains(res.Reason, "ask the user") {
+		t.Fatalf("worktree branch creation without source ref should block with user-source guidance, got %+v", res)
 	}
 }
 
@@ -929,12 +962,14 @@ func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	writeIssueOpsGuardFileForTest(t, repo, "plans/demo.md", "plan\n")
 	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), id, "plans/demo.md"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
 		t.Fatal(err)
 	}
+	writeIssueOpsGuardFileForTest(t, linked, "plans/demo.md", "plan\n")
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(IssueOpsPhaseAISlopClean)); err != nil {
 		t.Fatal(err)
 	}
@@ -1115,6 +1150,7 @@ func TestWorktreeGuardIgnoresMismatchedWorktreePlanBranch(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(gitdir, "HEAD"), []byte("ref: refs/heads/bugfix/2361\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeIssueOpsGuardFileForTest(t, worktree, "docs/plans/2361.md", "plan\n")
 	linkIssueOpsBranchEvidenceForTest(t, repo, "feature/development")
 	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), recordID, filepath.Join(worktree, "docs", "plans", "2361.md")); err != nil {
 		t.Fatal(err)

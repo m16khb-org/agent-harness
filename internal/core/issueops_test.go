@@ -43,6 +43,7 @@ func TestIssueOpsLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	writeIssueOpsFile(t, repo, "docs/superpowers/plans/demo.md", "plan\n")
 	record, err = LinkIssueOpsPlan(stateRoot, record.ID, "docs/superpowers/plans/demo.md")
 	if err != nil {
 		t.Fatal(err)
@@ -59,13 +60,14 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	if record.WorktreePath != worktree {
 		t.Fatalf("worktree path should be persisted: %+v", record)
 	}
+	writeIssueOpsFile(t, worktree, "docs/superpowers/plans/demo.md", "plan\n")
 
 	record, err = AddIssueOpsFeedback(stateRoot, record.ID, "user", "tighten acceptance criteria", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.Phase != IssueOpsPhaseFeedback || len(record.Feedback) != 1 || record.Feedback[0].Source != "user" {
-		t.Fatalf("feedback should be persisted and move to feedback phase: %+v", record)
+	if record.Phase != IssueOpsPhaseImplement || len(record.Feedback) != 1 || record.Feedback[0].Source != "user" {
+		t.Fatalf("early feedback should be persisted without entering feedback phase: %+v", record)
 	}
 
 	reloaded, err := ReadIssueOps(stateRoot, record.ID)
@@ -85,8 +87,27 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	if reloaded.AISlopCleanAt == "" {
 		t.Fatalf("ai-slop-clean phase should record completion time: %+v", reloaded)
 	}
+	reloaded, err = AddIssueOpsFeedback(stateRoot, record.ID, "user", "cleanup passed", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.Phase != IssueOpsPhaseFeedback || len(reloaded.Feedback) != 2 {
+		t.Fatalf("feedback after ai-slop-clean should enter feedback phase: %+v", reloaded)
+	}
 	if ready := IssueOpsPRReadiness(reloaded); !ready.Ready || len(ready.Missing) != 0 {
 		t.Fatalf("cycle with issue, plan, and ai-slop-clean should be PR-ready for drafting: %+v", ready)
+	}
+}
+
+func TestIssueOpsStartRequiresIssueBranch(t *testing.T) {
+	stateRoot := t.TempDir()
+	for _, branch := range []string{"main", "development", "2387-fix-grpc-ai-dmm-tag-replication-lag"} {
+		if _, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: branch}); err == nil || !strings.Contains(err.Error(), "gitflow branch") {
+			t.Fatalf("start should reject non-IssueOps branch %q, got %v", branch, err)
+		}
+	}
+	if _, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/2387-fix-grpc-ai-dmm-tag-replication-lag"}); err != nil {
+		t.Fatalf("start should accept IssueOps gitflow branch: %v", err)
 	}
 }
 
@@ -457,6 +478,9 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean)); err == nil || !strings.Contains(err.Error(), "missing") {
 		t.Fatalf("ai-slop-clean without issue/plan/worktree should be rejected, got %v", err)
 	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseFeedback)); err == nil || !strings.Contains(err.Error(), "before ai-slop-clean") {
+		t.Fatalf("feedback phase before ai-slop-clean should be rejected, got %v", err)
+	}
 	// pr phase requires issue + plan + ai-slop-clean evidence (readiness gate).
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR)); err == nil {
 		t.Fatalf("pr phase without readiness should be rejected")
@@ -473,6 +497,7 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	writeIssueOpsFile(t, repo, "plans/demo.md", "plan\n")
 	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "plans/demo.md"); err != nil {
 		t.Fatal(err)
 	}

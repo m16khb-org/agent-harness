@@ -134,6 +134,9 @@ func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, 
 		return IssueOpsRecord{OK: false}, fmt.Errorf("repo is required")
 	}
 	branch := strings.TrimSpace(req.Branch)
+	if err := validateIssueOpsGitFlowBranch(branch); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
 	id := newIssueOpsID(repo, branch)
 	// Identity is deterministic per (repo, branch): resume an existing record
 	// instead of minting a new one so cycles cannot accumulate as stale duplicates.
@@ -203,6 +206,9 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 	}
 	if missing := issueOpsBranchEvidenceMissing(record); len(missing) > 0 {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link plan before branch evidence: missing %s", strings.Join(missing, ", "))
+	}
+	if !issueOpsPlanPathExists(record.Repo, path) {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("plan_path does not exist: %s", path)
 	}
 	record.PlanPath = path
 	record.Phase = IssueOpsPhaseImplement
@@ -386,7 +392,9 @@ func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (Is
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.Feedback = append(record.Feedback, IssueOpsFeedbackItem{Source: source, Body: body, Classification: classification, CreatedAt: now})
-	record.Phase = IssueOpsPhaseFeedback
+	if strings.TrimSpace(record.AISlopCleanAt) != "" {
+		record.Phase = IssueOpsPhaseFeedback
+	}
 	record.UpdatedAt = now
 	return writeIssueOps(stateRoot, record)
 }
@@ -460,6 +468,9 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter ai-slop-clean phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
+	if phase == IssueOpsPhaseFeedback && strings.TrimSpace(record.AISlopCleanAt) == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter feedback phase before ai-slop-clean phase")
+	}
 	if phase == IssueOpsPhasePR {
 		if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
@@ -482,6 +493,9 @@ func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	} else if !issueOpsWorktreePathValid(path) {
 		missing = append(missing, "worktree_exists")
 	}
+	if strings.TrimSpace(record.PlanPath) != "" && !issueOpsPlanPathExists(issueOpsPlanExistenceRoot(record), record.PlanPath) {
+		missing = append(missing, "plan_exists")
+	}
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
@@ -497,6 +511,9 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	missing := issueOpsBaseImplementationMissing(record)
 	if strings.TrimSpace(record.WorktreePath) == "" {
 		missing = append(missing, "worktree_path")
+	}
+	if strings.TrimSpace(record.PlanPath) != "" && !issueOpsPlanPathExists(issueOpsPlanExistenceRoot(record), record.PlanPath) {
+		missing = append(missing, "plan_exists")
 	}
 	if strings.TrimSpace(record.AISlopCleanAt) == "" {
 		missing = append(missing, "ai_slop_clean")
@@ -519,6 +536,13 @@ func issueOpsBaseImplementationMissing(record IssueOpsRecord) []string {
 		missing = append(missing, "plan_path")
 	}
 	return missing
+}
+
+func issueOpsPlanExistenceRoot(record IssueOpsRecord) string {
+	if worktree := strings.TrimSpace(record.WorktreePath); worktree != "" {
+		return worktree
+	}
+	return strings.TrimSpace(record.Repo)
 }
 
 func issueOpsBranchEvidenceMissing(record IssueOpsRecord) []string {

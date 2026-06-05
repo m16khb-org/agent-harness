@@ -50,6 +50,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("branch prepare should include fallback steps: %#v", prepare)
 	}
 
+	writeIssueOpsCLIFileForTest(t, repo, "docs/superpowers/plans/demo.md", "plan\n")
 	plan := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-plan", "--id", id, "--plan-path", "docs/superpowers/plans/demo.md", "--json"})
 	})
@@ -72,6 +73,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if worktreeRecord["worktree_path"] != worktreePath {
 		t.Fatalf("worktree link should persist exact path: %#v", worktreeRecord)
 	}
+	writeIssueOpsCLIFileForTest(t, worktreePath, "docs/superpowers/plans/demo.md", "plan\n")
 
 	child := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-child", "--id", id, "--child-url", "https://github.com/example/repo/issues/2", "--title", "write child graph tests", "--json"})
@@ -96,8 +98,8 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if err := json.Unmarshal([]byte(feedback), &feedbackRecord); err != nil {
 		t.Fatalf("feedback should return JSON: %v\n%s", err, feedback)
 	}
-	if feedbackRecord["phase"] != "feedback" || !strings.Contains(feedback, "tighten acceptance criteria") {
-		t.Fatalf("feedback should be persisted: %#v", feedbackRecord)
+	if feedbackRecord["phase"] != "implement" || !strings.Contains(feedback, "tighten acceptance criteria") {
+		t.Fatalf("early feedback should be persisted without entering feedback phase: %#v", feedbackRecord)
 	}
 
 	beforeCleanReadiness := captureStdoutForContract(t, func() error {
@@ -262,4 +264,15 @@ func makeIssueOpsCLIWorktreeForTest(t *testing.T, repo, slug string) string {
 		t.Fatal(err)
 	}
 	return worktree
+}
+
+func writeIssueOpsCLIFileForTest(t *testing.T, root, rel, content string) {
+	t.Helper()
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }

@@ -89,6 +89,7 @@ func TestResponseContractsGolden(t *testing.T) {
 	cliSnapshot["issueops_prepare_branch"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"branch", "prepare", "--id", issueopsID, "--provider", "gitlab", "--issue-url", "https://gitlab.example/group/project/-/issues/1", "--branch", "feature/1-contract-branch", "--base-branch", "main", "--link-verified", "--json"})
 	})
+	writeContractFile(t, workspaceDir, "docs/superpowers/plans/contract.md", "plan\n")
 	cliSnapshot["issueops_link_plan"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-plan", "--id", issueopsID, "--plan-path", "docs/superpowers/plans/contract.md", "--json"})
 	})
@@ -247,6 +248,7 @@ func TestResponseContractsGolden(t *testing.T) {
 		"base_branch":   "main",
 		"link_verified": true,
 	})
+	writeContractFile(t, workspaceDir, "docs/superpowers/plans/mcp-contract.md", "plan\n")
 	mcpSnapshot["issueops_link_plan"] = runMCPToolContract(t, replacements, "issueops_link_plan", map[string]any{
 		"id":        issueopsMCPID,
 		"plan_path": "docs/superpowers/plans/mcp-contract.md",
@@ -341,6 +343,17 @@ func addEvalSymlinkReplacement(t *testing.T, replacements map[string]string, pat
 	eval, err := filepath.EvalSymlinks(path)
 	if err == nil && eval != "" {
 		replacements[eval] = token
+	}
+}
+
+func writeContractFile(t *testing.T, root, rel, content string) {
+	t.Helper()
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 

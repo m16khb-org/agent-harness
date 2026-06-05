@@ -363,7 +363,7 @@ func TestRunHookPreToolUseAllowsGitFlowBranchCreation(t *testing.T) {
 		"cwd":       source,
 		"tool_name": "Bash",
 		"tool_input": map[string]any{
-			"command": "git switch -c feature/2386-remove-dmm-ranking-ranktype",
+			"command": "git switch -c feature/2386-remove-dmm-ranking-ranktype origin/main",
 		},
 	})
 	if err != nil {
@@ -374,6 +374,31 @@ func TestRunHookPreToolUseAllowsGitFlowBranchCreation(t *testing.T) {
 	})
 	if obj["decision"] != "allow" {
 		t.Fatalf("expected gitflow branch creation to be allowed, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseBlocksBranchCreationWithoutSourceRef(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": "git switch -c feature/2386-remove-dmm-ranking-ranktype",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected branch creation without source ref to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "source ref") || !strings.Contains(reason, "ask the user") {
+		t.Fatalf("expected source-ref guidance, got %q", reason)
 	}
 }
 
@@ -402,6 +427,7 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	writeHookFixtureFile(t, source, "plans/issue-worktree.md", "plan\n")
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, "plans/issue-worktree.md"); err != nil {
 		t.Fatal(err)
 	}
@@ -1184,4 +1210,15 @@ func captureStdoutForTest(t *testing.T, fn func()) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+func writeHookFixtureFile(t *testing.T, root, rel, content string) {
+	t.Helper()
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }

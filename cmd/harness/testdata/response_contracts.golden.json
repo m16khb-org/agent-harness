@@ -454,7 +454,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 13896,
+          "bytes": 14876,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -1082,7 +1082,7 @@
       ],
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
-      "phase": "feedback",
+      "phase": "implement",
       "plan_path": "docs/superpowers/plans/contract.md",
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP",
@@ -1281,7 +1281,8 @@
       "branch": "feature/1-contract-branch",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "missing": [
-        "ai_slop_clean"
+        "ai_slop_clean",
+        "plan_exists"
       ],
       "ok": true,
       "plan_path": "docs/superpowers/plans/contract.md",
@@ -3656,7 +3657,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 13896,
+                "bytes": 14876,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -4288,7 +4289,7 @@
             ],
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
-            "phase": "feedback",
+            "phase": "implement",
             "plan_path": "docs/superpowers/plans/mcp-contract.md",
             "repo": "$WORKSPACE",
             "updated_at": "$TIMESTAMP",
@@ -4492,7 +4493,8 @@
             "branch": "feature/2-mcp-contract",
             "issue_url": "https://github.com/example/repo/issues/2",
             "missing": [
-              "ai_slop_clean"
+              "ai_slop_clean",
+              "plan_exists"
             ],
             "ok": true,
             "plan_path": "docs/superpowers/plans/mcp-contract.md",

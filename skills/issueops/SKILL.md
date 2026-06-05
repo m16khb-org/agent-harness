@@ -110,7 +110,7 @@ External LLM judges are read-only evaluators. Their prompts must forbid workspac
 Start or resume state after deriving the issue branch slug. The IssueOps branch must be the issue branch, not the source checkout's current branch:
 
 ```bash
-branch_slug="3-webhook-delivery"
+branch_slug="feature/3-webhook-delivery"
 agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
 agent-harness issueops status --id "$ISSUEOPS_ID" --json
 ```
