@@ -928,6 +928,11 @@ func runIssueOpsCleanup(args []string) error {
 
 func printIssueOpsResult(record core.IssueOpsRecord, jsonOut bool, err error) error {
 	if err != nil {
+		if jsonOut {
+			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+				return printErr
+			}
+		}
 		return err
 	}
 	if jsonOut {
@@ -935,4 +940,14 @@ func printIssueOpsResult(record core.IssueOpsRecord, jsonOut bool, err error) er
 	}
 	fmt.Printf("%s %s %s\n", record.ID, record.Phase, record.Repo)
 	return nil
+}
+
+func printIssueOpsErrorJSON(err error) error {
+	if err == nil {
+		return nil
+	}
+	return printJSON(map[string]any{
+		"ok":    false,
+		"error": err.Error(),
+	})
 }

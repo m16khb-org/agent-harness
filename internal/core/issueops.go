@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -127,33 +128,39 @@ type IssueOpsRemoteArtifactVerificationRequest struct {
 }
 
 type IssueOpsRecord struct {
-	OK             bool                                `json:"ok"`
-	ID             string                              `json:"id"`
-	Repo           string                              `json:"repo"`
-	Branch         string                              `json:"branch,omitempty"`
-	Phase          IssueOpsPhase                       `json:"phase"`
-	IssueURL       string                              `json:"issue_url,omitempty"`
-	PlanPath       string                              `json:"plan_path,omitempty"`
-	WorktreePath   string                              `json:"worktree_path,omitempty"`
-	IssueLinks     []IssueOpsIssueLink                 `json:"issue_links,omitempty"`
-	BranchPrepare  *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
-	RemoteArtifact *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
-	Feedback       []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
-	AISlopCleanAt  string                              `json:"ai_slop_clean_at,omitempty"`
-	CreatedAt      string                              `json:"created_at"`
-	UpdatedAt      string                              `json:"updated_at"`
+	OK                     bool                                `json:"ok"`
+	ID                     string                              `json:"id"`
+	Repo                   string                              `json:"repo"`
+	Branch                 string                              `json:"branch,omitempty"`
+	Phase                  IssueOpsPhase                       `json:"phase"`
+	IssueURL               string                              `json:"issue_url,omitempty"`
+	PlanPath               string                              `json:"plan_path,omitempty"`
+	WorktreePath           string                              `json:"worktree_path,omitempty"`
+	IssueLinks             []IssueOpsIssueLink                 `json:"issue_links,omitempty"`
+	BranchPrepare          *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
+	RemoteArtifact         *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
+	Feedback               []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
+	AISlopCleanAt          string                              `json:"ai_slop_clean_at,omitempty"`
+	AISlopCleanHead        string                              `json:"ai_slop_clean_head,omitempty"`
+	AISlopCleanFingerprint string                              `json:"ai_slop_clean_fingerprint,omitempty"`
+	CreatedAt              string                              `json:"created_at"`
+	UpdatedAt              string                              `json:"updated_at"`
 }
 
 type IssueOpsReadiness struct {
-	OK           bool     `json:"ok"`
-	Ready        bool     `json:"ready"`
-	Strict       bool     `json:"strict,omitempty"`
-	Missing      []string `json:"missing"`
-	IssueURL     string   `json:"issue_url,omitempty"`
-	PlanPath     string   `json:"plan_path,omitempty"`
-	WorktreePath string   `json:"worktree_path,omitempty"`
-	Branch       string   `json:"branch,omitempty"`
-	Warnings     []string `json:"warnings,omitempty"`
+	OK                     bool     `json:"ok"`
+	Ready                  bool     `json:"ready"`
+	Strict                 bool     `json:"strict,omitempty"`
+	Missing                []string `json:"missing"`
+	IssueURL               string   `json:"issue_url,omitempty"`
+	PlanPath               string   `json:"plan_path,omitempty"`
+	WorktreePath           string   `json:"worktree_path,omitempty"`
+	Branch                 string   `json:"branch,omitempty"`
+	AISlopCleanHead        string   `json:"ai_slop_clean_head,omitempty"`
+	CurrentHead            string   `json:"current_head,omitempty"`
+	AISlopCleanFingerprint string   `json:"ai_slop_clean_fingerprint,omitempty"`
+	CurrentFingerprint     string   `json:"current_fingerprint,omitempty"`
+	Warnings               []string `json:"warnings,omitempty"`
 }
 
 type IssueOpsCleanupStatusRequest struct {
@@ -603,6 +610,15 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 		return record, err
 	}
 	if record.Phase == phase {
+		if phase == IssueOpsPhaseAISlopClean {
+			if ready := IssueOpsAISlopCleanReadiness(record); !ready.Ready {
+				return IssueOpsRecord{OK: false}, fmt.Errorf("cannot refresh ai-slop-clean phase: missing %s", strings.Join(ready.Missing, ", "))
+			}
+			record.AISlopCleanAt = time.Now().UTC().Format(time.RFC3339Nano)
+			record.AISlopCleanHead = issueOpsCurrentHead(record)
+			record.AISlopCleanFingerprint = issueOpsChangeFingerprint(record)
+			return touchAndWriteIssueOps(stateRoot, record)
+		}
 		return record, nil
 	}
 	if record.Phase == IssueOpsPhaseDone {
@@ -640,6 +656,10 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	record.Phase = phase
 	if phase == IssueOpsPhaseAISlopClean && strings.TrimSpace(record.AISlopCleanAt) == "" {
 		record.AISlopCleanAt = time.Now().UTC().Format(time.RFC3339Nano)
+	}
+	if phase == IssueOpsPhaseAISlopClean {
+		record.AISlopCleanHead = issueOpsCurrentHead(record)
+		record.AISlopCleanFingerprint = issueOpsChangeFingerprint(record)
 	}
 	return touchAndWriteIssueOps(stateRoot, record)
 }
@@ -682,11 +702,6 @@ func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupSt
 		Merged:       req.Merged,
 		WorktreePath: strings.TrimSpace(record.WorktreePath),
 		Branch:       strings.TrimSpace(record.Branch),
-		Choices: []string{
-			"1. 정리 진행: merged PR/MR worktree와 local branch를 삭제합니다. (추천)",
-			"2. 보류: worktree는 유지하고 나중에 확인합니다.",
-			"3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.",
-		},
 	}
 	if record.RemoteArtifact != nil {
 		status.RemoteArtifactURL = strings.TrimSpace(record.RemoteArtifact.URL)
@@ -741,6 +756,19 @@ func finishIssueOpsCleanupStatus(status IssueOpsCleanupStatus) IssueOpsCleanupSt
 	status.Missing = uniqSorted(status.Missing)
 	status.Warnings = uniqSorted(status.Warnings)
 	status.Ready = len(status.Missing) == 0
+	if status.Ready {
+		status.Choices = []string{
+			"1. 정리 진행: merged PR/MR worktree와 local branch를 삭제합니다. (추천)",
+			"2. 보류: worktree는 유지하고 나중에 확인합니다.",
+			"3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.",
+		}
+	} else {
+		status.Choices = []string{
+			"1. 차단 해소: missing 항목의 merge/worktree/remote branch 증거를 먼저 보강합니다. (추천)",
+			"2. 보류: worktree는 유지하고 나중에 다시 확인합니다.",
+			"3. 확장 점검: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.",
+		}
+	}
 	return status
 }
 
@@ -802,6 +830,95 @@ func issueOpsHasImplementationEvidence(record IssueOpsRecord) bool {
 		return issueOpsGitHeadDiffersFromBase(record, worktree)
 	}
 	return issueOpsFileTreeHasImplementationChange(record, worktree)
+}
+
+func issueOpsCurrentHead(record IssueOpsRecord) string {
+	gitRoot := issueOpsStrictGitRoot(record)
+	if gitRoot == "" {
+		return ""
+	}
+	if code, out, _ := GitCmd(gitRoot, "rev-parse", "HEAD"); code == 0 {
+		return strings.TrimSpace(out)
+	}
+	return ""
+}
+
+func issueOpsChangeFingerprint(record IssueOpsRecord) string {
+	gitRoot := issueOpsStrictGitRoot(record)
+	if gitRoot == "" {
+		return ""
+	}
+	if code, out, _ := GitCmd(gitRoot, "rev-parse", "--is-inside-work-tree"); code != 0 || strings.TrimSpace(out) != "true" {
+		return ""
+	}
+	paths := map[string]bool{}
+	if base := issueOpsDiffBaseRef(record, gitRoot); base != "" {
+		_, names, _ := GitCmd(gitRoot, "diff", "--name-only", base+"..HEAD", "--")
+		for _, name := range strings.Split(names, "\n") {
+			if path := cleanIssueOpsRelativePath(name); path != "" {
+				paths[path] = true
+			}
+		}
+	}
+	status := GitOut(gitRoot, "status", "--porcelain=v1", "--untracked-files=all")
+	for _, line := range strings.Split(status, "\n") {
+		if path := cleanIssueOpsRelativePath(issueOpsPorcelainPath(line)); path != "" {
+			paths[path] = true
+		}
+	}
+	if len(paths) == 0 {
+		return ""
+	}
+	ordered := make([]string, 0, len(paths))
+	for path := range paths {
+		ordered = append(ordered, path)
+	}
+	sort.Strings(ordered)
+	var b strings.Builder
+	b.WriteString("issueops-ai-slop-clean:v1\n")
+	for _, rel := range ordered {
+		abs := filepath.Join(gitRoot, rel)
+		info, err := os.Stat(abs)
+		if err != nil {
+			b.WriteString(rel + "\x00deleted\n")
+			continue
+		}
+		if info.IsDir() {
+			continue
+		}
+		content, err := os.ReadFile(abs)
+		if err != nil {
+			return ""
+		}
+		sum := sha256.Sum256(content)
+		b.WriteString(rel + "\x00" + hex.EncodeToString(sum[:]) + "\n")
+	}
+	sum := sha256.Sum256([]byte(b.String()))
+	return hex.EncodeToString(sum[:])
+}
+
+func issueOpsDiffBaseRef(record IssueOpsRecord, gitRoot string) string {
+	if record.BranchPrepare == nil {
+		return ""
+	}
+	base := strings.TrimSpace(record.BranchPrepare.BaseBranch)
+	if base == "" {
+		return ""
+	}
+	for _, ref := range []string{"origin/" + base, base} {
+		if code, _, _ := GitCmd(gitRoot, "rev-parse", "--verify", ref+"^{commit}"); code == 0 {
+			return ref
+		}
+	}
+	return ""
+}
+
+func cleanIssueOpsRelativePath(path string) string {
+	path = filepath.Clean(strings.TrimSpace(path))
+	if path == "" || path == "." || filepath.IsAbs(path) || strings.HasPrefix(path, ".."+string(filepath.Separator)) || path == ".." {
+		return ""
+	}
+	return filepath.ToSlash(path)
 }
 
 func issueOpsGitStatusHasImplementationChange(record IssueOpsRecord, worktree string) bool {
@@ -969,6 +1086,8 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	ready.Strict = true
 	missing := append([]string{}, ready.Missing...)
 	warnings := []string{}
+	currentHead := ""
+	currentFingerprint := ""
 
 	gitRoot := issueOpsStrictGitRoot(record)
 	if gitRoot == "" {
@@ -976,6 +1095,8 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	} else if code, out, _ := GitCmd(gitRoot, "rev-parse", "--is-inside-work-tree"); code != 0 || strings.TrimSpace(out) != "true" {
 		missing = append(missing, "repo_git")
 	} else {
+		currentHead = issueOpsCurrentHead(record)
+		currentFingerprint = issueOpsChangeFingerprint(record)
 		branch := strings.TrimSpace(GitOut(gitRoot, "branch", "--show-current"))
 		if strings.TrimSpace(record.Branch) != "" && branch != strings.TrimSpace(record.Branch) {
 			missing = append(missing, "branch_match")
@@ -1003,6 +1124,16 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 			}
 		}
 	}
+	if strings.TrimSpace(record.AISlopCleanAt) != "" {
+		storedFingerprint := strings.TrimSpace(record.AISlopCleanFingerprint)
+		if storedFingerprint == "" && currentFingerprint != "" {
+			missing = append(missing, "ai_slop_clean_fingerprint")
+		} else if storedFingerprint != "" && currentFingerprint == "" {
+			missing = append(missing, "current_fingerprint")
+		} else if storedFingerprint != "" && storedFingerprint != currentFingerprint {
+			missing = append(missing, "ai_slop_clean_stale")
+		}
+	}
 
 	if path := strings.TrimSpace(record.PlanPath); path != "" && !issueOpsPlanPathExists(gitRoot, path) {
 		missing = append(missing, "plan_exists")
@@ -1018,6 +1149,10 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 
 	ready.Missing = uniqSorted(missing)
 	ready.Warnings = warnings
+	ready.AISlopCleanHead = record.AISlopCleanHead
+	ready.CurrentHead = currentHead
+	ready.AISlopCleanFingerprint = record.AISlopCleanFingerprint
+	ready.CurrentFingerprint = currentFingerprint
 	ready.Ready = len(ready.Missing) == 0
 	return ready
 }

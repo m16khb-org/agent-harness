@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -176,6 +177,37 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 }
 
+func TestRunIssueOpsPhaseFailureWithJSONEmitsStructuredError(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIRepoForTest(t, "json-failure")
+	start := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "456-provider-linked-branch", "--json"})
+	})
+	var record map[string]any
+	if err := json.Unmarshal([]byte(start), &record); err != nil {
+		t.Fatalf("start should return JSON: %v\n%s", err, start)
+	}
+	id, ok := record["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected start record: %#v", record)
+	}
+
+	out, err := captureStdoutAndErrorForIssueOps(t, func() error {
+		return runIssueOps([]string{"phase", "--id", id, "--to", "pr", "--json"})
+	})
+	if err == nil {
+		t.Fatalf("pr phase without readiness should still return an error")
+	}
+	var failure map[string]any
+	if unmarshalErr := json.Unmarshal([]byte(out), &failure); unmarshalErr != nil {
+		t.Fatalf("phase failure with --json should emit JSON stdout: %v\n%s", unmarshalErr, out)
+	}
+	errorText, _ := failure["error"].(string)
+	if failure["ok"] != false || !strings.Contains(errorText, "cannot enter pr phase") {
+		t.Fatalf("unexpected structured failure payload: %#v", failure)
+	}
+}
+
 func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	bin := t.TempDir()
@@ -295,6 +327,27 @@ func makeIssueOpsCLIRepoForTest(t *testing.T, name string) string {
 		t.Fatal(err)
 	}
 	return repo
+}
+
+func captureStdoutAndErrorForIssueOps(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	runErr := fn()
+	closeErr := w.Close()
+	os.Stdout = oldStdout
+	out, readErr := io.ReadAll(r)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if closeErr != nil {
+		t.Fatal(closeErr)
+	}
+	return string(out), runErr
 }
 
 func makeIssueOpsCLIWorktreeForTest(t *testing.T, repo, slug string) string {

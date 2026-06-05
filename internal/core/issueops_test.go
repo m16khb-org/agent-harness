@@ -695,6 +695,86 @@ func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 	}
 }
 
+func TestIssueOpsStrictPRReadinessDetectsStaleAISlopCleanAfterImplementationChange(t *testing.T) {
+	stateRoot := t.TempDir()
+	repo := initIssueOpsRepo(t)
+	branch := "12-stale-ai-slop"
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
+		t.Fatalf("git checkout branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "push", "-q", "-u", "origin", branch); code != 0 {
+		t.Fatalf("git push branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "main"); code != 0 {
+		t.Fatalf("git checkout main failed: %s", stderr)
+	}
+	worktree := issueOpsWorktreePathForTest(repo, "stale-ai-slop")
+	if code, _, stderr := GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
+		t.Fatalf("git worktree add failed: %s", stderr)
+	}
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/12")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       branch,
+		BaseBranch:   "main",
+		LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
+	record, err = LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans/demo.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\nconst Value = 1\n")
+	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(record.AISlopCleanFingerprint) == "" {
+		t.Fatalf("ai-slop-clean should record changed-file fingerprint: %+v", record)
+	}
+	if code, _, stderr := GitCmd(worktree, "add", "internal/demo.go", "plans/demo.md"); code != 0 {
+		t.Fatalf("git add failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(worktree, "commit", "-q", "-m", "feat: implement after clean"); code != 0 {
+		t.Fatalf("git commit failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(worktree, "push", "-q"); code != 0 {
+		t.Fatalf("git push failed: %s", stderr)
+	}
+	if ready := IssueOpsStrictPRReadiness(record); !ready.Ready || len(ready.Missing) != 0 {
+		t.Fatalf("committing the same cleaned content should remain ready, got %+v", ready)
+	}
+
+	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\nconst Value = 2\n")
+	if code, _, stderr := GitCmd(worktree, "add", "internal/demo.go"); code != 0 {
+		t.Fatalf("git add stale change failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(worktree, "commit", "-q", "-m", "feat: change after clean"); code != 0 {
+		t.Fatalf("git commit stale change failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(worktree, "push", "-q"); code != 0 {
+		t.Fatalf("git push stale change failed: %s", stderr)
+	}
+	if ready := IssueOpsStrictPRReadiness(record); ready.Ready || !containsString(ready.Missing, "ai_slop_clean_stale") {
+		t.Fatalf("implementation changes after ai-slop-clean should stale PR readiness, got %+v", ready)
+	}
+}
+
 func TestIssueOpsPlanMustStayInsideLinkedWorktree(t *testing.T) {
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)
@@ -862,6 +942,13 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	}
 	if code, _, stderr := GitCmd(worktree, "pull", "-q", "--ff-only"); code != 0 {
 		t.Fatalf("git pull worktree after remote advance failed: %s", stderr)
+	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR)); err == nil || !strings.Contains(err.Error(), "ai_slop_clean_stale") {
+		t.Fatalf("pr phase after post-cleanup changes should require fresh ai-slop-clean, got %v", err)
+	}
+	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	if err != nil || record.Phase != IssueOpsPhaseAISlopClean || record.AISlopCleanFingerprint == "" {
+		t.Fatalf("fresh ai-slop-clean should record the current implementation fingerprint, got %+v err=%v", record, err)
 	}
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR))
 	if err != nil || record.Phase != IssueOpsPhasePR {
@@ -1058,9 +1145,15 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if notMerged.Ready || !containsString(notMerged.Missing, "remote_artifact_merged") {
 		t.Fatalf("cleanup should require explicit merged evidence, got %+v", notMerged)
 	}
+	if len(notMerged.Choices) != 3 || strings.Contains(notMerged.Choices[0], "정리 진행") || !strings.Contains(notMerged.Choices[0], "차단 해소") {
+		t.Fatalf("cleanup must not recommend deletion before readiness, got %+v", notMerged.Choices)
+	}
 	remoteBranchPresent := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
 	if remoteBranchPresent.Ready || !containsString(remoteBranchPresent.Missing, "remote_branch_present") {
 		t.Fatalf("cleanup should report remote source branch before local deletion, got %+v", remoteBranchPresent)
+	}
+	if len(remoteBranchPresent.Choices) != 3 || strings.Contains(remoteBranchPresent.Choices[0], "정리 진행") || !strings.Contains(remoteBranchPresent.Choices[0], "차단 해소") {
+		t.Fatalf("cleanup must not recommend deletion while source branch still exists, got %+v", remoteBranchPresent.Choices)
 	}
 	if code, _, stderr := GitCmd(worktree, "push", "-q", "origin", "--delete", branch); code != 0 {
 		t.Fatalf("git push delete branch failed: %s", stderr)
@@ -1068,6 +1161,9 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	ready := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
 	if !ready.Ready || len(ready.Missing) != 0 || len(ready.Choices) != 3 {
 		t.Fatalf("clean merged worktree with deleted remote branch should be cleanup-ready, got %+v", ready)
+	}
+	if !strings.Contains(ready.Choices[0], "정리 진행") || !strings.Contains(ready.Choices[0], "(추천)") {
+		t.Fatalf("cleanup-ready status should recommend cleanup, got %+v", ready.Choices)
 	}
 	writeIssueOpsFile(t, worktree, "DIRTY.md", "dirty\n")
 	dirty := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
