@@ -443,6 +443,17 @@ func TestIssueOpsWorktreeLinkRequiresSiblingIsolation(t *testing.T) {
 	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, repo); err == nil || !strings.Contains(err.Error(), "source checkout") {
 		t.Fatalf("source checkout as worktree should fail, got %v", err)
 	}
+	symlinkParent := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees")
+	if err := os.MkdirAll(symlinkParent, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	symlinkWorktree := filepath.Join(symlinkParent, "1-demo-symlink")
+	if err := os.Symlink(repo, symlinkWorktree); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, symlinkWorktree); err == nil || !strings.Contains(err.Error(), "must not be a symlink") {
+		t.Fatalf("source checkout symlink as worktree should fail, got %v", err)
+	}
 	adHoc := filepath.Join(t.TempDir(), "1-demo")
 	if err := os.MkdirAll(adHoc, 0o755); err != nil {
 		t.Fatal(err)

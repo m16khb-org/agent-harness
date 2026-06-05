@@ -947,6 +947,28 @@ func validateIssueOpsIsolatedWorktreePath(record IssueOpsRecord, path string) er
 	if !pathWithin(worktree, parent) {
 		return fmt.Errorf("worktree_path must be under sibling worktree directory: %s", parent)
 	}
+	info, err := os.Lstat(worktree)
+	if err != nil {
+		return fmt.Errorf("worktree_path does not exist: %s", worktree)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("worktree_path must not be a symlink: %s", worktree)
+	}
+	resolvedRepo, err := filepath.EvalSymlinks(repo)
+	if err != nil {
+		return fmt.Errorf("source checkout path cannot be resolved: %s", repo)
+	}
+	resolvedWorktree, err := filepath.EvalSymlinks(worktree)
+	if err != nil {
+		return fmt.Errorf("worktree_path cannot be resolved: %s", worktree)
+	}
+	resolvedParent := filepath.Join(filepath.Dir(resolvedRepo), filepath.Base(resolvedRepo)+".worktrees")
+	if resolvedWorktree == resolvedRepo {
+		return fmt.Errorf("worktree_path must be isolated from the source checkout")
+	}
+	if !pathWithin(resolvedWorktree, resolvedParent) {
+		return fmt.Errorf("worktree_path must resolve under sibling worktree directory: %s", resolvedParent)
+	}
 	return nil
 }
 
