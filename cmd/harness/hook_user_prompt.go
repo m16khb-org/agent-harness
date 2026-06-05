@@ -948,13 +948,31 @@ func pathsFromHookInput(input []byte) []string {
 				walk(item)
 			}
 		case string:
-			if strings.Contains(x, ".go") || strings.Contains(x, ".agent-harness") || strings.Contains(x, "testdata/") {
+			if addPatchPathsFromHookString(&out, seen, x) {
+				return
+			}
+			if !strings.Contains(x, "\n") && (strings.Contains(x, ".go") || strings.Contains(x, ".agent-harness") || strings.Contains(x, "testdata/")) {
 				addHookPath(&out, seen, x)
 			}
 		}
 	}
 	walk(obj)
 	return out
+}
+
+func addPatchPathsFromHookString(out *[]string, seen map[string]bool, value string) bool {
+	if !strings.Contains(value, "*** Begin Patch") {
+		return false
+	}
+	for _, line := range strings.Split(value, "\n") {
+		for _, prefix := range []string{"*** Add File: ", "*** Update File: ", "*** Delete File: ", "*** Move to: "} {
+			if strings.HasPrefix(line, prefix) {
+				addHookPath(out, seen, strings.TrimSpace(strings.TrimPrefix(line, prefix)))
+				break
+			}
+		}
+	}
+	return true
 }
 
 func addHookPath(out *[]string, seen map[string]bool, value string) {

@@ -331,6 +331,52 @@ func TestRunHookPreToolUseEnforcesIssueOpsWorktree(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseAllowsApplyPatchInsideExpectedWorktree(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "api-servers")
+	worktree := filepath.Join(filepath.Dir(source), "api-servers.worktrees", "2193-demo")
+	patch := "*** Begin Patch\n*** Add File: " + filepath.Join(worktree, "SMOKE.go") + "\n+package smoke\n*** End Patch\n"
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "apply_patch",
+		"tool_input": map[string]any{
+			"patch": patch,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--expected-worktree", worktree, "--source-checkout", source, "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected apply_patch target inside expected worktree to be allowed, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseBlocksApplyPatchOutsideExpectedWorktree(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "api-servers")
+	worktree := filepath.Join(filepath.Dir(source), "api-servers.worktrees", "2193-demo")
+	patch := "*** Begin Patch\n*** Add File: " + filepath.Join(source, "SMOKE.go") + "\n+package smoke\n*** End Patch\n"
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "apply_patch",
+		"tool_input": map[string]any{
+			"patch": patch,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--expected-worktree", worktree, "--source-checkout", source, "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected apply_patch target outside expected worktree to be blocked, got %+v", obj)
+	}
+}
+
 func TestRunHookPreToolUseBlocksIssueBranchCreationWithoutSourceRef(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
