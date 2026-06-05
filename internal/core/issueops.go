@@ -994,7 +994,18 @@ func issueOpsPlanPathInsideWorktree(worktree, planPath string) bool {
 	if !filepath.IsAbs(planPath) {
 		return true
 	}
-	return pathWithin(planPath, worktree)
+	if !pathWithin(planPath, worktree) {
+		return false
+	}
+	resolvedPlan, err := filepath.EvalSymlinks(planPath)
+	if err != nil {
+		return false
+	}
+	resolvedWorktree, err := filepath.EvalSymlinks(worktree)
+	if err != nil {
+		return false
+	}
+	return pathWithin(resolvedPlan, resolvedWorktree)
 }
 
 func IssueOpsStateRoot() string {

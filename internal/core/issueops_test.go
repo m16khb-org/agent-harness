@@ -300,6 +300,20 @@ func TestIssueOpsLinkPlanResolvesRelativePathInsideLinkedWorktree(t *testing.T) 
 	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "docs/plans/source-only.md"); err == nil || !strings.Contains(err.Error(), "plan_path does not exist") {
 		t.Fatalf("relative plan path should be resolved inside linked worktree, got %v", err)
 	}
+	externalPlan := filepath.Join(t.TempDir(), "external.md")
+	if err := os.WriteFile(externalPlan, []byte("external plan\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(worktree, "docs", "plans"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	symlinkPlan := filepath.Join(worktree, "docs", "plans", "external-link.md")
+	if err := os.Symlink(externalPlan, symlinkPlan); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "docs/plans/external-link.md"); err == nil || !strings.Contains(err.Error(), "inside linked worktree") {
+		t.Fatalf("relative symlink plan should resolve inside linked worktree, got %v", err)
+	}
 	writeIssueOpsFile(t, worktree, "docs/plans/worktree.md", "worktree plan\n")
 	record, err = LinkIssueOpsPlan(stateRoot, record.ID, "docs/plans/worktree.md")
 	if err != nil {
