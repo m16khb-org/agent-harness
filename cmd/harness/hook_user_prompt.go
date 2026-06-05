@@ -209,9 +209,19 @@ func promptFromHookInput(input []byte) string {
 
 func isStopHookContinuationPrompt(prompt string) bool {
 	trimmed := strings.TrimSpace(prompt)
-	return strings.HasPrefix(trimmed, `<hook_prompt `) &&
+	if strings.HasPrefix(trimmed, `<hook_prompt `) &&
 		strings.Contains(trimmed, `hook_run_id="stop:`) &&
-		strings.Contains(trimmed, `</hook_prompt>`)
+		strings.Contains(trimmed, `</hook_prompt>`) {
+		return true
+	}
+	lower := strings.ToLower(trimmed)
+	if strings.Contains(lower, "stop hook") &&
+		strings.Contains(lower, "blocked") &&
+		strings.Contains(lower, "feedback:") {
+		return true
+	}
+	return strings.Contains(trimmed, "다음 행동 판단 지점에 도달했습니다") &&
+		strings.Contains(trimmed, "훅이 관찰한 근거")
 }
 
 func envBool(name string) bool {
