@@ -18,6 +18,28 @@ func TestMCPIssueOpsStartAndStatus(t *testing.T) {
 	}
 }
 
+func TestMCPIssueOpsLinkChild(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "feature/demo"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	record := callMCPToolForIssueOpsTest(t, "issueops_link_child", map[string]any{
+		"id":        id,
+		"child_url": "https://gitlab.example/group/project/-/issues/2",
+		"title":     "write GitLab child task",
+	})
+	links, ok := record["issue_links"].([]any)
+	if !ok || len(links) != 1 {
+		t.Fatalf("expected one issue link, got %#v", record)
+	}
+	link, ok := links[0].(map[string]any)
+	if !ok || link["type"] != "child" || link["provider"] != "gitlab" {
+		t.Fatalf("unexpected issue link: %#v", links[0])
+	}
+}
+
 func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) map[string]any {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})

@@ -574,6 +574,31 @@
     "name": "issueops_link_worktree"
   },
   {
+    "description": "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
+    "inputSchema": {
+      "properties": {
+        "child_url": {
+          "description": "GitHub sub-issue or GitLab child item URL.",
+          "type": "string"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Optional child issue title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "child_url"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_link_child"
+  },
+  {
     "description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
     "inputSchema": {
       "properties": {

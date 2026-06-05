@@ -58,6 +58,14 @@ type IssueOpsFeedbackItem struct {
 	CreatedAt      string `json:"created_at"`
 }
 
+type IssueOpsIssueLink struct {
+	Type      string `json:"type"`
+	URL       string `json:"url"`
+	Title     string `json:"title,omitempty"`
+	Provider  string `json:"provider,omitempty"`
+	CreatedAt string `json:"created_at"`
+}
+
 type IssueOpsRecord struct {
 	OK           bool                   `json:"ok"`
 	ID           string                 `json:"id"`
@@ -67,6 +75,7 @@ type IssueOpsRecord struct {
 	IssueURL     string                 `json:"issue_url,omitempty"`
 	PlanPath     string                 `json:"plan_path,omitempty"`
 	WorktreePath string                 `json:"worktree_path,omitempty"`
+	IssueLinks   []IssueOpsIssueLink    `json:"issue_links,omitempty"`
 	Feedback     []IssueOpsFeedbackItem `json:"feedback,omitempty"`
 	CreatedAt    string                 `json:"created_at"`
 	UpdatedAt    string                 `json:"updated_at"`
@@ -175,6 +184,31 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 		return record, err
 	}
 	record.WorktreePath = path
+	return touchAndWriteIssueOps(stateRoot, record)
+}
+
+func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
+	u := strings.TrimSpace(childURL)
+	if err := validateIssueURL(u); err != nil {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("child_url %s", strings.TrimPrefix(err.Error(), "issue_url "))
+	}
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return record, err
+	}
+	for _, link := range record.IssueLinks {
+		if link.Type == "child" && link.URL == u {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("child issue already linked: %s", u)
+		}
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	record.IssueLinks = append(record.IssueLinks, IssueOpsIssueLink{
+		Type:      "child",
+		URL:       u,
+		Title:     strings.TrimSpace(title),
+		Provider:  issueOpsProviderFromURL(u),
+		CreatedAt: now,
+	})
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
@@ -469,4 +503,20 @@ func validateIssueURL(issueURL string) error {
 		return fmt.Errorf("issue_url must be an http(s) URL")
 	}
 	return nil
+}
+
+func issueOpsProviderFromURL(issueURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(issueURL))
+	if err != nil {
+		return ""
+	}
+	host := strings.ToLower(parsed.Hostname())
+	path := strings.ToLower(parsed.Path)
+	if host == "github.com" && strings.Contains(path, "/issues/") {
+		return "github"
+	}
+	if strings.Contains(host, "gitlab") || strings.Contains(path, "/-/issues/") {
+		return "gitlab"
+	}
+	return ""
 }

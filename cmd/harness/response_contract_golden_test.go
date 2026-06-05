@@ -92,6 +92,9 @@ func TestResponseContractsGolden(t *testing.T) {
 	cliSnapshot["issueops_link_worktree"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", issueopsID, "--worktree-path", "/tmp/agent-harness-contract.worktree", "--json"})
 	})
+	cliSnapshot["issueops_link_child"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"link-child", "--id", issueopsID, "--child-url", "https://gitlab.example/group/project/-/issues/2", "--title", "contract child", "--json"})
+	})
 	cliSnapshot["issueops_feedback_add"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"feedback", "add", "--id", issueopsID, "--source", "user", "--body", "tighten contract", "--json"})
 	})
@@ -234,6 +237,11 @@ func TestResponseContractsGolden(t *testing.T) {
 	mcpSnapshot["issueops_link_worktree"] = runMCPToolContract(t, replacements, "issueops_link_worktree", map[string]any{
 		"id":            issueopsMCPID,
 		"worktree_path": "/tmp/agent-harness-mcp-contract.worktree",
+	})
+	mcpSnapshot["issueops_link_child"] = runMCPToolContract(t, replacements, "issueops_link_child", map[string]any{
+		"id":        issueopsMCPID,
+		"child_url": "https://github.com/example/repo/issues/3",
+		"title":     "MCP contract child",
 	})
 	mcpSnapshot["issueops_add_feedback"] = runMCPToolContract(t, replacements, "issueops_add_feedback", map[string]any{
 		"id":     issueopsMCPID,

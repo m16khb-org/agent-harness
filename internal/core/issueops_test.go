@@ -181,6 +181,54 @@ func TestIssueOpsFeedbackRecordsClassification(t *testing.T) {
 	}
 }
 
+func TestIssueOpsChildLinksPersistProviderNeutralGraph(t *testing.T) {
+	stateRoot := t.TempDir()
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/10")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	record, err = LinkIssueOpsChild(stateRoot, record.ID, "https://github.com/example/repo/issues/11", "write child graph tests")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(record.IssueLinks) != 1 {
+		t.Fatalf("expected one child issue link, got %+v", record.IssueLinks)
+	}
+	link := record.IssueLinks[0]
+	if link.Type != "child" || link.URL != "https://github.com/example/repo/issues/11" || link.Title != "write child graph tests" || link.Provider != "github" {
+		t.Fatalf("unexpected child issue link: %+v", link)
+	}
+	if link.CreatedAt == "" {
+		t.Fatalf("child issue link should record created_at: %+v", link)
+	}
+
+	reloaded, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reloaded.IssueLinks) != 1 || reloaded.IssueLinks[0].URL != link.URL {
+		t.Fatalf("reloaded child issue links mismatch: %+v", reloaded.IssueLinks)
+	}
+	if _, err := LinkIssueOpsChild(stateRoot, record.ID, link.URL, "duplicate"); err == nil || !strings.Contains(err.Error(), "already linked") {
+		t.Fatalf("expected duplicate child link rejection, got %v", err)
+	}
+	record, err = LinkIssueOpsChild(stateRoot, record.ID, "https://tracker.example/acme/repo/issues/12", "generic tracker child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := record.IssueLinks[1].Provider; got != "" {
+		t.Fatalf("generic issue URL should not infer a provider, got %q", got)
+	}
+	if _, err := LinkIssueOpsChild(stateRoot, record.ID, "not-a-url", "bad"); err == nil || !strings.Contains(err.Error(), "child_url") {
+		t.Fatalf("expected child URL validation error, got %v", err)
+	}
+}
+
 func TestIssueOpsRejectsUnsafeInputs(t *testing.T) {
 	stateRoot := t.TempDir()
 	if _, err := StartIssueOps(stateRoot, IssueOpsStartRequest{}); err == nil || !strings.Contains(err.Error(), "repo") {

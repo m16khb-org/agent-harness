@@ -36,9 +36,9 @@ IDD should make these records durable and inspectable:
 | Area | Current state | Evidence |
 | --- | --- | --- |
 | Advisory workflow | Present. The `issueops` skill describes problem intake, issue contract, planning, TDD/subagent implementation, feedback, and PR/MR drafting. | `skills/issueops/SKILL.md` |
-| Durable cycle state | Present but narrow. State stores `repo`, `branch`, `phase`, `issue_url`, `plan_path`, feedback items, and timestamps. | `internal/core/issueops.go` |
-| CLI state commands | Present in current source. Commands include `start`, `status`, `link-issue`, `link-plan`, `feedback add`, `pr-readiness`, and benchmark commands. | `cmd/harness/issueops.go`, `internal/adapter/cli/usage.go` |
-| MCP tools | Partial. Tests cover MCP start/status, and architecture docs describe matching IssueOps MCP tools. | `cmd/harness/issueops_mcp_test.go`, `.agent-harness/ARCHITECTURE.md` |
+| Durable cycle state | Present but still limited. State stores `repo`, `branch`, `phase`, `issue_url`, `plan_path`, `worktree_path`, child issue links, feedback items, and timestamps. | `internal/core/issueops.go` |
+| CLI state commands | Present in current source. Commands include `start`, `status`, `link-issue`, `link-plan`, `link-worktree`, `link-child`, `feedback add`, `pr-readiness`, and benchmark commands. | `cmd/harness/issueops.go`, `internal/adapter/cli/usage.go` |
+| MCP tools | Partial. Tests cover MCP start/status and child linking, and architecture docs describe matching IssueOps MCP tools. | `cmd/harness/issueops_mcp_test.go`, `.agent-harness/ARCHITECTURE.md` |
 | Readiness check | Present but too shallow for IDD. It only requires `issue_url` and `plan_path`. | `internal/core/issueops.go` |
 | Worktree expectations | Present as advisory/benchmark evidence, not as executable git orchestration. | `skills/issueops/SKILL.md`, `internal/core/issueops_benchmark.go` |
 | Quality benchmark | Present. Deterministic scoring covers branch/worktree gate quality, isolation, cleanup, TDD, subagent orchestration, and PR/MR quality. | `internal/core/issueops_benchmark.go` |
@@ -48,14 +48,13 @@ IDD should make these records durable and inspectable:
 
 ### 1. Durable issue graph
 
-Current state stores one `issue_url`, not a graph. IDD needs typed links between related issues and decisions so collaborators can traverse the decision structure.
+Current state stores the main `issue_url` and first-class child links, but not a complete typed graph. IDD still needs richer typed links between related issues and decisions so collaborators can traverse the decision structure.
 
 Needed:
 
 - `issueops link-related --type depends-on|blocks|supersedes|follows-up|duplicates|splits-from|implements`.
-- A state schema for related issue nodes and typed edges.
-- MCP tools with the same meaning as the CLI.
-- Tests for edge validation, duplicate links, invalid URLs, and JSON contract stability.
+- Decision-aware issue graph summaries in `status` and `pr-readiness`.
+- Provider adapters that can create or attach remote hierarchy items after the local graph contract is stable.
 
 ### 2. First-class decision records
 

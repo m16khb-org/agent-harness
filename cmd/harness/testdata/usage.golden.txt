@@ -26,6 +26,7 @@ Usage:
   agent-harness issueops link-issue --id ID --issue-url URL [--json]
   agent-harness issueops link-plan --id ID --plan-path PATH [--json]
   agent-harness issueops link-worktree --id ID --worktree-path PATH [--json]
+  agent-harness issueops link-child --id ID --child-url URL [--title TEXT] [--json]
   agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
   agent-harness issueops remote score --input PATH [--judge none|agy] [--agy-command PATH] [--json]

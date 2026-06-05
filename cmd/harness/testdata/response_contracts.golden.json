@@ -219,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "e6cf9c22417c2b09215f9801bcd754310f88baf6ec7e50f8227a33c54ded3467",
+      "hash": "9beae6f6f2d3ac5e295837c5b31abb52005ce82d30b8a4a05f50aa99774b0135",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -235,6 +235,7 @@
         "docs_index",
         "harness_inspect",
         "issueops_add_feedback",
+        "issueops_link_child",
         "issueops_link_issue",
         "issueops_link_plan",
         "issueops_link_worktree",
@@ -1022,9 +1023,39 @@
         }
       ],
       "id": "$ISSUEOPS_ID",
+      "issue_links": [
+        {
+          "created_at": "$TIMESTAMP",
+          "provider": "gitlab",
+          "title": "contract child",
+          "type": "child",
+          "url": "https://gitlab.example/group/project/-/issues/2"
+        }
+      ],
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
       "phase": "feedback",
+      "plan_path": "docs/superpowers/plans/contract.md",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP",
+      "worktree_path": "/tmp/agent-harness-contract.worktree"
+    },
+    "issueops_link_child": {
+      "branch": "feature/contract",
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "issue_links": [
+        {
+          "created_at": "$TIMESTAMP",
+          "provider": "gitlab",
+          "title": "contract child",
+          "type": "child",
+          "url": "https://gitlab.example/group/project/-/issues/2"
+        }
+      ],
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "implement",
       "plan_path": "docs/superpowers/plans/contract.md",
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP",
@@ -3143,7 +3174,7 @@
                 "name": "version"
               }
             ],
-            "hash": "e6cf9c22417c2b09215f9801bcd754310f88baf6ec7e50f8227a33c54ded3467",
+            "hash": "9beae6f6f2d3ac5e295837c5b31abb52005ce82d30b8a4a05f50aa99774b0135",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3159,6 +3190,7 @@
               "docs_index",
               "harness_inspect",
               "issueops_add_feedback",
+              "issueops_link_child",
               "issueops_link_issue",
               "issueops_link_plan",
               "issueops_link_worktree",
@@ -3967,9 +3999,46 @@
               }
             ],
             "id": "$ISSUEOPS_ID",
+            "issue_links": [
+              {
+                "created_at": "$TIMESTAMP",
+                "provider": "github",
+                "title": "MCP contract child",
+                "type": "child",
+                "url": "https://github.com/example/repo/issues/3"
+              }
+            ],
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "feedback",
+            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP",
+            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_link_child": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "issue_links": [
+              {
+                "created_at": "$TIMESTAMP",
+                "provider": "github",
+                "title": "MCP contract child",
+                "type": "child",
+                "url": "https://github.com/example/repo/issues/3"
+              }
+            ],
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "implement",
             "plan_path": "docs/superpowers/plans/mcp-contract.md",
             "repo": "$WORKSPACE",
             "updated_at": "$TIMESTAMP",

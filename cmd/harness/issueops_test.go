@@ -53,6 +53,22 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("worktree link should persist exact path: %#v", worktreeRecord)
 	}
 
+	child := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-child", "--id", id, "--child-url", "https://github.com/example/repo/issues/2", "--title", "write child graph tests", "--json"})
+	})
+	var childRecord map[string]any
+	if err := json.Unmarshal([]byte(child), &childRecord); err != nil {
+		t.Fatalf("child issue link should return JSON: %v\n%s", err, child)
+	}
+	issueLinks, ok := childRecord["issue_links"].([]any)
+	if !ok || len(issueLinks) != 1 {
+		t.Fatalf("child issue link should be persisted: %#v", childRecord)
+	}
+	childLink, ok := issueLinks[0].(map[string]any)
+	if !ok || childLink["type"] != "child" || childLink["provider"] != "github" {
+		t.Fatalf("unexpected child issue link payload: %#v", issueLinks[0])
+	}
+
 	feedback := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"feedback", "add", "--id", id, "--source", "user", "--body", "tighten acceptance criteria", "--json"})
 	})

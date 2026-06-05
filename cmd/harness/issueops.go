@@ -64,6 +64,17 @@ func runIssueOps(args []string) error {
 		}
 		record, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), *id, *worktreePath)
 		return printIssueOpsResult(record, *jsonOut, err)
+	case "link-child":
+		fs := flag.NewFlagSet("issueops link-child", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		childURL := fs.String("child-url", "", "GitHub sub-issue or GitLab child item URL")
+		title := fs.String("title", "", "optional child issue title")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		record, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), *id, *childURL, *title)
+		return printIssueOpsResult(record, *jsonOut, err)
 	case "phase":
 		fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")

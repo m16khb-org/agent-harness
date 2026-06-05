@@ -117,8 +117,11 @@ Remote issue and plan linkage:
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
 agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
+agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$CHILD_ISSUE_URL" --title "$CHILD_TITLE" --json
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 ```
+
+`link-child` records a provider-native child work item after it exists remotely. On GitHub that child should be a sub-issue; on GitLab it should be a child item/task. The command does not create remote issues and must not be used as a substitute for the provider-specific hierarchy rules.
 
 Advance the lifecycle phase (problem, grill, plan, implement, feedback, pr, done). The `pr` phase requires a linked issue and plan:
 

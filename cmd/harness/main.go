@@ -4886,6 +4886,15 @@ func mcpTools() []map[string]any {
 			}},
 		},
 		{
+			"name":        "issueops_link_child",
+			"description": "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "child_url"}, "properties": map[string]any{
+				"id":        map[string]any{"type": "string", "description": "IssueOps id."},
+				"child_url": map[string]any{"type": "string", "description": "GitHub sub-issue or GitLab child item URL."},
+				"title":     map[string]any{"type": "string", "description": "Optional child issue title."},
+			}},
+		},
+		{
 			"name":        "issueops_add_feedback",
 			"description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "source", "body"}, "properties": map[string]any{
@@ -5273,6 +5282,12 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		result, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "worktree_path"))
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps worktree link failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_link_child":
+		result, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "child_url"), stringArg(call.Arguments, "title"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps child link failed", Data: err.Error()}
 		}
 		payload = result
 	case "issueops_add_feedback":

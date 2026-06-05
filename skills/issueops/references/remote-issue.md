@@ -73,7 +73,7 @@ GitHub and GitLab expose similar concepts through different mechanisms. Never ap
 Rules:
 
 - When the scoring gate selects related issues, attach them as **GitLab linked items** on GitLab and as **body cross-references** on GitHub. Do not put a `## Related Issues` body section on GitLab when a linked item is the correct home; do not invent a linked-items relation on GitHub where none exists.
-- When breaking work into tasks/subtasks on the remote, add them as **GitHub sub-issues** or **GitLab child items** for the parent issue — match the provider. Do not flatten a hierarchy into plain `relates_to` links or body bullet lists when the provider supports a real parent/child relation.
+- When breaking work into tasks/subtasks on the remote, add them as **GitHub sub-issues** or **GitLab child items** for the parent issue — match the provider. Then record the existing child with `agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$CHILD_ISSUE_URL" --title "$CHILD_TITLE" --json` so IssueOps state can carry the provider-neutral child graph. Do not flatten a hierarchy into plain `relates_to` links or body bullet lists when the provider supports a real parent/child relation.
 - When creating a PR/MR, copy labels from the linked issue into the provider create command. If the linked issue is unlabeled, apply an explicit manual label to the issue first or stop and record why no label can be chosen; do not create an unlabeled PR/MR.
 - If a provider mechanism is unavailable (API/permission/feature flag), say so explicitly, fall back to the closest documented mechanism, and record the limitation in IssueOps feedback rather than silently using the other provider's style.
 
