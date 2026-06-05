@@ -86,6 +86,76 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	}
 }
 
+func TestIssueOpsImplementationLinksRequireBranchEvidence(t *testing.T) {
+	stateRoot := t.TempDir()
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "plans/demo.md"); err == nil || !strings.Contains(err.Error(), "branch evidence") {
+		t.Fatalf("plan link before issue and branch evidence should fail, got %v", err)
+	}
+	worktree := t.TempDir()
+	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, worktree); err == nil || !strings.Contains(err.Error(), "branch evidence") {
+		t.Fatalf("worktree link before issue and branch evidence should fail, got %v", err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "plans/demo.md"); err == nil || !strings.Contains(err.Error(), "branch_prepare") {
+		t.Fatalf("plan link before branch prepare should fail, got %v", err)
+	}
+	if _, err := PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:   "github",
+		IssueURL:   record.IssueURL,
+		Branch:     "feature/demo",
+		BaseBranch: "main",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "plans/demo.md"); err == nil || !strings.Contains(err.Error(), "branch_link_verified") {
+		t.Fatalf("plan link before verified branch should fail, got %v", err)
+	}
+}
+
+func TestIssueOpsWorktreeLinkRequiresExistingDirectory(t *testing.T) {
+	stateRoot := t.TempDir()
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       "feature/demo",
+		BaseBranch:   "main",
+		LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	missing := filepath.Join(t.TempDir(), "missing-worktree")
+	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, missing); err == nil || !strings.Contains(err.Error(), "does not exist") {
+		t.Fatalf("missing worktree path should fail, got %v", err)
+	}
+}
+
+func TestIssueOpsDoneRequiresPRPhase(t *testing.T) {
+	stateRoot := t.TempDir()
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseDone)); err == nil || !strings.Contains(err.Error(), "before pr phase") {
+		t.Fatalf("done before pr should fail, got %v", err)
+	}
+}
+
 func TestIssueOpsPrepareBranchRecordsProviderFallbackOrder(t *testing.T) {
 	stateRoot := t.TempDir()
 	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "123-provider-linked-branch"})

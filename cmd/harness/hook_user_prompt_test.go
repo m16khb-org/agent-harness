@@ -347,10 +347,22 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, core.IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     "https://github.com/example/repo/issues/12",
+		Branch:       "feature/issue-worktree",
+		BaseBranch:   "main",
+		LinkVerified: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, "plans/issue-worktree.md"); err != nil {
 		t.Fatal(err)
 	}
 	worktree := filepath.Join(filepath.Dir(source), "agent-harness.worktrees", "feature-issue-worktree")
+	if err := os.MkdirAll(worktree, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
@@ -389,10 +401,25 @@ func TestRunHookPreToolUseIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, core.IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     "https://github.com/example/repo/issues/12",
+		Branch:       "feature/issue-worktree",
+		BaseBranch:   "main",
+		LinkVerified: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), record.ID, string(core.IssueOpsPhaseImplement)); err != nil {
 		t.Fatal(err)
 	}
 	worktree := filepath.Join(filepath.Dir(source), "agent-harness.worktrees", "feature-issue-worktree")
+	if err := os.MkdirAll(worktree, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
@@ -457,6 +484,61 @@ func TestRunHookPreToolUseEnforcesRemoteCreateAssignee(t *testing.T) {
 	})
 	if obj["decision"] != "block" {
 		t.Fatalf("expected missing assignee to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "assignee") {
+		t.Fatalf("expected assignee reason, got %q", reason)
+	}
+}
+
+func TestRunHookPreToolUseStructuredRemoteCreateReadsGlabFlagsAssignee(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "mcp__glab__glab_mr_create",
+		"tool_input": map[string]any{
+			"flags": map[string]any{
+				"title":             "IssueOps 담당자 검증",
+				"description":       "이슈 라벨 복사와 담당자를 함께 지정합니다.",
+				"copy_issue_labels": true,
+				"assignee":          []any{"m16khb"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected structured labeled and assigned MR create to be allowed, got %+v", obj)
+	}
+}
+
+func TestRunHookPreToolUseStructuredRemoteCreateStillRequiresAssignee(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "mcp__glab__glab_mr_create",
+		"tool_input": map[string]any{
+			"flags": map[string]any{
+				"title":             "IssueOps 담당자 검증",
+				"description":       "이슈 라벨 복사 옵션이 있어도 담당자는 필요합니다.",
+				"copy_issue_labels": true,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected structured MR create without assignee to be blocked, got %+v", obj)
 	}
 	reason, _ := obj["reason"].(string)
 	if !strings.Contains(reason, "assignee") {

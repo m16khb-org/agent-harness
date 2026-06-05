@@ -127,9 +127,11 @@ agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 
 `branch prepare` records the required provider-linked branch contract before local worktree creation: use the provider MCP first, use the provider API/CLI fallback second, and fail closed if both cannot create a branch that the issue shows as linked. For GitLab, branch names must start with the issue or task number followed by a hyphen, for example `123-fix-login`; a local-only branch such as `feature/123-fix-login` is not equivalent to GitLab's issue branch creation.
 
+`link-plan` is the transition into implementation. It fails closed until the issue is linked and `branch prepare --link-verified` has recorded provider-visible branch evidence. `link-worktree` also fails closed until that branch evidence exists and the worktree path already exists on disk.
+
 `link-child` records a provider-native child work item after it exists remotely. On GitHub that child should be a sub-issue; on GitLab it should be a child item/task. The command does not create remote issues and must not be used as a substitute for the provider-specific hierarchy rules.
 
-Advance the lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The `ai-slop-clean` phase requires linked issue, provider-linked branch, plan, and an existing linked worktree. The `pr` phase requires strict PR readiness, including ai-slop-clean evidence:
+Advance the lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The `ai-slop-clean` phase requires linked issue, provider-linked branch, plan, and an existing linked worktree. The `pr` phase requires strict PR readiness, including ai-slop-clean evidence. The `done` phase requires the loop to have already entered `pr`:
 
 ```bash
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill --json
@@ -152,5 +154,7 @@ Stop and ask before creating or updating remote issues, PRs, or MRs if credentia
 Stop before implementation if brainstorming or grilling exposes materially different interpretations. Present the interpretations and ask for the intended one.
 
 Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports missing `issue_url`, `branch_prepare`, `branch_link_verified`, `plan_path`, `worktree_path`, `worktree_exists`, `branch_match`, `worktree_clean`, `upstream`, `upstream_synced`, `plan_exists`, or `ai_slop_clean`.
+
+Do not mark an IssueOps loop `done` before it has entered the `pr` phase. Completion reporting happens after PR/MR readiness and review/merge hygiene, not as an escape hatch from planning or implementation.
 
 Before PR/MR create, verify the linked issue labels and pass them to the provider create command. If the linked issue has no labels, create or apply an explicit manual label first, or stop and record label-decision feedback; never create the PR/MR with an empty label set.

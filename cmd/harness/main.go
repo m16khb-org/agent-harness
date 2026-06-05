@@ -4871,7 +4871,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "issueops_link_plan",
-			"description": "Attach the issue-driven plan path to an IssueOps loop and move it to the implementation phase.",
+			"description": "Attach the issue-driven plan path to an IssueOps loop and move it to the implementation phase. Requires linked issue and verified provider branch evidence.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "plan_path"}, "properties": map[string]any{
 				"id":        map[string]any{"type": "string", "description": "IssueOps id."},
 				"plan_path": map[string]any{"type": "string", "description": "Plan file path."},
@@ -4879,7 +4879,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "issueops_link_worktree",
-			"description": "Attach the exact issue-driven worktree path that mutating tool guards must target.",
+			"description": "Attach the exact existing issue-driven worktree path that mutating tool guards must target. Requires linked issue and verified provider branch evidence.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "worktree_path"}, "properties": map[string]any{
 				"id":            map[string]any{"type": "string", "description": "IssueOps id."},
 				"worktree_path": map[string]any{"type": "string", "description": "Expected isolated worktree path."},
@@ -4920,7 +4920,7 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "issueops_set_phase",
-			"description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The ai-slop-clean phase requires linked issue, provider-linked branch, plan, and worktree evidence; the pr phase requires strict PR readiness.",
+			"description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The ai-slop-clean phase requires linked issue, provider-linked branch, plan, and worktree evidence; the pr phase requires strict PR readiness; the done phase requires prior pr phase.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "phase"}, "properties": map[string]any{
 				"id":    map[string]any{"type": "string", "description": "IssueOps id."},
 				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},

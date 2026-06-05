@@ -454,7 +454,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 12623,
+          "bytes": 13384,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -1022,7 +1022,7 @@
         "branch": "1-contract-branch",
         "created_at": "$TIMESTAMP",
         "issue_url": "https://gitlab.example/group/project/-/issues/1",
-        "link_verified": false,
+        "link_verified": true,
         "provider": "gitlab",
         "steps": [
           {
@@ -1086,82 +1086,16 @@
       "plan_path": "docs/superpowers/plans/contract.md",
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP",
-      "worktree_path": "/tmp/agent-harness-contract.worktree"
+      "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "issueops_link_child": {
-      "branch": "1-contract-branch",
-      "created_at": "$TIMESTAMP",
-      "id": "$ISSUEOPS_ID",
-      "issue_links": [
-        {
-          "created_at": "$TIMESTAMP",
-          "provider": "gitlab",
-          "title": "contract child",
-          "type": "child",
-          "url": "https://gitlab.example/group/project/-/issues/2"
-        }
-      ],
-      "issue_url": "https://gitlab.example/group/project/-/issues/1",
-      "ok": true,
-      "phase": "implement",
-      "plan_path": "docs/superpowers/plans/contract.md",
-      "repo": "$WORKSPACE",
-      "updated_at": "$TIMESTAMP",
-      "worktree_path": "/tmp/agent-harness-contract.worktree"
-    },
-    "issueops_link_issue": {
-      "branch": "1-contract-branch",
-      "created_at": "$TIMESTAMP",
-      "id": "$ISSUEOPS_ID",
-      "issue_url": "https://gitlab.example/group/project/-/issues/1",
-      "ok": true,
-      "phase": "plan",
-      "repo": "$WORKSPACE",
-      "updated_at": "$TIMESTAMP"
-    },
-    "issueops_link_plan": {
-      "branch": "1-contract-branch",
-      "created_at": "$TIMESTAMP",
-      "id": "$ISSUEOPS_ID",
-      "issue_url": "https://gitlab.example/group/project/-/issues/1",
-      "ok": true,
-      "phase": "implement",
-      "plan_path": "docs/superpowers/plans/contract.md",
-      "repo": "$WORKSPACE",
-      "updated_at": "$TIMESTAMP"
-    },
-    "issueops_link_worktree": {
-      "branch": "1-contract-branch",
-      "created_at": "$TIMESTAMP",
-      "id": "$ISSUEOPS_ID",
-      "issue_url": "https://gitlab.example/group/project/-/issues/1",
-      "ok": true,
-      "phase": "implement",
-      "plan_path": "docs/superpowers/plans/contract.md",
-      "repo": "$WORKSPACE",
-      "updated_at": "$TIMESTAMP",
-      "worktree_path": "/tmp/agent-harness-contract.worktree"
-    },
-    "issueops_pr_readiness": {
-      "branch": "1-contract-branch",
-      "issue_url": "https://gitlab.example/group/project/-/issues/1",
-      "missing": [
-        "ai_slop_clean",
-        "branch_link_verified"
-      ],
-      "ok": true,
-      "plan_path": "docs/superpowers/plans/contract.md",
-      "ready": false,
-      "worktree_path": "/tmp/agent-harness-contract.worktree"
-    },
-    "issueops_prepare_branch": {
       "branch": "1-contract-branch",
       "branch_prepare": {
         "base_branch": "main",
         "branch": "1-contract-branch",
         "created_at": "$TIMESTAMP",
         "issue_url": "https://gitlab.example/group/project/-/issues/1",
-        "link_verified": false,
+        "link_verified": true,
         "provider": "gitlab",
         "steps": [
           {
@@ -1218,7 +1152,196 @@
       "plan_path": "docs/superpowers/plans/contract.md",
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP",
-      "worktree_path": "/tmp/agent-harness-contract.worktree"
+      "worktree_path": "$ISSUEOPS_WORKTREE"
+    },
+    "issueops_link_issue": {
+      "branch": "1-contract-branch",
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "plan",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP"
+    },
+    "issueops_link_plan": {
+      "branch": "1-contract-branch",
+      "branch_prepare": {
+        "base_branch": "main",
+        "branch": "1-contract-branch",
+        "created_at": "$TIMESTAMP",
+        "issue_url": "https://gitlab.example/group/project/-/issues/1",
+        "link_verified": true,
+        "provider": "gitlab",
+        "steps": [
+          {
+            "description": "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
+            "order": 1,
+            "strategy": "mcp",
+            "tool": "mcp__glab.glab_api",
+            "tool_arguments": {
+              "endpoint": "projects/:fullpath/repository/branches",
+              "field": [
+                "branch=1-contract-branch",
+                "ref=main"
+              ],
+              "method": "POST"
+            }
+          },
+          {
+            "command": [
+              "glab",
+              "api",
+              "projects/:fullpath/repository/branches",
+              "-X",
+              "POST",
+              "-f",
+              "branch=1-contract-branch",
+              "-f",
+              "ref=main"
+            ],
+            "description": "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
+            "order": 2,
+            "strategy": "fallback_api"
+          },
+          {
+            "description": "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
+            "order": 3,
+            "strategy": "fail"
+          }
+        ]
+      },
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "implement",
+      "plan_path": "docs/superpowers/plans/contract.md",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP"
+    },
+    "issueops_link_worktree": {
+      "branch": "1-contract-branch",
+      "branch_prepare": {
+        "base_branch": "main",
+        "branch": "1-contract-branch",
+        "created_at": "$TIMESTAMP",
+        "issue_url": "https://gitlab.example/group/project/-/issues/1",
+        "link_verified": true,
+        "provider": "gitlab",
+        "steps": [
+          {
+            "description": "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
+            "order": 1,
+            "strategy": "mcp",
+            "tool": "mcp__glab.glab_api",
+            "tool_arguments": {
+              "endpoint": "projects/:fullpath/repository/branches",
+              "field": [
+                "branch=1-contract-branch",
+                "ref=main"
+              ],
+              "method": "POST"
+            }
+          },
+          {
+            "command": [
+              "glab",
+              "api",
+              "projects/:fullpath/repository/branches",
+              "-X",
+              "POST",
+              "-f",
+              "branch=1-contract-branch",
+              "-f",
+              "ref=main"
+            ],
+            "description": "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
+            "order": 2,
+            "strategy": "fallback_api"
+          },
+          {
+            "description": "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
+            "order": 3,
+            "strategy": "fail"
+          }
+        ]
+      },
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "implement",
+      "plan_path": "docs/superpowers/plans/contract.md",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP",
+      "worktree_path": "$ISSUEOPS_WORKTREE"
+    },
+    "issueops_pr_readiness": {
+      "branch": "1-contract-branch",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "missing": [
+        "ai_slop_clean"
+      ],
+      "ok": true,
+      "plan_path": "docs/superpowers/plans/contract.md",
+      "ready": false,
+      "worktree_path": "$ISSUEOPS_WORKTREE"
+    },
+    "issueops_prepare_branch": {
+      "branch": "1-contract-branch",
+      "branch_prepare": {
+        "base_branch": "main",
+        "branch": "1-contract-branch",
+        "created_at": "$TIMESTAMP",
+        "issue_url": "https://gitlab.example/group/project/-/issues/1",
+        "link_verified": true,
+        "provider": "gitlab",
+        "steps": [
+          {
+            "description": "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
+            "order": 1,
+            "strategy": "mcp",
+            "tool": "mcp__glab.glab_api",
+            "tool_arguments": {
+              "endpoint": "projects/:fullpath/repository/branches",
+              "field": [
+                "branch=1-contract-branch",
+                "ref=main"
+              ],
+              "method": "POST"
+            }
+          },
+          {
+            "command": [
+              "glab",
+              "api",
+              "projects/:fullpath/repository/branches",
+              "-X",
+              "POST",
+              "-f",
+              "branch=1-contract-branch",
+              "-f",
+              "ref=main"
+            ],
+            "description": "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
+            "order": 2,
+            "strategy": "fallback_api"
+          },
+          {
+            "description": "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
+            "order": 3,
+            "strategy": "fail"
+          }
+        ]
+      },
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "plan",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP"
     },
     "issueops_start": {
       "branch": "1-contract-branch",
@@ -3533,7 +3656,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 12623,
+                "bytes": 13384,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -4115,7 +4238,7 @@
               "branch": "feature/mcp-contract",
               "created_at": "$TIMESTAMP",
               "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": false,
+              "link_verified": true,
               "provider": "github",
               "steps": [
                 {
@@ -4169,7 +4292,7 @@
             "plan_path": "docs/superpowers/plans/mcp-contract.md",
             "repo": "$WORKSPACE",
             "updated_at": "$TIMESTAMP",
-            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
+            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
           "type": "text"
         }
@@ -4180,113 +4303,12 @@
         {
           "json": {
             "branch": "feature/mcp-contract",
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "implement",
-            "plan_path": "docs/superpowers/plans/mcp-contract.md",
-            "repo": "$WORKSPACE",
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_link_issue": {
-      "content": [
-        {
-          "json": {
-            "branch": "feature/mcp-contract",
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "repo": "$WORKSPACE",
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_link_plan": {
-      "content": [
-        {
-          "json": {
-            "branch": "feature/mcp-contract",
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "implement",
-            "plan_path": "docs/superpowers/plans/mcp-contract.md",
-            "repo": "$WORKSPACE",
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_link_worktree": {
-      "content": [
-        {
-          "json": {
-            "branch": "feature/mcp-contract",
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "implement",
-            "plan_path": "docs/superpowers/plans/mcp-contract.md",
-            "repo": "$WORKSPACE",
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_pr_readiness": {
-      "content": [
-        {
-          "json": {
-            "branch": "feature/mcp-contract",
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "missing": [
-              "ai_slop_clean",
-              "branch_link_verified"
-            ],
-            "ok": true,
-            "plan_path": "docs/superpowers/plans/mcp-contract.md",
-            "ready": false,
-            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_prepare_branch": {
-      "content": [
-        {
-          "json": {
-            "branch": "feature/mcp-contract",
             "branch_prepare": {
               "base_branch": "main",
               "branch": "feature/mcp-contract",
               "created_at": "$TIMESTAMP",
               "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": false,
+              "link_verified": true,
               "provider": "github",
               "steps": [
                 {
@@ -4333,7 +4355,201 @@
             "plan_path": "docs/superpowers/plans/mcp-contract.md",
             "repo": "$WORKSPACE",
             "updated_at": "$TIMESTAMP",
-            "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
+            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_link_issue": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "plan",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_link_plan": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "branch_prepare": {
+              "base_branch": "main",
+              "branch": "feature/mcp-contract",
+              "created_at": "$TIMESTAMP",
+              "issue_url": "https://github.com/example/repo/issues/2",
+              "link_verified": true,
+              "provider": "github",
+              "steps": [
+                {
+                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
+                  "order": 1,
+                  "strategy": "mcp_unavailable"
+                },
+                {
+                  "command": [
+                    "gh",
+                    "issue",
+                    "develop",
+                    "https://github.com/example/repo/issues/2",
+                    "--base",
+                    "main",
+                    "--name",
+                    "feature/mcp-contract"
+                  ],
+                  "description": "Create a GitHub linked development branch through gh issue develop.",
+                  "order": 2,
+                  "strategy": "fallback_api"
+                },
+                {
+                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+                  "order": 3,
+                  "strategy": "fail"
+                }
+              ]
+            },
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "implement",
+            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_link_worktree": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "branch_prepare": {
+              "base_branch": "main",
+              "branch": "feature/mcp-contract",
+              "created_at": "$TIMESTAMP",
+              "issue_url": "https://github.com/example/repo/issues/2",
+              "link_verified": true,
+              "provider": "github",
+              "steps": [
+                {
+                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
+                  "order": 1,
+                  "strategy": "mcp_unavailable"
+                },
+                {
+                  "command": [
+                    "gh",
+                    "issue",
+                    "develop",
+                    "https://github.com/example/repo/issues/2",
+                    "--base",
+                    "main",
+                    "--name",
+                    "feature/mcp-contract"
+                  ],
+                  "description": "Create a GitHub linked development branch through gh issue develop.",
+                  "order": 2,
+                  "strategy": "fallback_api"
+                },
+                {
+                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+                  "order": 3,
+                  "strategy": "fail"
+                }
+              ]
+            },
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "implement",
+            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP",
+            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_pr_readiness": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "missing": [
+              "ai_slop_clean"
+            ],
+            "ok": true,
+            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "ready": false,
+            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_prepare_branch": {
+      "content": [
+        {
+          "json": {
+            "branch": "feature/mcp-contract",
+            "branch_prepare": {
+              "base_branch": "main",
+              "branch": "feature/mcp-contract",
+              "created_at": "$TIMESTAMP",
+              "issue_url": "https://github.com/example/repo/issues/2",
+              "link_verified": true,
+              "provider": "github",
+              "steps": [
+                {
+                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
+                  "order": 1,
+                  "strategy": "mcp_unavailable"
+                },
+                {
+                  "command": [
+                    "gh",
+                    "issue",
+                    "develop",
+                    "https://github.com/example/repo/issues/2",
+                    "--base",
+                    "main",
+                    "--name",
+                    "feature/mcp-contract"
+                  ],
+                  "description": "Create a GitHub linked development branch through gh issue develop.",
+                  "order": 2,
+                  "strategy": "fallback_api"
+                },
+                {
+                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+                  "order": 3,
+                  "strategy": "fail"
+                }
+              ]
+            },
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "plan",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP"
           },
           "type": "text"
         }

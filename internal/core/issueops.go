@@ -201,6 +201,9 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 	if err != nil {
 		return record, err
 	}
+	if missing := issueOpsBranchEvidenceMissing(record); len(missing) > 0 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link plan before branch evidence: missing %s", strings.Join(missing, ", "))
+	}
 	record.PlanPath = path
 	record.Phase = IssueOpsPhaseImplement
 	return touchAndWriteIssueOps(stateRoot, record)
@@ -217,6 +220,12 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
+	}
+	if missing := issueOpsBranchEvidenceMissing(record); len(missing) > 0 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link worktree before branch evidence: missing %s", strings.Join(missing, ", "))
+	}
+	if !issueOpsWorktreePathValid(path) {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("worktree_path does not exist or is not a directory: %s", path)
 	}
 	record.WorktreePath = path
 	return touchAndWriteIssueOps(stateRoot, record)
@@ -404,6 +413,9 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
+	if phase == IssueOpsPhaseDone && record.Phase != IssueOpsPhasePR {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter done phase before pr phase")
+	}
 	record.Phase = phase
 	if phase == IssueOpsPhaseAISlopClean && strings.TrimSpace(record.AISlopCleanAt) == "" {
 		record.AISlopCleanAt = time.Now().UTC().Format(time.RFC3339Nano)
@@ -450,6 +462,14 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 }
 
 func issueOpsBaseImplementationMissing(record IssueOpsRecord) []string {
+	missing := issueOpsBranchEvidenceMissing(record)
+	if strings.TrimSpace(record.PlanPath) == "" {
+		missing = append(missing, "plan_path")
+	}
+	return missing
+}
+
+func issueOpsBranchEvidenceMissing(record IssueOpsRecord) []string {
 	missing := []string{}
 	if strings.TrimSpace(record.IssueURL) == "" {
 		missing = append(missing, "issue_url")
@@ -461,9 +481,6 @@ func issueOpsBaseImplementationMissing(record IssueOpsRecord) []string {
 		missing = append(missing, "branch_prepare")
 	} else if !record.BranchPrepare.LinkVerified {
 		missing = append(missing, "branch_link_verified")
-	}
-	if strings.TrimSpace(record.PlanPath) == "" {
-		missing = append(missing, "plan_path")
 	}
 	return missing
 }

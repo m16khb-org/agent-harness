@@ -532,7 +532,7 @@
     "name": "issueops_link_issue"
   },
   {
-    "description": "Attach the issue-driven plan path to an IssueOps loop and move it to the implementation phase.",
+    "description": "Attach the issue-driven plan path to an IssueOps loop and move it to the implementation phase. Requires linked issue and verified provider branch evidence.",
     "inputSchema": {
       "properties": {
         "id": {
@@ -553,7 +553,7 @@
     "name": "issueops_link_plan"
   },
   {
-    "description": "Attach the exact issue-driven worktree path that mutating tool guards must target.",
+    "description": "Attach the exact existing issue-driven worktree path that mutating tool guards must target. Requires linked issue and verified provider branch evidence.",
     "inputSchema": {
       "properties": {
         "id": {
@@ -681,7 +681,7 @@
     "name": "issueops_add_feedback"
   },
   {
-    "description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The ai-slop-clean phase requires linked issue, provider-linked branch, plan, and worktree evidence; the pr phase requires strict PR readiness.",
+    "description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The ai-slop-clean phase requires linked issue, provider-linked branch, plan, and worktree evidence; the pr phase requires strict PR readiness; the done phase requires prior pr phase.",
     "inputSchema": {
       "properties": {
         "id": {

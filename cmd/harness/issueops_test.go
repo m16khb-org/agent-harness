@@ -33,6 +33,22 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("issue link should move to plan phase: %#v", issueRecord)
 	}
 
+	branch := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/provider-linked-branch", "--base-branch", "main", "--link-verified", "--json"})
+	})
+	var branchRecord map[string]any
+	if err := json.Unmarshal([]byte(branch), &branchRecord); err != nil {
+		t.Fatalf("branch prepare should return JSON: %v\n%s", err, branch)
+	}
+	prepare, ok := branchRecord["branch_prepare"].(map[string]any)
+	if !ok || prepare["provider"] != "github" || prepare["branch"] != "feature/provider-linked-branch" {
+		t.Fatalf("branch prepare should persist provider-linked contract: %#v", branchRecord)
+	}
+	steps, ok := prepare["steps"].([]any)
+	if !ok || len(steps) != 3 {
+		t.Fatalf("branch prepare should include fallback steps: %#v", prepare)
+	}
+
 	plan := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-plan", "--id", id, "--plan-path", "docs/superpowers/plans/demo.md", "--json"})
 	})
@@ -57,22 +73,6 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 	if worktreeRecord["worktree_path"] != worktreePath {
 		t.Fatalf("worktree link should persist exact path: %#v", worktreeRecord)
-	}
-
-	branch := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/provider-linked-branch", "--base-branch", "main", "--link-verified", "--json"})
-	})
-	var branchRecord map[string]any
-	if err := json.Unmarshal([]byte(branch), &branchRecord); err != nil {
-		t.Fatalf("branch prepare should return JSON: %v\n%s", err, branch)
-	}
-	prepare, ok := branchRecord["branch_prepare"].(map[string]any)
-	if !ok || prepare["provider"] != "github" || prepare["branch"] != "feature/provider-linked-branch" {
-		t.Fatalf("branch prepare should persist provider-linked contract: %#v", branchRecord)
-	}
-	steps, ok := prepare["steps"].([]any)
-	if !ok || len(steps) != 3 {
-		t.Fatalf("branch prepare should include fallback steps: %#v", prepare)
 	}
 
 	child := captureStdoutForContract(t, func() error {
@@ -159,6 +159,12 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 	}
 	id := record["id"].(string)
 	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-issue", "--id", id, "--issue-url", "https://github.com/example/repo/issues/1", "--json"})
+	})
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/demo", "--base-branch", "main", "--link-verified", "--json"})
+	})
+	_ = captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktree, "--json"})
 	})
 
@@ -213,6 +219,12 @@ func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := record["id"].(string)
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-issue", "--id", id, "--issue-url", "https://github.com/example/repo/issues/1", "--json"})
+	})
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/demo", "--base-branch", "main", "--link-verified", "--json"})
+	})
 	_ = captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktree, "--json"})
 	})

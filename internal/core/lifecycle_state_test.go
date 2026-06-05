@@ -773,6 +773,46 @@ func guardRepoWithCycle(t *testing.T, branch string, phase IssueOpsPhase) string
 	return repo
 }
 
+func linkIssueOpsBranchEvidenceForTest(t *testing.T, repo, branch string) {
+	t.Helper()
+	id := newIssueOpsID(repo, branch)
+	before, err := ReadIssueOps(IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	issueURL := "https://github.com/example/repo/issues/1"
+	if _, err := LinkIssueOpsIssue(IssueOpsStateRoot(), id, issueURL); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), id, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     issueURL,
+		Branch:       branch,
+		BaseBranch:   "main",
+		LinkVerified: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if before.Phase != IssueOpsPhaseProblem && before.Phase != IssueOpsPhasePlan {
+		if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(before.Phase)); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func markIssueOpsPRPhaseForTest(t *testing.T, repo, branch string) {
+	t.Helper()
+	id := newIssueOpsID(repo, branch)
+	record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Phase = IssueOpsPhasePR
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestWorktreeGuardBlocksSourceEditWhenImplementCycleHasNoLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "development", IssueOpsPhaseImplement)
@@ -819,6 +859,10 @@ func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "feat/x")
 	linked := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "feat/x")
+	if err := os.MkdirAll(linked, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
 		t.Fatal(err)
 	}
@@ -879,6 +923,10 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCycleHasExactWorktree(t *testing.T)
 	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "feat/x")
 	expected := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "feat/x")
+	if err := os.MkdirAll(expected, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, expected); err != nil {
 		t.Fatal(err)
 	}
@@ -910,6 +958,10 @@ func TestWorktreeGuardIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "feat/x")
+	if err := os.MkdirAll(expected, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), rec.ID, expected); err != nil {
 		t.Fatal(err)
 	}
@@ -940,6 +992,10 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *tes
 		t.Fatal(err)
 	}
 	expected := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "feat/x")
+	if err := os.MkdirAll(expected, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), rec.ID, expected); err != nil {
 		t.Fatal(err)
 	}
@@ -972,6 +1028,7 @@ func TestWorktreeGuardNoBlockWhenCycleDone(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "feat/x")
+	markIssueOpsPRPhaseForTest(t, repo, "feat/x")
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(IssueOpsPhaseDone)); err != nil {
 		t.Fatal(err)
 	}
@@ -1030,6 +1087,7 @@ func TestWorktreeGuardIgnoresMismatchedWorktreePlanBranch(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(gitdir, "HEAD"), []byte("ref: refs/heads/bugfix/2361\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	linkIssueOpsBranchEvidenceForTest(t, repo, "development")
 	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), recordID, filepath.Join(worktree, "docs", "plans", "2361.md")); err != nil {
 		t.Fatal(err)
 	}
@@ -1089,6 +1147,7 @@ func TestActiveIssueOpsCycleForBranchIsDeterministicAndReleasesOnDone(t *testing
 	if _, ok := ActiveIssueOpsCycleForBranch(repo, "other"); ok {
 		t.Fatalf("a different branch must not match")
 	}
+	markIssueOpsPRPhaseForTest(t, repo, "main")
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), first.ID, string(IssueOpsPhaseDone)); err != nil {
 		t.Fatal(err)
 	}

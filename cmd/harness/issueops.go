@@ -15,8 +15,9 @@ import (
 )
 
 func runIssueOps(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("subcommand is required")
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		issueOpsUsage()
+		return nil
 	}
 	switch args[0] {
 	case "start":
@@ -126,6 +127,22 @@ func runIssueOps(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops subcommand %q", args[0])
 	}
+}
+
+func issueOpsUsage() {
+	fmt.Fprintf(os.Stderr, `Usage:
+  agent-harness issueops start --repo PATH [--branch NAME] [--json]
+  agent-harness issueops status --id ID [--json]
+  agent-harness issueops link-issue --id ID --issue-url URL [--json]
+  agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--link-verified] [--json]
+  agent-harness issueops link-plan --id ID --plan-path PATH [--json]
+  agent-harness issueops link-worktree --id ID --worktree-path PATH [--json]
+  agent-harness issueops worktree prepare-tools --id ID [--json]
+  agent-harness issueops phase --id ID --to problem|grill|plan|implement|ai-slop-clean|feedback|pr|done [--json]
+  agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] [--json]
+  agent-harness issueops pr-readiness --id ID [--strict] [--json]
+  agent-harness issueops remote score --input PATH [--judge none|agy] [--json]
+`)
 }
 
 type issueOpsWorktreeToolPrepareResult struct {
