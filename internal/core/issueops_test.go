@@ -1069,7 +1069,7 @@ func TestIssueOpsFeedbackRecordsClassification(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = AddIssueOpsFeedback(stateRoot, record.ID, "review", "scope change請求", "contract_change")
+	record, err = AddIssueOpsFeedback(stateRoot, record.ID, "review", "scope change請求", "CONTRACT_CHANGE")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1083,6 +1083,9 @@ func TestIssueOpsFeedbackRecordsClassification(t *testing.T) {
 	}
 	if record.Feedback[1].Classification != "" {
 		t.Fatalf("expected empty classification default, got %+v", record.Feedback[1])
+	}
+	if _, err := AddIssueOpsFeedback(stateRoot, record.ID, "review", "looks odd", "typo"); err == nil || !strings.Contains(err.Error(), "unknown issueops feedback classification") {
+		t.Fatalf("expected unknown classification rejection, got %v", err)
 	}
 }
 

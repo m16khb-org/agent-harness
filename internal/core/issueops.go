@@ -440,12 +440,15 @@ func isDecimalString(value string) bool {
 func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
 	source = strings.TrimSpace(source)
 	body = strings.TrimSpace(body)
-	classification = strings.TrimSpace(classification)
+	classification = strings.ToLower(strings.TrimSpace(classification))
 	if source == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("feedback source is required")
 	}
 	if body == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("feedback body is required")
+	}
+	if !knownIssueOpsFeedbackClassification(classification) {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("unknown issueops feedback classification %q; use contract_change, defect, question, noise, valid_review, stale_review, rollout_evidence_missing, or environment_debt", classification)
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
@@ -461,6 +464,15 @@ func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (Is
 	}
 	record.UpdatedAt = now
 	return writeIssueOps(stateRoot, record)
+}
+
+func knownIssueOpsFeedbackClassification(classification string) bool {
+	switch classification {
+	case "", "contract_change", "defect", "question", "noise", "valid_review", "stale_review", "rollout_evidence_missing", "environment_debt":
+		return true
+	default:
+		return false
+	}
 }
 
 func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRecord, error) {
