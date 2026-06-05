@@ -545,7 +545,7 @@ func runHookStop(args []string) error {
 	// that LLM with a local scorer. It reports only that the response reached an
 	// explicit next-action judgement point and sends the observed facts to the main
 	// agent, which owns safety, reversibility, alignment, and proceed/ask judgement.
-	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent {
+	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent && !stopHookActive {
 		return printJSON(map[string]any{
 			"continue": true,
 			"decision": "block",

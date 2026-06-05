@@ -1201,19 +1201,15 @@ func TestRunHookStopDoesNotAutoProceedDestructiveCleanup(t *testing.T) {
 	}
 }
 
-func TestRunHookStopStillRelaysFactsWhenStopHookActive(t *testing.T) {
+func TestRunHookStopSuppressesNextActionRelayWhenStopHookActive(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","stop_hook_active":true,"last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--relay-next-action-judgement"})
 	})
-	if obj["continue"] != true || obj["decision"] != "block" {
-		t.Fatalf("stop_hook_active with valid choices should still relay facts, got %+v", obj)
-	}
-	reason, _ := obj["reason"].(string)
-	if !strings.Contains(reason, "판단 지점") || strings.Contains(reason, "점수") {
-		t.Fatalf("expected factual trigger reason for stop_hook_active choices, got %q", reason)
+	if len(obj) != 0 {
+		t.Fatalf("stop_hook_active must suppress next-action relay to avoid Stop hook loops, got %+v", obj)
 	}
 }
 
