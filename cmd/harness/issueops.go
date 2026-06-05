@@ -114,6 +114,11 @@ func runIssueOps(args []string) error {
 		}
 		record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
 		if err != nil {
+			if *jsonOut {
+				if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+					return printErr
+				}
+			}
 			return err
 		}
 		readiness := core.IssueOpsPRReadiness(record)
@@ -193,10 +198,20 @@ func runIssueOpsWorktree(args []string) error {
 	}
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
 	if err != nil {
+		if *jsonOut {
+			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+				return printErr
+			}
+		}
 		return err
 	}
 	result, err := prepareIssueOpsWorktreeTools(record)
 	if err != nil {
+		if *jsonOut {
+			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+				return printErr
+			}
+		}
 		return err
 	}
 	if *jsonOut {
@@ -367,6 +382,11 @@ func runIssueOpsRemote(args []string) error {
 		}
 		req, err := readIssueOpsRemoteScoringRequestFile(*input)
 		if err != nil {
+			if *jsonOut {
+				if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+					return printErr
+				}
+			}
 			return err
 		}
 		var result core.IssueOpsRemoteScoringResult
@@ -383,6 +403,11 @@ func runIssueOpsRemote(args []string) error {
 			err = fmt.Errorf("unsupported issueops remote score judge %q", *judge)
 		}
 		if err != nil {
+			if *jsonOut {
+				if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+					return printErr
+				}
+			}
 			return err
 		}
 		if *jsonOut {
@@ -905,6 +930,11 @@ func runIssueOpsCleanup(args []string) error {
 		}
 		status, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), *id, core.IssueOpsCleanupStatusRequest{Merged: *merged})
 		if err != nil {
+			if *jsonOut {
+				if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+					return printErr
+				}
+			}
 			return err
 		}
 		if *jsonOut {

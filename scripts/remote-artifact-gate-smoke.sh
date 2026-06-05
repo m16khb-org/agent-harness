@@ -148,7 +148,7 @@ assert_hook_result \
   "github-pass" \
   "allow" \
   "" \
-  'gh issue create --title "원격 아티팩트 정상 생성 검증" --body-file good-body.md --label bug --assignee @me'
+  'gh issue create --title "원격 아티팩트 정상 생성 검증" --body-file good-body.md --label bug --assignee habin'
 
 assert_hook_result \
   "help-pass" \

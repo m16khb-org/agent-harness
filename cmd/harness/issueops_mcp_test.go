@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -153,6 +155,53 @@ func TestMCPIssueOpsCleanupStatusReportsMissingEvidence(t *testing.T) {
 	choices, ok := status["choices"].([]any)
 	if !ok || len(choices) != 3 {
 		t.Fatalf("cleanup status should expose three cleanup choices: %#v", status)
+	}
+}
+
+func TestMCPIssueOpsPrepareWorktreeToolsRunsCodeGraphAgainstWorktree(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	bin := t.TempDir()
+	logPath := filepath.Join(t.TempDir(), "codegraph.log")
+	codegraph := filepath.Join(bin, "codegraph")
+	if err := os.WriteFile(codegraph, []byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+logPath+"'\ncase \"$1\" in\nstatus) exit 1 ;;\ninit) exit 0 ;;\n*) exit 0 ;;\nesac\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	repo := makeIssueOpsCLIRepoForTest(t, "mcp-prepare")
+	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": repo, "branch": "1-demo"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	callMCPToolForIssueOpsTest(t, "issueops_link_issue", map[string]any{
+		"id":        id,
+		"issue_url": "https://github.com/example/repo/issues/1",
+	})
+	callMCPToolForIssueOpsTest(t, "issueops_prepare_branch", map[string]any{
+		"id":            id,
+		"provider":      "github",
+		"issue_url":     "https://github.com/example/repo/issues/1",
+		"branch":        "1-demo",
+		"base_branch":   "main",
+		"link_verified": true,
+	})
+	callMCPToolForIssueOpsTest(t, "issueops_link_worktree", map[string]any{
+		"id":            id,
+		"worktree_path": worktree,
+	})
+
+	prepared := callMCPToolForIssueOpsTest(t, "issueops_prepare_worktree_tools", map[string]any{"id": id})
+	if prepared["codegraph_ready"] != true || prepared["codegraph_project_path"] != worktree {
+		t.Fatalf("unexpected MCP prepare-tools result: %#v", prepared)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(log), "status "+worktree) || !strings.Contains(string(log), "init -i "+worktree) {
+		t.Fatalf("codegraph should be checked and initialized against worktree, got:\n%s", log)
 	}
 }
 

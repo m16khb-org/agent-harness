@@ -567,12 +567,29 @@ func TestPreToolUseVCSLinkingBlocksGitLabPlaceholderAssignee(t *testing.T) {
 	}
 }
 
+func TestPreToolUseVCSLinkingBlocksGitHubPlaceholderAssignee(t *testing.T) {
+	for _, command := range []string{
+		`gh issue create --title "IssueOps 담당자 검증" --body "GitHub 이슈 담당자는 실제 사용자명이어야 합니다." --label bug --assignee @me`,
+		`gh pr create --title "IssueOps 담당자 검증" --body "GitHub PR 담당자는 실제 사용자명이어야 합니다." --label bug --assignee self`,
+	} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:              t.TempDir(),
+			Tool:              "bash",
+			Command:           command,
+			EnforceVCSLinking: true,
+		})
+		if got.Decision != "block" || !strings.Contains(got.Reason, "placeholder") {
+			t.Fatalf("expected GitHub placeholder assignee to be blocked: %q -> %+v", command, got)
+		}
+	}
+}
+
 func TestPreToolUseVCSLinkingAllowsRemoteCreateWithLabelsAndAssignee(t *testing.T) {
 	for _, command := range []string{
 		`glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨을 복사해 MR 라벨 누락을 방지합니다." --label bug --assignee m16khb`,
 		`glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨 복사와 담당자를 함께 지정합니다." --copy-issue-labels --assignee-id 100`,
 		`glab mr for 2385 --with-labels --assignee 100`,
-		`gh pr create --title "IssueOps 라벨 검증" --body "라벨과 담당자를 함께 지정합니다." -l bug -a @me`,
+		`gh pr create --title "IssueOps 라벨 검증" --body "라벨과 담당자를 함께 지정합니다." -l bug -a habin`,
 	} {
 		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 			Repo:              t.TempDir(),

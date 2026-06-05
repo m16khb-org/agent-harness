@@ -739,6 +739,11 @@ func vcsIssueLinkingBlockReason(req HookToolUseLifecycleRequest) string {
 	if artifact.action == "create" && len(artifact.assignees) == 0 {
 		return fmt.Sprintf("IssueOps remote %s create must include an assignee before %s %s create; assign the artifact to the currently authenticated user and verify the assignee list before reporting readiness", artifact.kind, artifact.provider, artifact.kind)
 	}
+	if artifact.action == "create" {
+		if reason := remoteAssigneePlaceholderBlockReason(artifact); reason != "" {
+			return reason
+		}
+	}
 	if artifact.action == "create" && artifact.provider == "gitlab" {
 		if reason := gitLabRemoteAssigneeBlockReason(artifact); reason != "" {
 			return reason
@@ -767,13 +772,20 @@ func remoteArtifactGateAppliesToTool(tool string) bool {
 	return strings.Contains(tool, "create") || strings.Contains(tool, "open") || strings.Contains(tool, "update") || strings.Contains(tool, "edit") || strings.HasSuffix(tool, "_for") || strings.Contains(tool, "create_for") || strings.Contains(tool, "create-for")
 }
 
-func gitLabRemoteAssigneeBlockReason(artifact remoteArtifactCommand) string {
+func remoteAssigneePlaceholderBlockReason(artifact remoteArtifactCommand) string {
 	for _, assignee := range artifact.assignees {
 		value := strings.TrimSpace(strings.ToLower(assignee))
 		switch value {
 		case "@me", "me", "self", "current_user", "current-user", "currentuser":
-			return "IssueOps GitLab remote create must use a concrete current-user username or numeric assignee id, not a placeholder such as @me; resolve it first with glab api user --jq .username or glab api user --jq .id, then verify the remote assignee list"
+			return fmt.Sprintf("IssueOps %s remote create must use a concrete current-user username or numeric assignee id, not a placeholder such as @me; resolve the current provider user first, then verify the remote assignee list", artifact.provider)
 		}
+	}
+	return ""
+}
+
+func gitLabRemoteAssigneeBlockReason(artifact remoteArtifactCommand) string {
+	for _, assignee := range artifact.assignees {
+		value := strings.TrimSpace(strings.ToLower(assignee))
 		if artifact.kind == "mr" && artifact.createFromIssue && !allDigits(value) {
 			return "IssueOps GitLab issue-based MR create (`glab mr for`) must pass numeric assignee IDs because this glab command does not accept usernames; resolve the current user id with glab api user --jq .id and verify the remote assignee list"
 		}

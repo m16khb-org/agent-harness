@@ -109,6 +109,30 @@ func TestRunIssueOpsRemoteScoreCLIAcceptsCandidateAliases(t *testing.T) {
 	}
 }
 
+func TestRunIssueOpsRemoteScoreFailureWithJSONEmitsStructuredError(t *testing.T) {
+	input := filepath.Join(t.TempDir(), "remote-score-invalid.json")
+	if err := os.WriteFile(input, []byte(`{
+		"provider": "jira",
+		"issue": {"title": "Bad provider", "body": "body"}
+	}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := captureStdoutAndErrorForIssueOps(t, func() error {
+		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "none", "--json"})
+	})
+	if err == nil {
+		t.Fatalf("remote score with invalid provider should still return an error")
+	}
+	var failure map[string]any
+	if unmarshalErr := json.Unmarshal([]byte(out), &failure); unmarshalErr != nil {
+		t.Fatalf("remote score failure with --json should emit JSON stdout: %v\n%s", unmarshalErr, out)
+	}
+	errorText, _ := failure["error"].(string)
+	if failure["ok"] != false || !strings.Contains(errorText, "unsupported issueops remote provider") {
+		t.Fatalf("unexpected structured failure payload: %#v", failure)
+	}
+}
+
 func TestRunIssueOpsRemoteScoreCLIAgyUsesExternalLLMWrapper(t *testing.T) {
 	fakeAgy := filepath.Join(t.TempDir(), "fake-agy.sh")
 	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh

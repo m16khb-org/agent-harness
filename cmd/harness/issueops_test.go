@@ -257,6 +257,37 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 	}
 }
 
+func TestRunIssueOpsWorktreePrepareToolsFailureWithJSONEmitsStructuredError(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIRepoForTest(t, "prepare-tools-json-failure")
+	start := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "1-demo", "--json"})
+	})
+	var record map[string]any
+	if err := json.Unmarshal([]byte(start), &record); err != nil {
+		t.Fatalf("start should return JSON: %v\n%s", err, start)
+	}
+	id, ok := record["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected start record: %#v", record)
+	}
+
+	out, err := captureStdoutAndErrorForIssueOps(t, func() error {
+		return runIssueOps([]string{"worktree", "prepare-tools", "--id", id, "--json"})
+	})
+	if err == nil {
+		t.Fatalf("prepare-tools without linked worktree should still return an error")
+	}
+	var failure map[string]any
+	if unmarshalErr := json.Unmarshal([]byte(out), &failure); unmarshalErr != nil {
+		t.Fatalf("prepare-tools failure with --json should emit JSON stdout: %v\n%s", unmarshalErr, out)
+	}
+	errorText, _ := failure["error"].(string)
+	if failure["ok"] != false || !strings.Contains(errorText, "worktree_path is required") {
+		t.Fatalf("unexpected structured failure payload: %#v", failure)
+	}
+}
+
 func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	bin := t.TempDir()

@@ -574,6 +574,22 @@
     "name": "issueops_link_worktree"
   },
   {
+    "description": "Prepare the linked IssueOps worktree before tests by checking dependencies and initializing CodeGraph against the exact worktree path.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_prepare_worktree_tools"
+  },
+  {
     "description": "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
     "inputSchema": {
       "properties": {

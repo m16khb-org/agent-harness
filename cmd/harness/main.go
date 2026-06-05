@@ -4886,6 +4886,13 @@ func mcpTools() []map[string]any {
 			}},
 		},
 		{
+			"name":        "issueops_prepare_worktree_tools",
+			"description": "Prepare the linked IssueOps worktree before tests by checking dependencies and initializing CodeGraph against the exact worktree path.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id": map[string]any{"type": "string", "description": "IssueOps id."},
+			}},
+		},
+		{
 			"name":        "issueops_link_child",
 			"description": "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "child_url"}, "properties": map[string]any{
@@ -5324,6 +5331,16 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		result, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "worktree_path"))
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps worktree link failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_prepare_worktree_tools":
+		record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps worktree tool preparation failed", Data: err.Error()}
+		}
+		result, err := prepareIssueOpsWorktreeTools(record)
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps worktree tool preparation failed", Data: err.Error()}
 		}
 		payload = result
 	case "issueops_link_child":
