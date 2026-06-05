@@ -610,6 +610,30 @@ func TestNumberedNextActionsDecisionAllowsChoices(t *testing.T) {
 	}
 }
 
+func TestNumberedNextActionsDecisionBlocksMissingRecommendation(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(`완료했습니다.
+
+선택지:
+1. 진행: 다음 검증을 실행합니다.
+2. 축소 진행: 작은 범위만 확인합니다.
+3. 보류: 여기서 멈춥니다.`, true, "stop")
+	if got.Decision != "block" || !strings.Contains(got.Reason, "exactly three numbered options") {
+		t.Fatalf("expected missing recommendation to block, got %+v", got)
+	}
+}
+
+func TestNumberedNextActionsDecisionBlocksMultipleRecommendations(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(`완료했습니다.
+
+선택지:
+1. 진행: 다음 검증을 실행합니다. (추천)
+2. 축소 진행: 작은 범위만 확인합니다. (추천)
+3. 보류: 여기서 멈춥니다.`, true, "stop")
+	if got.Decision != "block" || !strings.Contains(got.Reason, "exactly three numbered options") {
+		t.Fatalf("expected multiple recommendations to block, got %+v", got)
+	}
+}
+
 func TestNumberedNextActionsDecisionAllowsMarkdownListChoices(t *testing.T) {
 	got := BuildNumberedNextActionsDecision(`완료했습니다.
 
@@ -824,16 +848,26 @@ func guardRepoWithCycle(t *testing.T, branch string, phase IssueOpsPhase) string
 	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: branch})
-	if err != nil {
+	if _, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: branch}); err != nil {
 		t.Fatal(err)
 	}
 	if phase != IssueOpsPhaseProblem {
-		if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(phase)); err != nil {
-			t.Fatal(err)
-		}
+		setIssueOpsPhaseForTest(t, repo, branch, phase)
 	}
 	return repo
+}
+
+func setIssueOpsPhaseForTest(t *testing.T, repo, branch string, phase IssueOpsPhase) {
+	t.Helper()
+	id := newIssueOpsID(repo, branch)
+	record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Phase = phase
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func linkIssueOpsBranchEvidenceForTest(t *testing.T, repo, branch string) {
@@ -984,13 +1018,10 @@ git worktree add -b "$BR" ../repo.worktrees/2-new-work origin/main`, EnforceWork
 func TestWorktreeGuardBlocksLocalCheckoutOfIssueOpsBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-current", IssueOpsPhasePlan)
-	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "1-issue-work"})
-	if err != nil {
+	if _, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "1-issue-work"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(IssueOpsPhaseImplement)); err != nil {
-		t.Fatal(err)
-	}
+	setIssueOpsPhaseForTest(t, repo, "1-issue-work", IssueOpsPhaseImplement)
 
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Bash", Command: "git checkout -b 1-issue-work origin/main", EnforceWorktree: true,
@@ -1092,9 +1123,7 @@ func TestWorktreeGuardBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(IssueOpsPhaseImplement)); err != nil {
-		t.Fatal(err)
-	}
+	setIssueOpsPhaseForTest(t, repo, "1-x", IssueOpsPhaseImplement)
 	expected := makeIssueOpsGuardWorktreeForTest(t, repo, "1-x")
 	linkIssueOpsBranchEvidenceForTest(t, repo, "1-x")
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), rec.ID, expected); err != nil {
@@ -1123,9 +1152,7 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(IssueOpsPhaseImplement)); err != nil {
-		t.Fatal(err)
-	}
+	setIssueOpsPhaseForTest(t, repo, "1-x", IssueOpsPhaseImplement)
 	expected := makeIssueOpsGuardWorktreeForTest(t, repo, "1-x")
 	linkIssueOpsBranchEvidenceForTest(t, repo, "1-x")
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), rec.ID, expected); err != nil {

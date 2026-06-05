@@ -1811,7 +1811,7 @@ func BuildNumberedNextActionsDecision(message string, enforce bool, source strin
 		result.Reason = "no assistant message available to inspect"
 		return result
 	}
-	if hasNumberedNextActions(message) {
+	if hasNumberedNextActions(message) && hasExactlyOneRecommendedNextAction(message) {
 		return result
 	}
 	result.Decision = "block"
@@ -1820,7 +1820,7 @@ func BuildNumberedNextActionsDecision(message string, enforce bool, source strin
 }
 
 func missingNumberedNextActionsReason() string {
-	return "Stop hook blocked because the final response lacks numbered next actions. Continue by briefly explaining that missing next-action choices caused the block, then present a context-specific `선택지:` section with exactly three numbered options and exactly one `(추천)` option."
+	return "Stop hook blocked because the final response lacks well-formed numbered next actions. Continue by briefly explaining that missing or malformed next-action choices caused the block, then present a context-specific `선택지:` section with exactly three numbered options and exactly one `(추천)` option."
 }
 
 const defaultNextActionAutoProceedThreshold = 0.80
@@ -2198,6 +2198,19 @@ func hasNumberedNextActions(message string) bool {
 		}
 	}
 	return seen[1] && seen[2] && seen[3]
+}
+
+func hasExactlyOneRecommendedNextAction(message string) bool {
+	count := 0
+	for _, candidate := range parseNextActionCandidateFacts(message) {
+		if candidate.Index < 1 || candidate.Index > 3 {
+			continue
+		}
+		if candidate.Recommended {
+			count++
+		}
+	}
+	return count == 1
 }
 
 func normalizeNextActionLine(line string) string {

@@ -488,9 +488,6 @@ func TestRunHookPreToolUseBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), record.ID, string(core.IssueOpsPhaseImplement)); err != nil {
-		t.Fatal(err)
-	}
 	worktree := filepath.Join(filepath.Dir(source), "agent-harness.worktrees", "12-issue-worktree")
 	if err := os.MkdirAll(filepath.Join(worktree, ".git"), 0o755); err != nil {
 		t.Fatal(err)
@@ -499,6 +496,16 @@ func TestRunHookPreToolUseBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T
 		t.Fatal(err)
 	}
 	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
+		t.Fatal(err)
+	}
+	planPath := filepath.Join(worktree, "plans", "demo.md")
+	if err := os.MkdirAll(filepath.Dir(planPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, []byte("plan\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, planPath); err != nil {
 		t.Fatal(err)
 	}
 	payload, err := json.Marshal(map[string]any{
@@ -1224,6 +1231,22 @@ func TestRunHookStopAllowsNumberedNextActionsWhenExpected(t *testing.T) {
 	}
 }
 
+func TestRunHookStopBlocksNumberedNextActionsWithoutOneRecommendation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	for _, message := range []string{
+		"선택지:\\n1. 진행: 검증합니다.\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다.",
+		"선택지:\\n1. 진행: 검증합니다. (추천)\\n2. 축소 진행: 일부만 합니다. (추천)\\n3. 보류: 멈춥니다.",
+	} {
+		obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+message+`"}`, func() error {
+			return runHookStop([]string{"--enforce-numbered-next-actions"})
+		})
+		if obj["continue"] != true || obj["decision"] != "block" {
+			t.Fatalf("expected malformed recommendations to block, got %+v", obj)
+		}
+	}
+}
+
 func TestRunHookStopRelaysRecommendedNextActionFactsToMainAgent(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -1296,7 +1319,7 @@ func TestRunHookStopDoesNotTreatNumberedExplanationAsAutoProceedChoices(t *testi
 	if obj["decision"] != "block" {
 		t.Fatalf("expected Stop hook to block missing choices, got %+v", obj)
 	}
-	if !strings.Contains(reason, "lacks numbered next actions") {
+	if !strings.Contains(reason, "lacks well-formed numbered next actions") {
 		t.Fatalf("expected missing-next-actions block, got %+v", obj)
 	}
 	if strings.Contains(reason, "자동진행 후보") {
