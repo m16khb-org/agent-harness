@@ -493,6 +493,9 @@ func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifa
 	if err := validateRemoteArtifactURL(artifactURL, provider, kind); err != nil {
 		return IssueOpsRecord{OK: false}, err
 	}
+	if err := validateRemoteArtifactMatchesIssue(record.IssueURL, artifactURL, provider, kind); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
 	labels := cleanIssueOpsRemoteValues(req.Labels)
 	if len(labels) == 0 {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("remote artifact labels are required")
@@ -1209,6 +1212,51 @@ func validateRemoteArtifactURL(artifactURL, provider, kind string) error {
 		return fmt.Errorf("remote artifact provider/kind combination is unsupported")
 	}
 	return nil
+}
+
+func validateRemoteArtifactMatchesIssue(issueURL, artifactURL, provider, kind string) error {
+	issueKey := issueOpsRemoteProjectKey(issueURL, provider, "issue")
+	artifactKey := issueOpsRemoteProjectKey(artifactURL, provider, kind)
+	if issueKey == "" || artifactKey == "" {
+		return nil
+	}
+	if issueKey != artifactKey {
+		return fmt.Errorf("remote artifact url must match linked issue project")
+	}
+	return nil
+}
+
+func issueOpsRemoteProjectKey(rawURL, provider, kind string) string {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || parsed.Host == "" {
+		return ""
+	}
+	host := strings.ToLower(parsed.Hostname())
+	parts := splitIssueOpsURLPath(strings.ToLower(parsed.EscapedPath()))
+	switch provider + ":" + kind {
+	case "github:issue":
+		if host != "github.com" || len(parts) != 4 || parts[2] != "issues" {
+			return ""
+		}
+		return host + "/" + strings.Join(parts[:2], "/")
+	case "github:pr":
+		if host != "github.com" || len(parts) != 4 || parts[2] != "pull" {
+			return ""
+		}
+		return host + "/" + strings.Join(parts[:2], "/")
+	case "gitlab:issue":
+		if host == "github.com" || len(parts) < 4 || parts[len(parts)-3] != "-" || parts[len(parts)-2] != "issues" {
+			return ""
+		}
+		return host + "/" + strings.Join(parts[:len(parts)-3], "/")
+	case "gitlab:mr":
+		if host == "github.com" || len(parts) < 4 || parts[len(parts)-3] != "-" || parts[len(parts)-2] != "merge_requests" {
+			return ""
+		}
+		return host + "/" + strings.Join(parts[:len(parts)-3], "/")
+	default:
+		return ""
+	}
 }
 
 func splitIssueOpsURLPath(path string) []string {

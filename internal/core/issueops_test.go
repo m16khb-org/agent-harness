@@ -857,6 +857,15 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
+		URL:       "https://github.com/other/repo/pull/1",
+		Labels:    []string{"bug"},
+		Assignees: []string{"habin"},
+	}); err == nil || !strings.Contains(err.Error(), "linked issue project") {
+		t.Fatalf("github remote artifact should reject PR URL from another repo, got %v", err)
+	}
+	if _, err := VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "github",
+		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/1",
 		Labels:    []string{"bug"},
 		Assignees: []string{"@me"},
@@ -943,6 +952,15 @@ func TestIssueOpsRemoteArtifactURLMatchesProvider(t *testing.T) {
 		Assignees: []string{"100"},
 	}); err == nil || !strings.Contains(err.Error(), "GitLab merge request URL") {
 		t.Fatalf("gitlab remote artifact should reject nonnumeric MR URL, got %v", err)
+	}
+	if _, err := VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "gitlab",
+		Kind:      "mr",
+		URL:       "https://gitlab.example/other/project/-/merge_requests/2",
+		Labels:    []string{"bug"},
+		Assignees: []string{"100"},
+	}); err == nil || !strings.Contains(err.Error(), "linked issue project") {
+		t.Fatalf("gitlab remote artifact should reject MR URL from another project, got %v", err)
 	}
 	if _, err := VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "gitlab",
