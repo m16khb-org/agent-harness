@@ -836,6 +836,15 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseDone)); err == nil || !strings.Contains(err.Error(), "remote artifact") {
 		t.Fatalf("done phase should require remote artifact verification, got %v", err)
 	}
+	if _, err := VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "github",
+		Kind:      "pr",
+		URL:       "https://gitlab.example/group/project/-/merge_requests/1",
+		Labels:    []string{"bug"},
+		Assignees: []string{"habin"},
+	}); err == nil || !strings.Contains(err.Error(), "GitHub pull request URL") {
+		t.Fatalf("github remote artifact should reject non-GitHub PR URL, got %v", err)
+	}
 	record, err = VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
@@ -885,6 +894,41 @@ func TestIssueOpsFeedbackRecordsClassification(t *testing.T) {
 	}
 	if record.Feedback[1].Classification != "" {
 		t.Fatalf("expected empty classification default, got %+v", record.Feedback[1])
+	}
+}
+
+func TestIssueOpsRemoteArtifactURLMatchesProvider(t *testing.T) {
+	stateRoot := t.TempDir()
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "2-gitlab-mr"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.IssueURL = "https://gitlab.example/group/project/-/issues/2"
+	record.Phase = IssueOpsPhasePR
+	if _, err := writeIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "gitlab",
+		Kind:      "mr",
+		URL:       "https://github.com/example/repo/pull/2",
+		Labels:    []string{"bug"},
+		Assignees: []string{"habin"},
+	}); err == nil || !strings.Contains(err.Error(), "GitLab merge request URL") {
+		t.Fatalf("gitlab remote artifact should reject GitHub PR URL, got %v", err)
+	}
+	record, err = VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "gitlab",
+		Kind:      "mr",
+		URL:       "https://gitlab.example/group/project/-/merge_requests/2",
+		Labels:    []string{"bug"},
+		Assignees: []string{"habin"},
+	})
+	if err != nil {
+		t.Fatalf("gitlab remote artifact should accept GitLab MR URL: %v", err)
+	}
+	if record.RemoteArtifact == nil || record.RemoteArtifact.Provider != "gitlab" || record.RemoteArtifact.Kind != "mr" {
+		t.Fatalf("unexpected gitlab remote artifact: %+v", record.RemoteArtifact)
 	}
 }
 

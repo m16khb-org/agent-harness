@@ -490,7 +490,7 @@ func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifa
 		return IssueOpsRecord{OK: false}, fmt.Errorf("gitlab remote artifact kind must be mr")
 	}
 	artifactURL := strings.TrimSpace(req.URL)
-	if err := validateRemoteArtifactURL(artifactURL); err != nil {
+	if err := validateRemoteArtifactURL(artifactURL, provider, kind); err != nil {
 		return IssueOpsRecord{OK: false}, err
 	}
 	labels := cleanIssueOpsRemoteValues(req.Labels)
@@ -1178,7 +1178,7 @@ func validateIssueURL(issueURL string) error {
 	return nil
 }
 
-func validateRemoteArtifactURL(artifactURL string) error {
+func validateRemoteArtifactURL(artifactURL, provider, kind string) error {
 	if artifactURL == "" {
 		return fmt.Errorf("remote artifact url is required")
 	}
@@ -1188,6 +1188,20 @@ func validateRemoteArtifactURL(artifactURL string) error {
 	parsed, err := url.Parse(artifactURL)
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") {
 		return fmt.Errorf("remote artifact url must be an http(s) URL")
+	}
+	host := strings.ToLower(parsed.Hostname())
+	path := strings.ToLower(parsed.EscapedPath())
+	switch provider + ":" + kind {
+	case "github:pr":
+		if host != "github.com" || !strings.Contains(path, "/pull/") {
+			return fmt.Errorf("remote artifact url must be a GitHub pull request URL")
+		}
+	case "gitlab:mr":
+		if host == "github.com" || !strings.Contains(path, "/-/merge_requests/") {
+			return fmt.Errorf("remote artifact url must be a GitLab merge request URL")
+		}
+	default:
+		return fmt.Errorf("remote artifact provider/kind combination is unsupported")
 	}
 	return nil
 }
