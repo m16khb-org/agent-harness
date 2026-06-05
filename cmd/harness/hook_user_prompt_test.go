@@ -896,8 +896,38 @@ func TestRunHookStopAsksAgentToJudgeRecommendedSafeAction(t *testing.T) {
 	if !strings.Contains(reason, "메인 에이전트") || !strings.Contains(reason, "현재 대화/작업 맥락") {
 		t.Fatalf("expected agent-judgement directive in reason, got %q", reason)
 	}
+	if strings.Contains(reason, "자동진행 후보입니다") {
+		t.Fatalf("Stop hook must not decide candidate status for the agent, got %q", reason)
+	}
+	if !strings.Contains(reason, "직전 응답의 추천 선택지를 다시 확인") {
+		t.Fatalf("expected reason to tell the agent to re-check its own recommended option, got %q", reason)
+	}
 	if strings.Contains(reason, "사용자 확인 없이 즉시 실행") {
 		t.Fatalf("agent judgement reason must not force immediate execution, got %q", reason)
+	}
+}
+
+func TestRunHookStopDoesNotTreatNumberedExplanationAsAutoProceedChoices(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := strings.Join([]string{
+		"설명입니다.",
+		"1. Stop hook이 먼저 정적 휴리스틱으로 자동진행 후보를 판정합니다.",
+		"2. 메인 에이전트는 실행 여부만 판단합니다.",
+		"3. `agent-harness`가 추천 선택지를 분석해서 자동진행 후보라고 판단합니다.",
+	}, "\\n")
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--auto-proceed-next-actions"})
+	})
+	reason, _ := obj["reason"].(string)
+	if obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to block missing choices, got %+v", obj)
+	}
+	if !strings.Contains(reason, "lacks numbered next actions") {
+		t.Fatalf("expected missing-next-actions block, got %+v", obj)
+	}
+	if strings.Contains(reason, "자동진행 후보") {
+		t.Fatalf("numbered explanatory text must not be treated as auto-proceed choices, got %q", reason)
 	}
 }
 

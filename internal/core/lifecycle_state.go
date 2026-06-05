@@ -1529,8 +1529,16 @@ func EvaluateNextActionAutoProceed(message string, threshold float64) NextAction
 func parseNextActionCandidates(message string) []NextActionCandidate {
 	lines := strings.Split(strings.ReplaceAll(message, "\r\n", "\n"), "\n")
 	candidates := []NextActionCandidate{}
+	inChoices := false
 	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
+		trimmed := normalizeNextActionLine(line)
+		if nextActionSectionHeader(trimmed) {
+			inChoices = true
+			continue
+		}
+		if !inChoices {
+			continue
+		}
 		for i := 1; i <= 9; i++ {
 			prefixDot := fmt.Sprintf("%d.", i)
 			prefixParen := fmt.Sprintf("%d)", i)
@@ -1685,12 +1693,16 @@ func nextActionHasForwardVerb(text string) bool {
 func hasNumberedNextActions(message string) bool {
 	lines := strings.Split(strings.ReplaceAll(message, "\r\n", "\n"), "\n")
 	seen := map[int]bool{}
+	inChoices := false
 	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		trimmed = strings.TrimPrefix(trimmed, "- ")
-		trimmed = strings.TrimPrefix(trimmed, "* ")
-		trimmed = strings.TrimPrefix(trimmed, "+ ")
-		trimmed = strings.TrimSpace(trimmed)
+		trimmed := normalizeNextActionLine(line)
+		if nextActionSectionHeader(trimmed) {
+			inChoices = true
+			continue
+		}
+		if !inChoices {
+			continue
+		}
 		if len(trimmed) < 2 {
 			continue
 		}
@@ -1702,6 +1714,22 @@ func hasNumberedNextActions(message string) bool {
 		}
 	}
 	return seen[1] && seen[2] && seen[3]
+}
+
+func normalizeNextActionLine(line string) string {
+	trimmed := strings.TrimSpace(line)
+	trimmed = strings.TrimPrefix(trimmed, "- ")
+	trimmed = strings.TrimPrefix(trimmed, "* ")
+	trimmed = strings.TrimPrefix(trimmed, "+ ")
+	return strings.TrimSpace(trimmed)
+}
+
+func nextActionSectionHeader(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	lower := strings.ToLower(trimmed)
+	return strings.HasPrefix(trimmed, "선택지:") ||
+		strings.HasPrefix(lower, "options:") ||
+		strings.HasPrefix(lower, "next actions:")
 }
 
 func BuildLifecyclePreCompactCapsule(repo string) LifecycleCompactResult {

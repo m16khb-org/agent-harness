@@ -566,14 +566,15 @@ func runHookStop(args []string) error {
 	// unusable inside a Stop hook's latency budget. The final proceed/ask judgement
 	// is delegated back to the main agent because it has the full task context.
 	//
-	// Agent judgement takes precedence: when the recommended next action is a
-	// reversible forward-step candidate, block the Stop with a continue directive so
-	// the main agent decides from context whether to execute it or ask the user.
+	// Agent judgement takes precedence: when the main agent already presented a
+	// recommended, reversible forward-step choice, block the Stop with a continue
+	// directive so the main agent re-checks its own choice and decides from context
+	// whether to execute it or ask the user.
 	if autoProceedEnabled && autoProceed.AgentJudgementRequired {
 		return printJSON(map[string]any{
 			"continue": true,
 			"decision": "block",
-			"reason":   fmt.Sprintf("추천 선택지가 자동진행 후보입니다(점수 %.2f ≥ 임계값 %.2f): %q. 메인 에이전트는 현재 대화/작업 맥락을 기준으로 이 작업이 안전하고 되돌릴 수 있으며 사용자의 명시 의도와 맞으면 실행하세요. 그렇지 않으면 자동 진행하지 않았다고 알리고 직전 응답의 번호 선택지 중 하나를 직접 골라 달라고 요청한 뒤 멈추세요. 같은 선택지를 다시 제시하지 마세요.", autoProceed.TopScore, autoProceed.Threshold, autoProceed.SelectedText),
+			"reason":   fmt.Sprintf("직전 응답의 추천 선택지를 다시 확인하세요(점수 %.2f ≥ 임계값 %.2f): %q. 메인 에이전트는 현재 대화/작업 맥락을 기준으로 이 작업이 안전하고 되돌릴 수 있으며 사용자의 명시 의도와 맞는지 직접 판단하세요. 맞으면 같은 선택지를 다시 제시하지 말고 실행하세요. 아니면 자동 진행하지 않았다고 알리고 직전 응답의 번호 선택지 중 하나를 직접 골라 달라고 요청한 뒤 멈추세요.", autoProceed.TopScore, autoProceed.Threshold, autoProceed.SelectedText),
 		})
 	}
 	// Block a Stop that lacks numbered next actions, but drive an IN-TURN
