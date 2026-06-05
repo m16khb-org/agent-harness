@@ -58,6 +58,7 @@ type IssueOpsFeedbackItem struct {
 	Body           string `json:"body"`
 	Classification string `json:"classification,omitempty"`
 	CreatedAt      string `json:"created_at"`
+	IssueUpdatedAt string `json:"issue_updated_at,omitempty"`
 }
 
 type IssueOpsIssueLink struct {
@@ -405,6 +406,26 @@ func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (Is
 	return writeIssueOps(stateRoot, record)
 }
 
+func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRecord, error) {
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return record, err
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	marked := false
+	for i := range record.Feedback {
+		if issueOpsFeedbackRequiresIssueUpdate(record.Feedback[i]) {
+			record.Feedback[i].IssueUpdatedAt = now
+			marked = true
+		}
+	}
+	if !marked {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("no unresolved contract_change feedback requires a remote issue update")
+	}
+	record.UpdatedAt = now
+	return writeIssueOps(stateRoot, record)
+}
+
 func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch string) []IssueOpsBranchPrepareStep {
 	switch provider {
 	case "gitlab":
@@ -536,6 +557,9 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if strings.TrimSpace(record.AISlopCleanAt) == "" {
 		missing = append(missing, "ai_slop_clean")
 	}
+	if issueOpsHasUnresolvedContractFeedback(record) {
+		missing = append(missing, "contract_feedback_issue_update")
+	}
 	missing = uniqSorted(missing)
 	return IssueOpsReadiness{
 		OK:           true,
@@ -546,6 +570,20 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		WorktreePath: record.WorktreePath,
 		Branch:       record.Branch,
 	}
+}
+
+func issueOpsHasUnresolvedContractFeedback(record IssueOpsRecord) bool {
+	for _, item := range record.Feedback {
+		if issueOpsFeedbackRequiresIssueUpdate(item) {
+			return true
+		}
+	}
+	return false
+}
+
+func issueOpsFeedbackRequiresIssueUpdate(item IssueOpsFeedbackItem) bool {
+	return strings.EqualFold(strings.TrimSpace(item.Classification), "contract_change") &&
+		strings.TrimSpace(item.IssueUpdatedAt) == ""
 }
 
 func issueOpsBaseImplementationMissing(record IssueOpsRecord) []string {

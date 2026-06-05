@@ -144,6 +144,7 @@ Record feedback, optionally classifying each item (contract_change, defect, ques
 
 ```bash
 agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source review --body "$FEEDBACK" --classification contract_change --json
+agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
 ```
 
 Remote scoring runs deterministically and is also available as the MCP tool `issueops_remote_score` for cross-host (Codex/Claude) use; the agy judge path stays CLI/`remote score --judge agy`. Benchmark commands (`benchmark run|compare|gate`) are CLI-only developer/autoresearch tooling, not a runtime MCP gate.
@@ -155,6 +156,8 @@ Stop and ask before creating or updating remote issues, PRs, or MRs if credentia
 Stop before implementation if brainstorming or grilling exposes materially different interpretations. Present the interpretations and ask for the intended one.
 
 Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports missing `issue_url`, `branch_prepare`, `branch_link_verified`, `plan_path`, `worktree_path`, `worktree_exists`, `branch_match`, `worktree_clean`, `upstream`, `upstream_synced`, `plan_exists`, or `ai_slop_clean`.
+
+Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports missing `contract_feedback_issue_update`. This means a `contract_change` feedback item was recorded after the remote issue contract changed, and the remote issue body update has not been confirmed with `issueops feedback mark-issue-updated`.
 
 Do not mark an IssueOps loop `done` before it has entered the `pr` phase. Completion reporting happens after PR/MR readiness and review/merge hygiene, not as an escape hatch from planning or implementation.
 

@@ -29,6 +29,14 @@ When handling remote PR/MR review feedback, first verify each reviewer claim aga
 
 The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Run the Korean Remote Artifact Gate before every remote issue body edit.
 
+After the remote issue body is updated for `contract_change` feedback, record that join point in IssueOps state:
+
+```bash
+agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
+```
+
+Until this is recorded, `issueops pr-readiness --strict` must remain blocked with `contract_feedback_issue_update`.
+
 When the user asks only for review-validity verification, verify each remote review claim against the diff, code, and commands, then reply in the original review thread with the verdict before reporting back to the user. Each thread reply must say whether the review is `타당` or `타당하지 않음`, cite concrete evidence, and state the next action.
 
 Use this thread reply shape:

@@ -152,6 +152,7 @@ func issueOpsUsage() {
   agent-harness issueops worktree prepare-tools --id ID [--json]
   agent-harness issueops phase --id ID --to problem|grill|plan|implement|ai-slop-clean|feedback|pr|done [--json]
   agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] [--json]
+  agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
   agent-harness issueops remote score --input PATH [--judge none|agy] [--json]
 `)
@@ -829,23 +830,34 @@ func issueOpsBenchmarkOwnedTasks(items []string) string {
 
 func runIssueOpsFeedback(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] [--json]")
+		fmt.Println("Usage: agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] [--json]\n       agent-harness issueops feedback mark-issue-updated --id ID [--json]")
 		return nil
 	}
-	if args[0] != "add" {
+	switch args[0] {
+	case "add":
+		fs := flag.NewFlagSet("issueops feedback add", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		source := fs.String("source", "", "feedback source")
+		body := fs.String("body", "", "feedback body")
+		classification := fs.String("classification", "", "optional feedback classification, such as contract_change, defect, question, or noise")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		record, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), *id, *source, *body, *classification)
+		return printIssueOpsResult(record, *jsonOut, err)
+	case "mark-issue-updated":
+		fs := flag.NewFlagSet("issueops feedback mark-issue-updated", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		record, err := core.MarkIssueOpsContractFeedbackIssueUpdated(core.IssueOpsStateRoot(), *id)
+		return printIssueOpsResult(record, *jsonOut, err)
+	default:
 		return fmt.Errorf("unknown issueops feedback subcommand")
 	}
-	fs := flag.NewFlagSet("issueops feedback add", flag.ContinueOnError)
-	id := fs.String("id", "", "issueops id")
-	source := fs.String("source", "", "feedback source")
-	body := fs.String("body", "", "feedback body")
-	classification := fs.String("classification", "", "optional feedback classification, such as contract_change, defect, question, or noise")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
-		return err
-	}
-	record, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), *id, *source, *body, *classification)
-	return printIssueOpsResult(record, *jsonOut, err)
 }
 
 func printIssueOpsResult(record core.IssueOpsRecord, jsonOut bool, err error) error {

@@ -73,6 +73,7 @@ Record feedback:
 
 ```bash
 agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source user --body "$FEEDBACK" --json
+agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
 ```
 
 Check PR/MR readiness:

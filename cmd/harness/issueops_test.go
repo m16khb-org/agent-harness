@@ -132,6 +132,44 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if ready["ready"] != true {
 		t.Fatalf("expected PR readiness once issue, plan, and ai-slop-clean are linked: %#v", ready)
 	}
+
+	contractFeedback := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"feedback", "add", "--id", id, "--source", "review", "--body", "acceptance criteria changed", "--classification", "contract_change", "--json"})
+	})
+	var contractRecord map[string]any
+	if err := json.Unmarshal([]byte(contractFeedback), &contractRecord); err != nil {
+		t.Fatalf("contract feedback should return JSON: %v\n%s", err, contractFeedback)
+	}
+	blockedReadiness := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"pr-readiness", "--id", id, "--json"})
+	})
+	var blocked map[string]any
+	if err := json.Unmarshal([]byte(blockedReadiness), &blocked); err != nil {
+		t.Fatalf("blocked readiness should return JSON: %v\n%s", err, blockedReadiness)
+	}
+	if blocked["ready"] == true || !strings.Contains(blockedReadiness, "contract_feedback_issue_update") {
+		t.Fatalf("contract feedback should block PR readiness until issue update is recorded: %#v", blocked)
+	}
+	marked := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"feedback", "mark-issue-updated", "--id", id, "--json"})
+	})
+	var markedRecord map[string]any
+	if err := json.Unmarshal([]byte(marked), &markedRecord); err != nil {
+		t.Fatalf("mark issue updated should return JSON: %v\n%s", err, marked)
+	}
+	if !strings.Contains(marked, "issue_updated_at") {
+		t.Fatalf("mark issue updated should timestamp contract feedback: %#v", markedRecord)
+	}
+	unblockedReadiness := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"pr-readiness", "--id", id, "--json"})
+	})
+	var unblocked map[string]any
+	if err := json.Unmarshal([]byte(unblockedReadiness), &unblocked); err != nil {
+		t.Fatalf("unblocked readiness should return JSON: %v\n%s", err, unblockedReadiness)
+	}
+	if unblocked["ready"] != true || strings.Contains(unblockedReadiness, "contract_feedback_issue_update") {
+		t.Fatalf("issue update mark should unblock PR readiness: %#v", unblocked)
+	}
 }
 
 func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.T) {

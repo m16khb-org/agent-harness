@@ -97,6 +97,66 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	}
 }
 
+func TestIssueOpsContractChangeFeedbackBlocksPRUntilIssueUpdateRecorded(t *testing.T) {
+	stateRoot := t.TempDir()
+	repo := filepath.Join(t.TempDir(), "example")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       "1-demo",
+		BaseBranch:   "main",
+		LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
+	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeIssueOpsFile(t, worktree, "docs/superpowers/plans/demo.md", "plan\n")
+	record, err = LinkIssueOpsPlan(stateRoot, record.ID, "docs/superpowers/plans/demo.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = AddIssueOpsFeedback(stateRoot, record.ID, "review", "acceptance criteria changed", "contract_change")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ready := IssueOpsPRReadiness(record); ready.Ready || !containsString(ready.Missing, "contract_feedback_issue_update") {
+		t.Fatalf("contract_change feedback should block PR until issue update is recorded: %+v", ready)
+	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR)); err == nil || !strings.Contains(err.Error(), "contract_feedback_issue_update") {
+		t.Fatalf("pr phase should be blocked by unresolved contract feedback, got %v", err)
+	}
+	record, err = MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Feedback[0].IssueUpdatedAt == "" {
+		t.Fatalf("issue update timestamp should be recorded: %+v", record.Feedback)
+	}
+	if ready := IssueOpsPRReadiness(record); !ready.Ready || containsString(ready.Missing, "contract_feedback_issue_update") {
+		t.Fatalf("recorded issue update should unblock PR readiness: %+v", ready)
+	}
+}
+
 func TestIssueOpsStartRequiresIssueBranch(t *testing.T) {
 	stateRoot := t.TempDir()
 	for _, branch := range []string{"main", "development", "feature/2387-fix-grpc-ai-dmm-tag-replication-lag"} {
