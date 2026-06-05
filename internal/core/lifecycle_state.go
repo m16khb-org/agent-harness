@@ -496,6 +496,9 @@ var (
 )
 
 func koreanRemoteArtifactBlockReason(req HookToolUseLifecycleRequest) string {
+	if !remoteArtifactGateAppliesToTool(req.Tool) {
+		return ""
+	}
 	artifact, ok := parseGHRemoteArtifactCommand(req.Command, req.Repo)
 	if !ok {
 		return ""
@@ -676,6 +679,9 @@ var (
 // any provider, and on GitLab related issues belong in native linked items
 // rather than a body "Related Issues" section.
 func vcsIssueLinkingBlockReason(req HookToolUseLifecycleRequest) string {
+	if !remoteArtifactGateAppliesToTool(req.Tool) {
+		return ""
+	}
 	artifact, ok := parseGHRemoteArtifactCommand(req.Command, req.Repo)
 	if !ok {
 		return ""
@@ -701,6 +707,26 @@ func vcsIssueLinkingBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 	}
 	return ""
+}
+
+func remoteArtifactGateAppliesToTool(tool string) bool {
+	tool = strings.ToLower(strings.TrimSpace(tool))
+	if isShellTool(tool) {
+		return true
+	}
+	if tool == "" {
+		return false
+	}
+	if !strings.HasPrefix(tool, "mcp__") {
+		return false
+	}
+	if !(strings.Contains(tool, "github") || strings.Contains(tool, "gitlab") || strings.Contains(tool, "glab")) {
+		return false
+	}
+	if !(strings.Contains(tool, "issue") || strings.Contains(tool, "merge_request") || strings.Contains(tool, "pull_request") || strings.Contains(tool, "_mr") || strings.Contains(tool, "_pr")) {
+		return false
+	}
+	return strings.Contains(tool, "create") || strings.Contains(tool, "open") || strings.Contains(tool, "update") || strings.Contains(tool, "edit") || strings.HasSuffix(tool, "_for") || strings.Contains(tool, "create_for") || strings.Contains(tool, "create-for")
 }
 
 func gitLabRemoteAssigneeBlockReason(artifact remoteArtifactCommand) string {

@@ -382,6 +382,19 @@ func TestPreToolUseRemoteArtifactGateAllowsHelpCommands(t *testing.T) {
 	}
 }
 
+func TestPreToolUseRemoteArtifactGateIgnoresCodeGraphQueryText(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:                t.TempDir(),
+		Tool:                "mcp__codegraph__codegraph_explore",
+		Command:             `glab mr create --title "IssueOps 담당자 검증" --description "라벨과 담당자 누락을 설명하는 탐색 문자열"`,
+		EnforceKoreanRemote: true,
+		EnforceVCSLinking:   true,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected CodeGraph query text to bypass remote artifact gates: %+v", got)
+	}
+}
+
 func TestPreToolUseVCSLinkingBlocksRemoteCreateWithoutLabels(t *testing.T) {
 	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo:              t.TempDir(),

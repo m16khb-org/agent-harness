@@ -953,6 +953,27 @@ func TestRunHookPreToolUseBlocksEnglishMCPRemoteArtifact(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseRemoteArtifactGateIgnoresCodeGraphQueryText(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "mcp__codegraph__codegraph_explore",
+		"tool_input": map[string]any{
+			"query": `glab mr create --title "IssueOps 담당자 검증" --description "라벨과 담당자 누락을 설명하는 탐색 문자열"`,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts", "--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected CodeGraph query text to bypass remote artifact gates, got %+v", obj)
+	}
+}
+
 func TestRunHookPreToolUseAllowsKoreanGitLabMCPRemoteArtifact(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
