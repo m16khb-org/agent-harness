@@ -469,6 +469,12 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	if err != nil {
 		return record, err
 	}
+	if record.Phase == phase {
+		return record, nil
+	}
+	if record.Phase == IssueOpsPhaseDone {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot leave done phase")
+	}
 	if phase == IssueOpsPhaseAISlopClean {
 		if ready := IssueOpsAISlopCleanReadiness(record); !ready.Ready {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter ai-slop-clean phase: missing %s", strings.Join(ready.Missing, ", "))

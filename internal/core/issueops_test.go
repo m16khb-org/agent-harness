@@ -665,6 +665,13 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if err != nil || record.Phase != IssueOpsPhaseDone {
 		t.Fatalf("done phase should succeed, got %+v err=%v", record, err)
 	}
+	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseDone))
+	if err != nil || record.Phase != IssueOpsPhaseDone {
+		t.Fatalf("done phase should be idempotent, got %+v err=%v", record, err)
+	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "cannot leave done phase") {
+		t.Fatalf("done phase should be terminal, got %v", err)
+	}
 }
 
 func TestIssueOpsFeedbackRecordsClassification(t *testing.T) {
