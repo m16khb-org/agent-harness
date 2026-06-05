@@ -993,6 +993,9 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 	expected := cleanAbsPath(req.ExpectedWorktree)
 	if expected == "" {
 		if creation := localIssueOpsBranchCreation(req.Command); creation.Branch != "" {
+			if shellTokenLooksDynamic(creation.Branch) {
+				return ""
+			}
 			if err := validateIssueOpsIssueBranch(creation.Branch); err != nil {
 				return err.Error()
 			}
@@ -1175,6 +1178,11 @@ func nextBranchSourceRef(tokens []string, start int) string {
 
 func issueOpsBranchCreationSourceReason(branch string) string {
 	return "IssueOps branch creation must include an explicit source ref chosen by the user; ask the user which source branch or commit to branch from, then rerun with a source ref such as git switch -c " + branch + " origin/main"
+}
+
+func shellTokenLooksDynamic(token string) bool {
+	token = strings.Trim(strings.TrimSpace(token), `"'`)
+	return strings.Contains(token, "$") || strings.Contains(token, "`")
 }
 
 func issueOpsWorktreePreparationCommand(command string) bool {

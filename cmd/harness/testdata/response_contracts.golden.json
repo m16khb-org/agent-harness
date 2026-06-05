@@ -1083,7 +1083,7 @@
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
       "phase": "implement",
-      "plan_path": "docs/superpowers/plans/contract.md",
+      "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
@@ -1149,7 +1149,7 @@
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
       "phase": "implement",
-      "plan_path": "docs/superpowers/plans/contract.md",
+      "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
@@ -1216,9 +1216,10 @@
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
       "phase": "implement",
-      "plan_path": "docs/superpowers/plans/contract.md",
+      "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "repo": "$WORKSPACE",
-      "updated_at": "$TIMESTAMP"
+      "updated_at": "$TIMESTAMP",
+      "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "issueops_link_worktree": {
       "branch": "1-contract-branch",
@@ -1271,8 +1272,7 @@
       "id": "$ISSUEOPS_ID",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
-      "phase": "implement",
-      "plan_path": "docs/superpowers/plans/contract.md",
+      "phase": "plan",
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
@@ -1281,11 +1281,10 @@
       "branch": "1-contract-branch",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "missing": [
-        "ai_slop_clean",
-        "plan_exists"
+        "ai_slop_clean"
       ],
       "ok": true,
-      "plan_path": "docs/superpowers/plans/contract.md",
+      "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "ready": false,
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -4290,7 +4289,7 @@
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "implement",
-            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "repo": "$WORKSPACE",
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
@@ -4353,7 +4352,7 @@
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "implement",
-            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "repo": "$WORKSPACE",
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
@@ -4424,9 +4423,10 @@
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "implement",
-            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "repo": "$WORKSPACE",
-            "updated_at": "$TIMESTAMP"
+            "updated_at": "$TIMESTAMP",
+            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
           "type": "text"
         }
@@ -4476,8 +4476,7 @@
             "id": "$ISSUEOPS_ID",
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
-            "phase": "implement",
-            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "phase": "plan",
             "repo": "$WORKSPACE",
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
@@ -4493,11 +4492,10 @@
             "branch": "2-mcp-contract",
             "issue_url": "https://github.com/example/repo/issues/2",
             "missing": [
-              "ai_slop_clean",
-              "plan_exists"
+              "ai_slop_clean"
             ],
             "ok": true,
-            "plan_path": "docs/superpowers/plans/mcp-contract.md",
+            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "ready": false,
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },

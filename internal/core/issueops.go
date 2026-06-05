@@ -207,10 +207,14 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 	if missing := issueOpsBranchEvidenceMissing(record); len(missing) > 0 {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link plan before branch evidence: missing %s", strings.Join(missing, ", "))
 	}
+	worktree := strings.TrimSpace(record.WorktreePath)
+	if worktree == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link plan before linked worktree")
+	}
 	if !issueOpsPlanPathExists(record.Repo, path) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("plan_path does not exist: %s", path)
 	}
-	if worktree := strings.TrimSpace(record.WorktreePath); worktree != "" && !issueOpsPlanPathInsideWorktree(worktree, path) {
+	if !issueOpsPlanPathInsideWorktree(worktree, path) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("plan_path must be inside linked worktree: %s", worktree)
 	}
 	record.PlanPath = path

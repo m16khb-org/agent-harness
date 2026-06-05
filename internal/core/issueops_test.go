@@ -43,15 +43,6 @@ func TestIssueOpsLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	writeIssueOpsFile(t, repo, "docs/superpowers/plans/demo.md", "plan\n")
-	record, err = LinkIssueOpsPlan(stateRoot, record.ID, "docs/superpowers/plans/demo.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if record.Phase != IssueOpsPhaseImplement || record.PlanPath == "" {
-		t.Fatalf("plan link should move to implement phase: %+v", record)
-	}
-
 	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
 	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, worktree)
 	if err != nil {
@@ -61,6 +52,13 @@ func TestIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("worktree path should be persisted: %+v", record)
 	}
 	writeIssueOpsFile(t, worktree, "docs/superpowers/plans/demo.md", "plan\n")
+	record, err = LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "docs/superpowers/plans/demo.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Phase != IssueOpsPhaseImplement || record.PlanPath == "" {
+		t.Fatalf("plan link should move to implement phase: %+v", record)
+	}
 
 	record, err = AddIssueOpsFeedback(stateRoot, record.ID, "user", "tighten acceptance criteria", "")
 	if err != nil {
@@ -141,6 +139,18 @@ func TestIssueOpsImplementationLinksRequireBranchEvidence(t *testing.T) {
 	}
 	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "plans/demo.md"); err == nil || !strings.Contains(err.Error(), "branch_link_verified") {
 		t.Fatalf("plan link before verified branch should fail, got %v", err)
+	}
+	if _, err := PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       "1-demo",
+		BaseBranch:   "main",
+		LinkVerified: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "plans/demo.md"); err == nil || !strings.Contains(err.Error(), "linked worktree") {
+		t.Fatalf("plan link before linked worktree should fail, got %v", err)
 	}
 }
 
@@ -549,14 +559,14 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	writeIssueOpsFile(t, repo, "plans/demo.md", "plan\n")
-	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "plans/demo.md"); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean)); err == nil || !strings.Contains(err.Error(), "worktree_path") {
 		t.Fatalf("ai-slop-clean without worktree should be rejected, got %v", err)
 	}
 	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, worktree); err != nil {
+		t.Fatal(err)
+	}
+	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
+	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans/demo.md")); err != nil {
 		t.Fatal(err)
 	}
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))

@@ -927,6 +927,18 @@ func TestWorktreeGuardBlocksWorktreeBranchCreationWithoutSourceRef(t *testing.T)
 	}
 }
 
+func TestWorktreeGuardAllowsDynamicBranchWorktreeScript(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "1-current", IssueOpsPhasePlan)
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Bash", Command: `BR=2-new-work
+git worktree add -b "$BR" ../repo.worktrees/2-new-work origin/main`, EnforceWorktree: true,
+	})
+	if res.Decision != "allow" {
+		t.Fatalf("dynamic branch variables should not be validated as literal branch names, got %+v", res)
+	}
+}
+
 func TestWorktreeGuardBlocksLocalCheckoutOfIssueOpsBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-current", IssueOpsPhasePlan)
@@ -993,14 +1005,13 @@ func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	writeIssueOpsGuardFileForTest(t, repo, "plans/demo.md", "plan\n")
-	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), id, "plans/demo.md"); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
 		t.Fatal(err)
 	}
 	writeIssueOpsGuardFileForTest(t, linked, "plans/demo.md", "plan\n")
+	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), id, filepath.Join(linked, "plans", "demo.md")); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(IssueOpsPhaseAISlopClean)); err != nil {
 		t.Fatal(err)
 	}
@@ -1183,6 +1194,9 @@ func TestWorktreeGuardIgnoresMismatchedWorktreePlanBranch(t *testing.T) {
 	}
 	writeIssueOpsGuardFileForTest(t, worktree, "docs/plans/2361.md", "plan\n")
 	linkIssueOpsBranchEvidenceForTest(t, repo, "1-development")
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), recordID, worktree); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), recordID, filepath.Join(worktree, "docs", "plans", "2361.md")); err != nil {
 		t.Fatal(err)
 	}

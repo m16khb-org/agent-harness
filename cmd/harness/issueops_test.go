@@ -50,18 +50,6 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("branch prepare should include fallback steps: %#v", prepare)
 	}
 
-	writeIssueOpsCLIFileForTest(t, repo, "docs/superpowers/plans/demo.md", "plan\n")
-	plan := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"link-plan", "--id", id, "--plan-path", "docs/superpowers/plans/demo.md", "--json"})
-	})
-	var planRecord map[string]any
-	if err := json.Unmarshal([]byte(plan), &planRecord); err != nil {
-		t.Fatalf("plan link should return JSON: %v\n%s", err, plan)
-	}
-	if planRecord["phase"] != "implement" {
-		t.Fatalf("plan link should move to implement phase: %#v", planRecord)
-	}
-
 	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
 	worktree := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktreePath, "--json"})
@@ -74,6 +62,16 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("worktree link should persist exact path: %#v", worktreeRecord)
 	}
 	writeIssueOpsCLIFileForTest(t, worktreePath, "docs/superpowers/plans/demo.md", "plan\n")
+	plan := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-plan", "--id", id, "--plan-path", filepath.Join(worktreePath, "docs", "superpowers", "plans", "demo.md"), "--json"})
+	})
+	var planRecord map[string]any
+	if err := json.Unmarshal([]byte(plan), &planRecord); err != nil {
+		t.Fatalf("plan link should return JSON: %v\n%s", err, plan)
+	}
+	if planRecord["phase"] != "implement" {
+		t.Fatalf("plan link should move to implement phase: %#v", planRecord)
+	}
 
 	child := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-child", "--id", id, "--child-url", "https://github.com/example/repo/issues/2", "--title", "write child graph tests", "--json"})

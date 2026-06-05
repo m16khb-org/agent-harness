@@ -427,15 +427,15 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	writeHookFixtureFile(t, source, "plans/issue-worktree.md", "plan\n")
-	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, "plans/issue-worktree.md"); err != nil {
-		t.Fatal(err)
-	}
 	worktree := filepath.Join(filepath.Dir(source), "agent-harness.worktrees", "12-issue-worktree")
 	if err := os.MkdirAll(worktree, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
+		t.Fatal(err)
+	}
+	writeHookFixtureFile(t, worktree, "plans/issue-worktree.md", "plan\n")
+	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, filepath.Join(worktree, "plans", "issue-worktree.md")); err != nil {
 		t.Fatal(err)
 	}
 	payload, err := json.Marshal(map[string]any{

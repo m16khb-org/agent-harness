@@ -120,15 +120,15 @@ Remote issue and plan linkage:
 ```bash
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
 agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" --issue-url "$ISSUE_URL" --branch "$branch_slug" --base-branch "$BASE_BRANCH" --link-verified --json
-agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
 agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
+agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$EXPECTED_WORKTREE/$PLAN_REL_PATH" --json
 agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$CHILD_ISSUE_URL" --title "$CHILD_TITLE" --json
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 ```
 
 `branch prepare` records the required provider-linked branch contract before local worktree creation: use the provider MCP first, use the provider API/CLI fallback second, and fail closed if both cannot create a branch that the issue shows as linked. For GitLab, branch names must start with the issue or task number followed by a hyphen, for example `123-fix-login`.
 
-`link-plan` is the transition into implementation. It fails closed until the issue is linked and `branch prepare --link-verified` has recorded provider-visible branch evidence. `link-worktree` also fails closed until that branch evidence exists and the worktree path already exists on disk.
+`link-worktree` fails closed until issue-linked branch evidence exists and the worktree path already exists on disk. `link-plan` is the transition into implementation. It fails closed until the issue is linked, `branch prepare --link-verified` has recorded provider-visible branch evidence, the worktree is linked, and the plan path exists inside that linked worktree.
 
 `link-child` records a provider-native child work item after it exists remotely. On GitHub that child should be a sub-issue; on GitLab it should be a child item/task. The command does not create remote issues and must not be used as a substitute for the provider-specific hierarchy rules.
 
