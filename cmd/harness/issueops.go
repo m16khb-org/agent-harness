@@ -78,6 +78,9 @@ func runIssueOps(args []string) error {
 		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
+		if err := verifyIssueOpsChildIssueBeforeLink(*childURL); err != nil {
+			return printIssueOpsResult(core.IssueOpsRecord{OK: false}, *jsonOut, err)
+		}
 		record, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), *id, *childURL, *title)
 		return printIssueOpsResult(record, *jsonOut, err)
 	case "branch":

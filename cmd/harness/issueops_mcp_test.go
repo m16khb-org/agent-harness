@@ -23,6 +23,7 @@ func TestMCPIssueOpsStartAndStatus(t *testing.T) {
 }
 
 func TestMCPIssueOpsLinkChild(t *testing.T) {
+	stubIssueOpsChildIssueVerifier(t, nil)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
 	id, ok := start["id"].(string)

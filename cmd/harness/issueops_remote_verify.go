@@ -19,6 +19,49 @@ type liveRemoteArtifact struct {
 	Merged    bool
 }
 
+var issueOpsChildIssueVerifier = verifyIssueOpsChildIssueLive
+
+func verifyIssueOpsChildIssueBeforeLink(childURL string) error {
+	if issueOpsChildIssueVerifier == nil {
+		return nil
+	}
+	return issueOpsChildIssueVerifier(childURL)
+}
+
+func verifyIssueOpsChildIssueLive(childURL string) error {
+	parsed, err := url.Parse(strings.TrimSpace(childURL))
+	if err != nil {
+		return err
+	}
+	if parsed.Hostname() == "github.com" {
+		return verifyGitHubIssueLive(childURL)
+	}
+	if strings.Contains(parsed.Hostname(), "gitlab") || strings.Contains(parsed.EscapedPath(), "/-/issues/") {
+		return verifyGitLabIssueLive(parsed)
+	}
+	return nil
+}
+
+func verifyGitHubIssueLive(issueURL string) error {
+	if _, err := exec.Command("gh", "issue", "view", strings.TrimSpace(issueURL), "--json", "url,state,title").Output(); err != nil {
+		return fmt.Errorf("verify GitHub child issue through gh failed: %w", commandOutputError(err))
+	}
+	return nil
+}
+
+func verifyGitLabIssueLive(parsed *url.URL) error {
+	parts := splitGitLabIssuePath(parsed.EscapedPath())
+	if parts.project == "" || parts.iid == "" {
+		return fmt.Errorf("child_url must be a GitLab issue URL")
+	}
+	endpoint := "projects/" + url.PathEscape(parts.project) + "/issues/" + parts.iid
+	cmd := exec.Command("glab", "api", endpoint, "--hostname", parsed.Hostname())
+	if _, err := cmd.Output(); err != nil {
+		return fmt.Errorf("verify GitLab child issue through glab failed: %w", commandOutputError(err))
+	}
+	return nil
+}
+
 func verifyIssueOpsRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	kind := strings.ToLower(strings.TrimSpace(req.Kind))
@@ -152,6 +195,11 @@ type gitLabMRPathParts struct {
 	iid     string
 }
 
+type gitLabIssuePathParts struct {
+	project string
+	iid     string
+}
+
 func splitGitLabMRPath(escapedPath string) gitLabMRPathParts {
 	trimmed := strings.Trim(path.Clean("/"+escapedPath), "/")
 	parts := strings.Split(trimmed, "/")
@@ -170,6 +218,26 @@ func splitGitLabMRPath(escapedPath string) gitLabMRPathParts {
 		return gitLabMRPathParts{project: strings.Join(projectParts, "/"), iid: iid}
 	}
 	return gitLabMRPathParts{}
+}
+
+func splitGitLabIssuePath(escapedPath string) gitLabIssuePathParts {
+	trimmed := strings.Trim(path.Clean("/"+escapedPath), "/")
+	parts := strings.Split(trimmed, "/")
+	for i := 0; i+2 < len(parts); i++ {
+		if parts[i] != "-" || parts[i+1] != "issues" {
+			continue
+		}
+		iid := parts[i+2]
+		if _, err := strconv.Atoi(iid); err != nil {
+			return gitLabIssuePathParts{}
+		}
+		projectParts := parts[:i]
+		for index, part := range projectParts {
+			projectParts[index], _ = url.PathUnescape(part)
+		}
+		return gitLabIssuePathParts{project: strings.Join(projectParts, "/"), iid: iid}
+	}
+	return gitLabIssuePathParts{}
 }
 
 func requireRemoteValues(kind string, required []string, actual []string) error {

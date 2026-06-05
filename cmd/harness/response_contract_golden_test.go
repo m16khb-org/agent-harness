@@ -16,6 +16,7 @@ import (
 )
 
 func TestResponseContractsGolden(t *testing.T) {
+	stubIssueOpsChildIssueVerifier(t, nil)
 	stateDir := t.TempDir()
 	workspaceDir := t.TempDir()
 	gitRepoDir := makeGitRepoForContract(t)

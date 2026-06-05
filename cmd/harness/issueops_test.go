@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 )
 
 func TestRunIssueOpsLifecycle(t *testing.T) {
+	stubIssueOpsChildIssueVerifier(t, nil)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIRepoForTest(t, "example")
 	start := captureStdoutForContract(t, func() error {
@@ -174,6 +176,31 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 	if unblocked["ready"] != true || strings.Contains(unblockedReadiness, "contract_feedback_issue_update") {
 		t.Fatalf("issue update mark should unblock PR readiness: %#v", unblocked)
+	}
+}
+
+func TestRunIssueOpsLinkChildRequiresLiveIssue(t *testing.T) {
+	stubIssueOpsChildIssueVerifier(t, func(_ string) error {
+		return errors.New("child issue not found")
+	})
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIRepoForTest(t, "child-live")
+	start := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "1-child-live", "--json"})
+	})
+	var record map[string]any
+	if err := json.Unmarshal([]byte(start), &record); err != nil {
+		t.Fatalf("start should return JSON: %v\n%s", err, start)
+	}
+	id, ok := record["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected start record: %#v", record)
+	}
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-issue", "--id", id, "--issue-url", "https://github.com/example/repo/issues/1", "--json"})
+	})
+	if err := runIssueOps([]string{"link-child", "--id", id, "--child-url", "https://github.com/example/repo/issues/2", "--title", "missing child", "--json"}); err == nil || !strings.Contains(err.Error(), "child issue not found") {
+		t.Fatalf("link-child should require live child issue verification, got %v", err)
 	}
 }
 
@@ -402,4 +429,13 @@ func writeIssueOpsCLIFileForTest(t *testing.T, root, rel, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func stubIssueOpsChildIssueVerifier(t *testing.T, verifier func(string) error) {
+	t.Helper()
+	previous := issueOpsChildIssueVerifier
+	issueOpsChildIssueVerifier = verifier
+	t.Cleanup(func() {
+		issueOpsChildIssueVerifier = previous
+	})
 }

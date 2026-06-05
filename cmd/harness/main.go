@@ -5344,6 +5344,9 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		}
 		payload = result
 	case "issueops_link_child":
+		if err := verifyIssueOpsChildIssueBeforeLink(stringArg(call.Arguments, "child_url")); err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps child link failed", Data: err.Error()}
+		}
 		result, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "child_url"), stringArg(call.Arguments, "title"))
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps child link failed", Data: err.Error()}
