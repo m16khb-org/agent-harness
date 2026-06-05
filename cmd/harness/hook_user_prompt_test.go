@@ -753,6 +753,37 @@ func TestRunHookPreToolUseStructuredGlabMRForAllowsAssignee(t *testing.T) {
 	if obj["decision"] != "allow" {
 		t.Fatalf("expected structured glab mr for with assignee to be allowed, got %+v", obj)
 	}
+	if command, _ := obj["command"].(string); !strings.Contains(command, `glab mr for "2385"`) {
+		t.Fatalf("expected structured glab mr for to preserve positional issue argument, got %q", command)
+	}
+}
+
+func TestRunHookPreToolUseStructuredGlabMRForAllowsNumericAssigneeID(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "mcp__glab__glab_mr_for",
+		"tool_input": map[string]any{
+			"args": []any{"2385"},
+			"flags": map[string]any{
+				"with_labels": true,
+				"assignee_id": 100,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected structured glab mr for with numeric assignee_id to be allowed, got %+v", obj)
+	}
+	if command, _ := obj["command"].(string); !strings.Contains(command, `glab mr for "2385"`) || !strings.Contains(command, `--assignee-id "100"`) {
+		t.Fatalf("expected structured glab mr for to preserve issue and assignee id, got %q", command)
+	}
 }
 
 func TestRunHookPreToolUseStructuredGlabMRForRejectsUsernameAssignee(t *testing.T) {

@@ -789,6 +789,14 @@ func mcpRemoteArtifactCommandFromHookObject(obj map[string]any, toolInput map[st
 	}
 	var args []string
 	args = append(args, cli, kind, action)
+	for _, positional := range stringListValue(toolInput, "args", "arguments") {
+		args = append(args, shellQuoteArg(positional))
+	}
+	if action == "for" && len(stringListValue(toolInput, "args", "arguments")) == 0 {
+		for _, issue := range stringListValue(toolInput, "issue", "issue_iid", "issueIid") {
+			args = append(args, shellQuoteArg(issue))
+		}
+	}
 	if title := firstStringValue(toolInput, "title", "name", "subject"); title != "" {
 		args = append(args, "--title", shellQuoteArg(title))
 	}
@@ -808,7 +816,7 @@ func mcpRemoteArtifactCommandFromHookObject(obj map[string]any, toolInput map[st
 	if boolValue(toolInput, "with_labels", "withLabels") {
 		args = append(args, "--with-labels")
 	}
-	if relatedIssue := firstStringValue(toolInput, "related_issue", "relatedIssue", "issue", "issue_iid", "issueIid"); relatedIssue != "" && cli == "glab" && kind == "mr" {
+	if relatedIssue := firstStringValue(toolInput, "related_issue", "relatedIssue", "issue", "issue_iid", "issueIid"); relatedIssue != "" && cli == "glab" && kind == "mr" && action != "for" {
 		args = append(args, "--related-issue", shellQuoteArg(relatedIssue))
 	}
 	for _, assignee := range stringListValue(toolInput, "assignee", "assignees", "add_assignee", "add_assignees") {
@@ -876,8 +884,15 @@ func stringListValue(values map[string]any, keys ...string) []string {
 			}
 		case []any:
 			for _, item := range value {
-				if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
-					out = append(out, strings.TrimSpace(s))
+				switch item := item.(type) {
+				case string:
+					if strings.TrimSpace(item) != "" {
+						out = append(out, strings.TrimSpace(item))
+					}
+				case float64:
+					out = append(out, strconv.FormatFloat(item, 'f', -1, 64))
+				case int:
+					out = append(out, strconv.Itoa(item))
 				}
 			}
 		case []string:
@@ -886,6 +901,10 @@ func stringListValue(values map[string]any, keys ...string) []string {
 					out = append(out, strings.TrimSpace(item))
 				}
 			}
+		case float64:
+			out = append(out, strconv.FormatFloat(value, 'f', -1, 64))
+		case int:
+			out = append(out, strconv.Itoa(value))
 		}
 		if len(out) > 0 {
 			return out
