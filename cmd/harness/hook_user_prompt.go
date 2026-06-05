@@ -123,7 +123,7 @@ func hookUsage() {
   agent-harness hook pre-compact [--repo PATH] [--json]
   agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
   agent-harness hook session-start [--repo PATH] [--host codex|claude] [--json]
-  agent-harness hook stop [--repo PATH] [--host codex|claude] [--enforce-numbered-next-actions] [--auto-proceed-next-actions] [--json]
+  agent-harness hook stop [--repo PATH] [--host codex|claude] [--enforce-numbered-next-actions] [--relay-next-action-judgement] [--json]
   agent-harness hook failures [--limit N] [--json]
 `)
 }
@@ -520,7 +520,8 @@ func runHookStop(args []string) error {
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
 	host := fs.String("host", "", "hook host (codex or claude); reserved for host-compatible stop output")
 	enforceNumberedNextActions := fs.Bool("enforce-numbered-next-actions", false, "block Stop when the final response lacks 1/2/3 next-action choices")
-	autoProceedNextActions := fs.Bool("auto-proceed-next-actions", false, "auto-continue the recommended next action when it scores at/above threshold and is reversible, instead of stopping for user selection; the flag itself is the on/off switch (remove it from the installed Stop hook command to disable)")
+	relayNextActionJudgement := fs.Bool("relay-next-action-judgement", false, "re-enter the main agent when the final response contains inspectable next-action facts")
+	autoProceedNextActions := fs.Bool("auto-proceed-next-actions", false, "deprecated alias for --relay-next-action-judgement")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -543,40 +544,32 @@ func runHookStop(args []string) error {
 		*enforceNumberedNextActions,
 		"stop",
 	)
-	// The --auto-proceed-next-actions flag is the sole on/off switch; no env opt-in
-	// is required (the installer always adds the flag, so removing it from the
-	// installed Stop hook command is how an operator disables auto-proceed).
-	//
-	// stop_hook_active only suppresses recovery loops (missing choices and
-	// notify-and-stop relays). If the continuation successfully presents valid
-	// choices, still re-enter the main agent for the context-aware judgement.
+	// --auto-proceed-next-actions is retained only as a compatibility alias. This
+	// hook no longer auto-proceeds or judges choices; it detects that an explicit
+	// next-action review point exists and relays observed facts back to the main agent.
 	stopHookActive := hookInputBool(stdin, "stop_hook_active")
-	autoProceedEnabled := *autoProceedNextActions
-	autoProceed := core.EvaluateNextActionAutoProceed(message, envFloat("HARNESS_NEXT_ACTION_AUTO_PROCEED_THRESHOLD"))
+	nextActionTriggerEnabled := *relayNextActionJudgement || *autoProceedNextActions
+	nextActionTrigger := core.BuildNextActionJudgementTrigger(message)
 	if *jsonOut {
 		return printJSON(map[string]any{
-			"lifecycle":             result,
-			"numbered_next_actions": nextActions,
-			"auto_proceed":          autoProceed,
-			"auto_proceed_enabled":  autoProceedEnabled,
+			"lifecycle":                    result,
+			"numbered_next_actions":        nextActions,
+			"next_action_judgement":        nextActionTrigger,
+			"next_action_judgement_active": nextActionTriggerEnabled,
 		})
 	}
 	_ = host
-	// Auto-proceed uses the static heuristic gate only for parsing and hard guards.
 	// The external-LLM gate (core.EvaluateNextActionAutoProceedLLM) is intentionally
 	// not called here: a synchronous agy/Gemini call measured ~13-25s, which is
-	// unusable inside a Stop hook's latency budget. The final proceed/ask judgement
-	// is delegated back to the main agent because it has the full task context.
-	//
-	// Agent judgement takes precedence: when the main agent already presented a
-	// recommended, reversible forward-step choice, block the Stop with a continue
-	// directive so the main agent re-checks its own choice and decides from context
-	// whether to execute it or ask the user.
-	if autoProceedEnabled && autoProceed.AgentJudgementRequired {
+	// unusable inside a Stop hook's latency budget. The hook also does not replace
+	// that LLM with a local scorer. It reports only that the response reached an
+	// explicit next-action judgement point and sends the observed facts to the main
+	// agent, which owns safety, reversibility, alignment, and proceed/ask judgement.
+	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent {
 		return printJSON(map[string]any{
 			"continue": true,
 			"decision": "block",
-			"reason":   fmt.Sprintf("직전 응답의 추천 선택지를 다시 확인하세요(점수 %.2f ≥ 임계값 %.2f): %q. 메인 에이전트는 현재 대화/작업 맥락을 기준으로 이 작업이 안전하고 되돌릴 수 있으며 사용자의 명시 의도와 맞는지 직접 판단하세요. 맞으면 같은 선택지를 다시 제시하지 말고 실행하세요. 아니면 자동 진행하지 않았다고 알리고 직전 응답의 번호 선택지 중 하나를 직접 골라 달라고 요청한 뒤 멈추세요.", autoProceed.TopScore, autoProceed.Threshold, autoProceed.SelectedText),
+			"reason":   nextActionJudgementReason(nextActionTrigger),
 		})
 	}
 	// Block a Stop that lacks numbered next actions, but drive an IN-TURN
@@ -599,35 +592,22 @@ func runHookStop(args []string) error {
 			"reason":   nextActions.Reason,
 		})
 	}
-	// When auto-proceed is enabled and the agent did present numbered choices but the
-	// heuristic gate did not engage (recommended action scored below threshold, was
-	// destructive/irreversible, or had no clear recommendation), do not stop SILENTLY —
-	// tell the user it did not auto-proceed.
-	//
-	// Verified host behavior (2026-06-04): the ONLY Stop output reliably surfaced to the
-	// user is decision:"block" + reason (rendered as "Stop hook feedback"). A
-	// non-blocking systemMessage and continue:false + stopReason were both observed to
-	// produce no visible notice. decision:"block" re-invokes the agent in-turn, so the
-	// reason instructs the agent to relay the non-auto-proceed notice to the user and
-	// then stop. The follow-up Stop carries stop_hook_active=true, so this branch does
-	// not fire again and the relay turn ends without looping.
-	if autoProceedEnabled && !stopHookActive && len(autoProceed.Candidates) >= 2 && !autoProceed.AutoProceed {
-		reason := strings.TrimSpace(autoProceed.Reason)
-		if reason == "" {
-			reason = "recommended next action did not qualify for auto-proceed"
-		}
-		return printJSON(map[string]any{
-			"continue": true,
-			"decision": "block",
-			"reason":   fmt.Sprintf("자동 진행 미적용: %s. 사용자에게 자동 진행되지 않았다는 사실과 이 사유를 한 줄로 알리고, 직전 응답의 번호 선택지 중 하나를 직접 골라 달라고 요청한 뒤, 추가 작업 없이 멈춰라. 새 선택지를 만들지 마라.", reason),
-		})
-	}
 	// Codex and Claude Stop hooks only accept the stop-control schema
 	// (for example decision/reason/systemMessage) or an empty object. Unlike
 	// prompt/compact hooks, Stop cannot inject additionalContext; returning
 	// hookSpecificOutput makes Codex report "invalid stop hook JSON output". Keep the
 	// raw reminder available behind --json, but emit a no-op host payload here.
 	return printJSON(map[string]any{})
+}
+
+func nextActionJudgementReason(trigger core.NextActionJudgementTriggerResult) string {
+	recommended := "없음"
+	if trigger.RecommendedCount == 1 {
+		recommended = fmt.Sprintf("%d번 %q", trigger.RecommendedIndex, trigger.RecommendedText)
+	} else if trigger.RecommendedCount > 1 {
+		recommended = fmt.Sprintf("%d개", trigger.RecommendedCount)
+	}
+	return fmt.Sprintf("다음 행동 판단 지점에 도달했습니다. 훅이 관찰한 근거: 명시적 선택지 %d개, 추천 선택지 %s. 훅은 안전성, 가역성, 사용자 의도 정합성, 진행 여부를 판단하지 않습니다. 메인 에이전트가 현재 대화와 작업 맥락을 근거로 직접 판단하세요. 판단 결과 진행이 맞으면 실행하고, 아니면 사용자에게 직전 선택지 중 하나를 골라 달라고 요청한 뒤 멈추세요.", trigger.ChoiceCount, recommended)
 }
 
 func lastAssistantMessageFromHookInput(input []byte) string {

@@ -450,7 +450,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 10148,
+          "bytes": 10563,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -517,7 +517,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 18640,
+          "bytes": 18950,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -3381,7 +3381,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 10148,
+                "bytes": 10563,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3448,7 +3448,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 18640,
+                "bytes": 18950,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",

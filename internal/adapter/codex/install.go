@@ -355,7 +355,7 @@ func codexHookCommand(binPath, subcommand string) string {
 	case "pre-tool-use":
 		cmd += " --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"
 	case "stop":
-		cmd += " --enforce-numbered-next-actions --auto-proceed-next-actions"
+		cmd += " --enforce-numbered-next-actions --relay-next-action-judgement"
 	}
 	return cmd
 }

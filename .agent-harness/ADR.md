@@ -276,4 +276,4 @@ Archived entries:
 - 2026-05-31: shared PreToolUse hook and prompt/tool lifecycle split.
 - 2026-05-31: repo-local draft wiki staging before upstream LLM Wiki ingest.
 - 2026-06-02: IssueOps split.
-- 2026-06-04: auto-proceed gate is the static heuristic + UserPromptSubmit policy injection; the external-LLM gate is disconnected (agy latency ~13-25s too high for the Stop hook), code preserved unused.
+- 2026-06-04/05: next-action Stop hook is a trigger/evidence relay, not a judge/scorer/classifier/safety gate. The external-LLM gate remains disconnected (agy latency ~13-25s too high for the Stop hook), and the replacement is not a static scoring heuristic: UserPromptSubmit teaches the main agent the policy, while Stop only detects an explicit next-action review point and relays observed facts back to the main agent for all safety/reversibility/alignment/proceed-or-ask judgement. The primary flag is `--relay-next-action-judgement`; `--auto-proceed-next-actions` remains only as a deprecated compatibility alias.

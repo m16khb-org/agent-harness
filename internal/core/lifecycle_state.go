@@ -1462,13 +1462,68 @@ func missingNumberedNextActionsReason() string {
 
 const defaultNextActionAutoProceedThreshold = 0.80
 
-// NextActionCandidate is a parsed numbered next-action option with auto-proceed signals.
+// NextActionCandidate is a parsed numbered next-action option.
+// Score and Destructive are legacy fields used only by the deprecated
+// auto-proceed evaluators; hook-facing judgement triggers must leave them unset.
 type NextActionCandidate struct {
 	Index       int     `json:"index"`
 	Text        string  `json:"text"`
 	Recommended bool    `json:"recommended"`
 	Destructive bool    `json:"destructive"`
 	Score       float64 `json:"score"`
+}
+
+// NextActionJudgementTriggerResult reports only facts observed in the final
+// assistant response. It is not a safety, reversibility, confidence, destructive,
+// or execution-eligibility verdict; the main agent owns those judgements.
+type NextActionJudgementTriggerResult struct {
+	OK                 bool                  `json:"ok"`
+	ShouldReenterAgent bool                  `json:"should_reenter_agent"`
+	ChoicesFound       bool                  `json:"choices_found"`
+	ChoiceCount        int                   `json:"choice_count"`
+	RecommendedCount   int                   `json:"recommended_count"`
+	RecommendedIndex   int                   `json:"recommended_index,omitempty"`
+	RecommendedText    string                `json:"recommended_text,omitempty"`
+	Reason             string                `json:"reason"`
+	Evidence           []string              `json:"evidence"`
+	Candidates         []NextActionCandidate `json:"candidates"`
+}
+
+// BuildNextActionJudgementTrigger detects whether the assistant reached an
+// explicit next-action review point and returns inspectable facts for the main
+// agent. It deliberately does not score, classify, or veto choices.
+func BuildNextActionJudgementTrigger(message string) NextActionJudgementTriggerResult {
+	result := NextActionJudgementTriggerResult{OK: true, Candidates: []NextActionCandidate{}}
+	candidates := parseNextActionCandidateFacts(message)
+	if len(candidates) == 0 {
+		result.Reason = "no explicit next-action choices found"
+		return result
+	}
+	result.ChoicesFound = true
+	result.ShouldReenterAgent = true
+	result.ChoiceCount = len(candidates)
+	result.Candidates = candidates
+	result.Evidence = append(result.Evidence, fmt.Sprintf("explicit next-action choices found: %d", len(candidates)))
+	for _, candidate := range candidates {
+		if !candidate.Recommended {
+			continue
+		}
+		result.RecommendedCount++
+		if result.RecommendedIndex == 0 {
+			result.RecommendedIndex = candidate.Index
+			result.RecommendedText = candidate.Text
+		}
+	}
+	result.Evidence = append(result.Evidence, fmt.Sprintf("recommended marker count: %d", result.RecommendedCount))
+	switch result.RecommendedCount {
+	case 0:
+		result.Reason = "next-action choices found without an explicit recommendation"
+	case 1:
+		result.Reason = "next-action choices found with exactly one explicit recommendation"
+	default:
+		result.Reason = "next-action choices found with multiple explicit recommendations"
+	}
+	return result
 }
 
 // NextActionAutoProceedResult reports whether the recommended next action is a
@@ -1486,12 +1541,10 @@ type NextActionAutoProceedResult struct {
 	Candidates             []NextActionCandidate `json:"candidates"`
 }
 
-// EvaluateNextActionAutoProceed scores parsed next-action choices and decides
-// whether the recommended option is eligible for the main agent's context-aware
-// auto-proceed judgement. Eligibility requires an explicit recommendation marker,
-// a forward/constructive verb, and a reversible (non-destructive) action.
-// Destructive or ambiguous choices never reach agent judgement, preserving
-// user-decision safety at cleanup/interpretation gates.
+// EvaluateNextActionAutoProceed scores parsed next-action choices for the legacy
+// auto-proceed experiment. It is not used by the Stop hook path; hook-facing code
+// must use BuildNextActionJudgementTrigger so the hook relays facts instead of
+// judging, scoring, or classifying choices.
 func EvaluateNextActionAutoProceed(message string, threshold float64) NextActionAutoProceedResult {
 	if threshold <= 0 {
 		threshold = defaultNextActionAutoProceedThreshold
@@ -1527,6 +1580,15 @@ func EvaluateNextActionAutoProceed(message string, threshold float64) NextAction
 }
 
 func parseNextActionCandidates(message string) []NextActionCandidate {
+	candidates := parseNextActionCandidateFacts(message)
+	for i := range candidates {
+		candidates[i].Destructive = nextActionIsDestructive(candidates[i].Text)
+		candidates[i].Score = scoreNextActionCandidate(candidates[i])
+	}
+	return candidates
+}
+
+func parseNextActionCandidateFacts(message string) []NextActionCandidate {
 	lines := strings.Split(strings.ReplaceAll(message, "\r\n", "\n"), "\n")
 	candidates := []NextActionCandidate{}
 	inChoices := false
@@ -1558,9 +1620,7 @@ func parseNextActionCandidates(message string) []NextActionCandidate {
 				Index:       i,
 				Text:        rest,
 				Recommended: nextActionIsRecommended(rest),
-				Destructive: nextActionIsDestructive(rest),
 			}
-			candidate.Score = scoreNextActionCandidate(candidate)
 			candidates = append(candidates, candidate)
 			break
 		}

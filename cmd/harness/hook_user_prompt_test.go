@@ -876,34 +876,41 @@ func TestRunHookStopAllowsNumberedNextActionsWhenExpected(t *testing.T) {
 	}
 }
 
-// writeFakeAgyOnPath puts an executable `agy` shell script on PATH that prints
-// the given output (after asserting the agy print-mode flags), so the LLM
-// auto-proceed gate is hermetic and never invokes a real model.
-func TestRunHookStopAsksAgentToJudgeRecommendedSafeAction(t *testing.T) {
+func TestRunHookStopRelaysRecommendedNextActionFactsToMainAgent(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	// A safe, reversible, recommended forward step becomes an agent-judgement
-	// candidate: the Stop hook re-enters the main agent, which has the task context
-	// needed to decide whether to proceed or ask the user.
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 다음 테스트를 추가하고 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 검증합니다.\\n3. 보류: 멈춥니다."
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if obj["continue"] != true || obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to re-enter main agent with observed facts, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	for _, want := range []string{"판단 지점", "근거", "메인 에이전트", "추천 선택지"} {
+		if !strings.Contains(reason, want) {
+			t.Fatalf("expected factual trigger directive containing %q, got %q", want, reason)
+		}
+	}
+	for _, banned := range []string{"점수", "임계값", "자동진행 후보", "destructive", "eligible", "candidate", "되돌릴 수"} {
+		if strings.Contains(reason, banned) {
+			t.Fatalf("Stop hook reason must not include hook judgement wording %q: %q", banned, reason)
+		}
+	}
+}
+
+func TestRunHookStopKeepsAutoProceedFlagAsRelayAlias(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--auto-proceed-next-actions"})
 	})
 	if obj["continue"] != true || obj["decision"] != "block" {
-		t.Fatalf("expected Stop hook to re-enter agent judgement for recommended safe action, got %+v", obj)
+		t.Fatalf("deprecated auto-proceed flag should remain a relay alias, got %+v", obj)
 	}
-	reason, _ := obj["reason"].(string)
-	if !strings.Contains(reason, "메인 에이전트") || !strings.Contains(reason, "현재 대화/작업 맥락") {
-		t.Fatalf("expected agent-judgement directive in reason, got %q", reason)
-	}
-	if strings.Contains(reason, "자동진행 후보입니다") {
-		t.Fatalf("Stop hook must not decide candidate status for the agent, got %q", reason)
-	}
-	if !strings.Contains(reason, "직전 응답의 추천 선택지를 다시 확인") {
-		t.Fatalf("expected reason to tell the agent to re-check its own recommended option, got %q", reason)
-	}
-	if strings.Contains(reason, "사용자 확인 없이 즉시 실행") {
-		t.Fatalf("agent judgement reason must not force immediate execution, got %q", reason)
+	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "판단 지점") || strings.Contains(reason, "점수") {
+		t.Fatalf("expected alias to use factual relay wording, got %q", reason)
 	}
 }
 
@@ -917,7 +924,7 @@ func TestRunHookStopDoesNotTreatNumberedExplanationAsAutoProceedChoices(t *testi
 		"3. `agent-harness`가 추천 선택지를 분석해서 자동진행 후보라고 판단합니다.",
 	}, "\\n")
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
-		return runHookStop([]string{"--enforce-numbered-next-actions", "--auto-proceed-next-actions"})
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--relay-next-action-judgement"})
 	})
 	reason, _ := obj["reason"].(string)
 	if obj["decision"] != "block" {
@@ -936,53 +943,49 @@ func TestRunHookStopDoesNotAutoProceedDestructiveCleanup(t *testing.T) {
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 정리 진행: merged worktree와 branch를 삭제합니다. (추천)\\n2. 보류: 유지합니다.\\n3. 확장 정리: 전체를 점검합니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
-		return runHookStop([]string{"--auto-proceed-next-actions"})
+		return runHookStop([]string{"--relay-next-action-judgement"})
 	})
-	// A destructive recommended action must NOT auto-proceed. Instead the hook relays a
-	// non-auto-proceed notice to the user via decision:block (the only reliably visible
-	// Stop channel) with an instruction to notify-and-stop — distinguished from a real
-	// auto-proceed by the "자동 진행 미적용" prefix (vs "다음 동작 자동 진행(점수").
 	reason, _ := obj["reason"].(string)
-	if obj["decision"] != "block" {
-		t.Fatalf("expected a notify block for destructive action, got %+v", obj)
+	if obj["continue"] != true || obj["decision"] != "block" {
+		t.Fatalf("expected facts relay block for destructive-looking text, got %+v", obj)
 	}
-	if !strings.Contains(reason, "자동 진행 미적용") || !strings.Contains(reason, "destructive or irreversible") {
-		t.Fatalf("expected destructive non-auto-proceed notice in reason, got %+v", obj)
+	if !strings.Contains(reason, "판단 지점") || !strings.Contains(reason, "추천 선택지") {
+		t.Fatalf("expected factual trigger reason, got %+v", obj)
 	}
-	if strings.Contains(reason, "다음 동작 자동 진행(점수") {
-		t.Fatalf("destructive action must not produce an auto-proceed directive, got %+v", obj)
+	for _, banned := range []string{"destructive", "irreversible", "점수", "임계값", "자동 진행 미적용"} {
+		if strings.Contains(reason, banned) {
+			t.Fatalf("Stop hook must not judge destructive-looking text with %q: %+v", banned, obj)
+		}
 	}
 }
 
-func TestRunHookStopStillAsksAgentToJudgeRecommendedActionWhenStopHookActive(t *testing.T) {
+func TestRunHookStopStillRelaysFactsWhenStopHookActive(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","stop_hook_active":true,"last_assistant_message":"`+msg+`"}`, func() error {
-		return runHookStop([]string{"--auto-proceed-next-actions"})
+		return runHookStop([]string{"--relay-next-action-judgement"})
 	})
 	if obj["continue"] != true || obj["decision"] != "block" {
-		t.Fatalf("stop_hook_active with valid choices should re-enter agent judgement, got %+v", obj)
+		t.Fatalf("stop_hook_active with valid choices should still relay facts, got %+v", obj)
 	}
 	reason, _ := obj["reason"].(string)
-	if !strings.Contains(reason, "직전 응답의 추천 선택지를 다시 확인") {
-		t.Fatalf("expected agent-judgement reason for stop_hook_active choices, got %q", reason)
+	if !strings.Contains(reason, "판단 지점") || strings.Contains(reason, "점수") {
+		t.Fatalf("expected factual trigger reason for stop_hook_active choices, got %q", reason)
 	}
 }
 
-func TestRunHookStopDoesNotAutoProceedWithoutFlag(t *testing.T) {
+func TestRunHookStopDoesNotRelayNextActionJudgementWithoutFlag(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	// The --auto-proceed-next-actions flag is the sole on/off switch. Even with a
-	// valid recommended, reversible choice present, omitting the flag must not
-	// auto-proceed. The ambient HARNESS_NEXT_ACTION_AUTO_PROCEED env is irrelevant
-	// now that the env opt-in was removed, so the result is hermetic without setting it.
+	// The relay flag is the on/off switch. Even with a valid recommended choice
+	// present, omitting it must not re-enter the main agent.
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--enforce-numbered-next-actions"})
 	})
 	if len(obj) != 0 {
-		t.Fatalf("auto-proceed must require the --auto-proceed-next-actions flag; got %+v", obj)
+		t.Fatalf("next-action judgement relay must require its flag; got %+v", obj)
 	}
 }
 

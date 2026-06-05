@@ -582,7 +582,7 @@ func TestLifecyclePreCompactNoPendingUpkeepDoesNotWriteCapsule(t *testing.T) {
 	}
 }
 
-func TestEvaluateNextActionAutoProceedRequiresAgentJudgementForRecommendedSafeAction(t *testing.T) {
+func TestBuildNextActionJudgementTriggerReportsRecommendedChoiceFacts(t *testing.T) {
 	message := strings.Join([]string{
 		"구현을 마쳤습니다.",
 		"선택지:",
@@ -590,25 +590,27 @@ func TestEvaluateNextActionAutoProceedRequiresAgentJudgementForRecommendedSafeAc
 		"2. 축소 진행: 일부만 먼저 검증합니다.",
 		"3. 보류: 현재 상태로 멈추고 사용자 확인을 기다립니다.",
 	}, "\n")
-	result := EvaluateNextActionAutoProceed(message, 0)
+	result := BuildNextActionJudgementTrigger(message)
 	if !result.OK {
 		t.Fatalf("expected ok result, got %+v", result)
 	}
-	if result.AutoProceed {
-		t.Fatalf("recommended safe reversible action should not auto-proceed without agent judgement, got %+v", result)
+	if !result.ShouldReenterAgent {
+		t.Fatalf("expected next-action facts to re-enter the main agent, got %+v", result)
 	}
-	if !result.AgentJudgementRequired {
-		t.Fatalf("recommended safe reversible action should require agent judgement, got %+v", result)
+	if !result.ChoicesFound || result.ChoiceCount != 3 {
+		t.Fatalf("expected three observed choices, got %+v", result)
 	}
-	if result.SelectedIndex != 1 {
-		t.Fatalf("expected selected index 1, got %d", result.SelectedIndex)
+	if result.RecommendedCount != 1 || result.RecommendedIndex != 1 || result.RecommendedText == "" {
+		t.Fatalf("expected exactly one recommended choice fact, got %+v", result)
 	}
-	if result.TopScore < result.Threshold {
-		t.Fatalf("top score %.2f should meet threshold %.2f", result.TopScore, result.Threshold)
+	for _, candidate := range result.Candidates {
+		if candidate.Score != 0 || candidate.Destructive {
+			t.Fatalf("trigger must not score choices or emit destructive verdicts, got %+v", result)
+		}
 	}
 }
 
-func TestEvaluateNextActionAutoProceedNeverAdvancesMerge(t *testing.T) {
+func TestBuildNextActionJudgementTriggerReportsDestructiveTextAsFactOnly(t *testing.T) {
 	message := strings.Join([]string{
 		"리뷰가 통과했습니다.",
 		"선택지:",
@@ -616,157 +618,60 @@ func TestEvaluateNextActionAutoProceedNeverAdvancesMerge(t *testing.T) {
 		"2. 보류: 추가 확인을 기다립니다.",
 		"3. 축소: 일부만 merge 합니다.",
 	}, "\n")
-	result := EvaluateNextActionAutoProceed(message, 0)
-	if result.AutoProceed {
-		t.Fatalf("merge is irreversible and must not auto-proceed, got %+v", result)
+	result := BuildNextActionJudgementTrigger(message)
+	if !result.ShouldReenterAgent {
+		t.Fatalf("expected hook to relay facts to the main agent, got %+v", result)
 	}
-	if result.BlockedByGuard == "" {
-		t.Fatalf("expected destructive guard for merge, got %+v", result)
-	}
-}
-
-func TestEvaluateNextActionAutoProceedAllowsEnforceForwardAction(t *testing.T) {
-	message := strings.Join([]string{
-		"선택지:",
-		"1. 진행: 새 모듈에 테스트 커버리지를 enforce 합니다. (추천)",
-		"2. 축소 진행: 일부만 검증합니다.",
-		"3. 보류: 멈춥니다.",
-	}, "\n")
-	result := EvaluateNextActionAutoProceed(message, 0)
-	if result.AutoProceed {
-		t.Fatalf("'enforce' must not directly auto-proceed without agent judgement, got %+v", result)
-	}
-	if !result.AgentJudgementRequired {
-		t.Fatalf("'enforce' must not be misread as destructive 'force'; should require agent judgement, got %+v", result)
+	for _, candidate := range result.Candidates {
+		if candidate.Destructive || candidate.Score != 0 {
+			t.Fatalf("hook trigger must not judge destructive text or score choices, got %+v", result)
+		}
 	}
 }
 
-func TestEvaluateNextActionAutoProceedNeverAdvancesDestructiveCleanup(t *testing.T) {
+func TestBuildNextActionJudgementTriggerReportsMissingRecommendationAsFact(t *testing.T) {
 	message := strings.Join([]string{
-		"머지 상태를 확인했습니다.",
-		"선택지:",
-		"1. 정리 진행: merged PR worktree와 local branch를 삭제합니다. (추천)",
-		"2. 보류: worktree는 유지합니다.",
-		"3. 확장 정리: 전체 stale worktree를 점검합니다.",
-	}, "\n")
-	result := EvaluateNextActionAutoProceed(message, 0)
-	if result.AutoProceed {
-		t.Fatalf("destructive recommended action must not auto-proceed, got %+v", result)
-	}
-	if result.BlockedByGuard == "" {
-		t.Fatalf("expected a guard reason for destructive action, got %+v", result)
-	}
-}
-
-func TestEvaluateNextActionAutoProceedStopsOnAmbiguousChoices(t *testing.T) {
-	message := strings.Join([]string{
-		"해석이 갈립니다.",
 		"선택지:",
 		"1. 해석 A로 구현합니다.",
 		"2. 해석 B로 구현합니다.",
 		"3. 해석 C로 구현합니다.",
 	}, "\n")
-	result := EvaluateNextActionAutoProceed(message, 0)
-	if result.AutoProceed {
-		t.Fatalf("no explicit recommendation should not auto-proceed, got %+v", result)
+	result := BuildNextActionJudgementTrigger(message)
+	if !result.ShouldReenterAgent || result.RecommendedCount != 0 {
+		t.Fatalf("expected missing recommendation to be relayed as facts, got %+v", result)
 	}
 }
 
-func TestEvaluateNextActionAutoProceedNoChoicesDoesNotProceed(t *testing.T) {
-	result := EvaluateNextActionAutoProceed("작업을 완료했습니다.", 0)
-	if result.AutoProceed {
-		t.Fatalf("message without numbered choices must not auto-proceed, got %+v", result)
-	}
-}
-
-func TestEvaluateNextActionAutoProceedVetoesNewDestructiveVerbs(t *testing.T) {
-	// Each recommended action carries one of the broadened destructive signals and
-	// must be hard-vetoed (no auto-proceed, destructive guard set).
-	cases := map[string]string{
-		"deploy": "1. 진행: 프로덕션에 deploy 합니다. (추천)\n2. 보류: 멈춥니다.",
-		"push":   "1. 진행: 변경을 origin에 push 합니다. (추천)\n2. 보류: 멈춥니다.",
-		"배포":     "1. 진행: 운영 환경에 배포합니다. (추천)\n2. 보류: 멈춥니다.",
-		"결제":     "1. 진행: 결제를 확정합니다. (추천)\n2. 보류: 멈춥니다.",
-	}
-	for name, msg := range cases {
-		t.Run(name, func(t *testing.T) {
-			result := EvaluateNextActionAutoProceed("선택지:\n"+msg, 0)
-			if result.AutoProceed {
-				t.Fatalf("destructive %q must not auto-proceed, got %+v", name, result)
-			}
-			if result.BlockedByGuard != "destructive_action" {
-				t.Fatalf("expected destructive guard for %q, got %+v", name, result)
-			}
-		})
-	}
-}
-
-func TestEvaluateNextActionAutoProceedDampensAmbiguousRecommendation(t *testing.T) {
-	// A recommended action with a forward verb but hedging language must stay below
-	// threshold so the agent defers to the user instead of guessing.
-	for _, hedge := range []string{"maybe", "아마도", "검토 필요", "TBD"} {
-		message := strings.Join([]string{
-			"선택지:",
-			"1. 진행: 구현을 계속합니다. " + hedge + " (추천)",
-			"2. 축소 진행: 일부만 검증합니다.",
-			"3. 보류: 멈춥니다.",
-		}, "\n")
-		result := EvaluateNextActionAutoProceed(message, 0)
-		if result.AutoProceed {
-			t.Fatalf("ambiguous recommendation %q must not auto-proceed, got %+v", hedge, result)
-		}
-		if result.TopScore >= result.Threshold {
-			t.Fatalf("ambiguous recommendation %q score %.2f should be below threshold %.2f", hedge, result.TopScore, result.Threshold)
-		}
-	}
-}
-
-func TestEvaluateNextActionAutoProceedRequiresAgentJudgementForSafeVerifyAction(t *testing.T) {
+func TestBuildNextActionJudgementTriggerReportsMultipleRecommendationsAsFact(t *testing.T) {
 	message := strings.Join([]string{
 		"선택지:",
-		"1. 검증: 전체 테스트를 실행하고 빌드를 확인합니다. (추천)",
-		"2. 축소: 일부만 봅니다.",
+		"1. 진행: 구현합니다. (추천)",
+		"2. 검증: 테스트합니다. (추천)",
 		"3. 보류: 멈춥니다.",
 	}, "\n")
-	result := EvaluateNextActionAutoProceed(message, 0)
-	if result.AutoProceed {
-		t.Fatalf("safe verify/test/build action should not directly auto-proceed, got %+v", result)
-	}
-	if !result.AgentJudgementRequired {
-		t.Fatalf("safe verify/test/build action should require agent judgement, got %+v", result)
-	}
-	if result.TopScore < result.Threshold {
-		t.Fatalf("safe verify action score %.2f should clear threshold %.2f", result.TopScore, result.Threshold)
+	result := BuildNextActionJudgementTrigger(message)
+	if !result.ShouldReenterAgent || result.RecommendedCount != 2 {
+		t.Fatalf("expected multiple recommendations to be relayed as facts, got %+v", result)
 	}
 }
 
-func TestEvaluateNextActionAutoProceedRecommendedWithoutForwardVerbStaysBelowThreshold(t *testing.T) {
-	// recommended + reversible but no forward/safe verb: should NOT auto-proceed.
+func TestBuildNextActionJudgementTriggerDoesNotParseExplanatoryNumberedText(t *testing.T) {
 	message := strings.Join([]string{
-		"선택지:",
-		"1. 결과를 사용자에게 그대로 보고합니다. (추천)",
-		"2. 다른 관점을 제시합니다.",
-		"3. 멈춥니다.",
+		"설명입니다.",
+		"1. Stop hook이 먼저 정적 휴리스틱으로 자동진행 후보를 판정합니다.",
+		"2. 메인 에이전트는 실행 여부만 판단합니다.",
+		"3. `agent-harness`가 추천 선택지를 분석해서 자동진행 후보라고 판단합니다.",
 	}, "\n")
-	result := EvaluateNextActionAutoProceed(message, 0)
-	if result.AutoProceed {
-		t.Fatalf("recommended action without a forward verb must not auto-proceed, got %+v", result)
-	}
-	if result.TopScore >= result.Threshold {
-		t.Fatalf("recommended-without-verb score %.2f should stay below threshold %.2f", result.TopScore, result.Threshold)
+	result := BuildNextActionJudgementTrigger(message)
+	if result.ShouldReenterAgent || result.ChoicesFound {
+		t.Fatalf("numbered explanation without 선택지 header must not trigger, got %+v", result)
 	}
 }
 
-func TestEvaluateNextActionAutoProceedRespectsHighThreshold(t *testing.T) {
-	message := strings.Join([]string{
-		"선택지:",
-		"1. 진행: 구현을 계속합니다. (추천)",
-		"2. 축소 진행: 일부만 검증합니다.",
-		"3. 보류: 멈춥니다.",
-	}, "\n")
-	result := EvaluateNextActionAutoProceed(message, 1.01)
-	if result.AutoProceed {
-		t.Fatalf("threshold above max must block auto-proceed, got %+v", result)
+func TestBuildNextActionJudgementTriggerNoChoicesDoesNotTrigger(t *testing.T) {
+	result := BuildNextActionJudgementTrigger("작업을 완료했습니다.")
+	if result.ShouldReenterAgent || result.ChoicesFound {
+		t.Fatalf("message without choices must not trigger, got %+v", result)
 	}
 }
 
