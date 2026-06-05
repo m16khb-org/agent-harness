@@ -19,18 +19,35 @@ Required phases:
 
 1. Problem intake: use `superpowers:brainstorming` to clarify the actual problem, constraints, success criteria, and ambiguity.
 2. Domain grill: challenge terminology, existing domain model fit, and documentation updates before committing to an issue.
-3. Issue contract: create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions.
+3. Issue contract: before remote issue creation, run the issue-preflight gate in `references/issue-preflight.md`; then create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions.
 4. Plan: produce an issue-based implementation plan under the target repo's planning convention.
 5. Implementation: use TDD for behavior changes and subagents only for bounded independent work.
 6. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
 7. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
 8. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
 
+## LazyCodex/OMO Phase Assist Map
+
+LazyCodex is an optional upstream companion installed by `lazycodex-ai`; IssueOps must not reimplement its skills or hooks. When LazyCodex/OMO skills are available, use them at the phase boundary where they fit, then continue the durable IssueOps state flow in `agent-harness`.
+
+| IssueOps phase | LazyCodex/OMO assist |
+| --- | --- |
+| problem | Use `omo:ulw-plan` when the request spans multiple modules, has unclear scope, or needs a decision-complete plan; use `omo:rules` when injected project guidance or rule precedence affects the problem. |
+| grill | Use `omo:lsp` for definitions, references, diagnostics, and rename-safety questions; use CodeGraph for structural call paths and impact before creating the issue contract. |
+| issue | Run the issue-preflight deep-interview gate: use `omo:ulw-plan` or the nearest available deep-interview workflow to reduce ambiguity, rewrite the raw user request into an ideal issue prompt using repo-root `PROMPT.md`, and carry an ambiguity ledger with resolved/deferred/blocking entries; keep remote writes in the IssueOps remote artifact gates, not in LazyCodex hooks. |
+| plan | Use `omo:ulw-plan` for ambiguous or five-plus-step work, and `omo:start-work` only when executing an existing `.omo/plans` plan that the user has accepted. |
+| implement | Use `omo:ulw-loop` to keep acceptance criteria, RED/GREEN evidence, manual QA, and review receipts bound through the implementation loop; use `omo:programming` for Go/Python/Rust/TypeScript edits, `omo:debugging` for runtime failures or wrong behavior, `omo:lsp` for diagnostics and symbol-safe changes, and `omo:frontend-ui-ux` for UI work. |
+| ai-slop-clean | Use `omo:remove-ai-slops` for diff cleanup and `omo:comment-checker` feedback after edit-like hooks; preserve behavior with regression tests first. |
+| feedback | Use `omo:debugging` for reproduced defects, `omo:review-work` for post-fix quality/security/QA review, and `omo:lcx-report-bug` only when the feedback is a LazyCodex bug report. |
+| pr | Use `omo:review-work` before reporting PR/MR readiness; keep Korean remote artifact, label, assignee, and strict readiness checks in IssueOps. |
+| cleanup | Use LazyCodex features only for inspection or review; keep merge evidence and worktree/branch cleanup decisions in `references/cleanup-state.md`. |
+
 ## Reference Map
 
 Load these files only when the phase applies:
 
 - `references/remote-issue.md`: remote issue first, related issue/label scoring, external LLM judge contract, Korean remote artifact gate, issue template.
+- `references/issue-preflight.md`: deep-interview ambiguity reduction and `PROMPT.md`-based ideal issue prompt rewrite before remote issue creation.
 - `references/evidence-contract.md`: portable domain contract, API documentation, live evidence, review accountability, and completion hygiene rules.
 - `references/worktree-context.md`: branch/worktree contract, local config symlink rules, context routing.
 - `references/ai-slop-clean.md`: PR/MR-prep cleanup prompt for removing lazy agent residue while preserving behavior.
