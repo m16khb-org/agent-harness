@@ -922,15 +922,18 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 	}
 	expected := cleanAbsPath(req.ExpectedWorktree)
 	if expected == "" {
-		if branch := localIssueOpsBranchCreation(req.Command); branch != "" {
-			if err := validateIssueOpsGitFlowBranch(branch); err != nil {
+		if creation := localIssueOpsBranchCreation(req.Command); creation.Branch != "" {
+			if err := validateIssueOpsGitFlowBranch(creation.Branch); err != nil {
 				return err.Error()
 			}
-			if rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, branch); ok && rec.WorktreePath != "" {
-				return "IssueOps branch " + branch + " must not be checked out in the source checkout; create or use the linked isolated worktree " + cleanAbsPath(rec.WorktreePath)
+			if strings.TrimSpace(creation.SourceRef) == "" {
+				return issueOpsBranchCreationSourceReason(creation.Branch)
 			}
-			if _, ok := ActiveIssueOpsCycleForBranch(req.Repo, branch); ok {
-				return "IssueOps branch " + branch + " must not be checked out in the source checkout; create the provider-linked branch, add the sibling worktree, then run issueops link-worktree before implementation"
+			if rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, creation.Branch); ok && rec.WorktreePath != "" {
+				return "IssueOps branch " + creation.Branch + " must not be checked out in the source checkout; create or use the linked isolated worktree " + cleanAbsPath(rec.WorktreePath)
+			}
+			if _, ok := ActiveIssueOpsCycleForBranch(req.Repo, creation.Branch); ok {
+				return "IssueOps branch " + creation.Branch + " must not be checked out in the source checkout; create the provider-linked branch, add the sibling worktree, then run issueops link-worktree before implementation"
 			}
 		}
 		// No explicit expected worktree: judge by the current work's own cycle.
@@ -988,7 +991,12 @@ func sourceCheckoutTargetNeedsLinkedWorktree(target, repo string) bool {
 	return isInsideWorktreesPath(t)
 }
 
-func localIssueOpsBranchCreation(command string) string {
+type issueOpsBranchCreation struct {
+	Branch    string
+	SourceRef string
+}
+
+func localIssueOpsBranchCreation(command string) issueOpsBranchCreation {
 	tokens := splitCommandTokens(command)
 	for i, token := range tokens {
 		if searchTokenName(token) != "git" || i+1 >= len(tokens) {
@@ -999,9 +1007,12 @@ func localIssueOpsBranchCreation(command string) string {
 			for j := i + 2; j < len(tokens); j++ {
 				if tokens[j] == "-b" || tokens[j] == "-B" {
 					if j+1 < len(tokens) {
-						return strings.TrimSpace(tokens[j+1])
+						return issueOpsBranchCreation{
+							Branch:    strings.TrimSpace(tokens[j+1]),
+							SourceRef: nextBranchSourceRef(tokens, j+2),
+						}
 					}
-					return ""
+					return issueOpsBranchCreation{}
 				}
 			}
 		case "switch":
@@ -1009,17 +1020,83 @@ func localIssueOpsBranchCreation(command string) string {
 				if tokens[j] == "-c" || tokens[j] == "-C" || strings.HasPrefix(tokens[j], "--create") {
 					if strings.Contains(tokens[j], "=") {
 						_, value, _ := strings.Cut(tokens[j], "=")
-						return strings.TrimSpace(value)
+						return issueOpsBranchCreation{
+							Branch:    strings.TrimSpace(value),
+							SourceRef: nextBranchSourceRef(tokens, j+1),
+						}
 					}
 					if j+1 < len(tokens) {
-						return strings.TrimSpace(tokens[j+1])
+						return issueOpsBranchCreation{
+							Branch:    strings.TrimSpace(tokens[j+1]),
+							SourceRef: nextBranchSourceRef(tokens, j+2),
+						}
 					}
-					return ""
+					return issueOpsBranchCreation{}
 				}
+			}
+		case "worktree":
+			if i+2 < len(tokens) && searchTokenName(tokens[i+2]) == "add" {
+				return localIssueOpsWorktreeBranchCreation(tokens[i+3:])
 			}
 		}
 	}
+	return issueOpsBranchCreation{}
+}
+
+func localIssueOpsWorktreeBranchCreation(args []string) issueOpsBranchCreation {
+	branch := ""
+	pathSeen := false
+	for i := 0; i < len(args); i++ {
+		token := strings.TrimSpace(args[i])
+		if token == "" {
+			continue
+		}
+		if token == "--" {
+			if !pathSeen && i+1 < len(args) {
+				pathSeen = true
+				i++
+			}
+			if branch != "" {
+				return issueOpsBranchCreation{Branch: branch, SourceRef: nextBranchSourceRef(args, i+1)}
+			}
+			return issueOpsBranchCreation{}
+		}
+		if strings.HasPrefix(token, "-") {
+			if token == "-b" || token == "-B" {
+				if i+1 < len(args) {
+					branch = strings.TrimSpace(args[i+1])
+					i++
+				}
+			}
+			continue
+		}
+		if !pathSeen {
+			pathSeen = true
+			continue
+		}
+		if branch != "" {
+			return issueOpsBranchCreation{Branch: branch, SourceRef: token}
+		}
+	}
+	if branch != "" {
+		return issueOpsBranchCreation{Branch: branch}
+	}
+	return issueOpsBranchCreation{}
+}
+
+func nextBranchSourceRef(tokens []string, start int) string {
+	for i := start; i < len(tokens); i++ {
+		token := strings.TrimSpace(tokens[i])
+		if token == "" || strings.HasPrefix(token, "-") {
+			continue
+		}
+		return token
+	}
 	return ""
+}
+
+func issueOpsBranchCreationSourceReason(branch string) string {
+	return "IssueOps branch creation must include an explicit source ref chosen by the user; ask the user which source branch or commit to branch from, then rerun with a source ref such as git switch -c " + branch + " origin/main"
 }
 
 func issueOpsWorktreePreparationCommand(command string) bool {

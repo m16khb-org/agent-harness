@@ -908,7 +908,7 @@ func TestWorktreeGuardBlocksLocalCheckoutOfIssueOpsBranch(t *testing.T) {
 	}
 
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: repo, Tool: "Bash", Command: "git checkout -b feature/issue-work", EnforceWorktree: true,
+		Repo: repo, Tool: "Bash", Command: "git checkout -b feature/issue-work origin/main", EnforceWorktree: true,
 	})
 	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, "must not be checked out in the source checkout") {
 		t.Fatalf("local checkout of IssueOps branch should block: %+v", blocked)
