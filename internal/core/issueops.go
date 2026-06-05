@@ -501,6 +501,9 @@ func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifa
 	if len(assignees) == 0 {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("remote artifact assignees are required")
 	}
+	if invalid := invalidIssueOpsRemoteAssignee(assignees); invalid != "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("remote artifact assignee must be a verified provider user, not placeholder %q", invalid)
+	}
 	record.RemoteArtifact = &IssueOpsRemoteArtifactVerification{
 		Provider:   provider,
 		Kind:       kind,
@@ -1193,17 +1196,31 @@ func validateRemoteArtifactURL(artifactURL, provider, kind string) error {
 	path := strings.ToLower(parsed.EscapedPath())
 	switch provider + ":" + kind {
 	case "github:pr":
-		if host != "github.com" || !strings.Contains(path, "/pull/") {
+		parts := splitIssueOpsURLPath(path)
+		if host != "github.com" || len(parts) != 4 || parts[2] != "pull" || !isDecimalString(parts[3]) {
 			return fmt.Errorf("remote artifact url must be a GitHub pull request URL")
 		}
 	case "gitlab:mr":
-		if host == "github.com" || !strings.Contains(path, "/-/merge_requests/") {
+		parts := splitIssueOpsURLPath(path)
+		if host == "github.com" || len(parts) < 4 || parts[len(parts)-3] != "-" || parts[len(parts)-2] != "merge_requests" || !isDecimalString(parts[len(parts)-1]) {
 			return fmt.Errorf("remote artifact url must be a GitLab merge request URL")
 		}
 	default:
 		return fmt.Errorf("remote artifact provider/kind combination is unsupported")
 	}
 	return nil
+}
+
+func splitIssueOpsURLPath(path string) []string {
+	raw := strings.Split(strings.Trim(path, "/"), "/")
+	parts := make([]string, 0, len(raw))
+	for _, part := range raw {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	return parts
 }
 
 func cleanIssueOpsRemoteValues(values []string) []string {
@@ -1218,6 +1235,17 @@ func cleanIssueOpsRemoteValues(values []string) []string {
 		out = append(out, value)
 	}
 	return out
+}
+
+func invalidIssueOpsRemoteAssignee(values []string) string {
+	for _, value := range values {
+		normalized := strings.ToLower(strings.TrimSpace(value))
+		switch normalized {
+		case "@me", "me", "self", "@self", "current_user", "current-user":
+			return value
+		}
+	}
+	return ""
 }
 
 func issueOpsProviderFromURL(issueURL string) string {
