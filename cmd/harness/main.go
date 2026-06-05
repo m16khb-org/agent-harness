@@ -4919,6 +4919,13 @@ func mcpTools() []map[string]any {
 			}},
 		},
 		{
+			"name":        "issueops_mark_issue_updated",
+			"description": "Record that unresolved contract_change feedback has been reflected in the remote issue body, unblocking PR readiness.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id": map[string]any{"type": "string", "description": "IssueOps id."},
+			}},
+		},
+		{
 			"name":        "issueops_set_phase",
 			"description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The ai-slop-clean phase requires linked issue, provider-linked branch, plan, and worktree evidence; the pr phase requires strict PR readiness; the done phase requires prior pr phase.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "phase"}, "properties": map[string]any{
@@ -5322,6 +5329,12 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		result, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "source"), stringArg(call.Arguments, "body"), stringArg(call.Arguments, "classification"))
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps feedback failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_mark_issue_updated":
+		result, err := core.MarkIssueOpsContractFeedbackIssueUpdated(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"))
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps issue update mark failed", Data: err.Error()}
 		}
 		payload = result
 	case "issueops_set_phase":

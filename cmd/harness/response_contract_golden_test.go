@@ -109,7 +109,10 @@ func TestResponseContractsGolden(t *testing.T) {
 		return runIssueOps([]string{"link-child", "--id", issueopsID, "--child-url", "https://gitlab.example/group/project/-/issues/2", "--title", "contract child", "--json"})
 	})
 	cliSnapshot["issueops_feedback_add"] = runCLIJSONContract(t, replacements, func() error {
-		return runIssueOps([]string{"feedback", "add", "--id", issueopsID, "--source", "user", "--body", "tighten contract", "--json"})
+		return runIssueOps([]string{"feedback", "add", "--id", issueopsID, "--source", "user", "--body", "tighten contract", "--classification", "contract_change", "--json"})
+	})
+	cliSnapshot["issueops_mark_issue_updated"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"feedback", "mark-issue-updated", "--id", issueopsID, "--json"})
 	})
 	cliSnapshot["issueops_pr_readiness"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"pr-readiness", "--id", issueopsID, "--json"})
@@ -275,9 +278,13 @@ func TestResponseContractsGolden(t *testing.T) {
 		"title":     "MCP contract child",
 	})
 	mcpSnapshot["issueops_add_feedback"] = runMCPToolContract(t, replacements, "issueops_add_feedback", map[string]any{
-		"id":     issueopsMCPID,
-		"source": "review",
-		"body":   "tighten MCP contract",
+		"id":             issueopsMCPID,
+		"source":         "review",
+		"body":           "tighten MCP contract",
+		"classification": "contract_change",
+	})
+	mcpSnapshot["issueops_mark_issue_updated"] = runMCPToolContract(t, replacements, "issueops_mark_issue_updated", map[string]any{
+		"id": issueopsMCPID,
 	})
 	mcpSnapshot["issueops_pr_readiness"] = runMCPToolContract(t, replacements, "issueops_pr_readiness", map[string]any{
 		"id": issueopsMCPID,

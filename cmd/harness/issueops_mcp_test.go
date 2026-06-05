@@ -76,6 +76,30 @@ func TestMCPIssueOpsPrepareBranch(t *testing.T) {
 	}
 }
 
+func TestMCPIssueOpsMarkIssueUpdated(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	callMCPToolForIssueOpsTest(t, "issueops_add_feedback", map[string]any{
+		"id":             id,
+		"source":         "review",
+		"body":           "acceptance criteria changed",
+		"classification": "contract_change",
+	})
+	record := callMCPToolForIssueOpsTest(t, "issueops_mark_issue_updated", map[string]any{"id": id})
+	feedback, ok := record["feedback"].([]any)
+	if !ok || len(feedback) != 1 {
+		t.Fatalf("expected one feedback item, got %#v", record)
+	}
+	item, ok := feedback[0].(map[string]any)
+	if !ok || item["issue_updated_at"] == "" {
+		t.Fatalf("expected issue_updated_at after MCP mark, got %#v", feedback[0])
+	}
+}
+
 func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) map[string]any {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})
