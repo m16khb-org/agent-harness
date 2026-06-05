@@ -29,6 +29,8 @@ agent-harness issueops remote score --input issueops-remote-score.json --judge n
 
 Default threshold is `0.70` unless the repo or user sets a stronger threshold. Attach selected related issues with the provider-native mechanism described in "Provider-Specific Linking And Hierarchy" below (GitHub body references vs GitLab linked items) — do not reuse one provider's style for the other. Include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with provider CLI/API commands. Do not apply rejected labels, create rejected labels, or link rejected issues. If label candidates existed but none met threshold, do not create an unlabeled remote artifact; stop before remote writes and either rerun scoring with corrected candidates or choose an explicit manual label with the reason recorded in IssueOps feedback.
 
+The scoring summary is the **threshold-based label decision**. It must name selected labels, rejected labels, and manual override reason if the agent chooses or applies a label outside the scorer's selected set. A manual override is allowed only when the reason is evidence-backed, recorded in the issue draft or IssueOps feedback, and still passes the Korean Remote Artifact Gate before the remote write.
+
 The agent must propose the operational choice instead of leaving the user to invent it. Example:
 
 ```text
@@ -74,6 +76,7 @@ Rules:
 
 - When the scoring gate selects related issues, attach them as **GitLab linked items** on GitLab and as **body cross-references** on GitHub. Do not put a `## Related Issues` body section on GitLab when a linked item is the correct home; do not invent a linked-items relation on GitHub where none exists.
 - When breaking work into tasks/subtasks on the remote, add them as **GitHub sub-issues** or **GitLab child items** for the parent issue — match the provider. Then record the existing child with `agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$CHILD_ISSUE_URL" --title "$CHILD_TITLE" --json` so IssueOps state can carry the provider-neutral child graph. Do not flatten a hierarchy into plain `relates_to` links or body bullet lists when the provider supports a real parent/child relation.
+- Run the **Large Issue Breakdown Gate** before implementation when the parent issue has independent acceptance criteria, multiple owners, risky rollout steps, or a task list large enough that one PR review would hide separate decisions. The gate requires provider-native child work items or an explicit non-split reason, and every created child must be recorded with `link-child`.
 - When creating a PR/MR, copy labels from the linked issue into the provider create command. If the linked issue is unlabeled, apply an explicit manual label to the issue first or stop and record why no label can be chosen; do not create an unlabeled PR/MR. Label-copy flags such as `--copy-issue-labels` or GitLab issue-based MR flags such as `--with-labels` satisfy only the label requirement; the create command must still include an assignee flag for the current user.
 - If a provider mechanism is unavailable (API/permission/feature flag), say so explicitly, fall back to the closest documented mechanism, and record the limitation in IssueOps feedback rather than silently using the other provider's style.
 

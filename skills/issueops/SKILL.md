@@ -78,6 +78,15 @@ Load these files only when the phase applies:
 - Completion hygiene: before reporting done, verify the final diff, target branch, remote issue/PR/MR prose freshness, single-commit or declared commit policy, and cleanup/worktree status.
 - External LLM wrapper: all IssueOps `agy -p` usage must go through the shared harness external LLM wrapper and remain read-only judgment.
 
+## Quality Upgrade Gates
+
+IssueOps must leave an auditable decision trail for labels, large issue breakdown, draft issue completion, and PR/MR review-agent feedback.
+
+- Before any remote issue or PR/MR write, record the **threshold-based label decision**: selected labels, rejected labels, and manual override reason when no label crosses threshold. Use `issueops remote score` first, then apply only selected labels or stop before writing.
+- For broad or multi-step work, run the **Large Issue Breakdown Gate**: create provider-native child work items before implementation when the parent issue would otherwise hide independent tasks. Use GitHub sub-issues or GitLab child items, then record each existing child with `agent-harness issueops link-child`.
+- On completion, write a **draft issue completion record** in the remote issue or PR/MR-ready notes before reporting done. It must summarize final diff, verification evidence, selected labels, child links, PR/MR URL, cleanup status, and unresolved follow-ups.
+- Treat Kodus, Gemini Code Assist, and similar automated reviewers as **review-agent feedback**. Verify each claim, reply in the original thread with verdict and evidence, and resolve only threads whose fix or obsolescence has been verified.
+
 Use this remote issue scoring choice shape before creating or editing an issue:
 
 ```text

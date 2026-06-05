@@ -67,4 +67,6 @@ Before reporting an IssueOps cycle ready or done, verify and record:
 - branch divergence and clean working tree;
 - worktree cleanup status or numbered cleanup choices.
 
+Also write a **draft issue completion record** before final reporting. This record belongs in the remote issue update, PR/MR-ready notes, or another inspectable draft artifact before the remote write. It must include the final diff summary, verification evidence, selected labels, linked child work items, PR/MR URL, review-agent thread status, cleanup status, and unresolved follow-ups.
+
 Do not treat passing tests alone as completion evidence when the requested outcome includes remote artifact updates, review-thread replies, merge readiness, or cleanup.

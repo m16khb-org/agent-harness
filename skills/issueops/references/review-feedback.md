@@ -27,6 +27,8 @@ When creating or editing a PR/MR, assign it to the currently authenticated user 
 
 When handling remote PR/MR review feedback, first verify each reviewer claim against the diff, code, and commands before changing files. Apply only confirmed fixes, then reply in the original review thread with the commit and verification evidence.
 
+Automated review comments from Kodus, Gemini Code Assist, and similar tools are **review-agent feedback**, not lower-priority noise. Treat each item like any other reviewer claim: classify it, verify whether it is valid, stale, noisy, or a contract change, reply in the original thread with evidence, and resolve only after the fix or obsolescence is verified.
+
 The remote issue is the source of truth for IssueOps scope. If user feedback, review feedback, QA, CI evidence, or agent analysis changes the problem statement, acceptance criteria, non-goals, verification, implementation scope, related issue links, or labels, update the issue body before continuing. A thread/comment may record discussion, but it is not enough; the issue body must match the implementation contract. Run the Korean Remote Artifact Gate before every remote issue body edit.
 
 After the remote issue body is updated for `contract_change` feedback, record that join point in IssueOps state:

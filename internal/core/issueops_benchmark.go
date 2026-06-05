@@ -207,9 +207,9 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			failure:  "missing problem summary or issue draft",
 		},
 		"issue_quality": {
-			ok:       hasAllIssueOpsConcepts(artifact.IssueDraft, issueOpsIssueSectionConcepts) && containsHangul(artifact.IssueDraft) && hasIssueOpsGuidelineRef(artifact),
-			evidence: "issue draft includes required sections, Korean text, and guideline reference",
-			failure:  "issue draft missing required sections, Korean text, or guideline reference",
+			ok:       hasAllIssueOpsConcepts(artifact.IssueDraft, issueOpsIssueSectionConcepts) && containsHangul(artifact.IssueDraft) && hasIssueOpsGuidelineRef(artifact) && issueOpsLabelDecisionEvidenceComplete(artifact),
+			evidence: "issue draft includes required sections, Korean text, guideline reference, and label scoring decision evidence",
+			failure:  "issue draft missing required sections, Korean text, guideline reference, or label scoring decision evidence",
 		},
 		"domain_contract_quality": {
 			ok:       issueOpsDomainContractEvidenceComplete(artifact),
@@ -232,9 +232,9 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			failure:  "live evidence matrix missing environments, repo/config evidence, runtime evidence, or remediation order",
 		},
 		"task_decomposition": {
-			ok:       containsAllFold(artifact.TaskBreakdown, "owns") && containsAnyFold(artifact.TaskBreakdown, "worker", "task"),
-			evidence: "task breakdown assigns bounded ownership",
-			failure:  "task breakdown missing bounded ownership",
+			ok:       containsAllFold(artifact.TaskBreakdown, "owns") && containsAnyFold(artifact.TaskBreakdown, "worker", "task") && issueOpsHierarchyEvidenceComplete(artifact),
+			evidence: "task breakdown assigns bounded ownership and uses provider-native hierarchy for large issues",
+			failure:  "task breakdown missing bounded ownership or provider-native hierarchy",
 		},
 		"tdd_quality": {
 			ok:       containsAllFold(artifact.TDDPlan, "failing", "test") && containsAnyFold(artifact.TDDPlan, "before", "first"),
@@ -631,13 +631,13 @@ func detectIssueOpsCriticalFailures(fixture IssueOpsBenchmarkFixture, artifact I
 			failures = append(failures, rule)
 		case strings.Contains(ruleText, "live evidence") && !issueOpsLiveEvidenceMatrixComplete(artifact):
 			failures = append(failures, rule)
-		case strings.Contains(ruleText, "review feedback") && !issueOpsReviewFeedbackEvidenceComplete(artifact):
+		case strings.Contains(ruleText, "review feedback") && !strings.Contains(ruleText, "review-agent threads") && !issueOpsReviewFeedbackEvidenceComplete(artifact):
 			failures = append(failures, rule)
 		case strings.Contains(ruleText, "completion hygiene") && !issueOpsCompletionHygieneComplete(artifact):
 			failures = append(failures, rule)
 		}
 	}
-	return failures
+	return append(failures, detectIssueOpsQualityCriticalFailures(fixture, artifact)...)
 }
 
 func implementationInWorktree(artifact IssueOpsBenchmarkArtifact) bool {
@@ -663,12 +663,14 @@ func issueOpsLiveEvidenceMatrixComplete(artifact IssueOpsBenchmarkArtifact) bool
 
 func issueOpsReviewFeedbackEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
 	return containsAllFold(artifact.ReviewFeedbackEvidence, "classification", "verification", "thread reply", "resolution") &&
-		containsAnyFold(artifact.ReviewFeedbackEvidence, "valid", "stale", "noise", "contract_change", "defect")
+		containsAnyFold(artifact.ReviewFeedbackEvidence, "valid", "stale", "noise", "contract_change", "defect") &&
+		issueOpsReviewAgentThreadEvidenceComplete(artifact)
 }
 
 func issueOpsCompletionHygieneComplete(artifact IssueOpsBenchmarkArtifact) bool {
 	return containsAllFold(artifact.CompletionHygiene, "final diff", "target branch", "remote artifact", "single commit", "cleanup") &&
-		containsAnyFold(artifact.CompletionHygiene, "pr", "mr", "issue")
+		containsAnyFold(artifact.CompletionHygiene, "pr", "mr", "issue") &&
+		issueOpsDraftIssueCompletionEvidenceComplete(artifact)
 }
 
 func workerPromptHasContextGate(artifact IssueOpsBenchmarkArtifact) bool {
