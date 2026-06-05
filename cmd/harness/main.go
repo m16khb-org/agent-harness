@@ -4928,9 +4928,10 @@ func mcpTools() []map[string]any {
 		{
 			"name":        "issueops_set_phase",
 			"description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The ai-slop-clean phase requires linked issue, provider-linked branch, plan, and worktree evidence; the pr phase requires strict PR readiness; the done phase requires prior pr phase.",
-			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "phase"}, "properties": map[string]any{
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
 				"id":    map[string]any{"type": "string", "description": "IssueOps id."},
 				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
+				"to":    map[string]any{"type": "string", "description": "Compatibility alias for phase, matching the CLI --to flag.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
 			}},
 		},
 		{
@@ -5338,7 +5339,11 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		}
 		payload = result
 	case "issueops_set_phase":
-		result, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "phase"))
+		phase := stringArg(call.Arguments, "phase")
+		if strings.TrimSpace(phase) == "" {
+			phase = stringArg(call.Arguments, "to")
+		}
+		result, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), phase)
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps phase advance failed", Data: err.Error()}
 		}

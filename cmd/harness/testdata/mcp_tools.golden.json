@@ -717,11 +717,24 @@
             "done"
           ],
           "type": "string"
+        },
+        "to": {
+          "description": "Compatibility alias for phase, matching the CLI --to flag.",
+          "enum": [
+            "problem",
+            "grill",
+            "plan",
+            "implement",
+            "ai-slop-clean",
+            "feedback",
+            "pr",
+            "done"
+          ],
+          "type": "string"
         }
       },
       "required": [
-        "id",
-        "phase"
+        "id"
       ],
       "type": "object"
     },

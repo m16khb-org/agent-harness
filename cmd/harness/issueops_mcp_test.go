@@ -100,6 +100,19 @@ func TestMCPIssueOpsMarkIssueUpdated(t *testing.T) {
 	}
 }
 
+func TestMCPIssueOpsSetPhaseAcceptsToAlias(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	record := callMCPToolForIssueOpsTest(t, "issueops_set_phase", map[string]any{"id": id, "to": "grill"})
+	if record["phase"] != "grill" {
+		t.Fatalf("expected MCP to alias to phase, got %#v", record)
+	}
+}
+
 func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) map[string]any {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})
