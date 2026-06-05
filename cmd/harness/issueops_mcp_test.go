@@ -25,6 +25,10 @@ func TestMCPIssueOpsLinkChild(t *testing.T) {
 	if !ok || id == "" {
 		t.Fatalf("unexpected MCP start payload: %#v", start)
 	}
+	callMCPToolForIssueOpsTest(t, "issueops_link_issue", map[string]any{
+		"id":        id,
+		"issue_url": "https://gitlab.example/group/project/-/issues/1",
+	})
 	record := callMCPToolForIssueOpsTest(t, "issueops_link_child", map[string]any{
 		"id":        id,
 		"child_url": "https://gitlab.example/group/project/-/issues/2",
@@ -42,20 +46,24 @@ func TestMCPIssueOpsLinkChild(t *testing.T) {
 
 func TestMCPIssueOpsPrepareBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "123-provider-linked-branch"})
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "feature/123-provider-linked-branch"})
 	id, ok := start["id"].(string)
 	if !ok || id == "" {
 		t.Fatalf("unexpected MCP start payload: %#v", start)
 	}
+	callMCPToolForIssueOpsTest(t, "issueops_link_issue", map[string]any{
+		"id":        id,
+		"issue_url": "https://gitlab.example/group/project/-/issues/123",
+	})
 	record := callMCPToolForIssueOpsTest(t, "issueops_prepare_branch", map[string]any{
 		"id":          id,
 		"provider":    "gitlab",
 		"issue_url":   "https://gitlab.example/group/project/-/issues/123",
-		"branch":      "123-provider-linked-branch",
+		"branch":      "feature/123-provider-linked-branch",
 		"base_branch": "main",
 	})
 	prepare, ok := record["branch_prepare"].(map[string]any)
-	if !ok || prepare["provider"] != "gitlab" || prepare["branch"] != "123-provider-linked-branch" {
+	if !ok || prepare["provider"] != "gitlab" || prepare["branch"] != "feature/123-provider-linked-branch" {
 		t.Fatalf("unexpected branch prepare payload: %#v", record)
 	}
 	steps, ok := prepare["steps"].([]any)

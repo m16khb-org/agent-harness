@@ -94,7 +94,8 @@ IssueOps 이슈 브랜치를 `git worktree add -b`로 바로 만들면 GitHub/Gi
 
 주의:
 - 이슈 기반 worktree를 만들기 전에 provider-linked branch를 먼저 생성한다.
-- GitLab은 branch name이 issue/task number와 hyphen으로 시작해야 이슈/태스크와 연결된다. 예: `123-fix-login`.
+- IssueOps branch는 GitFlow prefix를 사용한다. 예: `feature/2386-remove-dmm-ranking-ranktype`, `hotfix/2387-fix-grpc-ai-dmm-tag-replication-lag`.
+- GitLab은 GitFlow prefix 뒤 slug가 issue/task number와 hyphen으로 시작해야 한다. 예: `feature/123-fix-login`.
 - GitHub는 linked development branch 생성을 위해 `gh issue develop` 또는 노출된 GitHub MCP linked-branch tool을 사용한다.
 - IssueOps branch prepare contract는 MCP 먼저, provider API/CLI fallback, 둘 다 실패하면 중단 순서다.
 

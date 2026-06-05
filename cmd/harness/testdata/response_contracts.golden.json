@@ -454,7 +454,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 13384,
+          "bytes": 13896,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -521,7 +521,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 21663,
+          "bytes": 21810,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -1016,10 +1016,10 @@
       "version": "0.1.0"
     },
     "issueops_feedback_add": {
-      "branch": "1-contract-branch",
+      "branch": "feature/1-contract-branch",
       "branch_prepare": {
         "base_branch": "main",
-        "branch": "1-contract-branch",
+        "branch": "feature/1-contract-branch",
         "created_at": "$TIMESTAMP",
         "issue_url": "https://gitlab.example/group/project/-/issues/1",
         "link_verified": true,
@@ -1033,7 +1033,7 @@
             "tool_arguments": {
               "endpoint": "projects/:fullpath/repository/branches",
               "field": [
-                "branch=1-contract-branch",
+                "branch=feature/1-contract-branch",
                 "ref=main"
               ],
               "method": "POST"
@@ -1047,7 +1047,7 @@
               "-X",
               "POST",
               "-f",
-              "branch=1-contract-branch",
+              "branch=feature/1-contract-branch",
               "-f",
               "ref=main"
             ],
@@ -1089,10 +1089,10 @@
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "issueops_link_child": {
-      "branch": "1-contract-branch",
+      "branch": "feature/1-contract-branch",
       "branch_prepare": {
         "base_branch": "main",
-        "branch": "1-contract-branch",
+        "branch": "feature/1-contract-branch",
         "created_at": "$TIMESTAMP",
         "issue_url": "https://gitlab.example/group/project/-/issues/1",
         "link_verified": true,
@@ -1106,7 +1106,7 @@
             "tool_arguments": {
               "endpoint": "projects/:fullpath/repository/branches",
               "field": [
-                "branch=1-contract-branch",
+                "branch=feature/1-contract-branch",
                 "ref=main"
               ],
               "method": "POST"
@@ -1120,7 +1120,7 @@
               "-X",
               "POST",
               "-f",
-              "branch=1-contract-branch",
+              "branch=feature/1-contract-branch",
               "-f",
               "ref=main"
             ],
@@ -1155,7 +1155,7 @@
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "issueops_link_issue": {
-      "branch": "1-contract-branch",
+      "branch": "feature/1-contract-branch",
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
@@ -1165,10 +1165,10 @@
       "updated_at": "$TIMESTAMP"
     },
     "issueops_link_plan": {
-      "branch": "1-contract-branch",
+      "branch": "feature/1-contract-branch",
       "branch_prepare": {
         "base_branch": "main",
-        "branch": "1-contract-branch",
+        "branch": "feature/1-contract-branch",
         "created_at": "$TIMESTAMP",
         "issue_url": "https://gitlab.example/group/project/-/issues/1",
         "link_verified": true,
@@ -1182,7 +1182,7 @@
             "tool_arguments": {
               "endpoint": "projects/:fullpath/repository/branches",
               "field": [
-                "branch=1-contract-branch",
+                "branch=feature/1-contract-branch",
                 "ref=main"
               ],
               "method": "POST"
@@ -1196,7 +1196,7 @@
               "-X",
               "POST",
               "-f",
-              "branch=1-contract-branch",
+              "branch=feature/1-contract-branch",
               "-f",
               "ref=main"
             ],
@@ -1221,10 +1221,10 @@
       "updated_at": "$TIMESTAMP"
     },
     "issueops_link_worktree": {
-      "branch": "1-contract-branch",
+      "branch": "feature/1-contract-branch",
       "branch_prepare": {
         "base_branch": "main",
-        "branch": "1-contract-branch",
+        "branch": "feature/1-contract-branch",
         "created_at": "$TIMESTAMP",
         "issue_url": "https://gitlab.example/group/project/-/issues/1",
         "link_verified": true,
@@ -1238,7 +1238,7 @@
             "tool_arguments": {
               "endpoint": "projects/:fullpath/repository/branches",
               "field": [
-                "branch=1-contract-branch",
+                "branch=feature/1-contract-branch",
                 "ref=main"
               ],
               "method": "POST"
@@ -1252,7 +1252,7 @@
               "-X",
               "POST",
               "-f",
-              "branch=1-contract-branch",
+              "branch=feature/1-contract-branch",
               "-f",
               "ref=main"
             ],
@@ -1278,7 +1278,7 @@
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "issueops_pr_readiness": {
-      "branch": "1-contract-branch",
+      "branch": "feature/1-contract-branch",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "missing": [
         "ai_slop_clean"
@@ -1289,10 +1289,10 @@
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "issueops_prepare_branch": {
-      "branch": "1-contract-branch",
+      "branch": "feature/1-contract-branch",
       "branch_prepare": {
         "base_branch": "main",
-        "branch": "1-contract-branch",
+        "branch": "feature/1-contract-branch",
         "created_at": "$TIMESTAMP",
         "issue_url": "https://gitlab.example/group/project/-/issues/1",
         "link_verified": true,
@@ -1306,7 +1306,7 @@
             "tool_arguments": {
               "endpoint": "projects/:fullpath/repository/branches",
               "field": [
-                "branch=1-contract-branch",
+                "branch=feature/1-contract-branch",
                 "ref=main"
               ],
               "method": "POST"
@@ -1320,7 +1320,7 @@
               "-X",
               "POST",
               "-f",
-              "branch=1-contract-branch",
+              "branch=feature/1-contract-branch",
               "-f",
               "ref=main"
             ],
@@ -1344,7 +1344,7 @@
       "updated_at": "$TIMESTAMP"
     },
     "issueops_start": {
-      "branch": "1-contract-branch",
+      "branch": "feature/1-contract-branch",
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
       "ok": true,
@@ -3656,7 +3656,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 13384,
+                "bytes": 13896,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3723,7 +3723,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 21663,
+                "bytes": 21810,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -4232,10 +4232,10 @@
       "content": [
         {
           "json": {
-            "branch": "feature/mcp-contract",
+            "branch": "feature/2-mcp-contract",
             "branch_prepare": {
               "base_branch": "main",
-              "branch": "feature/mcp-contract",
+              "branch": "feature/2-mcp-contract",
               "created_at": "$TIMESTAMP",
               "issue_url": "https://github.com/example/repo/issues/2",
               "link_verified": true,
@@ -4255,7 +4255,7 @@
                     "--base",
                     "main",
                     "--name",
-                    "feature/mcp-contract"
+                    "feature/2-mcp-contract"
                   ],
                   "description": "Create a GitHub linked development branch through gh issue develop.",
                   "order": 2,
@@ -4302,10 +4302,10 @@
       "content": [
         {
           "json": {
-            "branch": "feature/mcp-contract",
+            "branch": "feature/2-mcp-contract",
             "branch_prepare": {
               "base_branch": "main",
-              "branch": "feature/mcp-contract",
+              "branch": "feature/2-mcp-contract",
               "created_at": "$TIMESTAMP",
               "issue_url": "https://github.com/example/repo/issues/2",
               "link_verified": true,
@@ -4325,7 +4325,7 @@
                     "--base",
                     "main",
                     "--name",
-                    "feature/mcp-contract"
+                    "feature/2-mcp-contract"
                   ],
                   "description": "Create a GitHub linked development branch through gh issue develop.",
                   "order": 2,
@@ -4365,7 +4365,7 @@
       "content": [
         {
           "json": {
-            "branch": "feature/mcp-contract",
+            "branch": "feature/2-mcp-contract",
             "created_at": "$TIMESTAMP",
             "id": "$ISSUEOPS_ID",
             "issue_url": "https://github.com/example/repo/issues/2",
@@ -4382,10 +4382,10 @@
       "content": [
         {
           "json": {
-            "branch": "feature/mcp-contract",
+            "branch": "feature/2-mcp-contract",
             "branch_prepare": {
               "base_branch": "main",
-              "branch": "feature/mcp-contract",
+              "branch": "feature/2-mcp-contract",
               "created_at": "$TIMESTAMP",
               "issue_url": "https://github.com/example/repo/issues/2",
               "link_verified": true,
@@ -4405,7 +4405,7 @@
                     "--base",
                     "main",
                     "--name",
-                    "feature/mcp-contract"
+                    "feature/2-mcp-contract"
                   ],
                   "description": "Create a GitHub linked development branch through gh issue develop.",
                   "order": 2,
@@ -4435,10 +4435,10 @@
       "content": [
         {
           "json": {
-            "branch": "feature/mcp-contract",
+            "branch": "feature/2-mcp-contract",
             "branch_prepare": {
               "base_branch": "main",
-              "branch": "feature/mcp-contract",
+              "branch": "feature/2-mcp-contract",
               "created_at": "$TIMESTAMP",
               "issue_url": "https://github.com/example/repo/issues/2",
               "link_verified": true,
@@ -4458,7 +4458,7 @@
                     "--base",
                     "main",
                     "--name",
-                    "feature/mcp-contract"
+                    "feature/2-mcp-contract"
                   ],
                   "description": "Create a GitHub linked development branch through gh issue develop.",
                   "order": 2,
@@ -4489,7 +4489,7 @@
       "content": [
         {
           "json": {
-            "branch": "feature/mcp-contract",
+            "branch": "feature/2-mcp-contract",
             "issue_url": "https://github.com/example/repo/issues/2",
             "missing": [
               "ai_slop_clean"
@@ -4507,10 +4507,10 @@
       "content": [
         {
           "json": {
-            "branch": "feature/mcp-contract",
+            "branch": "feature/2-mcp-contract",
             "branch_prepare": {
               "base_branch": "main",
-              "branch": "feature/mcp-contract",
+              "branch": "feature/2-mcp-contract",
               "created_at": "$TIMESTAMP",
               "issue_url": "https://github.com/example/repo/issues/2",
               "link_verified": true,
@@ -4530,7 +4530,7 @@
                     "--base",
                     "main",
                     "--name",
-                    "feature/mcp-contract"
+                    "feature/2-mcp-contract"
                   ],
                   "description": "Create a GitHub linked development branch through gh issue develop.",
                   "order": 2,
@@ -4559,7 +4559,7 @@
       "content": [
         {
           "json": {
-            "branch": "feature/mcp-contract",
+            "branch": "feature/2-mcp-contract",
             "created_at": "$TIMESTAMP",
             "id": "$ISSUEOPS_ID",
             "ok": true,

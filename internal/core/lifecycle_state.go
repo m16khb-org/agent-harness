@@ -554,6 +554,9 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 		if kind != "issue" && kind != "pr" && kind != "mr" {
 			continue
 		}
+		if action == "for" || action == "new-for" || action == "create-for" {
+			action = "create"
+		}
 		if action != "create" && action != "edit" && action != "update" {
 			continue
 		}
@@ -595,6 +598,8 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 					j++
 				}
 			case arg == "--copy-issue-labels":
+				artifact.labels = appendRemoteArtifactLabels(artifact.labels, "copied-from-linked-issue")
+			case arg == "--with-labels":
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, "copied-from-linked-issue")
 			case strings.HasPrefix(arg, "--label="):
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--label="))
@@ -918,6 +923,9 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 	expected := cleanAbsPath(req.ExpectedWorktree)
 	if expected == "" {
 		if branch := localIssueOpsBranchCreation(req.Command); branch != "" {
+			if err := validateIssueOpsGitFlowBranch(branch); err != nil {
+				return err.Error()
+			}
 			if rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, branch); ok && rec.WorktreePath != "" {
 				return "IssueOps branch " + branch + " must not be checked out in the source checkout; create or use the linked isolated worktree " + cleanAbsPath(rec.WorktreePath)
 			}

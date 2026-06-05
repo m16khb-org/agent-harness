@@ -4901,7 +4901,7 @@ func mcpTools() []map[string]any {
 				"id":                map[string]any{"type": "string", "description": "IssueOps id."},
 				"provider":          map[string]any{"type": "string", "description": "Remote provider: github or gitlab.", "enum": []string{"github", "gitlab"}},
 				"issue_url":         map[string]any{"type": "string", "description": "GitHub/GitLab issue URL."},
-				"branch":            map[string]any{"type": "string", "description": "Provider-linked branch name. GitLab branches must start with the issue number followed by a hyphen."},
+				"branch":            map[string]any{"type": "string", "description": "Provider-linked GitFlow branch name, such as feature/2386-title or hotfix/2387-title. For GitLab, the slug after the prefix must start with the issue number followed by a hyphen."},
 				"base_branch":       map[string]any{"type": "string", "description": "Remote base branch or ref."},
 				"base_sha":          map[string]any{"type": "string", "description": "Optional resolved base commit SHA."},
 				"remote_branch_url": map[string]any{"type": "string", "description": "Optional provider branch URL after creation."},

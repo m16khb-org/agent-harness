@@ -227,6 +227,9 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 	if !issueOpsWorktreePathValid(path) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("worktree_path does not exist or is not a directory: %s", path)
 	}
+	if err := validateIssueOpsIsolatedWorktreePath(record, path); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
 	record.WorktreePath = path
 	return touchAndWriteIssueOps(stateRoot, record)
 }
@@ -239,6 +242,12 @@ func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, e
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
+	}
+	if strings.TrimSpace(record.IssueURL) == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link child before linked parent issue")
+	}
+	if parentProvider := issueOpsProviderFromURL(record.IssueURL); parentProvider != "" && issueOpsProviderFromURL(u) != parentProvider {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("child issue provider must match linked parent issue provider")
 	}
 	for _, link := range record.IssueLinks {
 		if link.Type == "child" && link.URL == u {
@@ -279,18 +288,27 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 	if branch == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("branch is required")
 	}
+	if err := validateIssueOpsGitFlowBranch(branch); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
 	baseBranch := strings.TrimSpace(req.BaseBranch)
 	if baseBranch == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("base_branch is required")
 	}
 	if provider == "gitlab" {
-		if issueNumber := issueOpsIssueNumber(issueURL); issueNumber != "" && !strings.HasPrefix(branch, issueNumber+"-") {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("gitlab branch for issue %s must start with %s-", issueNumber, issueNumber)
+		if issueNumber := issueOpsIssueNumber(issueURL); issueNumber != "" {
+			_, slug, _ := issueOpsGitFlowBranchParts(branch)
+			if !strings.HasPrefix(slug, issueNumber+"-") {
+				return IssueOpsRecord{OK: false}, fmt.Errorf("gitlab branch for issue %s must start with a gitflow prefix followed by %s-; for example feature/%s-...", issueNumber, issueNumber, issueNumber)
+			}
 		}
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
+	}
+	if strings.TrimSpace(record.IssueURL) == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("issue must be linked before branch prepare")
 	}
 	if strings.TrimSpace(record.Branch) == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("issueops record must be started with branch before branch prepare")
@@ -298,9 +316,7 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 	if record.Branch != branch {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("branch does not match IssueOps record branch")
 	}
-	if strings.TrimSpace(record.IssueURL) == "" {
-		record.IssueURL = issueURL
-	} else if record.IssueURL != issueURL {
+	if record.IssueURL != issueURL {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("issue_url does not match linked IssueOps issue")
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
@@ -316,6 +332,42 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 		CreatedAt:       now,
 	}
 	return touchAndWriteIssueOps(stateRoot, record)
+}
+
+var issueOpsGitFlowBranchPrefixes = []string{
+	"feature/",
+	"hotfix/",
+	"bugfix/",
+	"release/",
+	"chore/",
+	"docs/",
+	"refactor/",
+	"test/",
+}
+
+func validateIssueOpsGitFlowBranch(branch string) error {
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return nil
+	}
+	if strings.ContainsAny(branch, " \t\r\n") || strings.HasPrefix(branch, "/") || strings.Contains(branch, "..") {
+		return fmt.Errorf("issueops gitflow branch contains invalid characters: %s", branch)
+	}
+	_, slug, ok := issueOpsGitFlowBranchParts(branch)
+	if !ok || strings.TrimSpace(slug) == "" {
+		return fmt.Errorf("issueops gitflow branch must start with one of %s; use names like feature/2386-remove-dmm-ranking-ranktype or hotfix/2387-fix-grpc-ai-dmm-tag-replication-lag", strings.Join(issueOpsGitFlowBranchPrefixes, ", "))
+	}
+	return nil
+}
+
+func issueOpsGitFlowBranchParts(branch string) (string, string, bool) {
+	branch = strings.TrimSpace(branch)
+	for _, prefix := range issueOpsGitFlowBranchPrefixes {
+		if strings.HasPrefix(branch, prefix) {
+			return prefix, strings.TrimPrefix(branch, prefix), true
+		}
+	}
+	return "", branch, false
 }
 
 func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
@@ -548,6 +600,22 @@ func issueOpsWorktreePathValid(path string) bool {
 	}
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
+}
+
+func validateIssueOpsIsolatedWorktreePath(record IssueOpsRecord, path string) error {
+	repo := cleanAbsPath(record.Repo)
+	worktree := cleanAbsPath(path)
+	if repo == "" || worktree == "" {
+		return fmt.Errorf("worktree_path and repo must be absolute or resolvable paths")
+	}
+	if worktree == repo {
+		return fmt.Errorf("worktree_path must be isolated from the source checkout")
+	}
+	parent := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees")
+	if !pathWithin(worktree, parent) {
+		return fmt.Errorf("worktree_path must be under sibling worktree directory: %s", parent)
+	}
+	return nil
 }
 
 func issueOpsPlanPathExists(repo, path string) bool {

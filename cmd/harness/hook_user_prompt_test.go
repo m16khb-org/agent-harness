@@ -331,6 +331,52 @@ func TestRunHookPreToolUseEnforcesIssueOpsWorktree(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseBlocksNonGitFlowBranchCreation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": "git checkout -b 2387-fix-grpc-ai-dmm-tag-replication-lag",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected bare issue-number branch creation to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "gitflow branch") || !strings.Contains(reason, "hotfix/2387-fix-grpc-ai-dmm-tag-replication-lag") {
+		t.Fatalf("expected gitflow branch naming guidance, got %q", reason)
+	}
+}
+
+func TestRunHookPreToolUseAllowsGitFlowBranchCreation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": "git switch -c feature/2386-remove-dmm-ranking-ranktype",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected gitflow branch creation to be allowed, got %+v", obj)
+	}
+}
+
 func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
@@ -543,6 +589,59 @@ func TestRunHookPreToolUseStructuredRemoteCreateStillRequiresAssignee(t *testing
 	reason, _ := obj["reason"].(string)
 	if !strings.Contains(reason, "assignee") {
 		t.Fatalf("expected assignee reason, got %q", reason)
+	}
+}
+
+func TestRunHookPreToolUseStructuredGlabMRForRequiresAssignee(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "mcp__glab__glab_mr_for",
+		"tool_input": map[string]any{
+			"args": []any{"2385"},
+			"flags": map[string]any{
+				"with_labels": true,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected structured glab mr for without assignee to be blocked, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "assignee") {
+		t.Fatalf("expected assignee reason, got %q", reason)
+	}
+}
+
+func TestRunHookPreToolUseStructuredGlabMRForAllowsAssignee(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "mcp__glab__glab_mr_for",
+		"tool_input": map[string]any{
+			"args": []any{"2385"},
+			"flags": map[string]any{
+				"with_labels": true,
+				"assignee":    "100",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected structured glab mr for with assignee to be allowed, got %+v", obj)
 	}
 }
 

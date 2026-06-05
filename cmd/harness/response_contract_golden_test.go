@@ -72,7 +72,7 @@ func TestResponseContractsGolden(t *testing.T) {
 		return runState([]string{"list", "--json"})
 	})
 	issueopsStartStdout := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", workspaceDir, "--branch", "1-contract-branch", "--json"})
+		return runIssueOps([]string{"start", "--repo", workspaceDir, "--branch", "feature/1-contract-branch", "--json"})
 	})
 	var issueopsStartRaw map[string]any
 	if err := json.Unmarshal([]byte(issueopsStartStdout), &issueopsStartRaw); err != nil {
@@ -87,12 +87,12 @@ func TestResponseContractsGolden(t *testing.T) {
 		return runIssueOps([]string{"link-issue", "--id", issueopsID, "--issue-url", "https://gitlab.example/group/project/-/issues/1", "--json"})
 	})
 	cliSnapshot["issueops_prepare_branch"] = runCLIJSONContract(t, replacements, func() error {
-		return runIssueOps([]string{"branch", "prepare", "--id", issueopsID, "--provider", "gitlab", "--issue-url", "https://gitlab.example/group/project/-/issues/1", "--branch", "1-contract-branch", "--base-branch", "main", "--link-verified", "--json"})
+		return runIssueOps([]string{"branch", "prepare", "--id", issueopsID, "--provider", "gitlab", "--issue-url", "https://gitlab.example/group/project/-/issues/1", "--branch", "feature/1-contract-branch", "--base-branch", "main", "--link-verified", "--json"})
 	})
 	cliSnapshot["issueops_link_plan"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-plan", "--id", issueopsID, "--plan-path", "docs/superpowers/plans/contract.md", "--json"})
 	})
-	contractWorktree := filepath.Join(t.TempDir(), "agent-harness-contract.worktree")
+	contractWorktree := filepath.Join(filepath.Dir(workspaceDir), filepath.Base(workspaceDir)+".worktrees", "feature-1-contract-branch")
 	if err := os.MkdirAll(contractWorktree, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestResponseContractsGolden(t *testing.T) {
 	mcpSnapshot["state_migrate"] = runMCPToolContract(t, replacements, "state_migrate", map[string]any{})
 	issueopsMCPStartRaw := runMCPToolContractRaw(t, "issueops_start", map[string]any{
 		"repo":   workspaceDir,
-		"branch": "feature/mcp-contract",
+		"branch": "feature/2-mcp-contract",
 	})
 	mcpSnapshot["issueops_start"] = normalizeMCPTextJSON(normalizeContractValue(issueopsMCPStartRaw, replacements), replacements)
 	issueopsMCPID, ok := issueopsMCPStartRaw["content"].([]any)[0].(map[string]any)["text"].(string)
@@ -243,7 +243,7 @@ func TestResponseContractsGolden(t *testing.T) {
 		"id":            issueopsMCPID,
 		"provider":      "github",
 		"issue_url":     "https://github.com/example/repo/issues/2",
-		"branch":        "feature/mcp-contract",
+		"branch":        "feature/2-mcp-contract",
 		"base_branch":   "main",
 		"link_verified": true,
 	})
@@ -251,7 +251,7 @@ func TestResponseContractsGolden(t *testing.T) {
 		"id":        issueopsMCPID,
 		"plan_path": "docs/superpowers/plans/mcp-contract.md",
 	})
-	mcpWorktree := filepath.Join(t.TempDir(), "agent-harness-mcp-contract.worktree")
+	mcpWorktree := filepath.Join(filepath.Dir(workspaceDir), filepath.Base(workspaceDir)+".worktrees", "feature-2-mcp-contract")
 	if err := os.MkdirAll(mcpWorktree, 0o755); err != nil {
 		t.Fatal(err)
 	}

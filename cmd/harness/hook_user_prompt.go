@@ -772,6 +772,8 @@ func mcpRemoteArtifactCommandFromHookObject(obj map[string]any, toolInput map[st
 	switch {
 	case strings.Contains(tool, "create") || strings.Contains(tool, "open"):
 		action = "create"
+	case strings.HasSuffix(tool, "_for") || strings.Contains(tool, "create_for") || strings.Contains(tool, "create-for"):
+		action = "create"
 	case strings.Contains(tool, "update"):
 		action = "update"
 	case strings.Contains(tool, "edit"):
@@ -796,6 +798,9 @@ func mcpRemoteArtifactCommandFromHookObject(obj map[string]any, toolInput map[st
 	}
 	if boolValue(toolInput, "copy_issue_labels", "copyIssueLabels", "copy_labels", "copyLabels") {
 		args = append(args, "--copy-issue-labels")
+	}
+	if boolValue(toolInput, "with_labels", "withLabels") {
+		args = append(args, "--with-labels")
 	}
 	for _, assignee := range stringListValue(toolInput, "assignee", "assignees", "add_assignee", "add_assignees") {
 		args = append(args, "--assignee", shellQuoteArg(assignee))

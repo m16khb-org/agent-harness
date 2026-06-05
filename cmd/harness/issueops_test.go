@@ -10,8 +10,9 @@ import (
 
 func TestRunIssueOpsLifecycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIRepoForTest(t, "example")
 	start := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", "/repo/example", "--branch", "feature/provider-linked-branch", "--json"})
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "feature/provider-linked-branch", "--json"})
 	})
 	var record map[string]any
 	if err := json.Unmarshal([]byte(start), &record); err != nil {
@@ -60,10 +61,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("plan link should move to implement phase: %#v", planRecord)
 	}
 
-	worktreePath := filepath.Join(t.TempDir(), "repo.worktrees", "feature-demo")
-	if err := os.MkdirAll(worktreePath, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "feature-demo")
 	worktree := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktreePath, "--json"})
 	})
@@ -146,12 +144,10 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	worktree := filepath.Join(t.TempDir(), "repo.worktrees", "feature-demo")
-	if err := os.MkdirAll(worktree, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	repo := makeIssueOpsCLIRepoForTest(t, "example")
+	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "feature-demo")
 	start := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", "/repo/example", "--branch", "feature/demo", "--json"})
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "feature/demo", "--json"})
 	})
 	var record map[string]any
 	if err := json.Unmarshal([]byte(start), &record); err != nil {
@@ -201,10 +197,8 @@ func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	worktree := filepath.Join(t.TempDir(), "repo.worktrees", "feature-demo")
-	if err := os.MkdirAll(worktree, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	repo := makeIssueOpsCLIRepoForTest(t, "example")
+	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "feature-demo")
 	if err := os.WriteFile(filepath.Join(worktree, "package.json"), []byte(`{"name":"demo"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +206,7 @@ func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 	start := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", "/repo/example", "--branch", "feature/demo", "--json"})
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "feature/demo", "--json"})
 	})
 	var record map[string]any
 	if err := json.Unmarshal([]byte(start), &record); err != nil {
@@ -250,4 +244,22 @@ func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
 	if !strings.Contains(text, "codegraph status "+worktree) {
 		t.Fatalf("codegraph should still be checked, got:\n%s", text)
 	}
+}
+
+func makeIssueOpsCLIRepoForTest(t *testing.T, name string) string {
+	t.Helper()
+	repo := filepath.Join(t.TempDir(), name)
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return repo
+}
+
+func makeIssueOpsCLIWorktreeForTest(t *testing.T, repo, slug string) string {
+	t.Helper()
+	worktree := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", slug)
+	if err := os.MkdirAll(worktree, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return worktree
 }

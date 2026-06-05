@@ -25,7 +25,7 @@ func runIssueOps(args []string) error {
 		repo := fs.String("repo", "", "repository path")
 		branch := fs.String("branch", "", "working branch")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: *repo, Branch: *branch})
@@ -34,7 +34,7 @@ func runIssueOps(args []string) error {
 		fs := flag.NewFlagSet("issueops status", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
@@ -44,7 +44,7 @@ func runIssueOps(args []string) error {
 		id := fs.String("id", "", "issueops id")
 		issueURL := fs.String("issue-url", "", "GitHub/GitLab issue URL")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		record, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), *id, *issueURL)
@@ -54,7 +54,7 @@ func runIssueOps(args []string) error {
 		id := fs.String("id", "", "issueops id")
 		planPath := fs.String("plan-path", "", "issue-driven plan path")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		record, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), *id, *planPath)
@@ -64,7 +64,7 @@ func runIssueOps(args []string) error {
 		id := fs.String("id", "", "issueops id")
 		worktreePath := fs.String("worktree-path", "", "issue-driven worktree path")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		record, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), *id, *worktreePath)
@@ -75,7 +75,7 @@ func runIssueOps(args []string) error {
 		childURL := fs.String("child-url", "", "GitHub sub-issue or GitLab child item URL")
 		title := fs.String("title", "", "optional child issue title")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		record, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), *id, *childURL, *title)
@@ -89,7 +89,7 @@ func runIssueOps(args []string) error {
 		id := fs.String("id", "", "issueops id")
 		to := fs.String("to", "", "target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, done")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		record, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), *id, *to)
@@ -100,12 +100,14 @@ func runIssueOps(args []string) error {
 		return runIssueOpsBenchmark(args[1:])
 	case "remote":
 		return runIssueOpsRemote(args[1:])
+	case "remote-score":
+		return runIssueOpsRemote(append([]string{"score"}, args[1:]...))
 	case "pr-readiness":
 		fs := flag.NewFlagSet("issueops pr-readiness", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
 		strict := fs.Bool("strict", false, "verify git cleanliness, upstream sync, plan path, and linked worktree path")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
@@ -127,6 +129,16 @@ func runIssueOps(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops subcommand %q", args[0])
 	}
+}
+
+func parseIssueOpsFlags(fs *flag.FlagSet, args []string) (bool, error) {
+	if err := fs.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
 }
 
 func issueOpsUsage() {
@@ -161,13 +173,17 @@ type issueOpsWorktreeToolPrepareResult struct {
 }
 
 func runIssueOpsWorktree(args []string) error {
-	if len(args) == 0 || args[0] != "prepare-tools" {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage: agent-harness issueops worktree prepare-tools --id ID [--json]")
+		return nil
+	}
+	if args[0] != "prepare-tools" {
 		return fmt.Errorf("unknown issueops worktree subcommand")
 	}
 	fs := flag.NewFlagSet("issueops worktree prepare-tools", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args[1:]); err != nil {
+	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
@@ -291,20 +307,24 @@ func fileExists(path string) bool {
 }
 
 func runIssueOpsBranch(args []string) error {
-	if len(args) == 0 || args[0] != "prepare" {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--link-verified] [--json]")
+		return nil
+	}
+	if args[0] != "prepare" {
 		return fmt.Errorf("unknown issueops branch subcommand")
 	}
 	fs := flag.NewFlagSet("issueops branch prepare", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
 	provider := fs.String("provider", "", "remote provider: github or gitlab")
 	issueURL := fs.String("issue-url", "", "GitHub/GitLab issue URL")
-	branch := fs.String("branch", "", "provider-linked branch name")
+	branch := fs.String("branch", "", "provider-linked GitFlow branch name")
 	baseBranch := fs.String("base-branch", "", "remote base branch or ref")
 	baseSHA := fs.String("base-sha", "", "optional resolved base commit SHA")
 	remoteBranchURL := fs.String("remote-branch-url", "", "optional provider branch URL after creation")
 	linkVerified := fs.Bool("link-verified", false, "record that the provider issue shows the branch link")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args[1:]); err != nil {
+	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
 	record, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), *id, core.IssueOpsBranchPrepareRequest{
@@ -320,6 +340,13 @@ func runIssueOpsBranch(args []string) error {
 }
 
 func runIssueOpsRemote(args []string) error {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage: agent-harness issueops remote score --input PATH [--judge none|agy] [--json]")
+		return nil
+	}
+	if args[0] == "remote-score" {
+		args[0] = "score"
+	}
 	if len(args) == 0 {
 		return fmt.Errorf("unknown issueops remote subcommand")
 	}
@@ -330,7 +357,7 @@ func runIssueOpsRemote(args []string) error {
 		judge := fs.String("judge", "agy", "judge backend: agy or none")
 		agyCommand := fs.String("agy-command", "agy", "agy command path")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		req, err := readIssueOpsRemoteScoringRequestFile(*input)
@@ -382,6 +409,10 @@ func formatIssueOpsRemoteIssueRef(issue core.IssueOpsRemoteScoredItem) string {
 }
 
 func runIssueOpsBenchmark(args []string) error {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage: agent-harness issueops benchmark run|compare|gate [--json]")
+		return nil
+	}
 	if len(args) == 0 {
 		return fmt.Errorf("unknown issueops benchmark subcommand")
 	}
@@ -392,7 +423,7 @@ func runIssueOpsBenchmark(args []string) error {
 		judge := fs.String("judge", "agy", "judge backend: none or agy")
 		agyCommand := fs.String("agy-command", "agy", "agy command path")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		fixtures, err := core.LoadIssueOpsBenchmarkFixtures(*fixturesPath)
@@ -442,7 +473,7 @@ func runIssueOpsBenchmark(args []string) error {
 		baselineID := fs.String("baseline", "", "baseline benchmark id")
 		candidateID := fs.String("candidate", "", "candidate benchmark id")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		baseline, err := core.ReadIssueOpsBenchmarkRun(core.StateDir(), *baselineID)
@@ -467,7 +498,7 @@ func runIssueOpsBenchmark(args []string) error {
 		var changedPaths repeatedFlag
 		fs.Var(&changedPaths, "changed-path", "changed path to check against the candidate edit surface; repeatable")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if err := fs.Parse(args[1:]); err != nil {
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		candidate, err := readIssueOpsAutoresearchCandidateFile(*candidateFile)
@@ -797,7 +828,11 @@ func issueOpsBenchmarkOwnedTasks(items []string) string {
 }
 
 func runIssueOpsFeedback(args []string) error {
-	if len(args) == 0 || args[0] != "add" {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage: agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] [--json]")
+		return nil
+	}
+	if args[0] != "add" {
 		return fmt.Errorf("unknown issueops feedback subcommand")
 	}
 	fs := flag.NewFlagSet("issueops feedback add", flag.ContinueOnError)
@@ -806,7 +841,7 @@ func runIssueOpsFeedback(args []string) error {
 	body := fs.String("body", "", "feedback body")
 	classification := fs.String("classification", "", "optional feedback classification, such as contract_change, defect, question, or noise")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args[1:]); err != nil {
+	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
 	record, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), *id, *source, *body, *classification)

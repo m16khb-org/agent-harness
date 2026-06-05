@@ -398,6 +398,7 @@ func TestPreToolUseVCSLinkingBlocksRemoteCreateWithoutAssignee(t *testing.T) {
 	for _, command := range []string{
 		`glab mr create --title "IssueOps 담당자 검증" --description "라벨은 있지만 담당자 없는 MR 생성을 막습니다." --label bug`,
 		`glab mr create --title "IssueOps 담당자 검증" --description "이슈 라벨 복사 옵션이 있어도 담당자는 필요합니다." --related-issue 2385 --copy-issue-labels`,
+		`glab mr for 2385 --with-labels`,
 	} {
 		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 			Repo:              t.TempDir(),
@@ -415,6 +416,7 @@ func TestPreToolUseVCSLinkingAllowsRemoteCreateWithLabelsAndAssignee(t *testing.
 	for _, command := range []string{
 		`glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨을 복사해 MR 라벨 누락을 방지합니다." --label bug --assignee m16khb`,
 		`glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨 복사와 담당자를 함께 지정합니다." --copy-issue-labels --assignee-id 100`,
+		`glab mr for 2385 --with-labels --assignee 100`,
 		`gh pr create --title "IssueOps 라벨 검증" --body "라벨과 담당자를 함께 지정합니다." -l bug -a @me`,
 	} {
 		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
@@ -787,7 +789,7 @@ func linkIssueOpsBranchEvidenceForTest(t *testing.T, repo, branch string) {
 	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), id, IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     issueURL,
-		Branch:       branch,
+		Branch:       issueOpsProviderBranchForTest(branch),
 		BaseBranch:   "main",
 		LinkVerified: true,
 	}); err != nil {
@@ -798,6 +800,28 @@ func linkIssueOpsBranchEvidenceForTest(t *testing.T, repo, branch string) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func issueOpsProviderBranchForTest(branch string) string {
+	if _, _, ok := issueOpsGitFlowBranchParts(branch); ok {
+		return branch
+	}
+	slug := strings.Trim(strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r + ('a' - 'A')
+		case r >= '0' && r <= '9':
+			return r
+		default:
+			return '-'
+		}
+	}, branch), "-")
+	if slug == "" {
+		slug = "branch"
+	}
+	return "feature/1-" + slug
 }
 
 func markIssueOpsPRPhaseForTest(t *testing.T, repo, branch string) {
@@ -813,9 +837,13 @@ func markIssueOpsPRPhaseForTest(t *testing.T, repo, branch string) {
 	}
 }
 
+func issueOpsGuardWorktreePathForTest(repo, slug string) string {
+	return filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", slug)
+}
+
 func TestWorktreeGuardBlocksSourceEditWhenImplementCycleHasNoLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "development", IssueOpsPhaseImplement)
+	repo := guardRepoWithCycle(t, "feature/development", IssueOpsPhaseImplement)
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
 	})
@@ -826,9 +854,9 @@ func TestWorktreeGuardBlocksSourceEditWhenImplementCycleHasNoLinkedWorktree(t *t
 
 func TestWorktreeGuardAllowsWorktreeAddBeforeLinkWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "development", IssueOpsPhaseImplement)
+	repo := guardRepoWithCycle(t, "feature/development", IssueOpsPhaseImplement)
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: repo, Tool: "Bash", Command: "git worktree add ../repo.worktrees/development origin/development", EnforceWorktree: true,
+		Repo: repo, Tool: "Bash", Command: "git worktree add ../repo.worktrees/feature-development origin/feature/development", EnforceWorktree: true,
 	})
 	if res.Decision != "allow" {
 		t.Fatalf("worktree preparation command should pass before link-worktree, got %+v", res)
@@ -837,7 +865,7 @@ func TestWorktreeGuardAllowsWorktreeAddBeforeLinkWorktree(t *testing.T) {
 
 func TestWorktreeGuardBlocksLocalCheckoutOfIssueOpsBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "main", IssueOpsPhasePlan)
+	repo := guardRepoWithCycle(t, "feature/current", IssueOpsPhasePlan)
 	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feature/issue-work"})
 	if err != nil {
 		t.Fatal(err)
@@ -856,10 +884,10 @@ func TestWorktreeGuardBlocksLocalCheckoutOfIssueOpsBranch(t *testing.T) {
 
 func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
-	id := newIssueOpsID(repo, "feat/x")
-	linked := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
-	linkIssueOpsBranchEvidenceForTest(t, repo, "feat/x")
+	repo := guardRepoWithCycle(t, "feature/x", IssueOpsPhaseImplement)
+	id := newIssueOpsID(repo, "feature/x")
+	linked := issueOpsGuardWorktreePathForTest(repo, "feature-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "feature/x")
 	if err := os.MkdirAll(linked, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -883,9 +911,9 @@ func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 
 func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
-	id := newIssueOpsID(repo, "feat/x")
-	linked := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	repo := guardRepoWithCycle(t, "feature/x", IssueOpsPhaseImplement)
+	id := newIssueOpsID(repo, "feature/x")
+	linked := issueOpsGuardWorktreePathForTest(repo, "feature-x")
 	if err := os.MkdirAll(linked, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -895,7 +923,7 @@ func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), id, IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/1",
-		Branch:       "feat/x",
+		Branch:       "feature/x",
 		BaseBranch:   "main",
 		LinkVerified: true,
 	}); err != nil {
@@ -920,10 +948,10 @@ func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 
 func TestWorktreeGuardBlocksOtherWorktreeWhenCycleHasExactWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
-	id := newIssueOpsID(repo, "feat/x")
-	expected := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
-	linkIssueOpsBranchEvidenceForTest(t, repo, "feat/x")
+	repo := guardRepoWithCycle(t, "feature/x", IssueOpsPhaseImplement)
+	id := newIssueOpsID(repo, "feature/x")
+	expected := issueOpsGuardWorktreePathForTest(repo, "feature-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "feature/x")
 	if err := os.MkdirAll(expected, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -931,7 +959,7 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCycleHasExactWorktree(t *testing.T)
 		t.Fatal(err)
 	}
 
-	other := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-y", "internal", "x.go")
+	other := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", "feature-y", "internal", "x.go")
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{other}, EnforceWorktree: true,
 	})
@@ -949,16 +977,16 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCycleHasExactWorktree(t *testing.T)
 
 func TestWorktreeGuardIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "main", IssueOpsPhaseProblem)
-	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feat/x"})
+	repo := guardRepoWithCycle(t, "feature/current", IssueOpsPhaseProblem)
+	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feature/x"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(IssueOpsPhaseImplement)); err != nil {
 		t.Fatal(err)
 	}
-	expected := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
-	linkIssueOpsBranchEvidenceForTest(t, repo, "feat/x")
+	expected := issueOpsGuardWorktreePathForTest(repo, "feature-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "feature/x")
 	if err := os.MkdirAll(expected, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -983,16 +1011,16 @@ func TestWorktreeGuardIgnoresLinkedCycleFromOtherBranch(t *testing.T) {
 
 func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "main", IssueOpsPhaseImplement)
-	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feat/x"})
+	repo := guardRepoWithCycle(t, "feature/current", IssueOpsPhaseImplement)
+	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feature/x"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(IssueOpsPhaseImplement)); err != nil {
 		t.Fatal(err)
 	}
-	expected := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
-	linkIssueOpsBranchEvidenceForTest(t, repo, "feat/x")
+	expected := issueOpsGuardWorktreePathForTest(repo, "feature-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "feature/x")
 	if err := os.MkdirAll(expected, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -1000,7 +1028,7 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *tes
 		t.Fatal(err)
 	}
 
-	other := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-y", "internal", "x.go")
+	other := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", "feature-y", "internal", "x.go")
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{other}, EnforceWorktree: true,
 	})
@@ -1026,9 +1054,9 @@ func TestWorktreeGuardNoBlockWithoutCycle(t *testing.T) {
 
 func TestWorktreeGuardNoBlockWhenCycleDone(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
-	id := newIssueOpsID(repo, "feat/x")
-	markIssueOpsPRPhaseForTest(t, repo, "feat/x")
+	repo := guardRepoWithCycle(t, "feature/x", IssueOpsPhaseImplement)
+	id := newIssueOpsID(repo, "feature/x")
+	markIssueOpsPRPhaseForTest(t, repo, "feature/x")
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(IssueOpsPhaseDone)); err != nil {
 		t.Fatal(err)
 	}
@@ -1042,7 +1070,7 @@ func TestWorktreeGuardNoBlockWhenCycleDone(t *testing.T) {
 
 func TestWorktreeGuardNoBlockInPlanningPhase(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseGrill)
+	repo := guardRepoWithCycle(t, "feature/x", IssueOpsPhaseGrill)
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
 	})
@@ -1054,7 +1082,7 @@ func TestWorktreeGuardNoBlockInPlanningPhase(t *testing.T) {
 func TestWorktreeGuardIgnoresOtherBranchCycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	// Active implement cycle for a different branch must not lock edits on main.
-	repo := guardRepoWithCycle(t, "feat/other", IssueOpsPhaseImplement)
+	repo := guardRepoWithCycle(t, "feature/other", IssueOpsPhaseImplement)
 	_ = os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
@@ -1066,10 +1094,10 @@ func TestWorktreeGuardIgnoresOtherBranchCycle(t *testing.T) {
 
 func TestWorktreeGuardIgnoresMismatchedWorktreePlanBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "development", IssueOpsPhasePlan)
-	recordID := newIssueOpsID(repo, "development")
+	repo := guardRepoWithCycle(t, "feature/development", IssueOpsPhasePlan)
+	recordID := newIssueOpsID(repo, "feature/development")
 
-	worktree := filepath.Join(filepath.Dir(repo), "repo.worktrees", "bugfix-2361")
+	worktree := issueOpsGuardWorktreePathForTest(repo, "bugfix-2361")
 	gitdir := filepath.Join(repo, ".git", "worktrees", "bugfix-2361")
 	if err := os.MkdirAll(filepath.Join(worktree, "docs", "plans"), 0o755); err != nil {
 		t.Fatal(err)
@@ -1087,7 +1115,7 @@ func TestWorktreeGuardIgnoresMismatchedWorktreePlanBranch(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(gitdir, "HEAD"), []byte("ref: refs/heads/bugfix/2361\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	linkIssueOpsBranchEvidenceForTest(t, repo, "development")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "feature/development")
 	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), recordID, filepath.Join(worktree, "docs", "plans", "2361.md")); err != nil {
 		t.Fatal(err)
 	}
@@ -1102,7 +1130,7 @@ func TestWorktreeGuardIgnoresMismatchedWorktreePlanBranch(t *testing.T) {
 
 func TestWorktreeGuardAllowsTempFileBashWrites(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
+	repo := guardRepoWithCycle(t, "feature/x", IssueOpsPhaseImplement)
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Bash", Command: "cat > /tmp/mr-body.md <<EOF\nbody\nEOF", EnforceWorktree: true,
 	})
@@ -1113,8 +1141,8 @@ func TestWorktreeGuardAllowsTempFileBashWrites(t *testing.T) {
 
 func TestWorktreeGuardBlocksBashCommandThatChangesIntoUnlinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
-	worktree := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	repo := guardRepoWithCycle(t, "feature/x", IssueOpsPhaseImplement)
+	worktree := issueOpsGuardWorktreePathForTest(repo, "feature-x")
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Bash", Command: "cd " + worktree + " && printf body > /tmp/mr-body.md", EnforceWorktree: true,
 	})
@@ -1126,32 +1154,32 @@ func TestWorktreeGuardBlocksBashCommandThatChangesIntoUnlinkedWorktree(t *testin
 func TestActiveIssueOpsCycleForBranchIsDeterministicAndReleasesOnDone(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	if _, ok := ActiveIssueOpsCycleForBranch(repo, "main"); ok {
+	if _, ok := ActiveIssueOpsCycleForBranch(repo, "feature/main"); ok {
 		t.Fatalf("no cycle yet")
 	}
-	first, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "main"})
+	first, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feature/main"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Re-starting the same (repo, branch) must resume the same record, not duplicate.
-	second, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "main"})
+	second, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "feature/main"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if first.ID != second.ID {
 		t.Fatalf("start must be idempotent per (repo, branch): %s != %s", first.ID, second.ID)
 	}
-	if _, ok := ActiveIssueOpsCycleForBranch(repo, "main"); !ok {
+	if _, ok := ActiveIssueOpsCycleForBranch(repo, "feature/main"); !ok {
 		t.Fatalf("active cycle should be found")
 	}
 	if _, ok := ActiveIssueOpsCycleForBranch(repo, "other"); ok {
 		t.Fatalf("a different branch must not match")
 	}
-	markIssueOpsPRPhaseForTest(t, repo, "main")
+	markIssueOpsPRPhaseForTest(t, repo, "feature/main")
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), first.ID, string(IssueOpsPhaseDone)); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := ActiveIssueOpsCycleForBranch(repo, "main"); ok {
+	if _, ok := ActiveIssueOpsCycleForBranch(repo, "feature/main"); ok {
 		t.Fatalf("done cycle must not be reported active")
 	}
 }
@@ -1175,10 +1203,10 @@ func TestGitBranchFromHeadResolvesRelativeLinkedWorktreeGitdir(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: "+rel+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(gitdir, "HEAD"), []byte("ref: refs/heads/feat/x\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(gitdir, "HEAD"), []byte("ref: refs/heads/feature/x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := gitBranchFromHead(wt); got != "feat/x" {
-		t.Fatalf("expected branch feat/x from relative linked-worktree gitdir, got %q", got)
+	if got := gitBranchFromHead(wt); got != "feature/x" {
+		t.Fatalf("expected branch feature/x from relative linked-worktree gitdir, got %q", got)
 	}
 }
