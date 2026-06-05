@@ -471,7 +471,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 15367,
+          "bytes": 15669,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -538,7 +538,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 21874,
+          "bytes": 22150,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -749,7 +749,7 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 3881,
+          "bytes": 4210,
           "headings": [
             "Host Operations",
             "Codex",
@@ -3766,7 +3766,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 15367,
+                "bytes": 15669,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3833,7 +3833,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 21874,
+                "bytes": 22150,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -4044,7 +4044,7 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 3881,
+                "bytes": 4210,
                 "headings": [
                   "Host Operations",
                   "Codex",

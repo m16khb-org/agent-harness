@@ -1480,7 +1480,7 @@ func TestRunHookStopRelaysRecommendedNextActionFactsToMainAgent(t *testing.T) {
 		t.Fatalf("expected Stop hook to re-enter main agent with observed facts, got %+v", obj)
 	}
 	reason, _ := obj["reason"].(string)
-	for _, want := range []string{"판단 지점", "근거", "메인 에이전트", "추천 선택지"} {
+	for _, want := range []string{"판단 지점", "근거", "메인 에이전트", "추천 선택지", "자동진행", "자동진행하지", "결과 보고", "선택지"} {
 		if !strings.Contains(reason, want) {
 			t.Fatalf("expected factual trigger directive containing %q, got %q", want, reason)
 		}

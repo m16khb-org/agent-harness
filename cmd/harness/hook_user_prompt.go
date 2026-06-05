@@ -612,7 +612,7 @@ func nextActionJudgementReason(trigger core.NextActionJudgementTriggerResult) st
 	} else if trigger.RecommendedCount > 1 {
 		recommended = fmt.Sprintf("%d개", trigger.RecommendedCount)
 	}
-	return fmt.Sprintf("다음 행동 판단 지점에 도달했습니다. 훅이 관찰한 근거: 명시적 선택지 %d개, 추천 선택지 %s. 훅은 안전성, 가역성, 사용자 의도 정합성, 진행 여부를 판단하지 않습니다. 메인 에이전트가 현재 대화와 작업 맥락을 근거로 직접 판단하세요. 사용자 추가 입력이 필요 없고 진행이 맞으면 지금 실행하세요. 사용자 결정이 필요한 경우에만 직전 선택지 중 하나를 골라 달라고 요청한 뒤 멈추세요.", trigger.ChoiceCount, recommended)
+	return fmt.Sprintf("다음 행동 판단 지점에 도달했습니다. 훅이 관찰한 근거: 명시적 선택지 %d개, 추천 선택지 %s. 훅은 안전성, 가역성, 사용자 의도 정합성, 진행 여부를 판단하지 않습니다. 메인 에이전트가 현재 대화와 작업 맥락을 근거로 직접 판단하세요. 자동진행한다면 왜 안전하고 가역적이며 사용자 의도에 맞는지 답변에 명시하고 지금 실행하세요. 자동진행 결과 보고에도 `선택지:` 3개와 정확히 하나의 `(추천)`을 포함하세요. 자동진행하지 않는다면 왜 사용자 결정이 필요한지 또는 왜 후속 선택 지점인지 답변에 명시한 뒤 멈추세요.", trigger.ChoiceCount, recommended)
 }
 
 func lastAssistantMessageFromHookInput(input []byte) string {
