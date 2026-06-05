@@ -50,7 +50,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("branch prepare should include fallback steps: %#v", prepare)
 	}
 
-	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
+	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "456-provider-linked-branch")
 	worktree := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktreePath, "--json"})
 	})
@@ -258,7 +258,10 @@ func makeIssueOpsCLIRepoForTest(t *testing.T, name string) string {
 func makeIssueOpsCLIWorktreeForTest(t *testing.T, repo, slug string) string {
 	t.Helper()
 	worktree := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", slug)
-	if err := os.MkdirAll(worktree, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(worktree, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/"+slug+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return worktree

@@ -872,6 +872,18 @@ func issueOpsGuardWorktreePathForTest(repo, slug string) string {
 	return filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", slug)
 }
 
+func makeIssueOpsGuardWorktreeForTest(t *testing.T, repo, slug string) string {
+	t.Helper()
+	worktree := issueOpsGuardWorktreePathForTest(repo, slug)
+	if err := os.MkdirAll(filepath.Join(worktree, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/"+slug+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return worktree
+}
+
 func writeIssueOpsGuardFileForTest(t *testing.T, root, rel, content string) {
 	t.Helper()
 	path := filepath.Join(root, filepath.FromSlash(rel))
@@ -962,11 +974,8 @@ func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "1-x")
-	linked := issueOpsGuardWorktreePathForTest(repo, "1-x")
+	linked := makeIssueOpsGuardWorktreeForTest(t, repo, "1-x")
 	linkIssueOpsBranchEvidenceForTest(t, repo, "1-x")
-	if err := os.MkdirAll(linked, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
 		t.Fatal(err)
 	}
@@ -989,10 +998,7 @@ func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "1-x")
-	linked := issueOpsGuardWorktreePathForTest(repo, "1-x")
-	if err := os.MkdirAll(linked, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	linked := makeIssueOpsGuardWorktreeForTest(t, repo, "1-x")
 	if _, err := LinkIssueOpsIssue(IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/1"); err != nil {
 		t.Fatal(err)
 	}
@@ -1027,11 +1033,8 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCycleHasExactWorktree(t *testing.T)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "1-x")
-	expected := issueOpsGuardWorktreePathForTest(repo, "1-x")
+	expected := makeIssueOpsGuardWorktreeForTest(t, repo, "1-x")
 	linkIssueOpsBranchEvidenceForTest(t, repo, "1-x")
-	if err := os.MkdirAll(expected, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, expected); err != nil {
 		t.Fatal(err)
 	}
@@ -1062,11 +1065,8 @@ func TestWorktreeGuardBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(IssueOpsPhaseImplement)); err != nil {
 		t.Fatal(err)
 	}
-	expected := issueOpsGuardWorktreePathForTest(repo, "1-x")
+	expected := makeIssueOpsGuardWorktreeForTest(t, repo, "1-x")
 	linkIssueOpsBranchEvidenceForTest(t, repo, "1-x")
-	if err := os.MkdirAll(expected, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), rec.ID, expected); err != nil {
 		t.Fatal(err)
 	}
@@ -1096,11 +1096,8 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *tes
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), rec.ID, string(IssueOpsPhaseImplement)); err != nil {
 		t.Fatal(err)
 	}
-	expected := issueOpsGuardWorktreePathForTest(repo, "1-x")
+	expected := makeIssueOpsGuardWorktreeForTest(t, repo, "1-x")
 	linkIssueOpsBranchEvidenceForTest(t, repo, "1-x")
-	if err := os.MkdirAll(expected, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), rec.ID, expected); err != nil {
 		t.Fatal(err)
 	}
@@ -1169,7 +1166,7 @@ func TestWorktreeGuardIgnoresOtherBranchCycle(t *testing.T) {
 	}
 }
 
-func TestWorktreeGuardIgnoresMismatchedWorktreePlanBranch(t *testing.T) {
+func TestWorktreeGuardBlocksMismatchedWorktreeBranchAtLink(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-development", IssueOpsPhasePlan)
 	recordID := newIssueOpsID(repo, "1-development")
@@ -1194,18 +1191,8 @@ func TestWorktreeGuardIgnoresMismatchedWorktreePlanBranch(t *testing.T) {
 	}
 	writeIssueOpsGuardFileForTest(t, worktree, "docs/plans/2361.md", "plan\n")
 	linkIssueOpsBranchEvidenceForTest(t, repo, "1-development")
-	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), recordID, worktree); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), recordID, filepath.Join(worktree, "docs", "plans", "2361.md")); err != nil {
-		t.Fatal(err)
-	}
-
-	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
-	})
-	if res.Decision == "block" {
-		t.Fatalf("mismatched worktree plan branch should not lock source checkout, got %+v", res)
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), recordID, worktree); err == nil || !strings.Contains(err.Error(), "does not match IssueOps branch") {
+		t.Fatalf("mismatched worktree branch should fail at link-worktree, got %v", err)
 	}
 }
 

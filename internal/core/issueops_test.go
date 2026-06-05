@@ -52,11 +52,11 @@ func TestIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("worktree path should be persisted: %+v", record)
 	}
 	writeIssueOpsFile(t, worktree, "docs/superpowers/plans/demo.md", "plan\n")
-	record, err = LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "docs/superpowers/plans/demo.md"))
+	record, err = LinkIssueOpsPlan(stateRoot, record.ID, "docs/superpowers/plans/demo.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.Phase != IssueOpsPhaseImplement || record.PlanPath == "" {
+	if record.Phase != IssueOpsPhaseImplement || record.PlanPath != filepath.Join(worktree, "docs/superpowers/plans/demo.md") {
 		t.Fatalf("plan link should move to implement phase: %+v", record)
 	}
 
@@ -151,6 +151,50 @@ func TestIssueOpsImplementationLinksRequireBranchEvidence(t *testing.T) {
 	}
 	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "plans/demo.md"); err == nil || !strings.Contains(err.Error(), "linked worktree") {
 		t.Fatalf("plan link before linked worktree should fail, got %v", err)
+	}
+}
+
+func TestIssueOpsLinkPlanResolvesRelativePathInsideLinkedWorktree(t *testing.T) {
+	stateRoot := t.TempDir()
+	repo := filepath.Join(t.TempDir(), "example")
+	if err := os.MkdirAll(filepath.Join(repo, "docs", "plans"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeIssueOpsFile(t, repo, "docs/plans/source-only.md", "source plan\n")
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       "1-demo",
+		BaseBranch:   "main",
+		LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
+	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "docs/plans/source-only.md"); err == nil || !strings.Contains(err.Error(), "plan_path does not exist") {
+		t.Fatalf("relative plan path should be resolved inside linked worktree, got %v", err)
+	}
+	writeIssueOpsFile(t, worktree, "docs/plans/worktree.md", "worktree plan\n")
+	record, err = LinkIssueOpsPlan(stateRoot, record.ID, "docs/plans/worktree.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(worktree, "docs", "plans", "worktree.md")
+	if record.PlanPath != want {
+		t.Fatalf("relative plan path should persist as linked-worktree path, got %q want %q", record.PlanPath, want)
 	}
 }
 
@@ -282,6 +326,46 @@ func TestIssueOpsWorktreeLinkRequiresSiblingIsolation(t *testing.T) {
 	expected := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
 	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, expected); err != nil {
 		t.Fatalf("sibling worktree should be accepted, got %v", err)
+	}
+}
+
+func TestIssueOpsWorktreeLinkRequiresIssueBranch(t *testing.T) {
+	stateRoot := t.TempDir()
+	repo := initIssueOpsRepo(t)
+	branch := "1-demo"
+	otherBranch := "2-other"
+	for _, name := range []string{branch, otherBranch} {
+		if code, _, stderr := GitCmd(repo, "checkout", "-q", "-b", name); code != 0 {
+			t.Fatalf("git checkout branch %s failed: %s", name, stderr)
+		}
+	}
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "main"); code != 0 {
+		t.Fatalf("git checkout main failed: %s", stderr)
+	}
+	wrongWorktree := issueOpsWorktreePathForTest(repo, "1-demo")
+	if code, _, stderr := GitCmd(repo, "worktree", "add", "-q", wrongWorktree, otherBranch); code != 0 {
+		t.Fatalf("git worktree add failed: %s", stderr)
+	}
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       branch,
+		BaseBranch:   "main",
+		LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, wrongWorktree); err == nil || !strings.Contains(err.Error(), "does not match IssueOps branch") {
+		t.Fatalf("wrong branch worktree should fail, got %v", err)
 	}
 }
 
@@ -719,7 +803,10 @@ func issueOpsWorktreePathForTest(repo, slug string) string {
 func makeIssueOpsWorktreeDirForTest(t *testing.T, repo, slug string) string {
 	t.Helper()
 	worktree := issueOpsWorktreePathForTest(repo, slug)
-	if err := os.MkdirAll(worktree, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(worktree, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/"+slug+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return worktree

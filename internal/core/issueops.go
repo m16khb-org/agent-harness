@@ -211,6 +211,9 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 	if worktree == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link plan before linked worktree")
 	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(worktree, path)
+	}
 	if !issueOpsPlanPathExists(record.Repo, path) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("plan_path does not exist: %s", path)
 	}
@@ -241,6 +244,9 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 		return IssueOpsRecord{OK: false}, fmt.Errorf("worktree_path does not exist or is not a directory: %s", path)
 	}
 	if err := validateIssueOpsIsolatedWorktreePath(record, path); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
+	if err := validateIssueOpsWorktreeBranch(record, path); err != nil {
 		return IssueOpsRecord{OK: false}, err
 	}
 	if planPath := strings.TrimSpace(record.PlanPath); planPath != "" && !issueOpsPlanPathInsideWorktree(path, planPath) {
@@ -647,6 +653,21 @@ func validateIssueOpsIsolatedWorktreePath(record IssueOpsRecord, path string) er
 	parent := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees")
 	if !pathWithin(worktree, parent) {
 		return fmt.Errorf("worktree_path must be under sibling worktree directory: %s", parent)
+	}
+	return nil
+}
+
+func validateIssueOpsWorktreeBranch(record IssueOpsRecord, path string) error {
+	expected := strings.TrimSpace(record.Branch)
+	if expected == "" {
+		return nil
+	}
+	actual := strings.TrimSpace(gitBranchFromHead(path))
+	if actual == "" {
+		return fmt.Errorf("worktree_path must be a git worktree on IssueOps branch %s", expected)
+	}
+	if actual != expected {
+		return fmt.Errorf("worktree branch %s does not match IssueOps branch %s", actual, expected)
 	}
 	return nil
 }

@@ -90,7 +90,10 @@ func TestResponseContractsGolden(t *testing.T) {
 		return runIssueOps([]string{"branch", "prepare", "--id", issueopsID, "--provider", "gitlab", "--issue-url", "https://gitlab.example/group/project/-/issues/1", "--branch", "1-contract-branch", "--base-branch", "main", "--link-verified", "--json"})
 	})
 	contractWorktree := filepath.Join(filepath.Dir(workspaceDir), filepath.Base(workspaceDir)+".worktrees", "1-contract-branch")
-	if err := os.MkdirAll(contractWorktree, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(contractWorktree, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(contractWorktree, ".git", "HEAD"), []byte("ref: refs/heads/1-contract-branch\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	replacements[contractWorktree] = "$ISSUEOPS_WORKTREE"
@@ -248,22 +251,25 @@ func TestResponseContractsGolden(t *testing.T) {
 		"base_branch":   "main",
 		"link_verified": true,
 	})
-		mcpWorktree := filepath.Join(filepath.Dir(workspaceDir), filepath.Base(workspaceDir)+".worktrees", "2-mcp-contract")
-		if err := os.MkdirAll(mcpWorktree, 0o755); err != nil {
-			t.Fatal(err)
-		}
+	mcpWorktree := filepath.Join(filepath.Dir(workspaceDir), filepath.Base(workspaceDir)+".worktrees", "2-mcp-contract")
+	if err := os.MkdirAll(filepath.Join(mcpWorktree, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mcpWorktree, ".git", "HEAD"), []byte("ref: refs/heads/2-mcp-contract\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	replacements[mcpWorktree] = "$MCP_ISSUEOPS_WORKTREE"
 	addEvalSymlinkReplacement(t, replacements, mcpWorktree, "$MCP_ISSUEOPS_WORKTREE")
-		mcpSnapshot["issueops_link_worktree"] = runMCPToolContract(t, replacements, "issueops_link_worktree", map[string]any{
-			"id":            issueopsMCPID,
-			"worktree_path": mcpWorktree,
-		})
-		writeContractFile(t, mcpWorktree, "docs/superpowers/plans/mcp-contract.md", "plan\n")
-		mcpSnapshot["issueops_link_plan"] = runMCPToolContract(t, replacements, "issueops_link_plan", map[string]any{
-			"id":        issueopsMCPID,
-			"plan_path": filepath.Join(mcpWorktree, "docs", "superpowers", "plans", "mcp-contract.md"),
-		})
-		mcpSnapshot["issueops_link_child"] = runMCPToolContract(t, replacements, "issueops_link_child", map[string]any{
+	mcpSnapshot["issueops_link_worktree"] = runMCPToolContract(t, replacements, "issueops_link_worktree", map[string]any{
+		"id":            issueopsMCPID,
+		"worktree_path": mcpWorktree,
+	})
+	writeContractFile(t, mcpWorktree, "docs/superpowers/plans/mcp-contract.md", "plan\n")
+	mcpSnapshot["issueops_link_plan"] = runMCPToolContract(t, replacements, "issueops_link_plan", map[string]any{
+		"id":        issueopsMCPID,
+		"plan_path": filepath.Join(mcpWorktree, "docs", "superpowers", "plans", "mcp-contract.md"),
+	})
+	mcpSnapshot["issueops_link_child"] = runMCPToolContract(t, replacements, "issueops_link_child", map[string]any{
 		"id":        issueopsMCPID,
 		"child_url": "https://github.com/example/repo/issues/3",
 		"title":     "MCP contract child",
