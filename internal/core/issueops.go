@@ -301,6 +301,9 @@ func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, e
 	if parentProvider := issueOpsProviderFromURL(record.IssueURL); parentProvider != "" && issueOpsProviderFromURL(u) != parentProvider {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("child issue provider must match linked parent issue provider")
 	}
+	if err := validateIssueOpsChildMatchesParent(record.IssueURL, u); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
 	for _, link := range record.IssueLinks {
 		if link.Type == "child" && link.URL == u {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("child issue already linked: %s", u)
@@ -1222,6 +1225,25 @@ func validateRemoteArtifactMatchesIssue(issueURL, artifactURL, provider, kind st
 	}
 	if issueKey != artifactKey {
 		return fmt.Errorf("remote artifact url must match linked issue project")
+	}
+	return nil
+}
+
+func validateIssueOpsChildMatchesParent(parentURL, childURL string) error {
+	provider := issueOpsProviderFromURL(parentURL)
+	if provider == "" {
+		return nil
+	}
+	if issueOpsIssueNumber(childURL) == "" {
+		return fmt.Errorf("child issue url must be a numeric %s issue URL", provider)
+	}
+	parentKey := issueOpsRemoteProjectKey(parentURL, provider, "issue")
+	childKey := issueOpsRemoteProjectKey(childURL, provider, "issue")
+	if parentKey == "" || childKey == "" {
+		return fmt.Errorf("child issue url must be a %s issue URL", provider)
+	}
+	if parentKey != childKey {
+		return fmt.Errorf("child issue url must match linked parent issue project")
 	}
 	return nil
 }

@@ -1025,6 +1025,30 @@ func TestIssueOpsChildLinksPersistProviderNeutralGraph(t *testing.T) {
 	if _, err := LinkIssueOpsChild(stateRoot, record.ID, "https://tracker.example/acme/repo/issues/12", "generic tracker child"); err == nil || !strings.Contains(err.Error(), "provider") {
 		t.Fatalf("generic child under GitHub parent should be rejected as provider mismatch, got %v", err)
 	}
+	if _, err := LinkIssueOpsChild(stateRoot, record.ID, "https://github.com/other/repo/issues/12", "other repo child"); err == nil || !strings.Contains(err.Error(), "parent issue project") {
+		t.Fatalf("GitHub child from another repo should be rejected, got %v", err)
+	}
+	if _, err := LinkIssueOpsChild(stateRoot, record.ID, "https://github.com/example/repo/issues/not-a-number", "bad child"); err == nil || !strings.Contains(err.Error(), "numeric github issue URL") {
+		t.Fatalf("GitHub child with nonnumeric issue should be rejected, got %v", err)
+	}
+	gitlab, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/gitlab", Branch: "20-gitlab"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitlab, err = LinkIssueOpsIssue(stateRoot, gitlab.ID, "https://gitlab.example/group/project/-/issues/20")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsChild(stateRoot, gitlab.ID, "https://gitlab.example/other/project/-/issues/21", "other project child"); err == nil || !strings.Contains(err.Error(), "parent issue project") {
+		t.Fatalf("GitLab child from another project should be rejected, got %v", err)
+	}
+	if _, err := LinkIssueOpsChild(stateRoot, gitlab.ID, "https://gitlab.example/group/project/-/issues/not-a-number", "bad child"); err == nil || !strings.Contains(err.Error(), "numeric gitlab issue URL") {
+		t.Fatalf("GitLab child with nonnumeric issue should be rejected, got %v", err)
+	}
+	gitlab, err = LinkIssueOpsChild(stateRoot, gitlab.ID, "https://gitlab.example/group/project/-/issues/21", "same project child")
+	if err != nil {
+		t.Fatalf("GitLab child in same project should be accepted: %v", err)
+	}
 	generic, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/generic", Branch: "10-generic"})
 	if err != nil {
 		t.Fatal(err)
