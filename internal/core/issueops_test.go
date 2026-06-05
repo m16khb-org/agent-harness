@@ -59,8 +59,18 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	if reloaded.ID != record.ID || reloaded.IssueURL != record.IssueURL || reloaded.PlanPath != record.PlanPath || len(reloaded.Feedback) != 1 {
 		t.Fatalf("reloaded record mismatch: %+v vs %+v", reloaded, record)
 	}
+	if ready := IssueOpsPRReadiness(reloaded); ready.Ready || !containsString(ready.Missing, "ai_slop_clean") {
+		t.Fatalf("cycle with issue and plan still needs ai-slop-clean before PR drafting: %+v", ready)
+	}
+	reloaded, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.AISlopCleanAt == "" {
+		t.Fatalf("ai-slop-clean phase should record completion time: %+v", reloaded)
+	}
 	if ready := IssueOpsPRReadiness(reloaded); !ready.Ready || len(ready.Missing) != 0 {
-		t.Fatalf("cycle with issue and plan should be PR-ready for drafting: %+v", ready)
+		t.Fatalf("cycle with issue, plan, and ai-slop-clean should be PR-ready for drafting: %+v", ready)
 	}
 }
 
@@ -155,12 +165,13 @@ func TestIssueOpsPrepareBranchRejectsUnlinkedGitLabBranchName(t *testing.T) {
 func TestIssueOpsStrictPRReadinessRequiresCleanSyncedRepo(t *testing.T) {
 	repo := initIssueOpsRepo(t)
 	record := IssueOpsRecord{
-		OK:           true,
-		Repo:         repo,
-		Branch:       "main",
-		IssueURL:     "https://gitlab.example/group/project/-/issues/1",
-		PlanPath:     "plans/demo.md",
-		WorktreePath: repo,
+		OK:            true,
+		Repo:          repo,
+		Branch:        "main",
+		IssueURL:      "https://gitlab.example/group/project/-/issues/1",
+		PlanPath:      "plans/demo.md",
+		WorktreePath:  repo,
+		AISlopCleanAt: "2026-06-05T00:00:00Z",
 	}
 
 	ready := IssueOpsStrictPRReadiness(record)
@@ -197,12 +208,13 @@ func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 		t.Fatal(err)
 	}
 	record := IssueOpsRecord{
-		OK:           true,
-		Repo:         repo,
-		Branch:       branch,
-		IssueURL:     "https://gitlab.example/group/project/-/issues/2",
-		PlanPath:     "plans/demo.md",
-		WorktreePath: worktree,
+		OK:            true,
+		Repo:          repo,
+		Branch:        branch,
+		IssueURL:      "https://gitlab.example/group/project/-/issues/2",
+		PlanPath:      "plans/demo.md",
+		WorktreePath:  worktree,
+		AISlopCleanAt: "2026-06-05T00:00:00Z",
 	}
 
 	ready := IssueOpsStrictPRReadiness(record)
@@ -226,7 +238,11 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, "nonsense"); err == nil {
 		t.Fatalf("expected unknown phase rejection")
 	}
-	// pr phase requires issue + plan evidence (readiness gate).
+	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	if err != nil || record.Phase != IssueOpsPhaseAISlopClean {
+		t.Fatalf("expected ai-slop-clean phase, got %+v err=%v", record, err)
+	}
+	// pr phase requires issue + plan + ai-slop-clean evidence (readiness gate).
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR)); err == nil {
 		t.Fatalf("pr phase without readiness should be rejected")
 	}

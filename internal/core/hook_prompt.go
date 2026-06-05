@@ -45,7 +45,7 @@ type HookRoutingRule struct {
 var hookRoutingRules = []HookRoutingRule{
 	{
 		Tool:           "issueops",
-		Reason:         "Use the issue-driven workflow for problem intake -> domain grill -> issue -> plan -> TDD/subagents -> feedback -> PR/MR; hooks must not create issues or PRs.",
+		Reason:         "Use the issue-driven workflow for problem intake -> domain grill -> issue -> plan -> TDD/subagents -> ai-slop-clean -> feedback -> PR/MR; hooks must not create issues or PRs.",
 		Priority:       hintPriorityAction,
 		LowerKeywords:  []string{"issueops", "issue-driven", "feedback loop", "pull request", "merge request"},
 		PromptKeywords: []string{"문제 파악", "이슈 기반", "피드백 루프", "PR", "MR", "이슈"},

@@ -1,11 +1,11 @@
 ---
 name: issueops
-description: Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, feedback loops, and PR/MR drafting.
+description: Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, AI slop cleanup, feedback loops, and PR/MR drafting.
 ---
 
 # IssueOps
 
-Use this skill when the user wants a repeatable cycle from a vague problem to a GitHub/GitLab issue, implementation plan, tested change, feedback loop, and PR/MR.
+Use this skill when the user wants a repeatable cycle from a vague problem to a GitHub/GitLab issue, implementation plan, tested change, AI slop cleanup, feedback loop, and PR/MR.
 
 This file is the phase router. Load only the referenced phase document needed for the current step.
 
@@ -22,8 +22,9 @@ Required phases:
 3. Issue contract: create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions.
 4. Plan: produce an issue-based implementation plan under the target repo's planning convention.
 5. Implementation: use TDD for behavior changes and subagents only for bounded independent work.
-6. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
-7. PR/MR: draft only after the issue URL and plan path are linked and relevant verification has run.
+6. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
+7. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
+8. PR/MR: draft only after the issue URL and plan path are linked, AI slop cleanup is complete, and relevant verification has run.
 
 ## Reference Map
 
@@ -32,6 +33,7 @@ Load these files only when the phase applies:
 - `references/remote-issue.md`: remote issue first, related issue/label scoring, external LLM judge contract, Korean remote artifact gate, issue template.
 - `references/evidence-contract.md`: portable domain contract, API documentation, live evidence, review accountability, and completion hygiene rules.
 - `references/worktree-context.md`: branch/worktree contract, local config symlink rules, context routing.
+- `references/ai-slop-clean.md`: PR/MR-prep cleanup prompt for removing lazy agent residue while preserving behavior.
 - `references/review-feedback.md`: worker prompt requirements, bounded subagent review rules, remote review feedback replies and thread resolution.
 - `references/cleanup-state.md`: post-merge cleanup, state commands, benchmark commands, stop conditions.
 
@@ -54,6 +56,7 @@ Load these files only when the phase applies:
 - Remote artifact ownership: created issues and PRs/MRs must be assigned to the currently authenticated user when the provider supports assignment, and assignment must be verified before reporting readiness.
 - Remote issue source of truth: when feedback changes scope, acceptance criteria, non-goals, verification, labels, related links, or implementation contract, update the remote issue body before continuing.
 - Review thread accountability: remote review feedback must be answered in the original review thread/discussion with verdict, evidence, and next action; do not report feedback cleared until addressed threads are replied to, resolved when appropriate, and re-checked.
+- AI slop clean before PR/MR: after implementation and before PR/MR drafting, inspect the actual worktree diff for lazy agent artifacts, unsupported claims, generic prose, dead scaffolding, unnecessary abstractions, weak comments, and brittle shortcuts. Remove them or record why they are intentional before moving to `pr`.
 - Completion hygiene: before reporting done, verify the final diff, target branch, remote issue/PR/MR prose freshness, single-commit or declared commit policy, and cleanup/worktree status.
 - External LLM wrapper: all IssueOps `agy -p` usage must go through the shared harness external LLM wrapper and remain read-only judgment.
 
@@ -126,10 +129,11 @@ agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 
 `link-child` records a provider-native child work item after it exists remotely. On GitHub that child should be a sub-issue; on GitLab it should be a child item/task. The command does not create remote issues and must not be used as a substitute for the provider-specific hierarchy rules.
 
-Advance the lifecycle phase (problem, grill, plan, implement, feedback, pr, done). The `pr` phase requires a linked issue and plan:
+Advance the lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The `pr` phase requires a linked issue, plan, and ai-slop-clean evidence:
 
 ```bash
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill --json
+agent-harness issueops phase --id "$ISSUEOPS_ID" --to ai-slop-clean --json
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to pr --json
 ```
 

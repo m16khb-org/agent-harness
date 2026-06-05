@@ -4920,10 +4920,10 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "issueops_set_phase",
-			"description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, feedback, pr, done). The pr phase requires linked issue and plan evidence.",
+			"description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The pr phase requires linked issue, plan, and ai-slop-clean evidence.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "phase"}, "properties": map[string]any{
 				"id":    map[string]any{"type": "string", "description": "IssueOps id."},
-				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, implement, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "implement", "feedback", "pr", "done"}},
+				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
 			}},
 		},
 		{

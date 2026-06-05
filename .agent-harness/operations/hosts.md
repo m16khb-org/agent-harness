@@ -11,7 +11,7 @@ Native skill examples:
 
 ```text
 Use $atomic-commit-push to review my changes, split them into atomic commits, and push safely.
-Use $issueops to run a problem -> issue -> plan -> TDD/subagent -> feedback -> PR/MR cycle.
+Use $issueops to run a problem -> issue -> plan -> TDD/subagent -> ai-slop-clean -> feedback -> PR/MR cycle.
 Use $workflows in Codex to run an explicit dynamic workflow with batched subagents.
 ```
 

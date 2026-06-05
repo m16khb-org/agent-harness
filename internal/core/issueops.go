@@ -15,23 +15,25 @@ import (
 type IssueOpsPhase string
 
 const (
-	IssueOpsPhaseProblem   IssueOpsPhase = "problem"
-	IssueOpsPhaseGrill     IssueOpsPhase = "grill"
-	IssueOpsPhasePlan      IssueOpsPhase = "plan"
-	IssueOpsPhaseImplement IssueOpsPhase = "implement"
-	IssueOpsPhaseFeedback  IssueOpsPhase = "feedback"
-	IssueOpsPhasePR        IssueOpsPhase = "pr"
-	IssueOpsPhaseDone      IssueOpsPhase = "done"
+	IssueOpsPhaseProblem     IssueOpsPhase = "problem"
+	IssueOpsPhaseGrill       IssueOpsPhase = "grill"
+	IssueOpsPhasePlan        IssueOpsPhase = "plan"
+	IssueOpsPhaseImplement   IssueOpsPhase = "implement"
+	IssueOpsPhaseAISlopClean IssueOpsPhase = "ai-slop-clean"
+	IssueOpsPhaseFeedback    IssueOpsPhase = "feedback"
+	IssueOpsPhasePR          IssueOpsPhase = "pr"
+	IssueOpsPhaseDone        IssueOpsPhase = "done"
 )
 
 // IssueOpsPhases lists every known IssueOps phase in lifecycle order, mirroring
 // the SKILL.md required phases (problem intake, domain grill, issue/plan,
-// implementation, feedback, PR/MR, done).
+// implementation, AI slop cleanup, feedback, PR/MR, done).
 var IssueOpsPhases = []IssueOpsPhase{
 	IssueOpsPhaseProblem,
 	IssueOpsPhaseGrill,
 	IssueOpsPhasePlan,
 	IssueOpsPhaseImplement,
+	IssueOpsPhaseAISlopClean,
 	IssueOpsPhaseFeedback,
 	IssueOpsPhasePR,
 	IssueOpsPhaseDone,
@@ -109,6 +111,7 @@ type IssueOpsRecord struct {
 	IssueLinks    []IssueOpsIssueLink    `json:"issue_links,omitempty"`
 	BranchPrepare *IssueOpsBranchPrepare `json:"branch_prepare,omitempty"`
 	Feedback      []IssueOpsFeedbackItem `json:"feedback,omitempty"`
+	AISlopCleanAt string                 `json:"ai_slop_clean_at,omitempty"`
 	CreatedAt     string                 `json:"created_at"`
 	UpdatedAt     string                 `json:"updated_at"`
 }
@@ -379,8 +382,9 @@ func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch string) [
 }
 
 // AdvanceIssueOpsPhase moves an IssueOps loop to an explicitly named phase. The
-// workflow is advisory, so any known phase is accepted; the only hard gate is
-// that the pr phase requires issue + plan evidence (PR/MR drafting precondition).
+// workflow is advisory, so any known phase is accepted; the hard gate is that
+// the pr phase requires issue + plan evidence and a completed ai-slop-clean pass
+// (PR/MR drafting preconditions).
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	phase := IssueOpsPhase(strings.TrimSpace(to))
 	if !knownIssueOpsPhase(phase) {
@@ -396,6 +400,9 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 		}
 	}
 	record.Phase = phase
+	if phase == IssueOpsPhaseAISlopClean && strings.TrimSpace(record.AISlopCleanAt) == "" {
+		record.AISlopCleanAt = time.Now().UTC().Format(time.RFC3339Nano)
+	}
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
@@ -406,6 +413,9 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	}
 	if strings.TrimSpace(record.PlanPath) == "" {
 		missing = append(missing, "plan_path")
+	}
+	if strings.TrimSpace(record.AISlopCleanAt) == "" {
+		missing = append(missing, "ai_slop_clean")
 	}
 	return IssueOpsReadiness{
 		OK:           true,
@@ -556,7 +566,7 @@ func gitBranchFromAncestor(path string) string {
 // for which isolated-worktree work is expected.
 func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
 	switch phase {
-	case IssueOpsPhaseImplement, IssueOpsPhaseFeedback, IssueOpsPhasePR:
+	case IssueOpsPhaseImplement, IssueOpsPhaseAISlopClean, IssueOpsPhaseFeedback, IssueOpsPhasePR:
 		return true
 	default:
 		return false

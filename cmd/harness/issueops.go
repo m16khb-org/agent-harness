@@ -83,7 +83,7 @@ func runIssueOps(args []string) error {
 	case "phase":
 		fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
-		to := fs.String("to", "", "target phase: problem, grill, plan, implement, feedback, pr, done")
+		to := fs.String("to", "", "target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, done")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if err := fs.Parse(args[1:]); err != nil {
 			return err
@@ -620,7 +620,7 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 			"선택지:",
 			"1. Proceed: 다음 IssueOps phase로 진행한다. (추천)",
 			"2. Revise: 현재 phase의 issue/plan/task contract를 수정한다.",
-			"3. Jump: issue, plan, implementation, feedback, PR phase 중 필요한 단계로 이동한다.",
+			"3. Jump: issue, plan, implementation, ai-slop-clean, feedback, PR phase 중 필요한 단계로 이동한다.",
 			"4. Pause: 사용자 결정 전까지 진행을 멈춘다.",
 		}, "\n"),
 		BranchName:             branchName,

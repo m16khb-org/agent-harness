@@ -98,6 +98,28 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("feedback should be persisted: %#v", feedbackRecord)
 	}
 
+	beforeCleanReadiness := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"pr-readiness", "--id", id, "--json"})
+	})
+	var beforeClean map[string]any
+	if err := json.Unmarshal([]byte(beforeCleanReadiness), &beforeClean); err != nil {
+		t.Fatalf("readiness should return JSON: %v\n%s", err, beforeCleanReadiness)
+	}
+	if beforeClean["ready"] == true || !strings.Contains(beforeCleanReadiness, "ai_slop_clean") {
+		t.Fatalf("PR readiness should require ai-slop-clean before drafting: %#v", beforeClean)
+	}
+
+	cleaned := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"phase", "--id", id, "--to", "ai-slop-clean", "--json"})
+	})
+	var cleanedRecord map[string]any
+	if err := json.Unmarshal([]byte(cleaned), &cleanedRecord); err != nil {
+		t.Fatalf("ai-slop-clean phase should return JSON: %v\n%s", err, cleaned)
+	}
+	if cleanedRecord["phase"] != "ai-slop-clean" || cleanedRecord["ai_slop_clean_at"] == "" {
+		t.Fatalf("ai-slop-clean should be persisted before PR readiness: %#v", cleanedRecord)
+	}
+
 	readiness := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"pr-readiness", "--id", id, "--json"})
 	})
@@ -106,7 +128,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("readiness should return JSON: %v\n%s", err, readiness)
 	}
 	if ready["ready"] != true {
-		t.Fatalf("expected PR readiness once issue and plan are linked: %#v", ready)
+		t.Fatalf("expected PR readiness once issue, plan, and ai-slop-clean are linked: %#v", ready)
 	}
 }
 

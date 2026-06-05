@@ -219,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "8c12c3380551dceb3a21cbaf8af6a722ae6ab4cd74986527eff51e50943eaa2e",
+      "hash": "84f4916abb89e1761335ebb19e2fbebd370885b512ac15c96233e8b4e2f99d29",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -379,6 +379,7 @@
           "plan_path",
           "branch_prepare",
           "feedback",
+          "ai_slop_clean_at",
           "created_at",
           "updated_at"
         ],
@@ -731,7 +732,7 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 3864,
+          "bytes": 3881,
           "headings": [
             "Host Operations",
             "Codex",
@@ -969,7 +970,7 @@
           "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
         },
         {
-          "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, feedback loops, and PR/MR drafting.",
+          "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, AI slop cleanup, feedback loops, and PR/MR drafting.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "issueops",
@@ -1144,10 +1145,12 @@
     "issueops_pr_readiness": {
       "branch": "1-contract-branch",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
-      "missing": [],
+      "missing": [
+        "ai_slop_clean"
+      ],
       "ok": true,
       "plan_path": "docs/superpowers/plans/contract.md",
-      "ready": true,
+      "ready": false,
       "worktree_path": "/tmp/agent-harness-contract.worktree"
     },
     "issueops_prepare_branch": {
@@ -3287,7 +3290,7 @@
                 "name": "version"
               }
             ],
-            "hash": "8c12c3380551dceb3a21cbaf8af6a722ae6ab4cd74986527eff51e50943eaa2e",
+            "hash": "84f4916abb89e1761335ebb19e2fbebd370885b512ac15c96233e8b4e2f99d29",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3447,6 +3450,7 @@
                 "plan_path",
                 "branch_prepare",
                 "feedback",
+                "ai_slop_clean_at",
                 "created_at",
                 "updated_at"
               ],
@@ -3806,7 +3810,7 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 3864,
+                "bytes": 3881,
                 "headings": [
                   "Host Operations",
                   "Codex",
@@ -4051,7 +4055,7 @@
                 "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
               },
               {
-                "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, feedback loops, and PR/MR drafting.",
+                "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, AI slop cleanup, feedback loops, and PR/MR drafting.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "issueops",
@@ -4258,10 +4262,12 @@
           "json": {
             "branch": "feature/mcp-contract",
             "issue_url": "https://github.com/example/repo/issues/2",
-            "missing": [],
+            "missing": [
+              "ai_slop_clean"
+            ],
             "ok": true,
             "plan_path": "docs/superpowers/plans/mcp-contract.md",
-            "ready": true,
+            "ready": false,
             "worktree_path": "/tmp/agent-harness-mcp-contract.worktree"
           },
           "type": "text"

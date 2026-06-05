@@ -801,6 +801,22 @@ func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 	}
 }
 
+func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseAISlopClean)
+	id := newIssueOpsID(repo, "feat/x")
+	linked := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
+		t.Fatal(err)
+	}
+	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, "linked IssueOps worktree") {
+		t.Fatalf("source-checkout edit should block during ai-slop-clean, got %+v", blocked)
+	}
+}
+
 func TestWorktreeGuardBlocksOtherWorktreeWhenCycleHasExactWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)

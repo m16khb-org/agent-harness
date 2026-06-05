@@ -681,7 +681,7 @@
     "name": "issueops_add_feedback"
   },
   {
-    "description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, feedback, pr, done). The pr phase requires linked issue and plan evidence.",
+    "description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The pr phase requires linked issue, plan, and ai-slop-clean evidence.",
     "inputSchema": {
       "properties": {
         "id": {
@@ -689,12 +689,13 @@
           "type": "string"
         },
         "phase": {
-          "description": "Target phase: problem, grill, plan, implement, feedback, pr, or done.",
+          "description": "Target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, or done.",
           "enum": [
             "problem",
             "grill",
             "plan",
             "implement",
+            "ai-slop-clean",
             "feedback",
             "pr",
             "done"
