@@ -515,13 +515,14 @@ func koreanRemoteArtifactBlockReason(req HookToolUseLifecycleRequest) string {
 }
 
 type remoteArtifactCommand struct {
-	provider  string
-	kind      string
-	action    string
-	title     string
-	body      string
-	labels    []string
-	assignees []string
+	provider        string
+	kind            string
+	action          string
+	createFromIssue bool
+	title           string
+	body            string
+	labels          []string
+	assignees       []string
 }
 
 func remoteArtifactCLIName(artifact remoteArtifactCommand) string {
@@ -555,7 +556,15 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 			continue
 		}
 		if action == "for" || action == "new-for" || action == "create-for" {
+			artifactCreateFromIssue := true
 			action = "create"
+			artifact := remoteArtifactCommand{provider: provider, kind: kind, action: action, createFromIssue: artifactCreateFromIssue}
+			args := tokens[i+3:]
+			if remoteArtifactHelpRequested(args) {
+				return remoteArtifactCommand{}, false
+			}
+			parseRemoteArtifactArgs(&artifact, repo, args)
+			return artifact, true
 		}
 		if action != "create" && action != "edit" && action != "update" {
 			continue
@@ -565,68 +574,72 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 		if remoteArtifactHelpRequested(args) {
 			return remoteArtifactCommand{}, false
 		}
-		for j := 0; j < len(args); j++ {
-			arg := args[j]
-			switch {
-			case arg == "--title" || arg == "-t":
-				if j+1 < len(args) {
-					artifact.title = args[j+1]
-					j++
-				}
-			case strings.HasPrefix(arg, "--title="):
-				artifact.title = strings.TrimPrefix(arg, "--title=")
-			// gh: --body/-b and --body-file/-F. glab: --description/-d.
-			case arg == "--body" || arg == "-b" || arg == "--description" || arg == "-d":
-				if j+1 < len(args) {
-					artifact.body = args[j+1]
-					j++
-				}
-			case strings.HasPrefix(arg, "--body="):
-				artifact.body = strings.TrimPrefix(arg, "--body=")
-			case strings.HasPrefix(arg, "--description="):
-				artifact.body = strings.TrimPrefix(arg, "--description=")
-			case arg == "--body-file" || arg == "-F":
-				if j+1 < len(args) {
-					artifact.body = readRemoteArtifactBodyFile(repo, args[j+1])
-					j++
-				}
-			case strings.HasPrefix(arg, "--body-file="):
-				artifact.body = readRemoteArtifactBodyFile(repo, strings.TrimPrefix(arg, "--body-file="))
-			case arg == "--label" || arg == "-l" || arg == "--labels" || arg == "--add-label":
-				if j+1 < len(args) {
-					artifact.labels = appendRemoteArtifactLabels(artifact.labels, args[j+1])
-					j++
-				}
-			case arg == "--copy-issue-labels":
-				artifact.labels = appendRemoteArtifactLabels(artifact.labels, "copied-from-linked-issue")
-			case arg == "--with-labels":
-				artifact.labels = appendRemoteArtifactLabels(artifact.labels, "copied-from-linked-issue")
-			case strings.HasPrefix(arg, "--label="):
-				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--label="))
-			case strings.HasPrefix(arg, "--labels="):
-				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--labels="))
-			case strings.HasPrefix(arg, "--add-label="):
-				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--add-label="))
-			case arg == "--assignee" || arg == "-a" || arg == "--assignees" || arg == "--add-assignee" || arg == "--assignee-id" || arg == "--assignee-ids":
-				if j+1 < len(args) {
-					artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, args[j+1])
-					j++
-				}
-			case strings.HasPrefix(arg, "--assignee="):
-				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee="))
-			case strings.HasPrefix(arg, "--assignees="):
-				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignees="))
-			case strings.HasPrefix(arg, "--add-assignee="):
-				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--add-assignee="))
-			case strings.HasPrefix(arg, "--assignee-id="):
-				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee-id="))
-			case strings.HasPrefix(arg, "--assignee-ids="):
-				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee-ids="))
-			}
-		}
+		parseRemoteArtifactArgs(&artifact, repo, args)
 		return artifact, true
 	}
 	return remoteArtifactCommand{}, false
+}
+
+func parseRemoteArtifactArgs(artifact *remoteArtifactCommand, repo string, args []string) {
+	for j := 0; j < len(args); j++ {
+		arg := args[j]
+		switch {
+		case arg == "--title" || arg == "-t":
+			if j+1 < len(args) {
+				artifact.title = args[j+1]
+				j++
+			}
+		case strings.HasPrefix(arg, "--title="):
+			artifact.title = strings.TrimPrefix(arg, "--title=")
+		// gh: --body/-b and --body-file/-F. glab: --description/-d.
+		case arg == "--body" || arg == "-b" || arg == "--description" || arg == "-d":
+			if j+1 < len(args) {
+				artifact.body = args[j+1]
+				j++
+			}
+		case strings.HasPrefix(arg, "--body="):
+			artifact.body = strings.TrimPrefix(arg, "--body=")
+		case strings.HasPrefix(arg, "--description="):
+			artifact.body = strings.TrimPrefix(arg, "--description=")
+		case arg == "--body-file" || arg == "-F":
+			if j+1 < len(args) {
+				artifact.body = readRemoteArtifactBodyFile(repo, args[j+1])
+				j++
+			}
+		case strings.HasPrefix(arg, "--body-file="):
+			artifact.body = readRemoteArtifactBodyFile(repo, strings.TrimPrefix(arg, "--body-file="))
+		case arg == "--label" || arg == "-l" || arg == "--labels" || arg == "--add-label":
+			if j+1 < len(args) {
+				artifact.labels = appendRemoteArtifactLabels(artifact.labels, args[j+1])
+				j++
+			}
+		case arg == "--copy-issue-labels":
+			artifact.labels = appendRemoteArtifactLabels(artifact.labels, "copied-from-linked-issue")
+		case arg == "--with-labels":
+			artifact.labels = appendRemoteArtifactLabels(artifact.labels, "copied-from-linked-issue")
+		case strings.HasPrefix(arg, "--label="):
+			artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--label="))
+		case strings.HasPrefix(arg, "--labels="):
+			artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--labels="))
+		case strings.HasPrefix(arg, "--add-label="):
+			artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--add-label="))
+		case arg == "--assignee" || arg == "-a" || arg == "--assignees" || arg == "--add-assignee" || arg == "--assignee-id" || arg == "--assignee-ids":
+			if j+1 < len(args) {
+				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, args[j+1])
+				j++
+			}
+		case strings.HasPrefix(arg, "--assignee="):
+			artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee="))
+		case strings.HasPrefix(arg, "--assignees="):
+			artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignees="))
+		case strings.HasPrefix(arg, "--add-assignee="):
+			artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--add-assignee="))
+		case strings.HasPrefix(arg, "--assignee-id="):
+			artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee-id="))
+		case strings.HasPrefix(arg, "--assignee-ids="):
+			artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee-ids="))
+		}
+	}
 }
 
 func remoteArtifactHelpRequested(args []string) bool {
@@ -682,7 +695,38 @@ func vcsIssueLinkingBlockReason(req HookToolUseLifecycleRequest) string {
 	if artifact.action == "create" && len(artifact.assignees) == 0 {
 		return fmt.Sprintf("IssueOps remote %s create must include an assignee before %s %s create; assign the artifact to the currently authenticated user and verify the assignee list before reporting readiness", artifact.kind, artifact.provider, artifact.kind)
 	}
+	if artifact.action == "create" && artifact.provider == "gitlab" {
+		if reason := gitLabRemoteAssigneeBlockReason(artifact); reason != "" {
+			return reason
+		}
+	}
 	return ""
+}
+
+func gitLabRemoteAssigneeBlockReason(artifact remoteArtifactCommand) string {
+	for _, assignee := range artifact.assignees {
+		value := strings.TrimSpace(strings.ToLower(assignee))
+		switch value {
+		case "@me", "me", "self", "current_user", "current-user", "currentuser":
+			return "IssueOps GitLab remote create must use a concrete current-user username or numeric assignee id, not a placeholder such as @me; resolve it first with glab api user --jq .username or glab api user --jq .id, then verify the remote assignee list"
+		}
+		if artifact.kind == "mr" && artifact.createFromIssue && !allDigits(value) {
+			return "IssueOps GitLab issue-based MR create (`glab mr for`) must pass numeric assignee IDs because this glab command does not accept usernames; resolve the current user id with glab api user --jq .id and verify the remote assignee list"
+		}
+	}
+	return ""
+}
+
+func allDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func stagedCheckDecision(req HookToolUseLifecycleRequest) (string, string) {
@@ -923,7 +967,7 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 	expected := cleanAbsPath(req.ExpectedWorktree)
 	if expected == "" {
 		if creation := localIssueOpsBranchCreation(req.Command); creation.Branch != "" {
-			if err := validateIssueOpsGitFlowBranch(creation.Branch); err != nil {
+			if err := validateIssueOpsIssueBranch(creation.Branch); err != nil {
 				return err.Error()
 			}
 			if strings.TrimSpace(creation.SourceRef) == "" {

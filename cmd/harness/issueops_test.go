@@ -12,7 +12,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIRepoForTest(t, "example")
 	start := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", repo, "--branch", "feature/provider-linked-branch", "--json"})
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "456-provider-linked-branch", "--json"})
 	})
 	var record map[string]any
 	if err := json.Unmarshal([]byte(start), &record); err != nil {
@@ -35,14 +35,14 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 
 	branch := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/provider-linked-branch", "--base-branch", "main", "--link-verified", "--json"})
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "456-provider-linked-branch", "--base-branch", "main", "--link-verified", "--json"})
 	})
 	var branchRecord map[string]any
 	if err := json.Unmarshal([]byte(branch), &branchRecord); err != nil {
 		t.Fatalf("branch prepare should return JSON: %v\n%s", err, branch)
 	}
 	prepare, ok := branchRecord["branch_prepare"].(map[string]any)
-	if !ok || prepare["provider"] != "github" || prepare["branch"] != "feature/provider-linked-branch" {
+	if !ok || prepare["provider"] != "github" || prepare["branch"] != "456-provider-linked-branch" {
 		t.Fatalf("branch prepare should persist provider-linked contract: %#v", branchRecord)
 	}
 	steps, ok := prepare["steps"].([]any)
@@ -62,7 +62,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("plan link should move to implement phase: %#v", planRecord)
 	}
 
-	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "feature-demo")
+	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
 	worktree := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktreePath, "--json"})
 	})
@@ -147,9 +147,9 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	repo := makeIssueOpsCLIRepoForTest(t, "example")
-	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "feature-demo")
+	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
 	start := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", repo, "--branch", "feature/demo", "--json"})
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "1-demo", "--json"})
 	})
 	var record map[string]any
 	if err := json.Unmarshal([]byte(start), &record); err != nil {
@@ -160,7 +160,7 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 		return runIssueOps([]string{"link-issue", "--id", id, "--issue-url", "https://github.com/example/repo/issues/1", "--json"})
 	})
 	_ = captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/demo", "--base-branch", "main", "--link-verified", "--json"})
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "1-demo", "--base-branch", "main", "--link-verified", "--json"})
 	})
 	_ = captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktree, "--json"})
@@ -200,7 +200,7 @@ func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	repo := makeIssueOpsCLIRepoForTest(t, "example")
-	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "feature-demo")
+	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
 	if err := os.WriteFile(filepath.Join(worktree, "package.json"), []byte(`{"name":"demo"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +208,7 @@ func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 	start := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", repo, "--branch", "feature/demo", "--json"})
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "1-demo", "--json"})
 	})
 	var record map[string]any
 	if err := json.Unmarshal([]byte(start), &record); err != nil {
@@ -219,7 +219,7 @@ func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
 		return runIssueOps([]string{"link-issue", "--id", id, "--issue-url", "https://github.com/example/repo/issues/1", "--json"})
 	})
 	_ = captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/demo", "--base-branch", "main", "--link-verified", "--json"})
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "1-demo", "--base-branch", "main", "--link-verified", "--json"})
 	})
 	_ = captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktree, "--json"})

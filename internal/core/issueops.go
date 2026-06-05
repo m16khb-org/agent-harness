@@ -134,7 +134,7 @@ func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, 
 		return IssueOpsRecord{OK: false}, fmt.Errorf("repo is required")
 	}
 	branch := strings.TrimSpace(req.Branch)
-	if err := validateIssueOpsGitFlowBranch(branch); err != nil {
+	if err := validateIssueOpsIssueBranch(branch); err != nil {
 		return IssueOpsRecord{OK: false}, err
 	}
 	id := newIssueOpsID(repo, branch)
@@ -294,7 +294,7 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 	if branch == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("branch is required")
 	}
-	if err := validateIssueOpsGitFlowBranch(branch); err != nil {
+	if err := validateIssueOpsIssueBranch(branch); err != nil {
 		return IssueOpsRecord{OK: false}, err
 	}
 	baseBranch := strings.TrimSpace(req.BaseBranch)
@@ -303,9 +303,8 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 	}
 	if provider == "gitlab" {
 		if issueNumber := issueOpsIssueNumber(issueURL); issueNumber != "" {
-			_, slug, _ := issueOpsGitFlowBranchParts(branch)
-			if !strings.HasPrefix(slug, issueNumber+"-") {
-				return IssueOpsRecord{OK: false}, fmt.Errorf("gitlab branch for issue %s must start with a gitflow prefix followed by %s-; for example feature/%s-...", issueNumber, issueNumber, issueNumber)
+			if !strings.HasPrefix(branch, issueNumber+"-") {
+				return IssueOpsRecord{OK: false}, fmt.Errorf("gitlab branch for issue %s must start with %s- so GitLab links it in the issue Development section; for example %s-fix-login", issueNumber, issueNumber, issueNumber)
 			}
 		}
 	}
@@ -340,40 +339,31 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
-var issueOpsGitFlowBranchPrefixes = []string{
-	"feature/",
-	"hotfix/",
-	"bugfix/",
-	"release/",
-	"chore/",
-	"docs/",
-	"refactor/",
-	"test/",
-}
-
-func validateIssueOpsGitFlowBranch(branch string) error {
+func validateIssueOpsIssueBranch(branch string) error {
 	branch = strings.TrimSpace(branch)
 	if branch == "" {
 		return nil
 	}
 	if strings.ContainsAny(branch, " \t\r\n") || strings.HasPrefix(branch, "/") || strings.Contains(branch, "..") {
-		return fmt.Errorf("issueops gitflow branch contains invalid characters: %s", branch)
+		return fmt.Errorf("issueops branch contains invalid characters: %s", branch)
 	}
-	_, slug, ok := issueOpsGitFlowBranchParts(branch)
-	if !ok || strings.TrimSpace(slug) == "" {
-		return fmt.Errorf("issueops gitflow branch must start with one of %s; use names like feature/2386-remove-dmm-ranking-ranktype or hotfix/2387-fix-grpc-ai-dmm-tag-replication-lag", strings.Join(issueOpsGitFlowBranchPrefixes, ", "))
+	issueNumber, slug, ok := strings.Cut(branch, "-")
+	if !ok || strings.TrimSpace(slug) == "" || !isDecimalString(issueNumber) {
+		return fmt.Errorf("issueops branch must start with the issue number followed by a hyphen so GitLab links it; use names like 2387-fix-grpc-ai-dmm-tag-replication-lag or 2388-fanza-delete-404-stale-registered")
 	}
 	return nil
 }
 
-func issueOpsGitFlowBranchParts(branch string) (string, string, bool) {
-	branch = strings.TrimSpace(branch)
-	for _, prefix := range issueOpsGitFlowBranchPrefixes {
-		if strings.HasPrefix(branch, prefix) {
-			return prefix, strings.TrimPrefix(branch, prefix), true
+func isDecimalString(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
 		}
 	}
-	return "", branch, false
+	return true
 }
 
 func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {

@@ -770,9 +770,9 @@ func mcpRemoteArtifactCommandFromHookObject(obj map[string]any, toolInput map[st
 	}
 	action := ""
 	switch {
-	case strings.Contains(tool, "create") || strings.Contains(tool, "open"):
-		action = "create"
 	case strings.HasSuffix(tool, "_for") || strings.Contains(tool, "create_for") || strings.Contains(tool, "create-for"):
+		action = "for"
+	case strings.Contains(tool, "create") || strings.Contains(tool, "open"):
 		action = "create"
 	case strings.Contains(tool, "update"):
 		action = "update"

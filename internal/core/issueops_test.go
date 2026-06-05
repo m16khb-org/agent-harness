@@ -13,11 +13,11 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "feature/demo"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.ID == "" || record.Phase != IssueOpsPhaseProblem || record.Repo != repo || record.Branch != "feature/demo" {
+	if record.ID == "" || record.Phase != IssueOpsPhaseProblem || record.Repo != repo || record.Branch != "1-demo" {
 		t.Fatalf("unexpected start record: %+v", record)
 	}
 	if ready := IssueOpsPRReadiness(record); ready.Ready {
@@ -35,7 +35,7 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
-		Branch:       "feature/demo",
+		Branch:       "1-demo",
 		BaseBranch:   "main",
 		LinkVerified: true,
 	})
@@ -52,7 +52,7 @@ func TestIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("plan link should move to implement phase: %+v", record)
 	}
 
-	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "feature-demo")
+	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
 	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, worktree)
 	if err != nil {
 		t.Fatal(err)
@@ -101,19 +101,19 @@ func TestIssueOpsLifecycle(t *testing.T) {
 
 func TestIssueOpsStartRequiresIssueBranch(t *testing.T) {
 	stateRoot := t.TempDir()
-	for _, branch := range []string{"main", "development", "2387-fix-grpc-ai-dmm-tag-replication-lag"} {
-		if _, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: branch}); err == nil || !strings.Contains(err.Error(), "gitflow branch") {
+	for _, branch := range []string{"main", "development", "feature/2387-fix-grpc-ai-dmm-tag-replication-lag"} {
+		if _, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: branch}); err == nil || !strings.Contains(err.Error(), "issue number") {
 			t.Fatalf("start should reject non-IssueOps branch %q, got %v", branch, err)
 		}
 	}
-	if _, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/2387-fix-grpc-ai-dmm-tag-replication-lag"}); err != nil {
-		t.Fatalf("start should accept IssueOps gitflow branch: %v", err)
+	if _, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "2387-fix-grpc-ai-dmm-tag-replication-lag"}); err != nil {
+		t.Fatalf("start should accept GitLab-linked IssueOps branch: %v", err)
 	}
 }
 
 func TestIssueOpsImplementationLinksRequireBranchEvidence(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestIssueOpsImplementationLinksRequireBranchEvidence(t *testing.T) {
 	if _, err := PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:   "github",
 		IssueURL:   record.IssueURL,
-		Branch:     "feature/demo",
+		Branch:     "1-demo",
 		BaseBranch: "main",
 	}); err != nil {
 		t.Fatal(err)
@@ -146,14 +146,14 @@ func TestIssueOpsImplementationLinksRequireBranchEvidence(t *testing.T) {
 
 func TestIssueOpsBranchPrepareRequiresLinkedIssue(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:   "github",
 		IssueURL:   "https://github.com/example/repo/issues/1",
-		Branch:     "feature/demo",
+		Branch:     "1-demo",
 		BaseBranch: "main",
 	})
 	if err == nil || !strings.Contains(err.Error(), "issue must be linked") {
@@ -163,7 +163,7 @@ func TestIssueOpsBranchPrepareRequiresLinkedIssue(t *testing.T) {
 
 func TestIssueOpsGitLabBranchPrepareRequiresIssueNumberPrefix(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/123-provider-linked-branch"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "123-provider-linked-branch"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,15 +174,15 @@ func TestIssueOpsGitLabBranchPrepareRequiresIssueNumberPrefix(t *testing.T) {
 	if _, err := PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:   "gitlab",
 		IssueURL:   record.IssueURL,
-		Branch:     "feature/provider-linked-branch",
+		Branch:     "456-provider-linked-branch",
 		BaseBranch: "main",
-	}); err == nil || !strings.Contains(err.Error(), "feature/123-") {
+	}); err == nil || !strings.Contains(err.Error(), "123-") {
 		t.Fatalf("gitlab branch missing issue number prefix should fail, got %v", err)
 	}
 	if _, err := PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:     "gitlab",
 		IssueURL:     record.IssueURL,
-		Branch:       "feature/123-provider-linked-branch",
+		Branch:       "123-provider-linked-branch",
 		BaseBranch:   "main",
 		LinkVerified: true,
 	}); err != nil {
@@ -192,7 +192,7 @@ func TestIssueOpsGitLabBranchPrepareRequiresIssueNumberPrefix(t *testing.T) {
 
 func TestIssueOpsChildLinkRequiresLinkedParentIssue(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestIssueOpsChildLinkRequiresLinkedParentIssue(t *testing.T) {
 
 func TestIssueOpsWorktreeLinkRequiresExistingDirectory(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestIssueOpsWorktreeLinkRequiresExistingDirectory(t *testing.T) {
 	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
-		Branch:       "feature/demo",
+		Branch:       "1-demo",
 		BaseBranch:   "main",
 		LinkVerified: true,
 	})
@@ -241,7 +241,7 @@ func TestIssueOpsWorktreeLinkRequiresSiblingIsolation(t *testing.T) {
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "feature/demo"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +252,7 @@ func TestIssueOpsWorktreeLinkRequiresSiblingIsolation(t *testing.T) {
 	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
-		Branch:       "feature/demo",
+		Branch:       "1-demo",
 		BaseBranch:   "main",
 		LinkVerified: true,
 	})
@@ -262,14 +262,14 @@ func TestIssueOpsWorktreeLinkRequiresSiblingIsolation(t *testing.T) {
 	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, repo); err == nil || !strings.Contains(err.Error(), "source checkout") {
 		t.Fatalf("source checkout as worktree should fail, got %v", err)
 	}
-	adHoc := filepath.Join(t.TempDir(), "feature-demo")
+	adHoc := filepath.Join(t.TempDir(), "1-demo")
 	if err := os.MkdirAll(adHoc, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, adHoc); err == nil || !strings.Contains(err.Error(), "sibling worktree") {
 		t.Fatalf("ad hoc worktree path should fail, got %v", err)
 	}
-	expected := makeIssueOpsWorktreeDirForTest(t, repo, "feature-demo")
+	expected := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
 	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, expected); err != nil {
 		t.Fatalf("sibling worktree should be accepted, got %v", err)
 	}
@@ -277,7 +277,7 @@ func TestIssueOpsWorktreeLinkRequiresSiblingIsolation(t *testing.T) {
 
 func TestIssueOpsDoneRequiresPRPhase(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestIssueOpsDoneRequiresPRPhase(t *testing.T) {
 
 func TestIssueOpsPrepareBranchRecordsProviderFallbackOrder(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/123-provider-linked-branch"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "123-provider-linked-branch"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,16 +300,16 @@ func TestIssueOpsPrepareBranchRecordsProviderFallbackOrder(t *testing.T) {
 	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:        "gitlab",
 		IssueURL:        record.IssueURL,
-		Branch:          "feature/123-provider-linked-branch",
+		Branch:          "123-provider-linked-branch",
 		BaseBranch:      "main",
 		BaseSHA:         "abc123",
 		LinkVerified:    true,
-		RemoteBranchURL: "https://gitlab.example/group/project/-/tree/feature/123-provider-linked-branch",
+		RemoteBranchURL: "https://gitlab.example/group/project/-/tree/123-provider-linked-branch",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.Branch != "feature/123-provider-linked-branch" || record.BranchPrepare == nil {
+	if record.Branch != "123-provider-linked-branch" || record.BranchPrepare == nil {
 		t.Fatalf("branch prepare should update record branch and state: %+v", record)
 	}
 	prepare := record.BranchPrepare
@@ -332,7 +332,7 @@ func TestIssueOpsPrepareBranchRecordsProviderFallbackOrder(t *testing.T) {
 
 func TestIssueOpsPrepareBranchUsesGitHubDevelopFallback(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/provider-linked-branch"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "456-provider-linked-branch"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +343,7 @@ func TestIssueOpsPrepareBranchUsesGitHubDevelopFallback(t *testing.T) {
 	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:   "github",
 		IssueURL:   record.IssueURL,
-		Branch:     "feature/provider-linked-branch",
+		Branch:     "456-provider-linked-branch",
 		BaseBranch: "main",
 	})
 	if err != nil {
@@ -363,7 +363,7 @@ func TestIssueOpsPrepareBranchUsesGitHubDevelopFallback(t *testing.T) {
 
 func TestIssueOpsPrepareBranchRejectsUnlinkedGitLabBranchName(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/123-provider-linked-branch"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "123-provider-linked-branch"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,10 +374,10 @@ func TestIssueOpsPrepareBranchRejectsUnlinkedGitLabBranchName(t *testing.T) {
 	_, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
 		Provider:   "gitlab",
 		IssueURL:   record.IssueURL,
-		Branch:     "feature/provider-linked-branch",
+		Branch:     "456-provider-linked-branch",
 		BaseBranch: "main",
 	})
-	if err == nil || !strings.Contains(err.Error(), "feature/123-") {
+	if err == nil || !strings.Contains(err.Error(), "123-") {
 		t.Fatalf("expected GitLab issue prefix rejection, got %v", err)
 	}
 }
@@ -411,7 +411,7 @@ func TestIssueOpsStrictPRReadinessRequiresCleanSyncedRepo(t *testing.T) {
 
 func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 	repo := initIssueOpsRepo(t)
-	branch := "feature/issue-worktree"
+	branch := "12-issue-worktree"
 	if code, _, stderr := GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
 		t.Fatalf("git checkout branch failed: %s", stderr)
 	}
@@ -448,7 +448,7 @@ func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)
-	branch := "feature/demo"
+	branch := "1-demo"
 	if code, _, stderr := GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
 		t.Fatalf("git checkout branch failed: %s", stderr)
 	}
@@ -458,7 +458,7 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if code, _, stderr := GitCmd(repo, "checkout", "-q", "main"); code != 0 {
 		t.Fatalf("git checkout main failed: %s", stderr)
 	}
-	worktree := issueOpsWorktreePathForTest(repo, "feature-demo")
+	worktree := issueOpsWorktreePathForTest(repo, "1-demo")
 	if code, _, stderr := GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
 		t.Fatalf("git worktree add failed: %s", stderr)
 	}
@@ -546,7 +546,7 @@ func TestIssueOpsFeedbackRecordsClassification(t *testing.T) {
 
 func TestIssueOpsChildLinksPersistProviderNeutralGraph(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -583,7 +583,7 @@ func TestIssueOpsChildLinksPersistProviderNeutralGraph(t *testing.T) {
 	if _, err := LinkIssueOpsChild(stateRoot, record.ID, "https://tracker.example/acme/repo/issues/12", "generic tracker child"); err == nil || !strings.Contains(err.Error(), "provider") {
 		t.Fatalf("generic child under GitHub parent should be rejected as provider mismatch, got %v", err)
 	}
-	generic, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/generic", Branch: "feature/generic"})
+	generic, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/generic", Branch: "10-generic"})
 	if err != nil {
 		t.Fatal(err)
 	}

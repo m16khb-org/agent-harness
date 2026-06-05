@@ -40,7 +40,7 @@ Load these files only when the phase applies:
 ## Always-On Rules
 
 - Remote issue first: when `$issueops` is explicitly invoked and repo remote, credentials, target project, branch target, and issue ownership are discoverable, create or link the remote issue before planning or implementation.
-- GitFlow branch first: IssueOps branches must use a GitFlow-style prefix such as `feature/`, `hotfix/`, `bugfix/`, `release/`, `chore/`, `docs/`, `refactor/`, or `test/`; never create bare issue-number branches such as `2387-fix-grpc-ai-dmm-tag-replication-lag`. Use `hotfix/2387-fix-grpc-ai-dmm-tag-replication-lag` or `feature/2386-remove-dmm-ranking-ranktype`.
+- Linked branch first: IssueOps branches must start with the issue/task number followed by a hyphen so GitLab links them in the issue Development section. Use names like `2387-fix-grpc-ai-dmm-tag-replication-lag` or `2386-remove-dmm-ranking-ranktype`; do not put `feature/` or `hotfix/` before the issue number.
 - Worktree first: after issue link and before implementation, create an isolated worktree under `../<repo>.worktrees/<branch-slug-with-slashes-replaced>` and run implementation from that path.
 - Edit-target guard: shell cwd checks are not enough. Before any file edit, ensure the edit tool target path is inside the expected isolated worktree; after the edit, verify the source checkout/main branch remains clean and the worktree owns the change.
 - State first: link the issue and plan in IssueOps state before PR/MR drafting.
@@ -110,7 +110,7 @@ External LLM judges are read-only evaluators. Their prompts must forbid workspac
 Start or resume state after deriving the issue branch slug. The IssueOps branch must be the issue branch, not the source checkout's current branch:
 
 ```bash
-branch_slug="feature/3-webhook-delivery"
+branch_slug="3-webhook-delivery"
 agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
 agent-harness issueops status --id "$ISSUEOPS_ID" --json
 ```
@@ -126,7 +126,7 @@ agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$CHILD_ISSUE_
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 ```
 
-`branch prepare` records the required provider-linked branch contract before local worktree creation: use the provider MCP first, use the provider API/CLI fallback second, and fail closed if both cannot create a branch that the issue shows as linked. Branch names must use a GitFlow-style prefix. For GitLab, the slug after that prefix must start with the issue or task number followed by a hyphen, for example `feature/123-fix-login`.
+`branch prepare` records the required provider-linked branch contract before local worktree creation: use the provider MCP first, use the provider API/CLI fallback second, and fail closed if both cannot create a branch that the issue shows as linked. For GitLab, branch names must start with the issue or task number followed by a hyphen, for example `123-fix-login`.
 
 `link-plan` is the transition into implementation. It fails closed until the issue is linked and `branch prepare --link-verified` has recorded provider-visible branch evidence. `link-worktree` also fails closed until that branch evidence exists and the worktree path already exists on disk.
 

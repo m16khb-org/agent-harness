@@ -90,6 +90,42 @@ PY
   printf 'PASS %-24s decision=%s\n' "$name" "$expected_decision"
 }
 
+assert_vcs_result() {
+  local name="$1"
+  local expected_decision="$2"
+  local reason_contains="$3"
+  local command="$4"
+  local output
+
+  output="$(
+    hook_payload "$tmpdir" "$command" |
+      "$HARNESS_BIN" hook pre-tool-use \
+        --enforce-vcs-issue-linking \
+        --json
+  )"
+
+  OUTPUT="$output" EXPECTED_DECISION="$expected_decision" REASON_CONTAINS="$reason_contains" python3 - <<'PY'
+import json
+import os
+import sys
+
+payload = json.loads(os.environ["OUTPUT"])
+expected = os.environ["EXPECTED_DECISION"]
+reason_contains = os.environ["REASON_CONTAINS"]
+decision = payload.get("decision", "allow")
+reason = payload.get("reason", "")
+
+if decision != expected:
+    print(f"decision mismatch: got {decision!r}, want {expected!r}; output={payload}", file=sys.stderr)
+    sys.exit(1)
+if reason_contains and reason_contains not in reason:
+    print(f"reason mismatch: missing {reason_contains!r}; reason={reason!r}", file=sys.stderr)
+    sys.exit(1)
+PY
+
+  printf 'PASS %-24s decision=%s\n' "$name" "$expected_decision"
+}
+
 assert_hook_result \
   "missing-body" \
   "block" \
@@ -138,3 +174,21 @@ assert_hook_result \
   "block" \
   "assignee" \
   'glab mr create --title "원격 MR 담당자 누락 검증" --description "원격 MR 생성 전에 한국어 설명과 라벨은 있지만 담당자가 없으면 차단합니다." --label bug'
+
+assert_hook_result \
+  "gitlab-placeholder-assignee" \
+  "block" \
+  "placeholder" \
+  'glab mr create --title "원격 MR 담당자 플레이스홀더 검증" --description "GitLab MR 담당자는 실제 사용자명이어야 하며 플레이스홀더는 차단합니다." --label bug --assignee @me'
+
+assert_vcs_result \
+  "gitlab-mr-for-username" \
+  "block" \
+  "numeric assignee" \
+  'glab mr for 2385 --with-labels --assignee m16khb'
+
+assert_vcs_result \
+  "gitlab-mr-for-id-pass" \
+  "allow" \
+  "" \
+  'glab mr for 2385 --with-labels --assignee 100'

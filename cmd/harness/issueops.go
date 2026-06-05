@@ -318,7 +318,7 @@ func runIssueOpsBranch(args []string) error {
 	id := fs.String("id", "", "issueops id")
 	provider := fs.String("provider", "", "remote provider: github or gitlab")
 	issueURL := fs.String("issue-url", "", "GitHub/GitLab issue URL")
-	branch := fs.String("branch", "", "provider-linked GitFlow branch name")
+	branch := fs.String("branch", "", "provider-linked issue-number branch name")
 	baseBranch := fs.String("base-branch", "", "remote base branch or ref")
 	baseSHA := fs.String("base-sha", "", "optional resolved base commit SHA")
 	remoteBranchURL := fs.String("remote-branch-url", "", "optional provider branch URL after creation")

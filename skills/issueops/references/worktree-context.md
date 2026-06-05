@@ -2,26 +2,18 @@
 
 ## Branch And Worktree Contract
 
-After the issue is created or linked and before implementation, derive the working branch from the issue using a branch prefix convention. Use the target repo's convention when documented; otherwise choose the narrowest accurate prefix:
-
-- `feature/` for new capabilities or integrations.
-- `bugfix/` for ordinary defects.
-- `hotfix/` only for urgent production patches.
-- `release/` only for release preparation.
-- `chore/` for tooling, documentation, maintenance, or workflow-only changes.
-
-The branch slug must include the issue number when available and a short kebab-case issue title, for example `feature/3-webhook-delivery` or `chore/12-tighten-issueops-worktree-contract`. For GitLab, the slug after the GitFlow prefix must start with the issue or task number followed by a hyphen, such as `feature/3-webhook-delivery`; this keeps provider branches and local worktree labels on the same convention.
+After the issue is created or linked and before implementation, derive the working branch from the issue using GitLab's native linking convention: start the full branch name with the issue or task number followed by a hyphen. Use a short kebab-case issue title after the number, for example `3-webhook-delivery` or `12-tighten-issueops-worktree-contract`. Do not add `feature/`, `hotfix/`, or another GitFlow prefix before the issue number; GitLab only auto-links branches whose full branch name starts with the issue number.
 
 Create the provider-linked branch before creating a local worktree. The IssueOps branch preparation contract is MCP-first, provider API fallback, then fail closed:
 
-- GitLab: use MCP `mcp__glab.glab_api` to create `POST projects/:fullpath/repository/branches` with `branch=<gitflow-prefix>/<issue-number>-<slug>` and `ref=<base-branch>`. If MCP is unavailable or fails, use `glab api projects/:fullpath/repository/branches -X POST -f branch=<branch> -f ref=<base-branch>`. If both fail, stop.
+- GitLab: use MCP `mcp__glab.glab_api` to create `POST projects/:fullpath/repository/branches` with `branch=<issue-number>-<slug>` and `ref=<base-branch>`. If MCP is unavailable or fails, use `glab api projects/:fullpath/repository/branches -X POST -f branch=<branch> -f ref=<base-branch>`. If both fail, stop.
 - GitHub: use a GitHub MCP linked-branch tool only when one is exposed. If no such MCP tool is exposed, use `gh issue develop "$ISSUE_URL" --base "$BASE_BRANCH" --name "$branch_slug"`. If linked branch creation fails, stop.
 - After creation, verify through the provider UI/API/CLI that the issue lists the branch before creating the local worktree.
 
 Create an isolated git worktree before implementation, TDD, subagent work, verification, commit, or PR/MR drafting:
 
 ```bash
-branch_slug="feature/3-webhook-delivery"
+branch_slug="3-webhook-delivery"
 base_branch="main"
 agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
 agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider gitlab --issue-url "$ISSUE_URL" --branch "$branch_slug" --base-branch "$base_branch" --link-verified --json
@@ -72,7 +64,7 @@ export HARNESS_SOURCE_CHECKOUT="/path/to/source-checkout"
 export HARNESS_EXPECTED_WORKTREE="/path/to/../repo.worktrees/chore-19-example"
 ```
 
-Installed Codex and Claude PreToolUse hooks include `--enforce-worktree`. When `HARNESS_EXPECTED_WORKTREE` is set, the hook blocks mutating tool events whose cwd or target path is outside that worktree. When an active IssueOps cycle has a linked worktree path, the hook also blocks mutating targets outside that exact linked path. Without `HARNESS_EXPECTED_WORKTREE`, the guard reads the current branch's IssueOps cycle. During code-editing phases it blocks source-checkout edits if no worktree is linked, blocks `git checkout -b`/`git switch -c` for a known IssueOps branch in the source checkout, and allows `git worktree add ../<repo>.worktrees/...` so the required sibling worktree can be created and linked. Branch creation commands must include an explicit source ref chosen by the user, such as `git switch -c feature/123-fix origin/main`; do not infer the current HEAD as the source. Outside active IssueOps code-editing phases it does not affect normal non-IssueOps work.
+Installed Codex and Claude PreToolUse hooks include `--enforce-worktree`. When `HARNESS_EXPECTED_WORKTREE` is set, the hook blocks mutating tool events whose cwd or target path is outside that worktree. When an active IssueOps cycle has a linked worktree path, the hook also blocks mutating targets outside that exact linked path. Without `HARNESS_EXPECTED_WORKTREE`, the guard reads the current branch's IssueOps cycle. During code-editing phases it blocks source-checkout edits if no worktree is linked, blocks `git checkout -b`/`git switch -c` for a known IssueOps branch in the source checkout, and allows `git worktree add ../<repo>.worktrees/...` so the required sibling worktree can be created and linked. Branch creation commands must include an explicit source ref chosen by the user, such as `git switch -c 123-fix origin/main`; do not infer the current HEAD as the source. Outside active IssueOps code-editing phases it does not affect normal non-IssueOps work.
 
 The guard is deterministic, but it only covers tool events that the host sends to PreToolUse. Keep the edit-target status checks above because some agent-side editing paths may not be represented as host hook events in every runtime.
 

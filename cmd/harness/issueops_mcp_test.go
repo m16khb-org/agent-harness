@@ -7,7 +7,7 @@ import (
 
 func TestMCPIssueOpsStartAndStatus(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "feature/demo"})
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
 	id, ok := start["id"].(string)
 	if !ok || id == "" || start["phase"] != "problem" {
 		t.Fatalf("unexpected MCP start payload: %#v", start)
@@ -20,7 +20,7 @@ func TestMCPIssueOpsStartAndStatus(t *testing.T) {
 
 func TestMCPIssueOpsLinkChild(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "feature/demo"})
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
 	id, ok := start["id"].(string)
 	if !ok || id == "" {
 		t.Fatalf("unexpected MCP start payload: %#v", start)
@@ -46,7 +46,7 @@ func TestMCPIssueOpsLinkChild(t *testing.T) {
 
 func TestMCPIssueOpsPrepareBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "feature/123-provider-linked-branch"})
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "123-provider-linked-branch"})
 	id, ok := start["id"].(string)
 	if !ok || id == "" {
 		t.Fatalf("unexpected MCP start payload: %#v", start)
@@ -59,11 +59,11 @@ func TestMCPIssueOpsPrepareBranch(t *testing.T) {
 		"id":          id,
 		"provider":    "gitlab",
 		"issue_url":   "https://gitlab.example/group/project/-/issues/123",
-		"branch":      "feature/123-provider-linked-branch",
+		"branch":      "123-provider-linked-branch",
 		"base_branch": "main",
 	})
 	prepare, ok := record["branch_prepare"].(map[string]any)
-	if !ok || prepare["provider"] != "gitlab" || prepare["branch"] != "feature/123-provider-linked-branch" {
+	if !ok || prepare["provider"] != "gitlab" || prepare["branch"] != "123-provider-linked-branch" {
 		t.Fatalf("unexpected branch prepare payload: %#v", record)
 	}
 	steps, ok := prepare["steps"].([]any)
