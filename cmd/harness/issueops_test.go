@@ -176,3 +176,62 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 		t.Fatalf("codegraph should be checked and initialized against worktree, got:\n%s", log)
 	}
 }
+
+func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	bin := t.TempDir()
+	logPath := filepath.Join(t.TempDir(), "tools.log")
+	codegraph := filepath.Join(bin, "codegraph")
+	if err := os.WriteFile(codegraph, []byte("#!/bin/sh\nprintf 'codegraph %s\\n' \"$*\" >> '"+logPath+"'\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pnpm := filepath.Join(bin, "pnpm")
+	if err := os.WriteFile(pnpm, []byte("#!/bin/sh\nprintf 'pnpm cwd=%s args=%s\\n' \"$PWD\" \"$*\" >> '"+logPath+"'\nmkdir -p node_modules\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	worktree := filepath.Join(t.TempDir(), "repo.worktrees", "feature-demo")
+	if err := os.MkdirAll(worktree, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, "package.json"), []byte(`{"name":"demo"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, "pnpm-lock.yaml"), []byte("lockfileVersion: '9.0'\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	start := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"start", "--repo", "/repo/example", "--branch", "feature/demo", "--json"})
+	})
+	var record map[string]any
+	if err := json.Unmarshal([]byte(start), &record); err != nil {
+		t.Fatal(err)
+	}
+	id := record["id"].(string)
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktree, "--json"})
+	})
+
+	out := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"worktree", "prepare-tools", "--id", id, "--json"})
+	})
+	var prepared map[string]any
+	if err := json.Unmarshal([]byte(out), &prepared); err != nil {
+		t.Fatalf("prepare-tools should return JSON: %v\n%s", err, out)
+	}
+	if prepared["package_manager"] != "pnpm" || prepared["dependencies_ready"] != true || prepared["dependencies_action"] != "pnpm_install" {
+		t.Fatalf("prepare-tools should install pnpm dependencies: %#v", prepared)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(log)
+	if !strings.Contains(text, "pnpm cwd="+worktree+" args=install --frozen-lockfile --prefer-offline") {
+		t.Fatalf("pnpm install should run in worktree, got:\n%s", text)
+	}
+	if !strings.Contains(text, "codegraph status "+worktree) {
+		t.Fatalf("codegraph should still be checked, got:\n%s", text)
+	}
+}

@@ -29,6 +29,7 @@ worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
 git fetch origin "$branch_slug"
 git worktree add --track -b "$branch_slug" "$worktree_path" "origin/$branch_slug"
 agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$(cd "$worktree_path" && pwd)" --json
+agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json
 ```
 
 Keep IssueOps worktrees as siblings of the source checkout under the fixed pattern `../<repo>.worktrees/<branch-slug-with-slashes-replaced>`. Do not create ad hoc worktree paths inside the repo or under temporary directories unless the user explicitly asks for a different location.
@@ -90,7 +91,9 @@ Use this shape:
 
 ## Local Config And Dependency Links
 
-When the worktree needs large generated dependency directories such as `node_modules`, prefer reusing an existing dependency directory by symlink only after verifying the package manager, lockfile, platform, and dependency state match the source checkout.
+Run `agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json` before worktree tests. It prepares the CodeGraph index for the exact worktree and, for pnpm repositories, installs missing `node_modules` in the worktree with `pnpm install --frozen-lockfile --prefer-offline`.
+
+When the worktree needs large generated dependency directories such as `node_modules` and `prepare-tools` cannot install them automatically, prefer reusing an existing dependency directory by symlink only after verifying the package manager, lockfile, platform, and dependency state match the source checkout.
 
 ```bash
 test -d "$PWD/node_modules"
