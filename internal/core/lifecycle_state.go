@@ -708,8 +708,8 @@ func appendRemoteArtifactListValues(values []string, raw string) []string {
 }
 
 var (
-	planLinkHeadingRe = regexp.MustCompile(`(?mi)^#{1,6}\s*(Plan Link|Plan link|계획\s*링크)\s*$`)
-	relatedHeadingRe  = regexp.MustCompile(`(?mi)^#{1,6}\s*(Related Issues|Related issues|관련\s*이슈)\s*$`)
+	planLinkHeadingRe = regexp.MustCompile(`(?mi)^\s*(?:#{1,6}\s*)?(Plan Link|Plan link|계획\s*링크)\s*:?\s*$`)
+	relatedHeadingRe  = regexp.MustCompile(`(?mi)^\s*(?:#{1,6}\s*)?(Related Issues|Related issues|관련\s*이슈)\s*:?\s*$`)
 )
 
 // vcsIssueLinkingBlockReason enforces the provider-specific IssueOps linking

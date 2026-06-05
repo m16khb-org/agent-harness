@@ -959,7 +959,7 @@ func TestRunHookPreToolUseBlocksPlanLinkSectionInIssueBody(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	bodyFile := filepath.Join(repo, "body.md")
-	if err := os.WriteFile(bodyFile, []byte("## Problem\n\n문제 설명입니다.\n\n## Plan Link\n\nTBD\n"), 0o644); err != nil {
+	if err := os.WriteFile(bodyFile, []byte("## Problem\n\n문제 설명입니다.\n\nPlan Link:\n\nTBD\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	payload, err := json.Marshal(map[string]any{
@@ -988,7 +988,7 @@ func TestRunHookPreToolUseBlocksGitLabRelatedIssuesBodySection(t *testing.T) {
 		"cwd":       repo,
 		"tool_name": "Bash",
 		"tool_input": map[string]any{
-			"command": "glab issue create --title 이슈 --description \"## Problem\n\n설명\n\n## Related Issues\n\n- #1\"",
+			"command": "glab issue create --title 이슈 --description \"## Problem\n\n설명\n\n관련 이슈\n\n- #1\"",
 		},
 	})
 	if err != nil {
