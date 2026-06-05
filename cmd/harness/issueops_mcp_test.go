@@ -135,6 +135,33 @@ func TestMCPIssueOpsVerifyRemoteArtifactRejectsBeforePR(t *testing.T) {
 	}
 }
 
+func TestMCPIssueOpsRemoteScoreAcceptsCandidateAliases(t *testing.T) {
+	result := callMCPToolForIssueOpsTest(t, "issueops_remote_score", map[string]any{
+		"provider": "github",
+		"issue": map[string]any{
+			"title": "IssueOps feedback gate",
+			"body":  "Feedback contract gate should block PR readiness.",
+		},
+		"related_issues": []map[string]any{{
+			"id":    "#11",
+			"title": "IssueOps feedback gate",
+			"score": 0.93,
+		}},
+		"labels": []map[string]any{{
+			"name":  "bug",
+			"score": 0.91,
+		}},
+	})
+	issues, ok := result["selected_related_issues"].([]any)
+	if !ok || len(issues) != 1 {
+		t.Fatalf("expected alias related issue to be selected: %#v", result)
+	}
+	labels, ok := result["selected_labels"].([]any)
+	if !ok || len(labels) != 1 {
+		t.Fatalf("expected alias label to be selected: %#v", result)
+	}
+}
+
 func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) map[string]any {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})

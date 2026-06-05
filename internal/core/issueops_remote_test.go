@@ -130,6 +130,41 @@ func TestScoreIssueOpsRemoteCandidatesDoesNotWarnWhenNoCandidatesExist(t *testin
 	}
 }
 
+func TestDecodeIssueOpsRemoteScoringRequestAcceptsCandidateAliases(t *testing.T) {
+	req, err := DecodeIssueOpsRemoteScoringRequest([]byte(`{
+		"provider": "github",
+		"issue": {"title": "IssueOps feedback gate"},
+		"related_issues": [{"id": "#1", "title": "IssueOps feedback gate"}],
+		"labels": [{"name": "bug", "score": 0.91}]
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(req.IssueCandidates) != 1 || req.IssueCandidates[0].ID != "#1" {
+		t.Fatalf("expected related_issues alias to populate issue candidates: %+v", req.IssueCandidates)
+	}
+	if len(req.LabelCandidates) != 1 || req.LabelCandidates[0].Name != "bug" {
+		t.Fatalf("expected labels alias to populate label candidates: %+v", req.LabelCandidates)
+	}
+}
+
+func TestDecodeIssueOpsRemoteScoringRequestRejectsDuplicateCandidateFields(t *testing.T) {
+	if _, err := DecodeIssueOpsRemoteScoringRequest([]byte(`{
+		"issue": {"title": "IssueOps feedback gate"},
+		"issue_candidates": [],
+		"related_issues": []
+	}`)); err == nil || !strings.Contains(err.Error(), "issue_candidates") {
+		t.Fatalf("expected duplicate issue candidate field error, got %v", err)
+	}
+	if _, err := DecodeIssueOpsRemoteScoringRequest([]byte(`{
+		"issue": {"title": "IssueOps feedback gate"},
+		"label_candidates": [],
+		"labels": []
+	}`)); err == nil || !strings.Contains(err.Error(), "label_candidates") {
+		t.Fatalf("expected duplicate label candidate field error, got %v", err)
+	}
+}
+
 func TestScoreIssueOpsRemoteCandidatesRequiresExplicitLabelDecisionWhenAllLabelsRejected(t *testing.T) {
 	labelScore := 0.40
 	result, err := ScoreIssueOpsRemoteCandidates(IssueOpsRemoteScoringRequest{

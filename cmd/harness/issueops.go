@@ -568,7 +568,8 @@ func readIssueOpsRemoteScoringRequestFile(path string) (core.IssueOpsRemoteScori
 		return core.IssueOpsRemoteScoringRequest{}, err
 	}
 	var req core.IssueOpsRemoteScoringRequest
-	if err := json.Unmarshal(b, &req); err != nil {
+	req, err = core.DecodeIssueOpsRemoteScoringRequest(b)
+	if err != nil {
 		return core.IssueOpsRemoteScoringRequest{}, fmt.Errorf("parse input file %s: %w", path, err)
 	}
 	return req, nil

@@ -83,6 +83,32 @@ func TestRunIssueOpsRemoteScoreCLIDeterministic(t *testing.T) {
 	}
 }
 
+func TestRunIssueOpsRemoteScoreCLIAcceptsCandidateAliases(t *testing.T) {
+	input := filepath.Join(t.TempDir(), "remote-score-alias.json")
+	if err := os.WriteFile(input, []byte(`{
+		"provider": "github",
+		"threshold": 0.7,
+		"issue": {"title": "IssueOps feedback gate", "body": "Feedback contract gate should block PR readiness."},
+		"related_issues": [{"id": "#11", "title": "IssueOps feedback gate", "score": 0.93}],
+		"labels": [{"name": "bug", "score": 0.91}]
+	}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "none", "--json"})
+	})
+	var result core.IssueOpsRemoteScoringResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("remote score should return JSON: %v\n%s", err, out)
+	}
+	if len(result.SelectedRelatedIssues) != 1 || result.SelectedRelatedIssues[0].ID != "#11" {
+		t.Fatalf("expected alias related issue to be selected: %+v", result)
+	}
+	if len(result.SelectedLabels) != 1 || result.SelectedLabels[0].Name != "bug" {
+		t.Fatalf("expected alias label to be selected: %+v", result)
+	}
+}
+
 func TestRunIssueOpsRemoteScoreCLIAgyUsesExternalLLMWrapper(t *testing.T) {
 	fakeAgy := filepath.Join(t.TempDir(), "fake-agy.sh")
 	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh

@@ -5704,7 +5704,8 @@ func issueOpsRemoteScoringRequestFromMCP(args map[string]any) (core.IssueOpsRemo
 	if err != nil {
 		return req, err
 	}
-	if err := json.Unmarshal(b, &req); err != nil {
+	req, err = core.DecodeIssueOpsRemoteScoringRequest(b)
+	if err != nil {
 		return req, fmt.Errorf("invalid issueops remote scoring request: %w", err)
 	}
 	return req, nil

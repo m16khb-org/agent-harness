@@ -42,6 +42,36 @@ type IssueOpsRemoteScoringRequest struct {
 	LabelCandidates []IssueOpsRemoteLabelCandidate `json:"label_candidates,omitempty"`
 }
 
+func DecodeIssueOpsRemoteScoringRequest(data []byte) (IssueOpsRemoteScoringRequest, error) {
+	var req IssueOpsRemoteScoringRequest
+	if err := json.Unmarshal(data, &req); err != nil {
+		return req, err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return req, err
+	}
+	if _, canonical := raw["issue_candidates"]; canonical {
+		if _, alias := raw["related_issues"]; alias {
+			return req, fmt.Errorf("use either issue_candidates or related_issues, not both")
+		}
+	} else if alias, ok := raw["related_issues"]; ok {
+		if err := json.Unmarshal(alias, &req.IssueCandidates); err != nil {
+			return req, fmt.Errorf("parse related_issues: %w", err)
+		}
+	}
+	if _, canonical := raw["label_candidates"]; canonical {
+		if _, alias := raw["labels"]; alias {
+			return req, fmt.Errorf("use either label_candidates or labels, not both")
+		}
+	} else if alias, ok := raw["labels"]; ok {
+		if err := json.Unmarshal(alias, &req.LabelCandidates); err != nil {
+			return req, fmt.Errorf("parse labels: %w", err)
+		}
+	}
+	return req, nil
+}
+
 type IssueOpsRemoteScoredItem struct {
 	ID           string   `json:"id,omitempty"`
 	Name         string   `json:"name,omitempty"`
