@@ -916,17 +916,13 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		if !ok || !IssueOpsPhaseExpectsWorktree(rec.Phase) {
 			return ""
 		}
-		if linked := cleanAbsPath(rec.WorktreePath); linked != "" {
-			for _, target := range targets {
-				if !pathWithin(target, linked) {
-					return "mutating tool target is outside the linked IssueOps worktree; run issue-based work from " + linked + " and target files under that exact worktree"
-				}
-			}
+		linked := cleanAbsPath(rec.WorktreePath)
+		if linked == "" {
 			return ""
 		}
 		for _, target := range targets {
-			if pathWithin(target, req.Repo) && !isInsideWorktreesPath(target) {
-				return "the IssueOps cycle for this branch is in the " + string(rec.Phase) + " phase; edit from its isolated worktree (.../<repo>.worktrees/<branch>) instead of the source checkout"
+			if !pathWithin(target, linked) {
+				return "mutating tool target is outside the linked IssueOps worktree for " + rec.ID + "; run issue-based work from " + linked + " or mark the stale cycle done"
 			}
 		}
 		return ""

@@ -716,16 +716,32 @@ func guardRepoWithCycle(t *testing.T, branch string, phase IssueOpsPhase) string
 	return repo
 }
 
-func TestWorktreeGuardBlocksSourceEditInImplementPhase(t *testing.T) {
+func TestWorktreeGuardNoBlockWhenImplementCycleHasNoLinkedWorktree(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "development", IssueOpsPhaseImplement)
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("unlinked implement cycle should not permanently lock the source checkout, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
+	id := newIssueOpsID(repo, "feat/x")
+	linked := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
+		t.Fatal(err)
+	}
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
 	})
 	if blocked.Decision != "block" {
-		t.Fatalf("implement-phase source-checkout edit should block, got %+v", blocked)
+		t.Fatalf("source-checkout edit should block when an exact worktree is linked, got %+v", blocked)
 	}
-	wtTarget := "/Users/dev/proj.worktrees/feat-x/internal/x.go"
+	wtTarget := filepath.Join(linked, "internal", "x.go")
 	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{wtTarget}, EnforceWorktree: true,
 	})
