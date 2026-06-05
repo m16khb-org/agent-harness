@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -418,6 +419,27 @@ func TestPreToolUseWorktreeGuardInfersCodeGraphProjectPathFromLinkedCycle(t *tes
 	})
 	if worktreeProjectPath.Decision != "allow" {
 		t.Fatalf("worktree CodeGraph projectPath should pass for linked IssueOps cycle: %+v", worktreeProjectPath)
+	}
+}
+
+func TestPreToolUseWorktreeGuardAllowsCodeGraphProjectPathForAnyLinkedCycle(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := guardRepoWithCycle(t, "1-current", IssueOpsPhaseProblem)
+	first := linkIssueOpsWorktreeForGuardTest(t, source, "95-tier-matrix-scan-allowance-policy")
+	second := linkIssueOpsWorktreeForGuardTest(t, source, "96-integrate-public-seo-rendering")
+
+	sourceProjectPath := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: source, Tool: "mcp__codegraph__codegraph_search", Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true, ProjectPath: source,
+	})
+	if sourceProjectPath.Decision != "block" || !strings.Contains(sourceProjectPath.Reason, "projectPath") {
+		t.Fatalf("source checkout CodeGraph projectPath should block when linked worktree cycles exist: %+v", sourceProjectPath)
+	}
+
+	secondProjectPath := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: source, Tool: "mcp__codegraph__codegraph_search", Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true, ProjectPath: second.path,
+	})
+	if secondProjectPath.Decision != "allow" {
+		t.Fatalf("CodeGraph projectPath inside any linked worktree should pass; first=%s second=%s got %+v", first.path, second.path, secondProjectPath)
 	}
 }
 
@@ -1178,6 +1200,38 @@ func writeIssueOpsGuardFileForTest(t *testing.T, root, rel, content string) {
 	}
 }
 
+type linkedIssueOpsWorktreeForTest struct {
+	id   string
+	path string
+}
+
+func linkIssueOpsWorktreeForGuardTest(t *testing.T, repo, branch string) linkedIssueOpsWorktreeForTest {
+	t.Helper()
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	issueURL := "https://github.com/example/repo/issues/" + strings.SplitN(branch, "-", 2)[0]
+	if _, err := LinkIssueOpsIssue(IssueOpsStateRoot(), record.ID, issueURL); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     issueURL,
+		Branch:       branch,
+		BaseBranch:   "main",
+		LinkVerified: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	worktree := makeIssueOpsGuardWorktreeForTest(t, repo, branch)
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), record.ID, worktree); err != nil {
+		t.Fatal(err)
+	}
+	setIssueOpsPhaseForTest(t, repo, branch, IssueOpsPhaseImplement)
+	return linkedIssueOpsWorktreeForTest{id: record.ID, path: worktree}
+}
+
 func TestWorktreeGuardBlocksSourceEditWhenImplementCycleHasNoLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-development", IssueOpsPhaseImplement)
@@ -1493,6 +1547,46 @@ func TestWorktreeGuardBlocksBashCommandThatChangesIntoUnlinkedWorktree(t *testin
 	})
 	if res.Decision != "block" || !strings.Contains(res.Reason, "requires a linked isolated worktree") {
 		t.Fatalf("bash command scoped to unlinked worktree should block, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardAllowsAnyActiveLinkedIssueOpsWorktreeForRepo(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fixtures := []linkedIssueOpsWorktreeForTest{
+		linkIssueOpsWorktreeForGuardTest(t, repo, "95-tier-matrix-scan-allowance-policy"),
+		linkIssueOpsWorktreeForGuardTest(t, repo, "96-integrate-public-seo-rendering"),
+		linkIssueOpsWorktreeForGuardTest(t, repo, "97-parallel-worktree-fixture"),
+	}
+	sort.Slice(fixtures, func(i, j int) bool {
+		return fixtures[i].id < fixtures[j].id
+	})
+	target := fixtures[len(fixtures)-1]
+
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:            repo,
+		Tool:            "Edit",
+		Paths:           []string{filepath.Join(repo, "internal", "core", "issueops.go")},
+		EnforceWorktree: true,
+	})
+	if res.Decision != "block" || !strings.Contains(res.Reason, "linked IssueOps worktree") {
+		t.Fatalf("source checkout edit should still block, got %+v", res)
+	}
+
+	res = BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:            repo,
+		Tool:            "Edit",
+		Paths:           []string{filepath.Join(target.path, "internal", "core", "issueops.go")},
+		EnforceWorktree: true,
+	})
+	if res.Decision != "allow" {
+		t.Fatalf("edit inside any active linked IssueOps worktree should allow; first=%s target=%s got %+v", fixtures[0].path, target.path, res)
 	}
 }
 

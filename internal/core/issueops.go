@@ -1327,14 +1327,23 @@ func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
 }
 
 func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (IssueOpsRecord, bool) {
+	records := ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
+	if len(records) == 0 {
+		return IssueOpsRecord{}, false
+	}
+	return records[0], true
+}
+
+func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 	repo = cleanAbsPath(repo)
 	if repo == "" {
-		return IssueOpsRecord{}, false
+		return nil
 	}
 	entries, err := os.ReadDir(IssueOpsStateRoot())
 	if err != nil {
-		return IssueOpsRecord{}, false
+		return nil
 	}
+	records := []IssueOpsRecord{}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
@@ -1344,21 +1353,24 @@ func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (IssueOpsRecord, bool
 		if err != nil {
 			continue
 		}
-		if cleanAbsPath(record.Repo) != repo {
-			continue
-		}
 		if record.Phase == IssueOpsPhaseDone {
 			continue
 		}
 		if issueOpsPlanBranchMismatchesRecord(record) {
 			continue
 		}
-		if worktree := strings.TrimSpace(record.WorktreePath); worktree == "" || !issueOpsWorktreePathValid(worktree) {
+		worktree := strings.TrimSpace(record.WorktreePath)
+		if worktree == "" || !issueOpsWorktreePathValid(worktree) {
 			continue
 		}
-		return record, true
+		recordRepo := cleanAbsPath(record.Repo)
+		recordWorktree := cleanAbsPath(worktree)
+		if recordRepo != repo && recordWorktree != repo && !pathWithin(repo, recordWorktree) {
+			continue
+		}
+		records = append(records, record)
 	}
-	return IssueOpsRecord{}, false
+	return records
 }
 
 func issueOpsPlanBranchMismatchesRecord(record IssueOpsRecord) bool {

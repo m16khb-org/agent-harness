@@ -1184,12 +1184,16 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 			return ""
 		}
 		if !ok || !IssueOpsPhaseExpectsWorktree(rec.Phase) {
-			if linkedRec, linkedOK := ActiveIssueOpsLinkedWorktreeCycleForRepo(req.Repo); linkedOK {
-				linked := cleanAbsPath(linkedRec.WorktreePath)
+			if linkedRecs := ActiveIssueOpsLinkedWorktreeCyclesForRepo(req.Repo); len(linkedRecs) > 0 {
+				linked := cleanAbsPath(linkedRecs[0].WorktreePath)
 				for _, target := range targets {
-					if sourceCheckoutTargetNeedsLinkedWorktree(target, req.Repo) && !pathWithin(target, linked) {
-						return "mutating tool target is outside the linked IssueOps worktree for " + linkedRec.ID + "; run issue-based work from " + linked + " or mark the stale cycle done"
+					if !sourceCheckoutTargetNeedsLinkedWorktree(target, req.Repo) {
+						continue
 					}
+					if targetInsideAnyLinkedIssueOpsWorktree(target, linkedRecs) {
+						continue
+					}
+					return "mutating tool target is outside the linked IssueOps worktree for " + linkedRecs[0].ID + "; run issue-based work from " + linked + " or mark the stale cycle done"
 				}
 			}
 			return ""
@@ -1226,6 +1230,15 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 	}
 	return ""
+}
+
+func targetInsideAnyLinkedIssueOpsWorktree(target string, records []IssueOpsRecord) bool {
+	for _, record := range records {
+		if pathWithin(target, record.WorktreePath) {
+			return true
+		}
+	}
+	return false
 }
 
 func sourceCheckoutTargetNeedsLinkedWorktree(target, repo string) bool {
@@ -1372,37 +1385,56 @@ func issueOpsWorktreePreparationCommand(command string) bool {
 }
 
 func mcpWorktreeRootBlockReason(req HookToolUseLifecycleRequest) string {
-	expected := expectedIssueOpsWorktreeForMCPGuard(req)
-	if expected == "" {
+	expected := expectedIssueOpsWorktreesForMCPGuard(req)
+	if len(expected) == 0 {
 		return ""
 	}
+	primary := expected[0]
 	tool := strings.ToLower(strings.TrimSpace(req.Tool))
 	switch {
 	case isCodeGraphTool(tool):
 		projectPath := cleanAbsPath(req.ProjectPath)
 		if projectPath == "" {
-			return "CodeGraph in an IssueOps worktree must set projectPath to the expected IssueOps worktree: " + expected
+			return "CodeGraph in an IssueOps worktree must set projectPath to the expected IssueOps worktree: " + primary
 		}
-		if projectPath != expected {
-			return "CodeGraph projectPath is outside the expected IssueOps worktree; set projectPath to " + expected
+		if !pathEqualsAny(projectPath, expected) {
+			return "CodeGraph projectPath is outside the expected IssueOps worktree; set projectPath to " + primary
 		}
 	case strings.Contains(tool, "filesystem") || strings.Contains(tool, "serena"):
-		return "source-root-bound MCP tool is not allowed during IssueOps worktree implementation; use native absolute-path file tools, rg rooted at the IssueOps worktree, git -C, or CodeGraph with projectPath " + expected
+		return "source-root-bound MCP tool is not allowed during IssueOps worktree implementation; use native absolute-path file tools, rg rooted at the IssueOps worktree, git -C, or CodeGraph with projectPath " + primary
 	}
 	return ""
 }
 
-func expectedIssueOpsWorktreeForMCPGuard(req HookToolUseLifecycleRequest) string {
+func expectedIssueOpsWorktreesForMCPGuard(req HookToolUseLifecycleRequest) []string {
 	if expected := cleanAbsPath(req.ExpectedWorktree); expected != "" {
-		return expected
+		return []string{expected}
 	}
 	if rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, gitBranchFromHead(req.Repo)); ok && IssueOpsPhaseExpectsWorktree(rec.Phase) {
-		return cleanAbsPath(rec.WorktreePath)
+		if expected := cleanAbsPath(rec.WorktreePath); expected != "" {
+			return []string{expected}
+		}
 	}
-	if rec, ok := ActiveIssueOpsLinkedWorktreeCycleForRepo(req.Repo); ok && IssueOpsPhaseExpectsWorktree(rec.Phase) {
-		return cleanAbsPath(rec.WorktreePath)
+	expected := []string{}
+	for _, rec := range ActiveIssueOpsLinkedWorktreeCyclesForRepo(req.Repo) {
+		if !IssueOpsPhaseExpectsWorktree(rec.Phase) {
+			continue
+		}
+		if worktree := cleanAbsPath(rec.WorktreePath); worktree != "" {
+			expected = append(expected, worktree)
+		}
 	}
-	return ""
+	return expected
+}
+
+func pathEqualsAny(path string, candidates []string) bool {
+	p := cleanAbsPath(path)
+	for _, candidate := range candidates {
+		if p != "" && p == cleanAbsPath(candidate) {
+			return true
+		}
+	}
+	return false
 }
 
 func worktreeGuardTargets(req HookToolUseLifecycleRequest) []string {
