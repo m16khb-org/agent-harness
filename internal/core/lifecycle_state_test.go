@@ -311,6 +311,26 @@ func TestPreToolUseKoreanRemoteArtifactGateAllowsKoreanPRBodyFile(t *testing.T) 
 	}
 }
 
+func TestPreToolUseRemoteArtifactGateAllowsHelpCommands(t *testing.T) {
+	for _, command := range []string{
+		`gh issue create --help`,
+		`gh pr create -h`,
+		`glab issue create --help`,
+		`glab mr create -h`,
+	} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:                t.TempDir(),
+			Tool:                "bash",
+			Command:             command,
+			EnforceKoreanRemote: true,
+			EnforceVCSLinking:   true,
+		})
+		if got.Decision != "allow" {
+			t.Fatalf("expected help command to be allowed: %q -> %+v", command, got)
+		}
+	}
+}
+
 func TestPreToolUseVCSLinkingBlocksRemoteCreateWithoutLabels(t *testing.T) {
 	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo:              t.TempDir(),

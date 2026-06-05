@@ -552,6 +552,9 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 		}
 		artifact := remoteArtifactCommand{provider: provider, kind: kind, action: action}
 		args := tokens[i+3:]
+		if remoteArtifactHelpRequested(args) {
+			return remoteArtifactCommand{}, false
+		}
 		for j := 0; j < len(args); j++ {
 			arg := args[j]
 			switch {
@@ -606,6 +609,16 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 		return artifact, true
 	}
 	return remoteArtifactCommand{}, false
+}
+
+func remoteArtifactHelpRequested(args []string) bool {
+	for _, arg := range args {
+		switch strings.TrimSpace(arg) {
+		case "--help", "-h":
+			return true
+		}
+	}
+	return false
 }
 
 func appendRemoteArtifactLabels(labels []string, raw string) []string {

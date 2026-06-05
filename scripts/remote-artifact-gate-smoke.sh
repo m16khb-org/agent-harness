@@ -114,6 +114,12 @@ assert_hook_result \
   "" \
   'gh issue create --title "원격 아티팩트 정상 생성 검증" --body-file good-body.md --label bug --assignee @me'
 
+assert_hook_result \
+  "help-pass" \
+  "allow" \
+  "" \
+  'gh issue create --help'
+
 gitlab_related_command=$'glab issue create --title "GitLab 관련 이슈 섹션 차단 검증" --description "## 요약\n\nGitLab 원격 이슈 본문에는 문제 배경과 검증 범위를 한국어로 충분히 기록합니다.\n연관 이슈는 본문 섹션이 아니라 GitLab native linked items로 연결해야 합니다.\n\n## Related Issues\n\n- #1" --label bug --assignee @me'
 assert_hook_result \
   "gitlab-related" \
