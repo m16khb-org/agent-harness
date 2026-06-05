@@ -129,7 +129,7 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 draft-wiki는 이 예외가 아니라 별도 staging area다. `.agent-harness/draft-wiki/**`에는 사용자가 검토할 후보 Markdown만 둔다. `agent-harness project draft-wiki promote --confirm`은 configured `nvk/llm-wiki` topic의 `raw/<type>/` note와 `log.md` append까지만 수행한다. index/query/compile을 하네스가 대신 완료한 것처럼 보고하지 않는다.
 
-PostToolUse hook 기반 draft-wiki 자동화는 hook에서 `agy`를 실행하지 않는다. hook은 bounded/redacted queue record만 user state에 append하고, `agent-harness worker draft-wiki`가 나중에 `agy -p`를 argv로 호출해 draft를 쓴다. hook stdout에는 host-compatible no-op shape를 유지하고, queue/draft 생성 여부는 raw `--json`, queue file, draft file, worker result로 검증한다.
+draft-wiki queue는 hook 휴리스틱이 자동 생성하지 않는다. UserPromptSubmit은 메인 에이전트에게 장기 재사용 가치 판단 책임과 명시 queue 명령만 알려주고, 메인 에이전트가 의미 있는 후보라고 판단한 경우에만 `agent-harness project draft-wiki queue --stdin`(heredoc 권장) 또는 `--input`으로 적재한다. `agent-harness worker draft-wiki`가 나중에 `agy -p`를 argv로 호출해 draft를 쓴다. hook stdout에는 host-compatible no-op shape를 유지하고, queue/draft 생성 여부는 명시 queue command, queue file, draft file, worker result로 검증한다.
 
 ## 12. Daemon lifecycle drift
 

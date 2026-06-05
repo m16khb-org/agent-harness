@@ -182,12 +182,12 @@ title: "Hook policy memory"
 source: "claude-mem"
 target_wiki: "agent-harness"
 target_type: "notes"
-summary: "Hooks should enqueue work instead of running long LLM calls inline."
+summary: "Main agents should explicitly queue work instead of hooks running long LLM calls inline."
 ---
 
 # Hook policy memory
 
-PostToolUse hooks should record events and leave LLM summarization to a worker.`)+`
+Main agents should explicitly queue judged material and leave LLM summarization to a worker.`)+`
 EOF
 `)
 	if err := os.Chmod(fakeAgy, 0o755); err != nil {
@@ -308,16 +308,16 @@ fi
 printf '%s\n' "$3" > prompt.txt
 cat <<'EOF'
 `+draftWikiAgyJSONForTest(t, `---
-title: "Queued hook memory"
+title: "Explicit queued memory"
 source: "claude-mem"
 target_wiki: "agent-harness"
 target_type: "notes"
-summary: "The hook queues draft-wiki work and the worker performs agy summarization."
+summary: "The main agent explicitly queues draft-wiki work and the worker performs agy summarization."
 ---
 
-# Queued hook memory
+# Explicit queued memory
 
-PostToolUse hooks enqueue draft-wiki work; the worker calls agy -p outside the hook critical path.`)+`
+The main agent explicitly queues draft-wiki work; the worker calls agy -p outside the hook critical path.`)+`
 EOF
 `)
 	if err := os.Chmod(fakeAgy, 0o755); err != nil {
@@ -328,10 +328,10 @@ EOF
 		RepoRoot:       root,
 		Tool:           "Bash",
 		Command:        "claude-mem export observations",
-		SourceMaterial: "Hooks should enqueue work and a worker should call agy -p.",
+		SourceMaterial: "Main agents should enqueue judged work and a worker should call agy -p.",
 		TargetWiki:     "agent-harness",
 		TargetType:     "notes",
-		Source:         "post-tool-use",
+		Source:         "main-agent",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -366,7 +366,7 @@ EOF
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(drafts.Drafts) != 1 || drafts.Drafts[0].Status != "draft" || drafts.Drafts[0].Title != "Queued hook memory" {
+	if len(drafts.Drafts) != 1 || drafts.Drafts[0].Status != "draft" || drafts.Drafts[0].Title != "Explicit queued memory" {
 		t.Fatalf("worker did not write draft-wiki/draft candidate: %+v", drafts)
 	}
 }

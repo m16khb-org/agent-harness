@@ -270,6 +270,9 @@ Set `HARNESS_INSTALL_UPSTREAM_TOOLS=1` for the same behavior, or `HARNESS_INIT_C
 ./bin/agent-harness docs --json
 ./bin/agent-harness project route-docs --repo "$PWD" --task "update command policy" --json
 ./bin/agent-harness project draft-wiki list --repo . --json
+./bin/agent-harness project draft-wiki queue --repo . --stdin <<'EOF'
+Reusable decision or caution judged by the main agent to be worth a draft wiki candidate.
+EOF
 
 # State checkpoints
 ./bin/agent-harness doctor --repo . --json
@@ -665,6 +668,9 @@ claude-mem 전환을 위해 full setup은 기존 legacy agentmemory plugin/marke
 ./bin/agent-harness docs --json
 ./bin/agent-harness project route-docs --repo "$PWD" --task "update command policy" --json
 ./bin/agent-harness project draft-wiki list --repo . --json
+./bin/agent-harness project draft-wiki queue --repo . --stdin <<'EOF'
+메인 에이전트가 draft wiki 후보로 남길 가치가 있다고 판단한 reusable decision 또는 caution.
+EOF
 
 # 상태 체크포인트
 ./bin/agent-harness doctor --repo . --json

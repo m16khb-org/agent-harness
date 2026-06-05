@@ -31,6 +31,7 @@ const (
 // and applies hard guards, then asks the main agent to use conversation context for
 // the final proceed-or-ask judgement. Keep it one concise line.
 const nextActionPolicyHint = "next-action: end any turn that needs a user decision with a '선택지:' block — exactly 3 numbered options and exactly one '(추천)'. Mark '(추천)' only when the main agent judges that option safe, reversible, and aligned with user intent from current context. The Stop hook may re-enter the main agent to re-check that recommendation; proceed only if that judgement still holds, otherwise ask for user confirmation. Do not mark destructive, irreversible, or uncertain actions as '(추천)'."
+const draftWikiPolicyHint = "draft-wiki: main agent must judge whether current work produced reusable long-term knowledge; heuristics must not queue it. If yes, explicitly run `agent-harness project draft-wiki queue --repo <repo> --stdin <<'EOF'` (or `--input <file>`); otherwise do nothing."
 
 type HookRoutingRule struct {
 	Tool            string
@@ -281,6 +282,7 @@ func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpk
 	appendCompactPendingUpkeep(&parts, pendingUpkeep)
 	appendSecondaryHints(&parts, groups[hintPrioritySecondary])
 	parts = append(parts, nextActionPolicyHint)
+	parts = append(parts, draftWikiPolicyHint)
 	parts = append(parts, "rule: verify with repo/tool evidence before changing files")
 	return strings.Join(parts, " | ")
 }

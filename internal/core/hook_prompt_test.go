@@ -27,6 +27,15 @@ func TestBuildUserPromptMCPHintsInjectsNextActionPolicy(t *testing.T) {
 	}
 }
 
+func TestBuildUserPromptMCPHintsInjectsDraftWikiMainAgentPolicy(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "훅 정책을 개선해줘"})
+	for _, want := range []string{"draft-wiki:", "main agent must judge", "agent-harness project draft-wiki queue", "heuristics must not queue"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("draft-wiki policy missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
 func TestBuildUserPromptMCPHintsForAPIWork(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
 	if !got.OK || !got.ShouldInject {

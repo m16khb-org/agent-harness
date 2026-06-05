@@ -31,7 +31,7 @@ Hook behavior:
 - `UserPromptSubmit`: dynamic routing/profile/upkeep hint only.
 - `PreToolUse`: installed with worktree, Korean remote artifact, VCS issue-linking, staged-check, and GitOps kubectl guards. The Korean remote artifact and VCS issue-linking guards inspect both shell CLI commands and MCP tool-call shapes for issue/PR/MR create/edit/update requests. The worktree guard is a no-op unless an IssueOps cycle or `HARNESS_EXPECTED_WORKTREE` applies; the staged-check guard asks before broad `biome check apps libs` / broad package-script lint or format checks so agents use staged or changed-file scope first; the kubectl guard blocks direct mutating cluster commands, asks for confirmation on live access such as `exec` and `port-forward`, and allows read-only inspection plus dry-runs. Raw `--json` exposes diagnostics.
 - `--enforce-search-routing`: optional deterministic block for obvious CodeGraph/rg routing mismatches.
-- `PostToolUse`: records only successful mutating tool evidence into repo-scoped user state.
+- `PostToolUse`: records only successful mutating tool evidence into repo-scoped user state. It must not auto-queue draft-wiki material; the main agent explicitly queues judged reusable material with `agent-harness project draft-wiki queue --stdin` or `--input`.
 - `PreCompact`/`PostCompact`: save and restore a small pending-upkeep capsule once.
 - `Stop`: installed with `--enforce-numbered-next-actions`; when the host exposes the final assistant message or transcript, it blocks missing numbered next actions and tells the agent to explain the block before presenting context-specific choices.
 

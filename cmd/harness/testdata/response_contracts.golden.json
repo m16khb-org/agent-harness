@@ -495,7 +495,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 19300,
+          "bytes": 19659,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -517,7 +517,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 19095,
+          "bytes": 19313,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -576,7 +576,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 18526,
+          "bytes": 18748,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -650,7 +650,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17609,
+          "bytes": 17699,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -728,7 +728,7 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 3694,
+          "bytes": 3864,
           "headings": [
             "Host Operations",
             "Codex",
@@ -757,7 +757,7 @@
           "title": "Install And Sync"
         },
         {
-          "bytes": 3558,
+          "bytes": 3791,
           "headings": [
             "Project Docs Operations",
             "Project Bootstrap",
@@ -3426,7 +3426,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 19300,
+                "bytes": 19659,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -3448,7 +3448,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 19095,
+                "bytes": 19313,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3507,7 +3507,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 18526,
+                "bytes": 18748,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -3581,7 +3581,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17609,
+                "bytes": 17699,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -3659,7 +3659,7 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 3694,
+                "bytes": 3864,
                 "headings": [
                   "Host Operations",
                   "Codex",
@@ -3688,7 +3688,7 @@
                 "title": "Install And Sync"
               },
               {
-                "bytes": 3558,
+                "bytes": 3791,
                 "headings": [
                   "Project Docs Operations",
                   "Project Bootstrap",

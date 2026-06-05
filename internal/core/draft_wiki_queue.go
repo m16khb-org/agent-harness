@@ -133,7 +133,7 @@ func AppendDraftWikiQueueEvent(req DraftWikiQueueAppendRequest) (DraftWikiQueueA
 		UpdatedAt:      now,
 	}
 	if event.Source == "" {
-		event.Source = "post-tool-use"
+		event.Source = "main-agent"
 	}
 	if err := appendDraftWikiQueueEvent(path, event); err != nil {
 		return DraftWikiQueueAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: path}, err
@@ -288,7 +288,7 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 		timeout = 5 * time.Minute
 	}
 	prompt := buildDraftWikiSuggestPrompt(DraftWikiSuggestRequest{
-		Title:      "Draft wiki hook memory",
+		Title:      "Draft wiki queued memory",
 		TargetWiki: targetWiki,
 		TargetType: targetType,
 	}, event.SourceMaterial, agyModel, targetType)
@@ -300,7 +300,7 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 	if err != nil {
 		return failDraftWikiQueueEvent(event, err)
 	}
-	draftPath, err := writeSuggestedDraft(event.RepoRoot, "Draft wiki hook memory", targetWiki, targetType, agyModel, draftBody)
+	draftPath, err := writeSuggestedDraft(event.RepoRoot, "Draft wiki queued memory", targetWiki, targetType, agyModel, draftBody)
 	if err != nil {
 		return failDraftWikiQueueEvent(event, err)
 	}
