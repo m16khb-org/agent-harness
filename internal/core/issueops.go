@@ -446,7 +446,7 @@ func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (Is
 	if err != nil {
 		return record, err
 	}
-	if record.Phase == IssueOpsPhasePR || record.Phase == IssueOpsPhaseDone {
+	if record.Phase == IssueOpsPhaseDone {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot add feedback after %s phase", record.Phase)
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)

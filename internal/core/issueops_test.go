@@ -160,6 +160,24 @@ func TestIssueOpsContractChangeFeedbackBlocksPRUntilIssueUpdateRecorded(t *testi
 	if ready := IssueOpsPRReadiness(record); !ready.Ready || containsString(ready.Missing, "contract_feedback_issue_update") {
 		t.Fatalf("recorded issue update should unblock PR readiness: %+v", ready)
 	}
+	record.Phase = IssueOpsPhasePR
+	if _, err := writeIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	record, err = AddIssueOpsFeedback(stateRoot, record.ID, "review", "post-pr review feedback", "defect")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Phase != IssueOpsPhaseFeedback || len(record.Feedback) != 2 {
+		t.Fatalf("post-pr feedback should be recorded and return to feedback phase: %+v", record)
+	}
+	record.Phase = IssueOpsPhaseDone
+	if _, err := writeIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AddIssueOpsFeedback(stateRoot, record.ID, "review", "late feedback", "defect"); err == nil || !strings.Contains(err.Error(), "after done phase") {
+		t.Fatalf("done phase should reject new feedback, got %v", err)
+	}
 }
 
 func TestIssueOpsAISlopCleanRejectsUntrackedPlanWithoutImplementation(t *testing.T) {
@@ -855,8 +873,23 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseFeedback)); err == nil || !strings.Contains(err.Error(), "cannot move issueops phase backward") {
 		t.Fatalf("pr phase should not move backward to feedback, got %v", err)
 	}
-	if _, err := AddIssueOpsFeedback(stateRoot, record.ID, "review", "late contract change", "contract_change"); err == nil || !strings.Contains(err.Error(), "after pr phase") {
-		t.Fatalf("feedback after pr phase should be rejected, got %v", err)
+	record, err = AddIssueOpsFeedback(stateRoot, record.ID, "review", "late contract change", "contract_change")
+	if err != nil {
+		t.Fatalf("feedback after pr phase should be recorded, got %v", err)
+	}
+	if record.Phase != IssueOpsPhaseFeedback {
+		t.Fatalf("post-pr feedback should return the loop to feedback phase: %+v", record)
+	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR)); err == nil || !strings.Contains(err.Error(), "contract_feedback_issue_update") {
+		t.Fatalf("post-pr contract feedback should block pr until issue update, got %v", err)
+	}
+	record, err = MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR))
+	if err != nil || record.Phase != IssueOpsPhasePR {
+		t.Fatalf("pr phase after issue update should succeed, got %+v err=%v", record, err)
 	}
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseDone)); err == nil || !strings.Contains(err.Error(), "remote artifact") {
 		t.Fatalf("done phase should require remote artifact verification, got %v", err)
