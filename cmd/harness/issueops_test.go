@@ -44,19 +44,23 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("plan link should move to implement phase: %#v", planRecord)
 	}
 
+	worktreePath := filepath.Join(t.TempDir(), "repo.worktrees", "feature-demo")
+	if err := os.MkdirAll(worktreePath, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	worktree := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", "/repo/example.worktrees/feature-demo", "--json"})
+		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktreePath, "--json"})
 	})
 	var worktreeRecord map[string]any
 	if err := json.Unmarshal([]byte(worktree), &worktreeRecord); err != nil {
 		t.Fatalf("worktree link should return JSON: %v\n%s", err, worktree)
 	}
-	if worktreeRecord["worktree_path"] != "/repo/example.worktrees/feature-demo" {
+	if worktreeRecord["worktree_path"] != worktreePath {
 		t.Fatalf("worktree link should persist exact path: %#v", worktreeRecord)
 	}
 
 	branch := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/provider-linked-branch", "--base-branch", "main", "--json"})
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "feature/provider-linked-branch", "--base-branch", "main", "--link-verified", "--json"})
 	})
 	var branchRecord map[string]any
 	if err := json.Unmarshal([]byte(branch), &branchRecord); err != nil {

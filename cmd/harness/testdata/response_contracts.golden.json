@@ -454,7 +454,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 11975,
+          "bytes": 12623,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -499,7 +499,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 19919,
+          "bytes": 20018,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -1146,7 +1146,8 @@
       "branch": "1-contract-branch",
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "missing": [
-        "ai_slop_clean"
+        "ai_slop_clean",
+        "branch_link_verified"
       ],
       "ok": true,
       "plan_path": "docs/superpowers/plans/contract.md",
@@ -3532,7 +3533,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 11975,
+                "bytes": 12623,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3577,7 +3578,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 19919,
+                "bytes": 20018,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -4263,7 +4264,8 @@
             "branch": "feature/mcp-contract",
             "issue_url": "https://github.com/example/repo/issues/2",
             "missing": [
-              "ai_slop_clean"
+              "ai_slop_clean",
+              "branch_link_verified"
             ],
             "ok": true,
             "plan_path": "docs/superpowers/plans/mcp-contract.md",

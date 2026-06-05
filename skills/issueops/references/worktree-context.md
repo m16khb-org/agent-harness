@@ -36,7 +36,7 @@ Keep IssueOps worktrees as siblings of the source checkout under the fixed patte
 
 Run implementation from the worktree path, not from the source checkout. Record the expected branch and worktree path in the issue-based plan and in any worker prompt. If the source checkout already contains implementation edits from before this gate, stop and ask how to move or reconcile those edits into the issue branch worktree.
 
-The linked worktree path is authoritative. Once `issueops link-worktree` is recorded, the lifecycle PreToolUse guard blocks mutating tool targets outside that exact path, including the source checkout on `main` and another sibling worktree for a different issue branch. During `implement`, `ai-slop-clean`, `feedback`, and `pr`, a cycle with no linked worktree is fail-closed for source/worktree edits: create the sibling worktree and run `issueops link-worktree` before changing implementation files.
+The linked worktree path is authoritative. Once `issueops link-worktree` is recorded, the lifecycle PreToolUse guard blocks mutating tool targets outside that exact path, including the source checkout on `main` and another sibling worktree for a different issue branch. During `implement`, `ai-slop-clean`, `feedback`, and `pr`, a cycle with no linked worktree is fail-closed for source/worktree edits: create the sibling worktree and run `issueops link-worktree` before changing implementation files. The lifecycle command also refuses to enter `ai-slop-clean` until issue, provider-linked branch, plan, and existing worktree evidence are recorded, and refuses `pr` until strict PR readiness is green.
 
 ## Edit Target Guard
 

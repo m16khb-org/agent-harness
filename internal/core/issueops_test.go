@@ -20,12 +20,23 @@ func TestIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("new cycle should not be PR-ready: %+v", ready)
 	}
 
-	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://gitlab.example/group/project/-/issues/1")
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if record.Phase != IssueOpsPhasePlan || record.IssueURL == "" {
 		t.Fatalf("issue link should move to plan phase: %+v", record)
+	}
+
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       "feature/demo",
+		BaseBranch:   "main",
+		LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	record, err = LinkIssueOpsPlan(stateRoot, record.ID, "docs/superpowers/plans/demo.md")
@@ -36,11 +47,12 @@ func TestIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("plan link should move to implement phase: %+v", record)
 	}
 
-	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, "/repo/example.worktrees/feature-demo")
+	worktree := t.TempDir()
+	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, worktree)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.WorktreePath != "/repo/example.worktrees/feature-demo" {
+	if record.WorktreePath != worktree {
 		t.Fatalf("worktree path should be persisted: %+v", record)
 	}
 
@@ -171,6 +183,7 @@ func TestIssueOpsStrictPRReadinessRequiresCleanSyncedRepo(t *testing.T) {
 		IssueURL:      "https://gitlab.example/group/project/-/issues/1",
 		PlanPath:      "plans/demo.md",
 		WorktreePath:  repo,
+		BranchPrepare: &IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: "https://gitlab.example/group/project/-/issues/1", Branch: "main", BaseBranch: "main", LinkVerified: true},
 		AISlopCleanAt: "2026-06-05T00:00:00Z",
 	}
 
@@ -214,6 +227,7 @@ func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 		IssueURL:      "https://gitlab.example/group/project/-/issues/2",
 		PlanPath:      "plans/demo.md",
 		WorktreePath:  worktree,
+		BranchPrepare: &IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: "https://gitlab.example/group/project/-/issues/2", Branch: branch, BaseBranch: "main", LinkVerified: true},
 		AISlopCleanAt: "2026-06-05T00:00:00Z",
 	}
 
@@ -225,7 +239,22 @@ func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 
 func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "feature/demo"})
+	repo := initIssueOpsRepo(t)
+	branch := "feature/demo"
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
+		t.Fatalf("git checkout branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "push", "-q", "-u", "origin", branch); code != 0 {
+		t.Fatalf("git push branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "main"); code != 0 {
+		t.Fatalf("git checkout main failed: %s", stderr)
+	}
+	worktree := filepath.Join(t.TempDir(), "feature-demo")
+	if code, _, stderr := GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
+		t.Fatalf("git worktree add failed: %s", stderr)
+	}
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,23 +267,41 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, "nonsense"); err == nil {
 		t.Fatalf("expected unknown phase rejection")
 	}
-	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
-	if err != nil || record.Phase != IssueOpsPhaseAISlopClean {
-		t.Fatalf("expected ai-slop-clean phase, got %+v err=%v", record, err)
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean)); err == nil || !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("ai-slop-clean without issue/plan/worktree should be rejected, got %v", err)
 	}
 	// pr phase requires issue + plan + ai-slop-clean evidence (readiness gate).
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR)); err == nil {
 		t.Fatalf("pr phase without readiness should be rejected")
 	}
-	if _, err := LinkIssueOpsIssue(stateRoot, record.ID, "https://example.com/acme/repo/issues/1"); err != nil {
+	if _, err := LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     "https://github.com/example/repo/issues/1",
+		Branch:       branch,
+		BaseBranch:   "main",
+		LinkVerified: true,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, "plans/demo.md"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean)); err == nil || !strings.Contains(err.Error(), "worktree_path") {
+		t.Fatalf("ai-slop-clean without worktree should be rejected, got %v", err)
+	}
+	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, worktree); err != nil {
+		t.Fatal(err)
+	}
+	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	if err != nil || record.Phase != IssueOpsPhaseAISlopClean {
+		t.Fatalf("expected ai-slop-clean phase, got %+v err=%v", record, err)
+	}
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR))
 	if err != nil || record.Phase != IssueOpsPhasePR {
-		t.Fatalf("pr phase with readiness should succeed, got %+v err=%v", record, err)
+		t.Fatalf("pr phase with strict readiness should succeed, got %+v err=%v", record, err)
 	}
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseDone))
 	if err != nil || record.Phase != IssueOpsPhaseDone {

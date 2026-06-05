@@ -24,7 +24,7 @@ Required phases:
 5. Implementation: use TDD for behavior changes and subagents only for bounded independent work.
 6. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
 7. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
-8. PR/MR: draft only after the issue URL and plan path are linked, AI slop cleanup is complete, and relevant verification has run.
+8. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
 
 ## Reference Map
 
@@ -47,7 +47,7 @@ Load these files only when the phase applies:
 - Evidence contract first: before implementation, record the domain invariant, exact mechanism, equivalent behavior if any, source evidence, changed endpoint/API-doc needs, live runtime matrix needs, review-thread obligations, and completion hygiene checks. Load `references/evidence-contract.md` when any of those surfaces apply.
 - Verify before remote writes: run the Korean Remote Artifact Gate before creating or editing remote issues, PRs, or MRs.
 - Korean remote hook guard: installed PreToolUse hooks include `--enforce-korean-remote-artifacts` and block `gh issue/pr create/edit` when an inspectable title/body fails the Korean remote artifact gate.
-- VCS linking hook guard: installed PreToolUse hooks include `--enforce-vcs-issue-linking` and block `gh`/`glab` issue create/edit when the body carries a `Plan Link` section or, on GitLab, a `Related Issues` body section (related issues belong in native linked items). The same guard blocks remote issue/PR/MR create commands without labels; copy linked issue labels for PR/MR create or pass an explicit manual label. See `references/remote-issue.md` → "Provider-Specific Linking And Hierarchy".
+- VCS linking hook guard: installed PreToolUse hooks include `--enforce-vcs-issue-linking` and block `gh`/`glab` issue create/edit when the body carries a `Plan Link` section or, on GitLab, a `Related Issues` body section (related issues belong in native linked items). The same guard blocks remote issue/PR/MR create commands without labels or assignee; copy linked issue labels for PR/MR create or pass an explicit manual label, and assign the artifact to the current user. See `references/remote-issue.md` -> "Provider-Specific Linking And Hierarchy".
 - No broad review sweeps: subagent reviews must have explicit included paths, excluded large/generated paths, a time budget, and a fallback direct verification path.
 - Cleanup choices: after a PR/MR is merged, verify merge/worktree/branch status and present numbered cleanup choices before deleting local worktrees or branches.
 - Numbered next actions: at user decision points and after reporting review/feedback/cleanup status, end with `선택지:` and three numbered choices. Installed Stop hooks with `--enforce-numbered-next-actions` block missing choices and tell the agent to explain the block before presenting context-specific choices.
@@ -129,7 +129,7 @@ agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 
 `link-child` records a provider-native child work item after it exists remotely. On GitHub that child should be a sub-issue; on GitLab it should be a child item/task. The command does not create remote issues and must not be used as a substitute for the provider-specific hierarchy rules.
 
-Advance the lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The `pr` phase requires a linked issue, plan, and ai-slop-clean evidence:
+Advance the lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The `ai-slop-clean` phase requires linked issue, provider-linked branch, plan, and an existing linked worktree. The `pr` phase requires strict PR readiness, including ai-slop-clean evidence:
 
 ```bash
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill --json
@@ -151,6 +151,6 @@ Stop and ask before creating or updating remote issues, PRs, or MRs if credentia
 
 Stop before implementation if brainstorming or grilling exposes materially different interpretations. Present the interpretations and ask for the intended one.
 
-Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports missing `issue_url`, `plan_path`, `worktree_path`, `worktree_exists`, `branch_match`, `worktree_clean`, `upstream`, `upstream_synced`, or `plan_exists`.
+Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports missing `issue_url`, `branch_prepare`, `branch_link_verified`, `plan_path`, `worktree_path`, `worktree_exists`, `branch_match`, `worktree_clean`, `upstream`, `upstream_synced`, `plan_exists`, or `ai_slop_clean`.
 
 Before PR/MR create, verify the linked issue labels and pass them to the provider create command. If the linked issue has no labels, create or apply an explicit manual label first, or stop and record label-decision feedback; never create the PR/MR with an empty label set.

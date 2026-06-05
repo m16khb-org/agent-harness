@@ -382,9 +382,9 @@ func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch string) [
 }
 
 // AdvanceIssueOpsPhase moves an IssueOps loop to an explicitly named phase. The
-// workflow is advisory, so any known phase is accepted; the hard gate is that
-// the pr phase requires issue + plan evidence and a completed ai-slop-clean pass
-// (PR/MR drafting preconditions).
+// workflow is advisory until code-review/remote-artifact boundaries. The hard
+// gates are that ai-slop-clean requires a concrete worktree to inspect, and PR
+// phase requires strict PR readiness.
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	phase := IssueOpsPhase(strings.TrimSpace(to))
 	if !knownIssueOpsPhase(phase) {
@@ -394,8 +394,13 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	if err != nil {
 		return record, err
 	}
+	if phase == IssueOpsPhaseAISlopClean {
+		if ready := IssueOpsAISlopCleanReadiness(record); !ready.Ready {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter ai-slop-clean phase: missing %s", strings.Join(ready.Missing, ", "))
+		}
+	}
 	if phase == IssueOpsPhasePR {
-		if ready := IssueOpsPRReadiness(record); !ready.Ready {
+		if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
@@ -406,17 +411,33 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
-func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
-	missing := []string{}
-	if strings.TrimSpace(record.IssueURL) == "" {
-		missing = append(missing, "issue_url")
+func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
+	missing := issueOpsBaseImplementationMissing(record)
+	if path := strings.TrimSpace(record.WorktreePath); path == "" {
+		missing = append(missing, "worktree_path")
+	} else if !issueOpsWorktreePathValid(path) {
+		missing = append(missing, "worktree_exists")
 	}
-	if strings.TrimSpace(record.PlanPath) == "" {
-		missing = append(missing, "plan_path")
+	return IssueOpsReadiness{
+		OK:           true,
+		Ready:        len(missing) == 0,
+		Missing:      uniqSorted(missing),
+		IssueURL:     record.IssueURL,
+		PlanPath:     record.PlanPath,
+		WorktreePath: record.WorktreePath,
+		Branch:       record.Branch,
+	}
+}
+
+func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
+	missing := issueOpsBaseImplementationMissing(record)
+	if strings.TrimSpace(record.WorktreePath) == "" {
+		missing = append(missing, "worktree_path")
 	}
 	if strings.TrimSpace(record.AISlopCleanAt) == "" {
 		missing = append(missing, "ai_slop_clean")
 	}
+	missing = uniqSorted(missing)
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
@@ -426,6 +447,25 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		WorktreePath: record.WorktreePath,
 		Branch:       record.Branch,
 	}
+}
+
+func issueOpsBaseImplementationMissing(record IssueOpsRecord) []string {
+	missing := []string{}
+	if strings.TrimSpace(record.IssueURL) == "" {
+		missing = append(missing, "issue_url")
+	}
+	if strings.TrimSpace(record.Branch) == "" {
+		missing = append(missing, "branch")
+	}
+	if record.BranchPrepare == nil {
+		missing = append(missing, "branch_prepare")
+	} else if !record.BranchPrepare.LinkVerified {
+		missing = append(missing, "branch_link_verified")
+	}
+	if strings.TrimSpace(record.PlanPath) == "" {
+		missing = append(missing, "plan_path")
+	}
+	return missing
 }
 
 func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {

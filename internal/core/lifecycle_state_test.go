@@ -395,20 +395,26 @@ func TestPreToolUseVCSLinkingBlocksRemoteCreateWithoutLabels(t *testing.T) {
 }
 
 func TestPreToolUseVCSLinkingBlocksRemoteCreateWithoutAssignee(t *testing.T) {
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo:              t.TempDir(),
-		Tool:              "bash",
-		Command:           `glab mr create --title "IssueOps 담당자 검증" --description "라벨은 있지만 담당자 없는 MR 생성을 막습니다." --label bug`,
-		EnforceVCSLinking: true,
-	})
-	if got.Decision != "block" || !strings.Contains(got.Reason, "assignee") {
-		t.Fatalf("expected unassigned remote create to be blocked: %+v", got)
+	for _, command := range []string{
+		`glab mr create --title "IssueOps 담당자 검증" --description "라벨은 있지만 담당자 없는 MR 생성을 막습니다." --label bug`,
+		`glab mr create --title "IssueOps 담당자 검증" --description "이슈 라벨 복사 옵션이 있어도 담당자는 필요합니다." --related-issue 2385 --copy-issue-labels`,
+	} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:              t.TempDir(),
+			Tool:              "bash",
+			Command:           command,
+			EnforceVCSLinking: true,
+		})
+		if got.Decision != "block" || !strings.Contains(got.Reason, "assignee") {
+			t.Fatalf("expected unassigned remote create to be blocked: %q -> %+v", command, got)
+		}
 	}
 }
 
 func TestPreToolUseVCSLinkingAllowsRemoteCreateWithLabelsAndAssignee(t *testing.T) {
 	for _, command := range []string{
 		`glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨을 복사해 MR 라벨 누락을 방지합니다." --label bug --assignee m16khb`,
+		`glab mr create --title "IssueOps 라벨 검증" --description "이슈 라벨 복사와 담당자를 함께 지정합니다." --copy-issue-labels --assignee-id 100`,
 		`gh pr create --title "IssueOps 라벨 검증" --body "라벨과 담당자를 함께 지정합니다." -l bug -a @me`,
 	} {
 		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
@@ -833,10 +839,31 @@ func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 
 func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseAISlopClean)
+	repo := guardRepoWithCycle(t, "feat/x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "feat/x")
 	linked := filepath.Join(filepath.Dir(repo), "repo.worktrees", "feat-x")
+	if err := os.MkdirAll(linked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsIssue(IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), id, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     "https://github.com/example/repo/issues/1",
+		Branch:       "feat/x",
+		BaseBranch:   "main",
+		LinkVerified: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), id, "plans/demo.md"); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(IssueOpsPhaseAISlopClean)); err != nil {
 		t.Fatal(err)
 	}
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{

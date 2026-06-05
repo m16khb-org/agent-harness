@@ -594,13 +594,15 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 					artifact.labels = appendRemoteArtifactLabels(artifact.labels, args[j+1])
 					j++
 				}
+			case arg == "--copy-issue-labels":
+				artifact.labels = appendRemoteArtifactLabels(artifact.labels, "copied-from-linked-issue")
 			case strings.HasPrefix(arg, "--label="):
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--label="))
 			case strings.HasPrefix(arg, "--labels="):
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--labels="))
 			case strings.HasPrefix(arg, "--add-label="):
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, strings.TrimPrefix(arg, "--add-label="))
-			case arg == "--assignee" || arg == "-a" || arg == "--assignees" || arg == "--add-assignee":
+			case arg == "--assignee" || arg == "-a" || arg == "--assignees" || arg == "--add-assignee" || arg == "--assignee-id" || arg == "--assignee-ids":
 				if j+1 < len(args) {
 					artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, args[j+1])
 					j++
@@ -611,6 +613,10 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignees="))
 			case strings.HasPrefix(arg, "--add-assignee="):
 				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--add-assignee="))
+			case strings.HasPrefix(arg, "--assignee-id="):
+				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee-id="))
+			case strings.HasPrefix(arg, "--assignee-ids="):
+				artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee-ids="))
 			}
 		}
 		return artifact, true
