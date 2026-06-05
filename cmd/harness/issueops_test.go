@@ -111,6 +111,10 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("PR readiness should require ai-slop-clean before drafting: %#v", beforeClean)
 	}
 
+	if err := runIssueOps([]string{"phase", "--id", id, "--to", "ai-slop-clean", "--json"}); err == nil || !strings.Contains(err.Error(), "implementation_changes") {
+		t.Fatalf("ai-slop-clean should require implementation changes, got %v", err)
+	}
+	writeIssueOpsCLIFileForTest(t, worktreePath, "internal/demo.go", "package demo\n")
 	cleaned := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"phase", "--id", id, "--to", "ai-slop-clean", "--json"})
 	})

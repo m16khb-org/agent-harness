@@ -4927,11 +4927,23 @@ func mcpTools() []map[string]any {
 		},
 		{
 			"name":        "issueops_set_phase",
-			"description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The ai-slop-clean phase requires linked issue, provider-linked branch, plan, and worktree evidence; the pr phase requires strict PR readiness; the done phase requires prior pr phase.",
+			"description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The ai-slop-clean phase requires linked issue, provider-linked branch, plan, linked worktree, and implementation changes; the pr phase requires strict PR readiness; the done phase requires prior pr phase plus verified remote PR/MR artifact state.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
 				"id":    map[string]any{"type": "string", "description": "IssueOps id."},
 				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
 				"to":    map[string]any{"type": "string", "description": "Compatibility alias for phase, matching the CLI --to flag.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
+			}},
+		},
+		{
+			"name":        "issueops_verify_remote_artifact",
+			"description": "Record that the created PR/MR was verified remotely with URL, labels, and assignees before the IssueOps loop may enter done.",
+			"inputSchema": map[string]any{"type": "object", "required": []string{"id", "provider", "kind", "url", "labels", "assignees"}, "properties": map[string]any{
+				"id":        map[string]any{"type": "string", "description": "IssueOps id."},
+				"provider":  map[string]any{"type": "string", "description": "Remote provider.", "enum": []string{"github", "gitlab"}},
+				"kind":      map[string]any{"type": "string", "description": "Remote artifact kind.", "enum": []string{"pr", "mr"}},
+				"url":       map[string]any{"type": "string", "description": "Verified PR/MR URL."},
+				"labels":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Verified remote labels."},
+				"assignees": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Verified remote assignees."},
 			}},
 		},
 		{
@@ -5346,6 +5358,18 @@ func handleToolCall(params json.RawMessage) (any, *rpcError) {
 		result, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), phase)
 		if err != nil {
 			return nil, &rpcError{Code: -32602, Message: "IssueOps phase advance failed", Data: err.Error()}
+		}
+		payload = result
+	case "issueops_verify_remote_artifact":
+		result, err := core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), core.IssueOpsRemoteArtifactVerificationRequest{
+			Provider:  stringArg(call.Arguments, "provider"),
+			Kind:      stringArg(call.Arguments, "kind"),
+			URL:       stringArg(call.Arguments, "url"),
+			Labels:    stringSliceArg(call.Arguments, "labels"),
+			Assignees: stringSliceArg(call.Arguments, "assignees"),
+		})
+		if err != nil {
+			return nil, &rpcError{Code: -32602, Message: "IssueOps remote artifact verification failed", Data: err.Error()}
 		}
 		payload = result
 	case "issueops_remote_score":

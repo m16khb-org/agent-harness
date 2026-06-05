@@ -155,6 +155,7 @@ func issueOpsUsage() {
   agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
   agent-harness issueops remote score --input PATH [--judge none|agy] [--json]
+  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]
 `)
 }
 
@@ -342,7 +343,7 @@ func runIssueOpsBranch(args []string) error {
 
 func runIssueOpsRemote(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops remote score --input PATH [--judge none|agy] [--json]")
+		fmt.Println("Usage: agent-harness issueops remote score --input PATH [--judge none|agy] [--json]\n       agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
 		return nil
 	}
 	if args[0] == "remote-score" {
@@ -392,6 +393,30 @@ func runIssueOpsRemote(args []string) error {
 			fmt.Printf("- label: %s score=%.2f\n", label.Name, label.Score)
 		}
 		return nil
+	case "verify-artifact":
+		fs := flag.NewFlagSet("issueops remote verify-artifact", flag.ContinueOnError)
+		id := fs.String("id", "", "IssueOps id")
+		provider := fs.String("provider", "", "remote provider: github or gitlab")
+		kind := fs.String("kind", "", "remote artifact kind: pr or mr")
+		url := fs.String("url", "", "remote PR/MR URL")
+		var labels repeatedFlag
+		var assignees repeatedFlag
+		fs.Var(&labels, "label", "verified remote label; may be repeated")
+		fs.Var(&labels, "labels", "verified remote label; may be repeated")
+		fs.Var(&assignees, "assignee", "verified remote assignee; may be repeated")
+		fs.Var(&assignees, "assignees", "verified remote assignee; may be repeated")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		record, err := core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), *id, core.IssueOpsRemoteArtifactVerificationRequest{
+			Provider:  *provider,
+			Kind:      *kind,
+			URL:       *url,
+			Labels:    labels,
+			Assignees: assignees,
+		})
+		return printIssueOpsResult(record, *jsonOut, err)
 	default:
 		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
 	}

@@ -219,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "665143779954a68537de10d5033ca7aa1044dc8a0b11e46ecc580f2b0654a82c",
+      "hash": "8c3ee06f37e1077bc6595138a992841715210f59b95a9904b6a04044f38f9f76",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -246,6 +246,7 @@
         "issueops_set_phase",
         "issueops_start",
         "issueops_status",
+        "issueops_verify_remote_artifact",
         "lint_diagnose",
         "project_docs_bootstrap_plan",
         "project_docs_read",
@@ -379,6 +380,7 @@
           "issue_url",
           "plan_path",
           "branch_prepare",
+          "remote_artifact",
           "feedback",
           "ai_slop_clean_at",
           "created_at",
@@ -3491,7 +3493,7 @@
                 "name": "version"
               }
             ],
-            "hash": "665143779954a68537de10d5033ca7aa1044dc8a0b11e46ecc580f2b0654a82c",
+            "hash": "8c3ee06f37e1077bc6595138a992841715210f59b95a9904b6a04044f38f9f76",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3518,6 +3520,7 @@
               "issueops_set_phase",
               "issueops_start",
               "issueops_status",
+              "issueops_verify_remote_artifact",
               "lint_diagnose",
               "project_docs_bootstrap_plan",
               "project_docs_read",
@@ -3651,6 +3654,7 @@
                 "issue_url",
                 "plan_path",
                 "branch_prepare",
+                "remote_artifact",
                 "feedback",
                 "ai_slop_clean_at",
                 "created_at",

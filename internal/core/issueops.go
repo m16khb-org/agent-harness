@@ -109,21 +109,39 @@ type IssueOpsBranchPrepareRequest struct {
 	LinkVerified    bool   `json:"link_verified,omitempty"`
 }
 
+type IssueOpsRemoteArtifactVerification struct {
+	Provider   string   `json:"provider"`
+	Kind       string   `json:"kind"`
+	URL        string   `json:"url"`
+	Labels     []string `json:"labels"`
+	Assignees  []string `json:"assignees"`
+	VerifiedAt string   `json:"verified_at"`
+}
+
+type IssueOpsRemoteArtifactVerificationRequest struct {
+	Provider  string
+	Kind      string
+	URL       string
+	Labels    []string
+	Assignees []string
+}
+
 type IssueOpsRecord struct {
-	OK            bool                   `json:"ok"`
-	ID            string                 `json:"id"`
-	Repo          string                 `json:"repo"`
-	Branch        string                 `json:"branch,omitempty"`
-	Phase         IssueOpsPhase          `json:"phase"`
-	IssueURL      string                 `json:"issue_url,omitempty"`
-	PlanPath      string                 `json:"plan_path,omitempty"`
-	WorktreePath  string                 `json:"worktree_path,omitempty"`
-	IssueLinks    []IssueOpsIssueLink    `json:"issue_links,omitempty"`
-	BranchPrepare *IssueOpsBranchPrepare `json:"branch_prepare,omitempty"`
-	Feedback      []IssueOpsFeedbackItem `json:"feedback,omitempty"`
-	AISlopCleanAt string                 `json:"ai_slop_clean_at,omitempty"`
-	CreatedAt     string                 `json:"created_at"`
-	UpdatedAt     string                 `json:"updated_at"`
+	OK             bool                                `json:"ok"`
+	ID             string                              `json:"id"`
+	Repo           string                              `json:"repo"`
+	Branch         string                              `json:"branch,omitempty"`
+	Phase          IssueOpsPhase                       `json:"phase"`
+	IssueURL       string                              `json:"issue_url,omitempty"`
+	PlanPath       string                              `json:"plan_path,omitempty"`
+	WorktreePath   string                              `json:"worktree_path,omitempty"`
+	IssueLinks     []IssueOpsIssueLink                 `json:"issue_links,omitempty"`
+	BranchPrepare  *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
+	RemoteArtifact *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
+	Feedback       []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
+	AISlopCleanAt  string                              `json:"ai_slop_clean_at,omitempty"`
+	CreatedAt      string                              `json:"created_at"`
+	UpdatedAt      string                              `json:"updated_at"`
 }
 
 type IssueOpsReadiness struct {
@@ -440,6 +458,60 @@ func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRec
 	return writeIssueOps(stateRoot, record)
 }
 
+func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return record, err
+	}
+	if record.Phase != IssueOpsPhasePR {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot verify remote artifact before pr phase")
+	}
+	provider := strings.ToLower(strings.TrimSpace(req.Provider))
+	if provider != "github" && provider != "gitlab" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("remote artifact provider must be github or gitlab")
+	}
+	if issueProvider := issueOpsProviderFromURL(record.IssueURL); issueProvider != "" && provider != issueProvider {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("remote artifact provider must match linked issue provider")
+	}
+	kind := strings.ToLower(strings.TrimSpace(req.Kind))
+	switch kind {
+	case "pull_request":
+		kind = "pr"
+	case "merge_request":
+		kind = "mr"
+	}
+	if kind != "pr" && kind != "mr" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("remote artifact kind must be pr or mr")
+	}
+	if provider == "github" && kind != "pr" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("github remote artifact kind must be pr")
+	}
+	if provider == "gitlab" && kind != "mr" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("gitlab remote artifact kind must be mr")
+	}
+	artifactURL := strings.TrimSpace(req.URL)
+	if err := validateRemoteArtifactURL(artifactURL); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
+	labels := cleanIssueOpsRemoteValues(req.Labels)
+	if len(labels) == 0 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("remote artifact labels are required")
+	}
+	assignees := cleanIssueOpsRemoteValues(req.Assignees)
+	if len(assignees) == 0 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("remote artifact assignees are required")
+	}
+	record.RemoteArtifact = &IssueOpsRemoteArtifactVerification{
+		Provider:   provider,
+		Kind:       kind,
+		URL:        artifactURL,
+		Labels:     labels,
+		Assignees:  assignees,
+		VerifiedAt: time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	return touchAndWriteIssueOps(stateRoot, record)
+}
+
 func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch string) []IssueOpsBranchPrepareStep {
 	switch provider {
 	case "gitlab":
@@ -514,7 +586,7 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot move issueops phase backward from %s to %s", record.Phase, phase)
 	}
 	if phase == IssueOpsPhaseImplement {
-		if ready := IssueOpsAISlopCleanReadiness(record); !ready.Ready {
+		if ready := IssueOpsImplementationReadiness(record); !ready.Ready {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter implement phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
@@ -534,6 +606,11 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	if phase == IssueOpsPhaseDone && record.Phase != IssueOpsPhasePR {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter done phase before pr phase")
 	}
+	if phase == IssueOpsPhaseDone {
+		if missing := issueOpsRemoteArtifactMissing(record); len(missing) > 0 {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter done phase before remote artifact verification: missing %s", strings.Join(missing, ", "))
+		}
+	}
 	record.Phase = phase
 	if phase == IssueOpsPhaseAISlopClean && strings.TrimSpace(record.AISlopCleanAt) == "" {
 		record.AISlopCleanAt = time.Now().UTC().Format(time.RFC3339Nano)
@@ -541,7 +618,42 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
+func issueOpsRemoteArtifactMissing(record IssueOpsRecord) []string {
+	if record.RemoteArtifact == nil {
+		return []string{"remote_artifact"}
+	}
+	missing := []string{}
+	if strings.TrimSpace(record.RemoteArtifact.Provider) == "" {
+		missing = append(missing, "remote_artifact_provider")
+	}
+	if strings.TrimSpace(record.RemoteArtifact.Kind) == "" {
+		missing = append(missing, "remote_artifact_kind")
+	}
+	if strings.TrimSpace(record.RemoteArtifact.URL) == "" {
+		missing = append(missing, "remote_artifact_url")
+	}
+	if len(cleanIssueOpsRemoteValues(record.RemoteArtifact.Labels)) == 0 {
+		missing = append(missing, "remote_artifact_labels")
+	}
+	if len(cleanIssueOpsRemoteValues(record.RemoteArtifact.Assignees)) == 0 {
+		missing = append(missing, "remote_artifact_assignees")
+	}
+	return uniqSorted(missing)
+}
+
 func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
+	ready := IssueOpsImplementationReadiness(record)
+	missing := append([]string{}, ready.Missing...)
+	if !issueOpsHasImplementationEvidence(record) {
+		missing = append(missing, "implementation_changes")
+	}
+	missing = uniqSorted(missing)
+	ready.Missing = missing
+	ready.Ready = len(missing) == 0
+	return ready
+}
+
+func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	missing := issueOpsBaseImplementationMissing(record)
 	if path := strings.TrimSpace(record.WorktreePath); path == "" {
 		missing = append(missing, "worktree_path")
@@ -563,6 +675,106 @@ func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		WorktreePath: record.WorktreePath,
 		Branch:       record.Branch,
 	}
+}
+
+func issueOpsHasImplementationEvidence(record IssueOpsRecord) bool {
+	worktree := strings.TrimSpace(record.WorktreePath)
+	if worktree == "" || !issueOpsWorktreePathValid(worktree) {
+		return false
+	}
+	if code, out, _ := GitCmd(worktree, "rev-parse", "--is-inside-work-tree"); code == 0 && strings.TrimSpace(out) == "true" {
+		if issueOpsGitStatusHasImplementationChange(record, worktree) {
+			return true
+		}
+		return issueOpsGitHeadDiffersFromBase(record, worktree)
+	}
+	return issueOpsFileTreeHasImplementationChange(record, worktree)
+}
+
+func issueOpsGitStatusHasImplementationChange(record IssueOpsRecord, worktree string) bool {
+	out := GitOut(worktree, "status", "--porcelain=v1", "--untracked-files=all")
+	for _, line := range strings.Split(out, "\n") {
+		path := issueOpsPorcelainPath(line)
+		if path == "" {
+			continue
+		}
+		if !issueOpsPathMatchesPlan(record, worktree, path) {
+			return true
+		}
+	}
+	return false
+}
+
+func issueOpsGitHeadDiffersFromBase(record IssueOpsRecord, worktree string) bool {
+	base := ""
+	if record.BranchPrepare != nil {
+		base = strings.TrimSpace(record.BranchPrepare.BaseBranch)
+	}
+	if base == "" {
+		return false
+	}
+	for _, ref := range []string{"origin/" + base, base} {
+		if code, _, _ := GitCmd(worktree, "rev-parse", "--verify", ref+"^{commit}"); code != 0 {
+			continue
+		}
+		_, names, _ := GitCmd(worktree, "diff", "--name-only", ref+"..HEAD", "--")
+		for _, name := range strings.Split(names, "\n") {
+			name = strings.TrimSpace(name)
+			if name != "" && !issueOpsPathMatchesPlan(record, worktree, name) {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
+func issueOpsFileTreeHasImplementationChange(record IssueOpsRecord, worktree string) bool {
+	found := false
+	_ = filepath.WalkDir(worktree, func(path string, d os.DirEntry, err error) error {
+		if err != nil || found {
+			return nil
+		}
+		if d.IsDir() {
+			if d.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !issueOpsPathMatchesPlan(record, worktree, path) {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+func issueOpsPorcelainPath(line string) string {
+	line = strings.TrimRight(line, "\r")
+	if len(line) < 4 {
+		return ""
+	}
+	path := strings.TrimSpace(line[3:])
+	if renamed := strings.LastIndex(path, " -> "); renamed >= 0 {
+		path = strings.TrimSpace(path[renamed+4:])
+	}
+	return strings.Trim(path, `"`)
+}
+
+func issueOpsPathMatchesPlan(record IssueOpsRecord, worktree, path string) bool {
+	planPath := strings.TrimSpace(record.PlanPath)
+	if planPath == "" || path == "" {
+		return false
+	}
+	if !filepath.IsAbs(planPath) {
+		planPath = filepath.Join(worktree, filepath.FromSlash(planPath))
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(worktree, filepath.FromSlash(path))
+	}
+	planPath = cleanAbsPath(planPath)
+	path = cleanAbsPath(path)
+	return path == planPath
 }
 
 func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
@@ -964,6 +1176,34 @@ func validateIssueURL(issueURL string) error {
 		return fmt.Errorf("issue_url must be an http(s) URL")
 	}
 	return nil
+}
+
+func validateRemoteArtifactURL(artifactURL string) error {
+	if artifactURL == "" {
+		return fmt.Errorf("remote artifact url is required")
+	}
+	if strings.ContainsAny(artifactURL, "\x00\r\n\t ") {
+		return fmt.Errorf("remote artifact url must not contain whitespace or control characters")
+	}
+	parsed, err := url.Parse(artifactURL)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") {
+		return fmt.Errorf("remote artifact url must be an http(s) URL")
+	}
+	return nil
+}
+
+func cleanIssueOpsRemoteValues(values []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || strings.Contains(value, "\x00") || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	return out
 }
 
 func issueOpsProviderFromURL(issueURL string) string {

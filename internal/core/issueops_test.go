@@ -78,6 +78,10 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	if ready := IssueOpsPRReadiness(reloaded); ready.Ready || !containsString(ready.Missing, "ai_slop_clean") {
 		t.Fatalf("cycle with issue and plan still needs ai-slop-clean before PR drafting: %+v", ready)
 	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean)); err == nil || !strings.Contains(err.Error(), "implementation_changes") {
+		t.Fatalf("ai-slop-clean should require implementation changes, got %v", err)
+	}
+	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\n")
 	reloaded, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
 	if err != nil {
 		t.Fatal(err)
@@ -131,6 +135,7 @@ func TestIssueOpsContractChangeFeedbackBlocksPRUntilIssueUpdateRecorded(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
+	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\n")
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
 	if err != nil {
 		t.Fatal(err)
@@ -154,6 +159,54 @@ func TestIssueOpsContractChangeFeedbackBlocksPRUntilIssueUpdateRecorded(t *testi
 	}
 	if ready := IssueOpsPRReadiness(record); !ready.Ready || containsString(ready.Missing, "contract_feedback_issue_update") {
 		t.Fatalf("recorded issue update should unblock PR readiness: %+v", ready)
+	}
+}
+
+func TestIssueOpsAISlopCleanRejectsUntrackedPlanWithoutImplementation(t *testing.T) {
+	stateRoot := t.TempDir()
+	repo := initIssueOpsRepo(t)
+	branch := "99-plan-only"
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
+		t.Fatalf("git checkout branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "push", "-q", "-u", "origin", branch); code != 0 {
+		t.Fatalf("git push branch failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(repo, "checkout", "-q", "main"); code != 0 {
+		t.Fatalf("git checkout main failed: %s", stderr)
+	}
+	worktree := issueOpsWorktreePathForTest(repo, branch)
+	if code, _, stderr := GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
+		t.Fatalf("git worktree add failed: %s", stderr)
+	}
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/99")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       branch,
+		BaseBranch:   "main",
+		LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeIssueOpsFile(t, worktree, "plans/new-demo.md", "plan\n")
+	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans", "new-demo.md")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean)); err == nil || !strings.Contains(err.Error(), "implementation_changes") {
+		t.Fatalf("ai-slop-clean should reject plan-only untracked directories, got %v", err)
 	}
 }
 
@@ -716,6 +769,10 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans/demo.md")); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean)); err == nil || !strings.Contains(err.Error(), "implementation_changes") {
+		t.Fatalf("ai-slop-clean without implementation changes should be rejected, got %v", err)
+	}
+	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\n")
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
 	if err != nil || record.Phase != IssueOpsPhaseAISlopClean {
 		t.Fatalf("expected ai-slop-clean phase, got %+v err=%v", record, err)
@@ -723,6 +780,15 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
 	if err != nil || record.Phase != IssueOpsPhaseAISlopClean {
 		t.Fatalf("late issue link refresh should not move phase backward, got %+v err=%v", record, err)
+	}
+	if code, _, stderr := GitCmd(worktree, "add", "internal/demo.go", "plans/demo.md"); code != 0 {
+		t.Fatalf("git add implementation failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(worktree, "commit", "-q", "-m", "feat: implement issue"); code != 0 {
+		t.Fatalf("git commit implementation failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(worktree, "push", "-q"); code != 0 {
+		t.Fatalf("git push implementation failed: %s", stderr)
 	}
 	remote := strings.TrimSpace(GitOut(repo, "remote", "get-url", "origin"))
 	other := filepath.Join(t.TempDir(), "other")
@@ -766,6 +832,22 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	}
 	if _, err := AddIssueOpsFeedback(stateRoot, record.ID, "review", "late contract change", "contract_change"); err == nil || !strings.Contains(err.Error(), "after pr phase") {
 		t.Fatalf("feedback after pr phase should be rejected, got %v", err)
+	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseDone)); err == nil || !strings.Contains(err.Error(), "remote artifact") {
+		t.Fatalf("done phase should require remote artifact verification, got %v", err)
+	}
+	record, err = VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "github",
+		Kind:      "pr",
+		URL:       "https://github.com/example/repo/pull/1",
+		Labels:    []string{"bug", "bug"},
+		Assignees: []string{"habin"},
+	})
+	if err != nil {
+		t.Fatalf("remote artifact verification should succeed: %v", err)
+	}
+	if record.RemoteArtifact == nil || record.RemoteArtifact.URL == "" || len(record.RemoteArtifact.Labels) != 1 || len(record.RemoteArtifact.Assignees) != 1 {
+		t.Fatalf("remote artifact verification should persist URL, labels, and assignees: %+v", record.RemoteArtifact)
 	}
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseDone))
 	if err != nil || record.Phase != IssueOpsPhaseDone {

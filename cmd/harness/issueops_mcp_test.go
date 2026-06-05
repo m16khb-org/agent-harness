@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -113,6 +115,26 @@ func TestMCPIssueOpsSetPhaseAcceptsToAlias(t *testing.T) {
 	}
 }
 
+func TestMCPIssueOpsVerifyRemoteArtifactRejectsBeforePR(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	rpcErr := callMCPToolForIssueOpsTestError(t, "issueops_verify_remote_artifact", map[string]any{
+		"id":        id,
+		"provider":  "github",
+		"kind":      "pr",
+		"url":       "https://github.com/example/repo/pull/1",
+		"labels":    []string{"bug"},
+		"assignees": []string{"habin"},
+	})
+	if rpcErr == nil || !strings.Contains(rpcErr.Message, "remote artifact") || !strings.Contains(fmt.Sprint(rpcErr.Data), "before pr phase") {
+		t.Fatalf("expected MCP remote artifact verification to reject before PR phase, got %+v", rpcErr)
+	}
+}
+
 func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) map[string]any {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})
@@ -140,4 +162,14 @@ func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) 
 		t.Fatalf("invalid MCP JSON text: %v\n%s", err, text)
 	}
 	return payload
+}
+
+func callMCPToolForIssueOpsTestError(t *testing.T, name string, args map[string]any) *rpcError {
+	t.Helper()
+	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, rpcErr := handleToolCall(params)
+	return rpcErr
 }

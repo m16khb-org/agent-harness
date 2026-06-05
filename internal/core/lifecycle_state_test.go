@@ -927,6 +927,14 @@ func markIssueOpsPRPhaseForTest(t *testing.T, repo, branch string) {
 		t.Fatal(err)
 	}
 	record.Phase = IssueOpsPhasePR
+	record.RemoteArtifact = &IssueOpsRemoteArtifactVerification{
+		Provider:   "github",
+		Kind:       "pr",
+		URL:        "https://github.com/example/repo/pull/1",
+		Labels:     []string{"issueops"},
+		Assignees:  []string{"habin"},
+		VerifiedAt: "2026-06-05T00:00:00Z",
+	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
@@ -1079,6 +1087,7 @@ func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), id, filepath.Join(linked, "plans", "demo.md")); err != nil {
 		t.Fatal(err)
 	}
+	writeIssueOpsGuardFileForTest(t, linked, "internal/x.go", "package internal\n")
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(IssueOpsPhaseAISlopClean)); err != nil {
 		t.Fatal(err)
 	}
