@@ -1942,7 +1942,7 @@ func BuildNextActionJudgementTrigger(message string) NextActionJudgementTriggerR
 
 func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTriggerResult) StopNextActionRelayResult {
 	fingerprint := stopNextActionRelayFingerprint(trigger)
-	result := StopNextActionRelayResult{OK: true, ShouldRelay: true, Fingerprint: fingerprint}
+	result := StopNextActionRelayResult{OK: true, Fingerprint: fingerprint}
 	if strings.TrimSpace(fingerprint) == "" {
 		result.Reason = "no_next_action_fingerprint"
 		return result
@@ -1988,6 +1988,7 @@ func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTrigg
 		result.Warnings = append(result.Warnings, "stop_next_action_relay_write_error")
 		return result
 	}
+	result.ShouldRelay = true
 	result.Reason = "recorded_next_action_relay"
 	return result
 }
