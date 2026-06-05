@@ -1524,9 +1524,25 @@ func splitCommandTokens(command string) []string {
 	tokens := []string{}
 	var current strings.Builder
 	var quote rune
-	for _, r := range command {
+	runes := []rune(command)
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
 		switch {
 		case quote != 0:
+			if quote == '"' && r == '\\' && i+1 < len(runes) {
+				i++
+				switch runes[i] {
+				case 'n':
+					current.WriteRune('\n')
+				case 'r':
+					current.WriteRune('\r')
+				case 't':
+					current.WriteRune('\t')
+				default:
+					current.WriteRune(runes[i])
+				}
+				continue
+			}
 			if r == quote {
 				quote = 0
 				continue

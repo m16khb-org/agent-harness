@@ -1111,6 +1111,33 @@ func TestRunHookPreToolUseAllowsKoreanGitLabMCPRemoteArtifact(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseBlocksStructuredGitLabRelatedIssuesBodySection(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "mcp__glab__create_issue",
+		"tool_input": map[string]any{
+			"title":       "한국어 제목입니다 충분합니다",
+			"description": "관련 이슈\n- #1\n문제 설명입니다. 한국어 본문을 충분히 작성합니다.",
+			"labels":      []any{"bug"},
+			"assignee":    "habin",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts", "--enforce-vcs-issue-linking", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected structured GitLab Related Issues body section to be blocked, got %+v", obj)
+	}
+	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "linked items") {
+		t.Fatalf("expected GitLab linked items reason, got %q", reason)
+	}
+}
+
 func TestRunHookPreToolUseAllowsGitHubRelatedIssuesBodySection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
