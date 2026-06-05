@@ -954,15 +954,19 @@ func TestRunHookStopDoesNotAutoProceedDestructiveCleanup(t *testing.T) {
 	}
 }
 
-func TestRunHookStopDoesNotAutoProceedWhenStopHookActive(t *testing.T) {
+func TestRunHookStopStillAsksAgentToJudgeRecommendedActionWhenStopHookActive(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","stop_hook_active":true,"last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--auto-proceed-next-actions"})
 	})
-	if len(obj) != 0 {
-		t.Fatalf("stop_hook_active must suppress auto-proceed to avoid loops, got %+v", obj)
+	if obj["continue"] != true || obj["decision"] != "block" {
+		t.Fatalf("stop_hook_active with valid choices should re-enter agent judgement, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "직전 응답의 추천 선택지를 다시 확인") {
+		t.Fatalf("expected agent-judgement reason for stop_hook_active choices, got %q", reason)
 	}
 }
 

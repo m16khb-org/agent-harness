@@ -546,10 +546,12 @@ func runHookStop(args []string) error {
 	// The --auto-proceed-next-actions flag is the sole on/off switch; no env opt-in
 	// is required (the installer always adds the flag, so removing it from the
 	// installed Stop hook command is how an operator disables auto-proceed).
-	// Still suppress auto-proceed when the host reports stop_hook_active: Claude/Codex
-	// set this true on a stop that is itself a continuation of a prior stop-hook block,
-	// and the documented contract is to return success while it is true to avoid loops.
-	autoProceedEnabled := *autoProceedNextActions && !hookInputBool(stdin, "stop_hook_active")
+	//
+	// stop_hook_active only suppresses recovery loops (missing choices and
+	// notify-and-stop relays). If the continuation successfully presents valid
+	// choices, still re-enter the main agent for the context-aware judgement.
+	stopHookActive := hookInputBool(stdin, "stop_hook_active")
+	autoProceedEnabled := *autoProceedNextActions
 	autoProceed := core.EvaluateNextActionAutoProceed(message, envFloat("HARNESS_NEXT_ACTION_AUTO_PROCEED_THRESHOLD"))
 	if *jsonOut {
 		return printJSON(map[string]any{
@@ -590,7 +592,7 @@ func runHookStop(args []string) error {
 	// Guard with stop_hook_active: hosts set it true when this Stop is itself a
 	// continuation of a prior stop-hook block. The documented anti-loop contract is
 	// to allow the stop while it is true, so a non-complying agent cannot loop.
-	if nextActions.Decision == "block" && !hookInputBool(stdin, "stop_hook_active") {
+	if nextActions.Decision == "block" && !stopHookActive {
 		return printJSON(map[string]any{
 			"continue": true,
 			"decision": "block",
@@ -607,10 +609,9 @@ func runHookStop(args []string) error {
 	// non-blocking systemMessage and continue:false + stopReason were both observed to
 	// produce no visible notice. decision:"block" re-invokes the agent in-turn, so the
 	// reason instructs the agent to relay the non-auto-proceed notice to the user and
-	// then stop. The follow-up Stop carries stop_hook_active=true, which makes
-	// autoProceedEnabled false above, so this branch does not fire again and the relay
-	// turn ends without looping.
-	if autoProceedEnabled && len(autoProceed.Candidates) >= 2 && !autoProceed.AutoProceed {
+	// then stop. The follow-up Stop carries stop_hook_active=true, so this branch does
+	// not fire again and the relay turn ends without looping.
+	if autoProceedEnabled && !stopHookActive && len(autoProceed.Candidates) >= 2 && !autoProceed.AutoProceed {
 		reason := strings.TrimSpace(autoProceed.Reason)
 		if reason == "" {
 			reason = "recommended next action did not qualify for auto-proceed"
