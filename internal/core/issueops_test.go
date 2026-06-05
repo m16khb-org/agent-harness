@@ -360,7 +360,7 @@ func TestIssueOpsBranchPrepareRequiresLinkedIssue(t *testing.T) {
 	}
 }
 
-func TestIssueOpsGitLabBranchPrepareRequiresIssueNumberPrefix(t *testing.T) {
+func TestIssueOpsBranchPrepareRequiresLinkedIssueNumberPrefix(t *testing.T) {
 	stateRoot := t.TempDir()
 	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "123-provider-linked-branch"})
 	if err != nil {
@@ -386,6 +386,23 @@ func TestIssueOpsGitLabBranchPrepareRequiresIssueNumberPrefix(t *testing.T) {
 		LinkVerified: true,
 	}); err != nil {
 		t.Fatalf("gitlab branch with issue number prefix should pass, got %v", err)
+	}
+
+	record, err = StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "456-provider-linked-branch"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:   "github",
+		IssueURL:   record.IssueURL,
+		Branch:     "456-provider-linked-branch",
+		BaseBranch: "main",
+	}); err == nil || !strings.Contains(err.Error(), "123-") {
+		t.Fatalf("github branch missing issue number prefix should fail, got %v", err)
 	}
 }
 

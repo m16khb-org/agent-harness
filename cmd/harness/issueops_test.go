@@ -13,7 +13,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIRepoForTest(t, "example")
 	start := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"start", "--repo", repo, "--branch", "456-provider-linked-branch", "--json"})
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "1-provider-linked-branch", "--json"})
 	})
 	var record map[string]any
 	if err := json.Unmarshal([]byte(start), &record); err != nil {
@@ -36,14 +36,14 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 
 	branch := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "456-provider-linked-branch", "--base-branch", "main", "--link-verified", "--json"})
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "1-provider-linked-branch", "--base-branch", "main", "--link-verified", "--json"})
 	})
 	var branchRecord map[string]any
 	if err := json.Unmarshal([]byte(branch), &branchRecord); err != nil {
 		t.Fatalf("branch prepare should return JSON: %v\n%s", err, branch)
 	}
 	prepare, ok := branchRecord["branch_prepare"].(map[string]any)
-	if !ok || prepare["provider"] != "github" || prepare["branch"] != "456-provider-linked-branch" {
+	if !ok || prepare["provider"] != "github" || prepare["branch"] != "1-provider-linked-branch" {
 		t.Fatalf("branch prepare should persist provider-linked contract: %#v", branchRecord)
 	}
 	steps, ok := prepare["steps"].([]any)
@@ -51,7 +51,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("branch prepare should include fallback steps: %#v", prepare)
 	}
 
-	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "456-provider-linked-branch")
+	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "1-provider-linked-branch")
 	worktree := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktreePath, "--json"})
 	})

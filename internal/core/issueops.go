@@ -374,11 +374,9 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 	if baseBranch == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("base_branch is required")
 	}
-	if provider == "gitlab" {
-		if issueNumber := issueOpsIssueNumber(issueURL); issueNumber != "" {
-			if !strings.HasPrefix(branch, issueNumber+"-") {
-				return IssueOpsRecord{OK: false}, fmt.Errorf("gitlab branch for issue %s must start with %s- so GitLab links it in the issue Development section; for example %s-fix-login", issueNumber, issueNumber, issueNumber)
-			}
+	if issueNumber := issueOpsIssueNumber(issueURL); issueNumber != "" {
+		if !strings.HasPrefix(branch, issueNumber+"-") {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("issueops branch for issue %s must start with %s-; for example %s-fix-login", issueNumber, issueNumber, issueNumber)
 		}
 	}
 	record, err := ReadIssueOps(stateRoot, id)
