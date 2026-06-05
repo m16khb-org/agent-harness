@@ -724,9 +724,48 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if err != nil || record.Phase != IssueOpsPhaseAISlopClean {
 		t.Fatalf("late issue link refresh should not move phase backward, got %+v err=%v", record, err)
 	}
+	remote := strings.TrimSpace(GitOut(repo, "remote", "get-url", "origin"))
+	other := filepath.Join(t.TempDir(), "other")
+	if code, _, stderr := GitCmd(t.TempDir(), "clone", "-q", remote, other); code != 0 {
+		t.Fatalf("git clone for remote advance failed: %s", stderr)
+	}
+	for _, args := range [][]string{
+		{"config", "user.name", "IssueOps Remote"},
+		{"config", "user.email", "remote@example.test"},
+		{"checkout", "-q", branch},
+	} {
+		if code, _, stderr := GitCmd(other, args...); code != 0 {
+			t.Fatalf("git %v failed: %s", args, stderr)
+		}
+	}
+	writeIssueOpsFile(t, other, "REMOTE.md", "remote advance\n")
+	if code, _, stderr := GitCmd(other, "add", "REMOTE.md"); code != 0 {
+		t.Fatalf("git add remote advance failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(other, "commit", "-q", "-m", "docs: remote advance"); code != 0 {
+		t.Fatalf("git commit remote advance failed: %s", stderr)
+	}
+	if code, _, stderr := GitCmd(other, "push", "-q"); code != 0 {
+		t.Fatalf("git push remote advance failed: %s", stderr)
+	}
+	if ready := IssueOpsStrictPRReadiness(record); ready.Ready || !containsString(ready.Missing, "upstream_synced") {
+		t.Fatalf("strict readiness should fetch and reject stale upstream state: %+v", ready)
+	}
+	if code, _, stderr := GitCmd(worktree, "pull", "-q", "--ff-only"); code != 0 {
+		t.Fatalf("git pull worktree after remote advance failed: %s", stderr)
+	}
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR))
 	if err != nil || record.Phase != IssueOpsPhasePR {
 		t.Fatalf("pr phase with strict readiness should succeed, got %+v err=%v", record, err)
+	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "cannot move issueops phase backward") {
+		t.Fatalf("pr phase should not move backward to implement, got %v", err)
+	}
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseFeedback)); err == nil || !strings.Contains(err.Error(), "cannot move issueops phase backward") {
+		t.Fatalf("pr phase should not move backward to feedback, got %v", err)
+	}
+	if _, err := AddIssueOpsFeedback(stateRoot, record.ID, "review", "late contract change", "contract_change"); err == nil || !strings.Contains(err.Error(), "after pr phase") {
+		t.Fatalf("feedback after pr phase should be rejected, got %v", err)
 	}
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseDone))
 	if err != nil || record.Phase != IssueOpsPhaseDone {
@@ -738,6 +777,9 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	}
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "cannot leave done phase") {
 		t.Fatalf("done phase should be terminal, got %v", err)
+	}
+	if _, err := AddIssueOpsFeedback(stateRoot, record.ID, "review", "too late", "defect"); err == nil || !strings.Contains(err.Error(), "after done phase") {
+		t.Fatalf("feedback after done phase should be rejected, got %v", err)
 	}
 }
 

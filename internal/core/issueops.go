@@ -408,6 +408,9 @@ func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (Is
 	if err != nil {
 		return record, err
 	}
+	if record.Phase == IssueOpsPhasePR || record.Phase == IssueOpsPhaseDone {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot add feedback after %s phase", record.Phase)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.Feedback = append(record.Feedback, IssueOpsFeedbackItem{Source: source, Body: body, Classification: classification, CreatedAt: now})
 	if strings.TrimSpace(record.AISlopCleanAt) != "" {
@@ -506,6 +509,9 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	}
 	if record.Phase == IssueOpsPhaseDone {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot leave done phase")
+	}
+	if issueOpsPhaseRank(phase) < issueOpsPhaseRank(record.Phase) {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot move issueops phase backward from %s to %s", record.Phase, phase)
 	}
 	if phase == IssueOpsPhaseImplement {
 		if ready := IssueOpsAISlopCleanReadiness(record); !ready.Ready {
@@ -657,6 +663,12 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		if upstream == "" {
 			missing = append(missing, "upstream")
 		} else {
+			if code, _, stderr := GitCmd(gitRoot, "fetch", "--quiet"); code != 0 {
+				missing = append(missing, "upstream_fetch")
+				if strings.TrimSpace(stderr) != "" {
+					warnings = append(warnings, "failed to fetch upstream: "+strings.TrimSpace(stderr))
+				}
+			}
 			counts := strings.Fields(GitOut(gitRoot, "rev-list", "--left-right", "--count", "HEAD...@{u}"))
 			if len(counts) != 2 || counts[0] != "0" || counts[1] != "0" {
 				missing = append(missing, "upstream_synced")
