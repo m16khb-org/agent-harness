@@ -15,7 +15,7 @@ func TestBuildUserPromptMCPHintsInjectsNextActionPolicy(t *testing.T) {
 	if !got.OK || !got.ShouldInject {
 		t.Fatalf("expected next-action policy to inject for a non-empty prompt: %+v", got)
 	}
-	for _, want := range []string{"next-action:", "선택지:", "(추천)", "main agent", "context", "safe", "reversible", "user confirmation"} {
+	for _, want := range []string{"next-action:", "선택지:", "(추천)", "main agent", "context", "safe", "reversible", "user confirmation", "continue the work instead of ending with choices"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("next-action policy missing %q:\n%s", want, got.AdditionalContext)
 		}

@@ -374,6 +374,7 @@ type HookToolUseLifecycleRequest struct {
 	EnforceStagedChecks  bool     `json:"enforce_staged_checks,omitempty"`
 	ExpectedWorktree     string   `json:"expected_worktree,omitempty"`
 	SourceCheckout       string   `json:"source_checkout,omitempty"`
+	ProjectPath          string   `json:"project_path,omitempty"`
 }
 
 type HookToolUseLifecycleResult struct {
@@ -442,6 +443,12 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 	}
 	if req.EnforceSearchRouting {
 		if reason := searchRoutingBlockReason(result.Tool, result.Command, req.Repo); reason != "" {
+			result.Decision = "block"
+			result.Reason = reason
+		}
+	}
+	if result.Decision != "block" && req.EnforceWorktree {
+		if reason := mcpWorktreeRootBlockReason(req); reason != "" {
 			result.Decision = "block"
 			result.Reason = reason
 		}
@@ -935,6 +942,27 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		if !pathWithin(target, expected) {
 			return "mutating tool target is outside expected IssueOps worktree; set cwd/target path to the isolated worktree before editing"
 		}
+	}
+	return ""
+}
+
+func mcpWorktreeRootBlockReason(req HookToolUseLifecycleRequest) string {
+	expected := cleanAbsPath(req.ExpectedWorktree)
+	if expected == "" {
+		return ""
+	}
+	tool := strings.ToLower(strings.TrimSpace(req.Tool))
+	switch {
+	case isCodeGraphTool(tool):
+		projectPath := cleanAbsPath(req.ProjectPath)
+		if projectPath == "" {
+			return "CodeGraph in an IssueOps worktree must set projectPath to the expected IssueOps worktree: " + expected
+		}
+		if projectPath != expected {
+			return "CodeGraph projectPath is outside the expected IssueOps worktree; set projectPath to " + expected
+		}
+	case strings.Contains(tool, "filesystem") || strings.Contains(tool, "serena"):
+		return "source-root-bound MCP tool is not allowed during IssueOps worktree implementation; use native absolute-path file tools, rg rooted at the IssueOps worktree, git -C, or CodeGraph with projectPath " + expected
 	}
 	return ""
 }

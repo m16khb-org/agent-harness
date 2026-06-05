@@ -277,6 +277,7 @@ func runHookPreToolUse(args []string) error {
 		Tool:                 toolNameFromHookInput(stdin),
 		Paths:                pathsFromHookInput(stdin),
 		Command:              commandFromHookInput(stdin),
+		ProjectPath:          projectPathFromHookInput(stdin),
 		Source:               "pre-tool-use",
 		EnforceSearchRouting: *enforceSearchRouting,
 		EnforceWorktree:      *enforceWorktree,
@@ -586,7 +587,7 @@ func nextActionJudgementReason(trigger core.NextActionJudgementTriggerResult) st
 	} else if trigger.RecommendedCount > 1 {
 		recommended = fmt.Sprintf("%d개", trigger.RecommendedCount)
 	}
-	return fmt.Sprintf("다음 행동 판단 지점에 도달했습니다. 훅이 관찰한 근거: 명시적 선택지 %d개, 추천 선택지 %s. 훅은 안전성, 가역성, 사용자 의도 정합성, 진행 여부를 판단하지 않습니다. 메인 에이전트가 현재 대화와 작업 맥락을 근거로 직접 판단하세요. 판단 결과 진행이 맞으면 실행하고, 아니면 사용자에게 직전 선택지 중 하나를 골라 달라고 요청한 뒤 멈추세요.", trigger.ChoiceCount, recommended)
+	return fmt.Sprintf("다음 행동 판단 지점에 도달했습니다. 훅이 관찰한 근거: 명시적 선택지 %d개, 추천 선택지 %s. 훅은 안전성, 가역성, 사용자 의도 정합성, 진행 여부를 판단하지 않습니다. 메인 에이전트가 현재 대화와 작업 맥락을 근거로 직접 판단하세요. 사용자 추가 입력이 필요 없고 진행이 맞으면 지금 실행하세요. 사용자 결정이 필요한 경우에만 직전 선택지 중 하나를 골라 달라고 요청한 뒤 멈추세요.", trigger.ChoiceCount, recommended)
 }
 
 func lastAssistantMessageFromHookInput(input []byte) string {
@@ -719,6 +720,23 @@ func commandFromHookInput(input []byte) string {
 			if value, ok := toolInput[key].(string); ok && strings.TrimSpace(value) != "" {
 				return strings.TrimSpace(value)
 			}
+		}
+	}
+	return ""
+}
+
+func projectPathFromHookInput(input []byte) string {
+	obj := hookInputObject(input)
+	if toolInput, ok := obj["tool_input"].(map[string]any); ok {
+		for _, key := range []string{"projectPath", "project_path"} {
+			if value, ok := toolInput[key].(string); ok && strings.TrimSpace(value) != "" {
+				return strings.TrimSpace(value)
+			}
+		}
+	}
+	for _, key := range []string{"projectPath", "project_path"} {
+		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
 		}
 	}
 	return ""

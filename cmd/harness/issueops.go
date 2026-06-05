@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"agent-harness/internal/core"
@@ -77,6 +78,8 @@ func runIssueOps(args []string) error {
 		return printIssueOpsResult(record, *jsonOut, err)
 	case "branch":
 		return runIssueOpsBranch(args[1:])
+	case "worktree":
+		return runIssueOpsWorktree(args[1:])
 	case "phase":
 		fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
@@ -120,6 +123,79 @@ func runIssueOps(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops subcommand %q", args[0])
 	}
+}
+
+type issueOpsWorktreeToolPrepareResult struct {
+	OK                   bool     `json:"ok"`
+	ID                   string   `json:"id"`
+	WorktreePath         string   `json:"worktree_path"`
+	CodeGraphProjectPath string   `json:"codegraph_project_path"`
+	CodeGraphChecked     bool     `json:"codegraph_checked"`
+	CodeGraphInitialized bool     `json:"codegraph_initialized,omitempty"`
+	CodeGraphReady       bool     `json:"codegraph_ready"`
+	Messages             []string `json:"messages,omitempty"`
+}
+
+func runIssueOpsWorktree(args []string) error {
+	if len(args) == 0 || args[0] != "prepare-tools" {
+		return fmt.Errorf("unknown issueops worktree subcommand")
+	}
+	fs := flag.NewFlagSet("issueops worktree prepare-tools", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if err != nil {
+		return err
+	}
+	result, err := prepareIssueOpsWorktreeTools(record)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	fmt.Printf("worktree: %s\n", result.WorktreePath)
+	fmt.Printf("codegraph_project_path: %s\n", result.CodeGraphProjectPath)
+	fmt.Printf("codegraph_ready: %v\n", result.CodeGraphReady)
+	for _, message := range result.Messages {
+		fmt.Printf("- %s\n", message)
+	}
+	return nil
+}
+
+func prepareIssueOpsWorktreeTools(record core.IssueOpsRecord) (issueOpsWorktreeToolPrepareResult, error) {
+	worktree := strings.TrimSpace(record.WorktreePath)
+	result := issueOpsWorktreeToolPrepareResult{
+		OK:                   true,
+		ID:                   record.ID,
+		WorktreePath:         worktree,
+		CodeGraphProjectPath: worktree,
+	}
+	if worktree == "" {
+		result.OK = false
+		return result, fmt.Errorf("worktree_path is required")
+	}
+	if info, err := os.Stat(worktree); err != nil || !info.IsDir() {
+		result.OK = false
+		return result, fmt.Errorf("worktree_path does not exist or is not a directory: %s", worktree)
+	}
+	result.CodeGraphChecked = true
+	if err := exec.Command("codegraph", "status", worktree).Run(); err == nil {
+		result.CodeGraphReady = true
+		result.Messages = append(result.Messages, "CodeGraph index already ready for IssueOps worktree")
+		return result, nil
+	}
+	if out, err := exec.Command("codegraph", "init", "-i", worktree).CombinedOutput(); err != nil {
+		result.OK = false
+		return result, fmt.Errorf("initialize CodeGraph for IssueOps worktree: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	result.CodeGraphInitialized = true
+	result.CodeGraphReady = true
+	result.Messages = append(result.Messages, "initialized CodeGraph index for IssueOps worktree")
+	return result, nil
 }
 
 func runIssueOpsBranch(args []string) error {

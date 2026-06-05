@@ -270,6 +270,57 @@ func TestPreToolUseWorktreeGuardAllowsExpectedWorktreeMutation(t *testing.T) {
 	}
 }
 
+func TestPreToolUseWorktreeGuardRequiresCodeGraphProjectPath(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:             source,
+		Tool:             "mcp__codegraph__codegraph_search",
+		Command:          "BuildLifecyclePreToolUseDecision",
+		EnforceWorktree:  true,
+		ExpectedWorktree: worktree,
+		SourceCheckout:   source,
+	})
+	if got.Decision != "block" || !strings.Contains(got.Reason, "projectPath") {
+		t.Fatalf("expected CodeGraph without projectPath to be blocked: %+v", got)
+	}
+}
+
+func TestPreToolUseWorktreeGuardAllowsCodeGraphExpectedProjectPath(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:             source,
+		Tool:             "mcp__codegraph__codegraph_search",
+		Command:          "BuildLifecyclePreToolUseDecision",
+		EnforceWorktree:  true,
+		ExpectedWorktree: worktree,
+		SourceCheckout:   source,
+		ProjectPath:      worktree,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected CodeGraph with worktree projectPath to be allowed: %+v", got)
+	}
+}
+
+func TestPreToolUseWorktreeGuardBlocksSourceBoundMCPTools(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
+	for _, tool := range []string{"mcp__filesystem__read_file", "mcp__plugin_serena_serena__find_symbol"} {
+		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:             source,
+			Tool:             tool,
+			Command:          "BuildLifecyclePreToolUseDecision",
+			EnforceWorktree:  true,
+			ExpectedWorktree: worktree,
+			SourceCheckout:   source,
+		})
+		if got.Decision != "block" || !strings.Contains(got.Reason, "IssueOps worktree") {
+			t.Fatalf("expected %s to be blocked in IssueOps worktree context: %+v", tool, got)
+		}
+	}
+}
+
 func TestPreToolUseWorktreeGuardNoopsWithoutExpectedWorktree(t *testing.T) {
 	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo:            t.TempDir(),
