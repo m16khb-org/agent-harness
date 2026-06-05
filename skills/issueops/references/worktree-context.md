@@ -2,7 +2,7 @@
 
 ## Branch And Worktree Contract
 
-After the issue is created or linked and before implementation, derive the working branch from the issue using GitLab's native linking convention: start the full branch name with the issue or task number followed by a hyphen. Use a short kebab-case issue title after the number, for example `3-webhook-delivery` or `12-tighten-issueops-worktree-contract`. Do not add `feature/`, `hotfix/`, or another GitFlow prefix before the issue number; GitLab only auto-links branches whose full branch name starts with the issue number.
+After the issue is created or linked and before implementation, derive the working branch from the issue using GitLab's native linking convention: start the full branch name with the issue or task number followed by a hyphen. Use a short kebab-case issue title after the number, for example `3-webhook-delivery` or `12-tighten-issueops-worktree-contract`. Do not add `feature/`, `hotfix/`, or another branch prefix before the issue number; GitLab only auto-links branches whose full branch name starts with the issue number.
 
 Create the provider-linked branch before creating a local worktree. The IssueOps branch preparation contract is MCP-first, provider API fallback, then fail closed:
 

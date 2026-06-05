@@ -611,7 +611,7 @@
           "type": "string"
         },
         "branch": {
-          "description": "Provider-linked GitFlow branch name, such as feature/2386-title or hotfix/2387-title. For GitLab, the slug after the prefix must start with the issue number followed by a hyphen.",
+          "description": "Provider-linked branch name, such as 2386-title or 2387-title. For GitLab, the full branch name must start with the issue number followed by a hyphen so the issue Development section links it.",
           "type": "string"
         },
         "id": {
