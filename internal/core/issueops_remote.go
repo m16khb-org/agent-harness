@@ -63,11 +63,11 @@ type IssueOpsRemoteScoringResult struct {
 	ReadOnly              bool                       `json:"read_only,omitempty"`
 	JoinBefore            string                     `json:"join_before,omitempty"`
 	SelectedRelatedIssues []IssueOpsRemoteScoredItem `json:"selected_related_issues"`
-	RejectedRelatedIssues []IssueOpsRemoteScoredItem `json:"rejected_related_issues,omitempty"`
+	RejectedRelatedIssues []IssueOpsRemoteScoredItem `json:"rejected_related_issues"`
 	SelectedLabels        []IssueOpsRemoteScoredItem `json:"selected_labels"`
-	RejectedLabels        []IssueOpsRemoteScoredItem `json:"rejected_labels,omitempty"`
+	RejectedLabels        []IssueOpsRemoteScoredItem `json:"rejected_labels"`
 	ApplyInstructions     []string                   `json:"apply_instructions"`
-	Warnings              []string                   `json:"warnings,omitempty"`
+	Warnings              []string                   `json:"warnings"`
 }
 
 type IssueOpsRemoteAgyJudgeRequest struct {
@@ -127,7 +127,7 @@ func ScoreIssueOpsRemoteCandidates(req IssueOpsRemoteScoringRequest) (IssueOpsRe
 		result.Warnings = append(result.Warnings, "no label candidates met threshold")
 		result.ApplyInstructions = append(result.ApplyInstructions, "stop before remote artifact writes and choose an explicit manual label or rerun scoring with corrected candidates; do not create an unlabeled issue, pull request, or merge request")
 	}
-	return result, nil
+	return normalizeIssueOpsRemoteScoringResult(result), nil
 }
 
 func RunIssueOpsRemoteAgyJudge(req IssueOpsRemoteAgyJudgeRequest) (IssueOpsRemoteScoringResult, error) {
@@ -301,6 +301,24 @@ func normalizeIssueOpsRemoteScoringResult(result IssueOpsRemoteScoringResult) Is
 	result.ReadOnly = true
 	if strings.TrimSpace(result.JoinBefore) == "" {
 		result.JoinBefore = "remote_artifact_write"
+	}
+	if result.SelectedRelatedIssues == nil {
+		result.SelectedRelatedIssues = []IssueOpsRemoteScoredItem{}
+	}
+	if result.RejectedRelatedIssues == nil {
+		result.RejectedRelatedIssues = []IssueOpsRemoteScoredItem{}
+	}
+	if result.SelectedLabels == nil {
+		result.SelectedLabels = []IssueOpsRemoteScoredItem{}
+	}
+	if result.RejectedLabels == nil {
+		result.RejectedLabels = []IssueOpsRemoteScoredItem{}
+	}
+	if result.ApplyInstructions == nil {
+		result.ApplyInstructions = []string{}
+	}
+	if result.Warnings == nil {
+		result.Warnings = []string{}
 	}
 	return result
 }

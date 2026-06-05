@@ -109,6 +109,25 @@ func TestScoreIssueOpsRemoteCandidatesDoesNotWarnWhenNoCandidatesExist(t *testin
 	if len(result.Warnings) != 0 {
 		t.Fatalf("empty candidate lists should not produce threshold warnings: %+v", result.Warnings)
 	}
+	b, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(b)
+	for _, want := range []string{
+		`"selected_related_issues":[]`,
+		`"rejected_related_issues":[]`,
+		`"selected_labels":[]`,
+		`"rejected_labels":[]`,
+		`"apply_instructions":[]`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("expected empty array %s in JSON, got %s", want, text)
+		}
+	}
+	if strings.Contains(text, "null") {
+		t.Fatalf("remote score JSON must use [] instead of null: %s", text)
+	}
 }
 
 func TestScoreIssueOpsRemoteCandidatesRequiresExplicitLabelDecisionWhenAllLabelsRejected(t *testing.T) {
