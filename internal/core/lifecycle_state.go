@@ -549,6 +549,7 @@ type remoteArtifactCommand struct {
 	createFromIssue bool
 	title           string
 	body            string
+	bodyFilePath    string
 	labels          []string
 	assignees       []string
 }
@@ -592,6 +593,7 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 				return remoteArtifactCommand{}, false
 			}
 			parseRemoteArtifactArgs(&artifact, repo, args)
+			fillRemoteArtifactInlineBodyFile(&artifact, command)
 			return artifact, true
 		}
 		if action != "create" && action != "edit" && action != "update" {
@@ -603,6 +605,7 @@ func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCo
 			return remoteArtifactCommand{}, false
 		}
 		parseRemoteArtifactArgs(&artifact, repo, args)
+		fillRemoteArtifactInlineBodyFile(&artifact, command)
 		return artifact, true
 	}
 	return remoteArtifactCommand{}, false
@@ -631,13 +634,16 @@ func parseRemoteArtifactArgs(artifact *remoteArtifactCommand, repo string, args 
 			artifact.body = strings.TrimPrefix(arg, "--description=")
 		case arg == "--body-file" || arg == "-F" || arg == "--description-file":
 			if j+1 < len(args) {
-				artifact.body = readRemoteArtifactBodyFile(repo, args[j+1])
+				artifact.bodyFilePath = args[j+1]
+				artifact.body = readRemoteArtifactBodyFile(repo, artifact.bodyFilePath)
 				j++
 			}
 		case strings.HasPrefix(arg, "--body-file="):
-			artifact.body = readRemoteArtifactBodyFile(repo, strings.TrimPrefix(arg, "--body-file="))
+			artifact.bodyFilePath = strings.TrimPrefix(arg, "--body-file=")
+			artifact.body = readRemoteArtifactBodyFile(repo, artifact.bodyFilePath)
 		case strings.HasPrefix(arg, "--description-file="):
-			artifact.body = readRemoteArtifactBodyFile(repo, strings.TrimPrefix(arg, "--description-file="))
+			artifact.bodyFilePath = strings.TrimPrefix(arg, "--description-file=")
+			artifact.body = readRemoteArtifactBodyFile(repo, artifact.bodyFilePath)
 		case arg == "--label" || arg == "-l" || arg == "--labels" || arg == "--add-label":
 			if j+1 < len(args) {
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, args[j+1])
@@ -1026,6 +1032,115 @@ func readRemoteArtifactBodyFile(repo string, path string) string {
 		return ""
 	}
 	return string(b)
+}
+
+func fillRemoteArtifactInlineBodyFile(artifact *remoteArtifactCommand, command string) {
+	if strings.TrimSpace(artifact.body) != "" || strings.TrimSpace(artifact.bodyFilePath) == "" {
+		return
+	}
+	artifact.body = extractInlineHereDocBodyForTarget(command, artifact.bodyFilePath)
+}
+
+func extractInlineHereDocBodyForTarget(command string, target string) string {
+	targets := remoteArtifactBodyFileTargetAliases(target)
+	if len(targets) == 0 {
+		return ""
+	}
+	lines := strings.Split(strings.ReplaceAll(command, "\r\n", "\n"), "\n")
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if line == "" || !strings.Contains(line, "<<") {
+			continue
+		}
+		if !lineWritesHereDocToAnyTarget(line, targets) {
+			continue
+		}
+		marker := hereDocMarkerFromLine(line)
+		if marker == "" {
+			continue
+		}
+		body := []string{}
+		for j := i + 1; j < len(lines); j++ {
+			if strings.TrimSpace(lines[j]) == marker {
+				return strings.Join(body, "\n")
+			}
+			body = append(body, lines[j])
+		}
+		return ""
+	}
+	return ""
+}
+
+func remoteArtifactBodyFileTargetAliases(target string) []string {
+	target = strings.TrimSpace(target)
+	if target == "" || target == "-" {
+		return nil
+	}
+	aliases := []string{target}
+	if strings.HasPrefix(target, "$") {
+		name := strings.TrimPrefix(target, "$")
+		name = strings.TrimPrefix(name, "{")
+		name = strings.TrimSuffix(name, "}")
+		if name != "" {
+			aliases = append(aliases, "$"+name, "${"+name+"}", name)
+		}
+	}
+	out := []string{}
+	seen := map[string]bool{}
+	for _, alias := range aliases {
+		alias = strings.Trim(alias, `"'`)
+		if alias != "" && !seen[alias] {
+			seen[alias] = true
+			out = append(out, alias)
+		}
+	}
+	return out
+}
+
+func lineWritesHereDocToAnyTarget(line string, targets []string) bool {
+	tokens := splitCommandTokens(line)
+	for i := 0; i < len(tokens); i++ {
+		token := tokens[i]
+		switch {
+		case token == ">" || token == "1>":
+			if i+1 < len(tokens) && tokenMatchesAnyRemoteArtifactTarget(tokens[i+1], targets) {
+				return true
+			}
+		case strings.HasPrefix(token, ">") && len(token) > 1:
+			if tokenMatchesAnyRemoteArtifactTarget(strings.TrimPrefix(token, ">"), targets) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func tokenMatchesAnyRemoteArtifactTarget(token string, targets []string) bool {
+	token = strings.TrimSpace(strings.Trim(token, `"'`))
+	for _, target := range targets {
+		if token == target {
+			return true
+		}
+	}
+	return false
+}
+
+func hereDocMarkerFromLine(line string) string {
+	index := strings.Index(line, "<<")
+	if index < 0 {
+		return ""
+	}
+	rest := strings.TrimSpace(line[index+2:])
+	rest = strings.TrimPrefix(rest, "-")
+	rest = strings.TrimSpace(rest)
+	if rest == "" {
+		return ""
+	}
+	fields := splitCommandTokens(rest)
+	if len(fields) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(strings.Trim(fields[0], `"'`))
 }
 
 func scoreKoreanRemoteArtifactLanguage(text string) (int, int) {

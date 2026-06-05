@@ -486,6 +486,40 @@ func TestPreToolUseKoreanRemoteArtifactGateAllowsKoreanPRBodyFile(t *testing.T) 
 	}
 }
 
+func TestPreToolUseKoreanRemoteArtifactGateAllowsInlineHereDocBodyFile(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: t.TempDir(),
+		Tool: "bash",
+		Command: `body=$(mktemp)
+cat > "$body" <<'EOF'
+## 요약
+IssueOps 라이프사이클 감사용 임시 PR입니다. 실제 원격 PR label과 assignee 검증을 확인합니다.
+EOF
+gh pr create --title "IssueOps 라이프사이클 감사용 임시 PR" --body-file "$body" --label bug --assignee m16khb`,
+		EnforceKoreanRemote: true,
+	})
+	if got.Decision != "allow" {
+		t.Fatalf("expected inline here-doc body-file to be inspected and allowed: %+v", got)
+	}
+}
+
+func TestPreToolUseKoreanRemoteArtifactGateBlocksEnglishInlineHereDocBodyFile(t *testing.T) {
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: t.TempDir(),
+		Tool: "bash",
+		Command: `body=$(mktemp)
+cat > "$body" <<'EOF'
+Summary
+This pull request uses English prose and should still be blocked before remote creation.
+EOF
+gh pr create --title "IssueOps audit temporary PR" --body-file "$body" --label bug --assignee m16khb`,
+		EnforceKoreanRemote: true,
+	})
+	if got.Decision != "block" || !strings.Contains(got.Reason, "IssueOps remote artifact gate failed") {
+		t.Fatalf("expected English inline here-doc body-file to be inspected and blocked: %+v", got)
+	}
+}
+
 func TestPreToolUseRemoteArtifactGateAllowsHelpCommands(t *testing.T) {
 	for _, command := range []string{
 		`gh issue create --help`,

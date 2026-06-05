@@ -668,6 +668,33 @@ func TestRunHookPreToolUseInspectsGitLabDescriptionFile(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseInspectsInlineHereDocBodyFile(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	command := `body=$(mktemp)
+cat > "$body" <<'EOF'
+## 요약
+IssueOps 라이프사이클 감사용 임시 PR입니다. 실제 원격 PR label과 assignee 검증을 확인합니다.
+EOF
+gh pr create --title "IssueOps 라이프사이클 감사용 임시 PR" --body-file "$body" --label bug --assignee m16khb`
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       repo,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": command,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts", "--json"})
+	})
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected inline here-doc body-file to be inspected and allowed, got %+v", obj)
+	}
+}
+
 func TestRunHookPreToolUseEnforcesRemoteCreateAssignee(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
