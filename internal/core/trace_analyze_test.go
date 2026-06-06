@@ -81,6 +81,73 @@ func TestTraceAnalyzeSingleDocUpkeepJSON(t *testing.T) {
 	}
 }
 
+func TestTraceAnalyzeGuardFindingsAndWarnings(t *testing.T) {
+	input := filepath.Join(t.TempDir(), "guard.json")
+	body := `{
+  "guard": {
+    "findings": [
+      {"rule":"search-routing"},
+      {"rule":"search-routing"},
+      {"message":"missing rule"}
+    ]
+  }
+}`
+	if err := os.WriteFile(input, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: input})
+	if err != nil {
+		t.Fatalf("TraceAnalyze guard: %v", err)
+	}
+	if result.FindingCount != 2 || !containsString(result.TraceTypes, "guard_result") {
+		t.Fatalf("unexpected guard result: %+v", result)
+	}
+	encoded := stringifyTraceResult(result)
+	for _, want := range []string{"guard_guard_finding", "guard_search-routing", "search-routing reported 2 time"} {
+		if !strings.Contains(encoded, want) {
+			t.Fatalf("guard findings missing %q: %+v", want, result.Findings)
+		}
+	}
+
+	unknown := filepath.Join(t.TempDir(), "unknown.json")
+	if err := os.WriteFile(unknown, []byte(`{"other":true}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	noFindings, err := TraceAnalyze(TraceAnalyzeRequest{Input: unknown})
+	if err != nil {
+		t.Fatalf("TraceAnalyze unknown: %v", err)
+	}
+	if !containsString(noFindings.Warnings, "no_supported_trace_findings") {
+		t.Fatalf("expected no-supported warning: %+v", noFindings)
+	}
+}
+
+func TestTraceAnalyzeInvalidJSONAndJSONLFallback(t *testing.T) {
+	invalid := filepath.Join(t.TempDir(), "invalid.json")
+	if err := os.WriteFile(invalid, []byte(`{"broken":`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: invalid})
+	if err != nil {
+		t.Fatalf("TraceAnalyze invalid JSON warning result: %v", err)
+	}
+	if !containsStringPrefix(result.Warnings, "invalid_json:") {
+		t.Fatalf("expected invalid_json warning: %+v", result)
+	}
+
+	jsonl := filepath.Join(t.TempDir(), "fallback.jsonl")
+	if err := os.WriteFile(jsonl, []byte("{\"broken\":\n{\"event\":\"step_end\",\"step\":\"daemon build\",\"ok\":false}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fallback, err := TraceAnalyze(TraceAnalyzeRequest{Input: jsonl})
+	if err != nil {
+		t.Fatalf("TraceAnalyze JSONL fallback: %v", err)
+	}
+	if fallback.FindingCount != 1 || !strings.Contains(fallback.Findings[0].ProposedKnob, "daemon stale-lock") {
+		t.Fatalf("expected JSONL fallback daemon finding: %+v", fallback)
+	}
+}
+
 func TestTraceAnalyzeReadsStateKey(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	if _, err := StateWrite("trace-fixture", `{"failed_steps":1,"failure_class":"intermittent","failed_step":"go test"}`); err != nil {
@@ -118,4 +185,13 @@ func stringifyTraceResult(result TraceAnalyzeResult) string {
 		b.WriteString(finding.VerificationCommand)
 	}
 	return b.String()
+}
+
+func containsStringPrefix(items []string, prefix string) bool {
+	for _, item := range items {
+		if strings.HasPrefix(item, prefix) {
+			return true
+		}
+	}
+	return false
 }
