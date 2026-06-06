@@ -48,6 +48,15 @@ func issueOpsPhaseRank(phase IssueOpsPhase) int {
 	return 0
 }
 
+func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
+	switch phase {
+	case IssueOpsPhaseImplement, IssueOpsPhaseAISlopClean, IssueOpsPhaseFeedback, IssueOpsPhasePR:
+		return true
+	default:
+		return false
+	}
+}
+
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	phase := IssueOpsPhase(strings.TrimSpace(to))
 	if !knownIssueOpsPhase(phase) {
