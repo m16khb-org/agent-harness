@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"strings"
@@ -6,14 +6,14 @@ import (
 )
 
 func TestRunSelfVerifyRejectsUnknownLLMEvalMode(t *testing.T) {
-	err := runSelfVerify([]string{"--llm-eval", "--llm-eval-mode=unknown", "--json"})
+	err := RunSelfVerifyWithDeps([]string{"--llm-eval", "--llm-eval-mode=unknown", "--json"}, SelfVerifyRunDeps{})
 	if err == nil || !strings.Contains(err.Error(), "llm-eval-mode") {
 		t.Fatalf("expected llm-eval-mode validation error, got %v", err)
 	}
 }
 
 func TestResolveSelfVerifyRunModeDefaultsQuick(t *testing.T) {
-	mode, err := resolveSelfVerifyRunMode(false, false, 10)
+	mode, err := ResolveSelfVerifyRunMode(false, false, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestResolveSelfVerifyRunModeDefaultsQuick(t *testing.T) {
 }
 
 func TestResolveSelfVerifyRunModeFullUsesTenIterations(t *testing.T) {
-	mode, err := resolveSelfVerifyRunMode(true, false, 10)
+	mode, err := ResolveSelfVerifyRunMode(true, false, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestResolveSelfVerifyRunModeFullUsesTenIterations(t *testing.T) {
 }
 
 func TestResolveSelfVerifyRunModeFullAllowsExplicitIterations(t *testing.T) {
-	mode, err := resolveSelfVerifyRunMode(true, true, 12)
+	mode, err := ResolveSelfVerifyRunMode(true, true, 12)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestResolveSelfVerifyRunModeFullAllowsExplicitIterations(t *testing.T) {
 }
 
 func TestResolveSelfVerifyRunModeRejectsIterationsWithoutFull(t *testing.T) {
-	_, err := resolveSelfVerifyRunMode(false, true, 3)
+	_, err := ResolveSelfVerifyRunMode(false, true, 3)
 	if err == nil || !strings.Contains(err.Error(), "--full") {
 		t.Fatalf("expected --iterations without --full to be rejected, got %v", err)
 	}
