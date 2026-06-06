@@ -1,4 +1,4 @@
-package core
+package nextaction
 
 import (
 	"os"
@@ -64,8 +64,6 @@ func TestEvaluateNextActionAutoProceedLLMDoesNotProceedWhenLLMDeclines(t *testin
 }
 
 func TestEvaluateNextActionAutoProceedLLMHardVetoesDestructiveWithoutCallingAgy(t *testing.T) {
-	// Point agy at a script that fails the test if invoked, proving the destructive
-	// hard-veto short-circuits before any external call.
 	agy := writeFakeAgyScript(t, `echo "agy must not be called for destructive recommendations" >&2; exit 3`)
 	message := strings.Join([]string{
 		"선택지:",
@@ -118,12 +116,12 @@ func TestEvaluateNextActionAutoProceedLLMNoRecommendationDoesNotCallAgy(t *testi
 }
 
 func TestBuildNextActionAutoProceedLLMPromptRendersSchemaAndChoices(t *testing.T) {
-	candidates := parseNextActionCandidates(safeRecommendedMessage())
-	recommended := selectRecommendedNextAction(candidates)
+	candidates := ParseCandidates(safeRecommendedMessage())
+	recommended := SelectRecommendedCandidate(candidates)
 	if recommended == nil {
 		t.Fatal("expected recommended candidate fixture")
 	}
-	prompt := buildNextActionAutoProceedLLMPrompt(*recommended, candidates)
+	prompt := BuildLLMPrompt(*recommended, candidates)
 	for _, want := range []string{
 		"cautious release-safety gate",
 		"auto_proceed",
