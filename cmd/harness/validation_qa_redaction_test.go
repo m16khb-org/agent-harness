@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -47,6 +48,27 @@ func TestValidateRedactionAuditWithDepsCoversSuccessSecretAndReadFailure(t *test
 	failedRead := validateRedactionAuditWithDeps(root, deps)
 	if failedRead.OK || !strings.Contains(failedRead.Error, "read redaction audit file "+doc+": read blocked") {
 		t.Fatalf("expected read failure, got %+v", failedRead)
+	}
+}
+
+func TestRedactionAuditFilesWrapperIncludesDefaultFixtureAndSkillPaths(t *testing.T) {
+	root := t.TempDir()
+	fixture := filepath.Join(root, "cmd", "harness", "testdata", "usage.golden.txt")
+	skill := filepath.Join(root, "skills", "self-verify", "SKILL.md")
+	agent := filepath.Join(root, "skills", "self-verify", "agents", "openai.yaml")
+	for _, path := range []string{fixture, skill, agent} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("fixture\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	files := redactionAuditFiles(root)
+
+	if len(files) != 3 || files[0] != fixture || files[1] != skill || files[2] != agent {
+		t.Fatalf("expected sorted default redaction files, got %v", files)
 	}
 }
 
