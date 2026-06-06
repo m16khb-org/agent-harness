@@ -1,4 +1,4 @@
-package validationcli
+package stepbudget
 
 import (
 	"encoding/json"
@@ -6,7 +6,24 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
+	"agent-harness/cmd/harness/selfworkflow"
 )
+
+const aggregateOutputBudgetBytes = 8 * 1024
+const commandOutputBudgetBytes = 32 * 1024
+const selfVerificationKoreanName = selfworkflow.SelfVerificationKoreanName
+const selfVerificationSummaryKind = selfworkflow.SelfVerificationSummaryKind
+
+type StepResult = commandstep.StepResult
+type SelfAugmentCompareResult = selfworkflow.SelfAugmentCompareResult
+type SelfAugmentSlowStep = selfworkflow.SelfAugmentSlowStep
+type SelfAugmentSlowStepRegression = selfworkflow.SelfAugmentSlowStepRegression
+type SelfAugmentStateSnapshot = selfworkflow.SelfAugmentStateSnapshot
+type SelfAugmentStepBudgetRegression = selfworkflow.SelfAugmentStepBudgetRegression
+type SelfAugmentStepDurationStat = selfworkflow.SelfAugmentStepDurationStat
+type SelfAugmentSummary = selfworkflow.SelfAugmentSummary
 
 type StepBudgetCommandRunner func(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult
 type StepBudgetSnapshotWriter func(dir, key string, snapshot SelfAugmentStateSnapshot) error
@@ -28,10 +45,12 @@ func (deps StepBudgetValidationDeps) withDefaults() StepBudgetValidationDeps {
 		deps.RemoveAll = os.RemoveAll
 	}
 	if deps.WriteSnapshot == nil {
-		deps.WriteSnapshot = writeSelfAugmentSnapshotRecord
+		deps.WriteSnapshot = selfworkflow.WriteSelfAugmentSnapshotRecord
 	}
 	if deps.Run == nil {
-		deps.Run = runCommandStepEnv
+		deps.Run = func(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult {
+			return commandstep.RunEnv(dir, label, timeout, stdin, env, commandOutputBudgetBytes, name, args...)
+		}
 	}
 	return deps
 }
@@ -45,7 +64,7 @@ func ValidateStepBudgetBaselineWithDeps(binary, root string, seed int64, deps St
 	started := time.Now()
 	tempState, err := deps.MakeTempState(seed)
 	if err != nil {
-		return failedStep("step budget baseline", err)
+		return commandstep.FailedStep("step budget baseline", err)
 	}
 	defer deps.RemoveAll(tempState)
 	baselineKey := fmt.Sprintf("self-verify-budget-baseline-%d", seed)
@@ -59,7 +78,7 @@ func ValidateStepBudgetBaselineWithDeps(binary, root string, seed int64, deps St
 		{key: candidateKey, summary: candidateSummary},
 	} {
 		if err := deps.WriteSnapshot(tempState, fixture.key, StepBudgetStateSnapshot(root, seed, fixture.summary)); err != nil {
-			return failedStep("step budget baseline", err)
+			return commandstep.FailedStep("step budget baseline", err)
 		}
 	}
 
@@ -68,17 +87,17 @@ func ValidateStepBudgetBaselineWithDeps(binary, root string, seed int64, deps St
 	stdoutParts := []string{compareStep.Stdout}
 	commands := []string{compareStep.Command}
 	if !compareStep.OK {
-		return combineFailedStep("step budget baseline", started, compareStep, stdoutParts, commands)
+		return commandstep.CombineFailedStep("step budget baseline", started, compareStep, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 	var result SelfAugmentCompareResult
 	if err := json.Unmarshal([]byte(compareStep.Stdout), &result); err != nil {
-		return assertionStepWithOutput("step budget baseline", started, []string{err.Error()}, stdoutParts, commands)
+		return commandstep.AssertionStepWithOutput("step budget baseline", started, []string{err.Error()}, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 	errs := StepBudgetValidationErrors(result)
 	if len(errs) > 0 {
-		return assertionStepWithOutput("step budget baseline", started, errs, stdoutParts, commands)
+		return commandstep.AssertionStepWithOutput("step budget baseline", started, errs, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
-	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
+	stdoutText, stdoutTruncated, stdoutBytes := commandstep.TailWithBudget(strings.Join(stdoutParts, "\n"), aggregateOutputBudgetBytes)
 	return StepResult{
 		Label:           "step budget baseline",
 		Command:         strings.Join(commands, " && "),
@@ -88,6 +107,15 @@ func ValidateStepBudgetBaselineWithDeps(binary, root string, seed int64, deps St
 		StdoutBytes:     stdoutBytes,
 		StdoutTruncated: stdoutTruncated,
 	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func StepBudgetBaselineSummaries(seed int64) (SelfAugmentSummary, SelfAugmentSummary) {

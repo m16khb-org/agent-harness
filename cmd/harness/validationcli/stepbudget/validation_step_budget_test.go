@@ -1,4 +1,4 @@
-package validationcli
+package stepbudget
 
 import (
 	"encoding/json"

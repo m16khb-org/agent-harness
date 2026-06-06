@@ -1,6 +1,7 @@
 package validationcli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,7 +45,7 @@ func writeQAGateWrapperFixture(t *testing.T, root string) {
 
 func writeStepBudgetFakeBinary(t *testing.T, dir string) string {
 	t.Helper()
-	resultJSON := mustMarshalStepBudgetTest(t, validStepBudgetCompareResult())
+	resultJSON := mustMarshalStepBudgetWrapperTest(t, validStepBudgetWrapperCompareResult())
 	body := `#!/bin/sh
 set -eu
 case "$*" in
@@ -62,4 +63,27 @@ esac
 		t.Fatal(err)
 	}
 	return path
+}
+
+func validStepBudgetWrapperCompareResult() SelfAugmentCompareResult {
+	return SelfAugmentCompareResult{
+		OK:        true,
+		Regressed: true,
+		Regressions: []string{
+			"step_budget:docs index smoke_p95_increased_by_30.00_pct",
+		},
+		SlowStepRegressions: []SelfAugmentSlowStepRegression{},
+		StepBudgetRegressions: []SelfAugmentStepBudgetRegression{
+			{Label: "docs index smoke", Metric: "p95_duration_ms", DeltaMS: 30, DeltaPct: 30},
+		},
+	}
+}
+
+func mustMarshalStepBudgetWrapperTest(t *testing.T, value any) string {
+	t.Helper()
+	b, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }
