@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"strings"
@@ -28,7 +28,7 @@ func TestCompareSelfAugmentSummariesFromSnapshotsCoversWarningsAndGoalRegression
 	candidate.Summary.TerminationEligible = false
 	candidate.Summary.MinimumGoalScore = 90
 
-	result := compareSelfAugmentSummariesFromSnapshots("baseline", "candidate", 5, baseline, candidate)
+	result := CompareSelfAugmentSummariesFromSnapshots("baseline", "candidate", 5, baseline, candidate)
 
 	if !result.OK || !result.Regressed || result.ElapsedDeltaMS != 100 {
 		t.Fatalf("unexpected compare result: %+v", result)
@@ -50,36 +50,36 @@ func TestReadSelfAugmentStateSnapshotRejectsBadKindAndSchemaAndAcceptsLegacyKind
 	t.Setenv("HARNESS_STATE_DIR", dir)
 	summary := SelfAugmentSummary{TotalRuns: 1, TotalSteps: 1, PassedSteps: 1}
 
-	if err := writeSelfAugmentSnapshotRecord(dir, "bad-kind", SelfAugmentStateSnapshot{
+	if err := WriteSelfAugmentSnapshotRecord(dir, "bad-kind", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "other",
 		Summary:       summary,
 	}); err != nil {
 		t.Fatalf("write bad kind: %v", err)
 	}
-	if _, err := readSelfAugmentStateSnapshot("bad-kind"); err == nil || !strings.Contains(err.Error(), "contains kind") {
+	if _, err := ReadSelfAugmentStateSnapshot("bad-kind"); err == nil || !strings.Contains(err.Error(), "contains kind") {
 		t.Fatalf("expected bad kind error, got %v", err)
 	}
 
-	if err := writeSelfAugmentSnapshotRecord(dir, "bad-schema", SelfAugmentStateSnapshot{
+	if err := WriteSelfAugmentSnapshotRecord(dir, "bad-schema", SelfAugmentStateSnapshot{
 		SchemaVersion: 2,
 		Kind:          selfVerificationSummaryKind,
 		Summary:       summary,
 	}); err != nil {
 		t.Fatalf("write bad schema: %v", err)
 	}
-	if _, err := readSelfAugmentStateSnapshot("bad-schema"); err == nil || !strings.Contains(err.Error(), "unsupported self-verification summary schema") {
+	if _, err := ReadSelfAugmentStateSnapshot("bad-schema"); err == nil || !strings.Contains(err.Error(), "unsupported self-verification summary schema") {
 		t.Fatalf("expected bad schema error, got %v", err)
 	}
 
-	if err := writeSelfAugmentSnapshotRecord(dir, "legacy", SelfAugmentStateSnapshot{
+	if err := WriteSelfAugmentSnapshotRecord(dir, "legacy", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          legacySelfAugmentSummaryKind,
 		Summary:       summary,
 	}); err != nil {
 		t.Fatalf("write legacy kind: %v", err)
 	}
-	if snapshot, err := readSelfAugmentStateSnapshot("legacy"); err != nil || snapshot.Kind != legacySelfAugmentSummaryKind {
+	if snapshot, err := ReadSelfAugmentStateSnapshot("legacy"); err != nil || snapshot.Kind != legacySelfAugmentSummaryKind {
 		t.Fatalf("expected legacy kind to read, snapshot=%+v err=%v", snapshot, err)
 	}
 }

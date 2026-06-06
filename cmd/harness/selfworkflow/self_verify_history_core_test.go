@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 func TestSelfAugmentHistoryCoversInvalidTimestampSchemaSkipAndNilSlices(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)
-	if err := writeSelfAugmentSnapshotRecord(dir, "self-verify-invalid-time", SelfAugmentStateSnapshot{
+	if err := WriteSelfAugmentSnapshotRecord(dir, "self-verify-invalid-time", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          selfVerificationSummaryKind,
 		OK:            true,
@@ -16,7 +16,7 @@ func TestSelfAugmentHistoryCoversInvalidTimestampSchemaSkipAndNilSlices(t *testi
 	}); err != nil {
 		t.Fatalf("write invalid time: %v", err)
 	}
-	if err := writeSelfAugmentSnapshotRecord(dir, "self-verify-bad-schema", SelfAugmentStateSnapshot{
+	if err := WriteSelfAugmentSnapshotRecord(dir, "self-verify-bad-schema", SelfAugmentStateSnapshot{
 		SchemaVersion: 2,
 		Kind:          selfVerificationSummaryKind,
 		Summary:       SelfAugmentSummary{TotalRuns: 1},
@@ -24,7 +24,7 @@ func TestSelfAugmentHistoryCoversInvalidTimestampSchemaSkipAndNilSlices(t *testi
 		t.Fatalf("write bad schema: %v", err)
 	}
 
-	result, err := selfAugmentHistory("self-verify", 0)
+	result, err := SelfAugmentHistory("self-verify", 0)
 	if err != nil {
 		t.Fatalf("history: %v", err)
 	}

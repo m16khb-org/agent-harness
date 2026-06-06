@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"path/filepath"

@@ -1,7 +1,8 @@
-package main
+package selfworkflow
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -41,6 +42,17 @@ func TestSaveSelfAugmentLesson(t *testing.T) {
 func TestSaveSelfAugmentPlan(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	previousHarnessRoot := HarnessRoot
+	HarnessRoot = func() string {
+		return filepath.Clean(filepath.Join(cwd, "..", "..", ".."))
+	}
+	defer func() {
+		HarnessRoot = previousHarnessRoot
+	}()
 	result := planSelfAugmentation(SelfAugmentPlanRequest{Cycles: 1, TargetScore: 95})
 	if err := saveSelfAugmentPlan(&result, "self-augment-plan-test"); err != nil {
 		t.Fatalf("saveSelfAugmentPlan: %v", err)
