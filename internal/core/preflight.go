@@ -1,9 +1,7 @@
 package core
 
 import (
-	"bytes"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -102,37 +100,6 @@ func GitPreflight(target, harnessRoot string) PreflightResult {
 	}
 }
 
-func parseGitStatus(lines []string) (staged, unstaged, untracked, secretLike []string) {
-	for _, line := range lines {
-		if line == "" || strings.HasPrefix(line, "## ") {
-			continue
-		}
-		if len(line) < 3 {
-			continue
-		}
-		status := line[:2]
-		path := strings.TrimSpace(line[3:])
-		if strings.Contains(path, " -> ") {
-			parts := strings.SplitN(path, " -> ", 2)
-			path = parts[1]
-		}
-		if status == "??" {
-			untracked = append(untracked, path)
-		} else {
-			if status[0] != ' ' {
-				staged = append(staged, path)
-			}
-			if status[1] != ' ' {
-				unstaged = append(unstaged, path)
-			}
-		}
-		if secretPathRe.MatchString(path) {
-			secretLike = append(secretLike, path)
-		}
-	}
-	return uniqSorted(staged), uniqSorted(unstaged), uniqSorted(untracked), uniqSorted(secretLike)
-}
-
 func listRemotes(root string) []RemoteInfo {
 	lines := splitLines(GitOut(root, "remote", "-v"))
 	var out []RemoteInfo
@@ -183,30 +150,6 @@ func commitStyleHints(root, harnessRoot string, limit int) map[string]any {
 		"recommended":             "conventional_subject_plus_lore_body",
 		"message_policy_doc_path": filepath.Join(harnessRoot, ".agent-harness", "COMMIT_POLICY.md"),
 	}
-}
-
-func GitCmd(dir string, args ...string) (int, string, string) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err == nil {
-		return 0, strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String())
-	}
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		return exitErr.ExitCode(), strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String())
-	}
-	return 1, strings.TrimSpace(stdout.String()), err.Error()
-}
-
-func GitOut(dir string, args ...string) string {
-	code, out, _ := GitCmd(dir, args...)
-	if code != 0 {
-		return ""
-	}
-	return strings.TrimSpace(out)
 }
 
 func redactRemote(url string) string {
