@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ func TestNewSelfVerificationSummarySnapshotCopiesResultFields(t *testing.T) {
 	generatedAt := time.Date(2026, 6, 6, 1, 2, 3, 4, time.UTC)
 	result := selfVerificationSummaryResultForSaveTest()
 
-	snapshot := newSelfVerificationSummarySnapshot(result, generatedAt)
+	snapshot := NewSelfVerificationSummarySnapshot(result, generatedAt)
 
 	if snapshot.SchemaVersion != 1 ||
 		snapshot.Kind != selfVerificationSummaryKind ||
@@ -37,7 +37,7 @@ func TestSaveSelfVerificationSummaryWritesDefaultKeyAndRejectsInvalidKey(t *test
 	t.Setenv("HARNESS_STATE_DIR", dir)
 	result := selfVerificationSummaryResultForSaveTest()
 
-	if err := saveSelfVerificationSummary(&result, ""); err != nil {
+	if err := SaveSelfVerificationSummary(&result, ""); err != nil {
 		t.Fatalf("save default key: %v", err)
 	}
 	if result.StateCheckpoint == nil ||
@@ -60,7 +60,7 @@ func TestSaveSelfVerificationSummaryWritesDefaultKeyAndRejectsInvalidKey(t *test
 	}
 
 	failed := selfVerificationSummaryResultForSaveTest()
-	err = saveSelfVerificationSummary(&failed, "!bad-key")
+	err = SaveSelfVerificationSummary(&failed, "!bad-key")
 	if err == nil || !strings.Contains(err.Error(), "invalid state key") {
 		t.Fatalf("expected invalid key error, got %v", err)
 	}

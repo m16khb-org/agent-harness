@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"strings"
@@ -8,7 +8,7 @@ import (
 func TestPromoteSelfAugmentBaselineRejectsMissingKeysAndBadSource(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 
-	result, err := promoteSelfAugmentBaseline("", "baseline", false)
+	result, err := PromoteSelfAugmentBaseline("", "baseline", false)
 	if err == nil || !strings.Contains(err.Error(), "from-key is required") {
 		t.Fatalf("expected missing from-key error, result=%+v err=%v", result, err)
 	}
@@ -16,7 +16,7 @@ func TestPromoteSelfAugmentBaselineRejectsMissingKeysAndBadSource(t *testing.T) 
 		t.Fatalf("unexpected missing from-key result: %+v", result)
 	}
 
-	result, err = promoteSelfAugmentBaseline("candidate", "", true)
+	result, err = PromoteSelfAugmentBaseline("candidate", "", true)
 	if err == nil || !strings.Contains(err.Error(), "baseline-key is required") {
 		t.Fatalf("expected missing baseline-key error, result=%+v err=%v", result, err)
 	}
@@ -24,7 +24,7 @@ func TestPromoteSelfAugmentBaselineRejectsMissingKeysAndBadSource(t *testing.T) 
 		t.Fatalf("unexpected missing baseline-key result: %+v", result)
 	}
 
-	result, err = promoteSelfAugmentBaseline("missing-source", "baseline", false)
+	result, err = PromoteSelfAugmentBaseline("missing-source", "baseline", false)
 	if err == nil || !strings.Contains(err.Error(), "read source summary") {
 		t.Fatalf("expected wrapped source read error, result=%+v err=%v", result, err)
 	}
@@ -43,11 +43,11 @@ func TestPromoteSelfAugmentBaselinePropagatesDestinationWriteError(t *testing.T)
 		GeneratedAt:   "2000-01-01T00:00:00Z",
 		Summary:       SelfAugmentSummary{TotalRuns: 1, TotalSteps: 1, PassedSteps: 1},
 	}
-	if err := writeSelfAugmentSnapshotRecord(dir, "candidate", source); err != nil {
+	if err := WriteSelfAugmentSnapshotRecord(dir, "candidate", source); err != nil {
 		t.Fatalf("write candidate: %v", err)
 	}
 
-	result, err := promoteSelfAugmentBaseline("candidate", "!bad-key", true)
+	result, err := PromoteSelfAugmentBaseline("candidate", "!bad-key", true)
 	if err == nil || !strings.Contains(err.Error(), "invalid state key") {
 		t.Fatalf("expected invalid destination key error, result=%+v err=%v", result, err)
 	}
