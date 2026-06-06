@@ -16,7 +16,7 @@ func collectSelfAugmentRepoSignals(root string, docsIndexed int, skills []string
 		HasGeniusThink:              strings.TrimSpace(geniusText) != "",
 		HasSelfAugmentSkill:         containsString(skills, "self-augment"),
 		HasSelfVerificationDocs:     docsContainTerm(root, "Self-verification") && docsContainTerm(root, "Self-augmentation"),
-		HasSelfVerifyCLI:            dirContainsTerm(root, filepath.Join("cmd", "harness"), `case "self-verify"`) && dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "selfVerificationKoreanName"),
+		HasSelfVerifyCLI:            fileContainsTerm(root, filepath.Join("cmd", "harness", "root_command_facade.go"), `"self-verify":`) && dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "selfVerificationKoreanName"),
 		HasSelfAugmentPlanner:       dirContainsTerm(root, filepath.Join("cmd", "harness"), "planSelfAugmentation"),
 		HasSelfAugmentStateCapture:  dirContainsTerm(root, filepath.Join("cmd", "harness"), "saveSelfAugmentPlan") && docsContainTerm(root, "--save-state"),
 		HasSelfAugmentLessonCapture: dirContainsTerm(root, filepath.Join("cmd", "harness"), "saveSelfAugmentLesson"),
@@ -31,7 +31,7 @@ func collectSelfAugmentRepoSignals(root string, docsIndexed int, skills []string
 		HasMCPAdapterCatalog:        hasMCPAdapterCatalog,
 		HasCompatibilityContract: (fileContainsTerm(root, filepath.Join("cmd", "harness", "contract.go"), "CompatibilityContract") ||
 			fileContainsTerm(root, filepath.Join("cmd", "harness", "misc_facade.go"), "CompatibilityContract")) &&
-			dirContainsTerm(root, filepath.Join("cmd", "harness"), `case "contract"`),
+			fileContainsTerm(root, filepath.Join("cmd", "harness", "root_command_facade.go"), `"contract":`),
 		HasCandidateRefill: dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "candidate-refill-curriculum") && dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "release-repro-pack"),
 		HasCommandAuditLog: fileContainsTerm(root, filepath.Join("internal", "core", "audit", "audit.go"), "AuditCommandPolicy") && dirContainsTerm(root, filepath.Join("cmd", "harness", "policycli"), "policy audit"),
 		HasWorkerMVP:       fileContainsTerm(root, filepath.Join("internal", "core", "worker", "worker.go"), "EnqueueWorkerJob") && dirContainsTerm(root, filepath.Join("cmd", "harness", "workercli"), "runWorkerEnqueue"),
