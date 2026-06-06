@@ -1,4 +1,4 @@
-package main
+package draftwikicli
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"agent-harness/cmd/harness/workercli"
 	"agent-harness/internal/core"
 )
 
@@ -77,7 +78,7 @@ EOF
 	}
 
 	out := captureStdoutForContract(t, func() error {
-		return runWorker([]string{"draft-wiki", "--repo", root, "--agy-command", fakeAgy, "--agy-settings", configPath, "--json"})
+		return workercli.Run([]string{"draft-wiki", "--repo", root, "--agy-command", fakeAgy, "--agy-settings", configPath, "--json"})
 	})
 	var processed map[string]any
 	if err := json.Unmarshal([]byte(out), &processed); err != nil {

@@ -1,4 +1,4 @@
-package main
+package draftwikicli
 
 import (
 	"encoding/json"
