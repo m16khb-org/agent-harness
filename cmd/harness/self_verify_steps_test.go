@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestPlannedSelfVerifyStepsPreservesExecutionOrder(t *testing.T) {
 	var goTestStep StepResult
@@ -53,5 +56,18 @@ func TestPlannedSelfVerifyStepsUsesCachedContractGoldenAfterGoTest(t *testing.T)
 
 	if !got.OK || got.Label != "contract golden tests" || got.Command != "covered by go test ./... -count=1" {
 		t.Fatalf("expected cached contract golden result, got %#v", got)
+	}
+}
+
+func TestCachedContractGoldenStepUsesFullGoTestEvidence(t *testing.T) {
+	step := cachedContractGoldenStep(StepResult{Label: "go test", Command: "go test ./... -count=1", OK: true})
+	if !step.OK || step.Label != "contract golden tests" {
+		t.Fatalf("unexpected cached step: %+v", step)
+	}
+	if step.DurationMS != 0 {
+		t.Fatalf("cached step should not report subprocess duration: %+v", step)
+	}
+	if !strings.Contains(step.Command, "covered by go test") || !strings.Contains(step.Stdout, "full go test suite") {
+		t.Fatalf("cached step did not explain evidence source: %+v", step)
 	}
 }
