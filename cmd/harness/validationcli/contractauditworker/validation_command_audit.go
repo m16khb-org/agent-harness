@@ -1,21 +1,23 @@
-package validationcli
+package contractauditworker
 
 import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
 )
 
 func ValidateCommandAudit(binary, root string, seed int64) StepResult {
-	return ValidateCommandAuditWithDeps(binary, root, seed, ContractAuditWorkerValidationDeps{})
+	return ValidateCommandAuditWithDeps(binary, root, seed, ValidationDeps{})
 }
 
-func ValidateCommandAuditWithDeps(binary, root string, seed int64, deps ContractAuditWorkerValidationDeps) StepResult {
+func ValidateCommandAuditWithDeps(binary, root string, seed int64, deps ValidationDeps) StepResult {
 	_ = seed
 	deps = deps.withDefaults()
 	auditDir, err := deps.MkdirTemp("", "agent-harness-audit-*")
 	if err != nil {
-		return failedStep("command audit smoke", err)
+		return commandstep.FailedStep("command audit smoke", err)
 	}
 	defer deps.RemoveAll(auditDir)
 	auditLog := filepath.Join(auditDir, "audit.jsonl")
@@ -25,7 +27,7 @@ func ValidateCommandAuditWithDeps(binary, root string, seed int64, deps Contract
 	}
 	b, err := deps.ReadFile(auditLog)
 	if err != nil {
-		return failedStep("command audit smoke", err)
+		return commandstep.FailedStep("command audit smoke", err)
 	}
 	errs := []string{}
 	text := string(b)
@@ -35,5 +37,5 @@ func ValidateCommandAuditWithDeps(binary, root string, seed int64, deps Contract
 	if strings.Contains(strings.ToLower(text), "secret-value") || strings.Contains(text, "sk-123") {
 		errs = append(errs, "audit log contains unredacted secret fixture")
 	}
-	return assertionStep("command audit smoke", time.Now(), errs)
+	return commandstep.AssertionStep("command audit smoke", time.Now(), errs)
 }

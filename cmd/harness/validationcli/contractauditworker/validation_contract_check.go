@@ -1,15 +1,17 @@
-package validationcli
+package contractauditworker
 
 import (
 	"encoding/json"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
 )
 
 func ValidateContractCheck(binary, root string) StepResult {
-	return ValidateContractCheckWithDeps(binary, root, ContractAuditWorkerValidationDeps{})
+	return ValidateContractCheckWithDeps(binary, root, ValidationDeps{})
 }
 
-func ValidateContractCheckWithDeps(binary, root string, deps ContractAuditWorkerValidationDeps) StepResult {
+func ValidateContractCheckWithDeps(binary, root string, deps ValidationDeps) StepResult {
 	deps = deps.withDefaults()
 	step := deps.RunCommandStep(root, "contract check", 30*time.Second, "", binary, "contract", "check", "--json")
 	if !step.OK {
@@ -23,7 +25,7 @@ func ValidateContractCheckWithDeps(binary, root string, deps ContractAuditWorker
 		} `json:"cli_commands"`
 	}
 	if err := json.Unmarshal([]byte(step.Stdout), &result); err != nil {
-		return failedStep("contract check", err)
+		return commandstep.FailedStep("contract check", err)
 	}
 	errs := []string{}
 	if !result.OK || result.Hash == "" {
@@ -40,5 +42,5 @@ func ValidateContractCheckWithDeps(binary, root string, deps ContractAuditWorker
 			errs = append(errs, "missing CLI command "+want)
 		}
 	}
-	return assertionStep("contract check", time.Now(), errs)
+	return commandstep.AssertionStep("contract check", time.Now(), errs)
 }

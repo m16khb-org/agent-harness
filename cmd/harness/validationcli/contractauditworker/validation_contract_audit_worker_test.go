@@ -1,4 +1,4 @@
-package validationcli
+package contractauditworker
 
 import (
 	"encoding/json"
@@ -17,7 +17,7 @@ import (
 func TestValidateCommandAuditWithDepsCoversSuccessCommandReadAndContractFailures(t *testing.T) {
 	root := t.TempDir()
 	auditLog := filepath.Join(root, "audit.jsonl")
-	deps := ContractAuditWorkerValidationDeps{
+	deps := ValidationDeps{
 		MkdirTemp: func(string, string) (string, error) { return root, nil },
 		RemoveAll: func(string) error { return nil },
 		ReadFile: func(path string) ([]byte, error) {
@@ -124,7 +124,7 @@ func TestValidateContractCheckWithDepsCoversSuccessParseAndContractFailures(t *t
 	root := t.TempDir()
 	contract := contractcli.CompatibilityContract{OK: true, Hash: "abc", CLICommands: []cli.Command{{Name: "worker"}, {Name: "contract"}, {Name: "policy"}}}
 	body, _ := json.Marshal(contract)
-	deps := ContractAuditWorkerValidationDeps{
+	deps := ValidationDeps{
 		RunCommandStep: func(_ string, label string, _ time.Duration, _ string, _ string, args ...string) StepResult {
 			if label != "contract check" || strings.Join(args, " ") != "contract check --json" {
 				return StepResult{Label: label, OK: false, Error: "bad contract command"}
@@ -168,7 +168,7 @@ func TestValidateWorkerLifecycleWithDepsCoversSuccessParseCommandAndContractFail
 	workerDir := filepath.Join(root, "worker")
 	queued := core.WorkerJob{OK: true, ID: "job-1", Kind: "smoke", Status: core.WorkerStatusQueued, NoShell: true}
 	queuedBody, _ := json.Marshal(queued)
-	deps := ContractAuditWorkerValidationDeps{
+	deps := ValidationDeps{
 		MkdirTemp: func(string, string) (string, error) { return workerDir, nil },
 		RemoveAll: func(string) error { return nil },
 		RunCommandStepEnv: func(_ string, label string, _ time.Duration, _ string, env []string, _ string, args ...string) StepResult {
@@ -225,4 +225,13 @@ func TestValidateWorkerLifecycleWithDepsCoversSuccessParseCommandAndContractFail
 			t.Fatalf("expected %q in %+v", want, failed)
 		}
 	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
