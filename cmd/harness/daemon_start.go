@@ -12,35 +12,72 @@ import (
 )
 
 func ensureDaemonRunning() (daemonStatus, error) {
-	if status := checkDaemonStatus(); status.Running {
+	return ensureDaemonRunningWithDeps(daemonStartDeps{
+		checkStatus: checkDaemonStatus,
+		paths:       currentDaemonPaths,
+		mkdirAll:    os.MkdirAll,
+		acquireLock: func(paths daemonPaths) (daemonStartLock, error) {
+			return acquireDaemonLock(paths)
+		},
+		remove:      os.Remove,
+		executable:  os.Executable,
+		startDaemon: startDaemonProcess,
+		wait:        waitForDaemon,
+	})
+}
+
+type daemonStartLock interface {
+	Close() error
+}
+
+type daemonStartDeps struct {
+	checkStatus func() daemonStatus
+	paths       func() (daemonPaths, error)
+	mkdirAll    func(string, os.FileMode) error
+	acquireLock func(daemonPaths) (daemonStartLock, error)
+	remove      func(string) error
+	executable  func() (string, error)
+	startDaemon func(exe string, paths daemonPaths) error
+	wait        func(daemonPaths, time.Duration) (daemonStatus, error)
+}
+
+func ensureDaemonRunningWithDeps(deps daemonStartDeps) (daemonStatus, error) {
+	if status := deps.checkStatus(); status.Running {
 		return status, nil
 	}
-	paths, err := currentDaemonPaths()
+	paths, err := deps.paths()
 	if err != nil {
 		return daemonStatus{}, err
 	}
-	if err := os.MkdirAll(paths.Dir, 0o700); err != nil {
+	if err := deps.mkdirAll(paths.Dir, 0o700); err != nil {
 		return daemonStatus{}, err
 	}
-	lock, err := acquireDaemonLock(paths)
+	lock, err := deps.acquireLock(paths)
 	if err != nil {
 		// Another launcher may be starting it. Wait briefly.
-		if status, waitErr := waitForDaemon(paths, daemonReadyTimeout); waitErr == nil && status.Running {
+		if status, waitErr := deps.wait(paths, daemonReadyTimeout); waitErr == nil && status.Running {
 			return status, nil
 		}
 		return daemonStatus{OK: false, Running: false, Paths: paths, Message: err.Error()}, err
 	}
 	defer func() {
 		_ = lock.Close()
-		_ = os.Remove(paths.Lock)
+		_ = deps.remove(paths.Lock)
 	}()
-	if status := checkDaemonStatus(); status.Running {
+	if status := deps.checkStatus(); status.Running {
 		return status, nil
 	}
-	exe, err := os.Executable()
+	exe, err := deps.executable()
 	if err != nil {
 		return daemonStatus{}, err
 	}
+	if err := deps.startDaemon(exe, paths); err != nil {
+		return daemonStatus{OK: false, Paths: paths, Message: err.Error()}, err
+	}
+	return deps.wait(paths, daemonReadyTimeout)
+}
+
+func startDaemonProcess(exe string, paths daemonPaths) error {
 	cmd := exec.Command(exe, "daemon", "--internal")
 	cmd.Env = append(os.Environ(), "HARNESS_DAEMON_DIR="+paths.Dir, "HARNESS_ROOT="+harnessRoot())
 	cmd.Stdout = nil
@@ -48,10 +85,10 @@ func ensureDaemonRunning() (daemonStatus, error) {
 	cmd.Stdin = nil
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err := cmd.Start(); err != nil {
-		return daemonStatus{OK: false, Paths: paths, Message: err.Error()}, err
+		return err
 	}
 	_ = cmd.Process.Release()
-	return waitForDaemon(paths, daemonReadyTimeout)
+	return nil
 }
 
 func waitForDaemon(paths daemonPaths, timeout time.Duration) (daemonStatus, error) {
