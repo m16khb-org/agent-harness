@@ -1,13 +1,25 @@
-package validationcli
+package installdryrun
 
 import (
 	"encoding/json"
 	"path/filepath"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
 )
 
-func validateInstallDryRunSmoke(binary, root string, seed int64) StepResult {
+const aggregateOutputBudgetBytes = 8 * 1024
+const commandOutputBudgetBytes = 32 * 1024
+const skillName = "atomic-commit-push"
+
+type StepResult = commandstep.StepResult
+
+func Validate(binary, root string, seed int64) StepResult {
 	return validateInstallDryRunSmokeWithDeps(binary, root, seed, installDryRunValidationDeps{})
+}
+
+func validateInstallDryRunSmoke(binary, root string, seed int64) StepResult {
+	return Validate(binary, root, seed)
 }
 
 func validateInstallDryRunSmokeWithDeps(binary, root string, seed int64, deps installDryRunValidationDeps) StepResult {
@@ -15,20 +27,20 @@ func validateInstallDryRunSmokeWithDeps(binary, root string, seed int64, deps in
 	started := time.Now()
 	tempHome, err := deps.makeTempDir("home", seed)
 	if err != nil {
-		return failedStep("install dry-run smoke", err)
+		return commandstep.FailedStep("install dry-run smoke", err)
 	}
 	defer deps.removeAll(tempHome)
 	tempRoot, err := deps.makeTempDir("root", seed)
 	if err != nil {
-		return failedStep("install dry-run smoke", err)
+		return commandstep.FailedStep("install dry-run smoke", err)
 	}
 	defer deps.removeAll(tempRoot)
 	skillDir := filepath.Join(tempRoot, "skills", skillName)
 	if err := deps.makeDirAll(skillDir, 0o755); err != nil {
-		return failedStep("install dry-run smoke", err)
+		return commandstep.FailedStep("install dry-run smoke", err)
 	}
 	if err := deps.writeFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: "+skillName+"\ndescription: install dry-run smoke\n---\n"), 0o644); err != nil {
-		return failedStep("install dry-run smoke", err)
+		return commandstep.FailedStep("install dry-run smoke", err)
 	}
 	env := []string{
 		"HOME=" + tempHome,
@@ -41,11 +53,11 @@ func validateInstallDryRunSmokeWithDeps(binary, root string, seed int64, deps in
 	}
 	var result installDryRunSmokeResult
 	if err := json.Unmarshal([]byte(step.Stdout), &result); err != nil {
-		return assertionStepWithOutput("install dry-run smoke", started, []string{err.Error()}, []string{step.Stdout}, []string{step.Command})
+		return commandstep.AssertionStepWithOutput("install dry-run smoke", started, []string{err.Error()}, []string{step.Stdout}, []string{step.Command}, aggregateOutputBudgetBytes)
 	}
 	errs := installDryRunValidationErrors(result, tempHome, tempRoot, deps.exists)
 	if len(errs) > 0 {
-		return assertionStepWithOutput("install dry-run smoke", started, errs, []string{step.Stdout}, []string{step.Command})
+		return commandstep.AssertionStepWithOutput("install dry-run smoke", started, errs, []string{step.Stdout}, []string{step.Command}, aggregateOutputBudgetBytes)
 	}
 	step.DurationMS = time.Since(started).Milliseconds()
 	return step

@@ -1,4 +1,4 @@
-package validationcli
+package installdryrun
 
 import (
 	"encoding/json"

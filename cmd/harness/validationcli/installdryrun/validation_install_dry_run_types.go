@@ -1,4 +1,4 @@
-package validationcli
+package installdryrun
 
 type installDryRunSmokeResult struct {
 	OK           bool                     `json:"ok"`

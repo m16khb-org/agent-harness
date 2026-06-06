@@ -1,4 +1,4 @@
-package validationcli
+package installdryrun
 
 import "path/filepath"
 
@@ -51,4 +51,13 @@ func installDryRunValidationErrors(result installDryRunSmokeResult, tempHome, te
 		}
 	}
 	return errs
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }

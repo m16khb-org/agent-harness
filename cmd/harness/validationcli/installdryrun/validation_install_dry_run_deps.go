@@ -1,9 +1,11 @@
-package validationcli
+package installdryrun
 
 import (
 	"fmt"
 	"os"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
 )
 
 type installDryRunCommandRunner func(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult
@@ -40,7 +42,14 @@ func (deps installDryRunValidationDeps) withDefaults() installDryRunValidationDe
 		deps.exists = exists
 	}
 	if deps.run == nil {
-		deps.run = runCommandStepEnv
+		deps.run = func(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult {
+			return commandstep.RunEnv(dir, label, timeout, stdin, env, commandOutputBudgetBytes, name, args...)
+		}
 	}
 	return deps
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
