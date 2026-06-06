@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"encoding/json"
@@ -74,7 +74,7 @@ func callMCPWorkerRunReadOnlyForTest(t *testing.T, args map[string]any) core.Wor
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, rpcErr := handleToolCall(params)
+	result, rpcErr := HandleToolCall(params)
 	if rpcErr != nil {
 		t.Fatalf("worker_run_read_only rpc error: %+v", rpcErr)
 	}
