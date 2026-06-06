@@ -1,4 +1,4 @@
-package main
+package riskqa
 
 import (
 	"os"
@@ -20,7 +20,7 @@ func TestValidateRiskQATierWrapperRunsElevatedDefaultCommands(t *testing.T) {
 	}
 	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	step := validateRiskQATier(root)
+	step := Validate(root)
 	if !step.OK || step.Label != "risk QA tier" {
 		t.Fatalf("expected risk QA wrapper success, got %#v", step)
 	}
@@ -66,7 +66,7 @@ func TestPlanRiskQATierFromPaths(t *testing.T) {
 	for _, tt := range tests {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
-			plan := planRiskQATierFromPaths(tc.paths)
+			plan := PlanFromPaths(tc.paths)
 			if plan.Tier != tc.tier {
 				t.Fatalf("tier=%q want %q: %+v", plan.Tier, tc.tier, plan)
 			}
@@ -79,25 +79,25 @@ func TestPlanRiskQATierFromPaths(t *testing.T) {
 
 func TestRiskQATierHelpersCoverGitWarningsAndJSON(t *testing.T) {
 	nonGitRoot := t.TempDir()
-	nonGitPlan := planRiskQATier(nonGitRoot)
+	nonGitPlan := Plan(nonGitRoot)
 	if nonGitPlan.Tier != "standard" || len(nonGitPlan.Commands) != 0 || len(nonGitPlan.Reasons) != 2 {
 		t.Fatalf("unexpected non-git risk plan: %+v", nonGitPlan)
 	}
 	if !containsString(nonGitPlan.Reasons, "git status unavailable: exit status 128") || !containsString(nonGitPlan.Reasons, "working tree has no local changes") {
 		t.Fatalf("non-git plan missing warnings: %+v", nonGitPlan.Reasons)
 	}
-	step := validateRiskQATier(nonGitRoot)
+	step := Validate(nonGitRoot)
 	if !step.OK || step.Label != "risk QA tier" || !strings.Contains(step.Stdout, `"tier":"standard"`) {
 		t.Fatalf("unexpected no-command risk QA step: %+v", step)
 	}
 
 	gitRoot := t.TempDir()
-	runStatusVerifyTestCommand(t, gitRoot, "git", "init")
-	if plan := planRiskQATier(gitRoot); plan.Tier != "standard" || !containsString(plan.Reasons, "working tree has no local changes") {
+	runRiskQATestCommand(t, gitRoot, "git", "init")
+	if plan := Plan(gitRoot); plan.Tier != "standard" || !containsString(plan.Reasons, "working tree has no local changes") {
 		t.Fatalf("unexpected clean git risk plan: %+v", plan)
 	}
 
-	jsonText := riskQATierPlanJSON(RiskQATierPlan{Tier: "static", ChangedPaths: []string{"b.go", "a.go"}, Commands: []string{"go vet ./..."}})
+	jsonText := PlanJSON(RiskQATierPlan{Tier: "static", ChangedPaths: []string{"b.go", "a.go"}, Commands: []string{"go vet ./..."}})
 	if !strings.Contains(jsonText, `"tier":"static"`) || !strings.Contains(jsonText, `"changed_paths":["b.go","a.go"]`) {
 		t.Fatalf("unexpected risk QA JSON: %s", jsonText)
 	}
@@ -112,14 +112,14 @@ func TestValidateRiskQATierWithDepsCoversCommandSuccessAndFailure(t *testing.T) 
 		Commands:     []string{"go test -race ./... -count=1", "go vet ./..."},
 	}
 	calls := []string{}
-	success := validateRiskQATierWithDeps(root, riskQATierDeps{
-		plan: func(gotRoot string) RiskQATierPlan {
+	success := ValidateWithDeps(root, Deps{
+		Plan: func(gotRoot string) RiskQATierPlan {
 			if gotRoot != root {
 				t.Fatalf("plan root=%q want %q", gotRoot, root)
 			}
 			return plan
 		},
-		run: func(gotRoot string, command string) StepResult {
+		Run: func(gotRoot string, command string) StepResult {
 			calls = append(calls, command)
 			return StepResult{Label: command, Command: "stub " + command, OK: true, Stdout: "ok " + command}
 		},
@@ -131,9 +131,9 @@ func TestValidateRiskQATierWithDepsCoversCommandSuccessAndFailure(t *testing.T) 
 		t.Fatalf("risk QA success did not preserve command order/stdout: calls=%v result=%+v", calls, success)
 	}
 
-	failure := validateRiskQATierWithDeps(root, riskQATierDeps{
-		plan: func(string) RiskQATierPlan { return plan },
-		run: func(_ string, command string) StepResult {
+	failure := ValidateWithDeps(root, Deps{
+		Plan: func(string) RiskQATierPlan { return plan },
+		Run: func(_ string, command string) StepResult {
 			if command == "go test -race ./... -count=1" {
 				return StepResult{Label: "risk QA race test", Command: "stub race", OK: false, Error: "race failed", Stdout: "race out"}
 			}
@@ -158,11 +158,30 @@ func sameStringSlice(a, b []string) bool {
 	return true
 }
 
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
 func runRiskQATestCommand(t *testing.T, dir string, name string, args ...string) {
 	t.Helper()
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("%s %s failed: %v\n%s", name, strings.Join(args, " "), err, out)
+	}
+}
+
+func writeFileForWrapperTest(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
