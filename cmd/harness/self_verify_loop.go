@@ -85,37 +85,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 		tempBin := filepath.Join(tempDir, "harness")
 
 		var goTestStep StepResult
-		steps := []selfVerifyPlannedStep{
-			{Label: "harness invariants", Run: func() StepResult { return validateHarnessInvariants(result.HarnessRoot) }},
-			{Label: "go test", Run: func() StepResult {
-				goTestStep = runCommandStep(result.HarnessRoot, "go test", 120*time.Second, "", "go", "test", "./...", "-count=1")
-				return goTestStep
-			}},
-			{Label: "contract golden tests", Run: func() StepResult {
-				return cachedContractGoldenStep(goTestStep)
-			}},
-			{Label: "risk QA tier", Run: func() StepResult { return validateRiskQATier(result.HarnessRoot) }},
-			{Label: "go build", Run: func() StepResult {
-				return runCommandStep(result.HarnessRoot, "go build", 120*time.Second, "", "go", "build", "-o", tempBin, "./cmd/harness")
-			}},
-			{Label: "inspect smoke", Run: func() StepResult { return validateInspect(tempBin, result.HarnessRoot) }},
-			{Label: "docs index smoke", Run: func() StepResult { return validateDocsIndex(tempBin, result.HarnessRoot) }},
-			{Label: "candidate export", Run: func() StepResult { return validateSelfVerifyCandidateExport(tempBin, result.HarnessRoot, seed) }},
-			{Label: "step budget baseline", Run: func() StepResult { return validateStepBudgetBaseline(tempBin, result.HarnessRoot, seed) }},
-			{Label: "install dry-run smoke", Run: func() StepResult { return validateInstallDryRunSmoke(tempBin, result.HarnessRoot, seed) }},
-			{Label: "command policy smoke", Run: func() StepResult { return validateCommandPolicy(tempBin, result.HarnessRoot) }},
-			{Label: "command audit smoke", Run: func() StepResult { return validateCommandAudit(tempBin, result.HarnessRoot, seed) }},
-			{Label: "contract check", Run: func() StepResult { return validateContractCheck(tempBin, result.HarnessRoot) }},
-			{Label: "worker lifecycle smoke", Run: func() StepResult { return validateWorkerLifecycle(tempBin, result.HarnessRoot, seed) }},
-			{Label: "MCP smoke", Run: func() StepResult { return validateMCP(tempBin, result.HarnessRoot) }},
-			{Label: "state roundtrip", Run: func() StepResult { return validateStateRoundtrip(tempBin, result.HarnessRoot, seed) }},
-			{Label: "parallel isolation", Run: func() StepResult { return validateParallelTempIsolation(tempBin, result.HarnessRoot, seed) }},
-			{Label: "daemon resilience", Run: func() StepResult { return validateDaemonRestartResilience(tempBin, result.HarnessRoot, seed) }},
-			{Label: "preflight fuzz", Run: func() StepResult { return validatePreflightFuzz(tempBin, result.HarnessRoot, seed) }},
-			{Label: "native integration", Run: func() StepResult { return validateNativeIntegration(result.HarnessRoot) }},
-			{Label: "redaction audit", Run: func() StepResult { return validateRedactionAudit(result.HarnessRoot) }},
-			{Label: "QA gate", Run: func() StepResult { return validateQAGate(result.HarnessRoot) }},
-		}
+		steps := plannedSelfVerifySteps(result.HarnessRoot, tempBin, seed, &goTestStep)
 
 		if progress != nil {
 			progress.emit(SelfVerifyProgressEvent{
@@ -200,22 +170,4 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 		})
 	}
 	return result, nil
-}
-
-type selfVerifyPlannedStep struct {
-	Label string
-	Run   func() StepResult
-}
-
-func cachedContractGoldenStep(goTestStep StepResult) StepResult {
-	if goTestStep.OK {
-		return StepResult{
-			Label:      "contract golden tests",
-			Command:    "covered by go test ./... -count=1",
-			OK:         true,
-			DurationMS: 0,
-			Stdout:     "contract golden tests already executed by full go test suite",
-		}
-	}
-	return runCommandStep(harnessRoot(), "contract golden tests", 120*time.Second, "", "go", "test", "./cmd/harness", "-run", "Golden", "-count=1")
 }
