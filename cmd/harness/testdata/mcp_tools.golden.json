@@ -287,6 +287,10 @@
           },
           "type": "array"
         },
+        "audit_log_id": {
+          "description": "Optional caller-provided audit log correlation id.",
+          "type": "string"
+        },
         "cwd": {
           "description": "Command working directory; must be inside workspace_root.",
           "type": "string"
@@ -342,6 +346,10 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "audit_log_id": {
+          "description": "Optional caller-provided audit log correlation id.",
+          "type": "string"
         },
         "cwd": {
           "description": "Command working directory; must be inside workspace_root.",
@@ -1274,6 +1282,10 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "audit_log_id": {
+          "description": "Optional caller-provided audit log correlation id.",
+          "type": "string"
         },
         "cwd": {
           "description": "Command working directory; must be inside workspace_root.",
