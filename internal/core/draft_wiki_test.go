@@ -616,6 +616,48 @@ target_type: "badtype"
 	}
 }
 
+func TestLLMWikiRawNoteContentStripsDraftFrontmatterAndDefaultsBody(t *testing.T) {
+	draft := DraftWikiDraft{
+		Title:   "Raw Note",
+		RelPath: ".agent-harness/draft-wiki/approved/raw-note.md",
+	}
+	withBody := llmWikiRawNoteContent(draft, "notes", "2026-06-06", `---
+title: "Raw Note"
+---
+
+# Body
+`)
+	for _, want := range []string{
+		`title: "Raw Note"`,
+		`source: "agent-harness draft-wiki:.agent-harness/draft-wiki/approved/raw-note.md"`,
+		"type: notes",
+		"ingested: 2026-06-06",
+		"Approved agent-harness draft wiki note promoted from repo-local review staging.",
+		"# Body",
+	} {
+		if !strings.Contains(withBody, want) {
+			t.Fatalf("raw note content missing %q:\n%s", want, withBody)
+		}
+	}
+	if strings.Contains(withBody, `title: "Raw Note"`+"\n---\n\n---") {
+		t.Fatalf("draft frontmatter should not be copied into raw body:\n%s", withBody)
+	}
+
+	emptyBody := llmWikiRawNoteContent(draft, "notes", "2026-06-06", "---\n---\n")
+	if !strings.Contains(emptyBody, "# Raw Note\n") {
+		t.Fatalf("empty draft body should fall back to title heading:\n%s", emptyBody)
+	}
+}
+
+func TestDraftWikiRawFileNameReusesDatedSlugAndDefaultsBlankSlug(t *testing.T) {
+	if got := draftWikiRawFileName("2026-06-06", filepath.Join("approved", "2026-06-01-existing.md")); got != "2026-06-01-existing.md" {
+		t.Fatalf("dated draft filename should be reused, got %q", got)
+	}
+	if got := draftWikiRawFileName("2026-06-06", filepath.Join("approved", "!!!.md")); got != "2026-06-06-draft.md" {
+		t.Fatalf("blank slug should use stable fallback, got %q", got)
+	}
+}
+
 func TestPromoteDraftWikiConfirmDoesNotCreateLLMWikiIndexArtifacts(t *testing.T) {
 	root := t.TempDir()
 	configPath, hub := writeTestLLMWikiHub(t)
