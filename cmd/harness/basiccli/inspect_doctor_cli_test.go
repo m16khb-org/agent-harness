@@ -1,4 +1,4 @@
-package main
+package basiccli
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ func TestRunInspect_printsText_whenRepoIsPositional(t *testing.T) {
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runInspect([]string{repo})
+		return RunInspect([]string{repo})
 	})
 
 	// Then
@@ -34,7 +34,7 @@ func TestRunInspect_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runInspect([]string{"--repo", repo, "--json"})
+		return RunInspect([]string{"--repo", repo, "--json"})
 	})
 
 	// Then
@@ -57,7 +57,7 @@ func TestRunDoctor_printsHealthyText_whenProjectDocsAreInitialized(t *testing.T)
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runDoctor([]string{"--repo", repo})
+		return RunDoctor([]string{"--repo", repo})
 	})
 
 	// Then
@@ -73,7 +73,7 @@ func TestRunDoctor_printsIssuesText_whenProjectDocsAreMissing(t *testing.T) {
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runDoctor([]string{repo})
+		return RunDoctor([]string{repo})
 	})
 
 	// Then
@@ -92,7 +92,7 @@ func TestRunDoctor_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runDoctor([]string{"--repo", repo, "--json"})
+		return RunDoctor([]string{"--repo", repo, "--json"})
 	})
 
 	// Then
@@ -113,7 +113,7 @@ func TestRunDoctor_returnsError_whenRepoPathIsInvalid(t *testing.T) {
 	badRepo := filepath.Join(t.TempDir(), "missing")
 
 	// When
-	err := runDoctor([]string{"--repo", badRepo})
+	err := RunDoctor([]string{"--repo", badRepo})
 
 	// Then
 	if err == nil || !strings.Contains(err.Error(), badRepo) {
@@ -142,7 +142,7 @@ func TestRunDoctor_doesNotRequireRealHome(t *testing.T) {
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runDoctor([]string{"--repo", repo})
+		return RunDoctor([]string{"--repo", repo})
 	})
 
 	// Then

@@ -1,4 +1,4 @@
-package main
+package basiccli
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ import (
 func TestRunDocs_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runDocs([]string{"--json"})
+		return RunDocs([]string{"--json"})
 	})
 
 	// Then
@@ -21,7 +21,7 @@ func TestRunDocs_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode docs json: %v\n%s", err, out)
 	}
-	if !result.OK || result.Version != version || result.HarnessRoot == "" {
+	if !result.OK || result.Version != Version || result.HarnessRoot == "" {
 		t.Fatalf("unexpected docs result: %+v", result)
 	}
 	if !docsIndexHasRel(result, "AGENTS.md") {
@@ -32,7 +32,7 @@ func TestRunDocs_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 func TestRunDocs_acceptsIndexAliasForTextOutput(t *testing.T) {
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runDocs([]string{"index"})
+		return RunDocs([]string{"index"})
 	})
 
 	// Then
@@ -53,7 +53,7 @@ func TestRunDocsWithRoot_printsRelPathOnly_whenTitleIsMissing(t *testing.T) {
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runDocsWithRoot([]string{}, root)
+		return RunDocsWithRoot([]string{}, root)
 	})
 
 	// Then
@@ -65,7 +65,7 @@ func TestRunDocsWithRoot_printsRelPathOnly_whenTitleIsMissing(t *testing.T) {
 
 func TestRunDocsWithRoot_rejectsInvalidFlag(t *testing.T) {
 	// When
-	err := runDocsWithRoot([]string{"--missing"}, t.TempDir())
+	err := RunDocsWithRoot([]string{"--missing"}, t.TempDir())
 
 	// Then
 	if err == nil || !strings.Contains(err.Error(), "flag provided but not defined") {

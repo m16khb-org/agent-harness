@@ -1,4 +1,4 @@
-package main
+package basiccli
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ func TestRunPreflightPrintsJSONForExplicitTarget(t *testing.T) {
 	runStatusVerifyTestCommand(t, repo, "git", "init")
 
 	out := captureStatusVerifyStdout(t, func() error {
-		return runPreflight([]string{"--json", repo})
+		return RunPreflight([]string{"--json", repo})
 	})
 
 	var result core.PreflightResult
@@ -31,7 +31,7 @@ func TestRunPreflightFalseJSONFlagStillPrintsJSON(t *testing.T) {
 	runStatusVerifyTestCommand(t, repo, "git", "init")
 
 	out := captureStatusVerifyStdout(t, func() error {
-		return runPreflight([]string{"--json=false", repo})
+		return RunPreflight([]string{"--json=false", repo})
 	})
 
 	if !strings.Contains(out, `"ok": true`) || !strings.Contains(out, `"repo_root": "`) {
@@ -46,7 +46,7 @@ func TestRunPreflightDefaultsTargetFromEnvironment(t *testing.T) {
 	t.Setenv("PWD", repo)
 
 	out := captureStatusVerifyStdout(t, func() error {
-		return runPreflight(nil)
+		return RunPreflight(nil)
 	})
 
 	var result core.PreflightResult
@@ -59,7 +59,7 @@ func TestRunPreflightDefaultsTargetFromEnvironment(t *testing.T) {
 }
 
 func TestRunPreflightReturnsFlagParseError(t *testing.T) {
-	if err := runPreflight([]string{"--missing"}); err == nil || !strings.Contains(err.Error(), "flag provided but not defined") {
+	if err := RunPreflight([]string{"--missing"}); err == nil || !strings.Contains(err.Error(), "flag provided but not defined") {
 		t.Fatalf("expected flag parse error, got %v", err)
 	}
 }
