@@ -2,6 +2,18 @@ package main
 
 import "agent-harness/cmd/harness/selfworkflow"
 
+func runSelfAugment(args []string) error {
+	selfworkflow.Version = version
+	selfworkflow.HarnessRoot = harnessRoot
+	return selfworkflow.RunSelfAugmentWithDeps(args, selfworkflow.SelfAugmentRunDeps{
+		RunLesson: runSelfAugmentLesson,
+		RunVerify: runSelfVerify,
+		Plan:      planSelfAugmentation,
+		SavePlan:  saveSelfAugmentPlan,
+		PrintJSON: printJSON,
+	})
+}
+
 func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 	selfworkflow.Version = version
 	selfworkflow.HarnessRoot = harnessRoot
