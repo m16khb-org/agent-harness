@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -48,6 +49,69 @@ func TestDaemonPathsUseOverride(t *testing.T) {
 	}
 	if paths.Dir != dir || filepath.Base(paths.Socket) != "agent-harness.sock" || filepath.Base(paths.PID) != "agent-harness.pid" {
 		t.Fatalf("unexpected daemon paths: %+v", paths)
+	}
+}
+
+func TestDaemonPathsUseStateDirFallback(t *testing.T) {
+	stateDir := t.TempDir()
+	t.Setenv("HARNESS_DAEMON_DIR", "")
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+
+	paths, err := currentDaemonPaths()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantDir := filepath.Join(stateDir, "daemon")
+	if paths.Dir != wantDir || paths.Socket != filepath.Join(wantDir, "agent-harness.sock") {
+		t.Fatalf("unexpected state fallback daemon paths: %+v", paths)
+	}
+}
+
+func TestCheckDaemonStatusReportsReachableSocket(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "ahd-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(dir)
+	})
+	t.Setenv("HARNESS_DAEMON_DIR", dir)
+	paths, err := currentDaemonPaths()
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener, err := net.Listen("unix", paths.Socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	if err := os.WriteFile(paths.PID, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	status := checkDaemonStatus()
+
+	if !status.OK || !status.Running || status.PID != os.Getpid() || status.Message != "daemon is reachable" {
+		t.Fatalf("unexpected reachable daemon status: %#v", status)
+	}
+}
+
+func TestCheckDaemonStatusReportsLivePIDWithoutSocket(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_DAEMON_DIR", dir)
+	paths, err := currentDaemonPaths()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(paths.PID, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	status := checkDaemonStatus()
+
+	if !status.OK || status.Running || status.PID != os.Getpid() || status.Message != "daemon pid exists but socket is not reachable" {
+		t.Fatalf("unexpected pid-only daemon status: %#v", status)
 	}
 }
 
