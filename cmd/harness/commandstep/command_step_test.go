@@ -1,6 +1,7 @@
-package main
+package commandstep
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -13,12 +14,12 @@ func TestRunCommandStepEnvWithBudgetCoversSuccessFailureAndOutputBudget(t *testi
 	root := t.TempDir()
 	helperTimeout := 5 * time.Second
 	wrapperBin := writeCommandStepExecutable(t, root, "wrapper.sh", "#!/bin/sh\nprintf 'wrapper stdout'\n")
-	wrapper := runCommandStep(root, "helper wrapper", helperTimeout, "", wrapperBin)
+	wrapper := Run(root, "helper wrapper", helperTimeout, "", 32*1024, wrapperBin)
 	if !wrapper.OK || wrapper.Label != "helper wrapper" || !strings.Contains(wrapper.Stdout, "wrapper stdout") {
 		t.Fatalf("unexpected wrapper step: %+v", wrapper)
 	}
 
-	step := runCommandStepEnvWithBudget(root, "helper success", helperTimeout, "stdin text", []string{"HARNESS_HELPER_PROCESS=1", "HARNESS_HELPER_VALUE=from-env"}, 32, os.Args[0], "-test.run=TestCommandStepHelperProcess", "--", "echo")
+	step := RunEnvWithBudget(root, "helper success", helperTimeout, "stdin text", []string{"HARNESS_HELPER_PROCESS=1", "HARNESS_HELPER_VALUE=from-env"}, 32, os.Args[0], "-test.run=TestCommandStepHelperProcess", "--", "echo")
 	if !step.OK || step.Label != "helper success" || !strings.Contains(step.Command, "-test.run=TestCommandStepHelperProcess") {
 		t.Fatalf("unexpected success step: %+v", step)
 	}
@@ -29,7 +30,7 @@ func TestRunCommandStepEnvWithBudgetCoversSuccessFailureAndOutputBudget(t *testi
 		t.Fatalf("unexpected stderr capture: %+v", step)
 	}
 
-	failed := runCommandStepEnv(root, "helper failure", helperTimeout, "", []string{"HARNESS_HELPER_PROCESS=1"}, os.Args[0], "-test.run=TestCommandStepHelperProcess", "--", "fail")
+	failed := RunEnv(root, "helper failure", helperTimeout, "", []string{"HARNESS_HELPER_PROCESS=1"}, 32*1024, os.Args[0], "-test.run=TestCommandStepHelperProcess", "--", "fail")
 	if failed.OK || !strings.Contains(failed.Error, "exit status 7") {
 		t.Fatalf("unexpected failing step: %+v", failed)
 	}
@@ -38,38 +39,38 @@ func TestRunCommandStepEnvWithBudgetCoversSuccessFailureAndOutputBudget(t *testi
 func TestCommandStepFormattingHelpers(t *testing.T) {
 	started := time.Now()
 	child := StepResult{Label: "child", OK: false, Stdout: "child stdout", Stderr: "child stderr", Error: "", StderrBytes: 12}
-	combined := combineFailedStep("parent", started, child, []string{"first", "second"}, []string{"cmd one", "cmd two"})
+	combined := CombineFailedStep("parent", started, child, []string{"first", "second"}, []string{"cmd one", "cmd two"}, 8*1024)
 	if combined.OK || combined.Error != "child failed" || combined.Command != "cmd one && cmd two" || !strings.Contains(combined.Stdout, "first\nsecond") {
 		t.Fatalf("unexpected combined failure: %+v", combined)
 	}
 
-	asserted := assertionStepWithOutput("assert", started, []string{"one", "two"}, []string{"stdout"}, []string{"cmd"})
+	asserted := AssertionStepWithOutput("assert", started, []string{"one", "two"}, []string{"stdout"}, []string{"cmd"}, 8*1024)
 	if asserted.OK || asserted.Error != "one; two" || asserted.Command != "cmd" || asserted.Stdout != "stdout" {
 		t.Fatalf("unexpected assertion step: %+v", asserted)
 	}
-	if failed := failedStep("label", fmt.Errorf("boom")); failed.OK || failed.Error != "boom" {
+	if failed := FailedStep("label", fmt.Errorf("boom")); failed.OK || failed.Error != "boom" {
 		t.Fatalf("unexpected failed step: %+v", failed)
 	}
 
-	if out, truncated, original := budgetCommandOutput("abc", 0); out != "abc" || truncated || original != 3 {
+	if out, truncated, original := BudgetCommandOutput("abc", 0); out != "abc" || truncated || original != 3 {
 		t.Fatalf("unexpected unbudgeted output: out=%q truncated=%v original=%d", out, truncated, original)
 	}
-	if got := tail("abcdef", 4); !strings.HasPrefix(got, "[") || len(got) > 4 {
+	if got := Tail("abcdef", 4); !strings.HasPrefix(got, "[") || len(got) > 4 {
 		t.Fatalf("unexpected tail output: %q", got)
 	}
-	if got := indentLines("a\nb"); got != "  a\n  b" {
+	if got := IndentLines("a\nb"); got != "  a\n  b" {
 		t.Fatalf("unexpected indented lines: %q", got)
 	}
 
 	okOut := captureStatusVerifyStdout(t, func() error {
-		printStep(StepResult{Label: "ok step", OK: true, DurationMS: 3})
+		PrintStep(StepResult{Label: "ok step", OK: true, DurationMS: 3})
 		return nil
 	})
 	if !strings.Contains(okOut, "ok step ok") {
 		t.Fatalf("unexpected ok print:\n%s", okOut)
 	}
 	failOut := captureStatusVerifyStdout(t, func() error {
-		printStep(StepResult{Label: "bad step", OK: false, DurationMS: 4, Error: "bad", Stdout: "out", Stderr: "err"})
+		PrintStep(StepResult{Label: "bad step", OK: false, DurationMS: 4, Error: "bad", Stdout: "out", Stderr: "err"})
 		return nil
 	})
 	if !strings.Contains(failOut, "bad step failed") || !strings.Contains(failOut, "stdout:") || !strings.Contains(failOut, "stderr:") {
@@ -80,7 +81,7 @@ func TestCommandStepFormattingHelpers(t *testing.T) {
 func TestTailWithBudgetKeepsTruncatedOutputWithinBudget_whenMarkerDigitsGrow(t *testing.T) {
 	input := strings.Repeat("x", 48)
 
-	out, truncated, original := tailWithBudget(input, 47)
+	out, truncated, original := TailWithBudget(input, 47)
 
 	if !truncated || original != len(input) {
 		t.Fatalf("unexpected truncation metadata: truncated=%v original=%d", truncated, original)
@@ -120,4 +121,30 @@ func writeCommandStepExecutable(t *testing.T, root, name, content string) string
 		t.Fatal(err)
 	}
 	return path
+}
+
+func captureStatusVerifyStdout(t *testing.T, fn func() error) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	defer func() {
+		os.Stdout = oldStdout
+	}()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe stdout: %v", err)
+	}
+	defer r.Close()
+	os.Stdout = w
+	callErr := fn()
+	if closeErr := w.Close(); closeErr != nil {
+		t.Fatalf("close stdout pipe: %v", closeErr)
+	}
+	if callErr != nil {
+		t.Fatalf("call failed: %v", callErr)
+	}
+	var out bytes.Buffer
+	if _, err := io.Copy(&out, r); err != nil {
+		t.Fatalf("read stdout pipe: %v", err)
+	}
+	return out.String()
 }
