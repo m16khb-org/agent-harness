@@ -1,42 +1,19 @@
-package main
+package selfworkflow
 
 import (
-	"strings"
+	"path/filepath"
 	"testing"
 )
 
-func TestDetectClaudeMCPDuplicateWarnings(t *testing.T) {
-	warnings := detectClaudeMCPDuplicateWarnings(claudeMCPDuplicateWarningFixture())
-	if len(warnings) != 1 {
-		t.Fatalf("expected one duplicate warning, got %+v", warnings)
-	}
-	if warnings[0].Server != "agent_harness" || !strings.Contains(warnings[0].Message, "multiple scopes") {
-		t.Fatalf("duplicate warning was not classified: %+v", warnings[0])
-	}
-	if len(warnings[0].Suggestions) != 1 || !strings.Contains(warnings[0].Suggestions[0], "claude mcp remove agent_harness") {
-		t.Fatalf("duplicate warning suggestion missing: %+v", warnings[0].Suggestions)
-	}
-	if got := detectClaudeMCPDuplicateWarnings("agent_harness: ./bin/agent-harness mcp - ✓ Connected\n"); len(got) != 0 {
-		t.Fatalf("non-conflicting output produced warnings: %+v", got)
-	}
-}
-
-func TestParseGitStatusPath(t *testing.T) {
-	tests := map[string]string{
-		" M cmd/harness/main.go":               "cmd/harness/main.go",
-		"?? internal/adapter/new_test.go":      "internal/adapter/new_test.go",
-		"R  old/path.go -> internal/core/x.go": "internal/core/x.go",
-		"":                                     "",
-	}
-	for line, want := range tests {
-		if got := parseGitStatusPath(line); got != want {
-			t.Fatalf("parseGitStatusPath(%q)=%q want %q", line, got, want)
-		}
-	}
-}
-
 func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
-	result := planSelfAugmentation(SelfAugmentPlanRequest{Cycles: 1, TargetScore: 95})
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	HarnessRoot = func() string {
+		return root
+	}
+	result := PlanSelfAugmentation(SelfAugmentPlanRequest{Cycles: 1, TargetScore: 95})
 	if !result.OK || result.LoopKind != "self_augmentation" || result.KoreanName != selfAugmentationKoreanName {
 		t.Fatalf("unexpected loop identity: %+v", result)
 	}
@@ -98,8 +75,8 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 }
 
 func TestExportSelfVerificationCandidatesSelectsNextOpenCandidate(t *testing.T) {
-	result := exportSelfVerificationCandidates()
-	if !result.OK || result.Kind != selfVerificationCandidateExportKind || result.LoopKind != "self_verification" {
+	result := ExportSelfVerificationCandidates()
+	if !result.OK || result.Kind != SelfVerificationCandidateExportKind || result.LoopKind != "self_verification" {
 		t.Fatalf("unexpected candidate export identity: %+v", result)
 	}
 	if result.CandidateCount < 10 || len(result.Candidates) != result.CandidateCount {
