@@ -116,3 +116,25 @@ func TestEvaluateNextActionAutoProceedLLMNoRecommendationDoesNotCallAgy(t *testi
 		t.Fatalf("no explicit recommendation must not auto-proceed, got %+v", result)
 	}
 }
+
+func TestBuildNextActionAutoProceedLLMPromptRendersSchemaAndChoices(t *testing.T) {
+	candidates := parseNextActionCandidates(safeRecommendedMessage())
+	recommended := selectRecommendedNextAction(candidates)
+	if recommended == nil {
+		t.Fatal("expected recommended candidate fixture")
+	}
+	prompt := buildNextActionAutoProceedLLMPrompt(*recommended, candidates)
+	for _, want := range []string{
+		"cautious release-safety gate",
+		"auto_proceed",
+		"Recommended Next Action",
+		"1. 진행: 다음 테스트를 추가하고 구현을 계속합니다. (추천) (recommended)",
+		"2. 축소 진행: 일부만 검증합니다.",
+		"3. 보류: 멈춥니다.",
+		"reason concisely justifies the decision",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("LLM prompt missing %q:\n%s", want, prompt)
+		}
+	}
+}
