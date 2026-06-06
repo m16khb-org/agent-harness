@@ -1,4 +1,4 @@
-package main
+package projectcli
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ func TestRunProject_dispatchesBootstrapText_whenRepoIsPositional(t *testing.T) {
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runProject([]string{"bootstrap", "--dry-run", repo})
+		return Run([]string{"bootstrap", "--dry-run", repo})
 	})
 
 	// Then
@@ -36,7 +36,7 @@ func TestRunProjectDocs_printsRouteJSON_whenJSONFlagIsSet(t *testing.T) {
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runProject([]string{"docs", "--repo", repo, "--json"})
+		return Run([]string{"docs", "--repo", repo, "--json"})
 	})
 
 	// Then
@@ -58,7 +58,7 @@ func TestRunProjectRouteDocs_joinsTaskArgs_whenTaskFlagIsOmitted(t *testing.T) {
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runProjectRouteDocs([]string{"--repo", repo, "--json", "architecture", "test"})
+		return RunRouteDocs([]string{"--repo", repo, "--json", "architecture", "test"})
 	})
 
 	// Then
@@ -80,7 +80,7 @@ func TestRunProjectRecord_recordsADR_whenRequiredFieldsAreProvided(t *testing.T)
 
 	// When
 	out := captureStatusVerifyStdout(t, func() error {
-		return runProjectRecord([]string{
+		return RunRecord([]string{
 			"--repo", repo,
 			"--kind", "adr",
 			"--title", "Keep project CLI thin",
@@ -120,7 +120,7 @@ func TestRunProject_rejectsMissingAndUnknownSubcommands(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// When
 			stderr, err := captureProjectCLIStderr(func() error {
-				return runProject(tt.args)
+				return Run(tt.args)
 			})
 
 			// Then
@@ -139,7 +139,7 @@ func TestRunProjectRecord_returnsValidationError_whenTitleIsMissing(t *testing.T
 	repo := t.TempDir()
 
 	// When
-	err := runProjectRecord([]string{"--repo", repo, "--kind", "caution", "--summary", "summary"})
+	err := RunRecord([]string{"--repo", repo, "--kind", "caution", "--summary", "summary"})
 
 	// Then
 	if err == nil || !strings.Contains(err.Error(), "title is required") {
