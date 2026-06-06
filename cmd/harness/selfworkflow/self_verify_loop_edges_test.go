@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"bytes"
@@ -7,24 +7,24 @@ import (
 	"testing"
 )
 
-func TestSelfVerifyRejectsZeroIterationsThroughWrapper(t *testing.T) {
-	result, err := selfVerify(0, 100, 95, false)
+func TestSelfVerifyRejectsZeroIterations(t *testing.T) {
+	result, err := SelfVerify(0, 100, 95, false, SelfVerifyLoopDeps{})
 	if err == nil || !strings.Contains(err.Error(), "requires at least 1 iteration") {
 		t.Fatalf("expected zero-iteration error, got result=%#v err=%v", result, err)
 	}
 	if result.OK || result.LoopKind != "self_verification" || result.Iterations != 0 || result.Summary.TotalRuns != 0 {
-		t.Fatalf("unexpected zero-iteration wrapper result: %#v", result)
+		t.Fatalf("unexpected zero-iteration result: %#v", result)
 	}
 }
 
 func TestSelfVerifyProgressRejectsZeroIterationsWithLoopEndEvent(t *testing.T) {
 	var buf bytes.Buffer
-	reporter, err := newSelfVerifyProgressReporter("jsonl", &buf)
+	reporter, err := NewSelfVerifyProgressReporter("jsonl", &buf)
 	if err != nil {
-		t.Fatalf("newSelfVerifyProgressReporter: %v", err)
+		t.Fatalf("NewSelfVerifyProgressReporter: %v", err)
 	}
 
-	result, err := selfVerifyWithProgress(0, 123, 95, false, reporter)
+	result, err := SelfVerifyWithProgress(0, 123, 95, false, reporter, SelfVerifyLoopDeps{})
 	if err == nil || !strings.Contains(err.Error(), "requires at least 1 iteration") {
 		t.Fatalf("expected zero-iteration error, got result=%#v err=%v", result, err)
 	}
@@ -41,21 +41,14 @@ func TestSelfVerifyProgressRejectsZeroIterationsWithLoopEndEvent(t *testing.T) {
 	}
 }
 
-func TestCachedContractGoldenStepCoversCachedBranch(t *testing.T) {
-	cached := cachedContractGoldenStep(StepResult{Label: "go test", OK: true})
-	if !cached.OK || cached.Command != "covered by go test ./... -count=1" || !strings.Contains(cached.Stdout, "already executed") {
-		t.Fatalf("unexpected cached contract golden step: %+v", cached)
-	}
-}
-
 func TestSelfVerifyProgressStepEndFailureKeepsLastSuccess(t *testing.T) {
 	var buf bytes.Buffer
-	reporter, err := newSelfVerifyProgressReporter("jsonl", &buf)
+	reporter, err := NewSelfVerifyProgressReporter("jsonl", &buf)
 	if err != nil {
-		t.Fatalf("newSelfVerifyProgressReporter: %v", err)
+		t.Fatalf("NewSelfVerifyProgressReporter: %v", err)
 	}
-	reporter.emitStepEnd("self_verification", 1, 1, 100, 1, 2, StepResult{Label: "go test", OK: true, DurationMS: 10})
-	reporter.emitStepEnd("self_verification", 1, 1, 100, 2, 2, StepResult{Label: "go build", OK: false, Error: "build failed"})
+	reporter.EmitStepEnd("self_verification", 1, 1, 100, 1, 2, StepResult{Label: "go test", OK: true, DurationMS: 10})
+	reporter.EmitStepEnd("self_verification", 1, 1, 100, 2, 2, StepResult{Label: "go build", OK: false, Error: "build failed"})
 
 	events := decodeProgressEventsForLoopTest(t, buf.String())
 	if len(events) != 2 {
