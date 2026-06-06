@@ -1,4 +1,4 @@
-package main
+package updatecli
 
 import (
 	"errors"
@@ -76,4 +76,16 @@ func TestRunInstallScriptCommandForwardsProjectLocalAndInteractiveFlags(t *testi
 	if !equalStringSlices(got, want) {
 		t.Fatalf("unexpected install args: got %#v want %#v", got, want)
 	}
+}
+
+func equalStringSlices(a []string, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
