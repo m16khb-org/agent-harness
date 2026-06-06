@@ -1,4 +1,4 @@
-package validationcli
+package mcpsmoke
 
 import (
 	"encoding/json"

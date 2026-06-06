@@ -1,4 +1,4 @@
-package validationcli
+package mcpsmoke
 
 import "time"
 
@@ -29,6 +29,6 @@ func ValidateMCPWithDeps(binary, root string, deps MCPValidationDeps) StepResult
 		return step
 	}
 	ValidateMCPSmokeContract(&step)
-	step.Stdout, step.StdoutTruncated, step.StdoutBytes = tailWithBudget(step.Stdout, selfVerifyAggregateOutputBudgetBytes)
+	step.Stdout, step.StdoutTruncated, step.StdoutBytes = tailWithBudget(step.Stdout, aggregateOutputBudgetBytes)
 	return step
 }
