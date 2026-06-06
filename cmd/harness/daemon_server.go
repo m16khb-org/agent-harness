@@ -79,6 +79,18 @@ func runDaemonServerWithDeps(deps daemonServerDeps) error {
 		_ = deps.remove(paths.PID)
 	}()
 	fmt.Fprintf(logFile, "%s daemon started pid=%d socket=%s\n", deps.now().Format(time.RFC3339), pid, paths.Socket)
+	return runDaemonAcceptLoop(listener, logFile, daemonServerLoopDeps{
+		now:            deps.now,
+		serveMCPStream: deps.serveMCPStream,
+	})
+}
+
+type daemonServerLoopDeps struct {
+	now            func() time.Time
+	serveMCPStream func(net.Conn, daemonServerLogFile) error
+}
+
+func runDaemonAcceptLoop(listener net.Listener, logFile daemonServerLogFile, deps daemonServerLoopDeps) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
