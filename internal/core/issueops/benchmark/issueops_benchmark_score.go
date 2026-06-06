@@ -1,4 +1,4 @@
-package issueops
+package benchmark
 
 import "strings"
 

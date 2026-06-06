@@ -1,4 +1,4 @@
-package issueops
+package benchmark
 
 func summarizeIssueOpsDimensionScores(scores []IssueOpsDimensionScore) (float64, float64) {
 	if len(scores) == 0 {

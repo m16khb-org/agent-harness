@@ -1,4 +1,4 @@
-package issueops
+package benchmark
 
 type IssueOpsBenchmarkFixture struct {
 	ID                string   `json:"id"`

@@ -1,4 +1,4 @@
-package issueops
+package benchmark
 
 import (
 	"path/filepath"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoadIssueOpsBenchmarkFixtures(t *testing.T) {
-	fixtures, err := LoadIssueOpsBenchmarkFixtures(filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures"))
+	fixtures, err := LoadIssueOpsBenchmarkFixtures(filepath.Join("..", "..", "..", "..", "testdata", "issueops", "fixtures"))
 	if err != nil {
 		t.Fatal(err)
 	}
