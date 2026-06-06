@@ -1,13 +1,9 @@
-package main
+package mcp
 
-import (
-	"testing"
-
-	mcpadapter "agent-harness/internal/adapter/mcp"
-)
+import "testing"
 
 func TestCommandPolicyInputSchemaStableBoundary(t *testing.T) {
-	schema := mcpadapter.CommandPolicyInputSchema()
+	schema := CommandPolicyInputSchema()
 	if schema["type"] != "object" {
 		t.Fatalf("schema type drifted: %#v", schema["type"])
 	}
