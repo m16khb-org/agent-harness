@@ -19,35 +19,6 @@ type installDryRunValidationDeps struct {
 	run         installDryRunCommandRunner
 }
 
-type installDryRunSmokeResult struct {
-	OK           bool                     `json:"ok"`
-	DryRun       bool                     `json:"dry_run"`
-	ProjectLocal bool                     `json:"project_local"`
-	Hosts        []installDryRunSmokeHost `json:"hosts"`
-	Files        []installDryRunSmokeFile `json:"files"`
-	Links        []installDryRunSmokeLink `json:"links"`
-	SkillNames   []string                 `json:"skill_names"`
-	Messages     []string                 `json:"messages"`
-}
-
-type installDryRunSmokeHost struct {
-	Host   string `json:"host"`
-	OK     bool   `json:"ok"`
-	DryRun bool   `json:"dry_run"`
-}
-
-type installDryRunSmokeFile struct {
-	Path       string `json:"path"`
-	Written    bool   `json:"written"`
-	WouldWrite bool   `json:"would_write"`
-}
-
-type installDryRunSmokeLink struct {
-	Path        string `json:"path"`
-	Created     bool   `json:"created"`
-	WouldCreate bool   `json:"would_create"`
-}
-
 func (deps installDryRunValidationDeps) withDefaults() installDryRunValidationDeps {
 	if deps.makeTempDir == nil {
 		deps.makeTempDir = func(kind string, seed int64) (string, error) {
@@ -119,55 +90,4 @@ func validateInstallDryRunSmokeWithDeps(binary, root string, seed int64, deps in
 	}
 	step.DurationMS = time.Since(started).Milliseconds()
 	return step
-}
-
-func installDryRunValidationErrors(result installDryRunSmokeResult, tempHome, tempRoot string, pathExists func(string) bool) []string {
-	errs := []string{}
-	if !result.OK || !result.DryRun || !result.ProjectLocal {
-		errs = append(errs, "install dry-run result flags mismatch")
-	}
-	if len(result.Hosts) != 2 {
-		errs = append(errs, "install dry-run did not cover both hosts")
-	}
-	for _, host := range result.Hosts {
-		if !host.OK || !host.DryRun {
-			errs = append(errs, "install dry-run host mismatch:"+host.Host)
-		}
-	}
-	if !containsString(result.SkillNames, skillName) {
-		errs = append(errs, "install dry-run did not discover smoke skill")
-	}
-	plannedWrite := false
-	for _, file := range result.Files {
-		if file.Written {
-			errs = append(errs, "install dry-run reported written file:"+file.Path)
-		}
-		if file.WouldWrite {
-			plannedWrite = true
-		}
-	}
-	plannedLink := false
-	for _, link := range result.Links {
-		if link.Created {
-			errs = append(errs, "install dry-run reported created link:"+link.Path)
-		}
-		if link.WouldCreate {
-			plannedLink = true
-		}
-	}
-	if !plannedWrite || !plannedLink {
-		errs = append(errs, "install dry-run did not expose planned writes and links")
-	}
-	for _, path := range []string{
-		filepath.Join(tempHome, ".codex"),
-		filepath.Join(tempHome, ".claude"),
-		filepath.Join(tempRoot, "configs"),
-		filepath.Join(tempRoot, ".mcp.json"),
-		filepath.Join(tempRoot, ".claude"),
-	} {
-		if pathExists(path) {
-			errs = append(errs, "install dry-run wrote unexpected path:"+path)
-		}
-	}
-	return errs
 }
