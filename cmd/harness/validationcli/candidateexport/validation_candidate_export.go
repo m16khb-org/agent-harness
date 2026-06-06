@@ -1,4 +1,4 @@
-package validationcli
+package candidateexport
 
 import (
 	"encoding/json"
@@ -7,8 +7,21 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/cmd/harness/commandstep"
+	"agent-harness/cmd/harness/selfworkflow"
 	"agent-harness/internal/core"
 )
+
+const aggregateOutputBudgetBytes = 8 * 1024
+const commandOutputBudgetBytes = 32 * 1024
+const selfAugmentCandidateStatusSatisfied = selfworkflow.SelfAugmentCandidateStatusSatisfied
+const selfVerificationCandidateExportKind = selfworkflow.SelfVerificationCandidateExportKind
+
+type StepResult = commandstep.StepResult
+type SelfAugmentStateCheckpoint = selfworkflow.SelfAugmentStateCheckpoint
+type SelfVerificationCandidate = selfworkflow.SelfVerificationCandidate
+type SelfVerificationCandidateExportResult = selfworkflow.SelfVerificationCandidateExportResult
+type SelfVerificationCandidateExportStateSnapshot = selfworkflow.SelfVerificationCandidateExportStateSnapshot
 
 type CandidateExportCommandRunner func(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult
 
@@ -28,7 +41,9 @@ func (deps CandidateExportValidationDeps) withDefaults() CandidateExportValidati
 		deps.RemoveAll = os.RemoveAll
 	}
 	if deps.Run == nil {
-		deps.Run = runCommandStepEnv
+		deps.Run = func(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult {
+			return commandstep.RunEnv(dir, label, timeout, stdin, env, commandOutputBudgetBytes, name, args...)
+		}
 	}
 	return deps
 }
@@ -42,7 +57,7 @@ func ValidateSelfVerifyCandidateExportWithDeps(binary, root string, seed int64, 
 	started := time.Now()
 	tempState, err := deps.MakeTempState(seed)
 	if err != nil {
-		return failedStep("candidate export", err)
+		return commandstep.FailedStep("candidate export", err)
 	}
 	defer deps.RemoveAll(tempState)
 	key := fmt.Sprintf("self-verify-candidates-%d", seed)
@@ -54,33 +69,33 @@ func ValidateSelfVerifyCandidateExportWithDeps(binary, root string, seed int64, 
 	stdoutParts = append(stdoutParts, exportStep.Stdout)
 	commands = append(commands, exportStep.Command)
 	if !exportStep.OK {
-		return combineFailedStep("candidate export", started, exportStep, stdoutParts, commands)
+		return commandstep.CombineFailedStep("candidate export", started, exportStep, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 	var exportResult SelfVerificationCandidateExportResult
 	if err := json.Unmarshal([]byte(exportStep.Stdout), &exportResult); err != nil {
-		return assertionStepWithOutput("candidate export", started, []string{err.Error()}, stdoutParts, commands)
+		return commandstep.AssertionStepWithOutput("candidate export", started, []string{err.Error()}, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 
 	readStep := deps.Run(root, "candidate export state read", 30*time.Second, "", env, binary, "state", "read", "--key", key, "--json")
 	stdoutParts = append(stdoutParts, readStep.Stdout)
 	commands = append(commands, readStep.Command)
 	if !readStep.OK {
-		return combineFailedStep("candidate export", started, readStep, stdoutParts, commands)
+		return commandstep.CombineFailedStep("candidate export", started, readStep, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 	var readResult core.StateResult
 	if err := json.Unmarshal([]byte(readStep.Stdout), &readResult); err != nil {
-		return assertionStepWithOutput("candidate export", started, []string{err.Error()}, stdoutParts, commands)
+		return commandstep.AssertionStepWithOutput("candidate export", started, []string{err.Error()}, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 	var snapshot SelfVerificationCandidateExportStateSnapshot
 	if err := json.Unmarshal([]byte(readResult.Record.Content), &snapshot); err != nil {
-		return assertionStepWithOutput("candidate export", started, []string{"candidate export state snapshot parse: " + err.Error()}, stdoutParts, commands)
+		return commandstep.AssertionStepWithOutput("candidate export", started, []string{"candidate export state snapshot parse: " + err.Error()}, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 
 	errs := CandidateExportValidationErrors(key, exportResult, snapshot)
 	if len(errs) > 0 {
-		return assertionStepWithOutput("candidate export", started, errs, stdoutParts, commands)
+		return commandstep.AssertionStepWithOutput("candidate export", started, errs, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
-	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
+	stdoutText, stdoutTruncated, stdoutBytes := commandstep.TailWithBudget(strings.Join(stdoutParts, "\n"), aggregateOutputBudgetBytes)
 	return StepResult{
 		Label:           "candidate export",
 		Command:         strings.Join(commands, " && "),
@@ -90,6 +105,15 @@ func ValidateSelfVerifyCandidateExportWithDeps(binary, root string, seed int64, 
 		StdoutBytes:     stdoutBytes,
 		StdoutTruncated: stdoutTruncated,
 	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func CandidateExportValidationErrors(key string, exportResult SelfVerificationCandidateExportResult, snapshot SelfVerificationCandidateExportStateSnapshot) []string {

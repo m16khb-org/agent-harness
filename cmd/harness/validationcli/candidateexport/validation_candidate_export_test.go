@@ -1,4 +1,4 @@
-package validationcli
+package candidateexport
 
 import (
 	"encoding/json"
