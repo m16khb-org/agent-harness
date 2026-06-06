@@ -1,4 +1,4 @@
-package main
+package statuscli
 
 import (
 	"bytes"
@@ -26,7 +26,7 @@ func TestBuildHarnessStatusReportsStateWorkerAndSelfVerify(t *testing.T) {
 		t.Fatalf("enqueue worker job: %v", err)
 	}
 
-	status := buildHarnessStatus(repo)
+	status := BuildStatus(repo)
 
 	if status.Kind != "harness_status" || status.Repo != repo {
 		t.Fatalf("unexpected status identity: %#v", status)
@@ -51,16 +51,16 @@ func TestRunStatusWritesTextAndJSON(t *testing.T) {
 	t.Setenv("HARNESS_WORKER_DIR", t.TempDir())
 
 	text := captureStatusVerifyStdout(t, func() error {
-		return runStatus([]string{"--repo", repo})
+		return RunStatus([]string{"--repo", repo})
 	})
 	if !strings.Contains(text, "agent-harness status:") || !strings.Contains(text, "daemon running:") {
 		t.Fatalf("unexpected status text output:\n%s", text)
 	}
 
 	jsonText := captureStatusVerifyStdout(t, func() error {
-		return runStatus([]string{"--repo", repo, "--json"})
+		return RunStatus([]string{"--repo", repo, "--json"})
 	})
-	var decoded HarnessStatus
+	var decoded Status
 	if err := json.Unmarshal([]byte(jsonText), &decoded); err != nil {
 		t.Fatalf("decode status JSON: %v\n%s", err, jsonText)
 	}
@@ -76,7 +76,7 @@ func TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions(t *testing.T) {
 		t.Fatalf("write go.mod: %v", err)
 	}
 
-	result := buildVerifyWork(repo, false, []string{"git", "status", "--short"})
+	result := BuildVerifyWork(repo, false, []string{"git", "status", "--short"})
 	if !result.OK {
 		t.Fatalf("expected verify-work result to be ok, warnings=%v", result.Warnings)
 	}
@@ -97,7 +97,7 @@ func TestBuildVerifyWorkSerializesEmptySuggestedCommands(t *testing.T) {
 	repo := t.TempDir()
 	runStatusVerifyTestCommand(t, repo, "git", "init")
 
-	result := buildVerifyWork(repo, false, nil)
+	result := BuildVerifyWork(repo, false, nil)
 	assertEvidenceItem(t, result.EvidenceMatrix, "read_only_command", "skipped")
 	if len(result.SuggestedCommands) != 0 {
 		t.Fatalf("expected no suggested commands without project signals, got %#v", result.SuggestedCommands)
@@ -124,7 +124,7 @@ func TestBuildVerifyWorkMarksDeniedCommandFailed(t *testing.T) {
 	repo := t.TempDir()
 	runStatusVerifyTestCommand(t, repo, "git", "init")
 
-	result := buildVerifyWork(repo, false, []string{"sh", "-c", "true"})
+	result := BuildVerifyWork(repo, false, []string{"sh", "-c", "true"})
 	if result.OK {
 		t.Fatalf("expected denied command to fail verify-work")
 	}
@@ -141,7 +141,7 @@ func runStatusVerifyTestCommand(t *testing.T, dir string, name string, args ...s
 	}
 }
 
-func assertEvidenceItem(t *testing.T, items []VerifyWorkEvidenceItem, name string, status string) {
+func assertEvidenceItem(t *testing.T, items []WorkEvidenceItem, name string, status string) {
 	t.Helper()
 	for _, item := range items {
 		if item.Name == name {
@@ -157,7 +157,7 @@ func assertEvidenceItem(t *testing.T, items []VerifyWorkEvidenceItem, name strin
 	t.Fatalf("missing evidence item %s in %#v", name, items)
 }
 
-func assertSuggestedCommand(t *testing.T, commands []VerifyWorkSuggestedCommand, want []string) {
+func assertSuggestedCommand(t *testing.T, commands []WorkSuggestedCommand, want []string) {
 	t.Helper()
 	for _, command := range commands {
 		if equalStringSlices(command.Command, want) {
