@@ -140,6 +140,59 @@ func TestAPIDocReviewSchemaRequiresNullableLine(t *testing.T) {
 	}
 }
 
+func TestAPIDocReviewExtraPromptUsesExplicitPromptFileFirst(t *testing.T) {
+	root := t.TempDir()
+	promptFile := filepath.Join(root, "prompt.md")
+	if err := os.WriteFile(promptFile, []byte("explicit prompt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".agent-harness"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".agent-harness", "OPEN_API_SPEC.md"), []byte("repo spec\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := apiDocReviewExtraPrompt(apiDocReviewOptions{Repo: root, PromptFile: promptFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got != "explicit prompt\n" {
+		t.Fatalf("expected explicit prompt, got %q", got)
+	}
+}
+
+func TestAPIDocReviewExtraPromptFallsBackToRepoSpec(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".agent-harness"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".agent-harness", "OPEN_API_SPEC.md"), []byte("repo spec\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := apiDocReviewExtraPrompt(apiDocReviewOptions{Repo: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got != "repo spec\n" {
+		t.Fatalf("expected repo spec, got %q", got)
+	}
+}
+
+func TestAPIDocReviewExtraPromptReturnsEmptyWhenNoPromptExists(t *testing.T) {
+	got, err := apiDocReviewExtraPrompt(apiDocReviewOptions{Repo: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got != "" {
+		t.Fatalf("expected empty prompt, got %q", got)
+	}
+}
+
 func TestRunAPIDocRoutesStaticCheckAndUsageErrors(t *testing.T) {
 	root := t.TempDir()
 	if err := runAPIDoc(nil); err == nil || !strings.Contains(err.Error(), "missing api-doc subcommand") {
