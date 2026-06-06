@@ -33,9 +33,11 @@ func issueOpsUsage() {
 `)
 }
 
+const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--remote-branch-url URL] [--link-verified] [--json]"
+
 func runIssueOpsBranch(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--link-verified] [--json]")
+		fmt.Println(issueOpsBranchPrepareUsage)
 		return nil
 	}
 	if args[0] != "prepare" {

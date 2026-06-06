@@ -92,6 +92,9 @@ Record the approved design review:
 agent-harness issueops design review --id "$ISSUEOPS_ID" \
   --problem-summary "$PROBLEM_SUMMARY" \
   --proposed-design "$PROPOSED_DESIGN" \
+  --refactor-plan "$REFACTOR_PLAN" \
+  --alternative "$ALTERNATIVE_CONSIDERED" \
+  --risk "$DESIGN_RISK" \
   --verification "$VERIFICATION_STEP" \
   --approved \
   --json

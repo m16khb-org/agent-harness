@@ -595,6 +595,58 @@
     "name": "issueops_link_issue"
   },
   {
+    "description": "Record provider-linked issue branch preparation and expose the required MCP-first, provider API fallback, fail-closed order. This must be used before creating a local worktree for an IssueOps issue branch.",
+    "inputSchema": {
+      "properties": {
+        "base_branch": {
+          "description": "Remote base branch or ref.",
+          "type": "string"
+        },
+        "base_sha": {
+          "description": "Optional resolved base commit SHA.",
+          "type": "string"
+        },
+        "branch": {
+          "description": "Provider-linked branch name, such as 2386-title or 2387-title. For GitLab, the full branch name must start with the issue number followed by a hyphen so the issue Development section links it.",
+          "type": "string"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "issue_url": {
+          "description": "GitHub/GitLab issue URL.",
+          "type": "string"
+        },
+        "link_verified": {
+          "description": "Whether the provider issue UI/API was verified to show the branch link.",
+          "type": "boolean"
+        },
+        "provider": {
+          "description": "Remote provider: github or gitlab.",
+          "enum": [
+            "github",
+            "gitlab"
+          ],
+          "type": "string"
+        },
+        "remote_branch_url": {
+          "description": "Optional provider branch URL after creation.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "issue_url",
+        "branch",
+        "base_branch"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_prepare_branch"
+  },
+  {
     "description": "Attach the exact existing issue-driven worktree path that mutating tool guards must target. Requires linked issue and verified provider branch evidence.",
     "inputSchema": {
       "properties": {
@@ -739,58 +791,6 @@
       "type": "object"
     },
     "name": "issueops_link_child"
-  },
-  {
-    "description": "Record provider-linked issue branch preparation and expose the required MCP-first, provider API fallback, fail-closed order. This must be used before creating a local worktree for an IssueOps issue branch.",
-    "inputSchema": {
-      "properties": {
-        "base_branch": {
-          "description": "Remote base branch or ref.",
-          "type": "string"
-        },
-        "base_sha": {
-          "description": "Optional resolved base commit SHA.",
-          "type": "string"
-        },
-        "branch": {
-          "description": "Provider-linked branch name, such as 2386-title or 2387-title. For GitLab, the full branch name must start with the issue number followed by a hyphen so the issue Development section links it.",
-          "type": "string"
-        },
-        "id": {
-          "description": "IssueOps id.",
-          "type": "string"
-        },
-        "issue_url": {
-          "description": "GitHub/GitLab issue URL.",
-          "type": "string"
-        },
-        "link_verified": {
-          "description": "Whether the provider issue UI/API was verified to show the branch link.",
-          "type": "boolean"
-        },
-        "provider": {
-          "description": "Remote provider: github or gitlab.",
-          "enum": [
-            "github",
-            "gitlab"
-          ],
-          "type": "string"
-        },
-        "remote_branch_url": {
-          "description": "Optional provider branch URL after creation.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "provider",
-        "issue_url",
-        "branch",
-        "base_branch"
-      ],
-      "type": "object"
-    },
-    "name": "issueops_prepare_branch"
   },
   {
     "description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",

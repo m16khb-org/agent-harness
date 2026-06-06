@@ -9,6 +9,7 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_status",
 		"issueops_record_intent",
 		"issueops_link_issue",
+		"issueops_prepare_branch",
 		"issueops_link_worktree",
 		"issueops_review_design",
 		"issueops_link_plan",
@@ -36,6 +37,15 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	if !schemaRequires(byName["issueops_link_issue"].InputSchema, "issue_url") {
 		t.Fatalf("issueops_link_issue must require issue_url: %#v", byName["issueops_link_issue"].InputSchema)
 	}
+	prepareBranch := byName["issueops_prepare_branch"]
+	for _, required := range []string{"id", "provider", "issue_url", "branch", "base_branch"} {
+		if !schemaRequires(prepareBranch.InputSchema, required) {
+			t.Fatalf("issueops_prepare_branch must require %q: %#v", required, prepareBranch.InputSchema)
+		}
+	}
+	if !schemaHasProperty(prepareBranch.InputSchema, "link_verified") {
+		t.Fatalf("issueops_prepare_branch schema missing link_verified: %#v", prepareBranch.InputSchema)
+	}
 	if !schemaRequires(byName["issueops_record_intent"].InputSchema, "success_criteria") {
 		t.Fatalf("issueops_record_intent must require success_criteria: %#v", byName["issueops_record_intent"].InputSchema)
 	}
@@ -53,7 +63,6 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	tools := IssueOpsLifecycleTools()
 	wantNames := []string{
-		"issueops_prepare_branch",
 		"issueops_add_feedback",
 		"issueops_mark_issue_updated",
 		"issueops_set_phase",
@@ -75,16 +84,6 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		if tool.Description == "" || tool.InputSchema == nil {
 			t.Fatalf("incomplete issueops lifecycle tool descriptor: %+v", tool)
 		}
-	}
-
-	prepareBranch := byName["issueops_prepare_branch"]
-	for _, required := range []string{"id", "provider", "issue_url", "branch", "base_branch"} {
-		if !schemaRequires(prepareBranch.InputSchema, required) {
-			t.Fatalf("issueops_prepare_branch must require %q: %#v", required, prepareBranch.InputSchema)
-		}
-	}
-	if !schemaHasProperty(prepareBranch.InputSchema, "link_verified") {
-		t.Fatalf("issueops_prepare_branch schema missing link_verified: %#v", prepareBranch.InputSchema)
 	}
 
 	addFeedback := byName["issueops_add_feedback"]

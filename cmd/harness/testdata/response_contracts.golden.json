@@ -520,7 +520,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 20595,
+          "bytes": 20944,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -4117,7 +4117,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 20595,
+                "bytes": 20944,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
