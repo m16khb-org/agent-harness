@@ -55,14 +55,28 @@ func ensureDaemonRunning() (daemonStatus, error) {
 }
 
 func waitForDaemon(paths daemonPaths, timeout time.Duration) (daemonStatus, error) {
-	deadline := time.Now().Add(timeout)
+	return waitForDaemonWithDeps(paths, timeout, daemonWaitDeps{
+		now:         time.Now,
+		sleep:       time.Sleep,
+		checkStatus: checkDaemonStatus,
+	})
+}
+
+type daemonWaitDeps struct {
+	now         func() time.Time
+	sleep       func(time.Duration)
+	checkStatus func() daemonStatus
+}
+
+func waitForDaemonWithDeps(paths daemonPaths, timeout time.Duration, deps daemonWaitDeps) (daemonStatus, error) {
+	deadline := deps.now().Add(timeout)
 	var last daemonStatus
-	for time.Now().Before(deadline) {
-		last = checkDaemonStatus()
+	for deps.now().Before(deadline) {
+		last = deps.checkStatus()
 		if last.Running {
 			return last, nil
 		}
-		time.Sleep(50 * time.Millisecond)
+		deps.sleep(50 * time.Millisecond)
 	}
 	if last.Paths.Dir == "" {
 		last.Paths = paths

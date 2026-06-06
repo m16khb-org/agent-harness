@@ -158,3 +158,50 @@ func TestAcquireDaemonLockRejectsFreshLiveLock(t *testing.T) {
 		t.Fatalf("fresh lock was unexpectedly replaced: %q", string(b))
 	}
 }
+
+func TestWaitForDaemonWithDepsReportsReadyStatus(t *testing.T) {
+	paths := daemonPaths{Dir: t.TempDir()}
+	calls := 0
+
+	status, err := waitForDaemonWithDeps(paths, time.Second, daemonWaitDeps{
+		now: func() time.Time {
+			return time.Unix(100, 0).Add(time.Duration(calls) * time.Millisecond)
+		},
+		sleep: func(time.Duration) {},
+		checkStatus: func() daemonStatus {
+			calls++
+			return daemonStatus{OK: true, Running: calls == 2, Paths: paths, Message: "daemon is reachable"}
+		},
+	})
+
+	if err != nil {
+		t.Fatalf("expected ready daemon status, got error: %v", err)
+	}
+	if !status.Running || status.Message != "daemon is reachable" || calls != 2 {
+		t.Fatalf("unexpected ready daemon status: %#v calls=%d", status, calls)
+	}
+}
+
+func TestWaitForDaemonWithDepsReturnsTimeoutWithFallbackPaths(t *testing.T) {
+	paths := daemonPaths{Dir: t.TempDir()}
+	now := time.Unix(100, 0)
+
+	status, err := waitForDaemonWithDeps(paths, 3*time.Millisecond, daemonWaitDeps{
+		now: func() time.Time {
+			current := now
+			now = now.Add(time.Millisecond)
+			return current
+		},
+		sleep: func(time.Duration) {},
+		checkStatus: func() daemonStatus {
+			return daemonStatus{OK: true, Running: false}
+		},
+	})
+
+	if err == nil || err.Error() != "daemon did not become ready before timeout" {
+		t.Fatalf("expected timeout error, got status=%#v err=%v", status, err)
+	}
+	if status.Running || status.Paths.Dir != paths.Dir || status.Message != "daemon did not become ready before timeout" {
+		t.Fatalf("unexpected timeout daemon status: %#v", status)
+	}
+}
