@@ -15,7 +15,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 	started := time.Now()
 	result := newSelfVerifyLoopResult(iterations, baseSeed, targetScore)
 	if progress != nil {
-		progress.started = started
+		progress.setStarted(started)
 		emitSelfVerifyLoopStart(progress, result.LoopKind, iterations, baseSeed)
 	}
 	if iterations < 1 {

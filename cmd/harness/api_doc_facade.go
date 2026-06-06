@@ -1,8 +1,74 @@
 package main
 
-import "agent-harness/cmd/harness/apidoc"
+import (
+	"encoding/json"
 
-type apiDocStaticViolation = apidoc.StaticViolation
+	"agent-harness/cmd/harness/apidoc"
+)
+
+const (
+	defaultAPIDocReviewModel     = apidoc.DefaultReviewModel
+	defaultAPIDocReviewReasoning = apidoc.DefaultReviewReasoning
+	defaultAPIDocReviewTimeout   = apidoc.DefaultReviewTimeout
+)
+
+type (
+	apiDocCheckResult     = apidoc.CheckResult
+	apiDocReviewFinding   = apidoc.ReviewFinding
+	apiDocReviewOptions   = apidoc.ReviewOptions
+	apiDocReviewResult    = apidoc.ReviewResult
+	apiDocStaticOptions   = apidoc.StaticOptions
+	apiDocStaticResult    = apidoc.StaticResult
+	apiDocStaticViolation = apidoc.StaticViolation
+)
+
+func runAPIDoc(args []string) error {
+	return apidoc.Run(args)
+}
+
+func runAPIDocCheck(args []string) error {
+	return apidoc.RunCheck(args)
+}
+
+func runAPIDocCheckWithOptions(staticOptions apiDocStaticOptions, reviewOptions apiDocReviewOptions) (apiDocCheckResult, error) {
+	return apidoc.RunCheckWithOptions(staticOptions, reviewOptions)
+}
+
+func runAPIDocReview(args []string) error {
+	return apidoc.RunReview(args)
+}
+
+func runAPIDocReviewWithOptions(options apiDocReviewOptions) (apiDocReviewResult, error) {
+	return apidoc.RunReviewWithOptions(options)
+}
+
+func runAPIDocStaticCheck(args []string) error {
+	return apidoc.RunStaticCheck(args)
+}
+
+func runAPIDocStaticCheckWithOptions(options apiDocStaticOptions) (apiDocStaticResult, error) {
+	return apidoc.RunStaticCheckWithOptions(options)
+}
+
+func runCodexAPIDocReview(options apiDocReviewOptions, files []string, diff, extraPrompt string) (apiDocReviewResult, error) {
+	return apidoc.RunCodexReview(options, files, diff, extraPrompt)
+}
+
+func printAPIDocReview(result apiDocReviewResult) {
+	apidoc.PrintReview(result)
+}
+
+func printAPIDocStaticCheck(result apiDocStaticResult) {
+	apidoc.PrintStaticCheck(result)
+}
+
+func mustJSON(value any) []byte {
+	b, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
 
 func checkNestControllerStatic(file, text string) []apiDocStaticViolation {
 	return apidoc.CheckNestControllerStatic(file, text)

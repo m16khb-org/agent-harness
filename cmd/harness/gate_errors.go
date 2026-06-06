@@ -1,10 +1,14 @@
 package main
 
-import "errors"
+import (
+	"errors"
+
+	"agent-harness/cmd/harness/apidoc"
+)
 
 var (
-	errAPIDocReviewGateFailed     = errors.New("api documentation AI review gate failed")
-	errAPIDocStaticGateFailed     = errors.New("api documentation static check gate failed")
+	errAPIDocReviewGateFailed     = apidoc.ErrReviewGateFailed
+	errAPIDocStaticGateFailed     = apidoc.ErrStaticGateFailed
 	errSelfVerificationGateFailed = errors.New("self-verification quality gate failed")
 )
 

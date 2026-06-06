@@ -1,0 +1,14 @@
+package updatecli
+
+import "os"
+
+var HarnessRoot = func() string {
+	if root := os.Getenv("HARNESS_ROOT"); root != "" {
+		return root
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	return cwd
+}

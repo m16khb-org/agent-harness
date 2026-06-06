@@ -1,0 +1,121 @@
+package hookprompt
+
+import "strings"
+
+func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
+	groups := map[string][]HookUserPromptHint{}
+	for _, h := range hints {
+		priority := h.Priority
+		if priority == "" {
+			priority = fallbackHintPriority(h)
+		}
+		groups[priority] = append(groups[priority], h)
+	}
+
+	parts := []string{"[agent-harness] routing hint"}
+	if catalog != "" {
+		parts = append(parts, catalog)
+	}
+	appendCompactHintGroup(&parts, "docs", groups[hintPriorityRoute])
+	appendCompactHintGroup(&parts, "actions", groups[hintPriorityAction])
+	appendCompactProjectProfile(&parts, profile)
+	appendCompactPendingUpkeep(&parts, pendingUpkeep)
+	appendSecondaryHints(&parts, groups[hintPrioritySecondary])
+	parts = append(parts, nextActionPolicyHint)
+	parts = append(parts, draftWikiPolicyHint)
+	parts = append(parts, "rule: verify with repo/tool evidence before changing files")
+	return strings.Join(parts, " | ")
+}
+
+func RenderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
+	return renderHookMCPHintContext(hints, pendingUpkeep, profile, catalog)
+}
+
+func appendCompactHintGroup(parts *[]string, title string, hints []HookUserPromptHint) {
+	if len(hints) == 0 {
+		return
+	}
+	labels := make([]string, 0, len(hints))
+	seen := map[string]bool{}
+	for _, h := range hints {
+		label := compactHintLabel(h)
+		if seen[label] {
+			continue
+		}
+		seen[label] = true
+		labels = append(labels, label)
+	}
+	if len(labels) == 0 {
+		return
+	}
+	*parts = append(*parts, title+": "+strings.Join(labels, ", "))
+}
+
+func appendSecondaryHints(parts *[]string, hints []HookUserPromptHint) {
+	if len(hints) == 1 && hints[0].Tool == "claude-mem" {
+		*parts = append(*parts, "memory: use claude-mem only for previous-session/repeated-work recall")
+		return
+	}
+	appendCompactHintGroup(parts, "secondary", hints)
+}
+
+func appendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
+	if len(events) == 0 {
+		return
+	}
+	items := make([]string, 0, len(events))
+	seen := map[string]bool{}
+	for _, event := range events {
+		item := event.Summary
+		if len(event.TargetDocs) > 0 {
+			item = strings.Join(event.TargetDocs, ",") + " " + item
+		}
+		if seen[item] {
+			continue
+		}
+		seen[item] = true
+		items = append(items, item)
+	}
+	if len(items) == 0 {
+		return
+	}
+	*parts = append(*parts, "pending upkeep: "+strings.Join(items, "; "))
+}
+
+func AppendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
+	appendCompactPendingUpkeep(parts, events)
+}
+
+func appendCompactProjectProfile(parts *[]string, profile *ProjectProfile) {
+	if profile == nil {
+		return
+	}
+	items := []string{}
+	if profile.VCS.Provider != "" && profile.VCS.Provider != "none" {
+		vcs := profile.VCS.Provider
+		if profile.VCS.Hosting != "" && profile.VCS.Hosting != "unknown" {
+			vcs += "/" + profile.VCS.Hosting
+		}
+		if profile.VCS.RemoteHost != "" {
+			vcs += "@" + profile.VCS.RemoteHost
+		}
+		items = append(items, vcs)
+	}
+	if len(profile.Languages) > 0 {
+		items = append(items, strings.Join(profile.Languages, "+"))
+	}
+	if len(profile.ProjectTypes) > 0 {
+		items = append(items, strings.Join(profile.ProjectTypes, "+"))
+	}
+	if len(profile.Frameworks) > 0 {
+		frameworks := profile.Frameworks
+		if len(frameworks) > 4 {
+			frameworks = frameworks[:4]
+		}
+		items = append(items, strings.Join(frameworks, "+"))
+	}
+	if len(items) == 0 {
+		return
+	}
+	*parts = append(*parts, "profile: "+strings.Join(items, ", "))
+}
