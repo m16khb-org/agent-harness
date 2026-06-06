@@ -226,6 +226,7 @@ install_upstream_tools() {
 
   if command -v codex >/dev/null 2>&1; then
     log "setting up Codex plugins: llm-wiki, claude-mem, LazyCodex"
+    log "llm-wiki Codex source is nvk/llm-wiki; plugin selector is wiki@llm-wiki"
     ensure_codex_marketplace "llm-wiki" "nvk/llm-wiki"
     ensure_codex_plugin "wiki@llm-wiki"
 
@@ -240,6 +241,7 @@ install_upstream_tools() {
 
   if command -v claude >/dev/null 2>&1; then
     log "setting up Claude plugins: llm-wiki, claude-mem"
+    log "llm-wiki Claude source is nvk/llm-wiki; plugin selector is wiki@llm-wiki"
     ensure_claude_marketplace "llm-wiki" "nvk/llm-wiki"
     ensure_claude_plugin "wiki@llm-wiki"
 
