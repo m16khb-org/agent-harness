@@ -1,4 +1,4 @@
-package validationcli
+package stateroundtrip
 
 import (
 	"encoding/json"
@@ -83,7 +83,7 @@ func validateStateRoundtripSelfVerifyDeps(input validateStateRoundtripSelfVerify
 		return step
 	}
 
-	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(session.stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
+	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(session.stdoutParts, "\n"), aggregateOutputBudgetBytes)
 	return StepResult{
 		Label:           "state roundtrip",
 		Command:         strings.Join(session.commands, " && "),

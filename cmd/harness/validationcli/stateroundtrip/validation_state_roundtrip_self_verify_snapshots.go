@@ -1,4 +1,4 @@
-package validationcli
+package stateroundtrip
 
 func (s *stateRoundtripSelfVerifySession) writeCompareSnapshots(input validateStateRoundtripSelfVerifyInput, baselineCompareKey, candidateCompareKey string) StepResult {
 	compareSummary := SelfAugmentSummary{

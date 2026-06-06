@@ -1,12 +1,16 @@
-package validationcli
+package stateroundtrip
 
 import (
 	"fmt"
 	"time"
 )
 
-func validateStateRoundtrip(binary, root string, seed int64) StepResult {
+func Validate(binary, root string, seed int64) StepResult {
 	return validateStateRoundtripWithDeps(binary, root, seed, stateRoundtripValidationDeps{})
+}
+
+func validateStateRoundtrip(binary, root string, seed int64) StepResult {
+	return Validate(binary, root, seed)
 }
 
 func validateStateRoundtripWithDeps(binary, root string, seed int64, deps stateRoundtripValidationDeps) StepResult {

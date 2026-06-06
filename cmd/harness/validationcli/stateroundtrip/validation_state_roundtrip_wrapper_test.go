@@ -1,4 +1,4 @@
-package validationcli
+package stateroundtrip
 
 import (
 	"os"
