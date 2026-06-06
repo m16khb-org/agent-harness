@@ -1,4 +1,4 @@
-package validationcli
+package qagate
 
 import (
 	"fmt"
@@ -20,8 +20,12 @@ var secretMaterialPatterns = []struct {
 	{name: "secret_assignment", re: regexp.MustCompile(`(?i)\b(token|secret|password|api[_-]?key|access[_-]?key)\s*[:=]\s*["']?([^\s"',}]+)`)},
 }
 
-func validateRedactionAudit(root string) StepResult {
+func ValidateRedactionAudit(root string) StepResult {
 	return validateRedactionAuditWithDeps(root, docsValidationDeps{})
+}
+
+func validateRedactionAudit(root string) StepResult {
+	return ValidateRedactionAudit(root)
 }
 
 func validateRedactionAuditWithDeps(root string, deps docsValidationDeps) StepResult {
@@ -78,7 +82,7 @@ func redactionAuditFilesWithDeps(root string, deps docsValidationDeps) []string 
 	return out
 }
 
-func findUnredactedSecretLike(text string) []string {
+func FindUnredactedSecretLike(text string) []string {
 	findings := []string{}
 	for lineNo, line := range strings.Split(text, "\n") {
 		if strings.TrimSpace(line) == "" || lineContainsAllowedSecretPlaceholder(line) {
@@ -91,6 +95,10 @@ func findUnredactedSecretLike(text string) []string {
 		}
 	}
 	return findings
+}
+
+func findUnredactedSecretLike(text string) []string {
+	return FindUnredactedSecretLike(text)
 }
 
 func lineContainsAllowedSecretPlaceholder(line string) bool {

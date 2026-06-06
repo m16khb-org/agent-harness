@@ -1,4 +1,4 @@
-package validationcli
+package qagate
 
 import (
 	"errors"

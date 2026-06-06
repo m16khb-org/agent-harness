@@ -1,4 +1,4 @@
-package validationcli
+package qagate
 
 import (
 	"fmt"
@@ -7,8 +7,12 @@ import (
 	"time"
 )
 
-func validateQAGate(root string) StepResult {
+func ValidateQAGate(root string) StepResult {
 	return validateQAGateWithDeps(root, docsValidationDeps{})
+}
+
+func validateQAGate(root string) StepResult {
+	return ValidateQAGate(root)
 }
 
 func validateQAGateWithDeps(root string, deps docsValidationDeps) StepResult {

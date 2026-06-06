@@ -1,11 +1,15 @@
-package validationcli
+package qagate
 
 import (
 	"os"
 	"path/filepath"
+	"time"
 
+	"agent-harness/cmd/harness/commandstep"
 	"agent-harness/internal/core"
 )
+
+type StepResult = commandstep.StepResult
 
 type docsValidationDeps struct {
 	readFile   func(string) ([]byte, error)
@@ -36,4 +40,22 @@ func (deps docsValidationDeps) withDefaults() docsValidationDeps {
 		deps.rel = filepath.Rel
 	}
 	return deps
+}
+
+func assertionStep(label string, started time.Time, errs []string) StepResult {
+	return commandstep.AssertionStep(label, started, errs)
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }

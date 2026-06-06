@@ -1,9 +1,13 @@
-package validationcli
+package qagate
 
 import "path/filepath"
 
-func validateMermaidDocs(root string) []string {
+func ValidateMermaidDocs(root string) []string {
 	return validateMermaidDocsWithDeps(root, docsValidationDeps{})
+}
+
+func validateMermaidDocs(root string) []string {
+	return ValidateMermaidDocs(root)
 }
 
 func validateMermaidDocsWithDeps(root string, deps docsValidationDeps) []string {

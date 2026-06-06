@@ -1,4 +1,4 @@
-package validationcli
+package qagate
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 
 var mermaidUnquotedBracketTextRe = regexp.MustCompile(`\[[^"\]]`)
 
-func lintMermaidBlocks(relPath, text string) []string {
+func LintMermaidBlocks(relPath, text string) []string {
 	errs := []string{}
 	lines := strings.Split(text, "\n")
 	inMermaid := false
@@ -54,4 +54,8 @@ func lintMermaidBlocks(relPath, text string) []string {
 		}
 	}
 	return errs
+}
+
+func lintMermaidBlocks(relPath, text string) []string {
+	return LintMermaidBlocks(relPath, text)
 }
