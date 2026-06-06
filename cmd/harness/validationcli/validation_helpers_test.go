@@ -130,7 +130,7 @@ func makeValidationHarnessRoot(t *testing.T) string {
 		filepath.Join("internal", "core", "state", "state_migrate.go"),
 		filepath.Join("internal", "core", "state", "state_types.go"),
 		filepath.Join("cmd", "harness", "contractgolden", "contract_golden_test.go"),
-		filepath.Join("cmd", "harness", "response_contract_golden_test.go"),
+		filepath.Join("cmd", "harness", "harnessapp", "response_contract_golden_test.go"),
 		filepath.Join("cmd", "harness", "selfworkflow", "self_augment_summary_test.go"),
 		filepath.Join("cmd", "harness", "testdata", "usage.golden.txt"),
 		filepath.Join("cmd", "harness", "testdata", "mcp_tools.golden.json"),

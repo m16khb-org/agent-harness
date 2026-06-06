@@ -1,4 +1,4 @@
-package main
+package harnessapp
 
 import (
 	"encoding/json"
@@ -58,7 +58,7 @@ func assertJSONGolden(t *testing.T, name string, value any) {
 
 func assertGolden(t *testing.T, name string, got []byte) {
 	t.Helper()
-	path := filepath.Join("testdata", name)
+	path := filepath.Join("..", "testdata", name)
 	if *updateGolden {
 		if err := os.WriteFile(path, got, 0o644); err != nil {
 			t.Fatal(err)
@@ -67,7 +67,7 @@ func assertGolden(t *testing.T, name string, got []byte) {
 	}
 	want, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read golden %s: %v (run go test ./cmd/harness -run Golden -update)", path, err)
+		t.Fatalf("read golden %s: %v (run go test ./cmd/harness/harnessapp -run Golden -update)", path, err)
 	}
 	if string(got) != string(want) {
 		t.Fatalf("golden mismatch for %s\n--- got ---\n%s\n--- want ---\n%s", name, string(got), string(want))

@@ -466,7 +466,7 @@
       },
       "verification": [
         "go test ./... -count=1",
-        "go test ./cmd/harness -run Golden -count=1",
+        "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1",
         "harness contract check --json"
       ],
       "version": 1,
@@ -601,7 +601,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 18775,
+          "bytes": 18815,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -675,7 +675,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17699,
+          "bytes": 17779,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -794,7 +794,7 @@
           "title": "Project Docs Operations"
         },
         {
-          "bytes": 3809,
+          "bytes": 3849,
           "headings": [
             "Verification Operations",
             "Self-Verify",
@@ -1097,7 +1097,7 @@
           "golden contract drift"
         ],
         "verification": [
-          "go test ./cmd/harness -run Golden"
+          "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
       "feedback": [
@@ -1204,7 +1204,7 @@
           "golden contract drift"
         ],
         "verification": [
-          "go test ./cmd/harness -run Golden"
+          "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
       "id": "$ISSUEOPS_ID",
@@ -1330,7 +1330,7 @@
           "golden contract drift"
         ],
         "verification": [
-          "go test ./cmd/harness -run Golden"
+          "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
       "id": "$ISSUEOPS_ID",
@@ -1493,7 +1493,7 @@
           "golden contract drift"
         ],
         "verification": [
-          "go test ./cmd/harness -run Golden"
+          "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
       "feedback": [
@@ -1710,7 +1710,7 @@
           "golden contract drift"
         ],
         "verification": [
-          "go test ./cmd/harness -run Golden"
+          "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
       "id": "$ISSUEOPS_ID",
@@ -4056,7 +4056,7 @@
             },
             "verification": [
               "go test ./... -count=1",
-              "go test ./cmd/harness -run Golden -count=1",
+              "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1",
               "harness contract check --json"
             ],
             "version": 1,
@@ -4198,7 +4198,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 18775,
+                "bytes": 18815,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -4272,7 +4272,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17699,
+                "bytes": 17779,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -4391,7 +4391,7 @@
                 "title": "Project Docs Operations"
               },
               {
-                "bytes": 3809,
+                "bytes": 3849,
                 "headings": [
                   "Verification Operations",
                   "Self-Verify",
@@ -4698,7 +4698,7 @@
                 "golden contract drift"
               ],
               "verification": [
-                "go test ./cmd/harness -run Golden"
+                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },
             "feedback": [
@@ -4802,7 +4802,7 @@
                 "golden contract drift"
               ],
               "verification": [
-                "go test ./cmd/harness -run Golden"
+                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },
             "id": "$ISSUEOPS_ID",
@@ -4932,7 +4932,7 @@
                 "golden contract drift"
               ],
               "verification": [
-                "go test ./cmd/harness -run Golden"
+                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },
             "id": "$ISSUEOPS_ID",
@@ -5089,7 +5089,7 @@
                 "golden contract drift"
               ],
               "verification": [
-                "go test ./cmd/harness -run Golden"
+                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },
             "feedback": [
@@ -5314,7 +5314,7 @@
                 "golden contract drift"
               ],
               "verification": [
-                "go test ./cmd/harness -run Golden"
+                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },
             "id": "$ISSUEOPS_ID",

@@ -1,4 +1,4 @@
-package main
+package harnessapp
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 	"agent-harness/internal/core"
 )
 
-func runRootCommand(args []string) int {
+func RunRootCommand(args []string) int {
 	return rootCommand().Run(args)
 }
 

@@ -127,7 +127,7 @@ func BuildCompatibilityContract() CompatibilityContract {
 		},
 		Warnings:     []string{},
 		AdapterTools: mcpadapter.AdapterOwnedTools(),
-		Verification: []string{"go test ./... -count=1", "go test ./cmd/harness -run Golden -count=1", "harness contract check --json"},
+		Verification: []string{"go test ./... -count=1", "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1", "harness contract check --json"},
 	}
 	for _, want := range []string{"contract_schema", "worker_enqueue", "command_fake_run"} {
 		if !containsString(toolNames, want) {

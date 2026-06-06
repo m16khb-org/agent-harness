@@ -19,7 +19,7 @@ find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
 grep -R "외부 Go 하네스\|Go\|MCP\|Codex\|Claude" -n AGENTS.md CLAUDE.md .agent-harness
 python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
 go test ./... -count=1
-go test ./cmd/harness -run Golden -count=1
+go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1
 go build -o bin/agent-harness ./cmd/harness
 ./scripts/install-native.sh
 ./bin/agent-harness bootstrap --dry-run
@@ -120,7 +120,7 @@ go test ./cmd/harness -count=1
 CLI/MCP contract를 의도적으로 바꾼 경우에만 golden 파일을 갱신한다. Codex/Claude native 설치 adapter 계약을 바꾼 경우에는 adapter matrix golden도 함께 갱신한다.
 
 ```bash
-go test ./cmd/harness -run Golden -update -count=1
+go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -update -count=1
 go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-adapter-contract -count=1
 ```
 

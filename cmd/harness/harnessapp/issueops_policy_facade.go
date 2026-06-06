@@ -1,4 +1,4 @@
-package main
+package harnessapp
 
 import (
 	"agent-harness/cmd/harness/issueopscli"

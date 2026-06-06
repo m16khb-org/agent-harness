@@ -22,7 +22,7 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 	case "go test":
 		return "go test ./... -count=1", true
 	case "contract golden tests":
-		return "go test ./cmd/harness -run Golden -count=1", true
+		return "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1", true
 	case "risk QA tier":
 		return "go vet ./... && go test -race ./... -count=1", true
 	case "go build":

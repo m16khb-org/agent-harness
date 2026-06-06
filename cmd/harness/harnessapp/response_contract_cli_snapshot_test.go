@@ -1,4 +1,4 @@
-package main
+package harnessapp
 
 import (
 	"encoding/json"
@@ -70,7 +70,7 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		return runIssueOps([]string{"link-worktree", "--id", issueopsID, "--worktree-path", contractWorktree, "--json"})
 	})
 	cliSnapshot["issueops_review_design"] = runCLIJSONContract(t, replacements, func() error {
-		return runIssueOps([]string{"design", "review", "--id", issueopsID, "--problem-summary", "IssueOps needs explicit design review", "--proposed-design", "Gate implementation on approved design", "--refactor-plan", "Keep changes local to IssueOps state and adapters", "--risk", "golden contract drift", "--alternative", "docs-only guidance", "--verification", "go test ./cmd/harness -run Golden", "--approved", "--json"})
+		return runIssueOps([]string{"design", "review", "--id", issueopsID, "--problem-summary", "IssueOps needs explicit design review", "--proposed-design", "Gate implementation on approved design", "--refactor-plan", "Keep changes local to IssueOps state and adapters", "--risk", "golden contract drift", "--alternative", "docs-only guidance", "--verification", "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden", "--approved", "--json"})
 	})
 	writeContractFile(t, contractWorktree, "docs/superpowers/plans/contract.md", "plan\n")
 	cliSnapshot["issueops_link_plan"] = runCLIJSONContract(t, replacements, func() error {

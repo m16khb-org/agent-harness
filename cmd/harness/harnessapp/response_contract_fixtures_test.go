@@ -1,4 +1,4 @@
-package main
+package harnessapp
 
 import (
 	"os"
@@ -33,7 +33,7 @@ func makeGitRepoForContract(t *testing.T) string {
 		"-c", "user.email=contract@example.invalid",
 		"commit", "-q",
 		"-m", "docs(contract): add fixture",
-		"-m", "Lore:\n- Intent: Normalize preflight contract.\n- Why: Response golden should cover git DTOs.\n- Changes:\n  - Add fixture README.\n- Verify: go test ./cmd/harness -run Golden\n- Risk: Low",
+		"-m", "Lore:\n- Intent: Normalize preflight contract.\n- Why: Response golden should cover git DTOs.\n- Changes:\n  - Add fixture README.\n- Verify: go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden\n- Risk: Low",
 	)
 	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("TOKEN=fixture\n"), 0o600); err != nil {
 		t.Fatal(err)

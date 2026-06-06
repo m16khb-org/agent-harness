@@ -81,7 +81,7 @@ agent-harness docs --json
 agent-harness daemon status --json
 agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 git diff --check
-go test ./cmd/harness -run Golden -count=1
+go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1
 go test ./... -count=1
 ```
 

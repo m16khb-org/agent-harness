@@ -82,7 +82,7 @@ skills/
 - tool response에는 불필요한 대용량 파일 내용을 싣지 않는다. 요약, 경로, hash, line range를 우선한다.
 - command 실행 tool은 policy 결과와 audit log id를 함께 반환한다.
 - schema 변경은 golden test와 문서 업데이트를 동반한다.
-- CLI/MCP contract golden은 `cmd/harness/testdata/`에 둔다. 의도된 schema 변경일 때만 `go test ./cmd/harness -run Golden -update -count=1`로 갱신한다.
+- CLI/MCP contract golden은 `cmd/harness/testdata/`에 둔다. 의도된 schema 변경일 때만 `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -update -count=1`로 갱신한다.
 - 실제 JSON response golden은 dynamic field(timestamp, temp path, audit id)를 normalize해서 host/session 차이로 인한 drift를 막는다.
 - response golden 범위는 state/policy뿐 아니라 docs/inspect/preflight처럼 agent가 자주 의존하는 읽기 표면을 우선 포함한다.
 
