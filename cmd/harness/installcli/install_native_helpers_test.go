@@ -1,4 +1,4 @@
-package main
+package installcli
 
 import (
 	"os"
@@ -22,7 +22,7 @@ func TestPrintInstallNativeResultCoversDryRunAndProjectLocalModes(t *testing.T) 
 	}
 
 	dryRunOut := captureStatusVerifyStdout(t, func() error {
-		printInstallNativeResult(result)
+		PrintNativeResult(result)
 		return nil
 	})
 	for _, want := range []string{
@@ -39,7 +39,7 @@ func TestPrintInstallNativeResultCoversDryRunAndProjectLocalModes(t *testing.T) 
 	result.ProjectLocal = true
 	result.DryRun = false
 	installedOut := captureStatusVerifyStdout(t, func() error {
-		printInstallNativeResult(result)
+		PrintNativeResult(result)
 		return nil
 	})
 	for _, want := range []string{
@@ -57,7 +57,7 @@ func TestPrintInstallNativeResultCoversDryRunAndProjectLocalModes(t *testing.T) 
 func TestPreferredShellRCAndAppendShellPathLinePlan(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("SHELL", "/bin/bash")
-	if got := preferredShellRC(home); got != filepath.Join(home, ".bashrc") {
+	if got := PreferredShellRC(home); got != filepath.Join(home, ".bashrc") {
 		t.Fatalf("bash shell rc = %q", got)
 	}
 
@@ -66,11 +66,11 @@ func TestPreferredShellRCAndAppendShellPathLinePlan(t *testing.T) {
 	if err := os.WriteFile(zshrc, []byte("# existing\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := preferredShellRC(home); got != zshrc {
+	if got := PreferredShellRC(home); got != zshrc {
 		t.Fatalf("existing zsh rc = %q", got)
 	}
 
-	dryRunFile, err := appendShellPathLinePlan(filepath.Join(home, ".profile"), true)
+	dryRunFile, err := AppendShellPathLinePlan(filepath.Join(home, ".profile"), true)
 	if err != nil {
 		t.Fatalf("dry-run append path failed: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestPreferredShellRCAndAppendShellPathLinePlan(t *testing.T) {
 	}
 
 	rcPath := filepath.Join(home, "nested", ".profile")
-	writtenFile, err := appendShellPathLinePlan(rcPath, false)
+	writtenFile, err := AppendShellPathLinePlan(rcPath, false)
 	if err != nil {
 		t.Fatalf("append path failed: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestPreferredShellRCAndAppendShellPathLinePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(body), shellPathRCMarker) || !shellRCAlreadyAddsLocalBin(rcPath, home) {
+	if !strings.Contains(string(body), ShellPathRCMarker) || !ShellRCAlreadyAddsLocalBin(rcPath, home) {
 		t.Fatalf("shell rc did not contain local bin marker:\n%s", string(body))
 	}
 }
