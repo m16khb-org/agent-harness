@@ -1,10 +1,12 @@
-package core
+package trace
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	corestate "agent-harness/internal/core/state"
 )
 
 func TestTraceAnalyzeSelfVerifySummary(t *testing.T) {
@@ -150,7 +152,7 @@ func TestTraceAnalyzeInvalidJSONAndJSONLFallback(t *testing.T) {
 
 func TestTraceAnalyzeReadsStateKey(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	if _, err := StateWrite("trace-fixture", `{"failed_steps":1,"failure_class":"intermittent","failed_step":"go test"}`); err != nil {
+	if _, err := corestate.StateWrite("trace-fixture", `{"failed_steps":1,"failure_class":"intermittent","failed_step":"go test"}`); err != nil {
 		t.Fatal(err)
 	}
 	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: "trace-fixture"})
@@ -185,6 +187,15 @@ func stringifyTraceResult(result TraceAnalyzeResult) string {
 		b.WriteString(finding.VerificationCommand)
 	}
 	return b.String()
+}
+
+func containsString(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
 }
 
 func containsStringPrefix(items []string, prefix string) bool {
