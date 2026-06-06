@@ -1,4 +1,4 @@
-package core
+package state
 
 import (
 	"encoding/json"
@@ -8,45 +8,6 @@ import (
 	"testing"
 	"time"
 )
-
-func TestDocsIndexIncludesAgentDocs(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	index := DocsIndex(root, "test")
-	if !index.OK {
-		t.Fatalf("DocsIndex ok=false: %+v", index)
-	}
-	for _, want := range []string{"AGENTS.md", "CLAUDE.md", ".agent-harness/COMMIT_POLICY.md", ".agent-harness/OPERATIONS.md"} {
-		if !docIndexContains(index.Docs, want) {
-			t.Fatalf("DocsIndex missing %s: %+v", want, index.Docs)
-		}
-	}
-	for _, doc := range index.Docs {
-		if doc.Title == "" {
-			t.Fatalf("doc %s has empty title", doc.RelPath)
-		}
-	}
-}
-
-func TestDocsIndexExcludesDraftWiki(t *testing.T) {
-	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, "AGENTS.md"), "# Rules\n")
-	mustWrite(t, filepath.Join(root, ProjectDocsDir, "CAUTIONS.md"), "# Cautions\n")
-	mustWrite(t, filepath.Join(root, DraftWikiDir, "draft", "candidate.md"), "# Draft candidate\n")
-
-	index := DocsIndex(root, "test")
-	if !docIndexContains(index.Docs, "AGENTS.md") {
-		t.Fatalf("DocsIndex missing AGENTS.md: %+v", index.Docs)
-	}
-	if !docIndexContains(index.Docs, ".agent-harness/CAUTIONS.md") {
-		t.Fatalf("DocsIndex missing CAUTIONS.md: %+v", index.Docs)
-	}
-	if docIndexContains(index.Docs, ".agent-harness/draft-wiki/draft/candidate.md") {
-		t.Fatalf("DocsIndex included draft-wiki candidate: %+v", index.Docs)
-	}
-}
 
 func TestStateRoundtrip(t *testing.T) {
 	dir := t.TempDir()
@@ -340,9 +301,9 @@ func TestStateReadRejectsUnsupportedSchema(t *testing.T) {
 	}
 }
 
-func docIndexContains(docs []DocIndexInfo, relPath string) bool {
-	for _, doc := range docs {
-		if doc.RelPath == relPath {
+func containsString(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
 			return true
 		}
 	}
