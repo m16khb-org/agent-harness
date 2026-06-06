@@ -1,4 +1,4 @@
-package validationcli
+package invariants
 
 import (
 	"os"

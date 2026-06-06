@@ -1,4 +1,4 @@
-package validationcli
+package invariants
 
 import (
 	"fmt"
@@ -6,9 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
 )
 
-func validateHarnessInvariants(root string) StepResult {
+const skillName = "atomic-commit-push"
+
+type StepResult = commandstep.StepResult
+
+func ValidateHarnessInvariants(root string) StepResult {
 	started := time.Now()
 	errs := []string{}
 	required := []string{
@@ -53,7 +59,11 @@ func validateHarnessInvariants(root string) StepResult {
 	if hits := forbiddenNameHits(root); len(hits) > 0 {
 		errs = append(errs, "forbidden legacy name hits: "+strings.Join(hits, "; "))
 	}
-	return assertionStep("harness invariants", started, errs)
+	return commandstep.AssertionStep("harness invariants", started, errs)
+}
+
+func validateHarnessInvariants(root string) StepResult {
+	return ValidateHarnessInvariants(root)
 }
 
 func validateSkillShape(skillDir string) error {
@@ -73,4 +83,9 @@ func validateSkillShape(skillDir string) error {
 		return fmt.Errorf("agents/openai.yaml missing")
 	}
 	return nil
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
