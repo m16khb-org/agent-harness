@@ -1,4 +1,4 @@
-package validationcli
+package parallelisolation
 
 import (
 	"encoding/json"
@@ -6,7 +6,13 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
 )
+
+const aggregateOutputBudgetBytes = 8 * 1024
+
+type StepResult = commandstep.StepResult
 
 func parallelIsolationResult(started time.Time, workers int, probes []parallelIsolationProbe) StepResult {
 	sort.Slice(probes, func(i, j int) bool { return probes[i].Worker < probes[j].Worker })
@@ -23,7 +29,7 @@ func parallelIsolationOutput(workers int, probes []parallelIsolationProbe) (stri
 		"workers": workers,
 		"probes":  probes,
 	}, "", "  ")
-	return tailWithBudget(string(stdoutBytes), selfVerifyAggregateOutputBudgetBytes)
+	return commandstep.TailWithBudget(string(stdoutBytes), aggregateOutputBudgetBytes)
 }
 
 func parallelIsolationErrors(probes []parallelIsolationProbe) []string {

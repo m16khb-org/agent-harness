@@ -1,4 +1,4 @@
-package validationcli
+package parallelisolation
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"agent-harness/cmd/harness/commandstep"
 	"agent-harness/internal/core"
 )
 
@@ -35,6 +36,10 @@ func (deps parallelIsolationProbeDeps) withDefaults() parallelIsolationProbeDeps
 		deps.runCommandStepEnv = runCommandStepEnv
 	}
 	return deps
+}
+
+func runCommandStepEnv(root, label string, timeout time.Duration, input string, env []string, name string, args ...string) StepResult {
+	return commandstep.RunEnv(root, label, timeout, input, env, 32*1024, name, args...)
 }
 
 func runParallelIsolationProbe(binary, root string, seed int64, worker int) parallelIsolationProbe {

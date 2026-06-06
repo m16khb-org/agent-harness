@@ -1,12 +1,16 @@
-package validationcli
+package parallelisolation
 
 import (
 	"sync"
 	"time"
 )
 
-func validateParallelTempIsolation(binary, root string, seed int64) StepResult {
+func Validate(binary, root string, seed int64) StepResult {
 	return validateParallelTempIsolationWithDeps(binary, root, seed, parallelIsolationValidationDeps{})
+}
+
+func validateParallelTempIsolation(binary, root string, seed int64) StepResult {
+	return Validate(binary, root, seed)
 }
 
 func validateParallelTempIsolationWithDeps(binary, root string, seed int64, deps parallelIsolationValidationDeps) StepResult {

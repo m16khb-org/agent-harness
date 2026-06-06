@@ -1,4 +1,4 @@
-package validationcli
+package parallelisolation
 
 type parallelIsolationProbe struct {
 	Worker       int      `json:"worker"`
