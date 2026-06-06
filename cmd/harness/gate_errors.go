@@ -4,12 +4,13 @@ import (
 	"errors"
 
 	"agent-harness/cmd/harness/apidoc"
+	"agent-harness/cmd/harness/selfworkflow"
 )
 
 var (
 	errAPIDocReviewGateFailed     = apidoc.ErrReviewGateFailed
 	errAPIDocStaticGateFailed     = apidoc.ErrStaticGateFailed
-	errSelfVerificationGateFailed = errors.New("self-verification quality gate failed")
+	errSelfVerificationGateFailed = selfworkflow.ErrSelfVerificationGateFailed
 )
 
 func isAPIDocReviewGateError(err error) bool {

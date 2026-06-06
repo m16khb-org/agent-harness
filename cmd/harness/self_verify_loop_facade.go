@@ -46,6 +46,25 @@ func boolPtr(value bool) *bool {
 	return &value
 }
 
+func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose bool) (SelfAugmentResult, error) {
+	return selfworkflow.SelfVerify(iterations, baseSeed, targetScore, verbose, selfVerifyLoopDeps())
+}
+
+func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfVerifyProgressReporter) (SelfAugmentResult, error) {
+	if progress == nil {
+		return selfworkflow.SelfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, nil, selfVerifyLoopDeps())
+	}
+	return selfworkflow.SelfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, progress.inner, selfVerifyLoopDeps())
+}
+
+func selfVerifyLoopDeps() selfworkflow.SelfVerifyLoopDeps {
+	return selfworkflow.SelfVerifyLoopDeps{
+		StepDeps:   selfVerifyStepDeps(),
+		FailedStep: failedStep,
+		PrintStep:  printStep,
+	}
+}
+
 func newSelfVerifyLoopResult(iterations int, baseSeed int64, targetScore float64) SelfAugmentResult {
 	selfworkflow.HarnessRoot = harnessRoot
 	return selfworkflow.NewSelfVerifyLoopResult(iterations, baseSeed, targetScore)
