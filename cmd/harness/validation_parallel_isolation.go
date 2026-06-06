@@ -1,10 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 )
@@ -30,42 +26,8 @@ func validateParallelTempIsolationWithDeps(binary, root string, seed int64, deps
 	close(results)
 
 	probes := []parallelIsolationProbe{}
-	errs := []string{}
-	seenPaths := map[string]string{}
 	for probe := range results {
 		probes = append(probes, probe)
-		if probe.Error != "" {
-			errs = append(errs, fmt.Sprintf("worker %d: %s", probe.Worker, probe.Error))
-		}
-		for label, path := range map[string]string{
-			"temp_root":     probe.TempRoot,
-			"state_dir":     probe.StateDir,
-			"daemon_dir":    probe.DaemonDir,
-			"artifact_path": probe.ArtifactPath,
-		} {
-			if strings.TrimSpace(path) == "" {
-				errs = append(errs, fmt.Sprintf("worker %d has empty %s", probe.Worker, label))
-				continue
-			}
-			if previous, ok := seenPaths[path]; ok {
-				errs = append(errs, fmt.Sprintf("path collision: %s reused by %s and worker %d %s", path, previous, probe.Worker, label))
-				continue
-			}
-			seenPaths[path] = fmt.Sprintf("worker %d %s", probe.Worker, label)
-		}
 	}
-	sort.Slice(probes, func(i, j int) bool { return probes[i].Worker < probes[j].Worker })
-	stdoutBytes, _ := json.MarshalIndent(map[string]any{
-		"workers": workers,
-		"probes":  probes,
-	}, "", "  ")
-	stdoutText, stdoutTruncated, stdoutOriginalBytes := tailWithBudget(string(stdoutBytes), selfVerifyAggregateOutputBudgetBytes)
-	if len(errs) > 0 {
-		return StepResult{Label: "parallel isolation", OK: false, DurationMS: time.Since(started).Milliseconds(), Stdout: stdoutText, StdoutBytes: stdoutOriginalBytes, StdoutTruncated: stdoutTruncated, Error: strings.Join(errs, "; ")}
-	}
-	commands := []string{}
-	for _, probe := range probes {
-		commands = append(commands, probe.Commands...)
-	}
-	return StepResult{Label: "parallel isolation", Command: strings.Join(commands, " && "), OK: true, DurationMS: time.Since(started).Milliseconds(), Stdout: stdoutText, StdoutBytes: stdoutOriginalBytes, StdoutTruncated: stdoutTruncated}
+	return parallelIsolationResult(started, workers, probes)
 }
