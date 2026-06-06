@@ -11,7 +11,11 @@ import (
 )
 
 func runDaemonServer() error {
-	return runDaemonServerWithDeps(daemonServerDeps{
+	return runDaemonServerWithDeps(daemonServerDefaultDeps())
+}
+
+var daemonServerDefaultDeps = func() daemonServerDeps {
+	return daemonServerDeps{
 		paths:    currentDaemonPaths,
 		mkdirAll: os.MkdirAll,
 		openLog: func(path string) (daemonServerLogFile, error) {
@@ -28,7 +32,7 @@ func runDaemonServer() error {
 		serveMCPStream: func(conn net.Conn, logFile daemonServerLogFile) error {
 			return serveMCPStream(conn, conn, logFile)
 		},
-	})
+	}
 }
 
 type daemonServerLogFile interface {

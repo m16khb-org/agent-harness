@@ -119,6 +119,47 @@ func TestRunDaemonServerWithDepsReturnsSetupErrors(t *testing.T) {
 	}
 }
 
+func TestRunDaemonServerUsesDefaultDepsFactory(t *testing.T) {
+	oldFactory := daemonServerDefaultDeps
+	t.Cleanup(func() {
+		daemonServerDefaultDeps = oldFactory
+	})
+	called := false
+	daemonServerDefaultDeps = func() daemonServerDeps {
+		called = true
+		return daemonServerDeps{
+			paths: func() (daemonPaths, error) {
+				return daemonPaths{Dir: t.TempDir(), Socket: "daemon.sock", Log: "daemon.log"}, nil
+			},
+			mkdirAll: func(string, os.FileMode) error { return nil },
+			openLog: func(string) (daemonServerLogFile, error) {
+				return &daemonServerFakeLog{}, nil
+			},
+			remove: func(string) error { return nil },
+			listen: func(string, string) (net.Listener, error) {
+				return daemonServerClosedListener{}, nil
+			},
+			chmod:     func(string, os.FileMode) error { return nil },
+			writeFile: func(string, []byte, os.FileMode) error { return nil },
+			getpid:    func() int { return 12345 },
+			now: func() time.Time {
+				return time.Unix(100, 0).UTC()
+			},
+			serveMCPStream: func(net.Conn, daemonServerLogFile) error {
+				t.Fatal("closed listener should not serve MCP streams")
+				return nil
+			},
+		}
+	}
+
+	if err := runDaemonServer(); err != nil {
+		t.Fatalf("expected wrapper to stop cleanly, got %v", err)
+	}
+	if !called {
+		t.Fatal("default deps factory was not called")
+	}
+}
+
 func TestRunDaemonAcceptLoopLogsAcceptAndStreamErrors(t *testing.T) {
 	var log daemonServerFakeLog
 	now := time.Unix(200, 0).UTC()
