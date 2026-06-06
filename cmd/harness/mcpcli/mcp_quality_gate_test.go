@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"encoding/json"
@@ -41,7 +41,7 @@ export class UsersController {
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload, rpcErr := handleToolCall(params)
+	payload, rpcErr := HandleToolCall(params)
 	if rpcErr != nil {
 		t.Fatalf("quality gate failure should be a normal MCP payload, got rpc error: %+v", rpcErr)
 	}

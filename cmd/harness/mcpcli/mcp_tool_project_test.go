@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"encoding/json"
@@ -10,27 +10,27 @@ func TestHandleProjectMCPToolCallCoversLocalProjectPayloads(t *testing.T) {
 	repo := t.TempDir()
 	tests := []struct {
 		name     string
-		call     mcpToolCall
+		call     MCPToolCall
 		wantText string
 	}{
 		{
 			name:     "docs index",
-			call:     mcpToolCall{Name: "docs_index", Arguments: map[string]any{}},
+			call:     MCPToolCall{Name: "docs_index", Arguments: map[string]any{}},
 			wantText: "harness_root",
 		},
 		{
 			name:     "skill manifest",
-			call:     mcpToolCall{Name: "skill_manifest", Arguments: map[string]any{}},
+			call:     MCPToolCall{Name: "skill_manifest", Arguments: map[string]any{}},
 			wantText: "skills",
 		},
 		{
 			name:     "project route",
-			call:     mcpToolCall{Name: "project_docs_route", Arguments: map[string]any{"repo": repo, "task": "api"}},
+			call:     MCPToolCall{Name: "project_docs_route", Arguments: map[string]any{"repo": repo, "task": "api"}},
 			wantText: "project_docs_route",
 		},
 		{
 			name:     "project read missing",
-			call:     mcpToolCall{Name: "project_docs_read", Arguments: map[string]any{"repo": repo, "rel_path": ".agent-harness/ARCHITECTURE.md"}},
+			call:     MCPToolCall{Name: "project_docs_read", Arguments: map[string]any{"repo": repo, "rel_path": ".agent-harness/ARCHITECTURE.md"}},
 			wantText: "document_missing",
 		},
 	}
@@ -52,13 +52,13 @@ func TestHandleProjectMCPToolCallCoversProjectErrorBranches(t *testing.T) {
 	repo := t.TempDir()
 	tests := []struct {
 		name        string
-		call        mcpToolCall
+		call        MCPToolCall
 		wantMessage string
 		wantData    string
 	}{
 		{
 			name: "project update missing content",
-			call: mcpToolCall{Name: "project_docs_update", Arguments: map[string]any{
+			call: MCPToolCall{Name: "project_docs_update", Arguments: map[string]any{
 				"repo": repo, "rel_path": ".agent-harness/ARCHITECTURE.md", "summary": "update",
 			}},
 			wantMessage: "Project docs update failed",
@@ -66,7 +66,7 @@ func TestHandleProjectMCPToolCallCoversProjectErrorBranches(t *testing.T) {
 		},
 		{
 			name: "project record unsupported kind",
-			call: mcpToolCall{Name: "project_docs_record", Arguments: map[string]any{
+			call: MCPToolCall{Name: "project_docs_record", Arguments: map[string]any{
 				"repo": repo, "kind": "note", "title": "Title", "summary": "Summary",
 			}},
 			wantMessage: "Project docs record failed",
@@ -74,7 +74,7 @@ func TestHandleProjectMCPToolCallCoversProjectErrorBranches(t *testing.T) {
 		},
 		{
 			name:        "api doc review invalid timeout",
-			call:        mcpToolCall{Name: "api_doc_review", Arguments: map[string]any{"repo": repo, "timeout": "not-a-duration"}},
+			call:        MCPToolCall{Name: "api_doc_review", Arguments: map[string]any{"repo": repo, "timeout": "not-a-duration"}},
 			wantMessage: "API doc review failed",
 			wantData:    "invalid timeout",
 		},
@@ -93,7 +93,7 @@ func TestHandleProjectMCPToolCallCoversProjectErrorBranches(t *testing.T) {
 }
 
 func TestHandleProjectMCPToolCallIgnoresUnknownProjectTool(t *testing.T) {
-	outcome := handleProjectMCPToolCall(mcpToolCall{Name: "not_project_tool", Arguments: map[string]any{}})
+	outcome := handleProjectMCPToolCall(MCPToolCall{Name: "not_project_tool", Arguments: map[string]any{}})
 	if outcome.Handled {
 		t.Fatalf("unknown project tool should be ignored: %#v", outcome)
 	}
@@ -109,7 +109,7 @@ func mcpProjectPayloadText(t *testing.T, payload any) string {
 	return b
 }
 
-func textFromMCPToolOutcome(outcome mcpToolOutcome) (string, error) {
+func textFromMCPToolOutcome(outcome MCPToolOutcome) (string, error) {
 	b, err := jsonMarshalIndentForMCPProjectTest(outcome.Payload)
 	if err != nil {
 		return "", err

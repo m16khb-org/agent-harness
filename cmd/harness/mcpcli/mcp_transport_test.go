@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"encoding/json"
@@ -10,14 +10,14 @@ import (
 
 func TestRunMCPDirectUsesStreamTransport(t *testing.T) {
 	t.Setenv("HARNESS_MCP_DIRECT", "1")
-	stdout, stderr, err := captureMCPStdio(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`+"\n", runMCP)
+	stdout, stderr, err := captureMCPStdio(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`+"\n", RunMCP)
 	if err != nil {
-		t.Fatalf("runMCP direct failed: %v\nstderr:\n%s", err, stderr)
+		t.Fatalf("RunMCP direct failed: %v\nstderr:\n%s", err, stderr)
 	}
 
 	var response map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(stdout)), &response); err != nil {
-		t.Fatalf("decode runMCP response: %v\n%s", err, stdout)
+		t.Fatalf("decode RunMCP response: %v\n%s", err, stdout)
 	}
 	if response["id"].(float64) != 1 {
 		t.Fatalf("unexpected response id: %#v", response)
@@ -55,7 +55,7 @@ func TestMCPTransportStdoutAndStderrWrappers(t *testing.T) {
 	}
 
 	stderr, err := captureProjectCLIStderr(func() error {
-		handleNotification(rpcRequest{Method: "notifications/initialized"})
+		handleNotification(RPCRequest{Method: "notifications/initialized"})
 		return nil
 	})
 	if err != nil {

@@ -1,8 +1,8 @@
-package main
+package mcpcli
 
 import mcpadapter "agent-harness/internal/adapter/mcp"
 
-func mcpTools() []map[string]any {
+func MCPTools() []map[string]any {
 	tools := coreMCPToolMaps()
 	tools = append(tools, mcpadapter.ToolMaps(mcpadapter.CommandPolicyTools())...)
 	tools = append(tools, mcpadapter.ToolMaps(mcpadapter.StateTools())...)

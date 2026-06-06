@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ func TestServeMCPStreamListsHarnessTools(t *testing.T) {
 	}, "\n") + "\n"
 	var out bytes.Buffer
 	var diag bytes.Buffer
-	if err := serveMCPStream(strings.NewReader(input), &out, &diag); err != nil {
+	if err := ServeMCPStream(strings.NewReader(input), &out, &diag); err != nil {
 		t.Fatal(err)
 	}
 	lines := splitLines(out.String())

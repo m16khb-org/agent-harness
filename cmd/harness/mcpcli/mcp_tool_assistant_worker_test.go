@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"encoding/json"
@@ -13,14 +13,14 @@ func TestHandleAssistantWorkerMCPToolCallCoversLocalAssistantPayloads(t *testing
 	t.Setenv("HARNESS_DAEMON_DIR", t.TempDir())
 	tests := []struct {
 		name     string
-		call     mcpToolCall
+		call     MCPToolCall
 		wantText string
 	}{
-		{name: "daemon status", call: mcpToolCall{Name: "daemon_status", Arguments: map[string]any{}}, wantText: "daemon is not running"},
-		{name: "contract schema", call: mcpToolCall{Name: "contract_schema", Arguments: map[string]any{}}, wantText: "mcp_tools"},
-		{name: "contract check", call: mcpToolCall{Name: "contract_check", Arguments: map[string]any{}}, wantText: "mcp_tools"},
-		{name: "commit suggest no diff", call: mcpToolCall{Name: "commit_suggest", Arguments: map[string]any{"repo": repo}}, wantText: `"executed": false`},
-		{name: "lint diagnose success", call: mcpToolCall{Name: "lint_diagnose", Arguments: map[string]any{"repo": repo, "command_argv": []any{"git", "status", "--short"}}}, wantText: `"failed": false`},
+		{name: "daemon status", call: MCPToolCall{Name: "daemon_status", Arguments: map[string]any{}}, wantText: "daemon is not running"},
+		{name: "contract schema", call: MCPToolCall{Name: "contract_schema", Arguments: map[string]any{}}, wantText: "mcp_tools"},
+		{name: "contract check", call: MCPToolCall{Name: "contract_check", Arguments: map[string]any{}}, wantText: "mcp_tools"},
+		{name: "commit suggest no diff", call: MCPToolCall{Name: "commit_suggest", Arguments: map[string]any{"repo": repo}}, wantText: `"executed": false`},
+		{name: "lint diagnose success", call: MCPToolCall{Name: "lint_diagnose", Arguments: map[string]any{"repo": repo, "command_argv": []any{"git", "status", "--short"}}}, wantText: `"failed": false`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestHandleAssistantWorkerMCPToolCallCoversLocalAssistantPayloads(t *testing
 
 func TestHandleAssistantWorkerMCPToolCallCoversWorkerLifecyclePayloads(t *testing.T) {
 	t.Setenv("HARNESS_WORKER_DIR", t.TempDir())
-	enqueue := handleAssistantWorkerMCPToolCall(mcpToolCall{Name: "worker_enqueue", Arguments: map[string]any{
+	enqueue := handleAssistantWorkerMCPToolCall(MCPToolCall{Name: "worker_enqueue", Arguments: map[string]any{
 		"kind": "qa", "payload": "check docs",
 	}})
 	if !enqueue.Handled || enqueue.Err != nil {
@@ -51,12 +51,12 @@ func TestHandleAssistantWorkerMCPToolCallCoversWorkerLifecyclePayloads(t *testin
 
 	for _, tc := range []struct {
 		name     string
-		call     mcpToolCall
+		call     MCPToolCall
 		wantText string
 	}{
-		{name: "worker status", call: mcpToolCall{Name: "worker_status", Arguments: map[string]any{"id": job.ID}}, wantText: job.ID},
-		{name: "worker list", call: mcpToolCall{Name: "worker_list", Arguments: map[string]any{}}, wantText: job.ID},
-		{name: "worker cancel", call: mcpToolCall{Name: "worker_cancel", Arguments: map[string]any{"id": job.ID}}, wantText: core.WorkerStatusCancelled},
+		{name: "worker status", call: MCPToolCall{Name: "worker_status", Arguments: map[string]any{"id": job.ID}}, wantText: job.ID},
+		{name: "worker list", call: MCPToolCall{Name: "worker_list", Arguments: map[string]any{}}, wantText: job.ID},
+		{name: "worker cancel", call: MCPToolCall{Name: "worker_cancel", Arguments: map[string]any{"id": job.ID}}, wantText: core.WorkerStatusCancelled},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outcome := handleAssistantWorkerMCPToolCall(tc.call)
@@ -72,17 +72,17 @@ func TestHandleAssistantWorkerMCPToolCallCoversWorkerLifecyclePayloads(t *testin
 
 func TestHandleAssistantWorkerMCPToolCallCoversWorkerErrorsAndUnknownTool(t *testing.T) {
 	t.Setenv("HARNESS_WORKER_DIR", t.TempDir())
-	enqueue := handleAssistantWorkerMCPToolCall(mcpToolCall{Name: "worker_enqueue", Arguments: map[string]any{"kind": ""}})
+	enqueue := handleAssistantWorkerMCPToolCall(MCPToolCall{Name: "worker_enqueue", Arguments: map[string]any{"kind": ""}})
 	if !enqueue.Handled || enqueue.Err == nil || enqueue.Err.Code != -32000 || enqueue.Err.Message != "worker_enqueue failed" {
 		t.Fatalf("unexpected worker_enqueue error outcome: %#v", enqueue)
 	}
 
-	status := handleAssistantWorkerMCPToolCall(mcpToolCall{Name: "worker_status", Arguments: map[string]any{"id": "../bad"}})
+	status := handleAssistantWorkerMCPToolCall(MCPToolCall{Name: "worker_status", Arguments: map[string]any{"id": "../bad"}})
 	if !status.Handled || status.Err == nil || status.Err.Code != -32000 || status.Err.Message != "worker_status failed" {
 		t.Fatalf("unexpected worker_status error outcome: %#v", status)
 	}
 
-	unknown := handleAssistantWorkerMCPToolCall(mcpToolCall{Name: "not_assistant_worker", Arguments: map[string]any{}})
+	unknown := handleAssistantWorkerMCPToolCall(MCPToolCall{Name: "not_assistant_worker", Arguments: map[string]any{}})
 	if unknown.Handled {
 		t.Fatalf("unknown assistant/worker tool should pass through: %#v", unknown)
 	}

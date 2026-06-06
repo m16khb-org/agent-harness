@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"encoding/json"
@@ -11,19 +11,19 @@ func TestHandleSelfLoopMCPToolCallCoversLocalPayloads(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		call     mcpToolCall
+		call     MCPToolCall
 		wantText string
 	}{
 		{
 			name: "self augment plan",
-			call: mcpToolCall{Name: "self_augment", Arguments: map[string]any{
+			call: MCPToolCall{Name: "self_augment", Arguments: map[string]any{
 				"cycles": 2,
 			}},
 			wantText: `"self_augmentation"`,
 		},
 		{
 			name: "self augment plan save state",
-			call: mcpToolCall{Name: "self_augment", Arguments: map[string]any{
+			call: MCPToolCall{Name: "self_augment", Arguments: map[string]any{
 				"save_state": true,
 				"state_key":  "mcp-self-augment-plan",
 			}},
@@ -31,7 +31,7 @@ func TestHandleSelfLoopMCPToolCallCoversLocalPayloads(t *testing.T) {
 		},
 		{
 			name: "self augment lesson",
-			call: mcpToolCall{Name: "self_augment_lesson", Arguments: map[string]any{
+			call: MCPToolCall{Name: "self_augment_lesson", Arguments: map[string]any{
 				"candidate_id": "candidate-refill-curriculum",
 				"lesson":       "Keep MCP self dispatch local in tests.",
 				"next_action":  "Pin the next safe branch.",
@@ -40,22 +40,22 @@ func TestHandleSelfLoopMCPToolCallCoversLocalPayloads(t *testing.T) {
 		},
 		{
 			name:     "self verify candidates",
-			call:     mcpToolCall{Name: "self_verify_candidates", Arguments: map[string]any{}},
+			call:     MCPToolCall{Name: "self_verify_candidates", Arguments: map[string]any{}},
 			wantText: `"self_verification_candidate_export"`,
 		},
 		{
 			name:     "self verify candidates save state",
-			call:     mcpToolCall{Name: "self_verify_candidates", Arguments: map[string]any{"save_state": true, "state_key": "mcp-self-candidates"}},
+			call:     MCPToolCall{Name: "self_verify_candidates", Arguments: map[string]any{"save_state": true, "state_key": "mcp-self-candidates"}},
 			wantText: `"state_checkpoint"`,
 		},
 		{
 			name:     "self verify history",
-			call:     mcpToolCall{Name: "self_verify_history", Arguments: map[string]any{"prefix": "mcp-self", "limit": 5}},
+			call:     MCPToolCall{Name: "self_verify_history", Arguments: map[string]any{"prefix": "mcp-self", "limit": 5}},
 			wantText: `"entries"`,
 		},
 		{
 			name:     "self augment history alias",
-			call:     mcpToolCall{Name: "self_augment_history", Arguments: map[string]any{"prefix": "mcp-self", "limit": 5}},
+			call:     MCPToolCall{Name: "self_augment_history", Arguments: map[string]any{"prefix": "mcp-self", "limit": 5}},
 			wantText: `"entries"`,
 		},
 	}
@@ -77,37 +77,37 @@ func TestHandleSelfLoopMCPToolCallCoversBoundaryErrorsAndUnknownTool(t *testing.
 
 	tests := []struct {
 		name    string
-		call    mcpToolCall
+		call    MCPToolCall
 		wantMsg string
 	}{
 		{
 			name:    "self augment lesson missing lesson",
-			call:    mcpToolCall{Name: "self_augment_lesson", Arguments: map[string]any{"candidate_id": "candidate-refill-curriculum", "next_action": "y"}},
+			call:    MCPToolCall{Name: "self_augment_lesson", Arguments: map[string]any{"candidate_id": "candidate-refill-curriculum", "next_action": "y"}},
 			wantMsg: "Self-augmentation lesson save failed",
 		},
 		{
 			name:    "self verify invalid mode",
-			call:    mcpToolCall{Name: "self_verify", Arguments: map[string]any{"full": true, "iterations": 1}},
+			call:    MCPToolCall{Name: "self_verify", Arguments: map[string]any{"full": true, "iterations": 1}},
 			wantMsg: "Self-verification mode invalid",
 		},
 		{
 			name:    "self verify compare missing baseline",
-			call:    mcpToolCall{Name: "self_verify_compare", Arguments: map[string]any{"candidate_key": "candidate"}},
+			call:    MCPToolCall{Name: "self_verify_compare", Arguments: map[string]any{"candidate_key": "candidate"}},
 			wantMsg: "Self-verify compare failed",
 		},
 		{
 			name:    "self augment compare alias missing baseline",
-			call:    mcpToolCall{Name: "self_augment_compare", Arguments: map[string]any{"candidate_key": "candidate"}},
+			call:    MCPToolCall{Name: "self_augment_compare", Arguments: map[string]any{"candidate_key": "candidate"}},
 			wantMsg: "Self-verify compare failed",
 		},
 		{
 			name:    "self verify promote missing source",
-			call:    mcpToolCall{Name: "self_verify_promote", Arguments: map[string]any{"baseline_key": "baseline", "confirm": true}},
+			call:    MCPToolCall{Name: "self_verify_promote", Arguments: map[string]any{"baseline_key": "baseline", "confirm": true}},
 			wantMsg: "Self-verify promote failed",
 		},
 		{
 			name:    "self augment promote alias missing source",
-			call:    mcpToolCall{Name: "self_augment_promote", Arguments: map[string]any{"baseline_key": "baseline", "confirm": true}},
+			call:    MCPToolCall{Name: "self_augment_promote", Arguments: map[string]any{"baseline_key": "baseline", "confirm": true}},
 			wantMsg: "Self-verify promote failed",
 		},
 	}
@@ -120,7 +120,7 @@ func TestHandleSelfLoopMCPToolCallCoversBoundaryErrorsAndUnknownTool(t *testing.
 		})
 	}
 
-	unknown := handleSelfLoopMCPToolCall(mcpToolCall{Name: "not_self_loop", Arguments: map[string]any{}})
+	unknown := handleSelfLoopMCPToolCall(MCPToolCall{Name: "not_self_loop", Arguments: map[string]any{}})
 	if unknown.Handled {
 		t.Fatalf("unknown self-loop tool should pass through: %#v", unknown)
 	}

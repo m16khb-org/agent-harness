@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"agent-harness/internal/core"
 )
 
-func handleIssueOpsMCPToolCall(call mcpToolCall) mcpToolOutcome {
+func handleIssueOpsMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	switch call.Name {
 	case "issueops_start":
 		result, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{
@@ -32,12 +32,12 @@ func handleIssueOpsMCPToolCall(call mcpToolCall) mcpToolOutcome {
 		record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"))
 		if err == nil {
 			var result any
-			result, err = prepareIssueOpsWorktreeTools(record)
+			result, err = PrepareIssueOpsWorktreeTools(record)
 			return issueOpsMCPOutcome(result, err, "IssueOps worktree tool preparation failed")
 		}
 		return issueOpsMCPOutcome(nil, err, "IssueOps worktree tool preparation failed")
 	case "issueops_link_child":
-		if err := verifyIssueOpsChildIssueBeforeLink(stringArg(call.Arguments, "child_url")); err != nil {
+		if err := VerifyIssueOpsChildIssueBeforeLink(stringArg(call.Arguments, "child_url")); err != nil {
 			return issueOpsMCPOutcome(nil, err, "IssueOps child link failed")
 		}
 		result, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "child_url"), stringArg(call.Arguments, "title"))
@@ -88,17 +88,17 @@ func handleIssueOpsMCPToolCall(call mcpToolCall) mcpToolOutcome {
 		return mcpToolPayload(core.IssueOpsPRReadiness(record))
 	case "issueops_cleanup_status":
 		result, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), core.IssueOpsCleanupStatusRequest{
-			Merged: issueOpsCleanupMerged(stringArg(call.Arguments, "id"), boolArg(call.Arguments, "merged")),
+			Merged: IssueOpsCleanupMerged(stringArg(call.Arguments, "id"), boolArg(call.Arguments, "merged")),
 		})
 		return issueOpsMCPOutcome(result, err, "IssueOps cleanup status failed")
 	default:
-		return mcpToolOutcome{}
+		return MCPToolOutcome{}
 	}
 }
 
-func issueOpsMCPOutcome(payload any, err error, message string) mcpToolOutcome {
+func issueOpsMCPOutcome(payload any, err error, message string) MCPToolOutcome {
 	if err != nil {
-		return mcpToolFailure(&rpcError{Code: -32602, Message: message, Data: err.Error()})
+		return mcpToolFailure(&RPCError{Code: -32602, Message: message, Data: err.Error()})
 	}
 	return mcpToolPayload(payload)
 }
@@ -113,7 +113,7 @@ func verifyIssueOpsRemoteArtifactFromMCP(args map[string]any) (core.IssueOpsReco
 	}
 	_, err := core.ValidateIssueOpsRemoteArtifactVerification(core.IssueOpsStateRoot(), stringArg(args, "id"), req)
 	if err == nil {
-		err = verifyIssueOpsRemoteArtifactLive(req)
+		err = VerifyIssueOpsRemoteArtifactLive(req)
 	}
 	if err != nil {
 		return core.IssueOpsRecord{}, err

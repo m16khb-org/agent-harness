@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"bufio"
@@ -9,14 +9,14 @@ import (
 	"strings"
 )
 
-func runMCP() error {
+func RunMCP() error {
 	if os.Getenv("HARNESS_MCP_DIRECT") == "1" {
-		return serveMCPStream(os.Stdin, os.Stdout, os.Stderr)
+		return ServeMCPStream(os.Stdin, os.Stdout, os.Stderr)
 	}
-	return runMCPProxy()
+	return RunMCPProxy()
 }
 
-func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
+func ServeMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for scanner.Scan() {
@@ -24,7 +24,7 @@ func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) er
 		if line == "" {
 			continue
 		}
-		var req rpcRequest
+		var req RPCRequest
 		if err := json.Unmarshal([]byte(line), &req); err != nil {
 			writeRPCErrorTo(output, nil, -32700, "Parse error", err.Error())
 			continue
@@ -33,7 +33,7 @@ func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) er
 			handleNotificationTo(diagnostics, req)
 			continue
 		}
-		result, rpcErr := handleRequest(req)
+		result, rpcErr := HandleRequest(req)
 		if rpcErr != nil {
 			writeRPCErrorTo(output, req.ID, rpcErr.Code, rpcErr.Message, rpcErr.Data)
 			continue
@@ -43,28 +43,32 @@ func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) er
 	return scanner.Err()
 }
 
-type rpcRequest struct {
+type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
 }
 
-type rpcError struct {
+type RPCError struct {
 	Code    int
 	Message string
 	Data    any
 }
 
-func handleNotification(req rpcRequest) {
+func HandleNotification(req RPCRequest) {
 	handleNotificationTo(os.Stderr, req)
 }
 
-func handleNotificationTo(w io.Writer, req rpcRequest) {
+func handleNotification(req RPCRequest) {
+	HandleNotification(req)
+}
+
+func handleNotificationTo(w io.Writer, req RPCRequest) {
 	fmt.Fprintln(w, "agent-harness mcp notification:", req.Method)
 }
 
-func handleRequest(req rpcRequest) (any, *rpcError) {
+func HandleRequest(req RPCRequest) (any, *RPCError) {
 	switch req.Method {
 	case "initialize":
 		return map[string]any{
@@ -73,27 +77,35 @@ func handleRequest(req rpcRequest) (any, *rpcError) {
 				"tools":     map[string]any{},
 				"resources": map[string]any{},
 			},
-			"serverInfo":   map[string]any{"name": "agent_harness", "version": version},
+			"serverInfo":   map[string]any{"name": "agent_harness", "version": Version},
 			"instructions": "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. For LLM Wiki workflows, install and use the upstream nvk/llm-wiki plugin instead of agent-harness.",
 		}, nil
 	case "tools/list":
-		return map[string]any{"tools": mcpTools()}, nil
+		return map[string]any{"tools": MCPTools()}, nil
 	case "tools/call":
-		return handleToolCall(req.Params)
+		return HandleToolCall(req.Params)
 	case "resources/list":
-		return map[string]any{"resources": mcpResources()}, nil
+		return map[string]any{"resources": MCPResources()}, nil
 	case "resources/read":
-		return handleResourceRead(req.Params)
+		return HandleResourceRead(req.Params)
 	default:
-		return nil, &rpcError{Code: -32601, Message: "Method not found", Data: req.Method}
+		return nil, &RPCError{Code: -32601, Message: "Method not found", Data: req.Method}
 	}
 }
 func writeRPCResult(id json.RawMessage, result any) {
 	writeRPCResultTo(os.Stdout, id, result)
 }
 
+func WriteRPCResult(id json.RawMessage, result any) {
+	writeRPCResult(id, result)
+}
+
 func writeRPCError(id json.RawMessage, code int, message string, data any) {
 	writeRPCErrorTo(os.Stdout, id, code, message, data)
+}
+
+func WriteRPCError(id json.RawMessage, code int, message string, data any) {
+	writeRPCError(id, code, message, data)
 }
 
 func writeRPCResultTo(w io.Writer, id json.RawMessage, result any) {

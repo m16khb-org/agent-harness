@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"agent-harness/internal/core"
 )
 
-func mcpResources() []map[string]any {
+func MCPResources() []map[string]any {
 	return mcpadapter.ResourceMaps(mcpadapter.Resources())
 }
 
@@ -46,22 +46,22 @@ Do not invent repo facts. If evidence is missing, mark the section as "Unknown /
 `
 }
 
-func handleResourceRead(params json.RawMessage) (any, *rpcError) {
+func HandleResourceRead(params json.RawMessage) (any, *RPCError) {
 	var req struct {
 		URI string `json:"uri"`
 	}
 	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, &rpcError{Code: -32602, Message: "Invalid params", Data: err.Error()}
+		return nil, &RPCError{Code: -32602, Message: "Invalid params", Data: err.Error()}
 	}
 	if req.URI == "harness://docs" {
-		result := core.DocsIndex(harnessRoot(), version)
+		result := core.DocsIndex(HarnessRoot(), Version)
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "application/json", "text": string(b)}}}, nil
 	}
 	if req.URI == "harness://project-docs" {
 		result, err := core.RouteProjectDocs(".", "general")
 		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: "Cannot read project docs route", Data: err.Error()}
+			return nil, &RPCError{Code: -32000, Message: "Cannot read project docs route", Data: err.Error()}
 		}
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "application/json", "text": string(b)}}}, nil
@@ -79,7 +79,7 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 	if req.URI == "harness://state" {
 		result, err := core.StateList()
 		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: "Cannot read state index", Data: err.Error()}
+			return nil, &RPCError{Code: -32000, Message: "Cannot read state index", Data: err.Error()}
 		}
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "application/json", "text": string(b)}}}, nil
@@ -93,11 +93,11 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 	case "harness://agents":
 		rel = []string{"AGENTS.md"}
 	default:
-		return nil, &rpcError{Code: -32602, Message: "Unknown resource", Data: req.URI}
+		return nil, &RPCError{Code: -32602, Message: "Unknown resource", Data: req.URI}
 	}
-	text, err := readHarnessFile(rel...)
+	text, err := ReadHarnessFile(rel...)
 	if err != nil {
-		return nil, &rpcError{Code: -32000, Message: "Cannot read resource", Data: err.Error()}
+		return nil, &RPCError{Code: -32000, Message: "Cannot read resource", Data: err.Error()}
 	}
 	return map[string]any{"contents": []map[string]any{{"uri": req.URI, "mimeType": "text/markdown", "text": text}}}, nil
 }
