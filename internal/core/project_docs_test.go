@@ -134,6 +134,44 @@ func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
 	}
 }
 
+func TestBootstrapWritesMetaFrontmatterIntoCreatedDocs(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
+		t.Fatal(err)
+	}
+	arch := mustRead(t, filepath.Join(root, ProjectDocsDir, "ARCHITECTURE.md"))
+	canonical, _ := DocMetaDescription("ARCHITECTURE.md")
+	if !strings.HasPrefix(arch, "---\nname: ARCHITECTURE.md\ndescription: "+canonical+"\n---\n") {
+		t.Fatalf("created doc missing canonical frontmatter:\n%s", firstLines(arch, 4))
+	}
+}
+
+func TestBootstrapAddsFrontmatterToExistingDocPreservingBody(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	dir := filepath.Join(root, ProjectDocsDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Hand-written existing doc with no frontmatter.
+	if err := os.WriteFile(filepath.Join(dir, "CONVENTIONS.md"), []byte("# 손수 쓴 컨벤션\n\n보존되어야 할 본문\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Non-sync bootstrap must NOT overwrite the body but must add frontmatter.
+	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
+		t.Fatal(err)
+	}
+	got := mustRead(t, filepath.Join(dir, "CONVENTIONS.md"))
+	canonical, _ := DocMetaDescription("CONVENTIONS.md")
+	if !strings.HasPrefix(got, "---\nname: CONVENTIONS.md\ndescription: "+canonical+"\n---\n") {
+		t.Fatalf("frontmatter not added to existing doc:\n%s", firstLines(got, 4))
+	}
+	if !strings.Contains(got, "손수 쓴 컨벤션") || !strings.Contains(got, "보존되어야 할 본문") {
+		t.Fatalf("existing body must be preserved:\n%s", got)
+	}
+}
+
 func mustWrite(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -151,6 +189,14 @@ func mustRead(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+func firstLines(s string, n int) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) > n {
+		lines = lines[:n]
+	}
+	return strings.Join(lines, "\n")
 }
 
 func containsProjectCommand(commands []EvidenceCommand, command string) bool {
