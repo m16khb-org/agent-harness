@@ -1,4 +1,4 @@
-package core
+package commitsuggest
 
 import (
 	"os"
@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"agent-harness/internal/core/preflight"
 )
 
 func TestSuggestCommitReturnsNoopWhenDiffIsEmpty(t *testing.T) {
@@ -59,17 +61,17 @@ func initCommitSuggestRepo(t *testing.T) string {
 		{"config", "user.name", "Commit Suggest Test"},
 		{"config", "user.email", "commit@example.test"},
 	} {
-		if code, _, stderr := GitCmd(repo, args...); code != 0 {
+		if code, _, stderr := preflight.GitCmd(repo, args...); code != 0 {
 			t.Fatalf("git %v failed: %s", args, stderr)
 		}
 	}
 	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("initial\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if code, _, stderr := GitCmd(repo, "add", "README.md"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "add", "README.md"); code != 0 {
 		t.Fatalf("git add failed: %s", stderr)
 	}
-	if code, _, stderr := GitCmd(repo, "commit", "-q", "-m", "initial"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "commit", "-q", "-m", "initial"); code != 0 {
 		t.Fatalf("git commit failed: %s", stderr)
 	}
 	return repo
@@ -82,9 +84,13 @@ func writeCommitSuggestFakeAgy(t *testing.T, output string) string {
 	if runtime.GOOS == "windows" {
 		path += ".bat"
 	}
-	script := "#!/bin/sh\nprintf '%s\\n' " + shellQuote(output) + "\n"
+	script := "#!/bin/sh\nprintf '%s\\n' " + quoteCommitSuggestShell(output) + "\n"
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	return path
+}
+
+func quoteCommitSuggestShell(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
