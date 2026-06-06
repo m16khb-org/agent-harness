@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"encoding/json"
@@ -9,8 +9,8 @@ import (
 
 func TestRunSelfVerifyPromoteWithDepsPrintsDryRunAndConfirmedText(t *testing.T) {
 	calls := 0
-	deps := selfVerifyPromoteDeps{
-		promote: func(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error) {
+	deps := SelfVerifyPromoteDeps{
+		Promote: func(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error) {
 			calls++
 			if fromKey != "candidate" || baselineKey != "baseline" {
 				t.Fatalf("unexpected promote keys: from=%q baseline=%q", fromKey, baselineKey)
@@ -27,10 +27,10 @@ func TestRunSelfVerifyPromoteWithDepsPrintsDryRunAndConfirmedText(t *testing.T) 
 	}
 
 	dryRun := captureStatusVerifyStdout(t, func() error {
-		return runSelfVerifyPromoteWithDeps([]string{"--from-key", "candidate", "--baseline-key", "baseline"}, deps)
+		return RunSelfVerifyPromoteWithDeps([]string{"--from-key", "candidate", "--baseline-key", "baseline"}, deps)
 	})
 	confirmed := captureStatusVerifyStdout(t, func() error {
-		return runSelfVerifyPromoteWithDeps([]string{"--from-key", "candidate", "--baseline-key", "baseline", "--confirm"}, deps)
+		return RunSelfVerifyPromoteWithDeps([]string{"--from-key", "candidate", "--baseline-key", "baseline", "--confirm"}, deps)
 	})
 
 	if calls != 2 {
@@ -47,8 +47,8 @@ func TestRunSelfVerifyPromoteWithDepsPrintsDryRunAndConfirmedText(t *testing.T) 
 func TestRunSelfVerifyPromoteWithDepsPrintsJSONAndPropagatesErrors(t *testing.T) {
 	promoteErr := errors.New("promote failed")
 	jsonOut := captureStatusVerifyStdout(t, func() error {
-		return runSelfVerifyPromoteWithDeps([]string{"--from-key", "candidate", "--baseline-key", "baseline", "--json"}, selfVerifyPromoteDeps{
-			promote: func(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error) {
+		return RunSelfVerifyPromoteWithDeps([]string{"--from-key", "candidate", "--baseline-key", "baseline", "--json"}, SelfVerifyPromoteDeps{
+			Promote: func(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error) {
 				return SelfAugmentPromoteResult{
 					OK:          true,
 					FromKey:     fromKey,
@@ -68,8 +68,8 @@ func TestRunSelfVerifyPromoteWithDepsPrintsJSONAndPropagatesErrors(t *testing.T)
 		t.Fatalf("unexpected promote JSON result: %+v", result)
 	}
 
-	err := runSelfVerifyPromoteWithDeps([]string{"--from-key", "candidate", "--baseline-key", "baseline"}, selfVerifyPromoteDeps{
-		promote: func(string, string, bool) (SelfAugmentPromoteResult, error) {
+	err := RunSelfVerifyPromoteWithDeps([]string{"--from-key", "candidate", "--baseline-key", "baseline"}, SelfVerifyPromoteDeps{
+		Promote: func(string, string, bool) (SelfAugmentPromoteResult, error) {
 			return SelfAugmentPromoteResult{}, promoteErr
 		},
 	})
