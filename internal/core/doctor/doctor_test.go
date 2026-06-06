@@ -1,20 +1,23 @@
-package core
+package doctor_test
 
 import (
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"agent-harness/internal/core"
+	"agent-harness/internal/core/doctor"
 )
 
 func TestHarnessDoctorHealthyBaseline(t *testing.T) {
 	stateRoot := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateRoot)
 	repo := t.TempDir()
-	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
+	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +33,7 @@ func TestHarnessDoctorReportsRepoLocalRuntimeState(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	mustWrite(t, filepath.Join(repo, ".agent-harness", "state", "live.json"), `{"x":1}`)
-	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,11 +45,11 @@ func TestHarnessDoctorReportsRepoLocalRuntimeState(t *testing.T) {
 func TestHarnessDoctorReportsLifecycleNamespaceMismatch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	plan, err := InitProjectLifecycleState(repo, true)
+	plan, err := core.InitProjectLifecycleState(repo, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var profile ProjectLifecycleProfile
+	var profile core.ProjectLifecycleProfile
 	b, err := os.ReadFile(plan.ProjectJSONPath)
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +65,7 @@ func TestHarnessDoctorReportsLifecycleNamespaceMismatch(t *testing.T) {
 	if err := os.WriteFile(plan.ProjectJSONPath, append(b, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := HarnessDoctor(HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,11 +74,21 @@ func TestHarnessDoctorReportsLifecycleNamespaceMismatch(t *testing.T) {
 	}
 }
 
-func hasHarnessDoctorIssue(issues []HarnessDoctorIssue, code string) bool {
+func hasHarnessDoctorIssue(issues []doctor.HarnessDoctorIssue, code string) bool {
 	for _, issue := range issues {
 		if issue.Code == code {
 			return true
 		}
 	}
 	return false
+}
+
+func mustWrite(t *testing.T, path string, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
