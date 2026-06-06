@@ -10,6 +10,12 @@ import (
 	"agent-harness/internal/core"
 )
 
+func TestInstallerName(t *testing.T) {
+	if got := NewInstaller().Name(); got != "codex" {
+		t.Fatalf("Name() = %q, want %q", got, "codex")
+	}
+}
+
 func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
