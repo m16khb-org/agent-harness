@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"agent-harness/cmd/harness/issueopscli"
 	"agent-harness/internal/core"
 )
 
@@ -316,6 +317,14 @@ func TestResponseContractsGolden(t *testing.T) {
 	})
 
 	assertJSONGolden(t, "response_contracts.golden.json", snapshot)
+}
+
+func stubIssueOpsChildIssueVerifier(t *testing.T, verifier func(string) error) {
+	t.Helper()
+	previous := issueopscli.SetChildIssueVerifier(verifier)
+	t.Cleanup(func() {
+		issueopscli.SetChildIssueVerifier(previous)
+	})
 }
 
 func makeGitRepoForContract(t *testing.T) string {
