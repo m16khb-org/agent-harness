@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -11,41 +10,6 @@ import (
 
 	"agent-harness/internal/core"
 )
-
-type preflightFuzzCommandRunner func(root, label string, timeout time.Duration, input string, command ...string) StepResult
-type preflightFuzzGitRunner func(dir string, args ...string) (int, string, string)
-
-type preflightFuzzValidationDeps struct {
-	mkdirTemp func(string, string) (string, error)
-	removeAll func(string) error
-	writeFile func(string, []byte, os.FileMode) error
-	git       preflightFuzzGitRunner
-	run       preflightFuzzCommandRunner
-}
-
-func (deps preflightFuzzValidationDeps) withDefaults() preflightFuzzValidationDeps {
-	if deps.mkdirTemp == nil {
-		deps.mkdirTemp = os.MkdirTemp
-	}
-	if deps.removeAll == nil {
-		deps.removeAll = os.RemoveAll
-	}
-	if deps.writeFile == nil {
-		deps.writeFile = os.WriteFile
-	}
-	if deps.git == nil {
-		deps.git = core.GitCmd
-	}
-	if deps.run == nil {
-		deps.run = func(root, label string, timeout time.Duration, input string, command ...string) StepResult {
-			if len(command) == 0 {
-				return failedStep(label, fmt.Errorf("missing command"))
-			}
-			return runCommandStep(root, label, timeout, input, command[0], command[1:]...)
-		}
-	}
-	return deps
-}
 
 func validatePreflightFuzz(binary, root string, seed int64) StepResult {
 	return validatePreflightFuzzWithDeps(binary, root, seed, preflightFuzzValidationDeps{})
@@ -92,19 +56,7 @@ func validatePreflightFuzzWithDeps(binary, root string, seed int64, deps preflig
 		step.Error = err.Error()
 		return step
 	}
-	errs := []string{}
-	if !preflight.OK {
-		errs = append(errs, "preflight ok=false")
-	}
-	if preflight.CommitStyleHints["conventional_subjects"] != float64(1) {
-		errs = append(errs, "conventional subject not detected")
-	}
-	if preflight.CommitStyleHints["lore_bodies"] != float64(1) {
-		errs = append(errs, "Lore body not detected")
-	}
-	if len(preflight.SecretLikePaths) == 0 {
-		errs = append(errs, "secret-like path not detected")
-	}
+	errs := preflightFuzzValidationErrors(preflight)
 	if len(errs) > 0 {
 		step.OK = false
 		step.Error = strings.Join(errs, "; ")
