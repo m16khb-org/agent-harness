@@ -1,16 +1,16 @@
-package main
+package commandstep
 
 import "testing"
 
 func TestMergeEnvOverridesReplacesExistingKeys(t *testing.T) {
-	env := mergeEnvOverrides(
+	env := MergeEnvOverrides(
 		[]string{"HOME=/real-home", "PATH=/bin", "HOME=/duplicate-home"},
 		[]string{"HOME=/fixture-home", "HARNESS_ROOT=/fixture-root"},
 	)
 	values := map[string]string{}
 	counts := map[string]int{}
 	for _, entry := range env {
-		key, ok := envEntryKey(entry)
+		key, ok := EnvEntryKey(entry)
 		if !ok {
 			t.Fatalf("invalid env entry remained: %q", entry)
 		}
