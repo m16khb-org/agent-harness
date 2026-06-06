@@ -1,39 +1,30 @@
-package main
+package contractgolden
 
 import (
 	"encoding/json"
 	"flag"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"agent-harness/cmd/harness/mcpcli"
+	cliadapter "agent-harness/internal/adapter/cli"
 )
+
+const version = "0.1.0"
 
 var updateGolden = flag.Bool("update", false, "update golden files")
 
 func TestCLIUsageGolden(t *testing.T) {
-	oldStderr := os.Stderr
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.Stderr = w
-	usage()
-	_ = w.Close()
-	os.Stderr = oldStderr
-	b, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assertGolden(t, "usage.golden.txt", b)
+	assertGolden(t, "usage.golden.txt", []byte(cliadapter.Usage(version)))
 }
 
 func TestMCPToolsGolden(t *testing.T) {
-	assertJSONGolden(t, "mcp_tools.golden.json", mcpTools())
+	assertJSONGolden(t, "mcp_tools.golden.json", mcpcli.MCPTools())
 }
 
 func TestMCPResourcesGolden(t *testing.T) {
-	assertJSONGolden(t, "mcp_resources.golden.json", mcpResources())
+	assertJSONGolden(t, "mcp_resources.golden.json", mcpcli.MCPResources())
 }
 
 func assertJSONGolden(t *testing.T, name string, value any) {
@@ -47,7 +38,7 @@ func assertJSONGolden(t *testing.T, name string, value any) {
 
 func assertGolden(t *testing.T, name string, got []byte) {
 	t.Helper()
-	path := filepath.Join("testdata", name)
+	path := filepath.Join("..", "testdata", name)
 	if *updateGolden {
 		if err := os.WriteFile(path, got, 0o644); err != nil {
 			t.Fatal(err)
@@ -56,7 +47,7 @@ func assertGolden(t *testing.T, name string, got []byte) {
 	}
 	want, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read golden %s: %v (run go test ./cmd/harness -run Golden -update)", path, err)
+		t.Fatalf("read golden %s: %v (run go test ./cmd/harness/contractgolden -run Golden -update)", path, err)
 	}
 	if string(got) != string(want) {
 		t.Fatalf("golden mismatch for %s\n--- got ---\n%s\n--- want ---\n%s", name, string(got), string(want))
