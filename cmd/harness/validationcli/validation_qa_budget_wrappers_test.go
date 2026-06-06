@@ -1,4 +1,4 @@
-package main
+package validationcli
 
 import (
 	"os"
@@ -11,18 +11,18 @@ func TestValidationQABudgetWrappersUseDefaultSurfaces(t *testing.T) {
 	root := t.TempDir()
 	writeQAGateWrapperFixture(t, root)
 
-	redaction := validateRedactionAudit(root)
+	redaction := ValidateRedactionAudit(root)
 	if !redaction.OK || redaction.Label != "redaction audit" {
 		t.Fatalf("expected redaction audit wrapper success, got %#v", redaction)
 	}
 
-	qa := validateQAGate(root)
+	qa := ValidateQAGate(root)
 	if !qa.OK || qa.Label != "QA gate" {
 		t.Fatalf("expected QA gate wrapper success, got %#v", qa)
 	}
 
 	binary := writeStepBudgetFakeBinary(t, t.TempDir())
-	budget := validateStepBudgetBaseline(binary, root, 808)
+	budget := ValidateStepBudgetBaseline(binary, root, 808)
 	if !budget.OK || budget.Label != "step budget baseline" {
 		t.Fatalf("expected step budget wrapper success, got %#v", budget)
 	}

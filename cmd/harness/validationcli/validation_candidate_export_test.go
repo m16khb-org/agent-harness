@@ -1,4 +1,4 @@
-package main
+package validationcli
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ func TestValidateSelfVerifyCandidateExportWrapperUsesExecutableSurface(t *testin
 	root := t.TempDir()
 	binary := writeCandidateExportFakeBinary(t, root, "self-verify-candidates-202")
 
-	step := validateSelfVerifyCandidateExport(binary, root, 202)
+	step := ValidateSelfVerifyCandidateExport(binary, root, 202)
 	if !step.OK || !strings.Contains(step.Command, "self-verify candidates") || !strings.Contains(step.Command, "state read") {
 		t.Fatalf("expected wrapper success, got %+v", step)
 	}
@@ -29,20 +29,20 @@ func TestValidateCandidateExportWithDepsCoversSuccessAndCommandFailure(t *testin
 	export := validCandidateExportResult(key)
 	snapshot := validCandidateExportSnapshot(export)
 	calls := []string{}
-	deps := candidateExportValidationDeps{
-		makeTempState: func(seed int64) (string, error) {
+	deps := CandidateExportValidationDeps{
+		MakeTempState: func(seed int64) (string, error) {
 			if seed != 77 {
 				t.Fatalf("unexpected seed: %d", seed)
 			}
 			return tempState, nil
 		},
-		removeAll: func(path string) error {
+		RemoveAll: func(path string) error {
 			if path != tempState {
 				t.Fatalf("unexpected cleanup path: %s", path)
 			}
 			return nil
 		},
-		run: func(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult {
+		Run: func(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult {
 			calls = append(calls, label+":"+strings.Join(append([]string{name}, args...), " "))
 			if dir != root || timeout != 30*time.Second || stdin != "" || len(env) != 1 || env[0] != "HARNESS_STATE_DIR="+tempState {
 				t.Fatalf("unexpected command envelope: dir=%q label=%q timeout=%s stdin=%q env=%v", dir, label, timeout, stdin, env)
@@ -58,15 +58,15 @@ func TestValidateCandidateExportWithDepsCoversSuccessAndCommandFailure(t *testin
 			return StepResult{}
 		},
 	}
-	step := validateSelfVerifyCandidateExportWithDeps("bin/agent-harness", root, 77, deps)
+	step := ValidateSelfVerifyCandidateExportWithDeps("bin/agent-harness", root, 77, deps)
 	if !step.OK || !strings.Contains(step.Command, "candidate export:bin/agent-harness self-verify candidates") || !strings.Contains(step.Command, "candidate export state read:bin/agent-harness state read") || len(calls) != 2 {
 		t.Fatalf("unexpected candidate export success: step=%+v calls=%v", step, calls)
 	}
 
-	deps.run = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
+	deps.Run = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
 		return StepResult{Label: "candidate export", Command: "export", OK: false, Error: "boom"}
 	}
-	failed := validateSelfVerifyCandidateExportWithDeps("bin", root, 77, deps)
+	failed := ValidateSelfVerifyCandidateExportWithDeps("bin", root, 77, deps)
 	if failed.OK || !strings.Contains(failed.Error, "candidate export: boom") {
 		t.Fatalf("unexpected command failure: %+v", failed)
 	}
@@ -77,56 +77,56 @@ func TestValidateCandidateExportWithDepsCoversParseAndContractFailures(t *testin
 	tempState := t.TempDir()
 	key := "self-verify-candidates-5"
 	export := validCandidateExportResult(key)
-	deps := candidateExportValidationDeps{
-		makeTempState: func(int64) (string, error) { return tempState, nil },
-		removeAll:     func(string) error { return nil },
+	deps := CandidateExportValidationDeps{
+		MakeTempState: func(int64) (string, error) { return tempState, nil },
+		RemoveAll:     func(string) error { return nil },
 	}
 
-	deps.run = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
+	deps.Run = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
 		return StepResult{Label: "candidate export", OK: true, Stdout: "{"}
 	}
-	badExportJSON := validateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
+	badExportJSON := ValidateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
 	if badExportJSON.OK || badExportJSON.Error == "" {
 		t.Fatalf("expected export JSON failure, got %+v", badExportJSON)
 	}
 
-	deps.run = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, _ ...string) StepResult {
+	deps.Run = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, _ ...string) StepResult {
 		if label == "candidate export" {
 			return StepResult{Label: label, Command: "export", OK: true, Stdout: mustMarshalCandidateExportTest(t, export)}
 		}
 		return StepResult{Label: label, Command: "read", OK: true, Stdout: "{"}
 	}
-	badReadJSON := validateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
+	badReadJSON := ValidateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
 	if badReadJSON.OK || badReadJSON.Error == "" {
 		t.Fatalf("expected read JSON failure, got %+v", badReadJSON)
 	}
 
-	deps.run = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, _ ...string) StepResult {
+	deps.Run = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, _ ...string) StepResult {
 		if label == "candidate export" {
 			return StepResult{Label: label, Command: "export", OK: true, Stdout: mustMarshalCandidateExportTest(t, export)}
 		}
 		return StepResult{Label: label, Command: "read", OK: true, Stdout: mustMarshalCandidateExportTest(t, core.StateResult{OK: true, Record: core.StateRecord{Content: "{"}})}
 	}
-	badSnapshot := validateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
+	badSnapshot := ValidateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
 	if badSnapshot.OK || !strings.Contains(badSnapshot.Error, "candidate export state snapshot parse") {
 		t.Fatalf("expected snapshot JSON failure, got %+v", badSnapshot)
 	}
 
 	invalidExport := export
 	invalidExport.CandidateCount = 1
-	deps.run = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, _ ...string) StepResult {
+	deps.Run = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, _ ...string) StepResult {
 		if label == "candidate export" {
 			return StepResult{Label: label, Command: "export", OK: true, Stdout: mustMarshalCandidateExportTest(t, invalidExport)}
 		}
 		return StepResult{Label: label, Command: "read", OK: true, Stdout: mustMarshalCandidateExportTest(t, core.StateResult{OK: true, Record: core.StateRecord{Content: mustMarshalCandidateExportTest(t, validCandidateExportSnapshot(export))}})}
 	}
-	contractFailure := validateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
+	contractFailure := ValidateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
 	if contractFailure.OK || !strings.Contains(contractFailure.Error, "candidate export did not include the candidate curriculum") {
 		t.Fatalf("expected contract failure, got %+v", contractFailure)
 	}
 
-	deps.makeTempState = func(int64) (string, error) { return "", errors.New("temp fail") }
-	tempFailure := validateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
+	deps.MakeTempState = func(int64) (string, error) { return "", errors.New("temp fail") }
+	tempFailure := ValidateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
 	if tempFailure.OK || tempFailure.Error != "temp fail" {
 		t.Fatalf("unexpected temp failure: %+v", tempFailure)
 	}

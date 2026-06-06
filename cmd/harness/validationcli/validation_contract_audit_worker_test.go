@@ -1,4 +1,4 @@
-package main
+package validationcli
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"agent-harness/cmd/harness/contractcli"
 	"agent-harness/internal/adapter/cli"
 	"agent-harness/internal/core"
 )
@@ -16,16 +17,16 @@ import (
 func TestValidateCommandAuditWithDepsCoversSuccessCommandReadAndContractFailures(t *testing.T) {
 	root := t.TempDir()
 	auditLog := filepath.Join(root, "audit.jsonl")
-	deps := contractAuditWorkerValidationDeps{
-		mkdirTemp: func(string, string) (string, error) { return root, nil },
-		removeAll: func(string) error { return nil },
-		readFile: func(path string) ([]byte, error) {
+	deps := ContractAuditWorkerValidationDeps{
+		MkdirTemp: func(string, string) (string, error) { return root, nil },
+		RemoveAll: func(string) error { return nil },
+		ReadFile: func(path string) ([]byte, error) {
 			if path != auditLog {
 				t.Fatalf("unexpected audit path %s", path)
 			}
 			return []byte(`{"kind":"command_policy_audit","audit_log_id":"abc","payload":"<redacted>"}`), nil
 		},
-		runCommandStepEnv: func(_ string, label string, _ time.Duration, _ string, env []string, _ string, args ...string) StepResult {
+		RunCommandStepEnv: func(_ string, label string, _ time.Duration, _ string, env []string, _ string, args ...string) StepResult {
 			if label != "command audit smoke" || !containsString(env, "HARNESS_AUDIT_LOG="+auditLog) || !containsString(args, "audit") {
 				return StepResult{Label: label, OK: false, Error: "bad command envelope"}
 			}
@@ -33,34 +34,34 @@ func TestValidateCommandAuditWithDepsCoversSuccessCommandReadAndContractFailures
 		},
 	}
 
-	step := validateCommandAuditWithDeps("harness", root, 11, deps)
+	step := ValidateCommandAuditWithDeps("harness", root, 11, deps)
 	if !step.OK || step.Label != "command audit smoke" {
 		t.Fatalf("expected audit success, got %+v", step)
 	}
 
-	deps.mkdirTemp = func(string, string) (string, error) { return "", errors.New("temp failed") }
-	if step := validateCommandAuditWithDeps("harness", root, 11, deps); step.OK || !strings.Contains(step.Error, "temp failed") {
+	deps.MkdirTemp = func(string, string) (string, error) { return "", errors.New("temp failed") }
+	if step := ValidateCommandAuditWithDeps("harness", root, 11, deps); step.OK || !strings.Contains(step.Error, "temp failed") {
 		t.Fatalf("expected temp failure, got %+v", step)
 	}
 
-	deps.mkdirTemp = func(string, string) (string, error) { return root, nil }
-	deps.runCommandStepEnv = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
+	deps.MkdirTemp = func(string, string) (string, error) { return root, nil }
+	deps.RunCommandStepEnv = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
 		return StepResult{Label: "command audit smoke", OK: false, Error: "audit command failed"}
 	}
-	if step := validateCommandAuditWithDeps("harness", root, 11, deps); step.OK || step.Error != "audit command failed" {
+	if step := ValidateCommandAuditWithDeps("harness", root, 11, deps); step.OK || step.Error != "audit command failed" {
 		t.Fatalf("expected command failure passthrough, got %+v", step)
 	}
 
-	deps.runCommandStepEnv = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
+	deps.RunCommandStepEnv = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
 		return StepResult{Label: "command audit smoke", OK: true}
 	}
-	deps.readFile = func(string) ([]byte, error) { return nil, errors.New("read failed") }
-	if step := validateCommandAuditWithDeps("harness", root, 11, deps); step.OK || !strings.Contains(step.Error, "read failed") {
+	deps.ReadFile = func(string) ([]byte, error) { return nil, errors.New("read failed") }
+	if step := ValidateCommandAuditWithDeps("harness", root, 11, deps); step.OK || !strings.Contains(step.Error, "read failed") {
 		t.Fatalf("expected read failure, got %+v", step)
 	}
 
-	deps.readFile = func(string) ([]byte, error) { return []byte("secret-value sk-123"), nil }
-	badLog := validateCommandAuditWithDeps("harness", root, 11, deps)
+	deps.ReadFile = func(string) ([]byte, error) { return []byte("secret-value sk-123"), nil }
+	badLog := ValidateCommandAuditWithDeps("harness", root, 11, deps)
 	for _, want := range []string{"audit log missing command_policy_audit fields", "audit log contains unredacted secret fixture"} {
 		if !strings.Contains(badLog.Error, want) {
 			t.Fatalf("expected %q in %+v", want, badLog)
@@ -76,9 +77,9 @@ func TestValidateContractAuditWorkerWrappersUseExecutableSurface(t *testing.T) {
 		name string
 		run  func() StepResult
 	}{
-		{name: "command audit", run: func() StepResult { return validateCommandAudit(binary, root, 101) }},
-		{name: "contract check", run: func() StepResult { return validateContractCheck(binary, root) }},
-		{name: "worker lifecycle", run: func() StepResult { return validateWorkerLifecycle(binary, root, 101) }},
+		{name: "command audit", run: func() StepResult { return ValidateCommandAudit(binary, root, 101) }},
+		{name: "contract check", run: func() StepResult { return ValidateContractCheck(binary, root) }},
+		{name: "worker lifecycle", run: func() StepResult { return ValidateWorkerLifecycle(binary, root, 101) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if step := tc.run(); !step.OK {
@@ -121,40 +122,40 @@ esac
 
 func TestValidateContractCheckWithDepsCoversSuccessParseAndContractFailures(t *testing.T) {
 	root := t.TempDir()
-	contract := CompatibilityContract{OK: true, Hash: "abc", CLICommands: []cli.Command{{Name: "worker"}, {Name: "contract"}, {Name: "policy"}}}
+	contract := contractcli.CompatibilityContract{OK: true, Hash: "abc", CLICommands: []cli.Command{{Name: "worker"}, {Name: "contract"}, {Name: "policy"}}}
 	body, _ := json.Marshal(contract)
-	deps := contractAuditWorkerValidationDeps{
-		runCommandStep: func(_ string, label string, _ time.Duration, _ string, _ string, args ...string) StepResult {
+	deps := ContractAuditWorkerValidationDeps{
+		RunCommandStep: func(_ string, label string, _ time.Duration, _ string, _ string, args ...string) StepResult {
 			if label != "contract check" || strings.Join(args, " ") != "contract check --json" {
 				return StepResult{Label: label, OK: false, Error: "bad contract command"}
 			}
 			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: string(body)}
 		},
 	}
-	if step := validateContractCheckWithDeps("harness", root, deps); !step.OK {
+	if step := ValidateContractCheckWithDeps("harness", root, deps); !step.OK {
 		t.Fatalf("expected contract success, got %+v", step)
 	}
 
-	deps.runCommandStep = func(string, string, time.Duration, string, string, ...string) StepResult {
+	deps.RunCommandStep = func(string, string, time.Duration, string, string, ...string) StepResult {
 		return StepResult{Label: "contract check", OK: false, Error: "contract command failed"}
 	}
-	if step := validateContractCheckWithDeps("harness", root, deps); step.OK || step.Error != "contract command failed" {
+	if step := ValidateContractCheckWithDeps("harness", root, deps); step.OK || step.Error != "contract command failed" {
 		t.Fatalf("expected command failure passthrough, got %+v", step)
 	}
 
-	deps.runCommandStep = func(string, string, time.Duration, string, string, ...string) StepResult {
+	deps.RunCommandStep = func(string, string, time.Duration, string, string, ...string) StepResult {
 		return StepResult{Label: "contract check", OK: true, Stdout: `{"ok":`}
 	}
-	if step := validateContractCheckWithDeps("harness", root, deps); step.OK || !strings.Contains(step.Error, "unexpected end") {
+	if step := ValidateContractCheckWithDeps("harness", root, deps); step.OK || !strings.Contains(step.Error, "unexpected end") {
 		t.Fatalf("expected parse failure, got %+v", step)
 	}
 
-	bad := CompatibilityContract{OK: false, Hash: "", CLICommands: []cli.Command{{Name: "worker"}}}
+	bad := contractcli.CompatibilityContract{OK: false, Hash: "", CLICommands: []cli.Command{{Name: "worker"}}}
 	badBody, _ := json.Marshal(bad)
-	deps.runCommandStep = func(string, string, time.Duration, string, string, ...string) StepResult {
+	deps.RunCommandStep = func(string, string, time.Duration, string, string, ...string) StepResult {
 		return StepResult{Label: "contract check", OK: true, Stdout: string(badBody)}
 	}
-	failed := validateContractCheckWithDeps("harness", root, deps)
+	failed := ValidateContractCheckWithDeps("harness", root, deps)
 	for _, want := range []string{"contract did not pass or hash is empty", "missing CLI command contract", "missing CLI command policy"} {
 		if !strings.Contains(failed.Error, want) {
 			t.Fatalf("expected %q in %+v", want, failed)
@@ -167,10 +168,10 @@ func TestValidateWorkerLifecycleWithDepsCoversSuccessParseCommandAndContractFail
 	workerDir := filepath.Join(root, "worker")
 	queued := core.WorkerJob{OK: true, ID: "job-1", Kind: "smoke", Status: core.WorkerStatusQueued, NoShell: true}
 	queuedBody, _ := json.Marshal(queued)
-	deps := contractAuditWorkerValidationDeps{
-		mkdirTemp: func(string, string) (string, error) { return workerDir, nil },
-		removeAll: func(string) error { return nil },
-		runCommandStepEnv: func(_ string, label string, _ time.Duration, _ string, env []string, _ string, args ...string) StepResult {
+	deps := ContractAuditWorkerValidationDeps{
+		MkdirTemp: func(string, string) (string, error) { return workerDir, nil },
+		RemoveAll: func(string) error { return nil },
+		RunCommandStepEnv: func(_ string, label string, _ time.Duration, _ string, env []string, _ string, args ...string) StepResult {
 			if !containsString(env, "HARNESS_WORKER_DIR="+workerDir) {
 				return StepResult{Label: label, OK: false, Error: "missing worker env"}
 			}
@@ -180,36 +181,36 @@ func TestValidateWorkerLifecycleWithDepsCoversSuccessParseCommandAndContractFail
 			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: `{}`}
 		},
 	}
-	if step := validateWorkerLifecycleWithDeps("harness", root, 7, deps); !step.OK {
+	if step := ValidateWorkerLifecycleWithDeps("harness", root, 7, deps); !step.OK {
 		t.Fatalf("expected worker success, got %+v", step)
 	}
 
-	deps.mkdirTemp = func(string, string) (string, error) { return "", errors.New("worker temp failed") }
-	if step := validateWorkerLifecycleWithDeps("harness", root, 7, deps); step.OK || !strings.Contains(step.Error, "worker temp failed") {
+	deps.MkdirTemp = func(string, string) (string, error) { return "", errors.New("worker temp failed") }
+	if step := ValidateWorkerLifecycleWithDeps("harness", root, 7, deps); step.OK || !strings.Contains(step.Error, "worker temp failed") {
 		t.Fatalf("expected temp failure, got %+v", step)
 	}
 
-	deps.mkdirTemp = func(string, string) (string, error) { return workerDir, nil }
-	deps.runCommandStepEnv = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
+	deps.MkdirTemp = func(string, string) (string, error) { return workerDir, nil }
+	deps.RunCommandStepEnv = func(string, string, time.Duration, string, []string, string, ...string) StepResult {
 		return StepResult{Label: "worker lifecycle enqueue", OK: false, Error: "enqueue failed"}
 	}
-	if step := validateWorkerLifecycleWithDeps("harness", root, 7, deps); step.OK || step.Error != "enqueue failed" {
+	if step := ValidateWorkerLifecycleWithDeps("harness", root, 7, deps); step.OK || step.Error != "enqueue failed" {
 		t.Fatalf("expected enqueue passthrough, got %+v", step)
 	}
 
-	deps.runCommandStepEnv = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, args ...string) StepResult {
+	deps.RunCommandStepEnv = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, args ...string) StepResult {
 		if strings.Contains(label, "enqueue") {
 			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: `{"ok":`}
 		}
 		return StepResult{Label: label, OK: true}
 	}
-	if step := validateWorkerLifecycleWithDeps("harness", root, 7, deps); step.OK || !strings.Contains(step.Error, "unexpected end") {
+	if step := ValidateWorkerLifecycleWithDeps("harness", root, 7, deps); step.OK || !strings.Contains(step.Error, "unexpected end") {
 		t.Fatalf("expected enqueue parse failure, got %+v", step)
 	}
 
 	badJob := core.WorkerJob{OK: true, ID: "job-2", Status: core.WorkerStatusRunning, NoShell: false}
 	badBody, _ := json.Marshal(badJob)
-	deps.runCommandStepEnv = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, args ...string) StepResult {
+	deps.RunCommandStepEnv = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, args ...string) StepResult {
 		if strings.Contains(label, "enqueue") {
 			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: string(badBody)}
 		}
@@ -218,7 +219,7 @@ func TestValidateWorkerLifecycleWithDepsCoversSuccessParseCommandAndContractFail
 		}
 		return StepResult{Label: label, OK: true}
 	}
-	failed := validateWorkerLifecycleWithDeps("harness", root, 7, deps)
+	failed := ValidateWorkerLifecycleWithDeps("harness", root, 7, deps)
 	for _, want := range []string{"worker lifecycle status failed", "worker job is not queued no-shell"} {
 		if !strings.Contains(failed.Error, want) {
 			t.Fatalf("expected %q in %+v", want, failed)

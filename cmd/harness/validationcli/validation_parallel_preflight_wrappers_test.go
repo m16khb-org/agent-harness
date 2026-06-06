@@ -1,4 +1,4 @@
-package main
+package validationcli
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ func TestValidationParallelPreflightWrappersUseDefaultSurfaces(t *testing.T) {
 	root := t.TempDir()
 	binary := writeParallelPreflightFakeBinary(t, t.TempDir())
 
-	parallel := validateParallelTempIsolation(binary, root, 606)
+	parallel := ValidateParallelTempIsolation(binary, root, 606)
 	if !parallel.OK || parallel.Label != "parallel isolation" {
 		t.Fatalf("expected parallel isolation wrapper success, got %#v", parallel)
 	}
@@ -22,7 +22,7 @@ func TestValidationParallelPreflightWrappersUseDefaultSurfaces(t *testing.T) {
 		t.Fatalf("expected wrapper to exercise state CLI surface, got command=%q stdout=%q", parallel.Command, parallel.Stdout)
 	}
 
-	preflight := validatePreflightFuzz(binary, root, 607)
+	preflight := ValidatePreflightFuzz(binary, root, 607)
 	if !preflight.OK || preflight.Label != "preflight fuzz" {
 		t.Fatalf("expected preflight fuzz wrapper success, got %#v", preflight)
 	}

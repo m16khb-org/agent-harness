@@ -17,14 +17,18 @@ const skillName = "atomic-commit-push"
 type StepResult = commandstep.StepResult
 type SelfAugmentCompareResult = selfworkflow.SelfAugmentCompareResult
 type SelfAugmentSlowStep = selfworkflow.SelfAugmentSlowStep
+type SelfAugmentSlowStepRegression = selfworkflow.SelfAugmentSlowStepRegression
 type SelfAugmentStateSnapshot = selfworkflow.SelfAugmentStateSnapshot
+type SelfAugmentStateCheckpoint = selfworkflow.SelfAugmentStateCheckpoint
 type SelfAugmentStepDurationStat = selfworkflow.SelfAugmentStepDurationStat
+type SelfAugmentStepBudgetRegression = selfworkflow.SelfAugmentStepBudgetRegression
 type SelfAugmentSummary = selfworkflow.SelfAugmentSummary
 type SelfAugmentPromoteResult = selfworkflow.SelfAugmentPromoteResult
 type SelfAugmentHistoryEntry = selfworkflow.SelfAugmentHistoryEntry
 type SelfAugmentHistoryResult = selfworkflow.SelfAugmentHistoryResult
 type SelfAugmentHistoryRetention = selfworkflow.SelfAugmentHistoryRetention
 type SelfVerificationCandidateExportResult = selfworkflow.SelfVerificationCandidateExportResult
+type SelfVerificationCandidate = selfworkflow.SelfVerificationCandidate
 type SelfVerificationCandidateExportStateSnapshot = selfworkflow.SelfVerificationCandidateExportStateSnapshot
 type daemonPaths = daemoncli.Paths
 type daemonStatus = daemoncli.Status
@@ -32,6 +36,7 @@ type daemonStatus = daemoncli.Status
 const selfVerificationCandidateExportKind = selfworkflow.SelfVerificationCandidateExportKind
 const selfVerificationKoreanName = selfworkflow.SelfVerificationKoreanName
 const selfVerificationSummaryKind = selfworkflow.SelfVerificationSummaryKind
+const selfAugmentCandidateStatusSatisfied = selfworkflow.SelfAugmentCandidateStatusSatisfied
 
 func runCommandStep(dir, label string, timeout time.Duration, stdin string, name string, args ...string) StepResult {
 	return commandstep.Run(dir, label, timeout, stdin, selfVerifyCommandOutputBudgetBytes, name, args...)

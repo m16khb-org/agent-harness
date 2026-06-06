@@ -1,4 +1,4 @@
-package main
+package validationcli
 
 import (
 	"os"
@@ -14,16 +14,16 @@ func TestValidationMCPMermaidNativeWrappersUseDefaultSurfaces(t *testing.T) {
 	writeNativeIntegrationFixture(t, root, home)
 
 	mcpBinary := writeMCPValidationFakeBinary(t, root)
-	if step := validateMCP(mcpBinary, root); !step.OK || !strings.Contains(step.Stdout, "atomic_commit_preflight") {
+	if step := ValidateMCP(mcpBinary, root); !step.OK || !strings.Contains(step.Stdout, "atomic_commit_preflight") {
 		t.Fatalf("expected MCP wrapper success, got %+v", step)
 	}
 
 	writeFileForWrapperTest(t, filepath.Join(root, "GENIUS_THINK.md"), "# Diagram\n\n```mermaid\ngraph TD\n  A[\"OK\"]\n```\n")
-	if issues := validateMermaidDocs(root); len(issues) != 0 {
+	if issues := ValidateMermaidDocs(root); len(issues) != 0 {
 		t.Fatalf("expected Mermaid wrapper success, got %v", issues)
 	}
 
-	if step := validateNativeIntegration(root); !step.OK || !strings.Contains(step.Stdout, "duplicate_mcp_warning_fixture") {
+	if step := ValidateNativeIntegration(root); !step.OK || !strings.Contains(step.Stdout, "duplicate_mcp_warning_fixture") {
 		t.Fatalf("expected native integration wrapper success, got %+v", step)
 	}
 }
