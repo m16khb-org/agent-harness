@@ -1,4 +1,4 @@
-package validationcli
+package commandpolicy
 
 import (
 	"encoding/json"
@@ -12,6 +12,15 @@ type commandPolicyValidationCheck struct {
 	name     string
 	args     []string
 	validate func(stdout string) []string
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func commandPolicyChecks(binary, tempWorkspace, outside string) []commandPolicyValidationCheck {

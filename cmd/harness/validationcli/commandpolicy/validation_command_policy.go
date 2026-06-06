@@ -1,12 +1,18 @@
-package validationcli
+package commandpolicy
 
 import (
+	"agent-harness/cmd/harness/commandstep"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 )
+
+const aggregateOutputBudgetBytes = 8 * 1024
+const commandOutputBudgetBytes = 32 * 1024
+
+type StepResult = commandstep.StepResult
 
 type commandPolicyCommandRunner func(dir, label string, timeout time.Duration, stdin string, name string, args ...string) StepResult
 
@@ -37,13 +43,24 @@ func (deps commandPolicyValidationDeps) withDefaults() commandPolicyValidationDe
 		deps.exists = exists
 	}
 	if deps.run == nil {
-		deps.run = runCommandStep
+		deps.run = func(dir, label string, timeout time.Duration, stdin string, name string, args ...string) StepResult {
+			return commandstep.Run(dir, label, timeout, stdin, commandOutputBudgetBytes, name, args...)
+		}
 	}
 	return deps
 }
 
-func validateCommandPolicy(binary, root string) StepResult {
+func Validate(binary, root string) StepResult {
 	return validateCommandPolicyWithDeps(binary, root, commandPolicyValidationDeps{})
+}
+
+func validateCommandPolicy(binary, root string) StepResult {
+	return Validate(binary, root)
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func validateCommandPolicyWithDeps(binary, root string, deps commandPolicyValidationDeps) StepResult {
@@ -51,12 +68,12 @@ func validateCommandPolicyWithDeps(binary, root string, deps commandPolicyValida
 	started := time.Now()
 	tempWorkspace, err := deps.makeTempDir("workspace")
 	if err != nil {
-		return failedStep("command policy smoke", err)
+		return commandstep.FailedStep("command policy smoke", err)
 	}
 	defer deps.removeAll(tempWorkspace)
 	outside, err := deps.makeTempDir("outside")
 	if err != nil {
-		return failedStep("command policy smoke", err)
+		return commandstep.FailedStep("command policy smoke", err)
 	}
 	defer deps.removeAll(outside)
 
@@ -67,18 +84,18 @@ func validateCommandPolicyWithDeps(binary, root string, deps commandPolicyValida
 		stdoutParts = append(stdoutParts, step.Stdout)
 		commands = append(commands, step.Command)
 		if !step.OK {
-			return combineFailedStep("command policy smoke", started, step, stdoutParts, commands)
+			return commandstep.CombineFailedStep("command policy smoke", started, step, stdoutParts, commands, aggregateOutputBudgetBytes)
 		}
 		if errs := check.validate(step.Stdout); len(errs) > 0 {
-			return assertionStepWithOutput("command policy smoke", started, errs, stdoutParts, commands)
+			return commandstep.AssertionStepWithOutput("command policy smoke", started, errs, stdoutParts, commands, aggregateOutputBudgetBytes)
 		}
 	}
 	marker := filepath.Join(tempWorkspace, "marker")
 	if deps.exists(marker) {
-		return assertionStepWithOutput("command policy smoke", started, []string{"fake-run created marker; command executed unexpectedly"}, stdoutParts, commands)
+		return commandstep.AssertionStepWithOutput("command policy smoke", started, []string{"fake-run created marker; command executed unexpectedly"}, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 
-	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
+	stdoutText, stdoutTruncated, stdoutBytes := commandstep.TailWithBudget(strings.Join(stdoutParts, "\n"), aggregateOutputBudgetBytes)
 	return StepResult{
 		Label:           "command policy smoke",
 		Command:         strings.Join(commands, " && "),

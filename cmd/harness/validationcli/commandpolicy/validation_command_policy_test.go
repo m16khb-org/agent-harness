@@ -1,4 +1,4 @@
-package validationcli
+package commandpolicy
 
 import (
 	"encoding/json"
