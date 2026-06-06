@@ -29,9 +29,11 @@ func collectSelfAugmentRepoSignals(root string, docsIndexed int, skills []string
 		HasInstallDryRunMode:        dirContainsTerm(root, filepath.Join("cmd", "harness", "installcli"), "dry-run") && fileContainsTerm(root, filepath.Join("internal", "adapter", "install_contract_matrix_test.go"), "TestNativeInstallDryRunDoesNotWrite") && docsContainTerm(root, "install-native --dry-run"),
 		HasCLIAdapterSplit:          fileContainsTerm(root, filepath.Join("internal", "adapter", "cli", "usage.go"), "func Usage") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "cliadapter.Usage"),
 		HasMCPAdapterCatalog:        hasMCPAdapterCatalog,
-		HasCompatibilityContract:    fileContainsTerm(root, filepath.Join("cmd", "harness", "contract.go"), "CompatibilityContract") && dirContainsTerm(root, filepath.Join("cmd", "harness"), `case "contract"`),
-		HasCandidateRefill:          dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "candidate-refill-curriculum") && dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "release-repro-pack"),
-		HasCommandAuditLog:          fileContainsTerm(root, filepath.Join("internal", "core", "audit", "audit.go"), "AuditCommandPolicy") && dirContainsTerm(root, filepath.Join("cmd", "harness", "policycli"), "policy audit"),
-		HasWorkerMVP:                fileContainsTerm(root, filepath.Join("internal", "core", "worker", "worker.go"), "EnqueueWorkerJob") && dirContainsTerm(root, filepath.Join("cmd", "harness", "workercli"), "runWorkerEnqueue"),
+		HasCompatibilityContract: (fileContainsTerm(root, filepath.Join("cmd", "harness", "contract.go"), "CompatibilityContract") ||
+			fileContainsTerm(root, filepath.Join("cmd", "harness", "misc_facade.go"), "CompatibilityContract")) &&
+			dirContainsTerm(root, filepath.Join("cmd", "harness"), `case "contract"`),
+		HasCandidateRefill: dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "candidate-refill-curriculum") && dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "release-repro-pack"),
+		HasCommandAuditLog: fileContainsTerm(root, filepath.Join("internal", "core", "audit", "audit.go"), "AuditCommandPolicy") && dirContainsTerm(root, filepath.Join("cmd", "harness", "policycli"), "policy audit"),
+		HasWorkerMVP:       fileContainsTerm(root, filepath.Join("internal", "core", "worker", "worker.go"), "EnqueueWorkerJob") && dirContainsTerm(root, filepath.Join("cmd", "harness", "workercli"), "runWorkerEnqueue"),
 	}
 }
