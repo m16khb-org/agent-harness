@@ -42,14 +42,28 @@ func runMCPProxyWithDeps(deps daemonProxyDeps) error {
 		_, err := io.Copy(deps.stdout, conn)
 		stdoutDone <- err
 	}()
-	_, stdinErr := io.Copy(conn, deps.stdin)
-	if unixConn, ok := conn.(interface{ CloseWrite() error }); ok {
-		_ = unixConn.CloseWrite()
+	stdinDone := make(chan error, 1)
+	go func() {
+		_, err := io.Copy(conn, deps.stdin)
+		if unixConn, ok := conn.(interface{ CloseWrite() error }); ok {
+			_ = unixConn.CloseWrite()
+		}
+		stdinDone <- err
+	}()
+	select {
+	case stdinErr := <-stdinDone:
+		stdoutErr := <-stdoutDone
+		if stdinErr != nil && !errors.Is(stdinErr, net.ErrClosed) {
+			return stdinErr
+		}
+		return daemonProxyOutputError(stdoutErr)
+	case stdoutErr := <-stdoutDone:
+		_ = conn.Close()
+		return daemonProxyOutputError(stdoutErr)
 	}
-	stdoutErr := <-stdoutDone
-	if stdinErr != nil && !errors.Is(stdinErr, net.ErrClosed) {
-		return stdinErr
-	}
+}
+
+func daemonProxyOutputError(stdoutErr error) error {
 	if stdoutErr != nil && !errors.Is(stdoutErr, net.ErrClosed) && !strings.Contains(stdoutErr.Error(), "use of closed network connection") {
 		return stdoutErr
 	}

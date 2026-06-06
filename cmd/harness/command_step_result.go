@@ -81,13 +81,17 @@ func tailWithBudget(s string, max int) (string, bool, int) {
 		return s, false, originalBytes
 	}
 	tailBudget := max
-	marker := fmt.Sprintf("[truncated: original_bytes=%d omitted_bytes=%d]\n", originalBytes, originalBytes-tailBudget)
-	tailBudget = max - len(marker)
-	if tailBudget < 0 {
-		return marker[:max], true, originalBytes
+	for {
+		marker := fmt.Sprintf("[truncated: original_bytes=%d omitted_bytes=%d]\n", originalBytes, originalBytes-tailBudget)
+		tailBudgetNext := max - len(marker)
+		if tailBudgetNext < 0 {
+			return marker[:max], true, originalBytes
+		}
+		if tailBudgetNext == tailBudget {
+			return marker + s[originalBytes-tailBudget:], true, originalBytes
+		}
+		tailBudget = tailBudgetNext
 	}
-	marker = fmt.Sprintf("[truncated: original_bytes=%d omitted_bytes=%d]\n", originalBytes, originalBytes-tailBudget)
-	return marker + s[originalBytes-tailBudget:], true, originalBytes
 }
 
 func indentLines(s string) string {

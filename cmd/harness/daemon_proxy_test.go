@@ -43,6 +43,43 @@ func TestRunMCPProxyWithDepsCopiesDaemonAndStdinStreams(t *testing.T) {
 	}
 }
 
+func TestRunMCPProxyWithDepsReturns_whenDaemonClosesBeforeStdin(t *testing.T) {
+	stdin := newDaemonProxyBlockingReader()
+	conn := &daemonProxyFakeConn{
+		reader: strings.NewReader("daemon response\n"),
+	}
+	var stdout bytes.Buffer
+	done := make(chan error, 1)
+
+	go func() {
+		done <- runMCPProxyWithDeps(daemonProxyDeps{
+			ensureDaemonRunning: func() (daemonStatus, error) {
+				return daemonStatus{Paths: daemonPaths{Socket: "daemon.sock"}}, nil
+			},
+			dial: func(string, string) (io.ReadWriteCloser, error) {
+				return conn, nil
+			},
+			stdin:  stdin,
+			stdout: &stdout,
+		})
+	}()
+
+	select {
+	case err := <-done:
+		stdin.release()
+		if err != nil {
+			t.Fatalf("expected proxy to return without error, got %v", err)
+		}
+	case <-time.After(200 * time.Millisecond):
+		stdin.release()
+		err := <-done
+		t.Fatalf("runMCPProxyWithDeps waited for stdin after daemon closed: %v", err)
+	}
+	if stdout.String() != "daemon response\n" {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+}
+
 func TestRunMCPProxyWithDepsReturnsSetupAndDialErrors(t *testing.T) {
 	setupErr := errors.New("daemon unavailable")
 	err := runMCPProxyWithDeps(daemonProxyDeps{
@@ -194,4 +231,21 @@ func (c *daemonProxyFakeConn) Write(p []byte) (int, error) {
 func (c *daemonProxyFakeConn) Close() error {
 	c.closed = true
 	return nil
+}
+
+type daemonProxyBlockingReader struct {
+	released chan struct{}
+}
+
+func newDaemonProxyBlockingReader() *daemonProxyBlockingReader {
+	return &daemonProxyBlockingReader{released: make(chan struct{})}
+}
+
+func (r *daemonProxyBlockingReader) Read([]byte) (int, error) {
+	<-r.released
+	return 0, io.EOF
+}
+
+func (r *daemonProxyBlockingReader) release() {
+	close(r.released)
 }

@@ -77,6 +77,19 @@ func TestCommandStepFormattingHelpers(t *testing.T) {
 	}
 }
 
+func TestTailWithBudgetKeepsTruncatedOutputWithinBudget_whenMarkerDigitsGrow(t *testing.T) {
+	input := strings.Repeat("x", 48)
+
+	out, truncated, original := tailWithBudget(input, 47)
+
+	if !truncated || original != len(input) {
+		t.Fatalf("unexpected truncation metadata: truncated=%v original=%d", truncated, original)
+	}
+	if len(out) > 47 {
+		t.Fatalf("truncated output exceeded budget: len=%d budget=47 out=%q", len(out), out)
+	}
+}
+
 func TestCommandStepHelperProcess(t *testing.T) {
 	if os.Getenv("HARNESS_HELPER_PROCESS") != "1" {
 		return
