@@ -94,6 +94,15 @@ func issueOpsDesignReviewMissing(record IssueOpsRecord) []string {
 	if len(cleanIssueOpsTextValues(record.DesignReview.OpenQuestions)) > 0 {
 		missing = append(missing, "design_open_questions")
 	}
+	if record.DesignReview.Approved && strings.TrimSpace(record.DesignReview.RefactorPlan) == "" {
+		missing = append(missing, "refactor_plan")
+	}
+	if record.DesignReview.Approved && len(cleanIssueOpsTextValues(record.DesignReview.Alternatives)) == 0 {
+		missing = append(missing, "alternatives")
+	}
+	if record.DesignReview.Approved && len(cleanIssueOpsTextValues(record.DesignReview.Risks)) == 0 {
+		missing = append(missing, "risks")
+	}
 	return missing
 }
 

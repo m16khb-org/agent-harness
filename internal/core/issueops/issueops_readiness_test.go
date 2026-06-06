@@ -19,6 +19,30 @@ func TestIssueOpsDoneRequiresPRPhase(t *testing.T) {
 	}
 }
 
+func TestIssueOpsImplementationReadinessRejectsPersistedWeakDesignReview(t *testing.T) {
+	record := IssueOpsRecord{
+		OK:            true,
+		Repo:          "/repo/example",
+		Branch:        "1-demo",
+		IssueURL:      "https://github.com/example/repo/issues/1",
+		PlanPath:      "plans/demo.md",
+		WorktreePath:  "/repo/example.worktrees/1-demo",
+		Intent:        issueOpsIntentContractForTest(),
+		DesignReview:  issueOpsWeakApprovedDesignReviewForTest(),
+		BranchPrepare: &IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/1", Branch: "1-demo", BaseBranch: "main", LinkVerified: true},
+	}
+
+	ready := IssueOpsImplementationReadiness(record)
+	if ready.Ready {
+		t.Fatalf("weak persisted approved design review should not be implementation-ready: %+v", ready)
+	}
+	for _, want := range []string{"refactor_plan", "alternatives", "risks"} {
+		if !containsString(ready.Missing, want) {
+			t.Fatalf("implementation readiness should report %s, got %+v", want, ready)
+		}
+	}
+}
+
 func TestIssueOpsStrictPRReadinessRequiresCleanSyncedRepo(t *testing.T) {
 	repo := initIssueOpsRepo(t)
 	record := IssueOpsRecord{

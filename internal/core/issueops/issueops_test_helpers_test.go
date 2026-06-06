@@ -83,6 +83,9 @@ func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 	if _, err := RecordIssueOpsDesignReview(stateRoot, id, IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
+		RefactorPlan:   "Keep IssueOps state and adapter changes scoped to the active cycle",
+		Alternatives:   []string{"documentation-only guidance"},
+		Risks:          []string{"legacy tests must create explicit design evidence"},
 		Verification:   []string{"go test ./internal/core/issueops"},
 		Approved:       true,
 	}); err != nil {
@@ -100,6 +103,19 @@ func issueOpsIntentContractForTest() *IssueOpsIntentContract {
 }
 
 func issueOpsDesignReviewForTest() *IssueOpsDesignReview {
+	return &IssueOpsDesignReview{
+		ProblemSummary: "IssueOps must preserve the work contract",
+		ProposedDesign: "Gate implementation on a reviewed design contract",
+		RefactorPlan:   "Keep IssueOps state and adapter changes scoped to the active cycle",
+		Alternatives:   []string{"documentation-only guidance"},
+		Risks:          []string{"legacy tests must create explicit design evidence"},
+		Verification:   []string{"go test ./internal/core/issueops"},
+		Approved:       true,
+		ReviewedAt:     "2026-06-05T00:00:00Z",
+	}
+}
+
+func issueOpsWeakApprovedDesignReviewForTest() *IssueOpsDesignReview {
 	return &IssueOpsDesignReview{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",

@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"agent-harness/internal/core/preflight"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,6 +77,33 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 	}); err == nil || !strings.Contains(err.Error(), "open_questions") {
 		t.Fatalf("approved design should reject open questions, got %v", err)
 	}
+	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, IssueOpsDesignReviewRequest{
+		ProblemSummary: "Foldering bug",
+		ProposedDesign: "Gate implementation on reviewed design",
+		Verification:   []string{"go test ./..."},
+		Approved:       true,
+	}); err == nil || !strings.Contains(err.Error(), "refactor_plan") {
+		t.Fatalf("approved design should require a refactor plan, got %v", err)
+	}
+	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, IssueOpsDesignReviewRequest{
+		ProblemSummary: "Foldering bug",
+		ProposedDesign: "Gate implementation on reviewed design",
+		RefactorPlan:   "Keep IssueOps state changes localized to core and CLI",
+		Verification:   []string{"go test ./..."},
+		Approved:       true,
+	}); err == nil || !strings.Contains(err.Error(), "alternatives") {
+		t.Fatalf("approved design should require alternatives considered, got %v", err)
+	}
+	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, IssueOpsDesignReviewRequest{
+		ProblemSummary: "Foldering bug",
+		ProposedDesign: "Gate implementation on reviewed design",
+		RefactorPlan:   "Keep IssueOps state changes localized to core and CLI",
+		Alternatives:   []string{"docs-only guidance"},
+		Verification:   []string{"go test ./..."},
+		Approved:       true,
+	}); err == nil || !strings.Contains(err.Error(), "risks") {
+		t.Fatalf("approved design should require risk review, got %v", err)
+	}
 
 	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
 	if err != nil {
@@ -126,6 +154,7 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 		ProblemSummary: "Foldering bug",
 		ProposedDesign: "Gate implementation on reviewed design",
 		RefactorPlan:   "Keep IssueOps state changes localized to core and CLI",
+		Alternatives:   []string{"docs-only guidance"},
 		Verification:   []string{"go test ./internal/core/issueops ./cmd/harness/issueopscli"},
 		Risks:          []string{"existing lifecycle tests need explicit gate setup"},
 		Approved:       true,
@@ -173,8 +202,12 @@ func TestIssueOpsIntentAndDesignRedactSecretLikeFreeform(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(record.Intent.RawRequest, "secret-value") || strings.Contains(record.DesignReview.ProposedDesign, "secret-value") {
-		t.Fatalf("returned record should redact secret-like values: %+v %+v", record.Intent, record.DesignReview)
+	returnedRecord, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(returnedRecord), "secret-value") {
+		t.Fatalf("returned record should redact secret-like values: %s", returnedRecord)
 	}
 	stateFile, err := os.ReadFile(filepath.Join(stateRoot, record.ID+".json"))
 	if err != nil {

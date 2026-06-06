@@ -22,6 +22,9 @@ func recordIssueOpsHookDesignForTest(t *testing.T, id string) {
 	if _, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), id, core.IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
+		RefactorPlan:   "Keep hook guard behavior aligned with IssueOps cycle state",
+		Alternatives:   []string{"allow source edits without linked-cycle evidence"},
+		Risks:          []string{"worktree guard fixtures must model approved design evidence"},
 		Verification:   []string{"go test ./cmd/harness/hookcli"},
 		Approved:       true,
 	}); err != nil {

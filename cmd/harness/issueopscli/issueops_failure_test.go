@@ -125,6 +125,68 @@ func TestRunIssueOpsIntentAndDesignFailuresWithJSONEmitStructuredErrors(t *testi
 		t.Fatalf("approved design with open questions should fail")
 	}
 	assertIssueOpsStructuredFailure(t, openQuestionOut, "open_questions")
+
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-issue", "--id", id, "--issue-url", "https://github.com/example/repo/issues/1", "--json"})
+	})
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "missing refactor plan",
+			args: []string{
+				"design", "review",
+				"--id", id,
+				"--problem-summary", "IssueOps needs a design gate",
+				"--proposed-design", "Require approved design before implementation",
+				"--verification", "go test ./cmd/harness/issueopscli",
+				"--approved",
+				"--json",
+			},
+			want: "refactor_plan",
+		},
+		{
+			name: "missing alternatives",
+			args: []string{
+				"design", "review",
+				"--id", id,
+				"--problem-summary", "IssueOps needs a design gate",
+				"--proposed-design", "Require approved design before implementation",
+				"--refactor-plan", "Keep changes scoped to IssueOps core and adapters",
+				"--verification", "go test ./cmd/harness/issueopscli",
+				"--approved",
+				"--json",
+			},
+			want: "alternatives",
+		},
+		{
+			name: "missing risks",
+			args: []string{
+				"design", "review",
+				"--id", id,
+				"--problem-summary", "IssueOps needs a design gate",
+				"--proposed-design", "Require approved design before implementation",
+				"--refactor-plan", "Keep changes scoped to IssueOps core and adapters",
+				"--alternative", "docs-only guidance",
+				"--verification", "go test ./cmd/harness/issueopscli",
+				"--approved",
+				"--json",
+			},
+			want: "risks",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out, err := captureStdoutAndErrorForIssueOps(t, func() error {
+				return runIssueOps(tc.args)
+			})
+			if err == nil {
+				t.Fatalf("approved design should fail when %s", tc.name)
+			}
+			assertIssueOpsStructuredFailure(t, out, tc.want)
+		})
+	}
 }
 
 func TestRunIssueOpsIntentRedactsSecretLikeFreeform(t *testing.T) {

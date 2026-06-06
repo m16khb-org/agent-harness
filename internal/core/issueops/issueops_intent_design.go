@@ -53,6 +53,9 @@ func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRe
 	if req.Approved && len(openQuestions) > 0 {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("approved design review must not have open_questions")
 	}
+	refactorPlan := strings.TrimSpace(req.RefactorPlan)
+	alternatives := cleanIssueOpsTextValues(req.Alternatives)
+	risks := cleanIssueOpsTextValues(req.Risks)
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
@@ -60,12 +63,21 @@ func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRe
 	if ready := IssueOpsPlanReadiness(record); !ready.Ready {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot record design review before intent contract: missing %s", strings.Join(ready.Missing, ", "))
 	}
+	if req.Approved && refactorPlan == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("approved design review requires refactor_plan")
+	}
+	if req.Approved && len(alternatives) == 0 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("approved design review requires alternatives")
+	}
+	if req.Approved && len(risks) == 0 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("approved design review requires risks")
+	}
 	record.DesignReview = &IssueOpsDesignReview{
 		ProblemSummary: policy.RedactFreeform(problemSummary),
 		ProposedDesign: policy.RedactFreeform(proposedDesign),
-		RefactorPlan:   policy.RedactFreeform(strings.TrimSpace(req.RefactorPlan)),
-		Alternatives:   cleanIssueOpsTextValues(req.Alternatives),
-		Risks:          cleanIssueOpsTextValues(req.Risks),
+		RefactorPlan:   policy.RedactFreeform(refactorPlan),
+		Alternatives:   alternatives,
+		Risks:          risks,
 		Verification:   verification,
 		OpenQuestions:  openQuestions,
 		Approved:       req.Approved,

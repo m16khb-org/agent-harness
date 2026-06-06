@@ -95,6 +95,65 @@ func TestMCPIssueOpsIntentAndDesignRejectInvalidInputs(t *testing.T) {
 	if designErr == nil || !strings.Contains(fmt.Sprint(designErr.Data), "open_questions") {
 		t.Fatalf("expected MCP design validation error, got %+v", designErr)
 	}
+	callMCPToolForIssueOpsTest(t, "issueops_record_intent", map[string]any{
+		"id":                 id,
+		"raw_request":        "IssueOps must understand intent",
+		"interpreted_intent": "Persist main-agent intent before planning",
+		"success_criteria":   []string{"intent is recorded"},
+	})
+	callMCPToolForIssueOpsTest(t, "issueops_link_issue", map[string]any{
+		"id":        id,
+		"issue_url": "https://github.com/example/repo/issues/1",
+	})
+	for _, tc := range []struct {
+		name string
+		args map[string]any
+		want string
+	}{
+		{
+			name: "missing refactor plan",
+			args: map[string]any{
+				"id":              id,
+				"problem_summary": "IssueOps needs a design gate",
+				"proposed_design": "Require approved design before implementation",
+				"verification":    []string{"go test ./cmd/harness/mcpcli"},
+				"approved":        true,
+			},
+			want: "refactor_plan",
+		},
+		{
+			name: "missing alternatives",
+			args: map[string]any{
+				"id":              id,
+				"problem_summary": "IssueOps needs a design gate",
+				"proposed_design": "Require approved design before implementation",
+				"refactor_plan":   "Keep changes scoped to IssueOps core and adapters",
+				"verification":    []string{"go test ./cmd/harness/mcpcli"},
+				"approved":        true,
+			},
+			want: "alternatives",
+		},
+		{
+			name: "missing risks",
+			args: map[string]any{
+				"id":              id,
+				"problem_summary": "IssueOps needs a design gate",
+				"proposed_design": "Require approved design before implementation",
+				"refactor_plan":   "Keep changes scoped to IssueOps core and adapters",
+				"alternatives":    []string{"docs-only guidance"},
+				"verification":    []string{"go test ./cmd/harness/mcpcli"},
+				"approved":        true,
+			},
+			want: "risks",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := callMCPToolForIssueOpsTestError(t, "issueops_review_design", tc.args)
+			if err == nil || !strings.Contains(fmt.Sprint(err.Data), tc.want) {
+				t.Fatalf("expected MCP design %s error, got %+v", tc.want, err)
+			}
+		})
+	}
 }
 
 func TestMCPIssueOpsSetPhasePinsIntentAndIssuePlanGate(t *testing.T) {
@@ -118,6 +177,75 @@ func TestMCPIssueOpsSetPhasePinsIntentAndIssuePlanGate(t *testing.T) {
 	issueErr := callMCPToolForIssueOpsTestError(t, "issueops_set_phase", map[string]any{"id": id, "to": "plan"})
 	if issueErr == nil || !strings.Contains(fmt.Sprint(issueErr.Data), "issue_url") {
 		t.Fatalf("expected MCP plan phase to require linked issue after intent, got %+v", issueErr)
+	}
+}
+
+func TestMCPIssueOpsApprovedDesignRequiresRefactorReviewEvidence(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	callMCPToolForIssueOpsTest(t, "issueops_record_intent", map[string]any{
+		"id":                 id,
+		"raw_request":        "IssueOps must understand intent before refactoring",
+		"interpreted_intent": "Persist main-agent intent and design evidence before implementation",
+		"success_criteria":   []string{"approved design includes refactor evidence"},
+	})
+	callMCPToolForIssueOpsTest(t, "issueops_link_issue", map[string]any{
+		"id":        id,
+		"issue_url": "https://github.com/example/repo/issues/1",
+	})
+	for _, tc := range []struct {
+		name string
+		args map[string]any
+		want string
+	}{
+		{
+			name: "missing refactor plan",
+			args: map[string]any{
+				"id":              id,
+				"problem_summary": "IssueOps needs a design gate",
+				"proposed_design": "Require approved design before implementation",
+				"verification":    []string{"go test ./cmd/harness/mcpcli"},
+				"approved":        true,
+			},
+			want: "refactor_plan",
+		},
+		{
+			name: "missing alternatives",
+			args: map[string]any{
+				"id":              id,
+				"problem_summary": "IssueOps needs a design gate",
+				"proposed_design": "Require approved design before implementation",
+				"refactor_plan":   "Keep changes scoped to IssueOps core and adapters",
+				"verification":    []string{"go test ./cmd/harness/mcpcli"},
+				"approved":        true,
+			},
+			want: "alternatives",
+		},
+		{
+			name: "missing risks",
+			args: map[string]any{
+				"id":              id,
+				"problem_summary": "IssueOps needs a design gate",
+				"proposed_design": "Require approved design before implementation",
+				"refactor_plan":   "Keep changes scoped to IssueOps core and adapters",
+				"alternatives":    []string{"docs-only guidance"},
+				"verification":    []string{"go test ./cmd/harness/mcpcli"},
+				"approved":        true,
+			},
+			want: "risks",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			errPayload := callMCPToolForIssueOpsTestError(t, "issueops_review_design", tc.args)
+			if errPayload == nil || !strings.Contains(fmt.Sprint(errPayload.Data), tc.want) {
+				t.Fatalf("expected MCP design validation error %q, got %+v", tc.want, errPayload)
+			}
+		})
 	}
 }
 

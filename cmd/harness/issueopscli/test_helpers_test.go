@@ -85,6 +85,9 @@ func recordIssueOpsCLIDesignForTest(t *testing.T, id string) {
 			"--id", id,
 			"--problem-summary", "IssueOps must preserve the work contract",
 			"--proposed-design", "Gate implementation on a reviewed design contract",
+			"--refactor-plan", "Keep IssueOps state and adapter changes scoped to the active cycle",
+			"--alternative", "documentation-only guidance",
+			"--risk", "legacy tests must create explicit design evidence",
 			"--verification", "go test ./cmd/harness/issueopscli",
 			"--approved",
 			"--json",
@@ -108,6 +111,9 @@ func recordIssueOpsCoreDesignForCLITest(t *testing.T, id string) {
 	if _, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), id, core.IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
+		RefactorPlan:   "Keep IssueOps state and adapter changes scoped to the active cycle",
+		Alternatives:   []string{"documentation-only guidance"},
+		Risks:          []string{"legacy tests must create explicit design evidence"},
 		Verification:   []string{"go test ./cmd/harness/issueopscli"},
 		Approved:       true,
 	}); err != nil {

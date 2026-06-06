@@ -18,6 +18,9 @@ func recordIssueOpsLifecycleDesignForTest(t *testing.T, id string) {
 	if _, err := RecordIssueOpsDesignReview(IssueOpsStateRoot(), id, IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
+		RefactorPlan:   "Keep lifecycle guard behavior aligned with IssueOps cycle state",
+		Alternatives:   []string{"allow source edits without linked-cycle evidence"},
+		Risks:          []string{"worktree guard fixtures must model approved design evidence"},
 		Verification:   []string{"go test ./internal/core/lifecycle"},
 		Approved:       true,
 	}); err != nil {
