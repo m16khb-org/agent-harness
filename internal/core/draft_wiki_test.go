@@ -95,6 +95,26 @@ func TestApproveDraftWikiMovesDraftCandidate(t *testing.T) {
 	}
 }
 
+func TestRejectDraftWikiMovesCandidateToRejected(t *testing.T) {
+	root := t.TempDir()
+	draft := filepath.Join(root, DraftWikiDir, "draft", "candidate.md")
+	mustWrite(t, draft, "# Candidate\n")
+
+	result, err := RejectDraftWiki(DraftWikiMoveRequest{RepoRoot: root, Path: draft})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.Kind != "draft_wiki_reject" || result.From.Status != "draft" || result.To.Status != "rejected" {
+		t.Fatalf("unexpected reject result: %+v", result)
+	}
+	if _, err := os.Stat(draft); !os.IsNotExist(err) {
+		t.Fatalf("draft file still exists or unexpected stat error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, DraftWikiDir, "rejected", "candidate.md")); err != nil {
+		t.Fatalf("rejected file missing: %v", err)
+	}
+}
+
 func TestPromoteDraftWikiWritesLLMWikiRawNoteOnConfirm(t *testing.T) {
 	root := t.TempDir()
 	configPath, hub := writeTestLLMWikiHub(t)
@@ -161,6 +181,54 @@ target_type: "notes"
 	}
 	if !strings.Contains(string(logText), "ingest | Candidate") {
 		t.Fatalf("log missing ingest entry: %s", string(logText))
+	}
+}
+
+func TestGeneratedDraftFrontmatterUsesDefaultsAndProvidedValues(t *testing.T) {
+	defaults := generatedDraftFrontmatter("", "", "", "Gemini 3.5 Flash")
+	for _, want := range []string{
+		`title: "Draft wiki candidate"`,
+		`target_wiki: "dev-fundamentals"`,
+		`target_type: "notes"`,
+		`model: "Gemini 3.5 Flash"`,
+	} {
+		if !strings.Contains(defaults, want) {
+			t.Fatalf("default frontmatter missing %q:\n%s", want, defaults)
+		}
+	}
+
+	custom := generatedDraftFrontmatter("Hook policy", "agent-harness", "runbook", "Gemini 3.5 Pro")
+	for _, want := range []string{
+		`title: "Hook policy"`,
+		`target_wiki: "agent-harness"`,
+		`target_type: "runbook"`,
+		`model: "Gemini 3.5 Pro"`,
+	} {
+		if !strings.Contains(custom, want) {
+			t.Fatalf("custom frontmatter missing %q:\n%s", want, custom)
+		}
+	}
+}
+
+func TestFailDraftWikiQueueEventMarksFailureAndRedactsError(t *testing.T) {
+	event := DraftWikiQueueEvent{
+		ID:             "draft-wiki-1",
+		RepoRoot:       "/repo",
+		SourceMaterial: "keep source material",
+		Status:         WorkerStatusRunning,
+		UpdatedAt:      "before",
+	}
+
+	failed := failDraftWikiQueueEvent(event, fmt.Errorf("OPENAI_API_KEY=sk-123456789012345678901234"))
+
+	if failed.Status != WorkerStatusFailed || failed.ID != event.ID || failed.RepoRoot != event.RepoRoot || failed.SourceMaterial != event.SourceMaterial {
+		t.Fatalf("unexpected failed event fields: %+v", failed)
+	}
+	if failed.Error != "<redacted>" {
+		t.Fatalf("expected redacted error, got %q", failed.Error)
+	}
+	if failed.UpdatedAt == "" || failed.UpdatedAt == "before" {
+		t.Fatalf("expected updated timestamp, got %q", failed.UpdatedAt)
 	}
 }
 
