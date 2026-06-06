@@ -58,3 +58,47 @@ func TestIssueOpsBenchmarkRunStorageAndJudgeMergeBranches(t *testing.T) {
 		t.Fatalf("expected missing judge dimensions to fail merged score: %+v", emptyJudge)
 	}
 }
+
+func TestFinalizeAndCompareIssueOpsBenchmarkRunsSummarizesScoresAndRegressions(t *testing.T) {
+	baseline := FinalizeIssueOpsBenchmarkRunResult(IssueOpsBenchmarkRunResult{
+		ID: "baseline",
+		Scores: []IssueOpsBenchmarkScore{{
+			FixtureID:    "fixture-one",
+			AverageScore: 90,
+			MinimumScore: 90,
+			DimensionScores: []IssueOpsDimensionScore{
+				{Dimension: "issue_quality", Score: 90},
+				{Dimension: "plan_quality", Score: 95},
+			},
+			Passed: true,
+		}},
+	})
+	candidate := FinalizeIssueOpsBenchmarkRunResult(IssueOpsBenchmarkRunResult{
+		ID: "candidate",
+		Scores: []IssueOpsBenchmarkScore{{
+			FixtureID:    "fixture-one",
+			AverageScore: 95,
+			MinimumScore: 85,
+			DimensionScores: []IssueOpsDimensionScore{
+				{Dimension: "issue_quality", Score: 85},
+				{Dimension: "plan_quality", Score: 100},
+			},
+			Passed: true,
+		}},
+	})
+	if !baseline.OK || baseline.FixtureCount != 1 || baseline.CriticalFailureCount != 0 || baseline.AverageScore != 90 || baseline.MinimumScore != 90 {
+		t.Fatalf("baseline summary mismatch: %+v", baseline)
+	}
+	compare := CompareIssueOpsBenchmarkRuns(baseline, candidate)
+	if compare.OK || compare.Improved || compare.AverageScoreDelta != 5 || compare.MinimumScoreDelta != -5 {
+		t.Fatalf("candidate with minimum regression should not pass compare: %+v", compare)
+	}
+	if len(compare.Regressions) == 0 {
+		t.Fatalf("expected dimension regression to be reported: %+v", compare)
+	}
+
+	empty := FinalizeIssueOpsBenchmarkRunResult(IssueOpsBenchmarkRunResult{ID: "empty"})
+	if !empty.OK || empty.AverageScore != 0 || empty.MinimumScore != 0 || empty.FixtureCount != 0 {
+		t.Fatalf("empty benchmark should summarize to zero without synthetic failures: %+v", empty)
+	}
+}
