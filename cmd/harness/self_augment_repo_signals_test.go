@@ -19,3 +19,14 @@ func TestDirContainsTermIgnoresTestOnlySignals(t *testing.T) {
 		t.Fatalf("production source was not accepted as repo signal")
 	}
 }
+
+func TestCollectSelfAugmentRepoSignalsFindsMCPAdapterCatalogInContractCLI(t *testing.T) {
+	root := t.TempDir()
+	writeFileForWrapperTest(t, filepath.Join(root, "internal", "adapter", "mcp", "catalog.go"), "package mcp\nfunc AdapterOwnedTools() {}\n")
+	writeFileForWrapperTest(t, filepath.Join(root, "cmd", "harness", "contractcli", "contract.go"), "package contractcli\nconst marker = \"mcpadapter.AdapterOwnedTools\"\n")
+
+	signals := collectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasMCPAdapterCatalog {
+		t.Fatalf("contractcli MCP adapter catalog signal was not detected: %+v", signals)
+	}
+}

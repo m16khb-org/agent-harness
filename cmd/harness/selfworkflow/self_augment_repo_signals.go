@@ -6,6 +6,10 @@ import (
 )
 
 func collectSelfAugmentRepoSignals(root string, docsIndexed int, skills []string, geniusText string) SelfAugmentRepoSignals {
+	hasMCPAdapterCatalog := dirContainsTerm(root, filepath.Join("internal", "adapter", "mcp"), "AdapterOwnedTools") &&
+		(dirContainsTerm(root, filepath.Join("cmd", "harness"), "mcpadapter.AdapterOwnedTools") ||
+			dirContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli"), "mcpadapter.AdapterOwnedTools") ||
+			dirContainsTerm(root, filepath.Join("cmd", "harness", "contractcli"), "mcpadapter.AdapterOwnedTools"))
 	return SelfAugmentRepoSignals{
 		DocsIndexed:                 docsIndexed,
 		Skills:                      append([]string{}, skills...),
@@ -24,7 +28,7 @@ func collectSelfAugmentRepoSignals(root string, docsIndexed int, skills []string
 		HasGeniusMermaidLint:        dirContainsTerm(root, filepath.Join("cmd", "harness"), "lintMermaidBlocks") && fileContainsTerm(root, filepath.Join("cmd", "harness", "self_augment_history_test.go"), "TestLintMermaidBlocksEnforcesGeniusThinkRules") && !fileContainsTerm(root, filepath.Join(".agent-harness", "ARCHITECTURE.md"), `\n`),
 		HasInstallDryRunMode:        dirContainsTerm(root, filepath.Join("cmd", "harness", "installcli"), "dry-run") && fileContainsTerm(root, filepath.Join("internal", "adapter", "install_contract_matrix_test.go"), "TestNativeInstallDryRunDoesNotWrite") && docsContainTerm(root, "install-native --dry-run"),
 		HasCLIAdapterSplit:          fileContainsTerm(root, filepath.Join("internal", "adapter", "cli", "usage.go"), "func Usage") && fileContainsTerm(root, filepath.Join("cmd", "harness", "main.go"), "cliadapter.Usage"),
-		HasMCPAdapterCatalog:        dirContainsTerm(root, filepath.Join("internal", "adapter", "mcp"), "AdapterOwnedTools") && dirContainsTerm(root, filepath.Join("cmd", "harness"), "mcpadapter.AdapterOwnedTools"),
+		HasMCPAdapterCatalog:        hasMCPAdapterCatalog,
 		HasCompatibilityContract:    fileContainsTerm(root, filepath.Join("cmd", "harness", "contract.go"), "CompatibilityContract") && dirContainsTerm(root, filepath.Join("cmd", "harness"), `case "contract"`),
 		HasCandidateRefill:          dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "candidate-refill-curriculum") && dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "release-repro-pack"),
 		HasCommandAuditLog:          fileContainsTerm(root, filepath.Join("internal", "core", "audit", "audit.go"), "AuditCommandPolicy") && dirContainsTerm(root, filepath.Join("cmd", "harness", "policycli"), "policy audit"),
