@@ -359,6 +359,14 @@ func TestEnsureDaemonRunningWithDepsReturnsStartErrorWithPaths(t *testing.T) {
 	}
 }
 
+func TestStartDaemonProcessReturnsStartError(t *testing.T) {
+	err := startDaemonProcess(filepath.Join(t.TempDir(), "missing-agent-harness"), daemonPaths{Dir: t.TempDir()})
+
+	if err == nil {
+		t.Fatal("expected missing executable to fail")
+	}
+}
+
 type daemonStartFakeLock struct {
 	closed bool
 }
