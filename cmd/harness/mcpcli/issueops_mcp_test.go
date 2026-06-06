@@ -1,4 +1,4 @@
-package main
+package mcpcli
 
 import (
 	"encoding/json"
@@ -7,9 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/cmd/harness/issueopscli"
+	"agent-harness/internal/core"
 )
 
 func TestMCPIssueOpsStartAndStatus(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
 	id, ok := start["id"].(string)
@@ -23,7 +27,8 @@ func TestMCPIssueOpsStartAndStatus(t *testing.T) {
 }
 
 func TestMCPIssueOpsLinkChild(t *testing.T) {
-	stubIssueOpsChildIssueVerifier(t, nil)
+	configureIssueOpsMCPForTest(t)
+	stubIssueOpsChildIssueVerifierForMCPTest(t, nil)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
 	id, ok := start["id"].(string)
@@ -50,6 +55,7 @@ func TestMCPIssueOpsLinkChild(t *testing.T) {
 }
 
 func TestMCPIssueOpsPrepareBranch(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "123-provider-linked-branch"})
 	id, ok := start["id"].(string)
@@ -82,6 +88,7 @@ func TestMCPIssueOpsPrepareBranch(t *testing.T) {
 }
 
 func TestMCPIssueOpsMarkIssueUpdated(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
 	id, ok := start["id"].(string)
@@ -106,6 +113,7 @@ func TestMCPIssueOpsMarkIssueUpdated(t *testing.T) {
 }
 
 func TestMCPIssueOpsSetPhaseAcceptsToAlias(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
 	id, ok := start["id"].(string)
@@ -119,6 +127,7 @@ func TestMCPIssueOpsSetPhaseAcceptsToAlias(t *testing.T) {
 }
 
 func TestMCPIssueOpsVerifyRemoteArtifactRejectsBeforePR(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
 	id, ok := start["id"].(string)
@@ -139,6 +148,7 @@ func TestMCPIssueOpsVerifyRemoteArtifactRejectsBeforePR(t *testing.T) {
 }
 
 func TestMCPIssueOpsCleanupStatusReportsMissingEvidence(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": "/repo/example", "branch": "1-demo"})
 	id, ok := start["id"].(string)
@@ -160,6 +170,7 @@ func TestMCPIssueOpsCleanupStatusReportsMissingEvidence(t *testing.T) {
 }
 
 func TestMCPIssueOpsPrepareWorktreeToolsRunsCodeGraphAgainstWorktree(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	bin := t.TempDir()
 	logPath := filepath.Join(t.TempDir(), "codegraph.log")
@@ -207,6 +218,7 @@ func TestMCPIssueOpsPrepareWorktreeToolsRunsCodeGraphAgainstWorktree(t *testing.
 }
 
 func TestMCPIssueOpsRemoteScoreAcceptsCandidateAliases(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
 	result := callMCPToolForIssueOpsTest(t, "issueops_remote_score", map[string]any{
 		"provider": "github",
 		"issue": map[string]any{
@@ -239,7 +251,7 @@ func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, rpcErr := handleToolCall(params)
+	result, rpcErr := HandleToolCall(params)
 	if rpcErr != nil {
 		t.Fatalf("unexpected MCP rpc error: %+v", rpcErr)
 	}
@@ -262,12 +274,61 @@ func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) 
 	return payload
 }
 
-func callMCPToolForIssueOpsTestError(t *testing.T, name string, args map[string]any) *rpcError {
+func callMCPToolForIssueOpsTestError(t *testing.T, name string, args map[string]any) *RPCError {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, rpcErr := handleToolCall(params)
+	_, rpcErr := HandleToolCall(params)
 	return rpcErr
+}
+
+func configureIssueOpsMCPForTest(t *testing.T) {
+	t.Helper()
+	previousPrepare := PrepareIssueOpsWorktreeTools
+	previousVerifyChild := VerifyIssueOpsChildIssueBeforeLink
+	previousCleanupMerged := IssueOpsCleanupMerged
+	previousVerifyRemote := VerifyIssueOpsRemoteArtifactLive
+	PrepareIssueOpsWorktreeTools = func(record core.IssueOpsRecord) (any, error) {
+		return issueopscli.PrepareWorktreeTools(record)
+	}
+	VerifyIssueOpsChildIssueBeforeLink = issueopscli.VerifyChildIssueBeforeLink
+	IssueOpsCleanupMerged = issueopscli.CleanupMerged
+	VerifyIssueOpsRemoteArtifactLive = issueopscli.VerifyRemoteArtifactLive
+	t.Cleanup(func() {
+		PrepareIssueOpsWorktreeTools = previousPrepare
+		VerifyIssueOpsChildIssueBeforeLink = previousVerifyChild
+		IssueOpsCleanupMerged = previousCleanupMerged
+		VerifyIssueOpsRemoteArtifactLive = previousVerifyRemote
+	})
+}
+
+func makeIssueOpsCLIRepoForTest(t *testing.T, name string) string {
+	t.Helper()
+	repo := filepath.Join(t.TempDir(), name)
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return repo
+}
+
+func makeIssueOpsCLIWorktreeForTest(t *testing.T, repo, slug string) string {
+	t.Helper()
+	worktree := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", slug)
+	if err := os.MkdirAll(filepath.Join(worktree, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/"+slug+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return worktree
+}
+
+func stubIssueOpsChildIssueVerifierForMCPTest(t *testing.T, verifier func(string) error) {
+	t.Helper()
+	previous := issueopscli.SetChildIssueVerifier(verifier)
+	t.Cleanup(func() {
+		issueopscli.SetChildIssueVerifier(previous)
+	})
 }
