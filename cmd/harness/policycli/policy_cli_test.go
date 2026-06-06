@@ -1,7 +1,9 @@
-package main
+package policycli
 
 import (
 	"errors"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -13,6 +15,7 @@ func TestParseCommandPolicyFlagsUsesDefaultRootCWDAndEnvAllowlist(t *testing.T) 
 	root := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
 	t.Setenv("PWD", root)
+	t.Cleanup(setPolicyCLITestResolveTarget())
 
 	req, jsonOut, err := parseCommandPolicyFlags("policy check", []string{"--json", "--env", "HOME, PATH,,HARNESS_STATE_DIR", "--", "git", "status"})
 	if err != nil {
@@ -85,4 +88,57 @@ func TestRunPolicyRunReturnsDeniedPolicyError(t *testing.T) {
 	if !containsString(denied.Reasons, "shell_interpreter_not_allowed") {
 		t.Fatalf("deny reasons %v missing shell_interpreter_not_allowed", denied.Reasons)
 	}
+}
+
+func runStatusVerifyTestCommand(t *testing.T, dir string, name string, args ...string) {
+	t.Helper()
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%s %v failed: %v\n%s", name, args, err, string(out))
+	}
+}
+
+func containsString(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
+}
+
+func setPolicyCLITestResolveTarget() func() {
+	previous := ResolveTarget
+	ResolveTarget = func(arg string) string {
+		if arg != "" {
+			abs, err := filepath.Abs(arg)
+			if err != nil {
+				return arg
+			}
+			return abs
+		}
+		if env := testEnv("CLAUDE_PROJECT_DIR"); env != "" {
+			arg = env
+		} else if env := testEnv("PWD"); env != "" {
+			arg = env
+		}
+		abs, err := filepath.Abs(arg)
+		if err != nil {
+			return arg
+		}
+		return abs
+	}
+	return func() {
+		ResolveTarget = previous
+	}
+}
+
+func testEnv(name string) string {
+	value, ok := os.LookupEnv(name)
+	if !ok {
+		return ""
+	}
+	return value
 }
