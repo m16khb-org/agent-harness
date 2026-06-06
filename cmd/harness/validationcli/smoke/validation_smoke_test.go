@@ -1,4 +1,4 @@
-package validationcli
+package smoke
 
 import (
 	"encoding/json"

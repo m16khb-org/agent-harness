@@ -1,17 +1,25 @@
-package validationcli
+package smoke
 
 import (
 	"encoding/json"
 	"strings"
 	"time"
 
+	"agent-harness/cmd/harness/commandstep"
 	"agent-harness/internal/core"
 )
 
+const commandOutputBudgetBytes = 32 * 1024
+
+type StepResult = commandstep.StepResult
 type validationCommandRunner func(dir, label string, timeout time.Duration, stdin, name string, args ...string) StepResult
 
-func validateInspect(binary, root string) StepResult {
+func ValidateInspect(binary, root string) StepResult {
 	return validateInspectWithDeps(binary, root, runCommandStep)
+}
+
+func validateInspect(binary, root string) StepResult {
+	return ValidateInspect(binary, root)
 }
 
 func validateInspectWithDeps(binary, root string, run validationCommandRunner) StepResult {
@@ -33,8 +41,12 @@ func validateInspectWithDeps(binary, root string, run validationCommandRunner) S
 	return step
 }
 
-func validateDocsIndex(binary, root string) StepResult {
+func ValidateDocsIndex(binary, root string) StepResult {
 	return validateDocsIndexWithDeps(binary, root, runCommandStep)
+}
+
+func validateDocsIndex(binary, root string) StepResult {
+	return ValidateDocsIndex(binary, root)
 }
 
 func validateDocsIndexWithDeps(binary, root string, run validationCommandRunner) StepResult {
@@ -54,4 +66,8 @@ func validateDocsIndexWithDeps(binary, root string, run validationCommandRunner)
 		step.Error = strings.Join(errs, "; ")
 	}
 	return step
+}
+
+func runCommandStep(dir, label string, timeout time.Duration, stdin string, name string, args ...string) StepResult {
+	return commandstep.Run(dir, label, timeout, stdin, commandOutputBudgetBytes, name, args...)
 }

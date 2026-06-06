@@ -1,6 +1,8 @@
-package validationcli
+package smoke
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 
 	"agent-harness/internal/core"
@@ -60,4 +62,39 @@ func docIndexContains(docs []core.DocIndexInfo, relPath string) bool {
 		}
 	}
 	return false
+}
+
+func containsForbiddenLegacyOutsideRuntimePaths(text, root string) bool {
+	sanitized := allowCurrentOwnerHandle(text)
+	replacements := []string{}
+	if abs, err := filepath.Abs(root); err == nil {
+		replacements = append(replacements, abs)
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		replacements = append(replacements, home)
+	}
+	for _, runtimePath := range replacements {
+		if runtimePath == "" || runtimePath == string(filepath.Separator) {
+			continue
+		}
+		sanitized = strings.ReplaceAll(sanitized, runtimePath, "$RUNTIME_PATH")
+	}
+	for _, needle := range forbiddenLegacyNeedles() {
+		if strings.Contains(sanitized, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+func forbiddenLegacyNeedles() []string {
+	return []string{"m" + "16kh", "m" + "16h", "M" + "16H", "m" + "16"}
+}
+
+func currentOwnerHandle() string {
+	return "m" + "16khb"
+}
+
+func allowCurrentOwnerHandle(text string) string {
+	return strings.ReplaceAll(text, currentOwnerHandle(), "$CURRENT_OWNER")
 }
