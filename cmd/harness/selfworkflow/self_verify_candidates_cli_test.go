@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"encoding/json"
@@ -9,8 +9,8 @@ import (
 
 func TestRunSelfVerifyCandidatesWithDepsPrintsTextOutput(t *testing.T) {
 	out := captureStatusVerifyStdout(t, func() error {
-		return runSelfVerifyCandidatesWithDeps([]string{}, selfVerifyCandidatesDeps{
-			export: func() SelfVerificationCandidateExportResult {
+		return RunSelfVerifyCandidatesWithDeps([]string{}, SelfVerifyCandidatesDeps{
+			Export: func() SelfVerificationCandidateExportResult {
 				return selfVerifyCandidatesCLIResultForTest()
 			},
 		})
@@ -26,11 +26,11 @@ func TestRunSelfVerifyCandidatesWithDepsPrintsTextOutput(t *testing.T) {
 func TestRunSelfVerifyCandidatesWithDepsSavesAndPrintsJSON(t *testing.T) {
 	var savedKey string
 	out := captureStatusVerifyStdout(t, func() error {
-		return runSelfVerifyCandidatesWithDeps([]string{"--save-state", "--state-key", "candidate-key", "--json"}, selfVerifyCandidatesDeps{
-			export: func() SelfVerificationCandidateExportResult {
+		return RunSelfVerifyCandidatesWithDeps([]string{"--save-state", "--state-key", "candidate-key", "--json"}, SelfVerifyCandidatesDeps{
+			Export: func() SelfVerificationCandidateExportResult {
 				return selfVerifyCandidatesCLIResultForTest()
 			},
-			save: func(result *SelfVerificationCandidateExportResult, key string) error {
+			Save: func(result *SelfVerificationCandidateExportResult, key string) error {
 				savedKey = key
 				result.StateCheckpoint = &SelfAugmentStateCheckpoint{OK: true, Key: key}
 				return nil
@@ -51,11 +51,11 @@ func TestRunSelfVerifyCandidatesWithDepsSavesAndPrintsJSON(t *testing.T) {
 
 func TestRunSelfVerifyCandidatesWithDepsPropagatesSaveError(t *testing.T) {
 	saveErr := errors.New("save candidates failed")
-	err := runSelfVerifyCandidatesWithDeps([]string{"--save-state"}, selfVerifyCandidatesDeps{
-		export: func() SelfVerificationCandidateExportResult {
+	err := RunSelfVerifyCandidatesWithDeps([]string{"--save-state"}, SelfVerifyCandidatesDeps{
+		Export: func() SelfVerificationCandidateExportResult {
 			return selfVerifyCandidatesCLIResultForTest()
 		},
-		save: func(*SelfVerificationCandidateExportResult, string) error {
+		Save: func(*SelfVerificationCandidateExportResult, string) error {
 			return saveErr
 		},
 	})
@@ -69,7 +69,7 @@ func selfVerifyCandidatesCLIResultForTest() SelfVerificationCandidateExportResul
 	satisfied := SelfVerificationCandidate{Priority: 2, ID: "satisfied-candidate", Category: "reliability", Status: selfAugmentCandidateStatusSatisfied, Score: 0}
 	return SelfVerificationCandidateExportResult{
 		OK:                    true,
-		Kind:                  selfVerificationCandidateExportKind,
+		Kind:                  SelfVerificationCandidateExportKind,
 		LoopKind:              "self_verification",
 		KoreanName:            selfVerificationKoreanName,
 		CandidateCount:        2,
