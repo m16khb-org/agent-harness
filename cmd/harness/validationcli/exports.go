@@ -1,5 +1,7 @@
 package validationcli
 
+import "agent-harness/cmd/harness/validationcli/nativeintegration"
+
 func ValidateCommandPolicy(binary, root string) StepResult {
 	return validateCommandPolicy(binary, root)
 }
@@ -57,11 +59,11 @@ func ValidateNativeIntegration(root string) StepResult {
 }
 
 func DetectClaudeMCPDuplicateWarnings(output string) []ClaudeMCPDuplicateWarning {
-	return detectClaudeMCPDuplicateWarnings(output)
+	return nativeintegration.DetectClaudeMCPDuplicateWarnings(output)
 }
 
 func ClaudeMCPDuplicateWarningFixture() string {
-	return claudeMCPDuplicateWarningFixture()
+	return nativeintegration.ClaudeMCPDuplicateWarningFixture()
 }
 
 func ValidateMermaidDocs(root string) []string {

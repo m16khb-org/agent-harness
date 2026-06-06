@@ -1,4 +1,4 @@
-package validationcli
+package nativeintegration
 
 import (
 	"encoding/json"

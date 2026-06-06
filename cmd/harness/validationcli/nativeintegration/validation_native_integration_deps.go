@@ -1,4 +1,4 @@
-package validationcli
+package nativeintegration
 
 import (
 	"os"
@@ -36,4 +36,9 @@ func (deps nativeIntegrationValidationDeps) withDefaults() nativeIntegrationVali
 		deps.duplicateWarningFixture = claudeMCPDuplicateWarningFixture
 	}
 	return deps
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

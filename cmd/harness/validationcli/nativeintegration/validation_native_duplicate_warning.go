@@ -1,4 +1,4 @@
-package validationcli
+package nativeintegration
 
 import "strings"
 
@@ -8,7 +8,7 @@ type ClaudeMCPDuplicateWarning struct {
 	Suggestions []string `json:"suggestions"`
 }
 
-func detectClaudeMCPDuplicateWarnings(output string) []ClaudeMCPDuplicateWarning {
+func DetectClaudeMCPDuplicateWarnings(output string) []ClaudeMCPDuplicateWarning {
 	warnings := []ClaudeMCPDuplicateWarning{}
 	current := -1
 	for _, line := range strings.Split(output, "\n") {
@@ -38,7 +38,7 @@ func detectClaudeMCPDuplicateWarnings(output string) []ClaudeMCPDuplicateWarning
 	return warnings
 }
 
-func claudeMCPDuplicateWarningFixture() string {
+func ClaudeMCPDuplicateWarningFixture() string {
 	return `MCP Config Diagnostics
 
 For help configuring MCP servers, see: https://code.claude.com/docs/en/mcp
@@ -47,4 +47,12 @@ For help configuring MCP servers, see: https://code.claude.com/docs/en/mcp
  └ [Warning] Server "agent_harness" is defined in multiple scopes with different endpoints: user (/Users/example/agent-harness/bin/agent-harness mcp), project (./bin/agent-harness mcp). OAuth tokens are stored per endpoint, so authenticating in one context will not carry over.
    Suggestion: Keep the correct endpoint and remove the others: ` + "`claude mcp remove agent_harness -s user`" + ` or ` + "`claude mcp remove agent_harness -s project`" + `
 `
+}
+
+func detectClaudeMCPDuplicateWarnings(output string) []ClaudeMCPDuplicateWarning {
+	return DetectClaudeMCPDuplicateWarnings(output)
+}
+
+func claudeMCPDuplicateWarningFixture() string {
+	return ClaudeMCPDuplicateWarningFixture()
 }
