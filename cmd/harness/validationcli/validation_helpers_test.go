@@ -74,6 +74,38 @@ func TestContainsForbiddenLegacyOutsideRuntimePathsMasksRuntimeAndOwner(t *testi
 	}
 }
 
+func TestForbiddenNameHitsAllowsCurrentOwnerAndLicense(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "LICENSE"), []byte("Copyright (c) 2026 m"+"16khb\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	planPath := filepath.Join(root, "plan.md")
+	if err := os.WriteFile(planPath, []byte("git clone git@github.com:m"+"16khb/agent-harness.git\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("legacy m"+"16kh leak\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hits := forbiddenNameHits(root)
+	if len(hits) != 1 || hits[0] != "AGENTS.md contains m"+"16kh" {
+		t.Fatalf("expected only the genuine legacy hit, got %+v", hits)
+	}
+}
+
+func TestForbiddenNameHitsSkipsWorktreeGitPointer(t *testing.T) {
+	root := t.TempDir()
+	legacyPath := "gitdir: /Users/" + "m" + "16" + "kh" + "b/Workspace/agent-harness/.git/worktrees/example\n"
+	if err := os.WriteFile(filepath.Join(root, ".git"), []byte(legacyPath), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "note.txt"), []byte("safe\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if hits := forbiddenNameHits(root); len(hits) != 0 {
+		t.Fatalf("worktree .git pointer should be skipped, got %+v", hits)
+	}
+}
+
 func makeValidationHarnessRoot(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -99,7 +131,7 @@ func makeValidationHarnessRoot(t *testing.T) string {
 		filepath.Join("internal", "core", "state", "state_types.go"),
 		filepath.Join("cmd", "harness", "contract_golden_test.go"),
 		filepath.Join("cmd", "harness", "response_contract_golden_test.go"),
-		filepath.Join("cmd", "harness", "self_augment_summary_test.go"),
+		filepath.Join("cmd", "harness", "selfworkflow", "self_augment_summary_test.go"),
 		filepath.Join("cmd", "harness", "testdata", "usage.golden.txt"),
 		filepath.Join("cmd", "harness", "testdata", "mcp_tools.golden.json"),
 		filepath.Join("cmd", "harness", "testdata", "mcp_resources.golden.json"),

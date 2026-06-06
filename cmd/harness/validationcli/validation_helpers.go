@@ -35,7 +35,7 @@ func validateHarnessInvariants(root string) StepResult {
 		filepath.Join("internal", "core", "state", "state_types.go"),
 		filepath.Join("cmd", "harness", "contract_golden_test.go"),
 		filepath.Join("cmd", "harness", "response_contract_golden_test.go"),
-		filepath.Join("cmd", "harness", "self_augment_summary_test.go"),
+		filepath.Join("cmd", "harness", "selfworkflow", "self_augment_summary_test.go"),
 		filepath.Join("cmd", "harness", "testdata", "usage.golden.txt"),
 		filepath.Join("cmd", "harness", "testdata", "mcp_tools.golden.json"),
 		filepath.Join("cmd", "harness", "testdata", "mcp_resources.golden.json"),
