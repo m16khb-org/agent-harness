@@ -25,19 +25,7 @@ func validateInspectWithDeps(binary, root string, run validationCommandRunner) S
 		step.Error = err.Error()
 		return step
 	}
-	errs := []string{}
-	if !info.OK {
-		errs = append(errs, "inspect ok=false")
-	}
-	if len(info.Skills) == 0 {
-		errs = append(errs, "no skills listed")
-	}
-	if !info.Integration.ProjectClaudeMCPConfig {
-		errs = append(errs, "project Claude MCP config missing")
-	}
-	if containsForbiddenLegacyOutsideRuntimePaths(step.Stdout, root) {
-		errs = append(errs, "inspect output contains legacy "+"m"+"16 name")
-	}
+	errs := inspectSmokeValidationErrors(info, step.Stdout, root)
 	if len(errs) > 0 {
 		step.OK = false
 		step.Error = strings.Join(errs, "; ")
@@ -60,44 +48,10 @@ func validateDocsIndexWithDeps(binary, root string, run validationCommandRunner)
 		step.Error = err.Error()
 		return step
 	}
-	errs := []string{}
-	if !index.OK {
-		errs = append(errs, "docs index ok=false")
-	}
-	if index.HarnessRoot != root {
-		errs = append(errs, "docs index harness root mismatch")
-	}
-	if len(index.Docs) == 0 {
-		errs = append(errs, "no docs indexed")
-	}
-	wantDocs := []string{"AGENTS.md", "CLAUDE.md", "GENIUS_THINK.md", ".agent-harness/COMMIT_POLICY.md", "skills/self-augment/SELF_AUGMENTATION.md", "skills/self-verify/SKILL.md", ".agent-harness/OPERATIONS.md"}
-	for _, want := range wantDocs {
-		if !docIndexContains(index.Docs, want) {
-			errs = append(errs, "missing doc "+want)
-		}
-	}
-	for _, doc := range index.Docs {
-		if doc.Title == "" {
-			errs = append(errs, "missing title for "+doc.RelPath)
-			break
-		}
-		if strings.Contains(doc.RelPath, "m"+"16") || strings.Contains(doc.Title, "m"+"16") {
-			errs = append(errs, "docs index contains legacy "+"m"+"16 name")
-			break
-		}
-	}
+	errs := docsIndexSmokeValidationErrors(index, root)
 	if len(errs) > 0 {
 		step.OK = false
 		step.Error = strings.Join(errs, "; ")
 	}
 	return step
-}
-
-func docIndexContains(docs []core.DocIndexInfo, relPath string) bool {
-	for _, doc := range docs {
-		if doc.RelPath == relPath {
-			return true
-		}
-	}
-	return false
 }
