@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"encoding/json"
@@ -16,11 +16,11 @@ func TestSelfVerifyLLMEvalPromptRemainsJSONWhenEvidenceIsLarge(t *testing.T) {
 			CoverageGaps: []string{strings.Repeat("large-gap-", 6000)},
 		},
 	}
-	prompt, packetBytes, err := buildSelfVerifyLLMEvalPrompt(result)
+	prompt, packetBytes, err := BuildSelfVerifyLLMEvalPrompt(result)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if packetBytes > selfVerifyLLMEvalEvidenceBudgetBytes {
+	if packetBytes > SelfVerifyLLMEvalEvidenceBudgetBytes {
 		t.Fatalf("LLM eval prompt should be bounded, got %d bytes", packetBytes)
 	}
 	var packet map[string]any
@@ -33,7 +33,7 @@ func TestSelfVerifyLLMEvalPromptRemainsJSONWhenEvidenceIsLarge(t *testing.T) {
 }
 
 func TestSelfVerifyLLMEvalPromptForcesPlainJSONOutput(t *testing.T) {
-	prompt, _, err := buildSelfVerifyLLMEvalPrompt(SelfAugmentResult{
+	prompt, _, err := BuildSelfVerifyLLMEvalPrompt(SelfAugmentResult{
 		OK:                  true,
 		LoopKind:            "self_verification",
 		Iterations:          10,
