@@ -1,11 +1,5 @@
 package core
 
-import (
-	"fmt"
-	"strings"
-	"time"
-)
-
 type IssueOpsStartRequest struct {
 	Repo   string `json:"repo"`
 	Branch string `json:"branch,omitempty"`
@@ -126,33 +120,4 @@ type IssueOpsCleanupStatus struct {
 	WorktreePath      string   `json:"worktree_path,omitempty"`
 	Branch            string   `json:"branch,omitempty"`
 	RemoteArtifactURL string   `json:"remote_artifact_url,omitempty"`
-}
-
-func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
-	repo := strings.TrimSpace(req.Repo)
-	if repo == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("repo is required")
-	}
-	branch := strings.TrimSpace(req.Branch)
-	if err := validateIssueOpsIssueBranch(branch); err != nil {
-		return IssueOpsRecord{OK: false}, err
-	}
-	id := newIssueOpsID(repo, branch)
-	// Identity is deterministic per (repo, branch): resume an existing record
-	// instead of minting a new one so cycles cannot accumulate as stale duplicates.
-	if existing, err := ReadIssueOps(stateRoot, id); err == nil {
-		return existing, nil
-	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	record := IssueOpsRecord{
-		OK:        true,
-		ID:        id,
-		Repo:      repo,
-		Branch:    branch,
-		Phase:     IssueOpsPhaseProblem,
-		Feedback:  []IssueOpsFeedbackItem{},
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	return writeIssueOps(stateRoot, record)
 }

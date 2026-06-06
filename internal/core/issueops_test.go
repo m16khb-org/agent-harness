@@ -101,6 +101,37 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	}
 }
 
+func TestStartIssueOpsTrimsRepoResumesExistingRecordAndValidatesBranch(t *testing.T) {
+	stateRoot := t.TempDir()
+	repo := filepath.Join(t.TempDir(), "example")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "  " + repo + "  ", Branch: "12-demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.OK || first.Repo != repo || first.Branch != "12-demo" || first.Phase != IssueOpsPhaseProblem {
+		t.Fatalf("unexpected first start record: %+v", first)
+	}
+	if first.CreatedAt == "" || first.UpdatedAt == "" || first.ID != newIssueOpsID(repo, "12-demo") {
+		t.Fatalf("start should set deterministic identity and timestamps: %+v", first)
+	}
+
+	resumed, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "12-demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resumed.ID != first.ID || resumed.CreatedAt != first.CreatedAt || resumed.UpdatedAt != first.UpdatedAt {
+		t.Fatalf("second start should resume existing record, first=%+v resumed=%+v", first, resumed)
+	}
+
+	if _, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "feature/no-issue"}); err == nil || !strings.Contains(err.Error(), "issue number") {
+		t.Fatalf("branch without issue number should be rejected, got %v", err)
+	}
+}
+
 func TestIssueOpsContractChangeFeedbackBlocksPRUntilIssueUpdateRecorded(t *testing.T) {
 	stateRoot := t.TempDir()
 	repo := filepath.Join(t.TempDir(), "example")
