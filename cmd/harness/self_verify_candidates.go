@@ -2,8 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
-	"fmt"
 	"path/filepath"
 	"time"
 
@@ -55,30 +53,6 @@ type SelfVerificationCandidateExportStateSnapshot struct {
 	SatisfiedCandidateIDs []string                    `json:"satisfied_candidate_ids"`
 	SelectedCandidate     *SelfVerificationCandidate  `json:"selected_candidate,omitempty"`
 	Candidates            []SelfVerificationCandidate `json:"candidates"`
-}
-
-func runSelfVerifyCandidates(args []string) error {
-	fs := flag.NewFlagSet("self-verify candidates", flag.ContinueOnError)
-	saveState := fs.Bool("save-state", false, "save candidate export snapshot to harness state")
-	stateKey := fs.String("state-key", "self-verify-candidates-latest", "state key for --save-state")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	result := exportSelfVerificationCandidates()
-	if *saveState {
-		if err := saveSelfVerificationCandidateExport(&result, *stateKey); err != nil {
-			return err
-		}
-	}
-	if *jsonOut {
-		return printJSON(result)
-	}
-	fmt.Printf("%s candidates: %d candidate(s), selected=%s\n", result.KoreanName, result.CandidateCount, selectedSelfVerificationCandidateID(result.SelectedCandidate))
-	for _, candidate := range result.Candidates {
-		fmt.Printf("- %s %s score=%.1f status=%s\n", candidate.ID, candidate.Category, candidate.Score, candidate.Status)
-	}
-	return nil
 }
 
 func exportSelfVerificationCandidates() SelfVerificationCandidateExportResult {
