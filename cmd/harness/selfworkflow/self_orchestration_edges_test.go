@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"strings"
@@ -9,8 +9,8 @@ func TestSelfOrchestrationHelpersReturnStableFallbacks(t *testing.T) {
 	if got := selectedCandidateID(nil); got != "" {
 		t.Fatalf("selectedCandidateID(nil)=%q, want empty string", got)
 	}
-	if got := selectedSelfVerificationCandidateID(nil); got != "none" {
-		t.Fatalf("selectedSelfVerificationCandidateID(nil)=%q, want none", got)
+	if got := SelectedSelfVerificationCandidateID(nil); got != "none" {
+		t.Fatalf("SelectedSelfVerificationCandidateID(nil)=%q, want none", got)
 	}
 
 	augment := SelfAugmentCandidate{ID: "augment-next"}
@@ -18,8 +18,8 @@ func TestSelfOrchestrationHelpersReturnStableFallbacks(t *testing.T) {
 	if got := selectedCandidateID(&augment); got != "augment-next" {
 		t.Fatalf("selectedCandidateID returned %q", got)
 	}
-	if got := selectedSelfVerificationCandidateID(&verify); got != "verify-next" {
-		t.Fatalf("selectedSelfVerificationCandidateID returned %q", got)
+	if got := SelectedSelfVerificationCandidateID(&verify); got != "verify-next" {
+		t.Fatalf("SelectedSelfVerificationCandidateID returned %q", got)
 	}
 }
 
@@ -35,8 +35,8 @@ func TestStateKeySlugNormalizesUnsafeText(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := stateKeySlug(tt.in); got != tt.want {
-				t.Fatalf("stateKeySlug(%q)=%q, want %q", tt.in, got, tt.want)
+			if got := StateKeySlug(tt.in); got != tt.want {
+				t.Fatalf("StateKeySlug(%q)=%q, want %q", tt.in, got, tt.want)
 			}
 		})
 	}
@@ -44,23 +44,23 @@ func TestStateKeySlugNormalizesUnsafeText(t *testing.T) {
 
 func TestSelfVerifyLLMEvalEnvParsesDisabledAliasesAndRejectsUnknown(t *testing.T) {
 	for _, value := range []string{"", "0", "false", "no", "off", "disabled"} {
-		enabled, mode, err := parseSelfVerifyLLMEvalEnv(value)
+		enabled, mode, err := ParseSelfVerifyLLMEvalEnv(value)
 		if err != nil || enabled || mode != "advisory" {
-			t.Fatalf("parseSelfVerifyLLMEvalEnv(%q) enabled=%v mode=%q err=%v", value, enabled, mode, err)
+			t.Fatalf("ParseSelfVerifyLLMEvalEnv(%q) enabled=%v mode=%q err=%v", value, enabled, mode, err)
 		}
 	}
-	enabled, mode, err := parseSelfVerifyLLMEvalEnv(" gate ")
+	enabled, mode, err := ParseSelfVerifyLLMEvalEnv(" gate ")
 	if err != nil || !enabled || mode != "gate" {
 		t.Fatalf("gate env parse enabled=%v mode=%q err=%v", enabled, mode, err)
 	}
-	if _, _, err := parseSelfVerifyLLMEvalEnv("maybe"); err == nil || !strings.Contains(err.Error(), selfVerifyLLMEvalEnv) {
+	if _, _, err := ParseSelfVerifyLLMEvalEnv("maybe"); err == nil || !strings.Contains(err.Error(), selfVerifyLLMEvalEnv) {
 		t.Fatalf("expected named env parse error, got %v", err)
 	}
 }
 
 func TestDecodeSelfVerifyLLMEvalStrictRejectsExtraJSONValue(t *testing.T) {
 	var eval SelfVerifyLLMEvalResult
-	err := decodeSelfVerifyLLMEvalStrict([]byte(`{"ok":true,"mode":"advisory","execution_class":"foreground_blocking","read_only":true,"score":99,"blockers":[],"risks":[],"recommended_next_actions":[],"evidence_packet_bytes":10} {"ok":false}`), &eval)
+	err := DecodeSelfVerifyLLMEvalStrict([]byte(`{"ok":true,"mode":"advisory","execution_class":"foreground_blocking","read_only":true,"score":99,"blockers":[],"risks":[],"recommended_next_actions":[],"evidence_packet_bytes":10} {"ok":false}`), &eval)
 	if err == nil || !strings.Contains(err.Error(), "unexpected extra JSON value") {
 		t.Fatalf("expected extra JSON value error, got %v", err)
 	}
