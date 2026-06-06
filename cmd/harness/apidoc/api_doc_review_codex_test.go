@@ -1,4 +1,4 @@
-package main
+package apidoc
 
 import (
 	"errors"
@@ -21,7 +21,7 @@ func TestRunCodexAPIDocReviewUsesSchemaOutputAndMapsVerdicts(t *testing.T) {
 
 	t.Setenv("API_DOC_FAKE_RESULT", `{"verdict":"fail","summary":"missing response","findings":[{"file":"api/openapi.yaml","severity":"error","message":"missing"}]}`)
 	fail, err := runCodexAPIDocReview(options, []string{"api/openapi.yaml"}, "diff", "")
-	if !errors.Is(err, errAPIDocReviewGateFailed) || fail.OK || fail.Verdict != "fail" || len(fail.Findings) != 1 {
+	if !errors.Is(err, ErrReviewGateFailed) || fail.OK || fail.Verdict != "fail" || len(fail.Findings) != 1 {
 		t.Fatalf("expected failing fake codex review gate, result=%+v err=%v", fail, err)
 	}
 

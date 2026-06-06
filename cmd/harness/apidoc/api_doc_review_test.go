@@ -1,4 +1,4 @@
-package main
+package apidoc
 
 import (
 	"encoding/json"
@@ -238,7 +238,7 @@ export class UsersController {
 		return runAPIDocStaticCheck([]string{"--repo", root, "src/users/users.controller.ts"})
 	})
 
-	if err == nil || !isAPIDocStaticGateError(err) {
+	if err == nil || !IsStaticGateError(err) {
 		t.Fatalf("expected static gate error, got %T %v", err, err)
 	}
 	if !strings.Contains(out, "API documentation static check found") || !strings.Contains(out, "missing_api_operation") || !strings.Contains(out, "missing_api_param") {
