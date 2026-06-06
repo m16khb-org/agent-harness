@@ -205,3 +205,16 @@ func TestWaitForDaemonWithDepsReturnsTimeoutWithFallbackPaths(t *testing.T) {
 		t.Fatalf("unexpected timeout daemon status: %#v", status)
 	}
 }
+
+func TestWaitForDaemonReturnsTimeoutWithoutStartingProcess(t *testing.T) {
+	paths := daemonPaths{Dir: t.TempDir()}
+
+	status, err := waitForDaemon(paths, time.Nanosecond)
+
+	if err == nil || err.Error() != "daemon did not become ready before timeout" {
+		t.Fatalf("expected timeout error, got status=%#v err=%v", status, err)
+	}
+	if status.Running || status.Paths.Dir != paths.Dir {
+		t.Fatalf("unexpected daemon wait status: %#v", status)
+	}
+}
