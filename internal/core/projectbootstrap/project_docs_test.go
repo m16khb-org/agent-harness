@@ -1,4 +1,4 @@
-package core
+package projectbootstrap
 
 import (
 	"encoding/json"
@@ -6,6 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/draftwiki"
+	"agent-harness/internal/core/projectdoc"
+	"agent-harness/internal/core/projectdocs"
 )
 
 func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
@@ -20,14 +24,14 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	if !dry.OK || !dry.DryRun || dry.Write {
 		t.Fatalf("unexpected dry-run flags: %+v", dry)
 	}
-	if _, err := os.Stat(filepath.Join(root, ProjectDocsDir)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, projectdoc.ProjectDocsDir)); !os.IsNotExist(err) {
 		t.Fatalf("dry-run created docs dir or unexpected stat error: %v", err)
 	}
-	wantBootstrapFiles := 1 + len(ProjectDocNames()) + len(draftWikiSeedFiles())
+	wantBootstrapFiles := 1 + len(projectdoc.ProjectDocNames()) + len(draftwiki.DraftWikiSeedFiles())
 	if len(dry.Files) != wantBootstrapFiles {
 		t.Fatalf("planned files=%d want %d", len(dry.Files), wantBootstrapFiles)
 	}
-	for rel := range draftWikiSeedFiles() {
+	for rel := range draftwiki.DraftWikiSeedFiles() {
 		if !projectPlanContainsRel(dry.Files, rel) {
 			t.Fatalf("dry-run plan missing draft-wiki seed %s: %+v", rel, dry.Files)
 		}
@@ -65,21 +69,21 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 		t.Fatalf("persisted metadata missing project profile: %+v", written.LifecycleState.Profile.Metadata)
 	}
 	agents := mustRead(t, filepath.Join(root, "AGENTS.md"))
-	if !strings.Contains(agents, "# Existing Rules") || !strings.Contains(agents, agentsStartMarker) || !strings.Contains(agents, ".agent-harness/TESTING.md") || !strings.Contains(agents, ".agent-harness/OPERATIONS.md") {
+	if !strings.Contains(agents, "# Existing Rules") || !strings.Contains(agents, projectdoc.AgentsStartMarker) || !strings.Contains(agents, ".agent-harness/TESTING.md") || !strings.Contains(agents, ".agent-harness/OPERATIONS.md") {
 		t.Fatalf("AGENTS.md marker block not merged correctly:\n%s", agents)
 	}
-	for _, name := range ProjectDocNames() {
-		path := filepath.Join(root, ProjectDocsDir, name)
+	for _, name := range projectdoc.ProjectDocNames() {
+		path := filepath.Join(root, projectdoc.ProjectDocsDir, name)
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected generated %s: %v", name, err)
 		}
 	}
-	for rel := range draftWikiSeedFiles() {
+	for rel := range draftwiki.DraftWikiSeedFiles() {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
 			t.Fatalf("expected draft-wiki seed %s: %v", rel, err)
 		}
 	}
-	testingDoc := mustRead(t, filepath.Join(root, ProjectDocsDir, "TESTING.md"))
+	testingDoc := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md"))
 	if !strings.Contains(testingDoc, "go test ./...") || !strings.Contains(testingDoc, "Confidence: high") {
 		t.Fatalf("TESTING.md lacks inferred command evidence:\n%s", testingDoc)
 	}
@@ -101,7 +105,7 @@ func TestRouteProjectDocsForPreciseTasks(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.task, func(t *testing.T) {
-			got, err := RouteProjectDocs(root, tc.task)
+			got, err := projectdocs.RouteProjectDocs(root, tc.task)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -116,11 +120,11 @@ func TestRouteProjectDocsForPreciseTasks(t *testing.T) {
 
 func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
 	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, ProjectDocsDir, "TESTING.md"), "# Custom Testing\n\nKeep local detail.\n")
+	mustWrite(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md"), "# Custom Testing\n\nKeep local detail.\n")
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	if got := mustRead(t, filepath.Join(root, ProjectDocsDir, "TESTING.md")); !strings.Contains(got, "Keep local detail.") {
+	if got := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md")); !strings.Contains(got, "Keep local detail.") {
 		t.Fatalf("bootstrap without sync replaced existing doc:\n%s", got)
 	}
 	synced, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true, Sync: true})
@@ -130,7 +134,7 @@ func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
 	if !synced.Sync {
 		t.Fatalf("sync flag not reflected in result: %+v", synced)
 	}
-	if got := mustRead(t, filepath.Join(root, ProjectDocsDir, "TESTING.md")); strings.Contains(got, "Keep local detail.") {
+	if got := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md")); strings.Contains(got, "Keep local detail.") {
 		t.Fatalf("bootstrap --sync did not refresh existing doc:\n%s", got)
 	}
 }
@@ -141,8 +145,8 @@ func TestBootstrapWritesMetaFrontmatterIntoCreatedDocs(t *testing.T) {
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	arch := mustRead(t, filepath.Join(root, ProjectDocsDir, "ARCHITECTURE.md"))
-	canonical, _ := DocMetaDescription("ARCHITECTURE.md")
+	arch := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "ARCHITECTURE.md"))
+	canonical, _ := projectdoc.DocMetaDescription("ARCHITECTURE.md")
 	if !strings.HasPrefix(arch, "---\nname: ARCHITECTURE.md\ndescription: "+canonical+"\n---\n") {
 		t.Fatalf("created doc missing canonical frontmatter:\n%s", firstLines(arch, 4))
 	}
@@ -151,7 +155,7 @@ func TestBootstrapWritesMetaFrontmatterIntoCreatedDocs(t *testing.T) {
 func TestBootstrapAddsFrontmatterToExistingDocPreservingBody(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	dir := filepath.Join(root, ProjectDocsDir)
+	dir := filepath.Join(root, projectdoc.ProjectDocsDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +168,7 @@ func TestBootstrapAddsFrontmatterToExistingDocPreservingBody(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := mustRead(t, filepath.Join(dir, "CONVENTIONS.md"))
-	canonical, _ := DocMetaDescription("CONVENTIONS.md")
+	canonical, _ := projectdoc.DocMetaDescription("CONVENTIONS.md")
 	if !strings.HasPrefix(got, "---\nname: CONVENTIONS.md\ndescription: "+canonical+"\n---\n") {
 		t.Fatalf("frontmatter not added to existing doc:\n%s", firstLines(got, 4))
 	}
@@ -182,18 +186,18 @@ func TestProjectDocsBootstrapResultJSONContract(t *testing.T) {
 		Write:    true,
 		Sync:     true,
 		DryRun:   false,
-		Signals: ProjectSignals{
+		Signals: projectdocs.ProjectSignals{
 			Languages:       []string{"go"},
 			PackageManagers: []string{"go"},
-			Profile: ProjectProfile{
-				VCS: ProjectVCSProfile{
+			Profile: projectdocs.ProjectProfile{
+				VCS: projectdocs.ProjectVCSProfile{
 					Provider: "git",
 					Hosting:  "github",
 				},
 				Languages: []string{"go"},
 			},
 		},
-		Files: []ProjectDocsPlannedFile{
+		Files: []projectdoc.ProjectDocsPlannedFile{
 			{RelPath: ".agent-harness/ARCHITECTURE.md", Action: "write", SHA256: "abc"},
 		},
 	}
@@ -243,7 +247,7 @@ func firstLines(s string, n int) string {
 	return strings.Join(lines, "\n")
 }
 
-func containsProjectCommand(commands []EvidenceCommand, command string) bool {
+func containsProjectCommand(commands []projectdocs.EvidenceCommand, command string) bool {
 	for _, c := range commands {
 		if c.Command == command {
 			return true
@@ -252,7 +256,7 @@ func containsProjectCommand(commands []EvidenceCommand, command string) bool {
 	return false
 }
 
-func projectPlanContainsRel(files []ProjectDocsPlannedFile, rel string) bool {
+func projectPlanContainsRel(files []projectdoc.ProjectDocsPlannedFile, rel string) bool {
 	for _, file := range files {
 		if file.RelPath == rel {
 			return true
@@ -261,7 +265,7 @@ func projectPlanContainsRel(files []ProjectDocsPlannedFile, rel string) bool {
 	return false
 }
 
-func routeContains(result ProjectDocsRouteResult, rel string) bool {
+func routeContains(result projectdocs.ProjectDocsRouteResult, rel string) bool {
 	for _, doc := range result.Docs {
 		if doc.RelPath == rel {
 			return true
@@ -281,7 +285,7 @@ func containsProjectString(items []string, want string) bool {
 
 func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
 	root := t.TempDir()
-	caution, err := AppendProjectDocsRecord(ProjectDocsRecordRequest{
+	caution, err := projectdocs.AppendProjectDocsRecord(projectdocs.ProjectDocsRecordRequest{
 		RepoRoot:   root,
 		Kind:       "caution",
 		Title:      "MCP route over-read fixed",
@@ -297,14 +301,14 @@ func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
 	if !caution.OK || caution.RecordKind != "caution" || caution.RelPath != ".agent-harness/CAUTIONS.md" || caution.BytesAppended == 0 {
 		t.Fatalf("unexpected caution result: %+v", caution)
 	}
-	cautions := mustRead(t, filepath.Join(root, ProjectDocsDir, "CAUTIONS.md"))
+	cautions := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "CAUTIONS.md"))
 	for _, want := range []string{"MCP route over-read fixed", "Resolution:", "go test ./internal/core"} {
 		if !strings.Contains(cautions, want) {
 			t.Fatalf("CAUTIONS.md missing %q:\n%s", want, cautions)
 		}
 	}
 
-	adr, err := AppendProjectDocsRecord(ProjectDocsRecordRequest{
+	adr, err := projectdocs.AppendProjectDocsRecord(projectdocs.ProjectDocsRecordRequest{
 		RepoRoot:     root,
 		Kind:         "adr",
 		Title:        "Use task-routed project docs",
@@ -321,7 +325,7 @@ func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
 	if !adr.OK || adr.RecordKind != "adr" || adr.RelPath != ".agent-harness/ADR.md" || adr.BytesAppended == 0 {
 		t.Fatalf("unexpected adr result: %+v", adr)
 	}
-	adrDoc := mustRead(t, filepath.Join(root, ProjectDocsDir, "ADR.md"))
+	adrDoc := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "ADR.md"))
 	for _, want := range []string{"Use task-routed project docs", "Decision:", "Always inject every document"} {
 		if !strings.Contains(adrDoc, want) {
 			t.Fatalf("ADR.md missing %q:\n%s", want, adrDoc)
@@ -334,7 +338,7 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	read, err := ReadProjectDoc(root, ".agent-harness/TESTING.md")
+	read, err := projectdocs.ReadProjectDoc(root, ".agent-harness/TESTING.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +346,7 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 		t.Fatalf("unexpected read result: %+v", read)
 	}
 	content := read.Content + "\n## Repo-specific evidence\n\n- Evidence: test updated through project_docs_update.\n"
-	if _, err := UpdateProjectDoc(ProjectDocsUpdateRequest{
+	if _, err := projectdocs.UpdateProjectDoc(projectdocs.ProjectDocsUpdateRequest{
 		RepoRoot: root,
 		RelPath:  "TESTING.md",
 		Content:  content,
@@ -351,7 +355,7 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 	}); err == nil || !strings.Contains(err.Error(), "expected_sha256 is required") {
 		t.Fatalf("expected missing sha error, got %v", err)
 	}
-	dry, err := UpdateProjectDoc(ProjectDocsUpdateRequest{
+	dry, err := projectdocs.UpdateProjectDoc(projectdocs.ProjectDocsUpdateRequest{
 		RepoRoot:       root,
 		RelPath:        "TESTING.md",
 		Content:        content,
@@ -365,10 +369,10 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 	if !dry.OK || !dry.DryRun || dry.Action != "update" || dry.NextSHA256 == "" {
 		t.Fatalf("unexpected dry-run update: %+v", dry)
 	}
-	if strings.Contains(mustRead(t, filepath.Join(root, ProjectDocsDir, "TESTING.md")), "Repo-specific evidence") {
+	if strings.Contains(mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md")), "Repo-specific evidence") {
 		t.Fatalf("dry-run wrote the document")
 	}
-	written, err := UpdateProjectDoc(ProjectDocsUpdateRequest{
+	written, err := projectdocs.UpdateProjectDoc(projectdocs.ProjectDocsUpdateRequest{
 		RepoRoot:       root,
 		RelPath:        ".agent-harness/TESTING.md",
 		Content:        content,
@@ -383,7 +387,7 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 	if !written.OK || written.DryRun || written.Action != "update" {
 		t.Fatalf("unexpected written update: %+v", written)
 	}
-	if !strings.Contains(mustRead(t, filepath.Join(root, ProjectDocsDir, "TESTING.md")), "Repo-specific evidence") {
+	if !strings.Contains(mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md")), "Repo-specific evidence") {
 		t.Fatalf("confirmed update did not write")
 	}
 }

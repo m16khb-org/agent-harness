@@ -1,6 +1,7 @@
 package core
 
 import (
+	"agent-harness/internal/core/projectbootstrap"
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/projectdocs"
 )
@@ -24,6 +25,8 @@ type ProjectDocsRecordResult = projectdocs.ProjectDocsRecordResult
 type ProjectDocsReadResult = projectdocs.ProjectDocsReadResult
 type ProjectDocsUpdateRequest = projectdocs.ProjectDocsUpdateRequest
 type ProjectDocsUpdateResult = projectdocs.ProjectDocsUpdateResult
+type ProjectDocsBootstrapRequest = projectbootstrap.ProjectDocsBootstrapRequest
+type ProjectDocsBootstrapResult = projectbootstrap.ProjectDocsBootstrapResult
 
 func DocMetaDescription(name string) (string, bool) {
 	return projectdoc.DocMetaDescription(name)
@@ -55,6 +58,10 @@ func UpdateProjectDoc(req ProjectDocsUpdateRequest) (ProjectDocsUpdateResult, er
 
 func AppendProjectDocsRecord(req ProjectDocsRecordRequest) (ProjectDocsRecordResult, error) {
 	return projectdocs.AppendProjectDocsRecord(req)
+}
+
+func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrapResult, error) {
+	return projectbootstrap.BootstrapProjectDocs(req)
 }
 
 func renderProjectDocs(root string, signals ProjectSignals) map[string]string {
