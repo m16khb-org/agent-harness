@@ -13,47 +13,16 @@ func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose boo
 
 func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfVerifyProgressReporter) (SelfAugmentResult, error) {
 	started := time.Now()
-	result := SelfAugmentResult{
-		LoopKind:    "self_verification",
-		KoreanName:  selfVerificationKoreanName,
-		Iterations:  iterations,
-		BaseSeed:    baseSeed,
-		TargetScore: targetScore,
-		HarnessRoot: harnessRoot(),
-		InspiredBy:  "/Users/habin/workspace/eye-tracking-scroll/scripts/self-augment.js",
-		LoopContract: []string{
-			"quick mode runs one deterministic evidence pass before the final LLM gate",
-			"full mode requires at least 10 seeded iterations before the final LLM gate",
-			"tests and QA are first-class stages, not optional follow-ups",
-			"seeded per-iteration randomized git preflight fuzz",
-			"repeat core invariant, tests, risk-tier QA, build, CLI/MCP schema and response contract golden, CLI, docs, command policy, MCP, state, and native integration smoke checks",
-			"terminate only when every concrete goal score is greater than target_score",
-			"fail fast on the first failed step and report goal scores for recovery",
-		},
-	}
+	result := newSelfVerifyLoopResult(iterations, baseSeed, targetScore)
 	if progress != nil {
 		progress.started = started
-		progress.emit(SelfVerifyProgressEvent{
-			Event:      "loop_start",
-			LoopKind:   result.LoopKind,
-			Iterations: iterations,
-			Seed:       baseSeed,
-		})
+		emitSelfVerifyLoopStart(progress, result.LoopKind, iterations, baseSeed)
 	}
 	if iterations < 1 {
 		err := fmt.Errorf("self-verification requires at least 1 iteration")
 		result.ElapsedMS = time.Since(started).Milliseconds()
 		result.Summary = summarizeSelfVerification(result, targetScore)
-		if progress != nil {
-			progress.emit(SelfVerifyProgressEvent{
-				Event:      "loop_end",
-				LoopKind:   result.LoopKind,
-				Iterations: iterations,
-				Seed:       baseSeed,
-				OK:         boolPtr(false),
-				Error:      err.Error(),
-			})
-		}
+		emitSelfVerifyLoopEnd(progress, result.LoopKind, iterations, baseSeed, false, err.Error())
 		return result, err
 	}
 
@@ -70,16 +39,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 			result.Runs = append(result.Runs, run)
 			result.ElapsedMS = time.Since(started).Milliseconds()
 			result.Summary = summarizeSelfVerification(result, targetScore)
-			if progress != nil {
-				progress.emit(SelfVerifyProgressEvent{
-					Event:      "loop_end",
-					LoopKind:   result.LoopKind,
-					Iterations: iterations,
-					Seed:       baseSeed,
-					OK:         boolPtr(false),
-					Error:      err.Error(),
-				})
-			}
+			emitSelfVerifyLoopEnd(progress, result.LoopKind, iterations, baseSeed, false, err.Error())
 			return result, err
 		}
 		tempBin := filepath.Join(tempDir, "harness")
@@ -124,16 +84,7 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 				result.ElapsedMS = time.Since(started).Milliseconds()
 				result.OK = false
 				result.Summary = summarizeSelfVerification(result, targetScore)
-				if progress != nil {
-					progress.emit(SelfVerifyProgressEvent{
-						Event:      "loop_end",
-						LoopKind:   result.LoopKind,
-						Iterations: iterations,
-						Seed:       baseSeed,
-						OK:         boolPtr(false),
-						Error:      fmt.Sprintf("%s failed: %s", step.Label, step.Error),
-					})
-				}
+				emitSelfVerifyLoopEnd(progress, result.LoopKind, iterations, baseSeed, false, fmt.Sprintf("%s failed: %s", step.Label, step.Error))
 				return result, fmt.Errorf("%w: %s failed: %s", errSelfVerificationGateFailed, step.Label, step.Error)
 			}
 		}
@@ -160,14 +111,6 @@ func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 	if verbose {
 		fmt.Printf("\nSelf-verification pipeline passed %d iterations in %.1fs.\n", iterations, float64(result.ElapsedMS)/1000)
 	}
-	if progress != nil {
-		progress.emit(SelfVerifyProgressEvent{
-			Event:      "loop_end",
-			LoopKind:   result.LoopKind,
-			Iterations: iterations,
-			Seed:       baseSeed,
-			OK:         boolPtr(result.OK),
-		})
-	}
+	emitSelfVerifyLoopEnd(progress, result.LoopKind, iterations, baseSeed, result.OK, "")
 	return result, nil
 }
