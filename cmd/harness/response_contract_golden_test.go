@@ -85,6 +85,9 @@ func TestResponseContractsGolden(t *testing.T) {
 	if !ok || issueopsID == "" {
 		t.Fatalf("issueops start missing id: %#v", issueopsStartRaw)
 	}
+	cliSnapshot["issueops_record_intent"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"intent", "record", "--id", issueopsID, "--raw-request", "Refactor IssueOps intent flow", "--interpreted-intent", "Persist main-agent judgment before planning", "--success-criteria", "intent is recorded", "--constraint", "keep contract deterministic", "--ambiguity", "none", "--non-goal", "do not continue from hook recommendation alone", "--json"})
+	})
 	cliSnapshot["issueops_link_issue"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-issue", "--id", issueopsID, "--issue-url", "https://gitlab.example/group/project/-/issues/1", "--json"})
 	})
@@ -102,6 +105,9 @@ func TestResponseContractsGolden(t *testing.T) {
 	addEvalSymlinkReplacement(t, replacements, contractWorktree, "$ISSUEOPS_WORKTREE")
 	cliSnapshot["issueops_link_worktree"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", issueopsID, "--worktree-path", contractWorktree, "--json"})
+	})
+	cliSnapshot["issueops_review_design"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"design", "review", "--id", issueopsID, "--problem-summary", "IssueOps needs explicit design review", "--proposed-design", "Gate implementation on approved design", "--refactor-plan", "Keep changes local to IssueOps state and adapters", "--risk", "golden contract drift", "--alternative", "docs-only guidance", "--verification", "go test ./cmd/harness -run Golden", "--approved", "--json"})
 	})
 	writeContractFile(t, contractWorktree, "docs/superpowers/plans/contract.md", "plan\n")
 	cliSnapshot["issueops_link_plan"] = runCLIJSONContract(t, replacements, func() error {
@@ -244,6 +250,15 @@ func TestResponseContractsGolden(t *testing.T) {
 	if !ok || issueopsMCPID == "" {
 		t.Fatalf("MCP issueops start missing id: %#v", issueopsMCPPayload)
 	}
+	mcpSnapshot["issueops_record_intent"] = runMCPToolContract(t, replacements, "issueops_record_intent", map[string]any{
+		"id":                 issueopsMCPID,
+		"raw_request":        "Refactor IssueOps intent flow",
+		"interpreted_intent": "Persist main-agent judgment before planning",
+		"success_criteria":   []string{"intent is recorded"},
+		"constraints":        []string{"keep contract deterministic"},
+		"ambiguities":        []string{"none"},
+		"non_goals":          []string{"do not continue from hook recommendation alone"},
+	})
 	mcpSnapshot["issueops_link_issue"] = runMCPToolContract(t, replacements, "issueops_link_issue", map[string]any{
 		"id":        issueopsMCPID,
 		"issue_url": "https://github.com/example/repo/issues/2",
@@ -268,6 +283,16 @@ func TestResponseContractsGolden(t *testing.T) {
 	mcpSnapshot["issueops_link_worktree"] = runMCPToolContract(t, replacements, "issueops_link_worktree", map[string]any{
 		"id":            issueopsMCPID,
 		"worktree_path": mcpWorktree,
+	})
+	mcpSnapshot["issueops_review_design"] = runMCPToolContract(t, replacements, "issueops_review_design", map[string]any{
+		"id":              issueopsMCPID,
+		"problem_summary": "IssueOps needs explicit design review",
+		"proposed_design": "Gate implementation on approved design",
+		"refactor_plan":   "Keep changes local to IssueOps state and adapters",
+		"risks":           []string{"golden contract drift"},
+		"alternatives":    []string{"docs-only guidance"},
+		"verification":    []string{"go test ./cmd/harness -run Golden"},
+		"approved":        true,
 	})
 	writeContractFile(t, mcpWorktree, "docs/superpowers/plans/mcp-contract.md", "plan\n")
 	mcpSnapshot["issueops_link_plan"] = runMCPToolContract(t, replacements, "issueops_link_plan", map[string]any{

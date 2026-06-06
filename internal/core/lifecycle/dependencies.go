@@ -19,6 +19,8 @@ type NextActionAutoProceedLLMRequest = nextaction.NextActionAutoProceedLLMReques
 
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsStartRequest = issueops.IssueOpsStartRequest
+type IssueOpsIntentRecordRequest = issueops.IssueOpsIntentRecordRequest
+type IssueOpsDesignReviewRequest = issueops.IssueOpsDesignReviewRequest
 type IssueOpsBranchPrepareRequest = issueops.IssueOpsBranchPrepareRequest
 type IssueOpsRemoteArtifactVerification = issueops.IssueOpsRemoteArtifactVerification
 type IssueOpsPhase = issueops.IssueOpsPhase
@@ -63,6 +65,14 @@ func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, 
 
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	return issueops.ReadIssueOps(stateRoot, id)
+}
+
+func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsIntent(stateRoot, id, req)
+}
+
+func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsDesignReview(stateRoot, id, req)
 }
 
 func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {

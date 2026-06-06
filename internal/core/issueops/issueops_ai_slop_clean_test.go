@@ -28,6 +28,7 @@ func TestIssueOpsAISlopCleanRejectsUntrackedPlanWithoutImplementation(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
 	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/99")
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +47,7 @@ func TestIssueOpsAISlopCleanRejectsUntrackedPlanWithoutImplementation(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsApprovedDesignForTest(t, stateRoot, record.ID)
 	writeIssueOpsFile(t, worktree, "plans/new-demo.md", "plan\n")
 	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans", "new-demo.md")); err != nil {
 		t.Fatal(err)

@@ -7,9 +7,11 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	wantNames := []string{
 		"issueops_start",
 		"issueops_status",
+		"issueops_record_intent",
 		"issueops_link_issue",
-		"issueops_link_plan",
 		"issueops_link_worktree",
+		"issueops_review_design",
+		"issueops_link_plan",
 		"issueops_prepare_worktree_tools",
 		"issueops_link_child",
 	}
@@ -34,8 +36,14 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	if !schemaRequires(byName["issueops_link_issue"].InputSchema, "issue_url") {
 		t.Fatalf("issueops_link_issue must require issue_url: %#v", byName["issueops_link_issue"].InputSchema)
 	}
+	if !schemaRequires(byName["issueops_record_intent"].InputSchema, "success_criteria") {
+		t.Fatalf("issueops_record_intent must require success_criteria: %#v", byName["issueops_record_intent"].InputSchema)
+	}
 	if !schemaRequires(byName["issueops_link_worktree"].InputSchema, "worktree_path") {
 		t.Fatalf("issueops_link_worktree must require worktree_path: %#v", byName["issueops_link_worktree"].InputSchema)
+	}
+	if !schemaRequires(byName["issueops_review_design"].InputSchema, "verification") {
+		t.Fatalf("issueops_review_design must require verification: %#v", byName["issueops_review_design"].InputSchema)
 	}
 	if !schemaRequires(byName["issueops_link_child"].InputSchema, "child_url") {
 		t.Fatalf("issueops_link_child must require child_url: %#v", byName["issueops_link_child"].InputSchema)

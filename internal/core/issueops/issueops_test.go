@@ -24,6 +24,7 @@ func TestIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("new cycle should not be PR-ready: %+v", ready)
 	}
 
+	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
 	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
 	if err != nil {
 		t.Fatal(err)
@@ -51,6 +52,7 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	if record.WorktreePath != worktree {
 		t.Fatalf("worktree path should be persisted: %+v", record)
 	}
+	recordIssueOpsApprovedDesignForTest(t, stateRoot, record.ID)
 	writeIssueOpsFile(t, worktree, "docs/superpowers/plans/demo.md", "plan\n")
 	record, err = LinkIssueOpsPlan(stateRoot, record.ID, "docs/superpowers/plans/demo.md")
 	if err != nil {
@@ -142,6 +144,7 @@ func TestIssueOpsContractChangeFeedbackBlocksPRUntilIssueUpdateRecorded(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
 	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
 	if err != nil {
 		t.Fatal(err)
@@ -161,6 +164,7 @@ func TestIssueOpsContractChangeFeedbackBlocksPRUntilIssueUpdateRecorded(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsApprovedDesignForTest(t, stateRoot, record.ID)
 	writeIssueOpsFile(t, worktree, "docs/superpowers/plans/demo.md", "plan\n")
 	record, err = LinkIssueOpsPlan(stateRoot, record.ID, "docs/superpowers/plans/demo.md")
 	if err != nil {

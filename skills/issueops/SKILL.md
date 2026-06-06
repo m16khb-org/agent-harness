@@ -19,9 +19,9 @@ Required phases:
 
 1. Problem intake: use `superpowers:brainstorming` to clarify the actual problem, constraints, success criteria, and ambiguity.
 2. Domain grill: challenge terminology, existing domain model fit, and documentation updates before committing to an issue.
-3. Issue contract: before remote issue creation, run the issue-preflight gate in `references/issue-preflight.md`; then create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions.
-4. Plan: produce an issue-based implementation plan under the target repo's planning convention.
-5. Implementation: use TDD for behavior changes and subagents only for bounded independent work.
+3. Issue contract: before remote issue creation, run the issue-preflight gate in `references/issue-preflight.md`; record the raw user request, interpreted intent, success criteria, constraints, non-goals, and ambiguity ledger with `agent-harness issueops intent record`; then create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions.
+4. Plan: produce an issue-based implementation plan under the target repo's planning convention, then record the reviewed design, refactor boundary, risks, alternatives, and verification matrix with `agent-harness issueops design review`.
+5. Implementation: use TDD for behavior changes and subagents only for bounded independent work. Do not enter implementation until the IssueOps design review is approved and has no open questions.
 6. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
 7. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
 8. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
@@ -61,6 +61,8 @@ Load these files only when the phase applies:
 - Worktree first: after issue link and before implementation, create an isolated worktree under `../<repo>.worktrees/<branch-slug-with-slashes-replaced>` and run implementation from that path.
 - Edit-target guard: shell cwd checks are not enough. Before any file edit, ensure the edit tool target path is inside the expected isolated worktree; after the edit, verify the source checkout/main branch remains clean and the worktree owns the change.
 - State first: link the issue and plan in IssueOps state before PR/MR drafting.
+- Intent contract first: before entering `plan`, record the raw request, interpreted intent, success criteria, constraints, non-goals, and ambiguity ledger with `agent-harness issueops intent record`; the durable state must show the main agent's judgment, not only hook recommendations.
+- Design review first: before linking a plan or entering `implement`, record an approved `agent-harness issueops design review` with problem summary, proposed design, refactor plan or boundary, risks, alternatives, and verification. Approved design reviews must not carry open questions.
 - TDD first: for behavior changes, write or update focused tests before production changes.
 - Evidence contract first: before implementation, record the domain invariant, exact mechanism, equivalent behavior if any, source evidence, changed endpoint/API-doc needs, live runtime matrix needs, review-thread obligations, and completion hygiene checks. Load `references/evidence-contract.md` when any of those surfaces apply.
 - Verify before remote writes: run the Korean Remote Artifact Gate before creating or editing remote issues, PRs, or MRs.
@@ -141,12 +143,34 @@ agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
 agent-harness issueops status --id "$ISSUEOPS_ID" --json
 ```
 
+Record the intent contract before plan phase or issue-link auto-advance:
+
+```bash
+agent-harness issueops intent record --id "$ISSUEOPS_ID" \
+  --raw-request "$RAW_USER_REQUEST" \
+  --interpreted-intent "$INTERPRETED_INTENT" \
+  --success-criteria "$SUCCESS_CRITERION" \
+  --constraint "$CONSTRAINT" \
+  --ambiguity "$AMBIGUITY_LEDGER_ENTRY" \
+  --non-goal "$NON_GOAL" \
+  --json
+```
+
 Remote issue and plan linkage:
 
 ```bash
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
 agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" --issue-url "$ISSUE_URL" --branch "$branch_slug" --base-branch "$BASE_BRANCH" --link-verified --json
 agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
+agent-harness issueops design review --id "$ISSUEOPS_ID" \
+  --problem-summary "$PROBLEM_SUMMARY" \
+  --proposed-design "$PROPOSED_DESIGN" \
+  --refactor-plan "$REFACTOR_PLAN" \
+  --risk "$RISK" \
+  --alternative "$ALTERNATIVE" \
+  --verification "$VERIFICATION_STEP" \
+  --approved \
+  --json
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$EXPECTED_WORKTREE/$PLAN_REL_PATH" --json
 agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$CHILD_ISSUE_URL" --title "$CHILD_TITLE" --json
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
@@ -154,7 +178,7 @@ agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 
 `branch prepare` records the required provider-linked branch contract before local worktree creation: use the provider MCP first, use the provider API/CLI fallback second, and fail closed if both cannot create a branch that the issue shows as linked. For GitLab, branch names must start with the issue or task number followed by a hyphen, for example `123-fix-login`.
 
-`link-worktree` fails closed until issue-linked branch evidence exists and the worktree path already exists on disk. `link-plan` is the transition into implementation. It fails closed until the issue is linked, `branch prepare --link-verified` has recorded provider-visible branch evidence, the worktree is linked, and the plan path exists inside that linked worktree.
+`link-worktree` fails closed until issue-linked branch evidence exists and the worktree path already exists on disk. `link-plan` is the transition into implementation. It fails closed until the issue is linked, `branch prepare --link-verified` has recorded provider-visible branch evidence, the worktree is linked, the design review is approved with no open questions, and the plan path exists inside that linked worktree.
 
 `link-child` records a provider-native child work item after it exists remotely. On GitHub that child should be a sub-issue; on GitLab it should be a child item/task. The command does not create remote issues and must not be used as a substitute for the provider-specific hierarchy rules.
 
@@ -188,6 +212,8 @@ Remote scoring runs deterministically and is also available as the MCP tool `iss
 Stop and ask before creating or updating remote issues, PRs, or MRs if credentials, target project, branch target, or issue ownership are unclear.
 
 Stop before implementation if brainstorming or grilling exposes materially different interpretations. Present the interpretations and ask for the intended one.
+
+Stop before implementation if `issueops intent record` or `issueops design review` cannot be completed from evidence. Do not treat a recommended next-action option as permission to continue unless the main agent records why continuation is safe, reversible, and aligned with the user's latest instruction.
 
 Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports missing `issue_url`, `branch_prepare`, `branch_link_verified`, `plan_path`, `worktree_path`, `worktree_exists`, `branch_match`, `worktree_clean`, `upstream`, `upstream_synced`, `plan_exists`, or `ai_slop_clean`.
 

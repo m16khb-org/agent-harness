@@ -81,6 +81,11 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	if issueOpsPhaseRank(phase) < issueOpsPhaseRank(record.Phase) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot move issueops phase backward from %s to %s", record.Phase, phase)
 	}
+	if phase == IssueOpsPhasePlan {
+		if ready := IssueOpsPlanReadiness(record); !ready.Ready {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter plan phase: missing %s", strings.Join(ready.Missing, ", "))
+		}
+	}
 	if phase == IssueOpsPhaseImplement {
 		if ready := IssueOpsImplementationReadiness(record); !ready.Ready {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter implement phase: missing %s", strings.Join(ready.Missing, ", "))

@@ -69,12 +69,56 @@ type IssueOpsRemoteArtifactVerificationRequest struct {
 	Assignees []string
 }
 
+type IssueOpsIntentContract struct {
+	RawRequest        string   `json:"raw_request"`
+	InterpretedIntent string   `json:"interpreted_intent"`
+	SuccessCriteria   []string `json:"success_criteria"`
+	Constraints       []string `json:"constraints,omitempty"`
+	Ambiguities       []string `json:"ambiguities,omitempty"`
+	NonGoals          []string `json:"non_goals,omitempty"`
+	RecordedAt        string   `json:"recorded_at"`
+}
+
+type IssueOpsIntentRecordRequest struct {
+	RawRequest        string
+	InterpretedIntent string
+	SuccessCriteria   []string
+	Constraints       []string
+	Ambiguities       []string
+	NonGoals          []string
+}
+
+type IssueOpsDesignReview struct {
+	ProblemSummary string   `json:"problem_summary"`
+	ProposedDesign string   `json:"proposed_design"`
+	RefactorPlan   string   `json:"refactor_plan,omitempty"`
+	Alternatives   []string `json:"alternatives,omitempty"`
+	Risks          []string `json:"risks,omitempty"`
+	Verification   []string `json:"verification"`
+	OpenQuestions  []string `json:"open_questions,omitempty"`
+	Approved       bool     `json:"approved"`
+	ReviewedAt     string   `json:"reviewed_at"`
+}
+
+type IssueOpsDesignReviewRequest struct {
+	ProblemSummary string
+	ProposedDesign string
+	RefactorPlan   string
+	Alternatives   []string
+	Risks          []string
+	Verification   []string
+	OpenQuestions  []string
+	Approved       bool
+}
+
 type IssueOpsRecord struct {
 	OK                     bool                                `json:"ok"`
 	ID                     string                              `json:"id"`
 	Repo                   string                              `json:"repo"`
 	Branch                 string                              `json:"branch,omitempty"`
 	Phase                  IssueOpsPhase                       `json:"phase"`
+	Intent                 *IssueOpsIntentContract             `json:"intent,omitempty"`
+	DesignReview           *IssueOpsDesignReview               `json:"design_review,omitempty"`
 	IssueURL               string                              `json:"issue_url,omitempty"`
 	PlanPath               string                              `json:"plan_path,omitempty"`
 	WorktreePath           string                              `json:"worktree_path,omitempty"`

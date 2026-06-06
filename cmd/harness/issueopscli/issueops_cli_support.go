@@ -12,18 +12,24 @@ func issueOpsUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   agent-harness issueops start --repo PATH [--branch NAME] [--json]
   agent-harness issueops status --id ID [--json]
+  agent-harness issueops intent record --id ID --raw-request TEXT --interpreted-intent TEXT --success-criteria TEXT [--constraint TEXT] [--ambiguity TEXT] [--non-goal TEXT] [--json]
   agent-harness issueops link-issue --id ID --issue-url URL [--json]
-  agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--link-verified] [--json]
-  agent-harness issueops link-plan --id ID --plan-path PATH [--json]
+  agent-harness issueops link-child --id ID --child-url URL [--title TEXT] [--json]
+  agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--remote-branch-url URL] [--link-verified] [--json]
   agent-harness issueops link-worktree --id ID --worktree-path PATH [--json]
+  agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] [--json]
+  agent-harness issueops link-plan --id ID --plan-path PATH [--json]
   agent-harness issueops worktree prepare-tools --id ID [--json]
   agent-harness issueops phase --id ID --to problem|grill|plan|implement|ai-slop-clean|feedback|pr|done [--json]
   agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] [--json]
   agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
   agent-harness issueops cleanup status --id ID [--merged] [--json]
-  agent-harness issueops remote score --input PATH [--judge none|agy] [--json]
+  agent-harness issueops remote score --input PATH [--judge none|agy] [--agy-command PATH] [--json]
   agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]
+  agent-harness issueops benchmark run --fixtures PATH [--judge none|agy] [--agy-command PATH] [--json]
+  agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
+  agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]
 `)
 }
 

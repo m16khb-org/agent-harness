@@ -18,7 +18,7 @@ func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
 		return record, err
 	}
 	record.IssueURL = u
-	if issueOpsPhaseRank(record.Phase) < issueOpsPhaseRank(IssueOpsPhasePlan) {
+	if ready := IssueOpsPlanReadiness(record); ready.Ready && issueOpsPhaseRank(record.Phase) < issueOpsPhaseRank(IssueOpsPhasePlan) {
 		record.Phase = IssueOpsPhasePlan
 	}
 	return touchAndWriteIssueOps(stateRoot, record)
@@ -42,6 +42,9 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 	worktree := strings.TrimSpace(record.WorktreePath)
 	if worktree == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link plan before linked worktree")
+	}
+	if missing := issueOpsDesignReviewMissing(record); len(missing) > 0 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link plan before approved design review: missing %s", strings.Join(uniqSorted(missing), ", "))
 	}
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(worktree, path)

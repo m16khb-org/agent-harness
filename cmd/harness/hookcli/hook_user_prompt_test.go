@@ -96,6 +96,7 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsHookIntentForTest(t, record.ID)
 	issueURL := "https://github.com/example/repo/issues/" + strings.SplitN(branch, "-", 2)[0]
 	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, issueURL); err != nil {
 		t.Fatal(err)
@@ -119,6 +120,7 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsHookDesignForTest(t, record.ID)
 	planPath := filepath.Join(worktree, "docs", "superpowers", "plans", branch+".md")
 	if err := os.MkdirAll(filepath.Dir(planPath), 0o755); err != nil {
 		t.Fatal(err)

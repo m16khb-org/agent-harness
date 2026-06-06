@@ -63,10 +63,38 @@ Start:
 agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json
 ```
 
+Record the intent contract:
+
+```bash
+agent-harness issueops intent record --id "$ISSUEOPS_ID" \
+  --raw-request "$RAW_USER_REQUEST" \
+  --interpreted-intent "$INTERPRETED_INTENT" \
+  --success-criteria "$SUCCESS_CRITERION" \
+  --json
+```
+
 Link the issue:
 
 ```bash
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
+```
+
+Record branch and worktree evidence:
+
+```bash
+agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" --issue-url "$ISSUE_URL" --branch "$BRANCH" --base-branch "$BASE_BRANCH" --link-verified --json
+agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
+```
+
+Record the approved design review:
+
+```bash
+agent-harness issueops design review --id "$ISSUEOPS_ID" \
+  --problem-summary "$PROBLEM_SUMMARY" \
+  --proposed-design "$PROPOSED_DESIGN" \
+  --verification "$VERIFICATION_STEP" \
+  --approved \
+  --json
 ```
 
 Link the plan:
@@ -74,6 +102,8 @@ Link the plan:
 ```bash
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$PLAN_PATH" --json
 ```
+
+State recovery must preserve the redacted intent contract and design review fields. Do not reconstruct them from hook recommendations alone; re-record main-agent judgment when the saved state is missing those sections.
 
 Record feedback:
 
@@ -85,7 +115,6 @@ agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
 Check PR/MR readiness:
 
 ```bash
-agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
 agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 ```
 

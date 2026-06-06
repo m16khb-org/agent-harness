@@ -19,6 +19,28 @@ func handleIssueOpsMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "issueops_status":
 		result, err := core.ReadIssueOps(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"))
 		return issueOpsMCPOutcome(result, err, "IssueOps status failed")
+	case "issueops_record_intent":
+		result, err := core.RecordIssueOpsIntent(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), core.IssueOpsIntentRecordRequest{
+			RawRequest:        stringArg(call.Arguments, "raw_request"),
+			InterpretedIntent: stringArg(call.Arguments, "interpreted_intent"),
+			SuccessCriteria:   stringSliceArg(call.Arguments, "success_criteria"),
+			Constraints:       stringSliceArg(call.Arguments, "constraints"),
+			Ambiguities:       stringSliceArg(call.Arguments, "ambiguities"),
+			NonGoals:          stringSliceArg(call.Arguments, "non_goals"),
+		})
+		return issueOpsMCPOutcome(result, err, "IssueOps intent record failed")
+	case "issueops_review_design":
+		result, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), core.IssueOpsDesignReviewRequest{
+			ProblemSummary: stringArg(call.Arguments, "problem_summary"),
+			ProposedDesign: stringArg(call.Arguments, "proposed_design"),
+			RefactorPlan:   stringArg(call.Arguments, "refactor_plan"),
+			Alternatives:   stringSliceArg(call.Arguments, "alternatives"),
+			Risks:          stringSliceArg(call.Arguments, "risks"),
+			Verification:   stringSliceArg(call.Arguments, "verification"),
+			OpenQuestions:  stringSliceArg(call.Arguments, "open_questions"),
+			Approved:       boolArg(call.Arguments, "approved"),
+		})
+		return issueOpsMCPOutcome(result, err, "IssueOps design review failed")
 	case "issueops_link_issue":
 		result, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), stringArg(call.Arguments, "id"), stringArg(call.Arguments, "issue_url"))
 		return issueOpsMCPOutcome(result, err, "IssueOps issue link failed")

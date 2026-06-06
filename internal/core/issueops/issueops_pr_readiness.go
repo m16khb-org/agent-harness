@@ -47,6 +47,8 @@ func issueOpsFeedbackRequiresIssueUpdate(item IssueOpsFeedbackItem) bool {
 
 func issueOpsBaseImplementationMissing(record IssueOpsRecord) []string {
 	missing := issueOpsBranchEvidenceMissing(record)
+	missing = append(missing, issueOpsIntentMissing(record)...)
+	missing = append(missing, issueOpsDesignReviewMissing(record)...)
 	if strings.TrimSpace(record.PlanPath) == "" {
 		missing = append(missing, "plan_path")
 	}

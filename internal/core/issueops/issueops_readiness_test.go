@@ -28,6 +28,8 @@ func TestIssueOpsStrictPRReadinessRequiresCleanSyncedRepo(t *testing.T) {
 		IssueURL:      "https://gitlab.example/group/project/-/issues/1",
 		PlanPath:      "plans/demo.md",
 		WorktreePath:  repo,
+		Intent:        issueOpsIntentContractForTest(),
+		DesignReview:  issueOpsDesignReviewForTest(),
 		BranchPrepare: &IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: "https://gitlab.example/group/project/-/issues/1", Branch: "main", BaseBranch: "main", LinkVerified: true},
 		AISlopCleanAt: "2026-06-05T00:00:00Z",
 	}
@@ -72,6 +74,8 @@ func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 		IssueURL:      "https://gitlab.example/group/project/-/issues/2",
 		PlanPath:      "plans/demo.md",
 		WorktreePath:  worktree,
+		Intent:        issueOpsIntentContractForTest(),
+		DesignReview:  issueOpsDesignReviewForTest(),
 		BranchPrepare: &IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: "https://gitlab.example/group/project/-/issues/2", Branch: branch, BaseBranch: "main", LinkVerified: true},
 		AISlopCleanAt: "2026-06-05T00:00:00Z",
 	}
@@ -103,6 +107,7 @@ func TestIssueOpsStrictPRReadinessDetectsStaleAISlopCleanAfterImplementationChan
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
 	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/12")
 	if err != nil {
 		t.Fatal(err)
@@ -121,6 +126,7 @@ func TestIssueOpsStrictPRReadinessDetectsStaleAISlopCleanAfterImplementationChan
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsApprovedDesignForTest(t, stateRoot, record.ID)
 	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
 	record, err = LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans/demo.md"))
 	if err != nil {

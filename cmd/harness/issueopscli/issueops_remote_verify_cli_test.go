@@ -59,6 +59,7 @@ func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
 
 func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.IssueOpsRecord {
 	t.Helper()
+	recordIssueOpsCoreIntentForCLITest(t, id)
 	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/75"); err != nil {
 		t.Fatal(err)
 	}
@@ -87,6 +88,7 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.Iss
 	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), id, worktree); err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsCoreDesignForCLITest(t, id)
 	planPath := filepath.Join(worktree, "plans", "remote-verify.md")
 	writeIssueOpsCLIFileForTest(t, worktree, "plans/remote-verify.md", "plan\n")
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), id, planPath); err != nil {

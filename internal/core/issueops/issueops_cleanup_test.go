@@ -28,6 +28,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
 	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/2")
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +47,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsApprovedDesignForTest(t, stateRoot, record.ID)
 	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
 	record, err = LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans/demo.md"))
 	if err != nil {

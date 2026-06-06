@@ -50,6 +50,7 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR)); err == nil {
 		t.Fatalf("pr phase without readiness should be rejected")
 	}
+	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
 	if _, err := LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1"); err != nil {
 		t.Fatal(err)
 	}
@@ -68,6 +69,7 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsApprovedDesignForTest(t, stateRoot, record.ID)
 	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
 	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans/demo.md")); err != nil {
 		t.Fatal(err)

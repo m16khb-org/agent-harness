@@ -32,6 +32,10 @@ func runIssueOps(args []string) error {
 		}
 		record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
 		return printIssueOpsResult(record, *jsonOut, err)
+	case "intent":
+		return runIssueOpsIntent(args[1:])
+	case "design":
+		return runIssueOpsDesign(args[1:])
 	case "link-issue":
 		fs := flag.NewFlagSet("issueops link-issue", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")

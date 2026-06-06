@@ -16,21 +16,33 @@ Create an isolated git worktree before implementation, TDD, subagent work, verif
 branch_slug="3-webhook-delivery"
 base_branch="main"
 agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
+agent-harness issueops intent record --id "$ISSUEOPS_ID" \
+  --raw-request "$RAW_USER_REQUEST" \
+  --interpreted-intent "$INTERPRETED_INTENT" \
+  --success-criteria "$SUCCESS_CRITERION" \
+  --json
+agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
 agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider gitlab --issue-url "$ISSUE_URL" --branch "$branch_slug" --base-branch "$base_branch" --link-verified --json
 worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
 git fetch origin "$branch_slug"
 git worktree add --track -b "$branch_slug" "$worktree_path" "origin/$branch_slug"
 expected_worktree="$(cd "$worktree_path" && pwd)"
 agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$expected_worktree" --json
+agent-harness issueops design review --id "$ISSUEOPS_ID" \
+  --problem-summary "$PROBLEM_SUMMARY" \
+  --proposed-design "$PROPOSED_DESIGN" \
+  --verification "$VERIFICATION_STEP" \
+  --approved \
+  --json
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$expected_worktree/$PLAN_REL_PATH" --json
 agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json
 ```
 
 Keep IssueOps worktrees as siblings of the source checkout under the fixed pattern `../<repo>.worktrees/<branch-slug-with-slashes-replaced>`. Do not create ad hoc worktree paths inside the repo or under temporary directories unless the user explicitly asks for a different location.
 
-Run implementation from the worktree path, not from the source checkout. Record the expected branch and worktree path in the issue-based plan and in any worker prompt. `issueops link-worktree` requires linked issue plus verified provider branch evidence and an existing worktree directory. `issueops link-plan` is recorded after `link-worktree` and requires the plan file to exist inside that linked worktree. If the source checkout already contains implementation edits from before this gate, stop and ask how to move or reconcile those edits into the issue branch worktree.
+Run implementation from the worktree path, not from the source checkout. Record the expected branch and worktree path in the issue-based plan and in any worker prompt. `issueops phase --to plan` requires both linked issue and recorded intent contract. `issueops link-worktree` requires linked issue plus verified provider branch evidence and an existing worktree directory. `issueops link-plan` is recorded after `link-worktree` and approved design review, and requires the plan file to exist inside that linked worktree. If the source checkout already contains implementation edits from before this gate, stop and ask how to move or reconcile those edits into the issue branch worktree.
 
-The linked worktree path is authoritative. Once `issueops link-worktree` is recorded, the lifecycle PreToolUse guard blocks mutating tool targets outside that exact path, including the source checkout on `main` and another sibling worktree for a different issue branch. During `implement`, `ai-slop-clean`, `feedback`, and `pr`, a cycle with no linked worktree is fail-closed for source/worktree edits: create the sibling worktree and run `issueops link-worktree` before changing implementation files. The lifecycle command also refuses to enter `ai-slop-clean` until issue, provider-linked branch, plan, existing worktree evidence, and implementation changes are recorded, refuses `pr` until strict PR readiness is green, and refuses `done` until the loop has first entered `pr` and a verified remote PR/MR artifact is recorded.
+The linked worktree path is authoritative. Once `issueops link-worktree` is recorded, the lifecycle PreToolUse guard blocks mutating tool targets outside that exact path, including the source checkout on `main` and another sibling worktree for a different issue branch. During `implement`, `ai-slop-clean`, `feedback`, and `pr`, a cycle with no linked worktree is fail-closed for source/worktree edits: create the sibling worktree and run `issueops link-worktree` before changing implementation files. The lifecycle command refuses to enter `plan` until linked issue and intent contract are recorded, refuses `implement` until provider-linked branch, plan, existing worktree evidence, and approved design review are recorded, refuses `ai-slop-clean` until implementation changes are also recorded, refuses `pr` until strict PR readiness is green, and refuses `done` until the loop has first entered `pr` and a verified remote PR/MR artifact is recorded.
 
 ## Edit Target Guard
 

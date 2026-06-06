@@ -24,6 +24,7 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsHookIntentForTest(t, record.ID)
 	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
 		t.Fatal(err)
 	}
@@ -46,6 +47,7 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsHookDesignForTest(t, record.ID)
 	writeHookFixtureFile(t, worktree, "plans/issue-worktree.md", "plan\n")
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, filepath.Join(worktree, "plans", "issue-worktree.md")); err != nil {
 		t.Fatal(err)
@@ -85,6 +87,7 @@ func TestRunHookPreToolUseBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsHookIntentForTest(t, record.ID)
 	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
 		t.Fatal(err)
 	}
@@ -107,6 +110,7 @@ func TestRunHookPreToolUseBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T
 	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsHookDesignForTest(t, record.ID)
 	planPath := filepath.Join(worktree, "plans", "demo.md")
 	if err := os.MkdirAll(filepath.Dir(planPath), 0o755); err != nil {
 		t.Fatal(err)

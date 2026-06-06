@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"testing"
+
+	"agent-harness/internal/core"
 )
 
 func captureStdoutForContract(t *testing.T, fn func() error) string {
@@ -58,4 +60,57 @@ func containsString(values []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func recordIssueOpsCLIIntentForTest(t *testing.T, id string) {
+	t.Helper()
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{
+			"intent", "record",
+			"--id", id,
+			"--raw-request", "refactor issueops flow",
+			"--interpreted-intent", "keep intent and design evidence before implementation",
+			"--success-criteria", "intent is recorded",
+			"--success-criteria", "design is reviewed",
+			"--json",
+		})
+	})
+}
+
+func recordIssueOpsCLIDesignForTest(t *testing.T, id string) {
+	t.Helper()
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{
+			"design", "review",
+			"--id", id,
+			"--problem-summary", "IssueOps must preserve the work contract",
+			"--proposed-design", "Gate implementation on a reviewed design contract",
+			"--verification", "go test ./cmd/harness/issueopscli",
+			"--approved",
+			"--json",
+		})
+	})
+}
+
+func recordIssueOpsCoreIntentForCLITest(t *testing.T, id string) {
+	t.Helper()
+	if _, err := core.RecordIssueOpsIntent(core.IssueOpsStateRoot(), id, core.IssueOpsIntentRecordRequest{
+		RawRequest:        "refactor issueops flow",
+		InterpretedIntent: "keep intent and design evidence before implementation",
+		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func recordIssueOpsCoreDesignForCLITest(t *testing.T, id string) {
+	t.Helper()
+	if _, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), id, core.IssueOpsDesignReviewRequest{
+		ProblemSummary: "IssueOps must preserve the work contract",
+		ProposedDesign: "Gate implementation on a reviewed design contract",
+		Verification:   []string{"go test ./cmd/harness/issueopscli"},
+		Approved:       true,
+	}); err != nil {
+		t.Fatal(err)
+	}
 }

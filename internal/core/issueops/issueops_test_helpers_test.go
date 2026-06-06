@@ -66,3 +66,45 @@ func writeIssueOpsFile(t *testing.T, repo, rel, content string) {
 		t.Fatal(err)
 	}
 }
+
+func recordIssueOpsIntentForTest(t *testing.T, stateRoot, id string) {
+	t.Helper()
+	if _, err := RecordIssueOpsIntent(stateRoot, id, IssueOpsIntentRecordRequest{
+		RawRequest:        "refactor issueops flow",
+		InterpretedIntent: "keep intent and design evidence before implementation",
+		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
+	t.Helper()
+	if _, err := RecordIssueOpsDesignReview(stateRoot, id, IssueOpsDesignReviewRequest{
+		ProblemSummary: "IssueOps must preserve the work contract",
+		ProposedDesign: "Gate implementation on a reviewed design contract",
+		Verification:   []string{"go test ./internal/core/issueops"},
+		Approved:       true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func issueOpsIntentContractForTest() *IssueOpsIntentContract {
+	return &IssueOpsIntentContract{
+		RawRequest:        "refactor issueops flow",
+		InterpretedIntent: "keep intent and design evidence before implementation",
+		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
+		RecordedAt:        "2026-06-05T00:00:00Z",
+	}
+}
+
+func issueOpsDesignReviewForTest() *IssueOpsDesignReview {
+	return &IssueOpsDesignReview{
+		ProblemSummary: "IssueOps must preserve the work contract",
+		ProposedDesign: "Gate implementation on a reviewed design contract",
+		Verification:   []string{"go test ./internal/core/issueops"},
+		Approved:       true,
+		ReviewedAt:     "2026-06-05T00:00:00Z",
+	}
+}

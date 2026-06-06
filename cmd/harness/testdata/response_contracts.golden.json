@@ -219,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "567e1066a9dcb7f5c7b8d02bd89199666fc0438d25c249312b3afb8ce1299d1a",
+      "hash": "c3a4d2b0d699581e47e20bd7c211cfa6916ef36a2a904e4be66a357bea1bafe1",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -244,7 +244,9 @@
         "issueops_pr_readiness",
         "issueops_prepare_branch",
         "issueops_prepare_worktree_tools",
+        "issueops_record_intent",
         "issueops_remote_score",
+        "issueops_review_design",
         "issueops_set_phase",
         "issueops_start",
         "issueops_status",
@@ -391,6 +393,8 @@
           "repo",
           "branch",
           "phase",
+          "intent",
+          "design_review",
           "issue_url",
           "plan_path",
           "branch_prepare",
@@ -516,7 +520,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 20269,
+          "bytes": 20595,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -1080,6 +1084,22 @@
         ]
       },
       "created_at": "$TIMESTAMP",
+      "design_review": {
+        "alternatives": [
+          "docs-only guidance"
+        ],
+        "approved": true,
+        "problem_summary": "IssueOps needs explicit design review",
+        "proposed_design": "Gate implementation on approved design",
+        "refactor_plan": "Keep changes local to IssueOps state and adapters",
+        "reviewed_at": "$TIMESTAMP",
+        "risks": [
+          "golden contract drift"
+        ],
+        "verification": [
+          "go test ./cmd/harness -run Golden"
+        ]
+      },
       "feedback": [
         {
           "body": "tighten contract",
@@ -1089,6 +1109,23 @@
         }
       ],
       "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
       "issue_links": [
         {
           "created_at": "$TIMESTAMP",
@@ -1154,7 +1191,40 @@
         ]
       },
       "created_at": "$TIMESTAMP",
+      "design_review": {
+        "alternatives": [
+          "docs-only guidance"
+        ],
+        "approved": true,
+        "problem_summary": "IssueOps needs explicit design review",
+        "proposed_design": "Gate implementation on approved design",
+        "refactor_plan": "Keep changes local to IssueOps state and adapters",
+        "reviewed_at": "$TIMESTAMP",
+        "risks": [
+          "golden contract drift"
+        ],
+        "verification": [
+          "go test ./cmd/harness -run Golden"
+        ]
+      },
       "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
       "issue_links": [
         {
           "created_at": "$TIMESTAMP",
@@ -1176,6 +1246,23 @@
       "branch": "1-contract-branch",
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
       "phase": "plan",
@@ -1230,7 +1317,40 @@
         ]
       },
       "created_at": "$TIMESTAMP",
+      "design_review": {
+        "alternatives": [
+          "docs-only guidance"
+        ],
+        "approved": true,
+        "problem_summary": "IssueOps needs explicit design review",
+        "proposed_design": "Gate implementation on approved design",
+        "refactor_plan": "Keep changes local to IssueOps state and adapters",
+        "reviewed_at": "$TIMESTAMP",
+        "risks": [
+          "golden contract drift"
+        ],
+        "verification": [
+          "go test ./cmd/harness -run Golden"
+        ]
+      },
       "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
       "phase": "implement",
@@ -1288,6 +1408,23 @@
       },
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
       "phase": "plan",
@@ -1343,6 +1480,22 @@
         ]
       },
       "created_at": "$TIMESTAMP",
+      "design_review": {
+        "alternatives": [
+          "docs-only guidance"
+        ],
+        "approved": true,
+        "problem_summary": "IssueOps needs explicit design review",
+        "proposed_design": "Gate implementation on approved design",
+        "refactor_plan": "Keep changes local to IssueOps state and adapters",
+        "reviewed_at": "$TIMESTAMP",
+        "risks": [
+          "golden contract drift"
+        ],
+        "verification": [
+          "go test ./cmd/harness -run Golden"
+        ]
+      },
       "feedback": [
         {
           "body": "tighten contract",
@@ -1353,6 +1506,23 @@
         }
       ],
       "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
       "issue_links": [
         {
           "created_at": "$TIMESTAMP",
@@ -1430,11 +1600,143 @@
       },
       "created_at": "$TIMESTAMP",
       "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
       "phase": "plan",
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP"
+    },
+    "issueops_record_intent": {
+      "branch": "1-contract-branch",
+      "created_at": "$TIMESTAMP",
+      "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
+      "ok": true,
+      "phase": "problem",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP"
+    },
+    "issueops_review_design": {
+      "branch": "1-contract-branch",
+      "branch_prepare": {
+        "base_branch": "main",
+        "branch": "1-contract-branch",
+        "created_at": "$TIMESTAMP",
+        "issue_url": "https://gitlab.example/group/project/-/issues/1",
+        "link_verified": true,
+        "provider": "gitlab",
+        "steps": [
+          {
+            "description": "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
+            "order": 1,
+            "strategy": "mcp",
+            "tool": "mcp__glab.glab_api",
+            "tool_arguments": {
+              "endpoint": "projects/:fullpath/repository/branches",
+              "field": [
+                "branch=1-contract-branch",
+                "ref=main"
+              ],
+              "method": "POST"
+            }
+          },
+          {
+            "command": [
+              "glab",
+              "api",
+              "projects/:fullpath/repository/branches",
+              "-X",
+              "POST",
+              "-f",
+              "branch=1-contract-branch",
+              "-f",
+              "ref=main"
+            ],
+            "description": "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
+            "order": 2,
+            "strategy": "fallback_api"
+          },
+          {
+            "description": "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
+            "order": 3,
+            "strategy": "fail"
+          }
+        ]
+      },
+      "created_at": "$TIMESTAMP",
+      "design_review": {
+        "alternatives": [
+          "docs-only guidance"
+        ],
+        "approved": true,
+        "problem_summary": "IssueOps needs explicit design review",
+        "proposed_design": "Gate implementation on approved design",
+        "refactor_plan": "Keep changes local to IssueOps state and adapters",
+        "reviewed_at": "$TIMESTAMP",
+        "risks": [
+          "golden contract drift"
+        ],
+        "verification": [
+          "go test ./cmd/harness -run Golden"
+        ]
+      },
+      "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "plan",
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP",
+      "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "issueops_start": {
       "branch": "1-contract-branch",
@@ -3507,7 +3809,7 @@
                 "name": "version"
               }
             ],
-            "hash": "567e1066a9dcb7f5c7b8d02bd89199666fc0438d25c249312b3afb8ce1299d1a",
+            "hash": "c3a4d2b0d699581e47e20bd7c211cfa6916ef36a2a904e4be66a357bea1bafe1",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3532,7 +3834,9 @@
               "issueops_pr_readiness",
               "issueops_prepare_branch",
               "issueops_prepare_worktree_tools",
+              "issueops_record_intent",
               "issueops_remote_score",
+              "issueops_review_design",
               "issueops_set_phase",
               "issueops_start",
               "issueops_status",
@@ -3679,6 +3983,8 @@
                 "repo",
                 "branch",
                 "phase",
+                "intent",
+                "design_review",
                 "issue_url",
                 "plan_path",
                 "branch_prepare",
@@ -3811,7 +4117,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 20269,
+                "bytes": 20595,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -4379,6 +4685,22 @@
               ]
             },
             "created_at": "$TIMESTAMP",
+            "design_review": {
+              "alternatives": [
+                "docs-only guidance"
+              ],
+              "approved": true,
+              "problem_summary": "IssueOps needs explicit design review",
+              "proposed_design": "Gate implementation on approved design",
+              "refactor_plan": "Keep changes local to IssueOps state and adapters",
+              "reviewed_at": "$TIMESTAMP",
+              "risks": [
+                "golden contract drift"
+              ],
+              "verification": [
+                "go test ./cmd/harness -run Golden"
+              ]
+            },
             "feedback": [
               {
                 "body": "tighten MCP contract",
@@ -4388,6 +4710,23 @@
               }
             ],
             "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
             "issue_links": [
               {
                 "created_at": "$TIMESTAMP",
@@ -4450,7 +4789,40 @@
               ]
             },
             "created_at": "$TIMESTAMP",
+            "design_review": {
+              "alternatives": [
+                "docs-only guidance"
+              ],
+              "approved": true,
+              "problem_summary": "IssueOps needs explicit design review",
+              "proposed_design": "Gate implementation on approved design",
+              "refactor_plan": "Keep changes local to IssueOps state and adapters",
+              "reviewed_at": "$TIMESTAMP",
+              "risks": [
+                "golden contract drift"
+              ],
+              "verification": [
+                "go test ./cmd/harness -run Golden"
+              ]
+            },
             "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
             "issue_links": [
               {
                 "created_at": "$TIMESTAMP",
@@ -4479,6 +4851,23 @@
             "branch": "2-mcp-contract",
             "created_at": "$TIMESTAMP",
             "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "plan",
@@ -4530,7 +4919,40 @@
               ]
             },
             "created_at": "$TIMESTAMP",
+            "design_review": {
+              "alternatives": [
+                "docs-only guidance"
+              ],
+              "approved": true,
+              "problem_summary": "IssueOps needs explicit design review",
+              "proposed_design": "Gate implementation on approved design",
+              "refactor_plan": "Keep changes local to IssueOps state and adapters",
+              "reviewed_at": "$TIMESTAMP",
+              "risks": [
+                "golden contract drift"
+              ],
+              "verification": [
+                "go test ./cmd/harness -run Golden"
+              ]
+            },
             "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "implement",
@@ -4585,6 +5007,23 @@
             },
             "created_at": "$TIMESTAMP",
             "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "plan",
@@ -4637,6 +5076,22 @@
               ]
             },
             "created_at": "$TIMESTAMP",
+            "design_review": {
+              "alternatives": [
+                "docs-only guidance"
+              ],
+              "approved": true,
+              "problem_summary": "IssueOps needs explicit design review",
+              "proposed_design": "Gate implementation on approved design",
+              "refactor_plan": "Keep changes local to IssueOps state and adapters",
+              "reviewed_at": "$TIMESTAMP",
+              "risks": [
+                "golden contract drift"
+              ],
+              "verification": [
+                "go test ./cmd/harness -run Golden"
+              ]
+            },
             "feedback": [
               {
                 "body": "tighten MCP contract",
@@ -4647,6 +5102,23 @@
               }
             ],
             "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
             "issue_links": [
               {
                 "created_at": "$TIMESTAMP",
@@ -4728,11 +5200,147 @@
             },
             "created_at": "$TIMESTAMP",
             "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "plan",
             "repo": "$WORKSPACE",
             "updated_at": "$TIMESTAMP"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_record_intent": {
+      "content": [
+        {
+          "json": {
+            "branch": "2-mcp-contract",
+            "created_at": "$TIMESTAMP",
+            "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
+            "ok": true,
+            "phase": "problem",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_review_design": {
+      "content": [
+        {
+          "json": {
+            "branch": "2-mcp-contract",
+            "branch_prepare": {
+              "base_branch": "main",
+              "branch": "2-mcp-contract",
+              "created_at": "$TIMESTAMP",
+              "issue_url": "https://github.com/example/repo/issues/2",
+              "link_verified": true,
+              "provider": "github",
+              "steps": [
+                {
+                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
+                  "order": 1,
+                  "strategy": "mcp_unavailable"
+                },
+                {
+                  "command": [
+                    "gh",
+                    "issue",
+                    "develop",
+                    "https://github.com/example/repo/issues/2",
+                    "--base",
+                    "main",
+                    "--name",
+                    "2-mcp-contract"
+                  ],
+                  "description": "Create a GitHub linked development branch through gh issue develop.",
+                  "order": 2,
+                  "strategy": "fallback_api"
+                },
+                {
+                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+                  "order": 3,
+                  "strategy": "fail"
+                }
+              ]
+            },
+            "created_at": "$TIMESTAMP",
+            "design_review": {
+              "alternatives": [
+                "docs-only guidance"
+              ],
+              "approved": true,
+              "problem_summary": "IssueOps needs explicit design review",
+              "proposed_design": "Gate implementation on approved design",
+              "refactor_plan": "Keep changes local to IssueOps state and adapters",
+              "reviewed_at": "$TIMESTAMP",
+              "risks": [
+                "golden contract drift"
+              ],
+              "verification": [
+                "go test ./cmd/harness -run Golden"
+              ]
+            },
+            "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "plan",
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP",
+            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
           "type": "text"
         }

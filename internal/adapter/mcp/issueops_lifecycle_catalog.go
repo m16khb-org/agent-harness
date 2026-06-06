@@ -35,7 +35,7 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_set_phase",
-			Description: "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The ai-slop-clean phase requires linked issue, provider-linked branch, plan, linked worktree, and implementation changes; the pr phase requires strict PR readiness; the done phase requires prior pr phase plus verified remote PR/MR artifact state.",
+			Description: "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The plan phase requires a linked issue and recorded intent contract; implement requires linked issue, provider-linked branch, plan, linked worktree, and an approved design review with no open questions; ai-slop-clean additionally requires implementation changes; pr requires strict PR readiness; done requires prior pr phase plus verified remote PR/MR artifact state.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
 				"id":    map[string]any{"type": "string", "description": "IssueOps id."},
 				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},

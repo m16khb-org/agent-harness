@@ -10,6 +10,10 @@ type IssueOpsBranchPrepare = issueops.IssueOpsBranchPrepare
 type IssueOpsBranchPrepareRequest = issueops.IssueOpsBranchPrepareRequest
 type IssueOpsRemoteArtifactVerification = issueops.IssueOpsRemoteArtifactVerification
 type IssueOpsRemoteArtifactVerificationRequest = issueops.IssueOpsRemoteArtifactVerificationRequest
+type IssueOpsIntentContract = issueops.IssueOpsIntentContract
+type IssueOpsIntentRecordRequest = issueops.IssueOpsIntentRecordRequest
+type IssueOpsDesignReview = issueops.IssueOpsDesignReview
+type IssueOpsDesignReviewRequest = issueops.IssueOpsDesignReviewRequest
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsReadiness = issueops.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = issueops.IssueOpsCleanupStatusRequest
@@ -56,6 +60,14 @@ func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, 
 
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	return issueops.ReadIssueOps(stateRoot, id)
+}
+
+func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsIntent(stateRoot, id, req)
+}
+
+func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsDesignReview(stateRoot, id, req)
 }
 
 func IssueOpsStateRoot() string {
@@ -124,6 +136,10 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 
 func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	return issueops.IssueOpsImplementationReadiness(record)
+}
+
+func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
+	return issueops.IssueOpsPlanReadiness(record)
 }
 
 func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
