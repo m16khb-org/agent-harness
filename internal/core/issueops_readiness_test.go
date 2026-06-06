@@ -160,3 +160,30 @@ func TestIssueOpsStrictPRReadinessDetectsStaleAISlopCleanAfterImplementationChan
 		t.Fatalf("implementation changes after ai-slop-clean should stale PR readiness, got %+v", ready)
 	}
 }
+
+func TestIssueOpsImplementationEvidenceHelpersParsePorcelainAndIgnorePlanPath(t *testing.T) {
+	worktree := t.TempDir()
+	plan := filepath.Join(worktree, "plans", "demo.md")
+	record := IssueOpsRecord{PlanPath: plan}
+
+	for line, want := range map[string]string{
+		" M internal/demo.go":                    "internal/demo.go",
+		"?? docs/new.md":                         "docs/new.md",
+		"R  old/path.go -> internal/new-path.go": "internal/new-path.go",
+		"   ":                                    "",
+		" M \"quoted path.md\"":                  "quoted path.md",
+	} {
+		if got := issueOpsPorcelainPath(line); got != want {
+			t.Fatalf("issueOpsPorcelainPath(%q)=%q want %q", line, got, want)
+		}
+	}
+	if !issueOpsPathMatchesPlan(record, worktree, plan) {
+		t.Fatalf("absolute plan path should match itself")
+	}
+	if !issueOpsPathMatchesPlan(IssueOpsRecord{PlanPath: "plans/demo.md"}, worktree, "plans/demo.md") {
+		t.Fatalf("relative plan path should match relative porcelain path")
+	}
+	if issueOpsPathMatchesPlan(record, worktree, filepath.Join(worktree, "internal", "demo.go")) {
+		t.Fatalf("implementation path must not be treated as plan path")
+	}
+}
