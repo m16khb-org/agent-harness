@@ -1,121 +1,44 @@
 package main
 
 import (
-	"os"
 	"path/filepath"
-	"strings"
 
+	"agent-harness/cmd/harness/pathutil"
 	"agent-harness/internal/core"
 )
 
 func readHarnessFile(parts ...string) (string, error) {
-	path := filepath.Join(append([]string{harnessRoot()}, parts...)...)
-	b, err := os.ReadFile(path)
-	return string(b), err
+	return pathutil.ReadHarnessFile(harnessRoot(), parts...)
 }
 
 func harnessRoot() string {
-	if env := os.Getenv("HARNESS_ROOT"); env != "" {
-		if root, err := filepath.Abs(env); err == nil {
-			return root
-		}
-	}
-	var starts []string
-	if cwd, err := os.Getwd(); err == nil {
-		starts = append(starts, cwd)
-	}
-	if exe, err := os.Executable(); err == nil {
-		d := filepath.Dir(exe)
-		starts = append(starts, d, filepath.Dir(d))
-	}
-	for _, start := range starts {
-		if root, ok := findUp(start, filepath.Join("skills", skillName, "SKILL.md")); ok {
-			return root
-		}
-	}
-	if cwd, err := os.Getwd(); err == nil {
-		return cwd
-	}
-	return "."
+	return pathutil.HarnessRoot(filepath.Join("skills", skillName, "SKILL.md"))
 }
 
 func findUp(start, marker string) (string, bool) {
-	d, err := filepath.Abs(start)
-	if err != nil {
-		return "", false
-	}
-	for {
-		if exists(filepath.Join(d, marker)) {
-			return d, true
-		}
-		parent := filepath.Dir(d)
-		if parent == d {
-			return "", false
-		}
-		d = parent
-	}
+	return pathutil.FindUp(start, marker)
 }
 
 func resolveTarget(arg string) string {
-	if arg == "" {
-		if env := os.Getenv("CLAUDE_PROJECT_DIR"); env != "" {
-			arg = env
-		} else if env := os.Getenv("PWD"); env != "" {
-			arg = env
-		} else if cwd, err := os.Getwd(); err == nil {
-			arg = cwd
-		} else {
-			arg = "."
-		}
-	}
-	abs, err := filepath.Abs(arg)
-	if err != nil {
-		return arg
-	}
-	return abs
+	return pathutil.ResolveTarget(arg)
 }
 
 func exists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
+	return pathutil.Exists(path)
 }
 
 func splitLines(s string) []string {
-	if strings.TrimSpace(s) == "" {
-		return []string{}
-	}
-	return strings.Split(strings.TrimRight(s, "\n"), "\n")
+	return pathutil.SplitLines(s)
 }
 
 func splitCSV(s string) []string {
-	if strings.TrimSpace(s) == "" {
-		return []string{}
-	}
-	parts := strings.Split(s, ",")
-	out := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			out = append(out, part)
-		}
-	}
-	return out
+	return pathutil.SplitCSV(s)
 }
 
 func containsString(items []string, want string) bool {
-	for _, item := range items {
-		if item == want {
-			return true
-		}
-	}
-	return false
+	return pathutil.ContainsString(items, want)
 }
 
 func stateDoctorHasIssueCode(issues []core.StateDoctorIssue, want string) bool {
-	for _, issue := range issues {
-		if issue.Code == want {
-			return true
-		}
-	}
-	return false
+	return pathutil.StateDoctorHasIssueCode(issues, want)
 }

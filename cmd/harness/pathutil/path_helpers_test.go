@@ -1,4 +1,4 @@
-package main
+package pathutil
 
 import (
 	"os"
@@ -12,7 +12,7 @@ func TestResolveTargetPrefersExplicitArgument(t *testing.T) {
 	t.Setenv("PWD", t.TempDir())
 	explicit := t.TempDir()
 
-	got := resolveTarget(explicit)
+	got := ResolveTarget(explicit)
 	want, err := filepath.Abs(explicit)
 	if err != nil {
 		t.Fatalf("abs explicit target: %v", err)
@@ -31,7 +31,7 @@ func TestResolveTargetUsesEnvironmentFallbacksWhenArgumentIsEmpty(t *testing.T) 
 		t.Setenv("CLAUDE_PROJECT_DIR", claudeDir)
 		t.Setenv("PWD", pwdDir)
 
-		got := resolveTarget("")
+		got := ResolveTarget("")
 		want, err := filepath.Abs(claudeDir)
 		if err != nil {
 			t.Fatalf("abs claude dir: %v", err)
@@ -46,7 +46,7 @@ func TestResolveTargetUsesEnvironmentFallbacksWhenArgumentIsEmpty(t *testing.T) 
 		t.Setenv("CLAUDE_PROJECT_DIR", "")
 		t.Setenv("PWD", pwdDir)
 
-		got := resolveTarget("")
+		got := ResolveTarget("")
 		want, err := filepath.Abs(pwdDir)
 		if err != nil {
 			t.Fatalf("abs pwd dir: %v", err)
@@ -76,7 +76,7 @@ func TestResolveTargetUsesCurrentDirectoryWhenEnvironmentFallbacksAreEmpty(t *te
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
 	t.Setenv("PWD", "")
 
-	got := resolveTarget("")
+	got := ResolveTarget("")
 	want, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("get temp cwd: %v", err)
@@ -102,7 +102,7 @@ func TestSplitLinesPreservesInteriorBlankLinesAndDropsTrailingNewlines(t *testin
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := splitLines(tc.in)
+			got := SplitLines(tc.in)
 
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("splitLines(%q) = %#v, want %#v", tc.in, got, tc.want)
@@ -117,7 +117,7 @@ func TestFindUpReturnsNearestAncestorWithMarker(t *testing.T) {
 	if err := os.MkdirAll(nested, 0o755); err != nil {
 		t.Fatalf("create nested dirs: %v", err)
 	}
-	marker := filepath.Join("skills", skillName, "SKILL.md")
+	marker := filepath.Join("skills", "atomic-commit-push", "SKILL.md")
 	markerPath := filepath.Join(root, marker)
 	if err := os.MkdirAll(filepath.Dir(markerPath), 0o755); err != nil {
 		t.Fatalf("create marker parent: %v", err)
@@ -126,7 +126,7 @@ func TestFindUpReturnsNearestAncestorWithMarker(t *testing.T) {
 		t.Fatalf("write marker: %v", err)
 	}
 
-	got, ok := findUp(nested, marker)
+	got, ok := FindUp(nested, marker)
 
 	if !ok || got != root {
 		t.Fatalf("findUp() = (%q, %v), want (%q, true)", got, ok, root)
@@ -134,7 +134,7 @@ func TestFindUpReturnsNearestAncestorWithMarker(t *testing.T) {
 }
 
 func TestFindUpReturnsFalseWhenMarkerIsMissing(t *testing.T) {
-	got, ok := findUp(t.TempDir(), filepath.Join("missing", "marker"))
+	got, ok := FindUp(t.TempDir(), filepath.Join("missing", "marker"))
 
 	if ok || got != "" {
 		t.Fatalf("findUp() = (%q, %v), want (\"\", false)", got, ok)
