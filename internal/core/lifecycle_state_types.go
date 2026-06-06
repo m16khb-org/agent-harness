@@ -99,13 +99,6 @@ type LifecycleStopReminderResult struct {
 	PendingCount      int    `json:"pending_count"`
 }
 
-type NumberedNextActionsDecisionResult struct {
-	OK       bool   `json:"ok"`
-	Decision string `json:"decision"`
-	Reason   string `json:"reason,omitempty"`
-	Source   string `json:"source"`
-}
-
 type StopNextActionRelayRecord struct {
 	SchemaVersion    int    `json:"schema_version"`
 	Fingerprint      string `json:"fingerprint"`

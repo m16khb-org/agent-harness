@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -38,8 +39,9 @@ func TestRunMCPProxyWithDepsCopiesDaemonAndStdinStreams(t *testing.T) {
 	if stdout.String() != "daemon response\n" {
 		t.Fatalf("unexpected stdout: %q", stdout.String())
 	}
-	if conn.writer.String() != "client request\n" || !conn.closed {
-		t.Fatalf("unexpected daemon write/close state: write=%q closed=%v", conn.writer.String(), conn.closed)
+	conn.waitForWrite(t)
+	if got, closed := conn.writerString(), conn.isClosed(); got != "client request\n" || !closed {
+		t.Fatalf("unexpected daemon write/close state: write=%q closed=%v", got, closed)
 	}
 }
 
@@ -215,9 +217,11 @@ func serveDaemonProxyTestSocket(t *testing.T, listener net.Listener, serverDone 
 }
 
 type daemonProxyFakeConn struct {
-	reader io.Reader
-	writer bytes.Buffer
-	closed bool
+	mu        sync.Mutex
+	reader    io.Reader
+	writer    bytes.Buffer
+	closed    bool
+	writeDone chan struct{}
 }
 
 func (c *daemonProxyFakeConn) Read(p []byte) (int, error) {
@@ -225,12 +229,52 @@ func (c *daemonProxyFakeConn) Read(p []byte) (int, error) {
 }
 
 func (c *daemonProxyFakeConn) Write(p []byte) (int, error) {
-	return c.writer.Write(p)
+	c.mu.Lock()
+	n, err := c.writer.Write(p)
+	if c.writeDone == nil {
+		c.writeDone = make(chan struct{})
+	}
+	select {
+	case <-c.writeDone:
+	default:
+		close(c.writeDone)
+	}
+	c.mu.Unlock()
+	return n, err
 }
 
 func (c *daemonProxyFakeConn) Close() error {
+	c.mu.Lock()
 	c.closed = true
+	c.mu.Unlock()
 	return nil
+}
+
+func (c *daemonProxyFakeConn) writerString() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.writer.String()
+}
+
+func (c *daemonProxyFakeConn) isClosed() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.closed
+}
+
+func (c *daemonProxyFakeConn) waitForWrite(t *testing.T) {
+	t.Helper()
+	c.mu.Lock()
+	if c.writeDone == nil {
+		c.writeDone = make(chan struct{})
+	}
+	writeDone := c.writeDone
+	c.mu.Unlock()
+	select {
+	case <-writeDone:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("daemon proxy fake connection did not receive stdin copy")
+	}
 }
 
 type daemonProxyBlockingReader struct {

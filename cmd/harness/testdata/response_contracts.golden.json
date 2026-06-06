@@ -471,7 +471,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 15669,
+          "bytes": 16953,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -516,7 +516,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 20263,
+          "bytes": 20269,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -538,7 +538,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 22150,
+          "bytes": 22675,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -597,7 +597,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 18748,
+          "bytes": 18775,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -1528,12 +1528,12 @@
       "secret_like_paths": [
         ".env"
       ],
-      "staged_files": [],
+      "staged_files": null,
       "status_lines": [
         "## main",
         "?? .env"
       ],
-      "unstaged_files": [],
+      "unstaged_files": null,
       "untracked_files": [
         ".env"
       ],
@@ -3105,12 +3105,12 @@
         "secret_like_paths": [
           ".env"
         ],
-        "staged_files": [],
+        "staged_files": null,
         "status_lines": [
           "## main",
           "?? .env"
         ],
-        "unstaged_files": [],
+        "unstaged_files": null,
         "untracked_files": [
           ".env"
         ],
@@ -3195,12 +3195,12 @@
             "secret_like_paths": [
               ".env"
             ],
-            "staged_files": [],
+            "staged_files": null,
             "status_lines": [
               "## main",
               "?? .env"
             ],
-            "unstaged_files": [],
+            "unstaged_files": null,
             "untracked_files": [
               ".env"
             ],
@@ -3766,7 +3766,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 15669,
+                "bytes": 16953,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -3811,7 +3811,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 20263,
+                "bytes": 20269,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -3833,7 +3833,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 22150,
+                "bytes": 22675,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -3892,7 +3892,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 18748,
+                "bytes": 18775,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",

@@ -5,10 +5,12 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"agent-harness/internal/core/repopath"
 )
 
 func ListDraftWiki(req DraftWikiListRequest) (DraftWikiListResult, error) {
-	root, err := normalizeRepoRoot(req.RepoRoot)
+	root, err := repopath.NormalizeRoot(req.RepoRoot)
 	if err != nil {
 		return DraftWikiListResult{}, err
 	}

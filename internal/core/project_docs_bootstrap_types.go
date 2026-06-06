@@ -20,12 +20,3 @@ type ProjectDocsBootstrapResult struct {
 	LifecycleState ProjectLifecycleStatePlan `json:"lifecycle_state"`
 	Warnings       []string                  `json:"warnings,omitempty"`
 }
-
-type ProjectDocsPlannedFile struct {
-	RelPath string `json:"rel_path"`
-	Path    string `json:"path"`
-	Action  string `json:"action"`
-	Bytes   int    `json:"bytes"`
-	SHA256  string `json:"sha256"`
-	Reason  string `json:"reason"`
-}

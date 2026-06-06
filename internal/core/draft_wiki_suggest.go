@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/agysettings"
+	"agent-harness/internal/core/repopath"
 )
 
 type DraftWikiSuggestRequest struct {
@@ -40,11 +43,11 @@ type DraftWikiSuggestResult struct {
 }
 
 func SuggestDraftWiki(req DraftWikiSuggestRequest) (DraftWikiSuggestResult, error) {
-	root, err := normalizeRepoRoot(req.RepoRoot)
+	root, err := repopath.NormalizeRoot(req.RepoRoot)
 	if err != nil {
 		return DraftWikiSuggestResult{}, err
 	}
-	inputPath, err := resolveRepoFile(root, req.InputPath)
+	inputPath, err := repopath.ResolveFile(root, req.InputPath)
 	if err != nil {
 		return DraftWikiSuggestResult{}, err
 	}
@@ -56,8 +59,8 @@ func SuggestDraftWiki(req DraftWikiSuggestRequest) (DraftWikiSuggestResult, erro
 	if agyCommand == "" {
 		agyCommand = "agy"
 	}
-	settingsPath := resolveAgySettingsPath(req.AgySettingsPath)
-	configuredModel, err := readAgyConfiguredModel(settingsPath)
+	settingsPath := agysettings.ResolvePath(req.AgySettingsPath)
+	configuredModel, err := agysettings.ReadConfiguredModel(settingsPath)
 	if err != nil {
 		return DraftWikiSuggestResult{}, err
 	}

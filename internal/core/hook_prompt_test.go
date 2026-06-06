@@ -36,6 +36,24 @@ func TestBuildUserPromptMCPHintsRequiresMainAgentJudgementRationale(t *testing.T
 	}
 }
 
+func TestBuildUserPromptMCPHintsRequiresJudgementBeforeAuthorizedContinuation(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "foldering slice가 모두 완료될 때까지 자동진행"})
+	for _, want := range []string{"recommended option is continued implementation", "already authorize automatic continuation", "first state the safety/reversibility/alignment judgement", "supports auto-proceed"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("next-action policy missing authorized-continuation contract %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
+func TestBuildUserPromptMCPHintsKeepsNoAutoProceedDecisionStickyAcrossGoalContinuation(t *testing.T) {
+	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "계속 진행"})
+	for _, want := range []string{"no-auto-proceed", "sticky", "goal continuation", "explicit user choice"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("next-action policy missing sticky no-auto-proceed contract %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
 func TestBuildUserPromptMCPHintsInjectsDraftWikiMainAgentPolicy(t *testing.T) {
 	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "훅 정책을 개선해줘"})
 	for _, want := range []string{"draft-wiki:", "main agent must judge", "agent-harness project draft-wiki queue", "heuristics must not queue"} {

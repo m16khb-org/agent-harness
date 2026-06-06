@@ -60,7 +60,7 @@ func runHookStop(args []string) error {
 	// that LLM with a local scorer. It reports only that the response reached an
 	// explicit next-action judgement point and sends the observed facts to the main
 	// agent, which owns safety, reversibility, alignment, and proceed/ask judgement.
-	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent && !stopHookActive {
+	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent {
 		relayRecord := core.RecordStopNextActionRelay(parsedRepo, nextActionTrigger)
 		if !relayRecord.ShouldRelay {
 			return printJSON(map[string]any{})
@@ -81,9 +81,10 @@ func runHookStop(args []string) error {
 	// the user instead of presenting the choices itself. Use continue:true like the
 	// auto-proceed branch above so the agent stays in-turn and emits the choices.
 	//
-	// Guard with stop_hook_active: hosts set it true when this Stop is itself a
-	// continuation of a prior stop-hook block. The documented anti-loop contract is
-	// to allow the stop while it is true, so a non-complying agent cannot loop.
+	// Guard only the missing-choice recovery with stop_hook_active: hosts set it
+	// true when this Stop is itself a continuation of a prior stop-hook block. Valid
+	// next-action choices still need the judgement relay above; otherwise a
+	// recovered response can present choices and then silently stop.
 	if nextActions.Decision == "block" && !stopHookActive {
 		return printJSON(map[string]any{
 			"continue": true,

@@ -5,10 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"agent-harness/internal/core/repopath"
 )
 
 func ResolveProjectLifecycleState(repoRoot string) (ProjectLifecycleStatePlan, error) {
-	root, err := normalizeRepoRoot(repoRoot)
+	root, err := repopath.NormalizeRoot(repoRoot)
 	if err != nil {
 		return ProjectLifecycleStatePlan{OK: false, StateRoot: StateDir(), SchemaVersion: ProjectLifecycleSchemaVersion}, err
 	}

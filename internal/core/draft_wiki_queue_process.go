@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/agysettings"
 )
 
 func ProcessDraftWikiQueue(req DraftWikiQueueProcessRequest) (DraftWikiQueueProcessResult, error) {
@@ -82,8 +84,8 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 	if agyCommand == "" {
 		agyCommand = "agy"
 	}
-	settingsPath := resolveAgySettingsPath(req.AgySettingsPath)
-	configuredModel, err := readAgyConfiguredModel(settingsPath)
+	settingsPath := agysettings.ResolvePath(req.AgySettingsPath)
+	configuredModel, err := agysettings.ReadConfiguredModel(settingsPath)
 	if err != nil {
 		return failDraftWikiQueueEvent(event, err)
 	}

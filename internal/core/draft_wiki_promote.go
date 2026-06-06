@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/handoff"
+	"agent-harness/internal/core/repopath"
 )
 
 func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, error) {
-	root, err := normalizeRepoRoot(req.RepoRoot)
+	root, err := repopath.NormalizeRoot(req.RepoRoot)
 	if err != nil {
 		return DraftWikiPromoteResult{}, err
 	}
@@ -42,7 +45,7 @@ func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, erro
 		Confirm:        req.Confirm,
 		Executed:       false,
 		UpstreamTool:   "nvk/llm-wiki",
-		HandoffCommand: joinHandoffArgs(args),
+		HandoffCommand: handoff.JoinArgs(args),
 		HandoffArgs:    args,
 		From:           from,
 	}

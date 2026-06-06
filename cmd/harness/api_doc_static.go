@@ -9,13 +9,6 @@ import (
 	"strings"
 )
 
-type apiDocStaticViolation struct {
-	File    string `json:"file"`
-	Line    int    `json:"line"`
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-
 type apiDocStaticResult struct {
 	OK         bool                    `json:"ok"`
 	Summary    string                  `json:"summary"`

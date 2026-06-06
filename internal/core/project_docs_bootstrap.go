@@ -1,15 +1,15 @@
 package core
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"os"
 	"path/filepath"
 	"time"
+
+	"agent-harness/internal/core/repopath"
 )
 
 func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrapResult, error) {
-	root, err := normalizeRepoRoot(req.RepoRoot)
+	root, err := repopath.NormalizeRoot(req.RepoRoot)
 	if err != nil {
 		return ProjectDocsBootstrapResult{}, err
 	}
@@ -90,22 +90,6 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		LifecycleState: lifecycleState,
 		Warnings:       warnings,
 	}, nil
-}
-
-func plannedFileAction(path, content string) string {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return "create"
-	}
-	if string(b) == content {
-		return "unchanged"
-	}
-	return "update"
-}
-
-func sha256Hex(content string) string {
-	sum := sha256.Sum256([]byte(content))
-	return hex.EncodeToString(sum[:])
 }
 
 func projectDocReason(rel string) string {

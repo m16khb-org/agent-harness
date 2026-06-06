@@ -3,6 +3,8 @@ package core
 import (
 	"sort"
 	"time"
+
+	"agent-harness/internal/core/repopath"
 )
 
 type HarnessDoctorRequest struct {
@@ -47,7 +49,7 @@ type HarnessDoctorFix struct {
 }
 
 func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
-	root, err := normalizeRepoRoot(req.RepoRoot)
+	root, err := repopath.NormalizeRoot(req.RepoRoot)
 	if err != nil {
 		return HarnessDoctorResult{OK: false, Kind: "harness_doctor", StateDir: StateDir()}, err
 	}

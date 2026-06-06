@@ -101,14 +101,18 @@ func TestRunHookStopKeepsAutoProceedFlagAsRelayAlias(t *testing.T) {
 	}
 }
 
-func TestRunHookStopSuppressesNextActionRelayWhenStopHookActive(t *testing.T) {
+func TestRunHookStopRelaysNextActionJudgementWhenStopHookActiveHasValidChoices(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","stop_hook_active":true,"last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--relay-next-action-judgement"})
 	})
-	if len(obj) != 0 {
-		t.Fatalf("stop_hook_active must suppress next-action relay to avoid Stop hook loops, got %+v", obj)
+	if obj["continue"] != true || obj["decision"] != "block" {
+		t.Fatalf("stop_hook_active must not suppress valid next-action judgement relay, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "판단 지점") || !strings.Contains(reason, "메인 에이전트") {
+		t.Fatalf("expected judgement relay reason while stop_hook_active is true, got %q", reason)
 	}
 }

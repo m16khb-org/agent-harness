@@ -72,19 +72,6 @@ func promoteDraftWikiToLLMWiki(req promoteDraftWikiToLLMWikiRequest) (promoteDra
 	}, nil
 }
 
-func expandLeadingTilde(path string) string {
-	if path == "~" || strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
-		if err == nil {
-			if path == "~" {
-				return home
-			}
-			return filepath.Join(home, filepath.FromSlash(strings.TrimPrefix(path, "~/")))
-		}
-	}
-	return filepath.FromSlash(path)
-}
-
 func appendLLMWikiPromoteLog(logPath, today, title, rawRel, draftRel string) error {
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		return err

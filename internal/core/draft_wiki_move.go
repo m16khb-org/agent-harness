@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"agent-harness/internal/core/repopath"
 )
 
 func ApproveDraftWiki(req DraftWikiMoveRequest) (DraftWikiMoveResult, error) {
@@ -15,7 +17,7 @@ func RejectDraftWiki(req DraftWikiMoveRequest) (DraftWikiMoveResult, error) {
 }
 
 func moveDraftWiki(req DraftWikiMoveRequest, requiredStatus, targetStatus, kind string) (DraftWikiMoveResult, error) {
-	root, err := normalizeRepoRoot(req.RepoRoot)
+	root, err := repopath.NormalizeRoot(req.RepoRoot)
 	if err != nil {
 		return DraftWikiMoveResult{}, err
 	}

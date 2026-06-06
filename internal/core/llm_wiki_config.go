@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/repopath"
 )
 
 type llmWikiConfigFile struct {
@@ -57,7 +59,7 @@ func resolveLLMWikiRoot(configPath, targetWiki string) (string, error) {
 	case root == "", root == "<HUB>":
 		root = hub
 	case strings.HasPrefix(root, "~/"):
-		root = expandLeadingTilde(root)
+		root = repopath.ExpandLeadingTilde(root)
 	case filepath.IsAbs(root):
 	default:
 		root = filepath.Join(hub, filepath.FromSlash(root))
@@ -91,7 +93,7 @@ func resolveLLMWikiHub(configPath string) (string, error) {
 	if hub == "" {
 		return "", fmt.Errorf("llm-wiki config %s has no hub_path or resolved_path", configPath)
 	}
-	hub = expandLeadingTilde(hub)
+	hub = repopath.ExpandLeadingTilde(hub)
 	if _, err := os.Stat(hub); err != nil {
 		return "", fmt.Errorf("llm-wiki hub path %s: %w", hub, err)
 	}
