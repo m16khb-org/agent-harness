@@ -1,4 +1,4 @@
-package main
+package selfworkflow
 
 import (
 	"bytes"
@@ -14,9 +14,9 @@ func TestRunSelfVerifyWithDepsCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 	var verifyCalled bool
 	var evalCalled bool
 	var saveCalled bool
-	deps := selfVerifyRunDeps{
-		lookupEnv: func(string) (string, bool) { return "", false },
-		verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfVerifyProgressReporter) (SelfAugmentResult, error) {
+	deps := SelfVerifyRunDeps{
+		LookupEnv: func(string) (string, bool) { return "", false },
+		Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *SelfVerifyProgressReporter) (SelfAugmentResult, error) {
 			verifyCalled = true
 			if iterations != 1 || baseSeed != 42 || targetScore != 95 || verbose || progress != nil {
 				t.Fatalf("unexpected verify args: iterations=%d seed=%d target=%v verbose=%v progress=%v", iterations, baseSeed, targetScore, verbose, progress)
@@ -24,7 +24,7 @@ func TestRunSelfVerifyWithDepsCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 			return SelfAugmentResult{
 				OK:                  true,
 				LoopKind:            "self_verification",
-				KoreanName:          selfVerificationKoreanName,
+				KoreanName:          SelfVerificationKoreanName,
 				Iterations:          iterations,
 				BaseSeed:            baseSeed,
 				TargetScore:         targetScore,
@@ -32,7 +32,7 @@ func TestRunSelfVerifyWithDepsCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 				Summary:             SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true},
 			}, nil
 		},
-		applyLLMEval: func(result SelfAugmentResult, opts SelfVerifyLLMEvalOptions) (SelfAugmentResult, error) {
+		ApplyLLMEval: func(result SelfAugmentResult, opts SelfVerifyLLMEvalOptions) (SelfAugmentResult, error) {
 			evalCalled = true
 			if !opts.Enabled || opts.Mode != "gate" || opts.AgyCommand != "fake-agy" || opts.TargetScore != 95 {
 				t.Fatalf("unexpected LLM eval options: %+v", opts)
@@ -40,7 +40,7 @@ func TestRunSelfVerifyWithDepsCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 			result.LLMEval = &SelfVerifyLLMEvalResult{OK: true, Mode: opts.Mode, Score: 99, Summary: "pass"}
 			return result, nil
 		},
-		saveSummary: func(result *SelfAugmentResult, key string) error {
+		SaveSummary: func(result *SelfAugmentResult, key string) error {
 			saveCalled = true
 			if key != "verify-latest" || result.LLMEval == nil {
 				t.Fatalf("unexpected saved result key=%q result=%+v", key, result)
@@ -51,7 +51,7 @@ func TestRunSelfVerifyWithDepsCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 	}
 
 	out, err := captureStdoutAllowErrorForSelfVerifyCLITest(t, func() error {
-		return runSelfVerifyWithDeps([]string{
+		return RunSelfVerifyWithDeps([]string{
 			"--llm-eval",
 			"--llm-eval-mode", "gate",
 			"--agy-command", "fake-agy",
@@ -62,7 +62,7 @@ func TestRunSelfVerifyWithDepsCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 		}, deps)
 	})
 	if err != nil {
-		t.Fatalf("runSelfVerifyWithDeps: %v", err)
+		t.Fatalf("RunSelfVerifyWithDeps: %v", err)
 	}
 	if !verifyCalled || !evalCalled || !saveCalled {
 		t.Fatalf("expected verify/eval/save calls, got verify=%v eval=%v save=%v", verifyCalled, evalCalled, saveCalled)
@@ -79,12 +79,12 @@ func TestRunSelfVerifyWithDepsCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 func TestRunSelfVerifyWithDepsReturnsSaveErrorAfterSuccessfulVerification(t *testing.T) {
 	saveErr := errors.New("save failed")
 	out, err := captureStdoutAllowErrorForSelfVerifyCLITest(t, func() error {
-		return runSelfVerifyWithDeps([]string{"--save-state", "--state-key", "bad-key", "--json"}, selfVerifyRunDeps{
-			lookupEnv: func(string) (string, bool) { return "", false },
-			verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfVerifyProgressReporter) (SelfAugmentResult, error) {
+		return RunSelfVerifyWithDeps([]string{"--save-state", "--state-key", "bad-key", "--json"}, SelfVerifyRunDeps{
+			LookupEnv: func(string) (string, bool) { return "", false },
+			Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *SelfVerifyProgressReporter) (SelfAugmentResult, error) {
 				return SelfAugmentResult{OK: true, LoopKind: "self_verification", Summary: SelfAugmentSummary{MinimumGoalScore: 100}}, nil
 			},
-			saveSummary: func(result *SelfAugmentResult, key string) error {
+			SaveSummary: func(result *SelfAugmentResult, key string) error {
 				result.StateCheckpoint = &SelfAugmentStateCheckpoint{OK: false, Key: key, Error: saveErr.Error()}
 				return saveErr
 			},
