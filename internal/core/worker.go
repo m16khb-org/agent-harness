@@ -1,14 +1,8 @@
 package core
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"regexp"
-	"sort"
 	"strings"
 	"time"
 )
@@ -20,8 +14,6 @@ const (
 	WorkerStatusFailed    = "failed"
 	WorkerStatusCancelled = "cancelled"
 )
-
-var workerIDRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
 
 type WorkerJob struct {
 	OK           bool              `json:"ok"`
@@ -76,53 +68,6 @@ func EnqueueWorkerJob(kind, payload string) (WorkerJob, error) {
 	return job, writeWorkerJob(job)
 }
 
-func ReadWorkerJob(id string) (WorkerJob, error) {
-	if !workerIDRe.MatchString(id) || strings.Contains(id, "..") {
-		return WorkerJob{OK: false, ID: id}, fmt.Errorf("invalid worker job id")
-	}
-	dir, err := workerDir()
-	if err != nil {
-		return WorkerJob{OK: false, ID: id}, err
-	}
-	b, err := os.ReadFile(filepath.Join(dir, id+".json"))
-	if err != nil {
-		return WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
-	}
-	var job WorkerJob
-	if err := json.Unmarshal(b, &job); err != nil {
-		return WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
-	}
-	job.WorkerDir = dir
-	return job, nil
-}
-
-func ListWorkerJobs() (WorkerListResult, error) {
-	dir, err := workerDir()
-	if err != nil {
-		return WorkerListResult{OK: false}, err
-	}
-	result := WorkerListResult{OK: true, WorkerDir: dir, Jobs: []WorkerJob{}}
-	entries, err := os.ReadDir(dir)
-	if os.IsNotExist(err) {
-		return result, nil
-	}
-	if err != nil {
-		return result, err
-	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		id := strings.TrimSuffix(entry.Name(), ".json")
-		job, err := ReadWorkerJob(id)
-		if err == nil {
-			result.Jobs = append(result.Jobs, job)
-		}
-	}
-	sort.Slice(result.Jobs, func(i, j int) bool { return result.Jobs[i].CreatedAt > result.Jobs[j].CreatedAt })
-	return result, nil
-}
-
 func CancelWorkerJob(id string) (WorkerJob, error) {
 	job, err := ReadWorkerJob(id)
 	if err != nil {
@@ -138,68 +83,4 @@ func CancelWorkerJob(id string) (WorkerJob, error) {
 	job.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	job.OK = true
 	return job, writeWorkerJob(job)
-}
-
-func RunReadOnlyWorkerJob(kind, payload string, req CommandPolicyRequest) (WorkerJob, error) {
-	job, err := EnqueueWorkerJob(kind, payload)
-	if err != nil {
-		return job, err
-	}
-	job.Status = WorkerStatusRunning
-	job.NoShell = true
-	job.Command = append([]string{}, req.Argv...)
-	job.SafetyNotice = "worker read-only runner executes only argv commands that pass command policy with write/network/shell disabled"
-	job.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	if err := writeWorkerJob(job); err != nil {
-		return job, err
-	}
-	result := RunReadOnlyCommand(req)
-	job.Result = &result
-	job.OK = result.OK
-	if result.OK {
-		job.Status = WorkerStatusSucceeded
-	} else {
-		job.Status = WorkerStatusFailed
-	}
-	job.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	return job, writeWorkerJob(job)
-}
-
-func writeWorkerJob(job WorkerJob) error {
-	if !workerIDRe.MatchString(job.ID) || strings.Contains(job.ID, "..") {
-		return fmt.Errorf("invalid worker job id")
-	}
-	dir, err := workerDir()
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	job.WorkerDir = dir
-	b, err := json.MarshalIndent(job, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(dir, job.ID+".json"), append(b, '\n'), 0o600)
-}
-
-func workerDir() (string, error) {
-	if dir := os.Getenv("HARNESS_WORKER_DIR"); dir != "" {
-		return filepath.Abs(dir)
-	}
-	dir := os.Getenv("HARNESS_STATE_DIR")
-	if dir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil || home == "" {
-			return "", fmt.Errorf("resolve home for worker dir: %w", err)
-		}
-		dir = filepath.Join(home, ".local", "state", "agent-harness")
-	}
-	return filepath.Join(dir, "worker"), nil
-}
-
-func makeWorkerJobID(kind, payload string, t time.Time) string {
-	sum := sha256.Sum256([]byte(kind + "\x00" + payload + "\x00" + t.Format(time.RFC3339Nano)))
-	return "job-" + t.Format("20060102T150405Z") + "-" + hex.EncodeToString(sum[:])[:12]
 }

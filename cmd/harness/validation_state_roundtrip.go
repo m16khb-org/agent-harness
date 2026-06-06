@@ -1,0 +1,50 @@
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func validateStateRoundtrip(binary, root string, seed int64) StepResult {
+	return validateStateRoundtripWithDeps(binary, root, seed, stateRoundtripValidationDeps{})
+}
+
+func validateStateRoundtripWithDeps(binary, root string, seed int64, deps stateRoundtripValidationDeps) StepResult {
+	deps = deps.withDefaults()
+	started := time.Now()
+	tempState, err := deps.mkdirTemp("", "agent-harness-state-roundtrip-*")
+	if err != nil {
+		return failedStep("state roundtrip", err)
+	}
+	defer deps.removeAll(tempState)
+
+	key := fmt.Sprintf("self-verify-%d", seed)
+	content := fmt.Sprintf("seed=%d\nLore: state roundtrip\n", seed)
+	env := []string{"HARNESS_STATE_DIR=" + tempState}
+	stateResult := validateStateRoundtripStateCLI(validateStateRoundtripStateInput{
+		binary:    binary,
+		root:      root,
+		tempState: tempState,
+		key:       key,
+		content:   content,
+		env:       env,
+		started:   started,
+		deps:      deps,
+	})
+	if !stateResult.step.OK {
+		return stateResult.step
+	}
+
+	return validateStateRoundtripSelfVerifyDeps(validateStateRoundtripSelfVerifyInput{
+		binary:      binary,
+		root:        root,
+		seed:        seed,
+		tempState:   tempState,
+		key:         key,
+		env:         env,
+		started:     started,
+		stdoutParts: stateResult.stdoutParts,
+		commands:    stateResult.commands,
+		deps:        deps,
+	})
+}

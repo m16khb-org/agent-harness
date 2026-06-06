@@ -1,12 +1,73 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"agent-harness/internal/core"
 )
+
+func TestBuildHarnessStatusReportsStateWorkerAndSelfVerify(t *testing.T) {
+	repo := t.TempDir()
+	stateDir := t.TempDir()
+	workerDir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	t.Setenv("HARNESS_WORKER_DIR", workerDir)
+	if _, err := core.StateWrite("self-verify-latest", `{"ok":true}`); err != nil {
+		t.Fatalf("write self verify state: %v", err)
+	}
+	if _, err := core.EnqueueWorkerJob("smoke", "payload"); err != nil {
+		t.Fatalf("enqueue worker job: %v", err)
+	}
+
+	status := buildHarnessStatus(repo)
+
+	if status.Kind != "harness_status" || status.Repo != repo {
+		t.Fatalf("unexpected status identity: %#v", status)
+	}
+	if !status.State.OK || len(status.State.Records) != 1 {
+		t.Fatalf("expected isolated state record, got %#v", status.State)
+	}
+	if !status.Workers.OK || len(status.Workers.Jobs) != 1 {
+		t.Fatalf("expected isolated worker job, got %#v", status.Workers)
+	}
+	if !status.SelfVerify.Found || status.SelfVerify.LatestKey != "self-verify-latest" || status.SelfVerify.Bytes == 0 {
+		t.Fatalf("expected self verify latest state, got %#v", status.SelfVerify)
+	}
+	if status.Daemon.Message == "" {
+		t.Fatalf("daemon status should include an operator-facing message")
+	}
+}
+
+func TestRunStatusWritesTextAndJSON(t *testing.T) {
+	repo := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_WORKER_DIR", t.TempDir())
+
+	text := captureStatusVerifyStdout(t, func() error {
+		return runStatus([]string{"--repo", repo})
+	})
+	if !strings.Contains(text, "agent-harness status:") || !strings.Contains(text, "daemon running:") {
+		t.Fatalf("unexpected status text output:\n%s", text)
+	}
+
+	jsonText := captureStatusVerifyStdout(t, func() error {
+		return runStatus([]string{"--repo", repo, "--json"})
+	})
+	var decoded HarnessStatus
+	if err := json.Unmarshal([]byte(jsonText), &decoded); err != nil {
+		t.Fatalf("decode status JSON: %v\n%s", err, jsonText)
+	}
+	if decoded.Kind != "harness_status" || decoded.Repo != repo {
+		t.Fatalf("unexpected status JSON payload: %#v", decoded)
+	}
+}
 
 func TestBuildVerifyWorkIncludesEvidenceMatrixAndSuggestions(t *testing.T) {
 	repo := t.TempDir()
@@ -119,4 +180,30 @@ func equalStringSlices(a []string, b []string) bool {
 		}
 	}
 	return true
+}
+
+func captureStatusVerifyStdout(t *testing.T, fn func() error) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	defer func() {
+		os.Stdout = oldStdout
+	}()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe stdout: %v", err)
+	}
+	defer r.Close()
+	os.Stdout = w
+	callErr := fn()
+	if closeErr := w.Close(); closeErr != nil {
+		t.Fatalf("close stdout pipe: %v", closeErr)
+	}
+	if callErr != nil {
+		t.Fatalf("call failed: %v", callErr)
+	}
+	var out bytes.Buffer
+	if _, err := io.Copy(&out, r); err != nil {
+		t.Fatalf("read stdout pipe: %v", err)
+	}
+	return out.String()
 }

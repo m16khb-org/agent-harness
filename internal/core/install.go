@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 
 	"agent-harness/internal/port"
 )
@@ -96,74 +94,4 @@ func InstallNative(req port.NativeInstallRequest, installers ...port.HostInstall
 		result.Messages = append(result.Messages, hostResult.Messages...)
 	}
 	return result, errors.Join(errs...)
-}
-
-func ListSkillNames(root string) ([]string, error) {
-	entries, err := os.ReadDir(filepath.Join(root, "skills"))
-	if err != nil {
-		return nil, err
-	}
-	var names []string
-	for _, entry := range entries {
-		if entry.IsDir() && exists(filepath.Join(root, "skills", entry.Name(), "SKILL.md")) {
-			names = append(names, entry.Name())
-		}
-	}
-	return normalizeSkillNames(names), nil
-}
-
-func normalizeSkillNames(names []string) []string {
-	seen := map[string]bool{}
-	out := make([]string, 0, len(names))
-	for _, name := range names {
-		name = strings.TrimSpace(name)
-		if name == "" || seen[name] {
-			continue
-		}
-		seen[name] = true
-		out = append(out, name)
-	}
-	sort.Strings(out)
-	return out
-}
-
-func absClean(path string) string {
-	if path == "" {
-		return ""
-	}
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return filepath.Clean(path)
-	}
-	return filepath.Clean(abs)
-}
-
-func expandHomeWithHome(path, home string) string {
-	if path == "~" || strings.HasPrefix(path, "~/") {
-		if home == "" {
-			home, _ = os.UserHomeDir()
-		}
-		if home != "" {
-			if path == "~" {
-				return home
-			}
-			return filepath.Join(home, path[2:])
-		}
-	}
-	return path
-}
-
-func homeRelativePath(path, home string) string {
-	if path == "" || home == "" {
-		return path
-	}
-	path = filepath.Clean(path)
-	home = filepath.Clean(home)
-	if path == home {
-		return "~"
-	}
-	if rel, err := filepath.Rel(home, path); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return filepath.ToSlash(filepath.Join("~", rel))
-	}
-	return path
 }

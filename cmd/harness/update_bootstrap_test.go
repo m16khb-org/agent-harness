@@ -42,6 +42,20 @@ func stubDaemonProcessTerminator(t *testing.T, fn func(int) error) func() {
 	return func() { daemonProcessTerminator = previous }
 }
 
+func stubMCPProxyProcessLister(t *testing.T, fn func() ([]mcpProxyProcess, error)) func() {
+	t.Helper()
+	previous := mcpProxyProcessLister
+	mcpProxyProcessLister = fn
+	return func() { mcpProxyProcessLister = previous }
+}
+
+func stubMCPProxyTerminator(t *testing.T, fn func(int) error) func() {
+	t.Helper()
+	previous := mcpProxyTerminator
+	mcpProxyTerminator = fn
+	return func() { mcpProxyTerminator = previous }
+}
+
 func TestRunInstallScriptCommandRefreshesRuntimeProcessesAfterUpdate(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HARNESS_ROOT", root)
@@ -77,6 +91,49 @@ func TestRunInstallScriptCommandRefreshesRuntimeProcessesAfterUpdate(t *testing.
 	want := []string{filepath.Join(root, "scripts", "install-native.sh"), "--skip-upstream-tools", "daemon-refresh", "mcp-proxy-refresh"}
 	if !reflect.DeepEqual(commands, want) {
 		t.Fatalf("unexpected command sequence:\n got: %#v\nwant: %#v", commands, want)
+	}
+}
+
+func TestRunUpdateAndBootstrapForwardToInstallScript(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HARNESS_ROOT", root)
+	if err := os.MkdirAll(filepath.Join(root, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "scripts", "install-native.sh"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var commands [][]string
+	restore := stubInstallScriptCommandRunner(t, func(name string, args ...string) error {
+		commands = append(commands, append([]string{name}, args...))
+		return nil
+	})
+	defer restore()
+	restoreDaemon := stubPostInstallDaemonRefresh(t, func() (bool, error) {
+		t.Fatal("dry-run wrapper must not refresh daemon")
+		return false, nil
+	})
+	defer restoreDaemon()
+	restoreMCPProxy := stubPostInstallMCPProxyRefresh(t, func() (int, error) {
+		t.Fatal("dry-run wrapper must not refresh MCP proxies")
+		return 0, nil
+	})
+	defer restoreMCPProxy()
+
+	if err := runUpdate([]string{"--dry-run", "--without-upstream-tools", "--json"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runBootstrap([]string{"--dry-run", "--path-mode=skip", "--skip-build"}); err != nil {
+		t.Fatal(err)
+	}
+
+	want := [][]string{
+		{filepath.Join(root, "scripts", "install-native.sh"), "--skip-upstream-tools", "--dry-run", "--json"},
+		{filepath.Join(root, "scripts", "install-native.sh"), "--skip-upstream-tools", "--dry-run", "--path-mode=skip", "--skip-build"},
+	}
+	if !reflect.DeepEqual(commands, want) {
+		t.Fatalf("unexpected wrapper command sequence:\n got: %#v\nwant: %#v", commands, want)
 	}
 }
 
@@ -171,5 +228,31 @@ func TestTerminateStaleDaemonProcessesSkipsCurrentProcess(t *testing.T) {
 	}
 	if count != 2 || !reflect.DeepEqual(terminated, []int{12345, 12346}) {
 		t.Fatalf("unexpected daemon cleanup result count=%d terminated=%v", count, terminated)
+	}
+}
+
+func TestRefreshRunningMCPProxiesAfterInstallSkipsCurrentProcess(t *testing.T) {
+	currentPID := os.Getpid()
+	restoreList := stubMCPProxyProcessLister(t, func() ([]mcpProxyProcess, error) {
+		return []mcpProxyProcess{
+			{PID: currentPID, Command: "agent-harness mcp"},
+			{PID: 22345, Command: "agent-harness mcp"},
+			{PID: 22346, Command: "agent-harness mcp"},
+		}, nil
+	})
+	defer restoreList()
+	var terminated []int
+	restoreTerminate := stubMCPProxyTerminator(t, func(pid int) error {
+		terminated = append(terminated, pid)
+		return nil
+	})
+	defer restoreTerminate()
+
+	count, err := refreshRunningMCPProxiesAfterInstall()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 || !reflect.DeepEqual(terminated, []int{22345, 22346}) {
+		t.Fatalf("unexpected MCP proxy cleanup result count=%d terminated=%v", count, terminated)
 	}
 }

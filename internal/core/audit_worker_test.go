@@ -48,6 +48,76 @@ func TestWorkerJobLifecycleIsNoShellStateOnly(t *testing.T) {
 	if cancelled.Status != WorkerStatusCancelled {
 		t.Fatalf("not cancelled: %+v", cancelled)
 	}
+	cancelledAgain, err := CancelWorkerJob(job.ID)
+	if err != nil {
+		t.Fatalf("cancel again: %v", err)
+	}
+	if cancelledAgain.Status != WorkerStatusCancelled {
+		t.Fatalf("second cancel should be no-op: %+v", cancelledAgain)
+	}
+}
+
+func TestWorkerJobInvalidAndListErrorBranches(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", dir)
+	if _, err := EnqueueWorkerJob("", "payload"); err == nil || !strings.Contains(err.Error(), "worker job kind is required") {
+		t.Fatalf("empty kind error = %v", err)
+	}
+	if _, err := EnqueueWorkerJob("../bad", "payload"); err == nil || !strings.Contains(err.Error(), "invalid worker job kind") {
+		t.Fatalf("invalid kind error = %v", err)
+	}
+	if _, err := ReadWorkerJob("../bad"); err == nil || !strings.Contains(err.Error(), "invalid worker job id") {
+		t.Fatalf("invalid read id error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "broken.json"), []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "note.txt"), []byte("ignored"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	listed, err := ListWorkerJobs()
+	if err != nil {
+		t.Fatalf("list jobs: %v", err)
+	}
+	if len(listed.Jobs) != 0 {
+		t.Fatalf("broken/non-json jobs should be skipped: %+v", listed)
+	}
+	if _, err := ReadWorkerJob("broken"); err == nil {
+		t.Fatalf("broken job JSON should fail to read")
+	}
+}
+
+func TestWorkerCancelRejectsNonQueuedJobs(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", dir)
+	job, err := EnqueueWorkerJob("cancel-status", "payload")
+	if err != nil {
+		t.Fatal(err)
+	}
+	job.Status = WorkerStatusSucceeded
+	if err := writeWorkerJob(job); err != nil {
+		t.Fatal(err)
+	}
+	cancelled, err := CancelWorkerJob(job.ID)
+	if err == nil || !strings.Contains(err.Error(), "cannot be cancelled from status succeeded") {
+		t.Fatalf("cancel succeeded job error = %v", err)
+	}
+	if cancelled.Status != WorkerStatusSucceeded {
+		t.Fatalf("cancel should preserve succeeded status: %+v", cancelled)
+	}
+}
+
+func TestWorkerDirUsesStateDirFallback(t *testing.T) {
+	state := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", "")
+	t.Setenv("HARNESS_STATE_DIR", state)
+	dir, err := workerDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dir != filepath.Join(state, "worker") {
+		t.Fatalf("workerDir = %q, want state worker dir", dir)
+	}
 }
 
 func TestWorkerRunReadOnlyJobExecutesPolicyAllowedCommand(t *testing.T) {

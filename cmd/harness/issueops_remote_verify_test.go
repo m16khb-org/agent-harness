@@ -72,6 +72,184 @@ func TestVerifyIssueOpsRemoteArtifactMergedLiveRequiresMergedGitHubPR(t *testing
 	}
 }
 
+func TestFetchGitLabMergeRequestArtifactParsesLivePayload(t *testing.T) {
+	bin := t.TempDir()
+	logPath := filepath.Join(t.TempDir(), "glab.log")
+	writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
+printf '%s\n' "$*" > "$HARNESS_FAKE_GLAB_LOG"
+printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requests/42","state":"merged","merged_at":"","labels":["ready","refactor"],"assignees":[{"id":123,"username":"habin","name":"Ha Bin"},{"id":0,"username":"reviewer","name":"Reviewer"}]}'
+`)
+	t.Setenv("HARNESS_FAKE_GLAB_LOG", logPath)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	artifact, err := fetchGitLabMergeRequestArtifact("https://gitlab.example.com/group/project/-/merge_requests/42")
+	if err != nil {
+		t.Fatalf("fetch GitLab MR artifact: %v", err)
+	}
+
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantArgs := "api projects/group%2Fproject/merge_requests/42 --hostname gitlab.example.com"
+	if got := strings.TrimSpace(string(log)); got != wantArgs {
+		t.Fatalf("glab args = %q, want %q", got, wantArgs)
+	}
+	if artifact.URL != "https://gitlab.example.com/group/project/-/merge_requests/42" || !artifact.Merged {
+		t.Fatalf("unexpected artifact identity: %#v", artifact)
+	}
+	for _, want := range []string{"ready", "refactor"} {
+		if !containsString(artifact.Labels, want) {
+			t.Fatalf("missing label %q in %#v", want, artifact.Labels)
+		}
+	}
+	for _, want := range []string{"123", "habin", "Ha Bin", "reviewer", "Reviewer"} {
+		if !containsString(artifact.Assignees, want) {
+			t.Fatalf("missing assignee %q in %#v", want, artifact.Assignees)
+		}
+	}
+}
+
+func TestFetchGitLabMergeRequestArtifactRejectsInvalidMRURL(t *testing.T) {
+	_, err := fetchGitLabMergeRequestArtifact("https://gitlab.example.com/group/project/-/issues/42")
+	if err == nil || !strings.Contains(err.Error(), "remote artifact url must be a GitLab merge request URL") {
+		t.Fatalf("expected invalid MR URL error, got %v", err)
+	}
+}
+
+func TestFetchGitLabMergeRequestArtifactReportsCLIAndDecodeErrors(t *testing.T) {
+	t.Run("cli stderr", func(t *testing.T) {
+		bin := t.TempDir()
+		writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
+echo "merge request not found" >&2
+exit 1
+`)
+		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+		_, err := fetchGitLabMergeRequestArtifact("https://gitlab.example.com/group/project/-/merge_requests/404")
+		if err == nil || !strings.Contains(err.Error(), "verify GitLab MR through glab failed: merge request not found") {
+			t.Fatalf("expected glab stderr in error, got %v", err)
+		}
+	})
+
+	t.Run("invalid json", func(t *testing.T) {
+		bin := t.TempDir()
+		writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
+printf '%s\n' '{invalid'
+`)
+		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+		_, err := fetchGitLabMergeRequestArtifact("https://gitlab.example.com/group/project/-/merge_requests/42")
+		if err == nil || !strings.Contains(err.Error(), "decode GitLab MR verification") {
+			t.Fatalf("expected decode error, got %v", err)
+		}
+	})
+}
+
+func TestSplitGitLabMRPath_whenValidEscapedPath(t *testing.T) {
+	cases := []struct {
+		name        string
+		escapedPath string
+		wantProject string
+		wantIID     string
+	}{
+		{
+			name:        "nested project",
+			escapedPath: "/group/subgroup/project/-/merge_requests/42",
+			wantProject: "group/subgroup/project",
+			wantIID:     "42",
+		},
+		{
+			name:        "escaped project segment",
+			escapedPath: "/platform/team%20space/repo/-/merge_requests/7",
+			wantProject: "platform/team space/repo",
+			wantIID:     "7",
+		},
+		{
+			name:        "unclean path",
+			escapedPath: "group/project/../project/-/merge_requests/9/",
+			wantProject: "group/project",
+			wantIID:     "9",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			parts := splitGitLabMRPath(tc.escapedPath)
+			if parts.project != tc.wantProject || parts.iid != tc.wantIID {
+				t.Fatalf("splitGitLabMRPath(%q) = %+v, want project=%q iid=%q", tc.escapedPath, parts, tc.wantProject, tc.wantIID)
+			}
+		})
+	}
+}
+
+func TestSplitGitLabMRPath_whenInvalidPath(t *testing.T) {
+	cases := []struct {
+		escapedPath string
+		wantIID     string
+	}{
+		{escapedPath: "/group/project/-/issues/42"},
+		{escapedPath: "/group/project/-/merge_requests/not-number"},
+		{escapedPath: "/-/merge_requests/42", wantIID: "42"},
+		{escapedPath: "/group/project/merge_requests/42"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.escapedPath, func(t *testing.T) {
+			if parts := splitGitLabMRPath(tc.escapedPath); parts.project != "" || parts.iid != tc.wantIID {
+				t.Fatalf("splitGitLabMRPath(%q) = %+v, want project empty iid=%q", tc.escapedPath, parts, tc.wantIID)
+			}
+		})
+	}
+}
+
+func TestSplitGitLabIssuePath_whenValidEscapedPath(t *testing.T) {
+	cases := []struct {
+		name        string
+		escapedPath string
+		wantProject string
+		wantIID     string
+	}{
+		{
+			name:        "nested project",
+			escapedPath: "/group/subgroup/project/-/issues/42",
+			wantProject: "group/subgroup/project",
+			wantIID:     "42",
+		},
+		{
+			name:        "escaped project segment",
+			escapedPath: "/platform/team%20space/repo/-/issues/7",
+			wantProject: "platform/team space/repo",
+			wantIID:     "7",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			parts := splitGitLabIssuePath(tc.escapedPath)
+			if parts.project != tc.wantProject || parts.iid != tc.wantIID {
+				t.Fatalf("splitGitLabIssuePath(%q) = %+v, want project=%q iid=%q", tc.escapedPath, parts, tc.wantProject, tc.wantIID)
+			}
+		})
+	}
+}
+
+func TestSplitGitLabIssuePath_whenInvalidPath(t *testing.T) {
+	cases := []struct {
+		escapedPath string
+		wantIID     string
+	}{
+		{escapedPath: "/group/project/-/merge_requests/42"},
+		{escapedPath: "/group/project/-/issues/not-number"},
+		{escapedPath: "/-/issues/42", wantIID: "42"},
+		{escapedPath: "/group/project/issues/42"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.escapedPath, func(t *testing.T) {
+			if parts := splitGitLabIssuePath(tc.escapedPath); parts.project != "" || parts.iid != tc.wantIID {
+				t.Fatalf("splitGitLabIssuePath(%q) = %+v, want project empty iid=%q", tc.escapedPath, parts, tc.wantIID)
+			}
+		})
+	}
+}
+
 func installFakeGHForRemoteArtifactTest(t *testing.T) {
 	t.Helper()
 	bin := t.TempDir()

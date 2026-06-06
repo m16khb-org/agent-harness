@@ -88,6 +88,29 @@ func TestBuildUserPromptMCPHintsUsesCompactBanner(t *testing.T) {
 	}
 }
 
+func TestRenderHookMCPHintContextNormalizesFallbackLabels(t *testing.T) {
+	got := renderHookMCPHintContext([]HookUserPromptHint{
+		{Tool: "project_docs_route"},
+		{Tool: "project_docs_record", Reason: "kind=adr"},
+		{Tool: "project_docs_record", Reason: "kind=caution"},
+		{Tool: "api_doc_static_check"},
+		{Tool: "CodeGraph"},
+		{Tool: "CodeGraph"},
+	}, nil, nil, "")
+	for _, want := range []string{
+		"docs: use project docs only when repo-specific context matters",
+		"actions: record ADR decision, record reusable caution, check OpenAPI gaps",
+		"secondary: CodeGraph for structural lookup; rg for exact strings",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("compact render missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Count(got, "CodeGraph for structural lookup") != 1 {
+		t.Fatalf("expected duplicate fallback labels to collapse:\n%s", got)
+	}
+}
+
 func TestBuildUserPromptMCPHintsDropsKeywordDocPrescription(t *testing.T) {
 	// Architecture keywords used to prescribe required:/consider: docs. That
 	// verdict is removed; doc choice is left to the agent via the catalog.

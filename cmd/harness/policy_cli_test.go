@@ -1,0 +1,88 @@
+package main
+
+import (
+	"errors"
+	"path/filepath"
+	"reflect"
+	"testing"
+
+	"agent-harness/internal/core"
+)
+
+func TestParseCommandPolicyFlagsUsesDefaultRootCWDAndEnvAllowlist(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	t.Setenv("PWD", root)
+
+	req, jsonOut, err := parseCommandPolicyFlags("policy check", []string{"--json", "--env", "HOME, PATH,,HARNESS_STATE_DIR", "--", "git", "status"})
+	if err != nil {
+		t.Fatalf("parseCommandPolicyFlags returned error: %v", err)
+	}
+
+	wantRoot, err := filepath.Abs(root)
+	if err != nil {
+		t.Fatalf("abs root: %v", err)
+	}
+	if !jsonOut {
+		t.Fatalf("jsonOut = false, want true")
+	}
+	if req.WorkspaceRoot != wantRoot || req.CWD != wantRoot {
+		t.Fatalf("root/cwd = (%q, %q), want (%q, %q)", req.WorkspaceRoot, req.CWD, wantRoot, wantRoot)
+	}
+	if !reflect.DeepEqual(req.EnvAllowlist, []string{"HOME", "PATH", "HARNESS_STATE_DIR"}) {
+		t.Fatalf("env allowlist = %#v", req.EnvAllowlist)
+	}
+	if !reflect.DeepEqual(req.Argv, []string{"git", "status"}) {
+		t.Fatalf("argv = %#v", req.Argv)
+	}
+	if req.Timeout != "30s" || req.WriteAllowed || req.NetworkAllowed || req.ShellAllowed || req.ShellReason != "" {
+		t.Fatalf("unexpected policy request defaults: %#v", req)
+	}
+}
+
+func TestParseCommandPolicyRunFlagsUsesReadOnlyJSONAndExplicitCWD(t *testing.T) {
+	root := t.TempDir()
+	cwd := t.TempDir()
+
+	req, jsonOut, readOnly, err := parseCommandPolicyRunFlags([]string{
+		"--read-only",
+		"--json",
+		"--workspace-root", root,
+		"--cwd", cwd,
+		"--timeout", "5s",
+		"--env", "HOME",
+		"--",
+		"git", "status", "--short",
+	})
+	if err != nil {
+		t.Fatalf("parseCommandPolicyRunFlags returned error: %v", err)
+	}
+
+	if !jsonOut || !readOnly {
+		t.Fatalf("jsonOut/readOnly = (%v, %v), want (true, true)", jsonOut, readOnly)
+	}
+	if req.WorkspaceRoot != root || req.CWD != cwd {
+		t.Fatalf("root/cwd = (%q, %q), want (%q, %q)", req.WorkspaceRoot, req.CWD, root, cwd)
+	}
+	if req.Timeout != "5s" || !reflect.DeepEqual(req.EnvAllowlist, []string{"HOME"}) {
+		t.Fatalf("unexpected run request: %#v", req)
+	}
+	if !reflect.DeepEqual(req.Argv, []string{"git", "status", "--short"}) {
+		t.Fatalf("argv = %#v", req.Argv)
+	}
+}
+
+func TestRunPolicyRunReturnsDeniedPolicyError(t *testing.T) {
+	repo := t.TempDir()
+	runStatusVerifyTestCommand(t, repo, "git", "init")
+
+	err := runPolicyRun([]string{"--read-only", "--workspace-root", repo, "--cwd", repo, "--", "sh", "-c", "true"})
+
+	var denied core.PolicyDeniedError
+	if !errors.As(err, &denied) {
+		t.Fatalf("expected policy denied error, got %T %v", err, err)
+	}
+	if !containsString(denied.Reasons, "shell_interpreter_not_allowed") {
+		t.Fatalf("deny reasons %v missing shell_interpreter_not_allowed", denied.Reasons)
+	}
+}

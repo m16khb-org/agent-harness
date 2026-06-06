@@ -2,6 +2,7 @@ package claude
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,9 @@ import (
 )
 
 func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
+	if got := NewInstaller().Name(); got != "claude" {
+		t.Fatalf("installer name = %q, want claude", got)
+	}
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
@@ -140,5 +144,41 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	stop := hooks["Stop"].([]any)[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
 	if !strings.Contains(stop, "hook stop --host claude --enforce-numbered-next-actions") {
 		t.Fatalf("Stop should be strict-ready for numbered next actions: %s", stop)
+	}
+}
+
+func TestClaudeInstallerReportsInvalidExistingSettings(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	writeAdapterTestSkill(t, root, "alpha")
+	writeClaudeTestFile(t, filepath.Join(home, ".claude", "settings.json"), "{")
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req.SkillNames = []string{"alpha"}
+
+	result, err := NewInstaller().Install(req)
+	if err == nil {
+		t.Fatalf("invalid existing settings should fail")
+	}
+	if result.OK {
+		t.Fatalf("invalid settings result should be not OK: %+v", result)
+	}
+	if !strings.Contains(err.Error(), "unexpected end of JSON input") {
+		t.Fatalf("invalid settings error = %v", err)
+	}
+}
+
+func TestClaudeInstallHelpersCoverQuotingAndErrorJoining(t *testing.T) {
+	if got := shellQuote(""); got != "''" {
+		t.Fatalf("empty shellQuote = %q", got)
+	}
+	if got := shellQuote("it's/bin"); got != `'it'"'"'s/bin'` {
+		t.Fatalf("quoted shellQuote = %q", got)
+	}
+	if err := joinErrors(nil); err != nil {
+		t.Fatalf("joinErrors(nil) = %v", err)
+	}
+	err := joinErrors([]error{errors.New("one"), nil, errors.New("two")})
+	if err == nil || err.Error() != "one; two" {
+		t.Fatalf("joinErrors = %v", err)
 	}
 }

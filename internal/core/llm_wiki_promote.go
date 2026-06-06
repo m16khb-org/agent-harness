@@ -1,11 +1,9 @@
 package core
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -23,22 +21,6 @@ type promoteDraftWikiToLLMWikiResult struct {
 	RawPath  string
 	RawRel   string
 	LogPath  string
-}
-
-type llmWikiConfigFile struct {
-	HubPath      string `json:"hub_path"`
-	ResolvedPath string `json:"resolved_path"`
-}
-
-type llmWikiRegistryFile struct {
-	Default string                         `json:"default"`
-	Wikis   map[string]llmWikiRegistryWiki `json:"wikis"`
-}
-
-type llmWikiRegistryWiki struct {
-	Path        string `json:"path"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
 }
 
 func promoteDraftWikiToLLMWiki(req promoteDraftWikiToLLMWikiRequest) (promoteDraftWikiToLLMWikiResult, error) {
@@ -90,81 +72,6 @@ func promoteDraftWikiToLLMWiki(req promoteDraftWikiToLLMWikiRequest) (promoteDra
 	}, nil
 }
 
-func resolveLLMWikiRoot(configPath, targetWiki string) (string, error) {
-	hub, err := resolveLLMWikiHub(configPath)
-	if err != nil {
-		return "", err
-	}
-	registryPath := filepath.Join(hub, "wikis.json")
-	b, err := os.ReadFile(registryPath)
-	if err != nil {
-		return "", fmt.Errorf("read llm-wiki registry %s: %w", registryPath, err)
-	}
-	var registry llmWikiRegistryFile
-	if err := json.Unmarshal(b, &registry); err != nil {
-		return "", fmt.Errorf("parse llm-wiki registry %s: %w", registryPath, err)
-	}
-	if strings.TrimSpace(targetWiki) == "" {
-		targetWiki = registry.Default
-	}
-	if targetWiki == "" {
-		return "", fmt.Errorf("target wiki is required")
-	}
-	entry, ok := registry.Wikis[targetWiki]
-	if !ok {
-		fallback := filepath.Join(hub, "topics", targetWiki)
-		if _, err := os.Stat(fallback); err == nil {
-			return fallback, nil
-		}
-		return "", fmt.Errorf("target wiki %q not found in %s", targetWiki, registryPath)
-	}
-	root := entry.Path
-	switch {
-	case root == "", root == "<HUB>":
-		root = hub
-	case strings.HasPrefix(root, "~/"):
-		root = expandLeadingTilde(root)
-	case filepath.IsAbs(root):
-		// already absolute
-	default:
-		root = filepath.Join(hub, filepath.FromSlash(root))
-	}
-	if _, err := os.Stat(root); err != nil {
-		return "", fmt.Errorf("target wiki path %s: %w", root, err)
-	}
-	return root, nil
-}
-
-func resolveLLMWikiHub(configPath string) (string, error) {
-	if strings.TrimSpace(configPath) == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		configPath = filepath.Join(home, ".config", "llm-wiki", "config.json")
-	}
-	b, err := os.ReadFile(configPath)
-	if err != nil {
-		return "", fmt.Errorf("read llm-wiki config %s: %w", configPath, err)
-	}
-	var cfg llmWikiConfigFile
-	if err := json.Unmarshal(b, &cfg); err != nil {
-		return "", fmt.Errorf("parse llm-wiki config %s: %w", configPath, err)
-	}
-	hub := strings.TrimSpace(cfg.HubPath)
-	if hub == "" {
-		hub = strings.TrimSpace(cfg.ResolvedPath)
-	}
-	if hub == "" {
-		return "", fmt.Errorf("llm-wiki config %s has no hub_path or resolved_path", configPath)
-	}
-	hub = expandLeadingTilde(hub)
-	if _, err := os.Stat(hub); err != nil {
-		return "", fmt.Errorf("llm-wiki hub path %s: %w", hub, err)
-	}
-	return hub, nil
-}
-
 func expandLeadingTilde(path string) string {
 	if path == "~" || strings.HasPrefix(path, "~/") {
 		home, err := os.UserHomeDir()
@@ -176,63 +83,6 @@ func expandLeadingTilde(path string) string {
 		}
 	}
 	return filepath.FromSlash(path)
-}
-
-func isLLMWikiRawType(rawType string) bool {
-	switch rawType {
-	case "articles", "papers", "repos", "notes", "data":
-		return true
-	default:
-		return false
-	}
-}
-
-func draftWikiRawFileName(today, draftPath string) string {
-	base := strings.TrimSuffix(filepath.Base(draftPath), filepath.Ext(draftPath))
-	base = slugifyDraftWiki(base)
-	if base == "" {
-		base = "draft-wiki-note"
-	}
-	if matched, _ := regexp.MatchString(`^\d{4}-\d{2}-\d{2}-`, base); matched {
-		return base + ".md"
-	}
-	return today + "-" + base + ".md"
-}
-
-func llmWikiRawNoteContent(draft DraftWikiDraft, targetType, today, draftContent string) string {
-	body := strings.TrimSpace(stripDraftWikiFrontmatter(draftContent))
-	if body == "" {
-		body = "# " + draft.Title + "\n"
-	}
-	summary := draft.Summary
-	if summary == "" {
-		summary = "Approved agent-harness draft wiki note promoted from repo-local review staging."
-	}
-	return fmt.Sprintf(`---
-title: %q
-source: %q
-type: %s
-ingested: %s
-tags: [agent-harness, draft-wiki]
-summary: %q
-original_draft: %q
----
-
-%s
-`, draft.Title, "agent-harness draft-wiki:"+draft.RelPath, targetType, today, summary, draft.RelPath, body)
-}
-
-func stripDraftWikiFrontmatter(content string) string {
-	lines := strings.Split(content, "\n")
-	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
-		return content
-	}
-	for i := 1; i < len(lines); i++ {
-		if strings.TrimSpace(lines[i]) == "---" {
-			return strings.Join(lines[i+1:], "\n")
-		}
-	}
-	return content
 }
 
 func appendLLMWikiPromoteLog(logPath, today, title, rawRel, draftRel string) error {
