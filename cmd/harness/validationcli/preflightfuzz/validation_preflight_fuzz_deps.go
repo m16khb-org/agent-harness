@@ -1,10 +1,11 @@
-package validationcli
+package preflightfuzz
 
 import (
 	"fmt"
 	"os"
 	"time"
 
+	"agent-harness/cmd/harness/commandstep"
 	"agent-harness/internal/core"
 )
 
@@ -40,7 +41,7 @@ func (deps preflightFuzzValidationDeps) withDefaults() preflightFuzzValidationDe
 
 func runPreflightFuzzCommand(root, label string, timeout time.Duration, input string, command ...string) StepResult {
 	if len(command) == 0 {
-		return failedStep(label, fmt.Errorf("missing command"))
+		return commandstep.FailedStep(label, fmt.Errorf("missing command"))
 	}
-	return runCommandStep(root, label, timeout, input, command[0], command[1:]...)
+	return commandstep.Run(root, label, timeout, input, commandOutputBudgetBytes, command[0], command[1:]...)
 }

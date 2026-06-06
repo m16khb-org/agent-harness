@@ -1,4 +1,4 @@
-package validationcli
+package preflightfuzz
 
 import (
 	"encoding/json"
