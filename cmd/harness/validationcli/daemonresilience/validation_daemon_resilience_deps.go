@@ -1,9 +1,11 @@
-package validationcli
+package daemonresilience
 
 import (
 	"fmt"
 	"os"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
 )
 
 type daemonResilienceValidationDeps struct {
@@ -43,7 +45,12 @@ func (deps daemonResilienceValidationDeps) withDefaults() daemonResilienceValida
 
 func runDaemonResilienceCommand(root, label string, timeout time.Duration, input string, env []string, command ...string) StepResult {
 	if len(command) == 0 {
-		return failedStep(label, fmt.Errorf("missing command"))
+		return commandstep.FailedStep(label, fmt.Errorf("missing command"))
 	}
-	return runCommandStepEnv(root, label, timeout, input, env, command[0], command[1:]...)
+	return commandstep.RunEnv(root, label, timeout, input, env, commandOutputBudgetBytes, command[0], command[1:]...)
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

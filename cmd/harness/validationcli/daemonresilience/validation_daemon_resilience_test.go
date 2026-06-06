@@ -1,4 +1,4 @@
-package validationcli
+package daemonresilience
 
 import (
 	"encoding/json"

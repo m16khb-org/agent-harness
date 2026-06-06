@@ -1,4 +1,4 @@
-package validationcli
+package daemonresilience
 
 import (
 	"encoding/json"
@@ -6,12 +6,26 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
+	"agent-harness/cmd/harness/daemoncli"
 )
+
+const aggregateOutputBudgetBytes = 8 * 1024
+const commandOutputBudgetBytes = 32 * 1024
+
+type StepResult = commandstep.StepResult
+type daemonPaths = daemoncli.Paths
+type daemonStatus = daemoncli.Status
 
 type daemonResilienceCommandRunner func(root, label string, timeout time.Duration, input string, env []string, command ...string) StepResult
 
-func validateDaemonRestartResilience(binary, root string, seed int64) StepResult {
+func Validate(binary, root string, seed int64) StepResult {
 	return validateDaemonRestartResilienceWithDeps(binary, root, seed, daemonResilienceValidationDeps{})
+}
+
+func validateDaemonRestartResilience(binary, root string, seed int64) StepResult {
+	return Validate(binary, root, seed)
 }
 
 func validateDaemonRestartResilienceWithDeps(binary, root string, seed int64, deps daemonResilienceValidationDeps) StepResult {
@@ -19,7 +33,7 @@ func validateDaemonRestartResilienceWithDeps(binary, root string, seed int64, de
 	started := time.Now()
 	tempDaemon, err := deps.mkdirTemp("", fmt.Sprintf("ahd-%d-*", seed))
 	if err != nil {
-		return failedStep("daemon resilience", err)
+		return commandstep.FailedStep("daemon resilience", err)
 	}
 	defer deps.removeAll(tempDaemon)
 	paths := daemonPaths{
@@ -30,12 +44,12 @@ func validateDaemonRestartResilienceWithDeps(binary, root string, seed int64, de
 		Log:    filepath.Join(tempDaemon, "agent-harness.log"),
 	}
 	if err := deps.writeFile(paths.Lock, []byte("999999\n"), 0o600); err != nil {
-		return failedStep("daemon resilience", err)
+		return commandstep.FailedStep("daemon resilience", err)
 	}
 	old := time.Now().Add(-2 * time.Minute)
 	_ = deps.chtimes(paths.Lock, old, old)
 	if err := deps.writeFile(paths.Socket, []byte("stale socket placeholder\n"), 0o600); err != nil {
-		return failedStep("daemon resilience", err)
+		return commandstep.FailedStep("daemon resilience", err)
 	}
 	stdoutParts := []string{}
 	commands := []string{}
@@ -60,7 +74,7 @@ func validateDaemonRestartResilienceWithDeps(binary, root string, seed int64, de
 	errs := []string{}
 	startStatus, startStep, startErr := runDaemonJSON("daemon resilience start", "daemon", "start", "--json")
 	if startErr != nil {
-		return combineFailedStep("daemon resilience", started, startStep, stdoutParts, commands)
+		return commandstep.CombineFailedStep("daemon resilience", started, startStep, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 	if !startStatus.OK || !startStatus.Running || startStatus.PID <= 0 {
 		errs = append(errs, "daemon did not start from stale lock/socket fixture")
@@ -76,7 +90,7 @@ func validateDaemonRestartResilienceWithDeps(binary, root string, seed int64, de
 
 	runningStatus, statusStep, statusErr := runDaemonJSON("daemon resilience status", "daemon", "status", "--json")
 	if statusErr != nil {
-		return combineFailedStep("daemon resilience", started, statusStep, stdoutParts, commands)
+		return commandstep.CombineFailedStep("daemon resilience", started, statusStep, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 	if !runningStatus.Running || filepath.Clean(runningStatus.Paths.Dir) != filepath.Clean(tempDaemon) {
 		errs = append(errs, "daemon status did not report running temp daemon")
@@ -84,7 +98,7 @@ func validateDaemonRestartResilienceWithDeps(binary, root string, seed int64, de
 
 	stopStatus, stopStep, stopErr := runDaemonJSON("daemon resilience stop", "daemon", "stop", "--json")
 	if stopErr != nil {
-		return combineFailedStep("daemon resilience", started, stopStep, stdoutParts, commands)
+		return commandstep.CombineFailedStep("daemon resilience", started, stopStep, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 	if !stopStatus.OK || stopStatus.Running {
 		errs = append(errs, "daemon stop did not report stopped state")
@@ -92,15 +106,15 @@ func validateDaemonRestartResilienceWithDeps(binary, root string, seed int64, de
 
 	afterStatus, afterStep, afterErr := runDaemonJSON("daemon resilience after status", "daemon", "status", "--json")
 	if afterErr != nil {
-		return combineFailedStep("daemon resilience", started, afterStep, stdoutParts, commands)
+		return commandstep.CombineFailedStep("daemon resilience", started, afterStep, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
 	if afterStatus.Running || deps.exists(paths.Socket) || deps.exists(paths.PID) {
 		errs = append(errs, "daemon stop left running socket or pid file")
 	}
 	if len(errs) > 0 {
-		return assertionStepWithOutput("daemon resilience", started, errs, stdoutParts, commands)
+		return commandstep.AssertionStepWithOutput("daemon resilience", started, errs, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
-	stdoutText, stdoutTruncated, stdoutBytes := tailWithBudget(strings.Join(stdoutParts, "\n"), selfVerifyAggregateOutputBudgetBytes)
+	stdoutText, stdoutTruncated, stdoutBytes := commandstep.TailWithBudget(strings.Join(stdoutParts, "\n"), aggregateOutputBudgetBytes)
 	return StepResult{
 		Label:           "daemon resilience",
 		Command:         strings.Join(commands, " && "),
