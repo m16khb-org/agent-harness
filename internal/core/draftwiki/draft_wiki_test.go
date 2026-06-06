@@ -1,4 +1,4 @@
-package core
+package draftwiki
 
 import (
 	"encoding/json"
@@ -964,9 +964,19 @@ func writeTestLLMWikiHub(t *testing.T) (configPath, hub string) {
 	return configPath, hub
 }
 
+func mustWrite(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func draftWikiAgyJSONForTest(t *testing.T, bodyMarkdown string) string {
 	t.Helper()
-	b, err := json.Marshal(draftWikiSuggestAgyResponse{BodyMarkdown: bodyMarkdown})
+	b, err := json.Marshal(DraftWikiSuggestAgyResponse{BodyMarkdown: bodyMarkdown})
 	if err != nil {
 		t.Fatal(err)
 	}
