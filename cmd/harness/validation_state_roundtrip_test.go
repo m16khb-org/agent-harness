@@ -99,6 +99,40 @@ func TestValidateStateRoundtripWithDepsCoversCommandParseAndContractFailures(t *
 	}
 }
 
+func TestStateRoundtripSelfVerifySessionCombineFailedAggregatesContext(t *testing.T) {
+	session := newStateRoundtripSelfVerifySession(validateStateRoundtripSelfVerifyInput{
+		started:     time.Now(),
+		stdoutParts: []string{"state write stdout", "self-verify compare stdout"},
+		commands:    []string{"state write", "self-verify compare"},
+	})
+	child := StepResult{
+		Label:           "self-verify compare",
+		OK:              false,
+		Stderr:          "compare stderr",
+		StderrBytes:     14,
+		StderrTruncated: true,
+		Error:           "regression detected",
+	}
+
+	step := session.combineFailed(child)
+
+	if step.OK || step.Label != "state roundtrip" {
+		t.Fatalf("expected failed state roundtrip step, got %#v", step)
+	}
+	if step.Error != "self-verify compare: regression detected" {
+		t.Fatalf("unexpected aggregate error: %q", step.Error)
+	}
+	if step.Command != "state write && self-verify compare" {
+		t.Fatalf("unexpected aggregate command: %q", step.Command)
+	}
+	if !strings.Contains(step.Stdout, "state write stdout\nself-verify compare stdout") {
+		t.Fatalf("unexpected aggregate stdout: %q", step.Stdout)
+	}
+	if step.Stderr != "compare stderr" || step.StderrBytes != 14 || !step.StderrTruncated {
+		t.Fatalf("expected child stderr metadata, got %#v", step)
+	}
+}
+
 func stateRoundtripTestDeps(t *testing.T, seed int64) stateRoundtripValidationDeps {
 	t.Helper()
 	tempState := t.TempDir()
