@@ -1,4 +1,4 @@
-package selfworkflow
+package stateio
 
 import (
 	"encoding/json"

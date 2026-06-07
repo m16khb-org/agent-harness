@@ -1,4 +1,4 @@
-package selfworkflow
+package stateio
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"agent-harness/internal/core"
 )
 
-func saveSelfAugmentPlan(result *SelfAugmentPlanResult, key string) error {
+func SaveSelfAugmentPlan(result *SelfAugmentPlanResult, key string) error {
 	if key == "" {
 		key = "self-augment-latest"
 	}
@@ -23,8 +23,8 @@ func saveSelfAugmentPlan(result *SelfAugmentPlanResult, key string) error {
 		GeneratedAt:           time.Now().UTC().Format(time.RFC3339Nano),
 		SelectedCandidate:     result.SelectedCandidate,
 		CandidateCount:        len(result.Candidates),
-		OpenCandidateIDs:      selfAugmentCandidateIDsByStatus(result.Candidates, selfAugmentCandidateStatusOpen),
-		SatisfiedCandidateIDs: selfAugmentCandidateIDsByStatus(result.Candidates, selfAugmentCandidateStatusSatisfied),
+		OpenCandidateIDs:      SelfAugmentCandidateIDsByStatus(result.Candidates, selfAugmentCandidateStatusOpen),
+		SatisfiedCandidateIDs: SelfAugmentCandidateIDsByStatus(result.Candidates, selfAugmentCandidateStatusSatisfied),
 		Goals:                 result.Goals,
 		SelectedFormulas:      result.SelectedFormulas,
 		ResearchInfluences:    result.ResearchInfluences,
@@ -49,7 +49,7 @@ func saveSelfAugmentPlan(result *SelfAugmentPlanResult, key string) error {
 	return nil
 }
 
-func selfAugmentCandidateIDsByStatus(candidates []SelfAugmentCandidate, status string) []string {
+func SelfAugmentCandidateIDsByStatus(candidates []SelfAugmentCandidate, status string) []string {
 	ids := []string{}
 	for _, candidate := range candidates {
 		if candidate.Status == status {
