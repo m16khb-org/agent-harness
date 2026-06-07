@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"agent-harness/internal/core/state/statepath"
 )
 
 type stateDoctorRecordInspection struct {
@@ -66,7 +68,7 @@ func validateStateDoctorRecord(path, key string, record StateRecord) stateDoctor
 			Message:  fmt.Sprintf("record bytes=%d but content is %d bytes", record.Bytes, len([]byte(record.Content))),
 		})
 	}
-	if _, err := parseStateTime(record.UpdatedAt); err != nil {
+	if _, err := statepath.ParseTime(record.UpdatedAt); err != nil {
 		fatalIssues = append(fatalIssues, StateDoctorIssue{
 			Path:     path,
 			Key:      key,

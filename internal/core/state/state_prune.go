@@ -5,6 +5,8 @@ import (
 	"os"
 	"sort"
 	"time"
+
+	"agent-harness/internal/core/state/statepath"
 )
 
 func StatePrune(maxAge time.Duration, confirm bool) (StatePruneResult, error) {
@@ -30,7 +32,7 @@ func StatePrune(maxAge time.Duration, confirm bool) (StatePruneResult, error) {
 		return result, err
 	}
 	for _, record := range list.Records {
-		updatedAt, err := parseStateTime(record.UpdatedAt)
+		updatedAt, err := statepath.ParseTime(record.UpdatedAt)
 		if err != nil || updatedAt.IsZero() || !updatedAt.Before(cutoff) {
 			result.Kept = append(result.Kept, record)
 			result.KeptKeys = append(result.KeptKeys, record.Key)
