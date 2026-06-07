@@ -1,8 +1,8 @@
-package issueops
+package remote
 
 import "strings"
 
-func splitIssueOpsURLPath(path string) []string {
+func SplitURLPath(path string) []string {
 	raw := strings.Split(strings.Trim(path, "/"), "/")
 	parts := make([]string, 0, len(raw))
 	for _, part := range raw {
@@ -14,7 +14,7 @@ func splitIssueOpsURLPath(path string) []string {
 	return parts
 }
 
-func cleanIssueOpsRemoteValues(values []string) []string {
+func CleanValues(values []string) []string {
 	seen := map[string]bool{}
 	out := []string{}
 	for _, value := range values {
@@ -28,7 +28,7 @@ func cleanIssueOpsRemoteValues(values []string) []string {
 	return out
 }
 
-func invalidIssueOpsRemoteAssignee(values []string) string {
+func InvalidAssignee(values []string) string {
 	for _, value := range values {
 		normalized := strings.ToLower(strings.TrimSpace(value))
 		switch normalized {

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/issueops/remote"
 )
 
 func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
@@ -103,10 +105,10 @@ func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, e
 	if strings.TrimSpace(record.IssueURL) == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot link child before linked parent issue")
 	}
-	if parentProvider := issueOpsProviderFromURL(record.IssueURL); parentProvider != "" && issueOpsProviderFromURL(u) != parentProvider {
+	if parentProvider := remote.ProviderFromURL(record.IssueURL); parentProvider != "" && remote.ProviderFromURL(u) != parentProvider {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("child issue provider must match linked parent issue provider")
 	}
-	if err := validateIssueOpsChildMatchesParent(record.IssueURL, u); err != nil {
+	if err := remote.ValidateChildMatchesParent(record.IssueURL, u); err != nil {
 		return IssueOpsRecord{OK: false}, err
 	}
 	for _, link := range record.IssueLinks {
@@ -119,7 +121,7 @@ func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, e
 		Type:      "child",
 		URL:       u,
 		Title:     strings.TrimSpace(title),
-		Provider:  issueOpsProviderFromURL(u),
+		Provider:  remote.ProviderFromURL(u),
 		CreatedAt: now,
 	})
 	return touchAndWriteIssueOps(stateRoot, record)

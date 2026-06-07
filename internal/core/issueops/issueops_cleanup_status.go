@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/preflight"
 	"strings"
 )
@@ -19,10 +20,10 @@ func issueOpsRemoteArtifactMissing(record IssueOpsRecord) []string {
 	if strings.TrimSpace(record.RemoteArtifact.URL) == "" {
 		missing = append(missing, "remote_artifact_url")
 	}
-	if len(cleanIssueOpsRemoteValues(record.RemoteArtifact.Labels)) == 0 {
+	if len(remote.CleanValues(record.RemoteArtifact.Labels)) == 0 {
 		missing = append(missing, "remote_artifact_labels")
 	}
-	if len(cleanIssueOpsRemoteValues(record.RemoteArtifact.Assignees)) == 0 {
+	if len(remote.CleanValues(record.RemoteArtifact.Assignees)) == 0 {
 		missing = append(missing, "remote_artifact_assignees")
 	}
 	return uniqSorted(missing)

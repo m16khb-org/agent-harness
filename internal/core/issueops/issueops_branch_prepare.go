@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/issueops/remote"
 )
 
 func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
@@ -20,7 +22,7 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 		return IssueOpsRecord{OK: false}, err
 	}
 	if provider == "" {
-		provider = issueOpsProviderFromURL(issueURL)
+		provider = remote.ProviderFromURL(issueURL)
 	}
 	if provider != "github" && provider != "gitlab" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("provider must be github or gitlab")
@@ -36,7 +38,7 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 	if baseBranch == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("base_branch is required")
 	}
-	if issueNumber := issueOpsIssueNumber(issueURL); issueNumber != "" {
+	if issueNumber := remote.IssueNumber(issueURL); issueNumber != "" {
 		if !strings.HasPrefix(branch, issueNumber+"-") {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("issueops branch for issue %s must start with %s-; for example %s-fix-login", issueNumber, issueNumber, issueNumber)
 		}

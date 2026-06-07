@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/issueops/remote"
 )
 
 func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
@@ -39,7 +41,7 @@ func issueOpsRemoteArtifactVerificationFromRequest(record IssueOpsRecord, req Is
 	if provider != "github" && provider != "gitlab" {
 		return IssueOpsRemoteArtifactVerification{}, fmt.Errorf("remote artifact provider must be github or gitlab")
 	}
-	if issueProvider := issueOpsProviderFromURL(record.IssueURL); issueProvider != "" && provider != issueProvider {
+	if issueProvider := remote.ProviderFromURL(record.IssueURL); issueProvider != "" && provider != issueProvider {
 		return IssueOpsRemoteArtifactVerification{}, fmt.Errorf("remote artifact provider must match linked issue provider")
 	}
 	kind := strings.ToLower(strings.TrimSpace(req.Kind))
@@ -59,21 +61,21 @@ func issueOpsRemoteArtifactVerificationFromRequest(record IssueOpsRecord, req Is
 		return IssueOpsRemoteArtifactVerification{}, fmt.Errorf("gitlab remote artifact kind must be mr")
 	}
 	artifactURL := strings.TrimSpace(req.URL)
-	if err := validateRemoteArtifactURL(artifactURL, provider, kind); err != nil {
+	if err := remote.ValidateArtifactURL(artifactURL, provider, kind); err != nil {
 		return IssueOpsRemoteArtifactVerification{}, err
 	}
-	if err := validateRemoteArtifactMatchesIssue(record.IssueURL, artifactURL, provider, kind); err != nil {
+	if err := remote.ValidateArtifactMatchesIssue(record.IssueURL, artifactURL, provider, kind); err != nil {
 		return IssueOpsRemoteArtifactVerification{}, err
 	}
-	labels := cleanIssueOpsRemoteValues(req.Labels)
+	labels := remote.CleanValues(req.Labels)
 	if len(labels) == 0 {
 		return IssueOpsRemoteArtifactVerification{}, fmt.Errorf("remote artifact labels are required")
 	}
-	assignees := cleanIssueOpsRemoteValues(req.Assignees)
+	assignees := remote.CleanValues(req.Assignees)
 	if len(assignees) == 0 {
 		return IssueOpsRemoteArtifactVerification{}, fmt.Errorf("remote artifact assignees are required")
 	}
-	if invalid := invalidIssueOpsRemoteAssignee(assignees); invalid != "" {
+	if invalid := remote.InvalidAssignee(assignees); invalid != "" {
 		return IssueOpsRemoteArtifactVerification{}, fmt.Errorf("remote artifact assignee must be a verified provider user, not placeholder %q", invalid)
 	}
 	return IssueOpsRemoteArtifactVerification{

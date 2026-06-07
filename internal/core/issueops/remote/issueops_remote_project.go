@@ -1,4 +1,4 @@
-package issueops
+package remote
 
 import (
 	"fmt"
@@ -6,16 +6,16 @@ import (
 	"strings"
 )
 
-func validateIssueOpsChildMatchesParent(parentURL, childURL string) error {
-	provider := issueOpsProviderFromURL(parentURL)
+func ValidateChildMatchesParent(parentURL, childURL string) error {
+	provider := ProviderFromURL(parentURL)
 	if provider == "" {
 		return nil
 	}
-	if issueOpsIssueNumber(childURL) == "" {
+	if IssueNumber(childURL) == "" {
 		return fmt.Errorf("child issue url must be a numeric %s issue URL", provider)
 	}
-	parentKey := issueOpsRemoteProjectKey(parentURL, provider, "issue")
-	childKey := issueOpsRemoteProjectKey(childURL, provider, "issue")
+	parentKey := ProjectKey(parentURL, provider, "issue")
+	childKey := ProjectKey(childURL, provider, "issue")
 	if parentKey == "" || childKey == "" {
 		return fmt.Errorf("child issue url must be a %s issue URL", provider)
 	}
@@ -25,13 +25,13 @@ func validateIssueOpsChildMatchesParent(parentURL, childURL string) error {
 	return nil
 }
 
-func issueOpsRemoteProjectKey(rawURL, provider, kind string) string {
+func ProjectKey(rawURL, provider, kind string) string {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil || parsed.Host == "" {
 		return ""
 	}
 	host := strings.ToLower(parsed.Hostname())
-	parts := splitIssueOpsURLPath(strings.ToLower(parsed.EscapedPath()))
+	parts := SplitURLPath(strings.ToLower(parsed.EscapedPath()))
 	switch provider + ":" + kind {
 	case "github:issue":
 		if host != "github.com" || len(parts) != 4 || parts[2] != "issues" {
@@ -58,7 +58,7 @@ func issueOpsRemoteProjectKey(rawURL, provider, kind string) string {
 	}
 }
 
-func issueOpsProviderFromURL(issueURL string) string {
+func ProviderFromURL(issueURL string) string {
 	parsed, err := url.Parse(strings.TrimSpace(issueURL))
 	if err != nil {
 		return ""
@@ -73,7 +73,7 @@ func issueOpsProviderFromURL(issueURL string) string {
 	}
 	return ""
 }
-func issueOpsIssueNumber(issueURL string) string {
+func IssueNumber(issueURL string) string {
 	parsed, err := url.Parse(strings.TrimSpace(issueURL))
 	if err != nil {
 		return ""

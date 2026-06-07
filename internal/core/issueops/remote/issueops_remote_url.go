@@ -1,4 +1,4 @@
-package issueops
+package remote
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func validateRemoteArtifactURL(artifactURL, provider, kind string) error {
+func ValidateArtifactURL(artifactURL, provider, kind string) error {
 	if artifactURL == "" {
 		return fmt.Errorf("remote artifact url is required")
 	}
@@ -21,12 +21,12 @@ func validateRemoteArtifactURL(artifactURL, provider, kind string) error {
 	path := strings.ToLower(parsed.EscapedPath())
 	switch provider + ":" + kind {
 	case "github:pr":
-		parts := splitIssueOpsURLPath(path)
+		parts := SplitURLPath(path)
 		if host != "github.com" || len(parts) != 4 || parts[2] != "pull" || !isDecimalString(parts[3]) {
 			return fmt.Errorf("remote artifact url must be a GitHub pull request URL")
 		}
 	case "gitlab:mr":
-		parts := splitIssueOpsURLPath(path)
+		parts := SplitURLPath(path)
 		if host == "github.com" || len(parts) < 4 || parts[len(parts)-3] != "-" || parts[len(parts)-2] != "merge_requests" || !isDecimalString(parts[len(parts)-1]) {
 			return fmt.Errorf("remote artifact url must be a GitLab merge request URL")
 		}
@@ -36,9 +36,9 @@ func validateRemoteArtifactURL(artifactURL, provider, kind string) error {
 	return nil
 }
 
-func validateRemoteArtifactMatchesIssue(issueURL, artifactURL, provider, kind string) error {
-	issueKey := issueOpsRemoteProjectKey(issueURL, provider, "issue")
-	artifactKey := issueOpsRemoteProjectKey(artifactURL, provider, kind)
+func ValidateArtifactMatchesIssue(issueURL, artifactURL, provider, kind string) error {
+	issueKey := ProjectKey(issueURL, provider, "issue")
+	artifactKey := ProjectKey(artifactURL, provider, kind)
 	if issueKey == "" || artifactKey == "" {
 		return nil
 	}
@@ -46,4 +46,16 @@ func validateRemoteArtifactMatchesIssue(issueURL, artifactURL, provider, kind st
 		return fmt.Errorf("remote artifact url must match linked issue project")
 	}
 	return nil
+}
+
+func isDecimalString(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
