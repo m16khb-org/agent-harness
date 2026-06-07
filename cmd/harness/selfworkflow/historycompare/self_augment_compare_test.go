@@ -1,7 +1,9 @@
-package selfworkflow
+package historycompare
 
 import (
 	"testing"
+
+	"agent-harness/cmd/harness/selfworkflow/stateio"
 )
 
 func TestCompareSelfAugmentSummaries(t *testing.T) {
@@ -17,7 +19,7 @@ func TestCompareSelfAugmentSummaries(t *testing.T) {
 		},
 	}
 	candidateSummary := baseSummary
-	if err := WriteSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -30,7 +32,7 @@ func TestCompareSelfAugmentSummaries(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("write baseline: %v", err)
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -64,7 +66,7 @@ func TestCompareSelfAugmentSummariesDetectsFailedStepRegression(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", dir)
 	baseline := SelfAugmentSummary{TotalRuns: 10, TotalSteps: 20, PassedSteps: 20, StepLabels: []string{"go test", "MCP smoke"}}
 	candidate := SelfAugmentSummary{TotalRuns: 10, TotalSteps: 20, PassedSteps: 19, FailedSteps: 1, StepLabels: []string{"go test"}}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -76,7 +78,7 @@ func TestCompareSelfAugmentSummariesDetectsFailedStepRegression(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("write baseline: %v", err)
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            false,
@@ -115,7 +117,7 @@ func TestCompareSelfAugmentSummariesDetectsSlowStepRegression(t *testing.T) {
 		{Iteration: 1, Seed: 600, Label: "go test", DurationMS: 1400},
 		{Iteration: 1, Seed: 600, Label: "MCP smoke", DurationMS: 100},
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -127,7 +129,7 @@ func TestCompareSelfAugmentSummariesDetectsSlowStepRegression(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("write baseline: %v", err)
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -179,7 +181,7 @@ func TestCompareSelfAugmentSummariesDetectsStepBudgetRegressionBeyondSlowestTopF
 		{Label: "docs index smoke", Count: 10, MinDurationMS: 90, MaxDurationMS: 130, AverageDurationMS: 105, P95DurationMS: 130},
 		{Label: "go test", Count: 10, MinDurationMS: 1800, MaxDurationMS: 2000, AverageDurationMS: 1900, P95DurationMS: 2000},
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "baseline", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -191,7 +193,7 @@ func TestCompareSelfAugmentSummariesDetectsStepBudgetRegressionBeyondSlowestTopF
 	}); err != nil {
 		t.Fatalf("write baseline: %v", err)
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "candidate", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -222,8 +224,17 @@ func TestCompareSelfAugmentSummariesDetectsStepBudgetRegressionBeyondSlowestTopF
 func TestCompareStepBudgetRegressionsIgnoresTinyAbsoluteNoise(t *testing.T) {
 	baseline := []SelfAugmentStepDurationStat{{Label: "state roundtrip", Count: 10, P95DurationMS: 76}}
 	candidate := []SelfAugmentStepDurationStat{{Label: "state roundtrip", Count: 10, P95DurationMS: 83}}
-	regressions := compareStepBudgetRegressions(baseline, candidate, 5)
+	regressions := CompareStepBudgetRegressions(baseline, candidate, 5)
 	if len(regressions) != 0 {
 		t.Fatalf("expected tiny p95 delta to be ignored, got %+v", regressions)
 	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
