@@ -8,7 +8,7 @@ import (
 func TestEnvFloatParsesConfiguredFloat(t *testing.T) {
 	t.Setenv("AGENT_HARNESS_TEST_FLOAT", " 12.5 ")
 
-	got := envFloat("AGENT_HARNESS_TEST_FLOAT")
+	got := EnvFloat("AGENT_HARNESS_TEST_FLOAT")
 
 	if got != 12.5 {
 		t.Fatalf("expected configured float, got %v", got)
@@ -48,7 +48,7 @@ func TestEnvFloatReturnsZeroForMissingEmptyAndInvalidValues(t *testing.T) {
 				}
 			}
 
-			got := envFloat("AGENT_HARNESS_TEST_FLOAT")
+			got := EnvFloat("AGENT_HARNESS_TEST_FLOAT")
 
 			if got != 0 {
 				t.Fatalf("expected zero fallback, got %v", got)

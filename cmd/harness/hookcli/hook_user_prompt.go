@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/core"
 )
@@ -35,7 +36,7 @@ func runHookUserPrompt(args []string) error {
 	if !isStopHookContinuationPrompt(prompt) {
 		core.ClearStopNextActionRelay(repo)
 	}
-	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo, EnableAgyHints: *enableAgyHints || envBool("HARNESS_ENABLE_AGY_HINTS")})
+	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo, EnableAgyHints: *enableAgyHints || hookenv.Bool("HARNESS_ENABLE_AGY_HINTS")})
 	if *jsonOut {
 		return printJSON(result)
 	}

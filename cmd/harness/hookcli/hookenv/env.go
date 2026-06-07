@@ -1,4 +1,4 @@
-package hookcli
+package hookenv
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func envBool(name string) bool {
+func Bool(name string) bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv(name))) {
 	case "1", "true", "yes", "on":
 		return true
@@ -15,7 +15,7 @@ func envBool(name string) bool {
 	}
 }
 
-func envFloat(name string) float64 {
+func Float(name string) float64 {
 	raw := strings.TrimSpace(os.Getenv(name))
 	if raw == "" {
 		return 0

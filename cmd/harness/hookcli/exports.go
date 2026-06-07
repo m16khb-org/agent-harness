@@ -1,6 +1,9 @@
 package hookcli
 
-import "agent-harness/cmd/harness/hookcli/hookinput"
+import (
+	"agent-harness/cmd/harness/hookcli/hookenv"
+	"agent-harness/cmd/harness/hookcli/hookinput"
+)
 
 func RunHook(args []string) error {
 	return runHook(args)
@@ -87,9 +90,9 @@ func ProjectPathFromHookInput(input []byte) string {
 }
 
 func EnvBool(name string) bool {
-	return envBool(name)
+	return hookenv.Bool(name)
 }
 
 func EnvFloat(name string) float64 {
-	return envFloat(name)
+	return hookenv.Float(name)
 }
