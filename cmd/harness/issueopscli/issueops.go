@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"flag"
 	"fmt"
 
@@ -146,4 +147,26 @@ func parseIssueOpsFlags(fs *flag.FlagSet, args []string) (bool, error) {
 		return false, err
 	}
 	return false, nil
+}
+
+func runIssueOpsFeedback(args []string) error {
+	return feedbackcleanup.RunFeedback(args, issueOpsFeedbackCleanupDeps())
+}
+
+func runIssueOpsCleanup(args []string) error {
+	return feedbackcleanup.RunCleanup(args, issueOpsFeedbackCleanupDeps())
+}
+
+func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
+	return feedbackcleanup.Deps{
+		ParseFlags:   parseIssueOpsFlags,
+		PrintResult:  printIssueOpsResult,
+		PrintJSON:    printJSON,
+		PrintError:   printIssueOpsErrorJSON,
+		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
+	}
+}
+
+func issueOpsCleanupMerged(id string, requested bool) bool {
+	return feedbackcleanup.CleanupMerged(id, requested, issueOpsFeedbackCleanupDeps())
 }
