@@ -3,11 +3,17 @@ package selfworkflow
 import (
 	"time"
 
+	"agent-harness/cmd/harness/selfworkflow/augmentcatalog"
 	"agent-harness/cmd/harness/selfworkflow/candidateexport"
 	"agent-harness/cmd/harness/selfworkflow/historycompare"
 )
 
 const SelfVerificationCandidateExportKind = candidateexport.SelfVerificationCandidateExportKind
+
+const (
+	selfAugmentCandidateStatusOpen      = augmentcatalog.SelfAugmentCandidateStatusOpen
+	selfAugmentCandidateStatusSatisfied = augmentcatalog.SelfAugmentCandidateStatusSatisfied
+)
 
 type SelfVerificationCandidate = candidateexport.SelfVerificationCandidate
 type SelfVerificationCandidateExportResult = candidateexport.SelfVerificationCandidateExportResult
@@ -15,6 +21,10 @@ type SelfVerificationCandidateExportStateSnapshot = candidateexport.SelfVerifica
 
 func ApplySelfAugmentHistoryRetention(result *SelfAugmentHistoryResult, options SelfAugmentHistoryRetentionOptions) error {
 	return historycompare.ApplySelfAugmentHistoryRetention(result, options)
+}
+
+func allSelfAugmentGoalsPassed(goals []SelfAugmentGoal) bool {
+	return augmentcatalog.AllSelfAugmentGoalsPassed(goals)
 }
 
 func AllSelfAugmentGoalsPassed(goals []SelfAugmentGoal) bool {
@@ -37,6 +47,10 @@ func CollectSelfAugmentRepoSignals(root string, docsIndexed int, skills []string
 	return collectSelfAugmentRepoSignals(root, docsIndexed, skills, geniusText)
 }
 
+func collectSelfAugmentRepoSignals(root string, docsIndexed int, skills []string, geniusText string) SelfAugmentRepoSignals {
+	return augmentcatalog.CollectSelfAugmentRepoSignals(root, docsIndexed, skills, geniusText)
+}
+
 func CompareSlowestStepRegressions(baseline, candidate []SelfAugmentSlowStep, maxRegressionPct float64) []SelfAugmentSlowStepRegression {
 	return compareSlowestStepRegressions(baseline, candidate, maxRegressionPct)
 }
@@ -49,12 +63,24 @@ func DocsContainTerm(root, term string) bool {
 	return docsContainTerm(root, term)
 }
 
+func docsContainTerm(root, term string) bool {
+	return augmentcatalog.DocsContainTerm(root, term)
+}
+
 func DirContainsTerm(root, relDir, term string) bool {
 	return dirContainsTerm(root, relDir, term)
 }
 
+func dirContainsTerm(root, relDir, term string) bool {
+	return augmentcatalog.DirContainsTerm(root, relDir, term)
+}
+
 func FileContainsTerm(root, relPath, term string) bool {
 	return fileContainsTerm(root, relPath, term)
+}
+
+func fileContainsTerm(root, relPath, term string) bool {
+	return augmentcatalog.FileContainsTerm(root, relPath, term)
 }
 
 func FormatScore(score float64) string {
@@ -63,6 +89,10 @@ func FormatScore(score float64) string {
 
 func MarkSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals SelfAugmentRepoSignals) {
 	markSatisfiedSelfAugmentCandidate(candidate, signals)
+}
+
+func markSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals SelfAugmentRepoSignals) {
+	augmentcatalog.MarkSatisfiedSelfAugmentCandidate(candidate, signals)
 }
 
 func MaxSlowStepDurationByLabel(steps []SelfAugmentSlowStep) map[string]int64 {
@@ -93,6 +123,10 @@ func ScoreBool(ok bool) float64 {
 	return scoreBool(ok)
 }
 
+func scoreBool(ok bool) float64 {
+	return augmentcatalog.ScoreBool(ok)
+}
+
 func SaveSelfAugmentLesson(req SelfAugmentLessonRequest) (SelfAugmentLessonResult, error) {
 	return saveSelfAugmentLesson(req)
 }
@@ -113,8 +147,16 @@ func SelectGeniusFormulas(text string) []string {
 	return selectGeniusFormulas(text)
 }
 
+func selectGeniusFormulas(text string) []string {
+	return augmentcatalog.SelectGeniusFormulas(text)
+}
+
 func SelectedCandidateID(candidate *SelfAugmentCandidate) string {
 	return selectedCandidateID(candidate)
+}
+
+func selectedCandidateID(candidate *SelfAugmentCandidate) string {
+	return augmentcatalog.SelectedCandidateID(candidate)
 }
 
 func SelectedSelfVerificationCandidateID(candidate *SelfVerificationCandidate) string {
@@ -125,8 +167,16 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 	return selfAugmentCandidates(signals)
 }
 
+func selfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidate {
+	return augmentcatalog.SelfAugmentCandidates(signals)
+}
+
 func SelfAugmentCandidateScore(candidate SelfAugmentCandidate) float64 {
 	return selfAugmentCandidateScore(candidate)
+}
+
+func selfAugmentCandidateScore(candidate SelfAugmentCandidate) float64 {
+	return augmentcatalog.SelfAugmentCandidateScore(candidate)
 }
 
 func SelfAugmentCandidateIDsByStatus(candidates []SelfAugmentCandidate, status string) []string {
@@ -135,6 +185,10 @@ func SelfAugmentCandidateIDsByStatus(candidates []SelfAugmentCandidate, status s
 
 func SelfAugmentResearchInfluences() []SelfAugmentInfluence {
 	return selfAugmentResearchInfluences()
+}
+
+func selfAugmentResearchInfluences() []SelfAugmentInfluence {
+	return augmentcatalog.SelfAugmentResearchInfluences()
 }
 
 func SelfVerificationCandidateCatalog() []SelfVerificationCandidate {
