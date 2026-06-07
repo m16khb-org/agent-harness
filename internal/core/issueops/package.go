@@ -1,6 +1,9 @@
 package issueops
 
-import "agent-harness/internal/core/issueops/model"
+import (
+	"agent-harness/internal/core/issueops/artifactverify"
+	"agent-harness/internal/core/issueops/model"
+)
 
 type IssueOpsStartRequest = model.IssueOpsStartRequest
 type IssueOpsFeedbackItem = model.IssueOpsFeedbackItem
@@ -32,3 +35,18 @@ const (
 )
 
 var IssueOpsPhases = model.IssueOpsPhases
+
+func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
+	return artifactverify.Verify(issueOpsArtifactStore(), stateRoot, id, req)
+}
+
+func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
+	return artifactverify.Validate(issueOpsArtifactStore(), stateRoot, id, req)
+}
+
+func issueOpsArtifactStore() artifactverify.Store {
+	return artifactverify.Store{
+		Read:       ReadIssueOps,
+		TouchWrite: touchAndWriteIssueOps,
+	}
+}
