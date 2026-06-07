@@ -1,4 +1,4 @@
-package selfworkflow
+package progress
 
 import (
 	"encoding/json"
@@ -6,7 +6,11 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"agent-harness/cmd/harness/commandstep"
 )
+
+type StepResult = commandstep.StepResult
 
 func NewSelfVerifyProgressReporter(mode string, writer io.Writer) (*SelfVerifyProgressReporter, error) {
 	mode = strings.TrimSpace(strings.ToLower(mode))

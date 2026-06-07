@@ -1,4 +1,4 @@
-package selfworkflow
+package progress
 
 import (
 	"io"
