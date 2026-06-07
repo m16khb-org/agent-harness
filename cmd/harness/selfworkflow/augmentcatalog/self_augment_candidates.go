@@ -1,11 +1,6 @@
-package selfworkflow
+package augmentcatalog
 
-const (
-	selfAugmentCandidateStatusOpen      = "open"
-	selfAugmentCandidateStatusSatisfied = "already_satisfied"
-)
-
-func selfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidate {
+func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidate {
 	base := []SelfAugmentCandidate{
 		{
 			ID: "loop-taxonomy-score-gates", Title: "Separate self-verification and self-augmentation loops and enforce >95 exit gates", Category: "quality",
@@ -128,9 +123,9 @@ func selfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 		},
 	}
 	for i := range base {
-		base[i].Status = selfAugmentCandidateStatusOpen
-		base[i].Score = selfAugmentCandidateScore(base[i])
-		markSatisfiedSelfAugmentCandidate(&base[i], signals)
+		base[i].Status = SelfAugmentCandidateStatusOpen
+		base[i].Score = SelfAugmentCandidateScore(base[i])
+		MarkSatisfiedSelfAugmentCandidate(&base[i], signals)
 	}
 	return base
 }

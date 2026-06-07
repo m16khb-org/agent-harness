@@ -1,6 +1,6 @@
-package selfworkflow
+package augmentcatalog
 
-func markSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals SelfAugmentRepoSignals) {
+func MarkSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals SelfAugmentRepoSignals) {
 	var evidence []string
 	switch candidate.ID {
 	case "loop-taxonomy-score-gates":
@@ -71,13 +71,13 @@ func markSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals 
 	if len(evidence) == 0 {
 		return
 	}
-	candidate.Status = selfAugmentCandidateStatusSatisfied
+	candidate.Status = SelfAugmentCandidateStatusSatisfied
 	candidate.SatisfactionEvidence = evidence
 	candidate.Score = 0
 	candidate.WhyNow = append(candidate.WhyNow, "Already satisfied; do not select in the next self-augmentation cycle")
 }
 
-func selfAugmentCandidateScore(c SelfAugmentCandidate) float64 {
+func SelfAugmentCandidateScore(c SelfAugmentCandidate) float64 {
 	score := c.Impact*0.38 + c.Feasibility*0.30 + c.Novelty*0.20 + (100-c.Risk)*0.12
 	if score > 100 {
 		return 100
