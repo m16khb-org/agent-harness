@@ -130,3 +130,64 @@ func TestVerifyRemoteArtifactURLMatchesProvider(t *testing.T) {
 		t.Fatalf("expected persisted gitlab artifact, got %+v", persisted.RemoteArtifact)
 	}
 }
+
+func TestVerifyGitLabRemoteArtifactURLShape(t *testing.T) {
+	record := model.IssueOpsRecord{
+		ID:       "io-123456789abc",
+		Repo:     t.TempDir(),
+		Branch:   "2-gitlab-mr",
+		Phase:    model.IssueOpsPhasePR,
+		IssueURL: "https://gitlab.example/group/project/-/issues/2",
+	}
+	_, store := newArtifactStoreForTest(record)
+
+	if _, err := Verify(store, t.TempDir(), record.ID, model.IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "gitlab",
+		Kind:      "mr",
+		URL:       "https://github.com/example/repo/pull/2",
+		Labels:    []string{"bug"},
+		Assignees: []string{"habin"},
+	}); err == nil || !strings.Contains(err.Error(), "GitLab merge request URL") {
+		t.Fatalf("gitlab remote artifact should reject GitHub PR URL, got %v", err)
+	}
+	if _, err := Verify(store, t.TempDir(), record.ID, model.IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "gitlab",
+		Kind:      "mr",
+		URL:       "https://gitlab.example/group/project/-/merge_requests/not-a-number",
+		Labels:    []string{"bug"},
+		Assignees: []string{"100"},
+	}); err == nil || !strings.Contains(err.Error(), "GitLab merge request URL") {
+		t.Fatalf("gitlab remote artifact should reject nonnumeric MR URL, got %v", err)
+	}
+	if _, err := Verify(store, t.TempDir(), record.ID, model.IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "gitlab",
+		Kind:      "mr",
+		URL:       "https://gitlab.example/other/project/-/merge_requests/2",
+		Labels:    []string{"bug"},
+		Assignees: []string{"100"},
+	}); err == nil || !strings.Contains(err.Error(), "linked issue project") {
+		t.Fatalf("gitlab remote artifact should reject MR URL from another project, got %v", err)
+	}
+	if _, err := Verify(store, t.TempDir(), record.ID, model.IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "gitlab",
+		Kind:      "mr",
+		URL:       "https://gitlab.example/group/project/-/merge_requests/2",
+		Labels:    []string{"bug"},
+		Assignees: []string{"self"},
+	}); err == nil || !strings.Contains(err.Error(), "placeholder") {
+		t.Fatalf("gitlab remote artifact should reject placeholder assignee, got %v", err)
+	}
+	got, err := Verify(store, t.TempDir(), record.ID, model.IssueOpsRemoteArtifactVerificationRequest{
+		Provider:  "gitlab",
+		Kind:      "mr",
+		URL:       "https://gitlab.example/group/project/-/merge_requests/2",
+		Labels:    []string{"bug"},
+		Assignees: []string{"habin"},
+	})
+	if err != nil {
+		t.Fatalf("gitlab remote artifact should accept GitLab MR URL: %v", err)
+	}
+	if got.RemoteArtifact == nil || got.RemoteArtifact.Provider != "gitlab" || got.RemoteArtifact.Kind != "mr" {
+		t.Fatalf("unexpected gitlab remote artifact: %+v", got.RemoteArtifact)
+	}
+}
