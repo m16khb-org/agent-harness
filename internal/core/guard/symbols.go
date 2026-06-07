@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"agent-harness/internal/core/guard/pattern"
 )
 
 func guardExistingSymbols(root string, targetFiles []string) map[string][]string {
@@ -36,7 +38,7 @@ func guardExistingSymbols(root string, targetFiles []string) map[string][]string
 			return nil
 		}
 		for _, line := range strings.Split(string(b), "\n") {
-			if m := newSymbolRe.FindStringSubmatch(line); len(m) == 2 {
+			if m := pattern.NewSymbol.FindStringSubmatch(line); len(m) == 2 {
 				key := normalizeGuardSymbol(m[1])
 				if key != "" {
 					symbols[key] = append(symbols[key], rel)

@@ -2,15 +2,17 @@ package guard
 
 import (
 	"strings"
+
+	"agent-harness/internal/core/guard/pattern"
 )
 
 func guardFileFindings(rel, content string, existingSymbols map[string][]string) []GuardFinding {
 	findings := []GuardFinding{}
-	immutablePrefixBuilder := strings.Contains(content, immutablePrefixMarker)
+	immutablePrefixBuilder := strings.Contains(content, pattern.ImmutablePrefixMarker)
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
 		lineNo := i + 1
-		if immutablePrefixBuilder && contextNonDeterminismRe.MatchString(line) && !strings.Contains(line, volatileOKMarker) {
+		if immutablePrefixBuilder && pattern.ContextNonDeterminism.MatchString(line) && !strings.Contains(line, pattern.VolatileOKMarker) {
 			findings = append(findings, GuardFinding{
 				Severity: "warn",
 				Rule:     "nondeterministic-context-serialization",
@@ -21,13 +23,13 @@ func guardFileFindings(rel, content string, existingSymbols map[string][]string)
 			})
 		}
 		if isExecutableTestSourcePath(rel) {
-			if ambiguousTestNameRe.MatchString(line) {
+			if pattern.AmbiguousTestName.MatchString(line) {
 				findings = append(findings, GuardFinding{Severity: "warn", Rule: "ambiguous-test-name", File: rel, Line: lineNo, Message: "Test name is too generic to communicate the protected contract.", Evidence: strings.TrimSpace(line)})
 			}
-			if sleepInTestRe.MatchString(line) {
+			if pattern.SleepInTest.MatchString(line) {
 				findings = append(findings, GuardFinding{Severity: "block", Rule: "sleep-in-test", File: rel, Line: lineNo, Message: "Tests must not depend on wall-clock sleep; use deterministic synchronization or fake clocks.", Evidence: strings.TrimSpace(line)})
 			}
-			for _, url := range externalURLRe.FindAllString(line, -1) {
+			for _, url := range pattern.ExternalURL.FindAllString(line, -1) {
 				if !guardAllowsFixtureURL(url) {
 					findings = append(findings, GuardFinding{Severity: "block", Rule: "real-external-service-in-test", File: rel, Line: lineNo, Message: "Tests must not depend on real external services.", Evidence: url})
 				}
@@ -35,11 +37,11 @@ func guardFileFindings(rel, content string, existingSymbols map[string][]string)
 			if strings.Contains(strings.ToLower(line), "localhost") {
 				findings = append(findings, GuardFinding{Severity: "warn", Rule: "localhost-in-test", File: rel, Line: lineNo, Message: "Local service dependencies in tests need explicit isolation and lifecycle control.", Evidence: strings.TrimSpace(line)})
 			}
-			if snapshotAssertionRe.MatchString(line) {
+			if pattern.SnapshotAssertion.MatchString(line) {
 				findings = append(findings, GuardFinding{Severity: "warn", Rule: "snapshot-test-review", File: rel, Line: lineNo, Message: "Snapshot/golden assertions should be paired with focused contract checks and intentional update notes.", Evidence: strings.TrimSpace(line)})
 			}
 		}
-		if m := newSymbolRe.FindStringSubmatch(line); len(m) == 2 {
+		if m := pattern.NewSymbol.FindStringSubmatch(line); len(m) == 2 {
 			symbol := m[1]
 			if reuseFinding, ok := guardReuseFinding(rel, lineNo, symbol, existingSymbols); ok {
 				findings = append(findings, reuseFinding)
