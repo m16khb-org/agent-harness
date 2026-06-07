@@ -2,13 +2,12 @@ package daemoncli
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
+
+	"agent-harness/cmd/harness/daemoncli/daemonlock"
 )
 
 func ensureDaemonRunning() (daemonStatus, error) {
@@ -123,39 +122,5 @@ func waitForDaemonWithDeps(paths daemonPaths, timeout time.Duration, deps daemon
 }
 
 func acquireDaemonLock(paths daemonPaths) (*os.File, error) {
-	for attempt := 0; attempt < 2; attempt++ {
-		f, err := os.OpenFile(paths.Lock, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-		if err == nil {
-			_, _ = f.WriteString(strconv.Itoa(os.Getpid()) + "\n")
-			return f, nil
-		}
-		if !errors.Is(err, os.ErrExist) {
-			return nil, err
-		}
-		if isStaleDaemonLock(paths.Lock, 30*time.Second) {
-			_ = os.Remove(paths.Lock)
-			continue
-		}
-		return nil, err
-	}
-	return nil, fmt.Errorf("cannot acquire daemon lock %s", paths.Lock)
-}
-
-func isStaleDaemonLock(path string, maxAge time.Duration) bool {
-	info, err := os.Stat(path)
-	if err != nil {
-		return true
-	}
-	if time.Since(info.ModTime()) > maxAge {
-		return true
-	}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(b)))
-	if err != nil || pid <= 0 {
-		return false
-	}
-	return !processAlive(pid)
+	return daemonlock.Acquire(paths.Lock, os.Getpid, processAlive)
 }
