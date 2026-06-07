@@ -4,57 +4,20 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/issueops/model"
 )
-
-type IssueOpsPhase string
-
-const (
-	IssueOpsPhaseProblem     IssueOpsPhase = "problem"
-	IssueOpsPhaseGrill       IssueOpsPhase = "grill"
-	IssueOpsPhasePlan        IssueOpsPhase = "plan"
-	IssueOpsPhaseImplement   IssueOpsPhase = "implement"
-	IssueOpsPhaseAISlopClean IssueOpsPhase = "ai-slop-clean"
-	IssueOpsPhaseFeedback    IssueOpsPhase = "feedback"
-	IssueOpsPhasePR          IssueOpsPhase = "pr"
-	IssueOpsPhaseDone        IssueOpsPhase = "done"
-)
-
-var IssueOpsPhases = []IssueOpsPhase{
-	IssueOpsPhaseProblem,
-	IssueOpsPhaseGrill,
-	IssueOpsPhasePlan,
-	IssueOpsPhaseImplement,
-	IssueOpsPhaseAISlopClean,
-	IssueOpsPhaseFeedback,
-	IssueOpsPhasePR,
-	IssueOpsPhaseDone,
-}
 
 func knownIssueOpsPhase(phase IssueOpsPhase) bool {
-	for _, known := range IssueOpsPhases {
-		if known == phase {
-			return true
-		}
-	}
-	return false
+	return model.KnownIssueOpsPhase(phase)
 }
 
 func issueOpsPhaseRank(phase IssueOpsPhase) int {
-	for i, known := range IssueOpsPhases {
-		if known == phase {
-			return i + 1
-		}
-	}
-	return 0
+	return model.IssueOpsPhaseRank(phase)
 }
 
 func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
-	switch phase {
-	case IssueOpsPhaseImplement, IssueOpsPhaseAISlopClean, IssueOpsPhaseFeedback, IssueOpsPhasePR:
-		return true
-	default:
-		return false
-	}
+	return model.IssueOpsPhaseExpectsWorktree(phase)
 }
 
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
