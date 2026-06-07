@@ -1,4 +1,14 @@
-package selfworkflow
+package llmeval
+
+import "time"
+
+type SelfVerifyLLMEvalOptions struct {
+	Enabled     bool
+	Mode        string
+	AgyCommand  string
+	TargetScore float64
+	Timeout     time.Duration
+}
 
 type SelfVerifyLLMEvalResult struct {
 	OK                     bool     `json:"ok"`

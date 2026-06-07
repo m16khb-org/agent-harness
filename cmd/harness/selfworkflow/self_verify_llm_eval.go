@@ -7,14 +7,6 @@ import (
 	"agent-harness/internal/core"
 )
 
-type SelfVerifyLLMEvalOptions struct {
-	Enabled     bool
-	Mode        string
-	AgyCommand  string
-	TargetScore float64
-	Timeout     time.Duration
-}
-
 func ApplySelfVerifyLLMEval(result SelfAugmentResult, opts SelfVerifyLLMEvalOptions) (SelfAugmentResult, error) {
 	if !opts.Enabled {
 		return result, nil

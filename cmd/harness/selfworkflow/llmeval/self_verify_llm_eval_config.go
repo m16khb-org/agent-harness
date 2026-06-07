@@ -1,4 +1,4 @@
-package selfworkflow
+package llmeval
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const selfVerifyLLMEvalEnv = "HARNESS_SELF_VERIFY_LLM_EVAL"
+const EnvName = "HARNESS_SELF_VERIFY_LLM_EVAL"
 
 type SelfVerifyLLMEvalConfig struct {
 	Enabled bool
@@ -36,7 +36,7 @@ func ResolveSelfVerifyLLMEvalConfig(llmEvalFlagSet bool, llmEvalFlagValue bool, 
 		lookupEnv = os.LookupEnv
 	}
 	ignoreEnv := llmEvalFlagSet && !llmEvalFlagValue
-	if value, ok := lookupEnv(selfVerifyLLMEvalEnv); ok && !ignoreEnv {
+	if value, ok := lookupEnv(EnvName); ok && !ignoreEnv {
 		enabled, mode, err := ParseSelfVerifyLLMEvalEnv(value)
 		if err != nil {
 			return config, err
@@ -66,6 +66,6 @@ func ParseSelfVerifyLLMEvalEnv(value string) (bool, string, error) {
 	case "gate":
 		return true, "gate", nil
 	default:
-		return false, "advisory", fmt.Errorf("%s must be off, advisory, or gate", selfVerifyLLMEvalEnv)
+		return false, "advisory", fmt.Errorf("%s must be off, advisory, or gate", EnvName)
 	}
 }

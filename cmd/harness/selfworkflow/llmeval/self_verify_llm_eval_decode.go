@@ -1,4 +1,4 @@
-package selfworkflow
+package llmeval
 
 import (
 	"bytes"
