@@ -3,8 +3,15 @@ package selfworkflow
 import (
 	"time"
 
+	"agent-harness/cmd/harness/selfworkflow/candidateexport"
 	"agent-harness/cmd/harness/selfworkflow/historycompare"
 )
+
+const SelfVerificationCandidateExportKind = candidateexport.SelfVerificationCandidateExportKind
+
+type SelfVerificationCandidate = candidateexport.SelfVerificationCandidate
+type SelfVerificationCandidateExportResult = candidateexport.SelfVerificationCandidateExportResult
+type SelfVerificationCandidateExportStateSnapshot = candidateexport.SelfVerificationCandidateExportStateSnapshot
 
 func ApplySelfAugmentHistoryRetention(result *SelfAugmentHistoryResult, options SelfAugmentHistoryRetentionOptions) error {
 	return historycompare.ApplySelfAugmentHistoryRetention(result, options)
@@ -16,6 +23,10 @@ func AllSelfAugmentGoalsPassed(goals []SelfAugmentGoal) bool {
 
 func BuildStepDurationStats(durationsByLabel map[string][]int64) []SelfAugmentStepDurationStat {
 	return buildStepDurationStats(durationsByLabel)
+}
+
+func ExportSelfVerificationCandidates() SelfVerificationCandidateExportResult {
+	return candidateexport.ExportSelfVerificationCandidates(HarnessRoot())
 }
 
 func ClassifySelfVerificationFailure(result SelfAugmentResult, summary SelfAugmentSummary) (string, string, []SelfVerificationFailureCluster) {
@@ -90,6 +101,10 @@ func SaveSelfAugmentPlan(result *SelfAugmentPlanResult, key string) error {
 	return saveSelfAugmentPlan(result, key)
 }
 
+func SaveSelfVerificationCandidateExport(result *SelfVerificationCandidateExportResult, key string) error {
+	return candidateexport.SaveSelfVerificationCandidateExport(result, key)
+}
+
 func ScoreSelfVerificationGoals(result SelfAugmentResult, targetScore float64) []SelfVerificationGoalScore {
 	return scoreSelfVerificationGoals(result, targetScore)
 }
@@ -100,6 +115,10 @@ func SelectGeniusFormulas(text string) []string {
 
 func SelectedCandidateID(candidate *SelfAugmentCandidate) string {
 	return selectedCandidateID(candidate)
+}
+
+func SelectedSelfVerificationCandidateID(candidate *SelfVerificationCandidate) string {
+	return candidateexport.SelectedSelfVerificationCandidateID(candidate)
 }
 
 func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidate {
@@ -116,6 +135,14 @@ func SelfAugmentCandidateIDsByStatus(candidates []SelfAugmentCandidate, status s
 
 func SelfAugmentResearchInfluences() []SelfAugmentInfluence {
 	return selfAugmentResearchInfluences()
+}
+
+func SelfVerificationCandidateCatalog() []SelfVerificationCandidate {
+	return candidateexport.SelfVerificationCandidateCatalog()
+}
+
+func SelfVerificationCandidateIDsByStatus(candidates []SelfVerificationCandidate, status string) []string {
+	return candidateexport.SelfVerificationCandidateIDsByStatus(candidates, status)
 }
 
 func BuildSelfVerificationContract() SelfVerificationContract {
