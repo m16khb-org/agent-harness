@@ -1,8 +1,8 @@
-package selfworkflow
+package summary
 
 import "sort"
 
-func stepDurationStatByLabel(stats []SelfAugmentStepDurationStat) map[string]SelfAugmentStepDurationStat {
+func StepDurationStatByLabel(stats []SelfAugmentStepDurationStat) map[string]SelfAugmentStepDurationStat {
 	out := map[string]SelfAugmentStepDurationStat{}
 	for _, stat := range stats {
 		if stat.Label == "" {
@@ -13,7 +13,7 @@ func stepDurationStatByLabel(stats []SelfAugmentStepDurationStat) map[string]Sel
 	return out
 }
 
-func maxSlowStepDurationByLabel(steps []SelfAugmentSlowStep) map[string]int64 {
+func MaxSlowStepDurationByLabel(steps []SelfAugmentSlowStep) map[string]int64 {
 	out := map[string]int64{}
 	for _, step := range steps {
 		if step.Label == "" {
@@ -26,7 +26,7 @@ func maxSlowStepDurationByLabel(steps []SelfAugmentSlowStep) map[string]int64 {
 	return out
 }
 
-func buildStepDurationStats(durationsByLabel map[string][]int64) []SelfAugmentStepDurationStat {
+func BuildStepDurationStats(durationsByLabel map[string][]int64) []SelfAugmentStepDurationStat {
 	stats := []SelfAugmentStepDurationStat{}
 	for label, durations := range durationsByLabel {
 		if label == "" || len(durations) == 0 {
@@ -55,7 +55,7 @@ func buildStepDurationStats(durationsByLabel map[string][]int64) []SelfAugmentSt
 	return stats
 }
 
-func stepDurationStatsForCompare(summary SelfAugmentSummary) []SelfAugmentStepDurationStat {
+func StepDurationStatsForCompare(summary SelfAugmentSummary) []SelfAugmentStepDurationStat {
 	if len(summary.StepDurationStats) > 0 {
 		return append([]SelfAugmentStepDurationStat{}, summary.StepDurationStats...)
 	}
@@ -66,5 +66,5 @@ func stepDurationStatsForCompare(summary SelfAugmentSummary) []SelfAugmentStepDu
 		}
 		durationsByLabel[step.Label] = append(durationsByLabel[step.Label], step.DurationMS)
 	}
-	return buildStepDurationStats(durationsByLabel)
+	return BuildStepDurationStats(durationsByLabel)
 }

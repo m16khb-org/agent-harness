@@ -1,11 +1,11 @@
-package selfworkflow
+package summary
 
 import (
 	"sort"
 )
 
-func classifySelfVerificationFailure(result SelfAugmentResult, summary SelfAugmentSummary) (string, string, []SelfVerificationFailureCluster) {
-	clusters := selfVerificationFailureClusters(result)
+func ClassifySelfVerificationFailure(result SelfAugmentResult, summary SelfAugmentSummary) (string, string, []SelfVerificationFailureCluster) {
+	clusters := SelfVerificationFailureClusters(result)
 	if summary.FailedSteps == 0 {
 		return "", "", nil
 	}
@@ -24,7 +24,7 @@ func classifySelfVerificationFailure(result SelfAugmentResult, summary SelfAugme
 	return "mixed", "multiple failure steps were observed across completed seeds", clusters
 }
 
-func selfVerificationFailureClusters(result SelfAugmentResult) []SelfVerificationFailureCluster {
+func SelfVerificationFailureClusters(result SelfAugmentResult) []SelfVerificationFailureCluster {
 	byStep := map[string][]int64{}
 	for _, run := range result.Runs {
 		for _, step := range run.Steps {

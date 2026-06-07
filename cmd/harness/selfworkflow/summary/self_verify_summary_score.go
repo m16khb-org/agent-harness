@@ -1,7 +1,7 @@
-package selfworkflow
+package summary
 
-func scoreSelfVerificationGoals(result SelfAugmentResult, targetScore float64) []SelfVerificationGoalScore {
-	goals := selfVerificationGoalDefinitions()
+func ScoreSelfVerificationGoals(result SelfAugmentResult, targetScore float64) []SelfVerificationGoalScore {
+	goals := SelfVerificationGoalDefinitions()
 	scores := make([]SelfVerificationGoalScore, 0, len(goals))
 	runCount := result.Iterations
 	if runCount < 1 {

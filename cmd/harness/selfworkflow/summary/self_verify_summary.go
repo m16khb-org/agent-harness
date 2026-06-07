@@ -1,18 +1,20 @@
-package selfworkflow
+package summary
 
 import (
 	"sort"
+
+	"agent-harness/cmd/harness/selfworkflow/rerun"
 )
 
-func summarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {
-	return summarizeSelfVerification(result, defaultLoopTargetScoreExclusive)
+func SummarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {
+	return SummarizeSelfVerification(result, defaultLoopTargetScoreExclusive)
 }
 
-func summarizeSelfVerification(result SelfAugmentResult, targetScore float64) SelfAugmentSummary {
+func SummarizeSelfVerification(result SelfAugmentResult, targetScore float64) SelfAugmentSummary {
 	summary := SelfAugmentSummary{
 		TotalRuns:         len(result.Runs),
 		TargetScore:       targetScore,
-		Contract:          selfVerificationContract(),
+		Contract:          SelfVerificationContractValue(),
 		StepLabels:        []string{},
 		SlowestSteps:      []SelfAugmentSlowStep{},
 		StepDurationStats: []SelfAugmentStepDurationStat{},
@@ -63,15 +65,15 @@ func summarizeSelfVerification(result SelfAugmentResult, targetScore float64) Se
 	if summary.SlowestSteps == nil {
 		summary.SlowestSteps = []SelfAugmentSlowStep{}
 	}
-	summary.StepDurationStats = buildStepDurationStats(durationsByLabel)
+	summary.StepDurationStats = BuildStepDurationStats(durationsByLabel)
 	if summary.StepDurationStats == nil {
 		summary.StepDurationStats = []SelfAugmentStepDurationStat{}
 	}
-	summary.GoalScores = scoreSelfVerificationGoals(result, targetScore)
-	summary.Coverage, summary.CoverageGaps = selfVerificationCoverage(summary.StepLabels)
+	summary.GoalScores = ScoreSelfVerificationGoals(result, targetScore)
+	summary.Coverage, summary.CoverageGaps = SelfVerificationCoverageForLabels(summary.StepLabels)
 	if summary.FailedStep != "" {
-		summary.RerunCommands = selfVerifyRerunCommands(summary.FailedStep, result.Iterations, result.BaseSeed, targetScore)
-		summary.FailureClass, summary.FailureClassReason, summary.FailureClusters = classifySelfVerificationFailure(result, summary)
+		summary.RerunCommands = rerun.SelfVerifyRerunCommands(summary.FailedStep, result.Iterations, result.BaseSeed, targetScore)
+		summary.FailureClass, summary.FailureClassReason, summary.FailureClusters = ClassifySelfVerificationFailure(result, summary)
 	}
 	summary.MinimumGoalScore = 100
 	if len(summary.GoalScores) == 0 {

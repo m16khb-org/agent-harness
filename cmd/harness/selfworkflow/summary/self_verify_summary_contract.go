@@ -1,4 +1,4 @@
-package selfworkflow
+package summary
 
 import (
 	"crypto/sha256"
@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 )
 
-func selfVerificationContract() SelfVerificationContract {
+func SelfVerificationContractValue() SelfVerificationContract {
 	contract := SelfVerificationContract{
 		Name:    "self_verification_summary",
 		Version: 3,
@@ -29,10 +29,10 @@ func selfVerificationContract() SelfVerificationContract {
 		GoalNames:      []string{},
 		CoverageClaims: []string{},
 	}
-	for _, goal := range selfVerificationGoalDefinitions() {
+	for _, goal := range SelfVerificationGoalDefinitions() {
 		contract.GoalNames = append(contract.GoalNames, goal.Name)
 	}
-	for _, coverage := range selfVerificationCoverageDefinitions() {
+	for _, coverage := range SelfVerificationCoverageDefinitions() {
 		contract.CoverageClaims = append(contract.CoverageClaims, coverage.Claim)
 	}
 	b, _ := json.Marshal(contract)
@@ -41,8 +41,8 @@ func selfVerificationContract() SelfVerificationContract {
 	return contract
 }
 
-func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
-	return []selfVerificationGoalDefinition{
+func SelfVerificationGoalDefinitions() []SelfVerificationGoalDefinition {
+	return []SelfVerificationGoalDefinition{
 		{Name: "test_suite", KoreanName: "테스트 스위트", Labels: []string{"go test", "contract golden tests"}},
 		{Name: "risk_qa", KoreanName: "위험도 기반 QA", Labels: []string{"risk QA tier"}},
 		{Name: "build_release", KoreanName: "빌드 산출물", Labels: []string{"go build"}},
@@ -59,8 +59,8 @@ func selfVerificationGoalDefinitions() []selfVerificationGoalDefinition {
 	}
 }
 
-func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition {
-	return []selfVerificationCoverageDefinition{
+func SelfVerificationCoverageDefinitions() []SelfVerificationCoverageDefinition {
+	return []SelfVerificationCoverageDefinition{
 		{Claim: "core repository invariants", Labels: []string{"harness invariants"}},
 		{Claim: "test suite contract", Labels: []string{"go test", "contract golden tests"}},
 		{Claim: "risk-tier static and race QA", Labels: []string{"risk QA tier"}},
@@ -83,14 +83,14 @@ func selfVerificationCoverageDefinitions() []selfVerificationCoverageDefinition 
 	}
 }
 
-func selfVerificationCoverage(stepLabels []string) ([]SelfVerificationCoverage, []string) {
+func SelfVerificationCoverageForLabels(stepLabels []string) ([]SelfVerificationCoverage, []string) {
 	labelSet := map[string]bool{}
 	for _, label := range stepLabels {
 		labelSet[label] = true
 	}
 	coverage := []SelfVerificationCoverage{}
 	gaps := []string{}
-	for _, definition := range selfVerificationCoverageDefinitions() {
+	for _, definition := range SelfVerificationCoverageDefinitions() {
 		item := SelfVerificationCoverage{
 			Claim:          definition.Claim,
 			EvidenceLabels: append([]string{}, definition.Labels...),
