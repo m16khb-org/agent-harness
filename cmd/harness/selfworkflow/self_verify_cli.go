@@ -3,6 +3,7 @@ package selfworkflow
 import (
 	"agent-harness/cmd/harness/selfworkflow/candidatescmd"
 	"agent-harness/cmd/harness/selfworkflow/promotecmd"
+	"agent-harness/cmd/harness/selfworkflow/runmode"
 	"flag"
 	"fmt"
 	"io"
@@ -19,11 +20,7 @@ type SelfVerifyRunDeps struct {
 	SaveSummary         func(*SelfAugmentResult, string) error
 }
 
-type SelfVerifyRunMode struct {
-	Full          bool
-	Iterations    int
-	ContractLabel string
-}
+type SelfVerifyRunMode = runmode.Mode
 
 type SelfVerifyPromoteDeps struct {
 	Promote func(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error)
@@ -35,16 +32,7 @@ type SelfVerifyCandidatesDeps struct {
 }
 
 func ResolveSelfVerifyRunMode(full bool, iterationsFlagSet bool, iterations int) (SelfVerifyRunMode, error) {
-	if !full {
-		if iterationsFlagSet {
-			return SelfVerifyRunMode{}, fmt.Errorf("--iterations requires --full; default self-verify runs quick one-iteration mode")
-		}
-		return SelfVerifyRunMode{Full: false, Iterations: 1, ContractLabel: "quick one-iteration gate"}, nil
-	}
-	if iterations < 10 {
-		return SelfVerifyRunMode{}, fmt.Errorf("full self-verification requires at least 10 iterations; use --full --iterations=10 or higher")
-	}
-	return SelfVerifyRunMode{Full: true, Iterations: iterations, ContractLabel: "full ten-plus-iteration gate"}, nil
+	return runmode.Resolve(full, iterationsFlagSet, iterations)
 }
 
 func RunSelfVerify(args []string) error {

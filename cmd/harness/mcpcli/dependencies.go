@@ -9,6 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/selfworkflow"
+	"agent-harness/cmd/harness/selfworkflow/runmode"
 	"agent-harness/internal/core"
 )
 
@@ -113,23 +114,10 @@ var VerifyIssueOpsRemoteArtifactLive = func(core.IssueOpsRemoteArtifactVerificat
 	return fmt.Errorf("issueops remote artifact live verification dependency is not configured")
 }
 
-type selfVerifyRunMode struct {
-	Full          bool
-	Iterations    int
-	ContractLabel string
-}
+type selfVerifyRunMode = runmode.Mode
 
 func resolveSelfVerifyRunMode(full bool, iterationsFlagSet bool, iterations int) (selfVerifyRunMode, error) {
-	if !full {
-		if iterationsFlagSet {
-			return selfVerifyRunMode{}, fmt.Errorf("--iterations requires --full; default self-verify runs quick one-iteration mode")
-		}
-		return selfVerifyRunMode{Full: false, Iterations: 1, ContractLabel: "quick one-iteration gate"}, nil
-	}
-	if iterations < 10 {
-		return selfVerifyRunMode{}, fmt.Errorf("full self-verification requires at least 10 iterations; use --full --iterations=10 or higher")
-	}
-	return selfVerifyRunMode{Full: true, Iterations: iterations, ContractLabel: "full ten-plus-iteration gate"}, nil
+	return runmode.Resolve(full, iterationsFlagSet, iterations)
 }
 
 func splitLines(s string) []string {
