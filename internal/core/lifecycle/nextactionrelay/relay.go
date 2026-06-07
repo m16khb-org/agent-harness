@@ -1,4 +1,4 @@
-package lifecycle
+package nextactionrelay
 
 import (
 	"crypto/sha256"
@@ -9,22 +9,31 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/lifecycle/model"
+	"agent-harness/internal/core/nextaction"
 )
 
-func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTriggerResult) StopNextActionRelayResult {
-	fingerprint := stopNextActionRelayFingerprint(trigger)
-	result := StopNextActionRelayResult{OK: true, Fingerprint: fingerprint}
+type Store struct {
+	Validate  func(repoRoot string) (model.ProjectLifecycleStatePlan, error)
+	Init      func(repoRoot string, confirm bool) (model.ProjectLifecycleStatePlan, error)
+	WriteJSON func(path string, value any, perm os.FileMode) error
+}
+
+func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgementTriggerResult) model.StopNextActionRelayResult {
+	fingerprint := fingerprint(trigger)
+	result := model.StopNextActionRelayResult{OK: true, Fingerprint: fingerprint}
 	if strings.TrimSpace(fingerprint) == "" {
 		result.Reason = "no_next_action_fingerprint"
 		return result
 	}
-	plan, err := ValidateProjectLifecycleState(repoRoot)
+	plan, err := store.Validate(repoRoot)
 	if err != nil {
 		result.Warnings = append(result.Warnings, "project_lifecycle_state_error")
 		return result
 	}
 	if !plan.Exists {
-		plan, err = InitProjectLifecycleState(repoRoot, true)
+		plan, err = store.Init(repoRoot, true)
 		if err != nil {
 			result.Warnings = append(result.Warnings, "project_lifecycle_state_init_error")
 			return result
@@ -34,11 +43,11 @@ func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTrigg
 		result.Warnings = append(result.Warnings, "project_lifecycle_namespace_mismatch")
 		return result
 	}
-	path := filepath.Join(plan.ProjectStateDir, stopNextActionRelayFile)
+	path := filepath.Join(plan.ProjectStateDir, model.StopNextActionRelayFile)
 	result.Path = path
-	var previous StopNextActionRelayRecord
+	var previous model.StopNextActionRelayRecord
 	if b, err := os.ReadFile(path); err == nil {
-		if err := json.Unmarshal(b, &previous); err == nil && previous.SchemaVersion == ProjectLifecycleSchemaVersion && previous.Fingerprint != "" {
+		if err := json.Unmarshal(b, &previous); err == nil && previous.SchemaVersion == model.ProjectLifecycleSchemaVersion && previous.Fingerprint != "" {
 			result.ShouldRelay = false
 			if previous.Fingerprint == fingerprint {
 				result.Reason = "duplicate_next_action_relay"
@@ -48,14 +57,14 @@ func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTrigg
 			return result
 		}
 	}
-	record := StopNextActionRelayRecord{
-		SchemaVersion:    ProjectLifecycleSchemaVersion,
+	record := model.StopNextActionRelayRecord{
+		SchemaVersion:    model.ProjectLifecycleSchemaVersion,
 		Fingerprint:      fingerprint,
 		RecommendedIndex: trigger.RecommendedIndex,
 		RecommendedText:  trigger.RecommendedText,
 		UpdatedAt:        time.Now().UTC().Format(time.RFC3339Nano),
 	}
-	if err := writeJSONAtomic(path, record, 0o600); err != nil {
+	if err := store.WriteJSON(path, record, 0o600); err != nil {
 		result.Warnings = append(result.Warnings, "stop_next_action_relay_write_error")
 		return result
 	}
@@ -64,13 +73,13 @@ func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTrigg
 	return result
 }
 
-func ClearStopNextActionRelay(repoRoot string) StopNextActionRelayResult {
-	result := StopNextActionRelayResult{OK: true}
-	plan, err := ValidateProjectLifecycleState(repoRoot)
+func Clear(store Store, repoRoot string) model.StopNextActionRelayResult {
+	result := model.StopNextActionRelayResult{OK: true}
+	plan, err := store.Validate(repoRoot)
 	if err != nil || !plan.Exists || !plan.NamespaceValid {
 		return result
 	}
-	path := filepath.Join(plan.ProjectStateDir, stopNextActionRelayFile)
+	path := filepath.Join(plan.ProjectStateDir, model.StopNextActionRelayFile)
 	result.Path = path
 	if err := os.Remove(path); err == nil {
 		result.Reason = "cleared_next_action_relay"
@@ -82,7 +91,7 @@ func ClearStopNextActionRelay(repoRoot string) StopNextActionRelayResult {
 	return result
 }
 
-func stopNextActionRelayFingerprint(trigger NextActionJudgementTriggerResult) string {
+func fingerprint(trigger nextaction.NextActionJudgementTriggerResult) string {
 	if len(trigger.Candidates) == 0 {
 		return ""
 	}

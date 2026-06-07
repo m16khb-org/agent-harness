@@ -1,6 +1,10 @@
 package lifecycle
 
-import "strings"
+import (
+	"strings"
+
+	"agent-harness/internal/core/lifecycle/nextactionrelay"
+)
 
 func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreToolUseDecisionResult {
 	source := strings.TrimSpace(req.Source)
@@ -58,4 +62,22 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		}
 	}
 	return result
+}
+
+func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTriggerResult) StopNextActionRelayResult {
+	return nextactionrelay.Record(stopNextActionRelayStore(), repoRoot, trigger)
+}
+
+func ClearStopNextActionRelay(repoRoot string) StopNextActionRelayResult {
+	return nextactionrelay.Clear(stopNextActionRelayStore(), repoRoot)
+}
+
+func stopNextActionRelayStore() nextactionrelay.Store {
+	return nextactionrelay.Store{
+		Validate: ValidateProjectLifecycleState,
+		Init: func(repoRoot string, confirm bool) (ProjectLifecycleStatePlan, error) {
+			return InitProjectLifecycleState(repoRoot, confirm)
+		},
+		WriteJSON: writeJSONAtomic,
+	}
 }
