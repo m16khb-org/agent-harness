@@ -5,20 +5,6 @@ import (
 	"testing"
 )
 
-func TestKubectlFlagTakesValueRecognizesValueFlags(t *testing.T) {
-	for _, flag := range []string{"-n", "--namespace", "--context=prod", "--kubeconfig", "-o", "-l"} {
-		if !kubectlFlagTakesValue(flag) {
-			t.Fatalf("kubectlFlagTakesValue(%q) = false, want true", flag)
-		}
-	}
-
-	for _, flag := range []string{"--watch", "--dry-run", "--force"} {
-		if kubectlFlagTakesValue(flag) {
-			t.Fatalf("kubectlFlagTakesValue(%q) = true, want false", flag)
-		}
-	}
-}
-
 func TestUniqueDocUpkeepEventsDeduplicatesByDocsAndSummary(t *testing.T) {
 	events := []DocUpkeepEvent{
 		{ID: "a", TargetDocs: []string{"OPERATIONS.md", "CONVENTIONS.md"}, Summary: "sync install docs", Source: "first"},

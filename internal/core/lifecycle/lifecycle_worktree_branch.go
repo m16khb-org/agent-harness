@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/commandparse"
 )
 
 type issueOpsBranchCreation struct {
@@ -12,7 +14,7 @@ type issueOpsBranchCreation struct {
 }
 
 func localIssueOpsBranchCreation(command string) issueOpsBranchCreation {
-	tokens := splitCommandTokens(command)
+	tokens := commandparse.SplitCommandTokens(command)
 	for i, token := range tokens {
 		if searchTokenName(token) != "git" || i+1 >= len(tokens) {
 			continue
@@ -120,7 +122,7 @@ func shellTokenLooksDynamic(token string) bool {
 }
 
 func issueOpsWorktreePreparationCommand(command string) bool {
-	tokens := splitCommandTokens(command)
+	tokens := commandparse.SplitCommandTokens(command)
 	for i, token := range tokens {
 		if searchTokenName(token) != "git" || i+2 >= len(tokens) {
 			continue

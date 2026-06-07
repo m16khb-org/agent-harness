@@ -3,10 +3,12 @@ package lifecycle
 import (
 	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/commandparse"
 )
 
 func shellCommandWorktreeGuardPaths(repo, command string) []string {
-	tokens := splitCommandTokens(command)
+	tokens := commandparse.SplitCommandTokens(command)
 	out := []string{}
 	seen := map[string]bool{}
 	currentDir := cleanAbsPath(repo)

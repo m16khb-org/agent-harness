@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"strings"
 
+	"agent-harness/internal/core/commandguard"
 	"agent-harness/internal/core/lifecycle/nextactionrelay"
 )
 
@@ -50,13 +51,13 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		}
 	}
 	if result.Decision != "block" && req.EnforceStagedChecks {
-		if decision, reason := stagedCheckDecision(req); decision != "" {
+		if decision, reason := commandguard.StagedCheckDecision(req.Tool, req.Repo, req.Command); decision != "" {
 			result.Decision = decision
 			result.Reason = reason
 		}
 	}
 	if result.Decision != "block" && req.EnforceGitOpsKubectl {
-		if decision, reason := gitOpsKubectlDecision(req.Tool, req.Command); decision != "" {
+		if decision, reason := commandguard.GitOpsKubectlDecision(req.Tool, req.Command); decision != "" {
 			result.Decision = decision
 			result.Reason = reason
 		}
