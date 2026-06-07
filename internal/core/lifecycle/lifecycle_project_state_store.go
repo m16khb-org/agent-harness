@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"agent-harness/internal/core/lifecycle/fingerprint"
 	"agent-harness/internal/core/repopath"
 )
 
@@ -14,8 +15,8 @@ func ResolveProjectLifecycleState(repoRoot string) (ProjectLifecycleStatePlan, e
 	if err != nil {
 		return ProjectLifecycleStatePlan{OK: false, StateRoot: StateDir(), SchemaVersion: ProjectLifecycleSchemaVersion}, err
 	}
-	fingerprint := projectFingerprint(root)
-	repoID := projectRepoID(fingerprint)
+	projectFingerprint := fingerprint.ForRoot(root)
+	repoID := fingerprint.RepoID(projectFingerprint)
 	stateRoot := StateDir()
 	projectDir := filepath.Join(stateRoot, "projects", repoID)
 	plan := ProjectLifecycleStatePlan{
@@ -28,7 +29,7 @@ func ResolveProjectLifecycleState(repoRoot string) (ProjectLifecycleStatePlan, e
 		ProjectJSONPath: filepath.Join(projectDir, projectLifecycleProfileFile),
 		QueuePath:       filepath.Join(projectDir, docUpkeepQueueFile),
 		CompactPath:     filepath.Join(projectDir, compactCapsuleFile),
-		Fingerprint:     fingerprint,
+		Fingerprint:     projectFingerprint,
 		Warnings:        []string{},
 	}
 	profile, err := readProjectLifecycleProfile(plan.ProjectJSONPath)
@@ -41,7 +42,7 @@ func ResolveProjectLifecycleState(repoRoot string) (ProjectLifecycleStatePlan, e
 	}
 	plan.Exists = true
 	plan.Profile = &profile
-	plan.NamespaceValid = projectFingerprintEqual(profile.Fingerprint, fingerprint) && profile.RepoID == repoID && profile.SchemaVersion == ProjectLifecycleSchemaVersion
+	plan.NamespaceValid = fingerprint.Equal(profile.Fingerprint, projectFingerprint) && profile.RepoID == repoID && profile.SchemaVersion == ProjectLifecycleSchemaVersion
 	if !plan.NamespaceValid {
 		plan.Warnings = append(plan.Warnings, "namespace_mismatch")
 	}

@@ -1,4 +1,4 @@
-package lifecycle
+package fingerprint
 
 import (
 	"crypto/sha256"
@@ -7,10 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/projectdocs"
 )
 
-func projectFingerprint(root string) ProjectFingerprint {
+func ForRoot(root string) model.ProjectFingerprint {
 	gitDir := ""
 	if info, err := os.Stat(filepath.Join(root, ".git")); err == nil {
 		if info.IsDir() {
@@ -24,15 +25,15 @@ func projectFingerprint(root string) ProjectFingerprint {
 		sum := sha256.Sum256([]byte(origin))
 		originHash = hex.EncodeToString(sum[:])
 	}
-	return ProjectFingerprint{RepoRoot: root, GitDir: gitDir, GitOriginHash: originHash}
+	return model.ProjectFingerprint{RepoRoot: root, GitDir: gitDir, GitOriginHash: originHash}
 }
 
-func projectRepoID(fp ProjectFingerprint) string {
+func RepoID(fp model.ProjectFingerprint) string {
 	parts := []string{fp.RepoRoot, fp.GitDir, fp.GitOriginHash}
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(sum[:])[:24]
 }
 
-func projectFingerprintEqual(a, b ProjectFingerprint) bool {
+func Equal(a, b model.ProjectFingerprint) bool {
 	return a.RepoRoot == b.RepoRoot && a.GitDir == b.GitDir && a.GitOriginHash == b.GitOriginHash
 }
