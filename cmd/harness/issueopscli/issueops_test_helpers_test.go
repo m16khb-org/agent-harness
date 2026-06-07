@@ -76,9 +76,8 @@ func writeIssueOpsCLIFileForTest(t *testing.T, root, rel, content string) {
 
 func stubIssueOpsChildIssueVerifier(t *testing.T, verifier func(string) error) {
 	t.Helper()
-	previous := issueOpsChildIssueVerifier
-	issueOpsChildIssueVerifier = verifier
+	previous := SetChildIssueVerifier(verifier)
 	t.Cleanup(func() {
-		issueOpsChildIssueVerifier = previous
+		SetChildIssueVerifier(previous)
 	})
 }

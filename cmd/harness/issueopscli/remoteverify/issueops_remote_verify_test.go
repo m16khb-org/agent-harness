@@ -1,8 +1,9 @@
-package issueopscli
+package remoteverify
 
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 
 func TestVerifyIssueOpsRemoteArtifactLiveRejectsMissingGitHubPR(t *testing.T) {
 	installFakeGHForRemoteArtifactTest(t)
-	err := verifyIssueOpsRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
+	err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/9999",
@@ -25,7 +26,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRejectsMissingGitHubPR(t *testing.T) {
 
 func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *testing.T) {
 	installFakeGHForRemoteArtifactTest(t)
-	if err := verifyIssueOpsRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
+	if err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/1",
@@ -34,7 +35,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *tes
 	}); err != nil {
 		t.Fatalf("expected matching GitHub PR evidence to pass: %v", err)
 	}
-	if err := verifyIssueOpsRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
+	if err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/1",
@@ -43,7 +44,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *tes
 	}); err == nil || !strings.Contains(err.Error(), "label") {
 		t.Fatalf("expected missing label to fail live verification, got %v", err)
 	}
-	if err := verifyIssueOpsRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
+	if err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/1",
@@ -56,14 +57,14 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *tes
 
 func TestVerifyIssueOpsRemoteArtifactMergedLiveRequiresMergedGitHubPR(t *testing.T) {
 	installFakeGHForRemoteArtifactTest(t)
-	if err := verifyIssueOpsRemoteArtifactMergedLive(core.IssueOpsRemoteArtifactVerification{
+	if err := VerifyRemoteArtifactMergedLive(core.IssueOpsRemoteArtifactVerification{
 		Provider: "github",
 		Kind:     "pr",
 		URL:      "https://github.com/example/repo/pull/2",
 	}); err == nil || !strings.Contains(err.Error(), "not verified merged") {
 		t.Fatalf("expected closed unmerged GitHub PR to fail cleanup merge verification, got %v", err)
 	}
-	if err := verifyIssueOpsRemoteArtifactMergedLive(core.IssueOpsRemoteArtifactVerification{
+	if err := VerifyRemoteArtifactMergedLive(core.IssueOpsRemoteArtifactVerification{
 		Provider: "github",
 		Kind:     "pr",
 		URL:      "https://github.com/example/repo/pull/3",
@@ -99,12 +100,12 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requ
 		t.Fatalf("unexpected artifact identity: %#v", artifact)
 	}
 	for _, want := range []string{"ready", "refactor"} {
-		if !containsString(artifact.Labels, want) {
+		if !slices.Contains(artifact.Labels, want) {
 			t.Fatalf("missing label %q in %#v", want, artifact.Labels)
 		}
 	}
 	for _, want := range []string{"123", "habin", "Ha Bin", "reviewer", "Reviewer"} {
-		if !containsString(artifact.Assignees, want) {
+		if !slices.Contains(artifact.Assignees, want) {
 			t.Fatalf("missing assignee %q in %#v", want, artifact.Assignees)
 		}
 	}

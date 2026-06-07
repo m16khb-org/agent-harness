@@ -1,4 +1,4 @@
-package issueopscli
+package remoteverify
 
 import (
 	"fmt"
@@ -9,37 +9,37 @@ import (
 	"agent-harness/cmd/harness/issueopscli/remoteparse"
 )
 
-var issueOpsChildIssueVerifier = verifyIssueOpsChildIssueLive
+var childIssueVerifier = VerifyChildIssueLive
 
-func verifyIssueOpsChildIssueBeforeLink(childURL string) error {
-	if issueOpsChildIssueVerifier == nil {
+func VerifyChildIssueBeforeLink(childURL string) error {
+	if childIssueVerifier == nil {
 		return nil
 	}
-	return issueOpsChildIssueVerifier(childURL)
+	return childIssueVerifier(childURL)
 }
 
-func verifyIssueOpsChildIssueLive(childURL string) error {
+func VerifyChildIssueLive(childURL string) error {
 	parsed, err := url.Parse(strings.TrimSpace(childURL))
 	if err != nil {
 		return err
 	}
 	if parsed.Hostname() == "github.com" {
-		return verifyGitHubIssueLive(childURL)
+		return VerifyGitHubIssueLive(childURL)
 	}
 	if strings.Contains(parsed.Hostname(), "gitlab") || strings.Contains(parsed.EscapedPath(), "/-/issues/") {
-		return verifyGitLabIssueLive(parsed)
+		return VerifyGitLabIssueLive(parsed)
 	}
 	return nil
 }
 
-func verifyGitHubIssueLive(issueURL string) error {
+func VerifyGitHubIssueLive(issueURL string) error {
 	if _, err := exec.Command("gh", "issue", "view", strings.TrimSpace(issueURL), "--json", "url,state,title").Output(); err != nil {
 		return fmt.Errorf("verify GitHub child issue through gh failed: %w", commandOutputError(err))
 	}
 	return nil
 }
 
-func verifyGitLabIssueLive(parsed *url.URL) error {
+func VerifyGitLabIssueLive(parsed *url.URL) error {
 	parts := remoteparse.SplitGitLabIssuePath(parsed.EscapedPath())
 	if parts.Project == "" || parts.IID == "" {
 		return fmt.Errorf("child_url must be a GitLab issue URL")
@@ -50,4 +50,10 @@ func verifyGitLabIssueLive(parsed *url.URL) error {
 		return fmt.Errorf("verify GitLab child issue through glab failed: %w", commandOutputError(err))
 	}
 	return nil
+}
+
+func SetChildIssueVerifier(verifier func(string) error) func(string) error {
+	previous := childIssueVerifier
+	childIssueVerifier = verifier
+	return previous
 }

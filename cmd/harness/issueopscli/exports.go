@@ -1,6 +1,9 @@
 package issueopscli
 
-import "agent-harness/internal/core"
+import (
+	"agent-harness/cmd/harness/issueopscli/remoteverify"
+	"agent-harness/internal/core"
+)
 
 type WorktreeToolPrepareResult = issueOpsWorktreeToolPrepareResult
 
@@ -25,7 +28,5 @@ func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest
 }
 
 func SetChildIssueVerifier(verifier func(string) error) func(string) error {
-	previous := issueOpsChildIssueVerifier
-	issueOpsChildIssueVerifier = verifier
-	return previous
+	return remoteverify.SetChildIssueVerifier(verifier)
 }

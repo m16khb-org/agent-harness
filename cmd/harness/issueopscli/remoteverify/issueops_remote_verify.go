@@ -1,4 +1,4 @@
-package issueopscli
+package remoteverify
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ type liveRemoteArtifact struct {
 	Merged    bool
 }
 
-func verifyIssueOpsRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	kind := strings.ToLower(strings.TrimSpace(req.Kind))
 	switch kind {
@@ -45,7 +45,7 @@ func verifyIssueOpsRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificatio
 	return nil
 }
 
-func verifyIssueOpsRemoteArtifactMergedLive(artifact core.IssueOpsRemoteArtifactVerification) error {
+func VerifyRemoteArtifactMergedLive(artifact core.IssueOpsRemoteArtifactVerification) error {
 	provider := strings.ToLower(strings.TrimSpace(artifact.Provider))
 	kind := strings.ToLower(strings.TrimSpace(artifact.Kind))
 	switch kind {

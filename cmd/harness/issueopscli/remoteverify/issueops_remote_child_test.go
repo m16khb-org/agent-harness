@@ -1,4 +1,4 @@
-package issueopscli
+package remoteverify
 
 import (
 	"net/url"
@@ -17,7 +17,7 @@ printf '%s\n' "$*" > "$HARNESS_FAKE_GH_LOG"
 	t.Setenv("HARNESS_FAKE_GH_LOG", logPath)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	if err := verifyIssueOpsChildIssueLive(" https://github.com/example/repo/issues/7 "); err != nil {
+	if err := VerifyChildIssueLive(" https://github.com/example/repo/issues/7 "); err != nil {
 		t.Fatalf("verify GitHub child issue: %v", err)
 	}
 	log, err := os.ReadFile(logPath)
@@ -28,7 +28,7 @@ printf '%s\n' "$*" > "$HARNESS_FAKE_GH_LOG"
 		t.Fatalf("gh args = %q, want %q", got, want)
 	}
 
-	if err := verifyIssueOpsChildIssueLive("https://example.com/issues/7"); err != nil {
+	if err := VerifyChildIssueLive("https://example.com/issues/7"); err != nil {
 		t.Fatalf("unknown host should not require live verification: %v", err)
 	}
 }
@@ -42,7 +42,7 @@ printf '%s\n' "$*" > "$HARNESS_FAKE_GLAB_LOG"
 	t.Setenv("HARNESS_FAKE_GLAB_LOG", logPath)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	if err := verifyIssueOpsChildIssueLive("https://gitlab.example.com/group/project/-/issues/42"); err != nil {
+	if err := VerifyChildIssueLive("https://gitlab.example.com/group/project/-/issues/42"); err != nil {
 		t.Fatalf("verify GitLab child issue: %v", err)
 	}
 	log, err := os.ReadFile(logPath)
@@ -61,7 +61,7 @@ func TestVerifyGitLabIssueLiveRejectsInvalidIssuePath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = verifyGitLabIssueLive(parsed)
+	err = VerifyGitLabIssueLive(parsed)
 	if err == nil || !strings.Contains(err.Error(), "child_url must be a GitLab issue URL") {
 		t.Fatalf("expected invalid GitLab issue URL error, got %v", err)
 	}
@@ -75,7 +75,7 @@ exit 1
 `)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	err := verifyGitHubIssueLive("https://github.com/example/repo/issues/404")
+	err := VerifyGitHubIssueLive("https://github.com/example/repo/issues/404")
 	if err == nil || !strings.Contains(err.Error(), "verify GitHub child issue through gh failed: issue not found") {
 		t.Fatalf("expected gh stderr in error, got %v", err)
 	}

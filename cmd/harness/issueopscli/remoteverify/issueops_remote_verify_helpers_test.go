@@ -1,4 +1,4 @@
-package issueopscli
+package remoteverify
 
 import (
 	"os"
