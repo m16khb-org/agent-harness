@@ -1,6 +1,12 @@
-package selfworkflow
+package steps
 
-import "time"
+import (
+	"time"
+
+	"agent-harness/cmd/harness/commandstep"
+)
+
+type StepResult = commandstep.StepResult
 
 type SelfVerifyPlannedStep struct {
 	Label string

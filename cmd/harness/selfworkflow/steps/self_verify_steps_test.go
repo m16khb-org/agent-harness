@@ -1,4 +1,4 @@
-package selfworkflow
+package steps
 
 import (
 	"strings"
