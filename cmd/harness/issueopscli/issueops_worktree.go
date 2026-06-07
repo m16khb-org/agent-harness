@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"agent-harness/cmd/harness/issueopscli/worktreetools"
 	"agent-harness/internal/core"
 )
 
@@ -61,9 +62,9 @@ func runIssueOpsWorktree(args []string) error {
 	return nil
 }
 
-func prepareIssueOpsWorktreeTools(record core.IssueOpsRecord) (issueOpsWorktreeToolPrepareResult, error) {
+func prepareIssueOpsWorktreeTools(record core.IssueOpsRecord) (worktreetools.PrepareResult, error) {
 	worktree := strings.TrimSpace(record.WorktreePath)
-	result := issueOpsWorktreeToolPrepareResult{
+	result := worktreetools.PrepareResult{
 		OK:                   true,
 		ID:                   record.ID,
 		WorktreePath:         worktree,
@@ -77,7 +78,7 @@ func prepareIssueOpsWorktreeTools(record core.IssueOpsRecord) (issueOpsWorktreeT
 		result.OK = false
 		return result, fmt.Errorf("worktree_path does not exist or is not a directory: %s", worktree)
 	}
-	if err := prepareIssueOpsWorktreeDependencies(worktree, &result); err != nil {
+	if err := worktreetools.PrepareDependencies(worktree, &result); err != nil {
 		result.OK = false
 		return result, err
 	}

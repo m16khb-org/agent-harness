@@ -1,6 +1,6 @@
-package issueopscli
+package worktreetools
 
-type issueOpsWorktreeToolPrepareResult struct {
+type PrepareResult struct {
 	OK                   bool     `json:"ok"`
 	ID                   string   `json:"id"`
 	WorktreePath         string   `json:"worktree_path"`

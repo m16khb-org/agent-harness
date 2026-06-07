@@ -1,4 +1,4 @@
-package issueopscli
+package worktreetools
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func prepareIssueOpsWorktreeDependencies(worktree string, result *issueOpsWorktreeToolPrepareResult) error {
-	manager := issueOpsWorktreePackageManager(worktree)
+func PrepareDependencies(worktree string, result *PrepareResult) error {
+	manager := PackageManager(worktree)
 	if manager == "" {
 		return nil
 	}
@@ -47,7 +47,7 @@ func prepareIssueOpsWorktreeDependencies(worktree string, result *issueOpsWorktr
 	}
 }
 
-func issueOpsWorktreePackageManager(worktree string) string {
+func PackageManager(worktree string) string {
 	if _, err := os.Stat(filepath.Join(worktree, "package.json")); err != nil {
 		return ""
 	}

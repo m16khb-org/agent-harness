@@ -2,10 +2,11 @@ package issueopscli
 
 import (
 	"agent-harness/cmd/harness/issueopscli/remoteverify"
+	"agent-harness/cmd/harness/issueopscli/worktreetools"
 	"agent-harness/internal/core"
 )
 
-type WorktreeToolPrepareResult = issueOpsWorktreeToolPrepareResult
+type WorktreeToolPrepareResult = worktreetools.PrepareResult
 
 func RunIssueOps(args []string) error {
 	return runIssueOps(args)

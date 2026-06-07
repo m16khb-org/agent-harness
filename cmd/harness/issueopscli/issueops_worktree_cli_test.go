@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/cmd/harness/issueopscli/worktreetools"
 )
 
 func TestRunIssueOpsWorktreeUsageAndErrorBranches(t *testing.T) {
@@ -60,24 +62,24 @@ func TestRunIssueOpsWorktreeUsageAndErrorBranches(t *testing.T) {
 
 func TestIssueOpsWorktreePackageManagerBranches(t *testing.T) {
 	root := t.TempDir()
-	if got := issueOpsWorktreePackageManager(root); got != "" {
+	if got := worktreetools.PackageManager(root); got != "" {
 		t.Fatalf("package manager without package.json = %q", got)
 	}
 
 	writeIssueOpsCLIFileForTest(t, root, "package.json", "{}")
-	if got := issueOpsWorktreePackageManager(root); got != "" {
+	if got := worktreetools.PackageManager(root); got != "" {
 		t.Fatalf("package manager without lockfile = %q", got)
 	}
 
 	writeIssueOpsCLIFileForTest(t, root, "yarn.lock", "")
-	if got := issueOpsWorktreePackageManager(root); got != "yarn" {
+	if got := worktreetools.PackageManager(root); got != "yarn" {
 		t.Fatalf("package manager with yarn.lock = %q", got)
 	}
 
 	npmRoot := filepath.Join(t.TempDir(), "npm")
 	writeIssueOpsCLIFileForTest(t, npmRoot, "package.json", "{}")
 	writeIssueOpsCLIFileForTest(t, npmRoot, "package-lock.json", "{}")
-	if got := issueOpsWorktreePackageManager(npmRoot); got != "npm" {
+	if got := worktreetools.PackageManager(npmRoot); got != "npm" {
 		t.Fatalf("package manager with package-lock.json = %q", got)
 	}
 }
