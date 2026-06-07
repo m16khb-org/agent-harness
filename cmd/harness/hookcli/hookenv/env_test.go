@@ -1,21 +1,21 @@
-package hookcli
+package hookenv
 
 import (
 	"os"
 	"testing"
 )
 
-func TestEnvFloatParsesConfiguredFloat(t *testing.T) {
+func TestFloatParsesConfiguredFloat(t *testing.T) {
 	t.Setenv("AGENT_HARNESS_TEST_FLOAT", " 12.5 ")
 
-	got := EnvFloat("AGENT_HARNESS_TEST_FLOAT")
+	got := Float("AGENT_HARNESS_TEST_FLOAT")
 
 	if got != 12.5 {
 		t.Fatalf("expected configured float, got %v", got)
 	}
 }
 
-func TestEnvFloatReturnsZeroForMissingEmptyAndInvalidValues(t *testing.T) {
+func TestFloatReturnsZeroForMissingEmptyAndInvalidValues(t *testing.T) {
 	tests := []struct {
 		name  string
 		value string
@@ -48,7 +48,7 @@ func TestEnvFloatReturnsZeroForMissingEmptyAndInvalidValues(t *testing.T) {
 				}
 			}
 
-			got := EnvFloat("AGENT_HARNESS_TEST_FLOAT")
+			got := Float("AGENT_HARNESS_TEST_FLOAT")
 
 			if got != 0 {
 				t.Fatalf("expected zero fallback, got %v", got)
