@@ -1,4 +1,4 @@
-package issueopscli
+package benchmarkcmd
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"agent-harness/internal/core"
 )
 
-func runIssueOpsBenchmark(args []string) error {
+func Run(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage: agent-harness issueops benchmark run|compare|gate [--json]")
 		return nil
@@ -26,7 +26,7 @@ func runIssueOpsBenchmark(args []string) error {
 		judge := fs.String("judge", "agy", "judge backend: none or agy")
 		agyCommand := fs.String("agy-command", "agy", "agy command path")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+		if help, err := parseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		fixtures, err := core.LoadIssueOpsBenchmarkFixtures(*fixturesPath)
@@ -76,7 +76,7 @@ func runIssueOpsBenchmark(args []string) error {
 		baselineID := fs.String("baseline", "", "baseline benchmark id")
 		candidateID := fs.String("candidate", "", "candidate benchmark id")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+		if help, err := parseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		baseline, err := core.ReadIssueOpsBenchmarkRun(core.StateDir(), *baselineID)
@@ -101,7 +101,7 @@ func runIssueOpsBenchmark(args []string) error {
 		var changedPaths repeatedFlag
 		fs.Var(&changedPaths, "changed-path", "changed path to check against the candidate edit surface; repeatable")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+		if help, err := parseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		candidate, err := readIssueOpsAutoresearchCandidateFile(*candidateFile)
@@ -133,6 +133,33 @@ func runIssueOpsBenchmark(args []string) error {
 	default:
 		return fmt.Errorf("unknown issueops benchmark subcommand %q", args[0])
 	}
+}
+
+func parseFlags(fs *flag.FlagSet, args []string) (bool, error) {
+	if err := fs.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
+}
+
+func printJSON(v any) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}
+
+type repeatedFlag []string
+
+func (f *repeatedFlag) String() string {
+	return strings.Join(*f, ",")
+}
+
+func (f *repeatedFlag) Set(value string) error {
+	*f = append(*f, value)
+	return nil
 }
 
 func readIssueOpsAutoresearchCandidateFile(path string) (core.IssueOpsAutoresearchCandidate, error) {

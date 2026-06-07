@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"flag"
 	"fmt"
@@ -100,7 +101,7 @@ func runIssueOps(args []string) error {
 	case "cleanup":
 		return runIssueOpsCleanup(args[1:])
 	case "benchmark":
-		return runIssueOpsBenchmark(args[1:])
+		return benchmarkcmd.Run(args[1:])
 	case "remote":
 		return runIssueOpsRemote(args[1:])
 	case "remote-score":
