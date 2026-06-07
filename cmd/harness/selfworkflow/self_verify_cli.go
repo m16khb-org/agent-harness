@@ -1,6 +1,8 @@
 package selfworkflow
 
 import (
+	"agent-harness/cmd/harness/selfworkflow/candidatescmd"
+	"agent-harness/cmd/harness/selfworkflow/promotecmd"
 	"flag"
 	"fmt"
 	"io"
@@ -21,6 +23,15 @@ type SelfVerifyRunMode struct {
 	Full          bool
 	Iterations    int
 	ContractLabel string
+}
+
+type SelfVerifyPromoteDeps struct {
+	Promote func(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error)
+}
+
+type SelfVerifyCandidatesDeps struct {
+	Export func() SelfVerificationCandidateExportResult
+	Save   func(result *SelfVerificationCandidateExportResult, key string) error
 }
 
 func ResolveSelfVerifyRunMode(full bool, iterationsFlagSet bool, iterations int) (SelfVerifyRunMode, error) {
@@ -109,6 +120,31 @@ func RunSelfVerifyWithDeps(args []string, deps SelfVerifyRunDeps) error {
 	return err
 }
 
+func RunSelfVerifyPromote(args []string) error {
+	return RunSelfVerifyPromoteWithDeps(args, SelfVerifyPromoteDeps{})
+}
+
+func RunSelfVerifyPromoteWithDeps(args []string, deps SelfVerifyPromoteDeps) error {
+	deps = deps.withDefaults()
+	return promotecmd.Run(args, promotecmd.Deps{
+		Promote:   deps.Promote,
+		PrintJSON: printJSON,
+	})
+}
+
+func RunSelfVerifyCandidates(args []string) error {
+	return RunSelfVerifyCandidatesWithDeps(args, SelfVerifyCandidatesDeps{})
+}
+
+func RunSelfVerifyCandidatesWithDeps(args []string, deps SelfVerifyCandidatesDeps) error {
+	deps = deps.withDefaults()
+	return candidatescmd.Run(args, candidatescmd.Deps{
+		Export:    deps.Export,
+		Save:      deps.Save,
+		PrintJSON: printJSON,
+	})
+}
+
 func (deps SelfVerifyRunDeps) withDefaults() SelfVerifyRunDeps {
 	if deps.LookupEnv == nil {
 		deps.LookupEnv = os.LookupEnv
@@ -129,6 +165,23 @@ func (deps SelfVerifyRunDeps) withDefaults() SelfVerifyRunDeps {
 	}
 	if deps.SaveSummary == nil {
 		deps.SaveSummary = SaveSelfVerificationSummary
+	}
+	return deps
+}
+
+func (deps SelfVerifyPromoteDeps) withDefaults() SelfVerifyPromoteDeps {
+	if deps.Promote == nil {
+		deps.Promote = PromoteSelfAugmentBaseline
+	}
+	return deps
+}
+
+func (deps SelfVerifyCandidatesDeps) withDefaults() SelfVerifyCandidatesDeps {
+	if deps.Export == nil {
+		deps.Export = ExportSelfVerificationCandidates
+	}
+	if deps.Save == nil {
+		deps.Save = SaveSelfVerificationCandidateExport
 	}
 	return deps
 }

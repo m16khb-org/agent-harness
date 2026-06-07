@@ -1,27 +1,18 @@
-package selfworkflow
+package promotecmd
 
 import (
 	"flag"
 	"fmt"
+
+	"agent-harness/cmd/harness/selfworkflow/model"
 )
 
-type SelfVerifyPromoteDeps struct {
-	Promote func(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error)
+type Deps struct {
+	Promote   func(fromKey, baselineKey string, confirm bool) (model.SelfAugmentPromoteResult, error)
+	PrintJSON func(any) error
 }
 
-func (deps SelfVerifyPromoteDeps) withDefaults() SelfVerifyPromoteDeps {
-	if deps.Promote == nil {
-		deps.Promote = PromoteSelfAugmentBaseline
-	}
-	return deps
-}
-
-func RunSelfVerifyPromote(args []string) error {
-	return RunSelfVerifyPromoteWithDeps(args, SelfVerifyPromoteDeps{})
-}
-
-func RunSelfVerifyPromoteWithDeps(args []string, deps SelfVerifyPromoteDeps) error {
-	deps = deps.withDefaults()
+func Run(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("self-verify promote", flag.ContinueOnError)
 	fromKey := fs.String("from-key", "", "state key containing the candidate self-verification summary snapshot")
 	baselineKey := fs.String("baseline-key", "", "state key to write as the promoted baseline")
@@ -35,7 +26,7 @@ func RunSelfVerifyPromoteWithDeps(args []string, deps SelfVerifyPromoteDeps) err
 		return err
 	}
 	if *jsonOut {
-		return printJSON(result)
+		return deps.PrintJSON(result)
 	}
 	action := "would promote"
 	if result.Confirm {
