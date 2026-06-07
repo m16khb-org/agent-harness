@@ -1,4 +1,4 @@
-package hookcli
+package vcsissue
 
 import (
 	"encoding/json"
@@ -23,9 +23,7 @@ func TestRunHookPreToolUseBlocksPlanLinkSectionInIssueBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "block" {
 		t.Fatalf("expected Plan Link section to be blocked, got %+v", obj)
 	}
@@ -47,9 +45,7 @@ func TestRunHookPreToolUseBlocksGitLabRelatedIssuesBodySection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "block" {
 		t.Fatalf("expected GitLab Related Issues body section to be blocked, got %+v", obj)
 	}
@@ -74,9 +70,7 @@ func TestRunHookPreToolUseBlocksStructuredGitLabRelatedIssuesBodySection(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts", "--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-korean-remote-artifacts", "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "block" {
 		t.Fatalf("expected structured GitLab Related Issues body section to be blocked, got %+v", obj)
 	}
@@ -100,9 +94,7 @@ func TestRunHookPreToolUseAllowsGitHubRelatedIssuesBodySection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] == "block" {
 		t.Fatalf("GitHub body references are valid and must not be blocked, got %+v", obj)
 	}

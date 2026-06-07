@@ -1,4 +1,4 @@
-package hookcli
+package vcsissue
 
 import (
 	"encoding/json"
@@ -19,9 +19,7 @@ func TestRunHookPreToolUseEnforcesRemoteCreateAssignee(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "block" {
 		t.Fatalf("expected missing assignee to be blocked, got %+v", obj)
 	}
@@ -49,9 +47,7 @@ func TestRunHookPreToolUseStructuredRemoteCreateReadsGlabFlagsAssignee(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "allow" {
 		t.Fatalf("expected structured labeled and assigned MR create to be allowed, got %+v", obj)
 	}
@@ -74,9 +70,7 @@ func TestRunHookPreToolUseStructuredRemoteCreateStillRequiresAssignee(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "block" {
 		t.Fatalf("expected structured MR create without assignee to be blocked, got %+v", obj)
 	}
@@ -102,9 +96,7 @@ func TestRunHookPreToolUseStructuredGlabMRForRequiresAssignee(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "block" {
 		t.Fatalf("expected structured glab mr for without assignee to be blocked, got %+v", obj)
 	}
@@ -131,9 +123,7 @@ func TestRunHookPreToolUseStructuredGlabMRForAllowsAssignee(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "allow" {
 		t.Fatalf("expected structured glab mr for with assignee to be allowed, got %+v", obj)
 	}
@@ -159,9 +149,7 @@ func TestRunHookPreToolUseStructuredGlabMRForAllowsNumericAssigneeID(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "allow" {
 		t.Fatalf("expected structured glab mr for with numeric assignee_id to be allowed, got %+v", obj)
 	}
@@ -187,9 +175,7 @@ func TestRunHookPreToolUseStructuredGlabMRForRejectsUsernameAssignee(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "block" {
 		t.Fatalf("expected structured glab mr for username assignee to be blocked, got %+v", obj)
 	}

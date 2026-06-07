@@ -1,4 +1,4 @@
-package hookcli
+package vcsissue
 
 import (
 	"encoding/json"
@@ -19,9 +19,7 @@ func TestRunHookPreToolUseAllowsIssueBasedGitLabMRWithCombinedGates(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-korean-remote-artifacts", "--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-korean-remote-artifacts", "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "allow" {
 		t.Fatalf("expected issue-based GitLab MR with labels and numeric assignee to be allowed, got %+v", obj)
 	}
@@ -44,9 +42,7 @@ func TestRunHookPreToolUseStructuredRelatedIssueMRRequiresNumericAssignee(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj := runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-vcs-issue-linking", "--json"})
-	})
+	obj := runPreToolUseCapture(t, string(payload), "--enforce-vcs-issue-linking", "--json")
 	if obj["decision"] != "block" {
 		t.Fatalf("expected structured related-issue MR with username assignee to be blocked, got %+v", obj)
 	}
