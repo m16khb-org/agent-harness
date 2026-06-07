@@ -139,21 +139,6 @@ func splitLines(s string) []string {
 	return strings.Split(strings.TrimRight(s, "\n"), "\n")
 }
 
-func splitCSV(s string) []string {
-	if strings.TrimSpace(s) == "" {
-		return []string{}
-	}
-	parts := strings.Split(s, ",")
-	out := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			out = append(out, part)
-		}
-	}
-	return out
-}
-
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil

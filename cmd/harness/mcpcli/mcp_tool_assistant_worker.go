@@ -1,6 +1,9 @@
 package mcpcli
 
-import "agent-harness/internal/core"
+import (
+	"agent-harness/cmd/harness/mcpcli/argmap"
+	"agent-harness/internal/core"
+)
 
 func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	switch call.Name {
@@ -8,10 +11,10 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		return mcpToolPayload(DaemonStatus())
 	case "commit_suggest":
 		result, err := core.SuggestCommit(core.CommitSuggestRequest{
-			RepoRoot:   ResolveTarget(stringArg(call.Arguments, "repo")),
-			Staged:     boolArg(call.Arguments, "staged"),
-			AgyCommand: stringArg(call.Arguments, "agy_command"),
-			AgyModel:   stringArg(call.Arguments, "agy_model"),
+			RepoRoot:   ResolveTarget(argmap.String(call.Arguments, "repo")),
+			Staged:     argmap.Bool(call.Arguments, "staged"),
+			AgyCommand: argmap.String(call.Arguments, "agy_command"),
+			AgyModel:   argmap.String(call.Arguments, "agy_model"),
 		})
 		if err != nil {
 			return mcpToolFailure(&RPCError{Code: -32000, Message: "commit_suggest failed", Data: err.Error()})
@@ -19,10 +22,10 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		return mcpToolPayload(result)
 	case "lint_diagnose":
 		result, err := core.DiagnoseCommand(core.LintDiagnoseRequest{
-			RepoRoot:    ResolveTarget(stringArg(call.Arguments, "repo")),
-			CommandArgv: stringSliceArg(call.Arguments, "command_argv"),
-			AgyCommand:  stringArg(call.Arguments, "agy_command"),
-			AgyModel:    stringArg(call.Arguments, "agy_model"),
+			RepoRoot:    ResolveTarget(argmap.String(call.Arguments, "repo")),
+			CommandArgv: argmap.StringSlice(call.Arguments, "command_argv"),
+			AgyCommand:  argmap.String(call.Arguments, "agy_command"),
+			AgyModel:    argmap.String(call.Arguments, "agy_model"),
 		})
 		if err != nil {
 			return mcpToolFailure(&RPCError{Code: -32000, Message: "lint_diagnose failed", Data: err.Error()})
@@ -31,21 +34,21 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "contract_schema", "contract_check":
 		return mcpToolPayload(CompatibilityContract())
 	case "worker_enqueue":
-		result, err := core.EnqueueWorkerJob(stringArg(call.Arguments, "kind"), stringArg(call.Arguments, "payload"))
+		result, err := core.EnqueueWorkerJob(argmap.String(call.Arguments, "kind"), argmap.String(call.Arguments, "payload"))
 		if err != nil {
 			return mcpToolFailure(&RPCError{Code: -32000, Message: "worker_enqueue failed", Data: err.Error()})
 		}
 		return mcpToolPayload(result)
 	case "worker_run_read_only":
 		result, err := core.RunReadOnlyWorkerJob(
-			stringArg(call.Arguments, "kind"),
-			stringArg(call.Arguments, "payload"),
+			argmap.String(call.Arguments, "kind"),
+			argmap.String(call.Arguments, "payload"),
 			core.CommandPolicyRequest{
-				WorkspaceRoot: stringArg(call.Arguments, "workspace_root"),
-				CWD:           stringArg(call.Arguments, "cwd"),
-				Argv:          stringSliceArg(call.Arguments, "argv"),
-				Timeout:       stringArgWithDefault(call.Arguments, "timeout", "30s"),
-				EnvAllowlist:  stringSliceArg(call.Arguments, "env_allowlist"),
+				WorkspaceRoot: argmap.String(call.Arguments, "workspace_root"),
+				CWD:           argmap.String(call.Arguments, "cwd"),
+				Argv:          argmap.StringSlice(call.Arguments, "argv"),
+				Timeout:       argmap.StringDefault(call.Arguments, "timeout", "30s"),
+				EnvAllowlist:  argmap.StringSlice(call.Arguments, "env_allowlist"),
 			},
 		)
 		if err != nil {
@@ -53,7 +56,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "worker_status":
-		result, err := core.ReadWorkerJob(stringArg(call.Arguments, "id"))
+		result, err := core.ReadWorkerJob(argmap.String(call.Arguments, "id"))
 		if err != nil {
 			return mcpToolFailure(&RPCError{Code: -32000, Message: "worker_status failed", Data: err.Error()})
 		}
@@ -65,7 +68,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "worker_cancel":
-		result, err := core.CancelWorkerJob(stringArg(call.Arguments, "id"))
+		result, err := core.CancelWorkerJob(argmap.String(call.Arguments, "id"))
 		if err != nil {
 			return mcpToolFailure(&RPCError{Code: -32000, Message: "worker_cancel failed", Data: err.Error()})
 		}

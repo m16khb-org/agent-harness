@@ -1,8 +1,11 @@
-package mcpcli
+package argmap
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
-func stringArg(args map[string]any, key string) string {
+func String(args map[string]any, key string) string {
 	if args == nil {
 		return ""
 	}
@@ -11,7 +14,8 @@ func stringArg(args map[string]any, key string) string {
 	}
 	return ""
 }
-func argSet(args map[string]any, key string) bool {
+
+func Set(args map[string]any, key string) bool {
 	if args == nil {
 		return false
 	}
@@ -19,14 +23,14 @@ func argSet(args map[string]any, key string) bool {
 	return ok
 }
 
-func stringArgWithDefault(args map[string]any, key, fallback string) string {
-	if v := stringArg(args, key); v != "" {
+func StringDefault(args map[string]any, key, fallback string) string {
+	if v := String(args, key); v != "" {
 		return v
 	}
 	return fallback
 }
 
-func stringSliceArg(args map[string]any, key string) []string {
+func StringSlice(args map[string]any, key string) []string {
 	if args == nil {
 		return nil
 	}
@@ -48,7 +52,7 @@ func stringSliceArg(args map[string]any, key string) []string {
 	}
 }
 
-func boolArg(args map[string]any, key string) bool {
+func Bool(args map[string]any, key string) bool {
 	if args == nil {
 		return false
 	}
@@ -63,7 +67,7 @@ func boolArg(args map[string]any, key string) bool {
 	}
 }
 
-func intArg(args map[string]any, key string, fallback int) int {
+func Int(args map[string]any, key string, fallback int) int {
 	if args == nil {
 		return fallback
 	}
@@ -80,7 +84,7 @@ func intArg(args map[string]any, key string, fallback int) int {
 	return fallback
 }
 
-func int64Arg(args map[string]any, key string, fallback int64) int64 {
+func Int64(args map[string]any, key string, fallback int64) int64 {
 	if args == nil {
 		return fallback
 	}
@@ -99,7 +103,7 @@ func int64Arg(args map[string]any, key string, fallback int64) int64 {
 	return fallback
 }
 
-func floatArg(args map[string]any, key string, fallback float64) float64 {
+func Float(args map[string]any, key string, fallback float64) float64 {
 	if args == nil {
 		return fallback
 	}
@@ -116,4 +120,19 @@ func floatArg(args map[string]any, key string, fallback float64) float64 {
 		}
 	}
 	return fallback
+}
+
+func splitCSV(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return []string{}
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }

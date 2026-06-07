@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"agent-harness/cmd/harness/mcpcli/argmap"
 )
 
 func TestMCPArgHelpersCoverSupportedScalarForms(t *testing.T) {
@@ -28,34 +30,34 @@ func TestMCPArgHelpersCoverSupportedScalarForms(t *testing.T) {
 		"float_string": "4.5",
 	}
 
-	if stringArg(args, "string") != "value" || stringArg(nil, "string") != "" {
+	if argmap.String(args, "string") != "value" || argmap.String(nil, "string") != "" {
 		t.Fatalf("stringArg did not preserve expected string behavior")
 	}
-	if !argSet(args, "string") || argSet(nil, "string") || argSet(args, "missing") {
+	if !argmap.Set(args, "string") || argmap.Set(nil, "string") || argmap.Set(args, "missing") {
 		t.Fatalf("argSet did not distinguish present/missing args")
 	}
-	if stringArgWithDefault(args, "missing", "fallback") != "fallback" {
+	if argmap.StringDefault(args, "missing", "fallback") != "fallback" {
 		t.Fatalf("stringArgWithDefault did not use fallback")
 	}
-	assertStringSlice(t, stringSliceArg(args, "slice_string"), []string{"a", "b"})
-	copied := stringSliceArg(args, "slice_string")
+	assertStringSlice(t, argmap.StringSlice(args, "slice_string"), []string{"a", "b"})
+	copied := argmap.StringSlice(args, "slice_string")
 	copied[0] = "changed"
-	assertStringSlice(t, stringSliceArg(args, "slice_string"), []string{"a", "b"})
-	assertStringSlice(t, stringSliceArg(args, "slice_any"), []string{"a", "b"})
-	assertStringSlice(t, stringSliceArg(args, "csv"), []string{"a", "b", "c"})
-	if stringSliceArg(nil, "csv") != nil || stringSliceArg(args, "missing") != nil {
+	assertStringSlice(t, argmap.StringSlice(args, "slice_string"), []string{"a", "b"})
+	assertStringSlice(t, argmap.StringSlice(args, "slice_any"), []string{"a", "b"})
+	assertStringSlice(t, argmap.StringSlice(args, "csv"), []string{"a", "b", "c"})
+	if argmap.StringSlice(nil, "csv") != nil || argmap.StringSlice(args, "missing") != nil {
 		t.Fatalf("stringSliceArg should return nil for absent inputs")
 	}
-	if !boolArg(args, "bool") || boolArg(args, "bool_bad") || boolArg(nil, "bool") {
+	if !argmap.Bool(args, "bool") || argmap.Bool(args, "bool_bad") || argmap.Bool(nil, "bool") {
 		t.Fatalf("boolArg did not parse bool strings safely")
 	}
-	if intArg(args, "int_float", 0) != 12 || intArg(args, "int_string", 0) != 13 || intArg(args, "int_bad", 99) != 99 || intArg(nil, "x", 88) != 88 {
+	if argmap.Int(args, "int_float", 0) != 12 || argmap.Int(args, "int_string", 0) != 13 || argmap.Int(args, "int_bad", 99) != 99 || argmap.Int(nil, "x", 88) != 88 {
 		t.Fatalf("intArg did not parse supported forms")
 	}
-	if int64Arg(args, "int64_float", 0) != 14 || int64Arg(args, "int64_value", 0) != 15 || int64Arg(args, "int64_int", 0) != 16 || int64Arg(args, "int64_string", 0) != 17 || int64Arg(nil, "x", 18) != 18 {
+	if argmap.Int64(args, "int64_float", 0) != 14 || argmap.Int64(args, "int64_value", 0) != 15 || argmap.Int64(args, "int64_int", 0) != 16 || argmap.Int64(args, "int64_string", 0) != 17 || argmap.Int64(nil, "x", 18) != 18 {
 		t.Fatalf("int64Arg did not parse supported forms")
 	}
-	if floatArg(args, "float_value", 0) != 1.5 || floatArg(args, "float_int", 0) != 2 || floatArg(args, "float_int64", 0) != 3 || floatArg(args, "float_string", 0) != 4.5 || floatArg(nil, "x", 9.5) != 9.5 {
+	if argmap.Float(args, "float_value", 0) != 1.5 || argmap.Float(args, "float_int", 0) != 2 || argmap.Float(args, "float_int64", 0) != 3 || argmap.Float(args, "float_string", 0) != 4.5 || argmap.Float(nil, "x", 9.5) != 9.5 {
 		t.Fatalf("floatArg did not parse supported forms")
 	}
 }
