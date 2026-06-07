@@ -1,4 +1,4 @@
-package issueopscli
+package worktreecmd
 
 import (
 	"flag"
@@ -11,7 +11,15 @@ import (
 	"agent-harness/internal/core"
 )
 
-func runIssueOpsWorktree(args []string) error {
+type Deps struct {
+	ParseFlags func(*flag.FlagSet, []string) (bool, error)
+	PrintJSON  func(any) error
+	PrintError func(error) error
+}
+
+type PrepareResult = worktreetools.PrepareResult
+
+func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage: agent-harness issueops worktree prepare-tools --id ID [--json]")
 		return nil
@@ -22,29 +30,29 @@ func runIssueOpsWorktree(args []string) error {
 	fs := flag.NewFlagSet("issueops worktree prepare-tools", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+	if help, err := deps.ParseFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
 	if err != nil {
 		if *jsonOut {
-			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+			if printErr := deps.PrintError(err); printErr != nil {
 				return printErr
 			}
 		}
 		return err
 	}
-	result, err := prepareIssueOpsWorktreeTools(record)
+	result, err := PrepareWorktreeTools(record)
 	if err != nil {
 		if *jsonOut {
-			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+			if printErr := deps.PrintError(err); printErr != nil {
 				return printErr
 			}
 		}
 		return err
 	}
 	if *jsonOut {
-		return printJSON(result)
+		return deps.PrintJSON(result)
 	}
 	fmt.Printf("worktree: %s\n", result.WorktreePath)
 	if result.DependenciesChecked {
@@ -62,9 +70,9 @@ func runIssueOpsWorktree(args []string) error {
 	return nil
 }
 
-func prepareIssueOpsWorktreeTools(record core.IssueOpsRecord) (worktreetools.PrepareResult, error) {
+func PrepareWorktreeTools(record core.IssueOpsRecord) (PrepareResult, error) {
 	worktree := strings.TrimSpace(record.WorktreePath)
-	result := worktreetools.PrepareResult{
+	result := PrepareResult{
 		OK:                   true,
 		ID:                   record.ID,
 		WorktreePath:         worktree,

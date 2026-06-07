@@ -4,6 +4,7 @@ import (
 	"agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
+	"agent-harness/cmd/harness/issueopscli/worktreecmd"
 	"flag"
 	"fmt"
 
@@ -147,6 +148,22 @@ func issueOpsRemoteDeps() remotecmd.Deps {
 		PrintResult: printIssueOpsResult,
 		PrintError:  printIssueOpsErrorJSON,
 		VerifyLive:  verifyIssueOpsRemoteArtifactLive,
+	}
+}
+
+func runIssueOpsWorktree(args []string) error {
+	return worktreecmd.Run(args, issueOpsWorktreeDeps())
+}
+
+func prepareIssueOpsWorktreeTools(record core.IssueOpsRecord) (worktreecmd.PrepareResult, error) {
+	return worktreecmd.PrepareWorktreeTools(record)
+}
+
+func issueOpsWorktreeDeps() worktreecmd.Deps {
+	return worktreecmd.Deps{
+		ParseFlags: parseIssueOpsFlags,
+		PrintJSON:  printJSON,
+		PrintError: printIssueOpsErrorJSON,
 	}
 }
 
