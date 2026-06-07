@@ -1,21 +1,26 @@
-package selfworkflow
+package model
+
+import (
+	"agent-harness/cmd/harness/commandstep"
+	"agent-harness/cmd/harness/selfworkflow/llmeval"
+)
 
 type SelfAugmentResult struct {
-	OK                  bool                        `json:"ok"`
-	LoopKind            string                      `json:"loop_kind"`
-	KoreanName          string                      `json:"korean_name"`
-	Iterations          int                         `json:"iterations"`
-	BaseSeed            int64                       `json:"base_seed"`
-	TargetScore         float64                     `json:"target_score"`
-	TerminationEligible bool                        `json:"termination_eligible"`
-	ElapsedMS           int64                       `json:"elapsed_ms"`
-	HarnessRoot         string                      `json:"harness_root"`
-	InspiredBy          string                      `json:"inspired_by"`
-	LoopContract        []string                    `json:"loop_contract"`
-	Summary             SelfAugmentSummary          `json:"summary"`
-	StateCheckpoint     *SelfAugmentStateCheckpoint `json:"state_checkpoint,omitempty"`
-	LLMEval             *SelfVerifyLLMEvalResult    `json:"llm_eval,omitempty"`
-	Runs                []SelfAugmentIteration      `json:"runs"`
+	OK                  bool                             `json:"ok"`
+	LoopKind            string                           `json:"loop_kind"`
+	KoreanName          string                           `json:"korean_name"`
+	Iterations          int                              `json:"iterations"`
+	BaseSeed            int64                            `json:"base_seed"`
+	TargetScore         float64                          `json:"target_score"`
+	TerminationEligible bool                             `json:"termination_eligible"`
+	ElapsedMS           int64                            `json:"elapsed_ms"`
+	HarnessRoot         string                           `json:"harness_root"`
+	InspiredBy          string                           `json:"inspired_by"`
+	LoopContract        []string                         `json:"loop_contract"`
+	Summary             SelfAugmentSummary               `json:"summary"`
+	StateCheckpoint     *SelfAugmentStateCheckpoint      `json:"state_checkpoint,omitempty"`
+	LLMEval             *llmeval.SelfVerifyLLMEvalResult `json:"llm_eval,omitempty"`
+	Runs                []SelfAugmentIteration           `json:"runs"`
 }
 
 type SelfAugmentSummary struct {
@@ -91,13 +96,15 @@ type SelfAugmentStepDurationStat struct {
 	P95DurationMS     int64   `json:"p95_duration_ms"`
 }
 
-type selfVerificationGoalDefinition struct {
+type SelfVerificationGoalDefinition struct {
 	Name       string
 	KoreanName string
 	Labels     []string
 }
 
-type selfVerificationCoverageDefinition struct {
+type SelfVerificationCoverageDefinition struct {
 	Claim  string
 	Labels []string
 }
+
+type StepResult = commandstep.StepResult

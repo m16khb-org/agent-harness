@@ -3,7 +3,7 @@ package selfworkflow
 import "time"
 
 func ApplySelfAugmentHistoryRetention(result *SelfAugmentHistoryResult, options SelfAugmentHistoryRetentionOptions) error {
-	return applySelfAugmentHistoryRetention(result, selfAugmentHistoryRetentionOptions(options))
+	return applySelfAugmentHistoryRetention(result, options)
 }
 
 func AllSelfAugmentGoalsPassed(goals []SelfAugmentGoal) bool {
@@ -174,21 +174,4 @@ func SummarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {
 
 func SummarizeSelfVerification(result SelfAugmentResult, targetScore float64) SelfAugmentSummary {
 	return summarizeSelfVerification(result, targetScore)
-}
-
-type SelfAugmentHistoryRetentionOptions struct {
-	Limit          int
-	PruneRequested bool
-	Confirm        bool
-}
-
-type SelfVerificationCoverageDefinition struct {
-	Claim  string
-	Labels []string
-}
-
-type SelfVerificationGoalDefinition struct {
-	Name       string
-	KoreanName string
-	Labels     []string
 }

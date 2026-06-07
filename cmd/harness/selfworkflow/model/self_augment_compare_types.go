@@ -1,4 +1,4 @@
-package selfworkflow
+package model
 
 type SelfAugmentCompareResult struct {
 	OK                           bool                              `json:"ok"`

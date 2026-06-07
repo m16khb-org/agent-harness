@@ -1,11 +1,11 @@
-package selfworkflow
+package model
 
 const (
-	selfVerificationSummaryKind     = "self_verification_summary"
-	legacySelfAugmentSummaryKind    = "self_augment_summary"
-	selfVerificationKoreanName      = "자기 검증 루프"
-	selfAugmentationKoreanName      = "자가 증강 루프"
-	defaultLoopTargetScoreExclusive = 95.0
+	SelfVerificationSummaryKind     = "self_verification_summary"
+	LegacySelfAugmentSummaryKind    = "self_augment_summary"
+	SelfVerificationKoreanName      = "자기 검증 루프"
+	SelfAugmentationKoreanName      = "자가 증강 루프"
+	DefaultLoopTargetScoreExclusive = 95.0
 )
 
 type SelfAugmentStateCheckpoint struct {

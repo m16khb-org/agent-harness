@@ -1,4 +1,4 @@
-package selfworkflow
+package model
 
 type SelfAugmentStateSnapshot struct {
 	SchemaVersion int                `json:"schema_version"`

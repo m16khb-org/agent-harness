@@ -1,4 +1,4 @@
-package selfworkflow
+package model
 
 type SelfAugmentHistoryResult struct {
 	OK           bool                         `json:"ok"`
@@ -26,7 +26,7 @@ type SelfAugmentHistoryRetention struct {
 	Recommendation string   `json:"recommendation"`
 }
 
-type selfAugmentHistoryRetentionOptions struct {
+type SelfAugmentHistoryRetentionOptions struct {
 	Limit          int
 	PruneRequested bool
 	Confirm        bool

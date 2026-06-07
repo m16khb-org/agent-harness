@@ -1,4 +1,4 @@
-package selfworkflow
+package model
 
 type SelfAugmentPlanRequest struct {
 	Cycles      int     `json:"cycles"`
@@ -6,8 +6,8 @@ type SelfAugmentPlanRequest struct {
 }
 
 const (
-	selfAugmentationPlanKind   = "self_augmentation_plan"
-	selfAugmentationLessonKind = "self_augmentation_lesson"
+	SelfAugmentationPlanKind   = "self_augmentation_plan"
+	SelfAugmentationLessonKind = "self_augmentation_lesson"
 )
 
 type SelfAugmentPlanResult struct {
