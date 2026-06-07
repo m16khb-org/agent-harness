@@ -31,6 +31,16 @@ func TestExportSelfVerificationCandidatesSelectsNextOpenCandidate(t *testing.T) 
 	}
 }
 
+func TestSelectedSelfVerificationCandidateIDReturnsStableFallback(t *testing.T) {
+	if got := SelectedSelfVerificationCandidateID(nil); got != "none" {
+		t.Fatalf("SelectedSelfVerificationCandidateID(nil)=%q, want none", got)
+	}
+	candidate := SelfVerificationCandidate{ID: "verify-next"}
+	if got := SelectedSelfVerificationCandidateID(&candidate); got != "verify-next" {
+		t.Fatalf("SelectedSelfVerificationCandidateID returned %q", got)
+	}
+}
+
 func containsString(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {

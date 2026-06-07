@@ -64,6 +64,30 @@ func TestResolveSelfVerifyLLMEvalConfigRejectsInvalidEnv(t *testing.T) {
 	}
 }
 
+func TestParseSelfVerifyLLMEvalEnvParsesDisabledAliasesAndRejectsUnknown(t *testing.T) {
+	for _, value := range []string{"", "0", "false", "no", "off", "disabled"} {
+		enabled, mode, err := ParseSelfVerifyLLMEvalEnv(value)
+		if err != nil || enabled || mode != "advisory" {
+			t.Fatalf("ParseSelfVerifyLLMEvalEnv(%q) enabled=%v mode=%q err=%v", value, enabled, mode, err)
+		}
+	}
+	enabled, mode, err := ParseSelfVerifyLLMEvalEnv(" gate ")
+	if err != nil || !enabled || mode != "gate" {
+		t.Fatalf("gate env parse enabled=%v mode=%q err=%v", enabled, mode, err)
+	}
+	if _, _, err := ParseSelfVerifyLLMEvalEnv("maybe"); err == nil || !strings.Contains(err.Error(), EnvName) {
+		t.Fatalf("expected named env parse error, got %v", err)
+	}
+}
+
+func TestDecodeSelfVerifyLLMEvalStrictRejectsExtraJSONValue(t *testing.T) {
+	var eval model.SelfVerifyLLMEvalResult
+	err := DecodeSelfVerifyLLMEvalStrict([]byte(`{"ok":true,"mode":"advisory","execution_class":"foreground_blocking","read_only":true,"score":99,"blockers":[],"risks":[],"recommended_next_actions":[],"evidence_packet_bytes":10} {"ok":false}`), &eval)
+	if err == nil || !strings.Contains(err.Error(), "unexpected extra JSON value") {
+		t.Fatalf("expected extra JSON value error, got %v", err)
+	}
+}
+
 func TestSelfVerifyLLMEvalAdvisorySuccess(t *testing.T) {
 	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":true,"score":99,"summary":"looks safe","risks":["watch flakes"],"recommended_next_actions":["ship"]}`)
 	result := model.SelfAugmentResult{OK: true, TerminationEligible: true, Summary: model.SelfAugmentSummary{MinimumGoalScore: 100}}

@@ -32,6 +32,16 @@ func TestCollectSelfAugmentRepoSignalsFindsMCPAdapterCatalogInContractCLI(t *tes
 	}
 }
 
+func TestSelectedCandidateIDReturnsStableFallback(t *testing.T) {
+	if got := SelectedCandidateID(nil); got != "" {
+		t.Fatalf("SelectedCandidateID(nil)=%q, want empty string", got)
+	}
+	candidate := SelfAugmentCandidate{ID: "augment-next"}
+	if got := SelectedCandidateID(&candidate); got != "augment-next" {
+		t.Fatalf("SelectedCandidateID returned %q", got)
+	}
+}
+
 func writeFileForRepoSignalTest(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

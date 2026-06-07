@@ -2,6 +2,7 @@ package augmentlesson
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
@@ -35,5 +36,28 @@ func TestSaveSelfAugmentLesson(t *testing.T) {
 	}
 	if snapshot.Kind != model.SelfAugmentationLessonKind || snapshot.CandidateID != "reflexion-state-memory" || snapshot.NextAction == "" {
 		t.Fatalf("unexpected lesson snapshot: %+v", snapshot)
+	}
+}
+
+func TestStateKeySlugNormalizesUnsafeText(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "trims and lowercases", in: "  Ship This Lesson  ", want: "ship-this-lesson"},
+		{name: "collapses punctuation", in: "A/B:C___D", want: "a-b-c-d"},
+		{name: "fallback for empty slug", in: "!!!", want: "lesson"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := StateKeySlug(tt.in)
+			if got != tt.want {
+				t.Fatalf("StateKeySlug(%q)=%q, want %q", tt.in, got, tt.want)
+			}
+			if strings.Contains(got, "_") {
+				t.Fatalf("StateKeySlug(%q) kept underscore in %q", tt.in, got)
+			}
+		})
 	}
 }
