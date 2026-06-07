@@ -27,6 +27,13 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 	if record.Phase != IssueOpsPhaseProblem {
 		t.Fatalf("issue link before intent should not enter plan phase: %+v", record)
 	}
+	if _, err := RecordIssueOpsIntent(stateRoot, record.ID, IssueOpsIntentRecordRequest{
+		RawRequest:        "IssueOps must understand intent before refactoring",
+		InterpretedIntent: "IssueOps must understand intent before refactoring",
+		SuccessCriteria:   []string{"intent is interpreted, not copied"},
+	}); err == nil || !strings.Contains(err.Error(), "interpreted_intent must differ from raw_request") {
+		t.Fatalf("intent interpretation should reject raw request copy, got %v", err)
+	}
 	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, IssueOpsDesignReviewRequest{
 		ProblemSummary: "Foldering bug",
 		ProposedDesign: "Gate implementation on reviewed design",

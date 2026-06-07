@@ -24,6 +24,9 @@ func RecordIntent(store Store, stateRoot, id string, req model.IssueOpsIntentRec
 	if interpretedIntent == "" {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("interpreted_intent is required")
 	}
+	if interpretedIntent == rawRequest {
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("interpreted_intent must differ from raw_request")
+	}
 	successCriteria := CleanTextValues(req.SuccessCriteria)
 	if len(successCriteria) == 0 {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("success_criteria is required")
