@@ -1097,6 +1097,7 @@
           "golden contract drift"
         ],
         "verification": [
+          "design review checked contract drift risk",
           "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
@@ -1204,6 +1205,7 @@
           "golden contract drift"
         ],
         "verification": [
+          "design review checked contract drift risk",
           "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
@@ -1330,6 +1332,7 @@
           "golden contract drift"
         ],
         "verification": [
+          "design review checked contract drift risk",
           "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
@@ -1493,6 +1496,7 @@
           "golden contract drift"
         ],
         "verification": [
+          "design review checked contract drift risk",
           "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
@@ -1710,6 +1714,7 @@
           "golden contract drift"
         ],
         "verification": [
+          "design review checked contract drift risk",
           "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
         ]
       },
@@ -4698,6 +4703,7 @@
                 "golden contract drift"
               ],
               "verification": [
+                "design review checked contract drift risk",
                 "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },
@@ -4802,6 +4808,7 @@
                 "golden contract drift"
               ],
               "verification": [
+                "design review checked contract drift risk",
                 "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },
@@ -4932,6 +4939,7 @@
                 "golden contract drift"
               ],
               "verification": [
+                "design review checked contract drift risk",
                 "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },
@@ -5089,6 +5097,7 @@
                 "golden contract drift"
               ],
               "verification": [
+                "design review checked contract drift risk",
                 "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },
@@ -5314,6 +5323,7 @@
                 "golden contract drift"
               ],
               "verification": [
+                "design review checked contract drift risk",
                 "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
             },

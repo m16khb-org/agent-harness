@@ -21,7 +21,7 @@ func recordIssueOpsLifecycleDesignForTest(t *testing.T, id string) {
 		RefactorPlan:   "Keep lifecycle guard behavior aligned with IssueOps cycle state",
 		Alternatives:   []string{"allow source edits without linked-cycle evidence"},
 		Risks:          []string{"worktree guard fixtures must model approved design evidence"},
-		Verification:   []string{"go test ./internal/core/lifecycle"},
+		Verification:   []string{"design review checked worktree guard risks", "go test ./internal/core/lifecycle"},
 		Approved:       true,
 	}); err != nil {
 		t.Fatal(err)

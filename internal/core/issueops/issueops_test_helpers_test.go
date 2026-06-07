@@ -86,7 +86,7 @@ func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 		RefactorPlan:   "Keep IssueOps state and adapter changes scoped to the active cycle",
 		Alternatives:   []string{"documentation-only guidance"},
 		Risks:          []string{"legacy tests must create explicit design evidence"},
-		Verification:   []string{"go test ./internal/core/issueops"},
+		Verification:   []string{"design review checked alternatives and risks", "go test ./internal/core/issueops"},
 		Approved:       true,
 	}); err != nil {
 		t.Fatal(err)
@@ -109,7 +109,7 @@ func issueOpsDesignReviewForTest() *IssueOpsDesignReview {
 		RefactorPlan:   "Keep IssueOps state and adapter changes scoped to the active cycle",
 		Alternatives:   []string{"documentation-only guidance"},
 		Risks:          []string{"legacy tests must create explicit design evidence"},
-		Verification:   []string{"go test ./internal/core/issueops"},
+		Verification:   []string{"design review checked alternatives and risks", "go test ./internal/core/issueops"},
 		Approved:       true,
 		ReviewedAt:     "2026-06-05T00:00:00Z",
 	}

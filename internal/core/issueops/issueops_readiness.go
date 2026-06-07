@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/core/issueops/implementation"
+	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/readinesspaths"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
@@ -111,6 +112,9 @@ func issueOpsDesignReviewMissing(record IssueOpsRecord) []string {
 	}
 	if len(cleanIssueOpsTextValues(record.DesignReview.Verification)) == 0 {
 		missing = append(missing, "design_verification")
+	}
+	if record.DesignReview.Approved && !intentdesign.HasDesignReviewEvidence(record.DesignReview.Verification) {
+		missing = append(missing, "design_review_evidence")
 	}
 	if !record.DesignReview.Approved {
 		missing = append(missing, "design_approval")

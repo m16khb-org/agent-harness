@@ -111,6 +111,17 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 	}); err == nil || !strings.Contains(err.Error(), "risks") {
 		t.Fatalf("approved design should require risk review, got %v", err)
 	}
+	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, IssueOpsDesignReviewRequest{
+		ProblemSummary: "Foldering bug",
+		ProposedDesign: "Gate implementation on reviewed design",
+		RefactorPlan:   "Keep IssueOps state changes localized to core and CLI",
+		Alternatives:   []string{"docs-only guidance"},
+		Risks:          []string{"existing lifecycle tests need explicit gate setup"},
+		Verification:   []string{"go test ./..."},
+		Approved:       true,
+	}); err == nil || !strings.Contains(err.Error(), "design_review_evidence") {
+		t.Fatalf("approved design should require design review evidence, got %v", err)
+	}
 
 	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
 	if err != nil {
@@ -162,7 +173,7 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 		ProposedDesign: "Gate implementation on reviewed design",
 		RefactorPlan:   "Keep IssueOps state changes localized to core and CLI",
 		Alternatives:   []string{"docs-only guidance"},
-		Verification:   []string{"go test ./internal/core/issueops ./cmd/harness/issueopscli"},
+		Verification:   []string{"design review checked alternatives and risks", "go test ./internal/core/issueops ./cmd/harness/issueopscli"},
 		Risks:          []string{"existing lifecycle tests need explicit gate setup"},
 		Approved:       true,
 	})
@@ -203,7 +214,7 @@ func TestIssueOpsIntentAndDesignRedactSecretLikeFreeform(t *testing.T) {
 		RefactorPlan:   "password=secret-value",
 		Alternatives:   []string{"secret=secret-value"},
 		Risks:          []string{"token=secret-value"},
-		Verification:   []string{"go test ./..."},
+		Verification:   []string{"design review checked redaction risk", "go test ./..."},
 		Approved:       true,
 	})
 	if err != nil {

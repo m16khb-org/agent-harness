@@ -38,7 +38,7 @@ func TestMCPIssueOpsRecordsIntentAndDesignReview(t *testing.T) {
 		"refactor_plan":   "Keep changes in IssueOps core and adapters",
 		"alternatives":    []string{"docs-only guidance"},
 		"risks":           []string{"legacy tests need explicit setup"},
-		"verification":    []string{"go test ./cmd/harness/mcpcli"},
+		"verification":    []string{"design review checked alternatives and risks", "go test ./cmd/harness/mcpcli"},
 		"approved":        true,
 	})
 	if review, ok := design["design_review"].(map[string]any); !ok || review["approved"] != true {
@@ -80,6 +80,29 @@ func TestMCPIssueOpsIntentAndDesignRejectInvalidInputs(t *testing.T) {
 	})
 	if designErr == nil || !strings.Contains(fmt.Sprint(designErr.Data), "open_questions") {
 		t.Fatalf("expected MCP design validation error, got %+v", designErr)
+	}
+	callMCPToolForIssueOpsTest(t, "issueops_record_intent", map[string]any{
+		"id":                 id,
+		"raw_request":        "IssueOps must understand intent",
+		"interpreted_intent": "Persist main-agent intent before planning",
+		"success_criteria":   []string{"intent is recorded"},
+	})
+	callMCPToolForIssueOpsTest(t, "issueops_link_issue", map[string]any{
+		"id":        id,
+		"issue_url": "https://github.com/example/repo/issues/1",
+	})
+	evidenceErr := callMCPToolForIssueOpsTestError(t, "issueops_review_design", map[string]any{
+		"id":              id,
+		"problem_summary": "IssueOps needs a design gate",
+		"proposed_design": "Require approved design before implementation",
+		"refactor_plan":   "Keep changes in IssueOps core and adapters",
+		"alternatives":    []string{"docs-only guidance"},
+		"risks":           []string{"legacy tests need explicit setup"},
+		"verification":    []string{"go test ./cmd/harness/mcpcli"},
+		"approved":        true,
+	})
+	if evidenceErr == nil || !strings.Contains(fmt.Sprint(evidenceErr.Data), "design_review_evidence") {
+		t.Fatalf("expected MCP design evidence validation error, got %+v", evidenceErr)
 	}
 }
 

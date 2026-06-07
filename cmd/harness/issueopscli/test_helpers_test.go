@@ -88,6 +88,7 @@ func recordIssueOpsCLIDesignForTest(t *testing.T, id string) {
 			"--refactor-plan", "Keep IssueOps state and adapter changes scoped to the active cycle",
 			"--alternative", "documentation-only guidance",
 			"--risk", "legacy tests must create explicit design evidence",
+			"--verification", "design review checked alternatives and risks",
 			"--verification", "go test ./cmd/harness/issueopscli",
 			"--approved",
 			"--json",
@@ -114,7 +115,7 @@ func recordIssueOpsCoreDesignForCLITest(t *testing.T, id string) {
 		RefactorPlan:   "Keep IssueOps state and adapter changes scoped to the active cycle",
 		Alternatives:   []string{"documentation-only guidance"},
 		Risks:          []string{"legacy tests must create explicit design evidence"},
-		Verification:   []string{"go test ./cmd/harness/issueopscli"},
+		Verification:   []string{"design review checked alternatives and risks", "go test ./cmd/harness/issueopscli"},
 		Approved:       true,
 	}); err != nil {
 		t.Fatal(err)

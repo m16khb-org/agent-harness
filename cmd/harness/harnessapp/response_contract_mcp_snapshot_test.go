@@ -104,7 +104,7 @@ func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		"refactor_plan":   "Keep changes local to IssueOps state and adapters",
 		"risks":           []string{"golden contract drift"},
 		"alternatives":    []string{"docs-only guidance"},
-		"verification":    []string{"go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"},
+		"verification":    []string{"design review checked contract drift risk", "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"},
 		"approved":        true,
 	})
 	writeContractFile(t, mcpWorktree, "docs/superpowers/plans/mcp-contract.md", "plan\n")

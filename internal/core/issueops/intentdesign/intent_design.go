@@ -83,6 +83,9 @@ func RecordDesignReview(store Store, stateRoot, id string, req model.IssueOpsDes
 	if req.Approved && len(risks) == 0 {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("approved design review requires risks")
 	}
+	if req.Approved && !HasDesignReviewEvidence(verification) {
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("approved design review requires design_review_evidence")
+	}
 	record.DesignReview = &model.IssueOpsDesignReview{
 		ProblemSummary: policy.RedactFreeform(problemSummary),
 		ProposedDesign: policy.RedactFreeform(proposedDesign),
@@ -95,6 +98,22 @@ func RecordDesignReview(store Store, stateRoot, id string, req model.IssueOpsDes
 		ReviewedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	return store.TouchWrite(stateRoot, record)
+}
+
+func HasDesignReviewEvidence(values []string) bool {
+	for _, value := range values {
+		text := strings.ToLower(strings.TrimSpace(value))
+		if text == "" {
+			continue
+		}
+		if strings.Contains(text, "design") && (strings.Contains(text, "review") || strings.Contains(text, "audit") || strings.Contains(text, "evaluat")) {
+			return true
+		}
+		if strings.Contains(text, "설계") && (strings.Contains(text, "검수") || strings.Contains(text, "검토")) {
+			return true
+		}
+	}
+	return false
 }
 
 func CleanTextValues(values []string) []string {

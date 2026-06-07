@@ -25,7 +25,7 @@ func recordIssueOpsHookDesignForTest(t *testing.T, id string) {
 		RefactorPlan:   "Keep hook guard behavior aligned with IssueOps cycle state",
 		Alternatives:   []string{"allow source edits without linked-cycle evidence"},
 		Risks:          []string{"worktree guard fixtures must model approved design evidence"},
-		Verification:   []string{"go test ./cmd/harness/hookcli"},
+		Verification:   []string{"design review checked worktree guard risks", "go test ./cmd/harness/hookcli"},
 		Approved:       true,
 	}); err != nil {
 		t.Fatal(err)
