@@ -1,4 +1,4 @@
-package harnessapp
+package responsecontract
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func normalizeContractValue(value any, replacements map[string]string) any {
+func NormalizeContractValue(value any, replacements map[string]string) any {
 	switch v := value.(type) {
 	case map[string]any:
 		out := make(map[string]any, len(v))
@@ -60,13 +60,13 @@ func normalizeContractValue(value any, replacements map[string]string) any {
 				out[key] = "$GIT_SHA"
 				continue
 			}
-			out[key] = normalizeContractValue(child, replacements)
+			out[key] = NormalizeContractValue(child, replacements)
 		}
 		return out
 	case []any:
 		out := make([]any, 0, len(v))
 		for _, child := range v {
-			out = append(out, normalizeContractValue(child, replacements))
+			out = append(out, NormalizeContractValue(child, replacements))
 		}
 		return out
 	case string:
@@ -178,7 +178,7 @@ func normalizeContractString(value string, replacements map[string]string) strin
 	return value
 }
 
-func normalizeMCPTextJSON(value any, replacements map[string]string) any {
+func NormalizeMCPTextJSON(value any, replacements map[string]string) any {
 	switch v := value.(type) {
 	case map[string]any:
 		out := make(map[string]any, len(v))
@@ -187,18 +187,18 @@ func normalizeMCPTextJSON(value any, replacements map[string]string) any {
 				if text, ok := child.(string); ok {
 					var nested any
 					if err := json.Unmarshal([]byte(text), &nested); err == nil {
-						out["json"] = normalizeContractValue(nested, replacements)
+						out["json"] = NormalizeContractValue(nested, replacements)
 						continue
 					}
 				}
 			}
-			out[key] = normalizeMCPTextJSON(child, replacements)
+			out[key] = NormalizeMCPTextJSON(child, replacements)
 		}
 		return out
 	case []any:
 		out := make([]any, 0, len(v))
 		for _, child := range v {
-			out = append(out, normalizeMCPTextJSON(child, replacements))
+			out = append(out, NormalizeMCPTextJSON(child, replacements))
 		}
 		return out
 	default:

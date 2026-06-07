@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"agent-harness/cmd/harness/harnessapp/responsecontract"
 )
 
 func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]string, workspaceDir, gitRepoDir string) map[string]any {
@@ -48,7 +50,7 @@ func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		"repo":   workspaceDir,
 		"branch": "2-mcp-contract",
 	})
-	mcpSnapshot["issueops_start"] = normalizeMCPTextJSON(normalizeContractValue(issueopsMCPStartRaw, replacements), replacements)
+	mcpSnapshot["issueops_start"] = responsecontract.NormalizeMCPTextJSON(responsecontract.NormalizeContractValue(issueopsMCPStartRaw, replacements), replacements)
 	issueopsMCPID, ok := issueopsMCPStartRaw["content"].([]any)[0].(map[string]any)["text"].(string)
 	if !ok || issueopsMCPID == "" {
 		t.Fatalf("MCP issueops start missing text: %#v", issueopsMCPStartRaw)

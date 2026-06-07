@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"agent-harness/cmd/harness/harnessapp/responsecontract"
 	"agent-harness/internal/core"
 )
 
@@ -43,7 +44,7 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	if err := json.Unmarshal([]byte(issueopsStartStdout), &issueopsStartRaw); err != nil {
 		t.Fatalf("unmarshal issueops start JSON %q: %v", issueopsStartStdout, err)
 	}
-	cliSnapshot["issueops_start"] = normalizeContractValue(issueopsStartRaw, replacements)
+	cliSnapshot["issueops_start"] = responsecontract.NormalizeContractValue(issueopsStartRaw, replacements)
 	issueopsID, ok := issueopsStartRaw["id"].(string)
 	if !ok || issueopsID == "" {
 		t.Fatalf("issueops start missing id: %#v", issueopsStartRaw)

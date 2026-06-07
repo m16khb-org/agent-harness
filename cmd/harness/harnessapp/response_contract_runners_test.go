@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"agent-harness/cmd/harness/harnessapp/responsecontract"
 	"agent-harness/internal/core"
 )
 
@@ -17,13 +18,13 @@ func runCLIJSONContract(t *testing.T, replacements map[string]string, fn func() 
 	if err := json.Unmarshal([]byte(stdout), &value); err != nil {
 		t.Fatalf("unmarshal CLI JSON %q: %v", stdout, err)
 	}
-	return normalizeContractValue(value, replacements)
+	return responsecontract.NormalizeContractValue(value, replacements)
 }
 
 func runMCPToolContract(t *testing.T, replacements map[string]string, name string, arguments map[string]any) any {
 	t.Helper()
 	value := runMCPToolContractRaw(t, name, arguments)
-	return normalizeMCPTextJSON(normalizeContractValue(value, replacements), replacements)
+	return responsecontract.NormalizeMCPTextJSON(responsecontract.NormalizeContractValue(value, replacements), replacements)
 }
 
 func runMCPToolContractRaw(t *testing.T, name string, arguments map[string]any) map[string]any {
