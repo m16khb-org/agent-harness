@@ -1,24 +1,27 @@
-package selfworkflow
+package historycompare
 
 import (
 	"testing"
+
+	"agent-harness/cmd/harness/selfworkflow/model"
+	"agent-harness/cmd/harness/selfworkflow/stateio"
 )
 
 func TestSelfAugmentHistoryCoversInvalidTimestampSchemaSkipAndNilSlices(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)
-	if err := WriteSelfAugmentSnapshotRecord(dir, "self-verify-invalid-time", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "self-verify-invalid-time", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          selfVerificationSummaryKind,
+		Kind:          model.SelfVerificationSummaryKind,
 		OK:            true,
 		GeneratedAt:   "not-a-time",
 		Summary:       SelfAugmentSummary{TotalRuns: 1, TotalSteps: 1},
 	}); err != nil {
 		t.Fatalf("write invalid time: %v", err)
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "self-verify-bad-schema", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "self-verify-bad-schema", SelfAugmentStateSnapshot{
 		SchemaVersion: 2,
-		Kind:          selfVerificationSummaryKind,
+		Kind:          model.SelfVerificationSummaryKind,
 		Summary:       SelfAugmentSummary{TotalRuns: 1},
 	}); err != nil {
 		t.Fatalf("write bad schema: %v", err)
@@ -40,13 +43,13 @@ func TestSelfAugmentHistoryCoversInvalidTimestampSchemaSkipAndNilSlices(t *testi
 }
 
 func TestParseSelfAugmentTimestampCoversEmptyInvalidAndRFC3339Fallback(t *testing.T) {
-	if _, ok := parseSelfAugmentTimestamp(""); ok {
+	if _, ok := ParseSelfAugmentTimestamp(""); ok {
 		t.Fatal("empty timestamp parsed")
 	}
-	if _, ok := parseSelfAugmentTimestamp("not-a-time"); ok {
+	if _, ok := ParseSelfAugmentTimestamp("not-a-time"); ok {
 		t.Fatal("invalid timestamp parsed")
 	}
-	parsed, ok := parseSelfAugmentTimestamp("2000-01-01T00:00:00Z")
+	parsed, ok := ParseSelfAugmentTimestamp("2000-01-01T00:00:00Z")
 	if !ok || parsed.Year() != 2000 {
 		t.Fatalf("expected RFC3339 timestamp to parse, parsed=%v ok=%v", parsed, ok)
 	}

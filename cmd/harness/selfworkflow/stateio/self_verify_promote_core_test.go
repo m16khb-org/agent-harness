@@ -1,8 +1,10 @@
-package selfworkflow
+package stateio
 
 import (
 	"strings"
 	"testing"
+
+	"agent-harness/cmd/harness/selfworkflow/model"
 )
 
 func TestPromoteSelfAugmentBaselineRejectsMissingKeysAndBadSource(t *testing.T) {
@@ -38,10 +40,10 @@ func TestPromoteSelfAugmentBaselinePropagatesDestinationWriteError(t *testing.T)
 	t.Setenv("HARNESS_STATE_DIR", dir)
 	source := SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          selfVerificationSummaryKind,
+		Kind:          model.SelfVerificationSummaryKind,
 		OK:            true,
 		GeneratedAt:   "2000-01-01T00:00:00Z",
-		Summary:       SelfAugmentSummary{TotalRuns: 1, TotalSteps: 1, PassedSteps: 1},
+		Summary:       model.SelfAugmentSummary{TotalRuns: 1, TotalSteps: 1, PassedSteps: 1},
 	}
 	if err := WriteSelfAugmentSnapshotRecord(dir, "candidate", source); err != nil {
 		t.Fatalf("write candidate: %v", err)
