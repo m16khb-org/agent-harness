@@ -1,4 +1,4 @@
-package issueopscli
+package benchmarkartifact
 
 import (
 	"strings"
@@ -7,8 +7,8 @@ import (
 	"agent-harness/internal/core"
 )
 
-func TestBenchmarkArtifactDefaultsForNoExtraRequirementsFixture(t *testing.T) {
-	artifact := benchmarkArtifactFromFixture(core.IssueOpsBenchmarkFixture{
+func TestDefaultsForNoExtraRequirementsFixture(t *testing.T) {
+	artifact := FromFixture(core.IssueOpsBenchmarkFixture{
 		ID:          "empty-requirements",
 		Title:       "Fallback title",
 		UserPrompt:  "   ",
@@ -36,18 +36,18 @@ func TestBenchmarkArtifactDefaultsForNoExtraRequirementsFixture(t *testing.T) {
 	}
 }
 
-func TestIssueOpsBenchmarkListHelpersSkipBlankItems(t *testing.T) {
-	if got := issueOpsBenchmarkBullets([]string{" ", "\t"}); got != "- 해당 fixture의 추가 요구사항 없음" {
+func TestListHelpersSkipBlankItems(t *testing.T) {
+	if got := Bullets([]string{" ", "\t"}); got != "- 해당 fixture의 추가 요구사항 없음" {
 		t.Fatalf("blank bullet fallback = %q", got)
 	}
-	if got := issueOpsBenchmarkBullets([]string{" first ", "", "second"}); got != "- first\n- second" {
+	if got := Bullets([]string{" first ", "", "second"}); got != "- first\n- second" {
 		t.Fatalf("trimmed bullets = %q", got)
 	}
-	if got := issueOpsBenchmarkOwnedTasks([]string{" ", ""}); got != "- Worker Fixture owns verification that this fixture has no additional task requirements." {
+	if got := OwnedTasks([]string{" ", ""}); got != "- Worker Fixture owns verification that this fixture has no additional task requirements." {
 		t.Fatalf("blank task fallback = %q", got)
 	}
 	want := "- Worker Fixture-1 owns schema validation and reports test evidence for that task.\n- Worker Fixture-3 owns cli output and reports test evidence for that task."
-	if got := issueOpsBenchmarkOwnedTasks([]string{"schema validation", "", " cli output "}); got != want {
+	if got := OwnedTasks([]string{"schema validation", "", " cli output "}); got != want {
 		t.Fatalf("trimmed owned tasks = %q", got)
 	}
 }
