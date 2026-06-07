@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/policy"
@@ -26,6 +27,9 @@ func RecordIntent(store Store, stateRoot, id string, req model.IssueOpsIntentRec
 	}
 	if interpretedIntent == rawRequest {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("interpreted_intent must differ from raw_request")
+	}
+	if !materiallyDifferentIntent(rawRequest, interpretedIntent) {
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("interpreted_intent must materially differ from raw_request")
 	}
 	successCriteria := CleanTextValues(req.SuccessCriteria)
 	if len(successCriteria) == 0 {
@@ -114,6 +118,44 @@ func HasDesignReviewEvidence(values []string) bool {
 		}
 	}
 	return false
+}
+
+func materiallyDifferentIntent(rawRequest, interpretedIntent string) bool {
+	rawTokens := intentTokenSet(rawRequest)
+	interpretedTokens := intentTokenSet(interpretedIntent)
+	if len(rawTokens) < 4 || len(interpretedTokens) < 4 {
+		return true
+	}
+	shared := 0
+	for token := range rawTokens {
+		if interpretedTokens[token] {
+			shared++
+		}
+	}
+	union := len(rawTokens) + len(interpretedTokens) - shared
+	return union == 0 || float64(shared)/float64(union) < 0.85
+}
+
+func intentTokenSet(text string) map[string]bool {
+	out := map[string]bool{}
+	for _, token := range strings.FieldsFunc(strings.ToLower(text), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	}) {
+		if token == "" || intentStopWord(token) {
+			continue
+		}
+		out[token] = true
+	}
+	return out
+}
+
+func intentStopWord(token string) bool {
+	switch token {
+	case "a", "an", "the", "please", "좀", "해주세요":
+		return true
+	default:
+		return false
+	}
 }
 
 func CleanTextValues(values []string) []string {
