@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/lifecycle/docupkeep"
 	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/lifecycle/worktreepath"
 	"agent-harness/internal/core/nextaction"
@@ -137,6 +138,27 @@ func newIssueOpsID(repo, branch string) string {
 
 func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
 	return issueops.WriteIssueOps(stateRoot, record)
+}
+
+func AppendDocUpkeepEvent(repoRoot string, event DocUpkeepEvent) (DocUpkeepAppendResult, error) {
+	return docupkeep.Append(docUpkeepStore(), repoRoot, event)
+}
+
+func ReadPendingDocUpkeepEvents(repoRoot string, limit int) ([]DocUpkeepEvent, ProjectLifecycleStatePlan, error) {
+	return docupkeep.ReadPending(docUpkeepStore(), repoRoot, limit)
+}
+
+func docUpkeepStore() docupkeep.Store {
+	return docupkeep.Store{
+		Validate: ValidateProjectLifecycleState,
+		Init: func(repoRoot string, confirm bool) (ProjectLifecycleStatePlan, error) {
+			return InitProjectLifecycleState(repoRoot, confirm)
+		},
+	}
+}
+
+func normalizeTargetDocs(docs []string) []string {
+	return docupkeep.NormalizeTargetDocs(docs)
 }
 
 func worktreeGuardTargets(req HookToolUseLifecycleRequest) []string {
