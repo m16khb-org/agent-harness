@@ -1,13 +1,18 @@
-package selfworkflow
+package loopresult
 
-func NewSelfVerifyLoopResult(iterations int, baseSeed int64, targetScore float64) SelfAugmentResult {
-	return SelfAugmentResult{
+import (
+	"agent-harness/cmd/harness/selfworkflow/model"
+	"agent-harness/cmd/harness/selfworkflow/progress"
+)
+
+func New(iterations int, baseSeed int64, targetScore float64, root string) model.SelfAugmentResult {
+	return model.SelfAugmentResult{
 		LoopKind:    "self_verification",
-		KoreanName:  selfVerificationKoreanName,
+		KoreanName:  model.SelfVerificationKoreanName,
 		Iterations:  iterations,
 		BaseSeed:    baseSeed,
 		TargetScore: targetScore,
-		HarnessRoot: HarnessRoot(),
+		HarnessRoot: root,
 		InspiredBy:  "/Users/habin/workspace/eye-tracking-scroll/scripts/self-augment.js",
 		LoopContract: []string{
 			"quick mode runs one deterministic evidence pass before the final LLM gate",
@@ -21,11 +26,11 @@ func NewSelfVerifyLoopResult(iterations int, baseSeed int64, targetScore float64
 	}
 }
 
-func EmitSelfVerifyLoopStart(progress *SelfVerifyProgressReporter, loopKind string, iterations int, seed int64) {
-	if progress == nil {
+func EmitStart(reporter *progress.SelfVerifyProgressReporter, loopKind string, iterations int, seed int64) {
+	if reporter == nil {
 		return
 	}
-	progress.Emit(SelfVerifyProgressEvent{
+	reporter.Emit(progress.SelfVerifyProgressEvent{
 		Event:      "loop_start",
 		LoopKind:   loopKind,
 		Iterations: iterations,
@@ -33,11 +38,11 @@ func EmitSelfVerifyLoopStart(progress *SelfVerifyProgressReporter, loopKind stri
 	})
 }
 
-func EmitSelfVerifyLoopEnd(progress *SelfVerifyProgressReporter, loopKind string, iterations int, seed int64, ok bool, errorText string) {
-	if progress == nil {
+func EmitEnd(reporter *progress.SelfVerifyProgressReporter, loopKind string, iterations int, seed int64, ok bool, errorText string) {
+	if reporter == nil {
 		return
 	}
-	event := SelfVerifyProgressEvent{
+	event := progress.SelfVerifyProgressEvent{
 		Event:      "loop_end",
 		LoopKind:   loopKind,
 		Iterations: iterations,
@@ -47,5 +52,9 @@ func EmitSelfVerifyLoopEnd(progress *SelfVerifyProgressReporter, loopKind string
 	if errorText != "" {
 		event.Error = errorText
 	}
-	progress.Emit(event)
+	reporter.Emit(event)
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }

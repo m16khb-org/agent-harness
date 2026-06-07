@@ -1,6 +1,9 @@
 package selfworkflow
 
-import "agent-harness/cmd/harness/selfworkflow/candidateexport"
+import (
+	"agent-harness/cmd/harness/selfworkflow/candidateexport"
+	"agent-harness/cmd/harness/selfworkflow/loopresult"
+)
 
 func ExportSelfVerificationCandidates() SelfVerificationCandidateExportResult {
 	return candidateexport.ExportSelfVerificationCandidates(HarnessRoot())
@@ -24,6 +27,18 @@ func SelfVerificationCandidateIDsByStatus(candidates []SelfVerificationCandidate
 
 func BuildSelfVerificationContract() SelfVerificationContract {
 	return selfVerificationContract()
+}
+
+func NewSelfVerifyLoopResult(iterations int, baseSeed int64, targetScore float64) SelfAugmentResult {
+	return loopresult.New(iterations, baseSeed, targetScore, HarnessRoot())
+}
+
+func EmitSelfVerifyLoopStart(progress *SelfVerifyProgressReporter, loopKind string, iterations int, seed int64) {
+	loopresult.EmitStart(progress, loopKind, iterations, seed)
+}
+
+func EmitSelfVerifyLoopEnd(progress *SelfVerifyProgressReporter, loopKind string, iterations int, seed int64, ok bool, errorText string) {
+	loopresult.EmitEnd(progress, loopKind, iterations, seed, ok, errorText)
 }
 
 func BuildSelfVerificationCoverage(stepLabels []string) ([]SelfVerificationCoverage, []string) {
