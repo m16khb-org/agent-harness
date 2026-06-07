@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
 	"strings"
 )
@@ -71,7 +72,7 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		missing = append(missing, "worktree_exists")
 	}
 
-	ready.Missing = uniqSorted(missing)
+	ready.Missing = stringlist.UniqueSorted(missing)
 	ready.Warnings = warnings
 	ready.AISlopCleanHead = record.AISlopCleanHead
 	ready.CurrentHead = currentHead

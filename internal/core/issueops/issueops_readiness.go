@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"agent-harness/internal/core/issueops/readinesspaths"
+	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
 	"strings"
 )
@@ -14,7 +15,7 @@ func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
-		Missing:      uniqSorted(missing),
+		Missing:      stringlist.UniqueSorted(missing),
 		IssueURL:     record.IssueURL,
 		PlanPath:     record.PlanPath,
 		WorktreePath: record.WorktreePath,
@@ -28,7 +29,7 @@ func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if !issueOpsHasImplementationEvidence(record) {
 		missing = append(missing, "implementation_changes")
 	}
-	missing = uniqSorted(missing)
+	missing = stringlist.UniqueSorted(missing)
 	ready.Missing = missing
 	ready.Ready = len(missing) == 0
 	return ready
@@ -50,7 +51,7 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
-		Missing:      uniqSorted(missing),
+		Missing:      stringlist.UniqueSorted(missing),
 		IssueURL:     record.IssueURL,
 		PlanPath:     record.PlanPath,
 		WorktreePath: record.WorktreePath,

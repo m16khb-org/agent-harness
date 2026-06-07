@@ -9,6 +9,7 @@ import (
 	"agent-harness/internal/core/issueops/linking"
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/start"
+	"agent-harness/internal/core/issueops/stringlist"
 )
 
 type IssueOpsStartRequest = model.IssueOpsStartRequest
@@ -179,6 +180,6 @@ func issueOpsLinkingStore() linking.Store {
 		PlanPathExists:         issueOpsPlanPathExists,
 		PlanPathInsideWorktree: issueOpsPlanPathInsideWorktree,
 		WorktreePathValid:      issueOpsWorktreePathValid,
-		UniqueSorted:           uniqSorted,
+		UniqueSorted:           stringlist.UniqueSorted,
 	}
 }

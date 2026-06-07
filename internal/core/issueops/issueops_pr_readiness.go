@@ -1,6 +1,10 @@
 package issueops
 
-import "strings"
+import (
+	"strings"
+
+	"agent-harness/internal/core/issueops/stringlist"
+)
 
 func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	missing := issueOpsBaseImplementationMissing(record)
@@ -19,7 +23,7 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if issueOpsHasUnresolvedContractFeedback(record) {
 		missing = append(missing, "contract_feedback_issue_update")
 	}
-	missing = uniqSorted(missing)
+	missing = stringlist.UniqueSorted(missing)
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,

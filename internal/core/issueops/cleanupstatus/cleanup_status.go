@@ -3,9 +3,9 @@ package cleanupstatus
 import (
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
+	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
 	"os"
-	"sort"
 	"strings"
 )
 
@@ -33,7 +33,7 @@ func RemoteArtifactMissing(record model.IssueOpsRecord) []string {
 	if len(remote.CleanValues(record.RemoteArtifact.Assignees)) == 0 {
 		missing = append(missing, "remote_artifact_assignees")
 	}
-	return uniqSorted(missing)
+	return stringlist.UniqueSorted(missing)
 }
 
 func ByID(store Store, stateRoot, id string, req model.IssueOpsCleanupStatusRequest) (model.IssueOpsCleanupStatus, error) {
@@ -102,8 +102,8 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 }
 
 func finishIssueOpsCleanupStatus(status model.IssueOpsCleanupStatus) model.IssueOpsCleanupStatus {
-	status.Missing = uniqSorted(status.Missing)
-	status.Warnings = uniqSorted(status.Warnings)
+	status.Missing = stringlist.UniqueSorted(status.Missing)
+	status.Warnings = stringlist.UniqueSorted(status.Warnings)
 	status.Ready = len(status.Missing) == 0
 	if status.Ready {
 		status.Choices = []string{
@@ -128,20 +128,6 @@ func worktreePathValid(path string) bool {
 	}
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
-}
-
-func uniqSorted(in []string) []string {
-	seen := map[string]bool{}
-	out := []string{}
-	for _, v := range in {
-		if v == "" || seen[v] {
-			continue
-		}
-		seen[v] = true
-		out = append(out, v)
-	}
-	sort.Strings(out)
-	return out
 }
 
 func firstIssueOpsGitRemote(worktree string) string {
