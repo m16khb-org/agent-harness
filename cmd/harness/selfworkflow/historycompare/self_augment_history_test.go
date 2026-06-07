@@ -1,62 +1,11 @@
-package selfworkflow
+package historycompare
 
 import (
-	"path/filepath"
 	"testing"
 
+	"agent-harness/cmd/harness/selfworkflow/stateio"
 	"agent-harness/internal/core"
 )
-
-func TestPromoteSelfAugmentBaseline(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
-	summary := SelfAugmentSummary{TotalRuns: 10, TotalSteps: 20, PassedSteps: 20, StepLabels: []string{"go test"}}
-	source := SelfAugmentStateSnapshot{
-		SchemaVersion: 1,
-		Kind:          "self_verification_summary",
-		OK:            true,
-		Iterations:    10,
-		BaseSeed:      700,
-		ElapsedMS:     1000,
-		HarnessRoot:   "/tmp/harness",
-		GeneratedAt:   "2000-01-01T00:00:00Z",
-		Summary:       summary,
-	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "candidate", source); err != nil {
-		t.Fatalf("write candidate: %v", err)
-	}
-	dry, err := PromoteSelfAugmentBaseline("candidate", "baseline", false)
-	if err != nil {
-		t.Fatalf("promote dry-run: %v", err)
-	}
-	if !dry.OK || !dry.DryRun || dry.Promoted {
-		t.Fatalf("unexpected dry-run promote result: %+v", dry)
-	}
-	if _, err := core.StateRead("baseline"); err == nil {
-		t.Fatalf("dry-run wrote baseline")
-	}
-	confirmed, err := PromoteSelfAugmentBaseline("candidate", "baseline", true)
-	if err != nil {
-		t.Fatalf("promote confirm: %v", err)
-	}
-	if !confirmed.OK || confirmed.DryRun || !confirmed.Promoted || confirmed.Path != filepath.Join(dir, "baseline.json") {
-		t.Fatalf("unexpected confirmed promote result: %+v", confirmed)
-	}
-	baseline, err := ReadSelfAugmentStateSnapshot("baseline")
-	if err != nil {
-		t.Fatalf("read promoted baseline: %v", err)
-	}
-	if baseline.GeneratedAt != source.GeneratedAt || baseline.Summary.TotalSteps != source.Summary.TotalSteps {
-		t.Fatalf("promoted baseline drifted: %+v", baseline)
-	}
-	compared, err := CompareSelfAugmentSummaries("baseline", "candidate", 0)
-	if err != nil {
-		t.Fatalf("compare promoted: %v", err)
-	}
-	if compared.Regressed || compared.ElapsedDeltaMS != 0 {
-		t.Fatalf("promoted baseline should compare cleanly: %+v", compared)
-	}
-}
 
 func TestSelfAugmentHistory(t *testing.T) {
 	dir := t.TempDir()
@@ -70,7 +19,7 @@ func TestSelfAugmentHistory(t *testing.T) {
 			{Iteration: 1, Seed: 800, Label: "go test", DurationMS: 1000},
 		},
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "self-verify-old", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "self-verify-old", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -82,7 +31,7 @@ func TestSelfAugmentHistory(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("write old snapshot: %v", err)
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "self-verify-new", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "self-verify-new", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -94,7 +43,7 @@ func TestSelfAugmentHistory(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("write new snapshot: %v", err)
 	}
-	if err := WriteSelfAugmentSnapshotRecord(dir, "other-summary", SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, "other-summary", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
 		OK:            true,
@@ -183,4 +132,13 @@ func TestSelfAugmentHistoryRetentionRejectsUnsafeOptions(t *testing.T) {
 	if _, err := SelfAugmentHistory("self-verify", 0, SelfAugmentHistoryRetentionOptions{PruneRequested: true}); err == nil {
 		t.Fatalf("prune-retention without positive retention limit was accepted")
 	}
+}
+
+func historySkippedKey(skipped []SelfAugmentHistorySkipped, key string) bool {
+	for _, item := range skipped {
+		if item.Key == key {
+			return true
+		}
+	}
+	return false
 }
