@@ -41,6 +41,22 @@ func TestSelectedSelfVerificationCandidateIDReturnsStableFallback(t *testing.T) 
 	}
 }
 
+func TestSaveSelfVerificationCandidateExportRejectsInvalidStateKey(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	export := SelfVerificationCandidateExportResult{
+		OK:         true,
+		Kind:       SelfVerificationCandidateExportKind,
+		LoopKind:   "self_verification",
+		KoreanName: "자기 검증 루프",
+	}
+	if err := SaveSelfVerificationCandidateExport(&export, "!bad-key"); err == nil {
+		t.Fatal("expected self-verify candidate export save to reject invalid state key")
+	}
+	if export.StateCheckpoint == nil || export.StateCheckpoint.OK || export.StateCheckpoint.Error == "" {
+		t.Fatalf("unexpected export checkpoint after invalid save: %#v", export.StateCheckpoint)
+	}
+}
+
 func containsString(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {

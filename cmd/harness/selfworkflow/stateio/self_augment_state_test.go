@@ -44,3 +44,14 @@ func TestSaveSelfAugmentPlan(t *testing.T) {
 		t.Fatalf("saved plan did not preserve candidate memory: %+v", snapshot)
 	}
 }
+
+func TestSaveSelfAugmentPlanRejectsInvalidStateKey(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	result := augmentplan.Plan(model.SelfAugmentPlanRequest{Cycles: 1, TargetScore: 99}, ".", "test")
+	if err := SaveSelfAugmentPlan(&result, "!bad-key"); err == nil {
+		t.Fatal("expected self-augment plan save to reject invalid state key")
+	}
+	if result.StateCheckpoint == nil || result.StateCheckpoint.OK || result.StateCheckpoint.Error == "" {
+		t.Fatalf("unexpected plan checkpoint after invalid save: %#v", result.StateCheckpoint)
+	}
+}

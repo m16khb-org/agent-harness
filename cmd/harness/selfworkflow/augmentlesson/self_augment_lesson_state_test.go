@@ -39,6 +39,17 @@ func TestSaveSelfAugmentLesson(t *testing.T) {
 	}
 }
 
+func TestSaveSelfAugmentLessonRejectsMissingRequiredFields(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+
+	if result, err := SaveSelfAugmentLesson(model.SelfAugmentLessonRequest{CandidateID: "candidate-one"}, Deps{}); err == nil || !strings.Contains(err.Error(), "lesson is required") || result.OK {
+		t.Fatalf("expected missing lesson error, result=%#v err=%v", result, err)
+	}
+	if result, err := SaveSelfAugmentLesson(model.SelfAugmentLessonRequest{CandidateID: "candidate-one", Lesson: "learned"}, Deps{}); err == nil || !strings.Contains(err.Error(), "next-action is required") || result.OK {
+		t.Fatalf("expected missing next-action error, result=%#v err=%v", result, err)
+	}
+}
+
 func TestStateKeySlugNormalizesUnsafeText(t *testing.T) {
 	tests := []struct {
 		name string
