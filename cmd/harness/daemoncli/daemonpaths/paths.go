@@ -1,4 +1,4 @@
-package daemoncli
+package daemonpaths
 
 import (
 	"fmt"
@@ -9,7 +9,15 @@ import (
 	"syscall"
 )
 
-func currentDaemonPaths() (daemonPaths, error) {
+type Paths struct {
+	Dir    string `json:"dir"`
+	Socket string `json:"socket"`
+	PID    string `json:"pid_file"`
+	Lock   string `json:"lock_file"`
+	Log    string `json:"log_file"`
+}
+
+func Current() (Paths, error) {
 	dir := strings.TrimSpace(os.Getenv("HARNESS_DAEMON_DIR"))
 	if dir == "" {
 		if state := strings.TrimSpace(os.Getenv("HARNESS_STATE_DIR")); state != "" {
@@ -17,15 +25,15 @@ func currentDaemonPaths() (daemonPaths, error) {
 		} else if home, err := os.UserHomeDir(); err == nil && home != "" {
 			dir = filepath.Join(home, ".local", "state", "agent-harness", "daemon")
 		} else {
-			return daemonPaths{}, fmt.Errorf("cannot resolve daemon directory")
+			return Paths{}, fmt.Errorf("cannot resolve daemon directory")
 		}
 	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		return daemonPaths{}, err
+		return Paths{}, err
 	}
 	abs = filepath.Clean(abs)
-	return daemonPaths{
+	return Paths{
 		Dir:    abs,
 		Socket: filepath.Join(abs, "agent-harness.sock"),
 		PID:    filepath.Join(abs, "agent-harness.pid"),
@@ -34,7 +42,7 @@ func currentDaemonPaths() (daemonPaths, error) {
 	}, nil
 }
 
-func readDaemonPID(path string) int {
+func ReadPID(path string) int {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return 0
@@ -46,7 +54,7 @@ func readDaemonPID(path string) int {
 	return pid
 }
 
-func processAlive(pid int) bool {
+func ProcessAlive(pid int) bool {
 	if pid <= 0 {
 		return false
 	}

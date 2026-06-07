@@ -5,15 +5,11 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"agent-harness/cmd/harness/daemoncli/daemonpaths"
 )
 
-type daemonPaths struct {
-	Dir    string `json:"dir"`
-	Socket string `json:"socket"`
-	PID    string `json:"pid_file"`
-	Lock   string `json:"lock_file"`
-	Log    string `json:"log_file"`
-}
+type daemonPaths = daemonpaths.Paths
 
 type daemonStatus struct {
 	OK      bool        `json:"ok"`
@@ -24,6 +20,18 @@ type daemonStatus struct {
 }
 
 const daemonReadyTimeout = 15 * time.Second
+
+func currentDaemonPaths() (daemonPaths, error) {
+	return daemonpaths.Current()
+}
+
+func readDaemonPID(path string) int {
+	return daemonpaths.ReadPID(path)
+}
+
+func processAlive(pid int) bool {
+	return daemonpaths.ProcessAlive(pid)
+}
 
 func runDaemon(args []string) error {
 	if len(args) > 0 && args[0] == "--internal" {
