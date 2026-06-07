@@ -1,4 +1,4 @@
-package issueops
+package linking
 
 import (
 	"fmt"
@@ -6,10 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 )
 
-func validateIssueOpsIsolatedWorktreePath(record IssueOpsRecord, path string) error {
+func ValidateIsolatedWorktreePath(record model.IssueOpsRecord, path string) error {
 	repo := pathutil.CleanAbsPath(record.Repo)
 	worktree := pathutil.CleanAbsPath(path)
 	if repo == "" || worktree == "" {
@@ -47,7 +48,7 @@ func validateIssueOpsIsolatedWorktreePath(record IssueOpsRecord, path string) er
 	return nil
 }
 
-func validateIssueOpsWorktreeBranch(record IssueOpsRecord, path string) error {
+func ValidateWorktreeBranch(record model.IssueOpsRecord, path string) error {
 	expected := strings.TrimSpace(record.Branch)
 	if expected == "" {
 		return nil

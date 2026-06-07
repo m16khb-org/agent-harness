@@ -6,6 +6,7 @@ import (
 	"agent-harness/internal/core/issueops/branchprepare"
 	"agent-harness/internal/core/issueops/cleanupstatus"
 	"agent-harness/internal/core/issueops/intentdesign"
+	"agent-harness/internal/core/issueops/linking"
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/start"
 )
@@ -114,7 +115,7 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 	return branchprepare.Store{
 		Read:             ReadIssueOps,
 		TouchWrite:       touchAndWriteIssueOps,
-		ValidateIssueURL: validateIssueURL,
+		ValidateIssueURL: linking.ValidateIssueURL,
 	}
 }
 
@@ -148,5 +149,36 @@ func issueOpsIntentDesignStore() intentdesign.Store {
 		Read:          ReadIssueOps,
 		TouchWrite:    touchAndWriteIssueOps,
 		PlanReadiness: IssueOpsPlanReadiness,
+	}
+}
+
+func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
+	return linking.LinkIssue(issueOpsLinkingStore(), stateRoot, id, issueURL)
+}
+
+func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
+	return linking.LinkPlan(issueOpsLinkingStore(), stateRoot, id, planPath)
+}
+
+func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
+	return linking.LinkWorktree(issueOpsLinkingStore(), stateRoot, id, worktreePath)
+}
+
+func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
+	return linking.LinkChild(issueOpsLinkingStore(), stateRoot, id, childURL, title)
+}
+
+func issueOpsLinkingStore() linking.Store {
+	return linking.Store{
+		Read:                   ReadIssueOps,
+		TouchWrite:             touchAndWriteIssueOps,
+		PlanReadiness:          IssueOpsPlanReadiness,
+		PhaseRank:              issueOpsPhaseRank,
+		BranchEvidenceMissing:  issueOpsBranchEvidenceMissing,
+		DesignReviewMissing:    issueOpsDesignReviewMissing,
+		PlanPathExists:         issueOpsPlanPathExists,
+		PlanPathInsideWorktree: issueOpsPlanPathInsideWorktree,
+		WorktreePathValid:      issueOpsWorktreePathValid,
+		UniqueSorted:           uniqSorted,
 	}
 }
