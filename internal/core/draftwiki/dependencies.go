@@ -20,6 +20,10 @@ import (
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir
 
+const QueueFile = queue.File
+const QueueLockFile = queue.LockFile
+const MaxQueueEvents = queue.MaxEvents
+
 const (
 	WorkerStatusQueued    = coreworker.WorkerStatusQueued
 	WorkerStatusRunning   = coreworker.WorkerStatusRunning
@@ -37,6 +41,13 @@ type ExternalLLMPrintRequest = externalllm.ExternalLLMPrintRequest
 type ExternalLLMPrintResult = externalllm.ExternalLLMPrintResult
 type StructuredPromptSpec = prompt.StructuredPromptSpec
 type PromptDataSection = prompt.PromptDataSection
+type DraftWikiQueueAppendRequest = queue.AppendRequest
+type DraftWikiQueueEvent = queue.Event
+type DraftWikiQueueAppendResult = queue.AppendResult
+type DraftWikiQueueProcessRequest = queue.ProcessRequest
+type DraftWikiQueueProcessResult = queue.ProcessResult
+type DraftWikiQueuePruneResult = queue.PruneResult
+type DraftWikiQueuePruneAllResult = queue.PruneAllResult
 
 func draftWikiQueuePath(repoRoot string, ensure bool) (ProjectLifecycleStatePlan, string, error) {
 	plan, err := lifecycle.ValidateProjectLifecycleState(repoRoot)
@@ -59,7 +70,15 @@ func trimDraftWikiQueueMaterial(material string) string {
 	return queue.TrimMaterial(material)
 }
 
+func TrimQueueMaterial(material string) string {
+	return queue.TrimMaterial(material)
+}
+
 func draftWikiQueueEventID(repoID, material, at string) string {
+	return queue.EventID(repoID, material, at)
+}
+
+func QueueEventID(repoID, material, at string) string {
 	return queue.EventID(repoID, material, at)
 }
 
@@ -67,11 +86,31 @@ func acquireDraftWikiQueueLock(projectStateDir string) (func(), bool, error) {
 	return queue.AcquireLock(projectStateDir)
 }
 
+func AcquireQueueLock(projectStateDir string) (func(), bool, error) {
+	return queue.AcquireLock(projectStateDir)
+}
+
+func CountQueueLines(path string, limit int) (int, error) {
+	return queue.CountLines(path, limit)
+}
+
 func readDraftWikiQueueEvents(path string) ([]DraftWikiQueueEvent, []string, error) {
 	return queue.ReadEvents(path)
 }
 
+func ReadQueueEvents(path string) ([]DraftWikiQueueEvent, []string, error) {
+	return queue.ReadEvents(path)
+}
+
+func FormatQueueMalformedWarning(lineNumber int, line string) string {
+	return queue.FormatMalformedWarning(lineNumber, line)
+}
+
 func appendDraftWikiQueueEvent(path string, event DraftWikiQueueEvent) error {
+	return queue.AppendEvent(path, event)
+}
+
+func AppendQueueEvent(path string, event DraftWikiQueueEvent) error {
 	return queue.AppendEvent(path, event)
 }
 
@@ -79,11 +118,23 @@ func capDraftWikiQueueEvents(path string, keep int) error {
 	return queue.CapEvents(path, keep)
 }
 
+func CapQueueEvents(path string, keep int) error {
+	return queue.CapEvents(path, keep)
+}
+
 func pruneDraftWikiQueuePath(path string, keep int) (DraftWikiQueuePruneResult, error) {
 	return queue.PrunePath(path, keep)
 }
 
+func PruneQueuePath(path string, keep int) (DraftWikiQueuePruneResult, error) {
+	return queue.PrunePath(path, keep)
+}
+
 var rewriteDraftWikiQueueEventsFunc = func(path string, events []DraftWikiQueueEvent) error {
+	return queue.RewriteEvents(path, events)
+}
+
+func RewriteQueueEvents(path string, events []DraftWikiQueueEvent) error {
 	return queue.RewriteEvents(path, events)
 }
 
