@@ -1,6 +1,7 @@
-package issueopscli
+package remotecmd
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -9,7 +10,14 @@ import (
 	"agent-harness/internal/core"
 )
 
-func runIssueOpsRemote(args []string) error {
+type Deps struct {
+	PrintJSON   func(any) error
+	PrintResult func(core.IssueOpsRecord, bool, error) error
+	PrintError  func(error) error
+	VerifyLive  func(core.IssueOpsRemoteArtifactVerificationRequest) error
+}
+
+func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage: agent-harness issueops remote score --input PATH [--judge none|agy] [--json]\n       agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
 		return nil
@@ -27,13 +35,13 @@ func runIssueOpsRemote(args []string) error {
 		judge := fs.String("judge", "agy", "judge backend: agy or none")
 		agyCommand := fs.String("agy-command", "agy", "agy command path")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+		if help, err := parseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		req, err := readIssueOpsRemoteScoringRequestFile(*input)
 		if err != nil {
 			if *jsonOut {
-				if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+				if printErr := deps.printError(err); printErr != nil {
 					return printErr
 				}
 			}
@@ -54,14 +62,14 @@ func runIssueOpsRemote(args []string) error {
 		}
 		if err != nil {
 			if *jsonOut {
-				if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+				if printErr := deps.printError(err); printErr != nil {
 					return printErr
 				}
 			}
 			return err
 		}
 		if *jsonOut {
-			return printJSON(result)
+			return deps.printJSON(result)
 		}
 		fmt.Printf("provider=%s threshold=%.2f related_issues=%d labels=%d\n", result.Provider, result.Threshold, len(result.SelectedRelatedIssues), len(result.SelectedLabels))
 		for _, issue := range result.SelectedRelatedIssues {
@@ -84,7 +92,7 @@ func runIssueOpsRemote(args []string) error {
 		fs.Var(&assignees, "assignee", "verified remote assignee; may be repeated")
 		fs.Var(&assignees, "assignees", "verified remote assignee; may be repeated")
 		jsonOut := fs.Bool("json", false, "print JSON")
-		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+		if help, err := parseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
 		req := core.IssueOpsRemoteArtifactVerificationRequest{
@@ -97,15 +105,66 @@ func runIssueOpsRemote(args []string) error {
 		_, err := core.ValidateIssueOpsRemoteArtifactVerification(core.IssueOpsStateRoot(), *id, req)
 		var record core.IssueOpsRecord
 		if err == nil {
-			err = verifyIssueOpsRemoteArtifactLive(req)
+			err = deps.verifyLive(req)
 		}
 		if err == nil {
 			record, err = core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), *id, req)
 		}
-		return printIssueOpsResult(record, *jsonOut, err)
+		return deps.printResult(record, *jsonOut, err)
 	default:
 		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
 	}
+}
+
+func (deps Deps) printJSON(v any) error {
+	if deps.PrintJSON != nil {
+		return deps.PrintJSON(v)
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}
+
+func (deps Deps) printError(err error) error {
+	if deps.PrintError != nil {
+		return deps.PrintError(err)
+	}
+	return err
+}
+
+func (deps Deps) printResult(record core.IssueOpsRecord, jsonOut bool, err error) error {
+	if deps.PrintResult != nil {
+		return deps.PrintResult(record, jsonOut, err)
+	}
+	return err
+}
+
+func (deps Deps) verifyLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+	if deps.VerifyLive != nil {
+		return deps.VerifyLive(req)
+	}
+	return nil
+}
+
+func parseFlags(fs *flag.FlagSet, args []string) (bool, error) {
+	if err := fs.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
+}
+
+type repeatedFlag []string
+
+func (f *repeatedFlag) String() string {
+	return strings.Join(*f, ",")
+}
+
+func (f *repeatedFlag) Set(value string) error {
+	*f = append(*f, value)
+	return nil
 }
 
 func formatIssueOpsRemoteIssueRef(issue core.IssueOpsRemoteScoredItem) string {

@@ -3,6 +3,7 @@ package issueopscli
 import (
 	"agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"flag"
 	"fmt"
 
@@ -103,9 +104,9 @@ func runIssueOps(args []string) error {
 	case "benchmark":
 		return benchmarkcmd.Run(args[1:])
 	case "remote":
-		return runIssueOpsRemote(args[1:])
+		return remotecmd.Run(args[1:], issueOpsRemoteDeps())
 	case "remote-score":
-		return runIssueOpsRemote(append([]string{"score"}, args[1:]...))
+		return remotecmd.Run(append([]string{"score"}, args[1:]...), issueOpsRemoteDeps())
 	case "pr-readiness":
 		fs := flag.NewFlagSet("issueops pr-readiness", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
@@ -137,6 +138,15 @@ func runIssueOps(args []string) error {
 		return nil
 	default:
 		return fmt.Errorf("unknown issueops subcommand %q", args[0])
+	}
+}
+
+func issueOpsRemoteDeps() remotecmd.Deps {
+	return remotecmd.Deps{
+		PrintJSON:   printJSON,
+		PrintResult: printIssueOpsResult,
+		PrintError:  printIssueOpsErrorJSON,
+		VerifyLive:  verifyIssueOpsRemoteArtifactLive,
 	}
 }
 
