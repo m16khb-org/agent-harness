@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/selfworkflow/augmentcatalog"
+	"agent-harness/cmd/harness/selfworkflow/augmentplan"
 	"agent-harness/cmd/harness/selfworkflow/historycompare"
 )
 
@@ -101,6 +102,10 @@ func ParseSelfAugmentTimestamp(value string) (time.Time, bool) {
 
 func PlanSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 	return planSelfAugmentation(req)
+}
+
+func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
+	return augmentplan.Plan(req, HarnessRoot(), Version)
 }
 
 func ScoreBool(ok bool) float64 {

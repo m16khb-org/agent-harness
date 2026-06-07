@@ -1,4 +1,4 @@
-package selfworkflow
+package augmentplan
 
 import (
 	"os"
@@ -6,11 +6,15 @@ import (
 	"sort"
 	"time"
 
+	"agent-harness/cmd/harness/selfworkflow/augmentcatalog"
+	"agent-harness/cmd/harness/selfworkflow/model"
 	"agent-harness/internal/core"
 )
 
-func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
-	root := HarnessRoot()
+type Request = model.SelfAugmentPlanRequest
+type Result = model.SelfAugmentPlanResult
+
+func Plan(req Request, root, version string) Result {
 	geniusPath := filepath.Join(root, "GENIUS_THINK.md")
 	geniusText := ""
 	warnings := []string{}
@@ -19,34 +23,34 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 	} else {
 		warnings = append(warnings, "GENIUS_THINK.md not found; augmentation can still run but loses the local genius-thinking heuristic")
 	}
-	docs := core.DocsIndex(root, Version)
+	docs := core.DocsIndex(root, version)
 	skills, err := core.ListSkillNames(root)
 	if err != nil {
 		warnings = append(warnings, "list skills: "+err.Error())
 	}
-	signals := collectSelfAugmentRepoSignals(root, len(docs.Docs), skills, geniusText)
-	goals := []SelfAugmentGoal{
+	signals := augmentcatalog.CollectSelfAugmentRepoSignals(root, len(docs.Docs), skills, geniusText)
+	goals := []model.SelfAugmentGoal{
 		{
 			Name: "curriculum_selection", KoreanName: "개선 목표 선별", TargetScore: req.TargetScore,
-			Score:       scoreBool(signals.HasGeniusThink && docs.OK),
+			Score:       augmentcatalog.ScoreBool(signals.HasGeniusThink && docs.OK),
 			Description: "GENIUS_THINK.md와 repo evidence로 10개 이상 후보를 만들고 가치·위험·실현 가능성을 수치화한다.",
 			Evidence:    []string{"GENIUS_THINK.md", "docs index", "skill inventory"},
 		},
 		{
 			Name: "implementation_delta", KoreanName: "개선 구현", TargetScore: req.TargetScore,
-			Score:       scoreBool(false),
+			Score:       augmentcatalog.ScoreBool(false),
 			Description: "선택 후보를 실제 코드/문서/스킬 diff로 구현한다. 단순 보고서만으로는 통과하지 않는다.",
 			Evidence:    []string{"git diff", "targeted implementation"},
 		},
 		{
 			Name: "verification_qa", KoreanName: "검증·QA", TargetScore: req.TargetScore,
-			Score:       scoreBool(false),
+			Score:       augmentcatalog.ScoreBool(false),
 			Description: "Targeted tests, QA smoke checks, and the self-verification loop must pass.",
 			Evidence:    []string{"go test", "QA gate", "harness self-verify"},
 		},
 		{
 			Name: "learning_capture", KoreanName: "학습 기록", TargetScore: req.TargetScore,
-			Score:       scoreBool(false),
+			Score:       augmentcatalog.ScoreBool(false),
 			Description: "실패/성공 원인과 다음 개선점을 state/docs 중 적절한 위치에 남긴다.",
 			Evidence:    []string{"harness state", ".agent-harness"},
 		},
@@ -54,10 +58,10 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 	for i := range goals {
 		goals[i].Passed = goals[i].Score > goals[i].TargetScore
 	}
-	candidates := selfAugmentCandidates(signals)
+	candidates := augmentcatalog.SelfAugmentCandidates(signals)
 	sort.Slice(candidates, func(i, j int) bool {
-		leftOpen := candidates[i].Status == selfAugmentCandidateStatusOpen
-		rightOpen := candidates[j].Status == selfAugmentCandidateStatusOpen
+		leftOpen := candidates[i].Status == augmentcatalog.SelfAugmentCandidateStatusOpen
+		rightOpen := candidates[j].Status == augmentcatalog.SelfAugmentCandidateStatusOpen
 		if leftOpen != rightOpen {
 			return leftOpen
 		}
@@ -66,27 +70,27 @@ func planSelfAugmentation(req SelfAugmentPlanRequest) SelfAugmentPlanResult {
 		}
 		return candidates[i].ID < candidates[j].ID
 	})
-	var selected *SelfAugmentCandidate
+	var selected *model.SelfAugmentCandidate
 	for _, candidate := range candidates {
-		if candidate.Status == selfAugmentCandidateStatusOpen {
+		if candidate.Status == augmentcatalog.SelfAugmentCandidateStatusOpen {
 			copyCandidate := candidate
 			selected = &copyCandidate
 			break
 		}
 	}
-	return SelfAugmentPlanResult{
+	return Result{
 		OK:                  true,
 		LoopKind:            "self_augmentation",
-		KoreanName:          selfAugmentationKoreanName,
+		KoreanName:          model.SelfAugmentationKoreanName,
 		Cycles:              req.Cycles,
 		TargetScore:         req.TargetScore,
-		TerminationEligible: allSelfAugmentGoalsPassed(goals),
+		TerminationEligible: augmentcatalog.AllSelfAugmentGoalsPassed(goals),
 		HarnessRoot:         root,
 		GeneratedAt:         time.Now().UTC().Format(time.RFC3339Nano),
 		GeniusThinkPath:     geniusPath,
 		UsesGeniusThink:     signals.HasGeniusThink,
-		SelectedFormulas:    selectGeniusFormulas(geniusText),
-		ResearchInfluences:  selfAugmentResearchInfluences(),
+		SelectedFormulas:    augmentcatalog.SelectGeniusFormulas(geniusText),
+		ResearchInfluences:  augmentcatalog.SelfAugmentResearchInfluences(),
 		Goals:               goals,
 		Candidates:          candidates,
 		SelectedCandidate:   selected,
