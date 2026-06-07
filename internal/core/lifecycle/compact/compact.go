@@ -1,0 +1,108 @@
+package compact
+
+import (
+	"encoding/json"
+	"os"
+	"strings"
+	"time"
+
+	"agent-harness/internal/core/lifecycle/docupkeep"
+	"agent-harness/internal/core/lifecycle/model"
+)
+
+type Store struct {
+	ReadPending func(repoRoot string, limit int) ([]model.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error)
+	Validate    func(repoRoot string) (model.ProjectLifecycleStatePlan, error)
+	WriteJSON   func(path string, value any, perm os.FileMode) error
+}
+
+func BuildPreCompactCapsule(store Store, repo string) model.LifecycleCompactResult {
+	events, plan, err := store.ReadPending(repo, 8)
+	if err != nil {
+		return model.LifecycleCompactResult{OK: true, Warnings: []string{"pending_doc_upkeep_read_error"}}
+	}
+	if !plan.Exists || !plan.NamespaceValid || len(events) == 0 {
+		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+	}
+	capsule := model.LifecycleCompactCapsule{
+		SchemaVersion:     model.ProjectLifecycleSchemaVersion,
+		RepoRoot:          plan.RepoRoot,
+		RepoID:            plan.RepoID,
+		CreatedAt:         time.Now().UTC().Format(time.RFC3339Nano),
+		RequiredDocs:      docsFromDocUpkeepEvents(events),
+		PendingDocUpkeep:  events,
+		AdditionalSummary: "Session compaction capsule: restore these lifecycle/doc-upkeep hints after compacting to avoid rediscovering project-doc context.",
+	}
+	if err := store.WriteJSON(plan.CompactPath, capsule, 0o600); err != nil {
+		return model.LifecycleCompactResult{OK: false, PendingCount: len(events), CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_write_error"}}
+	}
+	return model.LifecycleCompactResult{OK: true, Recorded: true, PendingCount: len(events), CompactPath: plan.CompactPath}
+}
+
+func BuildPostCompactReminder(store Store, repo string) model.LifecycleCompactResult {
+	plan, err := store.Validate(repo)
+	if err != nil {
+		return model.LifecycleCompactResult{OK: true, Warnings: []string{"lifecycle_state_read_error"}}
+	}
+	if !plan.Exists || !plan.NamespaceValid {
+		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+	}
+	b, err := os.ReadFile(plan.CompactPath)
+	if os.IsNotExist(err) {
+		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+	}
+	if err != nil {
+		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_read_error"}}
+	}
+	var capsule model.LifecycleCompactCapsule
+	if err := json.Unmarshal(b, &capsule); err != nil {
+		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_decode_error"}}
+	}
+	if capsule.SchemaVersion != model.ProjectLifecycleSchemaVersion || capsule.RepoID != plan.RepoID {
+		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_namespace_mismatch"}}
+	}
+	context := renderLifecycleCompactContext(capsule)
+	if strings.TrimSpace(context) == "" {
+		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+	}
+	_ = os.Remove(plan.CompactPath)
+	return model.LifecycleCompactResult{
+		OK:                true,
+		ShouldInject:      true,
+		AdditionalContext: context,
+		PendingCount:      len(capsule.PendingDocUpkeep),
+		CompactPath:       plan.CompactPath,
+	}
+}
+
+func docsFromDocUpkeepEvents(events []model.DocUpkeepEvent) []string {
+	docs := []string{}
+	for _, event := range events {
+		docs = append(docs, event.TargetDocs...)
+	}
+	return docupkeep.NormalizeTargetDocs(docs)
+}
+
+func renderLifecycleCompactContext(capsule model.LifecycleCompactCapsule) string {
+	if len(capsule.PendingDocUpkeep) == 0 && len(capsule.RequiredDocs) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("Restored agent-harness compaction capsule:\n")
+	if len(capsule.RequiredDocs) > 0 {
+		b.WriteString("- Relevant project docs: ")
+		b.WriteString(strings.Join(capsule.RequiredDocs, ", "))
+		b.WriteString("\n")
+	}
+	if len(capsule.PendingDocUpkeep) > 0 {
+		b.WriteString("- Pending doc upkeep preserved across compaction")
+		docs := docsFromDocUpkeepEvents(capsule.PendingDocUpkeep)
+		if len(docs) > 0 {
+			b.WriteString(": ")
+			b.WriteString(strings.Join(docs, ", "))
+		}
+		b.WriteString(". UserPromptSubmit will keep surfacing the current details until the queue is resolved.\n")
+	}
+	b.WriteString("Use this as routing context only; read/update project docs when the resumed task touches the listed areas.")
+	return strings.TrimSpace(b.String())
+}

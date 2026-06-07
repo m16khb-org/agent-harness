@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/lifecycle/compact"
 	"agent-harness/internal/core/lifecycle/docupkeep"
 	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/lifecycle/worktreepath"
@@ -153,12 +154,28 @@ func ReadPendingDocUpkeepEvents(repoRoot string, limit int) ([]DocUpkeepEvent, P
 	return docupkeep.ReadPending(docUpkeepStore(), repoRoot, limit)
 }
 
+func BuildLifecyclePreCompactCapsule(repo string) LifecycleCompactResult {
+	return compact.BuildPreCompactCapsule(compactStore(), repo)
+}
+
+func BuildLifecyclePostCompactReminder(repo string) LifecycleCompactResult {
+	return compact.BuildPostCompactReminder(compactStore(), repo)
+}
+
 func docUpkeepStore() docupkeep.Store {
 	return docupkeep.Store{
 		Validate: ValidateProjectLifecycleState,
 		Init: func(repoRoot string, confirm bool) (ProjectLifecycleStatePlan, error) {
 			return InitProjectLifecycleState(repoRoot, confirm)
 		},
+	}
+}
+
+func compactStore() compact.Store {
+	return compact.Store{
+		ReadPending: ReadPendingDocUpkeepEvents,
+		Validate:    ValidateProjectLifecycleState,
+		WriteJSON:   writeJSONAtomic,
 	}
 }
 
