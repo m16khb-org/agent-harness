@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/issueops/pathutil"
 )
 
 func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
@@ -33,7 +35,7 @@ func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (IssueOpsRecord, bool
 }
 
 func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
-	repo = cleanAbsPath(repo)
+	repo = pathutil.CleanAbsPath(repo)
 	if repo == "" {
 		return nil
 	}
@@ -61,9 +63,9 @@ func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 		if worktree == "" || !issueOpsWorktreePathValid(worktree) {
 			continue
 		}
-		recordRepo := cleanAbsPath(record.Repo)
-		recordWorktree := cleanAbsPath(worktree)
-		if recordRepo != repo && recordWorktree != repo && !pathWithin(repo, recordWorktree) {
+		recordRepo := pathutil.CleanAbsPath(record.Repo)
+		recordWorktree := pathutil.CleanAbsPath(worktree)
+		if recordRepo != repo && recordWorktree != repo && !pathutil.PathWithin(repo, recordWorktree) {
 			continue
 		}
 		records = append(records, record)
@@ -72,9 +74,9 @@ func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 }
 
 func issueOpsPlanBranchMismatchesRecord(record IssueOpsRecord) bool {
-	planPath := cleanAbsPath(record.PlanPath)
-	repo := cleanAbsPath(record.Repo)
-	if planPath == "" || repo == "" || pathWithin(planPath, repo) || !isInsideWorktreesPath(planPath) {
+	planPath := pathutil.CleanAbsPath(record.PlanPath)
+	repo := pathutil.CleanAbsPath(record.Repo)
+	if planPath == "" || repo == "" || pathutil.PathWithin(planPath, repo) || !pathutil.IsInsideWorktreesPath(planPath) {
 		return false
 	}
 	branch := gitBranchFromAncestor(planPath)
@@ -82,7 +84,7 @@ func issueOpsPlanBranchMismatchesRecord(record IssueOpsRecord) bool {
 }
 
 func gitBranchFromAncestor(path string) string {
-	current := cleanAbsPath(path)
+	current := pathutil.CleanAbsPath(path)
 	if current == "" {
 		return ""
 	}
@@ -91,7 +93,7 @@ func gitBranchFromAncestor(path string) string {
 	}
 	for {
 		if _, err := os.Stat(filepath.Join(current, ".git")); err == nil {
-			return gitBranchFromHead(current)
+			return pathutil.GitBranchFromHead(current)
 		}
 		parent := filepath.Dir(current)
 		if parent == current {

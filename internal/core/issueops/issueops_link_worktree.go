@@ -5,11 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/issueops/pathutil"
 )
 
 func validateIssueOpsIsolatedWorktreePath(record IssueOpsRecord, path string) error {
-	repo := cleanAbsPath(record.Repo)
-	worktree := cleanAbsPath(path)
+	repo := pathutil.CleanAbsPath(record.Repo)
+	worktree := pathutil.CleanAbsPath(path)
 	if repo == "" || worktree == "" {
 		return fmt.Errorf("worktree_path and repo must be absolute or resolvable paths")
 	}
@@ -17,7 +19,7 @@ func validateIssueOpsIsolatedWorktreePath(record IssueOpsRecord, path string) er
 		return fmt.Errorf("worktree_path must be isolated from the source checkout")
 	}
 	parent := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees")
-	if !pathWithin(worktree, parent) {
+	if !pathutil.PathWithin(worktree, parent) {
 		return fmt.Errorf("worktree_path must be under sibling worktree directory: %s", parent)
 	}
 	info, err := os.Lstat(worktree)
@@ -39,7 +41,7 @@ func validateIssueOpsIsolatedWorktreePath(record IssueOpsRecord, path string) er
 	if resolvedWorktree == resolvedRepo {
 		return fmt.Errorf("worktree_path must be isolated from the source checkout")
 	}
-	if !pathWithin(resolvedWorktree, resolvedParent) {
+	if !pathutil.PathWithin(resolvedWorktree, resolvedParent) {
 		return fmt.Errorf("worktree_path must resolve under sibling worktree directory: %s", resolvedParent)
 	}
 	return nil
@@ -50,7 +52,7 @@ func validateIssueOpsWorktreeBranch(record IssueOpsRecord, path string) error {
 	if expected == "" {
 		return nil
 	}
-	actual := strings.TrimSpace(gitBranchFromHead(path))
+	actual := strings.TrimSpace(pathutil.GitBranchFromHead(path))
 	if actual == "" {
 		return fmt.Errorf("worktree_path must be a git worktree on IssueOps branch %s", expected)
 	}

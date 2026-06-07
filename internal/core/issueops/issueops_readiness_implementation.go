@@ -1,10 +1,12 @@
 package issueops
 
 import (
-	"agent-harness/internal/core/preflight"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/issueops/pathutil"
+	"agent-harness/internal/core/preflight"
 )
 
 func issueOpsHasImplementationEvidence(record IssueOpsRecord) bool {
@@ -102,7 +104,7 @@ func issueOpsPathMatchesPlan(record IssueOpsRecord, worktree, path string) bool 
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(worktree, filepath.FromSlash(path))
 	}
-	planPath = cleanAbsPath(planPath)
-	path = cleanAbsPath(path)
+	planPath = pathutil.CleanAbsPath(planPath)
+	path = pathutil.CleanAbsPath(path)
 	return path == planPath
 }

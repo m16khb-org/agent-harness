@@ -1,4 +1,4 @@
-package issueops
+package pathutil
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func cleanAbsPath(path string) string {
+func CleanAbsPath(path string) string {
 	p := strings.TrimSpace(path)
 	if p == "" {
 		return ""
@@ -21,9 +21,9 @@ func cleanAbsPath(path string) string {
 	return filepath.Clean(p)
 }
 
-func pathWithin(path, root string) bool {
-	p := cleanAbsPath(path)
-	r := cleanAbsPath(root)
+func PathWithin(path, root string) bool {
+	p := CleanAbsPath(path)
+	r := CleanAbsPath(root)
 	if p == "" || r == "" {
 		return false
 	}
@@ -37,7 +37,7 @@ func pathWithin(path, root string) bool {
 	return rel != "." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && rel != ".."
 }
 
-func isInsideWorktreesPath(target string) bool {
+func IsInsideWorktreesPath(target string) bool {
 	for _, segment := range strings.Split(filepath.ToSlash(target), "/") {
 		if strings.HasSuffix(segment, ".worktrees") {
 			return true
@@ -46,8 +46,8 @@ func isInsideWorktreesPath(target string) bool {
 	return false
 }
 
-func gitBranchFromHead(repo string) string {
-	root := cleanAbsPath(repo)
+func GitBranchFromHead(repo string) string {
+	root := CleanAbsPath(repo)
 	if root == "" {
 		return ""
 	}

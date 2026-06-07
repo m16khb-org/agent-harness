@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/issueops/pathutil"
 )
 
 func issueOpsStrictGitRoot(record IssueOpsRecord) string {
@@ -51,7 +53,7 @@ func issueOpsPlanPathInsideWorktree(worktree, planPath string) bool {
 	if !filepath.IsAbs(planPath) {
 		return true
 	}
-	if !pathWithin(planPath, worktree) {
+	if !pathutil.PathWithin(planPath, worktree) {
 		return false
 	}
 	resolvedPlan, err := filepath.EvalSymlinks(planPath)
@@ -62,5 +64,5 @@ func issueOpsPlanPathInsideWorktree(worktree, planPath string) bool {
 	if err != nil {
 		return false
 	}
-	return pathWithin(resolvedPlan, resolvedWorktree)
+	return pathutil.PathWithin(resolvedPlan, resolvedWorktree)
 }
