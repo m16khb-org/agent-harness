@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/policy/auditid"
 )
 
 func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
@@ -18,7 +20,7 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 	}
 	auditID := req.AuditLogID
 	if auditID == "" {
-		auditID = makeAuditLogID(req)
+		auditID = auditid.Generate(req.WorkspaceRoot, req.CWD, req.Argv)
 	}
 	result := CommandPolicyEvaluation{
 		OK:             true,

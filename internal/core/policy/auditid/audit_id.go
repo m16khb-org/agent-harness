@@ -1,4 +1,4 @@
-package policy
+package auditid
 
 import (
 	"fmt"
@@ -7,12 +7,12 @@ import (
 	"time"
 )
 
-func makeAuditLogID(req CommandPolicyRequest) string {
+func Generate(workspaceRoot, cwd string, argv []string) string {
 	h := fnv.New32a()
-	_, _ = h.Write([]byte(req.WorkspaceRoot))
+	_, _ = h.Write([]byte(workspaceRoot))
 	_, _ = h.Write([]byte{0})
-	_, _ = h.Write([]byte(req.CWD))
+	_, _ = h.Write([]byte(cwd))
 	_, _ = h.Write([]byte{0})
-	_, _ = h.Write([]byte(strings.Join(req.Argv, "\x00")))
+	_, _ = h.Write([]byte(strings.Join(argv, "\x00")))
 	return fmt.Sprintf("audit-%s-%08x", time.Now().UTC().Format("20060102T150405Z"), h.Sum32())
 }
