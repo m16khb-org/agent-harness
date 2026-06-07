@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"agent-harness/internal/core/issueops/readinesspaths"
 	"agent-harness/internal/core/preflight"
 	"strings"
 )
@@ -55,6 +56,26 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		WorktreePath: record.WorktreePath,
 		Branch:       record.Branch,
 	}
+}
+
+func issueOpsStrictGitRoot(record IssueOpsRecord) string {
+	return readinesspaths.StrictGitRoot(record)
+}
+
+func issueOpsWorktreePathValid(path string) bool {
+	return readinesspaths.WorktreePathValid(path)
+}
+
+func issueOpsPlanPathExists(repo, path string) bool {
+	return readinesspaths.PlanPathExists(repo, path)
+}
+
+func issueOpsPlanInLinkedWorktree(record IssueOpsRecord) bool {
+	return readinesspaths.PlanInLinkedWorktree(record)
+}
+
+func issueOpsPlanPathInsideWorktree(worktree, planPath string) bool {
+	return readinesspaths.PlanPathInsideWorktree(worktree, planPath)
 }
 
 func issueOpsIntentMissing(record IssueOpsRecord) []string {

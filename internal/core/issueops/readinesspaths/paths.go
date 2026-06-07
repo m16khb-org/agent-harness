@@ -1,21 +1,22 @@
-package issueops
+package readinesspaths
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 )
 
-func issueOpsStrictGitRoot(record IssueOpsRecord) string {
+func StrictGitRoot(record model.IssueOpsRecord) string {
 	if path := strings.TrimSpace(record.WorktreePath); path != "" {
 		return path
 	}
 	return strings.TrimSpace(record.Repo)
 }
 
-func issueOpsWorktreePathValid(path string) bool {
+func WorktreePathValid(path string) bool {
 	path = strings.TrimSpace(path)
 	if path == "" || strings.Contains(path, "\x00") {
 		return false
@@ -24,7 +25,7 @@ func issueOpsWorktreePathValid(path string) bool {
 	return err == nil && info.IsDir()
 }
 
-func issueOpsPlanPathExists(repo, path string) bool {
+func PlanPathExists(repo, path string) bool {
 	path = strings.TrimSpace(path)
 	if path == "" || strings.Contains(path, "\x00") {
 		return false
@@ -36,16 +37,16 @@ func issueOpsPlanPathExists(repo, path string) bool {
 	return err == nil && !info.IsDir()
 }
 
-func issueOpsPlanInLinkedWorktree(record IssueOpsRecord) bool {
+func PlanInLinkedWorktree(record model.IssueOpsRecord) bool {
 	planPath := strings.TrimSpace(record.PlanPath)
 	worktree := strings.TrimSpace(record.WorktreePath)
 	if planPath == "" || worktree == "" {
 		return true
 	}
-	return issueOpsPlanPathInsideWorktree(worktree, planPath)
+	return PlanPathInsideWorktree(worktree, planPath)
 }
 
-func issueOpsPlanPathInsideWorktree(worktree, planPath string) bool {
+func PlanPathInsideWorktree(worktree, planPath string) bool {
 	planPath = strings.TrimSpace(planPath)
 	if planPath == "" || strings.Contains(planPath, "\x00") {
 		return false
