@@ -4,6 +4,7 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookfailure"
 	"agent-harness/cmd/harness/hookcli/hookinput"
+	"agent-harness/cmd/harness/hookcli/hookprompt"
 )
 
 func RunHook(args []string) error {
@@ -59,11 +60,11 @@ func PathsFromHookInput(input []byte) []string {
 }
 
 func PromptFromHookInput(input []byte) string {
-	return promptFromHookInput(input)
+	return hookprompt.FromHookInput(input)
 }
 
 func IsStopHookContinuationPrompt(prompt string) bool {
-	return isStopHookContinuationPrompt(prompt)
+	return hookprompt.IsStopContinuation(prompt)
 }
 
 func LastAssistantMessageFromHookInput(input []byte) string {
