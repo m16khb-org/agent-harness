@@ -1,6 +1,10 @@
 package lifecycle
 
-import "strings"
+import (
+	"strings"
+
+	"agent-harness/internal/core/searchrouting"
+)
 
 func mcpWorktreeRootBlockReason(req HookToolUseLifecycleRequest) string {
 	expected := expectedIssueOpsWorktreesForMCPGuard(req)
@@ -10,7 +14,7 @@ func mcpWorktreeRootBlockReason(req HookToolUseLifecycleRequest) string {
 	primary := expected[0]
 	tool := strings.ToLower(strings.TrimSpace(req.Tool))
 	switch {
-	case isCodeGraphTool(tool):
+	case searchrouting.IsCodeGraphTool(tool):
 		projectPath := cleanAbsPath(req.ProjectPath)
 		if projectPath == "" {
 			return "CodeGraph in an IssueOps worktree must set projectPath to the expected IssueOps worktree: " + primary

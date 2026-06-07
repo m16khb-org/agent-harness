@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/core/searchrouting"
 )
 
 type issueOpsBranchCreation struct {
@@ -16,10 +17,10 @@ type issueOpsBranchCreation struct {
 func localIssueOpsBranchCreation(command string) issueOpsBranchCreation {
 	tokens := commandparse.SplitCommandTokens(command)
 	for i, token := range tokens {
-		if searchTokenName(token) != "git" || i+1 >= len(tokens) {
+		if searchrouting.SearchTokenName(token) != "git" || i+1 >= len(tokens) {
 			continue
 		}
-		switch searchTokenName(tokens[i+1]) {
+		switch searchrouting.SearchTokenName(tokens[i+1]) {
 		case "checkout":
 			for j := i + 2; j < len(tokens); j++ {
 				if tokens[j] == "-b" || tokens[j] == "-B" {
@@ -52,7 +53,7 @@ func localIssueOpsBranchCreation(command string) issueOpsBranchCreation {
 				}
 			}
 		case "worktree":
-			if i+2 < len(tokens) && searchTokenName(tokens[i+2]) == "add" {
+			if i+2 < len(tokens) && searchrouting.SearchTokenName(tokens[i+2]) == "add" {
 				return localIssueOpsWorktreeBranchCreation(tokens[i+3:])
 			}
 		}
@@ -124,10 +125,10 @@ func shellTokenLooksDynamic(token string) bool {
 func issueOpsWorktreePreparationCommand(command string) bool {
 	tokens := commandparse.SplitCommandTokens(command)
 	for i, token := range tokens {
-		if searchTokenName(token) != "git" || i+2 >= len(tokens) {
+		if searchrouting.SearchTokenName(token) != "git" || i+2 >= len(tokens) {
 			continue
 		}
-		if searchTokenName(tokens[i+1]) != "worktree" || searchTokenName(tokens[i+2]) != "add" {
+		if searchrouting.SearchTokenName(tokens[i+1]) != "worktree" || searchrouting.SearchTokenName(tokens[i+2]) != "add" {
 			continue
 		}
 		for _, value := range gitWorktreeAddTargets(tokens[i+3:]) {

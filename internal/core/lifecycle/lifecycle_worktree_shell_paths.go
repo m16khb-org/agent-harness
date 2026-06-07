@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/core/searchrouting"
 )
 
 func shellCommandWorktreeGuardPaths(repo, command string) []string {
@@ -22,11 +23,11 @@ func shellCommandWorktreeGuardPaths(repo, command string) []string {
 				}
 			}
 		case "-C":
-			if i > 0 && searchTokenName(tokens[i-1]) == "git" && i+1 < len(tokens) {
+			if i > 0 && searchrouting.SearchTokenName(tokens[i-1]) == "git" && i+1 < len(tokens) {
 				addWorktreeGuardPath(&out, seen, resolveShellWorktreeGuardPath(currentDir, tokens[i+1]))
 			}
 		case "add":
-			if i > 1 && searchTokenName(tokens[i-2]) == "git" && searchTokenName(tokens[i-1]) == "worktree" {
+			if i > 1 && searchrouting.SearchTokenName(tokens[i-2]) == "git" && searchrouting.SearchTokenName(tokens[i-1]) == "worktree" {
 				for _, value := range gitWorktreeAddTargets(tokens[i+1:]) {
 					addWorktreeGuardPath(&out, seen, resolveShellWorktreeGuardPath(currentDir, value))
 				}

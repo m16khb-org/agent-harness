@@ -5,6 +5,8 @@ import (
 
 	"agent-harness/internal/core/commandguard"
 	"agent-harness/internal/core/lifecycle/nextactionrelay"
+	"agent-harness/internal/core/remoteartifact"
+	"agent-harness/internal/core/searchrouting"
 )
 
 func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreToolUseDecisionResult {
@@ -21,7 +23,7 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Source:   source,
 	}
 	if req.EnforceSearchRouting {
-		if reason := searchRoutingBlockReason(result.Tool, result.Command, req.Repo); reason != "" {
+		if reason := searchrouting.SearchRoutingBlockReason(result.Tool, result.Command, req.Repo); reason != "" {
 			result.Decision = "block"
 			result.Reason = reason
 		}
@@ -39,13 +41,13 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		}
 	}
 	if result.Decision != "block" && req.EnforceKoreanRemote {
-		if reason := koreanRemoteArtifactBlockReason(req); reason != "" {
+		if reason := remoteartifact.KoreanBlockReason(req.Tool, req.Command, req.Repo); reason != "" {
 			result.Decision = "block"
 			result.Reason = reason
 		}
 	}
 	if result.Decision != "block" && req.EnforceVCSLinking {
-		if reason := vcsIssueLinkingBlockReason(req); reason != "" {
+		if reason := remoteartifact.VCSIssueLinkingBlockReason(req.Tool, req.Command, req.Repo); reason != "" {
 			result.Decision = "block"
 			result.Reason = reason
 		}

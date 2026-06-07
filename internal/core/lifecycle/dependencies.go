@@ -8,6 +8,7 @@ import (
 	"agent-harness/internal/core/nextaction"
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/projectdocs"
+	"agent-harness/internal/core/searchrouting"
 	"agent-harness/internal/core/state"
 )
 
@@ -181,7 +182,7 @@ func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 			targets = append(targets, target)
 		}
 	}
-	if len(targets) == 0 && isShellTool(req.Tool) {
+	if len(targets) == 0 && searchrouting.IsShellTool(req.Tool) {
 		for _, path := range shellCommandWorktreeGuardPaths(req.Repo, req.Command) {
 			if target := resolveHookTargetPath(req.Repo, path); target != "" {
 				targets = append(targets, target)
