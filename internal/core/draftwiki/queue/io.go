@@ -1,4 +1,4 @@
-package draftwiki
+package queue
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func AppendQueueEvent(path string, event DraftWikiQueueEvent) error {
+func AppendEvent(path string, event Event) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
@@ -24,24 +24,24 @@ func AppendQueueEvent(path string, event DraftWikiQueueEvent) error {
 	return err
 }
 
-func CapQueueEvents(path string, keep int) error {
+func CapEvents(path string, keep int) error {
 	if keep <= 0 {
 		return nil
 	}
-	count, err := CountQueueLines(path, keep*2+1)
+	count, err := CountLines(path, keep*2+1)
 	if err != nil {
 		return err
 	}
 	if count <= keep*2 {
 		return nil
 	}
-	_, err = PruneQueuePath(path, keep)
+	_, err = PrunePath(path, keep)
 	return err
 }
 
-func PruneQueuePath(path string, keep int) (DraftWikiQueuePruneResult, error) {
-	result := DraftWikiQueuePruneResult{OK: true, Kind: "draft_wiki_queue_prune", Path: path, Keep: keep}
-	events, _, err := ReadQueueEvents(path)
+func PrunePath(path string, keep int) (PruneResult, error) {
+	result := PruneResult{OK: true, Kind: "draft_wiki_queue_prune", Path: path, Keep: keep}
+	events, _, err := ReadEvents(path)
 	if err != nil {
 		result.OK = false
 		return result, err
@@ -54,20 +54,20 @@ func PruneQueuePath(path string, keep int) (DraftWikiQueuePruneResult, error) {
 	if keep > 0 && len(events) > keep {
 		events = events[len(events)-keep:]
 	} else if keep == 0 {
-		events = []DraftWikiQueueEvent{}
+		events = []Event{}
 	}
 	result.After = len(events)
 	result.Pruned = result.Before - result.After
-	if err := RewriteQueueEventsFunc(path, events); err != nil {
+	if err := RewriteEventsFunc(path, events); err != nil {
 		result.OK = false
 		return result, err
 	}
 	return result, nil
 }
 
-var RewriteQueueEventsFunc = RewriteQueueEvents
+var RewriteEventsFunc = RewriteEvents
 
-func RewriteQueueEvents(path string, events []DraftWikiQueueEvent) error {
+func RewriteEvents(path string, events []Event) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}

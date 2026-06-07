@@ -1,4 +1,4 @@
-package draftwiki
+package queue
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 	"agent-harness/internal/core/policy"
 )
 
-func CountQueueLines(path string, limit int) (int, error) {
+func CountLines(path string, limit int) (int, error) {
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return 0, nil
@@ -34,16 +34,16 @@ func CountQueueLines(path string, limit int) (int, error) {
 	return count, scanner.Err()
 }
 
-func ReadQueueEvents(path string) ([]DraftWikiQueueEvent, []string, error) {
+func ReadEvents(path string) ([]Event, []string, error) {
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
-		return []DraftWikiQueueEvent{}, nil, nil
+		return []Event{}, nil, nil
 	}
 	if err != nil {
 		return nil, nil, err
 	}
 	defer f.Close()
-	events := []DraftWikiQueueEvent{}
+	events := []Event{}
 	warnings := []string{}
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 64*1024), 2*1024*1024)
@@ -54,9 +54,9 @@ func ReadQueueEvents(path string) ([]DraftWikiQueueEvent, []string, error) {
 		if line == "" {
 			continue
 		}
-		var event DraftWikiQueueEvent
+		var event Event
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			warnings = append(warnings, FormatQueueMalformedWarning(lineNumber, line))
+			warnings = append(warnings, FormatMalformedWarning(lineNumber, line))
 			continue
 		}
 		events = append(events, event)
@@ -64,7 +64,7 @@ func ReadQueueEvents(path string) ([]DraftWikiQueueEvent, []string, error) {
 	return events, warnings, scanner.Err()
 }
 
-func FormatQueueMalformedWarning(lineNumber int, line string) string {
+func FormatMalformedWarning(lineNumber int, line string) string {
 	line = policy.RedactFreeform(line)
 	const maxLineBytes = 120
 	if len([]byte(line)) > maxLineBytes {

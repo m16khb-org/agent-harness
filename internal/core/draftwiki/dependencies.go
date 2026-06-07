@@ -1,7 +1,14 @@
 package draftwiki
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"os"
+	"path/filepath"
+
 	"agent-harness/internal/core/docs"
+	"agent-harness/internal/core/draftwiki/queue"
 	"agent-harness/internal/core/externalllm"
 	"agent-harness/internal/core/lifecycle"
 	"agent-harness/internal/core/policy"
@@ -9,11 +16,6 @@ import (
 	"agent-harness/internal/core/prompt"
 	"agent-harness/internal/core/state"
 	coreworker "agent-harness/internal/core/worker"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
-	"os"
-	"path/filepath"
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir
@@ -54,41 +56,41 @@ func draftWikiQueuePath(repoRoot string, ensure bool) (ProjectLifecycleStatePlan
 }
 
 func trimDraftWikiQueueMaterial(material string) string {
-	return TrimQueueMaterial(material)
+	return queue.TrimMaterial(material)
 }
 
 func draftWikiQueueEventID(repoID, material, at string) string {
-	return QueueEventID(repoID, material, at)
+	return queue.EventID(repoID, material, at)
 }
 
 func acquireDraftWikiQueueLock(projectStateDir string) (func(), bool, error) {
-	return AcquireQueueLock(projectStateDir)
+	return queue.AcquireLock(projectStateDir)
 }
 
 func readDraftWikiQueueEvents(path string) ([]DraftWikiQueueEvent, []string, error) {
-	return ReadQueueEvents(path)
+	return queue.ReadEvents(path)
 }
 
 func appendDraftWikiQueueEvent(path string, event DraftWikiQueueEvent) error {
-	return AppendQueueEvent(path, event)
+	return queue.AppendEvent(path, event)
 }
 
 func capDraftWikiQueueEvents(path string, keep int) error {
-	return CapQueueEvents(path, keep)
+	return queue.CapEvents(path, keep)
 }
 
 func pruneDraftWikiQueuePath(path string, keep int) (DraftWikiQueuePruneResult, error) {
-	return PruneQueuePath(path, keep)
+	return queue.PrunePath(path, keep)
 }
 
 var rewriteDraftWikiQueueEventsFunc = func(path string, events []DraftWikiQueueEvent) error {
-	return RewriteQueueEvents(path, events)
+	return queue.RewriteEvents(path, events)
 }
 
 func SetRewriteDraftWikiQueueEventsFunc(fn func(string, []DraftWikiQueueEvent) error) func(string, []DraftWikiQueueEvent) error {
 	previous := rewriteDraftWikiQueueEventsFunc
 	if fn == nil {
-		rewriteDraftWikiQueueEventsFunc = RewriteQueueEvents
+		rewriteDraftWikiQueueEventsFunc = queue.RewriteEvents
 	} else {
 		rewriteDraftWikiQueueEventsFunc = fn
 	}

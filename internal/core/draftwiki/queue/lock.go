@@ -1,4 +1,4 @@
-package draftwiki
+package queue
 
 import (
 	"fmt"
@@ -7,11 +7,11 @@ import (
 	"time"
 )
 
-func AcquireQueueLock(projectStateDir string) (func(), bool, error) {
+func AcquireLock(projectStateDir string) (func(), bool, error) {
 	if err := os.MkdirAll(projectStateDir, 0o700); err != nil {
 		return nil, false, err
 	}
-	path := filepath.Join(projectStateDir, QueueLockFile)
+	path := filepath.Join(projectStateDir, LockFile)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if os.IsExist(err) {
 		return func() {}, false, nil

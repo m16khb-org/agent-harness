@@ -1,4 +1,4 @@
-package draftwiki
+package queue
 
 import (
 	"crypto/sha256"
@@ -8,7 +8,7 @@ import (
 	"agent-harness/internal/core/policy"
 )
 
-func TrimQueueMaterial(material string) string {
+func TrimMaterial(material string) string {
 	material = strings.TrimSpace(material)
 	if material == "" {
 		return ""
@@ -25,7 +25,7 @@ func TrimQueueMaterial(material string) string {
 	return string([]byte(material)[:maxBytes]) + "\n[truncated]"
 }
 
-func QueueEventID(repoID, material, at string) string {
+func EventID(repoID, material, at string) string {
 	sum := sha256.Sum256([]byte(repoID + "\x00" + material + "\x00" + at))
 	return "dwq-" + hex.EncodeToString(sum[:])[:24]
 }
