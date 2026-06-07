@@ -1,6 +1,10 @@
 package hookcli
 
 import (
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -28,5 +32,38 @@ func TestRunHookPostToolUseEmitsCodexCompatibleNoopJSON(t *testing.T) {
 	})
 	if len(obj) != 0 {
 		t.Fatalf("PostToolUse host output must be a no-op object, got %+v", obj)
+	}
+}
+
+func TestRunHookRecordsFailureEvent(t *testing.T) {
+	stateDir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	oldStdin := os.Stdin
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdin = r
+	_, _ = io.WriteString(w, `{"cwd":"/repo","tool_name":"Bash","tool_input":{"command":"echo TOKEN=secret-value && rg hook cmd"}}`)
+	_ = w.Close()
+	defer func() { os.Stdin = oldStdin }()
+
+	err = runHook([]string{"unknown-hook", "--token=secret-value"})
+	if err == nil {
+		t.Fatal("runHook() error = nil")
+	}
+	body, readErr := os.ReadFile(filepath.Join(stateDir, "hook-failures.jsonl"))
+	if readErr != nil {
+		t.Fatalf("read hook failure log: %v", readErr)
+	}
+	text := string(body)
+	if !strings.Contains(text, `"hook":"unknown-hook"`) || !strings.Contains(text, "unknown hook subcommand") {
+		t.Fatalf("hook failure log missing event details: %s", text)
+	}
+	if !strings.Contains(text, `"tool":"Bash"`) || !strings.Contains(text, "command_snippet") {
+		t.Fatalf("hook failure log missing payload details: %s", text)
+	}
+	if strings.Contains(text, "secret-value") {
+		t.Fatalf("hook failure log leaked secret: %s", text)
 	}
 }
