@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"agent-harness/cmd/harness/hookcli/hookcatalog"
 	"agent-harness/cmd/harness/hookcli/hookfailure"
 )
 
@@ -74,6 +75,18 @@ func runHookDispatch(args []string) error {
 		hookUsage()
 		return fmt.Errorf("unknown hook subcommand %q", args[0])
 	}
+}
+
+func runHookPostCompact(args []string) error {
+	return hookcatalog.RunPostCompact(args, hookCatalogConfig())
+}
+
+func runHookSessionStart(args []string) error {
+	return hookcatalog.RunSessionStart(args, hookCatalogConfig())
+}
+
+func hookCatalogConfig() hookcatalog.Config {
+	return hookcatalog.Config{ResolveTarget: ResolveTarget, PrintJSON: printJSON}
 }
 
 func hookUsage() {
