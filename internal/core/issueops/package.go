@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"agent-harness/internal/core/issueops/active"
 	"agent-harness/internal/core/issueops/artifactverify"
 	"agent-harness/internal/core/issueops/model"
 )
@@ -48,5 +49,25 @@ func issueOpsArtifactStore() artifactverify.Store {
 	return artifactverify.Store{
 		Read:       ReadIssueOps,
 		TouchWrite: touchAndWriteIssueOps,
+	}
+}
+
+func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
+	return active.CycleForBranch(issueOpsActiveStore(), repo, branch)
+}
+
+func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (IssueOpsRecord, bool) {
+	return active.LinkedWorktreeCycleForRepo(issueOpsActiveStore(), repo)
+}
+
+func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
+	return active.LinkedWorktreeCyclesForRepo(issueOpsActiveStore(), repo)
+}
+
+func issueOpsActiveStore() active.Store {
+	return active.Store{
+		StateRoot: IssueOpsStateRoot,
+		Read:      ReadIssueOps,
+		NewID:     newIssueOpsID,
 	}
 }

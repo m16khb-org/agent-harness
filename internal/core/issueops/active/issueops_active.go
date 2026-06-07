@@ -1,66 +1,74 @@
-package issueops
+package active
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 )
 
-func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
+type Store struct {
+	StateRoot func() string
+	Read      func(stateRoot, id string) (model.IssueOpsRecord, error)
+	NewID     func(repo, branch string) string
+}
+
+func CycleForBranch(store Store, repo, branch string) (model.IssueOpsRecord, bool) {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
-		return IssueOpsRecord{}, false
+		return model.IssueOpsRecord{}, false
 	}
-	record, err := ReadIssueOps(IssueOpsStateRoot(), newIssueOpsID(repo, branch))
+	record, err := store.Read(store.StateRoot(), store.NewID(repo, branch))
 	if err != nil {
-		return IssueOpsRecord{}, false
+		return model.IssueOpsRecord{}, false
 	}
-	if record.Phase == IssueOpsPhaseDone {
-		return IssueOpsRecord{}, false
+	if record.Phase == model.IssueOpsPhaseDone {
+		return model.IssueOpsRecord{}, false
 	}
-	if issueOpsPlanBranchMismatchesRecord(record) {
-		return IssueOpsRecord{}, false
+	if planBranchMismatchesRecord(record) {
+		return model.IssueOpsRecord{}, false
 	}
 	return record, true
 }
 
-func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (IssueOpsRecord, bool) {
-	records := ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
+func LinkedWorktreeCycleForRepo(store Store, repo string) (model.IssueOpsRecord, bool) {
+	records := LinkedWorktreeCyclesForRepo(store, repo)
 	if len(records) == 0 {
-		return IssueOpsRecord{}, false
+		return model.IssueOpsRecord{}, false
 	}
 	return records[0], true
 }
 
-func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
+func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
 	repo = pathutil.CleanAbsPath(repo)
 	if repo == "" {
 		return nil
 	}
-	entries, err := os.ReadDir(IssueOpsStateRoot())
+	stateRoot := store.StateRoot()
+	entries, err := os.ReadDir(stateRoot)
 	if err != nil {
 		return nil
 	}
-	records := []IssueOpsRecord{}
+	records := []model.IssueOpsRecord{}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
 		id := strings.TrimSuffix(entry.Name(), ".json")
-		record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+		record, err := store.Read(stateRoot, id)
 		if err != nil {
 			continue
 		}
-		if record.Phase == IssueOpsPhaseDone {
+		if record.Phase == model.IssueOpsPhaseDone {
 			continue
 		}
-		if issueOpsPlanBranchMismatchesRecord(record) {
+		if planBranchMismatchesRecord(record) {
 			continue
 		}
 		worktree := strings.TrimSpace(record.WorktreePath)
-		if worktree == "" || !issueOpsWorktreePathValid(worktree) {
+		if worktree == "" || !worktreePathValid(worktree) {
 			continue
 		}
 		recordRepo := pathutil.CleanAbsPath(record.Repo)
@@ -73,7 +81,7 @@ func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 	return records
 }
 
-func issueOpsPlanBranchMismatchesRecord(record IssueOpsRecord) bool {
+func planBranchMismatchesRecord(record model.IssueOpsRecord) bool {
 	planPath := pathutil.CleanAbsPath(record.PlanPath)
 	repo := pathutil.CleanAbsPath(record.Repo)
 	if planPath == "" || repo == "" || pathutil.PathWithin(planPath, repo) || !pathutil.IsInsideWorktreesPath(planPath) {
@@ -81,6 +89,15 @@ func issueOpsPlanBranchMismatchesRecord(record IssueOpsRecord) bool {
 	}
 	branch := gitBranchFromAncestor(planPath)
 	return branch != "" && branch != strings.TrimSpace(record.Branch)
+}
+
+func worktreePathValid(path string) bool {
+	path = strings.TrimSpace(path)
+	if path == "" || strings.Contains(path, "\x00") {
+		return false
+	}
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 func gitBranchFromAncestor(path string) string {
