@@ -7,7 +7,21 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/state/statepath"
 )
+
+func StateDir() string {
+	return statepath.Dir()
+}
+
+func NormalizeStateKey(key string) (string, error) {
+	return statepath.NormalizeKey(key)
+}
+
+func statePath(dir, key string) string {
+	return statepath.Path(dir, key)
+}
 
 func StateWrite(key, content string) (StateResult, error) {
 	key, err := NormalizeStateKey(key)
