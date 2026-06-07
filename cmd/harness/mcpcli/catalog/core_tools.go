@@ -1,4 +1,4 @@
-package mcpcli
+package catalog
 
 func coreMCPToolMaps() []map[string]any {
 	return []map[string]any{
