@@ -163,6 +163,27 @@ func TestBuildNextActionJudgementTriggerNoChoicesDoesNotTrigger(t *testing.T) {
 	}
 }
 
+func TestBuildNextActionJudgementRelayReasonRequiresOneDecision(t *testing.T) {
+	trigger := BuildNextActionJudgementTrigger(strings.Join([]string{
+		"선택지:",
+		"1. 진행: 다음 foldering slice를 계속합니다. (추천)",
+		"2. 리뷰: 현재 diff를 확인합니다.",
+		"3. 보류: 멈춥니다.",
+	}, "\n"))
+	reason := BuildNextActionJudgementRelayReason(trigger)
+	for _, want := range []string{
+		"훅은 안전성, 가역성, 사용자 의도 정합성, 진행 여부를 판단하지 않습니다",
+		"한 번에 하나의 판단만 하세요",
+		"둘을 같은 답변에서 섞지 마세요",
+		"no-auto-proceed 판단을 남겼다면 같은 작업을 자동 goal continuation으로 재개하지 마세요",
+		"자동진행 결과 보고에도 `선택지:` 3개와 정확히 하나의 `(추천)`",
+	} {
+		if !strings.Contains(reason, want) {
+			t.Fatalf("judgement relay reason missing %q:\n%s", want, reason)
+		}
+	}
+}
+
 func TestRecordStopNextActionRelaySuppressesWhenStateCannotPersist(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

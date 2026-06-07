@@ -69,6 +69,10 @@ func BuildNextActionJudgementTrigger(message string) NextActionJudgementTriggerR
 	return nextaction.BuildNextActionJudgementTrigger(message)
 }
 
+func BuildNextActionJudgementRelayReason(trigger NextActionJudgementTriggerResult) string {
+	return nextaction.BuildJudgementRelayReason(trigger)
+}
+
 func EvaluateNextActionAutoProceed(message string, threshold float64) NextActionAutoProceedResult {
 	return nextaction.EvaluateNextActionAutoProceed(message, threshold)
 }

@@ -17,7 +17,7 @@ func TestBuildUserPromptMCPHintsInjectsNextActionPolicy(t *testing.T) {
 	if !got.OK || !got.ShouldInject {
 		t.Fatalf("expected next-action policy to inject for a non-empty prompt: %+v", got)
 	}
-	for _, want := range []string{"next-action:", "선택지:", "(추천)", "main agent", "context", "safe", "reversible", "user confirmation", "Stop-hook auto-proceed result reports must still end with choices", "state its auto-proceed or no-auto-proceed rationale"} {
+	for _, want := range []string{"next-action:", "선택지:", "(추천)", "main agent", "context", "safe", "reversible", "user confirmation", "Stop-hook auto-proceed result reports must still end with choices", "make exactly one decision", "never both in the same answer"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("next-action policy missing %q:\n%s", want, got.AdditionalContext)
 		}
@@ -31,7 +31,7 @@ func TestBuildUserPromptMCPHintsInjectsNextActionPolicy(t *testing.T) {
 
 func TestBuildUserPromptMCPHintsRequiresMainAgentJudgementRationale(t *testing.T) {
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "작업을 마무리해줘"})
-	for _, want := range []string{"main agent", "state its auto-proceed or no-auto-proceed rationale", "auto-proceed", "no-auto-proceed", "Stop-hook auto-proceed result reports must still end with choices"} {
+	for _, want := range []string{"main agent", "State the auto-proceed or no-auto-proceed rationale", "auto-proceed", "no-auto-proceed", "never both in the same answer", "Stop-hook auto-proceed result reports must still end with choices"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("next-action policy missing judgement-rationale contract %q:\n%s", want, got.AdditionalContext)
 		}
