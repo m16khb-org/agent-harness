@@ -1,11 +1,16 @@
-package selfworkflow
+package historycompare
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"agent-harness/cmd/harness/selfworkflow/model"
+	"agent-harness/cmd/harness/selfworkflow/stateio"
 	"agent-harness/internal/core"
 )
 
@@ -15,12 +20,12 @@ func TestRunSelfVerifyCompareTextAndFailOnRegression(t *testing.T) {
 	writeSelfVerifyCLISnapshotForTest(t, dir, "baseline-cli", 1000, true, 20, 20, "2000-01-01T00:00:00Z")
 	writeSelfVerifyCLISnapshotForTest(t, dir, "candidate-cli", 1300, false, 20, 19, "2000-01-01T00:01:00Z")
 
-	out := captureStatusVerifyStdout(t, func() error {
+	out := captureStdout(t, func() error {
 		return RunSelfVerifyCompare([]string{
 			"--baseline-key", "baseline-cli",
 			"--candidate-key", "candidate-cli",
 			"--max-elapsed-regression-pct", "5",
-		})
+		}, CLIDeps{})
 	})
 	if !strings.Contains(out, "self-verify compare regressed") ||
 		!strings.Contains(out, "candidate_not_ok") ||
@@ -35,7 +40,7 @@ func TestRunSelfVerifyCompareTextAndFailOnRegression(t *testing.T) {
 		"--max-elapsed-regression-pct", "5",
 		"--fail-on-regression",
 		"--json",
-	})
+	}, CLIDeps{PrintJSON: printJSONForTest})
 	if err == nil || !strings.Contains(err.Error(), "summary regression detected") {
 		t.Fatalf("expected fail-on-regression error, got %v", err)
 	}
@@ -50,8 +55,8 @@ func TestRunSelfVerifyHistoryTextOutputCoversSkippedAndRetentionActions(t *testi
 		t.Fatalf("write non-summary state: %v", err)
 	}
 
-	planned := captureStatusVerifyStdout(t, func() error {
-		return RunSelfVerifyHistory([]string{"--prefix", "self-verify", "--retention-limit", "1"})
+	planned := captureStdout(t, func() error {
+		return RunSelfVerifyHistory([]string{"--prefix", "self-verify", "--retention-limit", "1"}, CLIDeps{})
 	})
 	if !strings.Contains(planned, "self-verify history: 2/2 entries") ||
 		!strings.Contains(planned, "- self-verify-new-cli ok iterations=10 elapsed=900ms") ||
@@ -61,8 +66,8 @@ func TestRunSelfVerifyHistoryTextOutputCoversSkippedAndRetentionActions(t *testi
 		t.Fatalf("unexpected planned history text:\n%s", planned)
 	}
 
-	dryRun := captureStatusVerifyStdout(t, func() error {
-		return RunSelfVerifyHistory([]string{"--prefix", "self-verify", "--retention-limit", "1", "--prune-retention"})
+	dryRun := captureStdout(t, func() error {
+		return RunSelfVerifyHistory([]string{"--prefix", "self-verify", "--retention-limit", "1", "--prune-retention"}, CLIDeps{})
 	})
 	if !strings.Contains(dryRun, "retention: retain=1 candidates=1 would delete=0") {
 		t.Fatalf("unexpected dry-run history text:\n%s", dryRun)
@@ -74,7 +79,7 @@ func TestRunSelfVerifyHistoryTextOutputCoversSkippedAndRetentionActions(t *testi
 
 func TestRunSelfVerifyHistoryJSONRejectsUnsafeRetentionOptions(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	err := RunSelfVerifyHistory([]string{"--confirm", "--json"})
+	err := RunSelfVerifyHistory([]string{"--confirm", "--json"}, CLIDeps{PrintJSON: printJSONForTest})
 	if err == nil || !strings.Contains(err.Error(), "requires --prune-retention") {
 		t.Fatalf("expected unsafe retention option error, got %v", err)
 	}
@@ -86,8 +91,8 @@ func TestRunSelfVerifyCompareJSONOutput(t *testing.T) {
 	writeSelfVerifyCLISnapshotForTest(t, dir, "baseline-json", 1000, true, 20, 20, "2000-01-01T00:00:00Z")
 	writeSelfVerifyCLISnapshotForTest(t, dir, "candidate-json", 1010, true, 20, 20, "2000-01-01T00:01:00Z")
 
-	out := captureStatusVerifyStdout(t, func() error {
-		return RunSelfVerifyCompare([]string{"--baseline-key", "baseline-json", "--candidate-key", "candidate-json", "--json"})
+	out := captureStdout(t, func() error {
+		return RunSelfVerifyCompare([]string{"--baseline-key", "baseline-json", "--candidate-key", "candidate-json", "--json"}, CLIDeps{PrintJSON: printJSONForTest})
 	})
 	var result SelfAugmentCompareResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
@@ -100,9 +105,9 @@ func TestRunSelfVerifyCompareJSONOutput(t *testing.T) {
 
 func writeSelfVerifyCLISnapshotForTest(t *testing.T, dir, key string, elapsedMS int64, ok bool, totalSteps, passedSteps int, generatedAt string) {
 	t.Helper()
-	if err := WriteSelfAugmentSnapshotRecord(dir, key, SelfAugmentStateSnapshot{
+	if err := stateio.WriteSelfAugmentSnapshotRecord(dir, key, SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          selfVerificationSummaryKind,
+		Kind:          model.SelfVerificationSummaryKind,
 		OK:            ok,
 		Iterations:    10,
 		BaseSeed:      900,
@@ -119,4 +124,36 @@ func writeSelfVerifyCLISnapshotForTest(t *testing.T, dir, key string, elapsedMS 
 	}); err != nil {
 		t.Fatalf("write snapshot %q: %v", key, err)
 	}
+}
+
+func captureStdout(t *testing.T, fn func() error) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe stdout: %v", err)
+	}
+	os.Stdout = writer
+	err = fn()
+	if closeErr := writer.Close(); closeErr != nil {
+		t.Fatalf("close stdout writer: %v", closeErr)
+	}
+	os.Stdout = oldStdout
+	out, readErr := io.ReadAll(reader)
+	if readErr != nil {
+		t.Fatalf("read stdout: %v", readErr)
+	}
+	if err != nil {
+		t.Fatalf("function returned error: %v", err)
+	}
+	return string(out)
+}
+
+func printJSONForTest(value any) error {
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
+	return nil
 }
