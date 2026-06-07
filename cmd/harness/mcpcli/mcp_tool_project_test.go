@@ -99,6 +99,72 @@ func TestHandleProjectMCPToolCallIgnoresUnknownProjectTool(t *testing.T) {
 	}
 }
 
+func TestMCPResourceReadCoversGuidanceStateAndErrors(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	for _, tc := range []struct {
+		uri       string
+		wantType  string
+		wantText  string
+		wantError bool
+	}{
+		{uri: "harness://project-doc-upkeep", wantType: "text/markdown", wantText: "Project Doc Upkeep Guidance"},
+		{uri: "harness://api-doc-guidance", wantType: "text/markdown", wantText: "API Documentation Guidance"},
+		{uri: "harness://command-policy", wantType: "application/json", wantText: "workspace"},
+		{uri: "harness://state", wantType: "application/json", wantText: "keys"},
+		{uri: "harness://commit-policy", wantType: "text/markdown", wantText: "Conventional"},
+		{uri: "harness://unknown", wantError: true},
+	} {
+		t.Run(tc.uri, func(t *testing.T) {
+			result, rpcErr := HandleResourceRead(mustMarshalMCPTest(t, map[string]any{"uri": tc.uri}))
+			if tc.wantError {
+				if rpcErr == nil || !strings.Contains(rpcErr.Message, "Unknown resource") {
+					t.Fatalf("expected unknown resource error, got result=%#v err=%+v", result, rpcErr)
+				}
+				return
+			}
+			if rpcErr != nil {
+				t.Fatalf("HandleResourceRead(%s): %+v", tc.uri, rpcErr)
+			}
+			content := singleMCPResourceContent(t, result)
+			if content["mimeType"] != tc.wantType || !strings.Contains(content["text"].(string), tc.wantText) {
+				t.Fatalf("unexpected resource content for %s: %#v", tc.uri, content)
+			}
+		})
+	}
+
+	_, rpcErr := HandleResourceRead(json.RawMessage(`{bad json}`))
+	if rpcErr == nil || rpcErr.Code != -32602 {
+		t.Fatalf("expected invalid params error, got %+v", rpcErr)
+	}
+}
+
+func TestMCPProjectToolCallCoversDirectPayloadAndUnknownTool(t *testing.T) {
+	direct, rpcErr := HandleToolCall(mustMarshalMCPTest(t, map[string]any{"name": "commit_policy", "arguments": map[string]any{}}))
+	if rpcErr != nil {
+		t.Fatalf("commit_policy: %+v", rpcErr)
+	}
+	if text := extractSingleTextResult(t, direct); !strings.Contains(text, "Conventional") {
+		t.Fatalf("commit_policy did not return markdown policy text: %s", text)
+	}
+
+	payload, rpcErr := HandleToolCall(mustMarshalMCPTest(t, map[string]any{"name": "project_docs_bootstrap_plan", "arguments": map[string]any{"repo": t.TempDir()}}))
+	if rpcErr != nil {
+		t.Fatalf("project_docs_bootstrap_plan: %+v", rpcErr)
+	}
+	if text := extractSingleTextResult(t, payload); !strings.Contains(text, `"dry_run"`) && !strings.Contains(text, `"write"`) {
+		t.Fatalf("bootstrap plan payload did not look like JSON result: %s", text)
+	}
+
+	_, rpcErr = HandleToolCall(mustMarshalMCPTest(t, map[string]any{"name": "missing_tool", "arguments": map[string]any{}}))
+	if rpcErr == nil || rpcErr.Code != -32602 || !strings.Contains(rpcErr.Message, "Unknown tool") {
+		t.Fatalf("expected unknown tool error, got %+v", rpcErr)
+	}
+	_, rpcErr = HandleToolCall(json.RawMessage(`{bad json}`))
+	if rpcErr == nil || rpcErr.Code != -32602 {
+		t.Fatalf("expected invalid params error, got %+v", rpcErr)
+	}
+}
+
 func mcpProjectPayloadText(t *testing.T, payload any) string {
 	t.Helper()
 	outcome := mcpToolPayload(payload)
@@ -119,4 +185,17 @@ func textFromMCPToolOutcome(outcome MCPToolOutcome) (string, error) {
 
 func jsonMarshalIndentForMCPProjectTest(payload any) ([]byte, error) {
 	return json.MarshalIndent(payload, "", "  ")
+}
+
+func singleMCPResourceContent(t *testing.T, result any) map[string]any {
+	t.Helper()
+	outer, ok := result.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected resource result type %T", result)
+	}
+	contents, ok := outer["contents"].([]map[string]any)
+	if !ok || len(contents) != 1 {
+		t.Fatalf("unexpected resource contents: %#v", outer["contents"])
+	}
+	return contents[0]
 }

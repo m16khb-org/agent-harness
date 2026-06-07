@@ -1,6 +1,7 @@
 package mcpcli
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"os"
@@ -63,6 +64,35 @@ func TestMCPTransportStdoutAndStderrWrappers(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "agent-harness mcp notification: notifications/initialized") {
 		t.Fatalf("unexpected notification stderr:\n%s", stderr)
+	}
+}
+
+func TestMCPTransportCoversParseNotificationAndMethodErrors(t *testing.T) {
+	var out bytes.Buffer
+	var diagnostics bytes.Buffer
+	input := strings.NewReader(strings.Join([]string{
+		"{not json}",
+		`{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}`,
+		`{"jsonrpc":"2.0","id":1,"method":"missing/method","params":{}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}`,
+		"",
+	}, "\n"))
+
+	if err := ServeMCPStream(input, &out, &diagnostics); err != nil {
+		t.Fatalf("ServeMCPStream: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, `"Parse error"`) || !strings.Contains(output, `"Method not found"`) || !strings.Contains(output, `"serverInfo"`) {
+		t.Fatalf("unexpected MCP output:\n%s", output)
+	}
+	if !strings.Contains(diagnostics.String(), "notifications/initialized") {
+		t.Fatalf("notification was not written to diagnostics: %s", diagnostics.String())
+	}
+
+	out.Reset()
+	writeRPCErrorTo(&out, nil, -32000, "boom", "data")
+	if !strings.Contains(out.String(), `"id":null`) || !strings.Contains(out.String(), `"boom"`) {
+		t.Fatalf("writeRPCErrorTo did not preserve null id error response: %s", out.String())
 	}
 }
 

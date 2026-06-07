@@ -2,12 +2,22 @@ package mcpcli
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 )
+
+func mustMarshalMCPTest(t *testing.T, value any) json.RawMessage {
+	t.Helper()
+	b, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
 
 func captureStatusVerifyStdout(t *testing.T, fn func() error) string {
 	t.Helper()
