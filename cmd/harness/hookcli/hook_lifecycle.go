@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/core"
 )
 
@@ -19,15 +20,15 @@ func runHookPostToolUse(args []string) error {
 	stdin, _ := io.ReadAll(os.Stdin)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
-		parsedRepo = repoFromHookInput(stdin)
+		parsedRepo = hookinput.RepoFromHookInput(stdin)
 	}
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
 	}
 	core.ClearStopNextActionRelay(parsedRepo)
-	tool := toolNameFromHookInput(stdin)
-	paths := pathsFromHookInput(stdin)
-	command := commandFromHookInput(stdin)
+	tool := hookinput.ToolNameFromHookInput(stdin)
+	paths := hookinput.PathsFromHookInput(stdin)
+	command := hookinput.CommandFromHookInput(stdin)
 	result, err := core.RecordLifecycleToolUse(core.HookToolUseLifecycleRequest{
 		Repo:    parsedRepo,
 		Tool:    tool,
@@ -60,7 +61,7 @@ func runHookPreCompact(args []string) error {
 	stdin, _ := io.ReadAll(os.Stdin)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
-		parsedRepo = repoFromHookInput(stdin)
+		parsedRepo = hookinput.RepoFromHookInput(stdin)
 	}
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")

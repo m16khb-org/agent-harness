@@ -1,5 +1,7 @@
 package hookcli
 
+import "agent-harness/cmd/harness/hookcli/hookinput"
+
 func RunHook(args []string) error {
 	return runHook(args)
 }
@@ -41,15 +43,15 @@ func HookArgValue(args []string, flagName string) string {
 }
 
 func RepoFromHookInput(input []byte) string {
-	return repoFromHookInput(input)
+	return hookinput.RepoFromHookInput(input)
 }
 
 func SourceFromHookInput(input []byte) string {
-	return sourceFromHookInput(input)
+	return hookinput.SourceFromHookInput(input)
 }
 
 func PathsFromHookInput(input []byte) []string {
-	return pathsFromHookInput(input)
+	return hookinput.PathsFromHookInput(input)
 }
 
 func PromptFromHookInput(input []byte) string {
@@ -61,27 +63,27 @@ func IsStopHookContinuationPrompt(prompt string) bool {
 }
 
 func LastAssistantMessageFromHookInput(input []byte) string {
-	return lastAssistantMessageFromHookInput(input)
+	return hookinput.LastAssistantMessageFromHookInput(input)
 }
 
 func TranscriptPathFromHookInput(input []byte) string {
-	return transcriptPathFromHookInput(input)
+	return hookinput.TranscriptPathFromHookInput(input)
 }
 
 func ReadLastAssistantMessageFromTranscript(path string) string {
-	return readLastAssistantMessageFromTranscript(path)
+	return hookinput.ReadLastAssistantMessageFromTranscript(path)
 }
 
 func ToolNameFromHookInput(input []byte) string {
-	return toolNameFromHookInput(input)
+	return hookinput.ToolNameFromHookInput(input)
 }
 
 func CommandFromHookInput(input []byte) string {
-	return commandFromHookInput(input)
+	return hookinput.CommandFromHookInput(input)
 }
 
 func ProjectPathFromHookInput(input []byte) string {
-	return projectPathFromHookInput(input)
+	return hookinput.ProjectPathFromHookInput(input)
 }
 
 func EnvBool(name string) bool {

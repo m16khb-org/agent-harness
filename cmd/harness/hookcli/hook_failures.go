@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/core"
 )
 
@@ -16,16 +17,16 @@ func recordHookFailure(args []string, stdin []byte, hookErr error) {
 	cwd, _ := os.Getwd()
 	repo := hookArgValue(args, "--repo")
 	if repo == "" {
-		repo = repoFromHookInput(stdin)
+		repo = hookinput.RepoFromHookInput(stdin)
 	}
 	_, _ = core.RecordHookFailureEvent(core.HookFailureEvent{
 		Hook:           hook,
 		Host:           hookArgValue(args, "--host"),
 		Repo:           repo,
 		CWD:            cwd,
-		Tool:           toolNameFromHookInput(stdin),
+		Tool:           hookinput.ToolNameFromHookInput(stdin),
 		Argv:           args,
-		CommandSnippet: commandFromHookInput(stdin),
+		CommandSnippet: hookinput.CommandFromHookInput(stdin),
 		Error:          hookErr.Error(),
 	})
 }

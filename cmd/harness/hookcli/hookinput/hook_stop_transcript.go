@@ -1,4 +1,4 @@
-package hookcli
+package hookinput
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func lastAssistantMessageFromHookInput(input []byte) string {
+func LastAssistantMessageFromHookInput(input []byte) string {
 	obj := hookInputObject(input)
 	for _, key := range []string{"last_assistant_message", "lastAssistantMessage", "assistant_message", "assistantMessage", "response", "final_response"} {
 		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
@@ -16,7 +16,7 @@ func lastAssistantMessageFromHookInput(input []byte) string {
 	return ""
 }
 
-func transcriptPathFromHookInput(input []byte) string {
+func TranscriptPathFromHookInput(input []byte) string {
 	obj := hookInputObject(input)
 	for _, key := range []string{"transcript_path", "transcriptPath"} {
 		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
@@ -26,7 +26,7 @@ func transcriptPathFromHookInput(input []byte) string {
 	return ""
 }
 
-func readLastAssistantMessageFromTranscript(path string) string {
+func ReadLastAssistantMessageFromTranscript(path string) string {
 	path = strings.TrimSpace(path)
 	if path == "" {
 		return ""

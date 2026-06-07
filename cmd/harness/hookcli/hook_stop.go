@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/core"
 )
 
@@ -24,15 +25,15 @@ func runHookStop(args []string) error {
 	stdin, _ := io.ReadAll(os.Stdin)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
-		parsedRepo = repoFromHookInput(stdin)
+		parsedRepo = hookinput.RepoFromHookInput(stdin)
 	}
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
 	}
 	result := core.BuildLifecycleStopReminder(parsedRepo)
-	message := lastAssistantMessageFromHookInput(stdin)
+	message := hookinput.LastAssistantMessageFromHookInput(stdin)
 	if message == "" {
-		message = readLastAssistantMessageFromTranscript(transcriptPathFromHookInput(stdin))
+		message = hookinput.ReadLastAssistantMessageFromTranscript(hookinput.TranscriptPathFromHookInput(stdin))
 	}
 	nextActions := core.BuildNumberedNextActionsDecision(
 		message,
@@ -42,7 +43,7 @@ func runHookStop(args []string) error {
 	// --auto-proceed-next-actions is retained only as a compatibility alias. This
 	// hook no longer auto-proceeds or judges choices; it detects that an explicit
 	// next-action review point exists and relays observed facts back to the main agent.
-	stopHookActive := hookInputBool(stdin, "stop_hook_active")
+	stopHookActive := hookinput.Bool(stdin, "stop_hook_active")
 	nextActionTriggerEnabled := *relayNextActionJudgement || *autoProceedNextActions
 	nextActionTrigger := core.BuildNextActionJudgementTrigger(message)
 	if *jsonOut {

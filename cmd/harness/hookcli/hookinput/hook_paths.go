@@ -1,10 +1,10 @@
-package hookcli
+package hookinput
 
 import (
 	"strings"
 )
 
-func pathsFromHookInput(input []byte) []string {
+func PathsFromHookInput(input []byte) []string {
 	obj := hookInputObject(input)
 	seen := map[string]bool{}
 	out := []string{}

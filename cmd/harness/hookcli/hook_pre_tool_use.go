@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/core"
 )
 
@@ -28,17 +29,17 @@ func runHookPreToolUse(args []string) error {
 	stdin, _ := io.ReadAll(os.Stdin)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
-		parsedRepo = repoFromHookInput(stdin)
+		parsedRepo = hookinput.RepoFromHookInput(stdin)
 	}
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
 	}
 	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
 		Repo:                 parsedRepo,
-		Tool:                 toolNameFromHookInput(stdin),
-		Paths:                pathsFromHookInput(stdin),
-		Command:              commandFromHookInput(stdin),
-		ProjectPath:          projectPathFromHookInput(stdin),
+		Tool:                 hookinput.ToolNameFromHookInput(stdin),
+		Paths:                hookinput.PathsFromHookInput(stdin),
+		Command:              hookinput.CommandFromHookInput(stdin),
+		ProjectPath:          hookinput.ProjectPathFromHookInput(stdin),
 		Source:               "pre-tool-use",
 		EnforceSearchRouting: *enforceSearchRouting,
 		EnforceWorktree:      *enforceWorktree,

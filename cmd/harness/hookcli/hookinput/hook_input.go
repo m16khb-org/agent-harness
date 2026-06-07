@@ -1,11 +1,11 @@
-package hookcli
+package hookinput
 
 import (
 	"encoding/json"
 	"strings"
 )
 
-func repoFromHookInput(input []byte) string {
+func RepoFromHookInput(input []byte) string {
 	if len(strings.TrimSpace(string(input))) == 0 {
 		return ""
 	}
@@ -28,7 +28,7 @@ func repoFromHookInput(input []byte) string {
 	return ""
 }
 
-func sourceFromHookInput(input []byte) string {
+func SourceFromHookInput(input []byte) string {
 	obj := hookInputObject(input)
 	if value, ok := obj["source"].(string); ok {
 		return strings.ToLower(strings.TrimSpace(value))
@@ -36,7 +36,7 @@ func sourceFromHookInput(input []byte) string {
 	return ""
 }
 
-func hookInputBool(input []byte, key string) bool {
+func Bool(input []byte, key string) bool {
 	if v, ok := hookInputObject(input)[key].(bool); ok {
 		return v
 	}

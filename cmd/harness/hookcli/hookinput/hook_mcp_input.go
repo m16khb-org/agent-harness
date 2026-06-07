@@ -1,4 +1,4 @@
-package hookcli
+package hookinput
 
 import (
 	"strings"

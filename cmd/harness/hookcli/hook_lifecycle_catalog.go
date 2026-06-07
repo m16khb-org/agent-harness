@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/core"
 )
 
@@ -20,7 +21,7 @@ func runHookPostCompact(args []string) error {
 	stdin, _ := io.ReadAll(os.Stdin)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
-		parsedRepo = repoFromHookInput(stdin)
+		parsedRepo = hookinput.RepoFromHookInput(stdin)
 	}
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
@@ -67,7 +68,7 @@ func runHookSessionStart(args []string) error {
 	stdin, _ := io.ReadAll(os.Stdin)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
-		parsedRepo = repoFromHookInput(stdin)
+		parsedRepo = hookinput.RepoFromHookInput(stdin)
 	}
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
@@ -78,7 +79,7 @@ func runHookSessionStart(args []string) error {
 	}
 	// On compaction Claude Code fires SessionStart with source=compact AND the
 	// PostCompact hook; let PostCompact own that case to avoid double injection.
-	if !cat.ShouldInject || sourceFromHookInput(stdin) == "compact" {
+	if !cat.ShouldInject || hookinput.SourceFromHookInput(stdin) == "compact" {
 		return printJSON(map[string]any{
 			"hookSpecificOutput": map[string]any{"hookEventName": "SessionStart"},
 		})

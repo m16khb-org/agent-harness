@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/core"
 )
 
@@ -27,7 +28,7 @@ func runHookUserPrompt(args []string) error {
 	if prompt == "" {
 		prompt = promptFromHookInput(stdin)
 	}
-	repo := repoFromHookInput(stdin)
+	repo := hookinput.RepoFromHookInput(stdin)
 	if repo == "" {
 		repo = ResolveTarget("")
 	}

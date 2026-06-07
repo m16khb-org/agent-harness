@@ -1,10 +1,10 @@
-package hookcli
+package hookinput
 
 import (
 	"strings"
 )
 
-func toolNameFromHookInput(input []byte) string {
+func ToolNameFromHookInput(input []byte) string {
 	obj := hookInputObject(input)
 	for _, key := range []string{"tool_name", "tool", "name"} {
 		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
@@ -14,7 +14,7 @@ func toolNameFromHookInput(input []byte) string {
 	return ""
 }
 
-func commandFromHookInput(input []byte) string {
+func CommandFromHookInput(input []byte) string {
 	obj := hookInputObject(input)
 	for _, key := range []string{"command", "cmd"} {
 		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
@@ -39,7 +39,7 @@ func commandFromHookInput(input []byte) string {
 	return ""
 }
 
-func projectPathFromHookInput(input []byte) string {
+func ProjectPathFromHookInput(input []byte) string {
 	obj := hookInputObject(input)
 	if toolInput, ok := obj["tool_input"].(map[string]any); ok {
 		for _, key := range []string{"projectPath", "project_path"} {
