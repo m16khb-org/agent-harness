@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/lifecycle/model"
+	"agent-harness/internal/core/lifecycle/worktreepath"
 	"agent-harness/internal/core/nextaction"
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/projectdocs"
@@ -136,4 +137,59 @@ func newIssueOpsID(repo, branch string) string {
 
 func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
 	return issueops.WriteIssueOps(stateRoot, record)
+}
+
+func worktreeGuardTargets(req HookToolUseLifecycleRequest) []string {
+	targets := []string{}
+	if repo := cleanAbsPath(req.Repo); repo != "" {
+		targets = append(targets, repo)
+	}
+	for _, path := range req.Paths {
+		if target := resolveHookTargetPath(req.Repo, path); target != "" {
+			targets = append(targets, target)
+		}
+	}
+	return targets
+}
+
+func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
+	targets := []string{}
+	for _, path := range req.Paths {
+		if target := resolveHookTargetPath(req.Repo, path); target != "" {
+			targets = append(targets, target)
+		}
+	}
+	if len(targets) == 0 && isShellTool(req.Tool) {
+		for _, path := range shellCommandWorktreeGuardPaths(req.Repo, req.Command) {
+			if target := resolveHookTargetPath(req.Repo, path); target != "" {
+				targets = append(targets, target)
+			}
+		}
+	}
+	if len(targets) == 0 {
+		if repo := cleanAbsPath(req.Repo); repo != "" {
+			targets = append(targets, repo)
+		}
+	}
+	return targets
+}
+
+func gitBranchFromHead(repo string) string {
+	return worktreepath.GitBranchFromHead(repo)
+}
+
+func isInsideWorktreesPath(target string) bool {
+	return worktreepath.IsInsideWorktreesPath(target)
+}
+
+func resolveHookTargetPath(repo, path string) string {
+	return worktreepath.ResolveHookTargetPath(repo, path)
+}
+
+func cleanAbsPath(path string) string {
+	return worktreepath.CleanAbs(path)
+}
+
+func pathWithin(path, root string) bool {
+	return worktreepath.Within(path, root)
 }

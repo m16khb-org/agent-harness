@@ -1,4 +1,4 @@
-package lifecycle
+package worktreepath
 
 import (
 	"os"
@@ -6,43 +6,8 @@ import (
 	"strings"
 )
 
-func worktreeGuardTargets(req HookToolUseLifecycleRequest) []string {
-	targets := []string{}
-	if repo := cleanAbsPath(req.Repo); repo != "" {
-		targets = append(targets, repo)
-	}
-	for _, path := range req.Paths {
-		if target := resolveHookTargetPath(req.Repo, path); target != "" {
-			targets = append(targets, target)
-		}
-	}
-	return targets
-}
-
-func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
-	targets := []string{}
-	for _, path := range req.Paths {
-		if target := resolveHookTargetPath(req.Repo, path); target != "" {
-			targets = append(targets, target)
-		}
-	}
-	if len(targets) == 0 && isShellTool(req.Tool) {
-		for _, path := range shellCommandWorktreeGuardPaths(req.Repo, req.Command) {
-			if target := resolveHookTargetPath(req.Repo, path); target != "" {
-				targets = append(targets, target)
-			}
-		}
-	}
-	if len(targets) == 0 {
-		if repo := cleanAbsPath(req.Repo); repo != "" {
-			targets = append(targets, repo)
-		}
-	}
-	return targets
-}
-
-func gitBranchFromHead(repo string) string {
-	root := cleanAbsPath(repo)
+func GitBranchFromHead(repo string) string {
+	root := CleanAbs(repo)
 	if root == "" {
 		return ""
 	}
@@ -71,7 +36,7 @@ func gitBranchFromHead(repo string) string {
 	return ""
 }
 
-func isInsideWorktreesPath(target string) bool {
+func IsInsideWorktreesPath(target string) bool {
 	for _, segment := range strings.Split(filepath.ToSlash(target), "/") {
 		if strings.HasSuffix(segment, ".worktrees") {
 			return true
@@ -80,22 +45,22 @@ func isInsideWorktreesPath(target string) bool {
 	return false
 }
 
-func resolveHookTargetPath(repo, path string) string {
+func ResolveHookTargetPath(repo, path string) string {
 	p := strings.TrimSpace(path)
 	if p == "" {
 		return ""
 	}
 	if filepath.IsAbs(p) {
-		return cleanAbsPath(p)
+		return CleanAbs(p)
 	}
-	base := cleanAbsPath(repo)
+	base := CleanAbs(repo)
 	if base == "" {
 		return ""
 	}
-	return cleanAbsPath(filepath.Join(base, p))
+	return CleanAbs(filepath.Join(base, p))
 }
 
-func cleanAbsPath(path string) string {
+func CleanAbs(path string) string {
 	p := strings.TrimSpace(path)
 	if p == "" {
 		return ""
@@ -110,9 +75,9 @@ func cleanAbsPath(path string) string {
 	return filepath.Clean(p)
 }
 
-func pathWithin(path, root string) bool {
-	p := cleanAbsPath(path)
-	r := cleanAbsPath(root)
+func Within(path, root string) bool {
+	p := CleanAbs(path)
+	r := CleanAbs(root)
 	if p == "" || r == "" {
 		return false
 	}
