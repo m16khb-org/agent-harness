@@ -1,4 +1,4 @@
-package selfworkflow
+package stateio
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"agent-harness/cmd/harness/selfworkflow/model"
 	"agent-harness/internal/core"
 )
 
@@ -17,7 +18,7 @@ func TestNewSelfVerificationSummarySnapshotCopiesResultFields(t *testing.T) {
 	snapshot := NewSelfVerificationSummarySnapshot(result, generatedAt)
 
 	if snapshot.SchemaVersion != 1 ||
-		snapshot.Kind != selfVerificationSummaryKind ||
+		snapshot.Kind != model.SelfVerificationSummaryKind ||
 		snapshot.LoopKind != result.LoopKind ||
 		snapshot.KoreanName != result.KoreanName ||
 		!snapshot.OK ||
@@ -55,7 +56,7 @@ func TestSaveSelfVerificationSummaryWritesDefaultKeyAndRejectsInvalidKey(t *test
 	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
 		t.Fatalf("decode saved summary: %v\n%s", err, state.Record.Content)
 	}
-	if snapshot.Kind != selfVerificationSummaryKind || snapshot.Summary.TotalSteps != result.Summary.TotalSteps {
+	if snapshot.Kind != model.SelfVerificationSummaryKind || snapshot.Summary.TotalSteps != result.Summary.TotalSteps {
 		t.Fatalf("unexpected saved snapshot: %+v", snapshot)
 	}
 
@@ -73,17 +74,55 @@ func TestSaveSelfVerificationSummaryWritesDefaultKeyAndRejectsInvalidKey(t *test
 	}
 }
 
+func TestSaveSelfAugmentSummary(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	result := model.SelfAugmentResult{
+		OK:          true,
+		Iterations:  10,
+		BaseSeed:    300,
+		ElapsedMS:   1234,
+		HarnessRoot: "/tmp/harness",
+		Summary: model.SelfAugmentSummary{
+			TotalRuns:   1,
+			TotalSteps:  1,
+			PassedSteps: 1,
+			StepLabels:  []string{"go test"},
+		},
+	}
+	if err := SaveSelfAugmentSummary(&result, "self-verify-test"); err != nil {
+		t.Fatalf("SaveSelfAugmentSummary: %v", err)
+	}
+	if result.StateCheckpoint == nil || !result.StateCheckpoint.OK {
+		t.Fatalf("missing state checkpoint: %+v", result.StateCheckpoint)
+	}
+	if result.StateCheckpoint.Key != "self-verify-test" || result.StateCheckpoint.Path != filepath.Join(dir, "self-verify-test.json") {
+		t.Fatalf("unexpected checkpoint metadata: %+v", result.StateCheckpoint)
+	}
+	state, err := core.StateRead("self-verify-test")
+	if err != nil {
+		t.Fatalf("StateRead: %v", err)
+	}
+	var snapshot SelfAugmentStateSnapshot
+	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
+		t.Fatalf("unmarshal saved snapshot: %v", err)
+	}
+	if snapshot.Kind != model.SelfVerificationSummaryKind || !snapshot.OK || snapshot.Summary.TotalSteps != 1 || snapshot.Summary.PassedSteps != 1 {
+		t.Fatalf("unexpected saved snapshot: %+v", snapshot)
+	}
+}
+
 func selfVerificationSummaryResultForSaveTest() SelfAugmentResult {
 	return SelfAugmentResult{
 		OK:          true,
 		LoopKind:    "self_verification",
-		KoreanName:  selfVerificationKoreanName,
+		KoreanName:  model.SelfVerificationKoreanName,
 		Iterations:  10,
 		BaseSeed:    123,
 		TargetScore: 95,
 		ElapsedMS:   456,
 		HarnessRoot: "/tmp/harness",
-		Summary: SelfAugmentSummary{
+		Summary: model.SelfAugmentSummary{
 			TotalRuns:   10,
 			TotalSteps:  20,
 			PassedSteps: 20,

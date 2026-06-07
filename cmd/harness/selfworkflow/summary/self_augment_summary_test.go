@@ -1,17 +1,15 @@
-package selfworkflow
+package summary
 
 import (
-	"encoding/json"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/cmd/harness/selfworkflow/model"
 )
 
 func TestSummarizeSelfAugmentSuccess(t *testing.T) {
 	result := SelfAugmentResult{
-		Runs: []SelfAugmentIteration{
+		Runs: []model.SelfAugmentIteration{
 			{
 				Iteration: 1,
 				Seed:      100,
@@ -30,7 +28,7 @@ func TestSummarizeSelfAugmentSuccess(t *testing.T) {
 			},
 		},
 	}
-	summary := summarizeSelfAugment(result)
+	summary := SummarizeSelfAugment(result)
 	if summary.TotalRuns != 2 || summary.TotalSteps != 4 || summary.PassedSteps != 4 || summary.FailedSteps != 0 {
 		t.Fatalf("unexpected summary counts: %+v", summary)
 	}
@@ -44,7 +42,7 @@ func TestSummarizeSelfAugmentSuccess(t *testing.T) {
 
 func TestSummarizeSelfAugmentFailure(t *testing.T) {
 	result := SelfAugmentResult{
-		Runs: []SelfAugmentIteration{
+		Runs: []model.SelfAugmentIteration{
 			{
 				Iteration: 3,
 				Seed:      202,
@@ -55,7 +53,7 @@ func TestSummarizeSelfAugmentFailure(t *testing.T) {
 			},
 		},
 	}
-	summary := summarizeSelfAugment(result)
+	summary := SummarizeSelfAugment(result)
 	if summary.TotalRuns != 1 || summary.TotalSteps != 2 || summary.PassedSteps != 1 || summary.FailedSteps != 1 {
 		t.Fatalf("unexpected summary counts: %+v", summary)
 	}
@@ -74,13 +72,13 @@ func TestSummarizeSelfVerificationClassifiesIntermittentFailure(t *testing.T) {
 	result := SelfAugmentResult{
 		Iterations: 3,
 		BaseSeed:   10,
-		Runs: []SelfAugmentIteration{
+		Runs: []model.SelfAugmentIteration{
 			{Iteration: 1, Seed: 10, Steps: []StepResult{{Label: "go test", OK: true}}},
 			{Iteration: 2, Seed: 11, Steps: []StepResult{{Label: "go test", OK: false, Error: "boom"}}},
 			{Iteration: 3, Seed: 12, Steps: []StepResult{{Label: "go test", OK: true}}},
 		},
 	}
-	summary := summarizeSelfVerification(result, 95)
+	summary := SummarizeSelfVerification(result, 95)
 	if summary.FailureClass != "intermittent" {
 		t.Fatalf("expected intermittent failure classification: %+v", summary)
 	}
@@ -90,7 +88,7 @@ func TestSummarizeSelfVerificationClassifiesIntermittentFailure(t *testing.T) {
 }
 
 func TestSelfVerificationCoverageReportsMissingLabels(t *testing.T) {
-	coverage, gaps := selfVerificationCoverage([]string{"go test", "contract golden tests"})
+	coverage, gaps := SelfVerificationCoverageForLabels([]string{"go test", "contract golden tests"})
 	if len(coverage) == 0 || len(gaps) == 0 {
 		t.Fatalf("expected coverage and gaps, got coverage=%+v gaps=%+v", coverage, gaps)
 	}
@@ -101,10 +99,10 @@ func TestSelfVerificationCoverageReportsMissingLabels(t *testing.T) {
 
 func TestSelfVerificationCoverageCompleteWhenAllLabelsPresent(t *testing.T) {
 	labels := []string{}
-	for _, definition := range selfVerificationCoverageDefinitions() {
+	for _, definition := range SelfVerificationCoverageDefinitions() {
 		labels = append(labels, definition.Labels...)
 	}
-	coverage, gaps := selfVerificationCoverage(labels)
+	coverage, gaps := SelfVerificationCoverageForLabels(labels)
 	if len(gaps) != 0 {
 		t.Fatalf("expected no coverage gaps, got %+v", gaps)
 	}
@@ -116,7 +114,7 @@ func TestSelfVerificationCoverageCompleteWhenAllLabelsPresent(t *testing.T) {
 }
 
 func TestSelfVerificationContractIncludesSummaryExtensions(t *testing.T) {
-	contract := selfVerificationContract()
+	contract := SelfVerificationContractValue()
 	if contract.Name != "self_verification_summary" || contract.Version < 2 || len(contract.Hash) != 64 {
 		t.Fatalf("unexpected contract identity: %+v", contract)
 	}
@@ -130,44 +128,57 @@ func TestSelfVerificationContractIncludesSummaryExtensions(t *testing.T) {
 	}
 }
 
-func TestSaveSelfAugmentSummary(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", dir)
-	result := SelfAugmentResult{
-		OK:          true,
-		Iterations:  10,
-		BaseSeed:    300,
-		ElapsedMS:   1234,
-		HarnessRoot: "/tmp/harness",
-		Runs: []SelfAugmentIteration{
-			{
-				Iteration: 1,
-				Seed:      300,
-				Steps: []StepResult{
-					{Label: "go test", OK: true, DurationMS: 25},
-				},
-			},
+func TestClassifySelfVerificationFailureCoversDeterministicMixedAndUnknown(t *testing.T) {
+	deterministic := SelfAugmentResult{
+		Runs: []model.SelfAugmentIteration{
+			{Iteration: 1, Seed: 10, Steps: []StepResult{{Label: "go test", OK: false}}},
+			{Iteration: 2, Seed: 11, Steps: []StepResult{{Label: "go test", OK: false}}},
 		},
 	}
-	result.Summary = summarizeSelfAugment(result)
-	if err := SaveSelfAugmentSummary(&result, "self-verify-test"); err != nil {
-		t.Fatalf("SaveSelfAugmentSummary: %v", err)
+	class, reason, clusters := ClassifySelfVerificationFailure(deterministic, SelfAugmentSummary{TotalRuns: 2, FailedSteps: 2})
+	if class != "deterministic" || !strings.Contains(reason, "same step") || len(clusters) != 1 || clusters[0].Count != 2 {
+		t.Fatalf("unexpected deterministic classification: class=%q reason=%q clusters=%+v", class, reason, clusters)
 	}
-	if result.StateCheckpoint == nil || !result.StateCheckpoint.OK {
-		t.Fatalf("missing state checkpoint: %+v", result.StateCheckpoint)
+
+	mixed := SelfAugmentResult{
+		Runs: []model.SelfAugmentIteration{
+			{Iteration: 1, Seed: 20, Steps: []StepResult{{Label: "go test", OK: false}}},
+			{Iteration: 2, Seed: 21, Steps: []StepResult{{Label: "go build", OK: false}}},
+		},
 	}
-	if result.StateCheckpoint.Key != "self-verify-test" || result.StateCheckpoint.Path != filepath.Join(dir, "self-verify-test.json") {
-		t.Fatalf("unexpected checkpoint metadata: %+v", result.StateCheckpoint)
+	class, reason, clusters = ClassifySelfVerificationFailure(mixed, SelfAugmentSummary{TotalRuns: 2, FailedSteps: 2})
+	if class != "mixed" || !strings.Contains(reason, "multiple failure steps") || len(clusters) != 2 {
+		t.Fatalf("unexpected mixed classification: class=%q reason=%q clusters=%+v", class, reason, clusters)
 	}
-	state, err := core.StateRead("self-verify-test")
-	if err != nil {
-		t.Fatalf("StateRead: %v", err)
+
+	class, reason, clusters = ClassifySelfVerificationFailure(SelfAugmentResult{}, SelfAugmentSummary{FailedSteps: 1})
+	if class != "unknown" || !strings.Contains(reason, "no failed step details") || clusters != nil {
+		t.Fatalf("unexpected unknown classification: class=%q reason=%q clusters=%+v", class, reason, clusters)
 	}
-	var snapshot SelfAugmentStateSnapshot
-	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
-		t.Fatalf("unmarshal saved snapshot: %v", err)
+}
+
+func TestSummarizeSelfVerificationMarksGoalFailureWhenLabelsMissing(t *testing.T) {
+	result := SelfAugmentResult{
+		OK:         true,
+		Iterations: 1,
+		Runs: []model.SelfAugmentIteration{
+			{Iteration: 1, Seed: 100, Steps: []StepResult{{Label: "go test", OK: true}}},
+		},
 	}
-	if snapshot.Kind != "self_verification_summary" || !snapshot.OK || snapshot.Summary.TotalSteps != 1 || snapshot.Summary.PassedSteps != 1 {
-		t.Fatalf("unexpected saved snapshot: %+v", snapshot)
+	summary := SummarizeSelfVerification(result, 95)
+	if summary.TerminationEligible {
+		t.Fatalf("missing labels must prevent termination: %+v", summary)
 	}
+	if summary.MinimumGoalScore >= 100 {
+		t.Fatalf("missing labels should lower minimum goal score: %+v", summary.GoalScores)
+	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
