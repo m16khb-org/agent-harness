@@ -1,4 +1,4 @@
-package selfworkflow
+package historycompare
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"agent-harness/internal/core"
 )
 
-func applySelfAugmentHistoryRetention(result *SelfAugmentHistoryResult, options selfAugmentHistoryRetentionOptions) error {
+func ApplySelfAugmentHistoryRetention(result *SelfAugmentHistoryResult, options SelfAugmentHistoryRetentionOptions) error {
 	retention := &SelfAugmentHistoryRetention{
 		Enabled:        true,
 		Limit:          options.Limit,

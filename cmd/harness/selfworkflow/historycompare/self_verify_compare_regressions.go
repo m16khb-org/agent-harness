@@ -1,10 +1,14 @@
-package selfworkflow
+package historycompare
 
-import "sort"
+import (
+	"sort"
 
-func compareSlowestStepRegressions(baseline, candidate []SelfAugmentSlowStep, maxRegressionPct float64) []SelfAugmentSlowStepRegression {
-	baselineByLabel := maxSlowStepDurationByLabel(baseline)
-	candidateByLabel := maxSlowStepDurationByLabel(candidate)
+	"agent-harness/cmd/harness/selfworkflow/summary"
+)
+
+func CompareSlowestStepRegressions(baseline, candidate []SelfAugmentSlowStep, maxRegressionPct float64) []SelfAugmentSlowStepRegression {
+	baselineByLabel := summary.MaxSlowStepDurationByLabel(baseline)
+	candidateByLabel := summary.MaxSlowStepDurationByLabel(candidate)
 	regressions := []SelfAugmentSlowStepRegression{}
 	for label, candidateDuration := range candidateByLabel {
 		baselineDuration, ok := baselineByLabel[label]
@@ -36,9 +40,9 @@ func compareSlowestStepRegressions(baseline, candidate []SelfAugmentSlowStep, ma
 	return regressions
 }
 
-func compareStepBudgetRegressions(baseline, candidate []SelfAugmentStepDurationStat, maxRegressionPct float64) []SelfAugmentStepBudgetRegression {
-	baselineByLabel := stepDurationStatByLabel(baseline)
-	candidateByLabel := stepDurationStatByLabel(candidate)
+func CompareStepBudgetRegressions(baseline, candidate []SelfAugmentStepDurationStat, maxRegressionPct float64) []SelfAugmentStepBudgetRegression {
+	baselineByLabel := summary.StepDurationStatByLabel(baseline)
+	candidateByLabel := summary.StepDurationStatByLabel(candidate)
 	regressions := []SelfAugmentStepBudgetRegression{}
 	for label, candidateStat := range candidateByLabel {
 		baselineStat, ok := baselineByLabel[label]
@@ -76,7 +80,7 @@ func compareStepBudgetRegressions(baseline, candidate []SelfAugmentStepDurationS
 	return regressions
 }
 
-func missingStrings(want, have []string) []string {
+func MissingStrings(want, have []string) []string {
 	haveSet := map[string]bool{}
 	for _, item := range have {
 		haveSet[item] = true

@@ -1,10 +1,12 @@
-package selfworkflow
+package historycompare
 
 import (
 	"fmt"
 	"sort"
 	"strings"
 
+	"agent-harness/cmd/harness/selfworkflow/stateio"
+	"agent-harness/cmd/harness/selfworkflow/summary"
 	"agent-harness/internal/core"
 )
 
@@ -19,11 +21,11 @@ func CompareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 	if maxElapsedRegressionPct < 0 {
 		return result, fmt.Errorf("max elapsed regression pct must be non-negative")
 	}
-	baseline, err := ReadSelfAugmentStateSnapshot(baselineKey)
+	baseline, err := stateio.ReadSelfAugmentStateSnapshot(baselineKey)
 	if err != nil {
 		return result, fmt.Errorf("read baseline summary: %w", err)
 	}
-	candidate, err := ReadSelfAugmentStateSnapshot(candidateKey)
+	candidate, err := stateio.ReadSelfAugmentStateSnapshot(candidateKey)
 	if err != nil {
 		return result, fmt.Errorf("read candidate summary: %w", err)
 	}
@@ -38,8 +40,8 @@ func CompareSelfAugmentSummariesFromSnapshots(baselineKey, candidateKey string, 
 	result.CandidateSnapshotGeneratedAt = candidate.GeneratedAt
 	result.BaselineSlowestSteps = baseline.Summary.SlowestSteps
 	result.CandidateSlowestSteps = candidate.Summary.SlowestSteps
-	result.BaselineStepDurationStats = stepDurationStatsForCompare(baseline.Summary)
-	result.CandidateStepDurationStats = stepDurationStatsForCompare(candidate.Summary)
+	result.BaselineStepDurationStats = summary.StepDurationStatsForCompare(baseline.Summary)
+	result.CandidateStepDurationStats = summary.StepDurationStatsForCompare(candidate.Summary)
 	result.ElapsedDeltaMS = candidate.ElapsedMS - baseline.ElapsedMS
 	result.BaselineMinimumGoalScore = baseline.Summary.MinimumGoalScore
 	result.CandidateMinimumGoalScore = candidate.Summary.MinimumGoalScore
@@ -50,8 +52,8 @@ func CompareSelfAugmentSummariesFromSnapshots(baselineKey, candidateKey string, 
 	}
 	result.FailedStepsDelta = candidate.Summary.FailedSteps - baseline.Summary.FailedSteps
 	result.TotalStepsDelta = candidate.Summary.TotalSteps - baseline.Summary.TotalSteps
-	result.MissingStepLabels = missingStrings(baseline.Summary.StepLabels, candidate.Summary.StepLabels)
-	result.AddedStepLabels = missingStrings(candidate.Summary.StepLabels, baseline.Summary.StepLabels)
+	result.MissingStepLabels = MissingStrings(baseline.Summary.StepLabels, candidate.Summary.StepLabels)
+	result.AddedStepLabels = MissingStrings(candidate.Summary.StepLabels, baseline.Summary.StepLabels)
 	if baseline.OK && !candidate.OK {
 		result.Regressions = append(result.Regressions, "candidate_not_ok")
 	}
@@ -67,11 +69,11 @@ func CompareSelfAugmentSummariesFromSnapshots(baselineKey, candidateKey string, 
 	if result.ElapsedDeltaPct > maxElapsedRegressionPct {
 		result.Regressions = append(result.Regressions, fmt.Sprintf("elapsed_ms_increased_by_%.2f_pct", result.ElapsedDeltaPct))
 	}
-	result.SlowStepRegressions = compareSlowestStepRegressions(baseline.Summary.SlowestSteps, candidate.Summary.SlowestSteps, maxElapsedRegressionPct)
+	result.SlowStepRegressions = CompareSlowestStepRegressions(baseline.Summary.SlowestSteps, candidate.Summary.SlowestSteps, maxElapsedRegressionPct)
 	for _, regression := range result.SlowStepRegressions {
 		result.Regressions = append(result.Regressions, fmt.Sprintf("slow_step:%s_increased_by_%.2f_pct", regression.Label, regression.DeltaPct))
 	}
-	result.StepBudgetRegressions = compareStepBudgetRegressions(result.BaselineStepDurationStats, result.CandidateStepDurationStats, maxElapsedRegressionPct)
+	result.StepBudgetRegressions = CompareStepBudgetRegressions(result.BaselineStepDurationStats, result.CandidateStepDurationStats, maxElapsedRegressionPct)
 	for _, regression := range result.StepBudgetRegressions {
 		result.Regressions = append(result.Regressions, fmt.Sprintf("step_budget:%s_p95_increased_by_%.2f_pct", regression.Label, regression.DeltaPct))
 	}

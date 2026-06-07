@@ -1,4 +1,4 @@
-package selfworkflow
+package historycompare
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"agent-harness/cmd/harness/selfworkflow/stateio"
 	"agent-harness/internal/core"
 )
 
@@ -53,7 +54,7 @@ func SelfAugmentHistory(prefix string, limit int, retentionOptions ...SelfAugmen
 			result.Skipped = append(result.Skipped, SelfAugmentHistorySkipped{Key: record.Key, Reason: "not_json_summary"})
 			continue
 		}
-		if !IsSelfVerificationSummaryKind(snapshot.Kind) {
+		if !stateio.IsSelfVerificationSummaryKind(snapshot.Kind) {
 			result.Skipped = append(result.Skipped, SelfAugmentHistorySkipped{Key: record.Key, Reason: "kind:" + snapshot.Kind})
 			continue
 		}
@@ -76,8 +77,8 @@ func SelfAugmentHistory(prefix string, limit int, retentionOptions ...SelfAugmen
 			TotalRuns:    snapshot.Summary.TotalRuns,
 			TotalSteps:   snapshot.Summary.TotalSteps,
 			FailedSteps:  snapshot.Summary.FailedSteps,
-			StepLabels:   nonNilStringSlice(snapshot.Summary.StepLabels),
-			SlowestSteps: nonNilSlowStepSlice(snapshot.Summary.SlowestSteps),
+			StepLabels:   NonNilStringSlice(snapshot.Summary.StepLabels),
+			SlowestSteps: NonNilSlowStepSlice(snapshot.Summary.SlowestSteps),
 		})
 	}
 	sort.Slice(result.Entries, func(i, j int) bool {

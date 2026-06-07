@@ -1,11 +1,11 @@
-package selfworkflow
+package historycompare
 
 import (
 	"strings"
 	"time"
 )
 
-func parseSelfAugmentTimestamp(value string) (time.Time, bool) {
+func ParseSelfAugmentTimestamp(value string) (time.Time, bool) {
 	if strings.TrimSpace(value) == "" {
 		return time.Time{}, false
 	}
@@ -18,14 +18,14 @@ func parseSelfAugmentTimestamp(value string) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-func nonNilStringSlice(items []string) []string {
+func NonNilStringSlice(items []string) []string {
 	if items == nil {
 		return []string{}
 	}
 	return items
 }
 
-func nonNilSlowStepSlice(items []SelfAugmentSlowStep) []SelfAugmentSlowStep {
+func NonNilSlowStepSlice(items []SelfAugmentSlowStep) []SelfAugmentSlowStep {
 	if items == nil {
 		return []SelfAugmentSlowStep{}
 	}

@@ -1,0 +1,20 @@
+package historycompare
+
+import "agent-harness/cmd/harness/selfworkflow/model"
+
+const selfVerifyStepBudgetMinRegressionMS int64 = 25
+
+type SelfAugmentCompareResult = model.SelfAugmentCompareResult
+type SelfAugmentHistoryEntry = model.SelfAugmentHistoryEntry
+type SelfAugmentHistoryResult = model.SelfAugmentHistoryResult
+type SelfAugmentHistoryRetention = model.SelfAugmentHistoryRetention
+type SelfAugmentHistoryRetentionOptions = model.SelfAugmentHistoryRetentionOptions
+type SelfAugmentHistorySkipped = model.SelfAugmentHistorySkipped
+type SelfAugmentSlowStep = model.SelfAugmentSlowStep
+type SelfAugmentSlowStepRegression = model.SelfAugmentSlowStepRegression
+type SelfAugmentStateSnapshot = model.SelfAugmentStateSnapshot
+type SelfAugmentStepBudgetRegression = model.SelfAugmentStepBudgetRegression
+type SelfAugmentStepDurationStat = model.SelfAugmentStepDurationStat
+type SelfAugmentSummary = model.SelfAugmentSummary
+
+type selfAugmentHistoryRetentionOptions = model.SelfAugmentHistoryRetentionOptions

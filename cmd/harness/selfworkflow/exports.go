@@ -1,9 +1,13 @@
 package selfworkflow
 
-import "time"
+import (
+	"time"
+
+	"agent-harness/cmd/harness/selfworkflow/historycompare"
+)
 
 func ApplySelfAugmentHistoryRetention(result *SelfAugmentHistoryResult, options SelfAugmentHistoryRetentionOptions) error {
-	return applySelfAugmentHistoryRetention(result, options)
+	return historycompare.ApplySelfAugmentHistoryRetention(result, options)
 }
 
 func AllSelfAugmentGoalsPassed(goals []SelfAugmentGoal) bool {
