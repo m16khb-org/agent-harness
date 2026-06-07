@@ -5,6 +5,7 @@ import (
 	"agent-harness/internal/core/issueops/artifactverify"
 	"agent-harness/internal/core/issueops/branchprepare"
 	"agent-harness/internal/core/issueops/cleanupstatus"
+	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/start"
 )
@@ -127,5 +128,25 @@ func issueOpsStartStore() start.Store {
 		Write:          writeIssueOps,
 		NewID:          newIssueOpsID,
 		ValidateBranch: validateIssueOpsIssueBranch,
+	}
+}
+
+func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
+	return intentdesign.RecordIntent(issueOpsIntentDesignStore(), stateRoot, id, req)
+}
+
+func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
+	return intentdesign.RecordDesignReview(issueOpsIntentDesignStore(), stateRoot, id, req)
+}
+
+func cleanIssueOpsTextValues(values []string) []string {
+	return intentdesign.CleanTextValues(values)
+}
+
+func issueOpsIntentDesignStore() intentdesign.Store {
+	return intentdesign.Store{
+		Read:          ReadIssueOps,
+		TouchWrite:    touchAndWriteIssueOps,
+		PlanReadiness: IssueOpsPlanReadiness,
 	}
 }
