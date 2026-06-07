@@ -1,12 +1,19 @@
-package issueops
+package cleanupstatus
 
 import (
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/preflight"
+	"os"
+	"sort"
 	"strings"
 )
 
-func issueOpsRemoteArtifactMissing(record IssueOpsRecord) []string {
+type Store struct {
+	Read func(stateRoot, id string) (model.IssueOpsRecord, error)
+}
+
+func RemoteArtifactMissing(record model.IssueOpsRecord) []string {
 	if record.RemoteArtifact == nil {
 		return []string{"remote_artifact"}
 	}
@@ -29,16 +36,16 @@ func issueOpsRemoteArtifactMissing(record IssueOpsRecord) []string {
 	return uniqSorted(missing)
 }
 
-func IssueOpsCleanupStatusByID(stateRoot, id string, req IssueOpsCleanupStatusRequest) (IssueOpsCleanupStatus, error) {
-	record, err := ReadIssueOps(stateRoot, id)
+func ByID(store Store, stateRoot, id string, req model.IssueOpsCleanupStatusRequest) (model.IssueOpsCleanupStatus, error) {
+	record, err := store.Read(stateRoot, id)
 	if err != nil {
-		return IssueOpsCleanupStatus{OK: false, ID: id}, err
+		return model.IssueOpsCleanupStatus{OK: false, ID: id}, err
 	}
-	return IssueOpsCleanupStatusForRecord(record, req), nil
+	return ForRecord(record, req), nil
 }
 
-func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupStatusRequest) IssueOpsCleanupStatus {
-	status := IssueOpsCleanupStatus{
+func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusRequest) model.IssueOpsCleanupStatus {
+	status := model.IssueOpsCleanupStatus{
 		OK:           true,
 		ID:           record.ID,
 		Merged:       req.Merged,
@@ -48,10 +55,10 @@ func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupSt
 	if record.RemoteArtifact != nil {
 		status.RemoteArtifactURL = strings.TrimSpace(record.RemoteArtifact.URL)
 	}
-	if issueOpsPhaseRank(record.Phase) < issueOpsPhaseRank(IssueOpsPhasePR) {
+	if model.IssueOpsPhaseRank(record.Phase) < model.IssueOpsPhaseRank(model.IssueOpsPhasePR) {
 		status.Missing = append(status.Missing, "pr_phase")
 	}
-	status.Missing = append(status.Missing, issueOpsRemoteArtifactMissing(record)...)
+	status.Missing = append(status.Missing, RemoteArtifactMissing(record)...)
 	if !req.Merged {
 		status.Missing = append(status.Missing, "remote_artifact_merged")
 	}
@@ -60,7 +67,7 @@ func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupSt
 		status.Missing = append(status.Missing, "worktree_path")
 		return finishIssueOpsCleanupStatus(status)
 	}
-	if !issueOpsWorktreePathValid(worktree) {
+	if !worktreePathValid(worktree) {
 		status.Missing = append(status.Missing, "worktree_exists")
 		return finishIssueOpsCleanupStatus(status)
 	}
@@ -94,7 +101,7 @@ func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupSt
 	return finishIssueOpsCleanupStatus(status)
 }
 
-func finishIssueOpsCleanupStatus(status IssueOpsCleanupStatus) IssueOpsCleanupStatus {
+func finishIssueOpsCleanupStatus(status model.IssueOpsCleanupStatus) model.IssueOpsCleanupStatus {
 	status.Missing = uniqSorted(status.Missing)
 	status.Warnings = uniqSorted(status.Warnings)
 	status.Ready = len(status.Missing) == 0
@@ -112,6 +119,29 @@ func finishIssueOpsCleanupStatus(status IssueOpsCleanupStatus) IssueOpsCleanupSt
 		}
 	}
 	return status
+}
+
+func worktreePathValid(path string) bool {
+	path = strings.TrimSpace(path)
+	if path == "" || strings.Contains(path, "\x00") {
+		return false
+	}
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+func uniqSorted(in []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, v := range in {
+		if v == "" || seen[v] {
+			continue
+		}
+		seen[v] = true
+		out = append(out, v)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func firstIssueOpsGitRemote(worktree string) string {

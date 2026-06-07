@@ -3,6 +3,7 @@ package issueops
 import (
 	"agent-harness/internal/core/issueops/active"
 	"agent-harness/internal/core/issueops/artifactverify"
+	"agent-harness/internal/core/issueops/cleanupstatus"
 	"agent-harness/internal/core/issueops/model"
 )
 
@@ -69,5 +70,23 @@ func issueOpsActiveStore() active.Store {
 		StateRoot: IssueOpsStateRoot,
 		Read:      ReadIssueOps,
 		NewID:     newIssueOpsID,
+	}
+}
+
+func IssueOpsCleanupStatusByID(stateRoot, id string, req IssueOpsCleanupStatusRequest) (IssueOpsCleanupStatus, error) {
+	return cleanupstatus.ByID(issueOpsCleanupStatusStore(), stateRoot, id, req)
+}
+
+func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupStatusRequest) IssueOpsCleanupStatus {
+	return cleanupstatus.ForRecord(record, req)
+}
+
+func issueOpsRemoteArtifactMissing(record IssueOpsRecord) []string {
+	return cleanupstatus.RemoteArtifactMissing(record)
+}
+
+func issueOpsCleanupStatusStore() cleanupstatus.Store {
+	return cleanupstatus.Store{
+		Read: ReadIssueOps,
 	}
 }
