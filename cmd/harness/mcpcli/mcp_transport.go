@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"agent-harness/cmd/harness/mcpcli/resources"
 )
 
 func RunMCP() error {
@@ -92,6 +94,24 @@ func HandleRequest(req RPCRequest) (any, *RPCError) {
 		return nil, &RPCError{Code: -32601, Message: "Method not found", Data: req.Method}
 	}
 }
+
+func MCPResources() []map[string]any {
+	return resources.MCPResources()
+}
+
+func HandleResourceRead(params json.RawMessage) (any, *RPCError) {
+	result, readErr := resources.HandleResourceRead(params, resources.Config{
+		HarnessRoot:     HarnessRoot(),
+		Version:         Version,
+		SkillName:       skillName,
+		ReadHarnessFile: ReadHarnessFile,
+	})
+	if readErr != nil {
+		return nil, &RPCError{Code: readErr.Code, Message: readErr.Message, Data: readErr.Data}
+	}
+	return result, nil
+}
+
 func writeRPCResult(id json.RawMessage, result any) {
 	writeRPCResultTo(os.Stdout, id, result)
 }
