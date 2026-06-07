@@ -1,8 +1,8 @@
-package trace
+package classification
 
 import "strings"
 
-func proposedKnobForStep(step string) string {
+func ProposedKnobForStep(step string) string {
 	step = strings.ToLower(step)
 	switch {
 	case strings.Contains(step, "contract") || strings.Contains(step, "golden"):
@@ -22,7 +22,7 @@ func proposedKnobForStep(step string) string {
 	}
 }
 
-func overfitRiskForClass(class string) string {
+func OverfitRiskForClass(class string) string {
 	class = strings.ToLower(class)
 	switch class {
 	case "deterministic":
@@ -36,7 +36,7 @@ func overfitRiskForClass(class string) string {
 	}
 }
 
-func defaultTraceVerificationCommand(step string) string {
+func DefaultVerificationCommand(step string) string {
 	step = strings.ToLower(step)
 	switch {
 	case strings.Contains(step, "contract") || strings.Contains(step, "golden"):

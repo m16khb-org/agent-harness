@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/core/policy"
+	"agent-harness/internal/core/trace/classification"
 )
 
 func analyzeTraceJSONL(text string) ([]TraceAnalysisFinding, []string) {
@@ -43,9 +44,9 @@ func analyzeTraceJSONL(text string) ([]TraceAnalysisFinding, []string) {
 		findings = append(findings, TraceAnalysisFinding{
 			FailureClass:        "self_verify_progress_failure",
 			RecurringPattern:    fmt.Sprintf("%s failed %d time(s)", policy.RedactFreeform(step), failedSteps[step]),
-			ProposedKnob:        proposedKnobForStep(step),
+			ProposedKnob:        classification.ProposedKnobForStep(step),
 			OverfitRisk:         "medium: progress JSONL may capture one run; rerun before changing harness behavior",
-			VerificationCommand: defaultTraceVerificationCommand(step),
+			VerificationCommand: classification.DefaultVerificationCommand(step),
 		})
 	}
 	return findings, traceTypes

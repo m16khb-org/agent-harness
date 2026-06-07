@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/core/policy"
+	"agent-harness/internal/core/trace/classification"
 )
 
 func selfVerifySummaryFindings(doc map[string]any) []TraceAnalysisFinding {
@@ -45,9 +46,9 @@ func selfVerifySummaryFindings(doc map[string]any) []TraceAnalysisFinding {
 	return []TraceAnalysisFinding{{
 		FailureClass:        policy.RedactFreeform(failureClass),
 		RecurringPattern:    policy.RedactFreeform(pattern),
-		ProposedKnob:        proposedKnobForStep(failedStep),
-		OverfitRisk:         overfitRiskForClass(failureClass),
-		VerificationCommand: firstString(summary, "rerun_commands", defaultTraceVerificationCommand(failedStep)),
+		ProposedKnob:        classification.ProposedKnobForStep(failedStep),
+		OverfitRisk:         classification.OverfitRiskForClass(failureClass),
+		VerificationCommand: firstString(summary, "rerun_commands", classification.DefaultVerificationCommand(failedStep)),
 	}}
 }
 
