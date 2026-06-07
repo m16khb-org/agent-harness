@@ -197,6 +197,14 @@ func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 	return targets
 }
 
+func shellCommandWorktreeGuardPaths(repo, command string) []string {
+	return worktreepath.ShellCommandGuardPaths(repo, command)
+}
+
+func issueOpsWorktreePreparationCommand(command string) bool {
+	return worktreepath.IssueOpsPreparationCommand(command)
+}
+
 func gitBranchFromHead(repo string) string {
 	return worktreepath.GitBranchFromHead(repo)
 }
