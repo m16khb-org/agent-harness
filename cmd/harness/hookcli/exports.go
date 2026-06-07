@@ -2,6 +2,7 @@ package hookcli
 
 import (
 	"agent-harness/cmd/harness/hookcli/hookenv"
+	"agent-harness/cmd/harness/hookcli/hookfailure"
 	"agent-harness/cmd/harness/hookcli/hookinput"
 )
 
@@ -38,11 +39,11 @@ func RunHookStop(args []string) error {
 }
 
 func RunHookFailures(args []string) error {
-	return runHookFailures(args)
+	return hookfailure.Run(args)
 }
 
 func HookArgValue(args []string, flagName string) string {
-	return hookArgValue(args, flagName)
+	return hookfailure.ArgValue(args, flagName)
 }
 
 func RepoFromHookInput(input []byte) string {

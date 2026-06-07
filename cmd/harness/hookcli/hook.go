@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
+
+	"agent-harness/cmd/harness/hookcli/hookfailure"
 )
 
 func runHook(args []string) error {
@@ -17,7 +18,7 @@ func runHook(args []string) error {
 	}
 	err := runHookDispatch(args)
 	if err != nil {
-		recordHookFailure(args, stdin, err)
+		hookfailure.Record(args, stdin, err)
 	}
 	return err
 }
@@ -68,24 +69,11 @@ func runHookDispatch(args []string) error {
 	case "stop":
 		return runHookStop(args[1:])
 	case "failures":
-		return runHookFailures(args[1:])
+		return hookfailure.Run(args[1:])
 	default:
 		hookUsage()
 		return fmt.Errorf("unknown hook subcommand %q", args[0])
 	}
-}
-
-func hookArgValue(args []string, flagName string) string {
-	prefix := flagName + "="
-	for i, arg := range args {
-		if arg == flagName && i+1 < len(args) {
-			return args[i+1]
-		}
-		if strings.HasPrefix(arg, prefix) {
-			return strings.TrimPrefix(arg, prefix)
-		}
-	}
-	return ""
 }
 
 func hookUsage() {
