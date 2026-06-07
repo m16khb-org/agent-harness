@@ -1,4 +1,4 @@
-package issueopscli
+package benchmarkartifact
 
 import (
 	"strings"
@@ -6,7 +6,7 @@ import (
 	"agent-harness/internal/core"
 )
 
-func issueOpsBenchmarkPRDraft(fixture core.IssueOpsBenchmarkFixture, issueNumber, branchName, worktreePath, guideline, expectedIssue, expectedPR string) string {
+func prDraft(fixture core.IssueOpsBenchmarkFixture, issueNumber, branchName, worktreePath, guideline, expectedIssue, expectedPR string) string {
 	return strings.Join([]string{
 		"## Intent",
 		"",
@@ -55,7 +55,7 @@ func issueOpsBenchmarkPRDraft(fixture core.IssueOpsBenchmarkFixture, issueNumber
 	}, "\n")
 }
 
-func issueOpsBenchmarkPhaseChoices() string {
+func phaseChoices() string {
 	return strings.Join([]string{
 		"선택지:",
 		"1. Proceed: 다음 IssueOps phase로 진행한다. (추천)",
@@ -65,7 +65,7 @@ func issueOpsBenchmarkPhaseChoices() string {
 	}, "\n")
 }
 
-func issueOpsBenchmarkWorktreeCleanup() string {
+func worktreeCleanup() string {
 	return strings.Join([]string{
 		"clean worktree confirmed after merge; cleanup/remove choices are offered and present.",
 		"선택지:",
@@ -75,7 +75,7 @@ func issueOpsBenchmarkWorktreeCleanup() string {
 	}, "\n")
 }
 
-func issueOpsBenchmarkDomainContractEvidence() string {
+func domainContractEvidence() string {
 	return strings.Join([]string{
 		"Invariant: preserve the user-visible behavior described by the issue.",
 		"Exact mechanism: compare the documented mechanism with source file:line evidence before implementation.",
@@ -84,7 +84,7 @@ func issueOpsBenchmarkDomainContractEvidence() string {
 	}, "\n")
 }
 
-func issueOpsBenchmarkAPIDocGateEvidence() string {
+func apiDocGateEvidence() string {
 	return strings.Join([]string{
 		"Changed endpoint list is recorded, or the plan states that no endpoint contract changed.",
 		"Public error responses are checked against service/usecase/error-mapping behavior.",
@@ -93,7 +93,7 @@ func issueOpsBenchmarkAPIDocGateEvidence() string {
 	}, "\n")
 }
 
-func issueOpsBenchmarkLiveEvidenceMatrix() string {
+func liveEvidenceMatrix() string {
 	return strings.Join([]string{
 		"Environment matrix covers dev, stg, prod, or the target repo's equivalent runtime surfaces.",
 		"Repo config evidence is compared with runtime evidence before assigning root cause.",
@@ -102,7 +102,7 @@ func issueOpsBenchmarkLiveEvidenceMatrix() string {
 	}, "\n")
 }
 
-func issueOpsBenchmarkReviewFeedbackEvidence() string {
+func reviewFeedbackEvidence() string {
 	return strings.Join([]string{
 		"Classification: valid_review, stale_review, contract_change, defect, question, noise, rollout_evidence_missing, or environment_debt from Kodus, Gemini Code Assist, review-agent, human review, QA, or CI.",
 		"Verification: file/line, command output, diff evidence, or live evidence decides validity.",
@@ -111,7 +111,7 @@ func issueOpsBenchmarkReviewFeedbackEvidence() string {
 	}, "\n")
 }
 
-func issueOpsBenchmarkCompletionHygiene() string {
+func completionHygiene() string {
 	return strings.Join([]string{
 		"Draft issue completion record includes final diff, evidence, labels, children, PR URL, and unresolved follow-ups.",
 		"Final diff is reviewed from the actual worktree.",

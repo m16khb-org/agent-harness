@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/cmd/harness/issueopscli/benchmarkartifact"
 	"agent-harness/internal/core"
 )
 
@@ -34,7 +35,7 @@ func runIssueOpsBenchmark(args []string) error {
 		}
 		artifacts := make(map[string]core.IssueOpsBenchmarkArtifact, len(fixtures))
 		for _, fixture := range fixtures {
-			artifacts[fixture.ID] = benchmarkArtifactFromFixture(fixture)
+			artifacts[fixture.ID] = benchmarkartifact.FromFixture(fixture)
 		}
 		result, err := core.RunIssueOpsBenchmark(core.IssueOpsBenchmarkRunRequest{
 			StateRoot: "",

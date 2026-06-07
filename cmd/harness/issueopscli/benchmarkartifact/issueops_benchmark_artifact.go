@@ -1,4 +1,4 @@
-package issueopscli
+package benchmarkartifact
 
 import (
 	"strings"
@@ -6,7 +6,7 @@ import (
 	"agent-harness/internal/core"
 )
 
-func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkArtifact {
+func FromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkArtifact {
 	const guideline = "docs/superpowers/specs/issueops-issue-pr-guidelines.md"
 	issueNumber := "1"
 	branchName := "feature/1-issueops-quality-benchmark"
@@ -15,12 +15,12 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 	if problem == "" {
 		problem = fixture.Title
 	}
-	expectedIssue := issueOpsBenchmarkBullets(fixture.ExpectedIssue)
-	expectedPlan := issueOpsBenchmarkBullets(fixture.ExpectedPlan)
-	expectedTasks := issueOpsBenchmarkOwnedTasks(fixture.ExpectedTasks)
-	expectedTDD := issueOpsBenchmarkBullets(fixture.ExpectedTDD)
-	expectedSubagents := issueOpsBenchmarkBullets(fixture.ExpectedSubagents)
-	expectedPR := issueOpsBenchmarkBullets(fixture.ExpectedPR)
+	expectedIssue := bullets(fixture.ExpectedIssue)
+	expectedPlan := bullets(fixture.ExpectedPlan)
+	expectedTasks := ownedTasks(fixture.ExpectedTasks)
+	expectedTDD := bullets(fixture.ExpectedTDD)
+	expectedSubagents := bullets(fixture.ExpectedSubagents)
+	expectedPR := bullets(fixture.ExpectedPR)
 	clarificationGate := "Status: no implementation has started. This artifact is a planning, issue, and readiness draft only; coding and PR/MR opening are blocked until the user confirms the quality metric, issue contract, and issue-based branch."
 
 	return core.IssueOpsBenchmarkArtifact{
@@ -116,17 +116,17 @@ func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.Is
 			expectedSubagents,
 		}, "\n"),
 		ImplementationNotes:    clarificationGate + " Branch and worktree values are recorded as gates for future isolated work, not as evidence that implementation has already started.",
-		PRDraft:                issueOpsBenchmarkPRDraft(fixture, issueNumber, branchName, worktreePath, guideline, expectedIssue, expectedPR),
-		PhaseChoices:           issueOpsBenchmarkPhaseChoices(),
+		PRDraft:                prDraft(fixture, issueNumber, branchName, worktreePath, guideline, expectedIssue, expectedPR),
+		PhaseChoices:           phaseChoices(),
 		BranchName:             branchName,
 		WorktreePath:           worktreePath,
 		ImplementationLocation: worktreePath,
-		WorktreeCleanup:        issueOpsBenchmarkWorktreeCleanup(),
+		WorktreeCleanup:        worktreeCleanup(),
 		GuidelineRef:           guideline,
-		DomainContractEvidence: issueOpsBenchmarkDomainContractEvidence(),
-		APIDocGateEvidence:     issueOpsBenchmarkAPIDocGateEvidence(),
-		LiveEvidenceMatrix:     issueOpsBenchmarkLiveEvidenceMatrix(),
-		ReviewFeedbackEvidence: issueOpsBenchmarkReviewFeedbackEvidence(),
-		CompletionHygiene:      issueOpsBenchmarkCompletionHygiene(),
+		DomainContractEvidence: domainContractEvidence(),
+		APIDocGateEvidence:     apiDocGateEvidence(),
+		LiveEvidenceMatrix:     liveEvidenceMatrix(),
+		ReviewFeedbackEvidence: reviewFeedbackEvidence(),
+		CompletionHygiene:      completionHygiene(),
 	}
 }
