@@ -1,24 +1,25 @@
-package issueops
+package branchprepare
 
 import (
+	"fmt"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/issueops/model"
 )
 
-func TestIssueOpsPrepareBranchRecordsProviderFallbackOrder(t *testing.T) {
-	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "123-provider-linked-branch"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://gitlab.example/group/project/-/issues/123")
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestPrepareRecordsProviderFallbackOrder(t *testing.T) {
+	store := newBranchPrepareTestStore(model.IssueOpsRecord{
+		ID:       "io-1",
+		OK:       true,
+		Repo:     "/repo/example",
+		Branch:   "123-provider-linked-branch",
+		IssueURL: "https://gitlab.example/group/project/-/issues/123",
+	})
 
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err := Prepare(store.issueOpsStore(), t.TempDir(), "io-1", model.IssueOpsBranchPrepareRequest{
 		Provider:        "gitlab",
-		IssueURL:        record.IssueURL,
+		IssueURL:        "https://gitlab.example/group/project/-/issues/123",
 		Branch:          "123-provider-linked-branch",
 		BaseBranch:      "main",
 		BaseSHA:         "abc123",
@@ -49,19 +50,18 @@ func TestIssueOpsPrepareBranchRecordsProviderFallbackOrder(t *testing.T) {
 	}
 }
 
-func TestIssueOpsPrepareBranchUsesGitHubDevelopFallback(t *testing.T) {
-	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "456-provider-linked-branch"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/456")
-	if err != nil {
-		t.Fatal(err)
-	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+func TestPrepareUsesGitHubDevelopFallback(t *testing.T) {
+	store := newBranchPrepareTestStore(model.IssueOpsRecord{
+		ID:       "io-2",
+		OK:       true,
+		Repo:     "/repo/example",
+		Branch:   "456-provider-linked-branch",
+		IssueURL: "https://github.com/example/repo/issues/456",
+	})
+
+	record, err := Prepare(store.issueOpsStore(), t.TempDir(), "io-2", model.IssueOpsBranchPrepareRequest{
 		Provider:   "github",
-		IssueURL:   record.IssueURL,
+		IssueURL:   "https://github.com/example/repo/issues/456",
 		Branch:     "456-provider-linked-branch",
 		BaseBranch: "main",
 	})
@@ -80,23 +80,48 @@ func TestIssueOpsPrepareBranchUsesGitHubDevelopFallback(t *testing.T) {
 	}
 }
 
-func TestIssueOpsPrepareBranchRejectsUnlinkedGitLabBranchName(t *testing.T) {
-	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "123-provider-linked-branch"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://gitlab.example/group/project/-/issues/123")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+func TestPrepareRejectsUnlinkedGitLabBranchName(t *testing.T) {
+	store := newBranchPrepareTestStore(model.IssueOpsRecord{
+		ID:       "io-3",
+		OK:       true,
+		Repo:     "/repo/example",
+		Branch:   "123-provider-linked-branch",
+		IssueURL: "https://gitlab.example/group/project/-/issues/123",
+	})
+
+	_, err := Prepare(store.issueOpsStore(), t.TempDir(), "io-3", model.IssueOpsBranchPrepareRequest{
 		Provider:   "gitlab",
-		IssueURL:   record.IssueURL,
+		IssueURL:   "https://gitlab.example/group/project/-/issues/123",
 		Branch:     "456-provider-linked-branch",
 		BaseBranch: "main",
 	})
 	if err == nil || !strings.Contains(err.Error(), "123-") {
 		t.Fatalf("expected GitLab issue prefix rejection, got %v", err)
+	}
+}
+
+type branchPrepareTestStore struct {
+	record model.IssueOpsRecord
+}
+
+func newBranchPrepareTestStore(record model.IssueOpsRecord) *branchPrepareTestStore {
+	return &branchPrepareTestStore{record: record}
+}
+
+func (s *branchPrepareTestStore) issueOpsStore() Store {
+	return Store{
+		Read: func(string, string) (model.IssueOpsRecord, error) {
+			return s.record, nil
+		},
+		TouchWrite: func(_ string, record model.IssueOpsRecord) (model.IssueOpsRecord, error) {
+			s.record = record
+			return record, nil
+		},
+		ValidateIssueURL: func(issueURL string) error {
+			if strings.TrimSpace(issueURL) == "" {
+				return fmt.Errorf("issue_url is required")
+			}
+			return nil
+		},
 	}
 }
