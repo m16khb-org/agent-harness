@@ -1,13 +1,14 @@
-package selfworkflow
+package llmeval
 
 import (
 	"strings"
 	"time"
 
+	"agent-harness/cmd/harness/selfworkflow/model"
 	"agent-harness/internal/core"
 )
 
-func ApplySelfVerifyLLMEval(result SelfAugmentResult, opts SelfVerifyLLMEvalOptions) (SelfAugmentResult, error) {
+func ApplySelfVerifyLLMEval(result model.SelfAugmentResult, opts SelfVerifyLLMEvalOptions) (model.SelfAugmentResult, error) {
 	if !opts.Enabled {
 		return result, nil
 	}
@@ -25,7 +26,7 @@ func ApplySelfVerifyLLMEval(result SelfAugmentResult, opts SelfVerifyLLMEvalOpti
 	}
 	evidencePacket, evidenceBytes, err := BuildSelfVerifyLLMEvalPrompt(result)
 	if err != nil {
-		result.LLMEval = &SelfVerifyLLMEvalResult{
+		result.LLMEval = &model.SelfVerifyLLMEvalResult{
 			OK:                  false,
 			Mode:                mode,
 			ExecutionClass:      "foreground_blocking",
@@ -37,7 +38,7 @@ func ApplySelfVerifyLLMEval(result SelfAugmentResult, opts SelfVerifyLLMEvalOpti
 	}
 
 	llm, runErr := core.RunExternalLLMPrint(core.ExternalLLMPrintRequest{Command: agyCommand, Prompt: evidencePacket, Timeout: timeout})
-	eval := SelfVerifyLLMEvalResult{
+	eval := model.SelfVerifyLLMEvalResult{
 		Mode:                mode,
 		ExecutionClass:      "foreground_blocking",
 		ReadOnly:            true,

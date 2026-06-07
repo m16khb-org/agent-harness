@@ -1,4 +1,4 @@
-package selfworkflow
+package llmeval
 
 import (
 	"encoding/json"
@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/cmd/harness/selfworkflow/model"
 )
 
 func TestSelfVerifyLLMEvalDefaultOmittedFromJSON(t *testing.T) {
-	result := SelfAugmentResult{OK: true, LoopKind: "self_verification"}
+	result := model.SelfAugmentResult{OK: true, LoopKind: "self_verification"}
 	b, err := json.Marshal(result)
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +33,7 @@ func TestResolveSelfVerifyLLMEvalConfigDefaultsOff(t *testing.T) {
 
 func TestResolveSelfVerifyLLMEvalConfigUsesEnvGate(t *testing.T) {
 	config, err := ResolveSelfVerifyLLMEvalConfig(false, false, "advisory", false, envLookupForSelfVerifyTest(map[string]string{
-		selfVerifyLLMEvalEnv: "gate",
+		EnvName: "gate",
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +45,7 @@ func TestResolveSelfVerifyLLMEvalConfigUsesEnvGate(t *testing.T) {
 
 func TestResolveSelfVerifyLLMEvalConfigCLIOverridesEnv(t *testing.T) {
 	config, err := ResolveSelfVerifyLLMEvalConfig(true, false, "advisory", false, envLookupForSelfVerifyTest(map[string]string{
-		selfVerifyLLMEvalEnv: "strict",
+		EnvName: "strict",
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -55,16 +57,16 @@ func TestResolveSelfVerifyLLMEvalConfigCLIOverridesEnv(t *testing.T) {
 
 func TestResolveSelfVerifyLLMEvalConfigRejectsInvalidEnv(t *testing.T) {
 	_, err := ResolveSelfVerifyLLMEvalConfig(false, false, "advisory", false, envLookupForSelfVerifyTest(map[string]string{
-		selfVerifyLLMEvalEnv: "strict",
+		EnvName: "strict",
 	}))
-	if err == nil || !strings.Contains(err.Error(), selfVerifyLLMEvalEnv) {
-		t.Fatalf("expected env validation error naming %s, got %v", selfVerifyLLMEvalEnv, err)
+	if err == nil || !strings.Contains(err.Error(), EnvName) {
+		t.Fatalf("expected env validation error naming %s, got %v", EnvName, err)
 	}
 }
 
 func TestSelfVerifyLLMEvalAdvisorySuccess(t *testing.T) {
 	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":true,"score":99,"summary":"looks safe","risks":["watch flakes"],"recommended_next_actions":["ship"]}`)
-	result := SelfAugmentResult{OK: true, TerminationEligible: true, Summary: SelfAugmentSummary{MinimumGoalScore: 100}}
+	result := model.SelfAugmentResult{OK: true, TerminationEligible: true, Summary: model.SelfAugmentSummary{MinimumGoalScore: 100}}
 	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", AgyCommand: fake, TargetScore: 95})
 	if err != nil {
 		t.Fatalf("advisory llm eval should not fail self-verify: %v", err)
@@ -79,7 +81,7 @@ func TestSelfVerifyLLMEvalAdvisorySuccess(t *testing.T) {
 
 func TestSelfVerifyLLMEvalExtractsNoisyAgyJSON(t *testing.T) {
 	fake := writeFakeAgyForSelfVerifyTest(t, "ULTRAWORK MODE ENABLED!\n"+`{"ok":true,"score":99,"summary":"looks safe","blockers":[],"risks":[],"recommended_next_actions":[]}`)
-	result := SelfAugmentResult{OK: true, TerminationEligible: true, Summary: SelfAugmentSummary{MinimumGoalScore: 100}}
+	result := model.SelfAugmentResult{OK: true, TerminationEligible: true, Summary: model.SelfAugmentSummary{MinimumGoalScore: 100}}
 	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", AgyCommand: fake, TargetScore: 95})
 	if err != nil {
 		t.Fatalf("advisory noisy llm eval should not fail self-verify: %v", err)
@@ -91,7 +93,7 @@ func TestSelfVerifyLLMEvalExtractsNoisyAgyJSON(t *testing.T) {
 
 func TestSelfVerifyLLMEvalMalformedOutputIsStructured(t *testing.T) {
 	fake := writeFakeAgyForSelfVerifyTest(t, `not-json`)
-	result := SelfAugmentResult{OK: true, TerminationEligible: true}
+	result := model.SelfAugmentResult{OK: true, TerminationEligible: true}
 	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", AgyCommand: fake, TargetScore: 95})
 	if err != nil {
 		t.Fatalf("advisory malformed llm eval should be recorded, not returned as gate error: %v", err)
@@ -106,7 +108,7 @@ func TestSelfVerifyLLMEvalMalformedOutputIsStructured(t *testing.T) {
 
 func TestSelfVerifyLLMEvalUnknownFieldIsStructured(t *testing.T) {
 	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":true,"score":99,"unexpected":true}`)
-	result := SelfAugmentResult{OK: true, TerminationEligible: true}
+	result := model.SelfAugmentResult{OK: true, TerminationEligible: true}
 	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", AgyCommand: fake, TargetScore: 95})
 	if err != nil {
 		t.Fatalf("advisory unknown field should be recorded, not returned as gate error: %v", err)
@@ -118,7 +120,7 @@ func TestSelfVerifyLLMEvalUnknownFieldIsStructured(t *testing.T) {
 
 func TestSelfVerifyLLMEvalCommandFailureIsStructured(t *testing.T) {
 	fake := writeFailingFakeAgyForSelfVerifyTest(t)
-	result := SelfAugmentResult{OK: true, TerminationEligible: true}
+	result := model.SelfAugmentResult{OK: true, TerminationEligible: true}
 	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", AgyCommand: fake, TargetScore: 95})
 	if err != nil {
 		t.Fatalf("advisory command failure should be recorded, not returned as gate error: %v", err)
@@ -130,7 +132,7 @@ func TestSelfVerifyLLMEvalCommandFailureIsStructured(t *testing.T) {
 
 func TestSelfVerifyLLMEvalResultClassifiesForegroundReadOnlyGate(t *testing.T) {
 	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":true,"score":100,"summary":"pass","blockers":[],"risks":[],"recommended_next_actions":[]}`)
-	result := SelfAugmentResult{OK: true, TerminationEligible: true, Summary: SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true}}
+	result := model.SelfAugmentResult{OK: true, TerminationEligible: true, Summary: model.SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true}}
 	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "gate", AgyCommand: fake, TargetScore: 95})
 	if err != nil {
 		t.Fatal(err)
@@ -145,7 +147,7 @@ func TestSelfVerifyLLMEvalResultClassifiesForegroundReadOnlyGate(t *testing.T) {
 
 func TestSelfVerifyLLMEvalGateFailsOnBlocker(t *testing.T) {
 	fake := writeFakeAgyForSelfVerifyTest(t, `{"ok":false,"score":40,"summary":"blocked","blockers":["missing QA"]}`)
-	result := SelfAugmentResult{OK: true, TerminationEligible: true, Summary: SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true}}
+	result := model.SelfAugmentResult{OK: true, TerminationEligible: true, Summary: model.SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true}}
 	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "gate", AgyCommand: fake, TargetScore: 95})
 	if err == nil || !strings.Contains(err.Error(), "LLM evaluation gate failed") {
 		t.Fatalf("expected gate failure, got err=%v result=%+v", err, updated)

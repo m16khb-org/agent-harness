@@ -1,18 +1,20 @@
-package selfworkflow
+package llmeval
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"agent-harness/cmd/harness/selfworkflow/model"
 )
 
 func TestSelfVerifyLLMEvalPromptRemainsJSONWhenEvidenceIsLarge(t *testing.T) {
-	result := SelfAugmentResult{
+	result := model.SelfAugmentResult{
 		OK:          true,
 		LoopKind:    "self_verification",
 		Iterations:  10,
 		TargetScore: 95,
-		Summary: SelfAugmentSummary{
+		Summary: model.SelfAugmentSummary{
 			CoverageGaps: []string{strings.Repeat("large-gap-", 6000)},
 		},
 	}
@@ -33,7 +35,7 @@ func TestSelfVerifyLLMEvalPromptRemainsJSONWhenEvidenceIsLarge(t *testing.T) {
 }
 
 func TestSelfVerifyLLMEvalPromptForcesPlainJSONOutput(t *testing.T) {
-	prompt, _, err := BuildSelfVerifyLLMEvalPrompt(SelfAugmentResult{
+	prompt, _, err := BuildSelfVerifyLLMEvalPrompt(model.SelfAugmentResult{
 		OK:                  true,
 		LoopKind:            "self_verification",
 		Iterations:          10,

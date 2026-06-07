@@ -1,26 +1,27 @@
-package selfworkflow
+package llmeval
 
 import (
 	"encoding/json"
 
 	"agent-harness/cmd/harness/commandstep"
+	"agent-harness/cmd/harness/selfworkflow/model"
 	"agent-harness/internal/core"
 )
 
 const SelfVerifyLLMEvalEvidenceBudgetBytes = 24 * 1024
 
 type SelfVerifyLLMEvalInput struct {
-	OK                  bool                 `json:"ok"`
-	LoopKind            string               `json:"loop_kind"`
-	Iterations          int                  `json:"iterations"`
-	TargetScore         float64              `json:"target_score"`
-	TerminationEligible bool                 `json:"termination_eligible"`
-	Summary             SelfAugmentSummary   `json:"summary"`
-	LastRun             SelfAugmentIteration `json:"last_run,omitempty"`
+	OK                  bool                       `json:"ok"`
+	LoopKind            string                     `json:"loop_kind"`
+	Iterations          int                        `json:"iterations"`
+	TargetScore         float64                    `json:"target_score"`
+	TerminationEligible bool                       `json:"termination_eligible"`
+	Summary             model.SelfAugmentSummary   `json:"summary"`
+	LastRun             model.SelfAugmentIteration `json:"last_run,omitempty"`
 }
 
-func BuildSelfVerifyLLMEvalPrompt(result SelfAugmentResult) (string, int, error) {
-	lastRun := SelfAugmentIteration{}
+func BuildSelfVerifyLLMEvalPrompt(result model.SelfAugmentResult) (string, int, error) {
+	lastRun := model.SelfAugmentIteration{}
 	if len(result.Runs) > 0 {
 		lastRun = result.Runs[len(result.Runs)-1]
 	}

@@ -4,16 +4,19 @@ import (
 	"io"
 
 	"agent-harness/cmd/harness/selfworkflow/llmeval"
+	"agent-harness/cmd/harness/selfworkflow/model"
 	"agent-harness/cmd/harness/selfworkflow/progress"
 	"agent-harness/cmd/harness/selfworkflow/rerun"
 	"agent-harness/cmd/harness/selfworkflow/steps"
 )
 
 const selfVerifyLLMEvalEnv = llmeval.EnvName
+const SelfVerifyLLMEvalEvidenceBudgetBytes = llmeval.SelfVerifyLLMEvalEvidenceBudgetBytes
 
 type SelfVerifyLLMEvalConfig = llmeval.SelfVerifyLLMEvalConfig
+type SelfVerifyLLMEvalInput = llmeval.SelfVerifyLLMEvalInput
 type SelfVerifyLLMEvalOptions = llmeval.SelfVerifyLLMEvalOptions
-type SelfVerifyLLMEvalResult = llmeval.SelfVerifyLLMEvalResult
+type SelfVerifyLLMEvalResult = model.SelfVerifyLLMEvalResult
 type SelfVerifyPlannedStep = steps.SelfVerifyPlannedStep
 type SelfVerifyProgressEvent = progress.SelfVerifyProgressEvent
 type SelfVerifyProgressReporter = progress.SelfVerifyProgressReporter
@@ -49,6 +52,26 @@ func ExtractSelfVerifyLLMEvalJSON(out []byte) ([]byte, bool) {
 
 func BoundedLLMEvalError(prefix string, err error, output string) string {
 	return llmeval.BoundedLLMEvalError(prefix, err, output)
+}
+
+func ApplySelfVerifyLLMEval(result SelfAugmentResult, opts SelfVerifyLLMEvalOptions) (SelfAugmentResult, error) {
+	return llmeval.ApplySelfVerifyLLMEval(result, opts)
+}
+
+func ApplySelfVerifyLLMGate(result SelfAugmentResult, targetScore float64) (SelfAugmentResult, error) {
+	return llmeval.ApplySelfVerifyLLMGate(result, targetScore)
+}
+
+func BuildSelfVerifyLLMEvalPrompt(result SelfAugmentResult) (string, int, error) {
+	return llmeval.BuildSelfVerifyLLMEvalPrompt(result)
+}
+
+func SelfVerifyLLMResponseSchemaExample() string {
+	return llmeval.SelfVerifyLLMResponseSchemaExample()
+}
+
+func SelfVerifyLLMResponseFieldTypes() []string {
+	return llmeval.SelfVerifyLLMResponseFieldTypes()
 }
 
 func NewSelfVerifyProgressReporter(mode string, writer io.Writer) (*SelfVerifyProgressReporter, error) {

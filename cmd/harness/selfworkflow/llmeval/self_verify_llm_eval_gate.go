@@ -1,11 +1,13 @@
-package selfworkflow
+package llmeval
 
 import (
 	"fmt"
 	"strings"
+
+	"agent-harness/cmd/harness/selfworkflow/model"
 )
 
-func ApplySelfVerifyLLMGate(result SelfAugmentResult, targetScore float64) (SelfAugmentResult, error) {
+func ApplySelfVerifyLLMGate(result model.SelfAugmentResult, targetScore float64) (model.SelfAugmentResult, error) {
 	if result.LLMEval == nil || result.LLMEval.Mode != "gate" {
 		return result, nil
 	}
