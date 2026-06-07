@@ -6,6 +6,7 @@ import (
 	"agent-harness/internal/core/issueops/branchprepare"
 	"agent-harness/internal/core/issueops/cleanupstatus"
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/issueops/start"
 )
 
 type IssueOpsStartRequest = model.IssueOpsStartRequest
@@ -113,5 +114,18 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 		Read:             ReadIssueOps,
 		TouchWrite:       touchAndWriteIssueOps,
 		ValidateIssueURL: validateIssueURL,
+	}
+}
+
+func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
+	return start.Start(issueOpsStartStore(), stateRoot, req)
+}
+
+func issueOpsStartStore() start.Store {
+	return start.Store{
+		Read:           ReadIssueOps,
+		Write:          writeIssueOps,
+		NewID:          newIssueOpsID,
+		ValidateBranch: validateIssueOpsIssueBranch,
 	}
 }
