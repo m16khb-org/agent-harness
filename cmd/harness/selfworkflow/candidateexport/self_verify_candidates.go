@@ -1,4 +1,4 @@
-package selfworkflow
+package candidateexport
 
 import (
 	"path/filepath"
@@ -52,8 +52,7 @@ type SelfVerificationCandidateExportStateSnapshot struct {
 	Candidates            []SelfVerificationCandidate `json:"candidates"`
 }
 
-func ExportSelfVerificationCandidates() SelfVerificationCandidateExportResult {
-	root := HarnessRoot()
+func ExportSelfVerificationCandidates(root string) SelfVerificationCandidateExportResult {
 	sourcePath := filepath.Join(root, "skills", "self-verify", "CANDIDATES.md")
 	sourceExists := fileExists(sourcePath)
 	candidates := SelfVerificationCandidateCatalog()

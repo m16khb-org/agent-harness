@@ -1,4 +1,4 @@
-package selfworkflow
+package candidateexport
 
 func SelfVerificationCandidateCatalog() []SelfVerificationCandidate {
 	return []SelfVerificationCandidate{

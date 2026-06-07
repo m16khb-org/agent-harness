@@ -1,4 +1,4 @@
-package selfworkflow
+package candidateexport
 
 import (
 	"encoding/json"
