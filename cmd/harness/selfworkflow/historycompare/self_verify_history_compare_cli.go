@@ -1,11 +1,15 @@
-package selfworkflow
+package historycompare
 
 import (
 	"flag"
 	"fmt"
 )
 
-func RunSelfVerifyCompare(args []string) error {
+type CLIDeps struct {
+	PrintJSON func(any) error
+}
+
+func RunSelfVerifyCompare(args []string, deps CLIDeps) error {
 	fs := flag.NewFlagSet("self-verify compare", flag.ContinueOnError)
 	baselineKey := fs.String("baseline-key", "", "state key containing the baseline self-verification summary snapshot")
 	candidateKey := fs.String("candidate-key", "", "state key containing the candidate self-verification summary snapshot")
@@ -20,7 +24,10 @@ func RunSelfVerifyCompare(args []string) error {
 		return err
 	}
 	if *jsonOut {
-		if err := printJSON(result); err != nil {
+		if deps.PrintJSON == nil {
+			return fmt.Errorf("print JSON dependency is required")
+		}
+		if err := deps.PrintJSON(result); err != nil {
 			return err
 		}
 	} else {
@@ -39,7 +46,7 @@ func RunSelfVerifyCompare(args []string) error {
 	return nil
 }
 
-func RunSelfVerifyHistory(args []string) error {
+func RunSelfVerifyHistory(args []string, deps CLIDeps) error {
 	fs := flag.NewFlagSet("self-verify history", flag.ContinueOnError)
 	prefix := fs.String("prefix", "self-verify", "state key prefix to scan; empty string scans all keys")
 	limit := fs.Int("limit", 20, "maximum entries to return; 0 returns all")
@@ -59,7 +66,10 @@ func RunSelfVerifyHistory(args []string) error {
 		return err
 	}
 	if *jsonOut {
-		return printJSON(result)
+		if deps.PrintJSON == nil {
+			return fmt.Errorf("print JSON dependency is required")
+		}
+		return deps.PrintJSON(result)
 	}
 	fmt.Printf("self-verify history: %d/%d entries from %s (prefix=%q)\n", result.Returned, result.TotalMatches, result.StateDir, result.Prefix)
 	for _, entry := range result.Entries {

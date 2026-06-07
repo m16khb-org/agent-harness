@@ -22,6 +22,18 @@ func SelfAugmentHistory(prefix string, limit int, retentionOptions ...SelfAugmen
 	return historycompare.SelfAugmentHistory(prefix, limit, retentionOptions...)
 }
 
+func RunSelfVerifyCompare(args []string) error {
+	return historycompare.RunSelfVerifyCompare(args, historyCLIDeps())
+}
+
+func RunSelfVerifyHistory(args []string) error {
+	return historycompare.RunSelfVerifyHistory(args, historyCLIDeps())
+}
+
+func historyCLIDeps() historycompare.CLIDeps {
+	return historycompare.CLIDeps{PrintJSON: printJSON}
+}
+
 func compareSlowestStepRegressions(baseline, candidate []SelfAugmentSlowStep, maxRegressionPct float64) []SelfAugmentSlowStepRegression {
 	return historycompare.CompareSlowestStepRegressions(baseline, candidate, maxRegressionPct)
 }
