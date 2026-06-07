@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"os/exec"
 	"strings"
+
+	"agent-harness/cmd/harness/issueopscli/remoteparse"
 )
 
 var issueOpsChildIssueVerifier = verifyIssueOpsChildIssueLive
@@ -38,11 +40,11 @@ func verifyGitHubIssueLive(issueURL string) error {
 }
 
 func verifyGitLabIssueLive(parsed *url.URL) error {
-	parts := splitGitLabIssuePath(parsed.EscapedPath())
-	if parts.project == "" || parts.iid == "" {
+	parts := remoteparse.SplitGitLabIssuePath(parsed.EscapedPath())
+	if parts.Project == "" || parts.IID == "" {
 		return fmt.Errorf("child_url must be a GitLab issue URL")
 	}
-	endpoint := "projects/" + url.PathEscape(parts.project) + "/issues/" + parts.iid
+	endpoint := "projects/" + url.PathEscape(parts.Project) + "/issues/" + parts.IID
 	cmd := exec.Command("glab", "api", endpoint, "--hostname", parsed.Hostname())
 	if _, err := cmd.Output(); err != nil {
 		return fmt.Errorf("verify GitLab child issue through glab failed: %w", commandOutputError(err))

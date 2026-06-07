@@ -1,4 +1,4 @@
-package issueopscli
+package remoteparse
 
 import "testing"
 
@@ -30,8 +30,8 @@ func TestSplitGitLabMRPath_whenValidEscapedPath(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			parts := splitGitLabMRPath(tc.escapedPath)
-			if parts.project != tc.wantProject || parts.iid != tc.wantIID {
+			parts := SplitGitLabMRPath(tc.escapedPath)
+			if parts.Project != tc.wantProject || parts.IID != tc.wantIID {
 				t.Fatalf("splitGitLabMRPath(%q) = %+v, want project=%q iid=%q", tc.escapedPath, parts, tc.wantProject, tc.wantIID)
 			}
 		})
@@ -50,7 +50,7 @@ func TestSplitGitLabMRPath_whenInvalidPath(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.escapedPath, func(t *testing.T) {
-			if parts := splitGitLabMRPath(tc.escapedPath); parts.project != "" || parts.iid != tc.wantIID {
+			if parts := SplitGitLabMRPath(tc.escapedPath); parts.Project != "" || parts.IID != tc.wantIID {
 				t.Fatalf("splitGitLabMRPath(%q) = %+v, want project empty iid=%q", tc.escapedPath, parts, tc.wantIID)
 			}
 		})
@@ -79,8 +79,8 @@ func TestSplitGitLabIssuePath_whenValidEscapedPath(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			parts := splitGitLabIssuePath(tc.escapedPath)
-			if parts.project != tc.wantProject || parts.iid != tc.wantIID {
+			parts := SplitGitLabIssuePath(tc.escapedPath)
+			if parts.Project != tc.wantProject || parts.IID != tc.wantIID {
 				t.Fatalf("splitGitLabIssuePath(%q) = %+v, want project=%q iid=%q", tc.escapedPath, parts, tc.wantProject, tc.wantIID)
 			}
 		})
@@ -99,7 +99,7 @@ func TestSplitGitLabIssuePath_whenInvalidPath(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.escapedPath, func(t *testing.T) {
-			if parts := splitGitLabIssuePath(tc.escapedPath); parts.project != "" || parts.iid != tc.wantIID {
+			if parts := SplitGitLabIssuePath(tc.escapedPath); parts.Project != "" || parts.IID != tc.wantIID {
 				t.Fatalf("splitGitLabIssuePath(%q) = %+v, want project empty iid=%q", tc.escapedPath, parts, tc.wantIID)
 			}
 		})

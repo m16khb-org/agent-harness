@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"agent-harness/cmd/harness/issueopscli/remoteparse"
 )
 
 func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, error) {
@@ -44,11 +46,11 @@ func fetchGitLabMergeRequestArtifact(artifactURL string) (liveRemoteArtifact, er
 	if err != nil {
 		return liveRemoteArtifact{}, err
 	}
-	parts := splitGitLabMRPath(parsed.EscapedPath())
-	if parts.project == "" || parts.iid == "" {
+	parts := remoteparse.SplitGitLabMRPath(parsed.EscapedPath())
+	if parts.Project == "" || parts.IID == "" {
 		return liveRemoteArtifact{}, fmt.Errorf("remote artifact url must be a GitLab merge request URL")
 	}
-	endpoint := "projects/" + url.PathEscape(parts.project) + "/merge_requests/" + parts.iid
+	endpoint := "projects/" + url.PathEscape(parts.Project) + "/merge_requests/" + parts.IID
 	cmd := exec.Command("glab", "api", endpoint, "--hostname", parsed.Hostname())
 	out, err := cmd.Output()
 	if err != nil {

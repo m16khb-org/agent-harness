@@ -1,4 +1,4 @@
-package issueopscli
+package remoteparse
 
 import (
 	"net/url"
@@ -7,17 +7,17 @@ import (
 	"strings"
 )
 
-type gitLabMRPathParts struct {
-	project string
-	iid     string
+type GitLabMRPathParts struct {
+	Project string
+	IID     string
 }
 
-type gitLabIssuePathParts struct {
-	project string
-	iid     string
+type GitLabIssuePathParts struct {
+	Project string
+	IID     string
 }
 
-func splitGitLabMRPath(escapedPath string) gitLabMRPathParts {
+func SplitGitLabMRPath(escapedPath string) GitLabMRPathParts {
 	trimmed := strings.Trim(path.Clean("/"+escapedPath), "/")
 	parts := strings.Split(trimmed, "/")
 	for i := 0; i+2 < len(parts); i++ {
@@ -26,18 +26,18 @@ func splitGitLabMRPath(escapedPath string) gitLabMRPathParts {
 		}
 		iid := parts[i+2]
 		if _, err := strconv.Atoi(iid); err != nil {
-			return gitLabMRPathParts{}
+			return GitLabMRPathParts{}
 		}
 		projectParts := parts[:i]
 		for index, part := range projectParts {
 			projectParts[index], _ = url.PathUnescape(part)
 		}
-		return gitLabMRPathParts{project: strings.Join(projectParts, "/"), iid: iid}
+		return GitLabMRPathParts{Project: strings.Join(projectParts, "/"), IID: iid}
 	}
-	return gitLabMRPathParts{}
+	return GitLabMRPathParts{}
 }
 
-func splitGitLabIssuePath(escapedPath string) gitLabIssuePathParts {
+func SplitGitLabIssuePath(escapedPath string) GitLabIssuePathParts {
 	trimmed := strings.Trim(path.Clean("/"+escapedPath), "/")
 	parts := strings.Split(trimmed, "/")
 	for i := 0; i+2 < len(parts); i++ {
@@ -46,13 +46,13 @@ func splitGitLabIssuePath(escapedPath string) gitLabIssuePathParts {
 		}
 		iid := parts[i+2]
 		if _, err := strconv.Atoi(iid); err != nil {
-			return gitLabIssuePathParts{}
+			return GitLabIssuePathParts{}
 		}
 		projectParts := parts[:i]
 		for index, part := range projectParts {
 			projectParts[index], _ = url.PathUnescape(part)
 		}
-		return gitLabIssuePathParts{project: strings.Join(projectParts, "/"), iid: iid}
+		return GitLabIssuePathParts{Project: strings.Join(projectParts, "/"), IID: iid}
 	}
-	return gitLabIssuePathParts{}
+	return GitLabIssuePathParts{}
 }
