@@ -1,12 +1,23 @@
 package selfworkflow
 
-import "agent-harness/cmd/harness/selfworkflow/llmeval"
+import (
+	"io"
+
+	"agent-harness/cmd/harness/selfworkflow/llmeval"
+	"agent-harness/cmd/harness/selfworkflow/progress"
+	"agent-harness/cmd/harness/selfworkflow/rerun"
+	"agent-harness/cmd/harness/selfworkflow/steps"
+)
 
 const selfVerifyLLMEvalEnv = llmeval.EnvName
 
 type SelfVerifyLLMEvalConfig = llmeval.SelfVerifyLLMEvalConfig
 type SelfVerifyLLMEvalOptions = llmeval.SelfVerifyLLMEvalOptions
 type SelfVerifyLLMEvalResult = llmeval.SelfVerifyLLMEvalResult
+type SelfVerifyPlannedStep = steps.SelfVerifyPlannedStep
+type SelfVerifyProgressEvent = progress.SelfVerifyProgressEvent
+type SelfVerifyProgressReporter = progress.SelfVerifyProgressReporter
+type SelfVerifyStepDeps = steps.SelfVerifyStepDeps
 
 func ValidateSelfVerifyLLMEvalMode(mode string) error {
 	return llmeval.ValidateSelfVerifyLLMEvalMode(mode)
@@ -38,4 +49,32 @@ func ExtractSelfVerifyLLMEvalJSON(out []byte) ([]byte, bool) {
 
 func BoundedLLMEvalError(prefix string, err error, output string) string {
 	return llmeval.BoundedLLMEvalError(prefix, err, output)
+}
+
+func NewSelfVerifyProgressReporter(mode string, writer io.Writer) (*SelfVerifyProgressReporter, error) {
+	return progress.NewSelfVerifyProgressReporter(mode, writer)
+}
+
+func PlannedSelfVerifySteps(root string, tempBin string, seed int64, goTestStep *StepResult, deps SelfVerifyStepDeps) []SelfVerifyPlannedStep {
+	return steps.PlannedSelfVerifySteps(root, tempBin, seed, goTestStep, deps)
+}
+
+func CachedContractGoldenStep(goTestStep StepResult, deps SelfVerifyStepDeps) StepResult {
+	return steps.CachedContractGoldenStep(goTestStep, deps)
+}
+
+func selfVerifyRerunCommands(failedStep string, iterations int, baseSeed int64, targetScore float64) []string {
+	return rerun.SelfVerifyRerunCommands(failedStep, iterations, baseSeed, targetScore)
+}
+
+func selfVerifyStepRerunCommand(label string) (string, bool) {
+	return rerun.SelfVerifyStepRerunCommand(label)
+}
+
+func formatScore(score float64) string {
+	return rerun.FormatScore(score)
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
