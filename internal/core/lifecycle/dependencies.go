@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/nextaction"
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/projectdocs"
@@ -9,8 +10,26 @@ import (
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir
+const ProjectLifecycleSchemaVersion = model.ProjectLifecycleSchemaVersion
+const projectLifecycleProfileFile = model.ProjectLifecycleProfileFile
+const docUpkeepQueueFile = model.DocUpkeepQueueFile
+const compactCapsuleFile = model.CompactCapsuleFile
+const stopNextActionRelayFile = model.StopNextActionRelayFile
 
 type ProjectProfile = projectdocs.ProjectProfile
+type ProjectFingerprint = model.ProjectFingerprint
+type ProjectLifecycleProfile = model.ProjectLifecycleProfile
+type ProjectLifecycleStatePlan = model.ProjectLifecycleStatePlan
+type DocUpkeepEvent = model.DocUpkeepEvent
+type DocUpkeepAppendResult = model.DocUpkeepAppendResult
+type HookToolUseLifecycleRequest = model.HookToolUseLifecycleRequest
+type HookToolUseLifecycleResult = model.HookToolUseLifecycleResult
+type HookPreToolUseDecisionResult = model.HookPreToolUseDecisionResult
+type LifecycleStopReminderResult = model.LifecycleStopReminderResult
+type StopNextActionRelayRecord = model.StopNextActionRelayRecord
+type StopNextActionRelayResult = model.StopNextActionRelayResult
+type LifecycleCompactCapsule = model.LifecycleCompactCapsule
+type LifecycleCompactResult = model.LifecycleCompactResult
 type NextActionJudgementTriggerResult = nextaction.NextActionJudgementTriggerResult
 type NumberedNextActionsDecisionResult = nextaction.NumberedNextActionsDecisionResult
 type NextActionCandidate = nextaction.NextActionCandidate

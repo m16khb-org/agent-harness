@@ -1,10 +1,12 @@
-package lifecycle
+package model
+
+import "agent-harness/internal/core/projectdocs"
 
 const ProjectLifecycleSchemaVersion = 1
-const projectLifecycleProfileFile = "project.json"
-const docUpkeepQueueFile = "doc-upkeep-queue.jsonl"
-const compactCapsuleFile = "compact-capsule.json"
-const stopNextActionRelayFile = "stop-next-action-relay.json"
+const ProjectLifecycleProfileFile = "project.json"
+const DocUpkeepQueueFile = "doc-upkeep-queue.jsonl"
+const CompactCapsuleFile = "compact-capsule.json"
+const StopNextActionRelayFile = "stop-next-action-relay.json"
 
 type ProjectFingerprint struct {
 	RepoRoot      string `json:"repo_root"`
@@ -13,12 +15,12 @@ type ProjectFingerprint struct {
 }
 
 type ProjectLifecycleProfile struct {
-	SchemaVersion int                `json:"schema_version"`
-	RepoID        string             `json:"repo_id"`
-	Fingerprint   ProjectFingerprint `json:"fingerprint"`
-	Metadata      *ProjectProfile    `json:"metadata,omitempty"`
-	CreatedAt     string             `json:"created_at"`
-	UpdatedAt     string             `json:"updated_at"`
+	SchemaVersion int                         `json:"schema_version"`
+	RepoID        string                      `json:"repo_id"`
+	Fingerprint   ProjectFingerprint          `json:"fingerprint"`
+	Metadata      *projectdocs.ProjectProfile `json:"metadata,omitempty"`
+	CreatedAt     string                      `json:"created_at"`
+	UpdatedAt     string                      `json:"updated_at"`
 }
 
 type ProjectLifecycleStatePlan struct {
