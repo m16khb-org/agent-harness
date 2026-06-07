@@ -1,4 +1,4 @@
-package mcpcli
+package issueops
 
 import (
 	"fmt"

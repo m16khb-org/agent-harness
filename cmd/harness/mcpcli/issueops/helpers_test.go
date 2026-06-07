@@ -1,4 +1,4 @@
-package mcpcli
+package issueops
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/issueopscli"
+	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/internal/core"
 )
 
@@ -16,7 +17,7 @@ func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, rpcErr := HandleToolCall(params)
+	result, rpcErr := mcpcli.HandleToolCall(params)
 	if rpcErr != nil {
 		t.Fatalf("unexpected MCP rpc error: %+v", rpcErr)
 	}
@@ -39,33 +40,33 @@ func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) 
 	return payload
 }
 
-func callMCPToolForIssueOpsTestError(t *testing.T, name string, args map[string]any) *RPCError {
+func callMCPToolForIssueOpsTestError(t *testing.T, name string, args map[string]any) *mcpcli.RPCError {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, rpcErr := HandleToolCall(params)
+	_, rpcErr := mcpcli.HandleToolCall(params)
 	return rpcErr
 }
 
 func configureIssueOpsMCPForTest(t *testing.T) {
 	t.Helper()
-	previousPrepare := PrepareIssueOpsWorktreeTools
-	previousVerifyChild := VerifyIssueOpsChildIssueBeforeLink
-	previousCleanupMerged := IssueOpsCleanupMerged
-	previousVerifyRemote := VerifyIssueOpsRemoteArtifactLive
-	PrepareIssueOpsWorktreeTools = func(record core.IssueOpsRecord) (any, error) {
+	previousPrepare := mcpcli.PrepareIssueOpsWorktreeTools
+	previousVerifyChild := mcpcli.VerifyIssueOpsChildIssueBeforeLink
+	previousCleanupMerged := mcpcli.IssueOpsCleanupMerged
+	previousVerifyRemote := mcpcli.VerifyIssueOpsRemoteArtifactLive
+	mcpcli.PrepareIssueOpsWorktreeTools = func(record core.IssueOpsRecord) (any, error) {
 		return issueopscli.PrepareWorktreeTools(record)
 	}
-	VerifyIssueOpsChildIssueBeforeLink = issueopscli.VerifyChildIssueBeforeLink
-	IssueOpsCleanupMerged = issueopscli.CleanupMerged
-	VerifyIssueOpsRemoteArtifactLive = issueopscli.VerifyRemoteArtifactLive
+	mcpcli.VerifyIssueOpsChildIssueBeforeLink = issueopscli.VerifyChildIssueBeforeLink
+	mcpcli.IssueOpsCleanupMerged = issueopscli.CleanupMerged
+	mcpcli.VerifyIssueOpsRemoteArtifactLive = issueopscli.VerifyRemoteArtifactLive
 	t.Cleanup(func() {
-		PrepareIssueOpsWorktreeTools = previousPrepare
-		VerifyIssueOpsChildIssueBeforeLink = previousVerifyChild
-		IssueOpsCleanupMerged = previousCleanupMerged
-		VerifyIssueOpsRemoteArtifactLive = previousVerifyRemote
+		mcpcli.PrepareIssueOpsWorktreeTools = previousPrepare
+		mcpcli.VerifyIssueOpsChildIssueBeforeLink = previousVerifyChild
+		mcpcli.IssueOpsCleanupMerged = previousCleanupMerged
+		mcpcli.VerifyIssueOpsRemoteArtifactLive = previousVerifyRemote
 	})
 }
 
