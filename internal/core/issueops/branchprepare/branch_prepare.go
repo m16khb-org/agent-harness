@@ -1,66 +1,73 @@
-package issueops
+package branchprepare
 
 import (
 	"fmt"
 	"strings"
 	"time"
 
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
 )
 
-func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
+type Store struct {
+	Read             func(stateRoot, id string) (model.IssueOpsRecord, error)
+	TouchWrite       func(stateRoot string, record model.IssueOpsRecord) (model.IssueOpsRecord, error)
+	ValidateIssueURL func(issueURL string) error
+}
+
+func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareRequest) (model.IssueOpsRecord, error) {
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	issueURL := strings.TrimSpace(req.IssueURL)
 	if issueURL == "" {
-		record, err := ReadIssueOps(stateRoot, id)
+		record, err := store.Read(stateRoot, id)
 		if err != nil {
 			return record, err
 		}
 		issueURL = strings.TrimSpace(record.IssueURL)
 	}
-	if err := validateIssueURL(issueURL); err != nil {
-		return IssueOpsRecord{OK: false}, err
+	if err := store.ValidateIssueURL(issueURL); err != nil {
+		return model.IssueOpsRecord{OK: false}, err
 	}
 	if provider == "" {
 		provider = remote.ProviderFromURL(issueURL)
 	}
 	if provider != "github" && provider != "gitlab" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("provider must be github or gitlab")
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("provider must be github or gitlab")
 	}
 	branch := strings.TrimSpace(req.Branch)
 	if branch == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("branch is required")
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("branch is required")
 	}
-	if err := validateIssueOpsIssueBranch(branch); err != nil {
-		return IssueOpsRecord{OK: false}, err
+	if err := ValidateBranch(branch); err != nil {
+		return model.IssueOpsRecord{OK: false}, err
 	}
 	baseBranch := strings.TrimSpace(req.BaseBranch)
 	if baseBranch == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("base_branch is required")
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("base_branch is required")
 	}
 	if issueNumber := remote.IssueNumber(issueURL); issueNumber != "" {
 		if !strings.HasPrefix(branch, issueNumber+"-") {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("issueops branch for issue %s must start with %s-; for example %s-fix-login", issueNumber, issueNumber, issueNumber)
+			return model.IssueOpsRecord{OK: false}, fmt.Errorf("issueops branch for issue %s must start with %s-; for example %s-fix-login", issueNumber, issueNumber, issueNumber)
 		}
 	}
-	record, err := ReadIssueOps(stateRoot, id)
+	record, err := store.Read(stateRoot, id)
 	if err != nil {
 		return record, err
 	}
 	if strings.TrimSpace(record.IssueURL) == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("issue must be linked before branch prepare")
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("issue must be linked before branch prepare")
 	}
 	if strings.TrimSpace(record.Branch) == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("issueops record must be started with branch before branch prepare")
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("issueops record must be started with branch before branch prepare")
 	}
 	if record.Branch != branch {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("branch does not match IssueOps record branch")
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("branch does not match IssueOps record branch")
 	}
 	if record.IssueURL != issueURL {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("issue_url does not match linked IssueOps issue")
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("issue_url does not match linked IssueOps issue")
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	record.BranchPrepare = &IssueOpsBranchPrepare{
+	record.BranchPrepare = &model.IssueOpsBranchPrepare{
 		Provider:        provider,
 		IssueURL:        issueURL,
 		Branch:          branch,
@@ -68,13 +75,13 @@ func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareReques
 		BaseSHA:         strings.TrimSpace(req.BaseSHA),
 		RemoteBranchURL: strings.TrimSpace(req.RemoteBranchURL),
 		LinkVerified:    req.LinkVerified,
-		Steps:           issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch),
+		Steps:           Steps(provider, issueURL, branch, baseBranch),
 		CreatedAt:       now,
 	}
-	return touchAndWriteIssueOps(stateRoot, record)
+	return store.TouchWrite(stateRoot, record)
 }
 
-func validateIssueOpsIssueBranch(branch string) error {
+func ValidateBranch(branch string) error {
 	branch = strings.TrimSpace(branch)
 	if branch == "" {
 		return nil
@@ -89,10 +96,6 @@ func validateIssueOpsIssueBranch(branch string) error {
 	return nil
 }
 
-func ValidateIssueOpsIssueBranch(branch string) error {
-	return validateIssueOpsIssueBranch(branch)
-}
-
 func isDecimalString(value string) bool {
 	if value == "" {
 		return false
@@ -105,10 +108,10 @@ func isDecimalString(value string) bool {
 	return true
 }
 
-func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch string) []IssueOpsBranchPrepareStep {
+func Steps(provider, issueURL, branch, baseBranch string) []model.IssueOpsBranchPrepareStep {
 	switch provider {
 	case "gitlab":
-		return []IssueOpsBranchPrepareStep{
+		return []model.IssueOpsBranchPrepareStep{
 			{
 				Order:    1,
 				Strategy: "mcp",
@@ -133,7 +136,7 @@ func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch string) [
 			},
 		}
 	case "github":
-		return []IssueOpsBranchPrepareStep{
+		return []model.IssueOpsBranchPrepareStep{
 			{
 				Order:       1,
 				Strategy:    "mcp_unavailable",

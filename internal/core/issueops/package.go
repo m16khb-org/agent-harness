@@ -3,6 +3,7 @@ package issueops
 import (
 	"agent-harness/internal/core/issueops/active"
 	"agent-harness/internal/core/issueops/artifactverify"
+	"agent-harness/internal/core/issueops/branchprepare"
 	"agent-harness/internal/core/issueops/cleanupstatus"
 	"agent-harness/internal/core/issueops/model"
 )
@@ -88,5 +89,29 @@ func issueOpsRemoteArtifactMissing(record IssueOpsRecord) []string {
 func issueOpsCleanupStatusStore() cleanupstatus.Store {
 	return cleanupstatus.Store{
 		Read: ReadIssueOps,
+	}
+}
+
+func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
+	return branchprepare.Prepare(issueOpsBranchPrepareStore(), stateRoot, id, req)
+}
+
+func ValidateIssueOpsIssueBranch(branch string) error {
+	return validateIssueOpsIssueBranch(branch)
+}
+
+func validateIssueOpsIssueBranch(branch string) error {
+	return branchprepare.ValidateBranch(branch)
+}
+
+func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch string) []IssueOpsBranchPrepareStep {
+	return branchprepare.Steps(provider, issueURL, branch, baseBranch)
+}
+
+func issueOpsBranchPrepareStore() branchprepare.Store {
+	return branchprepare.Store{
+		Read:             ReadIssueOps,
+		TouchWrite:       touchAndWriteIssueOps,
+		ValidateIssueURL: validateIssueURL,
 	}
 }
