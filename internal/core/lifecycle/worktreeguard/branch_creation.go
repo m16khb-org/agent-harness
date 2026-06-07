@@ -1,20 +1,19 @@
-package lifecycle
+package worktreeguard
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/searchrouting"
 )
 
-type issueOpsBranchCreation struct {
+type BranchCreation struct {
 	Branch    string
 	SourceRef string
 }
 
-func localIssueOpsBranchCreation(command string) issueOpsBranchCreation {
+func LocalIssueOpsBranchCreation(command string) BranchCreation {
 	tokens := commandparse.SplitCommandTokens(command)
 	for i, token := range tokens {
 		if searchrouting.SearchTokenName(token) != "git" || i+1 >= len(tokens) {
@@ -25,12 +24,12 @@ func localIssueOpsBranchCreation(command string) issueOpsBranchCreation {
 			for j := i + 2; j < len(tokens); j++ {
 				if tokens[j] == "-b" || tokens[j] == "-B" {
 					if j+1 < len(tokens) {
-						return issueOpsBranchCreation{
+						return BranchCreation{
 							Branch:    strings.TrimSpace(tokens[j+1]),
 							SourceRef: nextBranchSourceRef(tokens, j+2),
 						}
 					}
-					return issueOpsBranchCreation{}
+					return BranchCreation{}
 				}
 			}
 		case "switch":
@@ -38,18 +37,18 @@ func localIssueOpsBranchCreation(command string) issueOpsBranchCreation {
 				if tokens[j] == "-c" || tokens[j] == "-C" || strings.HasPrefix(tokens[j], "--create") {
 					if strings.Contains(tokens[j], "=") {
 						_, value, _ := strings.Cut(tokens[j], "=")
-						return issueOpsBranchCreation{
+						return BranchCreation{
 							Branch:    strings.TrimSpace(value),
 							SourceRef: nextBranchSourceRef(tokens, j+1),
 						}
 					}
 					if j+1 < len(tokens) {
-						return issueOpsBranchCreation{
+						return BranchCreation{
 							Branch:    strings.TrimSpace(tokens[j+1]),
 							SourceRef: nextBranchSourceRef(tokens, j+2),
 						}
 					}
-					return issueOpsBranchCreation{}
+					return BranchCreation{}
 				}
 			}
 		case "worktree":
@@ -58,10 +57,10 @@ func localIssueOpsBranchCreation(command string) issueOpsBranchCreation {
 			}
 		}
 	}
-	return issueOpsBranchCreation{}
+	return BranchCreation{}
 }
 
-func localIssueOpsWorktreeBranchCreation(args []string) issueOpsBranchCreation {
+func localIssueOpsWorktreeBranchCreation(args []string) BranchCreation {
 	branch := ""
 	pathSeen := false
 	for i := 0; i < len(args); i++ {
@@ -75,9 +74,9 @@ func localIssueOpsWorktreeBranchCreation(args []string) issueOpsBranchCreation {
 				i++
 			}
 			if branch != "" {
-				return issueOpsBranchCreation{Branch: branch, SourceRef: nextBranchSourceRef(args, i+1)}
+				return BranchCreation{Branch: branch, SourceRef: nextBranchSourceRef(args, i+1)}
 			}
-			return issueOpsBranchCreation{}
+			return BranchCreation{}
 		}
 		if strings.HasPrefix(token, "-") {
 			if token == "-b" || token == "-B" {
@@ -93,13 +92,13 @@ func localIssueOpsWorktreeBranchCreation(args []string) issueOpsBranchCreation {
 			continue
 		}
 		if branch != "" {
-			return issueOpsBranchCreation{Branch: branch, SourceRef: token}
+			return BranchCreation{Branch: branch, SourceRef: token}
 		}
 	}
 	if branch != "" {
-		return issueOpsBranchCreation{Branch: branch}
+		return BranchCreation{Branch: branch}
 	}
-	return issueOpsBranchCreation{}
+	return BranchCreation{}
 }
 
 func nextBranchSourceRef(tokens []string, start int) string {
@@ -113,29 +112,11 @@ func nextBranchSourceRef(tokens []string, start int) string {
 	return ""
 }
 
-func issueOpsBranchCreationSourceReason(branch string) string {
+func IssueOpsBranchCreationSourceReason(branch string) string {
 	return fmt.Sprintf("IssueOps branch creation must include an explicit source ref chosen by the user; ask the user which source branch or commit to branch from, then rerun with a source ref such as git switch -c %s origin/main", branch)
 }
 
-func shellTokenLooksDynamic(token string) bool {
+func ShellTokenLooksDynamic(token string) bool {
 	token = strings.Trim(strings.TrimSpace(token), `"'`)
 	return strings.Contains(token, "$") || strings.Contains(token, "`")
-}
-
-func issueOpsWorktreePreparationCommand(command string) bool {
-	tokens := commandparse.SplitCommandTokens(command)
-	for i, token := range tokens {
-		if searchrouting.SearchTokenName(token) != "git" || i+2 >= len(tokens) {
-			continue
-		}
-		if searchrouting.SearchTokenName(tokens[i+1]) != "worktree" || searchrouting.SearchTokenName(tokens[i+2]) != "add" {
-			continue
-		}
-		for _, value := range gitWorktreeAddTargets(tokens[i+3:]) {
-			if isInsideWorktreesPath(resolveHookTargetPath("", value)) || strings.Contains(filepath.ToSlash(value), ".worktrees/") {
-				return true
-			}
-		}
-	}
-	return false
 }

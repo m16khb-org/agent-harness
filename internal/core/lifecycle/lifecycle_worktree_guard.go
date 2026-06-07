@@ -1,6 +1,10 @@
 package lifecycle
 
-import "strings"
+import (
+	"strings"
+
+	"agent-harness/internal/core/lifecycle/worktreeguard"
+)
 
 func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 	if !toolUseMayMutateLifecycleFiles(req.Tool, req.Command) {
@@ -8,15 +12,15 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 	}
 	expected := cleanAbsPath(req.ExpectedWorktree)
 	if expected == "" {
-		if creation := localIssueOpsBranchCreation(req.Command); creation.Branch != "" {
-			if shellTokenLooksDynamic(creation.Branch) {
+		if creation := worktreeguard.LocalIssueOpsBranchCreation(req.Command); creation.Branch != "" {
+			if worktreeguard.ShellTokenLooksDynamic(creation.Branch) {
 				return ""
 			}
 			if err := validateIssueOpsIssueBranch(creation.Branch); err != nil {
 				return err.Error()
 			}
 			if strings.TrimSpace(creation.SourceRef) == "" {
-				return issueOpsBranchCreationSourceReason(creation.Branch)
+				return worktreeguard.IssueOpsBranchCreationSourceReason(creation.Branch)
 			}
 			if rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, creation.Branch); ok && rec.WorktreePath != "" {
 				return "IssueOps branch " + creation.Branch + " must not be checked out in the source checkout; create or use the linked isolated worktree " + cleanAbsPath(rec.WorktreePath)

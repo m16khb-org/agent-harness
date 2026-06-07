@@ -48,6 +48,24 @@ func shellCommandWorktreeGuardPaths(repo, command string) []string {
 	return out
 }
 
+func issueOpsWorktreePreparationCommand(command string) bool {
+	tokens := commandparse.SplitCommandTokens(command)
+	for i, token := range tokens {
+		if searchrouting.SearchTokenName(token) != "git" || i+2 >= len(tokens) {
+			continue
+		}
+		if searchrouting.SearchTokenName(tokens[i+1]) != "worktree" || searchrouting.SearchTokenName(tokens[i+2]) != "add" {
+			continue
+		}
+		for _, value := range gitWorktreeAddTargets(tokens[i+3:]) {
+			if isInsideWorktreesPath(resolveHookTargetPath("", value)) || strings.Contains(filepath.ToSlash(value), ".worktrees/") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func resolveShellWorktreeGuardPath(currentDir, value string) string {
 	path := strings.TrimSpace(value)
 	if path == "" || strings.HasPrefix(path, "-") || strings.Contains(path, "$(") || strings.Contains(path, "`") {
