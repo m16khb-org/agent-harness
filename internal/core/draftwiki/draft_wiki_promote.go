@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"agent-harness/internal/core/draftwiki/llmpromote"
 	"agent-harness/internal/core/handoff"
 	"agent-harness/internal/core/repopath"
 )
@@ -52,9 +53,9 @@ func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, erro
 	if !req.Confirm {
 		return result, nil
 	}
-	promoted, err := promoteDraftWikiToLLMWiki(promoteDraftWikiToLLMWikiRequest{
+	promoted, err := llmpromote.Promote(llmpromote.Request{
 		RepoRoot:          root,
-		Draft:             from,
+		Draft:             llmPromoteDraft(from),
 		TargetWiki:        targetWiki,
 		TargetType:        targetType,
 		LLMWikiConfigPath: req.LLMWikiConfigPath,
@@ -68,4 +69,13 @@ func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, erro
 	result.LLMWikiRawRel = promoted.RawRel
 	result.LLMWikiLogPath = promoted.LogPath
 	return result, nil
+}
+
+func llmPromoteDraft(draft DraftWikiDraft) llmpromote.Draft {
+	return llmpromote.Draft{
+		Title:   draft.Title,
+		RelPath: draft.RelPath,
+		Path:    draft.Path,
+		Summary: draft.Summary,
+	}
 }

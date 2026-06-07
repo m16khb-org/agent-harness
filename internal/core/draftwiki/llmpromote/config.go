@@ -1,4 +1,4 @@
-package draftwiki
+package llmpromote
 
 import (
 	"encoding/json"

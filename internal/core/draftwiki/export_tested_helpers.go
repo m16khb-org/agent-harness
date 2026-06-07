@@ -1,5 +1,7 @@
 package draftwiki
 
+import "agent-harness/internal/core/draftwiki/llmpromote"
+
 func BuildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, agyModel, targetType string) string {
 	return buildDraftWikiSuggestPrompt(req, input, agyModel, targetType)
 }
@@ -13,11 +15,11 @@ func FailDraftWikiQueueEvent(event DraftWikiQueueEvent, err error) DraftWikiQueu
 }
 
 func LLMWikiRawNoteContent(draft DraftWikiDraft, targetType, today, draftContent string) string {
-	return llmWikiRawNoteContent(draft, targetType, today, draftContent)
+	return llmpromote.RawNoteContent(llmPromoteDraft(draft), targetType, today, draftContent)
 }
 
 func DraftWikiRawFileName(today, draftPath string) string {
-	return draftWikiRawFileName(today, draftPath)
+	return llmpromote.RawFileName(today, draftPath)
 }
 
 func DraftWikiSeedFiles() map[string]string {

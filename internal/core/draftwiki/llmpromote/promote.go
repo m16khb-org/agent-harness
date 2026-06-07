@@ -1,4 +1,4 @@
-package draftwiki
+package llmpromote
 
 import (
 	"fmt"
@@ -8,63 +8,70 @@ import (
 	"time"
 )
 
-type promoteDraftWikiToLLMWikiRequest struct {
+type Draft struct {
+	Title   string
+	RelPath string
+	Path    string
+	Summary string
+}
+
+type Request struct {
 	RepoRoot          string
-	Draft             DraftWikiDraft
+	Draft             Draft
 	TargetWiki        string
 	TargetType        string
 	LLMWikiConfigPath string
 }
 
-type promoteDraftWikiToLLMWikiResult struct {
+type Result struct {
 	WikiRoot string
 	RawPath  string
 	RawRel   string
 	LogPath  string
 }
 
-func promoteDraftWikiToLLMWiki(req promoteDraftWikiToLLMWikiRequest) (promoteDraftWikiToLLMWikiResult, error) {
+func Promote(req Request) (Result, error) {
 	wikiRoot, err := resolveLLMWikiRoot(req.LLMWikiConfigPath, req.TargetWiki)
 	if err != nil {
-		return promoteDraftWikiToLLMWikiResult{}, err
+		return Result{}, err
 	}
 	targetType := strings.TrimSpace(req.TargetType)
 	if targetType == "" {
 		targetType = "notes"
 	}
 	if !isLLMWikiRawType(targetType) {
-		return promoteDraftWikiToLLMWikiResult{}, fmt.Errorf("unsupported llm-wiki raw type %q", targetType)
+		return Result{}, fmt.Errorf("unsupported llm-wiki raw type %q", targetType)
 	}
 	bodyBytes, err := os.ReadFile(req.Draft.Path)
 	if err != nil {
-		return promoteDraftWikiToLLMWikiResult{}, err
+		return Result{}, err
 	}
 	today := time.Now().Format(time.DateOnly)
 	rawDir := filepath.Join(wikiRoot, "raw", targetType)
 	if err := os.MkdirAll(rawDir, 0o755); err != nil {
-		return promoteDraftWikiToLLMWikiResult{}, err
+		return Result{}, err
 	}
-	rawName := draftWikiRawFileName(today, req.Draft.Path)
+	rawName := RawFileName(today, req.Draft.Path)
 	rawPath := filepath.Join(rawDir, rawName)
 	if _, err := os.Stat(rawPath); err == nil {
-		return promoteDraftWikiToLLMWikiResult{}, fmt.Errorf("llm-wiki raw file already exists: %s", rawPath)
+		return Result{}, fmt.Errorf("llm-wiki raw file already exists: %s", rawPath)
 	} else if !os.IsNotExist(err) {
-		return promoteDraftWikiToLLMWikiResult{}, err
+		return Result{}, err
 	}
 	rawRel, err := filepath.Rel(wikiRoot, rawPath)
 	if err != nil {
-		return promoteDraftWikiToLLMWikiResult{}, err
+		return Result{}, err
 	}
 	rawRel = filepath.ToSlash(rawRel)
-	raw := llmWikiRawNoteContent(req.Draft, targetType, today, string(bodyBytes))
+	raw := RawNoteContent(req.Draft, targetType, today, string(bodyBytes))
 	if err := os.WriteFile(rawPath, []byte(raw), 0o644); err != nil {
-		return promoteDraftWikiToLLMWikiResult{}, err
+		return Result{}, err
 	}
 	logPath := filepath.Join(wikiRoot, "log.md")
 	if err := appendLLMWikiPromoteLog(logPath, today, req.Draft.Title, rawRel, req.Draft.RelPath); err != nil {
-		return promoteDraftWikiToLLMWikiResult{}, err
+		return Result{}, err
 	}
-	return promoteDraftWikiToLLMWikiResult{
+	return Result{
 		WikiRoot: wikiRoot,
 		RawPath:  rawPath,
 		RawRel:   rawRel,

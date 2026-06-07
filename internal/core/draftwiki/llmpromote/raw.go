@@ -1,4 +1,4 @@
-package draftwiki
+package llmpromote
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ func isLLMWikiRawType(rawType string) bool {
 	}
 }
 
-func draftWikiRawFileName(today, draftPath string) string {
+func RawFileName(today, draftPath string) string {
 	base := strings.TrimSuffix(filepath.Base(draftPath), filepath.Ext(draftPath))
 	base = slugifyDraftWiki(base)
 	if base == "" {
@@ -28,7 +28,7 @@ func draftWikiRawFileName(today, draftPath string) string {
 	return today + "-" + base + ".md"
 }
 
-func llmWikiRawNoteContent(draft DraftWikiDraft, targetType, today, draftContent string) string {
+func RawNoteContent(draft Draft, targetType, today, draftContent string) string {
 	body := strings.TrimSpace(stripDraftWikiFrontmatter(draftContent))
 	if body == "" {
 		body = "# " + draft.Title + "\n"
@@ -49,6 +49,18 @@ original_draft: %q
 
 %s
 `, draft.Title, "agent-harness draft-wiki:"+draft.RelPath, targetType, today, summary, draft.RelPath, body)
+}
+
+var draftWikiSlugInvalid = regexp.MustCompile(`[^a-z0-9]+`)
+
+func slugifyDraftWiki(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	value = draftWikiSlugInvalid.ReplaceAllString(value, "-")
+	value = strings.Trim(value, "-")
+	if value == "" {
+		return "draft"
+	}
+	return value
 }
 
 func stripDraftWikiFrontmatter(content string) string {
