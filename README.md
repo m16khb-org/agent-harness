@@ -155,6 +155,10 @@ Default install does not create target-repo `.claude/skills`, `.claude/settings.
 
 Issue-Driven Development, or IDD, is the preferred collaboration model for this repository. It comes from the author's day-to-day way of working: do not let an agent jump from a vague request straight into edits; first turn the work into an inspectable issue contract, then make every later step prove that it still follows that contract.
 
+<p align="center">
+  <img src="docs/assets/issueops-workflow-en.webp" alt="IssueOps workflow from problem intake to issue contract, remote issue, branch and worktree, design review, plan, TDD implementation, feedback, cleanup, and PR readiness" width="100%" />
+</p>
+
 The workflow was created to solve recurring failures in agent-assisted development:
 
 - context stayed inside a private chat, so teammates and future sessions could not see why a branch existed;
@@ -414,6 +418,10 @@ installer가 PATH와 환경 설정을 소유합니다. 일반 사용자는 `HARN
 ### Issue-Driven Development
 
 Issue-Driven Development, 즉 IDD는 이 저장소의 권장 협업 모델입니다. 이 모델은 작성자의 실제 작업 방식을 정리한 것입니다. 에이전트가 모호한 요청에서 곧바로 파일을 고치지 않고, 먼저 작업을 검토 가능한 issue contract로 바꾼 뒤 이후 모든 단계가 그 contract를 계속 따르는지 증명하게 만드는 방식입니다.
+
+<p align="center">
+  <img src="docs/assets/issueops-workflow-ko.webp" alt="IssueOps 작업 흐름: 문제 접수, issue contract, remote issue, branch와 worktree, design review, plan, TDD 구현, feedback, cleanup, PR readiness 단계" width="100%" />
+</p>
 
 이 workflow는 agent-assisted development에서 반복해서 생기는 문제를 해결하기 위해 만들었습니다.
 
