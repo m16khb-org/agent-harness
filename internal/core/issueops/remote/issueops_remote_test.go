@@ -128,6 +128,34 @@ func TestScoreIssueOpsRemoteCandidatesDoesNotWarnWhenNoCandidatesExist(t *testin
 	}
 }
 
+func TestScoreIssueOpsRemoteCandidatesRequiresExplicitLabelDecisionWhenAllLabelsRejected(t *testing.T) {
+	labelScore := 0.40
+	result, err := ScoreIssueOpsRemoteCandidates(IssueOpsRemoteScoringRequest{
+		Provider:  "gitlab",
+		Threshold: 0.70,
+		Issue: IssueOpsRemoteArtifact{
+			Title: "IssueOps MR 라벨 누락 방지",
+			Body:  "원격 이슈와 MR 생성 전에 라벨 결정을 검증한다.",
+		},
+		LabelCandidates: []IssueOpsRemoteLabelCandidate{
+			{Name: "documentation", Score: &labelScore},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.SelectedLabels) != 0 {
+		t.Fatalf("expected all labels rejected: %+v", result.SelectedLabels)
+	}
+	joined := strings.Join(result.ApplyInstructions, "\n")
+	if !containsFold(joined, "stop before remote artifact writes") || !containsFold(joined, "manual label") {
+		t.Fatalf("expected explicit label-decision instruction before remote writes: %+v", result.ApplyInstructions)
+	}
+	if !containsFold(strings.Join(result.Warnings, "\n"), "no label candidates met threshold") {
+		t.Fatalf("expected no-label warning: %+v", result.Warnings)
+	}
+}
+
 func TestDecodeIssueOpsRemoteScoringRequestAcceptsCandidateAliases(t *testing.T) {
 	req, err := DecodeIssueOpsRemoteScoringRequest([]byte(`{
 		"provider": "github",
