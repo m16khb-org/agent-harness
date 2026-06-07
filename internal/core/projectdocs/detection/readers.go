@@ -1,4 +1,4 @@
-package projectdocs
+package detection
 
 import (
 	"encoding/json"
