@@ -1,23 +1,23 @@
-package selfworkflow
+package rerun
 
 import (
 	"fmt"
 	"strconv"
 )
 
-func selfVerifyRerunCommands(failedStep string, iterations int, baseSeed int64, targetScore float64) []string {
+func SelfVerifyRerunCommands(failedStep string, iterations int, baseSeed int64, targetScore float64) []string {
 	commands := []string{}
-	if command, ok := selfVerifyStepRerunCommand(failedStep); ok {
+	if command, ok := SelfVerifyStepRerunCommand(failedStep); ok {
 		commands = append(commands, command)
 	}
 	if iterations < 10 {
 		iterations = 10
 	}
-	commands = append(commands, fmt.Sprintf("./bin/agent-harness self-verify --iterations=%d --seed=%d --target-score=%s --progress=jsonl --json", iterations, baseSeed, formatScore(targetScore)))
+	commands = append(commands, fmt.Sprintf("./bin/agent-harness self-verify --iterations=%d --seed=%d --target-score=%s --progress=jsonl --json", iterations, baseSeed, FormatScore(targetScore)))
 	return commands
 }
 
-func selfVerifyStepRerunCommand(label string) (string, bool) {
+func SelfVerifyStepRerunCommand(label string) (string, bool) {
 	switch label {
 	case "go test":
 		return "go test ./... -count=1", true
@@ -64,7 +64,7 @@ func selfVerifyStepRerunCommand(label string) (string, bool) {
 	}
 }
 
-func formatScore(score float64) string {
+func FormatScore(score float64) string {
 	if score == float64(int64(score)) {
 		return strconv.FormatInt(int64(score), 10)
 	}
