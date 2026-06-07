@@ -1,9 +1,11 @@
 package issueops
 
 import (
+	"strings"
+
+	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
-	"strings"
 )
 
 func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
@@ -21,7 +23,7 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		missing = append(missing, "repo_git")
 	} else {
 		currentHead = issueOpsCurrentHead(record)
-		currentFingerprint = issueOpsChangeFingerprint(record)
+		currentFingerprint = implementation.ChangeFingerprint(record)
 		branch := strings.TrimSpace(preflight.GitOut(gitRoot, "branch", "--show-current"))
 		if strings.TrimSpace(record.Branch) != "" && branch != strings.TrimSpace(record.Branch) {
 			missing = append(missing, "branch_match")

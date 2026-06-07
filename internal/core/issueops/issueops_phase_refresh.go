@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/issueops/implementation"
 )
 
 func refreshIssueOpsAISlopClean(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
@@ -12,7 +14,7 @@ func refreshIssueOpsAISlopClean(stateRoot string, record IssueOpsRecord) (IssueO
 	}
 	record.AISlopCleanAt = time.Now().UTC().Format(time.RFC3339Nano)
 	record.AISlopCleanHead = issueOpsCurrentHead(record)
-	record.AISlopCleanFingerprint = issueOpsChangeFingerprint(record)
+	record.AISlopCleanFingerprint = implementation.ChangeFingerprint(record)
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/model"
 )
 
@@ -81,7 +82,7 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	}
 	if phase == IssueOpsPhaseAISlopClean {
 		record.AISlopCleanHead = issueOpsCurrentHead(record)
-		record.AISlopCleanFingerprint = issueOpsChangeFingerprint(record)
+		record.AISlopCleanFingerprint = implementation.ChangeFingerprint(record)
 	}
 	return touchAndWriteIssueOps(stateRoot, record)
 }

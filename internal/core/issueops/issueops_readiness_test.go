@@ -1,11 +1,13 @@
 package issueops
 
 import (
-	"agent-harness/internal/core/preflight"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/issueops/implementation"
+	"agent-harness/internal/core/preflight"
 )
 
 func TestIssueOpsDoneRequiresPRPhase(t *testing.T) {
@@ -204,17 +206,17 @@ func TestIssueOpsImplementationEvidenceHelpersParsePorcelainAndIgnorePlanPath(t 
 		"   ":                                    "",
 		" M \"quoted path.md\"":                  "quoted path.md",
 	} {
-		if got := issueOpsPorcelainPath(line); got != want {
-			t.Fatalf("issueOpsPorcelainPath(%q)=%q want %q", line, got, want)
+		if got := implementation.PorcelainPath(line); got != want {
+			t.Fatalf("PorcelainPath(%q)=%q want %q", line, got, want)
 		}
 	}
-	if !issueOpsPathMatchesPlan(record, worktree, plan) {
+	if !implementation.PathMatchesPlan(record, worktree, plan) {
 		t.Fatalf("absolute plan path should match itself")
 	}
-	if !issueOpsPathMatchesPlan(IssueOpsRecord{PlanPath: "plans/demo.md"}, worktree, "plans/demo.md") {
+	if !implementation.PathMatchesPlan(IssueOpsRecord{PlanPath: "plans/demo.md"}, worktree, "plans/demo.md") {
 		t.Fatalf("relative plan path should match relative porcelain path")
 	}
-	if issueOpsPathMatchesPlan(record, worktree, filepath.Join(worktree, "internal", "demo.go")) {
+	if implementation.PathMatchesPlan(record, worktree, filepath.Join(worktree, "internal", "demo.go")) {
 		t.Fatalf("implementation path must not be treated as plan path")
 	}
 }

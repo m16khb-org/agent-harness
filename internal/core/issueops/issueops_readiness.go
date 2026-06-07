@@ -1,10 +1,12 @@
 package issueops
 
 import (
+	"strings"
+
+	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/readinesspaths"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
-	"strings"
 )
 
 func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
@@ -26,7 +28,7 @@ func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	ready := IssueOpsImplementationReadiness(record)
 	missing := append([]string{}, ready.Missing...)
-	if !issueOpsHasImplementationEvidence(record) {
+	if !implementation.HasEvidence(record) {
 		missing = append(missing, "implementation_changes")
 	}
 	missing = stringlist.UniqueSorted(missing)
