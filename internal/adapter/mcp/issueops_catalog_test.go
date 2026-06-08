@@ -15,6 +15,7 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_link_plan",
 		"issueops_prepare_worktree_tools",
 		"issueops_link_child",
+		"issueops_link_related",
 	}
 	if len(tools) != len(wantNames) {
 		t.Fatalf("expected %d issueops basic tools, got %d", len(wantNames), len(tools))
@@ -58,15 +59,22 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	if !schemaRequires(byName["issueops_link_child"].InputSchema, "child_url") {
 		t.Fatalf("issueops_link_child must require child_url: %#v", byName["issueops_link_child"].InputSchema)
 	}
+	if !schemaRequires(byName["issueops_link_related"].InputSchema, "type") || !schemaRequires(byName["issueops_link_related"].InputSchema, "related_url") {
+		t.Fatalf("issueops_link_related must require type and related_url: %#v", byName["issueops_link_related"].InputSchema)
+	}
 }
 
 func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	tools := IssueOpsLifecycleTools()
 	wantNames := []string{
+		"issueops_add_decision",
 		"issueops_add_feedback",
 		"issueops_mark_issue_updated",
 		"issueops_set_phase",
 		"issueops_verify_remote_artifact",
+		"issueops_remote_create_issue",
+		"issueops_remote_create_pr",
+		"issueops_force_release",
 		"issueops_pr_readiness",
 		"issueops_cleanup_status",
 		"issueops_remote_score",

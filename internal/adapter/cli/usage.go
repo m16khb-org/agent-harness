@@ -80,6 +80,7 @@ Usage:
   agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--json]
   agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
+  agent-harness issueops force-release --id ID --reason REASON [--json]
   agent-harness issueops remote score --input PATH [--judge none|agy] [--agy-command PATH] [--json]
   agent-harness issueops benchmark run --fixtures PATH [--judge none|agy] [--agy-command PATH] [--json]
   agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]

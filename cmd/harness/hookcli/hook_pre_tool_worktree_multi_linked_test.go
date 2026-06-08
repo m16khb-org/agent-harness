@@ -40,8 +40,8 @@ func TestRunHookPreToolUseAllowsAnyLinkedIssueOpsWorktreeForRepo(t *testing.T) {
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
-	if obj["decision"] != "block" {
-		t.Fatalf("expected source checkout edit to be blocked, got %+v", obj)
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected source checkout edit to be allowed when no active cycle on current branch, got %+v", obj)
 	}
 
 	payload, err = json.Marshal(map[string]any{

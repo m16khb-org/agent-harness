@@ -219,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "c3a4d2b0d699581e47e20bd7c211cfa6916ef36a2a904e4be66a357bea1bafe1",
+      "hash": "fdd00296a8c19afbd450553062bda463d68d05e634aae4c65f71a8da113ad402",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -234,17 +234,22 @@
         "daemon_status",
         "docs_index",
         "harness_inspect",
+        "issueops_add_decision",
         "issueops_add_feedback",
         "issueops_cleanup_status",
+        "issueops_force_release",
         "issueops_link_child",
         "issueops_link_issue",
         "issueops_link_plan",
+        "issueops_link_related",
         "issueops_link_worktree",
         "issueops_mark_issue_updated",
         "issueops_pr_readiness",
         "issueops_prepare_branch",
         "issueops_prepare_worktree_tools",
         "issueops_record_intent",
+        "issueops_remote_create_issue",
+        "issueops_remote_create_pr",
         "issueops_remote_score",
         "issueops_review_design",
         "issueops_set_phase",
@@ -972,7 +977,14 @@
         "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
         "project_claude_mcp_config": true,
         "project_claude_skill": "$PROJECT_SKILL_PRESENCE",
-        "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
+        "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push",
+        "project_reasonix_settings": false,
+        "project_reasonix_skill": false,
+        "project_reasonix_skill_path": "$HARNESS_ROOT/.reasonix/skills/atomic-commit-push",
+        "reasonix_mcp_configured": false,
+        "reasonix_settings_installed": false,
+        "reasonix_skill_installed": false,
+        "reasonix_skill_path": "$HOME/.reasonix/skills/atomic-commit-push"
       },
       "ok": true,
       "skills": [
@@ -1553,6 +1565,9 @@
       "ok": true,
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "ready": false,
+      "warnings": [
+        "no_decision_records"
+      ],
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "issueops_prepare_branch": {
@@ -3814,7 +3829,7 @@
                 "name": "version"
               }
             ],
-            "hash": "c3a4d2b0d699581e47e20bd7c211cfa6916ef36a2a904e4be66a357bea1bafe1",
+            "hash": "fdd00296a8c19afbd450553062bda463d68d05e634aae4c65f71a8da113ad402",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -3829,17 +3844,22 @@
               "daemon_status",
               "docs_index",
               "harness_inspect",
+              "issueops_add_decision",
               "issueops_add_feedback",
               "issueops_cleanup_status",
+              "issueops_force_release",
               "issueops_link_child",
               "issueops_link_issue",
               "issueops_link_plan",
+              "issueops_link_related",
               "issueops_link_worktree",
               "issueops_mark_issue_updated",
               "issueops_pr_readiness",
               "issueops_prepare_branch",
               "issueops_prepare_worktree_tools",
               "issueops_record_intent",
+              "issueops_remote_create_issue",
+              "issueops_remote_create_pr",
               "issueops_remote_score",
               "issueops_review_design",
               "issueops_set_phase",
@@ -4581,7 +4601,14 @@
               "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
               "project_claude_mcp_config": true,
               "project_claude_skill": "$PROJECT_SKILL_PRESENCE",
-              "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
+              "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push",
+              "project_reasonix_settings": false,
+              "project_reasonix_skill": false,
+              "project_reasonix_skill_path": "$HARNESS_ROOT/.reasonix/skills/atomic-commit-push",
+              "reasonix_mcp_configured": false,
+              "reasonix_settings_installed": false,
+              "reasonix_skill_installed": false,
+              "reasonix_skill_path": "$HOME/.reasonix/skills/atomic-commit-push"
             },
             "ok": true,
             "skills": [
@@ -5161,6 +5188,9 @@
             "ok": true,
             "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "ready": false,
+            "warnings": [
+              "no_decision_records"
+            ],
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
           "type": "text"

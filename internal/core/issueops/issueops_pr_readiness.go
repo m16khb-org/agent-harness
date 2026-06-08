@@ -24,10 +24,25 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		missing = append(missing, "contract_feedback_issue_update")
 	}
 	missing = stringlist.UniqueSorted(missing)
+	var iddWarnings []string
+	if len(record.Decisions) == 0 {
+		iddWarnings = append(iddWarnings, "no_decision_records")
+	}
+	hasNonChildLink := false
+	for _, link := range record.IssueLinks {
+		if link.Type != "child" {
+			hasNonChildLink = true
+			break
+		}
+	}
+	if !hasNonChildLink && len(record.IssueLinks) == 0 {
+		iddWarnings = append(iddWarnings, "no_issue_graph_links")
+	}
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
 		Missing:      missing,
+		Warnings:     iddWarnings,
 		IssueURL:     record.IssueURL,
 		PlanPath:     record.PlanPath,
 		WorktreePath: record.WorktreePath,

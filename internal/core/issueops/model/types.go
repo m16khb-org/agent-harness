@@ -111,6 +111,27 @@ type IssueOpsDesignReviewRequest struct {
 	Approved       bool
 }
 
+type IssueOpsDecision struct {
+	Title               string   `json:"title"`
+	Body                string   `json:"body"`
+	Kind                string   `json:"kind"`
+	Rationale           string   `json:"rationale,omitempty"`
+	Alternatives        []string `json:"alternatives,omitempty"`
+	AffectedIssueLinks  []string `json:"affected_issue_links,omitempty"`
+	AffectedArtifacts   []string `json:"affected_artifacts,omitempty"`
+	CreatedAt           string   `json:"created_at"`
+}
+
+type IssueOpsDecisionRecordRequest struct {
+	Title              string
+	Body               string
+	Kind               string
+	Rationale          string
+	Alternatives       []string
+	AffectedIssueLinks []string
+	AffectedArtifacts  []string
+}
+
 type IssueOpsRecord struct {
 	OK                     bool                                `json:"ok"`
 	ID                     string                              `json:"id"`
@@ -125,10 +146,13 @@ type IssueOpsRecord struct {
 	IssueLinks             []IssueOpsIssueLink                 `json:"issue_links,omitempty"`
 	BranchPrepare          *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
 	RemoteArtifact         *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
+	Decisions              []IssueOpsDecision                  `json:"decisions,omitempty"`
 	Feedback               []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
 	AISlopCleanAt          string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead        string                              `json:"ai_slop_clean_head,omitempty"`
 	AISlopCleanFingerprint string                              `json:"ai_slop_clean_fingerprint,omitempty"`
+	ForceReleasedAt        string                              `json:"force_released_at,omitempty"`
+	ForceReleaseReason     string                              `json:"force_release_reason,omitempty"`
 	CreatedAt              string                              `json:"created_at"`
 	UpdatedAt              string                              `json:"updated_at"`
 }

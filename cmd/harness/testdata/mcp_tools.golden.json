@@ -793,6 +793,110 @@
     "name": "issueops_link_child"
   },
   {
+    "description": "Record a typed relationship between the current IssueOps issue and another issue. Supports depends-on, blocks, supersedes, follows-up, duplicates, splits-from, and implements link types. Unlike link-child, this does not require the linked issue to be in the same project.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "related_url": {
+          "description": "URL of the related issue.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Optional title of the related issue.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Relationship type.",
+          "enum": [
+            "depends-on",
+            "blocks",
+            "supersedes",
+            "follows-up",
+            "duplicates",
+            "splits-from",
+            "implements"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "related_url"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_link_related"
+  },
+  {
+    "description": "Record an explicit decision for an IssueOps loop with kind, rationale, alternatives, affected issue links, and affected artifacts. Unlike feedback (which captures external input), decisions capture internal product/architecture/implementation/test/review/scope choices.",
+    "inputSchema": {
+      "properties": {
+        "affected_artifacts": {
+          "description": "Affected artifacts: issue, plan, test, implementation, review, pr_mr, follow-up.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "affected_issue_links": {
+          "description": "Affected issue URLs from the issue graph.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "alternatives": {
+          "description": "Alternatives considered.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "body": {
+          "description": "Decision body.",
+          "type": "string"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Decision kind.",
+          "enum": [
+            "product",
+            "architecture",
+            "implementation",
+            "test",
+            "review",
+            "scope",
+            "follow-up"
+          ],
+          "type": "string"
+        },
+        "rationale": {
+          "description": "Decision rationale.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Decision title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "body",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_add_decision"
+  },
+  {
     "description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
     "inputSchema": {
       "properties": {
@@ -839,9 +943,13 @@
     "name": "issueops_mark_issue_updated"
   },
   {
-    "description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The plan phase requires a linked issue and recorded intent contract; implement requires linked issue, provider-linked branch, plan, linked worktree, and an approved design review with no open questions; ai-slop-clean additionally requires implementation changes; pr requires strict PR readiness; done requires prior pr phase plus verified remote PR/MR artifact state.",
+    "description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The plan phase requires a linked issue and recorded intent contract; implement requires linked issue, provider-linked branch, plan, linked worktree, and an approved design review with no open questions; ai-slop-clean additionally requires implementation changes; pr requires strict PR readiness; done requires prior pr phase plus verified remote PR/MR artifact state (unless force=true).",
     "inputSchema": {
       "properties": {
+        "force": {
+          "description": "When true and phase is done, bypass remote artifact verification requirement. The skip reason is recorded in force_release_reason.",
+          "type": "boolean"
+        },
         "id": {
           "description": "IssueOps id.",
           "type": "string"
@@ -1076,6 +1184,121 @@
       "type": "object"
     },
     "name": "issueops_remote_score"
+  },
+  {
+    "description": "Force-release a stuck IssueOps cycle to done, bypassing phase gate requirements. Use only when a cycle is deadlocked and cannot complete normally (e.g. missing remote_artifact verification). Requires an explicit reason recorded in the cycle state.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id of the stuck cycle.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Reason for force-release, recorded in the cycle state for audit.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_force_release"
+  },
+  {
+    "description": "Create a remote issue (GitHub/GitLab) for the IssueOps cycle. Dry-run by default; pass confirm=true to execute. Returns the URL of the created issue or a preview of what would be created.",
+    "inputSchema": {
+      "properties": {
+        "assignees": {
+          "description": "Assignee usernames.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "body": {
+          "description": "Issue body (markdown).",
+          "type": "string"
+        },
+        "confirm": {
+          "description": "Set true to execute; omit for dry-run preview.",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "IssueOps id. The provider is inferred from the cycle's issue_url or branch_prepare records.",
+          "type": "string"
+        },
+        "labels": {
+          "description": "Labels to apply.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "description": "Issue title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_remote_create_issue"
+  },
+  {
+    "description": "Create a remote pull request / merge request for the IssueOps cycle. Dry-run by default; pass confirm=true to execute. Provider and branch info are inferred from the cycle state (branch_prepare, branch, remote_artifact).",
+    "inputSchema": {
+      "properties": {
+        "assignees": {
+          "description": "Assignee usernames.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "base": {
+          "description": "Target branch (defaults to branch_prepare.base_branch).",
+          "type": "string"
+        },
+        "body": {
+          "description": "PR/MR body (markdown).",
+          "type": "string"
+        },
+        "confirm": {
+          "description": "Set true to execute; omit for dry-run preview.",
+          "type": "boolean"
+        },
+        "head": {
+          "description": "Source branch (defaults to cycle branch).",
+          "type": "string"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "labels": {
+          "description": "Labels to apply.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "description": "PR/MR title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_remote_create_pr"
   },
   {
     "description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",

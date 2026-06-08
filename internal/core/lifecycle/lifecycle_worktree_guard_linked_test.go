@@ -173,8 +173,8 @@ func TestWorktreeGuardAllowsAnyActiveLinkedIssueOpsWorktreeForRepo(t *testing.T)
 		Paths:           []string{filepath.Join(repo, "internal", "core", "issueops.go")},
 		EnforceWorktree: true,
 	})
-	if res.Decision != "block" || !strings.Contains(res.Reason, "linked IssueOps worktree") {
-		t.Fatalf("source checkout edit should still block, got %+v", res)
+	if res.Decision != "allow" {
+		t.Fatalf("source checkout edit without an active cycle on current branch should allow (no cycle-scoped blocking), got %+v", res)
 	}
 
 	res = BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{

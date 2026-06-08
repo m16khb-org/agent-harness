@@ -93,6 +93,7 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 	result.checkProjectDocs(root)
 	result.checkRepoLocalRuntimeState(root)
 	result.checkNativeIntegrations(req.Home)
+	result.checkBinaryDrift(req.HarnessRoot)
 
 	sort.Slice(result.Issues, func(i, j int) bool {
 		if result.Issues[i].Severity != result.Issues[j].Severity {

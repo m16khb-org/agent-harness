@@ -141,6 +141,49 @@ func LinkChild(store Store, stateRoot, id, childURL, title string) (model.IssueO
 	return store.TouchWrite(stateRoot, record)
 }
 
+var validLinkTypes = map[string]bool{
+	"depends-on":  true,
+	"blocks":      true,
+	"supersedes":  true,
+	"follows-up":  true,
+	"duplicates":  true,
+	"splits-from": true,
+	"implements":  true,
+}
+
+func isValidLinkType(linkType string) bool {
+	return validLinkTypes[linkType]
+}
+
+func LinkRelated(store Store, stateRoot, id, linkType, relatedURL, title string) (model.IssueOpsRecord, error) {
+	lt := strings.TrimSpace(linkType)
+	if !isValidLinkType(lt) {
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("invalid link type %q; must be one of: depends-on, blocks, supersedes, follows-up, duplicates, splits-from, implements", lt)
+	}
+	u := strings.TrimSpace(relatedURL)
+	if err := ValidateIssueURL(u); err != nil {
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("related_url %s", strings.TrimPrefix(err.Error(), "issue_url "))
+	}
+	record, err := store.Read(stateRoot, id)
+	if err != nil {
+		return record, err
+	}
+	for _, link := range record.IssueLinks {
+		if link.Type == lt && link.URL == u {
+			return model.IssueOpsRecord{OK: false}, fmt.Errorf("related issue already linked as %s: %s", lt, u)
+		}
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	record.IssueLinks = append(record.IssueLinks, model.IssueOpsIssueLink{
+		Type:      lt,
+		URL:       u,
+		Title:     strings.TrimSpace(title),
+		Provider:  remote.ProviderFromURL(u),
+		CreatedAt: now,
+	})
+	return store.TouchWrite(stateRoot, record)
+}
+
 func ValidateIssueURL(issueURL string) error {
 	if issueURL == "" {
 		return fmt.Errorf("issue_url is required")

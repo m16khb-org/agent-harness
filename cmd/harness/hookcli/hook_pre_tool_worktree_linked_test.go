@@ -133,12 +133,8 @@ func TestRunHookPreToolUseBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
-	if obj["decision"] != "block" {
-		t.Fatalf("expected linked IssueOps worktree from another branch to block source checkout edit, got %+v", obj)
-	}
-	reason, _ := obj["reason"].(string)
-	if !strings.Contains(reason, "linked IssueOps worktree") {
-		t.Fatalf("expected linked worktree reason, got %q", reason)
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected source checkout edit to be allowed when no active cycle on current branch (cycle-scoped guard), got %+v", obj)
 	}
 
 	payload, err = json.Marshal(map[string]any{

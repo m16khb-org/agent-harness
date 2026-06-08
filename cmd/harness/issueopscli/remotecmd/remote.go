@@ -19,7 +19,11 @@ type Deps struct {
 
 func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops remote score --input PATH [--judge none|agy] [--json]\n       agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
+		fmt.Println("Usage:")
+		fmt.Println("  agent-harness issueops remote score --input PATH [--judge none|agy] [--json]")
+		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
+		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		return nil
 	}
 	if args[0] == "remote-score" {
@@ -111,6 +115,10 @@ func Run(args []string, deps Deps) error {
 			record, err = core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), *id, req)
 		}
 		return deps.printResult(record, *jsonOut, err)
+	case "create-issue":
+		return runRemoteCreateIssue(args[1:], deps)
+	case "create-pr":
+		return runRemoteCreatePR(args[1:], deps)
 	default:
 		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
 	}
@@ -201,6 +209,142 @@ func firstNonEmptyMain(values ...string) string {
 		value = strings.TrimSpace(value)
 		if value != "" {
 			return value
+		}
+	}
+	return ""
+}
+
+func runRemoteCreateIssue(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops remote create-issue", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	title := fs.String("title", "", "issue title")
+	body := fs.String("body", "", "issue body (markdown)")
+	confirm := fs.Bool("confirm", false, "execute creation; without this, dry-run preview only")
+	var labels repeatedFlag
+	var assignees repeatedFlag
+	fs.Var(&labels, "label", "label to apply (repeatable)")
+	fs.Var(&assignees, "assignee", "assignee username (repeatable)")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	provider := resolveRecordProvider(record)
+	if provider == "" {
+		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	result, err := core.CreateRemoteIssue(core.IssueProviderCreateIssueRequest{
+		Repo:      record.Repo,
+		Title:     *title,
+		Body:      *body,
+		Labels:    labels,
+		Assignees: assignees,
+		Confirm:   *confirm,
+	}, provider)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.printJSON(result)
+	}
+	if result.URL != "" {
+		fmt.Printf("created: %s\n", result.URL)
+	} else {
+		fmt.Println(result.Preview)
+	}
+	return nil
+}
+
+func runRemoteCreatePR(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops remote create-pr", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	title := fs.String("title", "", "PR title")
+	body := fs.String("body", "", "PR body (markdown)")
+	head := fs.String("head", "", "source branch")
+	base := fs.String("base", "", "target branch")
+	confirm := fs.Bool("confirm", false, "execute creation; without this, dry-run preview only")
+	var labels repeatedFlag
+	var assignees repeatedFlag
+	fs.Var(&labels, "label", "label to apply (repeatable)")
+	fs.Var(&assignees, "assignee", "assignee username (repeatable)")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	provider := resolveRecordProvider(record)
+	if provider == "" {
+		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	headBranch := firstNonEmptyMain(*head, record.Branch)
+	baseBranch := *base
+	if baseBranch == "" && record.BranchPrepare != nil {
+		baseBranch = record.BranchPrepare.BaseBranch
+	}
+	result, err := core.CreateRemotePullRequest(core.IssueProviderCreatePullRequestRequest{
+		Repo:       record.Repo,
+		Title:      *title,
+		Body:       *body,
+		HeadBranch: headBranch,
+		BaseBranch: baseBranch,
+		Labels:     labels,
+		Assignees:  assignees,
+		Confirm:    *confirm,
+	}, provider)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.printJSON(result)
+	}
+	if result.URL != "" {
+		fmt.Printf("created: %s\n", result.URL)
+	} else {
+		fmt.Println(result.Preview)
+	}
+	return nil
+}
+
+func resolveRecordProvider(record core.IssueOpsRecord) string {
+	if record.BranchPrepare != nil && record.BranchPrepare.Provider != "" {
+		return record.BranchPrepare.Provider
+	}
+	if record.RemoteArtifact != nil && record.RemoteArtifact.Provider != "" {
+		return record.RemoteArtifact.Provider
+	}
+	// Fall back to inferring from the issue URL.
+	if record.IssueURL != "" {
+		if strings.Contains(record.IssueURL, "github.com") {
+			return "github"
+		}
+		if strings.Contains(record.IssueURL, "gitlab") {
+			return "gitlab"
 		}
 	}
 	return ""

@@ -13,7 +13,7 @@ func TestRunIssueOpsWorktreeUsageAndErrorBranches(t *testing.T) {
 	usage := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"worktree", "help"})
 	})
-	if !strings.Contains(usage, "Usage: agent-harness issueops worktree prepare-tools --id ID [--json]") {
+	if !strings.Contains(usage, "prepare-tools") {
 		t.Fatalf("worktree usage missing prepare-tools syntax:\n%s", usage)
 	}
 

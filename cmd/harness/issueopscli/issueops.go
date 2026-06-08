@@ -84,6 +84,18 @@ func runIssueOps(args []string) error {
 		}
 		record, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), *id, *childURL, *title)
 		return printIssueOpsResult(record, *jsonOut, err)
+	case "link-related":
+		fs := flag.NewFlagSet("issueops link-related", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		linkType := fs.String("type", "", "link type: depends-on, blocks, supersedes, follows-up, duplicates, splits-from, implements")
+		relatedURL := fs.String("related-url", "", "related issue URL")
+		title := fs.String("title", "", "optional related issue title")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		record, err := core.LinkIssueOpsRelated(core.IssueOpsStateRoot(), *id, *linkType, *relatedURL, *title)
+		return printIssueOpsResult(record, *jsonOut, err)
 	case "branch":
 		return runIssueOpsBranch(args[1:])
 	case "worktree":
@@ -92,11 +104,18 @@ func runIssueOps(args []string) error {
 		fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
 		to := fs.String("to", "", "target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, done")
+		force := fs.Bool("force", false, "bypass remote artifact verification when advancing to done")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		record, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), *id, *to)
+		var record core.IssueOpsRecord
+		var err error
+		if *force && *to == "done" {
+			record, err = core.ForceDoneIssueOps(core.IssueOpsStateRoot(), *id)
+		} else {
+			record, err = core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), *id, *to)
+		}
 		return printIssueOpsResult(record, *jsonOut, err)
 	case "feedback":
 		return runIssueOpsFeedback(args[1:])
@@ -137,6 +156,18 @@ func runIssueOps(args []string) error {
 			fmt.Printf("- missing: %s\n", missing)
 		}
 		return nil
+	case "force-release":
+		fs := flag.NewFlagSet("issueops force-release", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		reason := fs.String("reason", "", "reason for force-release")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		record, err := core.ForceReleaseIssueOps(core.IssueOpsStateRoot(), *id, *reason)
+		return printIssueOpsResult(record, *jsonOut, err)
+	case "decision":
+		return runIssueOpsDecision(args[1:])
 	default:
 		return fmt.Errorf("unknown issueops subcommand %q", args[0])
 	}

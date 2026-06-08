@@ -24,6 +24,8 @@ type IssueOpsIntentContract = model.IssueOpsIntentContract
 type IssueOpsIntentRecordRequest = model.IssueOpsIntentRecordRequest
 type IssueOpsDesignReview = model.IssueOpsDesignReview
 type IssueOpsDesignReviewRequest = model.IssueOpsDesignReviewRequest
+type IssueOpsDecision = model.IssueOpsDecision
+type IssueOpsDecisionRecordRequest = model.IssueOpsDecisionRecordRequest
 type IssueOpsRecord = model.IssueOpsRecord
 type IssueOpsReadiness = model.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = model.IssueOpsCleanupStatusRequest
@@ -167,6 +169,10 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
 	return linking.LinkChild(issueOpsLinkingStore(), stateRoot, id, childURL, title)
+}
+
+func LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string) (IssueOpsRecord, error) {
+	return linking.LinkRelated(issueOpsLinkingStore(), stateRoot, id, linkType, relatedURL, title)
 }
 
 func issueOpsLinkingStore() linking.Store {

@@ -3,6 +3,20 @@ package mcp
 func IssueOpsLifecycleTools() []Tool {
 	return []Tool{
 		{
+			Name:        "issueops_add_decision",
+			Description: "Record an explicit decision for an IssueOps loop with kind, rationale, alternatives, affected issue links, and affected artifacts. Unlike feedback (which captures external input), decisions capture internal product/architecture/implementation/test/review/scope choices.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "title", "body", "kind"}, "properties": map[string]any{
+				"id":                 map[string]any{"type": "string", "description": "IssueOps id."},
+				"title":              map[string]any{"type": "string", "description": "Decision title."},
+				"body":               map[string]any{"type": "string", "description": "Decision body."},
+				"kind":               map[string]any{"type": "string", "description": "Decision kind.", "enum": []string{"product", "architecture", "implementation", "test", "review", "scope", "follow-up"}},
+				"rationale":          map[string]any{"type": "string", "description": "Decision rationale."},
+				"alternatives":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Alternatives considered."},
+				"affected_issue_links": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Affected issue URLs from the issue graph."},
+				"affected_artifacts": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Affected artifacts: issue, plan, test, implementation, review, pr_mr, follow-up."},
+			}},
+		},
+		{
 			Name:        "issueops_add_feedback",
 			Description: "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "source", "body"}, "properties": map[string]any{
@@ -21,11 +35,12 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_set_phase",
-			Description: "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The plan phase requires a linked issue and recorded intent contract; implement requires linked issue, provider-linked branch, plan, linked worktree, and an approved design review with no open questions; ai-slop-clean additionally requires implementation changes; pr requires strict PR readiness; done requires prior pr phase plus verified remote PR/MR artifact state.",
+			Description: "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The plan phase requires a linked issue and recorded intent contract; implement requires linked issue, provider-linked branch, plan, linked worktree, and an approved design review with no open questions; ai-slop-clean additionally requires implementation changes; pr requires strict PR readiness; done requires prior pr phase plus verified remote PR/MR artifact state (unless force=true).",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
 				"id":    map[string]any{"type": "string", "description": "IssueOps id."},
 				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
 				"to":    map[string]any{"type": "string", "description": "Compatibility alias for phase, matching the CLI --to flag.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
+				"force": map[string]any{"type": "boolean", "description": "When true and phase is done, bypass remote artifact verification requirement. The skip reason is recorded in force_release_reason."},
 			}},
 		},
 		{
@@ -82,6 +97,40 @@ func IssueOpsLifecycleTools() []Tool {
 					"aliases":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 					"score":       map[string]any{"type": "number"},
 				}}},
+			}},
+		},
+		{
+			Name:        "issueops_force_release",
+			Description: "Force-release a stuck IssueOps cycle to done, bypassing phase gate requirements. Use only when a cycle is deadlocked and cannot complete normally (e.g. missing remote_artifact verification). Requires an explicit reason recorded in the cycle state.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "reason"}, "properties": map[string]any{
+				"id":     map[string]any{"type": "string", "description": "IssueOps id of the stuck cycle."},
+				"reason": map[string]any{"type": "string", "description": "Reason for force-release, recorded in the cycle state for audit."},
+			}},
+		},
+		{
+			Name:        "issueops_remote_create_issue",
+			Description: "Create a remote issue (GitHub/GitLab) for the IssueOps cycle. Dry-run by default; pass confirm=true to execute. Returns the URL of the created issue or a preview of what would be created.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "title"}, "properties": map[string]any{
+				"id":        map[string]any{"type": "string", "description": "IssueOps id. The provider is inferred from the cycle's issue_url or branch_prepare records."},
+				"title":     map[string]any{"type": "string", "description": "Issue title."},
+				"body":      map[string]any{"type": "string", "description": "Issue body (markdown)."},
+				"labels":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Labels to apply."},
+				"assignees": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Assignee usernames."},
+				"confirm":   map[string]any{"type": "boolean", "description": "Set true to execute; omit for dry-run preview."},
+			}},
+		},
+		{
+			Name:        "issueops_remote_create_pr",
+			Description: "Create a remote pull request / merge request for the IssueOps cycle. Dry-run by default; pass confirm=true to execute. Provider and branch info are inferred from the cycle state (branch_prepare, branch, remote_artifact).",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "title"}, "properties": map[string]any{
+				"id":        map[string]any{"type": "string", "description": "IssueOps id."},
+				"title":     map[string]any{"type": "string", "description": "PR/MR title."},
+				"body":      map[string]any{"type": "string", "description": "PR/MR body (markdown)."},
+				"head":      map[string]any{"type": "string", "description": "Source branch (defaults to cycle branch)."},
+				"base":      map[string]any{"type": "string", "description": "Target branch (defaults to branch_prepare.base_branch)."},
+				"labels":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Labels to apply."},
+				"assignees": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Assignee usernames."},
+				"confirm":   map[string]any{"type": "boolean", "description": "Set true to execute; omit for dry-run preview."},
 			}},
 		},
 	}

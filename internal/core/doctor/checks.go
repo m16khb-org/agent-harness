@@ -1,9 +1,11 @@
 package doctor
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func (r *HarnessDoctorResult) checkProjectDocs(root string) {
@@ -49,4 +51,40 @@ func (r *HarnessDoctorResult) checkNativeIntegrations(home string) {
 		r.addIssue("codex_hooks_missing", "warning", "Codex hooks.json is not present", filepath.Join(home, ".codex", "hooks.json"), &HarnessDoctorFix{Command: "agent-harness install-native", Description: "Install user-level hooks, skills, and MCP configuration."})
 	}
 	r.addCheck("native_integrations", true, "checked user-level integration paths")
+}
+
+func (r *HarnessDoctorResult) checkBinaryDrift(harnessRoot string) {
+	if harnessRoot == "" {
+		return
+	}
+	binPath := filepath.Join(harnessRoot, "bin", "agent-harness")
+	binInfo, err := os.Stat(binPath)
+	if err != nil {
+		r.addCheck("binary_drift", true, "no prebuilt bin/agent-harness found; skipping drift check")
+		return
+	}
+	binTime := binInfo.ModTime()
+	latestSourceTime := binTime
+	sourceDirs := []string{
+		filepath.Join(harnessRoot, "cmd"),
+		filepath.Join(harnessRoot, "internal"),
+	}
+	for _, dir := range sourceDirs {
+		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() || !strings.HasSuffix(info.Name(), ".go") {
+				return nil
+			}
+			if info.ModTime().After(latestSourceTime) {
+				latestSourceTime = info.ModTime()
+			}
+			return nil
+		})
+	}
+	if latestSourceTime.After(binTime) {
+		delta := latestSourceTime.Sub(binTime).Round(time.Second)
+		r.addCheck("binary_drift", false, fmt.Sprintf("bin/agent-harness is %s older than latest source change", delta))
+		r.addIssue("binary_drift", "warning", fmt.Sprintf("bin/agent-harness may be stale (%s older than source)", delta), binPath, &HarnessDoctorFix{Command: "go build -o bin/agent-harness ./cmd/harness", Description: "Rebuild the agent-harness binary from the current source."})
+	} else {
+		r.addCheck("binary_drift", true, "bin/agent-harness is current")
+	}
 }

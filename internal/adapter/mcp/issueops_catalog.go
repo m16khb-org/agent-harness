@@ -99,5 +99,15 @@ func IssueOpsBasicTools() []Tool {
 				"title":     map[string]any{"type": "string", "description": "Optional child issue title."},
 			}},
 		},
+		{
+			Name:        "issueops_link_related",
+			Description: "Record a typed relationship between the current IssueOps issue and another issue. Supports depends-on, blocks, supersedes, follows-up, duplicates, splits-from, and implements link types. Unlike link-child, this does not require the linked issue to be in the same project.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "type", "related_url"}, "properties": map[string]any{
+				"id":          map[string]any{"type": "string", "description": "IssueOps id."},
+				"type":        map[string]any{"type": "string", "description": "Relationship type.", "enum": []string{"depends-on", "blocks", "supersedes", "follows-up", "duplicates", "splits-from", "implements"}},
+				"related_url": map[string]any{"type": "string", "description": "URL of the related issue."},
+				"title":       map[string]any{"type": "string", "description": "Optional title of the related issue."},
+			}},
+		},
 	}
 }

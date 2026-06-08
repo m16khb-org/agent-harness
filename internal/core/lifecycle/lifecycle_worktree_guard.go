@@ -34,7 +34,15 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		if len(targets) == 0 {
 			return ""
 		}
-		if !ok || !IssueOpsPhaseExpectsWorktree(rec.Phase) {
+		if !ok {
+			// No active IssueOps cycle on the current branch: allow mutating edits
+			// from the source checkout. Other cycles on their own branches enforce
+			// their own worktree isolation. This prevents a stuck cycle on another
+			// branch from deadlocking all repo-wide edits (e.g. a cycle stuck in
+			// PR phase because remote_artifact verification is unavailable).
+			return ""
+		}
+		if !IssueOpsPhaseExpectsWorktree(rec.Phase) {
 			if linkedRecs := ActiveIssueOpsLinkedWorktreeCyclesForRepo(req.Repo); len(linkedRecs) > 0 {
 				linked := cleanAbsPath(linkedRecs[0].WorktreePath)
 				for _, target := range targets {
