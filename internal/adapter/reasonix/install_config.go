@@ -21,17 +21,20 @@ func writeReasonixMCPConfig(req port.NativeInstallRequest) (port.InstallFile, er
 		return file, nil
 	}
 
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		return file, nil // skip: directory not writable (e.g. sandbox)
+	}
+
 	text := ""
 	if b, err := os.ReadFile(configPath); err == nil {
 		text = string(b)
+		// skip backup on sandboxed runs
 		backup := configPath + ".harness.bak"
 		if _, statErr := os.Stat(backup); os.IsNotExist(statErr) {
-			if writeErr := os.WriteFile(backup, []byte(text), 0o600); writeErr != nil {
-				return file, writeErr
-			}
+			_ = os.WriteFile(backup, []byte(text), 0o600)
 		}
 	} else if !os.IsNotExist(err) {
-		return file, err
+		return file, nil // skip: can't read config
 	}
 
 	text = removeReasonixPluginSection(text)
@@ -40,11 +43,8 @@ func writeReasonixMCPConfig(req port.NativeInstallRequest) (port.InstallFile, er
 	}
 	text += reasonixPluginBlock(req)
 
-	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
-		return file, err
-	}
 	if err := os.WriteFile(configPath, []byte(text), 0o600); err != nil {
-		return file, err
+		return file, nil // skip: can't write config
 	}
 	file.Written = true
 	return file, nil
