@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"agent-harness/internal/port"
@@ -96,8 +97,8 @@ func runGlabJSON(args []string, repo string, kind string) (port.IssueProviderCre
 		return port.IssueProviderCreateIssueResult{OK: false},
 			fmt.Errorf("glab %s create failed: %s", kind, stderr)
 	}
-	url := findGlabURL(string(out), kind)
-	return port.IssueProviderCreateIssueResult{OK: true, URL: url}, nil
+	url, number := parseGlabOutput(string(out), kind)
+	return port.IssueProviderCreateIssueResult{OK: true, URL: url, Number: number}, nil
 }
 
 func runGlabMRJSON(args []string, repo string) (port.IssueProviderCreatePullRequestResult, error) {
@@ -118,26 +119,32 @@ func runGlabMRJSON(args []string, repo string) (port.IssueProviderCreatePullRequ
 		return port.IssueProviderCreatePullRequestResult{OK: false},
 			fmt.Errorf("glab mr create failed: %s", stderr)
 	}
-	url := findGlabURL(string(out), "mr")
-	return port.IssueProviderCreatePullRequestResult{OK: true, URL: url}, nil
+	url, number := parseGlabOutput(string(out), "mr")
+	return port.IssueProviderCreatePullRequestResult{OK: true, URL: url, Number: number}, nil
 }
 
-func findGlabURL(out string, kind string) string {
+// parseGlabOutput extracts the web URL and item number (IID) from glab output,
+// preferring JSON and falling back to scanning lines for an https URL.
+func parseGlabOutput(out string, kind string) (url string, number string) {
 	out = strings.TrimSpace(out)
 	if out == "" {
-		return ""
+		return "", ""
 	}
 	// Try JSON first.
 	var result glabResult
-	if err := json.Unmarshal([]byte(out), &result); err == nil && result.WebURL != "" {
-		return result.WebURL
+	if err := json.Unmarshal([]byte(out), &result); err == nil && (result.WebURL != "" || result.IID != 0) {
+		number = ""
+		if result.IID != 0 {
+			number = strconv.Itoa(result.IID)
+		}
+		return result.WebURL, number
 	}
 	// Fall back: scan lines for an https URL.
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "https://") {
-			return line
+			return line, ""
 		}
 	}
-	return ""
+	return "", ""
 }
