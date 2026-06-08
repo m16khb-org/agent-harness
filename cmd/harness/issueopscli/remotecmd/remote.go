@@ -351,6 +351,15 @@ func runRemoteSyncGraph(args []string, deps Deps) error {
 	}
 	if !*confirm {
 		links := len(record.IssueLinks)
+		if *jsonOut {
+			return deps.printJSON(map[string]any{
+				"ok":         true,
+				"synced":     false,
+				"dry_run":    true,
+				"link_count": links,
+				"message":    fmt.Sprintf("[dry-run] would sync %d issue graph links to remote issue %s", links, record.IssueURL),
+			})
+		}
 		if links == 0 {
 			fmt.Println("no issue graph links to sync")
 			return nil
