@@ -24,6 +24,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
 		return nil
 	}
 	if args[0] == "remote-score" {
@@ -119,6 +120,8 @@ func Run(args []string, deps Deps) error {
 		return runRemoteCreateIssue(args[1:], deps)
 	case "create-pr":
 		return runRemoteCreatePR(args[1:], deps)
+	case "sync-graph":
+		return runRemoteSyncGraph(args[1:], deps)
 	default:
 		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
 	}
@@ -328,6 +331,44 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	} else {
 		fmt.Println(result.Preview)
 	}
+	return nil
+}
+
+func runRemoteSyncGraph(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops remote sync-graph", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	confirm := fs.Bool("confirm", false, "execute sync; without this, dry-run preview only")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if !*confirm {
+		links := len(record.IssueLinks)
+		if links == 0 {
+			fmt.Println("no issue graph links to sync")
+			return nil
+		}
+		fmt.Printf("[dry-run] would sync %d issue graph links to remote issue %s\n", links, record.IssueURL)
+		return nil
+	}
+	result, err := core.SyncRemoteIssueGraph(record)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.printJSON(result)
+	}
+	fmt.Printf("synced: %v links\n", result["link_count"])
 	return nil
 }
 

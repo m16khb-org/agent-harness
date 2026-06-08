@@ -189,6 +189,10 @@ func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest
 	return issueops.AddIssueOpsDecision(stateRoot, id, req)
 }
 
+func SyncRemoteIssueGraph(record IssueOpsRecord) (map[string]any, error) {
+	return issueops.SyncRemoteIssueGraph(record)
+}
+
 func CreateRemoteIssue(req IssueProviderCreateIssueRequest, providerName string) (IssueProviderCreateIssueResult, error) {
 	prov, err := resolveProvider(providerName)
 	if err != nil {

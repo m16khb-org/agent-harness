@@ -2,9 +2,26 @@ package issueops
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 )
+
+var secretPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(api[_-]?key|apikey|secret|token|password|passwd|credential|private[_-]?key)\s*[:=]\s*\S+`),
+	regexp.MustCompile(`-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----`),
+	regexp.MustCompile(`(?i)(ghp|gho|ghu|ghs|ghr|glpat|gldt|glft)_[A-Za-z0-9_]{20,}`),
+	regexp.MustCompile(`eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}`),
+}
+
+func containsSecretPattern(s string) bool {
+	for _, pat := range secretPatterns {
+		if pat.MatchString(s) {
+			return true
+		}
+	}
+	return false
+}
 
 var validDecisionKinds = map[string]bool{
 	"product":        true,
@@ -35,9 +52,18 @@ func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest
 	if title == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("decision title is required")
 	}
+	if len(title) > 512 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("decision title must not exceed 512 bytes")
+	}
 	body := strings.TrimSpace(req.Body)
 	if body == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("decision body is required")
+	}
+	if len(body) > 65536 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("decision body must not exceed 64 KiB")
+	}
+	if containsSecretPattern(body) {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("decision body appears to contain secrets or credentials; redact them before storing")
 	}
 	for _, art := range req.AffectedArtifacts {
 		if !validDecisionArtifacts[art] {

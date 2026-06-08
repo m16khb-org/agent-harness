@@ -51,6 +51,15 @@ func PlannedSelfVerifySteps(root string, tempBin string, seed int64, goTestStep 
 		{Label: "go build", Run: func() StepResult {
 			return deps.RunCommandStep(root, "go build", 120*time.Second, "", "go", "build", "-o", tempBin, "./cmd/harness")
 		}},
+		{Label: "binary drift", Run: func() StepResult {
+			// After a successful build, verify the checked bin/agent-harness is
+			// not stale relative to the source tree. We use the just-built tempBin
+			// to run doctor --json and inspect the binary_drift check. A fresh
+			// build means this step cannot produce a false positive (tempBin IS
+			// current by construction), but it still exercises the drift detection
+			// path as part of the self-verify QA surface.
+			return deps.RunCommandStep(root, "binary drift", 10*time.Second, "", tempBin, "doctor", "--json", "--repo", root)
+		}},
 		{Label: "inspect smoke", Run: func() StepResult { return deps.ValidateInspect(tempBin, root) }},
 		{Label: "docs index smoke", Run: func() StepResult { return deps.ValidateDocsIndex(tempBin, root) }},
 		{Label: "candidate export", Run: func() StepResult { return deps.ValidateSelfVerifyCandidate(tempBin, root, seed) }},

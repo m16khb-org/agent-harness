@@ -133,5 +133,13 @@ func IssueOpsLifecycleTools() []Tool {
 				"confirm":   map[string]any{"type": "boolean", "description": "Set true to execute; omit for dry-run preview."},
 			}},
 		},
+		{
+			Name:        "issueops_remote_sync_graph",
+			Description: "Sync the local IssueOps issue graph (typed related-issue links) to the remote issue as a comment listing each link. Dry-run by default; pass confirm=true to post the comment. Helps collaborators see the decision structure directly on the remote issue.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id":      map[string]any{"type": "string", "description": "IssueOps id."},
+				"confirm": map[string]any{"type": "boolean", "description": "Set true to post the comment; omit for dry-run preview."},
+			}},
+		},
 	}
 }

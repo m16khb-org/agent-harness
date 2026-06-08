@@ -38,15 +38,18 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if !hasNonChildLink && len(record.IssueLinks) == 0 {
 		iddWarnings = append(iddWarnings, "no_issue_graph_links")
 	}
+	cleanup := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: false})
 	return IssueOpsReadiness{
-		OK:           true,
-		Ready:        len(missing) == 0,
-		Missing:      missing,
-		Warnings:     iddWarnings,
-		IssueURL:     record.IssueURL,
-		PlanPath:     record.PlanPath,
-		WorktreePath: record.WorktreePath,
-		Branch:       record.Branch,
+		OK:             true,
+		Ready:          len(missing) == 0,
+		Missing:        missing,
+		Warnings:       iddWarnings,
+		CleanupReady:   cleanup.Ready,
+		CleanupMissing: cleanup.Missing,
+		IssueURL:       record.IssueURL,
+		PlanPath:       record.PlanPath,
+		WorktreePath:   record.WorktreePath,
+		Branch:         record.Branch,
 	}
 }
 

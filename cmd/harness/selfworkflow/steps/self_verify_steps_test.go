@@ -21,6 +21,7 @@ func TestPlannedSelfVerifyStepsPreservesExecutionOrder(t *testing.T) {
 		"contract golden tests",
 		"risk QA tier",
 		"go build",
+		"binary drift",
 		"inspect smoke",
 		"docs index smoke",
 		"candidate export",

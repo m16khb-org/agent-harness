@@ -139,6 +139,8 @@ func handleIssueOpsMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		return handleMCPRemoteCreateIssue(call.Arguments)
 	case "issueops_remote_create_pr":
 		return handleMCPRemoteCreatePR(call.Arguments)
+	case "issueops_remote_sync_graph":
+		return handleMCPRemoteSyncGraph(call.Arguments)
 	default:
 		return MCPToolOutcome{}
 	}
@@ -248,4 +250,23 @@ func resolveRecordProviderForMCP(record core.IssueOpsRecord) string {
 		}
 	}
 	return ""
+}
+
+func handleMCPRemoteSyncGraph(args map[string]any) MCPToolOutcome {
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote sync-graph failed: cannot read cycle")
+	}
+	if !argmap.Bool(args, "confirm") {
+		links := len(record.IssueLinks)
+		return mcpToolPayload(map[string]any{
+			"ok":         true,
+			"synced":     false,
+			"dry_run":    true,
+			"link_count": links,
+			"message":    fmt.Sprintf("dry-run: would sync %d issue graph links to %s", links, record.IssueURL),
+		})
+	}
+	result, err := core.SyncRemoteIssueGraph(record)
+	return issueOpsMCPOutcome(result, err, "IssueOps remote sync-graph failed")
 }

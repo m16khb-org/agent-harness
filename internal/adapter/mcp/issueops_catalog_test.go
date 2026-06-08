@@ -74,6 +74,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_verify_remote_artifact",
 		"issueops_remote_create_issue",
 		"issueops_remote_create_pr",
+		"issueops_remote_sync_graph",
 		"issueops_force_release",
 		"issueops_pr_readiness",
 		"issueops_cleanup_status",

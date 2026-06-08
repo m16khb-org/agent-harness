@@ -49,6 +49,7 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	if !ok || issueopsID == "" {
 		t.Fatalf("issueops start missing id: %#v", issueopsStartRaw)
 	}
+	replacements[issueopsID] = "$ISSUEOPS_ID"
 	cliSnapshot["issueops_record_intent"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"intent", "record", "--id", issueopsID, "--raw-request", "Refactor IssueOps intent flow", "--interpreted-intent", "Persist main-agent judgment before planning", "--success-criteria", "intent is recorded", "--constraint", "keep contract deterministic", "--ambiguity", "none", "--non-goal", "do not continue from hook recommendation alone", "--json"})
 	})
@@ -80,6 +81,21 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["issueops_link_child"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-child", "--id", issueopsID, "--child-url", "https://gitlab.example/group/project/-/issues/2", "--title", "contract child", "--json"})
 	})
+	cliSnapshot["issueops_link_related"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"link-related", "--id", issueopsID, "--type", "depends-on", "--related-url", "https://github.com/example/repo/issues/42", "--title", "upstream dependency", "--json"})
+	})
+	cliSnapshot["issueops_decision_add"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"decision", "add", "--id", issueopsID, "--title", "Contract decision", "--body", "Chose approach A over B for contract snapshot coverage", "--kind", "architecture", "--rationale", "Approach A keeps snapshots deterministic", "--alternative", "Approach B: live-only verification", "--alternative", "Approach C: manual review", "--affected-artifact", "test", "--affected-artifact", "implementation", "--json"})
+	})
+	cliSnapshot["issueops_worktree_prepare"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"worktree", "prepare", "--id", issueopsID, "--json"})
+	})
+	cliSnapshot["issueops_worktree_verify"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"worktree", "verify", "--id", issueopsID, "--json"})
+	})
+	cliSnapshot["issueops_worktree_cleanup"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"worktree", "cleanup-readiness", "--id", issueopsID, "--merged", "--json"})
+	})
 	cliSnapshot["issueops_feedback_add"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"feedback", "add", "--id", issueopsID, "--source", "user", "--body", "tighten contract", "--classification", "contract_change", "--json"})
 	})
@@ -88,6 +104,15 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	})
 	cliSnapshot["issueops_pr_readiness"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"pr-readiness", "--id", issueopsID, "--json"})
+	})
+	cliSnapshot["issueops_force_release"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"force-release", "--id", issueopsID, "--reason", "contract snapshot force-release", "--json"})
+	})
+	cliSnapshot["issueops_remote_create_issue"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"remote", "create-issue", "--id", issueopsID, "--title", "contract issue", "--body", "contract body", "--label", "contract", "--json"})
+	})
+	cliSnapshot["issueops_remote_create_pr"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"remote", "create-pr", "--id", issueopsID, "--title", "contract PR", "--head", "1-contract-branch", "--base", "main", "--json"})
 	})
 
 	old := mustStateReadForContract(t, "current")

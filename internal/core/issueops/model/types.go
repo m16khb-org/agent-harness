@@ -171,6 +171,8 @@ type IssueOpsReadiness struct {
 	AISlopCleanFingerprint string   `json:"ai_slop_clean_fingerprint,omitempty"`
 	CurrentFingerprint     string   `json:"current_fingerprint,omitempty"`
 	Warnings               []string `json:"warnings,omitempty"`
+	CleanupReady           bool     `json:"cleanup_ready,omitempty"`
+	CleanupMissing         []string `json:"cleanup_missing,omitempty"`
 }
 
 type IssueOpsCleanupStatusRequest struct {

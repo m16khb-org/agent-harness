@@ -1301,6 +1301,26 @@
     "name": "issueops_remote_create_pr"
   },
   {
+    "description": "Sync the local IssueOps issue graph (typed related-issue links) to the remote issue as a comment listing each link. Dry-run by default; pass confirm=true to post the comment. Helps collaborators see the decision structure directly on the remote issue.",
+    "inputSchema": {
+      "properties": {
+        "confirm": {
+          "description": "Set true to post the comment; omit for dry-run preview.",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_remote_sync_graph"
+  },
+  {
     "description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
     "inputSchema": {
       "properties": {},
