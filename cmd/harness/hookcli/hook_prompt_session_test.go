@@ -1,6 +1,8 @@
 package hookcli
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -205,4 +207,51 @@ func TestRunHookUserPromptDoesNotClearRelayForClaudeStopFeedback(t *testing.T) {
 	if len(afterFeedback) != 0 {
 		t.Fatalf("Claude Stop hook feedback prompt must not clear relay suppression, got %+v", afterFeedback)
 	}
+}
+
+func TestRunHookUserPromptDoesNotClearRelayForNoAutoProceedResponse(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	firstMsg := strings.Join([]string{
+		"전체 diff를 확인했습니다.",
+		"",
+		"선택지:",
+		"1. 여기서 멈추고 사용자가 직접 검토한다 (추천)",
+		"2. 현재 수정 내용을 커밋한다",
+		"3. 추가로 E2E 성격 테스트를 보강한다",
+	}, "\n")
+	noAutoProceedMsg := strings.Join([]string{
+		"자동진행하지 않습니다. 현재 추천 선택지는 사용자 직접 검토라서 더 실행할 작업이 없습니다.",
+		"",
+		"선택지:",
+		"1. 여기서 멈추고 사용자가 직접 검토한다 (추천)",
+		"2. 현재 수정 내용을 커밋한다",
+		"3. 추가로 E2E 성격 테스트를 보강한다",
+	}, "\n")
+
+	first := runHookCapture(t, hookInputJSON(t, repo, "last_assistant_message", firstMsg), func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--relay-next-action-judgement"})
+	})
+	if first["continue"] != true || first["decision"] != "block" {
+		t.Fatalf("expected first Stop hook call to relay next-action facts, got %+v", first)
+	}
+
+	runHookCapture(t, hookInputJSON(t, repo, "prompt", noAutoProceedMsg), func() error {
+		return runHookUserPrompt(nil)
+	})
+	afterNoAutoProceed := runHookCapture(t, hookInputJSON(t, repo, "last_assistant_message", noAutoProceedMsg), func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--relay-next-action-judgement"})
+	})
+	if len(afterNoAutoProceed) != 0 {
+		t.Fatalf("no-auto-proceed response must not clear relay suppression, got %+v", afterNoAutoProceed)
+	}
+}
+
+func hookInputJSON(t *testing.T, repo, key, value string) string {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fmt.Sprintf(`{"cwd":%q,%q:%s}`, repo, key, encoded)
 }
