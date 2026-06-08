@@ -6,6 +6,7 @@ type NativeInstallRequest struct {
 	Root         string   `json:"root"`
 	Home         string   `json:"home"`
 	CodexHome    string   `json:"codex_home"`
+	ReasonixHome string   `json:"reasonix_home,omitempty"`
 	BinPath      string   `json:"bin_path"`
 	SkillNames   []string `json:"skill_names"`
 	ProjectLocal bool     `json:"project_local"`
@@ -18,6 +19,7 @@ type NativeInstallResult struct {
 	Root         string              `json:"root"`
 	Home         string              `json:"home"`
 	CodexHome    string              `json:"codex_home"`
+	ReasonixHome string              `json:"reasonix_home,omitempty"`
 	BinPath      string              `json:"bin_path"`
 	SkillNames   []string            `json:"skill_names"`
 	Hosts        []HostInstallResult `json:"hosts"`

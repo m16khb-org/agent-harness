@@ -18,7 +18,7 @@ func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	result, err := NewInstaller().Install(req)
 	if err != nil {
@@ -66,7 +66,7 @@ func TestClaudeInstallerProjectLocalIsExplicit(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	req.ProjectLocal = true
 	if _, err := NewInstaller().Install(req); err != nil {
@@ -103,7 +103,7 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
   }
 }
 `)
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -152,7 +152,7 @@ func TestClaudeInstallerReportsInvalidExistingSettings(t *testing.T) {
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
 	writeClaudeTestFile(t, filepath.Join(home, ".claude", "settings.json"), "{")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 
 	result, err := NewInstaller().Install(req)
