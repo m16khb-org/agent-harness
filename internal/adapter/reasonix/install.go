@@ -99,9 +99,16 @@ args = ["mcp"]
 `
 }
 
-// canWriteTo checks whether a directory is writable by attempting to create
-// a temp file. It returns false when creation fails (sandbox, permissions).
+// canWriteTo reports whether a directory can be used for home-dir writes. It
+// first ensures the directory exists (creating it when missing, as on a fresh
+// install where ~/.reasonix has never been created), then probes with a temp
+// file. Returning false when either step fails lets the installer skip
+// home-dir writes gracefully under a sandbox rather than failing the whole
+// install, while still succeeding on a normal first-time install.
 func canWriteTo(dir string) bool {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return false
+	}
 	f, err := os.CreateTemp(dir, ".harness-write-test-*")
 	if err != nil {
 		return false
