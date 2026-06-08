@@ -74,6 +74,7 @@ func TestNativeInstallAdapterContractMatrix(t *testing.T) {
 			codexHome := filepath.Join(home, ".codex")
 			binPath := filepath.Join(root, "bin", "harness")
 			reasonixHome := filepath.Join(home, ".reasonix")
+			os.MkdirAll(filepath.Join(reasonixHome, "skills"), 0o755)
 			writeContractSkill(t, root, "beta")
 			writeContractSkill(t, root, "alpha")
 			writeContractSkill(t, root, "codex-only", "codex")

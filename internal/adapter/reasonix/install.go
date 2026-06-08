@@ -20,18 +20,29 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	result := port.HostInstallResult{Host: "reasonix", OK: true, DryRun: req.DryRun}
 	var errs []error
 
-	reasonixHomeWriteable := req.DryRun || ensureDir(req.ReasonixHome)
-	skillsDir := filepath.Join(req.ReasonixHome, "skills")
-	skillsWriteable := reasonixHomeWriteable && (req.DryRun || ensureDir(skillsDir))
+	enabled, skipped := installutil.SkillNamesForHost(req.Root, req.SkillNames, "reasonix")
+	for _, s := range skipped {
+		result.Messages = append(result.Messages, "skip skill for reasonix: "+s)
+	}
 
-	if skillsWriteable {
-		enabledSkills, links, messages, skillErrs := installutil.PlanHostSkillLinks(req.Root, skillsDir, req.SkillNames, "reasonix", req.DryRun)
-		result.Messages = append(result.Messages, messages...)
+	// Try one write to the home directory. If the sandbox blocks it, skip
+	// all home-dir writes gracefully rather than failing the entire install.
+	homeWriteable := req.DryRun || canWriteTo(req.ReasonixHome)
+
+	if homeWriteable {
+		links, linkErrs := installutil.PlanSkillLinks(req.Root, filepath.Join(req.ReasonixHome, "skills"), enabled, req.DryRun)
 		result.Links = append(result.Links, links...)
-		errs = append(errs, skillErrs...)
+		errs = append(errs, linkErrs...)
+
+		settingsPath := filepath.Join(req.ReasonixHome, "settings.json")
+		file, err := writeReasonixSettings(settingsPath, req)
+		result.Files = append(result.Files, file)
+		if err != nil {
+			errs = append(errs, err)
+		}
 
 		if req.ProjectLocal {
-			for _, skillName := range enabledSkills {
+			for _, skillName := range enabled {
 				projectLink, err := installutil.EnsureSymlinkPlan(filepath.ToSlash(filepath.Join("..", "..", "skills", skillName)), filepath.Join(req.Root, ".reasonix", "skills", skillName), req.DryRun)
 				result.Links = append(result.Links, projectLink)
 				if err != nil {
@@ -45,19 +56,8 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 			}
 		}
 	} else {
-		result.Messages = append(result.Messages, "reasonix home directory ~/.reasonix not writable; skipping skill links")
-		result.Messages = append(result.Messages, "run `mkdir -p ~/.reasonix/skills` in a regular terminal to enable Reasonix integration")
-	}
-
-	if reasonixHomeWriteable {
-		settingsPath := filepath.Join(req.ReasonixHome, "settings.json")
-		file, err := writeReasonixSettings(settingsPath, req)
-		result.Files = append(result.Files, file)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	} else {
-		result.Messages = append(result.Messages, "reasonix home directory not writable; skipping hook settings")
+		result.Messages = append(result.Messages, "reasonix home directory ~/.reasonix not writable under current sandbox; skipping skill links and hook settings")
+		result.Messages = append(result.Messages, "run `./bin/agent-harness update` in a regular terminal to enable Reasonix integration")
 	}
 
 	mcpFile, err := writeReasonixMCPConfig(req)
@@ -99,11 +99,16 @@ args = ["mcp"]
 `
 }
 
-func ensureDir(path string) bool {
-	if info, err := os.Stat(path); err == nil && info.IsDir() {
-		return true
+// canWriteTo checks whether a directory is writable by attempting to create
+// a temp file. It returns false when creation fails (sandbox, permissions).
+func canWriteTo(dir string) bool {
+	f, err := os.CreateTemp(dir, ".harness-write-test-*")
+	if err != nil {
+		return false
 	}
-	return os.MkdirAll(path, 0o755) == nil
+	f.Close()
+	_ = os.Remove(f.Name())
+	return true
 }
 
 func joinErrors(errs []error) error {
