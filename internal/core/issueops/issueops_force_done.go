@@ -3,6 +3,7 @@ package issueops
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // ForceDoneIssueOps advances a cycle to done from the PR phase, bypassing the
@@ -24,7 +25,10 @@ func ForceDoneIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	if len(missing) > 0 {
 		// Record the skip reason as a force-release; this is a narrower form
 		// of force-release that still respects the PR-phase prerequisite.
+		// Stamp ForceReleasedAt too, mirroring ForceReleaseIssueOps, so the
+		// bypass is auditable rather than leaving only a reason string.
 		record.ForceReleaseReason = "force-done: skipped remote artifact verification (missing " + strings.Join(missing, ", ") + ")"
+		record.ForceReleasedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 	record.Phase = IssueOpsPhaseDone
 	return touchAndWriteIssueOps(stateRoot, record)
