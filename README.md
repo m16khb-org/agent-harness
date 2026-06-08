@@ -80,7 +80,7 @@ agent-harness bootstrap --sync
 | MCP backend | `mcp`, `daemon start/status/stop` | Run a stdio MCP proxy backed by a user-level daemon. |
 | Command policy | `policy check`, `policy fake-run`, `policy run --read-only`, `policy audit` | Evaluate argv, workspace root, cwd, write/network intent, timeout, shell use, and audit metadata. |
 | Project docs | `project bootstrap/docs/route-docs/record`, `project draft-wiki ...` | Bootstrap, index, route, record, stage, approve, reject, and promote project knowledge. |
-| IssueOps | `issueops start/status/intent/link-issue/link-plan/feedback/pr-readiness` | Preserve issue-driven workflow evidence across sessions and hosts. |
+| IssueOps | `issueops start/status/intent/link-issue/link-plan/link-related/decision/worktree/feedback/pr-readiness/force-release` | Preserve issue-driven workflow evidence across sessions and hosts. |
 | Quality gates | `guard check`, `verify-work`, `trace analyze`, `contract check`, `api-doc check` | Catch anti-patterns, evidence gaps, response-contract drift, trace issues, and API-doc drift. |
 | State | `state write/read/list/prune/doctor/migrate` | Store small JSON checkpoints in user state. |
 | Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | Record lifecycle jobs and run policy-gated read-only evidence commands. |
@@ -344,7 +344,7 @@ agent-harness bootstrap --sync
 | MCP backend | `mcp`, `daemon start/status/stop` | user-level daemon 뒤의 stdio MCP proxy 실행. |
 | Command policy | `policy check`, `policy fake-run`, `policy run --read-only`, `policy audit` | argv, workspace root, cwd, write/network intent, timeout, shell use, audit metadata 평가. |
 | Project docs | `project bootstrap/docs/route-docs/record`, `project draft-wiki ...` | 운영 지식 bootstrap, index, route, record, stage, approve, reject, promote. |
-| IssueOps | `issueops start/status/intent/link-issue/link-plan/feedback/pr-readiness` | issue-driven workflow evidence를 session과 host를 넘어 보존. |
+| IssueOps | `issueops start/status/intent/link-issue/link-plan/link-related/decision/worktree/feedback/pr-readiness/force-release` | issue-driven workflow evidence를 session과 host를 넘어 보존. |
 | Quality gates | `guard check`, `verify-work`, `trace analyze`, `contract check`, `api-doc check` | anti-pattern, evidence gap, response-contract drift, trace issue, API-doc drift 검사. |
 | State | `state write/read/list/prune/doctor/migrate` | 작은 JSON checkpoint를 user state에 저장. |
 | Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | lifecycle job 기록과 policy-gated read-only evidence command 실행. |

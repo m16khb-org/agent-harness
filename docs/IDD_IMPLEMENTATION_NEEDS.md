@@ -6,6 +6,15 @@ Issue-Driven Development, or IDD, treats issues as the source of truth above SDD
 
 This document records what the current `agent-harness` codebase already supports and what still needs to be added to implement IDD as a first-class methodology.
 
+> **Status (updated after the IDD implementation commit `f5bdd28`).** Most of the
+> capabilities originally listed as missing are now shipped: typed issue-graph
+> links (`link-related`), first-class decision records (`decision`), worktree
+> orchestration (`worktree prepare/verify/cleanup-readiness`), the
+> `force-release`/`force-done` escape hatches, the cycle-scoped PreToolUse guard,
+> binary-drift detection in `doctor`, and opt-in GitHub/GitLab provider writes
+> gated by explicit confirmation. The "Current Support" table and the per-item
+> status lines below mark what is Delivered versus what genuinely Remains.
+
 ## Method
 
 The investigation used current repository evidence:
@@ -37,83 +46,115 @@ IDD should make these records durable and inspectable:
 | Area | Current state | Evidence |
 | --- | --- | --- |
 | Advisory workflow | Present. The `issueops` skill describes problem intake, issue contract, planning, TDD/subagent implementation, feedback, and PR/MR drafting. | `skills/issueops/SKILL.md` |
-| Durable cycle state | Present but still limited. State stores `repo`, `branch`, `phase`, `issue_url`, `plan_path`, `worktree_path`, child issue links, provider branch preparation, feedback items, and timestamps. No decision records or typed issue graph links yet. | `internal/core/issueops/model/types.go`, `internal/core/issueops/issueops_state.go` |
-| CLI state commands | Present in current source. Commands include `start`, `status`, `link-issue`, `link-plan`, `link-worktree`, `link-child`, `branch prepare`, `feedback add`, `pr-readiness`, and benchmark commands. | `cmd/harness/issueopscli/issueops.go`, `internal/adapter/cli/usage.go` |
-| MCP tools | Partial. Tests cover MCP start/status, child linking, and provider branch preparation; architecture docs describe matching IssueOps MCP tools. | `cmd/harness/mcpcli/issueops/issueops_test.go`, `.agent-harness/ARCHITECTURE.md` |
-| Readiness check | Present. Basic readiness (`IssueOpsPRReadiness`) checks 12 items: intent, design review, branch, branch_prepare, branch_link_verified, issue_url, worktree_path, plan_path, plan_exists, plan_in_worktree, ai_slop_clean, contract_feedback_issue_update. Strict readiness (`IssueOpsStrictPRReadiness`) adds 14 more: repo, repo_git, branch_match, worktree_clean, upstream, upstream_fetch, upstream_synced, worktree_exists, plus fingerprint drift checks. Missing: issue graph summary, decision records, cleanup status. | `internal/core/issueops/issueops_pr_readiness.go`, `internal/core/issueops/issueops_pr_readiness_strict.go` |
-| Worktree expectations | Present as advisory/benchmark evidence, not as executable git orchestration. Branch preparation now records the required provider-linked branch order before local worktree creation. The PreToolUse guard enforces worktree isolation but at repo granularity (see item 7). | `skills/issueops/SKILL.md`, `internal/core/issueops/benchmark/`, `internal/core/lifecycle/lifecycle_worktree_guard.go` |
+| Durable cycle state | Present and expanded. State stores `repo`, `branch`, `phase`, `issue_url`, `plan_path`, `worktree_path`, child issue links, provider branch preparation, feedback items, timestamps, **typed issue-graph links (`IssueLinks`), and decision records (`Decisions`)**. | `internal/core/issueops/model/types.go`, `internal/core/issueops/issueops_state.go` |
+| CLI state commands | Present in current source. Commands include `start`, `status`, `link-issue`, `link-plan`, `link-worktree`, `link-child`, `link-related`, `decision`, `branch prepare`, `worktree prepare/verify/cleanup-readiness`, `feedback add`, `pr-readiness`, `force-release`, and benchmark commands. | `cmd/harness/issueopscli/issueops.go`, `internal/adapter/cli/usage.go` |
+| MCP tools | Mostly present. Shipped tools include start/status, child/issue/plan/worktree linking, `issueops_link_related`, `issueops_force_release`, and provider branch preparation. Still pending: an MCP `issueops_decision` tool (decision records currently CLI-only). | `cmd/harness/mcpcli/mcp_tool_issueops.go`, `internal/adapter/mcp/issueops_lifecycle_catalog.go` |
+| Readiness check | Present. Basic readiness (`IssueOpsPRReadiness`) checks 12 items: intent, design review, branch, branch_prepare, branch_link_verified, issue_url, worktree_path, plan_path, plan_exists, plan_in_worktree, ai_slop_clean, contract_feedback_issue_update — and now surfaces IDD warnings for missing decision records (`no_decision_records`) and a missing issue graph (`no_issue_graph_links`). Strict readiness (`IssueOpsStrictPRReadiness`) adds 14 more: repo, repo_git, branch_match, worktree_clean, upstream, upstream_fetch, upstream_synced, worktree_exists, plus fingerprint drift checks. Still pending: cleanup status as a first-class readiness field (cleanup is tracked separately via `cleanup`/`worktree cleanup-readiness`). | `internal/core/issueops/issueops_pr_readiness.go`, `internal/core/issueops/issueops_pr_readiness_strict.go` |
+| Worktree orchestration | Present as executable commands. `issueops worktree prepare/prepare-tools/verify/cleanup-readiness` derive, verify, and report cleanup readiness for the worktree contract. Branch preparation records the required provider-linked branch order before local worktree creation. The PreToolUse guard now enforces isolation at **cycle granularity** (see item 7). | `cmd/harness/issueopscli/worktreecmd/worktree.go`, `internal/core/lifecycle/lifecycle_worktree_guard.go` |
 | Quality benchmark | Present. Deterministic scoring (17 dimensions) covers branch/worktree gate quality, isolation, cleanup, TDD, subagent orchestration, and PR/MR quality. | `internal/core/issueops/benchmark/issueops_benchmark.go`, `internal/core/issueops/benchmark/issueops_benchmark_score.go` |
-| Provider writes | Intentionally absent. Hooks and core do not create remote issues or PR/MRs. | `skills/issueops/SKILL.md`, docs architecture |
+| Provider writes | Present as opt-in adapters. GitHub (`gh`) and GitLab (`glab`) adapters can create issues and PRs/MRs, every mutating call gated by `Confirm` (dry-run preview otherwise); core stays provider-neutral. Still pending: provider-side attachment of remote hierarchy/linked items. | `internal/adapter/provider/github/provider.go`, `internal/adapter/provider/gitlab/provider.go`, `internal/port/provider.go` |
 
-## Missing Capabilities
+## Capabilities: Delivered and Remaining
+
+The items below were the original gap list. Each now carries a **Status** line:
+✅ Delivered, ◐ Partially delivered, ☐ Remaining.
 
 ### 1. Durable issue graph
 
-Current state stores the main `issue_url` and first-class child links, but not a complete typed graph. IDD still needs richer typed links between related issues and decisions so collaborators can traverse the decision structure.
+**Status: ◐ Partially delivered.** Typed local links and graph summaries shipped; provider-side remote hierarchy attachment is intentionally deferred (see item 5).
 
-Needed:
+Current state stores the main `issue_url` and first-class child links, plus typed related links (`link-related`). IDD still needs provider adapters to mirror that local graph as remote hierarchy/linked items.
 
-- `issueops link-related --type depends-on|blocks|supersedes|follows-up|duplicates|splits-from|implements`.
-- Decision-aware issue graph summaries in `status` and `pr-readiness`.
+Delivered: typed `link-related` (`depends-on|blocks|supersedes|follows-up|duplicates|splits-from|implements`) in `internal/core/issueops/linking/link.go`; decision-aware graph warnings (`no_issue_graph_links`) in `pr-readiness`.
+
+Remaining:
+
 - Provider adapters that can create or attach remote hierarchy items after the local graph contract is stable.
 
 ### 2. First-class decision records
 
-Feedback is currently stored as source/body/timestamp. IDD needs decisions to be explicit records with classification and impact.
+**Status: ◐ Partially delivered.** Decision records, impact categories, and readiness warnings shipped via the CLI; an MCP tool and content guardrails remain.
 
-Needed:
+Delivered: `issueops decision` with title, body, kind, rationale, alternatives, affected issue links, and affected artifacts (`AddIssueOpsDecision` in `internal/core/issueops/issueops_decision.go`); validated impact categories (issue, plan, test, implementation, review, pr_mr, follow-up); a missing-decision warning (`no_decision_records`) in `pr-readiness`.
 
-- `issueops decision add` with fields for title, body, kind, rationale, alternatives, affected issue links, and affected artifacts.
-- Decision impact categories: issue, plan, test, implementation, review, PR/MR, follow-up.
-- A short decision summary in `issueops status` and `pr-readiness`.
+Remaining:
+
+- An MCP `issueops_decision` tool (decision records are currently CLI-only).
 - Guardrails against storing secrets or large private issue bodies in state.
 
 ### 3. Branch and worktree orchestration
 
-The benchmark can score worktree evidence, but the harness does not yet create or verify the worktree contract as a durable state transition.
+**Status: ✅ Delivered.** All four worktree subcommands ship in `cmd/harness/issueopscli/worktreecmd/worktree.go`.
 
-Needed:
+Delivered:
 
-- `issueops worktree prepare` to derive a branch name from an issue, create a sibling `<repo>.worktrees/<branch-slug>` path, and record the base `HEAD`.
-- `issueops worktree verify` to check `pwd`, branch, `HEAD`, expected path, cleanliness, and base relation.
-- `issueops worktree cleanup-readiness` to report clean/dirty, merged/unmerged, and removal choices without deleting automatically.
-- Policy-gated git execution through existing command policy boundaries, not ad hoc shell strings.
+- `issueops worktree prepare` derives a branch name from an issue, plans a sibling worktree path, and records the base `HEAD`.
+- `issueops worktree prepare-tools` provisions the worktree tooling contract.
+- `issueops worktree verify` checks `pwd`, branch, `HEAD`, expected path, cleanliness, and base relation.
+- `issueops worktree cleanup-readiness` reports clean/dirty and merged/unmerged without deleting automatically.
+- Git execution flows through the existing command-policy boundaries rather than ad hoc shell strings.
 
 ### 4. Stronger PR/MR readiness
 
 Basic `pr-readiness` already checks 12 items (intent, design review, branch evidence, worktree path, plan existence, ai-slop-clean, contract feedback); strict mode adds 14 more (repo git, branch match, worktree cleanliness, upstream sync, fingerprint drift). The structural gap is not the number of checks — it's what they cover. IDD readiness should also validate that the collaboration evidence backing a PR/MR is present in the cycle record.
 
-Needed readiness fields currently missing from both basic and strict:
+**Status: ◐ Partially delivered.** Issue-graph and decision warnings ship; cleanup status is not yet a readiness field, and the decision marker is advisory (a warning) rather than a hard gate.
 
-- issue graph summary present,
-- at least one decision record or explicit "no decision changes" marker,
-- cleanup status recorded,
-- the stuck-cycle guard allows the cycle to be released (see item 7).
+Delivered:
+
+- issue graph summary surfaced as the `no_issue_graph_links` warning,
+- decision presence surfaced as the `no_decision_records` warning,
+- the stuck-cycle guard now allows release via `force-release`/`force-done` (see item 7).
+
+Remaining:
+
+- cleanup status recorded as a first-class `pr-readiness` field (cleanup is currently tracked via `cleanup`/`worktree cleanup-readiness`),
+- an explicit "no decision changes" marker to distinguish "intentionally none" from "forgotten".
 
 ### 5. Provider boundary
 
 IDD should integrate with GitHub/GitLab without turning agent-harness into a full provider client too early.
 
-Needed:
+**Status: ✅ Delivered (initial adapters).** Optional GitHub/GitLab write adapters now exist, gated by explicit confirmation; core stays provider-neutral.
 
-- Keep core provider-neutral.
-- Accept remote URLs and provider metadata as data.
-- Add optional adapters only after the local issue graph and worktree contract are stable.
-- Require explicit user approval before creating/updating remote issues, PRs, or MRs.
+Delivered:
+
+- Core stays provider-neutral; remote URLs and provider metadata are accepted as data.
+- Optional `gh`/`glab` adapters (`internal/adapter/provider/{github,gitlab}`) implement the `port.IssueProvider` interface for issue and PR/MR creation.
+- Every mutating call requires `Confirm=true`; without it the adapter returns a dry-run preview, satisfying the explicit-approval requirement.
+
+Remaining:
+
+- Provider-side attachment of remote hierarchy/linked items (mirrors item 1).
 
 ### 6. Binary drift check
 
 The current checked `bin/agent-harness` can drift from source. During this investigation, the checked binary usage omitted `issueops`, while a fresh source build exposed it.
 
-Needed:
+**Status: ✅ Delivered (doctor check).** `doctor` now flags stale binaries; README guidance and self-verify coverage remain optional follow-ups.
 
-- A doctor or verify-work finding when `bin/agent-harness` usage differs from `go run ./cmd/harness` or a fresh temp build.
+Delivered:
+
+- `doctor.checkBinaryDrift` (`internal/core/doctor/checks.go`) compares `bin/agent-harness` mtime against the latest source change and raises a `binary_drift` warning with a `go build -o bin/agent-harness ./cmd/harness` fix.
+
+Remaining (optional):
+
 - README guidance that command-surface verification should use a freshly built binary before claiming a feature is unavailable.
-- Optional self-verify coverage for stale binary command-surface drift.
+- Self-verify coverage for stale binary command-surface drift.
 
 ### 7. Repo-global mutating lock → cycle-scoped guard + force-release escape hatch
 
-The PreToolUse hook guard (`internal/core/lifecycle/lifecycle_worktree_guard.go`) enforces worktree isolation by blocking mutating tool calls outside a linked worktree when any active IssueOps cycle exists for the repo. This guard operates at **repo granularity, not cycle granularity**: it blocks edits to files that have no relationship to the blocking cycle.
+**Status: ✅ Delivered (A, B, and C).** The escape hatch, the cycle-scoped guard, and the optional `done`-phase skip all ship. The "Root cause" and "Deadlock scenario" below describe the **pre-fix** behavior and are retained for historical context.
+
+Delivered:
+
+- **A.** `issueops force-release --id <id> --reason "..."` (`ForceReleaseIssueOps`) transitions a stuck cycle to `done`, requires a reason, and records it; also exposed as the MCP tool `issueops_force_release`.
+- **B.** The guard is now cycle-scoped: when the current branch has no active cycle, `worktreeGuardBlockReason` returns no block (`lifecycle_worktree_guard.go` lines 37-43), so a cycle stuck on another branch no longer deadlocks repo-wide edits.
+- **C.** `ForceDoneIssueOps` advances a PR-phase cycle to `done` while recording the skipped remote-artifact verification reason, removing the systemic deadlock path.
+
+Historical context (pre-fix):
+
+The PreToolUse hook guard (`internal/core/lifecycle/lifecycle_worktree_guard.go`) originally enforced worktree isolation by blocking mutating tool calls outside a linked worktree when **any** active IssueOps cycle existed for the repo — at repo granularity, not cycle granularity — so it blocked edits to files unrelated to the blocking cycle.
 
 #### Root cause
 
@@ -157,6 +198,12 @@ The deadlock's structural cause: `done` phase requires `remote_artifact` verific
 - This removes the systemic deadlock path that creates the problem in the first place.
 
 ## Suggested Implementation Order
+
+> Steps 1–6 are largely complete as of `f5bdd28` (force-release, cycle-scoped guard,
+> state schema for graph + decisions, CLI/MCP link-related, IDD readiness warnings,
+> worktree commands). The remaining work is steps 7–9 plus the per-item "Remaining"
+> bullets above: MCP `issueops_decision`, decision content guardrails, cleanup status
+> as a readiness field, stale-binary self-verify coverage, and provider remote hierarchy.
 
 1. **Add `issueops force-release`** to unblock stuck cycles (item 7). This is the most operationally urgent gap: a single stuck cycle deadlocks the entire repo.
 2. **Make the PreToolUse guard cycle-scoped instead of repo-global** (item 7). After force-release exists as an escape hatch, refine the guard so unrelated files aren't blocked.
