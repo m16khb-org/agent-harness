@@ -9,6 +9,7 @@ import (
 
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
+	reasonixadapter "agent-harness/internal/adapter/reasonix"
 	"agent-harness/internal/core"
 )
 
@@ -38,6 +39,10 @@ func runInstallCommand(commandName string, args []string) error {
 	if codexHome == "" {
 		codexHome = filepath.Join(home, ".codex")
 	}
+	reasonixHome := os.Getenv("REASONIX_HOME")
+	if reasonixHome == "" {
+		reasonixHome = filepath.Join(home, ".reasonix")
+	}
 	if *interactive {
 		if err := validateInteractiveInstallInput(os.Stdin); err != nil {
 			return err
@@ -54,10 +59,10 @@ func runInstallCommand(commandName string, args []string) error {
 		return fmt.Errorf("invalid --path-mode %q: expected auto, manual, or skip", *pathMode)
 	}
 	root := HarnessRoot()
-	req := core.DefaultNativeInstallRequest(root, home, codexHome, filepath.Join(root, "bin", "agent-harness"))
+	req := core.DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, filepath.Join(root, "bin", "agent-harness"))
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
-	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
+	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller(), reasonixadapter.NewInstaller())
 	if pathErr := applyInstallPathPlan(&result, req, *pathMode); pathErr != nil {
 		result.OK = false
 		err = errors.Join(err, pathErr)

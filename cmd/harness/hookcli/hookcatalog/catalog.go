@@ -18,7 +18,7 @@ type Config struct {
 func RunPostCompact(args []string, config Config) error {
 	fs := flag.NewFlagSet("hook post-compact", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
-	hostFlag := fs.String("host", "", "hook host (codex or claude); controls user-visible compatibility fields")
+	hostFlag := fs.String("host", "", "hook host (codex, claude, or reasonix); controls user-visible compatibility fields")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -60,7 +60,7 @@ func RunPostCompact(args []string, config Config) error {
 func RunSessionStart(args []string, config Config) error {
 	fs := flag.NewFlagSet("hook session-start", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
-	hostFlag := fs.String("host", "", "hook host (codex or claude); controls user-visible compatibility fields")
+	hostFlag := fs.String("host", "", "hook host (codex, claude, or reasonix); controls user-visible compatibility fields")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err

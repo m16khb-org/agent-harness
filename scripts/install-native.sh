@@ -264,7 +264,7 @@ install_upstream_tools() {
     ensure_codegraph_on_path || true
     if command -v codegraph >/dev/null 2>&1; then
       log "refreshing CodeGraph MCP registration"
-      codegraph install --target=codex,claude --location=global --yes >/dev/null || true
+      codegraph install --target=codex,claude,reasonix --location=global --yes >/dev/null || true
       if is_truthy "$INIT_CODEGRAPH"; then
         log "refreshing CodeGraph index for ${ROOT}"
         codegraph init -i "$ROOT" >/dev/null || true

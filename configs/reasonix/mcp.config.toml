@@ -1,0 +1,4 @@
+[[plugins]]
+name = "agent_harness_project"
+command = "./bin/agent-harness"
+args = ["mcp"]
