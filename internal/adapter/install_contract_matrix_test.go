@@ -13,6 +13,7 @@ import (
 
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
+	reasonixadapter "agent-harness/internal/adapter/reasonix"
 	"agent-harness/internal/core"
 	"agent-harness/internal/port"
 )
@@ -72,14 +73,15 @@ func TestNativeInstallAdapterContractMatrix(t *testing.T) {
 			home := t.TempDir()
 			codexHome := filepath.Join(home, ".codex")
 			binPath := filepath.Join(root, "bin", "harness")
+			reasonixHome := filepath.Join(home, ".reasonix")
 			writeContractSkill(t, root, "beta")
 			writeContractSkill(t, root, "alpha")
 			writeContractSkill(t, root, "codex-only", "codex")
 			writeContractSkill(t, root, "claude-only", "claude")
 
-			req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath)
+			req := core.DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, binPath)
 			req.ProjectLocal = tc.projectLocal
-			result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
+			result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller(), reasonixadapter.NewInstaller())
 			if err != nil {
 				t.Fatalf("InstallNative returned error: %v\n%+v", err, result)
 			}
@@ -95,13 +97,14 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	codexHome := filepath.Join(home, ".codex")
+	reasonixHome := filepath.Join(home, ".reasonix")
 	binPath := filepath.Join(root, "bin", "harness")
 	writeContractSkill(t, root, "alpha")
 
-	req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath)
+	req := core.DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, binPath)
 	req.ProjectLocal = true
 	req.DryRun = true
-	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
+	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller(), reasonixadapter.NewInstaller())
 	if err != nil {
 		t.Fatalf("dry-run InstallNative returned error: %v\n%+v", err, result)
 	}
@@ -112,8 +115,11 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 		filepath.Join(codexHome, "skills", "alpha"),
 		filepath.Join(codexHome, "config.toml"),
 		filepath.Join(home, ".claude", "skills", "alpha"),
+		filepath.Join(reasonixHome, "skills", "alpha"),
+		filepath.Join(reasonixHome, "settings.json"),
 		filepath.Join(root, ".mcp.json"),
 		filepath.Join(root, ".claude"),
+		filepath.Join(root, ".reasonix"),
 		filepath.Join(root, "configs"),
 	} {
 		if exists(path) {
@@ -249,7 +255,7 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 	if !result.OK {
 		t.Fatalf("install result ok=false: %+v", result)
 	}
-	if len(result.Hosts) != 2 || result.Hosts[0].Host != "codex" || result.Hosts[1].Host != "claude" {
+	if len(result.Hosts) != 3 || result.Hosts[0].Host != "codex" || result.Hosts[1].Host != "claude" || result.Hosts[2].Host != "reasonix" {
 		t.Fatalf("host order/coverage drifted: %+v", result.Hosts)
 	}
 	if got := strings.Join(result.SkillNames, ","); got != "alpha,beta,claude-only,codex-only" {
@@ -292,8 +298,38 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 			t.Fatalf("Codex config missing %q:\n%s", needle, codexConfig)
 		}
 	}
-	assertHostMessage(t, result, "codex", "skip skill for codex: claude-only")
-	assertHostMessage(t, result, "claude", "skip skill for claude: codex-only")
+	for _, skill := range []string{"alpha", "beta"} {
+		assertRootSkillSymlink(t, filepath.Join(req.ReasonixHome, "skills", skill), filepath.Join(req.Root, "skills", skill))
+	}
+	assertPathMissing(t, filepath.Join(req.ReasonixHome, "skills", "codex-only"))
+	assertPathMissing(t, filepath.Join(req.ReasonixHome, "skills", "claude-only"))
+	if req.ProjectLocal {
+		for _, skill := range []string{"alpha", "beta"} {
+			assertRootSkillSymlink(t, filepath.Join(req.Root, ".reasonix", "skills", skill), filepath.Join(req.Root, "skills", skill))
+		}
+		assertPathMissing(t, filepath.Join(req.Root, ".reasonix", "skills", "codex-only"))
+		assertPathMissing(t, filepath.Join(req.Root, ".reasonix", "skills", "claude-only"))
+		if !exists(filepath.Join(req.Root, ".reasonix", "settings.json")) {
+			t.Fatalf("project-local opt-in did not write .reasonix/settings.json")
+		}
+	} else {
+		if exists(filepath.Join(req.Root, ".reasonix")) {
+			t.Fatalf("default install must not create repo-local path .reasonix")
+		}
+	}
+	reasonixSettings := readFile(t, filepath.Join(req.ReasonixHome, "settings.json"))
+	for _, needle := range []string{"PromptSubmit", "PreToolUse", "PostToolUse", "Stop", "SessionStart", "SessionEnd", req.BinPath} {
+		if !strings.Contains(reasonixSettings, needle) {
+			t.Fatalf("Reasonix settings missing lifecycle hook %q:\n%s", needle, reasonixSettings)
+		}
+	}
+	for _, needle := range []string{"UserPromptSubmit", "PostCompact"} {
+		if strings.Contains(reasonixSettings, needle) {
+			t.Fatalf("Reasonix settings must not contain Claude-specific hook %q:\n%s", needle, reasonixSettings)
+		}
+	}
+	assertHostMessage(t, result, "reasonix", "skip skill for reasonix: claude-only")
+	assertHostMessage(t, result, "reasonix", "skip skill for reasonix: codex-only")
 }
 
 func assertRootSkillSymlink(t *testing.T, linkPath, wantTarget string) {
@@ -350,11 +386,12 @@ func normalizeInstallContractCase(t *testing.T, name string, req port.NativeInst
 		SkillNames:   append([]string{}, result.SkillNames...),
 		Hosts:        []installContractHostSnapshot{},
 		Assertions: []string{
-			"core discovers shared skills once and passes sorted names to both host adapters",
-			"Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
-			"Codex and Claude user-level lifecycle hooks route through the same agent-harness hook CLI",
-			"default install writes no repo-local .claude or .mcp.json paths",
+			"core discovers shared skills once and passes sorted names to all host adapters",
+			"Codex, Claude, and Reasonix user skill installs are symlinks resolving to $ROOT/skills/*",
+			"Codex, Claude, and Reasonix user-level lifecycle hooks route through the same agent-harness hook CLI",
+			"default install writes no repo-local .claude, .mcp.json, or .reasonix paths",
 			"project-local repo files are created only when project_local=true",
+			"Reasonix host-specific hooks omit PostCompact and use PromptSubmit instead of UserPromptSubmit",
 		},
 	}
 	for _, host := range result.Hosts {
@@ -408,10 +445,11 @@ func linkResolvesUnderRootSkills(linkPath, root string) bool {
 
 func normalizeInstallContractString(value string, req port.NativeInstallRequest) string {
 	replacements := map[string]string{
-		req.CodexHome: "$CODEX_HOME",
-		req.Home:      "$HOME",
-		req.Root:      "$ROOT",
-		req.BinPath:   "$BIN",
+		req.CodexHome:    "$CODEX_HOME",
+		req.ReasonixHome: "$REASONIX_HOME",
+		req.Home:         "$HOME",
+		req.Root:         "$ROOT",
+		req.BinPath:      "$BIN",
 	}
 	keys := make([]string, 0, len(replacements))
 	for from := range replacements {
