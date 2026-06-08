@@ -2,17 +2,23 @@ package installdryrun
 
 import "path/filepath"
 
+var requiredInstallDryRunHosts = []string{"codex", "claude", "reasonix"}
+
 func installDryRunValidationErrors(result installDryRunSmokeResult, tempHome, tempRoot string, pathExists func(string) bool) []string {
 	errs := []string{}
 	if !result.OK || !result.DryRun || !result.ProjectLocal {
 		errs = append(errs, "install dry-run result flags mismatch")
 	}
-	if len(result.Hosts) != 2 {
-		errs = append(errs, "install dry-run did not cover both hosts")
-	}
+	seenHosts := map[string]bool{}
 	for _, host := range result.Hosts {
+		seenHosts[host.Host] = true
 		if !host.OK || !host.DryRun {
 			errs = append(errs, "install dry-run host mismatch:"+host.Host)
+		}
+	}
+	for _, host := range requiredInstallDryRunHosts {
+		if !seenHosts[host] {
+			errs = append(errs, "install dry-run missing host:"+host)
 		}
 	}
 	if !containsString(result.SkillNames, skillName) {

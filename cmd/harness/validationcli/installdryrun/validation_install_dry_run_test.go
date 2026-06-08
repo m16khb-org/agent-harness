@@ -144,6 +144,16 @@ func TestValidateInstallDryRunSmokeWithDepsCoversCommandParseAndContractFailures
 	}
 }
 
+func TestInstallDryRunValidationErrorsAcceptsReasonixHost(t *testing.T) {
+	result := validInstallDryRunResult()
+
+	errs := installDryRunValidationErrors(result, t.TempDir(), t.TempDir(), func(string) bool { return false })
+
+	if len(errs) != 0 {
+		t.Fatalf("expected three-host install dry-run result to pass, got %v", errs)
+	}
+}
+
 func validInstallDryRunResult() installDryRunSmokeResult {
 	return installDryRunSmokeResult{
 		OK:           true,
@@ -152,6 +162,7 @@ func validInstallDryRunResult() installDryRunSmokeResult {
 		Hosts: []installDryRunSmokeHost{
 			{Host: "codex", OK: true, DryRun: true},
 			{Host: "claude", OK: true, DryRun: true},
+			{Host: "reasonix", OK: true, DryRun: true},
 		},
 		Files: []installDryRunSmokeFile{
 			{Path: "configs/codex.toml", WouldWrite: true},
