@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-func TestIssueOpsSkillRoutesPhasesToLazyCodexFeatures(t *testing.T) {
+func TestIssueOpsSkillRoutesPhasesToAgentHarnessFeatures(t *testing.T) {
 	skill := readIssueOpsSkillForTest(t)
 	for _, want := range []string{
-		"LazyCodex/OMO Phase Assist Map",
+		"Agent-Harness Phase Assist Map",
 		"deep-interview",
 		"problem",
 		"grill",
@@ -32,18 +32,18 @@ func TestIssueOpsSkillRoutesPhasesToLazyCodexFeatures(t *testing.T) {
 		"feedback",
 		"pr",
 		"cleanup",
-		"omo:ulw-plan",
-		"omo:programming",
-		"omo:debugging",
-		"omo:lsp",
-		"omo:ulw-loop",
-		"omo:remove-ai-slops",
-		"omo:comment-checker",
-		"omo:review-work",
-		"lazycodex-ai",
+		"archimedes",
+		"turing",
+		"von-neumann",
+		"Explore Before Asking",
+		"RED→GREEN→SURFACE→CLEAN",
+		"Manual-QA across 4 channels",
+		"dependency matrix",
+		"parallel execution waves",
+		"no external plugin dependencies",
 	} {
 		if !strings.Contains(skill, want) {
-			t.Fatalf("IssueOps skill missing LazyCodex phase routing contract %q", want)
+			t.Fatalf("IssueOps skill missing agent-harness phase routing contract %q", want)
 		}
 	}
 }

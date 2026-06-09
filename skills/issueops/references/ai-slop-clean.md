@@ -4,13 +4,12 @@ Use this phase after implementation and before PR/MR drafting. The goal is not b
 
 ## Evidence Used
 
-This prompt pattern is adapted from local OMC/OMX/OmO surfaces and current LazyCodex/OmO documentation:
+This prompt pattern is adapted from established code review and AI-slop detection practices, and aligns with the **`turing`** skill's Final Quality Gate step 2 (AI slop clean + re-verify) and the **`von-neumann`** Verification Gate:
 
-- OMC `code-simplifier`: preserve exact functionality, focus only on recently modified code, remove unnecessary complexity/comments, avoid behavior-changing refactors.
-- OMC `critic` and `code-reviewer`: verify claims against actual files, look for what is missing, rate findings by severity/confidence, and separate discovery from filtering.
-- OMC `verifier`: no completion claim without fresh command evidence.
-- LazyCodex/OmO Codex Light docs: `comment-checker` targets AI-slop comment patterns after edit/write operations, and `rules` injects project guidance from AGENTS/CLAUDE/rules files.
-- OMX workflow notes: value comes from clarify -> plan -> execute -> check -> record, not from one-pass generation.
+- **`turing`** Cleanup Phase: inspect the worktree diff for lazy agent artifacts, unsupported claims, generic prose, dead scaffolding, unnecessary abstractions, weak comments, and brittle shortcuts.
+- **`von-neumann`** Reviewer Gate: spawn a dedicated reviewer agent; every concern is real and binding.
+- Code review best practices: verify claims against actual files, look for what is missing, rate findings by severity, separate discovery from filtering.
+- Verification principle: no completion claim without fresh command evidence.
 
 ## Prompt
 

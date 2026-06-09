@@ -4,7 +4,7 @@ Run this before creating, editing, or preparing a remote IssueOps issue. The goa
 
 ## Deep-Interview Gate
 
-Use a deep-interview style pass, preferably `omo:ulw-plan` or the nearest available LazyCodex/OMO deep-interview workflow, to identify:
+Use a deep-interview style pass, preferably **`archimedes`** Phase 2 (Interview + Clearance Checklist), to identify:
 
 - the user-visible problem and why it matters now
 - success criteria that can be verified with tests and a real surface

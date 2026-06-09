@@ -26,21 +26,21 @@ Required phases:
 7. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
 8. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
 
-## LazyCodex/OMO Phase Assist Map
+## Agent-Harness Phase Assist Map
 
-LazyCodex is an optional upstream companion installed by `lazycodex-ai`; IssueOps must not reimplement its skills or hooks. When LazyCodex/OMO skills are available, use them at the phase boundary where they fit, then continue the durable IssueOps state flow in `agent-harness`.
+IssueOps phases are supported by three agent-harness native skills — no external plugin dependencies required. These replace the legacy LazyCodex/OMO mapping. Each skill works standalone or integrated; when an IssueOps cycle exists, state is persisted through `agent-harness` CLI/MCP.
 
-| IssueOps phase | LazyCodex/OMO assist |
+| IssueOps phase | Agent-harness assist |
 | --- | --- |
-| problem | Use `omo:ulw-plan` when the request spans multiple modules, has unclear scope, or needs a decision-complete plan; use `omo:rules` when injected project guidance or rule precedence affects the problem. |
-| grill | Use `omo:lsp` for definitions, references, diagnostics, and rename-safety questions; use CodeGraph for structural call paths and impact before creating the issue contract. |
-| issue | Run the issue-preflight deep-interview gate: use `omo:ulw-plan` or the nearest available deep-interview workflow to reduce ambiguity, rewrite the raw user request into an ideal issue prompt using repo-root `PROMPT.md`, and carry an ambiguity ledger with resolved/deferred/blocking entries; keep remote writes in the IssueOps remote artifact gates, not in LazyCodex hooks. |
-| plan | Use `omo:ulw-plan` for ambiguous or five-plus-step work, and `omo:start-work` only when executing an existing `.omo/plans` plan that the user has accepted. |
-| implement | Use `omo:ulw-loop` to keep acceptance criteria, RED/GREEN evidence, manual QA, and review receipts bound through the implementation loop; use `omo:programming` for Go/Python/Rust/TypeScript edits, `omo:debugging` for runtime failures or wrong behavior, `omo:lsp` for diagnostics and symbol-safe changes, and `omo:frontend-ui-ux` for UI work. |
-| ai-slop-clean | Use `omo:remove-ai-slops` for diff cleanup and `omo:comment-checker` feedback after edit-like hooks; preserve behavior with regression tests first. |
-| feedback | Use `omo:debugging` for reproduced defects, `omo:review-work` for post-fix quality/security/QA review, and `omo:lcx-report-bug` only when the feedback is a LazyCodex bug report. |
-| pr | Use `omo:review-work` before reporting PR/MR readiness; keep Korean remote artifact, label, assignee, and strict readiness checks in IssueOps. |
-| cleanup | Use LazyCodex features only for inspection or review; keep merge evidence and worktree/branch cleanup decisions in `references/cleanup-state.md`. |
+| problem | Use **`archimedes`** when the request spans multiple modules, has unclear scope, or needs a decision-complete plan. Archimedes follows "Explore Before Asking" — it grounds itself in the actual codebase before interviewing the user. |
+| grill | Use **`archimedes`** Phase 1 (Ground) for codebase exploration, pattern discovery, and brownfield detection. Use CodeGraph for structural call paths and impact analysis before creating the issue contract. |
+| issue | Run the issue-preflight deep-interview gate: use **`archimedes`** Phase 2 (Interview + Clearance Checklist) to reduce ambiguity, rewrite the raw user request into an ideal issue prompt using repo-root `PROMPT.md`, and carry an ambiguity ledger with resolved/deferred/blocking entries. Keep remote writes in the IssueOps remote artifact gates. |
+| plan | Use **`archimedes`** Phase 3 (Plan Generation) to produce a decision-complete plan at `.agent-harness/plans/<slug>.md`. Link it with `agent-harness issueops link-plan`. Archimedes plans include a dependency matrix, parallel execution waves, and per-task QA scenarios — no implementation until the clearance checklist passes and the plan is complete. |
+| implement | Use **`turing`** for evidence-bound execution with RED→GREEN→SURFACE→CLEAN TDD, per-criterion Manual-QA across 4 channels (HTTP/tmux/browser/computer-use), and quantitative metrics (evidence coverage, rework rate, cycle efficiency). Delegate every code edit, test write, and QA to right-sized workers. Use **`von-neumann`** when the Archimedes plan has 5+ TODOs that can be parallelized into dependency-ordered waves. |
+| ai-slop-clean | Use **`turing`** Final Quality Gate step 2 (AI slop clean + re-verify). Inspect the actual worktree diff for lazy agent artifacts, unsupported claims, generic prose, dead scaffolding, unnecessary abstractions, weak comments, and brittle shortcuts. Remove them or record why they are intentional before moving to `pr`. |
+| feedback | Use **`turing`** Dynamic Steering to record feedback as structured evidence. For contract-changing feedback, update the remote issue body before continuing. For review feedback, answer in the original thread with verdict, evidence, and next action. |
+| pr | Use **`von-neumann`** Verification Gate: spawn a dedicated reviewer agent with the full diff, all success criteria, and all evidence. The reviewer verdict is BINDING — unconditional approval only. Keep Korean remote artifact, label, assignee, and strict readiness checks in IssueOps. |
+| cleanup | Use **`turing`** cleanup receipt rules: every QA resource (PIDs, tmux sessions, browser contexts, ports, temp files) must be torn down with a recorded receipt. Keep merge evidence and worktree/branch cleanup decisions in `references/cleanup-state.md`. |
 
 ## Reference Map
 
