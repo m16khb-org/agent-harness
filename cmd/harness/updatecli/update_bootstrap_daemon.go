@@ -23,11 +23,14 @@ type daemonProcess struct {
 func refreshRunningDaemonAfterInstall() (bool, error) {
 	status := daemoncli.CheckDaemonStatus()
 	if !status.Running {
-		terminated, err := terminateStaleDaemonProcesses()
-		if err != nil {
+		// Best-effort cleanup of stale daemon processes, then start.
+		if _, err := terminateStaleDaemonProcesses(); err != nil {
 			return false, err
 		}
-		return terminated > 0, nil
+		if _, err := daemoncli.EnsureDaemonRunning(); err != nil {
+			return true, err
+		}
+		return true, nil
 	}
 	if _, err := daemoncli.StopDaemon(); err != nil {
 		return true, err
