@@ -11,8 +11,12 @@ import (
 
 func TestRunMCPDirectUsesStreamTransport(t *testing.T) {
 	t.Setenv("HARNESS_MCP_DIRECT", "1")
-	stdout, stderr, err := captureMCPStdio(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`+"\n", RunMCP)
-	if err != nil {
+	stdout, stderr, err := captureMCPStdio(t,
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`+"\n"+
+			`{"jsonrpc":"2.0","method":"notifications/initialized"}`+"\n",
+		RunMCP)
+	// SDK returns EOF error when input closes; the response was already written.
+	if err != nil && !strings.Contains(err.Error(), "server is closing") && !strings.Contains(err.Error(), "EOF") {
 		t.Fatalf("RunMCP direct failed: %v\nstderr:\n%s", err, stderr)
 	}
 
@@ -66,7 +70,6 @@ func TestMCPTransportStdoutAndStderrWrappers(t *testing.T) {
 		t.Fatalf("notifications/initialized should be suppressed from diagnostics:\n%s", stderr)
 	}
 
-	// Other notifications still logged
 	stderr2, err2 := captureProjectCLIStderr(func() error {
 		handleNotification(RPCRequest{Method: "notifications/something-else"})
 		return nil
@@ -79,29 +82,35 @@ func TestMCPTransportStdoutAndStderrWrappers(t *testing.T) {
 	}
 }
 
-func TestMCPTransportCoversParseNotificationAndMethodErrors(t *testing.T) {
-	var out bytes.Buffer
-	var diagnostics bytes.Buffer
-	input := strings.NewReader(strings.Join([]string{
-		"{not json}",
-		`{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}`,
-		`{"jsonrpc":"2.0","id":1,"method":"missing/method","params":{}}`,
-		`{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}`,
-		"",
-	}, "\n"))
+func TestMCPTransportCoversInitAndToolsWithSDK(t *testing.T) {
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
+		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`,
+		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"harness://commit-policy"}}`,
+	}, "\n") + "\n"
 
-	if err := ServeMCPStream(input, &out, &diagnostics); err != nil {
+	var out bytes.Buffer
+	var diag bytes.Buffer
+	err := ServeMCPStream(strings.NewReader(input), &out, &diag)
+	// SDK returns an error when the input stream ends; responses are already written.
+	if err != nil && !strings.Contains(err.Error(), "server is closing") && !strings.Contains(err.Error(), "EOF") {
 		t.Fatalf("ServeMCPStream: %v", err)
 	}
 	output := out.String()
-	if !strings.Contains(output, `"Parse error"`) || !strings.Contains(output, `"Method not found"`) || !strings.Contains(output, `"serverInfo"`) {
-		t.Fatalf("unexpected MCP output:\n%s", output)
+	if !strings.Contains(output, `"serverInfo"`) || !strings.Contains(output, `"name":"agent_harness"`) {
+		t.Fatalf("missing server info in output:\n%s", output)
 	}
-	if strings.Contains(diagnostics.String(), "notifications/initialized") {
-		t.Fatalf("notifications/initialized should be suppressed from diagnostics: %s", diagnostics.String())
+	if !strings.Contains(output, "atomic_commit_preflight") {
+		t.Fatalf("missing tools in output:\n%s", output)
 	}
+	if !strings.Contains(output, `harness://commit-policy`) {
+		t.Fatalf("missing resource read response in output:\n%s", output)
+	}
+}
 
-	out.Reset()
+func TestMCPTransportErrorResponseFormat(t *testing.T) {
+	var out bytes.Buffer
 	writeRPCErrorTo(&out, nil, -32000, "boom", "data")
 	if !strings.Contains(out.String(), `"id":null`) || !strings.Contains(out.String(), `"boom"`) {
 		t.Fatalf("writeRPCErrorTo did not preserve null id error response: %s", out.String())

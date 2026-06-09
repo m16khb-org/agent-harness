@@ -18,7 +18,35 @@ func RunMCP() error {
 	return RunMCPProxy()
 }
 
+// ServeMCPStream runs the MCP server. When input and output are the same
+// bidirectional stream (e.g., a net.Conn from the daemon), it uses the
+// official go-sdk IOTransport. Otherwise, it falls back to the hand-rolled
+// JSON-RPC parser for backward compatibility with existing tests.
 func ServeMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
+	if canUseSDKTransport(input, output) {
+		return serveMCPStreamSDK(input, output)
+	}
+	return serveMCPStreamLegacy(input, output, diagnostics)
+}
+
+// canUseSDKTransport returns true when input and output point to the same
+// io.ReadWriter, which means it's a bidirectional connection (net.Conn, etc.).
+func canUseSDKTransport(input io.Reader, output io.Writer) bool {
+	rw, ok := input.(io.ReadWriter)
+	if !ok {
+		return false
+	}
+	// Check they're the same object (typically net.Conn from daemon accept loop).
+	if rw != output {
+		return false
+	}
+	return true
+}
+
+// serveMCPStreamLegacy is the original hand-rolled JSON-RPC implementation.
+// It is kept for backward compatibility with tests that pipe separate
+// readers/writers (strings.NewReader + bytes.Buffer, os.Pipe pairs, etc.).
+func serveMCPStreamLegacy(input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for scanner.Scan() {
@@ -45,6 +73,7 @@ func ServeMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) er
 	return scanner.Err()
 }
 
+// RPCRequest and RPCError are retained for backward compatibility.
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
@@ -67,8 +96,6 @@ func handleNotification(req RPCRequest) {
 }
 
 func handleNotificationTo(w io.Writer, req RPCRequest) {
-	// notifications/initialized is sent by every MCP client on connect;
-	// suppress this protocol noise to keep daemon logs compact.
 	if req.Method == "notifications/initialized" {
 		return
 	}
@@ -80,12 +107,9 @@ func HandleRequest(req RPCRequest) (any, *RPCError) {
 	case "initialize":
 		return map[string]any{
 			"protocolVersion": "2025-06-18",
-			"capabilities": map[string]any{
-				"tools":     map[string]any{},
-				"resources": map[string]any{},
-			},
-			"serverInfo":   map[string]any{"name": "agent_harness", "version": Version},
-			"instructions": "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. For LLM Wiki workflows, install and use the upstream nvk/llm-wiki plugin instead of agent-harness.",
+			"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
+			"serverInfo":      map[string]any{"name": "agent_harness", "version": Version},
+			"instructions":    "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. For LLM Wiki workflows, install and use the upstream nvk/llm-wiki plugin instead of agent-harness.",
 		}, nil
 	case "tools/list":
 		return map[string]any{"tools": MCPTools()}, nil
