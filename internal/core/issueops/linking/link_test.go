@@ -111,3 +111,43 @@ func TestLinkChildPersistsProviderNeutralGraph(t *testing.T) {
 		t.Fatalf("expected child URL validation error, got %v", err)
 	}
 }
+
+func TestValidateIssueURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{"valid github https", "https://github.com/user/repo/issues/1", false},
+		{"valid gitlab https", "https://gitlab.com/user/repo/-/issues/1", false},
+		{"valid http", "http://example.com/issues/1", false},
+		{"empty", "", true},
+		{"not url", "not-a-url", true},
+		{"no scheme", "github.com/user/repo/issues/1", true},
+		{"ftp scheme", "ftp://example.com/issues/1", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateIssueURL(tt.url)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateIssueURL(%q) error = %v, wantErr = %v", tt.url, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestIsValidLinkType(t *testing.T) {
+	valid := []string{"depends-on", "blocks", "supersedes", "follows-up", "duplicates", "splits-from", "implements"}
+	for _, lt := range valid {
+		if !isValidLinkType(lt) {
+			t.Errorf("expected %q to be valid", lt)
+		}
+	}
+	invalid := []string{"", "parent", "child", "related", "unknown"}
+	for _, lt := range invalid {
+		if isValidLinkType(lt) {
+			t.Errorf("expected %q to be invalid", lt)
+		}
+	}
+}
