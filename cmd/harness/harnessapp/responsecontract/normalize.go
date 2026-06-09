@@ -56,6 +56,10 @@ func NormalizeContractValue(value any, replacements map[string]string) any {
 					continue
 				}
 			}
+			if key == "pid" {
+				out[key] = "$PID"
+				continue
+			}
 			if key == "head" || key == "sha" {
 				out[key] = "$GIT_SHA"
 				continue

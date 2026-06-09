@@ -25,6 +25,8 @@ type WorkerJob struct {
 	Payload      string                   `json:"payload,omitempty"`
 	CreatedAt    string                   `json:"created_at"`
 	UpdatedAt    string                   `json:"updated_at"`
+	StartedAt    string                   `json:"started_at,omitempty"`
+	PID          int                      `json:"pid,omitempty"`
 	WorkerDir    string                   `json:"worker_dir"`
 	NoShell      bool                     `json:"no_shell"`
 	SafetyNotice string                   `json:"safety_notice"`
@@ -71,18 +73,32 @@ func EnqueueWorkerJob(kind, payload string) (WorkerJob, error) {
 }
 
 func CancelWorkerJob(id string) (WorkerJob, error) {
-	job, err := ReadWorkerJob(id)
+	dir, err := workerDir()
+	if err != nil {
+		return WorkerJob{OK: false, ID: id}, err
+	}
+	var job WorkerJob
+	err = withWorkerJobLock(dir, id, func() error {
+		current, reReadErr := ReadWorkerJob(id)
+		if reReadErr != nil {
+			job = current
+			return reReadErr
+		}
+		job = current
+		if current.Status == WorkerStatusCancelled {
+			return nil
+		}
+		if current.Status != WorkerStatusQueued {
+			return fmt.Errorf("worker job %s cannot be cancelled from status %s", id, current.Status)
+		}
+		current.Status = WorkerStatusCancelled
+		current.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		current.OK = true
+		job = current
+		return writeWorkerJob(current)
+	})
 	if err != nil {
 		return job, err
 	}
-	if job.Status == WorkerStatusCancelled {
-		return job, nil
-	}
-	if job.Status != WorkerStatusQueued {
-		return job, fmt.Errorf("worker job %s cannot be cancelled from status %s", id, job.Status)
-	}
-	job.Status = WorkerStatusCancelled
-	job.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	job.OK = true
-	return job, writeWorkerJob(job)
+	return job, nil
 }

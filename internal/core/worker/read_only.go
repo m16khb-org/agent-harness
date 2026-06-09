@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"fmt"
+	"os"
 	"time"
 
 	"agent-harness/internal/core/policy"
@@ -11,22 +13,56 @@ func RunReadOnlyWorkerJob(kind, payload string, req policy.CommandPolicyRequest)
 	if err != nil {
 		return job, err
 	}
-	job.Status = WorkerStatusRunning
-	job.NoShell = true
-	job.Command = append([]string{}, req.Argv...)
-	job.SafetyNotice = "worker read-only runner executes only argv commands that pass command policy with write/network/shell disabled"
-	job.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	if err := writeWorkerJob(job); err != nil {
+	dir, err := workerDir()
+	if err != nil {
 		return job, err
 	}
-	result := policy.RunReadOnlyCommand(req)
-	job.Result = &result
-	job.OK = result.OK
-	if result.OK {
-		job.Status = WorkerStatusSucceeded
-	} else {
-		job.Status = WorkerStatusFailed
+
+	// Transition to running under lock so concurrent CancelWorkerJob
+	// serializes with this state change.
+	if err := withWorkerJobLock(dir, job.ID, func() error {
+		current, reReadErr := ReadWorkerJob(job.ID)
+		if reReadErr != nil {
+			return reReadErr
+		}
+		job = current
+		if current.Status != WorkerStatusQueued {
+			return fmt.Errorf("worker job %s cannot run from status %s", job.ID, current.Status)
+		}
+		current.Status = WorkerStatusRunning
+		current.StartedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		current.PID = os.Getpid()
+		current.NoShell = true
+		current.Command = append([]string{}, req.Argv...)
+		current.SafetyNotice = "worker read-only runner executes only argv commands that pass command policy with write/network/shell disabled"
+		current.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		job = current
+		return writeWorkerJob(current)
+	}); err != nil {
+		return job, err
 	}
-	job.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
-	return job, writeWorkerJob(job)
+
+	result := policy.RunReadOnlyCommand(req)
+
+	// Transition to final status under lock.
+	if err := withWorkerJobLock(dir, job.ID, func() error {
+		current, reReadErr := ReadWorkerJob(job.ID)
+		if reReadErr != nil {
+			return reReadErr
+		}
+		job = current
+		current.Result = &result
+		current.OK = result.OK
+		if result.OK {
+			current.Status = WorkerStatusSucceeded
+		} else {
+			current.Status = WorkerStatusFailed
+		}
+		current.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		job = current
+		return writeWorkerJob(current)
+	}); err != nil {
+		return job, err
+	}
+	return job, nil
 }

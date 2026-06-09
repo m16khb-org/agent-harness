@@ -187,3 +187,132 @@ func TestWorkerRunReadOnlyDeniedCommandFailsJobWithoutMarker(t *testing.T) {
 		t.Fatalf("denied command created marker or unexpected stat error: %v", err)
 	}
 }
+
+func TestWorkerDetectStuckJobsMarksDeadPIDAsFailed(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", dir)
+
+	// Create a job that looks like it was running with a dead PID.
+	job, err := EnqueueWorkerJob("stuck-test", "payload")
+	if err != nil {
+		t.Fatal(err)
+	}
+	job.Status = WorkerStatusRunning
+	job.StartedAt = "2020-01-01T00:00:00Z"
+	// Use a PID that is extremely unlikely to exist (max pid_t on most
+	// systems is 2^22 ~ 4M; 99999999 is far beyond that and kill(2)
+	// will return ESRCH).
+	job.PID = 99999999
+	job.UpdatedAt = "2020-01-01T00:00:00Z"
+	if err := writeWorkerJob(job); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := DetectStuckWorkerJobs()
+	if err != nil {
+		t.Fatalf("detect stuck: %v", err)
+	}
+	if len(result.Jobs) != 1 || result.Jobs[0].ID != job.ID {
+		t.Fatalf("expected 1 stuck job detected, got: %+v", result)
+	}
+
+	// Re-read to confirm it was persisted as failed.
+	stored, err := ReadWorkerJob(job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status != WorkerStatusFailed {
+		t.Fatalf("expected status failed, got %s", stored.Status)
+	}
+	if !strings.Contains(stored.SafetyNotice, "stuck") {
+		t.Fatalf("expected stuck notice in SafetyNotice: %q", stored.SafetyNotice)
+	}
+
+	// Running DetectStuckWorkerJobs again should be a no-op (already failed).
+	result2, err := DetectStuckWorkerJobs()
+	if err != nil {
+		t.Fatalf("detect stuck second pass: %v", err)
+	}
+	if len(result2.Jobs) != 0 {
+		t.Fatalf("expected 0 stuck jobs on second pass, got %d", len(result2.Jobs))
+	}
+}
+
+func TestWorkerDetectStuckJobsSkipsAlivePID(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", dir)
+
+	// Create a job with the current PID — it should NOT be detected as stuck.
+	job, err := EnqueueWorkerJob("alive-test", "payload")
+	if err != nil {
+		t.Fatal(err)
+	}
+	job.Status = WorkerStatusRunning
+	job.StartedAt = "2020-01-01T00:00:00Z"
+	job.PID = os.Getpid()
+	job.UpdatedAt = "2020-01-01T00:00:00Z"
+	if err := writeWorkerJob(job); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := DetectStuckWorkerJobs()
+	if err != nil {
+		t.Fatalf("detect stuck: %v", err)
+	}
+	if len(result.Jobs) != 0 {
+		t.Fatalf("expected 0 stuck jobs for alive PID, got: %+v", result)
+	}
+}
+
+func TestWorkerConcurrentCancelAndRunDoesNotLoseUpdates(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", dir)
+
+	// Enqueue a job, then race two CancelWorkerJob calls against each
+	// other. Both should end with the job in cancelled state, and neither
+	// should error.
+	job, err := EnqueueWorkerJob("concurrent", "payload")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	errCh := make(chan error, 2)
+	resultCh := make(chan WorkerJob, 2)
+
+	go func() {
+		cj, e := CancelWorkerJob(job.ID)
+		resultCh <- cj
+		errCh <- e
+	}()
+	go func() {
+		cj, e := CancelWorkerJob(job.ID)
+		resultCh <- cj
+		errCh <- e
+	}()
+
+	var results []WorkerJob
+	for i := 0; i < 2; i++ {
+		results = append(results, <-resultCh)
+		if e := <-errCh; e != nil {
+			t.Errorf("unexpected error from goroutine %d: %v", i, e)
+		}
+	}
+
+	cancelledCount := 0
+	for _, r := range results {
+		if r.Status == WorkerStatusCancelled {
+			cancelledCount++
+		}
+	}
+	if cancelledCount != 2 {
+		t.Errorf("expected both calls to result in cancelled, got results: %+v", results)
+	}
+
+	final, err := ReadWorkerJob(job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if final.Status != WorkerStatusCancelled {
+		t.Fatalf("expected final status cancelled, got %s", final.Status)
+	}
+}
