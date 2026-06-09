@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -89,6 +90,132 @@ func TestCommandPolicySummaryIncludesCatalog(t *testing.T) {
 		if _, ok := catalog[key]; !ok {
 			t.Fatalf("summary catalog missing %s: %+v", key, catalog)
 		}
+	}
+}
+
+func TestLoadPolicyOverridesMergesAdditionalEntries(t *testing.T) {
+	ResetPolicyOverrides()
+	defer ResetPolicyOverrides()
+
+	repoRoot := t.TempDir()
+	agentHarnessDir := repoRoot + "/.agent-harness"
+	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	policyJSON := `{
+		"additional_shell_interpreters": ["tsh"],
+		"additional_network_commands": ["nc"],
+		"additional_network_subcommands": {"git": ["archive"]},
+		"additional_write_commands": ["tr"],
+		"additional_write_subcommands": {"git": ["tag"]},
+		"additional_read_only_commands": ["echo"],
+		"additional_read_only_subcommands": {"git": ["stash"]}
+	}`
+	if err := os.WriteFile(agentHarnessDir+"/policy.json", []byte(policyJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	LoadPolicyOverrides(repoRoot)
+
+	// Verify overrides are present.
+	if !policyShellInterpreters["tsh"] {
+		t.Error("expected tsh in shell interpreters")
+	}
+	if !policyNetworkCommands["nc"] {
+		t.Error("expected nc in network commands")
+	}
+	if !policyNetworkSubcommands["git"]["archive"] {
+		t.Error("expected git archive in network subcommands")
+	}
+	if !policyWriteCommands["tr"] {
+		t.Error("expected tr in write commands")
+	}
+	if !policyWriteSubcommands["git"]["tag"] {
+		t.Error("expected git tag in write subcommands")
+	}
+	if !policyReadOnlyCommands["echo"] {
+		t.Error("expected echo in read-only commands")
+	}
+	if !policyReadOnlySubcommands["git"]["stash"] {
+		t.Error("expected git stash in read-only subcommands")
+	}
+
+	// Verify built-in entries are still present.
+	if !policyShellInterpreters["bash"] {
+		t.Error("expected bash still in shell interpreters")
+	}
+	if !policyNetworkCommands["curl"] {
+		t.Error("expected curl still in network commands")
+	}
+	if !policyReadOnlyCommands["ls"] {
+		t.Error("expected ls still in read-only commands")
+	}
+}
+
+func TestLoadPolicyOverridesNoFileIsBackwardCompatible(t *testing.T) {
+	ResetPolicyOverrides()
+	defer ResetPolicyOverrides()
+
+	repoRoot := t.TempDir()
+	// No .agent-harness/policy.json file.
+	LoadPolicyOverrides(repoRoot)
+
+	// Built-in catalog should be used unchanged.
+	if !policyShellInterpreters["bash"] {
+		t.Error("expected bash in shell interpreters")
+	}
+	if len(policyShellInterpreters) != len(builtinShellInterpreters) {
+		t.Errorf("expected %d shell interpreters, got %d", len(builtinShellInterpreters), len(policyShellInterpreters))
+	}
+}
+
+func TestLoadPolicyOverridesInvalidJSONIsIgnored(t *testing.T) {
+	ResetPolicyOverrides()
+	defer ResetPolicyOverrides()
+
+	repoRoot := t.TempDir()
+	agentHarnessDir := repoRoot + "/.agent-harness"
+	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(agentHarnessDir+"/policy.json", []byte("not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	LoadPolicyOverrides(repoRoot)
+
+	// Built-in catalog should still be intact.
+	if !policyShellInterpreters["bash"] {
+		t.Error("expected bash in shell interpreters after invalid override")
+	}
+}
+
+func TestPolicyOverrideAffectsEvaluation(t *testing.T) {
+	ResetPolicyOverrides()
+	defer ResetPolicyOverrides()
+
+	repoRoot := t.TempDir()
+	agentHarnessDir := repoRoot + "/.agent-harness"
+	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	policyJSON := `{"additional_read_only_commands": ["my-readonly-tool"]}`
+	if err := os.WriteFile(agentHarnessDir+"/policy.json", []byte(policyJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	LoadPolicyOverrides(repoRoot)
+
+	// Without override, "my-readonly-tool" would be denied as not in read-only allowlist.
+	// With override, it should be allowed.
+	result := EvaluateCommandPolicy(CommandPolicyRequest{
+		WorkspaceRoot: repoRoot,
+		CWD:           repoRoot,
+		Argv:          []string{"my-readonly-tool", "arg"},
+		Timeout:       "30s",
+	})
+	if !result.Allowed {
+		t.Fatalf("expected my-readonly-tool to be allowed with override: %+v", result)
 	}
 }
 
