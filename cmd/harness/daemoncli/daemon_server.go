@@ -7,8 +7,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+const maxConnections = 64
 
 func runDaemonServer() error {
 	return runDaemonServerWithDeps(daemonServerDefaultDeps())
@@ -82,16 +85,35 @@ func runDaemonServerWithDeps(deps daemonServerDeps) error {
 		_ = deps.remove(paths.Socket)
 		_ = deps.remove(paths.PID)
 	}()
-	fmt.Fprintf(logFile, "%s daemon started pid=%d socket=%s\n", deps.now().Format(time.RFC3339), pid, paths.Socket)
-	return runDaemonAcceptLoop(listener, logFile, daemonServerLoopDeps{
+	connSlots := make(chan struct{}, maxConnections)
+	var activeWG sync.WaitGroup
+	fmt.Fprintf(logFile, "%s daemon started pid=%d socket=%s max_connections=%d\n", deps.now().Format(time.RFC3339), pid, paths.Socket, maxConnections)
+	acceptErr := runDaemonAcceptLoop(listener, logFile, daemonServerLoopDeps{
 		now:            deps.now,
 		serveMCPStream: deps.serveMCPStream,
+		connSlots:      connSlots,
+		activeWG:       &activeWG,
 	})
+	fmt.Fprintf(logFile, "%s daemon stopping, waiting for active connections\n", deps.now().Format(time.RFC3339))
+	shutdownDone := make(chan struct{})
+	go func() {
+		activeWG.Wait()
+		close(shutdownDone)
+	}()
+	select {
+	case <-shutdownDone:
+		fmt.Fprintf(logFile, "%s daemon stopped cleanly\n", deps.now().Format(time.RFC3339))
+	case <-time.After(30 * time.Second):
+		fmt.Fprintf(logFile, "%s daemon stopped with connections still active after 30s timeout\n", deps.now().Format(time.RFC3339))
+	}
+	return acceptErr
 }
 
 type daemonServerLoopDeps struct {
 	now            func() time.Time
 	serveMCPStream func(net.Conn, daemonServerLogFile) error
+	connSlots      chan struct{}
+	activeWG       *sync.WaitGroup
 }
 
 func runDaemonAcceptLoop(listener net.Listener, logFile daemonServerLogFile, deps daemonServerLoopDeps) error {
@@ -104,7 +126,20 @@ func runDaemonAcceptLoop(listener net.Listener, logFile daemonServerLogFile, dep
 			fmt.Fprintf(logFile, "%s accept error: %v\n", deps.now().Format(time.RFC3339), err)
 			continue
 		}
+		select {
+		case deps.connSlots <- struct{}{}:
+		default:
+			fmt.Fprintf(logFile, "%s connection limit reached (%d), rejecting connection\n", deps.now().Format(time.RFC3339), maxConnections)
+			_, _ = conn.Write([]byte("daemon connection limit reached\n"))
+			_ = conn.Close()
+			continue
+		}
+		deps.activeWG.Add(1)
 		go func(conn net.Conn) {
+			defer func() {
+				<-deps.connSlots
+				deps.activeWG.Done()
+			}()
 			defer conn.Close()
 			if err := deps.serveMCPStream(conn, logFile); err != nil {
 				fmt.Fprintf(logFile, "%s mcp stream error: %v\n", deps.now().Format(time.RFC3339), err)
