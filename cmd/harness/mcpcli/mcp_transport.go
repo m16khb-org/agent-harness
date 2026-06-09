@@ -67,6 +67,11 @@ func handleNotification(req RPCRequest) {
 }
 
 func handleNotificationTo(w io.Writer, req RPCRequest) {
+	// notifications/initialized is sent by every MCP client on connect;
+	// suppress this protocol noise to keep daemon logs compact.
+	if req.Method == "notifications/initialized" {
+		return
+	}
 	fmt.Fprintln(w, "agent-harness mcp notification:", req.Method)
 }
 

@@ -62,8 +62,20 @@ func TestMCPTransportStdoutAndStderrWrappers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("notification wrapper failed: %v", err)
 	}
-	if !strings.Contains(stderr, "agent-harness mcp notification: notifications/initialized") {
-		t.Fatalf("unexpected notification stderr:\n%s", stderr)
+	if strings.Contains(stderr, "notifications/initialized") {
+		t.Fatalf("notifications/initialized should be suppressed from diagnostics:\n%s", stderr)
+	}
+
+	// Other notifications still logged
+	stderr2, err2 := captureProjectCLIStderr(func() error {
+		handleNotification(RPCRequest{Method: "notifications/something-else"})
+		return nil
+	})
+	if err2 != nil {
+		t.Fatalf("notification wrapper failed: %v", err2)
+	}
+	if !strings.Contains(stderr2, "agent-harness mcp notification: notifications/something-else") {
+		t.Fatalf("non-initialized notification should be logged:\n%s", stderr2)
 	}
 }
 
@@ -85,8 +97,8 @@ func TestMCPTransportCoversParseNotificationAndMethodErrors(t *testing.T) {
 	if !strings.Contains(output, `"Parse error"`) || !strings.Contains(output, `"Method not found"`) || !strings.Contains(output, `"serverInfo"`) {
 		t.Fatalf("unexpected MCP output:\n%s", output)
 	}
-	if !strings.Contains(diagnostics.String(), "notifications/initialized") {
-		t.Fatalf("notification was not written to diagnostics: %s", diagnostics.String())
+	if strings.Contains(diagnostics.String(), "notifications/initialized") {
+		t.Fatalf("notifications/initialized should be suppressed from diagnostics: %s", diagnostics.String())
 	}
 
 	out.Reset()
