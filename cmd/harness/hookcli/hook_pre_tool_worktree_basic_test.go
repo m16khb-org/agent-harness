@@ -90,7 +90,7 @@ func TestRunHookPreToolUseBlocksIssueBranchCreationWithoutSourceRef(t *testing.T
 	}
 }
 
-func TestRunHookPreToolUseAllowsIssueBranchCreationWithSourceRef(t *testing.T) {
+func TestRunHookPreToolUseBlocksIssueBranchCreationWithSourceRef(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	payload, err := json.Marshal(map[string]any{
@@ -106,8 +106,12 @@ func TestRunHookPreToolUseAllowsIssueBranchCreationWithSourceRef(t *testing.T) {
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
-	if obj["decision"] != "allow" {
-		t.Fatalf("expected issue branch creation with source ref to be allowed, got %+v", obj)
+	if obj["decision"] != "block" {
+		t.Fatalf("expected issue branch creation with source ref to be blocked without IssueOps state, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, "started through IssueOps") || !strings.Contains(reason, "2386-remove-dmm-ranking-ranktype") {
+		t.Fatalf("expected IssueOps bootstrap guidance, got %q", reason)
 	}
 }
 

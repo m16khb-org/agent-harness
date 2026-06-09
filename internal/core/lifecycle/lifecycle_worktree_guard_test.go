@@ -94,6 +94,57 @@ func TestWorktreeGuardNoBlockWithoutCycle(t *testing.T) {
 	}
 }
 
+func TestWorktreeGuardBlocksIssueShapedBranchEditWithoutCycle(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/2403-fix-dmm-fanza-account-merge\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision != "block" || !strings.Contains(res.Reason, "IssueOps branch 2403-fix-dmm-fanza-account-merge has no active IssueOps cycle") {
+		t.Fatalf("issue-shaped branch without cycle should block source checkout edits, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardAllowsIssueOpsBootstrapOnIssueShapedBranchWithoutCycle(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/2403-fix-dmm-fanza-account-merge\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Bash", Command: "agent-harness issueops start --repo . --branch 2403-fix-dmm-fanza-account-merge", EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("issueops bootstrap command should not be blocked on an issue-shaped branch without a cycle, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardBlocksIssueBranchCreationWithSourceRefWithoutCycle(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Bash", Command: "git checkout -b 2403-fix-dmm-fanza-account-merge origin/main", EnforceWorktree: true,
+	})
+	if res.Decision != "block" || !strings.Contains(res.Reason, "must be started through IssueOps before checking it out in the source checkout") {
+		t.Fatalf("issue branch creation with source ref should block without an active cycle, got %+v", res)
+	}
+}
+
 func TestWorktreeGuardNoBlockWhenCycleDone(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)

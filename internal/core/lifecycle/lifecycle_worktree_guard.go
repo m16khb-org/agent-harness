@@ -3,7 +3,9 @@ package lifecycle
 import (
 	"strings"
 
+	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/lifecycle/worktreeguard"
+	"agent-harness/internal/core/searchrouting"
 )
 
 func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
@@ -28,13 +30,18 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 			if _, ok := ActiveIssueOpsCycleForBranch(req.Repo, creation.Branch); ok {
 				return "IssueOps branch " + creation.Branch + " must not be checked out in the source checkout; create the provider-linked branch, add the sibling worktree, then run issueops link-worktree before implementation"
 			}
+			return "IssueOps branch " + creation.Branch + " must be started through IssueOps before checking it out in the source checkout; run issueops start, create the provider-linked branch in an isolated worktree, then link the worktree before implementation"
 		}
-		rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, gitBranchFromHead(req.Repo))
+		currentBranch := gitBranchFromHead(req.Repo)
+		rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, currentBranch)
 		targets := worktreeGuardEditTargets(req)
 		if len(targets) == 0 {
 			return ""
 		}
 		if !ok {
+			if noCycleIssueOpsBranchNeedsWorktree(req, currentBranch, targets) {
+				return "IssueOps branch " + currentBranch + " has no active IssueOps cycle; start the IssueOps workflow and use a linked isolated worktree before mutating source files"
+			}
 			// No active IssueOps cycle on the current branch: allow mutating edits
 			// from the source checkout. Other cycles on their own branches enforce
 			// their own worktree isolation. This prevents a stuck cycle on another
@@ -95,6 +102,46 @@ func targetInsideAnyLinkedIssueOpsWorktree(target string, records []IssueOpsReco
 	for _, record := range records {
 		if pathWithin(target, record.WorktreePath) {
 			return true
+		}
+	}
+	return false
+}
+
+func noCycleIssueOpsBranchNeedsWorktree(req HookToolUseLifecycleRequest, branch string, targets []string) bool {
+	if strings.TrimSpace(branch) == "" {
+		return false
+	}
+	if validateIssueOpsIssueBranch(branch) != nil {
+		return false
+	}
+	if rec, err := ReadIssueOps(IssueOpsStateRoot(), newIssueOpsID(req.Repo, branch)); err == nil && rec.Phase == IssueOpsPhaseDone {
+		return false
+	}
+	if issueOpsWorktreePreparationCommand(req.Command) || issueOpsBootstrapCommand(req.Command) {
+		return false
+	}
+	linkedRecs := ActiveIssueOpsLinkedWorktreeCyclesForRepo(req.Repo)
+	for _, target := range targets {
+		if sourceCheckoutTargetNeedsLinkedWorktree(target, req.Repo) && !targetInsideAnyLinkedIssueOpsWorktree(target, linkedRecs) {
+			return true
+		}
+	}
+	return false
+}
+
+func issueOpsBootstrapCommand(command string) bool {
+	tokens := commandparse.SplitCommandTokens(command)
+	for i, token := range tokens {
+		if searchrouting.SearchTokenName(token) != "issueops" || i+1 >= len(tokens) {
+			continue
+		}
+		switch searchrouting.SearchTokenName(tokens[i+1]) {
+		case "start", "link-worktree":
+			return true
+		case "branch":
+			if i+2 < len(tokens) && searchrouting.SearchTokenName(tokens[i+2]) == "prepare" {
+				return true
+			}
 		}
 	}
 	return false
