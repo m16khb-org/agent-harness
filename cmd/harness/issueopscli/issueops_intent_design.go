@@ -44,11 +44,15 @@ func runIssueOpsIntent(args []string) error {
 
 func runIssueOpsDesign(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] [--json]")
+		printIssueOpsDesignReviewUsage()
 		return nil
 	}
 	if args[0] != "review" {
 		return fmt.Errorf("unknown issueops design subcommand")
+	}
+	if len(args) > 1 && (args[1] == "--help" || args[1] == "-h" || args[1] == "help") {
+		printIssueOpsDesignReviewUsage()
+		return nil
 	}
 	fs := flag.NewFlagSet("issueops design review", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
@@ -79,4 +83,12 @@ func runIssueOpsDesign(args []string) error {
 		Approved:       *approved,
 	})
 	return printIssueOpsResult(record, *jsonOut, err)
+}
+
+func printIssueOpsDesignReviewUsage() {
+	fmt.Println("Usage: agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] [--json]")
+	fmt.Println()
+	fmt.Println("Approved reviews require --refactor-plan, at least one --alternative, at least one --risk, no --open-question, and one design-review evidence verification item.")
+	fmt.Printf("Use a verification item such as --verification %q alongside test commands.\n", core.IssueOpsDesignReviewEvidenceExample)
+	fmt.Println("Approval is recorded with the full design review payload; there is no approve-only merge step.")
 }

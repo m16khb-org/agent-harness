@@ -481,7 +481,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 16953,
+          "bytes": 17864,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -500,7 +500,8 @@
             "4. MVP 범위",
             "5. 주요 위험과 대응",
             "6. 다음 작업 제안",
-            "7. Decision Log Index"
+            "7. Decision Log Index",
+            "2026-06-09 — Expose IssueOps gate contracts through MCP and skills"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
           "rel_path": ".agent-harness/ADR.md",
@@ -4591,7 +4592,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 16953,
+                "bytes": 17864,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -4610,7 +4611,8 @@
                   "4. MVP 범위",
                   "5. 주요 위험과 대응",
                   "6. 다음 작업 제안",
-                  "7. Decision Log Index"
+                  "7. Decision Log Index",
+                  "2026-06-09 — Expose IssueOps gate contracts through MCP and skills"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
                 "rel_path": ".agent-harness/ADR.md",

@@ -668,7 +668,7 @@
     "name": "issueops_link_worktree"
   },
   {
-    "description": "Record the reviewed IssueOps design, refactor boundary, alternatives, risks, verification matrix, and approval before implementation.",
+    "description": "Record the reviewed IssueOps design, refactor boundary, alternatives, risks, verification matrix, and approval before implementation. When approved=true, include refactor_plan, at least one alternative, at least one risk, no open_questions, and a verification item such as \"design review checked alternatives and risks\"; design_review_evidence is not a separate field.",
     "inputSchema": {
       "properties": {
         "alternatives": {
@@ -713,7 +713,7 @@
           "type": "array"
         },
         "verification": {
-          "description": "Verification steps.",
+          "description": "Verification steps. For approved=true, one item must be design review evidence, for example: design review checked alternatives and risks. Add normal test commands as separate items.",
           "items": {
             "type": "string"
           },

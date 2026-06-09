@@ -287,3 +287,12 @@ Archived entries:
 - 2026-06-05: IssueOps start and feedback phases are strict lifecycle gates. A live CLI matrix showed `issueops start --branch main` could create a dead-end cycle that later rejected provider branch preparation, and `issueops phase --to feedback` could skip `ai-slop-clean`. `start` now requires an issue-number-prefixed IssueOps branch from the beginning, feedback items may still be recorded early without advancing the phase, and explicit feedback phase entry requires recorded `ai-slop-clean` evidence.
 - 2026-06-05: IssueOps plan links must be real files on the active implementation surface. A live CLI matrix showed `link-plan` could move a cycle to `implement` with a nonexistent plan file, and `ai-slop-clean` could start even when the linked worktree lacked the plan path. `link-plan` now requires the plan file to exist in the source repo at link time, while `ai-slop-clean` and PR readiness require the linked worktree to contain the same plan path before later phases can proceed.
 - 2026-06-05: GitLab remote artifact assignee evidence must be concrete, not placeholder-shaped. The installed `glab mr create` help accepts usernames, while deprecated `glab mr for` accepts numeric user IDs. The VCS remote artifact guard now rejects GitLab placeholder assignees such as `@me` and rejects username-shaped assignees for `glab mr for`/structured `glab_mr_for`, so agents must resolve the current username or numeric id first and verify the remote assignee list.
+
+## 2026-06-09 — Expose IssueOps gate contracts through MCP and skills
+
+- Kind: `adr`
+- Source: codex
+- Summary: IssueOps readiness gates must be visible in CLI help, MCP schema descriptions, and SKILL.md so agents do not infer hidden flags or state fields.
+- Context: A design review approval failure exposed design_review_evidence only as an internal missing key, causing repeated attempts to find nonexistent evidence flags, approval subcommands, decision records, and force transitions.
+- Decision: Treat every IssueOps readiness gate key and conditional approval requirement as a public agent contract. New or changed gates must update CLI guidance, MCP schema descriptions, shared skill instructions, and focused contract tests in the same change.
+- Consequences: Future IssueOps changes that hide required gate inputs from MCP or SKILL.md should fail contract tests before reaching installed binaries.

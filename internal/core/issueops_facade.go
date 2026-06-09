@@ -43,6 +43,8 @@ const (
 
 var IssueOpsPhases = issueops.IssueOpsPhases
 
+const IssueOpsDesignReviewEvidenceExample = issueops.IssueOpsDesignReviewEvidenceExample
+
 type IssueOpsBenchmarkFixture = issueops.IssueOpsBenchmarkFixture
 type IssueOpsBenchmarkArtifact = issueops.IssueOpsBenchmarkArtifact
 type IssueOpsDimensionScore = issueops.IssueOpsDimensionScore

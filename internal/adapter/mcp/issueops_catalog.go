@@ -62,7 +62,7 @@ func IssueOpsBasicTools() []Tool {
 		},
 		{
 			Name:        "issueops_review_design",
-			Description: "Record the reviewed IssueOps design, refactor boundary, alternatives, risks, verification matrix, and approval before implementation.",
+			Description: "Record the reviewed IssueOps design, refactor boundary, alternatives, risks, verification matrix, and approval before implementation. When approved=true, include refactor_plan, at least one alternative, at least one risk, no open_questions, and a verification item such as \"design review checked alternatives and risks\"; design_review_evidence is not a separate field.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "problem_summary", "proposed_design", "verification"}, "properties": map[string]any{
 				"id":              map[string]any{"type": "string", "description": "IssueOps id."},
 				"problem_summary": map[string]any{"type": "string", "description": "Reviewed problem summary."},
@@ -70,7 +70,7 @@ func IssueOpsBasicTools() []Tool {
 				"refactor_plan":   map[string]any{"type": "string", "description": "Refactor plan or boundary decision."},
 				"alternatives":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Alternatives considered."},
 				"risks":           map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Design risks."},
-				"verification":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Verification steps."},
+				"verification":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Verification steps. For approved=true, one item must be design review evidence, for example: design review checked alternatives and risks. Add normal test commands as separate items."},
 				"open_questions":  map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Open design questions. Must be empty when approved is true."},
 				"approved":        map[string]any{"type": "boolean", "description": "Whether the design is approved for implementation."},
 			}},

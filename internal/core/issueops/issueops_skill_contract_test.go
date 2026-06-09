@@ -21,6 +21,8 @@ func TestIssueOpsSkillRoutesPhasesToLazyCodexFeatures(t *testing.T) {
 		"raw user request",
 		"agent-harness issueops intent record",
 		"agent-harness issueops design review",
+		"design review checked alternatives and risks",
+		"there is no approve-only merge step",
 		"main agent's judgment",
 		"approved and has no open questions",
 		"ambiguity ledger",
@@ -66,6 +68,33 @@ func TestIssueOpsSkillRequiresQualityUpgradeContracts(t *testing.T) {
 	} {
 		if !strings.Contains(skill+"\n"+refs, want) {
 			t.Fatalf("IssueOps skill/reference contract missing quality upgrade phrase %q", want)
+		}
+	}
+}
+
+func TestIssueOpsSkillDocumentsReadinessGateKeys(t *testing.T) {
+	skill := readIssueOpsSkillForTest(t)
+	for _, want := range []string{
+		"intent_contract",
+		"branch_prepare",
+		"branch_link_verified",
+		"worktree_path",
+		"worktree_exists",
+		"design_review",
+		"design_approval",
+		"design_review_evidence",
+		"refactor_plan",
+		"alternatives",
+		"risks",
+		"design_open_questions",
+		"plan_path",
+		"plan_exists",
+		"plan_in_worktree",
+		"ai_slop_clean",
+		"contract_feedback_issue_update",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Fatalf("IssueOps skill must document readiness gate key %q", want)
 		}
 	}
 }

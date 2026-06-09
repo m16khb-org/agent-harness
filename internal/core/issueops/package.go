@@ -45,6 +45,8 @@ const (
 
 var IssueOpsPhases = model.IssueOpsPhases
 
+const IssueOpsDesignReviewEvidenceExample = intentdesign.DesignReviewEvidenceExample
+
 func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
 	return artifactverify.Verify(issueOpsArtifactStore(), stateRoot, id, req)
 }

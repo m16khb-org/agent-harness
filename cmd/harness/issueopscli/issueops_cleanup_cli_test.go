@@ -29,6 +29,19 @@ func TestRunIssueOpsUsageAndCleanupBranches(t *testing.T) {
 		t.Fatalf("cleanup usage missing status syntax:\n%s", cleanupUsage)
 	}
 
+	designUsage := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"design", "review", "--help"})
+	})
+	for _, want := range []string{
+		"Approved reviews require --refactor-plan, at least one --alternative, at least one --risk",
+		`--verification "design review checked alternatives and risks"`,
+		"Approval is recorded with the full design review payload; there is no approve-only merge step.",
+	} {
+		if !strings.Contains(designUsage, want) {
+			t.Fatalf("design review usage missing %q:\n%s", want, designUsage)
+		}
+	}
+
 	if err := runIssueOps([]string{"cleanup", "remove"}); err == nil || !strings.Contains(err.Error(), "unknown issueops cleanup subcommand") {
 		t.Fatalf("cleanup unknown subcommand error = %v", err)
 	}

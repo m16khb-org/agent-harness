@@ -80,6 +80,33 @@ Load these files only when the phase applies:
 - Completion hygiene: before reporting done, verify the final diff, target branch, remote issue/PR/MR prose freshness, single-commit or declared commit policy, and cleanup/worktree status.
 - External LLM wrapper: all IssueOps `agy -p` usage must go through the shared harness external LLM wrapper and remain read-only judgment.
 
+## Gate Quick Reference
+
+When an IssueOps command reports a missing gate, do not guess a new hidden flag. Use the command that owns that state:
+
+- `intent_contract`: run `issueops intent record` with raw request, interpreted intent, success criteria, constraints/non-goals/ambiguity when known.
+- `branch_prepare` / `branch_link_verified`: run `issueops branch prepare` only after provider-visible branch evidence exists. The branch must start with the issue/task number and a hyphen.
+- `worktree_path` / `worktree_exists`: create the sibling isolated worktree first, then run `issueops link-worktree`.
+- `design_review`, `design_approval`, `design_review_evidence`, `refactor_plan`, `alternatives`, `risks`, `design_open_questions`: run one full `issueops design review` call. Approval is recorded with the full design review payload; there is no approve-only merge step.
+- `plan_path` / `plan_exists` / `plan_in_worktree`: create the plan file inside the linked worktree, then run `issueops link-plan`.
+- `ai_slop_clean`: record AI slop cleanup after implementation changes exist in the linked worktree.
+- `contract_feedback_issue_update`: update the remote issue body for contract-changing feedback, then run `issueops feedback mark-issue-updated`.
+
+Approved design reviews require `--refactor-plan`, at least one `--alternative`, at least one `--risk`, no `--open-question`, and at least one design-review evidence verification item. `design_review_evidence` is not a separate CLI flag, MCP field, or decision record. Put it in `--verification`, for example:
+
+```bash
+agent-harness issueops design review --id "$ISSUEOPS_ID" \
+  --problem-summary "$PROBLEM_SUMMARY" \
+  --proposed-design "$PROPOSED_DESIGN" \
+  --refactor-plan "$REFACTOR_PLAN" \
+  --alternative "$ALTERNATIVE" \
+  --risk "$RISK" \
+  --verification "design review checked alternatives and risks" \
+  --verification "go test ./..." \
+  --approved \
+  --json
+```
+
 ## Quality Upgrade Gates
 
 IssueOps must leave an auditable decision trail for labels, large issue breakdown, draft issue completion, and PR/MR review-agent feedback.

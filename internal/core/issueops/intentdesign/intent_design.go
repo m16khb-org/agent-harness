@@ -1,6 +1,7 @@
 package intentdesign
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,6 +16,11 @@ type Store struct {
 	TouchWrite    func(stateRoot string, record model.IssueOpsRecord) (model.IssueOpsRecord, error)
 	PlanReadiness func(record model.IssueOpsRecord) model.IssueOpsReadiness
 }
+
+const (
+	DesignReviewEvidenceExample  = "design review checked alternatives and risks"
+	designReviewEvidenceGuidance = `approved design review requires design_review_evidence: this is not a separate flag or decision record; add --verification "design review checked alternatives and risks" or a Korean equivalent such as "설계 검토 완료: 대안과 위험 확인"`
+)
 
 func RecordIntent(store Store, stateRoot, id string, req model.IssueOpsIntentRecordRequest) (model.IssueOpsRecord, error) {
 	rawRequest := strings.TrimSpace(req.RawRequest)
@@ -88,7 +94,7 @@ func RecordDesignReview(store Store, stateRoot, id string, req model.IssueOpsDes
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("approved design review requires risks")
 	}
 	if req.Approved && !HasDesignReviewEvidence(verification) {
-		return model.IssueOpsRecord{OK: false}, fmt.Errorf("approved design review requires design_review_evidence")
+		return model.IssueOpsRecord{OK: false}, errors.New(designReviewEvidenceGuidance)
 	}
 	record.DesignReview = &model.IssueOpsDesignReview{
 		ProblemSummary: policy.RedactFreeform(problemSummary),

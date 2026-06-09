@@ -1,6 +1,9 @@
 package mcp
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	tools := IssueOpsBasicTools()
@@ -55,6 +58,14 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaRequires(byName["issueops_review_design"].InputSchema, "verification") {
 		t.Fatalf("issueops_review_design must require verification: %#v", byName["issueops_review_design"].InputSchema)
+	}
+	reviewDesign := byName["issueops_review_design"]
+	if !strings.Contains(reviewDesign.Description, "approved=true") {
+		t.Fatalf("issueops_review_design description must explain approved=true gates: %s", reviewDesign.Description)
+	}
+	verificationDescription := schemaPropertyDescription(reviewDesign.InputSchema, "verification")
+	if !strings.Contains(verificationDescription, "design review checked alternatives and risks") {
+		t.Fatalf("issueops_review_design verification field must include accepted evidence example: %s", verificationDescription)
 	}
 	if !schemaRequires(byName["issueops_link_child"].InputSchema, "child_url") {
 		t.Fatalf("issueops_link_child must require child_url: %#v", byName["issueops_link_child"].InputSchema)

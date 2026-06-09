@@ -30,6 +30,19 @@ func schemaRequires(schema map[string]any, name string) bool {
 	return false
 }
 
+func schemaPropertyDescription(schema map[string]any, name string) string {
+	properties, ok := schema["properties"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	property, ok := properties[name].(map[string]any)
+	if !ok {
+		return ""
+	}
+	description, _ := property["description"].(string)
+	return description
+}
+
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {

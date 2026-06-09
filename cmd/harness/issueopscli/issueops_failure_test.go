@@ -176,6 +176,22 @@ func TestRunIssueOpsIntentAndDesignFailuresWithJSONEmitStructuredErrors(t *testi
 			},
 			want: "risks",
 		},
+		{
+			name: "missing design review evidence",
+			args: []string{
+				"design", "review",
+				"--id", id,
+				"--problem-summary", "IssueOps needs a design gate",
+				"--proposed-design", "Require approved design before implementation",
+				"--refactor-plan", "Keep changes scoped to IssueOps core and adapters",
+				"--alternative", "docs-only guidance",
+				"--risk", "legacy tests need explicit setup",
+				"--verification", "go test ./cmd/harness/issueopscli",
+				"--approved",
+				"--json",
+			},
+			want: `add --verification "design review checked alternatives and risks"`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out, err := captureStdoutAndErrorForIssueOps(t, func() error {
