@@ -40,7 +40,8 @@ func refreshRunningMCPProxiesAfterInstall() (int, error) {
 func listMCPProxyProcesses() ([]mcpProxyProcess, error) {
 	out, err := exec.Command("ps", "-axo", "pid=,command=").Output()
 	if err != nil {
-		return nil, err
+		// ps may be unavailable in sandboxed environments; treat as no matching processes.
+		return nil, nil
 	}
 	binary := filepath.Join(HarnessRoot(), "bin", "agent-harness")
 	var processes []mcpProxyProcess
