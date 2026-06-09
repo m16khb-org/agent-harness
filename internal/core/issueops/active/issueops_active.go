@@ -3,6 +3,7 @@ package active
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"agent-harness/internal/core/issueops/model"
@@ -98,6 +99,17 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		}
 		records = append(records, record)
 	}
+	// Deterministic order so callers that surface or act on "the first" linked
+	// cycle (e.g. the worktree-guard block message) are reproducible across
+	// sessions rather than depending on os.ReadDir order. Sort by branch first
+	// (the human-meaningful key), then by ID as a stable tiebreaker.
+	sort.Slice(records, func(i, j int) bool {
+		bi, bj := strings.TrimSpace(records[i].Branch), strings.TrimSpace(records[j].Branch)
+		if bi != bj {
+			return bi < bj
+		}
+		return records[i].ID < records[j].ID
+	})
 	return records
 }
 

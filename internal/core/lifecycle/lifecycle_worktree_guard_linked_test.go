@@ -194,6 +194,46 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *tes
 	}
 }
 
+// TestWorktreeGuardBlockNamesAllParallelWorktreeCyclesDeterministically guards
+// SCENARIO 1: when several parallel IssueOps cycles each hold a worktree and the
+// user edits a shared source-checkout file, the block message must be
+// deterministic and must NOT single out one arbitrary cycle as the force-release
+// target (that cycle may be unrelated/live, and releasing it would not unblock
+// the edit while the other worktrees remain — the non-working-escape trap).
+func TestWorktreeGuardBlockNamesAllParallelWorktreeCyclesDeterministically(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	// Current branch carries a non-worktree-phase (problem) cycle; two OTHER
+	// branches each hold a live linked worktree.
+	repo := guardRepoWithCycle(t, "1-current", IssueOpsPhaseProblem)
+	cycleB := linkIssueOpsWorktreeForGuardTest(t, repo, "2-bravo")
+	cycleC := linkIssueOpsWorktreeForGuardTest(t, repo, "3-charlie")
+
+	first := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, "internal", "x.go")}, EnforceWorktree: true,
+	})
+	if first.Decision != "block" {
+		t.Fatalf("source edit must block while parallel worktree cycles are active, got %+v", first)
+	}
+	// Both holders are named (no arbitrary single-cycle force-release target).
+	if !strings.Contains(first.Reason, cycleB.id) || !strings.Contains(first.Reason, cycleC.id) {
+		t.Fatalf("block reason must name every active worktree cycle (%s, %s), got %q", cycleB.id, cycleC.id, first.Reason)
+	}
+	// Branch-sorted order: "2-bravo" before "3-charlie".
+	if strings.Index(first.Reason, cycleB.id) > strings.Index(first.Reason, cycleC.id) {
+		t.Fatalf("block reason must order cycles deterministically by branch, got %q", first.Reason)
+	}
+	if !strings.Contains(first.Reason, "linked IssueOps worktree") || !strings.Contains(first.Reason, "force-release") {
+		t.Fatalf("block reason must keep the worktree+force-release vocabulary, got %q", first.Reason)
+	}
+	// Deterministic across repeated evaluation (no os.ReadDir order dependence).
+	second := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, "internal", "x.go")}, EnforceWorktree: true,
+	})
+	if first.Reason != second.Reason {
+		t.Fatalf("block reason must be deterministic across calls:\n  first=%q\n  second=%q", first.Reason, second.Reason)
+	}
+}
+
 func TestWorktreeGuardAllowsAnyActiveLinkedIssueOpsWorktreeForRepo(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

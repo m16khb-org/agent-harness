@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"strconv"
 	"strings"
 
 	"agent-harness/internal/core/commandparse"
@@ -51,7 +52,6 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 		if !IssueOpsPhaseExpectsWorktree(rec.Phase) {
 			if linkedRecs := ActiveIssueOpsLinkedWorktreeCyclesForRepo(req.Repo); len(linkedRecs) > 0 {
-				linked := cleanAbsPath(linkedRecs[0].WorktreePath)
 				for _, target := range targets {
 					if !sourceCheckoutTargetNeedsLinkedWorktree(target, req.Repo) {
 						continue
@@ -59,7 +59,7 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 					if targetInsideAnyLinkedIssueOpsWorktree(target, linkedRecs) {
 						continue
 					}
-					return "mutating tool target is outside the linked IssueOps worktree for " + linkedRecs[0].ID + "; run issue-based work from " + linked + " or release the stale cycle with `issueops force-release --id " + linkedRecs[0].ID + " --reason <why>`"
+					return linkedWorktreeCyclesBlockReason(linkedRecs)
 				}
 			}
 			return ""
@@ -96,6 +96,37 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 	}
 	return ""
+}
+
+// linkedWorktreeCyclesBlockReason builds the block message shown when a source-
+// checkout edit collides with one or more active IssueOps worktree cycles on
+// OTHER branches. The records slice is already deterministically ordered (see
+// active.LinkedWorktreeCyclesForRepo) so the message is reproducible. With
+// multiple parallel cycles it names every holder rather than an arbitrary first
+// one — singling out one cycle's force-release would (a) be destructive to an
+// unrelated, possibly-live cycle and (b) not actually unblock the edit while the
+// other worktrees remain (the non-working-escape trap from CAUTIONS section 21).
+func linkedWorktreeCyclesBlockReason(records []IssueOpsRecord) string {
+	if len(records) == 1 {
+		r := records[0]
+		return "mutating tool target is outside the linked IssueOps worktree for " + r.ID +
+			"; run issue-based work from " + cleanAbsPath(r.WorktreePath) +
+			" or release the stale cycle with `issueops force-release --id " + r.ID + " --reason <why>`"
+	}
+	var b strings.Builder
+	b.WriteString("mutating tool target is outside the linked IssueOps worktree of an active parallel cycle; ")
+	b.WriteString(strconv.Itoa(len(records)))
+	b.WriteString(" cycles currently hold worktrees [")
+	for i, r := range records {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(r.ID)
+		b.WriteString(" -> ")
+		b.WriteString(cleanAbsPath(r.WorktreePath))
+	}
+	b.WriteString("]; run this edit from the matching worktree, or if a specific cycle is abandoned release it with `issueops force-release --id <id> --reason <why>`")
+	return b.String()
 }
 
 func targetInsideAnyLinkedIssueOpsWorktree(target string, records []IssueOpsRecord) bool {
