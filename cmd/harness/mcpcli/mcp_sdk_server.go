@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 
+	mcpadapter "agent-harness/internal/adapter/mcp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -80,42 +81,31 @@ func registerAllTools(server *mcp.Server) {
 	}
 }
 
+// handlerGroupLookup maps each dispatch group to its handler function.
+// New tools only need to be added to the adapter catalog DispatchMap; this
+// lookup stays stable as long as no new handler group is introduced.
+var handlerGroupLookup = map[mcpadapter.DispatchGroup]func(MCPToolCall) MCPToolOutcome{
+	mcpadapter.DispatchProject:         handleProjectMCPToolCall,
+	mcpadapter.DispatchPolicyState:     handlePolicyStateMCPToolCall,
+	mcpadapter.DispatchIssueOps:        handleIssueOpsMCPToolCall,
+	mcpadapter.DispatchAssistantWorker: handleAssistantWorkerMCPToolCall,
+	mcpadapter.DispatchSelfLoop:        handleSelfLoopMCPToolCall,
+}
+
 func resolveHandlerGroup(name string) func(MCPToolCall) MCPToolOutcome {
-	for _, pair := range []struct {
-		names []string
-		fn    func(MCPToolCall) MCPToolOutcome
-	}{
-		{projectToolNames(), handleProjectMCPToolCall},
-		{policyStateToolNames(), handlePolicyStateMCPToolCall},
-		{issueOpsToolNames(), handleIssueOpsMCPToolCall},
-		{assistantWorkerToolNames(), handleAssistantWorkerMCPToolCall},
-		{selfLoopToolNames(), handleSelfLoopMCPToolCall},
-	} {
-		for _, n := range pair.names {
-			if n == name {
-				return pair.fn
-			}
+	dm := mcpadapter.DispatchMap()
+	group, ok := dm[name]
+	if !ok {
+		return func(call MCPToolCall) MCPToolOutcome {
+			return MCPToolOutcome{Handled: true, Err: &RPCError{Code: -32602, Message: "Unknown tool", Data: call.Name}}
 		}
+	}
+	if fn, ok := handlerGroupLookup[group]; ok {
+		return fn
 	}
 	return func(call MCPToolCall) MCPToolOutcome {
 		return MCPToolOutcome{Handled: true, Err: &RPCError{Code: -32602, Message: "Unknown tool", Data: call.Name}}
 	}
-}
-
-func projectToolNames() []string {
-	return []string{"harness_inspect", "atomic_commit_preflight", "commit_policy", "skill_manifest", "docs_index", "project_docs_route", "project_docs_bootstrap_plan", "project_docs_read", "project_docs_update", "project_docs_record", "api_doc_review", "api_doc_static_check"}
-}
-func policyStateToolNames() []string {
-	return []string{"command_policy_check", "command_fake_run", "command_policy_audit", "state_write", "state_read", "state_list", "state_prune", "state_doctor", "state_migrate"}
-}
-func issueOpsToolNames() []string {
-	return []string{"issueops_start", "issueops_status", "issueops_record_intent", "issueops_review_design", "issueops_link_issue", "issueops_link_plan", "issueops_link_worktree", "issueops_prepare_worktree_tools", "issueops_link_child", "issueops_link_related", "issueops_prepare_branch", "issueops_add_feedback", "issueops_add_decision", "issueops_mark_issue_updated", "issueops_set_phase", "issueops_verify_remote_artifact", "issueops_remote_score", "issueops_pr_readiness", "issueops_cleanup_status", "issueops_force_release", "issueops_cleanup_stale", "issueops_remote_create_issue", "issueops_remote_create_pr", "issueops_remote_sync_graph"}
-}
-func assistantWorkerToolNames() []string {
-	return []string{"daemon_status", "commit_suggest", "lint_diagnose", "contract_schema", "contract_check", "worker_enqueue", "worker_run_read_only", "worker_status", "worker_list", "worker_cancel"}
-}
-func selfLoopToolNames() []string {
-	return []string{"self_augment", "self_augment_lesson", "self_verify", "self_verify_candidates", "self_verify_history", "self_verify_compare", "self_verify_promote", "self_augment_history", "self_augment_compare", "self_augment_promote"}
 }
 
 func registerAllResources(server *mcp.Server) {

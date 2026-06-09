@@ -48,6 +48,72 @@ func TestToolMapsPreserveDescriptorShape(t *testing.T) {
 	}
 }
 
+func TestDispatchMapCoversAllCatalogTools(t *testing.T) {
+	dm := DispatchMap()
+
+	// Collect every tool from all catalog functions.
+	allTools := collectAllCatalogTools()
+	if len(allTools) == 0 {
+		t.Fatal("expected non-empty tool catalog")
+	}
+
+	// Every tool in the catalog must appear in DispatchMap.
+	for _, tool := range allTools {
+		if _, ok := dm[tool.Name]; !ok {
+			t.Errorf("tool %q missing from DispatchMap", tool.Name)
+		}
+	}
+
+	// Every entry in DispatchMap must have a valid group.
+	validGroups := map[DispatchGroup]bool{
+		DispatchProject:         true,
+		DispatchPolicyState:     true,
+		DispatchIssueOps:        true,
+		DispatchAssistantWorker: true,
+		DispatchSelfLoop:        true,
+	}
+	for name, group := range dm {
+		if !validGroups[group] {
+			t.Errorf("tool %q has unknown dispatch group %q", name, group)
+		}
+	}
+
+	// No duplicate tool names in DispatchMap (map guarantees this, but verify).
+	if len(dm) < len(allTools) {
+		t.Errorf("DispatchMap has %d entries but catalog has %d tools; some tools may be missing or duplicates may exist", len(dm), len(allTools))
+	}
+}
+
+func TestDispatchMapHasNoUnknownGroup(t *testing.T) {
+	dm := DispatchMap()
+	valid := map[DispatchGroup]bool{
+		DispatchProject: true, DispatchPolicyState: true, DispatchIssueOps: true,
+		DispatchAssistantWorker: true, DispatchSelfLoop: true,
+	}
+	for name, group := range dm {
+		if !valid[group] {
+			t.Errorf("tool %q has unknown group %q", name, group)
+		}
+	}
+}
+
+// collectAllCatalogTools gathers every tool declared across all catalog functions.
+func collectAllCatalogTools() []Tool {
+	var all []Tool
+	all = append(all, coreProjectTools()...)
+	all = append(all, CommandPolicyTools()...)
+	all = append(all, StateTools()...)
+	all = append(all, IssueOpsBasicTools()...)
+	all = append(all, IssueOpsLifecycleTools()...)
+	all = append(all, AdapterOwnedTools()...)
+	all = append(all, CommandPolicyAuditTools()...)
+	all = append(all, LocalAssistantTools()...)
+	all = append(all, selfLoopTools()...)
+	// daemon_status is only in DispatchMap, not in any sub-catalog.
+	all = append(all, Tool{Name: "daemon_status", Description: "Daemon status.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{}}})
+	return all
+}
+
 func TestResourceMapsPreserveDescriptorShape(t *testing.T) {
 	resources := ResourceMaps([]Resource{
 		{
