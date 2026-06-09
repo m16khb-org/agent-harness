@@ -44,6 +44,16 @@ var validDecisionArtifacts = map[string]bool{
 }
 
 func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = addIssueOpsDecisionLocked(stateRoot, id, req)
+		return e
+	})
+	return rec, err
+}
+
+func addIssueOpsDecisionLocked(stateRoot, id string, req IssueOpsDecisionRecordRequest) (IssueOpsRecord, error) {
 	kind := strings.TrimSpace(req.Kind)
 	if !validDecisionKinds[kind] {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("invalid decision kind %q; must be one of: product, architecture, implementation, test, review, scope, follow-up", kind)

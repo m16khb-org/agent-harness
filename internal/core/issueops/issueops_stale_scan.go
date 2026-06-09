@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -53,32 +54,75 @@ func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResu
 		}
 		result.Findings = append(result.Findings, finding)
 		if req.Apply && finding.Releasable {
-			// Re-read and re-classify immediately before releasing. NonDoneCyclesForRepo
-			// captured a snapshot at the top of the scan; between then and now a parallel
-			// session may have advanced the cycle, or a worktree that read as deleted
-			// (unmount/NFS hiccup/in-flight `git worktree` recreate) may have reappeared.
-			// Force-releasing on the stale snapshot would clobber live work (TOCTOU). Only
-			// release when a fresh probe still classifies the cycle as releasable. This
-			// narrows — but does not fully close — the window; a per-id lock/CAS is the
-			// durable fix (tracked separately).
-			fresh, err := ReadIssueOps(IssueOpsStateRoot(), finding.ID)
+			// Hold the per-id lock across re-read + re-classify + force-release to
+			// fully close the TOCTOU window identified in CAUTIONS 21. A parallel
+			// session cannot advance or mutate the cycle while we re-probe and
+			// release it.
+			err := withIssueOpsLock(IssueOpsStateRoot(), finding.ID, func() error {
+				fresh, err := ReadIssueOps(IssueOpsStateRoot(), finding.ID)
+				if err != nil {
+					return err
+				}
+				confirm, stillStale := stalescan.Classify(fresh, probe, req.MaxAge)
+				if !stillStale || !confirm.Releasable {
+					return nil
+				}
+				reason := "stale-cleanup: " + strings.Join(confirm.Reasons, ",")
+				_, err = forceReleaseLocked(IssueOpsStateRoot(), finding.ID, reason)
+				return err
+			})
 			if err != nil {
-				result.Errors = append(result.Errors, finding.ID+": "+err.Error())
-				continue
-			}
-			confirm, stillStale := stalescan.Classify(fresh, probe, req.MaxAge)
-			if !stillStale || !confirm.Releasable {
-				continue
-			}
-			reason := "stale-cleanup: " + strings.Join(confirm.Reasons, ",")
-			if _, err := ForceReleaseIssueOps(IssueOpsStateRoot(), finding.ID, reason); err != nil {
 				result.Errors = append(result.Errors, finding.ID+": "+err.Error())
 				continue
 			}
 			result.Released = append(result.Released, finding.ID)
 		}
 	}
+	// After releasing stale cycles, run git worktree prune on the repo to clean
+	// up stale .git/worktrees/<name> registrations left behind by deleted/reset
+	// worktrees. Also remove any still-present orphan worktree directories that
+	// were stamped by a previous force-release or stale-reset (these are
+	// off-hot-path git calls, per CAUTIONS 21).
+	if req.Apply && len(result.Released) > 0 {
+		issueOpsGitWorktreeCleanup(repo, &result)
+	}
 	return result
+}
+
+// issueOpsGitWorktreeCleanup runs git worktree prune on the repo and, for
+// done/force-released cycles whose orphan worktree directory still exists on
+// disk, removes the git worktree registration and the directory. This is only
+// called from the off-hot-path stale scan with --apply.
+func issueOpsGitWorktreeCleanup(repo string, result *IssueOpsStaleScanResult) {
+	code, _, stderr := preflight.GitCmd(repo, "worktree", "prune")
+	if code != 0 {
+		result.Errors = append(result.Errors, "git worktree prune: "+stderr)
+	}
+	// Find done/force-released cycles with orphan worktree paths to clean.
+	stateRoot := IssueOpsStateRoot()
+	entries, err := os.ReadDir(stateRoot)
+	if err != nil {
+		result.Errors = append(result.Errors, "read state dir: "+err.Error())
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		id := strings.TrimSuffix(entry.Name(), ".json")
+		record, err := ReadIssueOps(stateRoot, id)
+		if err != nil || record.Repo != repo || record.Phase != IssueOpsPhaseDone {
+			continue
+		}
+		orphan := strings.TrimSpace(record.OrphanWorktreePath)
+		if orphan == "" || !readinesspaths.WorktreePathValid(orphan) {
+			continue
+		}
+		code, _, stderr = preflight.GitCmd(repo, "worktree", "remove", "--force", orphan)
+		if code != 0 {
+			result.Errors = append(result.Errors, "git worktree remove "+orphan+": "+stderr)
+		}
+	}
 }
 
 // issueOpsRemoteBranchExists reports whether the cycle's remote branch still

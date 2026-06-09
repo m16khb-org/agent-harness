@@ -92,6 +92,7 @@ func resumeOrReset(store Store, stateRoot string, existing model.IssueOpsRecord)
 		Feedback:             []model.IssueOpsFeedbackItem{},
 		StaleResetAt:         now,
 		StaleResetPriorPhase: string(existing.Phase),
+		OrphanWorktreePath:   existing.WorktreePath,
 		CreatedAt:            createdAt,
 		UpdatedAt:            now,
 	}

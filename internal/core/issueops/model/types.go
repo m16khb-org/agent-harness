@@ -155,6 +155,7 @@ type IssueOpsRecord struct {
 	ForceReleaseReason     string                              `json:"force_release_reason,omitempty"`
 	StaleResetAt           string                              `json:"stale_reset_at,omitempty"`
 	StaleResetPriorPhase   string                              `json:"stale_reset_prior_phase,omitempty"`
+	OrphanWorktreePath     string                              `json:"orphan_worktree_path,omitempty"`
 	CreatedAt              string                              `json:"created_at"`
 	UpdatedAt              string                              `json:"updated_at"`
 }

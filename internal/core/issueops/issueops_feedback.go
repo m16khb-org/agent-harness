@@ -7,6 +7,16 @@ import (
 )
 
 func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = addIssueOpsFeedbackLocked(stateRoot, id, source, body, classification)
+		return e
+	})
+	return rec, err
+}
+
+func addIssueOpsFeedbackLocked(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
 	source = strings.TrimSpace(source)
 	body = strings.TrimSpace(body)
 	classification = strings.ToLower(strings.TrimSpace(classification))
@@ -45,6 +55,16 @@ func knownIssueOpsFeedbackClassification(classification string) bool {
 }
 
 func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = markIssueOpsContractFeedbackIssueUpdatedLocked(stateRoot, id)
+		return e
+	})
+	return rec, err
+}
+
+func markIssueOpsContractFeedbackIssueUpdatedLocked(stateRoot, id string) (IssueOpsRecord, error) {
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err

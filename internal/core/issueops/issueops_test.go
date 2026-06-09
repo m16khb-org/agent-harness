@@ -240,3 +240,158 @@ func TestIssueOpsFeedbackRecordsClassification(t *testing.T) {
 		t.Fatalf("expected unknown classification rejection, got %v", err)
 	}
 }
+
+func TestIssueOpsConcurrentFeedbackNoLostUpdate(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: "/repo/concurrent"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := record.ID
+
+	const N = 50
+	errs := make(chan error, N)
+	for i := range N {
+		go func(idx int) {
+			_, e := AddIssueOpsFeedback(IssueOpsStateRoot(), id, "test", "feedback-"+string(rune('0'+idx%10)), "")
+			errs <- e
+		}(i)
+	}
+	failed := 0
+	for range N {
+		if e := <-errs; e != nil {
+			failed++
+			t.Logf("feedback error: %v", e)
+		}
+	}
+	if failed > 0 {
+		t.Fatalf("%d of %d concurrent feedback appends failed", failed, N)
+	}
+	after, err := ReadIssueOps(IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after.Feedback) != N {
+		t.Fatalf("lost update: expected %d feedback items, got %d", N, len(after.Feedback))
+	}
+}
+
+func TestIssueOpsLockFileDoesNotPolluteEnumerator(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	repo := t.TempDir()
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "42-enum-lock-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
+
+	// Simulate a leftover .lock file next to the .json record
+	lockPath := filepath.Join(IssueOpsStateRoot(), record.ID+".lock")
+	if err := os.WriteFile(lockPath, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	after := ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
+
+	if len(before) != len(after) {
+		t.Fatalf(".lock file pollutes enumerator: before=%d after=%d", len(before), len(after))
+	}
+}
+
+func TestIssueOpsSequentialLockNoDeadlock(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: "/repo/seq-lock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := record.ID
+	// Two sequential lock acquisitions must not deadlock.
+	for range 2 {
+		if _, err := AddIssueOpsFeedback(IssueOpsStateRoot(), id, "test", "feedback", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestForceReleaseStampsOrphanWorktreePath(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	repo := t.TempDir()
+	worktreeDir := makeIssueOpsWorktreeDirForTest(t, repo, "13-fr-orphan")
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "13-fr-orphan"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/13")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(IssueOpsStateRoot(), record.ID, IssueOpsBranchPrepareRequest{
+		Provider: "github", IssueURL: record.IssueURL,
+		Branch: "13-fr-orphan", BaseBranch: "main", LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsWorktree(IssueOpsStateRoot(), record.ID, worktreeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.WorktreePath != worktreeDir {
+		t.Fatalf("WorktreePath not set: %+v", record)
+	}
+
+	released, err := ForceReleaseIssueOps(IssueOpsStateRoot(), record.ID, "test orphan stamp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if released.OrphanWorktreePath != worktreeDir {
+		t.Fatalf("force-release must stamp orphan worktree path: want %q, got %q", worktreeDir, released.OrphanWorktreePath)
+	}
+	if released.Phase != IssueOpsPhaseDone {
+		t.Fatalf("force-release must advance to done, got %q", released.Phase)
+	}
+}
+
+func TestForceReleaseDoesNotSyncDeleteWorktree(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	repo := t.TempDir()
+	worktreeDir := makeIssueOpsWorktreeDirForTest(t, repo, "14-fr-nodelete")
+	// Also create a real file to detect deletion
+	sentinel := filepath.Join(worktreeDir, "uncommitted.txt")
+	if err := os.WriteFile(sentinel, []byte("precious data\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "14-fr-nodelete"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/14")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(IssueOpsStateRoot(), record.ID, IssueOpsBranchPrepareRequest{
+		Provider: "github", IssueURL: record.IssueURL,
+		Branch: "14-fr-nodelete", BaseBranch: "main", LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsWorktree(IssueOpsStateRoot(), record.ID, worktreeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ForceReleaseIssueOps(IssueOpsStateRoot(), record.ID, "test no sync delete")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Verify the directory is still present and the sentinel file is intact.
+	if _, err := os.Stat(sentinel); err != nil {
+		t.Fatalf("force-release must NOT sync-delete worktree dir: sentinel file missing: %v", err)
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/start"
 	"agent-harness/internal/core/issueops/stringlist"
+	"strings"
 )
 
 type IssueOpsStartRequest = model.IssueOpsStartRequest
@@ -48,11 +49,23 @@ var IssueOpsPhases = model.IssueOpsPhases
 const IssueOpsDesignReviewEvidenceExample = intentdesign.DesignReviewEvidenceExample
 
 func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
-	return artifactverify.Verify(issueOpsArtifactStore(), stateRoot, id, req)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = artifactverify.Verify(issueOpsArtifactStore(), stateRoot, id, req)
+		return e
+	})
+	return rec, err
 }
 
 func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
-	return artifactverify.Validate(issueOpsArtifactStore(), stateRoot, id, req)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = artifactverify.Validate(issueOpsArtifactStore(), stateRoot, id, req)
+		return e
+	})
+	return rec, err
 }
 
 func issueOpsArtifactStore() artifactverify.Store {
@@ -108,7 +121,13 @@ func issueOpsCleanupStatusStore() cleanupstatus.Store {
 }
 
 func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
-	return branchprepare.Prepare(issueOpsBranchPrepareStore(), stateRoot, id, req)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = branchprepare.Prepare(issueOpsBranchPrepareStore(), stateRoot, id, req)
+		return e
+	})
+	return rec, err
 }
 
 func ValidateIssueOpsIssueBranch(branch string) error {
@@ -132,7 +151,14 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 }
 
 func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
-	return start.Start(issueOpsStartStore(), stateRoot, req)
+	id := newIssueOpsID(strings.TrimSpace(req.Repo), strings.TrimSpace(req.Branch))
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = start.Start(issueOpsStartStore(), stateRoot, req)
+		return e
+	})
+	return rec, err
 }
 
 func issueOpsStartStore() start.Store {
@@ -146,11 +172,23 @@ func issueOpsStartStore() start.Store {
 }
 
 func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
-	return intentdesign.RecordIntent(issueOpsIntentDesignStore(), stateRoot, id, req)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = intentdesign.RecordIntent(issueOpsIntentDesignStore(), stateRoot, id, req)
+		return e
+	})
+	return rec, err
 }
 
 func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
-	return intentdesign.RecordDesignReview(issueOpsIntentDesignStore(), stateRoot, id, req)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = intentdesign.RecordDesignReview(issueOpsIntentDesignStore(), stateRoot, id, req)
+		return e
+	})
+	return rec, err
 }
 
 func cleanIssueOpsTextValues(values []string) []string {
@@ -166,23 +204,53 @@ func issueOpsIntentDesignStore() intentdesign.Store {
 }
 
 func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
-	return linking.LinkIssue(issueOpsLinkingStore(), stateRoot, id, issueURL)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = linking.LinkIssue(issueOpsLinkingStore(), stateRoot, id, issueURL)
+		return e
+	})
+	return rec, err
 }
 
 func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
-	return linking.LinkPlan(issueOpsLinkingStore(), stateRoot, id, planPath)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = linking.LinkPlan(issueOpsLinkingStore(), stateRoot, id, planPath)
+		return e
+	})
+	return rec, err
 }
 
 func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
-	return linking.LinkWorktree(issueOpsLinkingStore(), stateRoot, id, worktreePath)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = linking.LinkWorktree(issueOpsLinkingStore(), stateRoot, id, worktreePath)
+		return e
+	})
+	return rec, err
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
-	return linking.LinkChild(issueOpsLinkingStore(), stateRoot, id, childURL, title)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = linking.LinkChild(issueOpsLinkingStore(), stateRoot, id, childURL, title)
+		return e
+	})
+	return rec, err
 }
 
 func LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string) (IssueOpsRecord, error) {
-	return linking.LinkRelated(issueOpsLinkingStore(), stateRoot, id, linkType, relatedURL, title)
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = linking.LinkRelated(issueOpsLinkingStore(), stateRoot, id, linkType, relatedURL, title)
+		return e
+	})
+	return rec, err
 }
 
 func issueOpsLinkingStore() linking.Store {

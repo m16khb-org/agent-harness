@@ -82,3 +82,28 @@ func TestStartResetWritesUnderSameRecordID(t *testing.T) {
 		t.Fatalf("reset must persist exactly one write under the same id, got %d writes", len(s.writes))
 	}
 }
+
+func TestStartResetStampsOrphanWorktreePath(t *testing.T) {
+	s := newFakeStartStore()
+	s.valid = func(string) bool { return false } // worktree gone
+	origWorktree := "/gone/worktree/path"
+	s.records["io-fixed"] = model.IssueOpsRecord{
+		OK: true, ID: "io-fixed", Repo: "/repo", Branch: "1-x",
+		Phase: model.IssueOpsPhaseImplement, WorktreePath: origWorktree,
+		CreatedAt: "2026-01-01T00:00:00Z",
+	}
+
+	got, err := Start(s.store(), "/state", model.IssueOpsStartRequest{Repo: "/repo", Branch: "1-x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.OrphanWorktreePath != origWorktree {
+		t.Fatalf("stale reset must stamp orphan worktree path: want %q, got %q", origWorktree, got.OrphanWorktreePath)
+	}
+	if got.StaleResetAt == "" {
+		t.Fatal("stale reset must set StaleResetAt")
+	}
+	if got.StaleResetPriorPhase != string(model.IssueOpsPhaseImplement) {
+		t.Fatalf("StaleResetPriorPhase should be implement, got %q", got.StaleResetPriorPhase)
+	}
+}

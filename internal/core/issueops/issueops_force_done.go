@@ -11,6 +11,16 @@ import (
 // in the PR phase. Use when remote artifact verification is unavailable but the
 // cycle should be completed.
 func ForceDoneIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = forceDoneIssueOpsLocked(stateRoot, id)
+		return e
+	})
+	return rec, err
+}
+
+func forceDoneIssueOpsLocked(stateRoot, id string) (IssueOpsRecord, error) {
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err

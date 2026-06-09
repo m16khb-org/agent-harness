@@ -22,6 +22,16 @@ func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
 }
 
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = advanceIssueOpsPhaseLocked(stateRoot, id, to)
+		return e
+	})
+	return rec, err
+}
+
+func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error) {
 	phase := IssueOpsPhase(strings.TrimSpace(to))
 	if !knownIssueOpsPhase(phase) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("unknown issueops phase %q", to)
