@@ -219,7 +219,7 @@
           "name": "version"
         }
       ],
-      "hash": "210ca7cb9cc82d550648e9394cd5a80817bd83df6c651ebffa63c09d1ee7bdd4",
+      "hash": "a99a318f18691630fb78e58eea04fa525d0e7536c17879344b8e094cf3f34298",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -253,6 +253,7 @@
         "issueops_remote_create_pr",
         "issueops_remote_score",
         "issueops_remote_sync_graph",
+        "issueops_resume",
         "issueops_review_design",
         "issueops_set_phase",
         "issueops_start",
@@ -637,6 +638,34 @@
           "title": "구현 컨벤션"
         },
         {
+          "bytes": 24231,
+          "headings": [
+            "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis",
+            "1. Lock \u0026 Concurrency Analysis",
+            "1.1 Start() Lacks Locking (P0)",
+            "1.2 Non-Unix Lock Fallback Is In-Process Only (P1)",
+            "1.3 Orphaned .lock Files Never Cleaned (P2)",
+            "1.4 TOCTOU in Stale Scan Snapshot (P1)",
+            "2. Multi-Session State Continuity",
+            "2.1 No Session-to-Cycle Binding (P0)",
+            "2.2 ExpectedWorktree Env Var Is Ephemeral (P1)",
+            "2.3 Phase Continuity After Session Interruption (P1)",
+            "2.4 Multiple Parallel Cycles in Same Repo (P1)",
+            "3. Worktree Lifecycle \u0026 Cleanup",
+            "3.1 Stale Cycle Detection Relies on Worktree Existence (P1)",
+            "3.2 No Inactivity-Based Session Abandonment Detection (P2)",
+            "3.3 Orphan Worktree Cleanup Is Off-Hot-Path Only (P2)",
+            "3.4 Worktree Branch Mismatch = Stale (P2)",
+            "4. Hook Guard Coverage",
+            "4.1 MCP Guard Only Covers Known Tool Patterns (P2)",
+            "4.2 Edit Guard Only Blocks \"Mutating\" Tools (P2)",
+            "4.3 Hook Input Parsing Varies by Host (P1)"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/ISSUEOPS_AUDIT.md",
+          "rel_path": ".agent-harness/ISSUEOPS_AUDIT.md",
+          "title": "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis"
+        },
+        {
           "bytes": 3362,
           "headings": [
             "OpenAPI Spec Guidance",
@@ -664,6 +693,34 @@
           "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
           "rel_path": ".agent-harness/OPERATIONS.md",
           "title": "Operations Map"
+        },
+        {
+          "bytes": 14887,
+          "headings": [
+            "Agent-Harness Whole-Project Audit",
+            "1. Daemon Subsystem",
+            "1.1 No Connection Limit (P1)",
+            "1.2 O_EXCL Lock on Network Filesystems (P2)",
+            "1.3 No Graceful Shutdown of In-Flight Connections (P2)",
+            "2. Worker/Job System",
+            "2.1 Jobs Stuck in \"running\" on Process Crash (P1)",
+            "2.2 No Concurrent Job Execution Guard (P1)",
+            "2.3 No Retry, No Scheduling (P2)",
+            "3. State Subsystem (Generic)",
+            "3.1 No Write Locking (P1)",
+            "3.2 No Atomic Multi-Key Transactions (P2)",
+            "4. Hook Failure Logging",
+            "4.1 Unbounded Log Growth (P1)",
+            "4.2 Concurrent Append Safety (P2)",
+            "5. Project Lifecycle State",
+            "5.1 Init Race Condition (P1)",
+            "5.2 No Lock on Profile Updates (P2)",
+            "6. Draft Wiki Queue",
+            "6.1 No Stale Lock Detection (P1)"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
+          "rel_path": ".agent-harness/PROJECT_AUDIT.md",
+          "title": "Agent-Harness Whole-Project Audit"
         },
         {
           "bytes": 8212,
@@ -950,8 +1007,10 @@
         "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
         "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
         "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
+        "$HARNESS_ROOT/.agent-harness/ISSUEOPS_AUDIT.md",
         "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
         "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
+        "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
         "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
         "$HARNESS_ROOT/.agent-harness/TESTING.md",
         "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
@@ -2899,7 +2958,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 25,
+        "docs_indexed": 27,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -4325,7 +4384,7 @@
                 "name": "version"
               }
             ],
-            "hash": "210ca7cb9cc82d550648e9394cd5a80817bd83df6c651ebffa63c09d1ee7bdd4",
+            "hash": "a99a318f18691630fb78e58eea04fa525d0e7536c17879344b8e094cf3f34298",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -4359,6 +4418,7 @@
               "issueops_remote_create_pr",
               "issueops_remote_score",
               "issueops_remote_sync_graph",
+              "issueops_resume",
               "issueops_review_design",
               "issueops_set_phase",
               "issueops_start",
@@ -4750,6 +4810,34 @@
                 "title": "구현 컨벤션"
               },
               {
+                "bytes": 24231,
+                "headings": [
+                  "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis",
+                  "1. Lock \u0026 Concurrency Analysis",
+                  "1.1 Start() Lacks Locking (P0)",
+                  "1.2 Non-Unix Lock Fallback Is In-Process Only (P1)",
+                  "1.3 Orphaned .lock Files Never Cleaned (P2)",
+                  "1.4 TOCTOU in Stale Scan Snapshot (P1)",
+                  "2. Multi-Session State Continuity",
+                  "2.1 No Session-to-Cycle Binding (P0)",
+                  "2.2 ExpectedWorktree Env Var Is Ephemeral (P1)",
+                  "2.3 Phase Continuity After Session Interruption (P1)",
+                  "2.4 Multiple Parallel Cycles in Same Repo (P1)",
+                  "3. Worktree Lifecycle \u0026 Cleanup",
+                  "3.1 Stale Cycle Detection Relies on Worktree Existence (P1)",
+                  "3.2 No Inactivity-Based Session Abandonment Detection (P2)",
+                  "3.3 Orphan Worktree Cleanup Is Off-Hot-Path Only (P2)",
+                  "3.4 Worktree Branch Mismatch = Stale (P2)",
+                  "4. Hook Guard Coverage",
+                  "4.1 MCP Guard Only Covers Known Tool Patterns (P2)",
+                  "4.2 Edit Guard Only Blocks \"Mutating\" Tools (P2)",
+                  "4.3 Hook Input Parsing Varies by Host (P1)"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/ISSUEOPS_AUDIT.md",
+                "rel_path": ".agent-harness/ISSUEOPS_AUDIT.md",
+                "title": "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis"
+              },
+              {
                 "bytes": 3362,
                 "headings": [
                   "OpenAPI Spec Guidance",
@@ -4777,6 +4865,34 @@
                 "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
                 "rel_path": ".agent-harness/OPERATIONS.md",
                 "title": "Operations Map"
+              },
+              {
+                "bytes": 14887,
+                "headings": [
+                  "Agent-Harness Whole-Project Audit",
+                  "1. Daemon Subsystem",
+                  "1.1 No Connection Limit (P1)",
+                  "1.2 O_EXCL Lock on Network Filesystems (P2)",
+                  "1.3 No Graceful Shutdown of In-Flight Connections (P2)",
+                  "2. Worker/Job System",
+                  "2.1 Jobs Stuck in \"running\" on Process Crash (P1)",
+                  "2.2 No Concurrent Job Execution Guard (P1)",
+                  "2.3 No Retry, No Scheduling (P2)",
+                  "3. State Subsystem (Generic)",
+                  "3.1 No Write Locking (P1)",
+                  "3.2 No Atomic Multi-Key Transactions (P2)",
+                  "4. Hook Failure Logging",
+                  "4.1 Unbounded Log Growth (P1)",
+                  "4.2 Concurrent Append Safety (P2)",
+                  "5. Project Lifecycle State",
+                  "5.1 Init Race Condition (P1)",
+                  "5.2 No Lock on Profile Updates (P2)",
+                  "6. Draft Wiki Queue",
+                  "6.1 No Stale Lock Detection (P1)"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
+                "rel_path": ".agent-harness/PROJECT_AUDIT.md",
+                "title": "Agent-Harness Whole-Project Audit"
               },
               {
                 "bytes": 8212,
@@ -5070,8 +5186,10 @@
               "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
               "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
               "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
+              "$HARNESS_ROOT/.agent-harness/ISSUEOPS_AUDIT.md",
               "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
               "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
+              "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
               "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
               "$HARNESS_ROOT/.agent-harness/TESTING.md",
               "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
@@ -6430,7 +6548,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 25,
+              "docs_indexed": 27,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
@@ -7410,6 +7528,7 @@
             "no_shell": true,
             "ok": true,
             "payload": "\u003credacted\u003e",
+            "pid": "$PID",
             "result": {
               "duration_ms": "$DURATION_MS",
               "executed": true,
@@ -7447,6 +7566,7 @@
               "timed_out": false
             },
             "safety_notice": "worker read-only runner executes only argv commands that pass command policy with write/network/shell disabled",
+            "started_at": "$TIMESTAMP",
             "status": "succeeded",
             "updated_at": "$TIMESTAMP",
             "worker_dir": "$WORKER_DIR"
