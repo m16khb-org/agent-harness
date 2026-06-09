@@ -9,6 +9,7 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/cmd/harness/hookcli/hookprompt"
+	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
 )
 
@@ -44,11 +45,6 @@ func runHookUserPrompt(args []string) error {
 	// UserPromptSubmit only carries the small, dynamic per-turn hints. There is no
 	// catalog to render, so the output is host-neutral (no systemMessage). The
 	// --host flag is still accepted for backward-compatible install commands.
-	_ = hostFlag
-	return printJSON(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     "UserPromptSubmit",
-			"additionalContext": result.AdditionalContext,
-		},
-	})
+	ho := hookadapter.Resolve(strings.TrimSpace(*hostFlag))
+	return printJSON(ho.FormatContext("UserPromptSubmit", result.AdditionalContext, ""))
 }

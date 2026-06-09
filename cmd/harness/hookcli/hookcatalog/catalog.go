@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
+	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
 )
 
@@ -36,6 +37,8 @@ func RunPostCompact(args []string, config Config) error {
 		return config.PrintJSON(result)
 	}
 	cat := core.BuildProjectDocCatalogContext(parsedRepo)
+
+	// Codex post-compact uses systemMessage only.
 	if hostOf(hostFlag) == "codex" {
 		context := strings.TrimSpace(result.AdditionalContext)
 		if context == "" && cat.ShouldInject {
@@ -46,15 +49,15 @@ func RunPostCompact(args []string, config Config) error {
 		}
 		return config.PrintJSON(map[string]any{"systemMessage": context})
 	}
+
+	// Non-Codex post-compact: default host is Claude for catalog hooks.
+	ho := resolveCatalogHost(hostFlag)
 	if cat.ShouldInject {
-		return emitCatalogPayload("PostCompact", hostOf(hostFlag), cat, result.AdditionalContext, config.PrintJSON)
+		return config.PrintJSON(ho.FormatContext("PostCompact", joinContext(result.AdditionalContext, cat.Compact), cat.UserView))
 	}
-	return config.PrintJSON(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     "PostCompact",
-			"additionalContext": result.AdditionalContext,
-		},
-	})
+
+	// No catalog injection: just the reminder context.
+	return config.PrintJSON(ho.FormatContext("PostCompact", result.AdditionalContext, ""))
 }
 
 func RunSessionStart(args []string, config Config) error {
@@ -77,32 +80,34 @@ func RunSessionStart(args []string, config Config) error {
 	if *jsonOut {
 		return config.PrintJSON(cat)
 	}
+	// Default host for catalog hooks is Claude (not Codex).
+	ho := resolveCatalogHost(hostFlag)
 	if !cat.ShouldInject || hookinput.SourceFromHookInput(stdin) == "compact" {
-		return config.PrintJSON(map[string]any{
-			"hookSpecificOutput": map[string]any{"hookEventName": "SessionStart"},
-		})
+		return config.PrintJSON(ho.FormatContext("SessionStart", "", ""))
 	}
-	return emitCatalogPayload("SessionStart", hostOf(hostFlag), cat, "", config.PrintJSON)
+	return config.PrintJSON(ho.FormatContext("SessionStart", cat.Compact, cat.UserView))
 }
 
-func emitCatalogPayload(eventName, host string, cat core.ProjectDocCatalogContext, prefix string, printJSON func(any) error) error {
-	additionalContext := cat.Compact
-	if host == "codex" {
-		additionalContext = cat.UserView
+// resolveCatalogHost returns the hook output adapter for catalog hooks.
+// Catalog hooks (SessionStart, PostCompact) default to Claude, not Codex.
+func resolveCatalogHost(hostFlag *string) hookadapter.HostHookOutput {
+	switch hostOf(hostFlag) {
+	case "codex":
+		return hookadapter.CodexHookOutput{}
+	case "reasonix":
+		return hookadapter.ReasonixHookOutput{}
+	default:
+		return hookadapter.ClaudeHookOutput{}
 	}
-	if strings.TrimSpace(prefix) != "" {
-		additionalContext = prefix + "\n" + additionalContext
+}
+
+// joinContext concatenates a prefix context with a catalog context.
+func joinContext(prefix, catalog string) string {
+	prefix = strings.TrimSpace(prefix)
+	if prefix == "" {
+		return catalog
 	}
-	payload := map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     eventName,
-			"additionalContext": additionalContext,
-		},
-	}
-	if host != "codex" && cat.UserView != "" {
-		payload["systemMessage"] = cat.UserView
-	}
-	return printJSON(payload)
+	return prefix + "\n" + catalog
 }
 
 func hostOf(hostFlag *string) string {

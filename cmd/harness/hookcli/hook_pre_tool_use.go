@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
+	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
 )
 
@@ -47,33 +48,38 @@ func runHookPreToolUse(args []string) error {
 		EnforceVCSLinking:    *enforceVCSLinking,
 		EnforceGitOpsKubectl: *enforceGitOpsKubectl,
 		EnforceStagedChecks:  *enforceStagedChecks,
-		ExpectedWorktree:     *expectedWorktree,
+		ExpectedWorktree:     resolveExpectedWorktree(*expectedWorktree, parsedRepo),
 		SourceCheckout:       *sourceCheckout,
 	})
 	if *jsonOut {
 		return printJSON(result)
 	}
+	ho := hookadapter.Resolve(strings.TrimSpace(*host))
 	if result.Decision == "block" || result.Decision == "ask" {
-		hostName := strings.TrimSpace(*host)
-		if result.Decision == "ask" || strings.EqualFold(hostName, "claude") {
-			permissionDecision := result.Decision
-			if permissionDecision == "block" {
-				permissionDecision = "deny"
-			}
-			return printJSON(map[string]any{
-				"hookSpecificOutput": map[string]any{
-					"hookEventName":            "PreToolUse",
-					"permissionDecision":       permissionDecision,
-					"permissionDecisionReason": result.Reason,
-				},
-			})
+		// "ask" decisions always use hookSpecificOutput format (host-independent).
+		// "block" decisions differ by host: Claude uses hookSpecificOutput, Codex
+		// uses a flat decision/reason object.
+		if result.Decision == "ask" {
+			return printJSON(ho.FormatAsk(result.Reason))
 		}
-		return printJSON(map[string]any{
-			"decision": result.Decision,
-			"reason":   result.Reason,
-		})
+		return printJSON(ho.FormatBlock(result.Reason))
 	}
 	// PreToolUse is on the critical path before every tool call. Keep the shared
 	// harness hook cheap and non-blocking by default.
-	return printJSON(map[string]any{})
+	return printJSON(ho.FormatNoop())
+}
+
+// resolveExpectedWorktree returns the expected worktree path, checking the
+// explicit flag/env var first, then falling back to the persisted session
+// binding. This closes the gap where HARNESS_EXPECTED_WORKTREE is lost across
+// session restarts while the session-to-cycle binding survives.
+func resolveExpectedWorktree(explicit, repo string) string {
+	if w := strings.TrimSpace(explicit); w != "" {
+		return w
+	}
+	b, err := core.ReadIssueOpsSession(repo)
+	if err != nil || b.CycleID == "" {
+		return ""
+	}
+	return b.ExpectedWorktree
 }

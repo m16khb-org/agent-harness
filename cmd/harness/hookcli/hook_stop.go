@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
+	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
 )
 
@@ -53,7 +54,7 @@ func runHookStop(args []string) error {
 			"next_action_judgement_active": nextActionTriggerEnabled,
 		})
 	}
-	_ = host
+	ho := hookadapter.Resolve(strings.TrimSpace(*host))
 	// The external-LLM gate (core.EvaluateNextActionAutoProceedLLM) is intentionally
 	// not called here: a synchronous agy/Gemini call measured ~13-25s, which is
 	// unusable inside a Stop hook's latency budget. The hook also does not replace
@@ -63,13 +64,9 @@ func runHookStop(args []string) error {
 	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent {
 		relayRecord := core.RecordStopNextActionRelay(parsedRepo, nextActionTrigger)
 		if !relayRecord.ShouldRelay {
-			return printJSON(map[string]any{})
+			return printJSON(ho.FormatNoop())
 		}
-		return printJSON(map[string]any{
-			"continue": true,
-			"decision": "block",
-			"reason":   core.BuildNextActionJudgementRelayReason(nextActionTrigger),
-		})
+		return printJSON(ho.FormatStopBlock(core.BuildNextActionJudgementRelayReason(nextActionTrigger)))
 	}
 	// Block a Stop that lacks numbered next actions, but drive an IN-TURN
 	// continuation rather than a hard stop. Verified against the host schemas:
@@ -86,16 +83,12 @@ func runHookStop(args []string) error {
 	// next-action choices still need the judgement relay above; otherwise a
 	// recovered response can present choices and then silently stop.
 	if nextActions.Decision == "block" && !stopHookActive {
-		return printJSON(map[string]any{
-			"continue": true,
-			"decision": "block",
-			"reason":   nextActions.Reason,
-		})
+		return printJSON(ho.FormatStopBlock(nextActions.Reason))
 	}
 	// Codex and Claude Stop hooks only accept the stop-control schema
 	// (for example decision/reason/systemMessage) or an empty object. Unlike
 	// prompt/compact hooks, Stop cannot inject additionalContext; returning
 	// hookSpecificOutput makes Codex report "invalid stop hook JSON output". Keep the
 	// raw reminder available behind --json, but emit a no-op host payload here.
-	return printJSON(map[string]any{})
+	return printJSON(ho.FormatNoop())
 }
