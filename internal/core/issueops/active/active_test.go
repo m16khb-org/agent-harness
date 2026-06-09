@@ -40,6 +40,71 @@ func TestLinkedWorktreeCycleForRepoRejectsMissingRepo(t *testing.T) {
 	}
 }
 
+func TestCycleForBranchRejectsWorktreePhaseWithMissingWorktreeDir(t *testing.T) {
+	store := newActiveTestStore(t)
+	repo := t.TempDir()
+	store.writeRecord(t, model.IssueOpsRecord{
+		ID:           "io-active",
+		OK:           true,
+		Repo:         repo,
+		Branch:       "1-active",
+		Phase:        model.IssueOpsPhaseImplement,
+		WorktreePath: filepath.Join(t.TempDir(), "deleted-worktree"),
+	})
+
+	if got, ok := CycleForBranch(store.issueOpsStore(), repo, "1-active"); ok || got.ID != "" {
+		t.Fatalf("CycleForBranch() with deleted worktree on worktree-phase cycle = %+v, %v; want empty false", got, ok)
+	}
+}
+
+func TestCycleForBranchKeepsWorktreePhaseWithLiveWorktreeDir(t *testing.T) {
+	store := newActiveTestStore(t)
+	repo := t.TempDir()
+	worktree := t.TempDir()
+	store.writeRecord(t, model.IssueOpsRecord{
+		ID:           "io-active",
+		OK:           true,
+		Repo:         repo,
+		Branch:       "1-active",
+		Phase:        model.IssueOpsPhaseImplement,
+		WorktreePath: worktree,
+	})
+
+	if got, ok := CycleForBranch(store.issueOpsStore(), repo, "1-active"); !ok || got.ID != "io-active" {
+		t.Fatalf("CycleForBranch() with live worktree = %+v, %v; want io-active true", got, ok)
+	}
+}
+
+func TestCycleForBranchKeepsNonWorktreePhaseWithoutWorktreeDir(t *testing.T) {
+	store := newActiveTestStore(t)
+	repo := t.TempDir()
+	store.writeRecord(t, model.IssueOpsRecord{
+		ID:     "io-active",
+		OK:     true,
+		Repo:   repo,
+		Branch: "1-active",
+		Phase:  model.IssueOpsPhasePlan,
+	})
+
+	if got, ok := CycleForBranch(store.issueOpsStore(), repo, "1-active"); !ok || got.ID != "io-active" {
+		t.Fatalf("CycleForBranch() on non-worktree phase without worktree = %+v, %v; want io-active true", got, ok)
+	}
+}
+
+func TestNonDoneCyclesForRepoIncludesDeletedWorktreeAndExcludesDoneAndOtherRepos(t *testing.T) {
+	store := newActiveTestStore(t)
+	repo := t.TempDir()
+	other := t.TempDir()
+	store.writeRecord(t, model.IssueOpsRecord{ID: "io-a", OK: true, Repo: repo, Branch: "1-a", Phase: model.IssueOpsPhaseImplement, WorktreePath: filepath.Join(t.TempDir(), "gone")})
+	store.writeRecord(t, model.IssueOpsRecord{ID: "io-b", OK: true, Repo: repo, Branch: "1-b", Phase: model.IssueOpsPhaseDone})
+	store.writeRecord(t, model.IssueOpsRecord{ID: "io-c", OK: true, Repo: other, Branch: "1-c", Phase: model.IssueOpsPhasePlan})
+
+	got := NonDoneCyclesForRepo(store.issueOpsStore(), repo)
+	if len(got) != 1 || got[0].ID != "io-a" {
+		t.Fatalf("NonDoneCyclesForRepo should return only the non-done cycle for repo (incl deleted worktree), got %+v", got)
+	}
+}
+
 type activeTestStore struct {
 	stateRoot string
 	records   map[string]model.IssueOpsRecord

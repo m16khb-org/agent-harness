@@ -1086,6 +1086,30 @@
     "name": "issueops_cleanup_status"
   },
   {
+    "description": "Scan a repo's non-done IssueOps cycles and classify abandoned ones using multi-signal liveness (confirmed-stale: worktree deleted/reused; likely-done: remote branch merged/absent; needs-review: idle past max-age). Reports only by default; set apply to force-release confirmed-stale and likely-done cycles. Maintenance tool; runs off the hot path and may consult git/remote.",
+    "inputSchema": {
+      "properties": {
+        "apply": {
+          "description": "When true, force-release confirmed-stale and likely-done cycles. needs-review is always report-only. Defaults to false (report only).",
+          "type": "boolean"
+        },
+        "max_age": {
+          "description": "Age in days after which an idle non-done cycle is flagged needs-review. Defaults to 14.",
+          "type": "number"
+        },
+        "repo": {
+          "description": "Source repository path whose cycles are scanned.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_cleanup_stale"
+  },
+  {
     "description": "Deterministically score related issue and label candidates for a new IssueOps issue and select only those at/above the threshold. Read-only background_join gate; join before any remote artifact write.",
     "inputSchema": {
       "properties": {

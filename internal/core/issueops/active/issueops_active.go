@@ -30,7 +30,27 @@ func CycleForBranch(store Store, repo, branch string) (model.IssueOpsRecord, boo
 	if planBranchMismatchesRecord(record) {
 		return model.IssueOpsRecord{}, false
 	}
+	if WorktreePhaseHasMissingWorktree(record) {
+		return model.IssueOpsRecord{}, false
+	}
 	return record, true
+}
+
+// WorktreePhaseHasMissingWorktree reports whether a worktree-phase cycle points
+// at a worktree directory that no longer exists. Such a cycle is stale: its
+// isolated worktree was deleted without releasing the cycle, so it must not keep
+// guard authority over the source checkout (which would otherwise deadlock all
+// edits on its branch). An empty worktree path is a distinct, legitimate
+// not-yet-linked state and is left untouched.
+func WorktreePhaseHasMissingWorktree(record model.IssueOpsRecord) bool {
+	if !model.IssueOpsPhaseExpectsWorktree(record.Phase) {
+		return false
+	}
+	worktree := strings.TrimSpace(record.WorktreePath)
+	if worktree == "" {
+		return false
+	}
+	return !worktreePathValid(worktree)
 }
 
 func LinkedWorktreeCycleForRepo(store Store, repo string) (model.IssueOpsRecord, bool) {
@@ -74,6 +94,42 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		recordRepo := pathutil.CleanAbsPath(record.Repo)
 		recordWorktree := pathutil.CleanAbsPath(worktree)
 		if recordRepo != repo && recordWorktree != repo && !pathutil.PathWithin(repo, recordWorktree) {
+			continue
+		}
+		records = append(records, record)
+	}
+	return records
+}
+
+// NonDoneCyclesForRepo returns every non-done cycle whose record.Repo matches
+// the given source repo, regardless of worktree validity. Unlike
+// LinkedWorktreeCyclesForRepo it does NOT filter out cycles with a deleted or
+// missing worktree — that is exactly the population the stale-cleanup scan needs
+// to classify and prune.
+func NonDoneCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
+	repo = pathutil.CleanAbsPath(repo)
+	if repo == "" {
+		return nil
+	}
+	stateRoot := store.StateRoot()
+	entries, err := os.ReadDir(stateRoot)
+	if err != nil {
+		return nil
+	}
+	records := []model.IssueOpsRecord{}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		id := strings.TrimSuffix(entry.Name(), ".json")
+		record, err := store.Read(stateRoot, id)
+		if err != nil {
+			continue
+		}
+		if record.Phase == model.IssueOpsPhaseDone {
+			continue
+		}
+		if pathutil.CleanAbsPath(record.Repo) != repo {
 			continue
 		}
 		records = append(records, record)

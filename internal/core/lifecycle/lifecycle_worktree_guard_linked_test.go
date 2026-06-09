@@ -32,6 +32,52 @@ func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 	}
 }
 
+func TestWorktreeGuardAllowsSourceEditWhenLinkedWorktreeDirIsDeleted(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)
+	id := newIssueOpsID(repo, "1-x")
+	linked := makeIssueOpsGuardWorktreeForTest(t, repo, "1-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "1-x")
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
+		t.Fatal(err)
+	}
+
+	// The isolated worktree directory is removed without releasing the cycle
+	// (e.g. a prior session deleted it and a new session checked the branch out
+	// in the source checkout). The stale cycle must not deadlock source edits.
+	if err := os.RemoveAll(linked); err != nil {
+		t.Fatal(err)
+	}
+
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if res.Decision == "block" {
+		t.Fatalf("source edit must not deadlock when the linked worktree dir was deleted, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardBlockMessageNamesForceReleaseEscape(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)
+	id := newIssueOpsID(repo, "1-x")
+	linked := makeIssueOpsGuardWorktreeForTest(t, repo, "1-x")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "1-x")
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
+		t.Fatal(err)
+	}
+
+	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
+	})
+	if blocked.Decision != "block" {
+		t.Fatalf("source edit with a live linked worktree should block, got %+v", blocked)
+	}
+	if !strings.Contains(blocked.Reason, "force-release") {
+		t.Fatalf("block reason must name the working escape command (force-release), got %q", blocked.Reason)
+	}
+}
+
 func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)

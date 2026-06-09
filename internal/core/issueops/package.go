@@ -74,6 +74,13 @@ func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 	return active.LinkedWorktreeCyclesForRepo(issueOpsActiveStore(), repo)
 }
 
+// IssueOpsCycleWorktreeMissing reports whether a record is a worktree-phase
+// cycle whose linked worktree directory has been deleted (a stale cycle that
+// must not retain guard authority over the source checkout).
+func IssueOpsCycleWorktreeMissing(record IssueOpsRecord) bool {
+	return active.WorktreePhaseHasMissingWorktree(record)
+}
+
 func issueOpsActiveStore() active.Store {
 	return active.Store{
 		StateRoot: IssueOpsStateRoot,
@@ -134,6 +141,7 @@ func issueOpsStartStore() start.Store {
 		Write:          writeIssueOps,
 		NewID:          newIssueOpsID,
 		ValidateBranch: validateIssueOpsIssueBranch,
+		WorktreeValid:  issueOpsWorktreePathValid,
 	}
 }
 

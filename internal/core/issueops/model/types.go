@@ -112,14 +112,14 @@ type IssueOpsDesignReviewRequest struct {
 }
 
 type IssueOpsDecision struct {
-	Title               string   `json:"title"`
-	Body                string   `json:"body"`
-	Kind                string   `json:"kind"`
-	Rationale           string   `json:"rationale,omitempty"`
-	Alternatives        []string `json:"alternatives,omitempty"`
-	AffectedIssueLinks  []string `json:"affected_issue_links,omitempty"`
-	AffectedArtifacts   []string `json:"affected_artifacts,omitempty"`
-	CreatedAt           string   `json:"created_at"`
+	Title              string   `json:"title"`
+	Body               string   `json:"body"`
+	Kind               string   `json:"kind"`
+	Rationale          string   `json:"rationale,omitempty"`
+	Alternatives       []string `json:"alternatives,omitempty"`
+	AffectedIssueLinks []string `json:"affected_issue_links,omitempty"`
+	AffectedArtifacts  []string `json:"affected_artifacts,omitempty"`
+	CreatedAt          string   `json:"created_at"`
 }
 
 type IssueOpsDecisionRecordRequest struct {
@@ -153,6 +153,8 @@ type IssueOpsRecord struct {
 	AISlopCleanFingerprint string                              `json:"ai_slop_clean_fingerprint,omitempty"`
 	ForceReleasedAt        string                              `json:"force_released_at,omitempty"`
 	ForceReleaseReason     string                              `json:"force_release_reason,omitempty"`
+	StaleResetAt           string                              `json:"stale_reset_at,omitempty"`
+	StaleResetPriorPhase   string                              `json:"stale_reset_prior_phase,omitempty"`
 	CreatedAt              string                              `json:"created_at"`
 	UpdatedAt              string                              `json:"updated_at"`
 }

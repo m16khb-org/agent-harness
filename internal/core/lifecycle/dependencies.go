@@ -134,6 +134,10 @@ func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
 	return issueops.IssueOpsPhaseExpectsWorktree(phase)
 }
 
+func issueOpsCycleWorktreeMissing(record IssueOpsRecord) bool {
+	return issueops.IssueOpsCycleWorktreeMissing(record)
+}
+
 func validateIssueOpsIssueBranch(branch string) error {
 	return issueops.ValidateIssueOpsIssueBranch(branch)
 }

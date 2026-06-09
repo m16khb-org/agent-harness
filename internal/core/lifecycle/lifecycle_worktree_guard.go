@@ -59,7 +59,7 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 					if targetInsideAnyLinkedIssueOpsWorktree(target, linkedRecs) {
 						continue
 					}
-					return "mutating tool target is outside the linked IssueOps worktree for " + linkedRecs[0].ID + "; run issue-based work from " + linked + " or mark the stale cycle done"
+					return "mutating tool target is outside the linked IssueOps worktree for " + linkedRecs[0].ID + "; run issue-based work from " + linked + " or release the stale cycle with `issueops force-release --id " + linkedRecs[0].ID + " --reason <why>`"
 				}
 			}
 			return ""
@@ -78,7 +78,7 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		}
 		for _, target := range targets {
 			if !pathWithin(target, linked) {
-				return "mutating tool target is outside the linked IssueOps worktree for " + rec.ID + "; run issue-based work from " + linked + " or mark the stale cycle done"
+				return "mutating tool target is outside the linked IssueOps worktree for " + rec.ID + "; run issue-based work from " + linked + " or release the stale cycle with `issueops force-release --id " + rec.ID + " --reason <why>`"
 			}
 		}
 		return ""
@@ -114,8 +114,17 @@ func noCycleIssueOpsBranchNeedsWorktree(req HookToolUseLifecycleRequest, branch 
 	if validateIssueOpsIssueBranch(branch) != nil {
 		return false
 	}
-	if rec, err := ReadIssueOps(IssueOpsStateRoot(), newIssueOpsID(req.Repo, branch)); err == nil && rec.Phase == IssueOpsPhaseDone {
-		return false
+	if rec, err := ReadIssueOps(IssueOpsStateRoot(), newIssueOpsID(req.Repo, branch)); err == nil {
+		if rec.Phase == IssueOpsPhaseDone {
+			return false
+		}
+		// A worktree-phase cycle whose isolated worktree was deleted is stale and
+		// must not force worktree isolation onto the source checkout — that would
+		// deadlock every edit on this branch with no reachable escape. Let it fall
+		// through to allow; the user can start fresh or force-release the cycle.
+		if issueOpsCycleWorktreeMissing(rec) {
+			return false
+		}
 	}
 	if issueOpsWorktreePreparationCommand(req.Command) || issueOpsBootstrapCommand(req.Command) {
 		return false

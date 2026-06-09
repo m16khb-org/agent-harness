@@ -7,6 +7,8 @@ import (
 	"agent-harness/cmd/harness/issueopscli/worktreecmd"
 	"flag"
 	"fmt"
+	"strings"
+	"time"
 
 	"agent-harness/internal/core"
 )
@@ -213,7 +215,49 @@ func runIssueOpsFeedback(args []string) error {
 }
 
 func runIssueOpsCleanup(args []string) error {
+	if len(args) > 0 && args[0] == "stale" {
+		return runIssueOpsCleanupStale(args[1:])
+	}
 	return feedbackcleanup.RunCleanup(args, issueOpsFeedbackCleanupDeps())
+}
+
+func runIssueOpsCleanupStale(args []string) error {
+	fs := flag.NewFlagSet("issueops cleanup stale", flag.ContinueOnError)
+	repo := fs.String("repo", "", "source repository path")
+	maxAgeDays := fs.Int("max-age", 14, "age in days after which an idle non-done cycle is flagged needs-review")
+	apply := fs.Bool("apply", false, "force-release confirmed-stale and likely-done cycles (default: report only)")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	result := core.ScanStaleIssueOpsCycles(core.IssueOpsStaleScanRequest{
+		Repo:   *repo,
+		MaxAge: time.Duration(*maxAgeDays) * 24 * time.Hour,
+		Apply:  *apply,
+	})
+	if *jsonOut {
+		return printJSON(result)
+	}
+	if !result.OK {
+		return fmt.Errorf("issueops: %s", strings.Join(result.Errors, "; "))
+	}
+	if len(result.Findings) == 0 {
+		fmt.Printf("No stale IssueOps cycles for %s\n", result.Repo)
+		return nil
+	}
+	for _, f := range result.Findings {
+		fmt.Printf("- %s [%s] %s (%s) worktree=%s releasable=%t\n",
+			f.ID, f.Phase, f.Category, strings.Join(f.Reasons, ","), f.WorktreePath, f.Releasable)
+	}
+	if result.Applied {
+		fmt.Printf("Released %d cycle(s): %s\n", len(result.Released), strings.Join(result.Released, ", "))
+	} else {
+		fmt.Println("Dry run (report only). Re-run with --apply to force-release confirmed-stale/likely-done cycles.")
+	}
+	if len(result.Errors) > 0 {
+		fmt.Printf("Errors: %s\n", strings.Join(result.Errors, "; "))
+	}
+	return nil
 }
 
 func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {

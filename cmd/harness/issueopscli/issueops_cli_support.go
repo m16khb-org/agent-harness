@@ -29,6 +29,7 @@ func issueOpsUsage() {
   agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
   agent-harness issueops cleanup status --id ID [--merged] [--json]
+  agent-harness issueops cleanup stale --repo PATH [--max-age DAYS] [--apply] [--json]
   agent-harness issueops force-release --id ID --reason REASON [--json]
   agent-harness issueops remote score --input PATH [--judge none|agy] [--agy-command PATH] [--json]
   agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]

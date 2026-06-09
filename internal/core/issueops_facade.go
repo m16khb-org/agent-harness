@@ -27,6 +27,8 @@ type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsReadiness = issueops.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = issueops.IssueOpsCleanupStatusRequest
 type IssueOpsCleanupStatus = issueops.IssueOpsCleanupStatus
+type IssueOpsStaleScanRequest = issueops.IssueOpsStaleScanRequest
+type IssueOpsStaleScanResult = issueops.IssueOpsStaleScanResult
 
 type IssueOpsPhase = issueops.IssueOpsPhase
 
@@ -181,6 +183,10 @@ func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupSt
 
 func ForceReleaseIssueOps(stateRoot, id, reason string) (IssueOpsRecord, error) {
 	return issueops.ForceReleaseIssueOps(stateRoot, id, reason)
+}
+
+func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResult {
+	return issueops.ScanStaleIssueOpsCycles(req)
 }
 
 func ForceDoneIssueOps(stateRoot, id string) (IssueOpsRecord, error) {

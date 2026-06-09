@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
 	"agent-harness/internal/core"
@@ -135,6 +136,16 @@ func handleIssueOpsMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "issueops_force_release":
 		result, err := core.ForceReleaseIssueOps(core.IssueOpsStateRoot(), argmap.String(call.Arguments, "id"), argmap.String(call.Arguments, "reason"))
 		return issueOpsMCPOutcome(result, err, "IssueOps force-release failed")
+	case "issueops_cleanup_stale":
+		result := core.ScanStaleIssueOpsCycles(core.IssueOpsStaleScanRequest{
+			Repo:   argmap.String(call.Arguments, "repo"),
+			MaxAge: time.Duration(argmap.Int(call.Arguments, "max_age", 14)) * 24 * time.Hour,
+			Apply:  argmap.Bool(call.Arguments, "apply"),
+		})
+		if !result.OK {
+			return issueOpsMCPOutcome(nil, fmt.Errorf("%s", strings.Join(result.Errors, "; ")), "IssueOps stale cleanup failed")
+		}
+		return mcpToolPayload(result)
 	case "issueops_remote_create_issue":
 		return handleMCPRemoteCreateIssue(call.Arguments)
 	case "issueops_remote_create_pr":

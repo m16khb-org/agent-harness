@@ -152,6 +152,17 @@ Use this cleanup choice shape:
 3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.
 ```
 
+For the "확장 정리" choice, scan abandoned cycles across the repo with multi-signal liveness rather than a single age threshold. Default is report-only; pass `--apply` (CLI) or `apply: true` (MCP `issueops_cleanup_stale`) only after presenting the findings and getting a decision.
+
+```bash
+agent-harness issueops cleanup stale --repo "$REPO" --json            # dry-run: classify only
+agent-harness issueops cleanup stale --repo "$REPO" --apply --json     # force-release confirmed-stale + likely-done
+```
+
+- `confirmed-stale` (worktree deleted / non-git / HEAD≠record.Branch) and `likely-done` (remote branch merged or absent for a pr-stage/artifact-bearing cycle) are `releasable`; `--apply` force-releases them.
+- `needs-review` (idle past `--max-age`, default 14 days) is **never** auto-released — surface it for a human decision.
+- Starting a new cycle on the same branch whose worktree was deleted auto-resets the stale `implement`/`ai-slop-clean`/`feedback` cycle to a fresh `problem` record (issue linkage preserved); a `pr`-phase cycle is resumed, not reset, so remote linkage survives.
+
 ## Background LLM Gates
 
 Remote scoring is a `background_join` LLM gate. It may run while local planning or implementation continues, but the main IssueOps loop must join the result before any remote artifact write: issue create/edit, label create/apply, PR/MR create/edit, assignment, or comment. If label candidates existed but none met threshold, stop before remote writes and choose an explicit manual label or rerun scoring with corrected candidates; do not create an unlabeled issue, PR, or MR.

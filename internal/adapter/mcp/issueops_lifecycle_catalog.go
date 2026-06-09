@@ -72,6 +72,15 @@ func IssueOpsLifecycleTools() []Tool {
 			}},
 		},
 		{
+			Name:        "issueops_cleanup_stale",
+			Description: "Scan a repo's non-done IssueOps cycles and classify abandoned ones using multi-signal liveness (confirmed-stale: worktree deleted/reused; likely-done: remote branch merged/absent; needs-review: idle past max-age). Reports only by default; set apply to force-release confirmed-stale and likely-done cycles. Maintenance tool; runs off the hot path and may consult git/remote.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"repo"}, "properties": map[string]any{
+				"repo":    map[string]any{"type": "string", "description": "Source repository path whose cycles are scanned."},
+				"max_age": map[string]any{"type": "number", "description": "Age in days after which an idle non-done cycle is flagged needs-review. Defaults to 14."},
+				"apply":   map[string]any{"type": "boolean", "description": "When true, force-release confirmed-stale and likely-done cycles. needs-review is always report-only. Defaults to false (report only)."},
+			}},
+		},
+		{
 			Name:        "issueops_remote_score",
 			Description: "Deterministically score related issue and label candidates for a new IssueOps issue and select only those at/above the threshold. Read-only background_join gate; join before any remote artifact write.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"issue"}, "properties": map[string]any{
