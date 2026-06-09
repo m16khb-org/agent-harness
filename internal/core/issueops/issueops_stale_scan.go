@@ -53,7 +53,24 @@ func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResu
 		}
 		result.Findings = append(result.Findings, finding)
 		if req.Apply && finding.Releasable {
-			reason := "stale-cleanup: " + strings.Join(finding.Reasons, ",")
+			// Re-read and re-classify immediately before releasing. NonDoneCyclesForRepo
+			// captured a snapshot at the top of the scan; between then and now a parallel
+			// session may have advanced the cycle, or a worktree that read as deleted
+			// (unmount/NFS hiccup/in-flight `git worktree` recreate) may have reappeared.
+			// Force-releasing on the stale snapshot would clobber live work (TOCTOU). Only
+			// release when a fresh probe still classifies the cycle as releasable. This
+			// narrows — but does not fully close — the window; a per-id lock/CAS is the
+			// durable fix (tracked separately).
+			fresh, err := ReadIssueOps(IssueOpsStateRoot(), finding.ID)
+			if err != nil {
+				result.Errors = append(result.Errors, finding.ID+": "+err.Error())
+				continue
+			}
+			confirm, stillStale := stalescan.Classify(fresh, probe, req.MaxAge)
+			if !stillStale || !confirm.Releasable {
+				continue
+			}
+			reason := "stale-cleanup: " + strings.Join(confirm.Reasons, ",")
 			if _, err := ForceReleaseIssueOps(IssueOpsStateRoot(), finding.ID, reason); err != nil {
 				result.Errors = append(result.Errors, finding.ID+": "+err.Error())
 				continue
