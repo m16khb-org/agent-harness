@@ -33,10 +33,62 @@ func BuildPreCompactCapsule(store Store, repo string) model.LifecycleCompactResu
 		PendingDocUpkeep:  events,
 		AdditionalSummary: "Session compaction capsule: restore these lifecycle/doc-upkeep hints after compacting to avoid rediscovering project-doc context.",
 	}
-	if err := store.WriteJSON(plan.CompactPath, capsule, 0o600); err != nil {
-		return model.LifecycleCompactResult{OK: false, PendingCount: len(events), CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_write_error"}}
+
+	// If a capsule already exists (double PreCompact), merge PendingDocUpkeep.
+	if existing, ok := readCompactCapsule(plan.CompactPath); ok {
+		capsule.PendingDocUpkeep = mergeDocUpkeepEvents(existing.PendingDocUpkeep, capsule.PendingDocUpkeep)
+		capsule.RequiredDocs = docupkeep.NormalizeTargetDocs(append(existing.RequiredDocs, capsule.RequiredDocs...))
+		// Keep latest timestamps
+		if existing.CreatedAt > capsule.CreatedAt {
+			capsule.CreatedAt = existing.CreatedAt
+		}
 	}
-	return model.LifecycleCompactResult{OK: true, Recorded: true, PendingCount: len(events), CompactPath: plan.CompactPath}
+
+	if err := store.WriteJSON(plan.CompactPath, capsule, 0o600); err != nil {
+		return model.LifecycleCompactResult{OK: false, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_write_error"}}
+	}
+	return model.LifecycleCompactResult{OK: true, Recorded: true, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath}
+}
+
+// readCompactCapsule reads an existing compact capsule from disk.
+// Returns the capsule and true if a valid capsule was found.
+func readCompactCapsule(path string) (model.LifecycleCompactCapsule, bool) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return model.LifecycleCompactCapsule{}, false
+	}
+	var capsule model.LifecycleCompactCapsule
+	if err := json.Unmarshal(b, &capsule); err != nil {
+		return model.LifecycleCompactCapsule{}, false
+	}
+	if capsule.SchemaVersion != model.ProjectLifecycleSchemaVersion {
+		return model.LifecycleCompactCapsule{}, false
+	}
+	return capsule, true
+}
+
+// mergeDocUpkeepEvents merges existing and incoming DocUpkeepEvent slices,
+// appending incoming events and deduplicating by target.
+func mergeDocUpkeepEvents(existing, incoming []model.DocUpkeepEvent) []model.DocUpkeepEvent {
+	seen := map[string]bool{}
+	out := make([]model.DocUpkeepEvent, 0, len(existing)+len(incoming))
+	for _, event := range existing {
+		key := strings.Join(docupkeep.NormalizeTargetDocs(event.TargetDocs), ",") + "\x00" + strings.TrimSpace(event.Summary)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, event)
+	}
+	for _, event := range incoming {
+		key := strings.Join(docupkeep.NormalizeTargetDocs(event.TargetDocs), ",") + "\x00" + strings.TrimSpace(event.Summary)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, event)
+	}
+	return out
 }
 
 func BuildPostCompactReminder(store Store, repo string) model.LifecycleCompactResult {

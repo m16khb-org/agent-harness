@@ -58,6 +58,101 @@ func TestPreCompactNoPendingUpkeepDoesNotWriteCapsule(t *testing.T) {
 	}
 }
 
+func TestDoublePreCompactMergesPendingDocUpkeep(t *testing.T) {
+	stateDir := t.TempDir()
+	plan := compactPlanForTest(t, stateDir)
+
+	// First call: write initial capsule with one event.
+	store1 := compactStoreForTest(plan, []model.DocUpkeepEvent{{
+		Kind:       "code_change",
+		TargetDocs: []string{"OPERATIONS.md"},
+		Summary:    "First hook change.",
+		Source:     "test",
+	}})
+	pre1 := BuildPreCompactCapsule(store1, plan.RepoRoot)
+	if !pre1.OK || !pre1.Recorded || pre1.PendingCount != 1 {
+		t.Fatalf("unexpected first pre-compact result: %+v", pre1)
+	}
+
+	// Second call (double PreCompact without PostCompact): read pending returns a
+	// second event. The capsule file still exists from the first call.
+	store2 := compactStoreForTest(plan, []model.DocUpkeepEvent{{
+		Kind:       "doc_update",
+		TargetDocs: []string{"TESTING.md"},
+		Summary:    "Second hook change.",
+		Source:     "test",
+	}})
+	pre2 := BuildPreCompactCapsule(store2, plan.RepoRoot)
+	if !pre2.OK || !pre2.Recorded {
+		t.Fatalf("unexpected second pre-compact result: %+v", pre2)
+	}
+	// Should have both events merged (2 pending), not just 1.
+	if pre2.PendingCount != 2 {
+		t.Fatalf("expected 2 merged pending events, got %d", pre2.PendingCount)
+	}
+
+	// Read the capsule and verify both events are present.
+	b, err := os.ReadFile(plan.CompactPath)
+	if err != nil {
+		t.Fatalf("read compact capsule: %v", err)
+	}
+	var capsule model.LifecycleCompactCapsule
+	if err := json.Unmarshal(b, &capsule); err != nil {
+		t.Fatalf("unmarshal capsule: %v", err)
+	}
+	if len(capsule.PendingDocUpkeep) != 2 {
+		t.Fatalf("expected 2 PendingDocUpkeep events, got %d: %+v", len(capsule.PendingDocUpkeep), capsule.PendingDocUpkeep)
+	}
+	if len(capsule.RequiredDocs) < 2 {
+		t.Fatalf("expected at least 2 RequiredDocs, got %d: %v", len(capsule.RequiredDocs), capsule.RequiredDocs)
+	}
+}
+
+func TestDoublePreCompactDeduplicatesByTarget(t *testing.T) {
+	stateDir := t.TempDir()
+	plan := compactPlanForTest(t, stateDir)
+
+	// First call with one event.
+	store1 := compactStoreForTest(plan, []model.DocUpkeepEvent{{
+		Kind:       "code_change",
+		TargetDocs: []string{"OPERATIONS.md", "TESTING.md"},
+		Summary:    "Hook changed.",
+		Source:     "test",
+	}})
+	pre1 := BuildPreCompactCapsule(store1, plan.RepoRoot)
+	if !pre1.OK || !pre1.Recorded || pre1.PendingCount != 1 {
+		t.Fatalf("unexpected first pre-compact: %+v", pre1)
+	}
+
+	// Second call with a duplicate event (same target + summary).
+	store2 := compactStoreForTest(plan, []model.DocUpkeepEvent{{
+		Kind:       "code_change",
+		TargetDocs: []string{"OPERATIONS.md", "TESTING.md"},
+		Summary:    "Hook changed.",
+		Source:     "test",
+	}})
+	pre2 := BuildPreCompactCapsule(store2, plan.RepoRoot)
+	if !pre2.OK || !pre2.Recorded {
+		t.Fatalf("unexpected second pre-compact: %+v", pre2)
+	}
+	// Should deduplicate: still 1 event, not 2.
+	if pre2.PendingCount != 1 {
+		t.Fatalf("expected 1 deduplicated pending event, got %d", pre2.PendingCount)
+	}
+
+	b, err := os.ReadFile(plan.CompactPath)
+	if err != nil {
+		t.Fatalf("read capsule: %v", err)
+	}
+	var capsule model.LifecycleCompactCapsule
+	if err := json.Unmarshal(b, &capsule); err != nil {
+		t.Fatalf("unmarshal capsule: %v", err)
+	}
+	if len(capsule.PendingDocUpkeep) != 1 {
+		t.Fatalf("expected 1 event after dedup, got %d", len(capsule.PendingDocUpkeep))
+	}
+}
+
 func compactPlanForTest(t *testing.T, stateDir string) model.ProjectLifecycleStatePlan {
 	t.Helper()
 	repo := t.TempDir()
