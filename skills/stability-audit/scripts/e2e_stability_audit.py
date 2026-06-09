@@ -83,14 +83,22 @@ def parse_json_output(text: str) -> Any:
 
 
 def ps_rows() -> list[dict[str, Any]]:
-    proc = subprocess.run(["ps", "-axo", "pid,ppid,state,rss,command"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    ps_bin = shutil.which("ps") or "/bin/ps"
+    try:
+        proc = subprocess.run([ps_bin, "-axo", "pid,ppid,state,rss,command"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except (PermissionError, FileNotFoundError, OSError) as exc:
+        print(f"[stability-audit] ps ({ps_bin}) unavailable — skipping process enumeration: {exc}", file=sys.stderr)
+        return []
     rows: list[dict[str, Any]] = []
     for line in proc.stdout.splitlines()[1:]:
         parts = line.strip().split(None, 4)
         if len(parts) < 5:
             continue
         pid, ppid, state, rss, command = parts
-        rows.append({"pid": int(pid), "ppid": int(ppid), "state": state, "rss_kb": int(rss), "command": command})
+        try:
+            rows.append({"pid": int(pid), "ppid": int(ppid), "state": state, "rss_kb": int(rss), "command": command})
+        except (ValueError, IndexError):
+            continue
     return rows
 
 
