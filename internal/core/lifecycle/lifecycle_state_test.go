@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -162,5 +163,56 @@ func TestLifecycleCompactReminderDeduplicatesRepeatedUpkeep(t *testing.T) {
 	}
 	if strings.Contains(post.AdditionalContext, event.Summary) {
 		t.Fatalf("post-compact context should defer detailed upkeep rows to UserPromptSubmit: %s", post.AdditionalContext)
+	}
+}
+
+func TestInitProjectLifecycleStateConcurrentNoDuplicates(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+
+	const n = 5
+	var wg sync.WaitGroup
+	results := make([]ProjectLifecycleStatePlan, n)
+	errs := make([]error, n)
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			results[idx], errs[idx] = InitProjectLifecycleState(repo, true)
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("InitProjectLifecycleState[%d] error: %v", i, err)
+		}
+		if !results[i].OK || !results[i].Exists {
+			t.Fatalf("InitProjectLifecycleState[%d] not OK or not Exists: %+v", i, results[i])
+		}
+	}
+
+	ref := results[0]
+	for i := 1; i < n; i++ {
+		if results[i].Profile.RepoID != ref.Profile.RepoID {
+			t.Fatalf("InitProjectLifecycleState[%d] repo ID mismatch: %q vs %q", i, results[i].Profile.RepoID, ref.Profile.RepoID)
+		}
+		if results[i].Profile.CreatedAt != ref.Profile.CreatedAt {
+			t.Fatalf("InitProjectLifecycleState[%d] CreatedAt mismatch: %q vs %q", i, results[i].Profile.CreatedAt, ref.Profile.CreatedAt)
+		}
+	}
+
+	// Verify the on-disk file is valid JSON and exactly one profile exists.
+	b, err := os.ReadFile(ref.ProjectJSONPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var onDisk ProjectLifecycleProfile
+	if err := json.Unmarshal(b, &onDisk); err != nil {
+		t.Fatalf("on-disk profile is not valid JSON: %v", err)
+	}
+	if onDisk.RepoID != ref.Profile.RepoID || onDisk.CreatedAt != ref.Profile.CreatedAt {
+		t.Fatalf("on-disk profile mismatch: %+v vs %+v", onDisk, *ref.Profile)
 	}
 }

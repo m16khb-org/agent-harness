@@ -81,6 +81,34 @@ func InitProjectLifecycleState(repoRoot string, confirm bool, metadata ...Projec
 		CreatedAt:     createdAt,
 		UpdatedAt:     now,
 	}
+	if !plan.Exists {
+		// Use O_EXCL to avoid a race where two concurrent sessions
+		// both pass the existence check and both write the profile.
+		if err := createJSONAtomic(plan.ProjectJSONPath, profile, 0o600); err == nil {
+			plan.Exists = true
+			plan.NamespaceValid = true
+			plan.Profile = &profile
+			return plan, nil
+		} else if !os.IsExist(err) {
+			plan.OK = false
+			return plan, err
+		}
+		// Another session won the race — read its profile.
+		existing, err := readProjectLifecycleProfile(plan.ProjectJSONPath)
+		if err != nil {
+			plan.OK = false
+			return plan, err
+		}
+		plan.Exists = true
+		plan.Profile = &existing
+		plan.NamespaceValid = fingerprint.Equal(existing.Fingerprint, plan.Fingerprint) &&
+			existing.RepoID == plan.RepoID &&
+			existing.SchemaVersion == ProjectLifecycleSchemaVersion
+		if !plan.NamespaceValid {
+			plan.Warnings = append(plan.Warnings, "namespace_mismatch")
+		}
+		return plan, nil
+	}
 	if err := writeJSONAtomic(plan.ProjectJSONPath, profile, 0o600); err != nil {
 		plan.OK = false
 		return plan, err
@@ -139,4 +167,24 @@ func writeJSONAtomic(path string, value any, perm os.FileMode) error {
 		return err
 	}
 	return nil
+}
+
+func createJSONAtomic(path string, value any, perm os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, perm)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(append(b, '\n')); err != nil {
+		_ = f.Close()
+		_ = os.Remove(path)
+		return err
+	}
+	return f.Close()
 }
