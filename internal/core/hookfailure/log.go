@@ -116,3 +116,82 @@ func trimHookFailureSnippet(value string) string {
 	b := []byte(value)
 	return string(b[:hookFailureSnippetLimit]) + "...<truncated>"
 }
+
+type HookFailurePruneResult struct {
+	OK       bool   `json:"ok"`
+	Path     string `json:"path"`
+	Pruned   int    `json:"pruned"`
+	Kept     int    `json:"kept"`
+}
+
+func PruneHookFailureLog(maxAge time.Duration) (HookFailurePruneResult, error) {
+	path := HookFailureLogPath()
+	result := HookFailurePruneResult{OK: false, Path: path}
+
+	f, err := os.Open(path)
+	if os.IsNotExist(err) {
+		result.OK = true
+		return result, nil
+	}
+	if err != nil {
+		return result, err
+	}
+
+	cutoff := time.Now().UTC().Add(-maxAge)
+	var kept []HookFailureEvent
+	pruned := 0
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		var event HookFailureEvent
+		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
+			pruned++
+			continue
+		}
+		ts, err := time.Parse(time.RFC3339Nano, event.Timestamp)
+		if err != nil {
+			ts, err = time.Parse(time.RFC3339, event.Timestamp)
+		}
+		if err != nil || ts.Before(cutoff) {
+			pruned++
+			continue
+		}
+		kept = append(kept, event)
+	}
+	_ = f.Close()
+	if err := scanner.Err(); err != nil {
+		return result, err
+	}
+
+	tmpPath := path + ".tmp"
+	tmp, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return result, err
+	}
+	writeErr := false
+	for _, event := range kept {
+		line, err := json.Marshal(event)
+		if err != nil {
+			writeErr = true
+			break
+		}
+		if _, err := tmp.Write(append(line, '\n')); err != nil {
+			writeErr = true
+			break
+		}
+	}
+	_ = tmp.Close()
+	if writeErr {
+		_ = os.Remove(tmpPath)
+		return result, nil
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		_ = os.Remove(tmpPath)
+		return result, err
+	}
+
+	result.OK = true
+	result.Pruned = pruned
+	result.Kept = len(kept)
+	return result, nil
+}

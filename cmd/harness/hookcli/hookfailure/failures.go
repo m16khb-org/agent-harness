@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"strings"
+	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/core"
@@ -33,13 +34,44 @@ func Record(args []string, stdin []byte, hookErr error) {
 }
 
 func Run(args []string) error {
+	if len(args) > 0 && args[0] == "prune" {
+		return RunPrune(args[1:])
+	}
 	fs := flag.NewFlagSet("hook failures", flag.ContinueOnError)
 	limit := fs.Int("limit", 20, "maximum recent hook failure events to return")
 	jsonOut := fs.Bool("json", false, "print hook failure events as JSON")
+	pruneFlag := fs.Duration("prune", 0, "prune entries older than this duration before listing (e.g. 720h)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	if *pruneFlag > 0 {
+		pruneResult, err := core.PruneHookFailureLog(*pruneFlag)
+		if err != nil {
+			return err
+		}
+		if *jsonOut {
+			return printJSON(pruneResult)
+		}
+		return printJSON(pruneResult)
+	}
 	result, err := core.ListHookFailureEvents(*limit)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	return printJSON(result)
+}
+
+func RunPrune(args []string) error {
+	fs := flag.NewFlagSet("hook failures prune", flag.ContinueOnError)
+	maxAge := fs.Duration("max-age", 720*time.Hour, "maximum age of entries to keep (e.g. 720h)")
+	jsonOut := fs.Bool("json", false, "print result as JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	result, err := core.PruneHookFailureLog(*maxAge)
 	if err != nil {
 		return err
 	}

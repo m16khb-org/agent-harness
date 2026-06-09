@@ -15,6 +15,7 @@ import (
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/prompt"
 	"agent-harness/internal/port"
+	"time"
 )
 
 type CommandAuditRecord = audit.CommandAuditRecord
@@ -119,6 +120,7 @@ func IsGuardBlocked(err error) bool {
 type HookFailureEvent = hookfailure.HookFailureEvent
 type HookFailureRecordResult = hookfailure.HookFailureRecordResult
 type HookFailureListResult = hookfailure.HookFailureListResult
+type HookFailurePruneResult = hookfailure.HookFailurePruneResult
 
 func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, error) {
 	return hookfailure.RecordHookFailureEvent(event)
@@ -126,6 +128,10 @@ func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, er
 
 func ListHookFailureEvents(limit int) (HookFailureListResult, error) {
 	return hookfailure.ListHookFailureEvents(limit)
+}
+
+func PruneHookFailureLog(maxAge time.Duration) (HookFailurePruneResult, error) {
+	return hookfailure.PruneHookFailureLog(maxAge)
 }
 
 func HookFailureLogPath() string {
