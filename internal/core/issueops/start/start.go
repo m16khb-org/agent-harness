@@ -34,11 +34,9 @@ func Start(store Store, stateRoot string, req model.IssueOpsStartRequest) (model
 		return model.IssueOpsRecord{OK: false}, err
 	}
 	id := store.NewID(repo, branch)
-	// NOTE: this read-modify-write (resumeOrReset may overwrite the record) is not
-	// locked. writeIssueOps is atomic per write (temp+rename) but offers no
-	// compare-and-swap, so concurrent Start/set-phase/link calls on the same
-	// repo+branch can lose updates. Pre-existing; a per-id lock or UpdatedAt
-	// version check would be the proper fix.
+	// Locking: package.go StartIssueOps wraps this call in withIssueOpsLock,
+	// serializing concurrent Start/set-phase/link calls on the same id across
+	// processes (advisory flock on unix, in-process mutex fallback on !unix).
 	if existing, err := store.Read(stateRoot, id); err == nil {
 		return resumeOrReset(store, stateRoot, existing)
 	}

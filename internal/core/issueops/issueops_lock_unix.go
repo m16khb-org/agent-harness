@@ -14,6 +14,12 @@ import (
 // process death (no stale-lock deadlock), and is honored across processes — so
 // concurrent multi-session CLI/daemon invocations on the same host serialize per
 // id.
+//
+// The lock file must NOT be deleted between lock/unlock cycles: flock locks are
+// associated with the open file description (the inode), so deleting and
+// recreating the lock file creates a new inode, breaking mutual exclusion across
+// contenders that opened different inodes. Orphaned .lock files (with no matching
+// .json cycle file) are cleaned by the off-hot-path stale scan instead.
 func withIssueOpsLock(stateRoot, id string, fn func() error) error {
 	id, err := normalizeIssueOpsID(id)
 	if err != nil {
