@@ -51,7 +51,7 @@ func WorktreePhaseHasMissingWorktree(record model.IssueOpsRecord) bool {
 	if worktree == "" {
 		return false
 	}
-	return !worktreePathValid(worktree)
+	return !worktreeGitTracked(worktree)
 }
 
 func LinkedWorktreeCycleForRepo(store Store, repo string) (model.IssueOpsRecord, bool) {
@@ -89,7 +89,7 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 			continue
 		}
 		worktree := strings.TrimSpace(record.WorktreePath)
-		if worktree == "" || !worktreePathValid(worktree) {
+		if worktree == "" || !worktreeGitTracked(worktree) {
 			continue
 		}
 		recordRepo := pathutil.CleanAbsPath(record.Repo)
@@ -166,6 +166,21 @@ func worktreePathValid(path string) bool {
 	}
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
+}
+
+// worktreeGitTracked checks whether a path is a git-tracked directory — either a
+// main checkout (where .git is a directory) or a linked worktree (where .git is
+// a file pointing to the gitdir). Non-git directories and missing paths return
+// false. Used on the hot path (worktree-guard and linked-worktree enumeration)
+// to avoid false-live from `git worktree prune`d directories or leftover non-git
+// dirs.
+func worktreeGitTracked(path string) bool {
+	path = strings.TrimSpace(path)
+	if path == "" || strings.Contains(path, "\x00") {
+		return false
+	}
+	_, err := os.Lstat(filepath.Join(path, ".git"))
+	return err == nil
 }
 
 func gitBranchFromAncestor(path string) string {

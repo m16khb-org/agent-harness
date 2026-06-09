@@ -13,6 +13,9 @@ func TestLinkedWorktreeCycleForRepoReturnsFirstActiveRecord(t *testing.T) {
 	store := newActiveTestStore(t)
 	repo := t.TempDir()
 	worktree := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(worktree, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	record := model.IssueOpsRecord{
 		ID:           "io-active",
 		OK:           true,
@@ -61,6 +64,9 @@ func TestCycleForBranchKeepsWorktreePhaseWithLiveWorktreeDir(t *testing.T) {
 	store := newActiveTestStore(t)
 	repo := t.TempDir()
 	worktree := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(worktree, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	store.writeRecord(t, model.IssueOpsRecord{
 		ID:           "io-active",
 		OK:           true,
@@ -141,5 +147,82 @@ func (s *activeTestStore) writeRecord(t *testing.T, record model.IssueOpsRecord)
 	}
 	if err := os.WriteFile(filepath.Join(s.stateRoot, record.ID+".json"), append(b, '\n'), 0o600); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestWorktreeGitTracked(t *testing.T) {
+	t.Run("git dir", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, ".git"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if !worktreeGitTracked(dir) {
+			t.Fatalf("directory with .git/ dir should be tracked, got false")
+		}
+	})
+	t.Run("no git", func(t *testing.T) {
+		dir := t.TempDir()
+		if worktreeGitTracked(dir) {
+			t.Fatalf("directory without .git should not be tracked, got true")
+		}
+	})
+	t.Run("git file as linked worktree", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: /some/real/git/dir\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if !worktreeGitTracked(dir) {
+			t.Fatalf("directory with .git file (linked worktree) should be tracked, got false")
+		}
+	})
+}
+
+func TestWorktreePhaseHasMissingWorktreeUsesGitTracked(t *testing.T) {
+	dir := t.TempDir()
+	rec := model.IssueOpsRecord{
+		Phase:        model.IssueOpsPhaseImplement,
+		WorktreePath: dir,
+	}
+	if !WorktreePhaseHasMissingWorktree(rec) {
+		t.Fatal("non-git directory should be detected as missing worktree")
+	}
+}
+
+func TestLinkedWorktreeCyclesExcludesNonGitDir(t *testing.T) {
+	store := newActiveTestStore(t)
+	repo := t.TempDir()
+	nonGitDir := t.TempDir()
+	store.writeRecord(t, model.IssueOpsRecord{
+		ID:           "io-nongit",
+		OK:           true,
+		Repo:         repo,
+		Branch:       "42-nongit",
+		Phase:        model.IssueOpsPhaseImplement,
+		WorktreePath: nonGitDir,
+	})
+	got := LinkedWorktreeCyclesForRepo(store.issueOpsStore(), repo)
+	if len(got) != 0 {
+		t.Fatalf("non-git worktree dir should be excluded from LinkedWorktreeCyclesForRepo, got %d records", len(got))
+	}
+}
+
+func TestLinkedWorktreeCyclesIncludesGitFileWorktree(t *testing.T) {
+	store := newActiveTestStore(t)
+	repo := t.TempDir()
+	gitFileDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(gitFileDir, ".git"), []byte("gitdir: /some/real/git/dir\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	store.writeRecord(t, model.IssueOpsRecord{
+		ID:           "io-gitfile",
+		OK:           true,
+		Repo:         repo,
+		Branch:       "42-gitfile",
+		Phase:        model.IssueOpsPhaseImplement,
+		WorktreePath: gitFileDir,
+	})
+	got := LinkedWorktreeCyclesForRepo(store.issueOpsStore(), repo)
+	if len(got) != 1 || got[0].ID != "io-gitfile" {
+		t.Fatalf("linked worktree with .git file should be included, got %+v", got)
 	}
 }
