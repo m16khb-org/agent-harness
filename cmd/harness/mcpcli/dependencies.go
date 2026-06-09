@@ -19,6 +19,10 @@ var Version = "dev"
 
 var HarnessRoot = func() string {
 	if root := os.Getenv("HARNESS_ROOT"); root != "" {
+		abs, err := filepath.Abs(root)
+		if err == nil {
+			return abs
+		}
 		return root
 	}
 	cwd, err := os.Getwd()
@@ -27,10 +31,18 @@ var HarnessRoot = func() string {
 	}
 	for dir := cwd; ; dir = filepath.Dir(dir) {
 		if fileExists(filepath.Join(dir, "go.mod")) && fileExists(filepath.Join(dir, "skills")) {
+			abs, err := filepath.Abs(dir)
+			if err == nil {
+				return abs
+			}
 			return dir
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
+			abs, err := filepath.Abs(cwd)
+			if err == nil {
+				return abs
+			}
 			return cwd
 		}
 	}

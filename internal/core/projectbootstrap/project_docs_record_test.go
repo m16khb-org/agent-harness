@@ -60,6 +60,7 @@ func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
 }
 
 func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)

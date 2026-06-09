@@ -13,6 +13,7 @@ import (
 )
 
 func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "go.mod"), "module example.com/app\n")
 	mustWrite(t, filepath.Join(root, "AGENTS.md"), "# Existing Rules\n\nKeep this.\n")
@@ -90,6 +91,7 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 }
 
 func TestRouteProjectDocsForPreciseTasks(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
@@ -119,6 +121,7 @@ func TestRouteProjectDocsForPreciseTasks(t *testing.T) {
 }
 
 func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md"), "# Custom Testing\n\nKeep local detail.\n")
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
