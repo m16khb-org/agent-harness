@@ -872,6 +872,34 @@
           "title": "Verification Operations"
         },
         {
+          "bytes": 14883,
+          "headings": [
+            "Von Neumann Quality Upgrade",
+            "TL;DR",
+            "Context",
+            "Original Request",
+            "Gap Analysis (Von Neumann vs Prometheus)",
+            "핵심 원칙",
+            "Work Objectives",
+            "Core Objective",
+            "Deliverables",
+            "Definition of Done",
+            "Must Have",
+            "Must NOT Have",
+            "Verification Strategy",
+            "Execution Strategy",
+            "Parallel Execution Waves",
+            "Dependency Matrix",
+            "TODOs",
+            "Final Verification Wave (MANDATORY — after ALL implementation tasks)",
+            "Commit Strategy",
+            "Success Criteria"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+          "rel_path": ".agent-harness/plans/von-neumann-quality-upgrade.md",
+          "title": "Von Neumann Quality Upgrade"
+        },
+        {
           "bytes": 12987,
           "headings": [
             "AGENTS.md",
@@ -1020,6 +1048,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/install.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+        "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
         "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -1050,13 +1079,6 @@
       },
       "ok": true,
       "skills": [
-        {
-          "description": "Strategic planning consultant that produces decision-complete work plans through codebase exploration, Socratic interview, gap analysis, and self-review. Named after Archimedes — \"Give me a lever and I will move the world.\" This skill finds the strategic leverage point before committing to execution. Use when the task has 5+ steps, scope is ambiguous, multiple modules are involved, or the user asks for a plan.",
-          "has_openai_yaml": false,
-          "has_skill_md": true,
-          "name": "archimedes",
-          "path": "$HARNESS_ROOT/skills/archimedes"
-        },
         {
           "description": "Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging.",
           "has_openai_yaml": true,
@@ -1114,7 +1136,7 @@
           "path": "$HARNESS_ROOT/skills/turing"
         },
         {
-          "description": "Multi-agent orchestration engine that decomposes work into parallel execution waves, dispatches right-sized agents, tracks quantitative efficiency metrics, and enforces adversarial verification gates. Named after John von Neumann — architect of the stored-program computer and parallel processing theory. Use for complex multi-file work requiring parallel decomposition, or when the user invokes von-neumann orchestration.",
+          "description": "Strategic planning consultant that produces decision-complete work plans through codebase exploration, Socratic interview, gap analysis, and self-review. Named after John von Neumann — architect of the stored-program computer, game theory, and parallel processing. Like a stored program loaded before execution, his plans leave zero decisions to the implementer. Use when the task has 5+ steps, scope is ambiguous, multiple modules are involved, or the user asks for a plan.",
           "has_openai_yaml": false,
           "has_skill_md": true,
           "name": "von-neumann",
@@ -2979,7 +3001,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 27,
+        "docs_indexed": 28,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -3001,7 +3023,6 @@
         "has_self_verify_cli": true,
         "has_worker_mvp": true,
         "skills": [
-          "archimedes",
           "atomic-commit-push",
           "draft-wiki-promoter",
           "issueops",
@@ -5068,6 +5089,34 @@
                 "title": "Verification Operations"
               },
               {
+                "bytes": 14883,
+                "headings": [
+                  "Von Neumann Quality Upgrade",
+                  "TL;DR",
+                  "Context",
+                  "Original Request",
+                  "Gap Analysis (Von Neumann vs Prometheus)",
+                  "핵심 원칙",
+                  "Work Objectives",
+                  "Core Objective",
+                  "Deliverables",
+                  "Definition of Done",
+                  "Must Have",
+                  "Must NOT Have",
+                  "Verification Strategy",
+                  "Execution Strategy",
+                  "Parallel Execution Waves",
+                  "Dependency Matrix",
+                  "TODOs",
+                  "Final Verification Wave (MANDATORY — after ALL implementation tasks)",
+                  "Commit Strategy",
+                  "Success Criteria"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+                "rel_path": ".agent-harness/plans/von-neumann-quality-upgrade.md",
+                "title": "Von Neumann Quality Upgrade"
+              },
+              {
                 "bytes": 12987,
                 "headings": [
                   "AGENTS.md",
@@ -5223,6 +5272,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/install.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+              "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
               "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -5253,13 +5303,6 @@
             },
             "ok": true,
             "skills": [
-              {
-                "description": "Strategic planning consultant that produces decision-complete work plans through codebase exploration, Socratic interview, gap analysis, and self-review. Named after Archimedes — \"Give me a lever and I will move the world.\" This skill finds the strategic leverage point before committing to execution. Use when the task has 5+ steps, scope is ambiguous, multiple modules are involved, or the user asks for a plan.",
-                "has_openai_yaml": false,
-                "has_skill_md": true,
-                "name": "archimedes",
-                "path": "$HARNESS_ROOT/skills/archimedes"
-              },
               {
                 "description": "Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging.",
                 "has_openai_yaml": true,
@@ -5317,7 +5360,7 @@
                 "path": "$HARNESS_ROOT/skills/turing"
               },
               {
-                "description": "Multi-agent orchestration engine that decomposes work into parallel execution waves, dispatches right-sized agents, tracks quantitative efficiency metrics, and enforces adversarial verification gates. Named after John von Neumann — architect of the stored-program computer and parallel processing theory. Use for complex multi-file work requiring parallel decomposition, or when the user invokes von-neumann orchestration.",
+                "description": "Strategic planning consultant that produces decision-complete work plans through codebase exploration, Socratic interview, gap analysis, and self-review. Named after John von Neumann — architect of the stored-program computer, game theory, and parallel processing. Like a stored program loaded before execution, his plans leave zero decisions to the implementer. Use when the task has 5+ steps, scope is ambiguous, multiple modules are involved, or the user asks for a plan.",
                 "has_openai_yaml": false,
                 "has_skill_md": true,
                 "name": "von-neumann",
@@ -6593,7 +6636,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 27,
+              "docs_indexed": 28,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
@@ -6615,7 +6658,6 @@
               "has_self_verify_cli": true,
               "has_worker_mvp": true,
               "skills": [
-                "archimedes",
                 "atomic-commit-push",
                 "draft-wiki-promoter",
                 "issueops",

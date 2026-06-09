@@ -105,7 +105,7 @@ fi
 
 ### 2. Create Goals from the Brief
 
-Read the brief (from Archimedes plan, user instruction, or IssueOps intent contract). Create `goals.json`:
+Read the brief (from Von Neumann plan, user instruction, or IssueOps intent contract). Create `goals.json`:
 
 ```json
 {

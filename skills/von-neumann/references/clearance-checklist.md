@@ -1,4 +1,4 @@
-# Archimedes Clearance Checklist
+# Von Neumann Clearance Checklist
 
 The 6-item clearance check runs after EVERY interview turn. ALL must be YES before transitioning to plan generation.
 
