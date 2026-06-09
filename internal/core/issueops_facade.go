@@ -295,3 +295,42 @@ func ScoreIssueOpsRemoteCandidates(req IssueOpsRemoteScoringRequest) (IssueOpsRe
 func RunIssueOpsRemoteAgyJudge(req IssueOpsRemoteAgyJudgeRequest) (IssueOpsRemoteScoringResult, error) {
 	return issueops.RunIssueOpsRemoteAgyJudge(req)
 }
+
+// Session binding for multi-session continuity.
+type SessionBinding = issueops.SessionBinding
+
+func BindIssueOpsSession(repo, cycleID, branch, expectedWorktree string) error {
+	return issueops.BindIssueOpsSession(repo, cycleID, branch, expectedWorktree)
+}
+
+func ReadIssueOpsSession(repo string) (SessionBinding, error) {
+	return issueops.ReadIssueOpsSession(repo)
+}
+
+func UnbindIssueOpsSession(repo string) error {
+	return issueops.UnbindIssueOpsSession(repo)
+}
+
+func ActiveSessionCycleID(repo string) string {
+	return issueops.ActiveSessionCycleID(repo)
+}
+
+func ExpectedWorktreeFromSession(repo string, cycleWorktree func() string) string {
+	return issueops.ExpectedWorktreeFromSession(repo, cycleWorktree)
+}
+
+// IssueOpsResume reads the session-to-cycle binding for repo and returns a
+// resume result with cycle details, readiness, or suggested cycles.
+type IssueOpsResumeResult = issueops.IssueOpsResumeResult
+
+func IssueOpsResume(repo string) IssueOpsResumeResult {
+	return issueops.IssueOpsResume(repo)
+}
+
+func RecordIssueOpsHeartbeat(stateRoot, id string) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsHeartbeat(stateRoot, id)
+}
+
+func IssueOpsLastActiveAt(record IssueOpsRecord) string {
+	return issueops.LastActiveAt(record)
+}

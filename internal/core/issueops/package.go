@@ -8,6 +8,8 @@ import (
 	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/linking"
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/issueops/pathutil"
+	"agent-harness/internal/core/issueops/session"
 	"agent-harness/internal/core/issueops/start"
 	"agent-harness/internal/core/issueops/stringlist"
 	"strings"
@@ -31,6 +33,7 @@ type IssueOpsRecord = model.IssueOpsRecord
 type IssueOpsReadiness = model.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = model.IssueOpsCleanupStatusRequest
 type IssueOpsCleanupStatus = model.IssueOpsCleanupStatus
+type IssueOpsResumeResult = model.IssueOpsResumeResult
 type IssueOpsPhase = model.IssueOpsPhase
 
 const (
@@ -266,4 +269,105 @@ func issueOpsLinkingStore() linking.Store {
 		WorktreePathValid:      issueOpsWorktreePathValid,
 		UniqueSorted:           stringlist.UniqueSorted,
 	}
+}
+
+// SessionBinding exposes the session-to-cycle binding layer for multi-session
+// continuity. See internal/core/issueops/session for semantics.
+type SessionBinding = session.Binding
+
+func BindIssueOpsSession(repo, cycleID, branch, expectedWorktree string) error {
+	return session.Bind(issueOpsSessionStore(), repo, cycleID, branch, expectedWorktree)
+}
+
+func ReadIssueOpsSession(repo string) (SessionBinding, error) {
+	return session.Read(issueOpsSessionStore(), repo)
+}
+
+func UnbindIssueOpsSession(repo string) error {
+	return session.Unbind(issueOpsSessionStore(), repo)
+}
+
+// ExpectedWorktreeFromSession returns the expected worktree for the current
+// session, falling back to the cycle record's linked worktree.
+func ExpectedWorktreeFromSession(repo string, cycleWorktree func() string) string {
+	return session.ExpectedWorktree(issueOpsSessionStore(), repo, cycleWorktree)
+}
+
+// ActiveSessionCycleID returns the cycle ID bound to the current session, or
+// empty when unbound.
+func ActiveSessionCycleID(repo string) string {
+	return session.ActiveCycleID(issueOpsSessionStore(), repo)
+}
+
+func issueOpsSessionStore() session.Store {
+	return session.Store{
+		StateRoot: IssueOpsStateRoot,
+	}
+}
+
+// IssueOpsResume reads the session-to-cycle binding for repo and returns a
+// resume result. When a session is bound, it reads the cycle record and returns
+// its details plus readiness. When unbound, it suggests active cycles for the
+// repo (current branch first, then linked-worktree cycles).
+func IssueOpsResume(repo string) IssueOpsResumeResult {
+	repo = strings.TrimSpace(repo)
+	b, err := ReadIssueOpsSession(repo)
+	if err != nil {
+		return IssueOpsResumeResult{OK: false}
+	}
+	if b.CycleID != "" {
+		rec, err := ReadIssueOps(IssueOpsStateRoot(), b.CycleID)
+		if err != nil || !rec.OK {
+			return IssueOpsResumeResult{OK: false}
+		}
+		readiness := IssueOpsImplementationReadiness(rec)
+		return IssueOpsResumeResult{
+			OK:           true,
+			CycleID:      rec.ID,
+			Phase:        rec.Phase,
+			Repo:         rec.Repo,
+			Branch:       rec.Branch,
+			WorktreePath: rec.WorktreePath,
+			IssueURL:     rec.IssueURL,
+			PlanPath:     rec.PlanPath,
+			Bound:        true,
+			Readiness:    &readiness,
+		}
+	}
+
+	// Not bound: suggest active cycles.
+	branch := strings.TrimSpace(pathutil.GitBranchFromHead(repo))
+	suggested := []string{}
+
+	// First: check active cycle for the current branch.
+	if branch != "" {
+		if rec, ok := ActiveIssueOpsCycleForBranch(repo, branch); ok {
+			suggested = append(suggested, rec.ID)
+		}
+	}
+
+	// Second: add any linked-worktree cycles for the repo.
+	for _, rec := range ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo) {
+		found := false
+		for _, id := range suggested {
+			if id == rec.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			suggested = append(suggested, rec.ID)
+		}
+	}
+
+	return IssueOpsResumeResult{
+		OK:              len(suggested) > 0,
+		Bound:           false,
+		SuggestedCycles: suggested,
+	}
+}
+
+// LastActiveAt returns the best liveness timestamp: LastHeartbeatAt or UpdatedAt.
+func LastActiveAt(record IssueOpsRecord) string {
+	return IssueOpsLastActiveAt(record)
 }

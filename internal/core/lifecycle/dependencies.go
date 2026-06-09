@@ -138,6 +138,14 @@ func issueOpsCycleWorktreeMissing(record IssueOpsRecord) bool {
 	return issueops.IssueOpsCycleWorktreeMissing(record)
 }
 
+func readIssueOpsSession(repo string) (issueops.SessionBinding, error) {
+	return issueops.ReadIssueOpsSession(repo)
+}
+
+func activeSessionCycleID(repo string) string {
+	return issueops.ActiveSessionCycleID(repo)
+}
+
 func validateIssueOpsIssueBranch(branch string) error {
 	return issueops.ValidateIssueOpsIssueBranch(branch)
 }

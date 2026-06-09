@@ -32,6 +32,11 @@ func expectedIssueOpsWorktreesForMCPGuard(req HookToolUseLifecycleRequest) []str
 	if expected := cleanAbsPath(req.ExpectedWorktree); expected != "" {
 		return []string{expected}
 	}
+	// Check session binding first — the most reliable per-repo signal across
+	// session restarts, since HARNESS_EXPECTED_WORKTREE is ephemeral.
+	if sessionWorktree := expectedWorktreeFromSessionBinding(req.Repo); sessionWorktree != "" {
+		return []string{sessionWorktree}
+	}
 	if rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, gitBranchFromHead(req.Repo)); ok && IssueOpsPhaseExpectsWorktree(rec.Phase) {
 		if expected := cleanAbsPath(rec.WorktreePath); expected != "" {
 			return []string{expected}
@@ -47,6 +52,17 @@ func expectedIssueOpsWorktreesForMCPGuard(req HookToolUseLifecycleRequest) []str
 		}
 	}
 	return expected
+}
+
+// expectedWorktreeFromSessionBinding reads the session-to-cycle binding for a
+// repo and returns the expected worktree path, or empty when unbound or the
+// worktree field is not set.
+func expectedWorktreeFromSessionBinding(repo string) string {
+	b, err := readIssueOpsSession(repo)
+	if err != nil || b.CycleID == "" {
+		return ""
+	}
+	return cleanAbsPath(b.ExpectedWorktree)
 }
 
 func pathEqualsAny(path string, candidates []string) bool {

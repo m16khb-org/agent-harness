@@ -152,6 +152,14 @@ func handleIssueOpsMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		return handleMCPRemoteCreatePR(call.Arguments)
 	case "issueops_remote_sync_graph":
 		return handleMCPRemoteSyncGraph(call.Arguments)
+	case "issueops_resume":
+		result := core.IssueOpsResume(argmap.String(call.Arguments, "repo"))
+		if argmap.Bool(call.Arguments, "bind") && result.OK && result.Bound {
+			if err := core.BindIssueOpsSession(result.Repo, result.CycleID, result.Branch, result.WorktreePath); err != nil {
+				return issueOpsMCPOutcome(nil, fmt.Errorf("resume bind: %w", err), "IssueOps resume bind failed")
+			}
+		}
+		return mcpToolPayload(result)
 	default:
 		return MCPToolOutcome{}
 	}

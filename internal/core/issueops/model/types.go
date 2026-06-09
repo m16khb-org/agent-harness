@@ -156,6 +156,7 @@ type IssueOpsRecord struct {
 	StaleResetAt           string                              `json:"stale_reset_at,omitempty"`
 	StaleResetPriorPhase   string                              `json:"stale_reset_prior_phase,omitempty"`
 	OrphanWorktreePath     string                              `json:"orphan_worktree_path,omitempty"`
+	LastHeartbeatAt        string                              `json:"last_heartbeat_at,omitempty"`
 	CreatedAt              string                              `json:"created_at"`
 	UpdatedAt              string                              `json:"updated_at"`
 }
@@ -193,4 +194,18 @@ type IssueOpsCleanupStatus struct {
 	WorktreePath      string   `json:"worktree_path,omitempty"`
 	Branch            string   `json:"branch,omitempty"`
 	RemoteArtifactURL string   `json:"remote_artifact_url,omitempty"`
+}
+
+type IssueOpsResumeResult struct {
+	OK              bool              `json:"ok"`
+	CycleID         string            `json:"cycle_id,omitempty"`
+	Phase           IssueOpsPhase     `json:"phase,omitempty"`
+	Repo            string            `json:"repo,omitempty"`
+	Branch          string            `json:"branch,omitempty"`
+	WorktreePath    string            `json:"worktree_path,omitempty"`
+	IssueURL        string            `json:"issue_url,omitempty"`
+	PlanPath        string            `json:"plan_path,omitempty"`
+	Bound           bool              `json:"bound"`
+	SuggestedCycles []string          `json:"suggested_cycles,omitempty"`
+	Readiness       *IssueOpsReadiness `json:"readiness,omitempty"`
 }

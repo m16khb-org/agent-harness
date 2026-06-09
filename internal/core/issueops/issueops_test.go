@@ -430,3 +430,100 @@ func TestForceReleaseRejectsShortReason(t *testing.T) {
 	}
 }
 
+func TestIssueOpsResumeBound(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	repo := t.TempDir()
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "99-resume-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Bind the session.
+	if err := BindIssueOpsSession(repo, record.ID, record.Branch, "/fake/worktree"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = UnbindIssueOpsSession(repo) })
+
+	result := IssueOpsResume(repo)
+	if !result.OK {
+		t.Fatalf("expected OK resume result, got %+v", result)
+	}
+	if !result.Bound {
+		t.Fatalf("expected bound result, got %+v", result)
+	}
+	if result.CycleID != record.ID {
+		t.Fatalf("expected cycle ID %q, got %q", record.ID, result.CycleID)
+	}
+	if result.Phase != IssueOpsPhaseProblem {
+		t.Fatalf("expected phase problem, got %q", result.Phase)
+	}
+	if result.Readiness == nil {
+		t.Fatalf("expected readiness, got nil")
+	}
+}
+
+func TestIssueOpsResumeUnboundNoBranches(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	// Repo with no git — so no branch detection and no active cycles.
+	repo := t.TempDir()
+	result := IssueOpsResume(repo)
+	if result.OK {
+		t.Fatalf("expected not-OK for unbound repo with no cycles, got %+v", result)
+	}
+	if result.Bound {
+		t.Fatalf("expected unbound, got %+v", result)
+	}
+	if len(result.SuggestedCycles) > 0 {
+		t.Fatalf("expected no suggested cycles, got %v", result.SuggestedCycles)
+	}
+}
+
+func TestIssueOpsResumeUnboundWithActiveCycles(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	repo := initIssueOpsRepo(t)
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "999-resume-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Set up the cycle properly so it appears as an active linked-worktree cycle.
+	recordIssueOpsIntentForTest(t, IssueOpsStateRoot(), record.ID)
+	record, err = LinkIssueOpsIssue(IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/999")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(IssueOpsStateRoot(), record.ID, IssueOpsBranchPrepareRequest{
+		Provider: "github", IssueURL: record.IssueURL,
+		Branch: "999-resume-test", BaseBranch: "main", LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "999-resume-test")
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), record.ID, worktree); err != nil {
+		t.Fatal(err)
+	}
+
+	result := IssueOpsResume(repo)
+	if !result.OK {
+		t.Fatalf("expected OK resume result with suggested cycles, got %+v", result)
+	}
+	if result.Bound {
+		t.Fatalf("expected unbound, got %+v", result)
+	}
+	if len(result.SuggestedCycles) == 0 {
+		t.Fatalf("expected at least one suggested cycle, got none")
+	}
+	found := false
+	for _, id := range result.SuggestedCycles {
+		if id == record.ID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected suggested cycle %q, got %v", record.ID, result.SuggestedCycles)
+	}
+}

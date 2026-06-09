@@ -91,6 +91,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_cleanup_status",
 		"issueops_cleanup_stale",
 		"issueops_remote_score",
+		"issueops_resume",
 	}
 	if len(tools) != len(wantNames) {
 		t.Fatalf("expected %d issueops lifecycle tools, got %d", len(wantNames), len(tools))
@@ -135,5 +136,11 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaHasProperty(byName["issueops_remote_score"].InputSchema, "threshold") {
 		t.Fatalf("issueops_remote_score schema missing threshold: %#v", byName["issueops_remote_score"].InputSchema)
+	}
+	if !schemaRequires(byName["issueops_resume"].InputSchema, "repo") {
+		t.Fatalf("issueops_resume must require repo: %#v", byName["issueops_resume"].InputSchema)
+	}
+	if !schemaHasProperty(byName["issueops_resume"].InputSchema, "bind") {
+		t.Fatalf("issueops_resume schema missing bind: %#v", byName["issueops_resume"].InputSchema)
 	}
 }

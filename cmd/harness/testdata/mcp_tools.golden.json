@@ -1345,6 +1345,26 @@
     "name": "issueops_remote_sync_graph"
   },
   {
+    "description": "Read the session-to-cycle binding for a repo and return the current IssueOps cycle state, worktree path, branch, readiness, and suggested next actions. When unbound, suggests active cycles for the repo. Optionally bind the session with --bind.",
+    "inputSchema": {
+      "properties": {
+        "bind": {
+          "description": "When true and a cycle is found, bind the session to it.",
+          "type": "boolean"
+        },
+        "repo": {
+          "description": "Repository path.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_resume"
+  },
+  {
     "description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
     "inputSchema": {
       "properties": {},

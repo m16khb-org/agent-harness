@@ -150,5 +150,13 @@ func IssueOpsLifecycleTools() []Tool {
 				"confirm": map[string]any{"type": "boolean", "description": "Set true to post the comment; omit for dry-run preview."},
 			}},
 		},
+		{
+			Name:        "issueops_resume",
+			Description: "Read the session-to-cycle binding for a repo and return the current IssueOps cycle state, worktree path, branch, readiness, and suggested next actions. When unbound, suggests active cycles for the repo. Optionally bind the session with --bind.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"repo"}, "properties": map[string]any{
+				"repo": map[string]any{"type": "string", "description": "Repository path."},
+				"bind": map[string]any{"type": "boolean", "description": "When true and a cycle is found, bind the session to it."},
+			}},
+		},
 	}
 }
