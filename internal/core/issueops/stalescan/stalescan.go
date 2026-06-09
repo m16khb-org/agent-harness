@@ -75,6 +75,13 @@ func Classify(record model.IssueOpsRecord, probe Probe, maxAge time.Duration) (F
 		return f, true
 	}
 
+	if branchMismatch(record, probe) {
+		f.Category = CategoryNeedsReview
+		f.Reasons = []string{"worktree_branch_mismatch"}
+		f.Releasable = false
+		return f, true
+	}
+
 	if likelyDone(record, probe) {
 		f.Category = CategoryLikelyDone
 		f.Reasons = []string{"remote_branch_absent"}
@@ -109,10 +116,28 @@ func confirmedStaleReason(record model.IssueOpsRecord, probe Probe) string {
 			return "worktree_not_git"
 		}
 		if record.Branch != "" && head != strings.TrimSpace(record.Branch) {
-			return "worktree_branch_mismatch"
+			return "" // branch mismatch is not confirmed-stale; see Classify
 		}
 	}
 	return ""
+}
+
+func branchMismatch(record model.IssueOpsRecord, probe Probe) bool {
+	if !model.IssueOpsPhaseExpectsWorktree(record.Phase) {
+		return false
+	}
+	worktree := strings.TrimSpace(record.WorktreePath)
+	if worktree == "" || probe.WorktreeHeadBranch == nil || probe.WorktreeDirExists == nil {
+		return false
+	}
+	if !probe.WorktreeDirExists(worktree) {
+		return false // covered by confirmedStaleReason
+	}
+	head := strings.TrimSpace(probe.WorktreeHeadBranch(worktree))
+	if head == "" {
+		return false // covered by confirmedStaleReason
+	}
+	return record.Branch != "" && head != strings.TrimSpace(record.Branch)
 }
 
 func likelyDone(record model.IssueOpsRecord, probe Probe) bool {
@@ -131,11 +156,24 @@ func staleByAge(record model.IssueOpsRecord, probe Probe, maxAge time.Duration) 
 	if maxAge <= 0 || probe.Now == nil {
 		return false
 	}
-	ts := parseTime(record.UpdatedAt)
+	// Prefer LastHeartbeatAt (explicit liveness signal) over UpdatedAt
+	// (which only updates on state mutations). A cycle may be actively
+	// worked on without state changes for long periods.
+	ts := parseTime(lastActiveAt(record))
 	if ts.IsZero() {
 		return false
 	}
 	return probe.Now().Sub(ts) >= maxAge
+}
+
+// lastActiveAt returns the best liveness timestamp: LastHeartbeatAt if set,
+// otherwise UpdatedAt.
+func lastActiveAt(record model.IssueOpsRecord) string {
+	s := strings.TrimSpace(record.LastHeartbeatAt)
+	if s != "" {
+		return s
+	}
+	return strings.TrimSpace(record.UpdatedAt)
 }
 
 func parseTime(s string) time.Time {

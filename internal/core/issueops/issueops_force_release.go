@@ -22,8 +22,8 @@ func ForceReleaseIssueOps(stateRoot, id, reason string) (IssueOpsRecord, error) 
 // across re-read+classify+release to close the TOCTOU window).
 func forceReleaseLocked(stateRoot, id, reason string) (IssueOpsRecord, error) {
 	reason = strings.TrimSpace(reason)
-	if reason == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("force-release requires a reason")
+	if len(reason) < 10 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("force-release reason must be at least 10 characters")
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {

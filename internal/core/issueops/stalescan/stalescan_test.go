@@ -31,14 +31,17 @@ func TestClassifyConfirmedStaleWhenWorktreeDeleted(t *testing.T) {
 	}
 }
 
-func TestClassifyConfirmedStaleWhenWorktreeBranchMismatch(t *testing.T) {
+func TestClassifyNeedsReviewWhenWorktreeBranchMismatch(t *testing.T) {
 	p := baseProbe()
 	p.WorktreeHeadBranch = func(string) string { return "other-branch" }
 	rec := model.IssueOpsRecord{ID: "io-1", Branch: "1-x", Phase: model.IssueOpsPhaseImplement, WorktreePath: "/wt"}
 
 	f, ok := Classify(rec, p, 14*24*time.Hour)
-	if !ok || f.Category != CategoryConfirmedStale || !slices.Contains(f.Reasons, "worktree_branch_mismatch") {
-		t.Fatalf("reused worktree should be confirmed-stale, got %+v ok=%v", f, ok)
+	if !ok || f.Category != CategoryNeedsReview || f.Releasable {
+		t.Fatalf("branch-mismatch worktree should be needs-review and NOT releasable, got %+v ok=%v", f, ok)
+	}
+	if !slices.Contains(f.Reasons, "worktree_branch_mismatch") {
+		t.Fatalf("expected worktree_branch_mismatch reason, got %v", f.Reasons)
 	}
 }
 

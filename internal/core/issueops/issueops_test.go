@@ -395,3 +395,38 @@ func TestForceReleaseDoesNotSyncDeleteWorktree(t *testing.T) {
 		t.Fatalf("force-release must NOT sync-delete worktree dir: sentinel file missing: %v", err)
 	}
 }
+
+func TestForceReleaseRejectsShortReason(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	repo := t.TempDir()
+	worktreeDir := makeIssueOpsWorktreeDirForTest(t, repo, "15-fr-short-reason")
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "15-fr-short-reason"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/15")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(IssueOpsStateRoot(), record.ID, IssueOpsBranchPrepareRequest{
+		Provider: "github", IssueURL: record.IssueURL,
+		Branch: "15-fr-short-reason", BaseBranch: "main", LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsWorktree(IssueOpsStateRoot(), record.ID, worktreeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ForceReleaseIssueOps(IssueOpsStateRoot(), record.ID, "short")
+	if err == nil {
+		t.Fatalf("force-release with short reason must be rejected")
+	}
+	if !strings.Contains(err.Error(), "at least 10 characters") {
+		t.Fatalf("expected 'at least 10 characters' error, got: %v", err)
+	}
+}
+
