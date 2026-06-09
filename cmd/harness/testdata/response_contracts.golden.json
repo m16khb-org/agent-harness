@@ -1051,6 +1051,13 @@
       "ok": true,
       "skills": [
         {
+          "description": "Strategic planning consultant that produces decision-complete work plans through codebase exploration, Socratic interview, gap analysis, and self-review. Named after Archimedes — \"Give me a lever and I will move the world.\" This skill finds the strategic leverage point before committing to execution. Use when the task has 5+ steps, scope is ambiguous, multiple modules are involved, or the user asks for a plan.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "archimedes",
+          "path": "$HARNESS_ROOT/skills/archimedes"
+        },
+        {
           "description": "Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -1098,6 +1105,20 @@
           "has_skill_md": true,
           "name": "stability-audit",
           "path": "$HARNESS_ROOT/skills/stability-audit"
+        },
+        {
+          "description": "Evidence-bound execution loop that decomposes goals into measurable criteria, delegates to right-sized workers, verifies every claim with observable evidence across 4 QA channels (HTTP/tmux/browser/computer-use), and tracks quantitative efficiency metrics. Named after Alan Turing — 'A computation is only valid if it can be verified.' Use when the user asks for verified delivery, turing loop, evidence-led execution, or durable goal tracking.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "turing",
+          "path": "$HARNESS_ROOT/skills/turing"
+        },
+        {
+          "description": "Multi-agent orchestration engine that decomposes work into parallel execution waves, dispatches right-sized agents, tracks quantitative efficiency metrics, and enforces adversarial verification gates. Named after John von Neumann — architect of the stored-program computer and parallel processing theory. Use for complex multi-file work requiring parallel decomposition, or when the user invokes von-neumann orchestration.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "von-neumann",
+          "path": "$HARNESS_ROOT/skills/von-neumann"
         },
         {
           "description": "Codex-only dynamic workflow execution with batched subagents. Use when the user says workflows, dynamic workflows, run a workflow, use a workflow, fan out agents, launch subagents, coordinate parallel agents, perform a broad audit/migration/research sweep, or asks for Claude Code dynamic workflows behavior in Codex.",
@@ -2980,6 +3001,7 @@
         "has_self_verify_cli": true,
         "has_worker_mvp": true,
         "skills": [
+          "archimedes",
           "atomic-commit-push",
           "draft-wiki-promoter",
           "issueops",
@@ -2987,6 +3009,8 @@
           "self-augment",
           "self-verify",
           "stability-audit",
+          "turing",
+          "von-neumann",
           "workflows"
         ]
       },
@@ -5230,6 +5254,13 @@
             "ok": true,
             "skills": [
               {
+                "description": "Strategic planning consultant that produces decision-complete work plans through codebase exploration, Socratic interview, gap analysis, and self-review. Named after Archimedes — \"Give me a lever and I will move the world.\" This skill finds the strategic leverage point before committing to execution. Use when the task has 5+ steps, scope is ambiguous, multiple modules are involved, or the user asks for a plan.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "archimedes",
+                "path": "$HARNESS_ROOT/skills/archimedes"
+              },
+              {
                 "description": "Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -5277,6 +5308,20 @@
                 "has_skill_md": true,
                 "name": "stability-audit",
                 "path": "$HARNESS_ROOT/skills/stability-audit"
+              },
+              {
+                "description": "Evidence-bound execution loop that decomposes goals into measurable criteria, delegates to right-sized workers, verifies every claim with observable evidence across 4 QA channels (HTTP/tmux/browser/computer-use), and tracks quantitative efficiency metrics. Named after Alan Turing — 'A computation is only valid if it can be verified.' Use when the user asks for verified delivery, turing loop, evidence-led execution, or durable goal tracking.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "turing",
+                "path": "$HARNESS_ROOT/skills/turing"
+              },
+              {
+                "description": "Multi-agent orchestration engine that decomposes work into parallel execution waves, dispatches right-sized agents, tracks quantitative efficiency metrics, and enforces adversarial verification gates. Named after John von Neumann — architect of the stored-program computer and parallel processing theory. Use for complex multi-file work requiring parallel decomposition, or when the user invokes von-neumann orchestration.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "von-neumann",
+                "path": "$HARNESS_ROOT/skills/von-neumann"
               },
               {
                 "description": "Codex-only dynamic workflow execution with batched subagents. Use when the user says workflows, dynamic workflows, run a workflow, use a workflow, fan out agents, launch subagents, coordinate parallel agents, perform a broad audit/migration/research sweep, or asks for Claude Code dynamic workflows behavior in Codex.",
@@ -6570,6 +6615,7 @@
               "has_self_verify_cli": true,
               "has_worker_mvp": true,
               "skills": [
+                "archimedes",
                 "atomic-commit-push",
                 "draft-wiki-promoter",
                 "issueops",
@@ -6577,6 +6623,8 @@
                 "self-augment",
                 "self-verify",
                 "stability-audit",
+                "turing",
+                "von-neumann",
                 "workflows"
               ]
             },
