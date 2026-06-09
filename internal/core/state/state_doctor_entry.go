@@ -40,7 +40,7 @@ func inspectStateDoctorEntry(path string, entry os.DirEntry) (stateDoctorEntryIn
 
 func isHarnessOwnedStateDirectory(name string) bool {
 	switch name {
-	case "projects", "daemon", "worker", "issueops", "issueops-benchmarks":
+	case "projects", "daemon", "worker", "issueops", "issueops-benchmarks", "audit":
 		return true
 	default:
 		return false
