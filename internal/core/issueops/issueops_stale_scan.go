@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -14,18 +15,20 @@ import (
 )
 
 type IssueOpsStaleScanRequest struct {
-	Repo   string
-	MaxAge time.Duration
-	Apply  bool
+	Repo         string
+	MaxAge       time.Duration
+	Apply        bool
+	PruneDoneAge time.Duration // if > 0 and Apply is set, prune done cycles older than this
 }
 
 type IssueOpsStaleScanResult struct {
-	OK       bool                `json:"ok"`
-	Repo     string              `json:"repo"`
-	Applied  bool                `json:"applied"`
-	Findings []stalescan.Finding `json:"findings"`
-	Released []string            `json:"released,omitempty"`
-	Errors   []string            `json:"errors,omitempty"`
+	OK         bool                `json:"ok"`
+	Repo       string              `json:"repo"`
+	Applied    bool                `json:"applied"`
+	Findings   []stalescan.Finding `json:"findings"`
+	Released   []string            `json:"released,omitempty"`
+	Errors     []string            `json:"errors,omitempty"`
+	PrunedDone int                 `json:"pruned_done,omitempty"`
 }
 
 // ScanStaleIssueOpsCycles classifies every non-done cycle for the repo with
@@ -86,6 +89,12 @@ func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResu
 	if req.Apply && len(result.Released) > 0 {
 		issueOpsGitWorktreeCleanup(repo, &result)
 	}
+	// Prune done cycles older than PruneDoneAge when --apply is set. This
+	// removes old JSON + lock files for cycles that have already reached the
+	// done phase and are past the retention threshold.
+	if req.Apply && req.PruneDoneAge > 0 {
+		pruneDoneCycles(repo, req.PruneDoneAge, &result)
+	}
 	return result
 }
 
@@ -123,6 +132,67 @@ func issueOpsGitWorktreeCleanup(repo string, result *IssueOpsStaleScanResult) {
 			result.Errors = append(result.Errors, "git worktree remove "+orphan+": "+stderr)
 		}
 	}
+	// Clean orphaned .lock files that have no corresponding .json cycle file.
+	// These accumulate when a lock file was created (O_CREATE) but the cycle was
+	// deleted or never written, leaving a stale lock file with no guarding cycle.
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".lock") {
+			continue
+		}
+		id := strings.TrimSuffix(entry.Name(), ".lock")
+		jsonPath := filepath.Join(stateRoot, id+".json")
+		if _, err := os.Stat(jsonPath); os.IsNotExist(err) {
+			os.Remove(filepath.Join(stateRoot, entry.Name()))
+		}
+	}
+}
+
+// pruneDoneCycles removes done-cycle JSON and lock files older than maxAge for
+// the given repo. This is only called from the off-hot-path stale scan with
+// --apply and --prune-done set.
+func pruneDoneCycles(repo string, maxAge time.Duration, result *IssueOpsStaleScanResult) {
+	stateRoot := IssueOpsStateRoot()
+	entries, err := os.ReadDir(stateRoot)
+	if err != nil {
+		result.Errors = append(result.Errors, "prune-done read state dir: "+err.Error())
+		return
+	}
+	now := time.Now()
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		id := strings.TrimSuffix(entry.Name(), ".json")
+		record, err := ReadIssueOps(stateRoot, id)
+		if err != nil || record.Repo != repo || record.Phase != IssueOpsPhaseDone {
+			continue
+		}
+		ts := parseIssueOpsTime(record.UpdatedAt)
+		if ts.IsZero() || now.Sub(ts) < maxAge {
+			continue
+		}
+		jsonPath := filepath.Join(stateRoot, entry.Name())
+		lockPath := filepath.Join(stateRoot, id+".lock")
+		os.Remove(jsonPath)
+		os.Remove(lockPath)
+		result.PrunedDone++
+	}
+}
+
+// parseIssueOpsTime parses an RFC 3339 timestamp string, trying nano then
+// second precision. Returns the zero time on failure.
+func parseIssueOpsTime(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t
+	}
+	return time.Time{}
 }
 
 // issueOpsRemoteBranchExists reports whether the cycle's remote branch still

@@ -168,6 +168,38 @@ func runIssueOps(args []string) error {
 		}
 		record, err := core.ForceReleaseIssueOps(core.IssueOpsStateRoot(), *id, *reason)
 		return printIssueOpsResult(record, *jsonOut, err)
+	case "resume":
+		fs := flag.NewFlagSet("issueops resume", flag.ContinueOnError)
+		repo := fs.String("repo", "", "repository path")
+		bind := fs.Bool("bind", false, "bind the session to the resumed cycle")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		result := core.IssueOpsResume(*repo)
+		if *bind && result.OK && result.Bound {
+			if err := core.BindIssueOpsSession(*repo, result.CycleID, result.Branch, result.WorktreePath); err != nil {
+				return printIssueOpsResult(core.IssueOpsRecord{OK: false}, *jsonOut, fmt.Errorf("resume bind: %w", err))
+			}
+		}
+		if *jsonOut {
+			return printJSON(result)
+		}
+		if !result.OK {
+			return fmt.Errorf("no active IssueOps cycle to resume")
+		}
+		if result.Bound {
+			fmt.Printf("bound: %s %s %s\nworktree: %s\nbranch: %s\n",
+				result.CycleID, result.Phase, result.Repo, result.WorktreePath, result.Branch)
+			if result.Readiness != nil && !result.Readiness.Ready {
+				fmt.Printf("readiness: not ready\nmissing: %s\n", strings.Join(result.Readiness.Missing, ", "))
+			} else {
+				fmt.Printf("readiness: ready\n")
+			}
+		} else {
+			fmt.Printf("not bound. suggested cycles: %s\n", strings.Join(result.SuggestedCycles, ", "))
+		}
+		return nil
 	case "decision":
 		return runIssueOpsDecision(args[1:])
 	default:
@@ -226,14 +258,23 @@ func runIssueOpsCleanupStale(args []string) error {
 	repo := fs.String("repo", "", "source repository path")
 	maxAgeDays := fs.Int("max-age", 14, "age in days after which an idle non-done cycle is flagged needs-review")
 	apply := fs.Bool("apply", false, "force-release confirmed-stale and likely-done cycles (default: report only)")
+	pruneDone := fs.String("prune-done", "720h", "prune done cycles older than this duration (e.g. 720h for 30 days); only with --apply")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
+	pruneDoneAge, err := time.ParseDuration(*pruneDone)
+	if err != nil {
+		return fmt.Errorf("invalid --prune-done duration %q: %w", *pruneDone, err)
+	}
+	if pruneDoneAge < 0 {
+		return fmt.Errorf("--prune-done must be non-negative, got %s", *pruneDone)
+	}
 	result := core.ScanStaleIssueOpsCycles(core.IssueOpsStaleScanRequest{
-		Repo:   *repo,
-		MaxAge: time.Duration(*maxAgeDays) * 24 * time.Hour,
-		Apply:  *apply,
+		Repo:         *repo,
+		MaxAge:       time.Duration(*maxAgeDays) * 24 * time.Hour,
+		Apply:        *apply,
+		PruneDoneAge: pruneDoneAge,
 	})
 	if *jsonOut {
 		return printJSON(result)
@@ -241,7 +282,7 @@ func runIssueOpsCleanupStale(args []string) error {
 	if !result.OK {
 		return fmt.Errorf("issueops: %s", strings.Join(result.Errors, "; "))
 	}
-	if len(result.Findings) == 0 {
+	if len(result.Findings) == 0 && result.PrunedDone == 0 {
 		fmt.Printf("No stale IssueOps cycles for %s\n", result.Repo)
 		return nil
 	}
@@ -253,6 +294,9 @@ func runIssueOpsCleanupStale(args []string) error {
 		fmt.Printf("Released %d cycle(s): %s\n", len(result.Released), strings.Join(result.Released, ", "))
 	} else {
 		fmt.Println("Dry run (report only). Re-run with --apply to force-release confirmed-stale/likely-done cycles.")
+	}
+	if result.PrunedDone > 0 {
+		fmt.Printf("Pruned %d done cycle(s)\n", result.PrunedDone)
 	}
 	if len(result.Errors) > 0 {
 		fmt.Printf("Errors: %s\n", strings.Join(result.Errors, "; "))
