@@ -245,6 +245,17 @@ Manual builds, smoke tests, and ad-hoc verification runs can leave stale binarie
 - CI and automated scripts should prefer `mktemp -d` or Go `t.TempDir()` / `os.MkdirTemp` over hardcoded `/tmp/` paths.
 - Build scripts (`scripts/install-native.sh`) build to `$ROOT/bin/agent-harness`, not `/tmp`.
 
+## 21. Worktree guard has multiple block paths; stale worktrees need consistent liveness
+
+A single PreToolUse worktree-guard "fix" is rarely enough: the guard blocks through more than one path, and a record keyed only on (repo, branch) is treated as an active cycle even when its worktree was deleted. Verified 2026-06-09 via multi-session QA.
+
+주의:
+- Fixing only `CycleForBranch` did not clear a deleted-worktree deadlock — the block merely moved to `noCycleIssueOpsBranchNeedsWorktree`. Trace every block path (current-branch cycle, no-cycle issue-branch needs-worktree, linked-worktree cycles, MCP root guard) before claiming a deadlock is resolved. Add a reproduction test per path.
+- Liveness must be consistent across all readers. `CycleForBranch` (guard primary), `noCycleIssueOpsBranchNeedsWorktree`, and `LinkedWorktreeCyclesForRepo` must agree on "worktree present-but-deleted = inactive"; an empty `worktree_path` is a distinct not-yet-linked state and must NOT be treated as deleted.
+- A stale-cycle block message must name a working escape. `issueops phase --to done` and `--to done --force` both require `pr` phase, so "mark the stale cycle done" was a dead end; only `issueops force-release --id <id> --reason <why>` releases a non-pr cycle. Keep the guard message and the actual escape command in sync (pin it with a test).
+- Resetting a stale cycle on restart must exclude phases whose work product is external. `Start` reset is gated to `implement`/`ai-slop-clean`/`feedback` (worktree IS the work product); a `pr`-phase cycle with a deleted worktree resumes instead, because its issue/PR/remote-artifact linkage lives remotely and would be destroyed by a blank reset. Always preserve recovery anchors (`issue_url`/`issue_links`) and stamp audit fields (`stale_reset_at`/`stale_reset_prior_phase`).
+- Stale cleanup belongs off the hot path. The `issueops cleanup stale` CLI / `issueops_cleanup_stale` MCP tool may consult git/remote for multi-signal classification (confirmed-stale / likely-done / needs-review); do NOT add git/remote calls to the PreToolUse guard itself. `needs-review` (age-only) is never auto-released; only `confirmed-stale` and `likely-done` are releasable under `--apply`.
+
 ## Incident Archive
 
 Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents.md`. Keep this file focused on evergreen hazards and move one-off history there.
