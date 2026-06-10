@@ -160,6 +160,40 @@ func TestRunHookUserPromptClearsSuppressedNextActionRelay(t *testing.T) {
 	}
 }
 
+func TestRunHookUserPromptDoesNotClearRelayForAutomatedGoalContinuation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := strings.Join([]string{
+		"자동진행하지 않습니다. 원격 MR 코멘트 게시는 사용자 확인이 필요합니다.",
+		"",
+		"선택지:",
+		"1. MR 코멘트로 검증 결과를 게시 (추천)",
+		"2. Draft 해제",
+		"3. 검증 워크트리 정리",
+	}, "\n")
+	first := runHookCapture(t, hookInputJSON(t, repo, "last_assistant_message", msg), func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if first["continue"] != true || first["decision"] != "block" {
+		t.Fatalf("expected first Stop hook call to relay next-action facts, got %+v", first)
+	}
+
+	continuationPrompt := strings.Join([]string{
+		"Continue working on the active goal.",
+		"The previous assistant response made a no-auto-proceed judgement.",
+		"Do not resume the same action without an explicit user choice.",
+	}, "\n")
+	runHookCapture(t, hookInputJSON(t, repo, "prompt", continuationPrompt), func() error {
+		return runHookUserPrompt(nil)
+	})
+	afterContinuation := runHookCapture(t, hookInputJSON(t, repo, "last_assistant_message", msg), func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if len(afterContinuation) != 0 {
+		t.Fatalf("automated goal continuation must not clear relay suppression, got %+v", afterContinuation)
+	}
+}
+
 func TestRunHookUserPromptDoesNotClearRelayForStopHookContinuationPrompt(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

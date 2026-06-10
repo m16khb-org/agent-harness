@@ -49,6 +49,47 @@ func IsStopContinuation(prompt string) bool {
 		strings.Contains(trimmed, "훅이 관찰한 근거")
 }
 
+func IsExplicitNextActionInstruction(prompt string) bool {
+	trimmed := strings.TrimSpace(prompt)
+	if trimmed == "" || IsStopContinuation(trimmed) {
+		return false
+	}
+	lower := strings.ToLower(trimmed)
+	if strings.Contains(lower, "active goal") ||
+		strings.Contains(lower, "goal continuation") ||
+		strings.Contains(lower, "no-auto-proceed judgement") ||
+		strings.Contains(lower, "without an explicit user choice") {
+		return false
+	}
+	for _, phrase := range []string{
+		"계속",
+		"진행",
+		"해줘",
+		"해주세요",
+		"실행",
+		"게시",
+		"정리",
+		"draft 해제",
+		"merge",
+		"post",
+		"comment",
+		"proceed",
+		"continue",
+		"go ahead",
+		"do it",
+	} {
+		if strings.Contains(lower, phrase) {
+			return true
+		}
+	}
+	for _, prefix := range []string{"1", "1.", "1번", "2", "2.", "2번", "3", "3.", "3번"} {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func hasNextActionSection(prompt string) bool {
 	for _, line := range strings.Split(strings.ReplaceAll(prompt, "\r\n", "\n"), "\n") {
 		trimmed := strings.TrimSpace(line)

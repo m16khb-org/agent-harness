@@ -34,7 +34,7 @@ func runHookUserPrompt(args []string) error {
 	if repo == "" {
 		repo = ResolveTarget("")
 	}
-	if !hookprompt.IsStopContinuation(prompt) {
+	if hookprompt.IsExplicitNextActionInstruction(prompt) {
 		core.ClearStopNextActionRelay(repo)
 	}
 	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo, EnableAgyHints: *enableAgyHints || hookenv.Bool("HARNESS_ENABLE_AGY_HINTS")})

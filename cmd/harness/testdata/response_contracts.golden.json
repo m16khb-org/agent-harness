@@ -529,7 +529,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 20944,
+          "bytes": 23396,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -541,6 +541,10 @@
             "6. Command / policy model",
             "7. Codex / Claude integration map",
             "8. 변경 체크리스트",
+            "9. Pioneer Skills Layer",
+            "스킬 목록과 IssueOps 연동",
+            "Cross-reference mesh",
+            "설계 원칙",
             "LLM Wiki 정책",
             "바퀴를 재발명하지 않는 companion tool 정책",
             "MCP tool design guidance",
@@ -551,7 +555,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 27819,
+          "bytes": 28313,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -757,12 +761,13 @@
           "title": "Sub-Agent Usage Patterns"
         },
         {
-          "bytes": 8212,
+          "bytes": 9825,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
             "2. 런타임 / 패키지 관리",
             "2.1 Upstream companion dependencies",
+            "2.2 Project pioneer skills",
             "3. 예상 라이브러리 후보",
             "4. 예정 명령어",
             "5. 주요 설정/상태 위치",
@@ -906,6 +911,34 @@
           "title": "Verification Operations"
         },
         {
+          "bytes": 13930,
+          "headings": [
+            "Pioneer Skill Documentation Audit \u0026 Update",
+            "TL;DR",
+            "Context",
+            "Original Request",
+            "Interview Summary",
+            "Gap Analysis",
+            "Work Objectives",
+            "Core Objective",
+            "Deliverables",
+            "Definition of Done",
+            "Expected: \u003e0 matches for at least 3 skill names",
+            "Expected: \u003e0 matches for at least 3 skill names",
+            "Expected: no hardcoded language assumptions (0 matches for implementation-context mentions)",
+            "Must Have",
+            "Must NOT Have",
+            "Verification Strategy",
+            "Execution Strategy",
+            "Parallel Execution Waves",
+            "Dependency Matrix",
+            "TODOs"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+          "rel_path": ".agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+          "title": "Pioneer Skill Documentation Audit \u0026 Update"
+        },
+        {
           "bytes": 16284,
           "headings": [
             "Claude Shannon — Signal-to-Noise Quality Gate",
@@ -960,6 +993,26 @@
           "path": "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
           "rel_path": ".agent-harness/plans/von-neumann-quality-upgrade.md",
           "title": "Von Neumann Quality Upgrade"
+        },
+        {
+          "bytes": 5789,
+          "headings": [
+            "Research: Pioneer Skill Design Pattern Audit",
+            "TL;DR",
+            "Method",
+            "Findings",
+            "1. Namesake-Specialist Pattern is Effective",
+            "2. archimedes Successfully Replaced by von-neumann (Corrected 2026-06-10)",
+            "3. Cross-Reference Mesh Follows Hub-and-Spoke Pattern",
+            "4. Language/Tech Agnosticism Needs Ongoing Vigilance",
+            "5. Documentation Gaps Identified",
+            "Cross-Check Results",
+            "Open Questions",
+            "Source Index"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
+          "rel_path": ".agent-harness/research/pioneer-skill-audit.md",
+          "title": "Research: Pioneer Skill Design Pattern Audit"
         },
         {
           "bytes": 13266,
@@ -1111,8 +1164,10 @@
         "$HARNESS_ROOT/.agent-harness/operations/install.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+        "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+        "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
         "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -3114,7 +3169,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 30,
+        "docs_indexed": 32,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -4866,7 +4921,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 20944,
+                "bytes": 23396,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -4878,6 +4933,10 @@
                   "6. Command / policy model",
                   "7. Codex / Claude integration map",
                   "8. 변경 체크리스트",
+                  "9. Pioneer Skills Layer",
+                  "스킬 목록과 IssueOps 연동",
+                  "Cross-reference mesh",
+                  "설계 원칙",
                   "LLM Wiki 정책",
                   "바퀴를 재발명하지 않는 companion tool 정책",
                   "MCP tool design guidance",
@@ -4888,7 +4947,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 27819,
+                "bytes": 28313,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -5094,12 +5153,13 @@
                 "title": "Sub-Agent Usage Patterns"
               },
               {
-                "bytes": 8212,
+                "bytes": 9825,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
                   "2. 런타임 / 패키지 관리",
                   "2.1 Upstream companion dependencies",
+                  "2.2 Project pioneer skills",
                   "3. 예상 라이브러리 후보",
                   "4. 예정 명령어",
                   "5. 주요 설정/상태 위치",
@@ -5243,6 +5303,34 @@
                 "title": "Verification Operations"
               },
               {
+                "bytes": 13930,
+                "headings": [
+                  "Pioneer Skill Documentation Audit \u0026 Update",
+                  "TL;DR",
+                  "Context",
+                  "Original Request",
+                  "Interview Summary",
+                  "Gap Analysis",
+                  "Work Objectives",
+                  "Core Objective",
+                  "Deliverables",
+                  "Definition of Done",
+                  "Expected: \u003e0 matches for at least 3 skill names",
+                  "Expected: \u003e0 matches for at least 3 skill names",
+                  "Expected: no hardcoded language assumptions (0 matches for implementation-context mentions)",
+                  "Must Have",
+                  "Must NOT Have",
+                  "Verification Strategy",
+                  "Execution Strategy",
+                  "Parallel Execution Waves",
+                  "Dependency Matrix",
+                  "TODOs"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+                "rel_path": ".agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+                "title": "Pioneer Skill Documentation Audit \u0026 Update"
+              },
+              {
                 "bytes": 16284,
                 "headings": [
                   "Claude Shannon — Signal-to-Noise Quality Gate",
@@ -5297,6 +5385,26 @@
                 "path": "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
                 "rel_path": ".agent-harness/plans/von-neumann-quality-upgrade.md",
                 "title": "Von Neumann Quality Upgrade"
+              },
+              {
+                "bytes": 5789,
+                "headings": [
+                  "Research: Pioneer Skill Design Pattern Audit",
+                  "TL;DR",
+                  "Method",
+                  "Findings",
+                  "1. Namesake-Specialist Pattern is Effective",
+                  "2. archimedes Successfully Replaced by von-neumann (Corrected 2026-06-10)",
+                  "3. Cross-Reference Mesh Follows Hub-and-Spoke Pattern",
+                  "4. Language/Tech Agnosticism Needs Ongoing Vigilance",
+                  "5. Documentation Gaps Identified",
+                  "Cross-Check Results",
+                  "Open Questions",
+                  "Source Index"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
+                "rel_path": ".agent-harness/research/pioneer-skill-audit.md",
+                "title": "Research: Pioneer Skill Design Pattern Audit"
               },
               {
                 "bytes": 13266,
@@ -5455,8 +5563,10 @@
               "$HARNESS_ROOT/.agent-harness/operations/install.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+              "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+              "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
               "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -6869,7 +6979,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 30,
+              "docs_indexed": 32,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
