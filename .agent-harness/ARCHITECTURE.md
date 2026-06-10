@@ -216,6 +216,40 @@ Draft wiki staging:
 - shared skill 변경: `skills/<name>` 원본과 user-level host skill 연결(`~/.codex/skills`, `~/.claude/skills`)이 같은 대상을 가리키는지 확인한다. repo-local skill link는 기본 설치에 포함하지 않는다.
 - state 위치 변경: migration/backward compatibility와 cleanup 전략을 문서화한다.
 
+
+## 9. Pioneer Skills Layer
+
+agent-harness는 10개의 pioneer skill을 `skills/` 디렉토리에 단일 진실 원천(single source of truth)으로 관리한다. 각 스킬은 컴퓨터 과학 선구자의 이름을 따서 명명되었으며, 그 선구자의 핵심 통찰을 설계 철학으로 삼는다. 자세한 namesake 설명은 `README.md`의 "Skills & Their Namesakes" 표를 참조한다.
+
+### 스킬 목록과 IssueOps 연동
+
+| 스킬 | 역할 | IssueOps phase |
+|------|------|---------------|
+| `von-neumann` | Strategic Planning — decision-complete 계획 수립 | problem, grill, issue, plan |
+| `turing` | Evidence-Bound Execution — 증거 기반 목표 실행 | implement, ai-slop-clean, feedback, pr, cleanup |
+| `berners-lee` | Web Research — 출처 인용 다중 소스 조사 | grill, issue, feedback |
+| `codd` | Database Design & Optimization — 정규화·인덱스·쿼리 최적화 | issue, plan, implement |
+| `dijkstra` | Algorithm Design & Complexity Optimization | plan, implement, ai-slop-clean |
+| `hopper` | Systematic Debugging — 7단계 과학적 디버깅 | implement, feedback |
+| `shannon` | Signal-to-Noise Quality Measurement | ai-slop-clean |
+| `karpathy` | Prompt Engineering & Optimization | plan, ai-slop-clean, pr |
+| `torvalds` | Git Operations — atomic commit, bisect, rebase, worktree | implement, pr, cleanup |
+| `issueops` | Issue-Driven Work Cycle Router — 8단계 phase 관리 | 전체 cycle orchestration |
+
+### Cross-reference mesh
+
+스킬 간 참조는 hub-and-spoke 토폴로지를 따른다:
+
+- **Hub**: `turing`(9개 스킬 참조), `issueops`(10개 스킬 참조)가 실행·조정 중심
+- **Spoke**: 전문 스킬들이 hub를 통해 간접 연결되며, 직접 cross-reference도 유지
+- 모든 스킬이 `## Relationship with Other Skills` 섹션과 `## IssueOps Integration` 섹션을 갖춤
+
+### 설계 원칙
+
+- **Language/tech agnostic**: 어떤 스킬도 특정 언어·프레임워크를 강제하지 않는다(6f31c55에서 검증 완료). 모든 언어별 예시는 여러 언어의 동등한 명령어를 나란히 제시한다.
+- **Namesake philosophy**: 각 스킬의 방법론은 그 이름이 된 과학자의 핵심 기여에서 파생된다(예: Codd → 정규화 이론, Dijkstra → 구조적 프로그래밍 + 최단 경로).
+- **Host-neutral**: 모든 스킬은 `skills/` 원본 하나로 Codex·Claude Code·Reasonix에서 동일하게 사용된다.
+
 ## LLM Wiki 정책
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
