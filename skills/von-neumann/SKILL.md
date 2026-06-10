@@ -453,3 +453,16 @@ When an IssueOps cycle exists (`agent-harness issueops status --json`):
 - Plan file exists, template filled, every task has References + Acceptance + QA + Commit, dependency matrix consistent: **DONE**.
 - Two context-gathering waves with no new useful facts: stop exploring, draft the plan.
 - Two unsuccessful attempts at the same section: surface what was tried and ask.
+
+## Relationship with Other Skills
+
+| Skill | How Von Neumann integrates |
+|-------|---------------------------|
+| **turing** | Von Neumann produces the decision-complete plan; Turing executes it. Plan TODOs become Turing goals. Parallel execution waves in the plan map to Turing's fan-out delegation for independent work. |
+| **hopper** | When debugging reveals an architectural root cause, Hopper delivers the diagnosis; Von Neumann plans the architectural fix. |
+| **dijkstra** | Dijkstra provides algorithmic design and complexity analysis; Von Neumann plans the implementation of the optimized algorithm. |
+| **codd** | Codd audits schema during planning phase; if normalization uncovers architectural issues, escalate to Von Neumann for planning. |
+| **berners-lee** | Berners-Lee researches external context during planning; findings feed into the domain grill, gap analysis, and plan decisions. |
+| **shannon** | Shannon measures code quality quantitatively (SNR/Entropy); Von Neumann's plans include Shannon gates in the verification strategy. |
+| **torvalds** | All plan files (`.agent-harness/plans/`) are committed atomically per Torvalds' protocols. |
+| **issueops** | Von Neumann plans map to IssueOps planning phase. Plan slugs derive from issue numbers. Plans are written inside the linked IssueOps worktree. |

@@ -1,9 +1,11 @@
 ---
 name: atomic-commit-push
-description: Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging.
+description: Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.
 ---
 
 # Atomic Commit Push
+
+> **Torvalds sub-skill.** Handles basic commit and push workflows. Advanced git operations belong to the parent **`torvalds`** skill (`skills/torvalds/SKILL.md`).
 
 ## Goal
 

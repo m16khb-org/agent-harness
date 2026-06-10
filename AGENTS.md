@@ -114,8 +114,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## 7. Working Contract
 
-- 이 저장소는 아직 애플리케이션 코드가 없는 초기 하네스 저장소다. 없는 소스 구조를 있다고 가정하지 않는다.
 - 핵심 동작은 host-specific plugin에 넣지 말고 Go core/port에 둔다.
+- **Sub-agent 사용 원칙:** 메인 에이전트가 직접 작업을 수행한다. Sub-agent는 12가지 검증된 net-positive 패턴(악마의 변호인, 대량 탐색, 병렬 독립 연구, 격리 작업 등 — `.agent-harness/SUB_AGENT_PATTERNS.md` 참조)에만 예외적으로 사용한다. 단일 파일 편집, 전체 컨텍스트가 필요한 작업, 교차 아키텍처 판단은 sub-agent로 위임하지 않는다.
 - Codex용 plugin/skill, Claude Code용 slash command/hook/MCP 설정은 core 호출을 위한 얇은 어댑터로 둔다.
 - 공용 스킬은 `skills/<skill-name>/`을 source of truth로 두고, 기본 설치는 사용자 홈의 Codex/Claude skill 경로만 연결한다. 적용 대상 레포에는 명시적 `--project-local` 없이는 파일을 쓰지 않는다.
 - 커밋 메시지는 `.agent-harness/COMMIT_POLICY.md`의 **Conventional Commit subject + Lore body** 형식을 따른다.

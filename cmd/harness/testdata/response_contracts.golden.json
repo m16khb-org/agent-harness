@@ -592,13 +592,19 @@
           "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
         },
         {
-          "bytes": 5751,
+          "bytes": 11387,
           "headings": [
             "프로젝트 헌법",
             "제0장: 문서 우선순위",
             "제1장: 언어 규칙",
             "제2장: 안전 / 정확성 우선",
+            "제2.5장: 사용자 요청 검증 원칙",
+            "검증 의무",
+            "거부 권리와 의무",
+            "맹신 금지 — 구체적 예시",
+            "확신도 표시 의무",
             "제3장: 아키텍처 원칙",
+            "Sub-Agent 사용 원칙",
             "제4장: 설계 3원칙",
             "KISS",
             "DRY",
@@ -721,6 +727,34 @@
           "path": "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
           "rel_path": ".agent-harness/PROJECT_AUDIT.md",
           "title": "Agent-Harness Whole-Project Audit"
+        },
+        {
+          "bytes": 10172,
+          "headings": [
+            "Sub-Agent Usage Patterns",
+            "근거 요약",
+            "현대 에이전트 방법론 수렴점 (2024-2026)",
+            "핵심 결론",
+            "12가지 Net-Positive Sub-Agent 패턴",
+            "Category A: 컨텍스트 오염 방지",
+            "1. 대량 탐색 (High-Volume Exploration)",
+            "2. 격리 작업 (Isolated Worktree Work)",
+            "3. Forked Context 탐색 (Forked Context Exploration)",
+            "Category B: 다른 관점 필요",
+            "4. 악마의 변호인 (Devil's Advocate / Adversarial Review)",
+            "5. 교차 검증 / 합의 (Cross-Verification / Consensus)",
+            "Category C: 병렬화 의미",
+            "6. 병렬 독립 탐색 (Parallel Independent Research)",
+            "7. 작업 분해·조정 (Task Fan-out with Coordination)",
+            "8. 장시간 백그라운드 작업 (Background Long-Running Work)",
+            "Category D: 다른 권한·모델 필요",
+            "9. 모델 특화 / 비용 라우팅 (Model Specialization / Cost Routing)",
+            "10. 도구·권한 제한 (Tool/Permission Gating)",
+            "11. 계획-실행 분리 (Plan-then-Execute Separation)"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/SUB_AGENT_PATTERNS.md",
+          "rel_path": ".agent-harness/SUB_AGENT_PATTERNS.md",
+          "title": "Sub-Agent Usage Patterns"
         },
         {
           "bytes": 8212,
@@ -872,6 +906,34 @@
           "title": "Verification Operations"
         },
         {
+          "bytes": 16284,
+          "headings": [
+            "Claude Shannon — Signal-to-Noise Quality Gate",
+            "TL;DR",
+            "Context",
+            "Original Request",
+            "Research Findings (oh-my-openagent + agent-harness + academic)",
+            "Gap Analysis (Shannon vs 기존 도구)",
+            "정보이론 → 코드 품질 매핑",
+            "Work Objectives",
+            "Core Objective",
+            "Deliverables",
+            "Definition of Done",
+            "Must Have",
+            "Must NOT Have",
+            "Shannon Skill Architecture",
+            "4-Phase Protocol",
+            "Turing Final Quality Gate 통합",
+            "IssueOps Phase Map 통합",
+            "Execution Strategy",
+            "Parallel Execution Waves",
+            "TODOs"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
+          "rel_path": ".agent-harness/plans/shannon-skill.md",
+          "title": "Claude Shannon — Signal-to-Noise Quality Gate"
+        },
+        {
           "bytes": 14883,
           "headings": [
             "Von Neumann Quality Upgrade",
@@ -900,7 +962,7 @@
           "title": "Von Neumann Quality Upgrade"
         },
         {
-          "bytes": 12987,
+          "bytes": 13266,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -1039,6 +1101,7 @@
         "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
         "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
         "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
+        "$HARNESS_ROOT/.agent-harness/SUB_AGENT_PATTERNS.md",
         "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
         "$HARNESS_ROOT/.agent-harness/TESTING.md",
         "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
@@ -1048,6 +1111,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/install.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+        "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
@@ -1080,11 +1144,32 @@
       "ok": true,
       "skills": [
         {
-          "description": "Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging.",
+          "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "atomic-commit-push",
           "path": "$HARNESS_ROOT/skills/atomic-commit-push"
+        },
+        {
+          "description": "Web research specialist that investigates questions through multi-angle parallel web searches, cross-references sources, filters unverified claims through adversarial review, and produces cited research reports. Named after Tim Berners-Lee — inventor of the World Wide Web, HTTP, HTML, and the URI. Each claim must link to its origin, just as every resource on the Web has a URL. Use when the user asks for research, information gathering, competitive analysis, literature survey, or to verify a technical claim across multiple sources.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "berners-lee",
+          "path": "$HARNESS_ROOT/skills/berners-lee"
+        },
+        {
+          "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \"A relational model of data for large shared data banks\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "codd",
+          "path": "$HARNESS_ROOT/skills/codd"
+        },
+        {
+          "description": "Algorithm design and complexity optimization specialist. Analyzes time/space complexity, selects optimal algorithms and data structures, reduces asymptotic complexity, and verifies correctness through formal invariants. Named after Edsger Dijkstra — author of the shortest-path algorithm (O(V+E log V)), pioneer of semaphores and concurrent algorithms, inventor of the Banker's algorithm for deadlock avoidance, and champion of formal program derivation. His core insight: \"The question of whether Machines Can Think is about as relevant as the question of whether Submarines Can Swim.\" Use when the user asks about algorithmic optimization, time/space complexity, data structure selection, graph algorithms, dynamic programming, or formal algorithm verification.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "dijkstra",
+          "path": "$HARNESS_ROOT/skills/dijkstra"
         },
         {
           "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into nvk/llm-wiki.",
@@ -1094,11 +1179,25 @@
           "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
         },
         {
+          "description": "Systematic debugging specialist that translates failure symptoms into root cause diagnoses through scientific-method isolation, bisect search, trace analysis, and LLM-assisted diagnosis. Named after Grace Hopper — inventor of the first compiler (A-0 System), originator of the term \"debugging\" (literally removing a moth from the Harvard Mark II), and pioneer of machine-independent programming (COBOL). Just as her compiler translated English into machine code, this skill translates failure outputs into root cause diagnoses. Use when reporting a bug, fixing a test failure, investigating a regression, or asking \"why is X broken?",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "hopper",
+          "path": "$HARNESS_ROOT/skills/hopper"
+        },
+        {
           "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, AI slop cleanup, feedback loops, and PR/MR drafting.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "issueops",
           "path": "$HARNESS_ROOT/skills/issueops"
+        },
+        {
+          "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \"Software 2.0\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \"the hottest new programming language is English\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "karpathy",
+          "path": "$HARNESS_ROOT/skills/karpathy"
         },
         {
           "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
@@ -1122,6 +1221,13 @@
           "path": "$HARNESS_ROOT/skills/self-verify"
         },
         {
+          "description": "Quantitative code quality measurement specialist. Measures signal-to-noise ratio (SNR), cyclomatic entropy, redundancy (AST-similar blocks), and channel overhead (boilerplate-to-logic ratio) — before and after every cleanup pass. Named after Claude Shannon — founder of information theory. Just as Shannon proved that every communication channel has a measurable capacity, every codebase has measurable quality dimensions. A SNR measurement is objective where \"looks cleaner\" is not. Use when measuring code quality before/after ai-slop-clean, establishing quality baselines, detecting quality regressions across commits, or setting quantitative PR quality gates.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "shannon",
+          "path": "$HARNESS_ROOT/skills/shannon"
+        },
+        {
           "description": "Run an exhaustive agent-harness stability audit from install/update through hooks, MCP, daemon, worker, state, process hygiene, memory-growth signals, stale sockets, zombie/orphan processes, and regression verification. Use when the user asks for E2E stability checks, full operational sweep, hook/MCP reliability, install verification, memory leak investigation, zombie process investigation, or “전수조사/안정성 점검”.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -1129,7 +1235,14 @@
           "path": "$HARNESS_ROOT/skills/stability-audit"
         },
         {
-          "description": "Evidence-bound execution loop that decomposes goals into measurable criteria, delegates to right-sized workers, verifies every claim with observable evidence across 4 QA channels (HTTP/tmux/browser/computer-use), and tracks quantitative efficiency metrics. Named after Alan Turing — 'A computation is only valid if it can be verified.' Use when the user asks for verified delivery, turing loop, evidence-led execution, or durable goal tracking.",
+          "description": "Git specialist for advanced version control operations — interactive rebase, bisect debugging, conflict resolution, history analysis and recovery, cherry-pick, reflog archaeology, and worktree management. Named after Linus Torvalds — creator of Git and Linux. Git's architecture is content-addressable: every object is checksummed, every state is recoverable. This skill never loses data and verifies every action. Use when the user asks for rebase, bisect, conflict resolution, history rewriting, branch archaeology, or any git operation beyond basic commit/push (which is handled by atomic-commit-push).",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "torvalds",
+          "path": "$HARNESS_ROOT/skills/torvalds"
+        },
+        {
+          "description": "Evidence-bound execution loop that decomposes goals into measurable criteria, performs implementation directly as the main agent, spawns sub-agents only for context-isolated work (exploration, adversarial review, parallel probes, isolated edits), verifies every claim with observable evidence across 4 QA channels (HTTP/tmux/browser/computer-use), and tracks quantitative efficiency metrics. Named after Alan Turing — 'A computation is only valid if it can be verified.' Use when the user asks for verified delivery, turing loop, evidence-led execution, or durable goal tracking.",
           "has_openai_yaml": false,
           "has_skill_md": true,
           "name": "turing",
@@ -3001,7 +3114,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 28,
+        "docs_indexed": 30,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -3024,12 +3137,19 @@
         "has_worker_mvp": true,
         "skills": [
           "atomic-commit-push",
+          "berners-lee",
+          "codd",
+          "dijkstra",
           "draft-wiki-promoter",
+          "hopper",
           "issueops",
+          "karpathy",
           "project-bootstrap",
           "self-augment",
           "self-verify",
+          "shannon",
           "stability-audit",
+          "torvalds",
           "turing",
           "von-neumann",
           "workflows"
@@ -4809,13 +4929,19 @@
                 "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
               },
               {
-                "bytes": 5751,
+                "bytes": 11387,
                 "headings": [
                   "프로젝트 헌법",
                   "제0장: 문서 우선순위",
                   "제1장: 언어 규칙",
                   "제2장: 안전 / 정확성 우선",
+                  "제2.5장: 사용자 요청 검증 원칙",
+                  "검증 의무",
+                  "거부 권리와 의무",
+                  "맹신 금지 — 구체적 예시",
+                  "확신도 표시 의무",
                   "제3장: 아키텍처 원칙",
+                  "Sub-Agent 사용 원칙",
                   "제4장: 설계 3원칙",
                   "KISS",
                   "DRY",
@@ -4938,6 +5064,34 @@
                 "path": "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
                 "rel_path": ".agent-harness/PROJECT_AUDIT.md",
                 "title": "Agent-Harness Whole-Project Audit"
+              },
+              {
+                "bytes": 10172,
+                "headings": [
+                  "Sub-Agent Usage Patterns",
+                  "근거 요약",
+                  "현대 에이전트 방법론 수렴점 (2024-2026)",
+                  "핵심 결론",
+                  "12가지 Net-Positive Sub-Agent 패턴",
+                  "Category A: 컨텍스트 오염 방지",
+                  "1. 대량 탐색 (High-Volume Exploration)",
+                  "2. 격리 작업 (Isolated Worktree Work)",
+                  "3. Forked Context 탐색 (Forked Context Exploration)",
+                  "Category B: 다른 관점 필요",
+                  "4. 악마의 변호인 (Devil's Advocate / Adversarial Review)",
+                  "5. 교차 검증 / 합의 (Cross-Verification / Consensus)",
+                  "Category C: 병렬화 의미",
+                  "6. 병렬 독립 탐색 (Parallel Independent Research)",
+                  "7. 작업 분해·조정 (Task Fan-out with Coordination)",
+                  "8. 장시간 백그라운드 작업 (Background Long-Running Work)",
+                  "Category D: 다른 권한·모델 필요",
+                  "9. 모델 특화 / 비용 라우팅 (Model Specialization / Cost Routing)",
+                  "10. 도구·권한 제한 (Tool/Permission Gating)",
+                  "11. 계획-실행 분리 (Plan-then-Execute Separation)"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/SUB_AGENT_PATTERNS.md",
+                "rel_path": ".agent-harness/SUB_AGENT_PATTERNS.md",
+                "title": "Sub-Agent Usage Patterns"
               },
               {
                 "bytes": 8212,
@@ -5089,6 +5243,34 @@
                 "title": "Verification Operations"
               },
               {
+                "bytes": 16284,
+                "headings": [
+                  "Claude Shannon — Signal-to-Noise Quality Gate",
+                  "TL;DR",
+                  "Context",
+                  "Original Request",
+                  "Research Findings (oh-my-openagent + agent-harness + academic)",
+                  "Gap Analysis (Shannon vs 기존 도구)",
+                  "정보이론 → 코드 품질 매핑",
+                  "Work Objectives",
+                  "Core Objective",
+                  "Deliverables",
+                  "Definition of Done",
+                  "Must Have",
+                  "Must NOT Have",
+                  "Shannon Skill Architecture",
+                  "4-Phase Protocol",
+                  "Turing Final Quality Gate 통합",
+                  "IssueOps Phase Map 통합",
+                  "Execution Strategy",
+                  "Parallel Execution Waves",
+                  "TODOs"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
+                "rel_path": ".agent-harness/plans/shannon-skill.md",
+                "title": "Claude Shannon — Signal-to-Noise Quality Gate"
+              },
+              {
                 "bytes": 14883,
                 "headings": [
                   "Von Neumann Quality Upgrade",
@@ -5117,7 +5299,7 @@
                 "title": "Von Neumann Quality Upgrade"
               },
               {
-                "bytes": 12987,
+                "bytes": 13266,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
@@ -5263,6 +5445,7 @@
               "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
               "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
               "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
+              "$HARNESS_ROOT/.agent-harness/SUB_AGENT_PATTERNS.md",
               "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
               "$HARNESS_ROOT/.agent-harness/TESTING.md",
               "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
@@ -5272,6 +5455,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/install.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+              "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
@@ -5304,11 +5488,32 @@
             "ok": true,
             "skills": [
               {
-                "description": "Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging.",
+                "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "atomic-commit-push",
                 "path": "$HARNESS_ROOT/skills/atomic-commit-push"
+              },
+              {
+                "description": "Web research specialist that investigates questions through multi-angle parallel web searches, cross-references sources, filters unverified claims through adversarial review, and produces cited research reports. Named after Tim Berners-Lee — inventor of the World Wide Web, HTTP, HTML, and the URI. Each claim must link to its origin, just as every resource on the Web has a URL. Use when the user asks for research, information gathering, competitive analysis, literature survey, or to verify a technical claim across multiple sources.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "berners-lee",
+                "path": "$HARNESS_ROOT/skills/berners-lee"
+              },
+              {
+                "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \"A relational model of data for large shared data banks\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "codd",
+                "path": "$HARNESS_ROOT/skills/codd"
+              },
+              {
+                "description": "Algorithm design and complexity optimization specialist. Analyzes time/space complexity, selects optimal algorithms and data structures, reduces asymptotic complexity, and verifies correctness through formal invariants. Named after Edsger Dijkstra — author of the shortest-path algorithm (O(V+E log V)), pioneer of semaphores and concurrent algorithms, inventor of the Banker's algorithm for deadlock avoidance, and champion of formal program derivation. His core insight: \"The question of whether Machines Can Think is about as relevant as the question of whether Submarines Can Swim.\" Use when the user asks about algorithmic optimization, time/space complexity, data structure selection, graph algorithms, dynamic programming, or formal algorithm verification.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "dijkstra",
+                "path": "$HARNESS_ROOT/skills/dijkstra"
               },
               {
                 "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into nvk/llm-wiki.",
@@ -5318,11 +5523,25 @@
                 "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
               },
               {
+                "description": "Systematic debugging specialist that translates failure symptoms into root cause diagnoses through scientific-method isolation, bisect search, trace analysis, and LLM-assisted diagnosis. Named after Grace Hopper — inventor of the first compiler (A-0 System), originator of the term \"debugging\" (literally removing a moth from the Harvard Mark II), and pioneer of machine-independent programming (COBOL). Just as her compiler translated English into machine code, this skill translates failure outputs into root cause diagnoses. Use when reporting a bug, fixing a test failure, investigating a regression, or asking \"why is X broken?",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "hopper",
+                "path": "$HARNESS_ROOT/skills/hopper"
+              },
+              {
                 "description": "Run an issue-driven work cycle from problem discovery through domain grilling, issue creation, planning, TDD/subagent implementation, AI slop cleanup, feedback loops, and PR/MR drafting.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "issueops",
                 "path": "$HARNESS_ROOT/skills/issueops"
+              },
+              {
+                "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \"Software 2.0\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \"the hottest new programming language is English\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "karpathy",
+                "path": "$HARNESS_ROOT/skills/karpathy"
               },
               {
                 "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
@@ -5346,6 +5565,13 @@
                 "path": "$HARNESS_ROOT/skills/self-verify"
               },
               {
+                "description": "Quantitative code quality measurement specialist. Measures signal-to-noise ratio (SNR), cyclomatic entropy, redundancy (AST-similar blocks), and channel overhead (boilerplate-to-logic ratio) — before and after every cleanup pass. Named after Claude Shannon — founder of information theory. Just as Shannon proved that every communication channel has a measurable capacity, every codebase has measurable quality dimensions. A SNR measurement is objective where \"looks cleaner\" is not. Use when measuring code quality before/after ai-slop-clean, establishing quality baselines, detecting quality regressions across commits, or setting quantitative PR quality gates.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "shannon",
+                "path": "$HARNESS_ROOT/skills/shannon"
+              },
+              {
                 "description": "Run an exhaustive agent-harness stability audit from install/update through hooks, MCP, daemon, worker, state, process hygiene, memory-growth signals, stale sockets, zombie/orphan processes, and regression verification. Use when the user asks for E2E stability checks, full operational sweep, hook/MCP reliability, install verification, memory leak investigation, zombie process investigation, or “전수조사/안정성 점검”.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -5353,7 +5579,14 @@
                 "path": "$HARNESS_ROOT/skills/stability-audit"
               },
               {
-                "description": "Evidence-bound execution loop that decomposes goals into measurable criteria, delegates to right-sized workers, verifies every claim with observable evidence across 4 QA channels (HTTP/tmux/browser/computer-use), and tracks quantitative efficiency metrics. Named after Alan Turing — 'A computation is only valid if it can be verified.' Use when the user asks for verified delivery, turing loop, evidence-led execution, or durable goal tracking.",
+                "description": "Git specialist for advanced version control operations — interactive rebase, bisect debugging, conflict resolution, history analysis and recovery, cherry-pick, reflog archaeology, and worktree management. Named after Linus Torvalds — creator of Git and Linux. Git's architecture is content-addressable: every object is checksummed, every state is recoverable. This skill never loses data and verifies every action. Use when the user asks for rebase, bisect, conflict resolution, history rewriting, branch archaeology, or any git operation beyond basic commit/push (which is handled by atomic-commit-push).",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "torvalds",
+                "path": "$HARNESS_ROOT/skills/torvalds"
+              },
+              {
+                "description": "Evidence-bound execution loop that decomposes goals into measurable criteria, performs implementation directly as the main agent, spawns sub-agents only for context-isolated work (exploration, adversarial review, parallel probes, isolated edits), verifies every claim with observable evidence across 4 QA channels (HTTP/tmux/browser/computer-use), and tracks quantitative efficiency metrics. Named after Alan Turing — 'A computation is only valid if it can be verified.' Use when the user asks for verified delivery, turing loop, evidence-led execution, or durable goal tracking.",
                 "has_openai_yaml": false,
                 "has_skill_md": true,
                 "name": "turing",
@@ -6636,7 +6869,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 28,
+              "docs_indexed": 30,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
@@ -6659,12 +6892,19 @@
               "has_worker_mvp": true,
               "skills": [
                 "atomic-commit-push",
+                "berners-lee",
+                "codd",
+                "dijkstra",
                 "draft-wiki-promoter",
+                "hopper",
                 "issueops",
+                "karpathy",
                 "project-bootstrap",
                 "self-augment",
                 "self-verify",
+                "shannon",
                 "stability-audit",
+                "torvalds",
                 "turing",
                 "von-neumann",
                 "workflows"

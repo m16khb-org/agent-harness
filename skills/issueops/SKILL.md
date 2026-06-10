@@ -21,26 +21,51 @@ Required phases:
 2. Domain grill: challenge terminology, existing domain model fit, and documentation updates before committing to an issue.
 3. Issue contract: before remote issue creation, run the issue-preflight gate in `references/issue-preflight.md`; record the raw user request, interpreted intent, success criteria, constraints, non-goals, and ambiguity ledger with `agent-harness issueops intent record`; then create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions.
 4. Plan: produce an issue-based implementation plan under the target repo's planning convention, then record the reviewed design, refactor boundary, risks, alternatives, and verification matrix with `agent-harness issueops design review`.
-5. Implementation: use TDD for behavior changes and subagents only for bounded independent work. Do not enter implementation until the IssueOps design review is approved and has no open questions.
+5. Implementation: the main agent performs TDD directly. Sub-agents are spawned only for context-isolated work matching the 12 net-positive patterns (`.agent-harness/SUB_AGENT_PATTERNS.md`). Optimize algorithmic complexity with **`dijkstra`**, design database schemas and indexes with **`codd`**, diagnose failures with **`hopper`**, manage git operations with **`torvalds`** and **`atomic-commit-push`**. Do not enter implementation until the IssueOps design review is approved and has no open questions.
 6. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
 7. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
 8. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
 
 ## Agent-Harness Phase Assist Map
 
-IssueOps phases are supported by three agent-harness native skills — no external plugin dependencies required. These replace the legacy LazyCodex/OMO mapping. Each skill works standalone or integrated; when an IssueOps cycle exists, state is persisted through `agent-harness` CLI/MCP.
+IssueOps phases are supported by 9 agent-harness native skills covering strategy, research, design, execution, debugging, optimization, git operations, quality measurement, and cleanup. Each skill works standalone or integrated; when an IssueOps cycle exists, state is persisted through `agent-harness` CLI/MCP. Skills form a pipeline from problem discovery through PR/MR completion:
+
+```
+problem → grill → issue → plan → implement → ai-slop-clean → feedback → pr → cleanup
+   │        │       │       │         │            │            │        │       │
+   ▼        ▼       ▼       ▼         ▼            ▼            ▼        ▼       ▼
+  von-    berners  von-    von-     turing      shannon      hopper   turing  torvalds
+ neumann  -lee   neumann neumann  dijkstra     (measure)    (diagnose)  (gate)  (cleanup)
+                    +codd   +codd   hopper     turing        turing   torvalds
+                   (schema)        torvalds   (cleanup)    (steering)  (commit)
+                                   (commit)
+```
 
 | IssueOps phase | Agent-harness assist |
 | --- | --- |
-| problem | Use **`von-neumann`** when the request spans multiple modules, has unclear scope, or needs a decision-complete plan. Von Neumann follows "Explore Before Asking" — it grounds itself in the actual codebase before interviewing the user. |
-| grill | Use **`von-neumann`** Phase 1 (Ground) for codebase exploration, pattern discovery, and brownfield detection. Use CodeGraph for structural call paths and impact analysis before creating the issue contract. |
-| issue | Run the issue-preflight deep-interview gate: use **`von-neumann`** Phase 2 (Interview + Clearance Checklist) to reduce ambiguity, rewrite the raw user request into an ideal issue prompt using repo-root `PROMPT.md`, and carry an ambiguity ledger with resolved/deferred/blocking entries. Keep remote writes in the IssueOps remote artifact gates. |
-| plan | Use **`von-neumann`** Phase 3 (Plan Generation) to produce a decision-complete plan at `.agent-harness/plans/<slug>.md`. Link it with `agent-harness issueops link-plan`. Von Neumann plans include a dependency matrix, parallel execution waves, and per-task QA scenarios — no implementation until the clearance checklist passes and the plan is complete. |
-| implement | Use **`turing`** for evidence-bound execution with RED→GREEN→SURFACE→CLEAN TDD, per-criterion Manual-QA across 4 channels (HTTP/tmux/browser/computer-use), and quantitative metrics (evidence coverage, rework rate, cycle efficiency). Delegate every code edit, test write, and QA to right-sized workers. For parallel wave execution when the Von Neumann plan has 5+ TODOs, use Turing's fan-out delegation with background workers — dispatch independent tasks in one turn, collect results, and integrate. |
-| ai-slop-clean | Use **`turing`** Final Quality Gate step 2 (AI slop clean + re-verify). Inspect the actual worktree diff for lazy agent artifacts, unsupported claims, generic prose, dead scaffolding, unnecessary abstractions, weak comments, and brittle shortcuts. Remove them or record why they are intentional before moving to `pr`. |
-| feedback | Use **`turing`** Dynamic Steering to record feedback as structured evidence. For contract-changing feedback, update the remote issue body before continuing. For review feedback, answer in the original thread with verdict, evidence, and next action. |
-| pr | Use **`turing`** Final Quality Gate: spawn a dedicated reviewer agent with the full diff, all success criteria, and all evidence. Run targeted verification, AI slop clean, re-verify, and reviewer check. The reviewer verdict is BINDING — unconditional approval only. Keep Korean remote artifact, label, assignee, and strict readiness checks in IssueOps. |
-| cleanup | Use **`turing`** cleanup receipt rules: every QA resource (PIDs, tmux sessions, browser contexts, ports, temp files) must be torn down with a recorded receipt. Keep merge evidence and worktree/branch cleanup decisions in `references/cleanup-state.md`. |
+| **problem** | Use **`von-neumann`** when the request spans multiple modules, has unclear scope, or needs a decision-complete plan. Von Neumann follows "Explore Before Asking" — it grounds itself in the actual codebase before interviewing the user. Classify the intent (Trivial/Standard/Refactoring/Architecture/Research) to determine interview depth. |
+| **grill** | Use **`von-neumann`** Phase 1 (Ground) for codebase exploration, pattern discovery, and brownfield detection. Use CodeGraph for structural call paths and impact analysis. Use **`berners-lee`** for external research: competitive analysis, library documentation comparisons, API reference discovery. Berners-Lee's Hyperlink Contract ensures every domain claim is cross-referenced against independent sources before the issue contract. Research reports are saved to `.agent-harness/research/<slug>.md`. |
+| **issue** | Run the issue-preflight deep-interview gate: use **`von-neumann`** Phase 2 (Interview + Clearance Checklist) to reduce ambiguity, rewrite the raw user request into an ideal issue prompt using repo-root `PROMPT.md`, and carry an ambiguity ledger with resolved/deferred/blocking entries. For database-heavy work, invoke **`codd`** Step 1 (SURVEY) to capture DDL, row counts, and access patterns — schema constraints become issue constraints. Keep remote writes in the IssueOps remote artifact gates. |
+| **plan** | Use **`von-neumann`** Phase 3 (Plan Generation) to produce a decision-complete plan at `.agent-harness/plans/<slug>.md`. Link it with `agent-harness issueops link-plan`. Von Neumann plans include a dependency matrix, parallel execution waves, and per-task QA scenarios. For database schema changes, invoke **`codd`** Step 2 (NORMALIZE) to audit tables against 1NF→BCNF; normalization violations become plan tasks. For algorithmic work, invoke **`dijkstra`** Step 1-2 (ANALYZE + CLASSIFY) to identify the problem class and optimal algorithm — complexity targets become plan acceptance criteria. No implementation until the clearance checklist passes and the design review is approved. |
+| **implement** | Use **`turing`** for evidence-bound execution: the main agent performs RED→GREEN→SURFACE→CLEAN TDD directly, drives Manual-QA across 4 channels (HTTP/tmux/browser/computer-use), and tracks quantitative metrics. Sub-agents only per the 12 net-positive patterns (`.agent-harness/SUB_AGENT_PATTERNS.md`). **`dijkstra`** optimizes algorithmic complexity (O(n²)→O(n log n)→O(n)) with benchmark evidence; every optimization must prove complexity class change via scaling tests. **`codd`** Step 3-4 (SCALE + INDEX) designs tables by expected row count and selects indexes with explicit write-penalty justification. **`hopper`** diagnoses test/debug failures via 7-step Hopper Method (REPRODUCE→TRANSLATE→ISOLATE→HYPOTHESIZE→VERIFY→FIX→LEARN). **`torvalds`** handles git operations: worktree creation, atomic commits per Conventional Commit + Lore format, and rebase/cherry-pick as needed. **`atomic-commit-push`** manages staged commits and push safety. |
+| **ai-slop-clean** | Use **`shannon`** Phase 0-1 (BASELINE + REGRESSION CHECK) to measure signal-to-noise ratio (SNR), entropy, and redundancy BEFORE cleanup. Use **`turing`** Final Quality Gate step 2 to remove lazy agent artifacts: obvious comments, dead scaffolding, over-defensive code, needless abstraction, duplication, oversized modules. Use **`dijkstra`** Step 5 (SIMPLIFY) for structural complexity reduction — replace deep nesting with guard clauses, eliminate modern GOTO patterns. Use **`shannon`** Phase 3 (GATE) to re-measure after cleanup and confirm SNR improved. Record before/after metrics as IssueOps evidence. |
+| **feedback** | Use **`turing`** Dynamic Steering to record feedback as structured evidence. For contract-changing feedback, update the remote issue body before continuing. For review feedback, answer in the original thread with verdict, evidence, and next action. Use **`hopper`** to diagnose reported bugs — reproduce the failure exactly, isolate the root cause, and deliver a verified diagnosis. Use **`berners-lee`** to research external root causes (upstream library bugs, known issues, changelog regressions). |
+| **pr** | Use **`turing`** Final Quality Gate: spawn an adversarial reviewer sub-agent (pattern #2: Devil's advocate) with the full diff, all success criteria, shannon metrics, and all evidence. Run targeted verification, AI slop clean, re-verify, and reviewer check. The reviewer verdict is BINDING — unconditional approval only. Use **`torvalds`** for rebase/squash before PR submission, ensuring commit history is clean and atomic. Keep Korean remote artifact, label, assignee, and strict readiness checks in IssueOps. |
+| **cleanup** | Use **`turing`** cleanup receipt rules: every QA resource (PIDs, tmux sessions, browser contexts, ports, temp files) must be torn down with a recorded receipt. Use **`torvalds`** for post-merge branch cleanup, worktree removal, and remote branch pruning per safety protocols (verify merged status before delete). Keep merge evidence and worktree/branch cleanup decisions in `references/cleanup-state.md`. |
+
+### Skill-by-Phase Reference
+
+| Skill | Phases involved | Role in IssueOps |
+|-------|----------------|------------------|
+| **von-neumann** | problem, grill, issue, plan | Strategic planning: intent classification, exploration, interview, decision-complete plan generation |
+| **berners-lee** | grill, issue, feedback | External research: parallel web searches, source cross-referencing, competitive analysis, library investigation |
+| **codd** | issue, plan, implement | Database design: schema survey, normalization audit, table sizing by row count, indexing, query optimization |
+| **dijkstra** | plan, implement, ai-slop-clean | Algorithm optimization: complexity analysis, optimal algorithm selection, O(n²)→O(n log n), structural simplification |
+| **hopper** | implement, feedback | Systematic debugging: reproduce, isolate, hypothesize, verify, fix, learn — 7-step method |
+| **turing** | implement, ai-slop-clean, feedback, pr, cleanup | Evidence-bound execution engine: RED→GREEN→SURFACE→CLEAN TDD, 4-channel QA, reviewer gate, metrics tracking |
+| **shannon** | ai-slop-clean | Quantitative quality measurement: SNR, entropy, redundancy — before/after metrics for ai-slop-clean gate |
+| **torvalds** | implement, pr, cleanup | Git operations: worktree, atomic commits, rebase, squash, post-merge cleanup, reflog recovery |
+| **atomic-commit-push** | implement, pr | Staged commits and push safety: preflight, scope, Conventional Commit + Lore format |
 
 ## Reference Map
 
@@ -50,9 +75,24 @@ Load these files only when the phase applies:
 - `references/issue-preflight.md`: deep-interview ambiguity reduction and `PROMPT.md`-based ideal issue prompt rewrite before remote issue creation.
 - `references/evidence-contract.md`: portable domain contract, API documentation, live evidence, review accountability, and completion hygiene rules.
 - `references/worktree-context.md`: branch/worktree contract, local config symlink rules, context routing.
-- `references/ai-slop-clean.md`: PR/MR-prep cleanup prompt for removing lazy agent residue while preserving behavior.
+- `references/ai-slop-clean.md`: PR/MR-prep cleanup prompt for removing lazy agent residue while preserving behavior. Run **`shannon`** SNR measurement before and after.
 - `references/review-feedback.md`: worker prompt requirements, bounded subagent review rules, remote review feedback replies and thread resolution.
 - `references/cleanup-state.md`: post-merge cleanup, state commands, benchmark commands, stop conditions.
+
+### Cross-Skill References
+
+Load from other skill directories when the phase involves specialized work:
+
+| Phase | Load from | For |
+|-------|-----------|-----|
+| grill, issue | `skills/berners-lee/references/report-template.md` | Authority classification, confidence levels for external research |
+| plan, implement | `skills/codd/SKILL.md` (Steps 2-4) | Normalization audit, index selection matrix, query optimization |
+| implement | `skills/dijkstra/SKILL.md` (Steps 1-5) | Problem classification table, optimization patterns, complexity cheatsheet |
+| implement | `skills/hopper/SKILL.md` (Steps 1-7) | Debugging patterns reference, isolation strategies |
+| implement, pr, cleanup | `skills/torvalds/references/rebase-protocol.md` | Pre-rebase checklist, conflict resolution |
+| implement, pr, cleanup | `skills/torvalds/references/bisect-protocol.md` | Bisect workflow, when NOT to use bisect |
+| ai-slop-clean | `.agent-harness/SUB_AGENT_PATTERNS.md` | 12 net-positive sub-agent patterns, net-negative patterns |
+| all phases | `.agent-harness/CONSTITUTION.md` (Sub-Agent 사용 원칙) | Sub-agent usage principles |
 
 ## Always-On Rules
 
@@ -76,7 +116,13 @@ Load these files only when the phase applies:
 - Remote artifact ownership: created issues and PRs/MRs must be assigned to the currently authenticated user when the provider supports assignment, and assignment must be verified before reporting readiness.
 - Remote issue source of truth: when feedback changes scope, acceptance criteria, non-goals, verification, labels, related links, or implementation contract, update the remote issue body before continuing.
 - Review thread accountability: remote review feedback must be answered in the original review thread/discussion with verdict, evidence, and next action; do not report feedback cleared until addressed threads are replied to, resolved when appropriate, and re-checked.
-- AI slop clean before PR/MR: after implementation and before PR/MR drafting, inspect the actual worktree diff for lazy agent artifacts, unsupported claims, generic prose, dead scaffolding, unnecessary abstractions, weak comments, and brittle shortcuts. Remove them or record why they are intentional before moving to `pr`.
+- AI slop clean before PR/MR: after implementation and before PR/MR drafting, inspect the actual worktree diff for lazy agent artifacts, unsupported claims, generic prose, dead scaffolding, unnecessary abstractions, weak comments, and brittle shortcuts. Remove them or record why they are intentional before moving to `pr`. Run **`shannon`** SNR measurement before and after cleanup; record before/after metrics as evidence.
+- Shannon gate before ai-slop-clean: measure baseline SNR, entropy, and redundancy before cleanup begins. Re-measure after cleanup; SNR must improve or the cleanup pass is incomplete. Record metrics in IssueOps evidence.
+- Dijkstra complexity gate: when implementation touches algorithmic code, profile before optimizing. Every optimization must include before/after benchmark evidence and complexity class confirmation via scaling tests (N=100→1000→10000). Record in commit messages and IssueOps evidence.
+- Codd schema gate: when implementation includes DDL changes, the schema must pass normalization audit (1NF→BCNF) or every denormalization must be explicitly justified with read:write ratio trade-off. Every new index must state its write penalty.
+- Hopper diagnosis protocol: when a test or bug report arrives, reproduce the failure before diagnosing. Apply the 7-step Hopper Method. Cap hypothesis cycles at 5. Record root cause diagnoses as IssueOps feedback.
+- Torvalds commit protocol: every commit must be atomic (one intent per commit). Use Conventional Commit + Lore body format per `.agent-harness/COMMIT_POLICY.md`. Never force-push shared branches. Always create a backup branch before history rewrite.
+- Berners-Lee research protocol: during grill and issue phases, external claims must cite sources with retrieval dates. Claims without ≥2 independent sources are flagged as single-sourced. Research reports are committed to `.agent-harness/research/`.
 - Completion hygiene: before reporting done, verify the final diff, target branch, remote issue/PR/MR prose freshness, single-commit or declared commit policy, and cleanup/worktree status.
 - External LLM wrapper: all IssueOps `agy -p` usage must go through the shared harness external LLM wrapper and remain read-only judgment.
 
