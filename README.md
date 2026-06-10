@@ -128,6 +128,24 @@ scripts/                  Installer, diagnostic, and smoke scripts
 bin/agent-harness         Locally built binary
 ```
 
+### Skills & Their Namesakes
+
+agent-harness's specialist skills are named after pioneers of computer science. Each namesake's defining contribution is mapped directly into the skill's design philosophy.
+
+| Skill | Namesake | Contribution | Why This Namesake |
+|-------|----------|-------------|-------------------|
+| **`von-neumann`** | John von Neumann (1903–1957) | Stored-program computer architecture — instructions and data share the same memory. A program is loaded once and executed without further thought. | The plan is the stored program for the implementer. Von Neumann finds the strategic leverage point and produces a decision-complete plan — loaded once, executed with zero judgment calls. |
+| **`turing`** | Alan Turing (1912–1954) | Proved that computation itself can be verified — a machine can decide whether a claim is true or false by observing its output. | Every success criterion must produce observable evidence from a real-usage scenario. Turing executes goals through measurable, evidence-bound steps; "tests pass" is never proof of completion. |
+| **`berners-lee`** | Sir Tim Berners-Lee (b. 1955) | Invented the World Wide Web, HTTP, HTML, and the URI. Information gains value through links — every document references others, every claim is traceable to its source. | Every research claim must link to its origin, just as every Web resource has a URL. Berners-Lee fans out parallel web searches, cross-references sources, filters unverified claims, and produces cited reports. |
+| **`hopper`** | Grace Hopper (1906–1992) | Invented the first compiler (A-0 System, 1952), pioneered COBOL, and literally coined the term "debugging" after removing a moth from the Harvard Mark II relay (1947). She dismantled alarm clocks as a child to understand how they worked — systematic deconstruction as a learning method. | Translates failure symptoms into root cause diagnoses, just as her compiler translated English notation into machine code. Reproduce, isolate, hypothesize, verify — never diagnose from description alone. |
+| **`torvalds`** | Linus Torvalds (b. 1969) | Created Git — a distributed, content-addressable version control system where every object is identified by a SHA-1 hash. Git's fundamental guarantee: if the SHA matches, the content is exactly what was stored. No exceptions. | Every git operation verifies before executing. Never lose data. Never force-push without `--force-with-lease`. Trust the SHA, not assumptions. The reflog remembers everything for 90 days. |
+| ↳ **`atomic-commit-push`** | (Torvalds sub‑skill) | — | Safe staging and push: one intent per commit, Conventional Commit + Lore body format, preflight checks, `git add -p` for mixed files, atomic grouping guidance. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry‑pick, worktree), see **`torvalds`** above. |
+| **`dijkstra`** | Edsger Dijkstra (1930–2002) | Gave computer science its algorithmic backbone: the shortest-path algorithm (1956, solved on a café napkin), the semaphore (1965, concurrent program safety), the Banker's algorithm (deadlock avoidance), structured programming (GOTO considered harmful, 1968). | Optimizes time and space complexity through formal analysis. Profile before optimizing, classify the problem before selecting an algorithm, verify with benchmark scaling tests — never "it looks faster." |
+| **`codd`** | Edgar F. Codd (1923–2003) | Published "A Relational Model of Data for Large Shared Data Banks" (1970), giving the world the relational model, normalization theory (1NF/2NF/3NF/BCNF), relational algebra, and 12 rules for RDBMS evaluation. Schema design eliminates anomalies before application code does. | Surveys DDL and row counts, audits normalization from 1NF to BCNF, selects indexes with explicit write-penalty justification, diagnoses query plans with EXPLAIN ANALYZE evidence. Every recommendation is backed by before/after cost metrics. |
+| **`shannon`** | Claude Shannon (1916–2001) | Founded information theory (1948): quantified information as bits, established signal-to-noise ratio, channel capacity, redundancy, and compression. His work underpins all digital communication and storage. | Measures code quality quantitatively: signal-to-noise ratio per diff (behavioral lines vs. restating comments/dead code), entropy (cyclomatic complexity distribution), redundancy (AST-similar blocks), channel overhead (boilerplate-to-logic ratio). A SNR measurement is objective where "looks cleaner" is not — quality regression is detectable as a metric change. |
+
+These specialists work together through the **IssueOps** workflow (`skills/issueops/SKILL.md`): von-neumann plans → berners-lee researches → codd audits schemas → dijkstra optimizes algorithms → turing executes with evidence → hopper debugs failures → shannon measures quality → torvalds (including `atomic-commit-push`) manages git and commits. Each skill operates standalone or integrated; the IssueOps state record (`agent-harness issueops ...`) ensures continuity across sessions and hosts.
+
 ### Install Notes
 
 `./install.sh` is the first-run entrypoint before `agent-harness` is on `PATH`. It computes the checkout root, builds `bin/agent-harness` when needed, and runs the installer. In a real terminal with no arguments, it opens the interactive installer.
@@ -391,6 +409,24 @@ docs/                     보조 문서와 asset
 scripts/                  installer, diagnostic, smoke script
 bin/agent-harness         local build binary
 ```
+
+### 스킬과 네임세이크
+
+agent-harness의 전문 스킬들은 컴퓨터 과학의 선구자들 이름을 따서 지어졌습니다. 각 인물의 결정적 기여가 스킬 설계 철학에 직접 매핑됩니다.
+
+| 스킬 | 네임세이크 | 업적 | 이름을 붙인 이유 |
+|------|-----------|------|-----------------|
+| **`von-neumann`** | 존 폰 노이만 (1903–1957) | 내장형 프로그램 컴퓨터 아키텍처 — 명령어와 데이터는 같은 메모리를 공유한다. 프로그램은 한 번 로드되면 추가 판단 없이 실행된다. | 계획은 구현자를 위한 내장형 프로그램이다. 폰 노이만은 전략적 지렛대점을 찾아 판단이 필요 없는 결정 완전 계획을 만든다 — 한 번 로드되면 제로 판단으로 실행된다. |
+| **`turing`** | 앨런 튜링 (1912–1954) | 계산 자체가 검증 가능함을 증명 — 기계는 출력을 관찰함으로써 명제의 참/거짓을 판별할 수 있다. | 모든 성공 기준은 실제 사용 시나리오에서 관찰 가능한 증거를 만들어내야 한다. 튜링은 측정 가능하고 증거에 기반한 단계로 목표를 실행한다. "테스트 통과"만으로는 절대 완료 증명이 될 수 없다. |
+| **`berners-lee`** | 팀 버너스-리 경 (1955–) | 월드 와이드 웹, HTTP, HTML, URI를 발명. 정보는 링크를 통해 가치를 얻는다 — 모든 문서는 다른 문서를 참조하고, 모든 주장은 출처로 추적 가능하다. | 모든 연구 주장은 그 출처로 연결되어야 한다, 마치 모든 웹 자원이 URL을 가지듯이. 버너스-리는 병렬 웹 검색을 펼치고 출처를 교차 검증하며 확인되지 않은 주장을 걸러내고 인용된 보고서를 만든다. |
+| **`hopper`** | 그레이스 호퍼 (1906–1992) | 최초의 컴파일러(A-0 System, 1952)를 발명하고 COBOL을 개척했으며, 1947년 Harvard Mark II 릴레이에서 실제 나방을 제거하며 "디버깅"이라는 용어를 만들었다. 어린 시절 알람 시계를 분해하며 작동 원리를 이해했다 — 체계적 분해를 학습 방법으로 삼았다. | 그녀의 컴파일러가 영어 표기법을 기계어로 번역했듯이, 실패 증상을 근본 원인 진단으로 번역한다. 재현하고, 격리하고, 가설을 세우고, 검증하라 — 설명만으로 진단하지 않는다. |
+| **`torvalds`** | 리누스 토르발즈 (1969–) | Git을 창시 — 모든 객체가 SHA-1 해시로 식별되는 분산형 콘텐츠 주소 지정 버전 관리 시스템. Git의 근본적 보장: SHA가 일치하면 내용은 정확히 저장된 그대로다. 예외는 없다. | 모든 git 작업은 실행 전에 검증한다. 데이터를 절대 잃어버리지 않는다. `--force-with-lease` 없이 강제 푸시하지 않는다. 가정이 아닌 SHA를 신뢰한다. reflog는 90일 동안 모든 것을 기억한다. |
+| ↳ **`atomic-commit-push`** | (Torvalds 하위 스킬) | — | 안전한 스테이징과 푸시: 커밋당 하나의 의도, Conventional Commit + Lore 본문 형식, 사전 점검, 혼합 파일용 `git add -p`, 원자적 그룹화 가이드. 고급 git 작업(rebase, bisect, conflict resolution, reflog recovery, cherry‑pick, worktree)은 위의 **`torvalds`** 참조. |
+| **`dijkstra`** | 에츠허르 다익스트라 (1930–2002) | 컴퓨터 과학에 알고리즘적 중추를 제공: 최단경로 알고리즘(1956년, 카페 냅킨에서 해결), 세마포어(1965년, 동시성 프로그램 안전), 은행가 알고리즘(교착 상태 회피), 구조적 프로그래밍(GOTO는 해롭다, 1968). | 형식적 분석을 통해 시간·공간 복잡도를 최적화한다. 최적화하기 전에 프로파일링하고, 알고리즘을 선택하기 전에 문제를 분류하고, 스케일링 테스트를 통한 벤치마크로 검증하라 — "더 빨라 보인다"는 절대 증거가 아니다. |
+| **`codd`** | 에드거 F. 커드 (1923–2003) | "대규모 공유 데이터 은행을 위한 관계형 데이터 모델"(1970)을 발표하며 관계형 모델, 정규화 이론(1NF/2NF/3NF/BCNF), 관계 대수, RDBMS 평가를 위한 12가지 규칙을 세상에 제시했다. 스키마 설계는 애플리케이션 코드 전에 이상 현상을 제거한다. | DDL과 행 수를 조사하고, 1NF부터 BCNF까지 정규화를 감사하며, 쓰기 페널티를 명시적으로 정당화하여 인덱스를 선택하고, EXPLAIN ANALYZE 증거로 쿼리 계획을 진단한다. 모든 권장 사항은 before/after 비용 지표로 뒷받침된다. |
+| **`shannon`** | 클로드 섀넌 (1916–2001) | 정보 이론(1948)을 창시: 정보를 비트로 정량화하고, 신호 대 잡음비, 채널 용량, 중복성, 압축을 확립했다. 그의 업적은 모든 디지털 통신과 저장의 기초가 된다. | 코드 품질을 정량적으로 측정한다: diff당 신호 대 잡음비(동작 라인 vs. 재진술 주석/데드 코드), 엔트로피(순환 복잡도 분포), 중복성(AST 유사 블록), 채널 오버헤드(보일러플레이트 대 로직 비율). SNR 측정은 객관적이며 "더 깔끔해 보인다"는 것은 그렇지 않다 — 품질 회귀는 지표 변화로 감지 가능하다. |
+
+이 전문가들은 **IssueOps** 워크플로우(`skills/issueops/SKILL.md`)를 통해 함께 작동한다: von-neumann이 계획 → berners-lee가 조사 → codd가 스키마 감사 → dijkstra가 알고리즘 최적화 → turing이 증거 기반 실행 → hopper가 버그 진단 → shannon이 품질 측정 → torvalds(`atomic-commit-push` 포함)가 git과 커밋을 관리. 각 스킬은 독립적으로 또는 통합되어 작동하며, IssueOps 상태 레코드(`agent-harness issueops ...`)가 세션과 호스트 전반에서 연속성을 보장한다.
 
 ### 설치 메모
 
