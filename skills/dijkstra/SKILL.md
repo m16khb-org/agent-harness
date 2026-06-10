@@ -113,66 +113,64 @@ Dijkstra solved his algorithm with pencil and paper. You have profilers.
 ```
 1. IDENTIFY the hot path:
 
-   **Go profiling commands:**
+   **Profiling by language:**
+   | Language | CPU Profile | Memory / Allocation | Block / Contention |
+   |----------|-----------|-------------------|-------------------|
+   | **Go** | `go test -bench=. -cpuprofile=cpu.out` / `go tool pprof -top` | `go test -bench=. -memprofile=mem.out` / `go tool pprof -top` | `go test -blockprofile=block.out` / `go tool pprof -top` |
+   | **Python** | `python -m cProfile -s cumtime script.py` / `py-spy top` | `memory_profiler` / `tracemalloc` | `threading` + `py-spy dump --native` |
+   | **Node.js** | `node --prof app.js && node --prof-process` / `clinic doctor` | `node --inspect` → Chrome DevTools Memory tab | `node --trace-event-categories` / `clinic bubbleprof` |
+   | **Rust** | `perf record` / `cargo flamegraph` | `heaptrack` / `dhat` (valgrind) | `perf lock` / `lockdep` (kernel) |
+   | **Java** | `jstack` + `async-profiler` | `jmap -histo` / `Eclipse MAT` | `jstack` + `AsyncGetCallTrace` |
+   | **C/C++** | `perf record` + `perf report` | `valgrind --tool=massif` | `valgrind --tool=helgrind` |
+
+   **Principle**: The hot path is the 5% of code that consumes 95% of time or allocations. Find it before optimizing.
+
    ```bash
-   # CPU profile (find hottest functions):
+   # Go example (concept: find cumulative time, top 5 functions):
    go test -bench=. -benchmem -count=5 -cpuprofile=cpu.out ./pkg/...
    go tool pprof -top -cum cpu.out | head -20
-   # → First column = cumulative time. Focus on top 5 functions.
-
-   # Memory allocation profile (find allocation hotspots):
-   go test -bench=. -benchmem -count=5 -memprofile=mem.out ./pkg/...
-   go tool pprof -top mem.out | head -20
-   # → "flat" = bytes allocated IN this function. "cum" = including callees.
-
-   # Block profile (find contention):
-   go test -bench=. -blockprofile=block.out ./pkg/...
-   go tool pprof -top block.out
-   ```
-
-   **Node.js profiling:**
-   ```bash
-   node --prof app.js && node --prof-process isolate-*.log | head -30
-   # Or: clinic doctor -- node app.js  (auto-detects CPU/mem/event-loop issues)
-   ```
-
-   **Python profiling:**
-   ```bash
-   python -m cProfile -s cumtime script.py | head -20
-   # Or: py-spy top -- python script.py (live sampling, no instrumentation needed)
+   # → First column = cumulative time. Focus on top 5.
    ```
 
 2. MEASURE current complexity:
 
+   **Collect baseline THEN compare. Never compare from memory.**
    ```bash
-   # Baseline benchmark (record for comparison):
+   # Go (example):
    go test -bench=TargetFunc -benchmem -count=5 -benchtime=3s | tee baseline.txt
-
-   # Compare with benchstat (statistically significant comparison):
+   # ... make your change ...
    go test -bench=TargetFunc -count=10 | tee new.txt
    benchstat baseline.txt new.txt
-   # → Shows % change with confidence interval. "~" = no significant change.
-   # → "geomean" = geometric mean of all benchmarked operations.
-   # → Reject optimizations where change is within noise (±2%).
+   # → Shows % change with confidence interval. Reject changes within noise (±2%).
 
-   # Quick check: is this function even on the hot path?
-   go tool pprof -top -cum cpu.out | grep TargetFunc
-   # If it's not in the top 20, you are optimizing the wrong thing.
+   # Python (concept: timeit or pytest-benchmark):
+   python -m timeit -s "from module import func" -n 1000 "func(input)" > baseline.txt
+   # ... make your change ... compare manually or with pytest-benchmark --compare
+
+   # Node.js (concept: benchmark.js or tinybench):
+   # Run before, save to JSON, run after, compare — same principle in every language.
    ```
+
+   **Critical**: If the function isn't in the top 20 of the profile, you are optimizing the wrong thing.
 
 3. DERIVE empirical complexity (scaling test):
 
+   Run the target function with N, 2N, 4N, 8N inputs. Measure time.
+   The language is irrelevant — the pattern is universal:
    ```bash
-   # Test at geometrically increasing N
+   # Test at geometrically increasing N (example: Go benchmark)
    for N in 100 1000 10000 100000; do
      go test -bench=TargetFunc -benchtime=1x -count=3 -run='^$' . | grep "ns/op"
    done
+   ```
+   Equivalent in any language: run the function with scaled input, time each run,
+   divide T(2N)/T(N) to reveal the complexity class.
 
-   # Analyze: T(1000)/T(100) ≈ ?
-   #  ~10   → O(n)     (linear)
-   #  ~100  → O(n²)    (quadratic — needs optimization)
-   #  ~3.2  → O(log n) (logarithmic — already optimal)
-   #  ~31.6 → O(n log n) (linearithmic — acceptable for most workloads)
+   # Analyze: T(N₂)/T(N₁) ≈ ?
+   #  ~10   → O(n)     (linear — doubling input → doubling time)
+   #  ~100  → O(n²)    (quadratic — doubling input → 4× time)
+   #  ~3.2  → O(log n) (logarithmic — doubling input → constant increase)
+   #  ~20   → O(n log n) (linearithmic — doubling input → slightly more than double time)
    ```
 
 4. READ the algorithm:
@@ -361,7 +359,7 @@ Garbage collection impact: T(GC) reduced from 15% to <1% of CPU time
 ### Safety Checklist
 
 ```
-[ ] Race detector clean: go test -race ./... → PASS
+[ ] Race detector clean (language-specific: `go test -race`, `tsan`, `helgrind` for C/C++, `--detectOpenHandles` for Jest) → PASS
 [ ] Benchmark is stable (±5% across 5 runs)
 [ ] Output is bit-identical to the original algorithm (verified with test)
 [ ] Edge cases handled: empty input, single element, max values, overflow
@@ -419,10 +417,10 @@ Dijkstra invented the semaphore. When optimizing concurrent code:
    cache[key] = data
    mu.Unlock()
 
-4. PREVENT DEADLOCK: consistent lock ordering across all goroutines
+4. PREVENT DEADLOCK: consistent lock ordering across all concurrent tasks
    - Dijkstra's Banker's algorithm: resource allocation with deadlock avoidance
 
-5. VERIFY: go test -race ./... -count=5 → must pass 5 consecutive runs
+5. VERIFY: Run race detector 5 consecutive times (equivalent to `go test -race -count=5` in Go, `tsan` in C/C++, `--detectOpenHandles` in Jest) → must pass every run
 ```
 
 ---

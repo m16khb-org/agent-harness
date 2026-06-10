@@ -38,11 +38,15 @@ Deliver **verified root cause diagnoses** for every bug. Never diagnose from mem
 **Never diagnose from error descriptions alone.** Always run the failing command yourself.
 
 ```
-1. Run the exact command that fails:
-   go test ./pkg/auth -run TestLoginFlow -count=1
+1. Run the exact command that fails (examples by language):
+   Go:   go test ./pkg/auth -run TestLoginFlow -count=1
+   Py:   pytest tests/test_auth.py::test_login_flow -x
+   Node: npx jest auth.test.ts -t 'login flow'
+   Rust: cargo test test_login_flow -- --nocapture
 
 2. Capture the COMPLETE output — stdout, stderr, exit code:
    go test ./pkg/auth -run TestLoginFlow -count=1 2>&1 | tee /tmp/hopper-repro.txt
+   # Concept is universal: redirect stdout+stderr to a file for comparison.
 
 3. Verify you can reproduce:
    - Same failure output each time? → deterministic (easier)
@@ -53,6 +57,7 @@ Deliver **verified root cause diagnoses** for every bug. Never diagnose from mem
    Reproduced: go test ./pkg/auth -run TestLoginFlow -count=1 → FAIL
    Exit code: 1
    Failure signature: "TestLoginFlow: expected 200, got 401"
+   # Record in language-agnostic terms: command, exit code, failure signature.
 ```
 
 **If you cannot reproduce the failure**, ask the user for their exact environment before proceeding. A diagnosis without reproduction is a guess.
@@ -64,11 +69,12 @@ Deliver **verified root cause diagnoses** for every bug. Never diagnose from mem
 Use `lint_diagnose` (Gemini-assisted root cause analysis) as a first pass. This is the "compiler" step — raw symptoms → structured diagnosis.
 
 ```bash
-# agent-harness CLI:
+# agent-harness CLI (Go example):
 agent-harness project lint-diagnose --command-argv "go,test,./pkg/auth,-run,TestLoginFlow,-count=1" --json
 
 # Or MCP:
 lint_diagnose(command_argv: ["go", "test", "./pkg/auth", "-run", "TestLoginFlow", "-count=1"])
+# Works with any command: pytest, jest, cargo test, npm test, make, etc.
 ```
 
 **The diagnosis provides:** root cause hypothesis, suggested fix location, verification command.

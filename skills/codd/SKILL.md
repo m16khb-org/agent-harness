@@ -35,9 +35,21 @@ Deliver **provably normalized schemas with index-optimized queries.** Every sche
 
 ## Step 1: SURVEY — Know Your Data Before You Touch
 
+> **Database Portability**: The SQL examples below use PostgreSQL system catalogs (`pg_stat_*`, `pg_locks`). The concepts are universal — every RDBMS has equivalent introspection. Use the right tool for your engine:
+> - **MySQL**: `performance_schema.*`, `information_schema.*`, `SHOW ENGINE INNODB STATUS`, `sys.schema_*`
+> - **SQLite**: `sqlite_master`, `sqlite_stat*`, `.eqp on`, `.stats on`
+> - **SQL Server**: `sys.dm_exec_*`, `sp_who2`, `sys.dm_tran_locks`
+> - **MongoDB**: `.explain("executionStats")`, `db.collection.stats()`, `currentOp()`
+>
+> The Codd Method applies to **any** data store — relational, document, key-value, or graph. What changes is the introspection syntax, not the design discipline.
+
 ### Capture Current State
 
+**Row counts, table sizes, index usage, slow queries, locks, long transactions** — these metrics drive every design decision regardless of database engine.
+
 ```sql
+-- ===== PostgreSQL (reference implementation) =====
+
 -- Row counts (the single most important number for every design decision)
 SELECT schemaname, relname, n_live_tup
 FROM pg_stat_user_tables
@@ -129,6 +141,19 @@ LIMIT 20;
 -- Check log: grep -i deadlock /var/log/postgresql/*.log | tail -20
 -- Enable deadlock logging: log_lock_waits = on; deadlock_timeout = 1s
 ```
+
+#### Cross-Database Equivalents
+
+| Metric | PostgreSQL | MySQL | SQLite | SQL Server |
+|--------|-----------|-------|--------|------------|
+| Row counts (approx) | `pg_stat_user_tables.n_live_tup` | `TABLE_ROWS` from `information_schema.tables` + `ANALYZE TABLE` | `SELECT COUNT(*)` only (no approximation) | `sys.dm_db_partition_stats.row_count` |
+| Table sizes | `pg_total_relation_size()` | `data_length + index_length` from `information_schema.tables` | `.db` file size via OS | `sp_spaceused` |
+| Slow queries | `pg_stat_statements` | `performance_schema.events_statements_summary_by_digest` / slow query log | `.eqp on` + `.timer on` | `sys.dm_exec_query_stats` |
+| Active locks | `pg_locks` + `pg_stat_activity` | `SHOW ENGINE INNODB STATUS` / `performance_schema.data_locks` | Single-writer; use `.timeout` | `sys.dm_tran_locks` + `sp_who2` |
+| Index usage | `pg_stat_user_indexes.idx_scan` | `sys.schema_index_statistics` (MySQL 8+) | `sqlite_stat1` (limited) | `sys.dm_db_index_usage_stats` |
+| Deadlock detection | Server log (`log_lock_waits`) | `SHOW ENGINE INNODB STATUS` → LATEST DETECTED DEADLOCK | `SQLITE_BUSY` return code (no deadlock, serial writes) | `system_health` XEvent session |
+
+> **Principle**: The SURVEY data is universal — row counts, access patterns, slow queries, locks, and index usage. Only the SQL dialect differs. Always collect these metrics before proposing changes, regardless of engine.
 
 ### Classify by Row Count (Determines Every Decision)
 
@@ -249,8 +274,8 @@ Rule: Normalize first. Denormalize only when ALL three conditions are met:
 | # | Pattern | What it does | When to use | Write Cost | Maintenance |
 |---|---------|-------------|------------|------------|-------------|
 | 1 | **Column Duplication** | Copy a column from a lookup table into a fact table to avoid a JOIN | Lookup table is small (<10K rows), rarely updated (<1 change/day), read on every query | 1 extra UPDATE per source change (update all referencing rows) | Application code or trigger: `UPDATE orders SET customer_name = NEW.name WHERE customer_id = NEW.id` |
-| 2 | **Computed Column** | Store a pre-calculated value (total, count, rank) to avoid computing it on every read | Computation is expensive (aggregation over many rows) and the inputs change rarely | Recalculate on input change. If inputs change 100×/day, recalculating 100× may be cheaper than calculating 50,000× on read. | Application code: update the computed column in the same transaction that updates the input. OR generated column (PostgreSQL): `total_price DECIMAL GENERATED ALWAYS AS (quantity * unit_price) STORED` |
-| 3 | **Summary/Aggregate Table** | Pre-aggregate data into a separate table (daily stats, counts, totals) | Dashboard queries that scan millions of rows for a single number. The raw data is write-heavy but the summary is read on every page load. | 1 INSERT or UPDATE per aggregation window (hourly, daily) | Batch process: `REFRESH MATERIALIZED VIEW CONCURRENTLY` (PostgreSQL) or scheduled INSERT into summary table. Read:Write ratio typically > 500:1. |
+| 2 | **Computed Column** | Store a pre-calculated value (total, count, rank) to avoid computing it on every read | Computation is expensive (aggregation over many rows) and the inputs change rarely | Recalculate on input change. If inputs change 100×/day, recalculating 100× may be cheaper than calculating 50,000× on read. | Application code: update the computed column in the same transaction. OR engine-generated: PostgreSQL `GENERATED ALWAYS AS ... STORED`, MySQL `GENERATED ALWAYS AS ... STORED` (5.7+), SQL Server computed column `AS (expr) PERSISTED`. |
+| 3 | **Summary/Aggregate Table** | Pre-aggregate data into a separate table (daily stats, counts, totals) | Dashboard queries that scan millions of rows for a single number. The raw data is write-heavy but the summary is read on every page load. | 1 INSERT or UPDATE per aggregation window (hourly, daily) | Batch process: `REFRESH MATERIALIZED VIEW CONCURRENTLY` (PostgreSQL), MySQL event scheduler + summary table, SQL Server indexed view, or scheduled INSERT. Read:Write ratio typically > 500:1. |
 | 4 | **Pre-Joined Table** | Store the result of a multi-table JOIN as its own table | A 4-table JOIN runs on every request, each table has >1M rows. The joined result changes only when the source tables change. | Rebuild on any source change. For slowly-changing data, this may be batch-regenerated hourly. | Materialized view (PostgreSQL: `CREATE MATERIALIZED VIEW`) or ETL pipeline. Document the refresh schedule and stale-data tolerance (e.g., "up to 1 hour stale"). |
 | 5 | **Star Schema (Analytics)** | Fact tables are fully denormalized; dimension tables are partially denormalized (snowflake → star) | OLAP/reporting workloads. Queries are analytical (aggregation, filtering, grouping), writes are batch-loaded, not live-transactional. | Batch load: no per-row write penalty. | ETL pipeline is the single writer. Anomaly risk is low because data is loaded, not live-updated. Document: "This schema is batch-loaded. Live queries do not write here." |
 | 6 | **CQRS / Read Model** | Maintain a separate read-optimized data store (separate table, Redis cache, ElasticSearch index) | Domain logic writes to normalized tables. Read queries hit the denormalized read model. Command/Query Responsibility Segregation. | Every write updates the read model (eventual consistency acceptable). | Event handler or outbox pattern: write → emit event → update read model asynchronously. Acceptable staleness must be documented (e.g., "read model may lag up to 5 seconds behind writes"). |
@@ -345,9 +370,9 @@ Connection pool sizing:
   Round UP: pool_size = 10 per service instance
 
 Storage estimation:
-  - Row size estimate: sum column widths + 23 bytes overhead (PostgreSQL)
+  - Row size estimate: sum column widths + engine-specific overhead (PostgreSQL: ~23 bytes/row; MySQL/InnoDB: ~13 bytes/row; SQL Server: ~7 bytes/row + NULL bitmap). Use engine-native tools for accurate sizing.
   - Index overhead: ~30-50% of table size for standard B-tree indexes
-  - Total: table_size + index_overhead + 20% buffer for MVCC bloat
+  - Total: table_size + index_overhead + 20% buffer for MVCC bloat (PostgreSQL) / undo log growth (MySQL InnoDB)
 
   orders table:
     1.8M rows × 120 bytes/row = 216 MB (table)
@@ -363,21 +388,24 @@ Storage estimation:
 
 ### Index Type Selection Matrix
 
-| Index Type | Best For | Cost (Write) | Cost (Read) | Use When |
-|-----------|----------|-------------|------------|----------|
-| **B-tree** (default) | Equality + range + ORDER BY + uniqueness | 2-3x insert overhead | O(log n) | General purpose. 90% of indexes. |
-| **Hash** | Equality only (=) | Same as B-tree | O(1) | = queries on high-cardinality columns. No range/ORDER BY. |
-| **GIN** | Full-text search, array containment, JSONB keys | 5-10x insert overhead | O(log n) + scan | `tsvector`, `@>`, `?|` operators |
-| **GiST** | Geometric, full-text (alternative to GIN) | 3-7x insert overhead | O(log n) | PostGIS, range types, trigram search |
-| **BRIN** | Very large tables, naturally sorted columns | <0.1x insert overhead | Scans block ranges | >10M rows, correlated with physical order (timestamps, sequential IDs) |
-| **Partial** | Subset of rows (`WHERE active = true`) | Write cost only for matching rows | Smaller index | High write volume, only query subset |
-| **Covering** (INCLUDE) | Index-only scans | Slightly larger index | Avoids heap fetch | Hot queries that need specific columns |
-| **Expression** | Function results (`LOWER(email)`) | Same as B-tree on expression | O(log n) | When queries filter on computed values |
+> **Engine note**: B-tree, Hash, and Expression indexes are universal (every RDBMS). GIN/GiST/BRIN are PostgreSQL extensions. MySQL equivalents: FULLTEXT (GIN-like), SPATIAL (GiST-like). MongoDB: compound/single-field (B-tree), text, geo, hashed.
+
+| Index Type | Availability | Best For | Cost (Write) | Cost (Read) | Use When |
+|-----------|-------------|----------|-------------|------------|----------|
+| **B-tree** (default) | All engines | Equality + range + ORDER BY + uniqueness | 2-3x insert overhead | O(log n) | General purpose. 90% of indexes. |
+| **Hash** | PG, MySQL (MEMORY), MongoDB | Equality only (=) | Same as B-tree | O(1) | = queries on high-cardinality columns. No range/ORDER BY. |
+| **GIN** | PostgreSQL only | Full-text search, array containment, JSONB keys | 5-10x insert overhead | O(log n) + scan | `tsvector`, `@>`, `?|` operators |
+| **FULLTEXT** | MySQL, SQL Server | Text search (`MATCH ... AGAINST`) | 5-10x insert overhead | O(log n) + scan | MySQL equivalent of GIN for text search |
+| **GiST** | PostgreSQL only | Geometric, range types, trigram fuzzy search | 3-7x insert overhead | O(log n) | PostGIS, `pg_trgm` for LIKE '%foo%' |
+| **BRIN** | PostgreSQL only | Very large tables (>100M rows), naturally sorted columns | <0.1x insert overhead | Scans block ranges | Timestamps, sequential IDs. Minimal write overhead. |
+| **Partial** | Most engines | Subset of rows (`WHERE active = true`) | Write cost only for matching rows | Smaller index | High write volume, only query subset. MySQL: no native partial; use generated column + index. |
+| **Covering** (INCLUDE) | PG, SQL Server, MongoDB | Index-only scans | Slightly larger index | Avoids heap fetch | Hot queries that need specific columns. MySQL: index covers included columns automatically. |
+| **Expression** | PG, MySQL 8+ (functional), MongoDB | Function results (`LOWER(email)`) | Same as B-tree on expression | O(log n) | When queries filter on computed values |
 
 ### Index Selection Protocol
 
 ```
-For EACH slow query (from pg_stat_statements), ask:
+For EACH slow query (from query analysis: pg_stat_statements / performance_schema / slow query log), ask:
 
 1. FILTER columns (in WHERE clause)
    → Create index on (equality columns FIRST, range column LAST)
@@ -441,7 +469,7 @@ CREATE INDEX idx_b ON orders (created_at DESC, status);
 
 | | Index A `(status, created_at DESC)` | Index B `(created_at DESC, status)` |
 |---|---|---|
-| **How PostgreSQL uses it** | Jumps directly to `status='active'` rows in the index → rows already sorted by `created_at DESC` → picks first 100 → done. | Scans ALL rows in `created_at DESC` order (2.2M rows) → filters `status='active'` one by one → finds 100 matches → discards the rest. |
+| **How the engine uses it** | Jumps directly to `status='active'` rows in the index → rows already sorted by `created_at DESC` → picks first 100 → done. | Scans ALL rows in `created_at DESC` order (2.2M rows) → filters `status='active'` one by one → finds 100 matches → discards the rest. |
 | **Scan type** | Index Scan (fast) | Index Scan but reads entire index (slow) |
 | **Effective rows touched** | ~100 | ~2,200,000 |
 | **Why** | B-tree is ordered left-to-right. First column partitions the tree; second column is sorted WITHIN each partition. Filter-first means you prune partitions early. | Order-by-first means you traverse ALL partitions in order, filtering each row individually. |
@@ -530,11 +558,11 @@ Fix strategies (in order of preference):
   3. Preload/Eager loading — ORM: .Preload("Items").Find(&orders)
   4. DataLoader pattern — batch + cache within a single request cycle
 
-Concrete example (Go):
+Concrete example (Go — the pattern is identical in every language):
   // BEFORE (N+1): 1 query for orders + N queries for items
   orders, _ := FindOrders(customerID)
   for _, order := range orders {
-      items, _ := FindItems(order.ID)  // runs N times
+      items, _ := FindItems(order.ID)  // runs N times — N+1 anti-pattern
   }
 
   // AFTER: 1 query with JOIN — or 2 queries with WHERE IN
@@ -545,6 +573,10 @@ Concrete example (Go):
   // Option B: WHERE IN (acceptable if items have large columns or many rows)
   SELECT * FROM orders WHERE customer_id = $1
   SELECT * FROM order_items WHERE order_id = ANY($1)  -- $1 = order IDs
+
+  // Equivalent in Python (SQLAlchemy): .options(joinedload(Order.items))
+  // Equivalent in Node.js (Prisma): prisma.order.findMany({ include: { items: true } })
+  // Equivalent in Java (JPA/Hibernate): @OneToMany(fetch = FetchType.EAGER) or JOIN FETCH
 ```
 
 ### Denormalization Trade-off Calculator
@@ -588,6 +620,18 @@ WRITE PENALTY:
 | **`effective_cache_size`** | — | ~75% of total RAM | Planner hint only — does NOT allocate memory. Tells the planner how much OS page cache is available. On 16 GB: 12 GB. Influences index vs. table scan decisions. |
 | **`random_page_cost`** | 4.0 | 1.1 for SSD, 1.5–2.0 for fast SAN/NVMe | 4.0 assumes spinning disk (seek time ~4× sequential read). On SSD, random access is nearly free. Setting this lower encourages index use. |
 | **`maintenance_work_mem`** | 64 MB | 1 GB for large index builds, VACUUM, or ALTER TABLE | Higher = faster `CREATE INDEX CONCURRENTLY` and `VACUUM FULL`. Set per-session before large maintenance: `SET maintenance_work_mem = '2GB';` |
+
+#### Configuration Cross-Reference
+
+| Concept | PostgreSQL | MySQL | SQLite |
+|---------|-----------|-------|--------|
+| Per-operation memory | `work_mem` | `sort_buffer_size`, `join_buffer_size` | `PRAGMA cache_size` (page cache, shared) |
+| Buffer pool / cache | `shared_buffers` | `innodb_buffer_pool_size` (~70% of RAM) | `PRAGMA cache_size` (negative = KB, positive = pages) |
+| Planner cache hint | `effective_cache_size` | No equivalent (cost-based optimizer uses buffer pool size) | N/A (simple query planner) |
+| Random I/O cost | `random_page_cost` | No equivalent (SSD assumed in MySQL 8+) | N/A |
+| Maintenance memory | `maintenance_work_mem` | `innodb_sort_buffer_size` (index creation) | `PRAGMA mmap_size` (memory-mapped I/O) |
+| Query analysis | `EXPLAIN ANALYZE` | `EXPLAIN ANALYZE` (MySQL 8.0.18+) / `EXPLAIN FORMAT=JSON` | `EXPLAIN QUERY PLAN` |
+| Statistics update | `ANALYZE table` | `ANALYZE TABLE table` | `ANALYZE` (creates `sqlite_stat*` tables) |
 
 ---
 
@@ -691,10 +735,13 @@ UPDATE accounts SET balance=90     UPDATE accounts SET balance=110
 COMMIT;
 ```
 
-**Test pattern for deadlock-prone code:**
+**Test pattern for deadlock-prone code (concept: run N concurrent workers, check for deadlocks):**
 ```go
-// Run N concurrent goroutines performing the same operation.
-// If any get "deadlock detected" → the operation has UNORDERED lock acquisition.
+// Go example — the pattern is the same in every language with concurrency primitives:
+// Python: threading.Thread + queue.Queue
+// Node.js: Promise.all with worker_threads
+// Java: ExecutorService + CountDownLatch
+// Rust: std::thread::spawn + mpsc::channel
 func TestNoDeadlock(t *testing.T) {
     var wg sync.WaitGroup
     errs := make(chan error, 100)
@@ -787,7 +834,7 @@ Fix 3: Pool sizing must account for lock waiters:
 [ ] lock_timeout and statement_timeout are set
 [ ] idle_in_transaction_session_timeout is set
 [ ] Pool size accounts for lock-waiting connections
-[ ] Deadlock-prone operations have deadlock test (N concurrent goroutines)
+[ ] Deadlock-prone operations have deadlock test (N concurrent workers/threads)
 [ ] N+1 queries detected and eliminated (from Step 5)
 ```
 
@@ -915,7 +962,7 @@ Signals to watch:
 - Check for N+1 patterns in application code when queries are slow but well-indexed
 - Apply lock ordering on all code paths touching the same tables (Step 6: CONCURRENCY)
 - Set lock_timeout, statement_timeout, and idle_in_transaction_session_timeout
-- Test deadlock-prone code with N concurrent goroutines/threads (see 6.4)
+- Test deadlock-prone code with N concurrent workers/threads (see 6.4)
 
 **CODD'S PRINCIPLE:** "Future users of large data banks must be protected from having to know how the data is organized in the machine." The schema and indexes are implementation details of the database — the application should query what it needs, not how to find it. Your job is to make the "how" fast.
 

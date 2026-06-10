@@ -85,7 +85,13 @@ Heuristic (does not require AST parser):
 **How to measure:**
 
 ```bash
-# Count branch points per Go function (approximate without AST)
+# Count branch points per function (Go example; adapt pattern to your language)
+# Universal: count if/else/for/while/case in each function body
+# Go: grep '^func '
+# Python: grep '^def \|^    def '
+# JavaScript/TypeScript: grep 'function \|=> {'
+# Rust: grep '^fn \|^pub fn '
+
 for func in $(grep -n '^func ' *.go | cut -d: -f1); do
   name=$(sed -n "${func}p" *.go | head -1)
   end=$(tail -n +$func *.go | grep -n '^}' | head -1 | cut -d: -f1)
@@ -94,6 +100,8 @@ for func in $(grep -n '^func ' *.go | cut -d: -f1); do
   if [ $branches -gt 6 ]; then echo "WARN: $name — $branches branch points (ceiling: 6)"; fi
   if [ $branches -gt 12 ]; then echo "FAIL: $name — $branches branch points (ceiling: 12)"; fi
 done
+# This script adapts trivially: change the function-line pattern (line 89) and the
+# closing-brace pattern (line 91) to match your language's syntax.
 ```
 
 ### Metric 3: Redundancy — Duplicate Code Ratio
@@ -109,12 +117,15 @@ Heuristic (same-file only, no AST):
 
 ```bash
 # Quick redundancy check: find functions with similar line counts (first-order approximation)
+# Adapt the function-line pattern to your language:
+#   Go: '^func '     Python: '^def \|^    def '     JS/TS: 'function \|=> {'     Rust: '^fn \|^pub fn '
 grep -n '^func ' *.go | while read line; do
   name=$(echo "$line" | cut -d: -f3- | sed 's/^func //' | cut -d'(' -f1)
   start=$(echo "$line" | cut -d: -f1)
   echo "$name: $start"
 done | sort -t: -k2 -n
-# Manual inspection: adjacent functions with similar line counts are redundancy candidates
+# Manual inspection: adjacent functions with similar line counts are redundancy candidates.
+# For reliable results, use AST-based tools (below).
 ```
 
 **For real measurement**, use AST-based tools:
@@ -297,11 +308,12 @@ Run these commands and check against thresholds:
 git diff origin/main..HEAD --stat | tail -1
 # → If diff is large (>200 lines), run full SNR measurement
 
-# 2. Oversized files
-find . -name '*.go' -not -path '*_test.go' | xargs wc -l | awk '$1 > 250 {print $2, $1 " lines (cap: 250)"}'
-# → Flag any file > 250 LOC
+# 2. Oversized files (>250 LOC, adapt extension to language)
+find . \( -name '*.go' -o -name '*.py' -o -name '*.ts' -o -name '*.rs' -o -name '*.java' \) \
+  -not -path '*_test*' -not -path '*.test.*' | xargs wc -l | awk '$1 > 250 {print $2, $1 " lines (cap: 250)"}'
+# → Flag any file > 250 LOC regardless of language
 
-# 3. Deeply nested functions
+# 3. Deeply nested functions (Go example; adapt function-line pattern)
 grep -rn '^func ' --include='*.go' . | while read line; do
   file=$(echo "$line" | cut -d: -f1)
   start=$(echo "$line" | cut -d: -f2)
@@ -309,8 +321,13 @@ grep -rn '^func ' --include='*.go' . | while read line; do
   depth=$(echo "$body" | awk '{if(/^[\t ]*if|^[\t ]*for|^[\t ]*while/) d++} END{print d}')
   if [ "$depth" -gt 4 ]; then echo "WARN: $line — nesting depth ~$depth (cap: 4)"; fi
 done
+# This is necessarily language-specific (function detection). Use language-native tools for accuracy.
 
-# 4. Test coverage (signal proxy)
+# 4. Test coverage (adapt to your language's coverage tool)
+# Go:   go test -cover ./...
+# Py:   pytest --cov --cov-report=term
+# Node: npx jest --coverage
+# Rust: cargo tarpaulin
 go test -cover ./... 2>&1 | grep -E 'coverage: [0-9]'
 # → Flag packages < 60% coverage
 
