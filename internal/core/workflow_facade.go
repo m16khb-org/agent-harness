@@ -153,6 +153,10 @@ func BuildNextActionJudgementRelayReason(trigger NextActionJudgementTriggerResul
 	return nextaction.BuildJudgementRelayReason(trigger)
 }
 
+func IsNoAutoProceedJudgement(message string) bool {
+	return nextaction.IsNoAutoProceedJudgement(message)
+}
+
 func EvaluateNextActionAutoProceed(message string, threshold float64) NextActionAutoProceedResult {
 	return nextaction.EvaluateNextActionAutoProceed(message, threshold)
 }

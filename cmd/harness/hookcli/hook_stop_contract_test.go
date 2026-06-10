@@ -52,6 +52,23 @@ func TestRunHookStopAllowsStopWhenStopHookActiveMissingChoices(t *testing.T) {
 	}
 }
 
+func TestRunHookStopAllowsNoAutoProceedJudgementWithoutChoices(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	message := strings.Join([]string{
+		"자동진행하지 않겠습니다.",
+		"",
+		"판단 근거: 추천안인 --no-verify는 저장소가 의도적으로 설치한 pre-commit 게이트를 우회하는 행위입니다.",
+		"사용자의 명시적 승인 없이 같은 작업을 자동으로 재개하지 않고 멈춥니다.",
+	}, "\\n")
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+message+`"}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--relay-next-action-judgement"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("no-auto-proceed Stop relay response without choices must be allowed to stop, got %+v", obj)
+	}
+}
+
 func TestRunHookStopBlockReasonTellsAgentToPresentContextSpecificChoices(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -62,7 +79,7 @@ func TestRunHookStopBlockReasonTellsAgentToPresentContextSpecificChoices(t *test
 	if obj["continue"] != true || obj["decision"] != "block" {
 		t.Fatalf("expected Stop hook to block missing choices with an in-turn continuation, got %+v", obj)
 	}
-	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "caused the block") || !strings.Contains(reason, "context-specific") {
+	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "caused the block") || !strings.Contains(reason, "context-specific") || !strings.Contains(reason, "no-auto-proceed") {
 		t.Fatalf("expected Stop hook reason to tell the agent why it blocked and to create context-specific choices, got %q", reason)
 	}
 }

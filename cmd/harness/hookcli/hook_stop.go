@@ -46,12 +46,14 @@ func runHookStop(args []string) error {
 	stopHookActive := hookinput.Bool(stdin, "stop_hook_active")
 	nextActionTriggerEnabled := *relayNextActionJudgement || *autoProceedNextActions
 	nextActionTrigger := core.BuildNextActionJudgementTrigger(message)
+	noAutoProceedJudgement := core.IsNoAutoProceedJudgement(message)
 	if *jsonOut {
 		return printJSON(map[string]any{
 			"lifecycle":                    result,
 			"numbered_next_actions":        nextActions,
 			"next_action_judgement":        nextActionTrigger,
 			"next_action_judgement_active": nextActionTriggerEnabled,
+			"no_auto_proceed_judgement":    noAutoProceedJudgement,
 		})
 	}
 	ho := hookadapter.Resolve(strings.TrimSpace(*host))
@@ -82,7 +84,7 @@ func runHookStop(args []string) error {
 	// true when this Stop is itself a continuation of a prior stop-hook block. Valid
 	// next-action choices still need the judgement relay above; otherwise a
 	// recovered response can present choices and then silently stop.
-	if nextActions.Decision == "block" && !stopHookActive {
+	if nextActions.Decision == "block" && !stopHookActive && !noAutoProceedJudgement {
 		return printJSON(ho.FormatStopBlock(nextActions.Reason))
 	}
 	// Codex and Claude Stop hooks only accept the stop-control schema

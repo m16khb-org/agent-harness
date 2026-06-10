@@ -281,6 +281,42 @@ func TestRunHookUserPromptDoesNotClearRelayForNoAutoProceedResponse(t *testing.T
 	}
 }
 
+func TestRunHookUserPromptDoesNotClearRelayForNoAutoProceedResponseWithoutChoices(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	firstMsg := strings.Join([]string{
+		"다음 행동을 선택해야 합니다.",
+		"",
+		"선택지:",
+		"1. git commit --no-verify로 커밋 (추천)",
+		"2. 린트 부채를 먼저 처리",
+		"3. 중단",
+	}, "\n")
+	noAutoProceedMsg := strings.Join([]string{
+		"자동진행하지 않겠습니다.",
+		"",
+		"판단 근거: --no-verify는 훅 우회라서 명시적 사용자 승인이 필요합니다.",
+		"같은 작업을 자동 goal continuation으로 재개하지 않고 멈춥니다.",
+	}, "\n")
+
+	first := runHookCapture(t, hookInputJSON(t, repo, "last_assistant_message", firstMsg), func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--relay-next-action-judgement"})
+	})
+	if first["continue"] != true || first["decision"] != "block" {
+		t.Fatalf("expected first Stop hook call to relay next-action facts, got %+v", first)
+	}
+
+	runHookCapture(t, hookInputJSON(t, repo, "prompt", noAutoProceedMsg), func() error {
+		return runHookUserPrompt(nil)
+	})
+	afterNoAutoProceed := runHookCapture(t, hookInputJSON(t, repo, "last_assistant_message", noAutoProceedMsg), func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--relay-next-action-judgement"})
+	})
+	if len(afterNoAutoProceed) != 0 {
+		t.Fatalf("no-auto-proceed response without choices must not clear relay suppression or re-block, got %+v", afterNoAutoProceed)
+	}
+}
+
 func hookInputJSON(t *testing.T, repo, key, value string) string {
 	t.Helper()
 	encoded, err := json.Marshal(value)

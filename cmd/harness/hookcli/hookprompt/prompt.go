@@ -39,10 +39,10 @@ func IsStopContinuation(prompt string) bool {
 		strings.Contains(lower, "feedback:") {
 		return true
 	}
-	if strings.Contains(trimmed, "자동진행하지") && hasNextActionSection(trimmed) {
+	if strings.Contains(trimmed, "자동진행하지") {
 		return true
 	}
-	if strings.Contains(lower, "no-auto-proceed") && hasNextActionSection(trimmed) {
+	if strings.Contains(lower, "no-auto-proceed") {
 		return true
 	}
 	return strings.Contains(trimmed, "다음 행동 판단 지점에 도달했습니다") &&
