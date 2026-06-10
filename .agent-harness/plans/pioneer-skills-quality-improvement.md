@@ -7,6 +7,8 @@
 > **Parallel**: YES - 3 waves
 > **Critical Path**: T0 request-fulfillment evaluation -> T1 contract inventory -> T2 high-severity command fixes -> T5 common authoring contract -> T9 final quality gate
 
+Execution update (2026-06-10): cycles 1-9 have now applied first-pass guardrail fixes to all nine pioneer `SKILL.md` files. All nine cycles have calibrated after-scores and at least one holdout/mutation fixture artifact. The current post-cycle state is summarized in `.agent-harness/operations/pioneer-skill-quality-scorecard.md` and `.agent-harness/operations/pioneer-skill-quality-handoff.md`.
+
 ## Context
 ### Original Request
 `computer science pioneer 스킬들을 전부 확인하고 정성적 품질 테스트 진행, 정성 평가가 완료되면 구체적이고 상세한 품질 향상 계획 수립`
@@ -26,7 +28,7 @@ IN:
 
 OUT:
 - `issueops`, `self-verify`, `self-augment`, `atomic-commit-push`, and non-pioneer operational skills.
-- Implementing the improvements in this plan.
+- For the original evaluation-planning pass: implementing the improvements in this plan. Current implementation cycles are tracked separately in the scorecard and AutoResearch ledger.
 - Opening an IssueOps cycle or committing changes.
 
 ### Evidence Gathered
@@ -38,8 +40,8 @@ OUT:
 - `./bin/agent-harness issueops heartbeat --help` failed with `unknown issueops subcommand "heartbeat"`.
 - `./bin/agent-harness von-neumann plan --help` fell back to top-level usage; there is no `von-neumann plan` CLI surface.
 - `agent-harness state write <key> <content>` failed; the current CLI requires `state write --key KEY (--value TEXT|--input FILE|--stdin)`.
-- Representative live invocation records now exist for all 9 pioneer skills at `.agent-harness/evidence/pioneer-skills-quality/task-0-live-invocation-record.md`. Each record includes: request, response/artifact, evaluation, and improvement needed.
-- The live records cover one representative request per skill. They do not yet cover all 27 happy-path, boundary/safety, and integration/operational cases.
+- Representative live invocation summaries for all 9 pioneer skills are preserved in tracked operations docs. Raw local records may exist under `.agent-harness/evidence/pioneer-skills-quality/`, but that path is ignored and is not required to resume.
+- The tracked summaries cover one representative request per skill. They do not yet cover all 27 happy-path, boundary/safety, and integration/operational cases.
 
 ### Evaluation Correction
 The original draft overclaimed "qualitative evaluation." It used static reading, command-contract checks, and a few representative micro-scenarios. That can find defects, but it cannot evaluate whether a skill is good.
@@ -142,10 +144,9 @@ Scoring scale: 5 = strong, 3 = usable with notable risk, 1 = likely to mislead o
 5. **Maintainer ergonomics need a shared rubric**: every skill has a different template and no automated drift test for command snippets, tool names, or dangerous defaults.
 
 ## T0 Request-Fulfillment Results
-Evidence files:
-- `.agent-harness/evidence/pioneer-skills-quality/baseline-27-case-results.md`
-- `.agent-harness/evidence/pioneer-skills-quality/task-0-live-invocation-record.md`
-- `.agent-harness/evidence/pioneer-skills-quality/task-0-request-fulfillment-evaluation.md`
+Evidence summary:
+- Tracked baseline summaries: `.agent-harness/operations/pioneer-skill-quality-scorecard.md`, `.agent-harness/operations/pioneer-skill-quality-cases.md`, and `.agent-harness/operations/pioneer-skill-live-invocation-summary.md`.
+- Raw baseline evidence paths may exist locally under `.agent-harness/evidence/pioneer-skills-quality/`, but they are ignored and are not authoritative in a fresh checkout.
 
 The T0 representative pass invoked each pioneer skill with one concrete request and recorded:
 
@@ -175,12 +176,12 @@ Calibrated 27-case baseline scores:
 | `shannon` | 1.85/5 | Metrics are useful in spirit, but current diff heuristics miss untracked work and global install is unsafe. |
 
 ### Highest-Leverage Fix Order
-1. **P0: Make operational requests executable**: fix stale commands and fake host tools in `hopper`, `turing`, `von-neumann`, `karpathy`, and `berners-lee`.
-2. **P0: Remove unsafe defaults**: gate or remove global installs, WAF/TLS escalation, and destructive git recovery shortcuts.
-3. **P1: Rebalance activation**: make `turing` and `von-neumann` proportionate so they improve request completion instead of hijacking ordinary tasks.
-4. **P1: Make quality measurement real**: replace `shannon`'s diff-only heuristics with tracked/untracked-aware input handling and zero-diff guards.
-5. **P1: Improve progressive disclosure**: split dense `codd` and `shannon` content into references so agents can execute the right path quickly.
-6. **P2: Add fixtures to prevent regression**: encode the 27 T0 request cases as durable quality fixtures.
+1. **P0: Make operational requests executable**: first-pass fixes applied in `hopper`, `turing`, `von-neumann`, `karpathy`, and `berners-lee`; affected request reruns passed calibration.
+2. **P0: Remove unsafe defaults**: first-pass fixes applied for global installs, fetch escalation boundaries, destructive git recovery, and live DDL advice; affected request reruns passed calibration.
+3. **P1: Rebalance activation**: first-pass fixes applied in `turing` and `von-neumann`; affected request reruns passed calibration.
+4. **P1: Make quality measurement real**: first-pass `shannon` tracked/untracked and zero-input fixes applied; the fixture-backed rerun passed calibration.
+5. **P1: Improve progressive disclosure**: still pending; do this only if reruns show dense `codd` or `shannon` content remains a request-fulfillment blocker.
+6. **P2: Add fixtures to prevent regression**: fixture contract added in `.agent-harness/operations/pioneer-skill-rerun-fixtures.md`; all nine executable artifacts passed calibration and have official after-scores. Further tracked regression fixtures are optional maintainer follow-up, not a blocker for this improvement pass.
 
 ### Improvement Target
 After the plan is executed, every pioneer skill should reach:
@@ -276,7 +277,7 @@ Wave 3: T8, T9, T10 - qualitative fixtures, docs sync, final verification.
   - Directly referenced `references/*.md` files for the target skills.
 
   **Acceptance Criteria**:
-  - [ ] Evidence files exist at `.agent-harness/evidence/pioneer-skills-quality/task-0-live-invocation-record.md` and `.agent-harness/evidence/pioneer-skills-quality/task-0-request-fulfillment-evaluation.md`.
+  - [ ] Tracked evidence summaries exist, and any raw ignored evidence needed for rerun has been recreated under `.agent-harness/evidence/pioneer-skills-quality/`.
   - [ ] Evidence includes all 9 target skill names.
   - [ ] Every target skill has at least one happy-path, one boundary/safety, and one integration/operational request.
   - [ ] Every request includes request text, response/artifact, evaluation, and improvement needed.

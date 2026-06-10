@@ -23,7 +23,7 @@ Execute git operations with **verifiable safety and zero data loss**. Every dest
 
 1. **Data integrity over convenience.** Git's SHA-1 checksums mean you can verify any object hasn't been corrupted. Before every operation: `git status --short`, `git diff --stat`. After every operation: re-verify.
 
-2. **Never lose data.** Prefer `git stash` over `git clean -fd`. Prefer `git reset --soft` over `--hard`. Always create a backup branch before history rewrite. The reflog is your safety net — use it.
+2. **Never lose data.** Prefer `git stash` over `git clean -fd`. Prefer `git reset --soft` over `--hard`. Always create and verify a backup branch before history rewrite. Hard reset, forced cleanup, and rebase skip are last-resort actions that require explicit user confirmation after the recovery path is recorded. The reflog is your safety net — use it.
 
 3. **Small, atomic changes.** One commit = one intent. Already enforced by `atomic-commit-push`. If you're rewriting history, preserve this property — don't squash unrelated changes.
 
@@ -86,10 +86,19 @@ Trigger: "rebase", "squash commits", "rewrite history", "clean up branch"
 **Post-flight:**
 - `git diff <backup-branch>..HEAD` — verify no unintended changes
 - `git log --oneline --graph -n 10` — verify history structure
-- If result is wrong: `git reset --hard backup/<branch>-pre-rebase-<timestamp>`
+- If result is wrong, use the recovery ladder below. Do not immediately run `git reset --hard`.
+
+**Recovery ladder for a bad rebase result:**
+1. Stop and record the current tip: `git rev-parse HEAD`
+2. Verify the backup exists: `git show-ref --verify refs/heads/backup/<branch>-pre-rebase-<timestamp>`
+3. Show the recovery target: `git log --oneline -1 backup/<branch>-pre-rebase-<timestamp>`
+4. Show what would be discarded: `git diff --stat backup/<branch>-pre-rebase-<timestamp>..HEAD`
+5. Ask for explicit confirmation with the exact command: `git reset --hard backup/<branch>-pre-rebase-<timestamp>`
+6. Only after confirmation, run the command and verify with `git status --short` and `git log --oneline -1`
 
 **Safety rules:**
 - Always create a backup branch BEFORE starting
+- Verify the backup branch exists before any recovery reset
 - Never rebase shared branches (`main`, `master`, `develop`, `release/*`) unless explicitly requested
 - If rebase conflicts occur more than 3 times: abort, report the conflict pattern, ask for strategy
 
@@ -301,7 +310,7 @@ git worktree prune
 ## Critical Rules
 
 **NEVER:**
-- Run destructive commands (`reset --hard`, `clean -fd`, `rebase --skip`) without a backup reference
+- Run destructive commands (`reset --hard`, `clean -fd`, `rebase --skip`) without a verified backup reference, a recorded recovery path, and explicit user confirmation
 - Force-push without `--force-with-lease` and without explaining the risk
 - Rebase or force-push shared branches (`main`, `master`, `develop`, `release/*`) unless explicitly requested
 - Squash commits with different intents
@@ -311,6 +320,7 @@ git worktree prune
 **ALWAYS:**
 - `git status --short` before every operation
 - Create a backup branch before any history rewrite
+- Verify the backup branch with `git show-ref --verify` before destructive recovery
 - Verify with `git diff --stat` after every operation
 - Record the recovery path in the operation description
 - Document WHY for every conflict resolution and non-trivial rebase decision

@@ -684,6 +684,19 @@ ALTER TABLE users ADD COLUMN bio TEXT;
    Use instead: ALTER TABLE users ADD COLUMN bio TEXT DEFAULT NULL; (instant, no rewrite)
 ```
 
+**Live migration safety gate (before advising production DDL):**
+```
+[ ] Environment identified: development / staging / production / unknown
+[ ] Table size and row count captured
+[ ] Active locks, blockers, idle transactions, and long transactions checked
+[ ] Lock timeout and statement timeout proposed for the migration session
+[ ] Online/low-lock variant considered (for PostgreSQL: CREATE INDEX CONCURRENTLY, nullable ADD COLUMN without rewrite, backfill in batches)
+[ ] Rollback plan documented (or explicitly impossible for the engine/DDL type)
+[ ] Migration window or explicit operator approval required for production/live tables
+```
+
+Codd recommends DDL and migration plans; do not execute live DDL directly. If the environment is unknown, treat it as production until proven otherwise.
+
 ### 6.3 Deadlock Detection & Prevention
 
 **Deadlock = circular lock dependency.** Transaction A holds lock on row X, waiting for row Y. Transaction B holds lock on row Y, waiting for row X. Neither can proceed.
@@ -893,6 +906,7 @@ Limit (cost=0.56..12.34 rows=20 width=240) (actual time=0.034..0.089 rows=20 loo
 [ ] Index write penalty calculated and justified
 [ ] No regression: other queries on same table show unchanged or improved plans
 [ ] ANALYZE <table> run after index creation (planner statistics are fresh)
+[ ] Live migration safety gate recorded for any DDL recommendation
 [ ] Concurrent access verified: -race or equivalent for connection pool changes
 ```
 
@@ -948,9 +962,9 @@ Signals to watch:
 - Suggest a schema change without testing it on a realistic data volume (at minimum: estimated row count × query pattern)
 - Recommend a connection pool size without knowing core count, instance count, and max_connections
 - Flag a normalization violation without providing the concrete anomaly example (what goes wrong if you don't fix it)
-- Execute DDL directly — Codd recommends; the main agent/Turing executes with evidence
+- Execute DDL directly — Codd recommends; the main agent/Turing executes only after evidence, migration-safety gates, and user/operator approval when live data is involved
 - Hold transactions open across I/O boundaries or user interaction
-- Use ACCESS EXCLUSIVE DDL (ALTER TABLE, DROP) on live tables without checking active connections first
+- Use ACCESS EXCLUSIVE DDL (ALTER TABLE, DROP, TRUNCATE, VACUUM FULL) on live tables without environment confirmation, active lock/transaction checks, timeouts, rollback plan, and explicit approval
 - Mix lock ordering across code paths — lock tables/rows in a consistent order everywhere
 
 **ALWAYS:**
@@ -961,6 +975,8 @@ Signals to watch:
 - Classify tables by size category — it determines everything downstream
 - Check for N+1 patterns in application code when queries are slow but well-indexed
 - Apply lock ordering on all code paths touching the same tables (Step 6: CONCURRENCY)
+- Treat unknown database environments as production until proven otherwise
+- Record the live migration safety gate before any DDL recommendation
 - Set lock_timeout, statement_timeout, and idle_in_transaction_session_timeout
 - Test deadlock-prone code with N concurrent workers/threads (see 6.4)
 

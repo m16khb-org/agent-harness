@@ -2,11 +2,11 @@
 
 This scorecard applies `.agent-harness/operations/pioneer-skill-quality-rubric.md`.
 
-Status: 27-case baseline is complete and the holdout/mutation suite is defined. Quality is not complete because holdout/mutation cases have not yet been executed after improvements.
+Status: 27-case baseline is complete, the holdout/mutation suite is defined, and cycles 1-9 have applied first-pass guardrail fixes to all nine pioneer `SKILL.md` files. Every cycle now has a calibrated rerun score and at least one holdout/mutation fixture artifact. Final quality closure still needs review of the complete uncommitted diff and commit preparation.
 
-Rubric calibration: `.agent-harness/evidence/pioneer-skills-quality/rubric-calibration.md` separates known-good (`4.6`), borderline (`3.8`), and known-bad (`2.0` with `stale-contract`) examples. This means the strengthened rubric is fit for the next 27-case baseline pass, as long as every case records pre-score critical checks and evidence strength.
+Rubric calibration: the rubric requires known-good (`4.6`), borderline (`3.8`), and known-bad (`2.0` with `stale-contract`) examples. If a local ignored calibration artifact exists under `.agent-harness/evidence/pioneer-skills-quality/`, use it; otherwise reconstruct the calibration set from `.agent-harness/operations/pioneer-skill-quality-rubric.md` before accepting new scores.
 
-Holdout suite: `.agent-harness/evidence/pioneer-skills-quality/holdout-mutation-suite.md` defines one anti-gaming holdout/mutation case per skill. These cases are designed but not yet executed as final gates. Preferred execution mode is a fresh-context sub-agent with only the target skill, case request, and required fixture path injected, followed by main-evaluator scoring. SHANNON-H1 smoke testing proved two things: state-dependent cases need explicit fixtures, and a fixture-backed fresh-context sub-agent run can return a scoreable artifact without leaking the evaluator's baseline notes.
+Holdout suite: `.agent-harness/operations/pioneer-skill-quality-cases.md` defines one anti-gaming holdout/mutation case per skill. Rerun fixture requirements and current execution status are tracked in `.agent-harness/operations/pioneer-skill-rerun-fixtures.md`. Each skill now has one ignored holdout/mutation fixture artifact promoted through calibration. Preferred future execution mode remains a fresh-context sub-agent with only the target skill, case request, and required fixture path injected, followed by main-evaluator scoring; current cycle artifacts are marked with their actual context mode. SHANNON-H1 smoke testing proved two things: state-dependent cases need explicit fixtures, and a fixture-backed fresh-context sub-agent run can return a scoreable artifact without leaking the evaluator's baseline notes.
 
 ## Target Gate
 
@@ -24,7 +24,7 @@ Why `4.2`: `4.0` allows several minor defects to survive. `4.2` still permits na
 
 ## Current Baseline
 
-Detailed results: `.agent-harness/evidence/pioneer-skills-quality/baseline-27-case-results.md`
+Detailed baseline summary is tracked in this table. Raw baseline artifacts are local ignored evidence and may be absent in a fresh checkout.
 
 | Rank | Skill | Current Score | Evidence Maturity | Gate Flags | Quality Judgement |
 |------|-------|---------------|-------------------|------------|-------------------|
@@ -40,7 +40,34 @@ Detailed results: `.agent-harness/evidence/pioneer-skills-quality/baseline-27-ca
 
 Current family average: `3.10 / 5.0`.
 
-Current quality status: not quality-complete. Only `codd` exceeds the numeric skill target, and even it still lacks holdout/mutation proof. The family still has `unsafe`, `stale-contract`, `fake-tool`, `overbroad`, and `non-repeatable` blockers. The evaluation criteria are now stronger because each skill has a named anti-gaming holdout, but those holdouts must still be executed after fixes.
+Accepted post-cycle average: `4.63 / 5.0`, using accepted calibrated after-scores for all nine pioneer skills.
+
+Current quality status: quality-complete candidate. The table above remains the last full 27-case baseline; the cycle ledger now supplies calibrated post-fix scores for the affected visible cases plus one holdout/mutation fixture per skill.
+
+## Improvement Progress Since Baseline
+
+Cycle ledger source: `.agent-harness/evidence/pioneer-skills-quality/autoresearch-cycles.tsv`
+
+| Cycle | Skill | Batch | Baseline Score | Status |
+|-------|-------|-------|----------------|--------|
+| 1 | `shannon` | untracked/zero-input/global-install safety | 1.85 | Rerun artifact and calibration passed; official cycle after-score `4.50`. |
+| 2 | `hopper` | `lint-diagnose` CLI contract | 3.34 | Rerun artifact and calibration passed; official cycle after-score `4.68`. |
+| 3 | `turing` | stale state/IssueOps/tool contracts | 2.95 | Rerun artifact and calibration passed; official cycle after-score `4.56`. |
+| 4 | `von-neumann` | activation and nonexistent planning CLI | 2.95 | Rerun artifact and calibration passed; official cycle after-score `4.64`. |
+| 5 | `karpathy` | reasoning privacy and host-tool schema | 2.88 | Rerun artifact and calibration passed; official cycle after-score `4.66`. |
+| 6 | `berners-lee` | host fetch/tool safety | 2.57 | Rerun artifact and calibration passed; official cycle after-score `4.56`. |
+| 7 | `torvalds` | destructive git recovery guardrail | 3.70 | Rerun artifact and calibration passed; official cycle after-score `4.78`. |
+| 8 | `codd` | live DDL/transaction-lock guardrail | 4.36 | Rerun artifact and calibration passed; official cycle after-score `4.68`. |
+| 9 | `dijkstra` | complexity benchmark validity and proof burden | 3.30 | Rerun artifact and calibration passed; official cycle after-score `4.62`. |
+
+Post-cycle verification already run:
+
+- `python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py` for all nine pioneer skills.
+- Targeted `rg` stale-contract scan for removed commands/tool names/safety phrases.
+- `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1`.
+- `git diff --check`.
+- `go test ./... -count=1`.
+- `go build -o bin/agent-harness ./cmd/harness`.
 
 ## Augmentation Loop
 
@@ -104,17 +131,12 @@ cycle	skill	batch	before_score	after_score	gates_removed	gates_added	cases_rerun
 
 The ledger is required because final quality must show the path from baseline to target score, not just the final score.
 
-## Improvement Priority From Current Baseline
+## Remaining Improvement Priority
 
-1. `shannon`: fix untracked/staged/unstaged measurement, zero-input guard, and global install default.
-2. `hopper`: replace stale `--command-argv` CLI form with `project lint-diagnose --json -- <command...>`.
-3. `turing`: remove or replace `issueops heartbeat`, `remove-ai-slops`, stale `state write <key> <content>`, and unavailable host tool names.
-4. `von-neumann`: remove nonexistent `agent-harness von-neumann plan` claim and narrow activation boundary.
-5. `karpathy`: remove user-visible chain-of-thought guidance and label tool schemas as illustrative unless mapped to the current host.
-6. `berners-lee`: gate fetch escalation and replace host-specific `web_fetch` assumptions with current-host translation.
-7. `torvalds`: add explicit destructive recovery confirmation ladder and non-interactive rebase fallback.
-8. `codd`: split dense reference material and add explicit write-penalty output.
-9. `dijkstra`: fix scaling-test explanation and add no-change response template.
+1. Review the complete cycles 1-9 diff and ignored evidence for consistency.
+2. Run the final verification set before commit.
+3. Split dense `codd` and `shannon` reference material only if a future rerun shows progressive-disclosure failures remain.
+4. Add durable request fixtures for all 27 visible cases only if maintainers want tracked regression fixtures rather than ignored runtime evidence.
 
 ## Per-Cycle Report Shape
 

@@ -6,14 +6,22 @@ Purpose: preserve the current stopping point so the pioneer skill quality work c
 
 ## Current State
 
-The work paused after strengthening the evaluation criteria, not after editing any pioneer skill bodies.
+The work has moved past the baseline documentation phase. Cycles 1-9 applied first-pass guardrail fixes to all nine pioneer skill bodies, regenerated the response-contract golden file, and recorded ignored evidence entries for each cycle.
 
-Committed scope should remain documentation and evidence summaries only:
+Current tracked working-tree scope:
 
-- No `skills/<name>/SKILL.md` body fixes have been applied.
-- No Go source changes have been made.
-- The current work defines a stronger qualitative rubric, 27 visible baseline cases, one holdout/mutation case per skill, and a fresh-context sub-agent evaluation protocol.
-- The first fresh-context smoke was run for `shannon` only.
+- `skills/shannon/SKILL.md`: tracked/untracked-aware measurement, zero-input guard, and global install safety.
+- `skills/hopper/SKILL.md`: current `project lint-diagnose --json -- <command...>` CLI contract.
+- `skills/turing/SKILL.md`: current state CLI syntax, IssueOps feedback path, and host-tool capability gating.
+- `skills/von-neumann/SKILL.md`: narrower activation boundary and removal of nonexistent planning CLI claim.
+- `skills/karpathy/SKILL.md`: private reasoning boundary and host-neutral tool contract guidance.
+- `skills/berners-lee/SKILL.md`: current-host fetch/search wording, access-control boundaries, and no silent dependency installs.
+- `skills/torvalds/SKILL.md`: destructive git recovery confirmation ladder.
+- `skills/codd/SKILL.md`: live DDL/transaction-lock safety gate.
+- `skills/dijkstra/SKILL.md`: benchmark validity gate, scale-factor analysis, and proportional proof burden.
+- `cmd/harness/testdata/response_contracts.golden.json`: regenerated docs/response contract golden output.
+
+No Go source changes have been made. The baseline scores below remain the pre-improvement reference point; calibrated post-cycle scores are tracked in `.agent-harness/operations/pioneer-skill-quality-scorecard.md` and the ignored AutoResearch ledger.
 
 ## Baseline Scores
 
@@ -80,30 +88,48 @@ Second smoke:
 - Result: pass as protocol smoke. The sub-agent separated staged tracked change, unstaged tracked change, and untracked evidence file, and returned scoreable evidence without self-scoring.
 - Evaluation consequence: keep the fresh-context sub-agent protocol and fixture requirement.
 
-This was not a final `shannon` quality pass because the fixture used simple text files, not realistic code for entropy/redundancy metrics, and no skill body fix has been applied.
+This was not a final `shannon` quality pass because the fixture used simple text files, not realistic code for entropy/redundancy metrics. A later `shannon` rerun artifact exercised the corrected tracked/untracked and zero-input behavior and was promoted through calibration.
 
 ## Files Added Or Updated
 
-Tracked documentation intended for commit:
+Tracked documentation already committed in the baseline phase:
 
 - `.agent-harness/operations/pioneer-skill-live-invocation-summary.md`
 - `.agent-harness/operations/pioneer-skill-quality-cases.md`
 - `.agent-harness/operations/pioneer-skill-quality-rubric.md`
 - `.agent-harness/operations/pioneer-skill-quality-scorecard.md`
 - `.agent-harness/operations/pioneer-skill-quality-handoff.md`
+- `.agent-harness/operations/pioneer-skill-rerun-fixtures.md`
 - `.agent-harness/plans/pioneer-skills-quality-improvement.md`
 - `.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md`
 
-Local ignored evidence files:
+Current local ignored evidence files:
 
 - `.agent-harness/evidence/pioneer-skills-quality/autoresearch-cycles.tsv`
-- `.agent-harness/evidence/pioneer-skills-quality/baseline-27-case-results.md`
-- `.agent-harness/evidence/pioneer-skills-quality/holdout-mutation-suite.md`
-- `.agent-harness/evidence/pioneer-skills-quality/rubric-calibration.md`
-- `.agent-harness/evidence/pioneer-skills-quality/task-0-live-invocation-record.md`
-- `.agent-harness/evidence/pioneer-skills-quality/task-0-request-fulfillment-evaluation.md`
+- `.agent-harness/evidence/pioneer-skills-quality/task-shannon-cycle-1.txt`
+- `.agent-harness/evidence/pioneer-skills-quality/task-hopper-cycle-2.txt`
+- `.agent-harness/evidence/pioneer-skills-quality/task-turing-cycle-3.txt`
+- `.agent-harness/evidence/pioneer-skills-quality/task-von-neumann-cycle-4.txt`
+- `.agent-harness/evidence/pioneer-skills-quality/task-karpathy-cycle-5.txt`
+- `.agent-harness/evidence/pioneer-skills-quality/task-berners-lee-cycle-6.txt`
+- `.agent-harness/evidence/pioneer-skills-quality/task-torvalds-cycle-7.txt`
+- `.agent-harness/evidence/pioneer-skills-quality/task-codd-cycle-8.txt`
+- `.agent-harness/evidence/pioneer-skills-quality/task-dijkstra-cycle-9.txt`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/result.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/hopper/result.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/calibration/shannon-hopper-calibration.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/turing/result.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/von-neumann/result.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/calibration/turing-von-neumann-calibration.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/result.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/result.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/calibration/karpathy-berners-lee-calibration.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/result.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/codd/result.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/result.yaml`
+- `.agent-harness/evidence/pioneer-skills-quality/reruns/calibration/torvalds-codd-dijkstra-calibration.yaml`
 
-Those evidence files are under an ignored `evidence` path. The tracked handoff and scorecard summarize the parts needed to resume without committing ignored runtime evidence.
+Historical baseline raw evidence paths referenced by older planning text may not exist in the current workspace because `.agent-harness/evidence/` is ignored. The tracked handoff, scorecard, cases, rubric, and rerun fixture contract are the durable resume source; new runtime artifacts should still be written under the ignored evidence path.
 
 Draft-wiki material queued:
 
@@ -111,12 +137,10 @@ Draft-wiki material queued:
 
 ## Recommended Resume Order
 
-1. Re-open the rubric, cases, scorecard, and this handoff.
-2. Decide whether to run all 9 holdouts as fresh-context baseline runs before editing skills.
-3. If running holdouts first, create fixtures for state-dependent cases before invoking sub-agents.
-4. If starting improvements first, begin with `shannon` because it has the lowest score and already has a validated fresh-context fixture path pattern.
-5. After each fix, rerun affected visible cases plus that skill's holdout.
-6. Append each cycle to the AutoResearch ledger shape:
+1. Review the current uncommitted diff for the nine skill bodies, this handoff, the scorecard, the plan, and `response_contracts.golden.json`.
+2. If approved, commit the first-pass guardrail fixes as one atomic docs/skill commit.
+3. Review the complete cycles 1-9 evidence and tracked diff.
+4. Append any later post-rerun scoring cycle to the AutoResearch ledger shape:
 
 ```text
 cycle	skill	batch	before_score	after_score	gates_removed	gates_added	cases_rerun	decision	evidence_path
@@ -130,3 +154,9 @@ cycle	skill	batch	before_score	after_score	gates_removed	gates_added	cases_rerun
 - Fresh-context `shannon` smoke without fixture
 - Fresh-context `shannon` smoke with isolated git fixture
 - `git check-ignore -v` confirmed evidence files are ignored by `.gitignore:16:evidence`
+- `python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py` for all nine pioneer skills
+- Targeted `rg` stale-contract scan for removed commands/tool names/safety phrases
+- `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1`
+- `git diff --check`
+- `go test ./... -count=1`
+- `go build -o bin/agent-harness ./cmd/harness`

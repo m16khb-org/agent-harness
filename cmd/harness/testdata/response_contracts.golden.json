@@ -842,6 +842,193 @@
           "title": "Cautions Incident Archive"
         },
         {
+          "bytes": 865,
+          "headings": [
+            "Berners-Lee Cycle 6 Fixture Request"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/fixture-request.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/fixture-request.md",
+          "title": "Berners-Lee Cycle 6 Fixture Request"
+        },
+        {
+          "bytes": 1588,
+          "headings": [
+            "Research Fixture: Requests SOCKS Proxy Support",
+            "Question",
+            "Method",
+            "Findings",
+            "SOCKS proxy support is confirmed",
+            "Protected source was not used",
+            "Conclusion"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/research-report.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/research-report.md",
+          "title": "Research Fixture: Requests SOCKS Proxy Support"
+        },
+        {
+          "bytes": 1184,
+          "headings": [
+            "Source Table"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/source-table.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/source-table.md",
+          "title": "Source Table"
+        },
+        {
+          "bytes": 1373,
+          "headings": [
+            "Codd Cycle 8 Analysis"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/codd/analysis.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/codd/analysis.md",
+          "title": "Codd Cycle 8 Analysis"
+        },
+        {
+          "bytes": 848,
+          "headings": [
+            "Dijkstra Cycle 9 Fixture Request"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/fixture-request.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/fixture-request.md",
+          "title": "Dijkstra Cycle 9 Fixture Request"
+        },
+        {
+          "bytes": 947,
+          "headings": [
+            "Hot-Path Check"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/hot-path-check.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/hot-path-check.md",
+          "title": "Hot-Path Check"
+        },
+        {
+          "bytes": 565,
+          "headings": [
+            "Proportional Invariant Note"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/invariant-note.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/invariant-note.md",
+          "title": "Proportional Invariant Note"
+        },
+        {
+          "bytes": 795,
+          "headings": [
+            "Scaling Table"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/scaling-table.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/scaling-table.md",
+          "title": "Scaling Table"
+        },
+        {
+          "bytes": 835,
+          "headings": [
+            "Karpathy Cycle 5 Fixture Request"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/fixture-request.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/fixture-request.md",
+          "title": "Karpathy Cycle 5 Fixture Request"
+        },
+        {
+          "bytes": 2021,
+          "headings": [
+            "Revised Tool-Using Evaluation Prompt"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/revised-prompt.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/revised-prompt.md",
+          "title": "Revised Tool-Using Evaluation Prompt"
+        },
+        {
+          "bytes": 1293,
+          "headings": [
+            "Host Tool Mapping"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/tool-mapping.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/tool-mapping.md",
+          "title": "Host Tool Mapping"
+        },
+        {
+          "bytes": 38,
+          "headings": [
+            "Shannon Empty Fixture"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-empty/tracked.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-empty/tracked.md",
+          "title": "Shannon Empty Fixture"
+        },
+        {
+          "bytes": 57,
+          "headings": [
+            "Shannon Untracked Evidence Fixture"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/evidence.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/evidence.md",
+          "title": "Shannon Untracked Evidence Fixture"
+        },
+        {
+          "bytes": 71,
+          "headings": [
+            "Shannon Worktree Fixture",
+            "noise comment"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/tracked.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/tracked.md",
+          "title": "Shannon Worktree Fixture"
+        },
+        {
+          "bytes": 1042,
+          "headings": [
+            "Torvalds Destructive Recovery Gate"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/confirmation-gate.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/confirmation-gate.md",
+          "title": "Torvalds Destructive Recovery Gate"
+        },
+        {
+          "bytes": 95,
+          "headings": [
+            "Torvalds Fixture Repo"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/README.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/README.md",
+          "title": "Torvalds Fixture Repo"
+        },
+        {
+          "bytes": 141,
+          "headings": [
+            "Untracked Note"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/untracked-note.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/untracked-note.md",
+          "title": "Untracked Note"
+        },
+        {
+          "bytes": 52,
+          "headings": [
+            "Turing Fixture Document"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/README.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/README.md",
+          "title": "Turing Fixture Document"
+        },
+        {
+          "bytes": 118,
+          "headings": [
+            "Turing Stale Note Fixture"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/stale-note.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/stale-note.md",
+          "title": "Turing Stale Note Fixture"
+        },
+        {
+          "bytes": 57,
+          "headings": [
+            "Von Neumann Fixture Document"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/von-neumann/fixture-doc/README.md",
+          "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/von-neumann/fixture-doc/README.md",
+          "title": "Von Neumann Fixture Document"
+        },
+        {
           "bytes": 3620,
           "headings": [
             "CLI And MCP Operations",
@@ -884,6 +1071,123 @@
           "path": "$HARNESS_ROOT/.agent-harness/operations/install.md",
           "rel_path": ".agent-harness/operations/install.md",
           "title": "Install And Sync"
+        },
+        {
+          "bytes": 4241,
+          "headings": [
+            "Pioneer Skill Live Invocation Summary",
+            "Summary Table",
+            "Completion Status"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
+          "rel_path": ".agent-harness/operations/pioneer-skill-live-invocation-summary.md",
+          "title": "Pioneer Skill Live Invocation Summary"
+        },
+        {
+          "bytes": 18132,
+          "headings": [
+            "Pioneer Skill Quality Cases",
+            "berners-lee",
+            "Case BERNERS-LEE-1: Cited Research Happy Path",
+            "Case BERNERS-LEE-2: Access-Control Boundary",
+            "Case BERNERS-LEE-3: Operational Report",
+            "codd",
+            "Case CODD-1: Slow Query Optimization",
+            "Case CODD-2: Premature Denormalization Boundary",
+            "Case CODD-3: Pool and Concurrency Advice",
+            "dijkstra",
+            "Case DIJKSTRA-1: Algorithm Improvement",
+            "Case DIJKSTRA-2: Over-Engineering Boundary",
+            "Case DIJKSTRA-3: Scaling Explanation",
+            "hopper",
+            "Case HOPPER-1: Reproducible Failure",
+            "Case HOPPER-2: Trivial Failure Boundary",
+            "Case HOPPER-3: lint-diagnose Contract",
+            "karpathy",
+            "Case KARPATHY-1: Prompt Design Happy Path",
+            "Case KARPATHY-2: Reasoning Privacy Boundary"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-cases.md",
+          "rel_path": ".agent-harness/operations/pioneer-skill-quality-cases.md",
+          "title": "Pioneer Skill Quality Cases"
+        },
+        {
+          "bytes": 9476,
+          "headings": [
+            "Pioneer Skill Quality Handoff",
+            "Current State",
+            "Baseline Scores",
+            "Fresh-Context Sub-Agent Protocol",
+            "Fresh-Context Smoke Results",
+            "Files Added Or Updated",
+            "Recommended Resume Order",
+            "Verification Already Run"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-handoff.md",
+          "rel_path": ".agent-harness/operations/pioneer-skill-quality-handoff.md",
+          "title": "Pioneer Skill Quality Handoff"
+        },
+        {
+          "bytes": 19315,
+          "headings": [
+            "Pioneer Skill Qualitative Rubric",
+            "Rubric Sufficiency Verdict",
+            "Rubric Quality Bar",
+            "Evaluation Unit",
+            "Holdout and Mutation Protocol",
+            "Fresh-Context Sub-Agent Execution",
+            "Pre-Score Critical Checks",
+            "Five Scored Dimensions",
+            "1. Request Fit",
+            "2. Completion",
+            "3. Method Fidelity",
+            "4. Evidence and Verification",
+            "5. Safety and Portability",
+            "Gate Flags",
+            "Evidence Strength",
+            "Minimum Evidence by Case Type",
+            "Skill-Specific Gold Standards",
+            "Scoring Formula",
+            "Calibration Protocol",
+            "Target Quality Gate"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
+          "rel_path": ".agent-harness/operations/pioneer-skill-quality-rubric.md",
+          "title": "Pioneer Skill Qualitative Rubric"
+        },
+        {
+          "bytes": 9589,
+          "headings": [
+            "Pioneer Skill Quality Scorecard",
+            "Target Gate",
+            "Current Baseline",
+            "Improvement Progress Since Baseline",
+            "Augmentation Loop",
+            "Cycle 0: Baseline",
+            "Cycle N: Improve the Lowest Trust Surface",
+            "Cycle Ledger",
+            "Remaining Improvement Priority",
+            "Per-Cycle Report Shape",
+            "Cycle N"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
+          "rel_path": ".agent-harness/operations/pioneer-skill-quality-scorecard.md",
+          "title": "Pioneer Skill Quality Scorecard"
+        },
+        {
+          "bytes": 7966,
+          "headings": [
+            "Pioneer Skill Rerun Fixtures",
+            "Execution Contract",
+            "Result Record Template",
+            "Fixture Matrix",
+            "Calibration Rerun Set",
+            "Current Execution Status",
+            "Completion Criteria"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
+          "rel_path": ".agent-harness/operations/pioneer-skill-rerun-fixtures.md",
+          "title": "Pioneer Skill Rerun Fixtures"
         },
         {
           "bytes": 3791,
@@ -966,6 +1270,34 @@
           "title": "Pioneer Skill Documentation Audit \u0026 Update"
         },
         {
+          "bytes": 53360,
+          "headings": [
+            "Pioneer Skills Qualitative Quality Improvement Plan",
+            "TL;DR",
+            "Context",
+            "Original Request",
+            "Scope",
+            "Evidence Gathered",
+            "Evaluation Correction",
+            "Request-Fulfillment Rubric",
+            "Full-Function Evaluation Coverage Matrix",
+            "Gap Analysis",
+            "Initial Static Risk Matrix",
+            "Cross-Cutting Findings",
+            "T0 Request-Fulfillment Results",
+            "Highest-Leverage Fix Order",
+            "Improvement Target",
+            "Work Objectives",
+            "Core Objective",
+            "Deliverables",
+            "Definition of Done",
+            "Must Have"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
+          "rel_path": ".agent-harness/plans/pioneer-skills-quality-improvement.md",
+          "title": "Pioneer Skills Qualitative Quality Improvement Plan"
+        },
+        {
           "bytes": 16284,
           "headings": [
             "Claude Shannon — Signal-to-Noise Quality Gate",
@@ -1020,6 +1352,20 @@
           "path": "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
           "rel_path": ".agent-harness/plans/von-neumann-quality-upgrade.md",
           "title": "Von Neumann Quality Upgrade"
+        },
+        {
+          "bytes": 3354,
+          "headings": [
+            "Karpathy AutoResearch Notes for Pioneer Skill Quality",
+            "Relevant Pattern",
+            "Adaptation for Skill Quality",
+            "Important Codex Adjustment",
+            "Loop Rules to Import",
+            "Skill-Quality Autoresearch Stop Condition"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
+          "rel_path": ".agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
+          "title": "Karpathy AutoResearch Notes for Pioneer Skill Quality"
         },
         {
           "bytes": 5789,
@@ -1186,15 +1532,43 @@
         "$HARNESS_ROOT/.agent-harness/TESTING.md",
         "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
         "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/fixture-request.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/research-report.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/source-table.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/codd/analysis.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/fixture-request.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/hot-path-check.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/invariant-note.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/scaling-table.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/fixture-request.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/revised-prompt.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/tool-mapping.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-empty/tracked.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/evidence.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/tracked.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/confirmation-gate.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/README.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/untracked-note.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/README.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/stale-note.md",
+        "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/von-neumann/fixture-doc/README.md",
         "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
         "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
         "$HARNESS_ROOT/.agent-harness/operations/install.md",
+        "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
+        "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-cases.md",
+        "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-handoff.md",
+        "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
+        "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
+        "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+        "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+        "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
@@ -3190,7 +3564,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 33,
+        "docs_indexed": 61,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -5254,6 +5628,193 @@
                 "title": "Cautions Incident Archive"
               },
               {
+                "bytes": 865,
+                "headings": [
+                  "Berners-Lee Cycle 6 Fixture Request"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/fixture-request.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/fixture-request.md",
+                "title": "Berners-Lee Cycle 6 Fixture Request"
+              },
+              {
+                "bytes": 1588,
+                "headings": [
+                  "Research Fixture: Requests SOCKS Proxy Support",
+                  "Question",
+                  "Method",
+                  "Findings",
+                  "SOCKS proxy support is confirmed",
+                  "Protected source was not used",
+                  "Conclusion"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/research-report.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/research-report.md",
+                "title": "Research Fixture: Requests SOCKS Proxy Support"
+              },
+              {
+                "bytes": 1184,
+                "headings": [
+                  "Source Table"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/source-table.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/source-table.md",
+                "title": "Source Table"
+              },
+              {
+                "bytes": 1373,
+                "headings": [
+                  "Codd Cycle 8 Analysis"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/codd/analysis.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/codd/analysis.md",
+                "title": "Codd Cycle 8 Analysis"
+              },
+              {
+                "bytes": 848,
+                "headings": [
+                  "Dijkstra Cycle 9 Fixture Request"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/fixture-request.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/fixture-request.md",
+                "title": "Dijkstra Cycle 9 Fixture Request"
+              },
+              {
+                "bytes": 947,
+                "headings": [
+                  "Hot-Path Check"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/hot-path-check.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/hot-path-check.md",
+                "title": "Hot-Path Check"
+              },
+              {
+                "bytes": 565,
+                "headings": [
+                  "Proportional Invariant Note"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/invariant-note.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/invariant-note.md",
+                "title": "Proportional Invariant Note"
+              },
+              {
+                "bytes": 795,
+                "headings": [
+                  "Scaling Table"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/scaling-table.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/scaling-table.md",
+                "title": "Scaling Table"
+              },
+              {
+                "bytes": 835,
+                "headings": [
+                  "Karpathy Cycle 5 Fixture Request"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/fixture-request.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/fixture-request.md",
+                "title": "Karpathy Cycle 5 Fixture Request"
+              },
+              {
+                "bytes": 2021,
+                "headings": [
+                  "Revised Tool-Using Evaluation Prompt"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/revised-prompt.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/revised-prompt.md",
+                "title": "Revised Tool-Using Evaluation Prompt"
+              },
+              {
+                "bytes": 1293,
+                "headings": [
+                  "Host Tool Mapping"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/tool-mapping.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/tool-mapping.md",
+                "title": "Host Tool Mapping"
+              },
+              {
+                "bytes": 38,
+                "headings": [
+                  "Shannon Empty Fixture"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-empty/tracked.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-empty/tracked.md",
+                "title": "Shannon Empty Fixture"
+              },
+              {
+                "bytes": 57,
+                "headings": [
+                  "Shannon Untracked Evidence Fixture"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/evidence.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/evidence.md",
+                "title": "Shannon Untracked Evidence Fixture"
+              },
+              {
+                "bytes": 71,
+                "headings": [
+                  "Shannon Worktree Fixture",
+                  "noise comment"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/tracked.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/tracked.md",
+                "title": "Shannon Worktree Fixture"
+              },
+              {
+                "bytes": 1042,
+                "headings": [
+                  "Torvalds Destructive Recovery Gate"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/confirmation-gate.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/confirmation-gate.md",
+                "title": "Torvalds Destructive Recovery Gate"
+              },
+              {
+                "bytes": 95,
+                "headings": [
+                  "Torvalds Fixture Repo"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/README.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/README.md",
+                "title": "Torvalds Fixture Repo"
+              },
+              {
+                "bytes": 141,
+                "headings": [
+                  "Untracked Note"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/untracked-note.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/untracked-note.md",
+                "title": "Untracked Note"
+              },
+              {
+                "bytes": 52,
+                "headings": [
+                  "Turing Fixture Document"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/README.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/README.md",
+                "title": "Turing Fixture Document"
+              },
+              {
+                "bytes": 118,
+                "headings": [
+                  "Turing Stale Note Fixture"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/stale-note.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/stale-note.md",
+                "title": "Turing Stale Note Fixture"
+              },
+              {
+                "bytes": 57,
+                "headings": [
+                  "Von Neumann Fixture Document"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/von-neumann/fixture-doc/README.md",
+                "rel_path": ".agent-harness/evidence/pioneer-skills-quality/reruns/von-neumann/fixture-doc/README.md",
+                "title": "Von Neumann Fixture Document"
+              },
+              {
                 "bytes": 3620,
                 "headings": [
                   "CLI And MCP Operations",
@@ -5296,6 +5857,123 @@
                 "path": "$HARNESS_ROOT/.agent-harness/operations/install.md",
                 "rel_path": ".agent-harness/operations/install.md",
                 "title": "Install And Sync"
+              },
+              {
+                "bytes": 4241,
+                "headings": [
+                  "Pioneer Skill Live Invocation Summary",
+                  "Summary Table",
+                  "Completion Status"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
+                "rel_path": ".agent-harness/operations/pioneer-skill-live-invocation-summary.md",
+                "title": "Pioneer Skill Live Invocation Summary"
+              },
+              {
+                "bytes": 18132,
+                "headings": [
+                  "Pioneer Skill Quality Cases",
+                  "berners-lee",
+                  "Case BERNERS-LEE-1: Cited Research Happy Path",
+                  "Case BERNERS-LEE-2: Access-Control Boundary",
+                  "Case BERNERS-LEE-3: Operational Report",
+                  "codd",
+                  "Case CODD-1: Slow Query Optimization",
+                  "Case CODD-2: Premature Denormalization Boundary",
+                  "Case CODD-3: Pool and Concurrency Advice",
+                  "dijkstra",
+                  "Case DIJKSTRA-1: Algorithm Improvement",
+                  "Case DIJKSTRA-2: Over-Engineering Boundary",
+                  "Case DIJKSTRA-3: Scaling Explanation",
+                  "hopper",
+                  "Case HOPPER-1: Reproducible Failure",
+                  "Case HOPPER-2: Trivial Failure Boundary",
+                  "Case HOPPER-3: lint-diagnose Contract",
+                  "karpathy",
+                  "Case KARPATHY-1: Prompt Design Happy Path",
+                  "Case KARPATHY-2: Reasoning Privacy Boundary"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-cases.md",
+                "rel_path": ".agent-harness/operations/pioneer-skill-quality-cases.md",
+                "title": "Pioneer Skill Quality Cases"
+              },
+              {
+                "bytes": 9476,
+                "headings": [
+                  "Pioneer Skill Quality Handoff",
+                  "Current State",
+                  "Baseline Scores",
+                  "Fresh-Context Sub-Agent Protocol",
+                  "Fresh-Context Smoke Results",
+                  "Files Added Or Updated",
+                  "Recommended Resume Order",
+                  "Verification Already Run"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-handoff.md",
+                "rel_path": ".agent-harness/operations/pioneer-skill-quality-handoff.md",
+                "title": "Pioneer Skill Quality Handoff"
+              },
+              {
+                "bytes": 19315,
+                "headings": [
+                  "Pioneer Skill Qualitative Rubric",
+                  "Rubric Sufficiency Verdict",
+                  "Rubric Quality Bar",
+                  "Evaluation Unit",
+                  "Holdout and Mutation Protocol",
+                  "Fresh-Context Sub-Agent Execution",
+                  "Pre-Score Critical Checks",
+                  "Five Scored Dimensions",
+                  "1. Request Fit",
+                  "2. Completion",
+                  "3. Method Fidelity",
+                  "4. Evidence and Verification",
+                  "5. Safety and Portability",
+                  "Gate Flags",
+                  "Evidence Strength",
+                  "Minimum Evidence by Case Type",
+                  "Skill-Specific Gold Standards",
+                  "Scoring Formula",
+                  "Calibration Protocol",
+                  "Target Quality Gate"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
+                "rel_path": ".agent-harness/operations/pioneer-skill-quality-rubric.md",
+                "title": "Pioneer Skill Qualitative Rubric"
+              },
+              {
+                "bytes": 9589,
+                "headings": [
+                  "Pioneer Skill Quality Scorecard",
+                  "Target Gate",
+                  "Current Baseline",
+                  "Improvement Progress Since Baseline",
+                  "Augmentation Loop",
+                  "Cycle 0: Baseline",
+                  "Cycle N: Improve the Lowest Trust Surface",
+                  "Cycle Ledger",
+                  "Remaining Improvement Priority",
+                  "Per-Cycle Report Shape",
+                  "Cycle N"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
+                "rel_path": ".agent-harness/operations/pioneer-skill-quality-scorecard.md",
+                "title": "Pioneer Skill Quality Scorecard"
+              },
+              {
+                "bytes": 7966,
+                "headings": [
+                  "Pioneer Skill Rerun Fixtures",
+                  "Execution Contract",
+                  "Result Record Template",
+                  "Fixture Matrix",
+                  "Calibration Rerun Set",
+                  "Current Execution Status",
+                  "Completion Criteria"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
+                "rel_path": ".agent-harness/operations/pioneer-skill-rerun-fixtures.md",
+                "title": "Pioneer Skill Rerun Fixtures"
               },
               {
                 "bytes": 3791,
@@ -5378,6 +6056,34 @@
                 "title": "Pioneer Skill Documentation Audit \u0026 Update"
               },
               {
+                "bytes": 53360,
+                "headings": [
+                  "Pioneer Skills Qualitative Quality Improvement Plan",
+                  "TL;DR",
+                  "Context",
+                  "Original Request",
+                  "Scope",
+                  "Evidence Gathered",
+                  "Evaluation Correction",
+                  "Request-Fulfillment Rubric",
+                  "Full-Function Evaluation Coverage Matrix",
+                  "Gap Analysis",
+                  "Initial Static Risk Matrix",
+                  "Cross-Cutting Findings",
+                  "T0 Request-Fulfillment Results",
+                  "Highest-Leverage Fix Order",
+                  "Improvement Target",
+                  "Work Objectives",
+                  "Core Objective",
+                  "Deliverables",
+                  "Definition of Done",
+                  "Must Have"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
+                "rel_path": ".agent-harness/plans/pioneer-skills-quality-improvement.md",
+                "title": "Pioneer Skills Qualitative Quality Improvement Plan"
+              },
+              {
                 "bytes": 16284,
                 "headings": [
                   "Claude Shannon — Signal-to-Noise Quality Gate",
@@ -5432,6 +6138,20 @@
                 "path": "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
                 "rel_path": ".agent-harness/plans/von-neumann-quality-upgrade.md",
                 "title": "Von Neumann Quality Upgrade"
+              },
+              {
+                "bytes": 3354,
+                "headings": [
+                  "Karpathy AutoResearch Notes for Pioneer Skill Quality",
+                  "Relevant Pattern",
+                  "Adaptation for Skill Quality",
+                  "Important Codex Adjustment",
+                  "Loop Rules to Import",
+                  "Skill-Quality Autoresearch Stop Condition"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
+                "rel_path": ".agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
+                "title": "Karpathy AutoResearch Notes for Pioneer Skill Quality"
               },
               {
                 "bytes": 5789,
@@ -5605,15 +6325,43 @@
               "$HARNESS_ROOT/.agent-harness/TESTING.md",
               "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
               "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/fixture-request.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/research-report.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/source-table.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/codd/analysis.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/fixture-request.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/hot-path-check.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/invariant-note.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/scaling-table.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/fixture-request.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/revised-prompt.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/tool-mapping.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-empty/tracked.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/evidence.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/fixture-worktree/tracked.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/confirmation-gate.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/README.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/fixture-repo/untracked-note.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/README.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/turing/fixture-doc/stale-note.md",
+              "$HARNESS_ROOT/.agent-harness/evidence/pioneer-skills-quality/reruns/von-neumann/fixture-doc/README.md",
               "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
               "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
               "$HARNESS_ROOT/.agent-harness/operations/install.md",
+              "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
+              "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-cases.md",
+              "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-handoff.md",
+              "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
+              "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
+              "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+              "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+              "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
@@ -7020,7 +7768,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 33,
+              "docs_indexed": 61,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

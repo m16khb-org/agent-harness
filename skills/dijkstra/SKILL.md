@@ -151,11 +151,19 @@ Dijkstra solved his algorithm with pencil and paper. You have profilers.
    # Run before, save to JSON, run after, compare — same principle in every language.
    ```
 
+   **Benchmark validity gate:**
+   - Same machine/runtime/config, same dataset generator, same build flags.
+   - Warm caches/JIT when applicable; discard setup time.
+   - Repeat enough runs for confidence interval; reject deltas inside noise (default <5% unless benchstat or equivalent says significant).
+   - Capture CPU, memory, allocations, and p95/p99 latency when user-facing.
+   - Keep baseline artifacts before changing code.
+
    **Critical**: If the function isn't in the top 20 of the profile, you are optimizing the wrong thing.
 
 3. DERIVE empirical complexity (scaling test):
 
-   Run the target function with N, 2N, 4N, 8N inputs. Measure time.
+   Run the target function with N, sN, s²N, s³N inputs. Choose scale factor
+   s=2 for fine-grained confirmation or s=10 for wide separation. Measure time.
    The language is irrelevant — the pattern is universal:
    ```bash
    # Test at geometrically increasing N (example: Go benchmark)
@@ -164,13 +172,19 @@ Dijkstra solved his algorithm with pencil and paper. You have profilers.
    done
    ```
    Equivalent in any language: run the function with scaled input, time each run,
-   divide T(2N)/T(N) to reveal the complexity class.
+   divide T(sN)/T(N) to reveal the complexity class.
 
-   # Analyze: T(N₂)/T(N₁) ≈ ?
-   #  ~10   → O(n)     (linear — doubling input → doubling time)
-   #  ~100  → O(n²)    (quadratic — doubling input → 4× time)
-   #  ~3.2  → O(log n) (logarithmic — doubling input → constant increase)
-   #  ~20   → O(n log n) (linearithmic — doubling input → slightly more than double time)
+   # Analyze for s=10: T(10N)/T(N) ≈ ?
+   #  ~10    → O(n)
+   #  ~100   → O(n²)
+   #  near 1 with slow additive growth → O(log n) candidate; confirm with more points
+   #  ~10-15 → O(n log n)
+   #
+   # Analyze for s=2: T(2N)/T(N) ≈ ?
+   #  ~2     → O(n)
+   #  ~4     → O(n²)
+   #  near 1 with slow additive growth → O(log n) candidate; confirm with more points
+   #  ~2-2.3 → O(n log n)
    ```
 
 4. READ the algorithm:
@@ -285,13 +299,19 @@ Loop invariant (maintained at each iteration):
 ### Invariant Checklist
 
 ```
-[ ] Every loop has a stated invariant (condition true before, during, after)
+[ ] Every correctness-critical loop has a stated invariant (condition true before, during, after)
 [ ] The invariant is strong enough to prove the post-condition
 [ ] Initialization establishes the invariant
 [ ] Each iteration preserves the invariant
 [ ] The exit condition + invariant implies the post-condition
 [ ] Termination is guaranteed (no infinite loop)
 ```
+
+### Proportional Proof Burden
+
+- For simple hot-path substitutions (hash map lookup, precompute table, `strings.Builder`, batch allocation), one behavior-preservation invariant plus regression tests is enough.
+- For novel graph/DP/concurrency algorithms, full preconditions, postconditions, loop invariants, and termination proof are mandatory.
+- Do not block a small proven hot-path fix on a proof essay; do not skip invariants when correctness depends on algorithmic state.
 
 ### Example: Two-Sum Problem
 
@@ -361,6 +381,9 @@ Garbage collection impact: T(GC) reduced from 15% to <1% of CPU time
 ```
 [ ] Race detector clean (language-specific: `go test -race`, `tsan`, `helgrind` for C/C++, `--detectOpenHandles` for Jest) → PASS
 [ ] Benchmark is stable (±5% across 5 runs)
+[ ] Benchmark delta exceeds noise and is statistically significant
+[ ] Same input generator and environment used for before/after
+[ ] Worst-case and representative input sizes included
 [ ] Output is bit-identical to the original algorithm (verified with test)
 [ ] Edge cases handled: empty input, single element, max values, overflow
 [ ] No hidden allocations in the hot path (verified with -benchmem)
@@ -469,17 +492,18 @@ Dijkstra invented the semaphore. When optimizing concurrent code:
 
 **NEVER:**
 - Optimize without profiling first (you will optimize the wrong thing)
-- Claim complexity improvement without benchmark evidence
+- Claim complexity improvement without valid benchmark/scaling evidence
 - Change algorithm behavior during optimization (bit-identical output required)
 - Replace a simple correct algorithm with a complex "faster" one unless the input size demands it
 - Optimize O(n) code that runs once at startup — focus on the hot path
 - Introduce concurrency without `-race` verification
 - Use exotic data structures when a hash map or slice suffices
+- Treat a benchmark win inside noise or from a changed workload/environment as evidence
 
 **ALWAYS:**
 - Profile before optimizing (Step 1)
 - Classify the problem before selecting a solution (Step 2)
-- State a loop invariant before coding (Step 4)
+- State proportional invariants before coding: concise for simple transformations, full proof for novel or nontrivial algorithms (Step 4)
 - Benchmark at multiple input sizes to confirm complexity class (Step 5)
 - Provide before/after complexity + benchmark results
 - Verify with `-race` for concurrent changes
@@ -492,6 +516,7 @@ Dijkstra invented the semaphore. When optimizing concurrent code:
 - Profiling reveals no algorithmic bottleneck (the code is I/O-bound, not CPU-bound): report the finding, do not optimize further.
 - The optimal algorithm already in use: confirm with benchmark; report no further optimization possible.
 - Optimization changes behavior: revert immediately, report the coupling.
+- Benchmark result is within noise or workload/environment changed: report inconclusive; do not claim improvement.
 - Three attempted optimizations without measurable improvement: stop, report the analysis.
 
 ---

@@ -32,9 +32,9 @@ Tim Berners-Lee's Web is built on three technologies — HTTP, HTML, and the URI
 ## Scope Constraints
 
 ### Allowed
-- Web search (`web_fetch` on search engines, documentation sites, package registries)
+- Web search and page fetches through the current host's exposed search/fetch tools, or through explicit read-only CLI commands when allowed
 - Fetching and reading source pages, API docs, GitHub repos, arxiv abstracts
-- Spawning read-only research sub-agents for parallel multi-angle investigation
+- Spawning read-only research sub-agents for parallel multi-angle investigation only when the current host explicitly exposes and permits them
 - Writing research reports to `.agent-harness/research/<slug>.md`
 
 ### Forbidden
@@ -43,6 +43,7 @@ Tim Berners-Lee's Web is built on three technologies — HTTP, HTML, and the URI
 - Citing sources you haven't actually fetched and read
 - Single-source conclusions (minimum 2 independent sources per key claim)
 - Researching the same angle twice while sub-agents are running (Anti-Duplication Rule — see Von Neumann SKILL.md)
+- Bypassing authentication, paywalls, robots-sensitive restrictions, CAPTCHAs, or site abuse controls
 
 ---
 
@@ -56,7 +57,7 @@ Tim Berners-Lee's Web is built on three technologies — HTTP, HTML, and the URI
 | **Competitive analysis** | "Compare A vs B vs C" | Parallel probes per competitor; structured comparison matrix |
 | **Literature survey** | "What's the state of X?", survey, review | Fan-out to arxiv, docs, blog posts; synthesis with timeline |
 | **Deep investigation** | Complex question with nested sub-questions | Decompose into sub-questions; parallel research per sub-question; cross-check across sub-questions |
-| **Quick lookup** | Simple factual question (single API endpoint, version number) | Direct web_fetch; don't over-engineer |
+| **Quick lookup** | Simple factual question (single API endpoint, version number) | Direct current-host fetch/search tool; don't over-engineer |
 
 ### Phase 1: Fan-Out Search
 
@@ -71,20 +72,24 @@ Tim Berners-Lee's Web is built on three technologies — HTTP, HTML, and the URI
    - **Breaking changes**: `"changelog" OR "release notes" OR "migration guide" OR "breaking" library-name version`
    - **Known bugs**: `site:github.com/library-owner/library-repo/issues "symptom description"`
    - **Avoid**: single broad terms ("database", "optimization") — too vague to produce useful results.
-3. **Spawn parallel research sub-agents** (pattern #3: parallel independent research, pattern #1: high-volume exploration). Each sub-agent:
+3. **Spawn parallel research sub-agents only if the current host exposes that capability** (pattern #3: parallel independent research, pattern #1: high-volume exploration). Each sub-agent:
    - Searches one angle with the constructed query
-   - Fetches top 3-5 most relevant sources with `web_fetch`
+   - Fetches top 3-5 most relevant sources with the host's available fetch/search tools
    - Reads each source and extracts: key claim, evidence provided, publication date, author/authority
-   - Uses `web_fetch` directly on raw GitHub URLs, arxiv abstracts, npm/pkg.go.dev pages
+   - Uses the current host's fetch/search tools directly on raw GitHub URLs, arxiv abstracts, npm/pkg.go.dev pages
    - Returns structured findings with source URLs + retrieval timestamps
 4. **While sub-agents run**, do NOT re-search the same angles (Anti-Duplication Rule).
 5. **Collect sub-agent results** and proceed to Phase 2.
+
+If sub-agents are unavailable, run the angles sequentially or with the host's native parallel tool calls. Record that this was a host-capability limitation, not a research finding.
 
 ### Phase 1.5: Fetch Resilience — When a Source is Blocked
 
 Tim Berners-Lee's Web was designed for open access, but many modern sites block automated requests. Research does not stop because a source returns 403 — it escalates. This protocol is adapted from `insane-search` (fivetaku/insane-search, MIT license), the adaptive scheduler that never accepts "blocked" as an answer.
 
-**Core principle: "Don't pre-exclude any method. Don't skip because a dependency is missing — install it and try. HTTP 200 is the START of validation, not success."**
+**Core principle: "Prefer official/public access paths first. HTTP 200 is the START of validation, not success."**
+
+Fetch resilience must stay inside authorization boundaries. Do not bypass login, paywalls, CAPTCHAs, robots-sensitive restrictions, or site abuse controls. If access requires authentication, subscription, or human challenge solving, stop escalation for that source and report the limitation.
 
 #### Level FR-0: Platform Public APIs (Try First)
 
@@ -110,12 +115,12 @@ When no Level FR-0 match exists or it failed, run ALL of these in parallel:
 1. Jina Reader (no-key, auto-cleans HTML to markdown):
    curl -s "https://r.jina.ai/{URL}"
 
-2. WebFetch — Claude Code built-in web_fetch tool.
+2. Current host fetch/search tool, if exposed.
 
-3. curl with Chrome Desktop UA (mimics a real browser):
+3. curl with a transparent desktop User-Agent for sites that block default CLI user agents:
    curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; ...) Chrome/131.0.0.0 Safari/537.36" "{URL}"
 
-4. curl with Mobile UA + mobile subdomain (www. → m.):
+4. curl with mobile public endpoint variant (www. → m.) when the site publicly serves equivalent content there:
    curl -sL -H "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 17_0...)" "https://m.{domain}/{path}"
 
 5. URL variants:
@@ -143,13 +148,11 @@ When no Level FR-0 match exists or it failed, run ALL of these in parallel:
 
 **Stop escalation immediately if:** `login`, `sign in`, `로그인`, `subscribe`, `구독` detected → "Authentication required — cannot bypass login/paywall."
 
-#### Level FR-2: TLS Impersonation (curl_cffi)
+#### Level FR-2: Alternate HTTP Client (curl_cffi, If Already Available or Approved)
 
 When Level FR-1 detected WAF/bot blocking signals:
 
-```bash
-# Auto-install: pip install curl_cffi -q  (if missing)
-```
+Use this only for public pages when the dependency is already available or the user approved a project-local temporary environment. Do not use it to cross login, paywall, CAPTCHA, or abuse-control boundaries.
 
 ```python
 from curl_cffi import requests
@@ -159,7 +162,6 @@ for target in TARGETS:
     session = requests.Session(impersonate=target)
     session.headers.update({
         "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.google.com/",
     })
     resp = session.get(url, timeout=20)
     if resp.status_code == 200 and len(resp.text) > 500:
@@ -167,25 +169,24 @@ for target in TARGETS:
         break
 ```
 
-**Identity spoofing for tougher sites:**
-- **Cookie warming**: first GET the homepage, wait 2s, then GET the target URL with cookies from the homepage
-- **Referrer chain**: `Referer: https://www.google.com/search?q={encoded_query}` — looks like a real search visit
+**Session continuity for public pages only:**
+- **Cookie continuity**: first GET the homepage, wait 2s, then GET the target URL with cookies from the homepage when this does not cross a login, paywall, or challenge boundary
+- **Referrer header**: use only truthful referrers from pages actually visited in the same research path
 - **Locale-matched headers**: match `Accept-Language` to the site's expected language (ko-KR for Korean sites, ja-JP for Japanese)
 
-#### Level FR-3: Full Browser (Playwright MCP)
+#### Level FR-3: Full Browser (When Exposed by Current Host)
 
 When Level FR-2 also fails, or JS challenge/CAPTCHA detected:
 
 ```
-1. browser_navigate → {URL}
-2. browser_wait_for → "body" (3 seconds)
-3. browser_evaluate → () => document.body.innerText
-   OR browser_snapshot → accessibility tree
+1. Use the current host's browser navigation tool for {URL}
+2. Wait for the body or main content region
+3. Extract visible body text or an accessibility snapshot
 
 4. HIDDEN API DISCOVERY (for list/search/SPA pages):
-   browser_network_requests → collect XHR/fetch calls
+   Use the host's network-inspection tool, if exposed, to collect XHR/fetch calls
    → Filter for /api/, /graphql, .json URL patterns
-   → Re-fetch discovered API URL with curl_cffi (often has lighter WAF than HTML pages)
+   → Re-fetch discovered public API URL only when it does not require auth, bypass a challenge, or violate access controls
    → For list pages: identify pagination params, iterate
 ```
 
@@ -235,16 +236,11 @@ for block in re.findall(r'<script type=\"application/ld\+json\">(.*?)</script>',
 grep -oP '<meta name="twitter:(title|description|image|creator)"[^>]*content="[^"]*"' page.html
 ```
 
-#### Auto-Dependency Install
+#### Dependency Availability
 
-Never skip a fetch method because a dependency is missing. Install it and try:
+Do not install dependencies globally or silently. First check whether the tool is already available. If a missing tool is important, ask for permission or use a project-local temporary environment only when the host policy allows it. If installation is not allowed, skip that method and record the limitation.
 
-```bash
-pip install curl_cffi -q      # TLS impersonation (FR-2)
-pip install beautifulsoup4 -q  # HTML parsing
-pip install feedparser -q      # RSS/Atom parsing
-pip install yt-dlp -q          # 1,858 media sites (FR-0)
-```
+Useful optional dependencies: `curl_cffi` for TLS-compatible public fetches, `beautifulsoup4` for HTML parsing, `feedparser` for RSS/Atom parsing, and `yt-dlp` for public media metadata.
 
 ### Phase 2: Cross-Verification
 

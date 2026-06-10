@@ -31,7 +31,7 @@ Turing tracks these metrics automatically. Target: **20%+ improvement over ulw-l
 | **Parallelization Ratio** | ~2x (manual wave grouping) | ≥4x (dependency-matrix-driven waves) | `total_tasks / wave_count` |
 | **Cleanup Compliance** | ~50% (cleanup receipts often missing) | 100% (no pass without receipt) | `cleanup_receipts / qa_scenarios` |
 | **Cross-Session Survival** | None (filesystem-only, no state checkpoints) | 100% (agent-harness state survives compaction) | `resumed_sessions / total_sessions` |
-| **Host Portability** | Codex-only (depends on spawn_agent, get_goal) | 3 hosts (Codex, Claude, Reasonix unified skill) | Host-specific section translates tools |
+| **Host Portability** | Codex-only host assumptions | 3 hosts (Codex, Claude, Reasonix unified skill) | Host-specific section translates available tools |
 
 ---
 
@@ -53,7 +53,7 @@ Fallback (no agent-harness):
 └── evidence/
 ```
 
-**Never invent state outside these files.** Use `agent-harness state write turing-goals-<repo-hash>` for cross-session durability when available.
+**Never invent state outside these files.** Use `agent-harness state write --key turing-goals-<repo-hash> --input goals.json --json` for cross-session durability when available.
 
 ---
 
@@ -106,13 +106,14 @@ For every criterion, build a real-usage scenario through ONE of these four chann
 
 | Task shape | Codex | Claude Code | Reasonix |
 |------------|-------|-------------|----------|
-| Read-only exploration | `spawn_agent(agent_type="explorer", fork_turns="none")` | `task(subagent_type="Explore")` | `explore(task=...)` |
-| Adversarial review | `spawn_agent(agent_type="worker", reasoning_effort="xhigh")` | `task(effort="xhigh")` | `review(task=...)` |
-| External docs research | codegraph web_fetch | `task(subagent_type="Explore")` + web_fetch | `research(task=...)` |
-| Background work | `spawn_agent` + `wait_agent` | `task(run_in_background=true)` + `wait` | `task(run_in_background=true)` + `wait` |
+| Read-only exploration | Use the current Codex sub-agent tool only when the session policy allows it | Use the current Task tool when available | Use the current Reasonix exploration tool when available |
+| Adversarial review | Use a fresh reviewer only when sub-agent dispatch is allowed | Use a reviewer task when available | Use a review task when available |
+| External docs research | Use current web/docs tools or `berners-lee`; label unavailable tools as blocked | Use current web/docs tools or `berners-lee` | Use current research tools or `berners-lee` |
+| Background work | Use current async agent/job tools only when allowed | Use current background task support when available | Use current background task support when available |
 | Isolated worktree edits | IssueOps worktree + worker | Same | Same |
 
 Every sub-agent message MUST carry: goal + exact files in scope; the baseline characterization test pinning current behavior (when touching existing code); constraints + project rules; the verification commands to run; the ONE Manual-QA channel and the exact evidence artifact path to capture. Sub-agents have NO interview context — be exhaustive.
+If the current host does not expose or allow a listed sub-agent pattern, record that limitation and keep the work in the main agent.
 
 ---
 
@@ -122,7 +123,7 @@ Every sub-agent message MUST carry: goal + exact files in scope; the baseline ch
 
 ```bash
 # Prefer agent-harness state (survives compaction, cross-session)
-if agent-harness state read turing-goals-<repo-hash> >/dev/null 2>&1; then
+if agent-harness state read --key turing-goals-<repo-hash> >/dev/null 2>&1; then
   STATE_BACKEND="harness"
 else
   STATE_BACKEND="local"
@@ -288,7 +289,7 @@ Loop per goal. Cap at 5 cycles per goal (after 5, checkpoint and surface diagnos
 Trigger when one goal remains and all its criteria are passing.
 
 1. **Targeted verification**: Re-run the changed behavior tests.
-2. **AI slop clean**: Run `agent-harness self-verify` or the `remove-ai-slops` skill on changed files.
+2. **AI slop clean**: Run targeted verification plus the IssueOps `ai-slop-clean` reference (`skills/issueops/references/ai-slop-clean.md`) when cleanup is in scope; use `agent-harness self-verify` for harness-level health, not as a generic cleanup substitute.
 3. **Re-verify** after cleanup.
 4. **Reviewer**: Spawn an adversarial reviewer sub-agent (pattern #2: Devil's advocate). Give it: goal, all criteria, all evidence, full diff. A fresh model with no implementation bias must refute your work.
    - The reviewer's verdict is BINDING. There is no "false positive."
@@ -334,9 +335,9 @@ When an IssueOps cycle exists:
    ```bash
    agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source turing --body "G1-C1 PASS: <evidence_path> | cleanup: <receipt>" --json
    ```
-3. **Heartbeat**: Every criterion start/end, update the IssueOps heartbeat:
+3. **Progress record**: There is no heartbeat subcommand. When progress evidence should survive handoff, add a concise feedback entry:
    ```bash
-   agent-harness issueops heartbeat --id "$ISSUEOPS_ID" --json
+   agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source turing --body "G1-C1 START: <scenario>" --json
    ```
 4. **Phase advancement**: After all criteria pass + quality gate clean:
    ```bash
@@ -349,16 +350,16 @@ When an IssueOps cycle exists:
 
 | Action | Codex | Claude Code | Reasonix |
 |--------|-------|-------------|----------|
-| Run shell command | `bash(...)` | `bash(...)` | `bash(...)` |
-| Read file | `read_file(...)` | `read_file(...)` | `read_file(...)` |
-| Search codebase | `grep(...)` | `grep(...)` | `grep(...)` |
-| Write/edit files | `write_file(...)` / `edit_file(...)` | Same | Same |
-| Write evidence file | `write_file(...)` | `write_file(...)` | `write_file(...)` |
-| State checkpoint | `agent-harness state write <key> <content>` | Same | Same |
-| Spawn explorer (pattern #1) | `spawn_agent(agent_type="explorer", fork_turns="none")` | `task(subagent_type="Explore")` | `explore(task=...)` |
-| Spawn reviewer (pattern #2) | `spawn_agent(agent_type="worker", reasoning_effort="xhigh")` | `task(effort="xhigh")` | `review(task=...)` |
-| External docs research (pattern #3) | codegraph web_fetch | `task(subagent_type="Explore")` + web_fetch | `research(task=...)` |
-| Background + poll (pattern #8) | `spawn_agent` + `wait_agent` | `task(run_in_background=true)` + `wait` | `task(run_in_background=true)` + `wait` |
+| Run shell command | Use the current shell/terminal tool with explicit cwd | Same principle | Same principle |
+| Read file | Use the current file-read or shell read tool | Same principle | Same principle |
+| Search codebase | Prefer indexed search when configured; otherwise `rg` | Same principle | Same principle |
+| Write/edit files | Use the current patch/edit tool | Same principle | Same principle |
+| Write evidence file | Use the current patch/edit tool or CLI that owns the state | Same principle | Same principle |
+| State checkpoint | `agent-harness state write --key KEY (--value TEXT|--input FILE|--stdin) --json` | Same | Same |
+| Spawn explorer (pattern #1) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available | Only when Reasonix exposes an exploration task |
+| Spawn reviewer (pattern #2) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available | Only when Reasonix exposes a review task |
+| External docs research (pattern #3) | Use current web/docs tools or `berners-lee`; do not name unavailable tools as executable | Same principle | Same principle |
+| Background + poll (pattern #8) | Use current async/job tools only when available | Same principle | Same principle |
 
 ---
 
