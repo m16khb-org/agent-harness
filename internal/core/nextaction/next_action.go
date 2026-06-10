@@ -97,7 +97,7 @@ func BuildJudgementRelayReason(trigger NextActionJudgementTriggerResult) string 
 	} else if trigger.RecommendedCount > 1 {
 		recommended = fmt.Sprintf("%d개", trigger.RecommendedCount)
 	}
-	return fmt.Sprintf("다음 행동 판단 지점에 도달했습니다. 훅이 관찰한 근거: 명시적 선택지 %d개, 추천 선택지 %s. 훅은 안전성, 가역성, 사용자 의도 정합성, 진행 여부를 판단하지 않습니다. 메인 에이전트가 현재 대화와 작업 맥락을 근거로 직접 판단하세요. 한 번에 하나의 판단만 하세요: 자동진행 또는 자동진행하지 않음 중 하나를 선택하고, 둘을 같은 답변에서 섞지 마세요. 자동진행한다면 왜 안전하고 가역적이며 사용자 의도에 맞는지 답변에 명시하고 지금 실행하세요. 자동진행하지 않는다면 왜 사용자 결정이 필요한지 또는 왜 후속 선택 지점인지 답변에 명시한 뒤 멈추세요. no-auto-proceed 판단을 남겼다면 같은 작업을 자동 goal continuation으로 재개하지 마세요. 자동진행 결과 보고에도 `선택지:` 3개와 정확히 하나의 `(추천)`을 포함하세요.", trigger.ChoiceCount, recommended)
+	return fmt.Sprintf("다음 행동 판단 지점에 도달했습니다. 훅이 관찰한 근거: 명시적 선택지 %d개, 추천 선택지 %s. 훅은 안전성, 가역성, 사용자 의도 정합성, 진행 여부를 판단하지 않습니다. 메인 에이전트가 현재 대화와 작업 맥락을 근거로 직접 판단하세요. 한 번에 하나의 판단만 하세요: 자동진행 또는 자동진행하지 않음 중 하나를 선택하고, 둘을 같은 답변에서 섞지 마세요. 자동진행한다면 왜 안전하고 가역적이며 사용자 의도에 맞는지 답변에 명시하고 지금 실행하세요. 자동진행하지 않는다면 왜 사용자 결정이 필요한지 또는 왜 후속 선택 지점인지 답변에 명시한 뒤 멈추세요. no-auto-proceed 판단을 남겼다면 같은 작업을 자동 goal continuation으로 재개하지 마세요. 자동진행 결과 보고에는 `선택지:` 3개와 정확히 하나의 `(추천)`을 포함하세요. 자동진행하지 않음 판단에는 선택지 블록을 다시 붙이지 마세요.", trigger.ChoiceCount, recommended)
 }
 
 func IsNoAutoProceedJudgement(message string) bool {

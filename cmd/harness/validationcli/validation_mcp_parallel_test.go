@@ -21,6 +21,9 @@ func TestValidateMCPWithDepsCoversSuccessAndResponseFailures(t *testing.T) {
 			if !strings.Contains(input, "tools/list") || !containsString(env, "HARNESS_STATE_DIR="+filepath.Join(root, "agent-harness-mcp-state-*dir")) {
 				return StepResult{Label: label, OK: false, Error: "missing input or env"}
 			}
+			if !containsString(env, "HARNESS_MCP_DIRECT=1") {
+				return StepResult{Label: label, OK: false, Error: "MCP smoke must use direct transport for deterministic batch input"}
+			}
 			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: validMCPResponses()}
 		},
 	}

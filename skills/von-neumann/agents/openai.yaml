@@ -1,0 +1,4 @@
+interface:
+  display_name: "Von Neumann"
+  short_description: "Create decision-complete implementation plans"
+  default_prompt: "Use $von-neumann to produce a decision-complete plan for this multi-step or ambiguous task."

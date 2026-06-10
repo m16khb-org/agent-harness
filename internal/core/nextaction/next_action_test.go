@@ -173,7 +173,8 @@ func TestBuildNextActionJudgementRelayReasonRequiresOneDecision(t *testing.T) {
 		"한 번에 하나의 판단만 하세요",
 		"둘을 같은 답변에서 섞지 마세요",
 		"no-auto-proceed 판단을 남겼다면 같은 작업을 자동 goal continuation으로 재개하지 마세요",
-		"자동진행 결과 보고에도 `선택지:` 3개와 정확히 하나의 `(추천)`",
+		"자동진행 결과 보고에는 `선택지:` 3개와 정확히 하나의 `(추천)`",
+		"자동진행하지 않음 판단에는 선택지 블록을 다시 붙이지 마세요",
 	} {
 		if !strings.Contains(reason, want) {
 			t.Fatalf("judgement relay reason missing %q:\n%s", want, reason)

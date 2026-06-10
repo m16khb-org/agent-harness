@@ -1,0 +1,4 @@
+interface:
+  display_name: "Karpathy"
+  short_description: "Design, test, and refine LLM prompts"
+  default_prompt: "Use $karpathy to turn this prompt or agent instruction into a testable, precise, model-aware prompt."

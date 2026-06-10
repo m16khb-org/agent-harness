@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dijkstra"
+  short_description: "Analyze algorithms, complexity, and correctness invariants"
+  default_prompt: "Use $dijkstra to analyze this algorithm, improve its complexity, and verify correctness with clear invariants."

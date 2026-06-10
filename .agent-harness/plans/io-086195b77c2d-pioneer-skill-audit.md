@@ -138,7 +138,7 @@ Wave 3: T4 (correct research report), T5 (final verification) — after T2, T3
       1. grep -n "^## 9. Pioneer Skills Layer" .agent-harness/ARCHITECTURE.md
       2. Count skill name mentions: grep -c "von-neumann\|turing\|berners-lee\|codd\|dijkstra\|hopper\|karpathy\|shannon\|torvalds" .agent-harness/ARCHITECTURE.md
     Expected: Section header found. At least 8 skill names mentioned (total count >= 8).
-    Evidence: .agent-harness/evidence/task-2-architecture-section.txt
+    Evidence: .agent-harness/evidence/task_two_architecture_section.txt
   ```
 
   **Commit**: YES | Message: `docs(architecture): add pioneer skills layer section` | Files: `.agent-harness/ARCHITECTURE.md`
@@ -203,7 +203,7 @@ Wave 3: T4 (correct research report), T5 (final verification) — after T2, T3
       1. grep "archimedes" .agent-harness/research/pioneer-skill-audit.md
       2. grep "Single-sourced" .agent-harness/research/pioneer-skill-audit.md
     Expected: archimedes mentioned only in corrected Finding 2 (describing the replacement). Single-sourced count = 0.
-    Evidence: .agent-harness/evidence/task-4-corrected-research.txt
+    Evidence: .agent-harness/evidence/task_four_corrected_research.txt
   ```
 
   **Commit**: YES | Message: `docs(research): correct archimedes false positive in pioneer audit` | Files: `.agent-harness/research/pioneer-skill-audit.md`

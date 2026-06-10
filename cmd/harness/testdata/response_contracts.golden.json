@@ -483,7 +483,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 17864,
+          "bytes": 18392,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -911,7 +911,34 @@
           "title": "Verification Operations"
         },
         {
-          "bytes": 13930,
+          "bytes": 20880,
+          "headings": [
+            "Agent-Harness 성능/안정성 개선 계획",
+            "TL;DR",
+            "Context",
+            "Original Request",
+            "Confirmed Evidence",
+            "Gap Analysis",
+            "Work Objectives",
+            "Core Objective",
+            "Definition of Done",
+            "Must Have",
+            "Must NOT Have",
+            "Verification Strategy",
+            "Execution Strategy",
+            "Parallel Execution Waves",
+            "Dependency Matrix",
+            "TODOs",
+            "Final Verification Wave",
+            "Commit Strategy",
+            "Success Criteria"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
+          "rel_path": ".agent-harness/plans/agent-harness-performance-improvement.md",
+          "title": "Agent-Harness 성능/안정성 개선 계획"
+        },
+        {
+          "bytes": 13935,
           "headings": [
             "Pioneer Skill Documentation Audit \u0026 Update",
             "TL;DR",
@@ -1164,6 +1191,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/install.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+        "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
@@ -1207,21 +1235,21 @@
         },
         {
           "description": "Web research specialist that investigates questions through multi-angle parallel web searches, cross-references sources, filters unverified claims through adversarial review, and produces cited research reports. Named after Tim Berners-Lee — inventor of the World Wide Web, HTTP, HTML, and the URI. Each claim must link to its origin, just as every resource on the Web has a URL. Use when the user asks for research, information gathering, competitive analysis, literature survey, or to verify a technical claim across multiple sources.",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "berners-lee",
           "path": "$HARNESS_ROOT/skills/berners-lee"
         },
         {
           "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \\\"A relational model of data for large shared data banks\\\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "codd",
           "path": "$HARNESS_ROOT/skills/codd"
         },
         {
           "description": "Algorithm design and complexity optimization specialist. Analyzes time/space complexity, selects optimal algorithms and data structures, reduces asymptotic complexity, and verifies correctness through formal invariants. Named after Edsger Dijkstra — author of the shortest-path algorithm (O(V+E log V)), pioneer of semaphores and concurrent algorithms, inventor of the Banker's algorithm for deadlock avoidance, and champion of formal program derivation. His core insight: \\\"The question of whether Machines Can Think is about as relevant as the question of whether Submarines Can Swim.\\\" Use when the user asks about algorithmic optimization, time/space complexity, data structure selection, graph algorithms, dynamic programming, or formal algorithm verification.",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "dijkstra",
           "path": "$HARNESS_ROOT/skills/dijkstra"
@@ -1235,7 +1263,7 @@
         },
         {
           "description": "Systematic debugging specialist that translates failure symptoms into root cause diagnoses through scientific-method isolation, bisect search, trace analysis, and LLM-assisted diagnosis. Named after Grace Hopper — inventor of the first compiler (A-0 System), originator of the term \"debugging\" (literally removing a moth from the Harvard Mark II), and pioneer of machine-independent programming (COBOL). Just as her compiler translated English into machine code, this skill translates failure outputs into root cause diagnoses. Use when reporting a bug, fixing a test failure, investigating a regression, or asking \"why is X broken?",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "hopper",
           "path": "$HARNESS_ROOT/skills/hopper"
@@ -1249,7 +1277,7 @@
         },
         {
           "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "karpathy",
           "path": "$HARNESS_ROOT/skills/karpathy"
@@ -1277,7 +1305,7 @@
         },
         {
           "description": "Quantitative code quality measurement specialist. Measures signal-to-noise ratio (SNR), cyclomatic entropy, redundancy (AST-similar blocks), and channel overhead (boilerplate-to-logic ratio) — before and after every cleanup pass. Named after Claude Shannon — founder of information theory. Just as Shannon proved that every communication channel has a measurable capacity, every codebase has measurable quality dimensions. A SNR measurement is objective where \"looks cleaner\" is not. Use when measuring code quality before/after ai-slop-clean, establishing quality baselines, detecting quality regressions across commits, or setting quantitative PR quality gates.",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "shannon",
           "path": "$HARNESS_ROOT/skills/shannon"
@@ -1291,21 +1319,21 @@
         },
         {
           "description": "Git specialist for advanced version control operations — interactive rebase, bisect debugging, conflict resolution, history analysis and recovery, cherry-pick, reflog archaeology, and worktree management. Named after Linus Torvalds — creator of Git and Linux. Git's architecture is content-addressable: every object is checksummed, every state is recoverable. This skill never loses data and verifies every action. Use when the user asks for rebase, bisect, conflict resolution, history rewriting, branch archaeology, or any git operation beyond basic commit/push (which is handled by atomic-commit-push).",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "torvalds",
           "path": "$HARNESS_ROOT/skills/torvalds"
         },
         {
           "description": "Evidence-bound execution loop that decomposes goals into measurable criteria, performs implementation directly as the main agent, spawns sub-agents only for context-isolated work (exploration, adversarial review, parallel probes, isolated edits), verifies every claim with observable evidence across 4 QA channels (HTTP/tmux/browser/computer-use), and tracks quantitative efficiency metrics. Named after Alan Turing — 'A computation is only valid if it can be verified.' Use when the user asks for verified delivery, turing loop, evidence-led execution, or durable goal tracking.",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "turing",
           "path": "$HARNESS_ROOT/skills/turing"
         },
         {
           "description": "Strategic planning consultant that produces decision-complete work plans through codebase exploration, Socratic interview, gap analysis, and self-review. Named after John von Neumann — architect of the stored-program computer, game theory, and parallel processing. Like a stored program loaded before execution, his plans leave zero decisions to the implementer. Use when the task has 5+ steps, scope is ambiguous, multiple modules are involved, or the user asks for a plan.",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "von-neumann",
           "path": "$HARNESS_ROOT/skills/von-neumann"
@@ -3169,7 +3197,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 32,
+        "docs_indexed": 33,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -4875,7 +4903,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 17864,
+                "bytes": 18392,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -5303,7 +5331,34 @@
                 "title": "Verification Operations"
               },
               {
-                "bytes": 13930,
+                "bytes": 20880,
+                "headings": [
+                  "Agent-Harness 성능/안정성 개선 계획",
+                  "TL;DR",
+                  "Context",
+                  "Original Request",
+                  "Confirmed Evidence",
+                  "Gap Analysis",
+                  "Work Objectives",
+                  "Core Objective",
+                  "Definition of Done",
+                  "Must Have",
+                  "Must NOT Have",
+                  "Verification Strategy",
+                  "Execution Strategy",
+                  "Parallel Execution Waves",
+                  "Dependency Matrix",
+                  "TODOs",
+                  "Final Verification Wave",
+                  "Commit Strategy",
+                  "Success Criteria"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
+                "rel_path": ".agent-harness/plans/agent-harness-performance-improvement.md",
+                "title": "Agent-Harness 성능/안정성 개선 계획"
+              },
+              {
+                "bytes": 13935,
                 "headings": [
                   "Pioneer Skill Documentation Audit \u0026 Update",
                   "TL;DR",
@@ -5563,6 +5618,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/install.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+              "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
@@ -5606,21 +5662,21 @@
               },
               {
                 "description": "Web research specialist that investigates questions through multi-angle parallel web searches, cross-references sources, filters unverified claims through adversarial review, and produces cited research reports. Named after Tim Berners-Lee — inventor of the World Wide Web, HTTP, HTML, and the URI. Each claim must link to its origin, just as every resource on the Web has a URL. Use when the user asks for research, information gathering, competitive analysis, literature survey, or to verify a technical claim across multiple sources.",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "berners-lee",
                 "path": "$HARNESS_ROOT/skills/berners-lee"
               },
               {
                 "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \\\"A relational model of data for large shared data banks\\\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "codd",
                 "path": "$HARNESS_ROOT/skills/codd"
               },
               {
                 "description": "Algorithm design and complexity optimization specialist. Analyzes time/space complexity, selects optimal algorithms and data structures, reduces asymptotic complexity, and verifies correctness through formal invariants. Named after Edsger Dijkstra — author of the shortest-path algorithm (O(V+E log V)), pioneer of semaphores and concurrent algorithms, inventor of the Banker's algorithm for deadlock avoidance, and champion of formal program derivation. His core insight: \\\"The question of whether Machines Can Think is about as relevant as the question of whether Submarines Can Swim.\\\" Use when the user asks about algorithmic optimization, time/space complexity, data structure selection, graph algorithms, dynamic programming, or formal algorithm verification.",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "dijkstra",
                 "path": "$HARNESS_ROOT/skills/dijkstra"
@@ -5634,7 +5690,7 @@
               },
               {
                 "description": "Systematic debugging specialist that translates failure symptoms into root cause diagnoses through scientific-method isolation, bisect search, trace analysis, and LLM-assisted diagnosis. Named after Grace Hopper — inventor of the first compiler (A-0 System), originator of the term \"debugging\" (literally removing a moth from the Harvard Mark II), and pioneer of machine-independent programming (COBOL). Just as her compiler translated English into machine code, this skill translates failure outputs into root cause diagnoses. Use when reporting a bug, fixing a test failure, investigating a regression, or asking \"why is X broken?",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "hopper",
                 "path": "$HARNESS_ROOT/skills/hopper"
@@ -5648,7 +5704,7 @@
               },
               {
                 "description": "Prompt engineering and optimization specialist. Designs, tests, and refines prompts for AI systems through systematic iteration, adversarial validation, and model-aware calibration. Named after Andrej Karpathy — the AI researcher who articulated \\\"Software 2.0\\\" (2017): a fundamental shift where we no longer write explicit programs but instead specify goals through data and language, and let optimization find the code. His statement \\\"the hottest new programming language is English\\\" (2023) captures the paradigm shift that prompt engineering embodies. Use when writing, optimizing, testing, or debugging prompts for LLMs, or when converting vague requests into precisely structured agent instructions.",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "karpathy",
                 "path": "$HARNESS_ROOT/skills/karpathy"
@@ -5676,7 +5732,7 @@
               },
               {
                 "description": "Quantitative code quality measurement specialist. Measures signal-to-noise ratio (SNR), cyclomatic entropy, redundancy (AST-similar blocks), and channel overhead (boilerplate-to-logic ratio) — before and after every cleanup pass. Named after Claude Shannon — founder of information theory. Just as Shannon proved that every communication channel has a measurable capacity, every codebase has measurable quality dimensions. A SNR measurement is objective where \"looks cleaner\" is not. Use when measuring code quality before/after ai-slop-clean, establishing quality baselines, detecting quality regressions across commits, or setting quantitative PR quality gates.",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "shannon",
                 "path": "$HARNESS_ROOT/skills/shannon"
@@ -5690,21 +5746,21 @@
               },
               {
                 "description": "Git specialist for advanced version control operations — interactive rebase, bisect debugging, conflict resolution, history analysis and recovery, cherry-pick, reflog archaeology, and worktree management. Named after Linus Torvalds — creator of Git and Linux. Git's architecture is content-addressable: every object is checksummed, every state is recoverable. This skill never loses data and verifies every action. Use when the user asks for rebase, bisect, conflict resolution, history rewriting, branch archaeology, or any git operation beyond basic commit/push (which is handled by atomic-commit-push).",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "torvalds",
                 "path": "$HARNESS_ROOT/skills/torvalds"
               },
               {
                 "description": "Evidence-bound execution loop that decomposes goals into measurable criteria, performs implementation directly as the main agent, spawns sub-agents only for context-isolated work (exploration, adversarial review, parallel probes, isolated edits), verifies every claim with observable evidence across 4 QA channels (HTTP/tmux/browser/computer-use), and tracks quantitative efficiency metrics. Named after Alan Turing — 'A computation is only valid if it can be verified.' Use when the user asks for verified delivery, turing loop, evidence-led execution, or durable goal tracking.",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "turing",
                 "path": "$HARNESS_ROOT/skills/turing"
               },
               {
                 "description": "Strategic planning consultant that produces decision-complete work plans through codebase exploration, Socratic interview, gap analysis, and self-review. Named after John von Neumann — architect of the stored-program computer, game theory, and parallel processing. Like a stored program loaded before execution, his plans leave zero decisions to the implementer. Use when the task has 5+ steps, scope is ambiguous, multiple modules are involved, or the user asks for a plan.",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "von-neumann",
                 "path": "$HARNESS_ROOT/skills/von-neumann"
@@ -6979,7 +7035,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 32,
+              "docs_indexed": 33,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

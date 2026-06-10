@@ -21,6 +21,7 @@ func ValidateMCPWithDeps(binary, root string, deps MCPValidationDeps) StepResult
 	env := []string{
 		"HARNESS_STATE_DIR=" + tempState,
 		"HARNESS_DAEMON_DIR=" + daemonDir,
+		"HARNESS_MCP_DIRECT=1",
 	}
 	defer deps.RunCommandStepEnv(root, "MCP daemon stop", 5*time.Second, "", env, binary, "daemon", "stop", "--json")
 

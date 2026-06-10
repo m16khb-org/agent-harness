@@ -1,0 +1,4 @@
+interface:
+  display_name: "Turing"
+  short_description: "Run evidence-bound execution with measurable verification"
+  default_prompt: "Use $turing to decompose this goal into observable checks, execute it, and verify every completion claim."
