@@ -44,6 +44,25 @@ description: Chosen languages, runtimes, tools, and rationale.
 
 이 optional path는 네트워크와 user-level host 설정 변경을 수반하므로 기본 install-native에는 포함하지 않고 `--with-upstream-tools` 또는 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`일 때만 실행한다.
 
+## 2.2 Project pioneer skills
+
+agent-harness의 `skills/` 디렉토리에는 10개의 pioneer skill이 있으며, 각 스킬은 컴퓨터 과학 선구자의 이름을 따서 명명되었다. 상세한 namesake 설명은 `README.md` "Skills & Their Namesakes" 표를 참조한다.
+
+| 스킬 | 경로 | 역할 |
+|------|------|------|
+| `von-neumann` | `skills/von-neumann/SKILL.md` | Strategic Planning — decision-complete 계획 수립 |
+| `turing` | `skills/turing/SKILL.md` | Evidence-Bound Execution — 증거 기반 목표 실행 |
+| `berners-lee` | `skills/berners-lee/SKILL.md` | Web Research — 다중 소스 출처 인용 조사 |
+| `codd` | `skills/codd/SKILL.md` | Database Design & Optimization |
+| `dijkstra` | `skills/dijkstra/SKILL.md` | Algorithm Design & Complexity Optimization |
+| `hopper` | `skills/hopper/SKILL.md` | Systematic Debugging — 7단계 과학적 디버깅 |
+| `shannon` | `skills/shannon/SKILL.md` | Signal-to-Noise Quality Measurement |
+| `karpathy` | `skills/karpathy/SKILL.md` | Prompt Engineering & Optimization |
+| `torvalds` | `skills/torvalds/SKILL.md` | Git Operations — atomic commit, bisect, rebase |
+| `issueops` | `skills/issueops/SKILL.md` | Issue-Driven Work Cycle Router |
+
+이 스킬들은 Codex, Claude Code, Reasonix 세 호스트에서 동일하게 사용되며, `scripts/install-native.sh`를 통해 사용자 홈(`~/.codex/skills/`, `~/.claude/skills/`)에 symlink로 설치된다. 모든 스킬은 language/tech agnostic을 원칙으로 하며(6f31c55 검증 완료), hub-and-spoke cross-reference mesh(`turing`·`issueops`가 hub)를 형성한다.
+
 ---
 
 ## 3. 예상 라이브러리 후보
