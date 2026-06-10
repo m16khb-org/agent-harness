@@ -22,7 +22,7 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	fs := flag.NewFlagSet(commandName, flag.ContinueOnError)
 	sync := fs.Bool("sync", false, "sync optional upstream companion tool versions")
 	explicitWithUpstream := hasInstallFlag(args, "with-upstream-tools")
-	withUpstream := fs.Bool("with-upstream-tools", true, "install/update upstream llm-wiki, codegraph, claude-mem, and lazycodex-ai integrations")
+	withUpstream := fs.Bool("with-upstream-tools", true, "install/update upstream llm-wiki, codegraph, and claude-mem integrations")
 	skipUpstream := fs.Bool("skip-upstream-tools", false, "skip upstream companion tool setup")
 	withoutUpstream := fs.Bool("without-upstream-tools", false, "skip upstream companion tool setup")
 	projectLocal := fs.Bool("project-local", false, "also write explicit project-local files")
