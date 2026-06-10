@@ -427,6 +427,43 @@ OVER-INDEXED TABLES — rule of thumb: >5 indexes on a write-heavy table:
   → Consolidate or remove least-used indexes
 ```
 
+### Index Column Order: The Secret Nobody Teaches
+
+For a query `WHERE status = 'active' ORDER BY created_at DESC LIMIT 100`:
+
+```
+-- Index A: CORRECT (status first, then ORDER BY column)
+CREATE INDEX idx_a ON orders (status, created_at DESC);
+
+-- Index B: WRONG (ORDER BY column first, then filter)
+CREATE INDEX idx_b ON orders (created_at DESC, status);
+```
+
+| | Index A `(status, created_at DESC)` | Index B `(created_at DESC, status)` |
+|---|---|---|
+| **How PostgreSQL uses it** | Jumps directly to `status='active'` rows in the index → rows already sorted by `created_at DESC` → picks first 100 → done. | Scans ALL rows in `created_at DESC` order (2.2M rows) → filters `status='active'` one by one → finds 100 matches → discards the rest. |
+| **Scan type** | Index Scan (fast) | Index Scan but reads entire index (slow) |
+| **Effective rows touched** | ~100 | ~2,200,000 |
+| **Why** | B-tree is ordered left-to-right. First column partitions the tree; second column is sorted WITHIN each partition. Filter-first means you prune partitions early. | Order-by-first means you traverse ALL partitions in order, filtering each row individually. |
+
+**Rule: WHERE columns FIRST, then ORDER BY columns. Match ASC/DESC to the query.**
+
+```
+-- WHERE a = X ORDER BY b      → (a, b)
+-- WHERE a = X ORDER BY b DESC → (a, b DESC)
+-- WHERE a = X AND b > Y ORDER BY c → (a, b, c)  -- equality → range → order
+```
+
+### Common Indexing Mistakes
+
+| Mistake | Symptom | Fix |
+|----------|---------|-----|
+| **Adding indexes without EXPLAIN** | 5 new indexes, 0 help the query | Run `EXPLAIN ANALYZE` first; every index must target a specific scan node |
+| **Wrong composite column order** | Index exists but query still Seq Scans | WHERE columns first, ORDER BY columns second, range column last |
+| **Too many indexes** | Disk space ↑, INSERT/UPDATE/DELETE ↓, planner overwhelmed | Remove indexes with `idx_scan = 0`; consolidate overlapping indexes; keep ≤5 per write-heavy table |
+| **Stale statistics** | Planner estimates wildly different from actual rows | `ANALYZE table_name;` — re-run after large INSERT/UPDATE/DELETE batches |
+| **Missing DESC/ASC match** | Index Scan Backward, or index not used | `(status, created_at DESC)` for `ORDER BY created_at DESC` queries |
+
 ---
 
 ## Step 5: OPTIMIZE — Diagnose Queries, Select Joins, Detect N+1
@@ -531,6 +568,26 @@ WRITE PENALTY:
   DOCUMENT: "orders.customer_name denormalized from customers.name.
             Customer name changes are rare (~1/year). Read savings justify write cost."
 ```
+
+### Problematic Query Patterns (Always Slow)
+
+| Pattern | Problem | Fix |
+|---------|---------|-----|
+| **OR in WHERE** | `WHERE status = 'active' OR priority > 5` — planner often falls back to Seq Scan because OR spans multiple index columns | Rewrite as `UNION`: `SELECT ... WHERE status = 'active' UNION SELECT ... WHERE priority > 5` — each branch uses its own index |
+| **Function on index column** | `WHERE LOWER(email) = 'user@example.com'` — function hides the raw column value from the index | Create a function-based index: `CREATE INDEX ON users (LOWER(email))` |
+| **Leading wildcard LIKE** | `WHERE email LIKE '%@gmail.com'` — B-tree cannot use index when wildcard leads | Use full-text search (`tsvector`) or `pg_trgm` extension with GIN/GiST index for fuzzy matching |
+| **NOT IN with large subquery** | `WHERE id NOT IN (SELECT id FROM huge_table)` — can be catastrophically slow with NULLs | Replace with `NOT EXISTS (SELECT 1 FROM huge_table WHERE huge_table.id = outer.id)` — handles NULLs correctly and uses anti-join |
+| **Implicit type conversion** | `WHERE user_id = '12345'` (string vs integer column) — index is bypassed because planner must cast | Use the correct type: `WHERE user_id = 12345` — always match the column's native type |
+
+### PostgreSQL Configuration Settings That Matter
+
+| Setting | Default | Recommendation | When to Adjust |
+|---------|---------|---------------|----------------|
+| **`work_mem`** | 4 MB | 256 MB if Disk Sort or external merge appears in `EXPLAIN ANALYZE` | Per-operation sort/hash memory. A single query can use this × number of sort/hash nodes. Start at 64 MB, increase only when needed. |
+| **`shared_buffers`** | 128 MB | ~25% of total RAM | PostgreSQL's internal cache. On a 16 GB machine: 4 GB. On a 64 GB machine: 16 GB. More is not better — Linux page cache adds on top. |
+| **`effective_cache_size`** | — | ~75% of total RAM | Planner hint only — does NOT allocate memory. Tells the planner how much OS page cache is available. On 16 GB: 12 GB. Influences index vs. table scan decisions. |
+| **`random_page_cost`** | 4.0 | 1.1 for SSD, 1.5–2.0 for fast SAN/NVMe | 4.0 assumes spinning disk (seek time ~4× sequential read). On SSD, random access is nearly free. Setting this lower encourages index use. |
+| **`maintenance_work_mem`** | 64 MB | 1 GB for large index builds, VACUUM, or ALTER TABLE | Higher = faster `CREATE INDEX CONCURRENTLY` and `VACUUM FULL`. Set per-session before large maintenance: `SET maintenance_work_mem = '2GB';` |
 
 ---
 
