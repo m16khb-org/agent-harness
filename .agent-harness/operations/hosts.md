@@ -12,7 +12,6 @@ Native skill examples:
 ```text
 Use $atomic-commit-push to review my changes, split them into atomic commits, and push safely.
 Use $issueops to run a problem -> issue -> plan -> TDD/subagent -> ai-slop-clean -> feedback -> PR/MR cycle.
-Use $workflows in Codex to run an explicit dynamic workflow with batched subagents.
 ```
 
 Install checks:
@@ -33,7 +32,7 @@ Hook behavior:
 - `--enforce-search-routing`: optional deterministic block for obvious CodeGraph/rg routing mismatches.
 - `PostToolUse`: records only successful mutating tool evidence into repo-scoped user state. It must not auto-queue draft-wiki material; the main agent explicitly queues judged reusable material with `agent-harness project draft-wiki queue --stdin` or `--input`.
 - `PreCompact`/`PostCompact`: save and restore a small pending-upkeep capsule once.
-- `Stop`: installed with `--enforce-numbered-next-actions`; when the host exposes the final assistant message or transcript, it blocks missing numbered next actions and tells the agent to explain the block before presenting context-specific choices. With `--relay-next-action-judgement`, it relays only observed next-action facts back to the main agent; the main agent must then state why it is auto-proceeding or why it is not auto-proceeding and needs user confirmation. Auto-proceed result reports still include `선택지:` with three options and exactly one recommendation.
+- `Stop`: installed with `--enforce-numbered-next-actions`; when the host exposes the final assistant message or transcript, it blocks missing numbered next actions and tells the agent to explain the block before presenting context-specific choices. With `--relay-next-action-judgement`, it relays only observed next-action facts back to the main agent; the main agent must then state why it is auto-proceeding or why it is not auto-proceeding and needs user confirmation. Auto-proceed result reports still include `선택지:` with three options and exactly one recommendation. No-auto-proceed judgements stop without adding another choices block.
 
 Hook smoke:
 

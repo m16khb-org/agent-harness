@@ -692,7 +692,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 2991,
+          "bytes": 2980,
           "headings": [
             "Operations Map",
             "Core Surfaces",
@@ -857,7 +857,7 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 4210,
+          "bytes": 4196,
           "headings": [
             "Host Operations",
             "Codex",
@@ -1337,13 +1337,6 @@
           "has_skill_md": true,
           "name": "von-neumann",
           "path": "$HARNESS_ROOT/skills/von-neumann"
-        },
-        {
-          "description": "Codex-only dynamic workflow execution with batched subagents. Use when the user says workflows, dynamic workflows, run a workflow, use a workflow, fan out agents, launch subagents, coordinate parallel agents, perform a broad audit/migration/research sweep, or asks for Claude Code dynamic workflows behavior in Codex.",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "workflows",
-          "path": "$HARNESS_ROOT/skills/workflows"
         }
       ],
       "target_repo": "$WORKSPACE",
@@ -3234,8 +3227,7 @@
           "stability-audit",
           "torvalds",
           "turing",
-          "von-neumann",
-          "workflows"
+          "von-neumann"
         ]
       },
       "research_influences": [
@@ -5112,7 +5104,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 2991,
+                "bytes": 2980,
                 "headings": [
                   "Operations Map",
                   "Core Surfaces",
@@ -5277,7 +5269,7 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 4210,
+                "bytes": 4196,
                 "headings": [
                   "Host Operations",
                   "Codex",
@@ -5764,13 +5756,6 @@
                 "has_skill_md": true,
                 "name": "von-neumann",
                 "path": "$HARNESS_ROOT/skills/von-neumann"
-              },
-              {
-                "description": "Codex-only dynamic workflow execution with batched subagents. Use when the user says workflows, dynamic workflows, run a workflow, use a workflow, fan out agents, launch subagents, coordinate parallel agents, perform a broad audit/migration/research sweep, or asks for Claude Code dynamic workflows behavior in Codex.",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "workflows",
-                "path": "$HARNESS_ROOT/skills/workflows"
               }
             ],
             "target_repo": "$WORKSPACE",
@@ -7072,8 +7057,7 @@
                 "stability-audit",
                 "torvalds",
                 "turing",
-                "von-neumann",
-                "workflows"
+                "von-neumann"
               ]
             },
             "research_influences": [

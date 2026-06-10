@@ -19,7 +19,7 @@ Use this file as the quick map. Read the focused operation file that matches the
 
 ## Core Surfaces
 
-1. Native skills: `atomic-commit-push`, `issueops`, `self-augment`, `project-bootstrap`, `self-verify`, `stability-audit`; Codex-only dynamic workflow support lives in `workflows`.
+1. Native skills: `atomic-commit-push`, `issueops`, `self-augment`, `project-bootstrap`, `self-verify`, `stability-audit`, plus the named specialist skills in `skills/`.
 2. MCP stdio proxy: `agent-harness mcp` starts or connects to the shared user-level `agent-harness daemon`.
 3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/daemon/worker/self-verify/self-augment/api-doc/hook`.
 
