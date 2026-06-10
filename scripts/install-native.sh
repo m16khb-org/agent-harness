@@ -187,6 +187,19 @@ install_claude_mem_for_ide() {
   printf '%s\n' "$cm_out" >&2
 }
 
+# Work around claude-mem marketplace packaging bug: plugin.json references ./hooks/codex-hooks.json
+# but the marketplace directory places hooks under plugin/hooks/ instead of hooks/ at the root.
+# Symlink hooks -> plugin/hooks so Codex can find the hook scripts.
+fix_claude_mem_codex_hooks_path() {
+  local marketplace_root="${HOME}/.claude/plugins/marketplaces/thedotmack"
+  local hooks_link="${marketplace_root}/hooks"
+  local hooks_target="plugin/hooks"
+  if [[ -d "${marketplace_root}/${hooks_target}" ]] && [[ ! -e "$hooks_link" ]]; then
+    log "fixing claude-mem Codex hook path: ${hooks_link} -> ${hooks_target}"
+    ln -sf "$hooks_target" "$hooks_link"
+  fi
+}
+
 ensure_codegraph_on_path() {
   if command -v codegraph >/dev/null 2>&1; then
     return 0
@@ -220,6 +233,7 @@ install_upstream_tools() {
     remove_codex_marketplace "agentmemory"
     install_claude_mem_for_ide "codex-cli"
     ensure_codex_plugin "claude-mem@claude-mem-local"
+    fix_claude_mem_codex_hooks_path
   else
     log "codex not found; skipping Codex llm-wiki/claude-mem plugin setup"
   fi
