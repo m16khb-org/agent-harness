@@ -1,6 +1,6 @@
 ---
 name: torvalds
-description: Git specialist for advanced version control operations — interactive rebase, bisect debugging, conflict resolution, history analysis and recovery, cherry-pick, reflog archaeology, and worktree management. Named after Linus Torvalds — creator of Git and Linux. Git's architecture is content-addressable: every object is checksummed, every state is recoverable. This skill never loses data and verifies every action. Use when the user asks for rebase, bisect, conflict resolution, history rewriting, branch archaeology, or any git operation beyond basic commit/push (which is handled by atomic-commit-push).
+description: "Git specialist for advanced version control operations — interactive rebase, bisect debugging, conflict resolution, history analysis and recovery, cherry-pick, reflog archaeology, and worktree management. Named after Linus Torvalds — creator of Git and Linux. Git's architecture is content-addressable: every object is checksummed, every state is recoverable. This skill never loses data and verifies every action. Use when the user asks for rebase, bisect, conflict resolution, history rewriting, branch archaeology, or any git operation beyond basic commit/push (which is handled by atomic-commit-push)."
 ---
 
 # Torvalds — Git Master
