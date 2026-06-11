@@ -15,6 +15,16 @@ func TestFindUnredactedSecretLikeFlagsRealTokens(t *testing.T) {
 	}
 }
 
+// "task-N-..." evidence file names contain the substring "sk-N-..."; without
+// a word boundary the openai_token pattern false-positives on ordinary docs
+// and deterministically fails the 95-gate's redaction audit.
+func TestFindUnredactedSecretLikeIgnoresTaskFileNames(t *testing.T) {
+	findings := findUnredactedSecretLike("Evidence: .agent-harness/evidence/task-0-live-invocation-record.md\nEvidence: task-2-pioneer-benchmark-error.txt\n")
+	if len(findings) != 0 {
+		t.Fatalf("task-N file names must not be flagged as tokens: %+v", findings)
+	}
+}
+
 func TestFindUnredactedSecretLikeAllowsRedactedFixtures(t *testing.T) {
 	findings := findUnredactedSecretLike("TOKEN=redacted\npassword=example\n")
 	if len(findings) != 0 {
