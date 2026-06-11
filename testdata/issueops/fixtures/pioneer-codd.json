@@ -1,0 +1,14 @@
+{
+  "id": "pioneer-codd",
+  "title": "Slow query needs schema and index design",
+  "user_prompt": "orders 테이블에서 유저별 최근 주문 조회가 느려. 인덱스 설계해줘",
+  "repo_context": "PostgreSQL orders table with 12M rows, write-heavy inserts, and a frequent SELECT ... WHERE user_id=? ORDER BY created_at DESC LIMIT query. The codd skill must drive index selection with write-penalty justification.",
+  "pioneer_skill_target": "codd",
+  "expected_issue": ["captures row counts and access patterns", "defines acceptance criteria", "is written in Korean", "references issue/pr guideline"],
+  "expected_plan": ["compares at least two index shapes", "states write penalty", "includes verification"],
+  "expected_tasks": ["bounded ownership"],
+  "expected_tdd": ["failing query-plan assertion or test before implementation"],
+  "expected_subagents": ["verifies pwd branch and HEAD before work"],
+  "expected_pr": ["includes index decision rationale", "links issue", "is written in Korean", "references issue/pr guideline"],
+  "critical_failures": ["skips pioneer method", "works in source repo", "worker starts without context check", "unbounded code-reviewer review", "issue or pr/mr not written in korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
+}
