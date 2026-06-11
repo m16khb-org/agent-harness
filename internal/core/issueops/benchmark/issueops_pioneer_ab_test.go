@@ -84,6 +84,31 @@ func TestPioneerSignaturePresentVsAbsentAB(t *testing.T) {
 	}
 }
 
+// When the candidate run has no pioneer fixtures at all, the dimension is
+// absent from its minimums map; the comparator must treat that as
+// not-comparable rather than reading the map's 0.0 zero value and reporting a
+// phantom regression (reviewer-reproduced latent gap).
+func TestPioneerDimensionAbsenceIsNotARegression(t *testing.T) {
+	pioneers := pioneerABFixturesForTest(t)
+	baseline := pioneerABRunForTest(t, pioneers, true)
+
+	workflowOnly := IssueOpsBenchmarkFixture{ID: "workflow-only"}
+	candidate, err := RunIssueOpsBenchmark(IssueOpsBenchmarkRunRequest{
+		Fixtures:  []IssueOpsBenchmarkFixture{workflowOnly},
+		Artifacts: map[string]IssueOpsBenchmarkArtifact{"workflow-only": completeBenchmarkArtifactForTest()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	compare := CompareIssueOpsBenchmarkRuns(baseline, candidate)
+	for _, dimension := range compare.Regressions {
+		if dimension == "pioneer_skill_contribution" {
+			t.Fatalf("absent pioneer dimension must not be a phantom regression: %+v", compare)
+		}
+	}
+}
+
 func TestPioneerGateRejectsSignatureRegression(t *testing.T) {
 	fixtures := pioneerABFixturesForTest(t)
 	baseline := pioneerABRunForTest(t, fixtures, true)

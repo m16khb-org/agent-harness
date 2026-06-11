@@ -60,7 +60,15 @@ func compareIssueOpsDimensionRegressions(baseline, candidate IssueOpsBenchmarkRu
 	candidateScores := issueOpsDimensionMinimums(candidate)
 	var regressions []string
 	for _, dimension := range issueOpsBenchmarkDimensions {
-		if candidateScores[dimension] < baselineScores[dimension] {
+		candidateScore, candidateSeen := candidateScores[dimension]
+		baselineScore, baselineSeen := baselineScores[dimension]
+		// A dimension absent from either run (e.g. N/A on every fixture) is
+		// not comparable; reading the map zero value would fabricate a
+		// phantom regression.
+		if !candidateSeen || !baselineSeen {
+			continue
+		}
+		if candidateScore < baselineScore {
 			regressions = append(regressions, dimension)
 		}
 	}
@@ -76,7 +84,12 @@ func issueOpsTargetDimensionRegressions(targets []string, baseline, candidate Is
 		if target == "" {
 			continue
 		}
-		if candidateScores[target] < baselineScores[target] {
+		candidateScore, candidateSeen := candidateScores[target]
+		baselineScore, baselineSeen := baselineScores[target]
+		if !candidateSeen || !baselineSeen {
+			continue
+		}
+		if candidateScore < baselineScore {
 			regressions = append(regressions, target)
 		}
 	}
