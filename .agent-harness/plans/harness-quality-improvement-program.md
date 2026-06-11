@@ -25,6 +25,14 @@
 - 13/16 스킬 NEVER/Forbidden 안전 규칙 보유.
 - hooks 차단 게이트 8종이 실측 테스트로 핀됨.
 
+### 이번 전수조사가 발굴한 신규 실측 결함
+
+- **[P1, 신규] lifecycle state 동시성 레이스**: `go test ./internal/core/lifecycle ./cmd/harness/... -count=3` 병렬 부하에서
+  `TestInitProjectLifecycleStateConcurrentNoDuplicates`가 재현 실패(`lifecycle_state_test.go:189: unexpected end of JSON input`).
+  단독 실행은 통과 → 동시 InitProjectLifecycleState 중 부분 기록된 상태 파일을 읽는 read-while-write 레이스 의심.
+  **이것이 stability-audit fast-path의 self-verify(go test 스텝) 간헐 실패의 원인이다**(실측). hopper 진단 → 원자적 쓰기
+  (temp+rename) 또는 파일 잠금으로 수정. → 신규 항목 **Q6**로 트랙.
+
 ### 기존 문서화된 결함 (재발견 아님, 미해결 잔존)
 - **P0**: 세션↔IssueOps 사이클 바인딩 부재 — git 브랜치로만 추정, 세션 재시작 시 유실 (ISSUEOPS_AUDIT 2.1).
 - **P1**: hook failure log 무한 성장(rotation 없음, `hookfailure-*.jsonl`); `HARNESS_EXPECTED_WORKTREE` env가 compaction에 휘발 (ISSUEOPS_AUDIT 2.2).
@@ -65,6 +73,13 @@
 - **왜**: 이번 세션에서도 MCP 서버 끊김이 재현됐으나 빈도·조건이 미기록이라 개선 불가.
 - **수용 기준**: baseline 문서에 최소 2회분 측정치; stability-audit 스크립트의 Go contract test 1개 이상(현재 0 — 685줄 Python이 무테스트).
 - 규모: 소~중.
+
+### Q6. lifecycle state 동시성 레이스 수정 [신규 실측 결함, P1]
+- **무엇**: §0의 신규 발견 — InitProjectLifecycleState의 read-while-write 레이스를 hopper 7-step으로 진단 후
+  원자적 쓰기(temp 파일 + rename) 또는 flock으로 수정. 재현 명령(`-count=3` 병렬)이 이미 확보돼 있어 RED가 공짜.
+- **왜 정량**: self-verify 95-게이트의 간헐 실패 원인(실측) — 이걸 고쳐야 Q4 안정성 baseline의 신호가 깨끗해진다.
+- **수용 기준**: 재현 명령 10회 연속 그린; `go test -race ./internal/core/lifecycle -count=3` 그린; self-verify 재실행 통과.
+- **issueops 사이클로 실행** (동시성 코드 변경).
 
 ### Q5. 정량 대시보드 단일화 [통합 가시성]
 - **무엇**: 산재한 정량 지표(스킬 스코어카드 2종, 벤치마크 run, hook stats, stability baseline)를 한 문서
@@ -108,6 +123,7 @@
 
 | 순번 | 항목 | 트랙 | 효과/노력 | 실행 단위 | 의존 |
 |------|------|------|-----------|-----------|------|
+| 0 | **Q6 lifecycle 레이스(신규 P1)** | 정량 | 高/小 | **issueops 사이클** | — (재현 확보, RED 공짜) |
 | 1 | Q1 비-pioneer 스코어카드 | 정량 | 高/中 | 측정 세션(코드 무변경) | — |
 | 2 | S4 P0/P1 구조 결함 | 정성 | 高/中 | **issueops 사이클** | — |
 | 3 | Q2 hook 메트릭+rotation | 정량 | 高/小 | **issueops 사이클** | — |
