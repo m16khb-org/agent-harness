@@ -34,7 +34,7 @@ func issueOpsUsage() {
   agent-harness issueops resume --repo PATH [--bind] [--json]
   agent-harness issueops remote score --input PATH [--judge none|agy] [--agy-command PATH] [--json]
   agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]
-  agent-harness issueops benchmark run --fixtures PATH [--judge none|agy] [--agy-command PATH] [--json]
+  agent-harness issueops benchmark run --fixtures PATH [--judge none|file|agy] [--judge-file PATH] [--agy-command PATH] [--json]
   agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
   agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]
 `)

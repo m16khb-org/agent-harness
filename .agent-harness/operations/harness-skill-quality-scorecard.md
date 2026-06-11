@@ -72,16 +72,18 @@ skill ≥ 4.2/5.0, 케이스 최저 ≥ 3.5, `unsafe`/`stale-contract`/`fake-too
 
 | Skill | P | B | O | Skill Score | Holdout(n≥3) | Gate Flags | Evidence |
 |-------|---|---|---|-------------|--------------|------------|----------|
-| issueops | — | — | — | — | — | — | — |
-| atomic-commit-push | — | — | — | — | — | — | — |
-| self-verify | — | — | — | — | — | — | — |
+| issueops | — | — | 5.0 | — | — | none | A (IO-O, 2026-06-11) |
+| atomic-commit-push | — | — | 2.0² | — | — | stale-contract² | A (ACP-O, 2026-06-11) |
+| self-verify | — | — | 5.0 | — | — | none | A (SV-O, 2026-06-11) |
 | self-augment | — | — | — | — | — | — | — |
-| project-bootstrap | — | — | — | — | — | — | — |
+| project-bootstrap | — | — | 4.8 | — | — | none | A (PB-O, 2026-06-11) |
 | draft-wiki-promoter | 5.0 | 5.0 | 4.8 | **4.94** | — (후속) | none | A/C/A (2026-06-11) |
 | stability-audit | (보류¹) | 5.0 | 4.8 | — | — (후속) | none | A (2026-06-11) |
 
 ¹ STA-P는 2026-06-11 fresh-context 실행이 호스트 사용량 한도로 중단되어 미측정. 풀 audit 스크립트 실행을
 포함하므로 다음 측정 배치에서 재실행한다(rubric: D-등급 추정으로 점수를 채우지 않는다).
+² ACP-O는 `harness api-doc check`(존재하지 않는 binary 이름)로 stale-contract cap 2.0. 같은 날 수정 커밋으로
+해소(`agent-harness api-doc check`); rubric상 skill max 3.4 until re-measured — 재측정은 다음 배치.
 
 측정 우선순위(리스크 순): ① stability-audit·draft-wiki-promoter(contract test 0 + 스코어카드 0 — 이중 공백),
 ② issueops(통합 복잡도 최고 — Go 테스트는 많으나 스킬 활용 품질은 미측정), ③ 나머지.

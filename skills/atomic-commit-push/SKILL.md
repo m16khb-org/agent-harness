@@ -27,7 +27,7 @@ Turn local changes into one or more atomic commits, verify each commit as approp
 1. **Pre-start gate / Preflight**
    - Run `python3 <skill>/scripts/git_preflight.py [repo]` if available.
    - Before planning commits, run `python3 <skill>/scripts/api_doc_gate.py [repo]` if available. This hook-style gate calls the agent-backed API documentation reviewer and exits non-zero on blocking Swagger/OpenAPI drift.
-   - If that script is unavailable, run the equivalent API documentation gate when staged API candidate files exist: `harness api-doc check --json` or MCP `api_doc_static_check` plus `api_doc_review`.
+   - If that script is unavailable, run the equivalent API documentation gate when staged API candidate files exist: `agent-harness api-doc check --json` or MCP `api_doc_static_check` plus `api_doc_review`.
    - If the API documentation gate fails, stop at the gate and report the blocking Swagger/OpenAPI findings instead of continuing to stage/commit.
    - Also inspect `git status --short`, current branch, upstream, and recent commit style.
    - If the directory is not a git repo, stop and report.

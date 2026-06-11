@@ -857,7 +857,7 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 7281,
+          "bytes": 7610,
           "headings": [
             "Harness Skill Quality Scorecard (비-pioneer 7종)",
             "측정 프로토콜 (rubric 준수 + 프로그램 보강)",
@@ -1606,7 +1606,7 @@
           "path": "$HARNESS_ROOT/skills/karpathy"
         },
         {
-          "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
+          "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC/ADR docs, or install project docs for agent-harness.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "project-bootstrap",
@@ -5592,7 +5592,7 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 7281,
+                "bytes": 7610,
                 "headings": [
                   "Harness Skill Quality Scorecard (비-pioneer 7종)",
                   "측정 프로토콜 (rubric 준수 + 프로그램 보강)",
@@ -6348,7 +6348,7 @@
                 "path": "$HARNESS_ROOT/skills/karpathy"
               },
               {
-                "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.",
+                "description": "Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC/ADR docs, or install project docs for agent-harness.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "project-bootstrap",

@@ -1,6 +1,6 @@
 ---
 name: project-bootstrap
-description: Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC docs, or install project docs for agent-harness.
+description: Generate or update a repo-local AGENTS.md routing block and .agent-harness project operating documents from repository evidence. Use when the user asks to bootstrap project docs, create project-specific agent guidance, analyze a repo into ARCHITECTURE/CAUTIONS/COMMIT_POLICY/CONSTITUTION/CONVENTIONS/TECH_STACK/TESTING/OPERATIONS/AGENT_WORKFLOW/OPEN_API_SPEC/ADR docs, or install project docs for agent-harness.
 ---
 
 # Project Bootstrap
@@ -21,6 +21,7 @@ Create evidence-backed project operating documents and repo profile metadata for
 - `.agent-harness/TESTING.md` — good/bad test criteria and likely verification commands for test work.
 - `.agent-harness/OPEN_API_SPEC.md` — static plus agent documentation gate prompt for endpoint/DTO/OpenAPI changes.
 - `.agent-harness/ADR.md` — architecture decision rationale and rejected alternatives.
+- `.agent-harness/draft-wiki/` — README plus `draft/`, `approved/`, `rejected/` staging tree for the draft-wiki-promoter workflow (created by bootstrap; operated via `project draft-wiki` subcommands).
 - `.agent-harness/OPERATIONS.md`
 - `.agent-harness/AGENT_WORKFLOW.md`
 
@@ -30,7 +31,7 @@ Create evidence-backed project operating documents and repo profile metadata for
 - Use `--dry-run` when the user only wants a plan.
 - Write when the user explicitly requested bootstrapping/updating project docs or when continuing an approved implementation task; use `--sync` before replacing existing generated docs from current templates/evidence.
 - Treat generated docs as evidence-backed drafts. If the project already has stronger local docs, preserve and reference them.
-- After first setup, keep `.agent-harness` documents fresh through MCP: route the task, read the current doc SHA, update one document at a time, or append CAUTIONS/ADR records for concrete false cases and decisions.
+- After first setup, keep `.agent-harness` documents fresh through MCP: route the task, read the current doc SHA, update one document at a time, or append CAUTIONS/ADR records for concrete false cases and decisions. The MCP catalog also exposes `project_docs_bootstrap_plan` for the dry-run plan shape.
 
 
 ## Static vs agent-filled output
