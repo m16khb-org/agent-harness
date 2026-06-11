@@ -9,58 +9,63 @@ import (
 	"testing"
 )
 
-func TestBuildUserPromptMCPHintsInjectsNextActionPolicy(t *testing.T) {
-	// The next-action / auto-proceed policy replaces the external-LLM gate: it is
-	// injected into every non-empty user prompt so the main agent frames its own
-	// turn-ending choices for the cheap heuristic Stop gate to act on.
+func TestBuildUserPromptMCPHintsInjectsConciseNextActionReminder(t *testing.T) {
+	// UserPromptSubmit must stay compact because Codex renders additionalContext
+	// inline in the hook transcript. The full policy belongs to Stop relay.
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "아무 작업이나 진행해줘"})
 	if !got.OK || !got.ShouldInject {
-		t.Fatalf("expected next-action policy to inject for a non-empty prompt: %+v", got)
+		t.Fatalf("expected next-action reminder to inject for a non-empty prompt: %+v", got)
 	}
-	for _, want := range []string{"next-action:", "선택지:", "(추천)", "main agent", "context", "safe", "reversible", "user confirmation", "Auto-proceed result reports must still end with choices", "No-auto-proceed judgements must stop without adding another choices block", "make exactly one decision", "never both in the same answer"} {
+	for _, want := range []string{"next-action:", "3 choices/1 recommendation", "Stop hook relays full decision details"} {
 		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("next-action policy missing %q:\n%s", want, got.AdditionalContext)
+			t.Fatalf("next-action reminder missing %q:\n%s", want, got.AdditionalContext)
 		}
 	}
-	for _, gone := range []string{"auto-proceed candidate", "treats the '(추천)' option as", "forward/verify verb", "진행·계속", "delete·remove"} {
+	for _, gone := range []string{"The Stop hook may re-enter", "Auto-proceed result reports must still end with choices", "No-auto-proceed judgements must stop without adding another choices block", "make exactly one decision", "never both in the same answer"} {
 		if strings.Contains(got.AdditionalContext, gone) {
-			t.Fatalf("next-action policy should not pre-judge candidate status with %q:\n%s", gone, got.AdditionalContext)
+			t.Fatalf("UserPromptSubmit must not embed verbose next-action policy %q:\n%s", gone, got.AdditionalContext)
 		}
 	}
 }
 
-func TestBuildUserPromptMCPHintsRequiresMainAgentJudgementRationale(t *testing.T) {
+func TestBuildUserPromptMCPHintsLeavesJudgementDetailsToStopRelay(t *testing.T) {
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "작업을 마무리해줘"})
-	for _, want := range []string{"main agent", "State the auto-proceed or no-auto-proceed rationale", "auto-proceed", "no-auto-proceed", "never both in the same answer", "Auto-proceed result reports must still end with choices", "No-auto-proceed judgements must stop without adding another choices block"} {
-		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("next-action policy missing judgement-rationale contract %q:\n%s", want, got.AdditionalContext)
+	for _, gone := range []string{"State the auto-proceed or no-auto-proceed rationale", "no-auto-proceed judgement is sticky", "recommended option is continued implementation"} {
+		if strings.Contains(got.AdditionalContext, gone) {
+			t.Fatalf("UserPromptSubmit must not carry Stop relay judgement detail %q:\n%s", gone, got.AdditionalContext)
 		}
 	}
 }
 
-func TestBuildUserPromptMCPHintsRequiresJudgementBeforeAuthorizedContinuation(t *testing.T) {
+func TestBuildUserPromptMCPHintsKeepsAutoContinuationContextShort(t *testing.T) {
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "foldering slice가 모두 완료될 때까지 자동진행"})
-	for _, want := range []string{"recommended option is continued implementation", "already authorize automatic continuation", "first state the safety/reversibility/alignment judgement", "supports auto-proceed"} {
-		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("next-action policy missing authorized-continuation contract %q:\n%s", want, got.AdditionalContext)
-		}
+	if !strings.Contains(got.AdditionalContext, "next-action:") {
+		t.Fatalf("expected short next-action reminder:\n%s", got.AdditionalContext)
+	}
+	if len(got.AdditionalContext) > 500 {
+		t.Fatalf("UserPromptSubmit context is too long for Codex transcript (%d chars):\n%s", len(got.AdditionalContext), got.AdditionalContext)
 	}
 }
 
-func TestBuildUserPromptMCPHintsKeepsNoAutoProceedDecisionStickyAcrossGoalContinuation(t *testing.T) {
+func TestBuildUserPromptMCPHintsDoesNotInjectStickyNoAutoProceedPolicy(t *testing.T) {
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "계속 진행"})
-	for _, want := range []string{"no-auto-proceed", "sticky", "goal continuation", "explicit user choice"} {
-		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("next-action policy missing sticky no-auto-proceed contract %q:\n%s", want, got.AdditionalContext)
+	for _, gone := range []string{"no-auto-proceed", "sticky", "goal continuation", "explicit user choice"} {
+		if strings.Contains(got.AdditionalContext, gone) {
+			t.Fatalf("sticky no-auto-proceed policy belongs to Stop relay, found %q:\n%s", gone, got.AdditionalContext)
 		}
 	}
 }
 
-func TestBuildUserPromptMCPHintsInjectsDraftWikiMainAgentPolicy(t *testing.T) {
+func TestBuildUserPromptMCPHintsInjectsConciseDraftWikiReminder(t *testing.T) {
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "훅 정책을 개선해줘"})
-	for _, want := range []string{"draft-wiki:", "main agent must judge", "agent-harness project draft-wiki queue", "heuristics must not queue"} {
+	for _, want := range []string{"draft-wiki:", "main-agent judgement only"} {
 		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("draft-wiki policy missing %q:\n%s", want, got.AdditionalContext)
+			t.Fatalf("draft-wiki reminder missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+	for _, gone := range []string{"agent-harness project draft-wiki queue", "<<'EOF'", "heuristics must not queue"} {
+		if strings.Contains(got.AdditionalContext, gone) {
+			t.Fatalf("UserPromptSubmit must not embed verbose draft-wiki policy %q:\n%s", gone, got.AdditionalContext)
 		}
 	}
 }
@@ -96,12 +101,12 @@ func TestBuildUserPromptMCPHintsForBugRecordsCaution(t *testing.T) {
 
 func TestBuildUserPromptMCPHintsUsesCompactBanner(t *testing.T) {
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
-	for _, want := range []string{"[agent-harness]", "routing hint", "docs:"} {
+	for _, want := range []string{"[agent-harness]\n", "- docs:", "- actions:", "- next-action:", "- draft-wiki:", "- rule:"} {
 		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("compact banner missing %q:\n%s", want, got.AdditionalContext)
+			t.Fatalf("compact multiline context missing %q:\n%s", want, got.AdditionalContext)
 		}
 	}
-	for _, verbose := range []string{"\n", "╭", "Before acting", "Required project docs:", "Writable tools must preserve"} {
+	for _, verbose := range []string{" | ", "╭", "Before acting", "Required project docs:", "Writable tools must preserve"} {
 		if strings.Contains(got.AdditionalContext, verbose) {
 			t.Fatalf("compact hook context should not include verbose prose %q:\n%s", verbose, got.AdditionalContext)
 		}
@@ -118,9 +123,9 @@ func TestRenderHookMCPHintContextNormalizesFallbackLabels(t *testing.T) {
 		{Tool: "CodeGraph"},
 	}, nil, nil, "")
 	for _, want := range []string{
-		"docs: use project docs only when repo-specific context matters",
-		"actions: record ADR decision, record reusable caution, check OpenAPI gaps",
-		"secondary: CodeGraph for structural lookup; rg for exact strings",
+		"- docs: use project docs only when repo-specific context matters",
+		"- actions: record ADR decision, record reusable caution, check OpenAPI gaps",
+		"- secondary: CodeGraph for structural lookup; rg for exact strings",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("compact render missing %q:\n%s", want, got)

@@ -12,19 +12,19 @@ func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpk
 		groups[priority] = append(groups[priority], h)
 	}
 
-	parts := []string{"[agent-harness] routing hint"}
+	parts := []string{"[agent-harness]"}
 	if catalog != "" {
-		parts = append(parts, catalog)
+		appendContextLine(&parts, "catalog", catalog)
 	}
 	appendCompactHintGroup(&parts, "docs", groups[hintPriorityRoute])
 	appendCompactHintGroup(&parts, "actions", groups[hintPriorityAction])
 	appendCompactProjectProfile(&parts, profile)
 	appendCompactPendingUpkeep(&parts, pendingUpkeep)
 	appendSecondaryHints(&parts, groups[hintPrioritySecondary])
-	parts = append(parts, nextActionPolicyHint)
-	parts = append(parts, draftWikiPolicyHint)
-	parts = append(parts, "rule: verify with repo/tool evidence before changing files")
-	return strings.Join(parts, " | ")
+	appendContextLine(&parts, "next-action", strings.TrimPrefix(nextActionPolicyHint, "next-action: "))
+	appendContextLine(&parts, "draft-wiki", strings.TrimPrefix(draftWikiPolicyHint, "draft-wiki: "))
+	appendContextLine(&parts, "rule", "verify with repo/tool evidence before changing files")
+	return strings.Join(parts, "\n")
 }
 
 func RenderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
@@ -48,12 +48,12 @@ func appendCompactHintGroup(parts *[]string, title string, hints []HookUserPromp
 	if len(labels) == 0 {
 		return
 	}
-	*parts = append(*parts, title+": "+strings.Join(labels, ", "))
+	appendContextLine(parts, title, strings.Join(labels, ", "))
 }
 
 func appendSecondaryHints(parts *[]string, hints []HookUserPromptHint) {
 	if len(hints) == 1 && hints[0].Tool == "claude-mem" {
-		*parts = append(*parts, "memory: use claude-mem only for previous-session/repeated-work recall")
+		appendContextLine(parts, "memory", "use claude-mem only for previous-session/repeated-work recall")
 		return
 	}
 	appendCompactHintGroup(parts, "secondary", hints)
@@ -79,7 +79,7 @@ func appendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
 	if len(items) == 0 {
 		return
 	}
-	*parts = append(*parts, "pending upkeep: "+strings.Join(items, "; "))
+	appendContextLine(parts, "pending upkeep", strings.Join(items, "; "))
 }
 
 func AppendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
@@ -117,5 +117,13 @@ func appendCompactProjectProfile(parts *[]string, profile *ProjectProfile) {
 	if len(items) == 0 {
 		return
 	}
-	*parts = append(*parts, "profile: "+strings.Join(items, ", "))
+	appendContextLine(parts, "profile", strings.Join(items, ", "))
+}
+
+func appendContextLine(parts *[]string, title, value string) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return
+	}
+	*parts = append(*parts, "- "+title+": "+value)
 }
