@@ -1109,6 +1109,34 @@
           "title": "Pioneer Skill Documentation Audit \u0026 Update"
         },
         {
+          "bytes": 42139,
+          "headings": [
+            "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)",
+            "TL;DR",
+            "Context",
+            "Original Request",
+            "적대적 리뷰 반영(rev.2)",
+            "judge 백엔드 흡수(rev.3)",
+            "Gap Analysis",
+            "Work Objectives",
+            "Core Objective",
+            "Deliverables",
+            "Definition of Done (검증 가능 조건)",
+            "Must Have",
+            "Must NOT Have (guardrails)",
+            "Verification Strategy",
+            "Execution Strategy",
+            "Parallel Execution Waves",
+            "Dependency Matrix",
+            "TODOs",
+            "Final Verification Wave (MANDATORY) — rev.5: 전부 binary·agent-executable 명령",
+            "Commit Strategy"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
+          "rel_path": ".agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
+          "title": "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)"
+        },
+        {
           "bytes": 53360,
           "headings": [
             "Pioneer Skills Qualitative Quality Improvement Plan",
@@ -1225,6 +1253,29 @@
           "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
           "rel_path": ".agent-harness/research/pioneer-skill-audit.md",
           "title": "Research: Pioneer Skill Design Pattern Audit"
+        },
+        {
+          "bytes": 15039,
+          "headings": [
+            "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서",
+            "0. 한 줄 결론",
+            "1. 현재 측정 시스템의 실제 구조 (근거 기반)",
+            "계층 A — Pioneer Skill Quality Rubric / Scorecard (격리 측정)",
+            "계층 B — IssueOps Quality Benchmark (산출물 측정)",
+            "계층 C — IssueOps Skill Contract Test (텍스트 존재 측정)",
+            "2. 각 질문에 대한 진단",
+            "Q1. 지금의 평가기준이 적합한가?",
+            "Q2. 품질 향상을 위해 새 평가기준을 도입할 필요가 있는가?",
+            "Q3. 단순히 스킬만으로 충분한가?",
+            "Q4. issueops에서 CS pioneer 스킬이 적절히 호출되어 적절한 퍼포먼스를 보이는가?",
+            "3. 다각도 종합: 측정 토폴로지의 공백",
+            "4. 권고 (우선순위, 모두 가역적·증거 기반)",
+            "5. 명시적 비-주장 (정직성)",
+            "부록 A — 근거 인덱스"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
+          "rel_path": ".agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
+          "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
         },
         {
           "bytes": 13266,
@@ -1385,11 +1436,13 @@
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+        "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
         "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
+        "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
         "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -3396,7 +3449,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 42,
+        "docs_indexed": 44,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -5727,6 +5780,34 @@
                 "title": "Pioneer Skill Documentation Audit \u0026 Update"
               },
               {
+                "bytes": 42139,
+                "headings": [
+                  "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)",
+                  "TL;DR",
+                  "Context",
+                  "Original Request",
+                  "적대적 리뷰 반영(rev.2)",
+                  "judge 백엔드 흡수(rev.3)",
+                  "Gap Analysis",
+                  "Work Objectives",
+                  "Core Objective",
+                  "Deliverables",
+                  "Definition of Done (검증 가능 조건)",
+                  "Must Have",
+                  "Must NOT Have (guardrails)",
+                  "Verification Strategy",
+                  "Execution Strategy",
+                  "Parallel Execution Waves",
+                  "Dependency Matrix",
+                  "TODOs",
+                  "Final Verification Wave (MANDATORY) — rev.5: 전부 binary·agent-executable 명령",
+                  "Commit Strategy"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
+                "rel_path": ".agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
+                "title": "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)"
+              },
+              {
                 "bytes": 53360,
                 "headings": [
                   "Pioneer Skills Qualitative Quality Improvement Plan",
@@ -5843,6 +5924,29 @@
                 "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
                 "rel_path": ".agent-harness/research/pioneer-skill-audit.md",
                 "title": "Research: Pioneer Skill Design Pattern Audit"
+              },
+              {
+                "bytes": 15039,
+                "headings": [
+                  "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서",
+                  "0. 한 줄 결론",
+                  "1. 현재 측정 시스템의 실제 구조 (근거 기반)",
+                  "계층 A — Pioneer Skill Quality Rubric / Scorecard (격리 측정)",
+                  "계층 B — IssueOps Quality Benchmark (산출물 측정)",
+                  "계층 C — IssueOps Skill Contract Test (텍스트 존재 측정)",
+                  "2. 각 질문에 대한 진단",
+                  "Q1. 지금의 평가기준이 적합한가?",
+                  "Q2. 품질 향상을 위해 새 평가기준을 도입할 필요가 있는가?",
+                  "Q3. 단순히 스킬만으로 충분한가?",
+                  "Q4. issueops에서 CS pioneer 스킬이 적절히 호출되어 적절한 퍼포먼스를 보이는가?",
+                  "3. 다각도 종합: 측정 토폴로지의 공백",
+                  "4. 권고 (우선순위, 모두 가역적·증거 기반)",
+                  "5. 명시적 비-주장 (정직성)",
+                  "부록 A — 근거 인덱스"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
+                "rel_path": ".agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
+                "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
               },
               {
                 "bytes": 13266,
@@ -6010,11 +6114,13 @@
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+              "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
               "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
+              "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
               "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -7432,7 +7538,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 42,
+              "docs_indexed": 44,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
