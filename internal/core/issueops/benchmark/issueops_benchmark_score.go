@@ -93,10 +93,26 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			evidence: "worktree cleanup status and choices are recorded",
 			failure:  "worktree cleanup status or choices missing",
 		},
+		"pioneer_skill_contribution": {
+			ok:       issueOpsPioneerSkillEvidenceComplete(fixture, artifact),
+			evidence: "pioneer skill evidence carries the targeted skill's distinctive-method signature (necessary keyword proxy, not live-routing proof)",
+			failure:  "pioneer skill evidence missing the targeted skill's distinctive-method signature",
+		},
 	}
 
 	score := IssueOpsBenchmarkScore{OK: true, FixtureID: fixture.ID}
 	for _, dimension := range issueOpsBenchmarkDimensions {
+		if dimension == "pioneer_skill_contribution" && strings.TrimSpace(fixture.PioneerSkillTarget) == "" {
+			// Honest N/A: recorded but excluded from average/minimum/Passed so
+			// non-pioneer fixtures neither gain a false 100 nor lose points.
+			score.DimensionScores = append(score.DimensionScores, IssueOpsDimensionScore{
+				Dimension:     dimension,
+				Score:         0,
+				Evidence:      "N/A: fixture has no pioneer_skill_target; excluded from average/minimum",
+				NotApplicable: true,
+			})
+			continue
+		}
 		check := checks[dimension]
 		dimensionScore := 0.0
 		evidence := check.failure

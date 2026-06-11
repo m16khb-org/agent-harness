@@ -143,6 +143,9 @@ func issueOpsDimensionMinimums(run IssueOpsBenchmarkRunResult) map[string]float6
 	seen := make(map[string]bool)
 	for _, score := range run.Scores {
 		for _, dimensionScore := range score.DimensionScores {
+			if dimensionScore.NotApplicable {
+				continue
+			}
 			if !seen[dimensionScore.Dimension] || dimensionScore.Score < minimums[dimensionScore.Dimension] {
 				minimums[dimensionScore.Dimension] = dimensionScore.Score
 				seen[dimensionScore.Dimension] = true

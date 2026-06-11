@@ -44,6 +44,8 @@ func detectIssueOpsQualityCriticalFailures(fixture IssueOpsBenchmarkFixture, art
 			failures = append(failures, rule)
 		case strings.Contains(ruleText, "review-agent threads") && !issueOpsReviewAgentThreadEvidenceComplete(artifact):
 			failures = append(failures, rule)
+		case strings.Contains(ruleText, "skips pioneer method") && !issueOpsPioneerSkillEvidenceComplete(fixture, artifact):
+			failures = append(failures, rule)
 		}
 	}
 	return failures

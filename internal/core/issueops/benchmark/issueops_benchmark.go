@@ -1,17 +1,18 @@
 package benchmark
 
 type IssueOpsBenchmarkFixture struct {
-	ID                string   `json:"id"`
-	Title             string   `json:"title"`
-	UserPrompt        string   `json:"user_prompt"`
-	RepoContext       string   `json:"repo_context"`
-	ExpectedIssue     []string `json:"expected_issue"`
-	ExpectedPlan      []string `json:"expected_plan"`
-	ExpectedTasks     []string `json:"expected_tasks"`
-	ExpectedTDD       []string `json:"expected_tdd"`
-	ExpectedSubagents []string `json:"expected_subagents"`
-	ExpectedPR        []string `json:"expected_pr"`
-	CriticalFailures  []string `json:"critical_failures"`
+	ID                 string   `json:"id"`
+	Title              string   `json:"title"`
+	UserPrompt         string   `json:"user_prompt"`
+	RepoContext        string   `json:"repo_context"`
+	PioneerSkillTarget string   `json:"pioneer_skill_target,omitempty"`
+	ExpectedIssue      []string `json:"expected_issue"`
+	ExpectedPlan       []string `json:"expected_plan"`
+	ExpectedTasks      []string `json:"expected_tasks"`
+	ExpectedTDD        []string `json:"expected_tdd"`
+	ExpectedSubagents  []string `json:"expected_subagents"`
+	ExpectedPR         []string `json:"expected_pr"`
+	CriticalFailures   []string `json:"critical_failures"`
 }
 
 type IssueOpsBenchmarkArtifact struct {
@@ -34,12 +35,14 @@ type IssueOpsBenchmarkArtifact struct {
 	LiveEvidenceMatrix     string `json:"live_evidence_matrix,omitempty"`
 	ReviewFeedbackEvidence string `json:"review_feedback_evidence,omitempty"`
 	CompletionHygiene      string `json:"completion_hygiene,omitempty"`
+	PioneerSkillEvidence   string `json:"pioneer_skill_evidence,omitempty"`
 }
 
 type IssueOpsDimensionScore struct {
-	Dimension string  `json:"dimension"`
-	Score     float64 `json:"score"`
-	Evidence  string  `json:"evidence"`
+	Dimension     string  `json:"dimension"`
+	Score         float64 `json:"score"`
+	Evidence      string  `json:"evidence"`
+	NotApplicable bool    `json:"not_applicable,omitempty"`
 }
 
 type IssueOpsBenchmarkScore struct {
@@ -127,6 +130,7 @@ var issueOpsBenchmarkDimensions = []string{
 	"isolation_compliance",
 	"completion_hygiene_quality",
 	"worktree_cleanup_quality",
+	"pioneer_skill_contribution",
 }
 
 const issueOpsBenchmarkMaxScore = 100.0
