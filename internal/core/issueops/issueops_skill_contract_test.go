@@ -110,6 +110,26 @@ func TestIssueOpsSkillDocumentsReadinessGateKeys(t *testing.T) {
 	}
 }
 
+// Asserts the pioneer-targeted benchmark fixtures exist with the method-skip
+// critical rule. NOTE: like the other contract tests in this file, this
+// verifies file/text PRESENCE only — it does not prove runtime behavior; the
+// behavioral coverage lives in the benchmark package tests.
+func TestIssueOpsPioneerFixturesCarryMethodSkipRule(t *testing.T) {
+	for _, name := range []string{"pioneer-dijkstra", "pioneer-codd", "pioneer-hopper", "pioneer-shannon"} {
+		b, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures", name+".json"))
+		if err != nil {
+			t.Fatalf("pioneer fixture %s missing: %v", name, err)
+		}
+		body := string(b)
+		if !strings.Contains(body, "skips pioneer method") {
+			t.Fatalf("fixture %s must carry the \"skips pioneer method\" critical rule", name)
+		}
+		if !strings.Contains(body, "\"pioneer_skill_target\"") {
+			t.Fatalf("fixture %s must set pioneer_skill_target", name)
+		}
+	}
+}
+
 func readIssueOpsSkillForTest(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "skills", "issueops", "SKILL.md"))
