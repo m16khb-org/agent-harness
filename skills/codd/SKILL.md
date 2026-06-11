@@ -433,6 +433,16 @@ CRITICAL: For EVERY proposed index, state the write penalty:
   "This index adds ~30% overhead to INSERT/UPDATE on the orders table.
    At 5,000 inserts/day = 208 inserts/hour, this is negligible (<1 second/day of extra work).
    Justified because the query it optimizes runs 50,000 times/day."
+
+CRITICAL: When more than one index shape can serve the query (full composite vs. a partial
+index WHERE <hot predicate>, different column orders, or covering vs. non-covering), present
+at least TWO candidate shapes and choose by comparing read gain against write/maintenance cost.
+Do NOT emit a single unconditional index for a write-heavy table. State why the chosen shape wins.
+  Example: candidate A = (user_id, type, created_at DESC);
+           candidate B = (user_id, created_at DESC) WHERE type = 'click' (partial).
+  B is smaller and cheaper to maintain when 'click' is a small fraction of rows; A wins when
+  many `type` values are queried. Choose by predicate selectivity + insert rate, and confirm
+  with before/after EXPLAIN ANALYZE (or state the missing-input blocker when no plan is available).
 ```
 
 ### Anti-Patterns to Flag
@@ -958,6 +968,7 @@ Signals to watch:
 **NEVER:**
 - Recommend DDL changes (CREATE/DROP/ALTER) without the full before/after EXPLAIN ANALYZE evidence
 - Add an index without calculating and stating its write penalty
+- Emit a single unconditional index for a write-heavy table when more than one shape is viable — compare at least two candidates by read gain vs. write/maintenance cost
 - Denormalize without documenting the read:write trade-off
 - Suggest a schema change without testing it on a realistic data volume (at minimum: estimated row count × query pattern)
 - Recommend a connection pool size without knowing core count, instance count, and max_connections

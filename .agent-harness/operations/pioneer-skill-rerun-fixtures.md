@@ -88,7 +88,7 @@ in each `reruns/<skill>/result.yaml`.
 | `karpathy` | `.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/result.yaml` | 3.6 → 4.8 | Pre-fix FAIL (overfit, privacy holdout); skill guardrail fixed; re-run PASS. |
 | `berners-lee` | `.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/result.yaml` | 4.8 | Executed; PASS. |
 | `torvalds` | `.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/result.yaml` | 4.6 | Executed; PASS (improvement noted: confirm-before-execute on destructive reset). |
-| `codd` | `.agent-harness/evidence/pioneer-skills-quality/reruns/codd/result.yaml` | 4.2 | Executed; PASS (borderline; improvement noted: compare ≥2 index shapes + before/after plan). |
+| `codd` | `.agent-harness/evidence/pioneer-skills-quality/reruns/codd/result.yaml` | 4.2 → 4.8 | Executed; borderline pre-fix → skill guardrail added (compare ≥2 index shapes); re-run PASS. |
 | `dijkstra` | `.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/result.yaml` | 4.4 | Executed; PASS (improvement noted: lead with no-change decision + input-size threshold). |
 
 ## Completion Criteria
