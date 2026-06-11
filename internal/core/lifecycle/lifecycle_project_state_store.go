@@ -177,14 +177,29 @@ func createJSONAtomic(path string, value any, perm os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, perm)
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*.tmp")
 	if err != nil {
 		return err
 	}
-	if _, err := f.Write(append(b, '\n')); err != nil {
-		_ = f.Close()
-		_ = os.Remove(path)
-		return err
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	writeErr := func() error {
+		if _, err := tmp.Write(append(b, '\n')); err != nil {
+			return err
+		}
+		if err := tmp.Chmod(perm); err != nil {
+			return err
+		}
+		return tmp.Close()
+	}()
+	if writeErr != nil {
+		_ = tmp.Close()
+		return writeErr
 	}
-	return f.Close()
+	// Hard-link the fully written temp file into place. Link fails with
+	// EEXIST when the path already exists (os.IsExist unwraps the LinkError),
+	// preserving O_EXCL's single-winner semantics while guaranteeing the file
+	// is complete the moment it becomes visible — no read-while-write window
+	// for the losing session.
+	return os.Link(tmpName, path)
 }
