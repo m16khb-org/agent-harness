@@ -330,7 +330,10 @@ Write to `.agent-harness/research/<slug>.md`:
 - Distinguish between Confirmed (≥2 sources), Single-sourced (1), and Disputed (conflict)
 - Apply adversarial review to critical claims
 - Flag unresolved questions explicitly
-- Write the report to `.agent-harness/research/<slug>.md`
+- Write the report to `.agent-harness/research/<slug>.md` — **except for a Phase 0 "Quick lookup"** (a single
+  version number, one API endpoint, a yes/no fact), where inline citations in the answer are sufficient and the
+  two-source minimum / adversarial review / report-file ceremony may be skipped. Match the rigor to the question:
+  multi-claim or decision-bearing research gets the full report; a one-fact lookup does not.
 
 ## Stop Rules
 

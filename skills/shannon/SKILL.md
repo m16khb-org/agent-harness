@@ -32,6 +32,15 @@ Phase 3: GATE       — Re-measure after cleanup; confirm improvement
 
 ## The 4 Quality Metrics
 
+> **Command portability (read first).** The measurement commands below use POSIX ERE patterns like `grep '^\+[^+]'`.
+> On hosts where `grep` is aliased to `ugrep` or `rg` (common in agent shells), these patterns FAIL with "invalid
+> syntax" and the command silently returns a false `insufficient-input`/zero. If a pattern errors or a non-empty
+> diff measures as zero, re-run with `command grep` (bypasses the alias) — e.g. `git diff HEAD | command grep -E '^\+[^+]'`.
+>
+> **Scope (code-only metrics).** SNR/Entropy/Redundancy/Channel-overhead assume source code. If the change set is
+> predominantly markdown/docs/config (no source lines), say so and report these metrics as N/A — a "noise = comment"
+> SNR is meaningless for prose. Fall back to a plain line-delta summary for non-code diffs.
+
 ### Metric 1: SNR — Signal-to-Noise Ratio
 
 ```

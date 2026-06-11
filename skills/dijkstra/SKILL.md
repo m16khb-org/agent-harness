@@ -19,6 +19,27 @@ Deliver **provably correct algorithms with optimal time/space complexity.** Ever
 
 ---
 
+## Gate 0: Should You Optimize At All? (decide this FIRST)
+
+Before the method below, the structured-programming essay, or any rewrite, answer this gate. It exists up top
+because the most common failure is optimizing code that does not matter.
+
+```
+1. Read the profile (or measure one). Is this code actually on the hot path?
+2. Is it bounded-N / runs-once-at-startup? (e.g. N <= a few hundred, one call per process)
+3. Is the real cost I/O or network wait rather than CPU?
+
+If the function is NOT in the top of the profile, OR N is small and bounded, OR the bottleneck is I/O-bound:
+   → STOP. Recommend NO CHANGE. State the input-size (or call-frequency) threshold that WOULD change the
+     decision (e.g. "this matters only if N exceeds ~20,000 or this runs in a tight loop"). Do not rewrite.
+
+Only when CPU on a real hot path is the proven bottleneck do you proceed into the method below.
+```
+
+This gate is the same rule stated in the NEVER list ("Optimize O(n) code that runs once at startup") and the Stop
+Rules ("I/O-bound → do not optimize further") — hoisted here so it governs the decision before the optimization
+machinery is loaded.
+
 ## Structured Programming Discipline (Read Before Optimizing)
 
 Dijkstra's 1968 letter "Go To Statement Considered Harmful" wasn't really about a keyword — it was about **structured programming**: the radical idea that code must be provably correct by construction, not patched into correctness by debugging. That principle is more relevant than ever in modern code.

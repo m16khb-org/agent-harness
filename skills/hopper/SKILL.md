@@ -85,6 +85,8 @@ lint_diagnose(command_argv: ["go", "test", "./pkg/auth", "-run", "TestLoginFlow"
 - The failure is trivially obvious (missing import, syntax error with exact line)
 - The command cannot run in the current environment (needs container, specific hardware)
 - The failure involves a secret/credential (redact before sending to LLM)
+- The agent-harness daemon/MCP is unavailable (CLI/MCP `lint_diagnose` cannot run) — proceed straight to Step 3
+- The failure is a golden/snapshot mismatch (use Strategy D below — regenerate-and-diff is faster than an LLM pass)
 
 ---
 
@@ -136,6 +138,27 @@ If agent-harness trace analysis is available:
 agent-harness trace analyze --input /tmp/hopper-traces.jsonl --json
 # Returns: failure_class, recurring_pattern, proposed_knob, overfit_risk, verification_command
 ```
+
+### Strategy D: Snapshot/Golden Diff (golden/snapshot test mismatch)
+
+The single most common Go/JS test failure is a golden/snapshot mismatch, where the dumped "got" vs "want" is too
+large to read. Do not eyeball it — regenerate and diff:
+
+```bash
+# 1. Regenerate the golden/snapshot in place (Go: -update; JS: -u / --updateSnapshot)
+go test ./path/to/pkg -run TestX -update -count=1
+
+# 2. The exact divergence is now a normal VCS diff — read it directly
+git --no-pager diff -- path/to/testdata/snapshot.golden.json
+
+# 3. Restore the committed golden once you understand the diff (do NOT commit the regen yet)
+git checkout -- path/to/testdata/snapshot.golden.json
+```
+
+The diff IS your root-cause signal. Watch especially for **non-hermetic content** — timestamps, absolute paths,
+hostnames, environment/working-tree-dependent file listings, or gitignored files captured into the snapshot. A
+golden that varies by machine or working tree is the bug; fix the snapshot's *input* to be hermetic, don't just
+re-`-update` it.
 
 ---
 

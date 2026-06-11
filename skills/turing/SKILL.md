@@ -35,6 +35,21 @@ Turing tracks these metrics automatically. Target: **20%+ improvement over ulw-l
 
 ---
 
+## Proportionate Mode (size the ceremony to the risk — decide FIRST)
+
+The full loop below (goals.json + ledger.jsonl + per-criterion evidence files + 5 metrics + a binding
+adversarial-reviewer Final Quality Gate) is calibrated for user-facing, hard-to-reverse, or multi-criterion work.
+For a low-risk task — a docs/wording fix, a single-file validate, a config tweak, a trivially-reversible change —
+scale it down:
+
+- Evidence: an **auxiliary CLI surface** (command stdout, validate output, diff) is sufficient; no HTTP/tmux/browser channel required.
+- Ledger: a **one-line** pass/fail record is enough; goals.json/metrics tracking is optional.
+- Final Quality Gate: the **adversarial-reviewer step is conditional on risk** — skip it for trivially-reversible low-risk changes; keep it for user-facing or hard-to-reverse work.
+
+The non-negotiables still hold at every size: a real observable artifact (never "looks correct"), a cleanup
+receipt for any runtime state spawned, and an honest pass/fail. Proportionate ≠ unverified — it means matching the
+evidence weight to what failure would cost.
+
 ## Artifacts
 
 Turing uses agent-harness state for durability. When agent-harness is unavailable, fall back to local files.

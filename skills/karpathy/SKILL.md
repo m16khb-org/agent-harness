@@ -42,6 +42,16 @@ Phase 4: DIAGNOSE — Identify failure patterns; isolate why the prompt fails
 Phase 5: REFINE   — Iterate with targeted fixes; re-test until criteria met
 ```
 
+### Match the rigor to the prompt's lifespan (decide FIRST)
+
+- **Reused / production prompt** (a skill body, a system prompt, an agent template run many times): the full method
+  applies — test suite, adversarial tests, A/B comparison, versioned storage under `.agent-harness/karpathy/prompts/`.
+- **One-shot / orchestration prompt** (an inline sub-agent dispatch or a single-use instruction): use a lightweight
+  pass — write a clear input/output contract, place constraints at the top and the format spec at the bottom, and
+  run 1–2 sanity checks. Skip the formal test-suite, A/B, and versioning ceremony; it does not fit a prompt that
+  lives in code or conversation and runs once. The privacy and tool-truth guardrails (NEVER list) still apply at
+  both sizes.
+
 ---
 
 ## Phase 1: SPECIFY — Know What "Correct" Means Before You Write

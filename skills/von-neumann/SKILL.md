@@ -114,6 +114,18 @@ Classify before diving in. This determines your interview depth.
 | **Architecture** | System design, infra, 5+ modules, long-term impact | Deep interview: explore + librarian subagent + multiple rounds. Focus on trade-offs, long-term consequences, and integration boundaries. |
 | **Research** | Goal exists but path unclear, investigation needed | Parallel probes: fan out exploration subagents, synthesize findings, define exit criteria before committing to action. |
 
+**Decline-to-plan output.** When Phase 0 says this does not warrant planning (clear small "fix/build X" with a
+known approach and no architectural risk), do not just bow out silently — emit a 3-line **routing record** so the
+decision is explicit and auditable:
+
+```
+Routing: direct-execution (planning unwarranted — <one-line reason>)
+Agent category: quick | deep | visual-engineering
+Decision to confirm: <the single design choice, if any — else "none">
+```
+
+Then hand back to the executor path. This keeps "I decided not to plan" a recorded decision rather than an absence.
+
 ---
 
 ### Phase 1: Ground (SILENT exploration — before asking questions)

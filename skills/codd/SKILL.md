@@ -31,6 +31,17 @@ Deliver **provably normalized schemas with index-optimized queries.** Every sche
 7. VERIFY    — Re-run EXPLAIN ANALYZE; confirm improvement; record evidence
 ```
 
+### Applicability gate (check FIRST)
+
+- **No relational database in scope** (the project is pure file/JSON/key-value state with no SQL engine) → codd
+  does not apply. Say so and stop; do not force schema/index advice onto non-relational storage.
+- **Advisory mode (no live DB connection).** When a relational schema is in scope but no live DB is reachable —
+  the common agent case — codd still operates, but in advisory mode: produce the recommendation plus the **exact
+  `EXPLAIN ANALYZE` and row-count commands** the operator must run, and mark the result **UNVERIFIED**. The "never
+  recommend DDL without before/after EXPLAIN ANALYZE" rule governs *claiming an optimization works*, not *advising
+  one* — an advisory recommendation with a stated missing-input blocker is valid; a claimed improvement without a
+  captured plan is not.
+
 ---
 
 ## Step 1: SURVEY — Know Your Data Before You Touch

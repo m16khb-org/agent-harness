@@ -167,8 +167,14 @@ Trigger: "merge conflict", "resolve conflicts", "conflict in <file>"
 ### 4. History Analysis & Recovery
 
 ```
-Trigger: "what happened to <file>?", "find deleted code", "recover lost commit", "reflog"
+Trigger: "what happened to <file>?", "find deleted code", "recover lost commit", "reflog",
+         "when/which commit introduced X?", "who changed this and why?" (read-only archaeology)
 ```
+
+> **Read-only archaeology, not only recovery.** These commands serve pure *investigation* — understanding when/why
+> history changed (`git log -S '<string>' -- <file>` to date when a line entered a file, `git log --follow -p`,
+> `git blame`, `git log --diff-filter`) — as much as recovering lost data. Investigation is read-only and needs no
+> backup ceremony; reach for it whenever you need to understand history, not just when something is lost.
 
 **Techniques (ordered by recovery probability):**
 
