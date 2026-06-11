@@ -44,10 +44,10 @@ If the script reports `ok: false`, inspect `failures`, patch the root cause, and
      - `./bin/agent-harness bootstrap --dry-run --json`
      - `./bin/agent-harness bootstrap --sync --dry-run --json`
    - Verify native install surfaces:
-     - `./bin/agent-harness install-native --dry-run --json`
+     - `./bin/agent-harness install-native --dry-run --json` (`install-native` is a compatibility alias for `bootstrap` in the current CLI)
      - `./bin/agent-harness install-native --json` only for full install tasks.
      - `codex mcp get agent_harness`
-     - `claude mcp list` and check for duplicate/conflicting `agent_harness` scopes.
+     - `claude mcp list` and check for duplicate/conflicting `agent_harness` scopes. Exception: in the agent-harness repo itself, user-scope `agent_harness` plus project-scope `agent_harness_project` is the intended dogfood setup (`.mcp.json` template), not a conflict.
 
 3. **Hook contract sweep**
    - Invoke every configured `~/.codex/hooks.json` event with representative JSON.

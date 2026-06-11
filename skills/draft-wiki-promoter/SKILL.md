@@ -32,6 +32,8 @@ agent-harness project draft-wiki reject --repo . --json PATH
 agent-harness project draft-wiki promote --repo . --confirm --json PATH
 ```
 
+The CLI also provides `queue` and `prune` subcommands: `queue` is the mechanism behind the hook boundary below (hooks enqueue signals; a worker processes them out-of-band), and `prune` trims old queue entries.
+
 `draft-wiki suggest` uses `agy -p`. Antigravity CLI model selection is persistent configuration, not a per-call flag: verify `~/.gemini/antigravity-cli/settings.json` has the desired `model` value. Omit `--agy-model` to accept the currently selected settings model, or pass an exact label to enforce it. Do not pass `--model` to `agy`; current `agy` rejects that flag.
 
 ## Workflow
@@ -39,8 +41,9 @@ agent-harness project draft-wiki promote --repo . --confirm --json PATH
 1. `list` drafts and read only relevant files under `.agent-harness/draft-wiki/{draft,approved,rejected}/`.
 2. If creating a new candidate, run `suggest --dry-run` first. Run without `--dry-run` only when source scope and model are acceptable.
 3. Judge with the required checks above.
-4. Move accepted candidates from `draft/` to `approved/`; move failed candidates to `rejected/`.
-5. Promote only approved drafts with `promote --confirm`. This writes a raw note and appends `log.md` in the configured `nvk/llm-wiki` topic; it does not compile/query/index the wiki.
+4. Move accepted candidates from `draft/` to `approved/`; move failed candidates to `rejected/`. (`reject` accepts any source status — an already-approved draft can still be rejected before promotion.)
+5. Promote only approved drafts with `promote --confirm`. This writes a raw note and appends `log.md` in the configured `nvk/llm-wiki` topic; it does not compile/query/index the wiki. Note: `nvk/llm-wiki` is the upstream plugin/repo name, not a CLI — promotion writes hub files directly (the local `llm-wiki` wrapper script only handles lint/archive).
+   - Failure boundary when upstream is absent: if `~/.config/llm-wiki/config.json`, the hub path, or the wiki registry is missing, only `promote --confirm` fails (config/registry read error); `init/list/suggest/approve/reject` are repo-local and keep working. Report the exact blocked step instead of treating the whole skill as unavailable.
 6. After promotion, report the raw path and suggest running the upstream `wiki` compile workflow if synthesis is needed.
 
 ## Boundaries
