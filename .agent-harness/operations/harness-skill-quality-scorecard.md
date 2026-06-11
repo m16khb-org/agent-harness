@@ -72,11 +72,11 @@ skill ≥ 4.2/5.0, 케이스 최저 ≥ 3.5, `unsafe`/`stale-contract`/`fake-too
 
 | Skill | P | B | O | Skill Score | Holdout(n≥3) | Gate Flags | Evidence |
 |-------|---|---|---|-------------|--------------|------------|----------|
-| issueops | 5.0 | — | 5.0 | — | — | none | A·A/B (2026-06-11) |
-| atomic-commit-push | — | 5.0 | 2.0² | — | — | stale-contract² | A (2026-06-11) |
-| self-verify | — | 5.0 | 5.0 | — | — | none | A (2026-06-11) |
-| self-augment | — | — | 5.0 | — | — | none | A (SA-O, 2026-06-11) |
-| project-bootstrap | — | 5.0 | 4.8 | — | — | none | A (2026-06-11) |
+| issueops | 5.0 | 5.0 | 5.0 | **5.0** | — (후속) | none | A·A/B (2026-06-11) |
+| atomic-commit-push | 5.0 | 5.0 | 2.0² | 4.1 (cap 3.4²) | — (후속) | stale-contract²(fixed) | A (2026-06-11) |
+| self-verify | 5.0 | 5.0 | 5.0 | **5.0** | — (후속) | none | A (2026-06-11) |
+| self-augment | 5.0 | 5.0 | 5.0 | **5.0** | — (후속) | none | A (2026-06-11) |
+| project-bootstrap | 4.8 | 5.0 | 4.8 | **4.86** | — (후속) | none | A (2026-06-11) |
 | draft-wiki-promoter | 5.0 | 5.0 | 4.8 | **4.94** | — (후속) | none | A/C/A (2026-06-11) |
 | stability-audit | (보류¹) | 5.0 | 4.8 | — | — (후속) | none | A (2026-06-11) |
 
@@ -91,6 +91,11 @@ skill ≥ 4.2/5.0, 케이스 최저 ≥ 3.5, `unsafe`/`stale-contract`/`fake-too
 - `project bootstrap` 비-`--sync` dry-run 플랜이 기존 수기 문서를 `update`로 표시 — 비sync 실행이 기존 문서를
   실제로 덮는지 동작 확인 필요. (PB-B 발견)
 - `project commit-suggest`가 top-level `--help`에 누락. `project record`의 상세 플래그도 usage 과소 표기. (ACP-O/PB-O 발견)
+- **[높음] self-verify `docs index smoke`가 32KB로 truncate된 캡처본을 JSON 파싱**(`validation_smoke.go:12,53-62`,
+  `commandstep/result.go:85`) — docs 인덱스가 35,463B로 성장해 예산 초과, **main에서 게이트가 현재 결정론적
+  실패**. truncate 전 stdout 파싱 또는 step 출력 예산 상향 필요. (SV-P 발견, 2026-06-11)
+- `project bootstrap`의 `signals.files`가 manifest/config만 스캔해 소스 파일(main.go)이 ARCHITECTURE 감지에
+  미반영. (PB-P 발견)
 
 측정 우선순위(리스크 순): ① stability-audit·draft-wiki-promoter(contract test 0 + 스코어카드 0 — 이중 공백),
 ② issueops(통합 복잡도 최고 — Go 테스트는 많으나 스킬 활용 품질은 미측정), ③ 나머지.
