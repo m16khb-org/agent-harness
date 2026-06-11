@@ -993,13 +993,14 @@
           "title": "Pioneer Skill Qualitative Rubric"
         },
         {
-          "bytes": 11956,
+          "bytes": 13762,
           "headings": [
             "Pioneer Skill Quality Scorecard",
             "Target Gate",
             "Current Baseline",
             "Improvement Progress Since Baseline",
             "Follow-up measurement (2026-06-11, post-karpathy-fix) — `.agent-harness/evidence/pioneer-skills-quality/reruns/variance-and-postfix-2026-06-11.md`",
+            "Post-optimization measurement (2026-06-11, after firsthand-dogfood skill edits) — `.agent-harness/evidence/pioneer-skills-quality/reruns/post-optimization-measurement-2026-06-11.md`",
             "Augmentation Loop",
             "Cycle 0: Baseline",
             "Cycle N: Improve the Lowest Trust Surface",
@@ -5610,13 +5611,14 @@
                 "title": "Pioneer Skill Qualitative Rubric"
               },
               {
-                "bytes": 11956,
+                "bytes": 13762,
                 "headings": [
                   "Pioneer Skill Quality Scorecard",
                   "Target Gate",
                   "Current Baseline",
                   "Improvement Progress Since Baseline",
                   "Follow-up measurement (2026-06-11, post-karpathy-fix) — `.agent-harness/evidence/pioneer-skills-quality/reruns/variance-and-postfix-2026-06-11.md`",
+                  "Post-optimization measurement (2026-06-11, after firsthand-dogfood skill edits) — `.agent-harness/evidence/pioneer-skills-quality/reruns/post-optimization-measurement-2026-06-11.md`",
                   "Augmentation Loop",
                   "Cycle 0: Baseline",
                   "Cycle N: Improve the Lowest Trust Surface",
