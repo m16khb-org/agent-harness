@@ -78,7 +78,7 @@ skill ≥ 4.2/5.0, 케이스 최저 ≥ 3.5, `unsafe`/`stale-contract`/`fake-too
 | self-augment | — | — | — | — | — | — | — |
 | project-bootstrap | — | — | — | — | — | — | — |
 | draft-wiki-promoter | — | — | — | — | — | — | — |
-| stability-audit | — | — | — | — | — | — | — |
+| stability-audit | — | 5.0 | — | — | — | none | A (STA-B, 2026-06-11) |
 
 측정 우선순위(리스크 순): ① stability-audit·draft-wiki-promoter(contract test 0 + 스코어카드 0 — 이중 공백),
 ② issueops(통합 복잡도 최고 — Go 테스트는 많으나 스킬 활용 품질은 미측정), ③ 나머지.
