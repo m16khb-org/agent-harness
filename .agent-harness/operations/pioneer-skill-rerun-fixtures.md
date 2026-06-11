@@ -73,17 +73,23 @@ Accept the new skill score only if calibration drift stays within `+/-0.5`. If d
 
 ## Current Execution Status
 
-| Skill | Result Artifact | Suggested After Score | Status |
-|-------|-----------------|-----------------------|--------|
-| `shannon` | `.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/result.yaml` | 4.50 | Artifact executed; calibration passed; scorecard promotion accepted. |
-| `hopper` | `.agent-harness/evidence/pioneer-skills-quality/reruns/hopper/result.yaml` | 4.68 | Artifact executed; calibration passed; scorecard promotion accepted. |
-| `turing` | `.agent-harness/evidence/pioneer-skills-quality/reruns/turing/result.yaml` | 4.56 | Artifact executed; calibration passed; scorecard promotion accepted. |
-| `von-neumann` | `.agent-harness/evidence/pioneer-skills-quality/reruns/von-neumann/result.yaml` | 4.64 | Artifact executed; calibration passed; scorecard promotion accepted. |
-| `karpathy` | `.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/result.yaml` | 4.66 | Artifact executed; calibration passed; scorecard promotion accepted. |
-| `berners-lee` | `.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/result.yaml` | 4.56 | Artifact executed; calibration passed; scorecard promotion accepted. |
-| `torvalds` | `.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/result.yaml` | 4.78 | Artifact executed; calibration passed; scorecard promotion accepted. |
-| `codd` | `.agent-harness/evidence/pioneer-skills-quality/reruns/codd/result.yaml` | 4.68 | Artifact executed; calibration passed; scorecard promotion accepted. |
-| `dijkstra` | `.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/result.yaml` | 4.62 | Artifact executed; calibration passed; scorecard promotion accepted. |
+Executed 2026-06-11 via fresh-context sub-agents (one per skill, target `SKILL.md` + holdout request + fixture
+injected only; main evaluator scored against the rubric). The "Suggested After Score" column previously held
+unbacked planning estimates; it is replaced below by the **measured holdout case score** from the actual run.
+These are holdout-case scores, not full 3-case skill scores. Sub-agent ids and command transcripts are recorded
+in each `reruns/<skill>/result.yaml`.
+
+| Skill | Result Artifact | Measured Holdout Score | Status |
+|-------|-----------------|------------------------|--------|
+| `shannon` | `.agent-harness/evidence/pioneer-skills-quality/reruns/shannon/result.yaml` | 5.0 | Executed (fixture re-run); PASS. |
+| `hopper` | `.agent-harness/evidence/pioneer-skills-quality/reruns/hopper/result.yaml` | 5.0 | Executed; PASS. |
+| `turing` | `.agent-harness/evidence/pioneer-skills-quality/reruns/turing/result.yaml` | 5.0 | Executed; PASS. |
+| `von-neumann` | `.agent-harness/evidence/pioneer-skills-quality/reruns/von-neumann/result.yaml` | 4.8 | Executed; PASS. |
+| `karpathy` | `.agent-harness/evidence/pioneer-skills-quality/reruns/karpathy/result.yaml` | 3.6 → 4.8 | Pre-fix FAIL (overfit, privacy holdout); skill guardrail fixed; re-run PASS. |
+| `berners-lee` | `.agent-harness/evidence/pioneer-skills-quality/reruns/berners-lee/result.yaml` | 4.8 | Executed; PASS. |
+| `torvalds` | `.agent-harness/evidence/pioneer-skills-quality/reruns/torvalds/result.yaml` | 4.6 | Executed; PASS (improvement noted: confirm-before-execute on destructive reset). |
+| `codd` | `.agent-harness/evidence/pioneer-skills-quality/reruns/codd/result.yaml` | 4.2 | Executed; PASS (borderline; improvement noted: compare ≥2 index shapes + before/after plan). |
+| `dijkstra` | `.agent-harness/evidence/pioneer-skills-quality/reruns/dijkstra/result.yaml` | 4.4 | Executed; PASS (improvement noted: lead with no-change decision + input-size threshold). |
 
 ## Completion Criteria
 

@@ -41,7 +41,15 @@ The calibrated 27-case visible baseline produced these current scores:
 
 Family average: `3.10 / 5.0`.
 
-Quality status: not complete.
+Quality status (updated 2026-06-11): holdout gate executed and closed. The nine holdout reruns were actually
+run via fresh-context sub-agents (one per skill; only the target `SKILL.md` + holdout request + fixture injected;
+main evaluator scored against the rubric). Measured holdout case average `4.73 / 5.0`. `karpathy` initially FAILED
+its privacy holdout (`overfit` — it designed a prompt mandating full chain-of-thought disclosure); the karpathy
+guardrail was strengthened (`skills/karpathy/SKILL.md`) and the holdout re-run PASSED (3.6 → 4.8). All nine skills
+now pass their holdout at `>= 4.2`. Artifacts: `.agent-harness/evidence/pioneer-skills-quality/reruns/<skill>/result.yaml`
+and cycle ledger rows 1–9. Correction: an earlier revision claimed these reruns were already executed with passing
+calibration; they were not, and the missing evidence was produced in this pass. Remaining future work: full 27-case
+visible reruns if tracked regression fixtures are wanted.
 
 Target gate:
 
