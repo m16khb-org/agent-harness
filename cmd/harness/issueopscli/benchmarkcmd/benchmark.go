@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -23,7 +24,8 @@ func Run(args []string) error {
 	case "run":
 		fs := flag.NewFlagSet("issueops benchmark run", flag.ContinueOnError)
 		fixturesPath := fs.String("fixtures", "", "benchmark fixtures path")
-		judge := fs.String("judge", "agy", "judge backend: none or agy")
+		judge := fs.String("judge", "agy", "judge backend: none, file, or agy (legacy: external agy -p; prefer file)")
+		judgeFile := fs.String("judge-file", "", "judge score map JSON path for --judge file ({\"<fixtureID>\": <score>, ...}); reads stdin when empty")
 		agyCommand := fs.String("agy-command", "agy", "agy command path")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if help, err := parseFlags(fs, args[1:]); help || err != nil {
@@ -45,7 +47,8 @@ func Run(args []string) error {
 		if err != nil {
 			return err
 		}
-		if *judge == "agy" {
+		switch *judge {
+		case "agy":
 			for i, fixture := range fixtures {
 				artifact := artifacts[fixture.ID]
 				judgeScore, err := core.RunIssueOpsAgyJudge(core.IssueOpsAgyJudgeRequest{
@@ -59,7 +62,16 @@ func Run(args []string) error {
 				}
 				result.Scores[i] = core.MergeIssueOpsBenchmarkScoreWithJudge(result.Scores[i], judgeScore)
 			}
-		} else if *judge != "none" {
+		case "file":
+			judgeScores, err := readIssueOpsJudgeScoreMap(*judgeFile, fixtures)
+			if err != nil {
+				return err
+			}
+			for i, fixture := range fixtures {
+				result.Scores[i] = core.MergeIssueOpsBenchmarkScoreWithJudge(result.Scores[i], judgeScores[fixture.ID])
+			}
+		case "none":
+		default:
 			return fmt.Errorf("unsupported issueops benchmark judge %q", *judge)
 		}
 		result = core.FinalizeIssueOpsBenchmarkRunResult(result)
@@ -160,6 +172,49 @@ func (f *repeatedFlag) String() string {
 func (f *repeatedFlag) Set(value string) error {
 	*f = append(*f, value)
 	return nil
+}
+
+// readIssueOpsJudgeScoreMap reads a {"<fixtureID>": <score>} map (file path,
+// or stdin when the path is empty), strict-decodes each score value through
+// the same decoder the agy judge uses, and fails closed when the map's keys
+// do not exactly match the run's fixture IDs. Missing keys must error here:
+// merging a zero-value judge score would silently fail the fixture via
+// JudgeFailures instead of surfacing the operator mistake.
+func readIssueOpsJudgeScoreMap(path string, fixtures []core.IssueOpsBenchmarkFixture) (map[string]core.IssueOpsBenchmarkScore, error) {
+	var raw []byte
+	var err error
+	if strings.TrimSpace(path) == "" {
+		raw, err = io.ReadAll(os.Stdin)
+	} else {
+		raw, err = os.ReadFile(path)
+	}
+	if err != nil {
+		return nil, err
+	}
+	var outer map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &outer); err != nil {
+		return nil, fmt.Errorf("parse judge score map: %w", err)
+	}
+	scores := make(map[string]core.IssueOpsBenchmarkScore, len(outer))
+	known := make(map[string]bool, len(fixtures))
+	for _, fixture := range fixtures {
+		known[fixture.ID] = true
+		value, ok := outer[fixture.ID]
+		if !ok {
+			return nil, fmt.Errorf("judge score map missing fixture %q", fixture.ID)
+		}
+		score, err := core.DecodeIssueOpsBenchmarkJudgeJSON(value)
+		if err != nil {
+			return nil, fmt.Errorf("judge score for fixture %q: %w", fixture.ID, err)
+		}
+		scores[fixture.ID] = score
+	}
+	for key := range outer {
+		if !known[key] {
+			return nil, fmt.Errorf("judge score map has unknown fixture %q", key)
+		}
+	}
+	return scores, nil
 }
 
 func readIssueOpsAutoresearchCandidateFile(path string) (core.IssueOpsAutoresearchCandidate, error) {

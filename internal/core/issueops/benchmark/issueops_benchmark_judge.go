@@ -50,6 +50,15 @@ func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, e
 	return IssueOpsBenchmarkScore{}, fmt.Errorf("agy judge failed after %d strict-output attempts: %w", attempts, lastErr)
 }
 
+// DecodeIssueOpsBenchmarkJudgeJSON strictly decodes ONE judge score object
+// (the same shape the agy judge returns). Callers holding a map of
+// fixture-ID -> score must decode the outer map themselves and feed each
+// value through this function; the strict decoder rejects unknown fields, so
+// passing the whole map here fails by design.
+func DecodeIssueOpsBenchmarkJudgeJSON(out []byte) (IssueOpsBenchmarkScore, error) {
+	return decodeStrictIssueOpsBenchmarkScore(out)
+}
+
 func decodeStrictIssueOpsBenchmarkScore(out []byte) (IssueOpsBenchmarkScore, error) {
 	var score IssueOpsBenchmarkScore
 	if err := externalllm.DecodeExternalLLMStructuredJSONObject("agy judge", out, &score); err != nil {

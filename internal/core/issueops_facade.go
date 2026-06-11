@@ -280,6 +280,10 @@ func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, e
 	return issueops.RunIssueOpsAgyJudge(req)
 }
 
+func DecodeIssueOpsBenchmarkJudgeJSON(out []byte) (IssueOpsBenchmarkScore, error) {
+	return issueops.DecodeIssueOpsBenchmarkJudgeJSON(out)
+}
+
 func buildIssueOpsAgyJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
 	return issueops.BuildIssueOpsAgyJudgePrompt(fixture, artifact)
 }
