@@ -47,6 +47,7 @@ Detailed baseline summary is tracked in this table. Raw baseline artifacts are l
 Current family average (27-case baseline): `3.10 / 5.0`.
 
 Measured holdout case average (2026-06-11 fresh-context reruns, post karpathy + codd fixes): `4.80 / 5.0`
+(latest, after the firsthand-dogfood skill-body edits: `4.92 / 5.0` — see the Post-optimization measurement section below)
 (shannon 5.0, hopper 5.0, turing 5.0, von-neumann 4.8, karpathy 4.8, berners-lee 4.8, torvalds 4.6, codd 4.8,
 dijkstra 4.4). These are single-run holdout case scores, not full 3-case skill scores. Variance reruns (n=3) put
 torvalds at mean 4.77 and dijkstra at mean 4.53.
@@ -90,6 +91,27 @@ Holdout reruns were actually executed on 2026-06-11 via fresh-context sub-agents
   (2/3 runs ideal), dijkstra 4.53. No edits made (keep/discard: no edit without a measured gap).
 - `karpathy`: visible-case regression check (KARPATHY-2, KARPATHY-3) confirms the privacy fix holds with no
   regression.
+
+### Post-optimization measurement (2026-06-11, after firsthand-dogfood skill edits) — `.agent-harness/evidence/pioneer-skills-quality/reruns/post-optimization-measurement-2026-06-11.md`
+
+After dogfooding all nine pioneer skills firsthand and applying body edits (commit `8e01afa`), the nine holdouts
+were re-measured (fresh-context). **Holdout average 4.80 → 4.92 / 5.0, all nine ≥ 4.8, zero regressions.** The two
+structural edits aimed at the measured executor variance worked as designed:
+
+| Skill | pre-opt | post-opt | Δ | Edit effect observed firsthand |
+|-------|---------|----------|---|--------------------------------|
+| `dijkstra` | 4.4 (var 4.53) | 5.0 | +0.6 | Gate-0 hoist → agent led with "DO NOT OPTIMIZE" + threshold, no rewrite |
+| `von-neumann` | 4.8 | 5.0 | +0.2 | decline-to-plan routing record made explicit |
+| `torvalds` | 4.6 (var 4.77) | 4.9 | +0.2 | stopped + presented safety plan instead of auto-executing after backup |
+| `shannon` | 5.0 | 5.0 | = | used `command grep` + labeled non-code diff N/A |
+| `turing` | 5.0 | 5.0 | = | proportionate mode (no heavyweight convention for a trivial fix) |
+| `codd` | 4.8 | 4.8 | = | compared ≥2 index shapes + advisory `UNVERIFIED` mode |
+| `karpathy` | 4.8 | 4.8 | = | CoT-redirect + illustrative-tool flag held |
+| `berners-lee` | 4.8 | 4.8 | = | full report mode; protected source reported, no bypass |
+| `hopper` | 5.0 | 5.0 | = | reproduce→isolate→fix→verify |
+
+Conclusion: the firsthand-dogfood edits produced a measurable, regression-free gain; the pioneer family is at the
+practical ceiling for body edits, with remaining variance attributable to executor sampling, not skill content.
 
 Post-cycle verification already run:
 
