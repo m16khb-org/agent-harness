@@ -219,6 +219,16 @@ Do not put polling or waiting in lifecycle hooks. Hooks may surface a status hin
 
 External LLM judges are read-only evaluators. Their prompts must forbid workspace inspection, tool execution, file changes, git actions, issue/label/PR/MR mutation, comments, assignment, closing/reopening, or state changes. They may only return judgment JSON that the main loop applies after validation.
 
+### Benchmark Judge Protocol (subagent-first)
+
+When an issueops benchmark needs an LLM judge, prefer a fresh-context sub-agent over the legacy external `agy -p` backend:
+
+1. Run the deterministic pass first: `agent-harness issueops benchmark run --fixtures <dir> --judge none --json`.
+2. The main agent dispatches a **fresh-context** sub-agent (no inherited conversation context, never the author of the artifacts being judged — no self-scoring) with a deterministic input packet: ① the rubric dimension list with one-line definitions, ② the artifact fields to judge, ③ the required output: a `{"<fixtureID>": <IssueOpsBenchmarkScore>}` map as JSON only, no preamble.
+3. Feed the returned map through `agent-harness issueops benchmark run --fixtures <dir> --judge file --judge-file <map.json> --json`. The CLI strict-decodes each score and fails closed on missing/unknown fixture keys.
+
+`--judge agy` remains as a legacy external-LLM fallback. Honesty note: the no-self-approval constraint is a documented orchestration protocol — the Go `--judge file` layer only sees bytes and cannot verify who produced the judgment; enforcement lives in the main agent's dispatch discipline.
+
 ## Operational Start
 
 Start or resume state after deriving the issue branch slug. The IssueOps branch must be the issue branch, not the source checkout's current branch:

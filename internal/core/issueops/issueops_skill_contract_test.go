@@ -110,6 +110,22 @@ func TestIssueOpsSkillDocumentsReadinessGateKeys(t *testing.T) {
 	}
 }
 
+// Asserts the SKILL.md documents the subagent judge protocol. NOTE: text
+// presence only — the no-self-approval constraint is a documented protocol,
+// not enforceable at the Go layer (the file backend only sees bytes).
+func TestIssueOpsSkillDocumentsSubagentJudgeProtocol(t *testing.T) {
+	skill := readIssueOpsSkillForTest(t)
+	for _, want := range []string{
+		"fresh-context",
+		"--judge file",
+		"--judge none",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Fatalf("IssueOps skill must document the subagent judge protocol phrase %q", want)
+		}
+	}
+}
+
 // Asserts the pioneer-targeted benchmark fixtures exist with the method-skip
 // critical rule. NOTE: like the other contract tests in this file, this
 // verifies file/text PRESENCE only — it does not prove runtime behavior; the
