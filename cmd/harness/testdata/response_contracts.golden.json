@@ -1081,6 +1081,34 @@
           "title": "Agent-Harness 성능/안정성 개선 계획"
         },
         {
+          "bytes": 12225,
+          "headings": [
+            "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)",
+            "0. 전수조사 핵심 발견 (현재 상태 스냅샷)",
+            "측정 커버리지 비대칭이 가장 큰 구조적 결함이다",
+            "강점 (유지·확산할 패턴)",
+            "기존 문서화된 결함 (재발견 아님, 미해결 잔존)",
+            "1. 정량 트랙 (측정 가능한 품질)",
+            "Q1. 비-pioneer 스킬 스코어카드 확장 — 커버리지 9/16 → 16/16 [최우선]",
+            "Q2. Hook 런타임 메트릭 도입 — 현재 0개 → 4개 [신규 측정면]",
+            "Q3. issueops 벤치마크 정기화 + judge file 실전 1회전 [구축물 활용]",
+            "Q4. 운영 안정성 정량 baseline [stability-audit 정례화]",
+            "Q5. 정량 대시보드 단일화 [통합 가시성]",
+            "2. 정성 트랙 (측정이 못 잡는 품질)",
+            "S1. Firsthand 도그푸드 정례화 [입증된 채널의 제도화]",
+            "S2. 다관점 사전 리뷰를 플랜 게이트로 [입증된 채널 2]",
+            "S3. 결손 contract test 3건 신설 [정성→정량 전환]",
+            "S4. P0/P1 구조 결함 해소 [정성적 신뢰성]",
+            "S5. Proportionate mode 확산 5/16 → 적용 가능 전수 [검증된 패턴 확산]",
+            "S6. 정직성 단서 일괄 정비 [보고서 권고 3 잔여분]",
+            "3. 우선순위·의존성·실행 단위",
+            "4. 성공 판정 (프로그램 수준)"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
+          "rel_path": ".agent-harness/plans/harness-quality-improvement-program.md",
+          "title": "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)"
+        },
+        {
           "bytes": 13935,
           "headings": [
             "Pioneer Skill Documentation Audit \u0026 Update",
@@ -1435,6 +1463,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
+        "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
@@ -3449,7 +3478,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 44,
+        "docs_indexed": 45,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -5752,6 +5781,34 @@
                 "title": "Agent-Harness 성능/안정성 개선 계획"
               },
               {
+                "bytes": 12225,
+                "headings": [
+                  "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)",
+                  "0. 전수조사 핵심 발견 (현재 상태 스냅샷)",
+                  "측정 커버리지 비대칭이 가장 큰 구조적 결함이다",
+                  "강점 (유지·확산할 패턴)",
+                  "기존 문서화된 결함 (재발견 아님, 미해결 잔존)",
+                  "1. 정량 트랙 (측정 가능한 품질)",
+                  "Q1. 비-pioneer 스킬 스코어카드 확장 — 커버리지 9/16 → 16/16 [최우선]",
+                  "Q2. Hook 런타임 메트릭 도입 — 현재 0개 → 4개 [신규 측정면]",
+                  "Q3. issueops 벤치마크 정기화 + judge file 실전 1회전 [구축물 활용]",
+                  "Q4. 운영 안정성 정량 baseline [stability-audit 정례화]",
+                  "Q5. 정량 대시보드 단일화 [통합 가시성]",
+                  "2. 정성 트랙 (측정이 못 잡는 품질)",
+                  "S1. Firsthand 도그푸드 정례화 [입증된 채널의 제도화]",
+                  "S2. 다관점 사전 리뷰를 플랜 게이트로 [입증된 채널 2]",
+                  "S3. 결손 contract test 3건 신설 [정성→정량 전환]",
+                  "S4. P0/P1 구조 결함 해소 [정성적 신뢰성]",
+                  "S5. Proportionate mode 확산 5/16 → 적용 가능 전수 [검증된 패턴 확산]",
+                  "S6. 정직성 단서 일괄 정비 [보고서 권고 3 잔여분]",
+                  "3. 우선순위·의존성·실행 단위",
+                  "4. 성공 판정 (프로그램 수준)"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
+                "rel_path": ".agent-harness/plans/harness-quality-improvement-program.md",
+                "title": "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)"
+              },
+              {
                 "bytes": 13935,
                 "headings": [
                   "Pioneer Skill Documentation Audit \u0026 Update",
@@ -6113,6 +6170,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
+              "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
@@ -7538,7 +7596,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 44,
+              "docs_indexed": 45,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
