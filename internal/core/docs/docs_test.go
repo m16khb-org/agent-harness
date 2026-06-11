@@ -45,6 +45,26 @@ func TestDocsIndexExcludesDraftWiki(t *testing.T) {
 	}
 }
 
+func TestDocsIndexExcludesEvidence(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "AGENTS.md"), "# Rules\n")
+	mustWrite(t, filepath.Join(root, ".agent-harness", "CAUTIONS.md"), "# Cautions\n")
+	// .agent-harness/evidence is gitignored, working-tree-dependent runtime data.
+	// It must never enter the docs index, or the response-contract golden becomes non-hermetic.
+	mustWrite(t, filepath.Join(root, ".agent-harness", "evidence", "pioneer-skills-quality", "baseline.md"), "# Baseline\n")
+
+	index := DocsIndex(root, "test")
+	if !docIndexContains(index.Docs, "AGENTS.md") {
+		t.Fatalf("DocsIndex missing AGENTS.md: %+v", index.Docs)
+	}
+	if !docIndexContains(index.Docs, ".agent-harness/CAUTIONS.md") {
+		t.Fatalf("DocsIndex missing CAUTIONS.md: %+v", index.Docs)
+	}
+	if docIndexContains(index.Docs, ".agent-harness/evidence/pioneer-skills-quality/baseline.md") {
+		t.Fatalf("DocsIndex included gitignored evidence doc: %+v", index.Docs)
+	}
+}
+
 func docIndexContains(docs []DocIndexInfo, relPath string) bool {
 	for _, doc := range docs {
 		if doc.RelPath == relPath {

@@ -10,6 +10,7 @@ import (
 )
 
 const draftWikiDir = ".agent-harness/draft-wiki"
+const evidenceDir = ".agent-harness/evidence"
 
 type DocsIndexResult struct {
 	OK          bool           `json:"ok"`
@@ -40,7 +41,7 @@ func ListDocs(root string) []string {
 			continue
 		}
 		_ = filepath.WalkDir(full, func(path string, d fs.DirEntry, err error) error {
-			if err == nil && !d.IsDir() && strings.HasSuffix(path, ".md") && !isDraftWikiDoc(root, path) {
+			if err == nil && !d.IsDir() && strings.HasSuffix(path, ".md") && !isExcludedDoc(root, path) {
 				docs = append(docs, path)
 			}
 			return nil
@@ -50,13 +51,22 @@ func ListDocs(root string) []string {
 	return docs
 }
 
-func isDraftWikiDoc(root, path string) bool {
+// isExcludedDoc reports whether path is under a .agent-harness subtree that must not
+// appear in the docs index: draft-wiki (in-progress drafts) or evidence (gitignored,
+// working-tree-dependent runtime artifacts). Including evidence would make the docs
+// index — and the response-contract golden that snapshots it — non-hermetic.
+func isExcludedDoc(root, path string) bool {
 	rel, err := filepath.Rel(root, path)
 	if err != nil {
 		return false
 	}
 	rel = filepath.ToSlash(rel)
-	return rel == draftWikiDir || strings.HasPrefix(rel, draftWikiDir+"/")
+	for _, dir := range []string{draftWikiDir, evidenceDir} {
+		if rel == dir || strings.HasPrefix(rel, dir+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func DocsIndex(root, version string) DocsIndexResult {
