@@ -857,6 +857,26 @@
           "title": "CLI And MCP Operations"
         },
         {
+          "bytes": 6967,
+          "headings": [
+            "Harness Skill Quality Scorecard (비-pioneer 7종)",
+            "측정 프로토콜 (rubric 준수 + 프로그램 보강)",
+            "Target Gate (rubric과 동일)",
+            "케이스 정의 (스킬당 P/B/O + H)",
+            "issueops",
+            "atomic-commit-push",
+            "self-verify",
+            "self-augment",
+            "project-bootstrap",
+            "draft-wiki-promoter",
+            "stability-audit",
+            "Baseline (미측정 — 측정 시 갱신)"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
+          "rel_path": ".agent-harness/operations/harness-skill-quality-scorecard.md",
+          "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
+        },
+        {
           "bytes": 4196,
           "headings": [
             "Host Operations",
@@ -1451,6 +1471,7 @@
         "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
         "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
         "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
+        "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
         "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
         "$HARNESS_ROOT/.agent-harness/operations/install.md",
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
@@ -3478,7 +3499,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 45,
+        "docs_indexed": 46,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -5557,6 +5578,26 @@
                 "title": "CLI And MCP Operations"
               },
               {
+                "bytes": 6967,
+                "headings": [
+                  "Harness Skill Quality Scorecard (비-pioneer 7종)",
+                  "측정 프로토콜 (rubric 준수 + 프로그램 보강)",
+                  "Target Gate (rubric과 동일)",
+                  "케이스 정의 (스킬당 P/B/O + H)",
+                  "issueops",
+                  "atomic-commit-push",
+                  "self-verify",
+                  "self-augment",
+                  "project-bootstrap",
+                  "draft-wiki-promoter",
+                  "stability-audit",
+                  "Baseline (미측정 — 측정 시 갱신)"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
+                "rel_path": ".agent-harness/operations/harness-skill-quality-scorecard.md",
+                "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
+              },
+              {
                 "bytes": 4196,
                 "headings": [
                   "Host Operations",
@@ -6158,6 +6199,7 @@
               "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
               "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
               "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
+              "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
               "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
               "$HARNESS_ROOT/.agent-harness/operations/install.md",
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
@@ -7596,7 +7638,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 45,
+              "docs_indexed": 46,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
