@@ -448,3 +448,19 @@ A pioneer skill quality evaluation is complete only when:
 - At least one holdout or mutation case per skill passes after improvement.
 - Calibration examples separate known-good, borderline, and known-bad outputs.
 - The final plan prioritizes `unsafe`, `stale-contract`, and `fake-tool` before style or line-count cleanup.
+
+## Firsthand Dogfood Cadence (S1, 2026-06-12 제도화)
+
+격리 holdout이 구조적으로 못 보는 결함 — 호스트 이식성(예: ugrep alias로 인한 측정 명령 오작동),
+묻힌 결정 게이트, 비례성 마찰 — 은 **직접 사용**에서만 드러난다(2026-06-11 도그푸드가 실증:
+shannon 명령 결함, dijkstra 게이트 위치, 3개 스킬의 비례성 마찰을 적발).
+
+절차(분기당 1회, pioneer + 비-pioneer 전체):
+1. main agent가 각 스킬을 Skill 도구로 직접 호출해 이 레포의 실제 작업에 적용한다.
+2. 스킬당 ① 강점(HOLD) ② 직접 사용에서만 드러난 마찰 ③ EDIT/MEASURE/HOLD 분류를 기록한다
+   (`pioneer-skill-optimization-strategy.md` 형식).
+3. keep/discard 규율: **측정되거나 재현된 마찰 없이는 EDIT 금지.**
+4. EDIT 적용 후 해당 스킬 holdout(n≥3)을 재측정해 무회귀를 확인한다.
+
+첫 회차: 2026-06-11 pioneer 9종 완료(`pioneer-skill-optimization-strategy.md`). 다음 회차는
+비-pioneer 7종을 포함한다.

@@ -46,6 +46,12 @@ Detailed baseline summary is tracked in this table. Raw baseline artifacts are l
 
 Current family average (27-case baseline): `3.10 / 5.0`.
 
+적용범위 단서(S6): 아래 holdout 점수는 **격리 실행·단일런(v1 척도)** 측정이다 — SKILL.md를 직접 주입한
+fresh-context 결과이므로 실제 description 기반 활성이나 issueops 통합 기여는 포함하지 않는다. 통합 기여는
+18-dimension issueops 벤치마크의 `pioneer_skill_contribution`(키워드 프록시, 별개 계층)이, 일반 요청 활성은
+UserPromptSubmit 라우팅 힌트(이슈 #10)가 2026-06-11/12부터 각각 측정·지원을 시작했다. 두 점수를 합산하지
+않는다. 신규 측정은 rubric Granularity v2를 따른다.
+
 Measured holdout case average (2026-06-11 fresh-context reruns, post karpathy + codd fixes): `4.80 / 5.0`
 (latest, after the firsthand-dogfood skill-body edits: `4.92 / 5.0` — see the Post-optimization measurement section below)
 (shannon 5.0, hopper 5.0, turing 5.0, von-neumann 4.8, karpathy 4.8, berners-lee 4.8, torvalds 4.6, codd 4.8,

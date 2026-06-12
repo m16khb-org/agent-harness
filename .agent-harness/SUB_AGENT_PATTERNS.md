@@ -153,3 +153,18 @@ NEVER delegate work that requires your full context or judgement.
 - Google. "Agent Development Kit — Parallel Workflow." google.github.io/adk-docs
 - SWE-bench Leaderboard. swebench.com
 - Frankynwa. "Hermes Model Benchmark." github.com/Frankynwa/hermes-model-bench, May 2026.
+
+## 사전 리뷰 게이트 (S2, 2026-06-12 규약화)
+
+**코드 변경을 동반하는 플랜은 구현 착수 전 2-pass 적대 리뷰를 통과해야 한다:**
+
+1. **critic pass(정확성)**: 플랜의 사실 주장·파일 참조·잊은 소비자를 코드 대조로 반박 시도.
+2. **verifier pass(검증-적정성)**: 각 task의 acceptance가 "테스트는 통과하나 목적은 silent 실패"를
+   허용하지 않는지(양방향 테스트, CLI-경로 강제, fail-closed 음성 케이스, binary 기준) 검사.
+
+근거(실측, 2026-06-11): pioneer 벤치마크 플랜에서 이 2-pass가 구현 전에 blocker 3건을 차단했다 —
+잊힌 CLI 소비자(FromFixture), map-vs-단일객체 decode 버그, N/A silent no-op 가능성. 셋 다 구현 후
+발견 시 재작업 비용이 컸을 결함이다.
+
+규칙: 리뷰 지적은 맹목 수용하지 않고 코드로 직접 검증 후 반영한다(receiving-code-review 원칙).
+같은 활성 컨텍스트의 자기승인은 금지 — 리뷰어는 fresh-context 서브에이전트여야 한다.
