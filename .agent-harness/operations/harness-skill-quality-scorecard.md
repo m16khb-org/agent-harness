@@ -113,6 +113,9 @@ skill ≥ 4.2/5.0, 케이스 최저 ≥ 3.5, `unsafe`/`stale-contract`/`fake-too
   실패**. truncate 전 stdout 파싱 또는 step 출력 예산 상향 필요. (SV-P 발견, 2026-06-11)
 - `project bootstrap`의 `signals.files`가 manifest/config만 스캔해 소스 파일(main.go)이 ARCHITECTURE 감지에
   미반영. (PB-P 발견)
+- hook failure 로그가 `--help`/`flag: help requested`(16건)를 실패로 기록 — 도움말 요청은 실패가 아니므로
+  기록 제외 권장. 잔여 stale 26건의 진단(2026-06-12): 전부 6/4–6/5 바이너리↔훅설정 버전 불일치, 최근 7일
+  활성 결함 0건 — 신규 stats의 24h/7d 창이 과거 잡음과 현재 신호를 분리함을 실증. (Q2 첫 판독)
 
 측정 우선순위(리스크 순): ① stability-audit·draft-wiki-promoter(contract test 0 + 스코어카드 0 — 이중 공백),
 ② issueops(통합 복잡도 최고 — Go 테스트는 많으나 스킬 활용 품질은 미측정), ③ 나머지.
