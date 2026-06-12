@@ -95,6 +95,71 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords:  []string{"검토", "리뷰", "분석", "비평", "계획", "리서치", "조사"},
 		RequireAgyOptIn: true,
 	},
+	// CS pioneer skill routing (issue #10): keyword hints so the matching
+	// specialist skill surfaces on ordinary, non-issueops requests too.
+	{
+		Tool:           "berners-lee",
+		Reason:         "Secondary hint: use the berners-lee skill for web research — multi-angle searches, source cross-checking, cited reports.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"web research", "web search", "cite sources", "cross-reference", "competitive analysis", "literature survey"},
+		PromptKeywords: []string{"웹에서", "자료 조사", "조사해서", "출처", "검색해서", "웹 검색"},
+	},
+	{
+		Tool:           "hopper",
+		Reason:         "Secondary hint: use the hopper skill for systematic debugging — reproduce, isolate, root-cause, verified fix.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"debug", "diagnose", "flaky", "root cause", "why does this fail", "intermittent"},
+		PromptKeywords: []string{"디버그", "원인 찾", "왜 실패", "왜 깨지", "간헐적"},
+	},
+	{
+		Tool:           "dijkstra",
+		Reason:         "Secondary hint: use the dijkstra skill for algorithmic optimization — profile first, complexity class, scaling evidence.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"optimize", "optimization", "time complexity", "space complexity", "too slow", "performance bottleneck"},
+		PromptKeywords: []string{"최적화", "복잡도", "느려", "성능 개선"},
+	},
+	{
+		Tool:           "codd",
+		Reason:         "Secondary hint: use the codd skill for schema/index/query design — normalization, write-penalty trade-offs, query plans.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"schema", "index design", "query plan", "normalization", "slow query", "n+1"},
+		PromptKeywords: []string{"스키마", "인덱스", "쿼리", "정규화"},
+	},
+	{
+		Tool:           "torvalds",
+		Reason:         "Secondary hint: use the torvalds skill for advanced git — rebase, bisect, conflict resolution, history recovery.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"rebase", "bisect", "cherry-pick", "reflog", "merge conflict"},
+		PromptKeywords: []string{"리베이스", "충돌 났", "충돌 해결", "히스토리 복구"},
+	},
+	{
+		Tool:           "atomic-commit-push",
+		Reason:         "Secondary hint: use the atomic-commit-push skill for safe staged commits and push — exact paths, atomic intents, secret blockers.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"commit and push", "atomic commit", "split commits", "stage and commit"},
+		PromptKeywords: []string{"커밋하고", "커밋해", "푸시해", "커밋 분리"},
+	},
+	{
+		Tool:           "von-neumann",
+		Reason:         "Secondary hint: use the von-neumann skill for decision-complete planning when scope is broad or multi-module.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"work plan", "implementation plan", "decision-complete", "blueprint"},
+		PromptKeywords: []string{"계획 세워", "플랜 짜", "설계해줘", "계획해줘"},
+	},
+	{
+		Tool:           "shannon",
+		Reason:         "Secondary hint: use the shannon skill for quantitative code-quality measurement — SNR/entropy/redundancy before and after cleanup.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"snr", "code quality measure", "quality baseline", "slop"},
+		PromptKeywords: []string{"품질 측정", "슬롭", "품질 비교"},
+	},
+	{
+		Tool:           "karpathy",
+		Reason:         "Secondary hint: use the karpathy skill for prompt design and optimization — contracts, eval cases, adversarial tests.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"prompt engineering", "optimize this prompt", "system prompt", "prompt injection"},
+		PromptKeywords: []string{"프롬프트"},
+	},
 }
 
 var RoutingRules = hookRoutingRules
