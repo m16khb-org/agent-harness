@@ -857,9 +857,10 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 8872,
+          "bytes": 10236,
           "headings": [
             "Harness Skill Quality Scorecard (비-pioneer 7종)",
+            "v2 세분화 적용 (2026-06-12)",
             "측정 프로토콜 (rubric 준수 + 프로그램 보강)",
             "Target Gate (rubric과 동일)",
             "케이스 정의 (스킬당 P/B/O + H)",
@@ -985,7 +986,7 @@
           "title": "Pioneer Skill Quality Handoff"
         },
         {
-          "bytes": 19315,
+          "bytes": 23254,
           "headings": [
             "Pioneer Skill Qualitative Rubric",
             "Rubric Sufficiency Verdict",
@@ -994,19 +995,19 @@
             "Holdout and Mutation Protocol",
             "Fresh-Context Sub-Agent Execution",
             "Pre-Score Critical Checks",
+            "Granularity v2 (세분화 확장, 2026-06-12)",
+            "v2.1 점수 세분화: 0.1 단위 + 5.0 유보 규칙",
+            "v2.2 Dimension별 sub-criteria (채점 시 3개 모두 명시 기록 의무)",
+            "v2.3 케이스 유형별 가중 (case_score 공식 확장)",
+            "v2.4 기록 전용 보조 지표: discovery (점수 비반영)",
+            "v2.5 Required Result Record 추가 필드",
             "Five Scored Dimensions",
             "1. Request Fit",
             "2. Completion",
             "3. Method Fidelity",
             "4. Evidence and Verification",
             "5. Safety and Portability",
-            "Gate Flags",
-            "Evidence Strength",
-            "Minimum Evidence by Case Type",
-            "Skill-Specific Gold Standards",
-            "Scoring Formula",
-            "Calibration Protocol",
-            "Target Quality Gate"
+            "Gate Flags"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
           "rel_path": ".agent-harness/operations/pioneer-skill-quality-rubric.md",
@@ -5592,9 +5593,10 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 8872,
+                "bytes": 10236,
                 "headings": [
                   "Harness Skill Quality Scorecard (비-pioneer 7종)",
+                  "v2 세분화 적용 (2026-06-12)",
                   "측정 프로토콜 (rubric 준수 + 프로그램 보강)",
                   "Target Gate (rubric과 동일)",
                   "케이스 정의 (스킬당 P/B/O + H)",
@@ -5720,7 +5722,7 @@
                 "title": "Pioneer Skill Quality Handoff"
               },
               {
-                "bytes": 19315,
+                "bytes": 23254,
                 "headings": [
                   "Pioneer Skill Qualitative Rubric",
                   "Rubric Sufficiency Verdict",
@@ -5729,19 +5731,19 @@
                   "Holdout and Mutation Protocol",
                   "Fresh-Context Sub-Agent Execution",
                   "Pre-Score Critical Checks",
+                  "Granularity v2 (세분화 확장, 2026-06-12)",
+                  "v2.1 점수 세분화: 0.1 단위 + 5.0 유보 규칙",
+                  "v2.2 Dimension별 sub-criteria (채점 시 3개 모두 명시 기록 의무)",
+                  "v2.3 케이스 유형별 가중 (case_score 공식 확장)",
+                  "v2.4 기록 전용 보조 지표: discovery (점수 비반영)",
+                  "v2.5 Required Result Record 추가 필드",
                   "Five Scored Dimensions",
                   "1. Request Fit",
                   "2. Completion",
                   "3. Method Fidelity",
                   "4. Evidence and Verification",
                   "5. Safety and Portability",
-                  "Gate Flags",
-                  "Evidence Strength",
-                  "Minimum Evidence by Case Type",
-                  "Skill-Specific Gold Standards",
-                  "Scoring Formula",
-                  "Calibration Protocol",
-                  "Target Quality Gate"
+                  "Gate Flags"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
                 "rel_path": ".agent-harness/operations/pioneer-skill-quality-rubric.md",

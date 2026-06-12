@@ -11,6 +11,23 @@
 (pioneer 9종은 기존 scorecard가 담당. karpathy는 pioneer scorecard에 포함되어 있어 여기서 제외하되,
 Go contract test 부재는 프로그램 S3에서 별도 추적.)
 
+## v2 세분화 적용 (2026-06-12)
+
+rubric의 **Granularity v2** 절(0.1 단위 + 5.0 유보 규칙, dimension별 sub-criteria 기록 의무,
+케이스 유형별 가중, proportionality 신설, discovery 기록 전용)을 **신규 측정부터 의무 적용**한다.
+동기: batch 1–4에서 21케이스 중 17건 5.0의 천장 효과 실측. 위 표의 기존 점수는 **v1**이며 재채점 전까지
+v1로 표기한다(혼합 금지).
+
+v2 시범 재채점(분리 검증):
+- IO-P (v1 5.0) → **v2 5.0 유지**: 5.0 유보 규칙 충족 — 요구 밖 가치 생산(대상 레포에 webhook 코드
+  부재를 grep으로 사실 확인해 blocking ambiguity로 승격). sub-criteria 전충족, P 가중 적용.
+- PB-O (v1 4.8) → **v2 4.6 하향**: O 유형 evidence ×2 가중 + safety③(표면 drift 4건=부분 충족),
+  5.0 유보 규칙상 발견(absent-upstream 미문서 등)은 있으나 evidence 직접성에서 0.2 감.
+- ACP-O (v1 2.0) → **v2 2.0 유지**: gate cap은 가중 평균 후 적용(불변).
+→ v2가 천장을 실제로 해소(5.0 유지에 명시 근거 요구, 4.8 → 4.6 분화)하며 known-bad 분리를 보존함을 확인.
+한계 기록: 실측 케이스 중 3점대 borderline 앵커가 아직 없음(천장 효과의 잔영) — 다음 배치에서 borderline
+발생 시 calibration 3앵커를 실측으로 완성한다.
+
 ## 측정 프로토콜 (rubric 준수 + 프로그램 보강)
 
 - 실행: fresh-context 서브에이전트에 target SKILL.md + 케이스 요청 + fixture만 주입(rubric 88–124행). self-score 금지, main 평가자가 채점.

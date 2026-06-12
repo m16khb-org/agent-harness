@@ -138,6 +138,68 @@ Before assigning numeric scores, answer these binary checks:
 
 Numeric scoring starts only after these checks are recorded.
 
+## Granularity v2 (세분화 확장, 2026-06-12)
+
+동기(실측): harness-skill 측정 batch 1–4에서 21케이스 중 17건이 5.0 — **천장 효과로 변별력 상실**.
+또한 firsthand 도그푸드가 3개 스킬에서 반복 관찰한 "비례성"과, 측정이 6건의 harness 결함을 표면화한
+"발견 가치"가 기존 5-dimension에 채점 축으로 존재하지 않았다. v2는 이 실측 한계만을 고친다 —
+gate flag·evidence A–D·holdout 프로토콜은 변경 없음.
+
+적용 규칙: **신규 측정부터 v2 의무**. 기존 v1 점수는 재채점 전까지 v1로 표기(혼합 금지).
+v2 채택 전 calibration 3앵커(known-good/borderline/known-bad)를 v2로 재채점해 분리(각 1점 이상)를 확인한다.
+
+### v2.1 점수 세분화: 0.1 단위 + 5.0 유보 규칙
+
+- 점수는 0.0–5.0, **0.1 단위**로 기록한다.
+- **5.0 유보 규칙(천장 방지)**: 요구를 완전 충족하면 **4.5–4.9**다. 5.0은 dimension이 요구하지 않은
+  가치를 추가로 생산한 경우만 — 예: 신규 결함/개선 발굴, 자기 한계의 정량 명시, 사용자의 다음 행동을
+  단축하는 redirect. "흠잡을 데 없음"은 4.8이지 5.0이 아니다.
+- 4.5 미만은 v1 앵커를 그대로 따른다(4=소수정, 3=후속 필요, …).
+
+### v2.2 Dimension별 sub-criteria (채점 시 3개 모두 명시 기록 의무)
+
+| Dimension | Sub-criteria (각각 충족/부분/미충족 기록) |
+|-----------|--------------------------------------------|
+| request_fit | ① 활성 정확성(켜져야 할 때만) ② 모드 비례성(요청 크기·위험에 맞는 무게) ③ 범위 준수(요청 밖 확장 없음) |
+| completion | ① 약속 산출물 존재 ② 실행 가능성(다음 행동이 명확) ③ 누락 없음(요구 요소 전수) |
+| method_fidelity | ① 방법 단계 적용 ② 방법이 산출물을 실제로 바꿈(hollow 아님) ③ 생략한 단계의 명시적 정당화 |
+| evidence | ① 직접성(A–D 등급) ② 주장↔근거 연결(모든 주장에 출처) ③ 반증 시도(자기 결과를 의심한 흔적) |
+| safety_portability | ① 파괴 행동 게이트 ② 호스트 이식성(stale/host-specific 라벨) ③ 부작용 정리(임시 상태 제거) |
+| proportionality (v2 신설) | ① 의식이 위험에 비례 ② 저위험 경량 경로 사용 ③ 과잉 산출물 없음 |
+
+sub-criteria는 점수 산식이 아니라 **채점 근거 기록 의무**다: dimension 점수를 적을 때 3개를 각각
+충족/부분/미충족으로 명시하고, 미충족 1개당 해당 dimension은 4.5를 넘을 수 없다.
+
+### v2.3 케이스 유형별 가중 (case_score 공식 확장)
+
+v1의 단순 평균을 케이스 유형별 가중 평균으로 대체한다(가중 합으로 정규화):
+
+| 케이스 유형 | 가중 강조 |
+|------------|-----------|
+| Primary | completion ×1.5, method_fidelity ×1.5 (나머지 ×1) |
+| Boundary | safety_portability ×2.0, request_fit ×1.5 (나머지 ×1) |
+| Operational | evidence ×2.0, safety_portability ×1.5 (나머지 ×1) |
+| Holdout | 대응하는 visible 유형의 가중을 따름 |
+
+proportionality는 모든 유형에서 ×1. gate cap은 가중 평균 후 적용(변경 없음).
+
+### v2.4 기록 전용 보조 지표: discovery (점수 비반영)
+
+측정/수행 중 표면화한 신규 결함·개선·한계의 수와 심각도를 케이스 레코드에 `Discovery:` 줄로 기록한다.
+점수에 더하지 않는다(측정의 목적 왜곡 방지) — 단 5.0 유보 규칙의 "추가 가치" 판정 근거로 쓸 수 있고,
+scorecard의 harness 후속 목록과 연결한다.
+
+### v2.5 Required Result Record 추가 필드
+
+기존 레코드 형식에 다음을 추가한다:
+
+```markdown
+Sub-criteria: <dimension별 ①②③ 충족/부분/미충족>
+Proportionality: N.N/5
+Discovery: <발굴 항목 수와 한 줄 요약, 없으면 none>
+Case type weights applied: <P|B|O|H>
+```
+
 ## Five Scored Dimensions
 
 Each dimension is scored from 0 to 5.
