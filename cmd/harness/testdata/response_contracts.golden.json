@@ -1075,6 +1075,18 @@
           "title": "Verification Operations"
         },
         {
+          "bytes": 1363,
+          "headings": [
+            "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트",
+            "Fix (rules.go 데이터 + 테스트)",
+            "Acceptance",
+            "Non-goals"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
+          "rel_path": ".agent-harness/plans/10-pioneer-skill-routing-hints.md",
+          "title": "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트"
+        },
+        {
           "bytes": 1737,
           "headings": [
             "6: lifecycle state 초기화 read-while-write 레이스 수정",
@@ -1497,6 +1509,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+        "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
@@ -1538,18 +1551,6 @@
       },
       "ok": true,
       "skills": [
-        {
-          "has_openai_yaml": false,
-          "has_skill_md": false,
-          "name": ".claude",
-          "path": "$HARNESS_ROOT/skills/.claude"
-        },
-        {
-          "has_openai_yaml": false,
-          "has_skill_md": false,
-          "name": ".omc",
-          "path": "$HARNESS_ROOT/skills/.omc"
-        },
         {
           "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
           "has_openai_yaml": true,
@@ -3514,7 +3515,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 47,
+        "docs_indexed": 48,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -5811,6 +5812,18 @@
                 "title": "Verification Operations"
               },
               {
+                "bytes": 1363,
+                "headings": [
+                  "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트",
+                  "Fix (rules.go 데이터 + 테스트)",
+                  "Acceptance",
+                  "Non-goals"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
+                "rel_path": ".agent-harness/plans/10-pioneer-skill-routing-hints.md",
+                "title": "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트"
+              },
+              {
                 "bytes": 1737,
                 "headings": [
                   "6: lifecycle state 초기화 read-while-write 레이스 수정",
@@ -6240,6 +6253,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+              "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
@@ -6281,18 +6295,6 @@
             },
             "ok": true,
             "skills": [
-              {
-                "has_openai_yaml": false,
-                "has_skill_md": false,
-                "name": ".claude",
-                "path": "$HARNESS_ROOT/skills/.claude"
-              },
-              {
-                "has_openai_yaml": false,
-                "has_skill_md": false,
-                "name": ".omc",
-                "path": "$HARNESS_ROOT/skills/.omc"
-              },
               {
                 "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
                 "has_openai_yaml": true,
@@ -7668,7 +7670,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 47,
+              "docs_indexed": 48,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
