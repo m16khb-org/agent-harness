@@ -80,9 +80,10 @@ func Tools() []map[string]any {
 			"name":        "self_verify_promote",
 			"description": "Promote a saved self-verification loop summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
 			"inputSchema": map[string]any{"type": "object", "required": []string{"from_key", "baseline_key"}, "properties": map[string]any{
-				"from_key":     map[string]any{"type": "string", "description": "State key containing the candidate self-verification summary snapshot to promote."},
-				"baseline_key": map[string]any{"type": "string", "description": "State key to write as the promoted baseline."},
-				"confirm":      map[string]any{"type": "boolean", "description": "When true, write baseline_key; false or omitted performs a dry-run."},
+				"from_key":            map[string]any{"type": "string", "description": "State key containing the candidate self-verification summary snapshot to promote."},
+				"baseline_key":        map[string]any{"type": "string", "description": "State key to write as the promoted baseline."},
+				"confirm":             map[string]any{"type": "boolean", "description": "When true, write baseline_key; false or omitted performs a dry-run."},
+				"allow_failed_source": map[string]any{"type": "boolean", "description": "Promote even when the source snapshot did not pass the gate (baseline-poisoning override; off by default)."},
 			}},
 		},
 	}...)

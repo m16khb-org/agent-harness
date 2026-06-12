@@ -4191,6 +4191,7 @@
       "ok": true,
       "promoted": false,
       "snapshot_generated_at": "$TIMESTAMP",
+      "source_passed": false,
       "state_dir": "$STATE_DIR",
       "summary": {
         "contract": {
@@ -8431,6 +8432,7 @@
             "ok": true,
             "promoted": false,
             "snapshot_generated_at": "$TIMESTAMP",
+            "source_passed": false,
             "state_dir": "$STATE_DIR",
             "summary": {
               "contract": {

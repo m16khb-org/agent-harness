@@ -11,7 +11,7 @@ import (
 func TestPromoteSelfAugmentBaseline(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)
-	summary := model.SelfAugmentSummary{TotalRuns: 10, TotalSteps: 20, PassedSteps: 20, StepLabels: []string{"go test"}}
+	summary := model.SelfAugmentSummary{TotalRuns: 10, TotalSteps: 20, PassedSteps: 20, TerminationEligible: true, StepLabels: []string{"go test"}}
 	source := SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
 		Kind:          "self_verification_summary",
@@ -26,7 +26,7 @@ func TestPromoteSelfAugmentBaseline(t *testing.T) {
 	if err := WriteSelfAugmentSnapshotRecord(dir, "candidate", source); err != nil {
 		t.Fatalf("write candidate: %v", err)
 	}
-	dry, err := PromoteSelfAugmentBaseline("candidate", "baseline", false)
+	dry, err := PromoteSelfAugmentBaseline("candidate", "baseline", false, false)
 	if err != nil {
 		t.Fatalf("promote dry-run: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestPromoteSelfAugmentBaseline(t *testing.T) {
 	if _, err := core.StateRead("baseline"); err == nil {
 		t.Fatalf("dry-run wrote baseline")
 	}
-	confirmed, err := PromoteSelfAugmentBaseline("candidate", "baseline", true)
+	confirmed, err := PromoteSelfAugmentBaseline("candidate", "baseline", true, false)
 	if err != nil {
 		t.Fatalf("promote confirm: %v", err)
 	}

@@ -7,7 +7,7 @@ import (
 	"agent-harness/internal/core"
 )
 
-func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error) {
+func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm, allowFailedSource bool) (SelfAugmentPromoteResult, error) {
 	result := SelfAugmentPromoteResult{
 		OK:          false,
 		StateDir:    core.StateDir(),
@@ -28,9 +28,19 @@ func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm bool) (Self
 	}
 	result.SnapshotGeneratedAt = snapshot.GeneratedAt
 	result.Summary = snapshot.Summary
+	// Gate semantics (measured by the SV-B case): a baseline is the reference
+	// every future compare regresses against, so promoting a failed run
+	// silently poisons all later judgements. Refuse unless explicitly
+	// overridden; dry-run stays diagnostic and just reports the flag.
+	result.SourcePassed = snapshot.OK && snapshot.Summary.TerminationEligible
 	if !confirm {
 		result.OK = true
 		return result, nil
+	}
+	if !result.SourcePassed && !allowFailedSource {
+		return result, fmt.Errorf(
+			"refusing to promote: source snapshot %q did not pass the gate (ok=%v, termination_eligible=%v); rerun self-verify or pass --allow-failed-source",
+			fromKey, snapshot.OK, snapshot.Summary.TerminationEligible)
 	}
 	if err := WriteSelfAugmentSnapshotRecord(core.StateDir(), baselineKey, snapshot); err != nil {
 		return result, err

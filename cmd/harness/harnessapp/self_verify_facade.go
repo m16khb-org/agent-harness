@@ -19,7 +19,7 @@ type selfVerifyCandidatesDeps struct {
 }
 
 type selfVerifyPromoteDeps struct {
-	promote func(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error)
+	promote func(fromKey, baselineKey string, confirm, allowFailedSource bool) (SelfAugmentPromoteResult, error)
 }
 
 func runSelfVerify(args []string) error {
@@ -114,8 +114,8 @@ func runSelfVerifyPromoteWithDeps(args []string, deps selfVerifyPromoteDeps) err
 	return selfworkflow.RunSelfVerifyPromoteWithDeps(args, selfworkflow.SelfVerifyPromoteDeps{Promote: deps.promote})
 }
 
-func promoteSelfAugmentBaseline(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error) {
-	return selfworkflow.PromoteSelfAugmentBaseline(fromKey, baselineKey, confirm)
+func promoteSelfAugmentBaseline(fromKey, baselineKey string, confirm, allowFailedSource bool) (SelfAugmentPromoteResult, error) {
+	return selfworkflow.PromoteSelfAugmentBaseline(fromKey, baselineKey, confirm, allowFailedSource)
 }
 
 func readSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) {

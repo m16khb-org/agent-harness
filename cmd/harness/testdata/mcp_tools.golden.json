@@ -1542,6 +1542,10 @@
     "description": "Promote a saved self-verification loop summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
     "inputSchema": {
       "properties": {
+        "allow_failed_source": {
+          "description": "Promote even when the source snapshot did not pass the gate (baseline-poisoning override; off by default).",
+          "type": "boolean"
+        },
         "baseline_key": {
           "description": "State key to write as the promoted baseline.",
           "type": "string"

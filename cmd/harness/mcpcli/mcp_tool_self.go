@@ -94,6 +94,7 @@ func handleSelfLoopMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			argmap.String(call.Arguments, "from_key"),
 			argmap.String(call.Arguments, "baseline_key"),
 			argmap.Bool(call.Arguments, "confirm"),
+			argmap.Bool(call.Arguments, "allow_failed_source"),
 		)
 		if err != nil {
 			return mcpToolFailure(&RPCError{Code: -32602, Message: "Self-verify promote failed", Data: err.Error()})

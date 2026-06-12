@@ -13,7 +13,7 @@ type SelfVerifyRunDeps = verifycmd.Deps
 type SelfVerifyRunMode = runmode.Mode
 
 type SelfVerifyPromoteDeps struct {
-	Promote func(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error)
+	Promote func(fromKey, baselineKey string, confirm, allowFailedSource bool) (SelfAugmentPromoteResult, error)
 }
 
 type SelfVerifyCandidatesDeps struct {

@@ -14,8 +14,8 @@ func NewSelfVerificationSummarySnapshot(result SelfAugmentResult, generatedAt ti
 	return stateio.NewSelfVerificationSummarySnapshot(result, generatedAt)
 }
 
-func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm bool) (SelfAugmentPromoteResult, error) {
-	return stateio.PromoteSelfAugmentBaseline(fromKey, baselineKey, confirm)
+func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm, allowFailedSource bool) (SelfAugmentPromoteResult, error) {
+	return stateio.PromoteSelfAugmentBaseline(fromKey, baselineKey, confirm, allowFailedSource)
 }
 
 func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) {

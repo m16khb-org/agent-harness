@@ -15,7 +15,7 @@ import (
 func TestRunPrintsDryRunAndConfirmedText(t *testing.T) {
 	calls := 0
 	deps := Deps{
-		Promote: func(fromKey, baselineKey string, confirm bool) (model.SelfAugmentPromoteResult, error) {
+		Promote: func(fromKey, baselineKey string, confirm, allowFailedSource bool) (model.SelfAugmentPromoteResult, error) {
 			calls++
 			if fromKey != "candidate" || baselineKey != "baseline" {
 				t.Fatalf("unexpected promote keys: from=%q baseline=%q", fromKey, baselineKey)
@@ -53,7 +53,7 @@ func TestRunPrintsJSONAndPropagatesErrors(t *testing.T) {
 	promoteErr := errors.New("promote failed")
 	jsonOut := captureStdout(t, func() error {
 		return Run([]string{"--from-key", "candidate", "--baseline-key", "baseline", "--json"}, Deps{
-			Promote: func(fromKey, baselineKey string, confirm bool) (model.SelfAugmentPromoteResult, error) {
+			Promote: func(fromKey, baselineKey string, confirm, allowFailedSource bool) (model.SelfAugmentPromoteResult, error) {
 				return model.SelfAugmentPromoteResult{
 					OK:          true,
 					FromKey:     fromKey,
@@ -75,7 +75,7 @@ func TestRunPrintsJSONAndPropagatesErrors(t *testing.T) {
 	}
 
 	err := Run([]string{"--from-key", "candidate", "--baseline-key", "baseline"}, Deps{
-		Promote: func(string, string, bool) (model.SelfAugmentPromoteResult, error) {
+		Promote: func(string, string, bool, bool) (model.SelfAugmentPromoteResult, error) {
 			return model.SelfAugmentPromoteResult{}, promoteErr
 		},
 	})
