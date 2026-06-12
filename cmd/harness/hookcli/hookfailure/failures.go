@@ -37,6 +37,9 @@ func Run(args []string) error {
 	if len(args) > 0 && args[0] == "prune" {
 		return RunPrune(args[1:])
 	}
+	if len(args) > 0 && args[0] == "stats" {
+		return RunStats(args[1:])
+	}
 	fs := flag.NewFlagSet("hook failures", flag.ContinueOnError)
 	limit := fs.Int("limit", 20, "maximum recent hook failure events to return")
 	jsonOut := fs.Bool("json", false, "print hook failure events as JSON")
@@ -62,6 +65,22 @@ func Run(args []string) error {
 		return printJSON(result)
 	}
 	return printJSON(result)
+}
+
+// RunStats prints aggregated hook-failure metrics (quality program Q2): the
+// first measurable failure-rate signal for the hook surface.
+func RunStats(args []string) error {
+	fs := flag.NewFlagSet("hook failures stats", flag.ContinueOnError)
+	jsonOut := fs.Bool("json", false, "print stats as JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	_ = jsonOut
+	stats, err := core.SummarizeHookFailureLog()
+	if err != nil {
+		return err
+	}
+	return printJSON(stats)
 }
 
 func RunPrune(args []string) error {

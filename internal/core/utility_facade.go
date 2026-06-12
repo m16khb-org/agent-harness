@@ -121,6 +121,7 @@ type HookFailureEvent = hookfailure.HookFailureEvent
 type HookFailureRecordResult = hookfailure.HookFailureRecordResult
 type HookFailureListResult = hookfailure.HookFailureListResult
 type HookFailurePruneResult = hookfailure.HookFailurePruneResult
+type HookFailureStats = hookfailure.HookFailureStats
 
 func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, error) {
 	return hookfailure.RecordHookFailureEvent(event)
@@ -136,6 +137,10 @@ func PruneHookFailureLog(maxAge time.Duration) (HookFailurePruneResult, error) {
 
 func HookFailureLogPath() string {
 	return hookfailure.HookFailureLogPath()
+}
+
+func SummarizeHookFailureLog() (HookFailureStats, error) {
+	return hookfailure.SummarizeHookFailureLog()
 }
 
 type InspectInfo = coreinspect.InspectInfo

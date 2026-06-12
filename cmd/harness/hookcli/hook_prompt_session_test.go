@@ -3,8 +3,12 @@ package hookcli
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
+	"time"
+
+	"agent-harness/internal/core"
 )
 
 func TestRunHookUserPromptDropsCatalog(t *testing.T) {
@@ -324,4 +328,28 @@ func hookInputJSON(t *testing.T, repo, key, value string) string {
 		t.Fatal(err)
 	}
 	return fmt.Sprintf(`{"cwd":%q,%q:%s}`, repo, key, encoded)
+}
+
+// Q2/P1: session start must rotate the hook-failure log so it cannot grow
+// without bound (pruning previously required a manual command).
+func TestRunHookSessionStartPrunesStaleHookFailures(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := hookTempRepoWithDoc(t)
+	stale := `{"timestamp":"` + time.Now().UTC().Add(-31*24*time.Hour).Format(time.RFC3339Nano) + `","hook":"stop","error":"stale"}` + "\n"
+	if err := os.WriteFile(core.HookFailureLogPath(), []byte(stale), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.RecordHookFailureEvent(core.HookFailureEvent{Hook: "stop", Error: "recent"}); err != nil {
+		t.Fatal(err)
+	}
+
+	runHookCapture(t, `{"cwd":"`+repo+`","source":"startup"}`, func() error { return runHookSessionStart(nil) })
+
+	stats, err := core.SummarizeHookFailureLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Total != 1 || stats.ByHook["stop"] != 1 {
+		t.Fatalf("session start must prune entries older than 720h, got %+v", stats)
+	}
 }

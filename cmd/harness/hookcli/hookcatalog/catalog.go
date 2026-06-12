@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
@@ -69,6 +70,10 @@ func RunSessionStart(args []string, config Config) error {
 		return err
 	}
 	stdin, _ := io.ReadAll(os.Stdin)
+	// Best-effort rotation of the hook-failure log (quality program Q2 /
+	// audit P1): the JSONL grew without bound because pruning required a
+	// manual command. Session start is the natural low-frequency hook for it.
+	_, _ = core.PruneHookFailureLog(720 * time.Hour)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
 		parsedRepo = hookinput.RepoFromHookInput(stdin)
