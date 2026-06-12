@@ -103,8 +103,8 @@ skill ≥ 4.2/5.0, 케이스 최저 ≥ 3.5, `unsafe`/`stale-contract`/`fake-too
 해소(`agent-harness api-doc check`); rubric상 skill max 3.4 until re-measured — 재측정은 다음 배치.
 
 측정이 발굴한 harness 후속 항목(스킬 결함 아님, 별도 트랙):
-- `self-verify promote --confirm`이 소스 스냅샷의 통과 여부를 검사하지 않음(`self_verify_promote_core.go`) —
-  실패 run이 baseline을 오염 가능. defense-in-depth로 source-passed 검사 또는 명시 플래그 검토. (SV-B 발견)
+- ~~`self-verify promote --confirm` source-passed 미검사~~ — **해소(09fcb7c, 2026-06-13)**: SourcePassed
+  게이트 + `--allow-failed-source` 명시 override(CLI/MCP), dry-run은 진단 보고. SA-P 선정 → 구현 완료. (SV-B 발견)
 - `project bootstrap` 비-`--sync` dry-run 플랜이 기존 수기 문서를 `update`로 표시 — 비sync 실행이 기존 문서를
   실제로 덮는지 동작 확인 필요. (PB-B 발견)
 - `project commit-suggest`가 top-level `--help`에 누락. `project record`의 상세 플래그도 usage 과소 표기. (ACP-O/PB-O 발견)
