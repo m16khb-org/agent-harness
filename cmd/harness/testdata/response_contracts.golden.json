@@ -1100,6 +1100,19 @@
           "title": "6: lifecycle state 초기화 read-while-write 레이스 수정"
         },
         {
+          "bytes": 1521,
+          "headings": [
+            "8: validation smoke의 truncate-후-JSON-파싱 결함 수정",
+            "Root Cause (확정)",
+            "Fix (단일 파일, \u003c30줄)",
+            "Acceptance (이슈와 동일)",
+            "Non-goals"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+          "rel_path": ".agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+          "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
+        },
+        {
           "bytes": 20880,
           "headings": [
             "Agent-Harness 성능/안정성 개선 계획",
@@ -1511,6 +1524,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
+        "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
@@ -5837,6 +5851,19 @@
                 "title": "6: lifecycle state 초기화 read-while-write 레이스 수정"
               },
               {
+                "bytes": 1521,
+                "headings": [
+                  "8: validation smoke의 truncate-후-JSON-파싱 결함 수정",
+                  "Root Cause (확정)",
+                  "Fix (단일 파일, \u003c30줄)",
+                  "Acceptance (이슈와 동일)",
+                  "Non-goals"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+                "rel_path": ".agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+                "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
+              },
+              {
                 "bytes": 20880,
                 "headings": [
                   "Agent-Harness 성능/안정성 개선 계획",
@@ -6255,6 +6282,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
+              "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
