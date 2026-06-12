@@ -1088,6 +1088,19 @@
           "title": "6: lifecycle state 초기화 read-while-write 레이스 수정"
         },
         {
+          "bytes": 1521,
+          "headings": [
+            "8: validation smoke의 truncate-후-JSON-파싱 결함 수정",
+            "Root Cause (확정)",
+            "Fix (단일 파일, \u003c30줄)",
+            "Acceptance (이슈와 동일)",
+            "Non-goals"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+          "rel_path": ".agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+          "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
+        },
+        {
           "bytes": 20880,
           "headings": [
             "Agent-Harness 성능/안정성 개선 계획",
@@ -1498,6 +1511,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
+        "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
@@ -1538,18 +1552,6 @@
       },
       "ok": true,
       "skills": [
-        {
-          "has_openai_yaml": false,
-          "has_skill_md": false,
-          "name": ".claude",
-          "path": "$HARNESS_ROOT/skills/.claude"
-        },
-        {
-          "has_openai_yaml": false,
-          "has_skill_md": false,
-          "name": ".omc",
-          "path": "$HARNESS_ROOT/skills/.omc"
-        },
         {
           "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
           "has_openai_yaml": true,
@@ -3514,7 +3516,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 47,
+        "docs_indexed": 48,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -5824,6 +5826,19 @@
                 "title": "6: lifecycle state 초기화 read-while-write 레이스 수정"
               },
               {
+                "bytes": 1521,
+                "headings": [
+                  "8: validation smoke의 truncate-후-JSON-파싱 결함 수정",
+                  "Root Cause (확정)",
+                  "Fix (단일 파일, \u003c30줄)",
+                  "Acceptance (이슈와 동일)",
+                  "Non-goals"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+                "rel_path": ".agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+                "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
+              },
+              {
                 "bytes": 20880,
                 "headings": [
                   "Agent-Harness 성능/안정성 개선 계획",
@@ -6241,6 +6256,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
+              "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
@@ -6281,18 +6297,6 @@
             },
             "ok": true,
             "skills": [
-              {
-                "has_openai_yaml": false,
-                "has_skill_md": false,
-                "name": ".claude",
-                "path": "$HARNESS_ROOT/skills/.claude"
-              },
-              {
-                "has_openai_yaml": false,
-                "has_skill_md": false,
-                "name": ".omc",
-                "path": "$HARNESS_ROOT/skills/.omc"
-              },
               {
                 "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
                 "has_openai_yaml": true,
@@ -7668,7 +7672,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 47,
+              "docs_indexed": 48,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

@@ -16,7 +16,7 @@ var secretMaterialPatterns = []struct {
 	{name: "private_key", re: regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`)},
 	{name: "aws_access_key_id", re: regexp.MustCompile(`AKIA[0-9A-Z]{16}`)},
 	{name: "github_token", re: regexp.MustCompile(`ghp_[A-Za-z0-9]{20,}`)},
-	{name: "openai_token", re: regexp.MustCompile(`sk-[A-Za-z0-9_-]{20,}`)},
+	{name: "openai_token", re: regexp.MustCompile(`\bsk-[A-Za-z0-9_-]{20,}`)},
 	{name: "secret_assignment", re: regexp.MustCompile(`(?i)\b(token|secret|password|api[_-]?key|access[_-]?key)\s*[:=]\s*["']?([^\s"',}]+)`)},
 }
 

@@ -62,6 +62,57 @@ func TestValidateInspectWithDepsCoversCommandAndContractBranches(t *testing.T) {
 	}
 }
 
+// Truncated captures must fail with an explicit truncation error BEFORE any
+// JSON parse attempt — never with a misleading "invalid character" decode
+// error (the docs index outgrew the old 32KB budget and broke the 95-gate).
+func TestValidateSmokeStepsRejectTruncatedCapturesExplicitly(t *testing.T) {
+	root := t.TempDir()
+	truncatedRunner := func(label string) validationCommandRunner {
+		return func(string, string, time.Duration, string, string, ...string) StepResult {
+			return StepResult{
+				Label:           label,
+				OK:              true,
+				Stdout:          "[truncated: original_bytes=38544 omitted_bytes=5829]\nrest-of-tail",
+				StdoutBytes:     38544,
+				StdoutTruncated: true,
+			}
+		}
+	}
+	for _, tc := range []struct {
+		name string
+		run  func() StepResult
+	}{
+		{name: "inspect", run: func() StepResult {
+			return validateInspectWithDeps("bin", root, truncatedRunner("inspect smoke"))
+		}},
+		{name: "docs index", run: func() StepResult {
+			return validateDocsIndexWithDeps("bin", root, truncatedRunner("docs index smoke"))
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			step := tc.run()
+			if step.OK {
+				t.Fatalf("truncated capture must fail the step: %+v", step)
+			}
+			if !strings.Contains(step.Error, "truncated") || !strings.Contains(step.Error, "budget") {
+				t.Fatalf("expected explicit truncation error, got %q", step.Error)
+			}
+			if strings.Contains(step.Error, "invalid character") {
+				t.Fatalf("must not surface a misleading JSON decode error: %q", step.Error)
+			}
+		})
+	}
+}
+
+// The smoke budget must comfortably exceed the live docs index (38KB and
+// growing); pin the floor so a future "optimization" cannot reintroduce the
+// truncate-then-parse failure.
+func TestValidateSmokeOutputBudgetCoversDocsIndexGrowth(t *testing.T) {
+	if commandOutputBudgetBytes < 4*1024*1024 {
+		t.Fatalf("smoke output budget %d is below the 4MB floor", commandOutputBudgetBytes)
+	}
+}
+
 func TestValidateSmokeWrappersUseExecutableSurface(t *testing.T) {
 	root := t.TempDir()
 	binary := writeValidationSmokeFakeBinary(t, root, root)

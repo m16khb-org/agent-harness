@@ -2,6 +2,7 @@ package smoke
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -9,7 +10,22 @@ import (
 	"agent-harness/internal/core"
 )
 
-const commandOutputBudgetBytes = 32 * 1024
+// The smoke steps parse the captured stdout as JSON, so the budget must
+// comfortably exceed the live docs index (38KB and growing). Parsing a
+// tail-truncated capture surfaces a misleading "invalid character" decode
+// error and deterministically fails the 95-gate.
+const commandOutputBudgetBytes = 4 * 1024 * 1024
+
+// rejectTruncatedCapture fails a step explicitly when its stdout was
+// budget-truncated, before any JSON parse attempt.
+func rejectTruncatedCapture(step StepResult) (StepResult, bool) {
+	if !step.StdoutTruncated {
+		return step, false
+	}
+	step.OK = false
+	step.Error = fmt.Sprintf("%s: stdout truncated (original %d bytes exceeds the smoke output budget); cannot parse JSON — raise commandOutputBudgetBytes", step.Label, step.StdoutBytes)
+	return step, true
+}
 
 type StepResult = commandstep.StepResult
 type validationCommandRunner func(dir, label string, timeout time.Duration, stdin, name string, args ...string) StepResult
@@ -26,6 +42,9 @@ func validateInspectWithDeps(binary, root string, run validationCommandRunner) S
 	step := run(root, "inspect smoke", 30*time.Second, "", binary, "inspect", "--json")
 	if !step.OK {
 		return step
+	}
+	if rejected, truncated := rejectTruncatedCapture(step); truncated {
+		return rejected
 	}
 	var info core.InspectInfo
 	if err := json.Unmarshal([]byte(step.Stdout), &info); err != nil {
@@ -53,6 +72,9 @@ func validateDocsIndexWithDeps(binary, root string, run validationCommandRunner)
 	step := run(root, "docs index smoke", 30*time.Second, "", binary, "docs", "--json")
 	if !step.OK {
 		return step
+	}
+	if rejected, truncated := rejectTruncatedCapture(step); truncated {
+		return rejected
 	}
 	var index core.DocsIndexResult
 	if err := json.Unmarshal([]byte(step.Stdout), &index); err != nil {
