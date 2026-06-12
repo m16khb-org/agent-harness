@@ -28,6 +28,9 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 		rec, e = advanceIssueOpsPhaseLocked(stateRoot, id, to)
 		return e
 	})
+	if err == nil && rec.Phase == IssueOpsPhaseDone {
+		unbindIssueOpsSessionForCycle(rec.Repo, id)
+	}
 	return rec, err
 }
 

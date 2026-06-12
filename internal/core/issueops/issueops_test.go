@@ -505,6 +505,11 @@ func TestIssueOpsResumeUnboundWithActiveCycles(t *testing.T) {
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
+	// link-worktree now persists the session binding; drop it explicitly to
+	// simulate the lost-binding state this resume scenario is about.
+	if err := UnbindIssueOpsSession(repo); err != nil {
+		t.Fatal(err)
+	}
 
 	result := IssueOpsResume(repo)
 	if !result.OK {

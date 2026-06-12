@@ -648,7 +648,7 @@
           "title": "구현 컨벤션"
         },
         {
-          "bytes": 24231,
+          "bytes": 25117,
           "headings": [
             "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis",
             "1. Lock \u0026 Concurrency Analysis",
@@ -657,8 +657,8 @@
             "1.3 Orphaned .lock Files Never Cleaned (P2)",
             "1.4 TOCTOU in Stale Scan Snapshot (P1)",
             "2. Multi-Session State Continuity",
-            "2.1 No Session-to-Cycle Binding (P0)",
-            "2.2 ExpectedWorktree Env Var Is Ephemeral (P1)",
+            "2.1 No Session-to-Cycle Binding (P0) — RESOLVED 2026-06-12",
+            "2.2 ExpectedWorktree Env Var Is Ephemeral (P1) — RESOLVED 2026-06-12",
             "2.3 Phase Continuity After Session Interruption (P1)",
             "2.4 Multiple Parallel Cycles in Same Repo (P1)",
             "3. Worktree Lifecycle \u0026 Cleanup",
@@ -5411,7 +5411,7 @@
                 "title": "구현 컨벤션"
               },
               {
-                "bytes": 24231,
+                "bytes": 25117,
                 "headings": [
                   "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis",
                   "1. Lock \u0026 Concurrency Analysis",
@@ -5420,8 +5420,8 @@
                   "1.3 Orphaned .lock Files Never Cleaned (P2)",
                   "1.4 TOCTOU in Stale Scan Snapshot (P1)",
                   "2. Multi-Session State Continuity",
-                  "2.1 No Session-to-Cycle Binding (P0)",
-                  "2.2 ExpectedWorktree Env Var Is Ephemeral (P1)",
+                  "2.1 No Session-to-Cycle Binding (P0) — RESOLVED 2026-06-12",
+                  "2.2 ExpectedWorktree Env Var Is Ephemeral (P1) — RESOLVED 2026-06-12",
                   "2.3 Phase Continuity After Session Interruption (P1)",
                   "2.4 Multiple Parallel Cycles in Same Repo (P1)",
                   "3. Worktree Lifecycle \u0026 Cleanup",

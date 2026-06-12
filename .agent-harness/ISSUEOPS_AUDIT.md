@@ -67,7 +67,15 @@ The lock file is created with `O_CREATE` and never deleted. After process death,
 
 ## 2. Multi-Session State Continuity
 
-### 2.1 No Session-to-Cycle Binding (P0)
+### 2.1 No Session-to-Cycle Binding (P0) — RESOLVED 2026-06-12
+
+**Resolution:** `LinkIssueOpsWorktree` now persists the binding via `BindIssueOpsSession`
+(repo→cycle/branch/worktree), and every cycle-closing path (`AdvanceIssueOpsPhase` to done,
+`ForceDoneIssueOps`, `ForceReleaseIssueOps`) unbinds it cycle-guarded
+(`unbindIssueOpsSessionForCycle`). Hook guards resolve the expected worktree from the binding
+only when the session is on the bound branch (`expectedWorktreeFromSessionBinding`), so one
+cycle's binding never blocks unrelated work in the same repo. Pinned by
+`TestLinkWorktreeBindsSessionAndDoneUnbinds`.
 
 There is no mechanism to record "which session is working on which IssueOps cycle." The hook guard discovers the active cycle by reading the current git branch and looking up the cycle by (repo, branch). This works when:
 - The session's shell cwd is in the worktree (not the source checkout)
@@ -88,7 +96,11 @@ But fails when:
 - SessionStart hook records the active cycle
 - `issueops resume` command that restores the expected context
 
-### 2.2 ExpectedWorktree Env Var Is Ephemeral (P1)
+### 2.2 ExpectedWorktree Env Var Is Ephemeral (P1) — RESOLVED 2026-06-12
+
+**Resolution:** the persisted session binding (2.1) now survives session restarts; the
+lifecycle MCP guard falls back env → branch-matched session binding → active cycle records.
+The hookcli-side duplicate fallback was removed in favor of the branch-guarded lifecycle path.
 
 **File:** `cmd/harness/hookcli/hook_pre_tool_use.go:23`
 

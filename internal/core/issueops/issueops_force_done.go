@@ -17,6 +17,9 @@ func ForceDoneIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 		rec, e = forceDoneIssueOpsLocked(stateRoot, id)
 		return e
 	})
+	if err == nil {
+		unbindIssueOpsSessionForCycle(rec.Repo, id)
+	}
 	return rec, err
 }
 

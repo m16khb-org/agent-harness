@@ -13,6 +13,9 @@ func ForceReleaseIssueOps(stateRoot, id, reason string) (IssueOpsRecord, error) 
 		rec, e = forceReleaseLocked(stateRoot, id, reason)
 		return e
 	})
+	if err == nil {
+		unbindIssueOpsSessionForCycle(rec.Repo, id)
+	}
 	return rec, err
 }
 

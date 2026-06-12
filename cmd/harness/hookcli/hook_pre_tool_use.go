@@ -69,17 +69,12 @@ func runHookPreToolUse(args []string) error {
 	return printJSON(ho.FormatNoop())
 }
 
-// resolveExpectedWorktree returns the expected worktree path, checking the
-// explicit flag/env var first, then falling back to the persisted session
-// binding. This closes the gap where HARNESS_EXPECTED_WORKTREE is lost across
-// session restarts while the session-to-cycle binding survives.
+// resolveExpectedWorktree returns the explicitly provided expected worktree
+// (flag or HARNESS_EXPECTED_WORKTREE). The persisted session-binding fallback
+// lives in the lifecycle MCP guard, which also checks that the session is on
+// the bound branch — duplicating the fallback here without that branch guard
+// would let one cycle's binding block unrelated work in the same repo.
 func resolveExpectedWorktree(explicit, repo string) string {
-	if w := strings.TrimSpace(explicit); w != "" {
-		return w
-	}
-	b, err := core.ReadIssueOpsSession(repo)
-	if err != nil || b.CycleID == "" {
-		return ""
-	}
-	return b.ExpectedWorktree
+	_ = repo
+	return strings.TrimSpace(explicit)
 }

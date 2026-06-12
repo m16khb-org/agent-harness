@@ -62,6 +62,13 @@ func expectedWorktreeFromSessionBinding(repo string) string {
 	if err != nil || b.CycleID == "" {
 		return ""
 	}
+	// The binding is repo-scoped, not session-scoped: apply it only when the
+	// session is actually on the bound branch, so a binding written by one
+	// cycle never blocks unrelated work (e.g. main-branch source edits) in
+	// another session of the same repo.
+	if b.Branch != "" && b.Branch != gitBranchFromHead(repo) {
+		return ""
+	}
 	return cleanAbsPath(b.ExpectedWorktree)
 }
 

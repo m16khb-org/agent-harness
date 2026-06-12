@@ -233,7 +233,24 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 		rec, e = linking.LinkWorktree(issueOpsLinkingStore(), stateRoot, id, worktreePath)
 		return e
 	})
+	if err == nil {
+		// Persist the session-to-cycle binding so hook guards can resolve the
+		// expected worktree after session restarts (the read-side fallback
+		// existed but nothing wrote the binding — ISSUEOPS_AUDIT 2.1/2.2).
+		if bindErr := BindIssueOpsSession(rec.Repo, rec.ID, rec.Branch, worktreePath); bindErr != nil {
+			return rec, bindErr
+		}
+	}
 	return rec, err
+}
+
+// unbindIssueOpsSessionForCycle clears the repo's session binding only when
+// it still points at the given cycle, so closing one cycle never drops a
+// binding that another active cycle owns.
+func unbindIssueOpsSessionForCycle(repo, id string) {
+	if binding, err := ReadIssueOpsSession(repo); err == nil && binding.CycleID == id {
+		_ = UnbindIssueOpsSession(repo)
+	}
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
