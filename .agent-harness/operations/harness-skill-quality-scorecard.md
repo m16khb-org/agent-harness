@@ -108,9 +108,8 @@ skill ≥ 4.2/5.0, 케이스 최저 ≥ 3.5, `unsafe`/`stale-contract`/`fake-too
 - `project bootstrap` 비-`--sync` dry-run 플랜이 기존 수기 문서를 `update`로 표시 — 비sync 실행이 기존 문서를
   실제로 덮는지 동작 확인 필요. (PB-B 발견)
 - `project commit-suggest`가 top-level `--help`에 누락. `project record`의 상세 플래그도 usage 과소 표기. (ACP-O/PB-O 발견)
-- **[높음] self-verify `docs index smoke`가 32KB로 truncate된 캡처본을 JSON 파싱**(`validation_smoke.go:12,53-62`,
-  `commandstep/result.go:85`) — docs 인덱스가 35,463B로 성장해 예산 초과, **main에서 게이트가 현재 결정론적
-  실패**. truncate 전 stdout 파싱 또는 step 출력 예산 상향 필요. (SV-P 발견, 2026-06-11)
+- ~~[높음] self-verify `docs index smoke` truncate-parse~~ — **해소(PR #9, 2026-06-12)**: 4MB 예산 +
+  StdoutTruncated 가드. 같은 PR에서 redaction `\bsk-` 오탐도 수정, main 게이트 ok=true 복구 확인. (SV-P 발견)
 - `project bootstrap`의 `signals.files`가 manifest/config만 스캔해 소스 파일(main.go)이 ARCHITECTURE 감지에
   미반영. (PB-P 발견)
 - hook failure 로그가 `--help`/`flag: help requested`(16건)를 실패로 기록 — 도움말 요청은 실패가 아니므로
