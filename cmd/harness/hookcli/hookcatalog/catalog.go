@@ -74,6 +74,7 @@ func RunSessionStart(args []string, config Config) error {
 	// audit P1): the JSONL grew without bound because pruning required a
 	// manual command. Session start is the natural low-frequency hook for it.
 	_, _ = core.PruneHookFailureLog(720 * time.Hour)
+	_, _ = core.PruneHookMetricsLog(720 * time.Hour)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
 		parsedRepo = hookinput.RepoFromHookInput(stdin)

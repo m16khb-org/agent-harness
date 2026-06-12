@@ -9,6 +9,7 @@ import (
 	"agent-harness/internal/core/externalllm"
 	coreguard "agent-harness/internal/core/guard"
 	"agent-harness/internal/core/hookfailure"
+	"agent-harness/internal/core/hookmetrics"
 	coreinspect "agent-harness/internal/core/inspect"
 	coreinstall "agent-harness/internal/core/install"
 	"agent-harness/internal/core/lintdiagnose"
@@ -122,6 +123,9 @@ type HookFailureRecordResult = hookfailure.HookFailureRecordResult
 type HookFailureListResult = hookfailure.HookFailureListResult
 type HookFailurePruneResult = hookfailure.HookFailurePruneResult
 type HookFailureStats = hookfailure.HookFailureStats
+type HookMetricEvent = hookmetrics.HookMetricEvent
+type HookMetricsStats = hookmetrics.HookMetricsStats
+type HookMetricsPruneResult = hookmetrics.HookMetricsPruneResult
 
 func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, error) {
 	return hookfailure.RecordHookFailureEvent(event)
@@ -141,6 +145,19 @@ func HookFailureLogPath() string {
 
 func SummarizeHookFailureLog() (HookFailureStats, error) {
 	return hookfailure.SummarizeHookFailureLog()
+}
+
+func RecordHookMetricEvent(event HookMetricEvent) error {
+	_, err := hookmetrics.RecordHookMetricEvent(event)
+	return err
+}
+
+func SummarizeHookMetricsLog() (HookMetricsStats, error) {
+	return hookmetrics.SummarizeHookMetricsLog()
+}
+
+func PruneHookMetricsLog(maxAge time.Duration) (HookMetricsPruneResult, error) {
+	return hookmetrics.PruneHookMetricsLog(maxAge)
 }
 
 type InspectInfo = coreinspect.InspectInfo

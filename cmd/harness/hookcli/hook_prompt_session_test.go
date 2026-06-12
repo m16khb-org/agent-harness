@@ -353,3 +353,31 @@ func TestRunHookSessionStartPrunesStaleHookFailures(t *testing.T) {
 		t.Fatalf("session start must prune entries older than 720h, got %+v", stats)
 	}
 }
+
+// Q2 phase 2: every real hook event must leave a latency metric line, and an
+// enforcement block must mark the same line's decision.
+func TestRunHookRecordsLatencyMetricWithBlockDecision(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	hookMetricDecision = ""
+	t.Cleanup(func() { hookMetricDecision = "" })
+
+	runHookCapture(t, `{"prompt":"x"}`, func() error {
+		return runHook([]string{"user-prompt", "--prompt", "hello"})
+	})
+	stats, err := core.SummarizeHookMetricsLog()
+	if err != nil || stats.Total != 1 || stats.ByHook["user-prompt"].Count != 1 {
+		t.Fatalf("dispatcher must record one latency metric: %+v err=%v", stats, err)
+	}
+	if stats.ByHook["user-prompt"].Blocks != 0 {
+		t.Fatalf("non-blocking event must not count as a block: %+v", stats)
+	}
+
+	markHookMetricBlocked()
+	runHookCapture(t, `{"prompt":"y"}`, func() error {
+		return runHook([]string{"user-prompt", "--prompt", "again"})
+	})
+	stats, err = core.SummarizeHookMetricsLog()
+	if err != nil || stats.ByHook["user-prompt"].Blocks != 1 {
+		t.Fatalf("blocked event must carry decision=block: %+v err=%v", stats, err)
+	}
+}

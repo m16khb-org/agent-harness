@@ -67,6 +67,21 @@ func Run(args []string) error {
 	return printJSON(result)
 }
 
+// RunMetrics prints aggregated hook latency/gate telemetry (Q2 phase 2).
+func RunMetrics(args []string) error {
+	fs := flag.NewFlagSet("hook metrics", flag.ContinueOnError)
+	jsonOut := fs.Bool("json", false, "print metrics as JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	_ = jsonOut
+	stats, err := core.SummarizeHookMetricsLog()
+	if err != nil {
+		return err
+	}
+	return printJSON(stats)
+}
+
 // RunStats prints aggregated hook-failure metrics (quality program Q2): the
 // first measurable failure-rate signal for the hook surface.
 func RunStats(args []string) error {

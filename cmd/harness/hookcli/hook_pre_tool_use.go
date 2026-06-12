@@ -62,6 +62,7 @@ func runHookPreToolUse(args []string) error {
 		if result.Decision == "ask" {
 			return printJSON(ho.FormatAsk(result.Reason))
 		}
+		markHookMetricBlocked()
 		return printJSON(ho.FormatBlock(result.Reason))
 	}
 	// PreToolUse is on the critical path before every tool call. Keep the shared

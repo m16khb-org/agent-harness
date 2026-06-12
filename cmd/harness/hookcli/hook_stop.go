@@ -85,6 +85,7 @@ func runHookStop(args []string) error {
 	// next-action choices still need the judgement relay above; otherwise a
 	// recovered response can present choices and then silently stop.
 	if nextActions.Decision == "block" && !stopHookActive && !noAutoProceedJudgement {
+		markHookMetricBlocked()
 		return printJSON(ho.FormatStopBlock(nextActions.Reason))
 	}
 	// Codex and Claude Stop hooks only accept the stop-control schema
