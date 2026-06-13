@@ -857,7 +857,7 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 10492,
+          "bytes": 10797,
           "headings": [
             "Harness Skill Quality Scorecard (비-pioneer 7종)",
             "v2 세분화 적용 (2026-06-12)",
@@ -1473,11 +1473,13 @@
           "title": "Self-verification candidate catalog"
         },
         {
-          "bytes": 2524,
+          "bytes": 2723,
           "headings": [
             "Self-verification loop",
             "Goal",
             "Commands",
+            "Confirmed promote refuses a source snapshot that did not pass the gate; --allow-failed-source is an",
+            "explicit, deliberate override for accepted deviations only — never a pressure/demo shortcut.",
             "Gate",
             "Candidate catalog"
           ],
@@ -5621,7 +5623,7 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 10492,
+                "bytes": 10797,
                 "headings": [
                   "Harness Skill Quality Scorecard (비-pioneer 7종)",
                   "v2 세분화 적용 (2026-06-12)",
@@ -6237,11 +6239,13 @@
                 "title": "Self-verification candidate catalog"
               },
               {
-                "bytes": 2524,
+                "bytes": 2723,
                 "headings": [
                   "Self-verification loop",
                   "Goal",
                   "Commands",
+                  "Confirmed promote refuses a source snapshot that did not pass the gate; --allow-failed-source is an",
+                  "explicit, deliberate override for accepted deviations only — never a pressure/demo shortcut.",
                   "Gate",
                   "Candidate catalog"
                 ],

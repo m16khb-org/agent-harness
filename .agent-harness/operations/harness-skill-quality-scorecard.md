@@ -89,16 +89,18 @@ skill ≥ 4.2/5.0, 케이스 최저 ≥ 3.5, `unsafe`/`stale-contract`/`fake-too
 
 | Skill | P | B | O | Skill Score | Holdout(n≥3) | Gate Flags | Evidence |
 |-------|---|---|---|-------------|--------------|------------|----------|
-| issueops | 5.0 | 5.0 | 5.0 | **5.0** | — (후속) | none | A·A/B (2026-06-11) |
-| atomic-commit-push | 5.0 | 5.0 | 2.0² | 4.1 (cap 3.4²) | — (후속) | stale-contract²(fixed) | A (2026-06-11) |
-| self-verify | 5.0 | 5.0 | 5.0 | **5.0** | — (후속) | none | A (2026-06-11) |
-| self-augment | 5.0 | 5.0 | 5.0 | **5.0** | — (후속) | none | A (2026-06-11) |
-| project-bootstrap | 4.8 | 5.0 | 4.8 | **4.86** | — (후속) | none | A (2026-06-11) |
-| draft-wiki-promoter | 5.0 | 5.0 | 4.8 | **4.94** | — (후속) | none | A/C/A (2026-06-11) |
-| stability-audit | (보류¹) | 5.0 | 4.8 | — | — (후속) | none | A (2026-06-11) |
+| issueops | 5.0 | 5.0 | 5.0 | **5.0** | **5.0 ±0** (n=3) | none | A·A/B + H:C (06-13) |
+| atomic-commit-push | 5.0 | 5.0 | 2.0² | 4.1 (cap 3.4²) | **4.9 ±0** (n=3) | stale-contract²(fixed) | A + H:C (06-13) |
+| self-verify | 5.0 | 5.0 | 5.0 | **5.0** | **4.9 ±0** (n=3) | none | A + H:C (06-13) |
+| self-augment | 5.0 | 5.0 | 5.0 | **5.0** | **4.9 ±0** (n=3) | none | A + H:C (06-13) |
+| project-bootstrap | 4.8 | 5.0 | 4.8 | **4.86** | **5.0 ±0** (n=3) | none | A + H:A (06-13) |
+| draft-wiki-promoter | 5.0 | 5.0 | 4.8 | **4.94** | **4.8 ±0** (n=3) | none | A/C/A + H:C (06-13) |
+| stability-audit | (보류¹) | 5.0 | 4.8 | — | 5.0 (n=1³) | none | A + H:A (06-13) |
 
 ¹ STA-P는 2026-06-11 fresh-context 실행이 호스트 사용량 한도로 중단되어 미측정. 풀 audit 스크립트 실행을
 포함하므로 다음 측정 배치에서 재실행한다(rubric: D-등급 추정으로 점수를 채우지 않는다).
+³ STA-H는 run 2·3가 호스트 세션 한도로 중단되어 n=1 단일런만 확보(D-추정 금지 원칙대로 평균 미확정).
+다음 배치에서 STA-P와 함께 재실행한다. holdout v2 채점 분산: 전 스킬 ±0 — sonnet 실행자 일관성 실증.
 ² ACP-O는 `harness api-doc check`(존재하지 않는 binary 이름)로 stale-contract cap 2.0. 같은 날 수정 커밋으로
 해소(`agent-harness api-doc check`); rubric상 skill max 3.4 until re-measured — 재측정은 다음 배치.
 

@@ -20,6 +20,8 @@ HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --seed=100 --t
 ./bin/agent-harness self-verify history --prefix self-verify --json
 ./bin/agent-harness self-verify compare --baseline-key self-verify-baseline --candidate-key self-verify-latest --json
 ./bin/agent-harness self-verify promote --from-key self-verify-latest --baseline-key self-verify-baseline --confirm --json
+# Confirmed promote refuses a source snapshot that did not pass the gate; --allow-failed-source is an
+# explicit, deliberate override for accepted deviations only — never a pressure/demo shortcut.
 ```
 
 Default `self-verify` is quick mode: one deterministic evidence pass followed by the final LLM evaluator when LLM eval is enabled. Use `--full` for the full ten-plus-iteration gate. Passing `--iterations` without `--full` is invalid.
