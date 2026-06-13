@@ -1,11 +1,20 @@
 package github
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/port"
 )
+
+func TestGitHubProviderName(t *testing.T) {
+	if got := NewProvider().Name(); got != "github" {
+		t.Fatalf("Name()=%q, want github", got)
+	}
+}
 
 func TestGitHubCreateIssueRequiresTitle(t *testing.T) {
 	_, err := NewProvider().CreateIssue(port.IssueProviderCreateIssueRequest{Title: "  "})
@@ -79,5 +88,67 @@ func TestParseGhOutput(t *testing.T) {
 				t.Errorf("got %+v, want url=%q number=%q", got, tc.wantURL, tc.wantNumber)
 			}
 		})
+	}
+}
+
+func TestRunGhJSONReportsMissingCLI(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	_, err := runGhJSON([]string{"issue", "create"}, "", "issue")
+	if err == nil || !strings.Contains(err.Error(), "gh CLI is not installed") {
+		t.Fatalf("error=%v, want missing gh CLI", err)
+	}
+}
+
+func TestRunGhJSONExecutesInRepoAndParsesOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "gh.args")
+	writeFakeGh(t, binDir, `#!/bin/sh
+printf '%s\n' "$PWD|$*" > gh.args
+printf '{"url":"https://github.com/o/r/issues/12","number":"12"}'
+`)
+	t.Setenv("PATH", binDir)
+
+	got, err := runGhJSON([]string{"issue", "create", "--title", "Fix"}, repo, "issue")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.URL != "https://github.com/o/r/issues/12" || got.Number != "12" {
+		t.Fatalf("result=%+v", got)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := repo + "|issue create --title Fix"; strings.TrimSpace(string(log)) != want {
+		t.Fatalf("logged command=%q, want %q", strings.TrimSpace(string(log)), want)
+	}
+}
+
+func TestRunGhJSONReportsExitStderr(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+echo "provider rejected request" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	_, err := runGhJSON([]string{"pr", "create"}, "", "pr")
+	if err == nil || !strings.Contains(err.Error(), "gh pr create failed: provider rejected request") {
+		t.Fatalf("error=%v, want stderr failure", err)
+	}
+}
+
+func writeFakeGh(t *testing.T, binDir, script string) {
+	t.Helper()
+	path := filepath.Join(binDir, "gh")
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
 	}
 }

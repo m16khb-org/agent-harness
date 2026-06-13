@@ -23,6 +23,51 @@ func TestRunWorkerRoutesUsageAndUnknownSubcommands(t *testing.T) {
 	}
 }
 
+func TestExportWrappersDelegateToWorkerCommands(t *testing.T) {
+	t.Setenv("HARNESS_WORKER_DIR", t.TempDir())
+	tests := []struct {
+		name    string
+		run     func([]string) error
+		args    []string
+		wantErr string
+	}{
+		{name: "Run", run: Run, wantErr: "missing worker subcommand"},
+		{name: "RunEnqueue", run: RunEnqueue, wantErr: "worker job kind is required"},
+		{name: "RunDraftWiki", run: RunDraftWiki, args: []string{"--bad"}, wantErr: "flag provided but not defined"},
+		{name: "RunReadOnly", run: RunReadOnly, wantErr: "requires --read-only"},
+		{name: "RunStatus", run: RunStatus, args: []string{"--id", "missing"}, wantErr: "no such file"},
+		{name: "RunList", run: RunList, args: []string{"--bad"}, wantErr: "flag provided but not defined"},
+		{name: "RunCancel", run: RunCancel, args: []string{"--id", "missing"}, wantErr: "no such file"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run(tt.args)
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error=%v, want substring %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSplitCSV(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{name: "blank", in: " \t ", want: nil},
+		{name: "trims and drops empties", in: " PATH,HOME,, SHELL ", want: []string{"PATH", "HOME", "SHELL"}},
+		{name: "single value", in: "TOKEN", want: []string{"TOKEN"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := splitCSV(tt.in); !workerStringSlicesEqual(got, tt.want) {
+				t.Fatalf("splitCSV(%q)=%v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRunWorkerRunExecutesReadOnlyCommandAsJSON(t *testing.T) {
 	repo := t.TempDir()
 	runStatusVerifyTestCommand(t, repo, "git", "init")
@@ -161,4 +206,16 @@ func runStatusVerifyTestCommand(t *testing.T, dir string, name string, args ...s
 	if err != nil {
 		t.Fatalf("%s %v failed: %v\n%s", name, args, err, string(out))
 	}
+}
+
+func workerStringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

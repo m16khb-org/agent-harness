@@ -1,0 +1,148 @@
+package hookinput
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"agent-harness/cmd/harness/commandstep"
+)
+
+func TestBasicHookInputFieldsUseTopLevelAndNestedValues(t *testing.T) {
+	input := []byte(`{"repo":" /repo ","source":"COMPACT","allow":true,"hook_input":{"cwd":"/nested","fallback":true}}`)
+	if got := RepoFromHookInput(input); got != "/repo" {
+		t.Fatalf("RepoFromHookInput = %q", got)
+	}
+	if got := SourceFromHookInput(input); got != "compact" {
+		t.Fatalf("SourceFromHookInput = %q", got)
+	}
+	if !Bool(input, "allow") || !Bool(input, "fallback") || Bool(input, "missing") {
+		t.Fatal("unexpected Bool extraction")
+	}
+	if RepoFromHookInput([]byte(`not json`)) != "" || SourceFromHookInput([]byte(`not json`)) != "" {
+		t.Fatal("invalid JSON should produce empty fields")
+	}
+	if got := RepoFromHookInput([]byte(`{"hook_input":{"workspace_root":" /nested "}}`)); got != "/nested" {
+		t.Fatalf("nested repo = %q", got)
+	}
+}
+
+func TestPathsFromHookInputCollectsExplicitPatchAndInlinePaths(t *testing.T) {
+	input := []byte(`{
+	  "path":"a.go",
+	  "nested":{"file":"b.go","items":[{"filename":"testdata/case.json"}]},
+	  "patch":"*** Begin Patch\n*** Add File: c.go\n*** Update File: .agent-harness/ADR.md\n*** Delete File: d.go\n*** Move to: e.go\n*** End Patch",
+	  "note":"internal/core/foo.go",
+	  "duplicate":"a.go"
+	}`)
+	got := PathsFromHookInput(input)
+	for _, want := range []string{"a.go", "b.go", "testdata/case.json", "c.go", ".agent-harness/ADR.md", "d.go", "e.go", "internal/core/foo.go"} {
+		if !containsString(got, want) {
+			t.Fatalf("expected path %q in %#v", want, got)
+		}
+	}
+	var out []string
+	seen := map[string]bool{}
+	if !addPatchPathsFromHookString(&out, seen, "*** Begin Patch\n*** Add File: z.go") {
+		t.Fatal("expected patch string detection")
+	}
+	addHookPath(&out, seen, "z.go")
+	if countString(out, "z.go") != 1 {
+		t.Fatalf("expected de-duplicated paths, got %#v", out)
+	}
+}
+
+func TestToolCommandAndProjectPathExtraction(t *testing.T) {
+	input := []byte(`{"tool_name":"gitlab_create_mr","tool_input":{"flags":{"title":" Add feature ","description":"Body","labels":["bug",2],"assignee_id":[7],"copy_issue_labels":true},"issue_iid":"12","projectPath":"/repo"}}`)
+	if got := ToolNameFromHookInput(input); got != "gitlab_create_mr" {
+		t.Fatalf("ToolNameFromHookInput = %q", got)
+	}
+	command := CommandFromHookInput(input)
+	for _, want := range []string{`glab mr create`, `--title "Add feature"`, `--description "Body"`, `--label "bug"`, `--label "2"`, `--copy-issue-labels`, `--related-issue "12"`, `--assignee-id "7"`} {
+		if !strings.Contains(command, want) {
+			t.Fatalf("expected command to contain %q, got %q", want, command)
+		}
+	}
+	if got := ProjectPathFromHookInput(input); got != "/repo" {
+		t.Fatalf("ProjectPathFromHookInput = %q", got)
+	}
+	if got := CommandFromHookInput([]byte(`{"tool_input":{"query":" symbols "}}`)); got != "symbols" {
+		t.Fatalf("query fallback command = %q", got)
+	}
+}
+
+func TestTranscriptHelpersExtractAssistantText(t *testing.T) {
+	input := []byte(`{"lastAssistantMessage":" done ","transcriptPath":" /tmp/t.jsonl "}`)
+	if got := LastAssistantMessageFromHookInput(input); got != "done" {
+		t.Fatalf("LastAssistantMessageFromHookInput = %q", got)
+	}
+	if got := TranscriptPathFromHookInput(input); got != "/tmp/t.jsonl" {
+		t.Fatalf("TranscriptPathFromHookInput = %q", got)
+	}
+	path := filepath.Join(t.TempDir(), "transcript.jsonl")
+	lines := strings.Join([]string{
+		`{"role":"user","content":"ignore"}`,
+		`{"role":"assistant","content":[{"type":"tool_use","text":"skip"},{"type":"text","text":"hello"},{"content":"world"}]}`,
+	}, "\n")
+	if err := os.WriteFile(path, []byte(lines), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := ReadLastAssistantMessageFromTranscript(path); got != "hello\nworld" {
+		t.Fatalf("ReadLastAssistantMessageFromTranscript = %q", got)
+	}
+	if ReadLastAssistantMessageFromTranscript("") != "" || ReadLastAssistantMessageFromTranscript(filepath.Join(t.TempDir(), "missing")) != "" {
+		t.Fatal("empty or missing transcript should return empty text")
+	}
+}
+
+func TestMCPValueHelpers(t *testing.T) {
+	values := map[string]any{
+		"s":       "a, b",
+		"any":     []any{"x", float64(2), ""},
+		"strings": []string{" y "},
+		"num":     float64(3),
+		"flag":    true,
+	}
+	if got := firstStringValue(values, "missing", "s"); got != "a, b" {
+		t.Fatalf("firstStringValue = %q", got)
+	}
+	if !boolValue(values, "flag") || boolValue(values, "missing") {
+		t.Fatal("unexpected boolValue")
+	}
+	if got := strings.Join(stringListValue(values, "s"), "|"); got != "a|b" {
+		t.Fatalf("string list from string = %q", got)
+	}
+	if got := strings.Join(stringListValue(values, "any"), "|"); got != "x|2" {
+		t.Fatalf("string list from []any = %q", got)
+	}
+	if got := strings.Join(stringListValue(values, "strings"), "|"); got != "y" {
+		t.Fatalf("string list from []string = %q", got)
+	}
+	if got := strings.Join(stringListValue(values, "num"), "|"); got != "3" {
+		t.Fatalf("string list from number = %q", got)
+	}
+	if shellQuoteArg("a b") != `"a b"` {
+		t.Fatal("unexpected shell quote")
+	}
+	_ = commandstep.StepResult{}
+}
+
+func containsString(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
+}
+
+func countString(items []string, want string) int {
+	count := 0
+	for _, item := range items {
+		if item == want {
+			count++
+		}
+	}
+	return count
+}

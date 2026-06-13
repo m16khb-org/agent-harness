@@ -61,6 +61,29 @@ func TestPlannedSelfVerifyStepsUsesCachedContractGoldenAfterGoTest(t *testing.T)
 	}
 }
 
+func TestPlannedSelfVerifyStepsRunsEveryPlannedClosure(t *testing.T) {
+	var goTestStep StepResult
+	steps := PlannedSelfVerifySteps("/repo", "/tmp/agent-harness", 100, &goTestStep, fakeSelfVerifyStepDeps(t))
+
+	for _, step := range steps {
+		got := step.Run()
+		if !got.OK {
+			t.Fatalf("%s returned non-ok result: %#v", step.Label, got)
+		}
+	}
+
+	if goTestStep.Label != "go test" || !goTestStep.OK {
+		t.Fatalf("go test step was not captured: %#v", goTestStep)
+	}
+}
+
+func TestCachedContractGoldenStepFallsBackWhenGoTestDidNotPass(t *testing.T) {
+	step := CachedContractGoldenStep(StepResult{Label: "go test", OK: false}, fakeSelfVerifyStepDeps(t))
+	if !step.OK || step.Label != "contract golden tests" {
+		t.Fatalf("expected fallback contract golden step, got %#v", step)
+	}
+}
+
 func TestCachedContractGoldenStepUsesFullGoTestEvidence(t *testing.T) {
 	step := CachedContractGoldenStep(StepResult{Label: "go test", Command: "go test ./... -count=1", OK: true}, fakeSelfVerifyStepDeps(t))
 	if !step.OK || step.Label != "contract golden tests" {

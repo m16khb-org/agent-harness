@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"agent-harness/internal/core"
 )
 
 func TestResolveTargetPrefersExplicitArgument(t *testing.T) {
@@ -138,5 +140,42 @@ func TestFindUpReturnsFalseWhenMarkerIsMissing(t *testing.T) {
 
 	if ok || got != "" {
 		t.Fatalf("findUp() = (%q, %v), want (\"\", false)", got, ok)
+	}
+}
+
+func TestHarnessRootPrefersEnvironmentAndReadHarnessFile(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HARNESS_ROOT", root)
+	if got := HarnessRoot("missing"); got != root {
+		t.Fatalf("HarnessRoot env = %q, want %q", got, root)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "docs", "note.txt"), []byte("hello"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	text, err := ReadHarnessFile(root, "docs", "note.txt")
+	if err != nil || text != "hello" {
+		t.Fatalf("ReadHarnessFile = %q err=%v", text, err)
+	}
+}
+
+func TestSplitCSVContainsAndStateIssueHelpers(t *testing.T) {
+	if Exists(filepath.Join(t.TempDir(), "missing")) {
+		t.Fatal("missing path should not exist")
+	}
+	if got := SplitCSV(" a, ,b,c "); !reflect.DeepEqual(got, []string{"a", "b", "c"}) {
+		t.Fatalf("SplitCSV = %#v", got)
+	}
+	if got := SplitCSV(" \t "); len(got) != 0 {
+		t.Fatalf("blank SplitCSV = %#v", got)
+	}
+	if !ContainsString([]string{"a", "b"}, "b") || ContainsString([]string{"a"}, "z") {
+		t.Fatal("ContainsString mismatch")
+	}
+	issues := []core.StateDoctorIssue{{Code: "bad_json"}}
+	if !StateDoctorHasIssueCode(issues, "bad_json") || StateDoctorHasIssueCode(issues, "missing") {
+		t.Fatal("StateDoctorHasIssueCode mismatch")
 	}
 }

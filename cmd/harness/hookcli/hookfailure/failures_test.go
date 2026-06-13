@@ -2,6 +2,7 @@ package hookfailure
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"io"
 	"os"
@@ -89,5 +90,70 @@ func TestRecordSkipsHelpRequestedErrors(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(stateDir, "hook-failures.jsonl")); !os.IsNotExist(err) {
 		t.Fatalf("help-requested must not be recorded as a failure (stat err=%v)", err)
+	}
+}
+
+func TestRunFailuresPruneAndMetricsJSON(t *testing.T) {
+	stateDir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	oldLine := `{"timestamp":"2020-01-01T00:00:00Z","hook":"stop","error":"old"}` + "\n"
+	if err := os.WriteFile(filepath.Join(stateDir, "hook-failures.jsonl"), []byte(oldLine), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, args := range [][]string{
+		{"--prune", "1h", "--json"},
+		{"prune", "--max-age", "1h", "--json"},
+	} {
+		out := captureStdout(t, func() {
+			if err := Run(args); err != nil {
+				t.Fatalf("Run(%v): %v", args, err)
+			}
+		})
+		var obj map[string]any
+		if err := json.Unmarshal([]byte(out), &obj); err != nil {
+			t.Fatalf("prune output is not JSON: %q: %v", out, err)
+		}
+		if obj["ok"] != true {
+			t.Fatalf("unexpected prune output: %+v", obj)
+		}
+	}
+
+	out := captureStdout(t, func() {
+		if err := RunMetrics([]string{"--json"}); err != nil {
+			t.Fatalf("RunMetrics: %v", err)
+		}
+	})
+	var metrics map[string]any
+	if err := json.Unmarshal([]byte(out), &metrics); err != nil {
+		t.Fatalf("metrics output is not JSON: %q: %v", out, err)
+	}
+	if metrics["ok"] != true {
+		t.Fatalf("unexpected metrics output: %+v", metrics)
+	}
+}
+
+func TestRecordFailureAndArgValue(t *testing.T) {
+	stateDir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	stdin := []byte(`{"tool_name":"Bash","tool_input":{"command":"go test ./..."},"cwd":"/repo"}`)
+
+	Record([]string{"pre-tool-use", "--host=codex", "--repo", "/repo"}, stdin, errors.New("denied"))
+
+	if ArgValue([]string{"--repo", "/repo"}, "--repo") != "/repo" || ArgValue([]string{"--repo=/repo"}, "--repo") != "/repo" || ArgValue(nil, "--repo") != "" {
+		t.Fatal("ArgValue did not parse expected flag forms")
+	}
+	out := captureStdout(t, func() {
+		if err := Run([]string{"--limit", "1"}); err != nil {
+			t.Fatalf("Run list: %v", err)
+		}
+	})
+	var obj map[string]any
+	if err := json.Unmarshal([]byte(out), &obj); err != nil {
+		t.Fatalf("list output is not JSON: %q: %v", out, err)
+	}
+	events, _ := obj["events"].([]any)
+	if len(events) != 1 {
+		t.Fatalf("expected recorded event, got %+v", obj)
 	}
 }

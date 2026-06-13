@@ -2,6 +2,7 @@ package implementation
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -118,4 +119,85 @@ func TestDiffBaseRef(t *testing.T) {
 			t.Errorf("expected empty, got %q", got)
 		}
 	})
+}
+
+func TestHasEvidenceForGitAndFileTreeChanges(t *testing.T) {
+	t.Run("invalid worktree", func(t *testing.T) {
+		if HasEvidence(model.IssueOpsRecord{}) {
+			t.Fatal("empty worktree should not have implementation evidence")
+		}
+	})
+	t.Run("non git worktree falls back to file tree", func(t *testing.T) {
+		worktree := t.TempDir()
+		record := model.IssueOpsRecord{WorktreePath: worktree, PlanPath: "plan.md"}
+		if HasEvidence(record) {
+			t.Fatal("empty non-git worktree should not have implementation evidence")
+		}
+		if err := os.WriteFile(filepath.Join(worktree, "plan.md"), []byte("plan"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if HasEvidence(record) {
+			t.Fatal("plan-only file should not count as implementation evidence")
+		}
+		if err := os.WriteFile(filepath.Join(worktree, "impl.go"), []byte("package impl\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if !HasEvidence(record) {
+			t.Fatal("non-plan file should count as implementation evidence")
+		}
+	})
+	t.Run("git status and fingerprint", func(t *testing.T) {
+		repo := newImplementationGitRepo(t)
+		record := model.IssueOpsRecord{
+			WorktreePath: repo,
+			PlanPath:     filepath.Join(repo, "plan.md"),
+			BranchPrepare: &model.IssueOpsBranchPrepare{
+				BaseBranch: "main",
+			},
+		}
+		if HasEvidence(record) {
+			t.Fatal("clean git worktree at base should not have implementation evidence")
+		}
+		if got := ChangeFingerprint(record); got != "" {
+			t.Fatalf("clean worktree fingerprint = %q", got)
+		}
+		if err := os.WriteFile(filepath.Join(repo, "impl.go"), []byte("package impl\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if !HasEvidence(record) {
+			t.Fatal("non-plan git status should count as implementation evidence")
+		}
+		if got := ChangeFingerprint(record); got == "" {
+			t.Fatal("dirty implementation change should produce fingerprint")
+		}
+		runGit(t, repo, "add", "impl.go")
+		runGit(t, repo, "commit", "-m", "add impl")
+		if !gitHeadDiffersFromBase(record, repo) {
+			t.Fatal("feature commit should differ from base")
+		}
+	})
+}
+
+func newImplementationGitRepo(t *testing.T) string {
+	t.Helper()
+	repo := t.TempDir()
+	runGit(t, repo, "init", "-b", "main")
+	runGit(t, repo, "config", "user.name", "Test User")
+	runGit(t, repo, "config", "user.email", "test@example.com")
+	if err := os.WriteFile(filepath.Join(repo, "plan.md"), []byte("plan"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repo, "add", "plan.md")
+	runGit(t, repo, "commit", "-m", "base")
+	runGit(t, repo, "checkout", "-b", "1234-impl")
+	return repo
+}
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
 }

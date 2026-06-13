@@ -1,8 +1,121 @@
 package worktreepath
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestGitBranchFromHead(t *testing.T) {
+	t.Run("no git dir returns empty", func(t *testing.T) {
+		if got := GitBranchFromHead(t.TempDir()); got != "" {
+			t.Fatalf("GitBranchFromHead()=%q, want empty", got)
+		}
+	})
+
+	t.Run("reads branch from HEAD", func(t *testing.T) {
+		dir := t.TempDir()
+		writeLifecycleGitHead(t, dir, "main")
+		if got := GitBranchFromHead(dir); got != "main" {
+			t.Fatalf("GitBranchFromHead()=%q, want main", got)
+		}
+	})
+
+	t.Run("reads branch through linked worktree gitdir file", func(t *testing.T) {
+		dir := t.TempDir()
+		gitDir := filepath.Join(dir, "actual-git-dir")
+		if err := os.MkdirAll(gitDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/feature/lifecycle\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: actual-git-dir\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := GitBranchFromHead(dir); got != "feature/lifecycle" {
+			t.Fatalf("GitBranchFromHead()=%q, want feature/lifecycle", got)
+		}
+	})
+
+	t.Run("detached or invalid head returns empty", func(t *testing.T) {
+		dir := t.TempDir()
+		gitDir := filepath.Join(dir, ".git")
+		if err := os.MkdirAll(gitDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("abc123\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := GitBranchFromHead(dir); got != "" {
+			t.Fatalf("GitBranchFromHead()=%q, want empty", got)
+		}
+	})
+
+	t.Run("non gitdir file returns empty", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, ".git"), []byte(strings.Repeat("x", 16)), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := GitBranchFromHead(dir); got != "" {
+			t.Fatalf("GitBranchFromHead()=%q, want empty", got)
+		}
+	})
+}
+
+func TestCleanAbsAndWithin(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := CleanAbs(" ./nested/../path "), filepath.Join(cwd, "path"); got != want {
+		t.Fatalf("CleanAbs()=%q, want %q", got, want)
+	}
+	if got := CleanAbs(" "); got != "" {
+		t.Fatalf("blank CleanAbs()=%q, want empty", got)
+	}
+
+	root := t.TempDir()
+	child := filepath.Join(root, "child", "file.txt")
+	sibling := filepath.Join(filepath.Dir(root), filepath.Base(root)+"-sibling")
+	for _, tc := range []struct {
+		name string
+		path string
+		root string
+		want bool
+	}{
+		{name: "root contains itself", path: root, root: root, want: true},
+		{name: "root contains descendant", path: child, root: root, want: true},
+		{name: "root excludes sibling prefix", path: sibling, root: root, want: false},
+		{name: "normalized traversal stays inside", path: filepath.Join(root, "child", "..", "file.txt"), root: root, want: true},
+		{name: "blank path is outside", path: "", root: root, want: false},
+		{name: "blank root is outside", path: child, root: "", want: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := Within(tc.path, tc.root); got != tc.want {
+				t.Fatalf("Within(%q, %q)=%v, want %v", tc.path, tc.root, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestResolveHookTargetPath(t *testing.T) {
+	repo := t.TempDir()
+	if got, want := ResolveHookTargetPath(repo, " sub/../file.txt "), filepath.Join(repo, "file.txt"); got != want {
+		t.Fatalf("relative target=%q, want %q", got, want)
+	}
+	abs := filepath.Join(t.TempDir(), "file.txt")
+	if got := ResolveHookTargetPath(repo, abs); got != abs {
+		t.Fatalf("absolute target=%q, want %q", got, abs)
+	}
+	if got := ResolveHookTargetPath("", "relative.txt"); got != "" {
+		t.Fatalf("relative target without repo=%q, want empty", got)
+	}
+	if got := ResolveHookTargetPath(repo, " "); got != "" {
+		t.Fatalf("blank target=%q, want empty", got)
+	}
+}
 
 func TestIsInsideWorktreesPath(t *testing.T) {
 	tests := []struct {
@@ -19,6 +132,17 @@ func TestIsInsideWorktreesPath(t *testing.T) {
 		if got != tt.expected {
 			t.Errorf("IsInsideWorktreesPath(%q) = %v, want %v", tt.path, got, tt.expected)
 		}
+	}
+}
+
+func writeLifecycleGitHead(t *testing.T, dir, branch string) {
+	t.Helper()
+	gitDir := filepath.Join(dir, ".git")
+	if err := os.MkdirAll(gitDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 

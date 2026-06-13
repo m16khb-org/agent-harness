@@ -1,8 +1,11 @@
 package qualitycli
 
 import (
+	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -20,6 +23,72 @@ func TestParseCoverageFindsPackagesBelowThreshold(t *testing.T) {
 	}
 }
 
+func TestRunRoutesQualityCommands(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{name: "missing subcommand", wantErr: "usage: quality inspect"},
+		{name: "unknown subcommand", args: []string{"unknown"}, wantErr: `unknown quality command "unknown"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Run(tc.args)
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error=%v, want substring %q", err, tc.wantErr)
+			}
+		})
+	}
+
+	out := captureQualityStdout(t, func() error { return Run([]string{"help"}) })
+	if !strings.Contains(out, "agent-harness quality inspect") {
+		t.Fatalf("help output=%q", out)
+	}
+}
+
+func TestRunInspectWithDepsPrintsTextAndJSON(t *testing.T) {
+	root := t.TempDir()
+	deps := qualityDepsForTest("2026-06-13T00:00:00Z")
+	textOut := captureQualityStdout(t, func() error {
+		return RunInspectWithDeps([]string{"--repo", root}, deps)
+	})
+	for _, want := range []string{
+		"quality inspect: ok=true repo=" + root,
+		"self-augment open: 2",
+		"self-verify open: 1",
+		"low coverage packages: 1",
+	} {
+		if !strings.Contains(textOut, want) {
+			t.Fatalf("text output missing %q:\n%s", want, textOut)
+		}
+	}
+
+	jsonOut := captureQualityStdout(t, func() error {
+		return RunInspectWithDeps([]string{"--json", root}, deps)
+	})
+	var result InspectResult
+	if err := json.Unmarshal([]byte(jsonOut), &result); err != nil {
+		t.Fatalf("decode JSON: %v\n%s", err, jsonOut)
+	}
+	if result.GeneratedAt != "2026-06-13T00:00:00Z" || result.Summary.SelfAugmentOpenCandidates != 2 || result.Summary.SelfVerifyOpenCandidates != 1 {
+		t.Fatalf("unexpected JSON result: %+v", result)
+	}
+}
+
+func TestRunInspectWithDepsValidatesFlags(t *testing.T) {
+	err := RunInspectWithDeps([]string{"--unknown"}, qualityDepsForTest("now"))
+	if err == nil || !strings.Contains(err.Error(), "flag provided but not defined") {
+		t.Fatalf("error=%v, want flag error", err)
+	}
+}
+
+func TestInspectDepsWithDefaultsFillsMissingDependencies(t *testing.T) {
+	deps := (InspectDeps{}).withDefaults()
+	if deps.Now == nil || deps.Coverage == nil || deps.SelfAugmentOpenCount == nil || deps.SelfVerifyOpenCount == nil {
+		t.Fatalf("withDefaults left nil dependency: %+v", deps)
+	}
+}
+
 func writeQualityTestFile(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -28,6 +97,42 @@ func writeQualityTestFile(t *testing.T, path, body string) {
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func qualityDepsForTest(now string) InspectDeps {
+	return InspectDeps{
+		Now: func() string { return now },
+		Coverage: func(string) (string, error) {
+			return "ok  \tagent-harness/internal/core/example\t0.011s\tcoverage: 54.3% of statements\n", nil
+		},
+		SelfAugmentOpenCount: func(string) (int, error) { return 2, nil },
+		SelfVerifyOpenCount:  func(string) (int, error) { return 1, nil },
+	}
+}
+
+func captureQualityStdout(t *testing.T, fn func() error) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	defer func() {
+		os.Stdout = oldStdout
+	}()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	callErr := fn()
+	if closeErr := w.Close(); closeErr != nil {
+		t.Fatal(closeErr)
+	}
+	if callErr != nil {
+		t.Fatalf("call failed: %v", callErr)
+	}
+	out, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(out)
 }
 
 func TestInspectQualityUsesInjectedSignals(t *testing.T) {

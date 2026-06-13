@@ -2,6 +2,9 @@ package cleanupstatus
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -51,6 +54,52 @@ func TestByIDReturnsReadError(t *testing.T) {
 	}
 }
 
+func TestRemoteArtifactMissingFieldsAreSorted(t *testing.T) {
+	missing := RemoteArtifactMissing(model.IssueOpsRecord{RemoteArtifact: &model.IssueOpsRemoteArtifactVerification{
+		Labels:    []string{" ", ""},
+		Assignees: nil,
+	}})
+	for _, want := range []string{"remote_artifact_assignees", "remote_artifact_kind", "remote_artifact_labels", "remote_artifact_provider", "remote_artifact_url"} {
+		if !containsString(missing, want) {
+			t.Fatalf("missing %q in %#v", want, missing)
+		}
+	}
+}
+
+func TestForRecordCoversWorktreeAndGitBranches(t *testing.T) {
+	record := completeCleanupRecord(t)
+	record.WorktreePath = filepath.Join(t.TempDir(), "missing")
+	status := ForRecord(record, model.IssueOpsCleanupStatusRequest{Merged: true})
+	if status.Ready || !containsString(status.Missing, "worktree_exists") {
+		t.Fatalf("missing worktree status = %#v", status)
+	}
+
+	repo := newCleanupGitRepo(t)
+	record.WorktreePath = repo
+	record.Branch = "1234-cleanup"
+	status = ForRecord(record, model.IssueOpsCleanupStatusRequest{Merged: true})
+	if status.Ready || !containsString(status.Missing, "remote_branch_check_unavailable") {
+		t.Fatalf("repo without remote status = %#v", status)
+	}
+
+	if err := os.WriteFile(filepath.Join(repo, "dirty.txt"), []byte("dirty"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	status = ForRecord(record, model.IssueOpsCleanupStatusRequest{Merged: true})
+	if !containsString(status.Missing, "worktree_dirty") {
+		t.Fatalf("dirty worktree status = %#v", status)
+	}
+
+	record.Branch = "different"
+	status = ForRecord(record, model.IssueOpsCleanupStatusRequest{Merged: true})
+	if !containsString(status.Missing, "branch_match") {
+		t.Fatalf("branch mismatch status = %#v", status)
+	}
+	if worktreePathValid("bad\x00path") {
+		t.Fatal("NUL path should be invalid")
+	}
+}
+
 type cleanupStatusTestStore struct {
 	record model.IssueOpsRecord
 }
@@ -77,4 +126,43 @@ func containsString(values []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func completeCleanupRecord(t *testing.T) model.IssueOpsRecord {
+	t.Helper()
+	return model.IssueOpsRecord{
+		ID:     "io-cleanup",
+		Phase:  model.IssueOpsPhasePR,
+		Branch: "1234-cleanup",
+		RemoteArtifact: &model.IssueOpsRemoteArtifactVerification{
+			Provider:  "github",
+			Kind:      "pr",
+			URL:       "https://github.com/example/repo/pull/1",
+			Labels:    []string{"issueops"},
+			Assignees: []string{"habin"},
+		},
+	}
+}
+
+func newCleanupGitRepo(t *testing.T) string {
+	t.Helper()
+	repo := t.TempDir()
+	runCleanupGit(t, repo, "init", "-b", "1234-cleanup")
+	runCleanupGit(t, repo, "config", "user.name", "Test User")
+	runCleanupGit(t, repo, "config", "user.email", "test@example.com")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("readme"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runCleanupGit(t, repo, "add", "README.md")
+	runCleanupGit(t, repo, "commit", "-m", "base")
+	return repo
+}
+
+func runCleanupGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
 }

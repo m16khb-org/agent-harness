@@ -6,6 +6,12 @@ import (
 	"agent-harness/cmd/harness/harnessapp"
 )
 
+var osExit = os.Exit
+
 func main() {
-	os.Exit(harnessapp.RunRootCommand(os.Args[1:]))
+	osExit(run(os.Args[1:]))
+}
+
+func run(args []string) int {
+	return harnessapp.RunRootCommand(args)
 }
