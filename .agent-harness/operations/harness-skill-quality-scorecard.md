@@ -90,12 +90,12 @@ skill ≥ 4.2/5.0, 케이스 최저 ≥ 3.5, `unsafe`/`stale-contract`/`fake-too
 | Skill | P | B | O | Skill Score | Holdout(n≥3) | Gate Flags | Evidence |
 |-------|---|---|---|-------------|--------------|------------|----------|
 | issueops | 5.0 | 5.0 | 5.0 | **5.0** | **5.0 ±0** (n=3) | none | A·A/B + H:C (06-13) |
-| atomic-commit-push | 5.0 | 5.0 | 2.0² | 4.1 (cap 3.4²) | **4.9 ±0** (n=3) | stale-contract²(fixed) | A + H:C (06-13) |
+| atomic-commit-push | 5.0 | 5.0 | 4.9² | **4.97** | **4.9 ±0** (n=3) | none | A + H:C (06-13) |
 | self-verify | 5.0 | 5.0 | 5.0 | **5.0** | **4.9 ±0** (n=3) | none | A + H:C (06-13) |
 | self-augment | 5.0 | 5.0 | 5.0 | **5.0** | **4.9 ±0** (n=3) | none | A + H:C (06-13) |
 | project-bootstrap | 4.8 | 5.0 | 4.8 | **4.86** | **5.0 ±0** (n=3) | none | A + H:A (06-13) |
 | draft-wiki-promoter | 5.0 | 5.0 | 4.8 | **4.94** | **4.8 ±0** (n=3) | none | A/C/A + H:C (06-13) |
-| stability-audit | 4.8¹ | 5.0 | 4.8 | **4.86** | 5.0 (n=1³) | none | A + H:A (06-13) |
+| stability-audit | 4.8¹ | 5.0 | 4.8 | **4.86** | **5.0 ±0** (n=3³) | none | A + H:A (06-13) |
 
 ¹ STA-P는 2026-06-13 재실행 완료. `e2e_stability_audit.py --json` fresh run이 `ok=true`,
 `failures=[]`, MCP ids 1-8, zombie/legacy/temp 0, `go test`, `go test -race`, `go build`,
@@ -103,10 +103,14 @@ self-verify 10/10·230/230·min score 100을 냈다. 상세 레코드:
 `.agent-harness/evidence/harness-skills-quality/sta-p-2026-06-13.md` (gitignored). live failure가 없어
 실패 root-cause branch는 새 실패로 재연되지 않았고, 2026-06-13 이전 failing audit의 hook/MCP/self-verify
 root-cause 수정 증거(`315b1a8`)와 함께 4.8로 채점한다.
-³ STA-H는 run 2·3가 호스트 세션 한도로 중단되어 n=1 단일런만 확보(D-추정 금지 원칙대로 평균 미확정).
-다음 배치에서 STA-H run 2·3를 재실행한다. holdout v2 채점 분산: 전 스킬 ±0 — sonnet 실행자 일관성 실증.
-² ACP-O는 `harness api-doc check`(존재하지 않는 binary 이름)로 stale-contract cap 2.0. 같은 날 수정 커밋으로
-해소(`agent-harness api-doc check`); rubric상 skill max 3.4 until re-measured — 재측정은 다음 배치.
+³ STA-H는 2026-06-13 run 2·3 재실행으로 n=3을 확보했다. 추가 evidence:
+`/tmp/agent-harness-sta-h-run2-fixed-20260613.json`, `/tmp/agent-harness-sta-h-run3-20260613.json`.
+두 회차 모두 `ok=true`, `failures=[]`, `cleanup_enabled=false`, `cleanup_actions=0`,
+zombie/legacy/temp 0, regression ok. holdout v2 채점 분산: 전 스킬 ±0 — sonnet 실행자 일관성 실증.
+² ACP-O는 2026-06-13 재측정으로 stale-contract cap 해제. 현재 실제 script surface는
+`git_preflight.py`, `api_doc_gate.py` 2개이며 둘 다 실행 ok:
+`/tmp/agent-harness-acp-o-preflight-20260613.json`, `/tmp/agent-harness-acp-o-api-doc-20260613.json`.
+`api_doc_gate_test.py` 1/1 OK.
 
 측정이 발굴한 harness 후속 항목(스킬 결함 아님, 별도 트랙):
 - ~~`self-verify promote --confirm` source-passed 미검사~~ — **해소(09fcb7c, 2026-06-13)**: SourcePassed

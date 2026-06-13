@@ -6,7 +6,7 @@
 
 이 문서는 **Q5 대시보드 측정면 6**의 출처다. 갱신 시 `quality-dashboard.md`의 해당 행도 함께 갱신한다.
 
-최종 갱신: **2026-06-13** (Q4 evidence-first 실측 2회분 기록)
+최종 갱신: **2026-06-13** (Q4 evidence-first 실측 + final quality audit 기록)
 
 > **현황**: Q4 baseline 수용 기준(최소 2회분 측정치 + stability-audit 스크립트 contract
 > test)을 2026-06-13 충족했다. 두 회차 모두 `e2e_stability_audit.py --json` evidence-first
@@ -52,6 +52,7 @@ python3 skills/stability-audit/scripts/e2e_stability_audit.py --full-install --c
 |--------|------|----|-----------|--------|-------------|----------|-------------|------|
 | 2026-06-13 11:51–12:05 KST | evidence-first | ✅ | 2 (user daemon + repo dogfood daemon) | 0 | 15152→16800 (+1648), deltas 768/592/288 | 0 | ✅ 10/10, 230/230, min score 100 | `/tmp/agent-harness-sta-run1-final-20260613.json`; MCP ids 1–8, temp leak 0, legacy/temp 0 |
 | 2026-06-13 12:06–12:19 KST | evidence-first | ✅ | 2 (user daemon + repo dogfood daemon) | 0 | 15072→16400 (+1328), deltas 720/480/128 | 0 | ✅ 10/10, 230/230, min score 100 | `/tmp/agent-harness-sta-run2-final-20260613.json`; MCP ids 1–8, temp leak 0, legacy/temp 0 |
+| 2026-06-13 13:40–13:48 KST | evidence-first | ✅ | 2 (user daemon + repo dogfood daemon) | 0 | 14272→17168 (+2896), deltas 960/1712/224 | 0 | ✅ 10/10, 230/230, min score 100 | `/tmp/agent-harness-final-stability-audit-20260613.json`; MCP ids 1–8, temp leak 0, legacy/temp 0, regression ok |
 
 ## 갱신 규약
 

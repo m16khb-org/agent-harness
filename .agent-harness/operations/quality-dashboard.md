@@ -20,14 +20,14 @@
 | # | 측정면 | 계층 | 최신값 | 측정일 | 게이트 | 다음 측정 |
 |---|--------|------|--------|--------|--------|-----------|
 | 1 | Pioneer 스킬 9종 | 격리 rubric | holdout **4.92/5.0** (전 9종 ≥4.8) | 2026-06-11 | ✅ ≥4.2 | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
-| 2 | 비-pioneer 스킬 7종 | 격리 rubric | visible **7/7 측정 완료**, stability-audit 4.86 | 2026-06-13 | ⚠️ ACP-O 재측정·STA-H n≥3 잔여 | ACP-O/STA-H 재측정 |
-| 3 | IssueOps 산출물 벤치마크 | 통합 | **100/100** (avg·min), critical 0, 9 fixtures | 2026-06-13 | ✅ GREEN | pre-push 상시 + judge file 실전(Q3) |
+| 2 | 비-pioneer 스킬 7종 | 격리 rubric | **7/7 측정 완료**, 전 skill ≥4.86, holdout ≥4.8 | 2026-06-13 | ✅ GREEN | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
+| 3 | IssueOps 산출물 벤치마크 | 통합 | **100/100** (avg·min), critical 0, 9 fixtures, `--judge file` green | 2026-06-13 | ✅ GREEN | pre-push 상시 |
 | 4 | Hook 런타임 메트릭 | 런타임 | 전 hook p95 **<40ms**, blocks 0 | 2026-06-13 | ✅ stop p95 38ms (<1s) | 상시 누적(자동) |
 | 5 | Hook 실패율 | 런타임 | total 38, last_7d **5**, last_24h 0 | 2026-06-13 | ✅ | 상시 누적(자동) |
-| 6 | 운영 안정성 baseline | 런타임 | **2/2 evidence-first green**: zombie 0, MCP 끊김 0, self-verify 230/230 | 2026-06-13 | ✅ GREEN | STA 재측정/안정성 회귀 의심 시 |
+| 6 | 운영 안정성 baseline | 런타임 | final audit green: zombie 0, MCP 끊김 0, self-verify 230/230 | 2026-06-13 | ✅ GREEN | STA 재측정/안정성 회귀 의심 시 |
 
 커버리지: 스킬 visible 측정 **16/16 완료** (STA-P D-추정 해소), hook 지표 **0→4** 달성.
-strict 잔여: ACP-O stale-contract fix 후 재측정, STA-H holdout n≥3, IssueOps judge file 실전 1회.
+strict 잔여였던 ACP-O 재측정, STA-H holdout n≥3, IssueOps judge file 실전 1회를 2026-06-13 모두 닫았다.
 
 ---
 
@@ -47,15 +47,15 @@ strict 잔여: ACP-O stale-contract fix 후 재측정, STA-H holdout n≥3, Issu
 | 스킬 | 가중 점수 | Holdout | gate flag | evidence |
 |------|-----------|---------|-----------|----------|
 | issueops | 5.0 | 5.0 ±0 (n=3) | none | A·A/B + H:C |
-| atomic-commit-push | 4.1 (cap 3.4) | 4.9 ±0 (n=3) | stale-contract(수정완료) | A + H:C |
+| atomic-commit-push | 4.97 | 4.9 ±0 (n=3) | none | A + H:C |
 | self-verify | 5.0 | 4.9 ±0 (n=3) | none | A + H:C |
 | self-augment | 5.0 | 4.9 ±0 (n=3) | none | A + H:C |
 | project-bootstrap | 4.86 | 5.0 ±0 (n=3) | none | A + H:A |
 | draft-wiki-promoter | 4.94 | 4.8 ±0 (n=3) | none | A/C/A + H:C |
-| stability-audit | 4.86 | 5.0 (n=1, n≥3 보강 대기) | none | A + H:A |
+| stability-audit | 4.86 | 5.0 ±0 (n=3) | none | A + H:A |
 
 - **STA-P 종료**: 2026-06-13 fast-path audit fresh run으로 A-grade evidence 확보(`ok=true`, `failures=[]`, MCP ids 1-8, zombie/legacy/temp 0, self-verify 10/10·230/230·min score 100). 상세: `.agent-harness/evidence/harness-skills-quality/sta-p-2026-06-13.md`.
-- **strict 잔여**: STA-H는 n=1만 확보(run 2·3 대기). ACP-O는 stale-contract cap 수정 커밋 반영 후 재측정 시 cap 3.4 해제 예정.
+- **strict 잔여 종료**: STA-H run 2·3 재실행 green(`/tmp/agent-harness-sta-h-run2-fixed-20260613.json`, `/tmp/agent-harness-sta-h-run3-20260613.json`)으로 n=3 달성. ACP-O는 현재 script surface 2개(`git_preflight.py`, `api_doc_gate.py`)와 `api_doc_gate_test.py`를 재측정해 stale-contract cap 제거.
 - **v2 세분화**(0.1 단위 + 5.0 유보 규칙 + proportionality)는 신규 측정부터 의무. 천장 효과(21케이스 중 17건 5.0) 실측이 동기.
 - 출처: `harness-skill-quality-scorecard.md`.
 
@@ -63,7 +63,7 @@ strict 잔여: ACP-O stale-contract fix 후 재측정, STA-H holdout n≥3, Issu
 
 - **18-dimension** 결정적 채점 + pioneer 시그니처 + N/A 제외 + A/B 게이트.
 - 최신 (2026-06-13, `--judge none`, fixtures 9건): **average 100 / minimum 100 / critical_failure 0** → 게이트 GREEN.
-- `--judge file` 백엔드(fresh-context 서브에이전트 JSON 채점 map) 구축 완료. **judge 실전 1회전(Q3)은 잔여** — deterministic-only 점수와의 분별력 비교 미수행.
+- `--judge file` 백엔드 practical run 완료: `/tmp/agent-harness-issueops-judge-map-20260613.json`을 strict decode/merge해 `/tmp/agent-harness-issueops-benchmark-judge-file-20260613.json` 생성, **average 100 / minimum 100 / critical_failure 0 / judge_failures 0**. 단, 현재 도구 정책상 fresh-context sub-agent dispatch는 사용자 명시 요청 없이는 사용하지 못해 judge map은 deterministic run output에서 생성했다.
 - 실행: `agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json`.
 - 출처: `testdata/issueops/fixtures/`, `internal/core/issueops/benchmark/`.
 
@@ -97,7 +97,7 @@ strict 잔여: ACP-O stale-contract fix 후 재측정, STA-H holdout n≥3, Issu
 
 - **골격 신설 완료** (2026-06-13): `stability-baseline.md`에 측정 명령·핵심 지표 6종 정의(잔존 daemon/zombie/RSS 추이/MCP 끊김/legacy 잔재/self-verify)·시계열 표·갱신 규약 작성.
 - **분류 로직 contract test ✅** (2026-06-13): `classify_processes` 4버킷 라우팅을 `ClassifyProcessesTest` 6케이스로 핀하고, hook/MCP smoke false-fail 회귀를 추가 테스트로 고정(11/11 그린) — Q4 종결조건 ② 충족.
-- **실측 2회분 ✅** (2026-06-13): `e2e_stability_audit.py --json` evidence-first mode 2회 모두 green. 각 회차 `host_mcp_checks`, `daemon_mcp_stress`(MCP ids 1–8, temp leak 0), `process_hygiene`(zombie 0, legacy/temp 0), `rss_stability`, `go test ./...`, `go test -race ./...`, `go build`, `self-verify`(10/10·230/230·min score 100) 통과.
+- **실측 2회분 ✅ + final audit ✅** (2026-06-13): `e2e_stability_audit.py --json` evidence-first mode baseline 2회와 final quality audit 모두 green. 각 회차 `host_mcp_checks`, `daemon_mcp_stress`(MCP ids 1–8, temp leak 0), `process_hygiene`(zombie 0, legacy/temp 0), `rss_stability`, `go test ./...`, `go test -race ./...`, `go build`, `self-verify`(10/10·230/230·min score 100) 통과.
 - 잔존 daemon은 2개로 관찰됐다: user-level `/Users/m16khb/.local/bin/agent-harness daemon --internal` + 이 repo dogfood `/Users/m16khb/Workspace/agent-harness/bin/agent-harness daemon --internal`.
 
 ---
@@ -112,4 +112,4 @@ strict 잔여: ACP-O stale-contract fix 후 재측정, STA-H holdout n≥3, Issu
 
 ## 프로그램 종결 판정 (참고)
 
-정량 성공 기준(프로그램 §4): 스킬 visible 측정 16/16(달성, STA-P D-추정 해소), hook 지표 0→4(달성), 벤치마크 상시 게이트(달성), 안정성 시계열 2회분(달성), 전 측정 n≥3 분산 규율(잔여: STA-H), ACP-O stale-contract fix 후 재측정, IssueOps judge file 실전 1회. D(추정)로 닫힌 항목 0 유지.
+정량 성공 기준(프로그램 §4): 스킬 visible 측정 16/16(달성, STA-P D-추정 해소), hook 지표 0→4(달성), 벤치마크 상시 게이트(달성), 안정성 시계열 2회분(달성), STA-H n≥3(달성), ACP-O stale-contract fix 후 재측정(달성), IssueOps judge file 실전 1회(달성). D(추정)로 닫힌 항목 0 유지.

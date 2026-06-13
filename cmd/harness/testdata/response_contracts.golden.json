@@ -857,7 +857,7 @@
           "title": "CLI And MCP Operations"
         },
         {
-          "bytes": 10854,
+          "bytes": 11315,
           "headings": [
             "Harness Skill Quality Scorecard (비-pioneer 7종)",
             "v2 세분화 적용 (2026-06-12)",
@@ -1062,7 +1062,7 @@
           "title": "Project Docs Operations"
         },
         {
-          "bytes": 8346,
+          "bytes": 9064,
           "headings": [
             "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
             "측정면 요약 (한눈)",
@@ -1080,7 +1080,7 @@
           "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
         },
         {
-          "bytes": 4754,
+          "bytes": 5070,
           "headings": [
             "Agent-Harness 운영 안정성 Baseline (시계열)",
             "측정 명령",
@@ -5645,7 +5645,7 @@
                 "title": "CLI And MCP Operations"
               },
               {
-                "bytes": 10854,
+                "bytes": 11315,
                 "headings": [
                   "Harness Skill Quality Scorecard (비-pioneer 7종)",
                   "v2 세분화 적용 (2026-06-12)",
@@ -5850,7 +5850,7 @@
                 "title": "Project Docs Operations"
               },
               {
-                "bytes": 8346,
+                "bytes": 9064,
                 "headings": [
                   "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
                   "측정면 요약 (한눈)",
@@ -5868,7 +5868,7 @@
                 "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
               },
               {
-                "bytes": 4754,
+                "bytes": 5070,
                 "headings": [
                   "Agent-Harness 운영 안정성 Baseline (시계열)",
                   "측정 명령",
