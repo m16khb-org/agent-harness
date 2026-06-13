@@ -7,6 +7,7 @@ import (
 	"agent-harness/cmd/harness/draftwikicli"
 	"agent-harness/cmd/harness/installcli"
 	"agent-harness/cmd/harness/projectcli"
+	"agent-harness/cmd/harness/qualitycli"
 	"agent-harness/cmd/harness/statecli"
 	"agent-harness/cmd/harness/statuscli"
 	"agent-harness/cmd/harness/workercli"
@@ -29,6 +30,9 @@ func init() {
 	basiccli.Version = version
 	basiccli.InspectHarness = inspectHarness
 	installcli.HarnessRoot = harnessRoot
+	qualitycli.HarnessRoot = harnessRoot
+	qualitycli.Version = version
+	qualitycli.PrintJSON = printJSON
 	statuscli.HarnessRoot = harnessRoot
 	statuscli.ResolveTarget = resolveTarget
 	statuscli.Version = version
@@ -63,6 +67,14 @@ func runGuard(args []string) error {
 
 func runGuardCheck(args []string) error {
 	return basiccli.RunGuardCheck(args)
+}
+
+func runQuality(args []string) error {
+	return qualitycli.Run(args)
+}
+
+func runQualityInspectWithDeps(args []string, deps qualitycli.InspectDeps) error {
+	return qualitycli.RunInspectWithDeps(args, deps)
 }
 
 func runInspect(args []string) error {

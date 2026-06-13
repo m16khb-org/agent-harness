@@ -11,6 +11,7 @@ Usage:
   agent-harness policy run --read-only [--workspace-root PATH] [--cwd PATH] [--json] -- ARGV...
   agent-harness policy audit [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness guard check [--repo PATH] [--staged] [--all] [--json] [--] [FILES...]
+  agent-harness quality inspect [--repo PATH] [--json]
   agent-harness verify-work [--repo PATH] [--all] [--json] [--] [READ_ONLY_ARGV...]
   agent-harness trace analyze --input <jsonl|state-key> [--json]
   agent-harness contract schema [--json]

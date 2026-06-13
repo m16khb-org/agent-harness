@@ -12,7 +12,7 @@ func TestUsageIncludesCommandCatalog(t *testing.T) {
 			t.Fatalf("usage does not mention command %q\n%s", command.Name, usage)
 		}
 	}
-	for _, want := range []string{"policy audit", "contract schema", "worker enqueue"} {
+	for _, want := range []string{"policy audit", "contract schema", "quality inspect", "worker enqueue"} {
 		if !strings.Contains(usage, want) {
 			t.Fatalf("usage missing %q", want)
 		}

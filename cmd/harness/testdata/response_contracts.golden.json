@@ -147,6 +147,10 @@
           "name": "guard"
         },
         {
+          "description": "inspect quality signals and next improvement candidates",
+          "name": "quality"
+        },
+        {
           "description": "run a lightweight evidence matrix for current work",
           "name": "verify-work"
         },
@@ -219,7 +223,7 @@
           "name": "version"
         }
       ],
-      "hash": "a99a318f18691630fb78e58eea04fa525d0e7536c17879344b8e094cf3f34298",
+      "hash": "26fd7ba6f7cf490393103c520077ba0fee4e18540d46f2f0a0d02b636b8105e3",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -3060,6 +3064,249 @@
         "secret_like_paths_present"
       ]
     },
+    "quality_inspect": {
+      "candidates": [
+        {
+          "category": "quality",
+          "evidence": [
+            "quality inspect CLI",
+            "coverage/complexity/audit signal output"
+          ],
+          "feasibility": 92,
+          "id": "quality-signal-harvester",
+          "impact": 94,
+          "risk": 14,
+          "score": 89.24,
+          "status": "open",
+          "title": "Add quality inspect signal harvesting CLI",
+          "verify_with": [
+            "go test ./cmd/harness/qualitycli -count=1",
+            "agent-harness quality inspect --json"
+          ]
+        },
+        {
+          "category": "refactor",
+          "evidence": [
+            "CollectSelfAugmentRepoSignals table-driven refactor"
+          ],
+          "feasibility": 90,
+          "id": "self-augment-signal-table",
+          "impact": 88,
+          "risk": 12,
+          "score": 83.8,
+          "status": "open",
+          "title": "Table-drive self-augment repository signal collection",
+          "verify_with": [
+            "go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"
+          ]
+        },
+        {
+          "category": "coverage",
+          "evidence": [
+            "go test -cover low package signal"
+          ],
+          "feasibility": 84,
+          "id": "coverage-commandguard",
+          "impact": 82,
+          "risk": 14,
+          "score": 77.08,
+          "status": "open",
+          "title": "Raise commandguard coverage for boundary and denial paths",
+          "verify_with": [
+            "go test ./internal/core/commandguard -count=1",
+            "go test -cover ./internal/core/commandguard"
+          ]
+        },
+        {
+          "category": "coverage",
+          "evidence": [
+            "go test -cover low package signal"
+          ],
+          "feasibility": 84,
+          "id": "coverage-mcp-resources",
+          "impact": 80,
+          "risk": 12,
+          "score": 76.16,
+          "status": "open",
+          "title": "Cover MCP resource catalog edge cases",
+          "verify_with": [
+            "go test ./cmd/harness/mcpcli/resources -count=1",
+            "go test -cover ./cmd/harness/mcpcli/resources"
+          ]
+        },
+        {
+          "category": "coverage",
+          "evidence": [
+            "go test -cover low package signal"
+          ],
+          "feasibility": 78,
+          "id": "coverage-externalllm",
+          "impact": 82,
+          "risk": 18,
+          "score": 75.60000000000001,
+          "status": "open",
+          "title": "Cover external LLM malformed output and timeout paths",
+          "verify_with": [
+            "go test ./internal/core/externalllm -count=1",
+            "go test -cover ./internal/core/externalllm"
+          ]
+        },
+        {
+          "category": "coverage",
+          "evidence": [
+            "go test -cover low package signal"
+          ],
+          "feasibility": 82,
+          "id": "coverage-issueops-linking",
+          "impact": 84,
+          "risk": 16,
+          "score": 77.4,
+          "status": "open",
+          "title": "Cover IssueOps link issue and link plan boundaries",
+          "verify_with": [
+            "go test ./internal/core/issueops/linking -count=1",
+            "go test -cover ./internal/core/issueops/linking"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "evidence": [
+            "PROJECT_AUDIT D1 P1"
+          ],
+          "feasibility": 72,
+          "id": "daemon-connection-limit",
+          "impact": 90,
+          "risk": 26,
+          "score": 76.28,
+          "status": "open",
+          "title": "Add daemon connection limit protection",
+          "verify_with": [
+            "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "evidence": [
+            "PROJECT_AUDIT W1 P1"
+          ],
+          "feasibility": 74,
+          "id": "worker-stuck-running-detection",
+          "impact": 88,
+          "risk": 24,
+          "score": 76.36,
+          "status": "open",
+          "title": "Detect worker jobs stuck running after process crash",
+          "verify_with": [
+            "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "evidence": [
+            "PROJECT_AUDIT S1 P1"
+          ],
+          "feasibility": 76,
+          "id": "state-write-locking",
+          "impact": 91,
+          "risk": 28,
+          "score": 77.22,
+          "status": "open",
+          "title": "Add write locking around state file updates",
+          "verify_with": [
+            "go test ./internal/core/state -count=1",
+            "go test -race ./internal/core/state -count=1"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "evidence": [
+            "PROJECT_AUDIT Q1 P1"
+          ],
+          "feasibility": 78,
+          "id": "draftwiki-stale-lock",
+          "impact": 86,
+          "risk": 22,
+          "score": 76.24,
+          "status": "open",
+          "title": "Detect and recover stale draft-wiki locks",
+          "verify_with": [
+            "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
+          ]
+        }
+      ],
+      "generated_at": "$TIMESTAMP",
+      "harness_root": "$WORKSPACE",
+      "ok": true,
+      "signals": [
+        {
+          "category": "candidate",
+          "evidence": [
+            "self-augment candidate catalog"
+          ],
+          "id": "self-augment-open-candidates",
+          "status": "ok",
+          "value": 10
+        },
+        {
+          "category": "candidate",
+          "evidence": [
+            "self-verify candidate export"
+          ],
+          "id": "self-verify-open-candidates",
+          "status": "ok",
+          "value": 0
+        },
+        {
+          "category": "coverage",
+          "evidence": [
+            "agent-harness/internal/core/commandguard 54.3%"
+          ],
+          "id": "low-coverage-packages",
+          "status": "needs_attention",
+          "threshold": 60,
+          "value": 1
+        },
+        {
+          "category": "complexity",
+          "evidence": [
+            "Go AST branch scan"
+          ],
+          "id": "branch-candidate-functions",
+          "status": "ok",
+          "threshold": 6,
+          "value": 0
+        },
+        {
+          "category": "complexity",
+          "evidence": [
+            "Go AST branch scan"
+          ],
+          "id": "high-branch-functions",
+          "status": "ok",
+          "threshold": 12,
+          "value": 0
+        },
+        {
+          "category": "audit",
+          "evidence": [
+            ".agent-harness/PROJECT_AUDIT.md"
+          ],
+          "id": "audit-p1-p2-items",
+          "status": "ok",
+          "value": 0
+        }
+      ],
+      "summary": {
+        "audit_p1_p2_items": 0,
+        "branch_candidate_functions": 0,
+        "candidate_count": 10,
+        "high_branch_functions": 0,
+        "low_coverage_packages": 1,
+        "self_augment_open_candidates": 10,
+        "self_verify_open_candidates": 0
+      },
+      "warnings": []
+    },
     "self_augment_lesson": {
       "candidate_id": "reflexion-state-memory",
       "generated_at": "$TIMESTAMP",
@@ -3082,6 +3329,214 @@
     },
     "self_augment_plan": {
       "candidates": [
+        {
+          "category": "quality",
+          "expected_gain": [
+            "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
+            "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
+          ],
+          "feasibility": 92,
+          "id": "quality-signal-harvester",
+          "impact": 94,
+          "novelty": 78,
+          "risk": 14,
+          "score": 89.24,
+          "status": "open",
+          "title": "Add quality inspect signal harvesting CLI",
+          "verify_with": [
+            "go test ./cmd/harness/qualitycli -count=1",
+            "agent-harness quality inspect --json"
+          ],
+          "why_now": [
+            "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다"
+          ]
+        },
+        {
+          "category": "refactor",
+          "expected_gain": [
+            "signal additions become table rows",
+            "branch count drops below the planned threshold"
+          ],
+          "feasibility": 90,
+          "id": "self-augment-signal-table",
+          "impact": 88,
+          "novelty": 64,
+          "risk": 12,
+          "score": 83.8,
+          "status": "open",
+          "title": "Table-drive self-augment repository signal collection",
+          "verify_with": [
+            "go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"
+          ],
+          "why_now": [
+            "CollectSelfAugmentRepoSignals branch count is high for a read-only detector"
+          ]
+        },
+        {
+          "category": "coverage",
+          "expected_gain": [
+            "invalid URLs, missing files, and path boundaries are pinned"
+          ],
+          "feasibility": 82,
+          "id": "coverage-issueops-linking",
+          "impact": 84,
+          "novelty": 54,
+          "risk": 16,
+          "score": 77.4,
+          "status": "open",
+          "title": "Cover IssueOps link issue and link plan boundaries",
+          "verify_with": [
+            "go test ./internal/core/issueops/linking -count=1",
+            "go test -cover ./internal/core/issueops/linking"
+          ],
+          "why_now": [
+            "IssueOps durable state gates are easy to regress with boundary paths"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "expected_gain": [
+            "concurrent state writes stop risking lost updates"
+          ],
+          "feasibility": 76,
+          "id": "state-write-locking",
+          "impact": 91,
+          "novelty": 56,
+          "risk": 28,
+          "score": 77.22,
+          "status": "open",
+          "title": "Add write locking around state file updates",
+          "verify_with": [
+            "go test ./internal/core/state -count=1",
+            "go test -race ./internal/core/state -count=1"
+          ],
+          "why_now": [
+            ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking"
+          ]
+        },
+        {
+          "category": "coverage",
+          "expected_gain": [
+            "workspace boundary regressions are caught earlier"
+          ],
+          "feasibility": 84,
+          "id": "coverage-commandguard",
+          "impact": 82,
+          "novelty": 52,
+          "risk": 14,
+          "score": 77.08,
+          "status": "open",
+          "title": "Raise commandguard coverage for boundary and denial paths",
+          "verify_with": [
+            "go test ./internal/core/commandguard -count=1",
+            "go test -cover ./internal/core/commandguard"
+          ],
+          "why_now": [
+            "command policy surfaces are safety-critical and low-coverage packages should be first candidates"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "expected_gain": [
+            "worker status can classify stale running records"
+          ],
+          "feasibility": 74,
+          "id": "worker-stuck-running-detection",
+          "impact": 88,
+          "novelty": 58,
+          "risk": 24,
+          "score": 76.36,
+          "status": "open",
+          "title": "Detect worker jobs stuck running after process crash",
+          "verify_with": [
+            "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
+          ],
+          "why_now": [
+            ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "expected_gain": [
+            "daemon resource exhaustion has an explicit guard and test"
+          ],
+          "feasibility": 72,
+          "id": "daemon-connection-limit",
+          "impact": 90,
+          "novelty": 58,
+          "risk": 26,
+          "score": 76.28,
+          "status": "open",
+          "title": "Add daemon connection limit protection",
+          "verify_with": [
+            "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
+          ],
+          "why_now": [
+            ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "expected_gain": [
+            "draft-wiki queue processing does not wedge on abandoned locks"
+          ],
+          "feasibility": 78,
+          "id": "draftwiki-stale-lock",
+          "impact": 86,
+          "novelty": 54,
+          "risk": 22,
+          "score": 76.24,
+          "status": "open",
+          "title": "Detect and recover stale draft-wiki locks",
+          "verify_with": [
+            "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
+          ],
+          "why_now": [
+            ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection"
+          ]
+        },
+        {
+          "category": "coverage",
+          "expected_gain": [
+            "resource schema and lookup regressions fail in package tests"
+          ],
+          "feasibility": 84,
+          "id": "coverage-mcp-resources",
+          "impact": 80,
+          "novelty": 50,
+          "risk": 12,
+          "score": 76.16,
+          "status": "open",
+          "title": "Cover MCP resource catalog edge cases",
+          "verify_with": [
+            "go test ./cmd/harness/mcpcli/resources -count=1",
+            "go test -cover ./cmd/harness/mcpcli/resources"
+          ],
+          "why_now": [
+            "MCP resource drift affects both Codex and Claude hosts"
+          ]
+        },
+        {
+          "category": "coverage",
+          "expected_gain": [
+            "malformed JSON, timeout, and command failure paths stay deterministic"
+          ],
+          "feasibility": 78,
+          "id": "coverage-externalllm",
+          "impact": 82,
+          "novelty": 56,
+          "risk": 18,
+          "score": 75.60000000000001,
+          "status": "open",
+          "title": "Cover external LLM malformed output and timeout paths",
+          "verify_with": [
+            "go test ./internal/core/externalllm -count=1",
+            "go test -cover ./internal/core/externalllm"
+          ],
+          "why_now": [
+            "IssueOps and quality gates depend on fail-closed external LLM wrappers"
+          ]
+        },
         {
           "category": "test",
           "expected_gain": [
@@ -3819,6 +4274,28 @@
           "source": "https://github.com/openai/evals"
         }
       ],
+      "selected_candidate": {
+        "category": "quality",
+        "expected_gain": [
+          "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
+          "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
+        ],
+        "feasibility": 92,
+        "id": "quality-signal-harvester",
+        "impact": 94,
+        "novelty": 78,
+        "risk": 14,
+        "score": 89.24,
+        "status": "open",
+        "title": "Add quality inspect signal harvesting CLI",
+        "verify_with": [
+          "go test ./cmd/harness/qualitycli -count=1",
+          "agent-harness quality inspect --json"
+        ],
+        "why_now": [
+          "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다"
+        ]
+      },
       "selected_formulas": [
         "문제 재정의 알고리즘",
         "혁신적 솔루션 생성 공식",
@@ -5068,6 +5545,10 @@
                 "name": "guard"
               },
               {
+                "description": "inspect quality signals and next improvement candidates",
+                "name": "quality"
+              },
+              {
                 "description": "run a lightweight evidence matrix for current work",
                 "name": "verify-work"
               },
@@ -5140,7 +5621,7 @@
                 "name": "version"
               }
             ],
-            "hash": "a99a318f18691630fb78e58eea04fa525d0e7536c17879344b8e094cf3f34298",
+            "hash": "26fd7ba6f7cf490393103c520077ba0fee4e18540d46f2f0a0d02b636b8105e3",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -7429,6 +7910,214 @@
           "json": {
             "candidates": [
               {
+                "category": "quality",
+                "expected_gain": [
+                  "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
+                  "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
+                ],
+                "feasibility": 92,
+                "id": "quality-signal-harvester",
+                "impact": 94,
+                "novelty": 78,
+                "risk": 14,
+                "score": 89.24,
+                "status": "open",
+                "title": "Add quality inspect signal harvesting CLI",
+                "verify_with": [
+                  "go test ./cmd/harness/qualitycli -count=1",
+                  "agent-harness quality inspect --json"
+                ],
+                "why_now": [
+                  "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다"
+                ]
+              },
+              {
+                "category": "refactor",
+                "expected_gain": [
+                  "signal additions become table rows",
+                  "branch count drops below the planned threshold"
+                ],
+                "feasibility": 90,
+                "id": "self-augment-signal-table",
+                "impact": 88,
+                "novelty": 64,
+                "risk": 12,
+                "score": 83.8,
+                "status": "open",
+                "title": "Table-drive self-augment repository signal collection",
+                "verify_with": [
+                  "go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"
+                ],
+                "why_now": [
+                  "CollectSelfAugmentRepoSignals branch count is high for a read-only detector"
+                ]
+              },
+              {
+                "category": "coverage",
+                "expected_gain": [
+                  "invalid URLs, missing files, and path boundaries are pinned"
+                ],
+                "feasibility": 82,
+                "id": "coverage-issueops-linking",
+                "impact": 84,
+                "novelty": 54,
+                "risk": 16,
+                "score": 77.4,
+                "status": "open",
+                "title": "Cover IssueOps link issue and link plan boundaries",
+                "verify_with": [
+                  "go test ./internal/core/issueops/linking -count=1",
+                  "go test -cover ./internal/core/issueops/linking"
+                ],
+                "why_now": [
+                  "IssueOps durable state gates are easy to regress with boundary paths"
+                ]
+              },
+              {
+                "category": "audit-risk",
+                "expected_gain": [
+                  "concurrent state writes stop risking lost updates"
+                ],
+                "feasibility": 76,
+                "id": "state-write-locking",
+                "impact": 91,
+                "novelty": 56,
+                "risk": 28,
+                "score": 77.22,
+                "status": "open",
+                "title": "Add write locking around state file updates",
+                "verify_with": [
+                  "go test ./internal/core/state -count=1",
+                  "go test -race ./internal/core/state -count=1"
+                ],
+                "why_now": [
+                  ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking"
+                ]
+              },
+              {
+                "category": "coverage",
+                "expected_gain": [
+                  "workspace boundary regressions are caught earlier"
+                ],
+                "feasibility": 84,
+                "id": "coverage-commandguard",
+                "impact": 82,
+                "novelty": 52,
+                "risk": 14,
+                "score": 77.08,
+                "status": "open",
+                "title": "Raise commandguard coverage for boundary and denial paths",
+                "verify_with": [
+                  "go test ./internal/core/commandguard -count=1",
+                  "go test -cover ./internal/core/commandguard"
+                ],
+                "why_now": [
+                  "command policy surfaces are safety-critical and low-coverage packages should be first candidates"
+                ]
+              },
+              {
+                "category": "audit-risk",
+                "expected_gain": [
+                  "worker status can classify stale running records"
+                ],
+                "feasibility": 74,
+                "id": "worker-stuck-running-detection",
+                "impact": 88,
+                "novelty": 58,
+                "risk": 24,
+                "score": 76.36,
+                "status": "open",
+                "title": "Detect worker jobs stuck running after process crash",
+                "verify_with": [
+                  "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
+                ],
+                "why_now": [
+                  ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs"
+                ]
+              },
+              {
+                "category": "audit-risk",
+                "expected_gain": [
+                  "daemon resource exhaustion has an explicit guard and test"
+                ],
+                "feasibility": 72,
+                "id": "daemon-connection-limit",
+                "impact": 90,
+                "novelty": 58,
+                "risk": 26,
+                "score": 76.28,
+                "status": "open",
+                "title": "Add daemon connection limit protection",
+                "verify_with": [
+                  "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
+                ],
+                "why_now": [
+                  ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit"
+                ]
+              },
+              {
+                "category": "audit-risk",
+                "expected_gain": [
+                  "draft-wiki queue processing does not wedge on abandoned locks"
+                ],
+                "feasibility": 78,
+                "id": "draftwiki-stale-lock",
+                "impact": 86,
+                "novelty": 54,
+                "risk": 22,
+                "score": 76.24,
+                "status": "open",
+                "title": "Detect and recover stale draft-wiki locks",
+                "verify_with": [
+                  "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
+                ],
+                "why_now": [
+                  ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection"
+                ]
+              },
+              {
+                "category": "coverage",
+                "expected_gain": [
+                  "resource schema and lookup regressions fail in package tests"
+                ],
+                "feasibility": 84,
+                "id": "coverage-mcp-resources",
+                "impact": 80,
+                "novelty": 50,
+                "risk": 12,
+                "score": 76.16,
+                "status": "open",
+                "title": "Cover MCP resource catalog edge cases",
+                "verify_with": [
+                  "go test ./cmd/harness/mcpcli/resources -count=1",
+                  "go test -cover ./cmd/harness/mcpcli/resources"
+                ],
+                "why_now": [
+                  "MCP resource drift affects both Codex and Claude hosts"
+                ]
+              },
+              {
+                "category": "coverage",
+                "expected_gain": [
+                  "malformed JSON, timeout, and command failure paths stay deterministic"
+                ],
+                "feasibility": 78,
+                "id": "coverage-externalllm",
+                "impact": 82,
+                "novelty": 56,
+                "risk": 18,
+                "score": 75.60000000000001,
+                "status": "open",
+                "title": "Cover external LLM malformed output and timeout paths",
+                "verify_with": [
+                  "go test ./internal/core/externalllm -count=1",
+                  "go test -cover ./internal/core/externalllm"
+                ],
+                "why_now": [
+                  "IssueOps and quality gates depend on fail-closed external LLM wrappers"
+                ]
+              },
+              {
                 "category": "test",
                 "expected_gain": [
                   "SOLID 구조의 포트 계약 보존",
@@ -8165,6 +8854,28 @@
                 "source": "https://github.com/openai/evals"
               }
             ],
+            "selected_candidate": {
+              "category": "quality",
+              "expected_gain": [
+                "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
+                "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
+              ],
+              "feasibility": 92,
+              "id": "quality-signal-harvester",
+              "impact": 94,
+              "novelty": 78,
+              "risk": 14,
+              "score": 89.24,
+              "status": "open",
+              "title": "Add quality inspect signal harvesting CLI",
+              "verify_with": [
+                "go test ./cmd/harness/qualitycli -count=1",
+                "agent-harness quality inspect --json"
+              ],
+              "why_now": [
+                "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다"
+              ]
+            },
             "selected_formulas": [
               "문제 재정의 알고리즘",
               "혁신적 솔루션 생성 공식",

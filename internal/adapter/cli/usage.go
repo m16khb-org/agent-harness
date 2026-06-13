@@ -20,6 +20,7 @@ func Commands() []Command {
 		{Name: "docs", Description: "index harness guidance documents"},
 		{Name: "policy", Description: "evaluate command policy, fake-run commands, and write audit records"},
 		{Name: "guard", Description: "check language-agnostic code and test anti-patterns"},
+		{Name: "quality", Description: "inspect quality signals and next improvement candidates"},
 		{Name: "verify-work", Description: "run a lightweight evidence matrix for current work"},
 		{Name: "trace", Description: "analyze trace-like verification and lifecycle evidence"},
 		{Name: "contract", Description: "print or check CLI/MCP response compatibility contracts"},
@@ -57,6 +58,7 @@ Usage:
   agent-harness policy run --read-only [--workspace-root PATH] [--cwd PATH] [--json] -- ARGV...
   agent-harness policy audit [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness guard check [--repo PATH] [--staged] [--all] [--json] [--] [FILES...]
+  agent-harness quality inspect [--repo PATH] [--json]
   agent-harness verify-work [--repo PATH] [--all] [--json] [--] [READ_ONLY_ARGV...]
   agent-harness trace analyze --input <jsonl|state-key> [--json]
   agent-harness contract schema [--json]

@@ -1,5 +1,7 @@
 package augmentcatalog
 
+import "agent-harness/internal/core/qualitycatalog"
+
 func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidate {
 	base := []SelfAugmentCandidate{
 		{
@@ -149,6 +151,20 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			ExpectedGain: []string{"실제 사용 흐름의 마찰 기록", "다음 릴리스 후보의 UX 우선순위 도출"},
 			VerifyWith:   []string{"dogfooding notes document", "Codex inspect/docs/state transcript", "Claude inspect/docs/state transcript or documented blocker"},
 		},
+	}
+	for _, spec := range qualitycatalog.CandidateSpecs() {
+		base = append(base, SelfAugmentCandidate{
+			ID:           spec.ID,
+			Title:        spec.Title,
+			Category:     spec.Category,
+			Impact:       spec.Impact,
+			Feasibility:  spec.Feasibility,
+			Novelty:      spec.Novelty,
+			Risk:         spec.Risk,
+			WhyNow:       append([]string{}, spec.WhyNow...),
+			ExpectedGain: append([]string{}, spec.ExpectedGain...),
+			VerifyWith:   append([]string{}, spec.VerifyWith...),
+		})
 	}
 	for i := range base {
 		base[i].Status = SelfAugmentCandidateStatusOpen

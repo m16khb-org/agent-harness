@@ -25,6 +25,9 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["verify_work"] = runCLIJSONContract(t, replacements, func() error {
 		return runVerifyWork([]string{"--repo", gitRepoDir, "--json", "--", "git", "status", "--short"})
 	})
+	cliSnapshot["quality_inspect"] = runCLIJSONContract(t, replacements, func() error {
+		return runQualityInspectWithDeps([]string{"--repo", workspaceDir, "--json"}, qualitycliInspectDepsForContract())
+	})
 	cliSnapshot["policy_check"] = runCLIJSONContract(t, replacements, func() error {
 		return runPolicy([]string{"check", "--workspace-root", workspaceDir, "--cwd", workspaceDir, "--json", "--", "git", "status", "--short"})
 	})

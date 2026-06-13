@@ -27,6 +27,7 @@ func rootCommand() rootcmd.Command {
 			"verify-work":    runVerifyWork,
 			"trace":          runTrace,
 			"guard":          runGuard,
+			"quality":        runQuality,
 			"self-verify":    runSelfVerify,
 			"self-augment":   runSelfAugment,
 			"contract":       runContract,
