@@ -1062,7 +1062,7 @@
           "title": "Project Docs Operations"
         },
         {
-          "bytes": 7789,
+          "bytes": 7927,
           "headings": [
             "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
             "측정면 요약 (한눈)",
@@ -1080,7 +1080,7 @@
           "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
         },
         {
-          "bytes": 4069,
+          "bytes": 4340,
           "headings": [
             "Agent-Harness 운영 안정성 Baseline (시계열)",
             "측정 명령",
@@ -5862,7 +5862,7 @@
                 "title": "Project Docs Operations"
               },
               {
-                "bytes": 7789,
+                "bytes": 7927,
                 "headings": [
                   "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
                   "측정면 요약 (한눈)",
@@ -5880,7 +5880,7 @@
                 "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
               },
               {
-                "bytes": 4069,
+                "bytes": 4340,
                 "headings": [
                   "Agent-Harness 운영 안정성 Baseline (시계열)",
                   "측정 명령",

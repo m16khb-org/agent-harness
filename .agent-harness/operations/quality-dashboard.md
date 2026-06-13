@@ -94,7 +94,8 @@
 ## 측정면 6 — 운영 안정성 baseline (Q4, 골격 신설·실측 대기)
 
 - **골격 신설 완료** (2026-06-13): `stability-baseline.md`에 측정 명령·핵심 지표 6종 정의(잔존 daemon/zombie/RSS 추이/MCP 끊김/legacy 잔재/self-verify)·시계열 표·갱신 규약 작성.
-- **실측 행은 대기**: `e2e_stability_audit.py --json` 2회분 측정 + 스크립트 분류 로직 contract test 1개가 종결 조건. D-추정으로 행 미기록.
+- **분류 로직 contract test ✅** (2026-06-13): `classify_processes` 4버킷 라우팅을 `ClassifyProcessesTest` 6케이스로 핀(8/8 그린) — Q4 종결조건 ② 충족.
+- **실측 행은 대기**: `e2e_stability_audit.py --json` 2회분 측정이 잔여 종결조건. D-추정으로 행 미기록.
 - **STA-P/STA-H 재측정(측정면 2)과 함께** 호스트 사용량 한도 해제 후 채움.
 
 ---

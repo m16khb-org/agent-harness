@@ -62,5 +62,5 @@ python3 skills/stability-audit/scripts/e2e_stability_audit.py --full-install --c
 
 ## 잔여 작업 (Q4 종결 조건)
 
-1. **실측 2회분**: STA 재측정(호스트 한도 해제 후)으로 위 표 2행 이상 채움.
-2. **Go contract test**: `e2e_stability_audit.py`의 핵심 분류 로직(`classify_processes`의 daemon/zombie/legacy 판정)을 최소 1개 Go 또는 Python 테스트로 핀(현재 무테스트) — 프로그램 S3와 동류의 계층-C 한계 주석 유지.
+1. **실측 2회분**: STA 재측정(호스트 한도 해제 후)으로 위 표 2행 이상 채움. _(잔여)_
+2. ✅ **분류 로직 contract test** (2026-06-13): `classify_processes`의 daemon/legacy/temp-watcher/zombie 4버킷 라우팅을 `e2e_stability_audit_test.py::ClassifyProcessesTest` 6케이스로 핀(zombie는 Z-state ∧ harness-command 동시 조건, 무관 프로세스 미분류, 빈 입력 포함). 계층-C 한계(시그니처 매칭 핀이지 라이브 ps 열거/cleanup 정확성 증명 아님)를 테스트 docstring에 명시. `python3 skills/stability-audit/scripts/e2e_stability_audit_test.py` 8/8 그린.
