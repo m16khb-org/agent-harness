@@ -26,39 +26,18 @@ func TestCommandPolicyInputSchemaPreservesPolicyFields(t *testing.T) {
 }
 
 func TestCommandPolicyToolsExposeStableDescriptors(t *testing.T) {
-	tools := CommandPolicyTools()
-	if len(tools) != 2 {
-		t.Fatalf("expected two command policy tools, got %d", len(tools))
-	}
-
-	byName := toolsByName(tools)
-	for _, tool := range tools {
-		if tool.Name == "" || tool.Description == "" || tool.InputSchema == nil {
-			t.Fatalf("incomplete command policy tool descriptor: %+v", tool)
-		}
-	}
-
-	check, ok := byName["command_policy_check"]
-	if !ok {
-		t.Fatal("missing command_policy_check descriptor")
-	}
-	if !contains(check.Description, "without executing it") {
-		t.Fatalf("command_policy_check description drifted: %s", check.Description)
-	}
-	if !schemaRequires(check.InputSchema, "workspace_root") {
-		t.Fatalf("command_policy_check schema must require workspace_root: %#v", check.InputSchema)
-	}
-
-	fakeRun, ok := byName["command_fake_run"]
-	if !ok {
-		t.Fatal("missing command_fake_run descriptor")
-	}
-	if !contains(fakeRun.Description, "never executes the command") {
-		t.Fatalf("command_fake_run description drifted: %s", fakeRun.Description)
-	}
-	if !schemaHasProperty(fakeRun.InputSchema, "shell_reason") {
-		t.Fatalf("command_fake_run schema missing shell_reason: %#v", fakeRun.InputSchema)
-	}
+	assertToolDescriptors(t, "command policy", CommandPolicyTools(), []toolDescriptorExpectation{
+		{
+			name:                "command_policy_check",
+			descriptionContains: "without executing it",
+			required:            []string{"workspace_root"},
+		},
+		{
+			name:                "command_fake_run",
+			descriptionContains: "never executes the command",
+			properties:          []string{"shell_reason"},
+		},
+	})
 }
 
 func TestCommandPolicyAuditToolsExposeStableDescriptor(t *testing.T) {
