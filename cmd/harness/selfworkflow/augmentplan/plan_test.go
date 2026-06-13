@@ -59,8 +59,23 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 			t.Fatalf("%s should be satisfied after recommended implementation work: %+v", id, result.Candidates)
 		}
 	}
-	if candidateByID(result.Candidates, "release-repro-pack").Status != augmentcatalog.SelfAugmentCandidateStatusOpen {
-		t.Fatalf("release reproducibility should remain as the next refill candidate: %+v", result.Candidates)
+	if candidateByID(result.Candidates, "release-repro-pack").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("release reproducibility should be satisfied after the release reproducibility pack is implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "release-user-readme").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("release user README should be satisfied after README install/update/rollback guide is implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "cross-platform-build-matrix").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("cross-platform build matrix should be satisfied after release build matrix support is implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "distribution-decision-record").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("distribution decision record should be satisfied after ADR and rollback criteria are implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "release-dogfood-notes").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("release dogfood notes should be satisfied after Codex/Claude dogfood transcripts are implemented: %+v", result.Candidates)
+	}
+	if result.SelectedCandidate != nil {
+		t.Fatalf("expected no selected candidate after all release hardening candidates are satisfied, got %+v", result.SelectedCandidate)
 	}
 	if result.SelectedCandidate == nil {
 		for _, candidate := range result.Candidates {

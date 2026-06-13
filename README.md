@@ -170,6 +170,48 @@ Default user-level install updates:
 
 Default install does not create target-repo `.claude/skills`, `.claude/settings.json`, or `.mcp.json`. Use explicit project-local options only when a repo should own those files.
 
+### Release User Guide: Install, Update, Rollback
+
+Use this one-screen flow when installing or refreshing a release from a checked-out `agent-harness` repository.
+
+1. Install from a fresh clone:
+
+   ```bash
+   ./install.sh
+   ./bin/agent-harness inspect --json
+   ```
+
+2. Update an existing checkout:
+
+   ```bash
+   git pull --ff-only
+   agent-harness update
+   agent-harness bootstrap --sync
+   agent-harness inspect --json
+   ```
+
+3. Verify the release path before relying on it:
+
+   ```bash
+   scripts/release-repro-smoke.sh
+   scripts/release-build-matrix.sh
+   agent-harness self-verify --seed=100 --target-score=95 --json
+   ```
+
+4. Roll back to the previous known-good checkout:
+
+   ```bash
+   git log --oneline -5
+   git switch main
+   git reset --hard <known-good-sha>
+   agent-harness update
+   agent-harness inspect --json
+   ```
+
+Rollback rewrites the local checkout, so use it only when you intentionally want this repository to point at an older commit. If there are local edits, commit or stash them before resetting. The installer and update paths refresh user-level host configuration; target repositories are changed only through explicit project bootstrap or project-local opt-in.
+
+Current distribution decision: use a tarball/manual archive for the first release and defer Homebrew until the release checklist, build matrix, rollback criteria, and dogfood notes are green. The decision record lives in `.agent-harness/ADR.md`.
+
 ### Issue-Driven Development
 
 Issue-Driven Development, or IDD, is the preferred collaboration model for this repository. It comes from the author's day-to-day way of working: do not let an agent jump from a vague request straight into edits; first turn the work into an inspectable issue contract, then make every later step prove that it still follows that contract.

@@ -88,6 +88,11 @@ type SelfAugmentRepoSignals struct {
 	HasCandidateRefill          bool     `json:"has_candidate_refill"`
 	HasCommandAuditLog          bool     `json:"has_command_audit_log"`
 	HasWorkerMVP                bool     `json:"has_worker_mvp"`
+	HasReleaseReproPack         bool     `json:"has_release_repro_pack"`
+	HasReleaseUserReadme        bool     `json:"has_release_user_readme"`
+	HasCrossPlatformBuildMatrix bool     `json:"has_cross_platform_build_matrix"`
+	HasDistributionDecision     bool     `json:"has_distribution_decision"`
+	HasReleaseDogfoodNotes      bool     `json:"has_release_dogfood_notes"`
 }
 
 type SelfAugmentLessonRequest struct {

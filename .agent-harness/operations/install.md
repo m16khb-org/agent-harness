@@ -53,6 +53,22 @@ agent-harness install --dry-run --json
 agent-harness bootstrap --dry-run --json
 ```
 
+Release reproducibility smoke:
+
+```bash
+scripts/release-repro-smoke.sh
+```
+
+This script builds the current checkout, then verifies `install-native --dry-run --project-local --json` in temporary `HOME`, `CODEX_HOME`, and fixture `HARNESS_ROOT` directories. It also checks the clean `inspect/docs/state` workflow under a temporary state directory.
+
+Release build matrix smoke:
+
+```bash
+scripts/release-build-matrix.sh
+```
+
+The default release matrix cross-builds `darwin/arm64`, `darwin/amd64`, `linux/amd64`, and `linux/arm64` with `CGO_ENABLED=0`.
+
 ## `--sync`
 
 `--sync` means "refresh from current evidence."

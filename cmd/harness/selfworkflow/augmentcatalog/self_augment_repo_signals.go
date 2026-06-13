@@ -35,5 +35,24 @@ func CollectSelfAugmentRepoSignals(root string, docsIndexed int, skills []string
 		HasCandidateRefill: dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "candidate-refill-curriculum") && dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "release-repro-pack"),
 		HasCommandAuditLog: fileContainsTerm(root, filepath.Join("internal", "core", "audit", "audit.go"), "AuditCommandPolicy") && dirContainsTerm(root, filepath.Join("cmd", "harness", "policycli"), "policy audit"),
 		HasWorkerMVP:       fileContainsTerm(root, filepath.Join("internal", "core", "worker", "worker.go"), "EnqueueWorkerJob") && dirContainsTerm(root, filepath.Join("cmd", "harness", "workercli"), "runWorkerEnqueue"),
+		HasReleaseReproPack: fileContainsTerm(root, filepath.Join("scripts", "release-repro-smoke.sh"), "install-native --dry-run --project-local --json") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Release Checklist") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "TESTING.md"), "release install reproducibility smoke"),
+		HasReleaseUserReadme: fileContainsTerm(root, "README.md", "Release User Guide: Install, Update, Rollback") &&
+			fileContainsTerm(root, "README.md", "agent-harness update") &&
+			fileContainsTerm(root, "README.md", "scripts/release-repro-smoke.sh") &&
+			fileContainsTerm(root, "README.md", "git reset --hard <known-good-sha>") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Release User Guide: Install, Update, Rollback"),
+		HasCrossPlatformBuildMatrix: fileContainsTerm(root, filepath.Join("scripts", "release-build-matrix.sh"), "darwin/arm64 darwin/amd64 linux/amd64 linux/arm64") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Cross-Platform Build Matrix") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "TESTING.md"), "cross-platform release build matrix smoke"),
+		HasDistributionDecision: fileContainsTerm(root, filepath.Join(".agent-harness", "ADR.md"), "2026-06-13 — Distribution decision gate") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Current decision: prefer tarball/manual archive") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Rollback criteria") &&
+			fileContainsTerm(root, "README.md", "Current distribution decision"),
+		HasReleaseDogfoodNotes: fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-dogfood-notes.md"), "Codex MCP transcript") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-dogfood-notes.md"), "Claude MCP transcript") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-dogfood-notes.md"), "inspect/docs/state workflow") &&
+			fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Release Dogfood Notes"),
 	}
 }

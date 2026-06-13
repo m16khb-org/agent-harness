@@ -80,6 +80,8 @@ agent-harness inspect --json
 agent-harness docs --json
 agent-harness daemon status --json
 agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
+scripts/release-repro-smoke.sh
+scripts/release-build-matrix.sh
 git diff --check
 go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1
 go test ./... -count=1

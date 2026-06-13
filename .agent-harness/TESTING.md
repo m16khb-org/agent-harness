@@ -175,6 +175,8 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `agent-harness self-verify candidates --json` candidate curriculum export and state save/read smoke
 - `agent-harness self-verify compare` step budget p95 regression fixture for labels outside `slowest_steps`
 - `agent-harness self-verify` install dry-run smoke for temp HOME/CODEX_HOME/HARNESS_ROOT no-write assertions
+- `scripts/release-repro-smoke.sh` clean-machine release install reproducibility smoke
+- `scripts/release-build-matrix.sh` cross-platform release build matrix smoke
 - `agent-harness self-verify --save-state` summary checkpoint serialization
 - `agent-harness self-verify history` summary checkpoint discovery and retention dry-run/confirm safety
 - `agent-harness self-verify` native integration fixture for Claude MCP conflicting-scope warning classification

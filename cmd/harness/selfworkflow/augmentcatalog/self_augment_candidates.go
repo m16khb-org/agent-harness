@@ -121,6 +121,34 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			ExpectedGain: []string{"새 환경 설치 절차 재현성", "tarball/Homebrew 여부 결정 근거"},
 			VerifyWith:   []string{"release checklist", "temp HOME install smoke"},
 		},
+		{
+			ID: "release-user-readme", Title: "Create a user-facing release README for install, update, and rollback", Category: "release-docs",
+			Impact: 84, Feasibility: 86, Novelty: 60, Risk: 12,
+			WhyNow:       []string{"clean-machine smoke가 생겼으므로 사람이 따라 할 최소 사용자 문서가 다음 병목이다", "Homebrew/tarball 판단 전 현재 install/update/rollback UX를 명확히 해야 한다"},
+			ExpectedGain: []string{"새 사용자가 한 화면에서 설치와 복구 절차를 이해", "배포 방식 결정 전 문서 기반 UX 결함 노출"},
+			VerifyWith:   []string{"README install/update/rollback section", "release reproducibility checklist", "docs index"},
+		},
+		{
+			ID: "cross-platform-build-matrix", Title: "Define and verify a cross-platform build matrix for release hardening", Category: "release-test",
+			Impact: 88, Feasibility: 74, Novelty: 70, Risk: 24,
+			WhyNow:       []string{"Phase 7 deliverable에 cross-platform build matrix가 남아 있다", "단일 macOS dogfood만으로 배포 호환성을 판단하면 release packaging 리스크가 남는다"},
+			ExpectedGain: []string{"지원 OS/arch 범위와 제외 조건 명확화", "릴리스 전 build failure를 matrix로 재현"},
+			VerifyWith:   []string{"documented OS/arch matrix", "go build matrix script or CI plan", "local supported-target smoke"},
+		},
+		{
+			ID: "distribution-decision-record", Title: "Record the Homebrew versus tarball distribution decision gate", Category: "release-decision",
+			Impact: 82, Feasibility: 83, Novelty: 62, Risk: 16,
+			WhyNow:       []string{"release smoke는 배포 판단 근거를 만들었지만 아직 선택 기준과 rollback 기준이 기록되지 않았다"},
+			ExpectedGain: []string{"Homebrew/tarball 선택을 임의 판단이 아니라 체크리스트 결과로 결정", "릴리스 실패 시 되돌림 기준 명확화"},
+			VerifyWith:   []string{"ADR decision entry", "release reproducibility checklist references", "rollback criteria"},
+		},
+		{
+			ID: "release-dogfood-notes", Title: "Capture release dogfooding notes from real Codex and Claude workflows", Category: "release-observability",
+			Impact: 78, Feasibility: 88, Novelty: 58, Risk: 10,
+			WhyNow:       []string{"Phase 7 deliverable에 dogfooding notes가 남아 있다", "Codex/Claude 같은 workflow 성공 기준은 smoke만으로는 사용자 경험 결함을 잡기 어렵다"},
+			ExpectedGain: []string{"실제 사용 흐름의 마찰 기록", "다음 릴리스 후보의 UX 우선순위 도출"},
+			VerifyWith:   []string{"dogfooding notes document", "Codex inspect/docs/state transcript", "Claude inspect/docs/state transcript or documented blocker"},
+		},
 	}
 	for i := range base {
 		base[i].Status = SelfAugmentCandidateStatusOpen

@@ -206,7 +206,7 @@ Deliverables:
 
 - install script 또는 Homebrew/tarball 배포 방식 결정
 - cross-platform build matrix
-- release checklist
+- release checklist (`.agent-harness/operations/release-reproducibility.md`, `scripts/release-repro-smoke.sh`)
 - 사용자 README
 - dogfooding notes
 
@@ -214,6 +214,22 @@ Acceptance criteria:
 
 - clean machine 설치 절차가 문서만 보고 재현된다.
 - Codex와 Claude Code에서 같은 inspect/state workflow가 성공한다.
+
+### 2026-06-13 — Distribution decision gate
+
+Decision: prefer a tarball/manual archive release first. Defer Homebrew until the release checklist, cross-platform build matrix, rollback criteria, and at least one dogfood release note are green.
+
+Rationale:
+
+- `scripts/release-repro-smoke.sh` verifies install planning without writing the operator's real home.
+- `scripts/release-build-matrix.sh` verifies the current supported binary matrix: `darwin/arm64`, `darwin/amd64`, `linux/amd64`, `linux/arm64`.
+- Windows is explicitly excluded until the daemon process setup no longer depends on Unix-oriented `syscall.SysProcAttr.Setsid`.
+- Tarball/manual archive keeps the first release reversible without introducing package-manager tap maintenance.
+
+Rollback criteria:
+
+- Roll back when `inspect --json`, `docs --json`, `state migrate --json`, release smoke, or self-verify fails on the release checkout.
+- Roll back by returning the checkout to the prior known-good SHA, then running `agent-harness update` and `agent-harness inspect --json`.
 
 ---
 

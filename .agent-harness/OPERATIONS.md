@@ -12,6 +12,8 @@ Use this file as the quick map. Read the focused operation file that matches the
 | Task | Read |
 |------|------|
 | Install, bootstrap, sync, upstream companion tools | `.agent-harness/operations/install.md` |
+| Release checklist and clean-machine install reproducibility | `.agent-harness/operations/release-reproducibility.md` |
+| Release dogfood transcripts and observed release UX gaps | `.agent-harness/operations/release-dogfood-notes.md` |
 | Codex/Claude native skills, MCP registration, lifecycle hooks | `.agent-harness/operations/hosts.md` |
 | Direct CLI, daemon-backed MCP, command policy, guard, worker commands | `.agent-harness/operations/cli-and-mcp.md` |
 | self-verify, self-augment, API documentation gates, smoke checks | `.agent-harness/operations/verification.md` |
@@ -35,6 +37,14 @@ agent-harness doctor --repo . --json
 agent-harness status --json
 agent-harness docs --json
 ```
+
+## Release Smoke
+
+```bash
+scripts/release-repro-smoke.sh
+```
+
+Use `.agent-harness/operations/release-reproducibility.md` before deciding Homebrew, tarball, or other release packaging.
 
 ## Invariants
 

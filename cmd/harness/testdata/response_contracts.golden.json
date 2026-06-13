@@ -483,7 +483,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 18392,
+          "bytes": 19526,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -499,6 +499,7 @@
             "Phase 5 — Codex adapter",
             "Phase 6 — Claude Code adapter",
             "Phase 7 — Hardening / release",
+            "2026-06-13 — Distribution decision gate",
             "4. MVP 범위",
             "5. 주요 위험과 대응",
             "6. 다음 작업 제안",
@@ -692,11 +693,12 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 2980,
+          "bytes": 3402,
           "headings": [
             "Operations Map",
             "Core Surfaces",
             "Daily Commands",
+            "Release Smoke",
             "Invariants",
             "Quick Smoke"
           ],
@@ -779,7 +781,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17779,
+          "bytes": 17944,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -890,7 +892,7 @@
           "title": "Host Operations"
         },
         {
-          "bytes": 3973,
+          "bytes": 4522,
           "headings": [
             "Install And Sync",
             "First run from a fresh clone, before agent-harness is on PATH.",
@@ -1080,6 +1082,35 @@
           "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
         },
         {
+          "bytes": 3006,
+          "headings": [
+            "Release Dogfood Notes",
+            "Codex MCP transcript",
+            "Claude MCP transcript",
+            "inspect/docs/state workflow",
+            "UX findings",
+            "Next release check"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/release-dogfood-notes.md",
+          "rel_path": ".agent-harness/operations/release-dogfood-notes.md",
+          "title": "Release Dogfood Notes"
+        },
+        {
+          "bytes": 4688,
+          "headings": [
+            "Release Reproducibility",
+            "Release Checklist",
+            "Clean-Machine Smoke",
+            "Cross-Platform Build Matrix",
+            "Release User Guide: Install, Update, Rollback",
+            "Distribution Decision Gate",
+            "Release Dogfood Notes"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/release-reproducibility.md",
+          "rel_path": ".agent-harness/operations/release-reproducibility.md",
+          "title": "Release Reproducibility"
+        },
+        {
           "bytes": 5070,
           "headings": [
             "Agent-Harness 운영 안정성 Baseline (시계열)",
@@ -1094,7 +1125,7 @@
           "title": "Agent-Harness 운영 안정성 Baseline (시계열)"
         },
         {
-          "bytes": 3849,
+          "bytes": 3912,
           "headings": [
             "Verification Operations",
             "Self-Verify",
@@ -1556,6 +1587,8 @@
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
+        "$HARNESS_ROOT/.agent-harness/operations/release-dogfood-notes.md",
+        "$HARNESS_ROOT/.agent-harness/operations/release-reproducibility.md",
         "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
@@ -3050,28 +3083,6 @@
     "self_augment_plan": {
       "candidates": [
         {
-          "category": "release",
-          "expected_gain": [
-            "새 환경 설치 절차 재현성",
-            "tarball/Homebrew 여부 결정 근거"
-          ],
-          "feasibility": 78,
-          "id": "release-repro-pack",
-          "impact": 86,
-          "novelty": 68,
-          "risk": 22,
-          "score": 79.03999999999999,
-          "status": "open",
-          "title": "Create a clean-machine release and install reproducibility pack",
-          "verify_with": [
-            "release checklist",
-            "temp HOME install smoke"
-          ],
-          "why_now": [
-            "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다"
-          ]
-        },
-        {
           "category": "test",
           "expected_gain": [
             "SOLID 구조의 포트 계약 보존",
@@ -3176,6 +3187,65 @@
           ],
           "why_now": [
             "cmd/harness가 routing, usage, MCP schema를 모두 소유하면 기능 추가 때 drift 위험이 커진다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "release-test",
+          "expected_gain": [
+            "지원 OS/arch 범위와 제외 조건 명확화",
+            "릴리스 전 build failure를 matrix로 재현"
+          ],
+          "feasibility": 74,
+          "id": "cross-platform-build-matrix",
+          "impact": 88,
+          "novelty": 70,
+          "risk": 24,
+          "satisfaction_evidence": [
+            "scripts/release-build-matrix.sh builds the supported darwin/linux amd64/arm64 matrix",
+            "release reproducibility docs record the cross-platform matrix",
+            "testing docs list the release build matrix smoke"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Define and verify a cross-platform build matrix for release hardening",
+          "verify_with": [
+            "documented OS/arch matrix",
+            "go build matrix script or CI plan",
+            "local supported-target smoke"
+          ],
+          "why_now": [
+            "Phase 7 deliverable에 cross-platform build matrix가 남아 있다",
+            "단일 macOS dogfood만으로 배포 호환성을 판단하면 release packaging 리스크가 남는다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "release-decision",
+          "expected_gain": [
+            "Homebrew/tarball 선택을 임의 판단이 아니라 체크리스트 결과로 결정",
+            "릴리스 실패 시 되돌림 기준 명확화"
+          ],
+          "feasibility": 83,
+          "id": "distribution-decision-record",
+          "impact": 82,
+          "novelty": 62,
+          "risk": 16,
+          "satisfaction_evidence": [
+            "ADR records the tarball/manual archive versus Homebrew decision gate",
+            "release reproducibility docs define rollback criteria",
+            "README exposes the current distribution decision"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Record the Homebrew versus tarball distribution decision gate",
+          "verify_with": [
+            "ADR decision entry",
+            "release reproducibility checklist references",
+            "rollback criteria"
+          ],
+          "why_now": [
+            "release smoke는 배포 판단 근거를 만들었지만 아직 선택 기준과 rollback 기준이 기록되지 않았다",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
@@ -3445,6 +3515,93 @@
           ]
         },
         {
+          "category": "release-observability",
+          "expected_gain": [
+            "실제 사용 흐름의 마찰 기록",
+            "다음 릴리스 후보의 UX 우선순위 도출"
+          ],
+          "feasibility": 88,
+          "id": "release-dogfood-notes",
+          "impact": 78,
+          "novelty": 58,
+          "risk": 10,
+          "satisfaction_evidence": [
+            "release dogfood notes capture Codex MCP registration",
+            "release dogfood notes capture Claude MCP registration",
+            "shared inspect/docs/state workflow is recorded"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Capture release dogfooding notes from real Codex and Claude workflows",
+          "verify_with": [
+            "dogfooding notes document",
+            "Codex inspect/docs/state transcript",
+            "Claude inspect/docs/state transcript or documented blocker"
+          ],
+          "why_now": [
+            "Phase 7 deliverable에 dogfooding notes가 남아 있다",
+            "Codex/Claude 같은 workflow 성공 기준은 smoke만으로는 사용자 경험 결함을 잡기 어렵다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "release",
+          "expected_gain": [
+            "새 환경 설치 절차 재현성",
+            "tarball/Homebrew 여부 결정 근거"
+          ],
+          "feasibility": 78,
+          "id": "release-repro-pack",
+          "impact": 86,
+          "novelty": 68,
+          "risk": 22,
+          "satisfaction_evidence": [
+            "release reproducibility checklist exists",
+            "scripts/release-repro-smoke.sh verifies temp HOME/CODEX_HOME/HARNESS_ROOT install dry-run",
+            "testing docs list the release install reproducibility smoke"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Create a clean-machine release and install reproducibility pack",
+          "verify_with": [
+            "release checklist",
+            "temp HOME install smoke"
+          ],
+          "why_now": [
+            "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "release-docs",
+          "expected_gain": [
+            "새 사용자가 한 화면에서 설치와 복구 절차를 이해",
+            "배포 방식 결정 전 문서 기반 UX 결함 노출"
+          ],
+          "feasibility": 86,
+          "id": "release-user-readme",
+          "impact": 84,
+          "novelty": 60,
+          "risk": 12,
+          "satisfaction_evidence": [
+            "README contains the release install/update/rollback user guide",
+            "README links release verification to scripts/release-repro-smoke.sh"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Create a user-facing release README for install, update, and rollback",
+          "verify_with": [
+            "README install/update/rollback section",
+            "release reproducibility checklist",
+            "docs index"
+          ],
+          "why_now": [
+            "clean-machine smoke가 생겼으므로 사람이 따라 할 최소 사용자 문서가 다음 병목이다",
+            "Homebrew/tarball 판단 전 현재 install/update/rollback UX를 명확히 해야 한다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
           "category": "safety",
           "expected_gain": [
             "레포별 독립 self-augment 실행",
@@ -3565,18 +3722,23 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 51,
+        "docs_indexed": 53,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
         "has_command_audit_log": true,
         "has_compatibility_contract": true,
+        "has_cross_platform_build_matrix": true,
+        "has_distribution_decision": true,
         "has_genius_mermaid_lint": true,
         "has_genius_think": true,
         "has_goal_score_summary": true,
         "has_install_dry_run_mode": true,
         "has_mcp_adapter_catalog": true,
         "has_performance_baseline": true,
+        "has_release_dogfood_notes": true,
+        "has_release_repro_pack": true,
+        "has_release_user_readme": true,
         "has_repo_local_sandbox": true,
         "has_risk_qa_tier": true,
         "has_self_augment_lesson_capture": true,
@@ -3657,28 +3819,6 @@
           "source": "https://github.com/openai/evals"
         }
       ],
-      "selected_candidate": {
-        "category": "release",
-        "expected_gain": [
-          "새 환경 설치 절차 재현성",
-          "tarball/Homebrew 여부 결정 근거"
-        ],
-        "feasibility": 78,
-        "id": "release-repro-pack",
-        "impact": 86,
-        "novelty": 68,
-        "risk": 22,
-        "score": 79.03999999999999,
-        "status": "open",
-        "title": "Create a clean-machine release and install reproducibility pack",
-        "verify_with": [
-          "release checklist",
-          "temp HOME install smoke"
-        ],
-        "why_now": [
-          "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다"
-        ]
-      },
       "selected_formulas": [
         "문제 재정의 알고리즘",
         "혁신적 솔루션 생성 공식",
@@ -5271,7 +5411,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 18392,
+                "bytes": 19526,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -5287,6 +5427,7 @@
                   "Phase 5 — Codex adapter",
                   "Phase 6 — Claude Code adapter",
                   "Phase 7 — Hardening / release",
+                  "2026-06-13 — Distribution decision gate",
                   "4. MVP 범위",
                   "5. 주요 위험과 대응",
                   "6. 다음 작업 제안",
@@ -5480,11 +5621,12 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 2980,
+                "bytes": 3402,
                 "headings": [
                   "Operations Map",
                   "Core Surfaces",
                   "Daily Commands",
+                  "Release Smoke",
                   "Invariants",
                   "Quick Smoke"
                 ],
@@ -5567,7 +5709,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17779,
+                "bytes": 17944,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -5678,7 +5820,7 @@
                 "title": "Host Operations"
               },
               {
-                "bytes": 3973,
+                "bytes": 4522,
                 "headings": [
                   "Install And Sync",
                   "First run from a fresh clone, before agent-harness is on PATH.",
@@ -5868,6 +6010,35 @@
                 "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
               },
               {
+                "bytes": 3006,
+                "headings": [
+                  "Release Dogfood Notes",
+                  "Codex MCP transcript",
+                  "Claude MCP transcript",
+                  "inspect/docs/state workflow",
+                  "UX findings",
+                  "Next release check"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/release-dogfood-notes.md",
+                "rel_path": ".agent-harness/operations/release-dogfood-notes.md",
+                "title": "Release Dogfood Notes"
+              },
+              {
+                "bytes": 4688,
+                "headings": [
+                  "Release Reproducibility",
+                  "Release Checklist",
+                  "Clean-Machine Smoke",
+                  "Cross-Platform Build Matrix",
+                  "Release User Guide: Install, Update, Rollback",
+                  "Distribution Decision Gate",
+                  "Release Dogfood Notes"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/release-reproducibility.md",
+                "rel_path": ".agent-harness/operations/release-reproducibility.md",
+                "title": "Release Reproducibility"
+              },
+              {
                 "bytes": 5070,
                 "headings": [
                   "Agent-Harness 운영 안정성 Baseline (시계열)",
@@ -5882,7 +6053,7 @@
                 "title": "Agent-Harness 운영 안정성 Baseline (시계열)"
               },
               {
-                "bytes": 3849,
+                "bytes": 3912,
                 "headings": [
                   "Verification Operations",
                   "Self-Verify",
@@ -6351,6 +6522,8 @@
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
+              "$HARNESS_ROOT/.agent-harness/operations/release-dogfood-notes.md",
+              "$HARNESS_ROOT/.agent-harness/operations/release-reproducibility.md",
               "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
@@ -7256,28 +7429,6 @@
           "json": {
             "candidates": [
               {
-                "category": "release",
-                "expected_gain": [
-                  "새 환경 설치 절차 재현성",
-                  "tarball/Homebrew 여부 결정 근거"
-                ],
-                "feasibility": 78,
-                "id": "release-repro-pack",
-                "impact": 86,
-                "novelty": 68,
-                "risk": 22,
-                "score": 79.03999999999999,
-                "status": "open",
-                "title": "Create a clean-machine release and install reproducibility pack",
-                "verify_with": [
-                  "release checklist",
-                  "temp HOME install smoke"
-                ],
-                "why_now": [
-                  "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다"
-                ]
-              },
-              {
                 "category": "test",
                 "expected_gain": [
                   "SOLID 구조의 포트 계약 보존",
@@ -7382,6 +7533,65 @@
                 ],
                 "why_now": [
                   "cmd/harness가 routing, usage, MCP schema를 모두 소유하면 기능 추가 때 drift 위험이 커진다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "release-test",
+                "expected_gain": [
+                  "지원 OS/arch 범위와 제외 조건 명확화",
+                  "릴리스 전 build failure를 matrix로 재현"
+                ],
+                "feasibility": 74,
+                "id": "cross-platform-build-matrix",
+                "impact": 88,
+                "novelty": 70,
+                "risk": 24,
+                "satisfaction_evidence": [
+                  "scripts/release-build-matrix.sh builds the supported darwin/linux amd64/arm64 matrix",
+                  "release reproducibility docs record the cross-platform matrix",
+                  "testing docs list the release build matrix smoke"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Define and verify a cross-platform build matrix for release hardening",
+                "verify_with": [
+                  "documented OS/arch matrix",
+                  "go build matrix script or CI plan",
+                  "local supported-target smoke"
+                ],
+                "why_now": [
+                  "Phase 7 deliverable에 cross-platform build matrix가 남아 있다",
+                  "단일 macOS dogfood만으로 배포 호환성을 판단하면 release packaging 리스크가 남는다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "release-decision",
+                "expected_gain": [
+                  "Homebrew/tarball 선택을 임의 판단이 아니라 체크리스트 결과로 결정",
+                  "릴리스 실패 시 되돌림 기준 명확화"
+                ],
+                "feasibility": 83,
+                "id": "distribution-decision-record",
+                "impact": 82,
+                "novelty": 62,
+                "risk": 16,
+                "satisfaction_evidence": [
+                  "ADR records the tarball/manual archive versus Homebrew decision gate",
+                  "release reproducibility docs define rollback criteria",
+                  "README exposes the current distribution decision"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Record the Homebrew versus tarball distribution decision gate",
+                "verify_with": [
+                  "ADR decision entry",
+                  "release reproducibility checklist references",
+                  "rollback criteria"
+                ],
+                "why_now": [
+                  "release smoke는 배포 판단 근거를 만들었지만 아직 선택 기준과 rollback 기준이 기록되지 않았다",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
@@ -7651,6 +7861,93 @@
                 ]
               },
               {
+                "category": "release-observability",
+                "expected_gain": [
+                  "실제 사용 흐름의 마찰 기록",
+                  "다음 릴리스 후보의 UX 우선순위 도출"
+                ],
+                "feasibility": 88,
+                "id": "release-dogfood-notes",
+                "impact": 78,
+                "novelty": 58,
+                "risk": 10,
+                "satisfaction_evidence": [
+                  "release dogfood notes capture Codex MCP registration",
+                  "release dogfood notes capture Claude MCP registration",
+                  "shared inspect/docs/state workflow is recorded"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Capture release dogfooding notes from real Codex and Claude workflows",
+                "verify_with": [
+                  "dogfooding notes document",
+                  "Codex inspect/docs/state transcript",
+                  "Claude inspect/docs/state transcript or documented blocker"
+                ],
+                "why_now": [
+                  "Phase 7 deliverable에 dogfooding notes가 남아 있다",
+                  "Codex/Claude 같은 workflow 성공 기준은 smoke만으로는 사용자 경험 결함을 잡기 어렵다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "release",
+                "expected_gain": [
+                  "새 환경 설치 절차 재현성",
+                  "tarball/Homebrew 여부 결정 근거"
+                ],
+                "feasibility": 78,
+                "id": "release-repro-pack",
+                "impact": 86,
+                "novelty": 68,
+                "risk": 22,
+                "satisfaction_evidence": [
+                  "release reproducibility checklist exists",
+                  "scripts/release-repro-smoke.sh verifies temp HOME/CODEX_HOME/HARNESS_ROOT install dry-run",
+                  "testing docs list the release install reproducibility smoke"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Create a clean-machine release and install reproducibility pack",
+                "verify_with": [
+                  "release checklist",
+                  "temp HOME install smoke"
+                ],
+                "why_now": [
+                  "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "release-docs",
+                "expected_gain": [
+                  "새 사용자가 한 화면에서 설치와 복구 절차를 이해",
+                  "배포 방식 결정 전 문서 기반 UX 결함 노출"
+                ],
+                "feasibility": 86,
+                "id": "release-user-readme",
+                "impact": 84,
+                "novelty": 60,
+                "risk": 12,
+                "satisfaction_evidence": [
+                  "README contains the release install/update/rollback user guide",
+                  "README links release verification to scripts/release-repro-smoke.sh"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Create a user-facing release README for install, update, and rollback",
+                "verify_with": [
+                  "README install/update/rollback section",
+                  "release reproducibility checklist",
+                  "docs index"
+                ],
+                "why_now": [
+                  "clean-machine smoke가 생겼으므로 사람이 따라 할 최소 사용자 문서가 다음 병목이다",
+                  "Homebrew/tarball 판단 전 현재 install/update/rollback UX를 명확히 해야 한다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
                 "category": "safety",
                 "expected_gain": [
                   "레포별 독립 self-augment 실행",
@@ -7771,18 +8068,23 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 51,
+              "docs_indexed": 53,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
               "has_command_audit_log": true,
               "has_compatibility_contract": true,
+              "has_cross_platform_build_matrix": true,
+              "has_distribution_decision": true,
               "has_genius_mermaid_lint": true,
               "has_genius_think": true,
               "has_goal_score_summary": true,
               "has_install_dry_run_mode": true,
               "has_mcp_adapter_catalog": true,
               "has_performance_baseline": true,
+              "has_release_dogfood_notes": true,
+              "has_release_repro_pack": true,
+              "has_release_user_readme": true,
               "has_repo_local_sandbox": true,
               "has_risk_qa_tier": true,
               "has_self_augment_lesson_capture": true,
@@ -7863,28 +8165,6 @@
                 "source": "https://github.com/openai/evals"
               }
             ],
-            "selected_candidate": {
-              "category": "release",
-              "expected_gain": [
-                "새 환경 설치 절차 재현성",
-                "tarball/Homebrew 여부 결정 근거"
-              ],
-              "feasibility": 78,
-              "id": "release-repro-pack",
-              "impact": 86,
-              "novelty": 68,
-              "risk": 22,
-              "score": 79.03999999999999,
-              "status": "open",
-              "title": "Create a clean-machine release and install reproducibility pack",
-              "verify_with": [
-                "release checklist",
-                "temp HOME install smoke"
-              ],
-              "why_now": [
-                "adapter, contract, worker 기반이 들어오면 Phase 7 clean install 검증으로 넘어갈 수 있다"
-              ]
-            },
             "selected_formulas": [
               "문제 재정의 알고리즘",
               "혁신적 솔루션 생성 공식",

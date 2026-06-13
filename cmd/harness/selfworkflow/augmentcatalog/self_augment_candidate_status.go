@@ -67,6 +67,26 @@ func MarkSatisfiedSelfAugmentCandidate(candidate *SelfAugmentCandidate, signals 
 		if signals.HasWorkerMVP {
 			evidence = []string{"worker MVP persists queued/cancelled job lifecycle records and never executes shell commands"}
 		}
+	case "release-repro-pack":
+		if signals.HasReleaseReproPack {
+			evidence = []string{"release reproducibility checklist exists", "scripts/release-repro-smoke.sh verifies temp HOME/CODEX_HOME/HARNESS_ROOT install dry-run", "testing docs list the release install reproducibility smoke"}
+		}
+	case "release-user-readme":
+		if signals.HasReleaseUserReadme {
+			evidence = []string{"README contains the release install/update/rollback user guide", "README links release verification to scripts/release-repro-smoke.sh"}
+		}
+	case "cross-platform-build-matrix":
+		if signals.HasCrossPlatformBuildMatrix {
+			evidence = []string{"scripts/release-build-matrix.sh builds the supported darwin/linux amd64/arm64 matrix", "release reproducibility docs record the cross-platform matrix", "testing docs list the release build matrix smoke"}
+		}
+	case "distribution-decision-record":
+		if signals.HasDistributionDecision {
+			evidence = []string{"ADR records the tarball/manual archive versus Homebrew decision gate", "release reproducibility docs define rollback criteria", "README exposes the current distribution decision"}
+		}
+	case "release-dogfood-notes":
+		if signals.HasReleaseDogfoodNotes {
+			evidence = []string{"release dogfood notes capture Codex MCP registration", "release dogfood notes capture Claude MCP registration", "shared inspect/docs/state workflow is recorded"}
+		}
 	}
 	if len(evidence) == 0 {
 		return
