@@ -24,7 +24,7 @@
 | 3 | IssueOps 산출물 벤치마크 | 통합 | **100/100** (avg·min), critical 0, 9 fixtures | 2026-06-13 | ✅ GREEN | pre-push 상시 + judge file 실전(Q3) |
 | 4 | Hook 런타임 메트릭 | 런타임 | 전 hook p95 **<40ms**, blocks 0 | 2026-06-13 | ✅ stop p95 38ms (<1s) | 상시 누적(자동) |
 | 5 | Hook 실패율 | 런타임 | total 38, last_7d **5**, last_24h 0 | 2026-06-13 | ✅ | 상시 누적(자동) |
-| 6 | 운영 안정성 baseline | 런타임 | **골격 신설**(실측 대기), `stability-baseline.md` | 2026-06-13 | ⬜ 2회분 잔여 | STA 재측정과 동시 채움 |
+| 6 | 운영 안정성 baseline | 런타임 | **2/2 evidence-first green**: zombie 0, MCP 끊김 0, self-verify 230/230 | 2026-06-13 | ✅ GREEN | STA 재측정/안정성 회귀 의심 시 |
 
 커버리지: 스킬 측정 **16/16 착수** (STA-P 1건만 D-추정 금지 원칙으로 미확정), hook 지표 **0→4** 달성.
 
@@ -91,12 +91,12 @@
 - **rotation**: SessionStart hook이 720h 초과 항목 자동 prune(무한 성장 P1 해소). 로그 13KB.
 - 출처: `cmd/harness/hookcli/hookfailure/`, `internal/core/hookfailure/stats.go`.
 
-## 측정면 6 — 운영 안정성 baseline (Q4, 골격 신설·실측 대기)
+## 측정면 6 — 운영 안정성 baseline (Q4, 2회분 실측 완료)
 
 - **골격 신설 완료** (2026-06-13): `stability-baseline.md`에 측정 명령·핵심 지표 6종 정의(잔존 daemon/zombie/RSS 추이/MCP 끊김/legacy 잔재/self-verify)·시계열 표·갱신 규약 작성.
-- **분류 로직 contract test ✅** (2026-06-13): `classify_processes` 4버킷 라우팅을 `ClassifyProcessesTest` 6케이스로 핀(8/8 그린) — Q4 종결조건 ② 충족.
-- **실측 행은 대기**: `e2e_stability_audit.py --json` 2회분 측정이 잔여 종결조건. D-추정으로 행 미기록.
-- **STA-P/STA-H 재측정(측정면 2)과 함께** 호스트 사용량 한도 해제 후 채움.
+- **분류 로직 contract test ✅** (2026-06-13): `classify_processes` 4버킷 라우팅을 `ClassifyProcessesTest` 6케이스로 핀하고, hook/MCP smoke false-fail 회귀를 추가 테스트로 고정(11/11 그린) — Q4 종결조건 ② 충족.
+- **실측 2회분 ✅** (2026-06-13): `e2e_stability_audit.py --json` evidence-first mode 2회 모두 green. 각 회차 `host_mcp_checks`, `daemon_mcp_stress`(MCP ids 1–8, temp leak 0), `process_hygiene`(zombie 0, legacy/temp 0), `rss_stability`, `go test ./...`, `go test -race ./...`, `go build`, `self-verify`(10/10·230/230·min score 100) 통과.
+- 잔존 daemon은 2개로 관찰됐다: user-level `/Users/m16khb/.local/bin/agent-harness daemon --internal` + 이 repo dogfood `/Users/m16khb/Workspace/agent-harness/bin/agent-harness daemon --internal`.
 
 ---
 
@@ -110,4 +110,4 @@
 
 ## 프로그램 종결 판정 (참고)
 
-정량 성공 기준(프로그램 §4): 스킬 측정 16/16(STA-P 잔여 1건), hook 지표 0→4(달성), 벤치마크 상시 게이트(달성), 안정성 시계열 2회분(잔여), 전 측정 n≥3 분산 규율(신규 측정 적용). D(추정)로 닫힌 항목 0 유지.
+정량 성공 기준(프로그램 §4): 스킬 측정 16/16(STA-P 잔여 1건), hook 지표 0→4(달성), 벤치마크 상시 게이트(달성), 안정성 시계열 2회분(달성), 전 측정 n≥3 분산 규율(신규 측정 적용). D(추정)로 닫힌 항목 0 유지.

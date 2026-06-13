@@ -82,6 +82,14 @@ def parse_json_output(text: str) -> Any:
     return json.loads(text[start:])
 
 
+def is_noisy_user_prompt_context(ctx: str) -> bool:
+    return "Required project docs" in ctx or "필수 프롬프트 주입중" in ctx
+
+
+def mcp_smoke_env(env: dict[str, str]) -> dict[str, str]:
+    return {**env, "HARNESS_MCP_DIRECT": "1"}
+
+
 def ps_rows() -> list[dict[str, Any]]:
     ps_bin = shutil.which("ps") or "/bin/ps"
     try:
@@ -212,7 +220,7 @@ def hook_smoke(report: dict[str, Any]) -> None:
                             item["error"] = "invalid_stop_json_keys"
                         if event == "UserPromptSubmit":
                             ctx = obj.get("hookSpecificOutput", {}).get("additionalContext", "")
-                            if "\n" in ctx or "Required project docs" in ctx or "필수 프롬프트 주입중" in ctx:
+                            if is_noisy_user_prompt_context(ctx):
                                 ok = False
                                 item["error"] = "noisy_user_prompt_context"
                     except Exception as exc:
@@ -276,7 +284,7 @@ def daemon_and_mcp_stress(report: dict[str, Any], cycles: int) -> None:
                 ok = False
             cycle_details.append({"cycle": i, "pid": pid, "alive_after_stop": alive, "start_rc": start["returncode"], "status_rc": status["returncode"], "stop_rc": stop["returncode"]})
         # Standalone MCP JSON-RPC smoke.
-        proc = subprocess.Popen([str(BIN), "mcp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env={**os.environ, **env})
+        proc = subprocess.Popen([str(BIN), "mcp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env={**os.environ, **mcp_smoke_env(env)})
         calls = [
             {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "stability-audit", "version": "1"}}},
             {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},

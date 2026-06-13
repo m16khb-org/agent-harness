@@ -555,7 +555,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 28762,
+          "bytes": 29982,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -1062,7 +1062,7 @@
           "title": "Project Docs Operations"
         },
         {
-          "bytes": 7927,
+          "bytes": 8346,
           "headings": [
             "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
             "측정면 요약 (한눈)",
@@ -1071,7 +1071,7 @@
             "측정면 3 — IssueOps 산출물 벤치마크 (통합)",
             "측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)",
             "측정면 5 — Hook 실패율 (Q2)",
-            "측정면 6 — 운영 안정성 baseline (Q4, 골격 신설·실측 대기)",
+            "측정면 6 — 운영 안정성 baseline (Q4, 2회분 실측 완료)",
             "갱신 규약 (수동)",
             "프로그램 종결 판정 (참고)"
           ],
@@ -1080,7 +1080,7 @@
           "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
         },
         {
-          "bytes": 4340,
+          "bytes": 4754,
           "headings": [
             "Agent-Harness 운영 안정성 Baseline (시계열)",
             "측정 명령",
@@ -1601,18 +1601,6 @@
       },
       "ok": true,
       "skills": [
-        {
-          "has_openai_yaml": false,
-          "has_skill_md": false,
-          "name": ".claude",
-          "path": "$HARNESS_ROOT/skills/.claude"
-        },
-        {
-          "has_openai_yaml": false,
-          "has_skill_md": false,
-          "name": ".omc",
-          "path": "$HARNESS_ROOT/skills/.omc"
-        },
         {
           "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
           "has_openai_yaml": true,
@@ -5355,7 +5343,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 28762,
+                "bytes": 29982,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -5862,7 +5850,7 @@
                 "title": "Project Docs Operations"
               },
               {
-                "bytes": 7927,
+                "bytes": 8346,
                 "headings": [
                   "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
                   "측정면 요약 (한눈)",
@@ -5871,7 +5859,7 @@
                   "측정면 3 — IssueOps 산출물 벤치마크 (통합)",
                   "측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)",
                   "측정면 5 — Hook 실패율 (Q2)",
-                  "측정면 6 — 운영 안정성 baseline (Q4, 골격 신설·실측 대기)",
+                  "측정면 6 — 운영 안정성 baseline (Q4, 2회분 실측 완료)",
                   "갱신 규약 (수동)",
                   "프로그램 종결 판정 (참고)"
                 ],
@@ -5880,7 +5868,7 @@
                 "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
               },
               {
-                "bytes": 4340,
+                "bytes": 4754,
                 "headings": [
                   "Agent-Harness 운영 안정성 Baseline (시계열)",
                   "측정 명령",
@@ -6408,18 +6396,6 @@
             },
             "ok": true,
             "skills": [
-              {
-                "has_openai_yaml": false,
-                "has_skill_md": false,
-                "name": ".claude",
-                "path": "$HARNESS_ROOT/skills/.claude"
-              },
-              {
-                "has_openai_yaml": false,
-                "has_skill_md": false,
-                "name": ".omc",
-                "path": "$HARNESS_ROOT/skills/.omc"
-              },
               {
                 "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
                 "has_openai_yaml": true,

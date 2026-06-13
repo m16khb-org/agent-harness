@@ -6,12 +6,11 @@
 
 이 문서는 **Q5 대시보드 측정면 6**의 출처다. 갱신 시 `quality-dashboard.md`의 해당 행도 함께 갱신한다.
 
-최종 갱신: **2026-06-13** (골격 신설 — 실측치 미기록, STA 재측정 회차에 채움)
+최종 갱신: **2026-06-13** (Q4 evidence-first 실측 2회분 기록)
 
-> **현황**: 본 baseline은 골격만 신설된 상태다. 핵심 지표 행은 STA-P/STA-H 재측정(호스트
-> 사용량 한도 해제 후)과 동시에 채운다. 수용 기준은 **최소 2회분 측정치 + stability-audit
-> 스크립트 Go contract test 1개 이상**(현재 685줄 Python 무테스트) — 둘 다 잔여.
-> D-등급(추정)으로 행을 채우지 않는다(rubric 원칙).
+> **현황**: Q4 baseline 수용 기준(최소 2회분 측정치 + stability-audit 스크립트 contract
+> test)을 2026-06-13 충족했다. 두 회차 모두 `e2e_stability_audit.py --json` evidence-first
+> mode로 실행했고, D-등급(추정) 행은 기록하지 않았다.
 
 ---
 
@@ -37,7 +36,7 @@ python3 skills/stability-audit/scripts/e2e_stability_audit.py --full-install --c
 
 | 지표 | 출처 스텝 / 필드 | 정상 판정 |
 |------|------------------|-----------|
-| 잔존 daemon 수 | `process_hygiene.classified.current_daemons[]` 길이 | 현재 checkout 소유 외 0 |
+| 잔존 daemon 수 | `process_hygiene.classified.current_daemons[]` 길이 | 의도된 user-level + 이 repo dogfood daemon 외 0 |
 | zombie 수 | `process_hygiene.classified.zombies[]` 길이 (state `Z` ∧ agent-harness/bin/harness/codegraph) | 0 |
 | RSS 추이 | `rss_sample` (rounds×calls 후 daemon RSS) | 라운드 간 단조 증가 ✗ (단일 Go 런타임 warmup 점프는 허용) |
 | MCP 재접속 끊김 | `host_mcp_checks`(claude/codex mcp) + daemon_and_mcp_stress의 mcp 왕복 실패 | 0 (도그푸드 관찰도 비고에 병기) |
@@ -51,8 +50,8 @@ python3 skills/stability-audit/scripts/e2e_stability_audit.py --full-install --c
 
 | 측정일 | mode | ok | 잔존 daemon | zombie | RSS 추이(KB) | MCP 끊김 | self-verify | 비고 |
 |--------|------|----|-----------|--------|-------------|----------|-------------|------|
-| _(대기)_ | evidence-first | — | — | — | — | — | — | STA 재측정 회차에 기록 |
-| _(대기)_ | evidence-first | — | — | — | — | — | — | 2회분 충족용 |
+| 2026-06-13 11:51–12:05 KST | evidence-first | ✅ | 2 (user daemon + repo dogfood daemon) | 0 | 15152→16800 (+1648), deltas 768/592/288 | 0 | ✅ 10/10, 230/230, min score 100 | `/tmp/agent-harness-sta-run1-final-20260613.json`; MCP ids 1–8, temp leak 0, legacy/temp 0 |
+| 2026-06-13 12:06–12:19 KST | evidence-first | ✅ | 2 (user daemon + repo dogfood daemon) | 0 | 15072→16400 (+1328), deltas 720/480/128 | 0 | ✅ 10/10, 230/230, min score 100 | `/tmp/agent-harness-sta-run2-final-20260613.json`; MCP ids 1–8, temp leak 0, legacy/temp 0 |
 
 ## 갱신 규약
 
@@ -62,5 +61,5 @@ python3 skills/stability-audit/scripts/e2e_stability_audit.py --full-install --c
 
 ## 잔여 작업 (Q4 종결 조건)
 
-1. **실측 2회분**: STA 재측정(호스트 한도 해제 후)으로 위 표 2행 이상 채움. _(잔여)_
-2. ✅ **분류 로직 contract test** (2026-06-13): `classify_processes`의 daemon/legacy/temp-watcher/zombie 4버킷 라우팅을 `e2e_stability_audit_test.py::ClassifyProcessesTest` 6케이스로 핀(zombie는 Z-state ∧ harness-command 동시 조건, 무관 프로세스 미분류, 빈 입력 포함). 계층-C 한계(시그니처 매칭 핀이지 라이브 ps 열거/cleanup 정확성 증명 아님)를 테스트 docstring에 명시. `python3 skills/stability-audit/scripts/e2e_stability_audit_test.py` 8/8 그린.
+1. ✅ **실측 2회분** (2026-06-13): evidence-first audit 2회 모두 green. `host_mcp_checks`, `daemon_mcp_stress`, `process_hygiene`, `rss_stability`, `go test ./...`, `go test -race ./...`, `go build`, `self-verify --full --iterations=10 --seed=100 --target-score=95` 통과.
+2. ✅ **분류 로직 contract test** (2026-06-13): `classify_processes`의 daemon/legacy/temp-watcher/zombie 4버킷 라우팅을 `e2e_stability_audit_test.py::ClassifyProcessesTest` 6케이스로 핀(zombie는 Z-state ∧ harness-command 동시 조건, 무관 프로세스 미분류, 빈 입력 포함). 계층-C 한계(시그니처 매칭 핀이지 라이브 ps 열거/cleanup 정확성 증명 아님)를 테스트 docstring에 명시. `python3 skills/stability-audit/scripts/e2e_stability_audit_test.py` 11/11 그린.

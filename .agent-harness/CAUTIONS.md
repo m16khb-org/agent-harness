@@ -261,6 +261,16 @@ A single PreToolUse worktree-guard "fix" is rarely enough: the guard blocks thro
 - Destructive cleanup (`--apply` force-release) must re-read+re-classify immediately before the write. `ScanStaleIssueOpsCycles` snapshots cycles via `NonDoneCyclesForRepo` then probes by bare `os.Stat`; a worktree briefly missing (unmount/NFS/in-flight `git worktree` recreate) or a cycle advanced by a parallel session between snapshot and release would otherwise be clobbered to `done` (TOCTOU). The fix re-reads the fresh record and re-runs `stalescan.Classify` before `ForceReleaseIssueOps`; this NARROWS but does not close the window.
 - Known residual gaps (multi-session QA round 2 — resolved): the `(repo,branch)` JSON store now uses per-id advisory flock (`withIssueOpsLock`) so concurrent `start`/`link`/`set-phase`/`force-release` on the same id serialize across processes; hot-path worktree validity now uses `os.Lstat` on `.git` (file OR directory) via `worktreeGitTracked`, so `git worktree prune`d directories and leftover non-git dirs are correctly excluded; and stale-reset/force-release now stamp `OrphanWorktreePath` for the off-hot-path stale-scan reaper to clean via `git worktree prune` and `git worktree remove --force`.
 
+## 22. Stability audit smoke tests must track current host/MCP contracts
+
+The stability audit can false-fail when its smoke assumptions lag the harness contract.
+
+주의:
+- `agent-harness mcp` defaults to the daemon-backed proxy. Newline-delimited JSON-RPC smoke tests that expect direct stdout responses must set `HARNESS_MCP_DIRECT=1`, matching `validationcli/mcpsmoke`. Otherwise stdout can be empty while the proxy path exits successfully, producing a false `mcp_ids=[]` failure.
+- UserPromptSubmit currently injects compact per-turn `[agent-harness]` bullet context. The audit must reject old/noisy catalog injection markers such as `Required project docs` or `필수 프롬프트 주입중`, but must not fail merely because compact context contains newlines.
+- `self-verify promote --confirm` refuses failed snapshots by default. Validation fixtures that intentionally promote a non-termination-eligible snapshot for state-roundtrip coverage must pass `--allow-failed-source`; production baseline promotion should not use that override.
+- Pin these assumptions in `skills/stability-audit/scripts/e2e_stability_audit_test.py` and `cmd/harness/validationcli/stateroundtrip` tests before changing the audit script.
+
 ## Incident Archive
 
 Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents.md`. Keep this file focused on evergreen hazards and move one-off history there.

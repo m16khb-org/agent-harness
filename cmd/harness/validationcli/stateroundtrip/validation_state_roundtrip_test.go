@@ -41,6 +41,9 @@ func TestValidateStateRoundtripWithDepsCoversSuccessAndSetupFailure(t *testing.T
 	if !step.OK || step.Label != "state roundtrip" || len(calls) != 21 || !strings.Contains(step.Command, "state write") || !strings.Contains(step.Command, "self-verify history") {
 		t.Fatalf("unexpected success step: %#v calls=%v", step, calls)
 	}
+	if !strings.Contains(step.Command, "self-verify promote --from-key self-verify-123-compare-candidate --baseline-key self-verify-123-promoted-baseline --allow-failed-source --confirm --json") {
+		t.Fatalf("confirmed promote of failed fixture must pass explicit override, command=%q", step.Command)
+	}
 	if len(writes) != 3 || !strings.Contains(strings.Join(writes, "\n"), "corrupt.json") {
 		t.Fatalf("expected old/corrupt fixture writes, got %v", writes)
 	}

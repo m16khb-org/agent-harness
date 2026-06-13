@@ -55,7 +55,7 @@ func validateStateRoundtripSelfVerifyDeps(input validateStateRoundtripSelfVerify
 		return session.fail("self-verify promote dry-run wrote baseline unexpectedly")
 	}
 
-	promoteConfirm := session.run("self verify promote confirm", input.binary, "self-verify", "promote", "--from-key", candidateCompareKey, "--baseline-key", promotedBaselineKey, "--confirm", "--json")
+	promoteConfirm := session.run("self verify promote confirm", input.binary, "self-verify", "promote", "--from-key", candidateCompareKey, "--baseline-key", promotedBaselineKey, "--allow-failed-source", "--confirm", "--json")
 	if !promoteConfirm.OK {
 		return session.combineFailed(promoteConfirm)
 	}

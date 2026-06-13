@@ -30,6 +30,26 @@ class StabilityAuditScriptTest(unittest.TestCase):
     def test_full_self_verify_timeout_has_full_gate_budget(self) -> None:
         self.assertGreaterEqual(audit.FULL_SELF_VERIFY_TIMEOUT_SECONDS, 600)
 
+    def test_user_prompt_compact_turn_hint_is_not_noisy(self) -> None:
+        ctx = "\n".join(
+            [
+                "[agent-harness]",
+                "- docs: use project docs only when repo-specific context matters",
+                "- profile: github/managed@github.com, Go, backend+cli",
+                "- rule: verify with repo/tool evidence before changing files",
+            ]
+        )
+        self.assertFalse(audit.is_noisy_user_prompt_context(ctx))
+
+    def test_user_prompt_catalog_injection_is_noisy(self) -> None:
+        self.assertTrue(audit.is_noisy_user_prompt_context("Required project docs:\n- ADR.md"))
+        self.assertTrue(audit.is_noisy_user_prompt_context("필수 프롬프트 주입중: .agent-harness/TESTING.md"))
+
+    def test_mcp_smoke_env_forces_direct_stream_transport(self) -> None:
+        env = audit.mcp_smoke_env({"HARNESS_DAEMON_DIR": "/tmp/daemon"})
+        self.assertEqual(env["HARNESS_DAEMON_DIR"], "/tmp/daemon")
+        self.assertEqual(env["HARNESS_MCP_DIRECT"], "1")
+
 
 def _row(command: str, *, state: str = "S", pid: int = 100, ppid: int = 1, rss_kb: int = 1024) -> dict:
     return {"pid": pid, "ppid": ppid, "state": state, "rss_kb": rss_kb, "command": command}
