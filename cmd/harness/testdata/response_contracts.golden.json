@@ -1062,7 +1062,7 @@
           "title": "Project Docs Operations"
         },
         {
-          "bytes": 7626,
+          "bytes": 7789,
           "headings": [
             "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
             "측정면 요약 (한눈)",
@@ -1071,13 +1071,27 @@
             "측정면 3 — IssueOps 산출물 벤치마크 (통합)",
             "측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)",
             "측정면 5 — Hook 실패율 (Q2)",
-            "측정면 6 — 운영 안정성 baseline (Q4, 잔여)",
+            "측정면 6 — 운영 안정성 baseline (Q4, 골격 신설·실측 대기)",
             "갱신 규약 (수동)",
             "프로그램 종결 판정 (참고)"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
           "rel_path": ".agent-harness/operations/quality-dashboard.md",
           "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
+        },
+        {
+          "bytes": 4069,
+          "headings": [
+            "Agent-Harness 운영 안정성 Baseline (시계열)",
+            "측정 명령",
+            "핵심 지표 정의 (프로그램 Q4 명시 4종 + 보강)",
+            "시계열 측정 기록",
+            "갱신 규약",
+            "잔여 작업 (Q4 종결 조건)"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
+          "rel_path": ".agent-harness/operations/stability-baseline.md",
+          "title": "Agent-Harness 운영 안정성 Baseline (시계열)"
         },
         {
           "bytes": 3849,
@@ -1542,6 +1556,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
+        "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
@@ -3562,7 +3577,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 50,
+        "docs_indexed": 51,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -5847,7 +5862,7 @@
                 "title": "Project Docs Operations"
               },
               {
-                "bytes": 7626,
+                "bytes": 7789,
                 "headings": [
                   "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
                   "측정면 요약 (한눈)",
@@ -5856,13 +5871,27 @@
                   "측정면 3 — IssueOps 산출물 벤치마크 (통합)",
                   "측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)",
                   "측정면 5 — Hook 실패율 (Q2)",
-                  "측정면 6 — 운영 안정성 baseline (Q4, 잔여)",
+                  "측정면 6 — 운영 안정성 baseline (Q4, 골격 신설·실측 대기)",
                   "갱신 규약 (수동)",
                   "프로그램 종결 판정 (참고)"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
                 "rel_path": ".agent-harness/operations/quality-dashboard.md",
                 "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
+              },
+              {
+                "bytes": 4069,
+                "headings": [
+                  "Agent-Harness 운영 안정성 Baseline (시계열)",
+                  "측정 명령",
+                  "핵심 지표 정의 (프로그램 Q4 명시 4종 + 보강)",
+                  "시계열 측정 기록",
+                  "갱신 규약",
+                  "잔여 작업 (Q4 종결 조건)"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
+                "rel_path": ".agent-harness/operations/stability-baseline.md",
+                "title": "Agent-Harness 운영 안정성 Baseline (시계열)"
               },
               {
                 "bytes": 3849,
@@ -6334,6 +6363,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
+              "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
@@ -7765,7 +7795,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 50,
+              "docs_indexed": 51,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

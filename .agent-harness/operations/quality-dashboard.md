@@ -24,7 +24,7 @@
 | 3 | IssueOps 산출물 벤치마크 | 통합 | **100/100** (avg·min), critical 0, 9 fixtures | 2026-06-13 | ✅ GREEN | pre-push 상시 + judge file 실전(Q3) |
 | 4 | Hook 런타임 메트릭 | 런타임 | 전 hook p95 **<40ms**, blocks 0 | 2026-06-13 | ✅ stop p95 38ms (<1s) | 상시 누적(자동) |
 | 5 | Hook 실패율 | 런타임 | total 38, last_7d **5**, last_24h 0 | 2026-06-13 | ✅ | 상시 누적(자동) |
-| 6 | 운영 안정성 baseline | 런타임 | **미생성** (Q4 잔여) | — | ⬜ | STA 재측정과 동시 신설 |
+| 6 | 운영 안정성 baseline | 런타임 | **골격 신설**(실측 대기), `stability-baseline.md` | 2026-06-13 | ⬜ 2회분 잔여 | STA 재측정과 동시 채움 |
 
 커버리지: 스킬 측정 **16/16 착수** (STA-P 1건만 D-추정 금지 원칙으로 미확정), hook 지표 **0→4** 달성.
 
@@ -91,11 +91,11 @@
 - **rotation**: SessionStart hook이 720h 초과 항목 자동 prune(무한 성장 P1 해소). 로그 13KB.
 - 출처: `cmd/harness/hookcli/hookfailure/`, `internal/core/hookfailure/stats.go`.
 
-## 측정면 6 — 운영 안정성 baseline (Q4, 잔여)
+## 측정면 6 — 운영 안정성 baseline (Q4, 골격 신설·실측 대기)
 
-- **미생성**. `e2e_stability_audit.py --json`의 핵심 지표(잔존 daemon 수, zombie 수, RSS 추이, MCP 재접속 끊김 횟수)를 시계열로 `stability-baseline.md`에 누적할 예정.
-- 최소 2회분 측정 + stability-audit 스크립트 Go contract test 1개 이상이 수용 기준.
-- **STA-P/STA-H 재측정(측정면 2)과 함께** 호스트 사용량 한도 해제 후 신설.
+- **골격 신설 완료** (2026-06-13): `stability-baseline.md`에 측정 명령·핵심 지표 6종 정의(잔존 daemon/zombie/RSS 추이/MCP 끊김/legacy 잔재/self-verify)·시계열 표·갱신 규약 작성.
+- **실측 행은 대기**: `e2e_stability_audit.py --json` 2회분 측정 + 스크립트 분류 로직 contract test 1개가 종결 조건. D-추정으로 행 미기록.
+- **STA-P/STA-H 재측정(측정면 2)과 함께** 호스트 사용량 한도 해제 후 채움.
 
 ---
 
