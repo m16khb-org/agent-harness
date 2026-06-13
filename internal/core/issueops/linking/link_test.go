@@ -2,6 +2,8 @@ package linking
 
 import (
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -9,7 +11,9 @@ import (
 )
 
 type linkStoreForTest struct {
-	records map[string]model.IssueOpsRecord
+	records               map[string]model.IssueOpsRecord
+	branchEvidenceMissing []string
+	designReviewMissing   []string
 }
 
 func newLinkStoreForTest(records ...model.IssueOpsRecord) (*linkStoreForTest, Store) {
@@ -17,7 +21,18 @@ func newLinkStoreForTest(records ...model.IssueOpsRecord) (*linkStoreForTest, St
 	for _, record := range records {
 		store.records[record.ID] = record
 	}
-	return store, Store{Read: store.read, TouchWrite: store.touchWrite}
+	return store, Store{
+		Read:                   store.read,
+		TouchWrite:             store.touchWrite,
+		PlanReadiness:          store.planReadiness,
+		PhaseRank:              model.IssueOpsPhaseRank,
+		BranchEvidenceMissing:  store.branchEvidenceMissingFor,
+		DesignReviewMissing:    store.designReviewMissingFor,
+		PlanPathExists:         store.planPathExists,
+		PlanPathInsideWorktree: store.planPathInsideWorktree,
+		WorktreePathValid:      store.worktreePathValid,
+		UniqueSorted:           uniqueSortedForTest,
+	}
 }
 
 func (s *linkStoreForTest) read(_ string, id string) (model.IssueOpsRecord, error) {
@@ -33,6 +48,242 @@ func (s *linkStoreForTest) touchWrite(_ string, record model.IssueOpsRecord) (mo
 	record.OK = true
 	s.records[record.ID] = record
 	return record, nil
+}
+
+func (s *linkStoreForTest) planReadiness(record model.IssueOpsRecord) model.IssueOpsReadiness {
+	return model.IssueOpsReadiness{OK: true, Ready: strings.TrimSpace(record.IssueURL) != ""}
+}
+
+func (s *linkStoreForTest) branchEvidenceMissingFor(model.IssueOpsRecord) []string {
+	return append([]string(nil), s.branchEvidenceMissing...)
+}
+
+func (s *linkStoreForTest) designReviewMissingFor(model.IssueOpsRecord) []string {
+	return append([]string(nil), s.designReviewMissing...)
+}
+
+func (s *linkStoreForTest) planPathExists(_ string, path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
+func (s *linkStoreForTest) planPathInsideWorktree(worktree, planPath string) bool {
+	rel, err := filepath.Rel(worktree, planPath)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func (s *linkStoreForTest) worktreePathValid(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+func uniqueSortedForTest(values []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func TestLinkIssuePersistsURLAndAdvancesReadyRecord(t *testing.T) {
+	record := model.IssueOpsRecord{
+		ID:     "io-link-issue",
+		Repo:   "/repo/example",
+		Branch: "feature/link-issue",
+		Phase:  model.IssueOpsPhaseProblem,
+	}
+	linkStore, store := newLinkStoreForTest(record)
+
+	got, err := LinkIssue(store, t.TempDir(), record.ID, " https://github.com/example/repo/issues/10 ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.IssueURL != "https://github.com/example/repo/issues/10" {
+		t.Fatalf("IssueURL=%q", got.IssueURL)
+	}
+	if got.Phase != model.IssueOpsPhasePlan {
+		t.Fatalf("Phase=%q, want %q", got.Phase, model.IssueOpsPhasePlan)
+	}
+	if reloaded := linkStore.records[record.ID]; reloaded.IssueURL != got.IssueURL || reloaded.Phase != got.Phase {
+		t.Fatalf("persisted record mismatch: %+v", reloaded)
+	}
+}
+
+func TestLinkIssueRejectsInvalidURL(t *testing.T) {
+	_, store := newLinkStoreForTest(model.IssueOpsRecord{ID: "io-bad-url"})
+	if _, err := LinkIssue(store, t.TempDir(), "io-bad-url", "not-a-url"); err == nil || !strings.Contains(err.Error(), "http(s) URL") {
+		t.Fatalf("expected issue URL validation error, got %v", err)
+	}
+}
+
+func TestLinkPlanValidatesReadinessAndPersistsAbsolutePath(t *testing.T) {
+	repo, worktree := issueOpsRepoAndWorktreeFixture(t, "feature/plan")
+	planDir := filepath.Join(worktree, "docs")
+	if err := os.MkdirAll(planDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	planPath := filepath.Join(planDir, "plan.md")
+	if err := os.WriteFile(planPath, []byte("# plan\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	record := model.IssueOpsRecord{
+		ID:           "io-link-plan",
+		Repo:         repo,
+		Branch:       "feature/plan",
+		Phase:        model.IssueOpsPhasePlan,
+		IssueURL:     "https://github.com/example/repo/issues/10",
+		WorktreePath: worktree,
+	}
+	_, store := newLinkStoreForTest(record)
+
+	got, err := LinkPlan(store, t.TempDir(), record.ID, filepath.Join("docs", "plan.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PlanPath != planPath {
+		t.Fatalf("PlanPath=%q, want %q", got.PlanPath, planPath)
+	}
+	if got.Phase != model.IssueOpsPhaseImplement {
+		t.Fatalf("Phase=%q, want %q", got.Phase, model.IssueOpsPhaseImplement)
+	}
+}
+
+func TestLinkPlanRejectsBoundaryViolations(t *testing.T) {
+	repo, worktree := issueOpsRepoAndWorktreeFixture(t, "feature/plan-boundary")
+	record := model.IssueOpsRecord{
+		ID:           "io-link-plan-boundary",
+		Repo:         repo,
+		Branch:       "feature/plan-boundary",
+		Phase:        model.IssueOpsPhasePlan,
+		IssueURL:     "https://github.com/example/repo/issues/10",
+		WorktreePath: worktree,
+	}
+	for _, tc := range []struct {
+		name    string
+		path    string
+		mutate  func(*linkStoreForTest)
+		wantErr string
+	}{
+		{name: "empty path", path: " ", wantErr: "plan_path is required"},
+		{name: "path traversal", path: "../plan.md", wantErr: "path traversal"},
+		{name: "missing branch evidence", path: "plan.md", mutate: func(s *linkStoreForTest) {
+			s.branchEvidenceMissing = []string{"branch_exists"}
+		}, wantErr: "before branch evidence"},
+		{name: "missing design review", path: "plan.md", mutate: func(s *linkStoreForTest) {
+			s.designReviewMissing = []string{"risks", "design_approval", "risks"}
+		}, wantErr: "design_approval, risks"},
+		{name: "missing file", path: "missing.md", wantErr: "plan_path does not exist"},
+		{name: "absolute path outside worktree", path: filepath.Join(filepath.Dir(worktree), "plan.md"), wantErr: "plan_path does not exist"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			linkStore, store := newLinkStoreForTest(record)
+			if tc.mutate != nil {
+				tc.mutate(linkStore)
+			}
+			_, err := LinkPlan(store, t.TempDir(), record.ID, tc.path)
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error=%v, want substring %q", err, tc.wantErr)
+			}
+		})
+	}
+
+	noWorktree := record
+	noWorktree.ID = "io-no-worktree"
+	noWorktree.WorktreePath = ""
+	_, store := newLinkStoreForTest(noWorktree)
+	if _, err := LinkPlan(store, t.TempDir(), noWorktree.ID, "plan.md"); err == nil || !strings.Contains(err.Error(), "before linked worktree") {
+		t.Fatalf("expected linked worktree error, got %v", err)
+	}
+}
+
+func TestLinkWorktreeValidatesIsolationBranchAndExistingPlan(t *testing.T) {
+	repo, worktree := issueOpsRepoAndWorktreeFixture(t, "feature/worktree")
+	planPath := filepath.Join(worktree, "plan.md")
+	if err := os.WriteFile(planPath, []byte("# plan\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	record := model.IssueOpsRecord{
+		ID:       "io-link-worktree",
+		Repo:     repo,
+		Branch:   "feature/worktree",
+		Phase:    model.IssueOpsPhasePlan,
+		PlanPath: planPath,
+	}
+	_, store := newLinkStoreForTest(record)
+
+	got, err := LinkWorktree(store, t.TempDir(), record.ID, worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.WorktreePath != worktree {
+		t.Fatalf("WorktreePath=%q, want %q", got.WorktreePath, worktree)
+	}
+
+	otherRepo, otherWorktree := issueOpsRepoAndWorktreeFixture(t, "feature/other")
+	otherPlan := filepath.Join(filepath.Dir(otherWorktree), "outside-plan.md")
+	if err := os.WriteFile(otherPlan, []byte("# plan\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	badPlan := record
+	badPlan.ID = "io-bad-plan"
+	badPlan.Repo = otherRepo
+	badPlan.Branch = "feature/other"
+	badPlan.PlanPath = otherPlan
+	_, store = newLinkStoreForTest(badPlan)
+	if _, err := LinkWorktree(store, t.TempDir(), badPlan.ID, otherWorktree); err == nil || !strings.Contains(err.Error(), "plan_path must be inside linked worktree") {
+		t.Fatalf("expected plan/worktree boundary error, got %v", err)
+	}
+}
+
+func TestLinkWorktreeRejectsBoundaryViolations(t *testing.T) {
+	repo, worktree := issueOpsRepoAndWorktreeFixture(t, "feature/worktree-boundary")
+	record := model.IssueOpsRecord{
+		ID:     "io-link-worktree-boundary",
+		Repo:   repo,
+		Branch: "feature/worktree-boundary",
+		Phase:  model.IssueOpsPhasePlan,
+	}
+	for _, tc := range []struct {
+		name    string
+		path    string
+		mutate  func(*linkStoreForTest)
+		wantErr string
+	}{
+		{name: "empty path", path: " ", wantErr: "worktree_path is required"},
+		{name: "path traversal", path: "../worktree", wantErr: "path traversal"},
+		{name: "missing branch evidence", path: worktree, mutate: func(s *linkStoreForTest) {
+			s.branchEvidenceMissing = []string{"branch_head"}
+		}, wantErr: "before branch evidence"},
+		{name: "missing directory", path: filepath.Join(filepath.Dir(worktree), "missing"), wantErr: "does not exist or is not a directory"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			linkStore, store := newLinkStoreForTest(record)
+			if tc.mutate != nil {
+				tc.mutate(linkStore)
+			}
+			_, err := LinkWorktree(store, t.TempDir(), record.ID, tc.path)
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error=%v, want substring %q", err, tc.wantErr)
+			}
+		})
+	}
+
+	mismatchRepo, mismatchWorktree := issueOpsRepoAndWorktreeFixture(t, "feature/actual")
+	mismatch := record
+	mismatch.ID = "io-branch-mismatch"
+	mismatch.Repo = mismatchRepo
+	mismatch.Branch = "feature/expected"
+	_, store := newLinkStoreForTest(mismatch)
+	if _, err := LinkWorktree(store, t.TempDir(), mismatch.ID, mismatchWorktree); err == nil || !strings.Contains(err.Error(), "does not match IssueOps branch") {
+		t.Fatalf("expected branch mismatch error, got %v", err)
+	}
 }
 
 func TestLinkChildPersistsProviderNeutralGraph(t *testing.T) {
@@ -112,6 +363,41 @@ func TestLinkChildPersistsProviderNeutralGraph(t *testing.T) {
 	}
 }
 
+func TestLinkRelatedPersistsProviderAndRejectsDuplicates(t *testing.T) {
+	record := model.IssueOpsRecord{
+		ID:       "io-related",
+		Repo:     "/repo/example",
+		Branch:   "feature/related",
+		Phase:    model.IssueOpsPhasePlan,
+		IssueURL: "https://github.com/example/repo/issues/10",
+	}
+	_, store := newLinkStoreForTest(record)
+
+	got, err := LinkRelated(store, t.TempDir(), record.ID, " follows-up ", " https://github.com/example/repo/issues/11 ", " follow up ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.IssueLinks) != 1 {
+		t.Fatalf("IssueLinks=%+v", got.IssueLinks)
+	}
+	link := got.IssueLinks[0]
+	if link.Type != "follows-up" || link.URL != "https://github.com/example/repo/issues/11" || link.Title != "follow up" || link.Provider != "github" {
+		t.Fatalf("unexpected related link: %+v", link)
+	}
+	if link.CreatedAt == "" {
+		t.Fatalf("related link should include CreatedAt: %+v", link)
+	}
+	if _, err := LinkRelated(store, t.TempDir(), record.ID, "follows-up", link.URL, "duplicate"); err == nil || !strings.Contains(err.Error(), "already linked") {
+		t.Fatalf("expected duplicate related link rejection, got %v", err)
+	}
+	if _, err := LinkRelated(store, t.TempDir(), record.ID, "parent", "https://github.com/example/repo/issues/12", "bad type"); err == nil || !strings.Contains(err.Error(), "invalid link type") {
+		t.Fatalf("expected invalid link type rejection, got %v", err)
+	}
+	if _, err := LinkRelated(store, t.TempDir(), record.ID, "blocks", "not-a-url", "bad url"); err == nil || !strings.Contains(err.Error(), "related_url") {
+		t.Fatalf("expected related URL validation error, got %v", err)
+	}
+}
+
 func TestValidateIssueURL(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -134,6 +420,69 @@ func TestValidateIssueURL(t *testing.T) {
 				t.Errorf("ValidateIssueURL(%q) error = %v, wantErr = %v", tt.url, err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestValidateIsolatedWorktreePath(t *testing.T) {
+	repo, worktree := issueOpsRepoAndWorktreeFixture(t, "feature/isolation")
+	record := model.IssueOpsRecord{Repo: repo}
+	if err := ValidateIsolatedWorktreePath(record, worktree); err != nil {
+		t.Fatalf("valid worktree rejected: %v", err)
+	}
+	if err := ValidateIsolatedWorktreePath(record, repo); err == nil || !strings.Contains(err.Error(), "isolated") {
+		t.Fatalf("expected source checkout isolation error, got %v", err)
+	}
+	outside := filepath.Join(filepath.Dir(repo), "outside")
+	if err := os.MkdirAll(outside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateIsolatedWorktreePath(record, outside); err == nil || !strings.Contains(err.Error(), "sibling worktree directory") {
+		t.Fatalf("expected sibling worktree directory error, got %v", err)
+	}
+	symlink := filepath.Join(filepath.Dir(worktree), "linked")
+	if err := os.Symlink(worktree, symlink); err != nil {
+		t.Skipf("symlink fixture unavailable: %v", err)
+	}
+	if err := ValidateIsolatedWorktreePath(record, symlink); err == nil || !strings.Contains(err.Error(), "must not be a symlink") {
+		t.Fatalf("expected symlink rejection, got %v", err)
+	}
+}
+
+func TestValidateWorktreeBranch(t *testing.T) {
+	_, worktree := issueOpsRepoAndWorktreeFixture(t, "feature/branch")
+	if err := ValidateWorktreeBranch(model.IssueOpsRecord{Branch: "feature/branch"}, worktree); err != nil {
+		t.Fatalf("matching branch rejected: %v", err)
+	}
+	if err := ValidateWorktreeBranch(model.IssueOpsRecord{}, worktree); err != nil {
+		t.Fatalf("empty expected branch should be allowed: %v", err)
+	}
+	if err := ValidateWorktreeBranch(model.IssueOpsRecord{Branch: "feature/other"}, worktree); err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("expected branch mismatch, got %v", err)
+	}
+	noGit := t.TempDir()
+	if err := ValidateWorktreeBranch(model.IssueOpsRecord{Branch: "feature/branch"}, noGit); err == nil || !strings.Contains(err.Error(), "must be a git worktree") {
+		t.Fatalf("expected git worktree error, got %v", err)
+	}
+}
+
+func issueOpsRepoAndWorktreeFixture(t *testing.T, branch string) (string, string) {
+	t.Helper()
+	root := t.TempDir()
+	repo := filepath.Join(root, "repo")
+	worktree := filepath.Join(root, "repo.worktrees", strings.ReplaceAll(branch, "/", "-"))
+	writeGitHeadForTest(t, repo, branch)
+	writeGitHeadForTest(t, worktree, branch)
+	return repo, worktree
+}
+
+func writeGitHeadForTest(t *testing.T, path, branch string) {
+	t.Helper()
+	gitDir := filepath.Join(path, ".git")
+	if err := os.MkdirAll(gitDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
 
