@@ -20,13 +20,14 @@
 | # | 측정면 | 계층 | 최신값 | 측정일 | 게이트 | 다음 측정 |
 |---|--------|------|--------|--------|--------|-----------|
 | 1 | Pioneer 스킬 9종 | 격리 rubric | holdout **4.92/5.0** (전 9종 ≥4.8) | 2026-06-11 | ✅ ≥4.2 | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
-| 2 | 비-pioneer 스킬 7종 | 격리 rubric | 6/7 측정 완료, 전 측정 holdout ≥4.8 | 2026-06-13 | ⚠️ STA-P 1건 잔여 | STA 재측정(호스트 한도 해제 후) |
+| 2 | 비-pioneer 스킬 7종 | 격리 rubric | visible **7/7 측정 완료**, stability-audit 4.86 | 2026-06-13 | ⚠️ ACP-O 재측정·STA-H n≥3 잔여 | ACP-O/STA-H 재측정 |
 | 3 | IssueOps 산출물 벤치마크 | 통합 | **100/100** (avg·min), critical 0, 9 fixtures | 2026-06-13 | ✅ GREEN | pre-push 상시 + judge file 실전(Q3) |
 | 4 | Hook 런타임 메트릭 | 런타임 | 전 hook p95 **<40ms**, blocks 0 | 2026-06-13 | ✅ stop p95 38ms (<1s) | 상시 누적(자동) |
 | 5 | Hook 실패율 | 런타임 | total 38, last_7d **5**, last_24h 0 | 2026-06-13 | ✅ | 상시 누적(자동) |
 | 6 | 운영 안정성 baseline | 런타임 | **2/2 evidence-first green**: zombie 0, MCP 끊김 0, self-verify 230/230 | 2026-06-13 | ✅ GREEN | STA 재측정/안정성 회귀 의심 시 |
 
-커버리지: 스킬 측정 **16/16 착수** (STA-P 1건만 D-추정 금지 원칙으로 미확정), hook 지표 **0→4** 달성.
+커버리지: 스킬 visible 측정 **16/16 완료** (STA-P D-추정 해소), hook 지표 **0→4** 달성.
+strict 잔여: ACP-O stale-contract fix 후 재측정, STA-H holdout n≥3, IssueOps judge file 실전 1회.
 
 ---
 
@@ -51,9 +52,10 @@
 | self-augment | 5.0 | 4.9 ±0 (n=3) | none | A + H:C |
 | project-bootstrap | 4.86 | 5.0 ±0 (n=3) | none | A + H:A |
 | draft-wiki-promoter | 4.94 | 4.8 ±0 (n=3) | none | A/C/A + H:C |
-| stability-audit | — (STA-P 보류) | 5.0 (n=1, 재측정 대기) | none | A + H:A |
+| stability-audit | 4.86 | 5.0 (n=1, n≥3 보강 대기) | none | A + H:A |
 
-- **잔여**: STA-P(풀 audit 스크립트 실행 포함)는 2026-06-11 호스트 사용량 한도로 중단 → D-추정 금지 원칙대로 미확정. STA-H도 n=1만 확보(run 2·3 대기). ACP-O는 stale-contract cap 수정 커밋 반영 후 재측정 시 cap 3.4 해제 예정.
+- **STA-P 종료**: 2026-06-13 fast-path audit fresh run으로 A-grade evidence 확보(`ok=true`, `failures=[]`, MCP ids 1-8, zombie/legacy/temp 0, self-verify 10/10·230/230·min score 100). 상세: `.agent-harness/evidence/harness-skills-quality/sta-p-2026-06-13.md`.
+- **strict 잔여**: STA-H는 n=1만 확보(run 2·3 대기). ACP-O는 stale-contract cap 수정 커밋 반영 후 재측정 시 cap 3.4 해제 예정.
 - **v2 세분화**(0.1 단위 + 5.0 유보 규칙 + proportionality)는 신규 측정부터 의무. 천장 효과(21케이스 중 17건 5.0) 실측이 동기.
 - 출처: `harness-skill-quality-scorecard.md`.
 
@@ -110,4 +112,4 @@
 
 ## 프로그램 종결 판정 (참고)
 
-정량 성공 기준(프로그램 §4): 스킬 측정 16/16(STA-P 잔여 1건), hook 지표 0→4(달성), 벤치마크 상시 게이트(달성), 안정성 시계열 2회분(달성), 전 측정 n≥3 분산 규율(신규 측정 적용). D(추정)로 닫힌 항목 0 유지.
+정량 성공 기준(프로그램 §4): 스킬 visible 측정 16/16(달성, STA-P D-추정 해소), hook 지표 0→4(달성), 벤치마크 상시 게이트(달성), 안정성 시계열 2회분(달성), 전 측정 n≥3 분산 규율(잔여: STA-H), ACP-O stale-contract fix 후 재측정, IssueOps judge file 실전 1회. D(추정)로 닫힌 항목 0 유지.
