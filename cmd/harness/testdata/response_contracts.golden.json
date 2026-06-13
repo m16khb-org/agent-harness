@@ -1062,6 +1062,24 @@
           "title": "Project Docs Operations"
         },
         {
+          "bytes": 7626,
+          "headings": [
+            "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
+            "측정면 요약 (한눈)",
+            "측정면 1 — Pioneer 스킬 9종 (격리 rubric)",
+            "측정면 2 — 비-pioneer 스킬 7종 (격리 rubric)",
+            "측정면 3 — IssueOps 산출물 벤치마크 (통합)",
+            "측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)",
+            "측정면 5 — Hook 실패율 (Q2)",
+            "측정면 6 — 운영 안정성 baseline (Q4, 잔여)",
+            "갱신 규약 (수동)",
+            "프로그램 종결 판정 (참고)"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
+          "rel_path": ".agent-harness/operations/quality-dashboard.md",
+          "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
+        },
+        {
           "bytes": 3849,
           "headings": [
             "Verification Operations",
@@ -1140,7 +1158,7 @@
           "title": "Agent-Harness 성능/안정성 개선 계획"
         },
         {
-          "bytes": 13766,
+          "bytes": 14139,
           "headings": [
             "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)",
             "0. 전수조사 핵심 발견 (현재 상태 스냅샷)",
@@ -1154,7 +1172,7 @@
             "Q3. issueops 벤치마크 정기화 + judge file 실전 1회전 [구축물 활용]",
             "Q4. 운영 안정성 정량 baseline [stability-audit 정례화]",
             "Q6. lifecycle state 동시성 레이스 수정 [신규 실측 결함, P1]",
-            "Q5. 정량 대시보드 단일화 [통합 가시성]",
+            "Q5. 정량 대시보드 단일화 [통합 가시성] — ✅ 완료 (2026-06-13)",
             "2. 정성 트랙 (측정이 못 잡는 품질)",
             "S1. Firsthand 도그푸드 정례화 [입증된 채널의 제도화]",
             "S2. 다관점 사전 리뷰를 플랜 게이트로 [입증된 채널 2]",
@@ -1523,6 +1541,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
+        "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
@@ -3543,7 +3562,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 49,
+        "docs_indexed": 50,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -5828,6 +5847,24 @@
                 "title": "Project Docs Operations"
               },
               {
+                "bytes": 7626,
+                "headings": [
+                  "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
+                  "측정면 요약 (한눈)",
+                  "측정면 1 — Pioneer 스킬 9종 (격리 rubric)",
+                  "측정면 2 — 비-pioneer 스킬 7종 (격리 rubric)",
+                  "측정면 3 — IssueOps 산출물 벤치마크 (통합)",
+                  "측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)",
+                  "측정면 5 — Hook 실패율 (Q2)",
+                  "측정면 6 — 운영 안정성 baseline (Q4, 잔여)",
+                  "갱신 규약 (수동)",
+                  "프로그램 종결 판정 (참고)"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
+                "rel_path": ".agent-harness/operations/quality-dashboard.md",
+                "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
+              },
+              {
                 "bytes": 3849,
                 "headings": [
                   "Verification Operations",
@@ -5906,7 +5943,7 @@
                 "title": "Agent-Harness 성능/안정성 개선 계획"
               },
               {
-                "bytes": 13766,
+                "bytes": 14139,
                 "headings": [
                   "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)",
                   "0. 전수조사 핵심 발견 (현재 상태 스냅샷)",
@@ -5920,7 +5957,7 @@
                   "Q3. issueops 벤치마크 정기화 + judge file 실전 1회전 [구축물 활용]",
                   "Q4. 운영 안정성 정량 baseline [stability-audit 정례화]",
                   "Q6. lifecycle state 동시성 레이스 수정 [신규 실측 결함, P1]",
-                  "Q5. 정량 대시보드 단일화 [통합 가시성]",
+                  "Q5. 정량 대시보드 단일화 [통합 가시성] — ✅ 완료 (2026-06-13)",
                   "2. 정성 트랙 (측정이 못 잡는 품질)",
                   "S1. Firsthand 도그푸드 정례화 [입증된 채널의 제도화]",
                   "S2. 다관점 사전 리뷰를 플랜 게이트로 [입증된 채널 2]",
@@ -6296,6 +6333,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
+              "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
@@ -7727,7 +7765,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 49,
+              "docs_indexed": 50,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

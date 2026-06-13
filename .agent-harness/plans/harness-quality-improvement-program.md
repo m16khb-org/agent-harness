@@ -81,11 +81,14 @@
 - **수용 기준**: 재현 명령 10회 연속 그린; `go test -race ./internal/core/lifecycle -count=3` 그린; self-verify 재실행 통과.
 - **issueops 사이클로 실행** (동시성 코드 변경).
 
-### Q5. 정량 대시보드 단일화 [통합 가시성]
+### Q5. 정량 대시보드 단일화 [통합 가시성] — ✅ 완료 (2026-06-13)
 - **무엇**: 산재한 정량 지표(스킬 스코어카드 2종, 벤치마크 run, hook stats, stability baseline)를 한 문서
   `.agent-harness/operations/quality-dashboard.md`로 인덱스(링크+최신값+측정일). 자동화는 후순위, 우선 수동 갱신 규약.
 - **수용 기준**: 5개 지표군의 최신값·측정일·다음 측정 예정일이 1페이지에서 보임.
 - 규모: 소.
+- **결과**: `quality-dashboard.md` 신설 — 6개 측정면(pioneer 4.92, 비-pioneer 7종, 벤치마크 100/100,
+  hook 메트릭 p95<40ms, hook 실패율, 안정성 baseline 잔여)을 계층 분리 단서(S6)와 함께 1페이지 인덱스.
+  실측값 전부 라이브 CLI(`hook metrics`/`hook failures stats`/`benchmark run`)로 채움.
 
 ## 2. 정성 트랙 (측정이 못 잡는 품질)
 
