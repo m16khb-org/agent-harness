@@ -2,6 +2,7 @@ package hookfailure
 
 import (
 	"encoding/json"
+	"flag"
 	"io"
 	"os"
 	"path/filepath"
@@ -75,5 +76,18 @@ func TestRunFailuresStatsJSON(t *testing.T) {
 	byHook, _ := obj["by_hook"].(map[string]any)
 	if byHook["stop"] != float64(1) || byHook["pre-tool-use"] != float64(1) {
 		t.Fatalf("unexpected by_hook: %+v", byHook)
+	}
+}
+
+// Q2 first-reading follow-up: help requests are not failures — 16 of the 38
+// recorded "failures" were `flag: help requested` noise drowning the signal.
+func TestRecordSkipsHelpRequestedErrors(t *testing.T) {
+	stateDir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+
+	Record([]string{"stop"}, nil, flag.ErrHelp)
+
+	if _, err := os.Stat(filepath.Join(stateDir, "hook-failures.jsonl")); !os.IsNotExist(err) {
+		t.Fatalf("help-requested must not be recorded as a failure (stat err=%v)", err)
 	}
 }

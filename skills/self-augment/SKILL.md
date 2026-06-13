@@ -28,7 +28,8 @@ Completion requires all goals below to exceed `target_score`. The default target
 1. **Baseline**
    - Read the nearest `AGENTS.md`/`CLAUDE.md`, `GENIUS_THINK.md`, and `skills/self-augment/SELF_AUGMENTATION.md` when present.
    - Run or inspect `./bin/agent-harness self-augment --json` for the current candidate curriculum.
-   - Use `./bin/agent-harness self-augment --save-state --state-key self-augment-latest --json` when the selected plan should become durable memory for the next cycle.
+   - Use `./bin/agent-harness self-augment --save-state --state-key self-augment-latest --json
+agent-harness self-augment --cycles 3 --json   # plan multiple improvement cycles at once (default 1)` when the selected plan should become durable memory for the next cycle.
    - Use `./bin/agent-harness self-augment lesson --lesson "..." --next-action "..." --json` to store reusable Reflexion lessons.
    - Run a baseline self-verification loop when feasible; otherwise capture why it cannot run.
 

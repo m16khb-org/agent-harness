@@ -2,6 +2,7 @@ package hookfailure
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"os"
 	"strings"
@@ -12,6 +13,11 @@ import (
 )
 
 func Record(args []string, stdin []byte, hookErr error) {
+	// Help requests are not failures; recording them buried real defects
+	// under noise (16 of the first 38 logged "failures" were ErrHelp).
+	if errors.Is(hookErr, flag.ErrHelp) {
+		return
+	}
 	hook := "unknown"
 	if len(args) > 0 && strings.TrimSpace(args[0]) != "" {
 		hook = strings.TrimSpace(args[0])
