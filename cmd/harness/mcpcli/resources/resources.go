@@ -117,6 +117,9 @@ func harnessFileResource(uri string, skillName string) ([]string, bool) {
 	case "harness://commit-policy":
 		return []string{".agent-harness", "COMMIT_POLICY.md"}, true
 	case "harness://skill/atomic-commit-push":
+		if skillName == "" {
+			skillName = "atomic-commit-push"
+		}
 		return []string{"skills", skillName, "SKILL.md"}, true
 	case "harness://agents":
 		return []string{"AGENTS.md"}, true

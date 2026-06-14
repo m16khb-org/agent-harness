@@ -29,21 +29,28 @@ func StateWrite(key, content string) (StateResult, error) {
 		return StateResult{OK: false, StateDir: StateDir()}, err
 	}
 	dir := StateDir()
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return StateResult{OK: false, StateDir: dir}, err
+	var result StateResult
+	err = withStateLock(dir, key, func() error {
+		record := StateRecord{
+			SchemaVersion: StateCurrentSchemaVersion,
+			Key:           key,
+			Content:       content,
+			UpdatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
+			Bytes:         len([]byte(content)),
+		}
+		path, writeErr := writeStateRecord(dir, key, record)
+		result = StateResult{
+			OK:       writeErr == nil,
+			StateDir: dir,
+			Path:     path,
+			Record:   record,
+		}
+		return writeErr
+	})
+	if result.OK || result.StateDir != "" {
+		return result, err
 	}
-	record := StateRecord{
-		SchemaVersion: StateCurrentSchemaVersion,
-		Key:           key,
-		Content:       content,
-		UpdatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
-		Bytes:         len([]byte(content)),
-	}
-	path, err := writeStateRecord(dir, key, record)
-	if err != nil {
-		return StateResult{OK: false, StateDir: dir, Path: path}, err
-	}
-	return StateResult{OK: true, StateDir: dir, Path: path, Record: record}, nil
+	return StateResult{OK: false, StateDir: dir}, err
 }
 
 func StateRead(key string) (StateResult, error) {

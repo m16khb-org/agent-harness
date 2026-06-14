@@ -48,6 +48,9 @@ func isHarnessOwnedStateDirectory(name string) bool {
 }
 
 func isHarnessOwnedStateFile(name string) bool {
+	if strings.HasSuffix(name, ".state-lock") {
+		return true
+	}
 	switch name {
 	case HookFailureLogFile:
 		return true

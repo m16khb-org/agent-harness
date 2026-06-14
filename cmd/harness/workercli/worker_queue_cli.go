@@ -60,6 +60,24 @@ func runWorkerList(args []string) error {
 	return err
 }
 
+func runWorkerCleanupStuck(args []string) error {
+	fs := flag.NewFlagSet("worker cleanup-stuck", flag.ContinueOnError)
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	result, err := core.DetectStuckWorkerJobs()
+	if *jsonOut {
+		_ = printJSON(result)
+	}
+	if err == nil && !*jsonOut {
+		for _, job := range result.Jobs {
+			fmt.Printf("%s %s %s\n", job.ID, job.Status, job.Kind)
+		}
+	}
+	return err
+}
+
 func runWorkerCancel(args []string) error {
 	fs := flag.NewFlagSet("worker cancel", flag.ContinueOnError)
 	id := fs.String("id", "", "job id")

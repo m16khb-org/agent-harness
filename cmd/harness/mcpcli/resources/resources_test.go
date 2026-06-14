@@ -143,6 +143,27 @@ func TestHandleResourceReadReturnsHarnessFileResources(t *testing.T) {
 	}
 }
 
+func TestHandleResourceReadUsesCatalogSkillNameWhenConfigSkillNameIsEmpty(t *testing.T) {
+	var calls [][]string
+	result, readErr := HandleResourceRead(rawURI("harness://skill/atomic-commit-push"), Config{
+		ReadHarnessFile: func(parts ...string) (string, error) {
+			calls = append(calls, append([]string(nil), parts...))
+			return strings.Join(parts, "/"), nil
+		},
+	})
+	if readErr != nil {
+		t.Fatalf("HandleResourceRead() error = %+v", readErr)
+	}
+	got := resourceContent(t, result)
+	if got["text"] != "skills/atomic-commit-push/SKILL.md" {
+		t.Fatalf("text = %v, want atomic-commit-push skill path", got["text"])
+	}
+	wantCalls := [][]string{{"skills", "atomic-commit-push", "SKILL.md"}}
+	if !reflect.DeepEqual(calls, wantCalls) {
+		t.Fatalf("ReadHarnessFile calls = %#v, want %#v", calls, wantCalls)
+	}
+}
+
 func TestHandleResourceReadReportsInvalidUnknownAndReadErrors(t *testing.T) {
 	_, readErr := HandleResourceRead(json.RawMessage(`{"uri":`), Config{})
 	if readErr == nil || readErr.Code != -32602 || readErr.Message != "Invalid params" {

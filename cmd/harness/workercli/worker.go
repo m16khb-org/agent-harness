@@ -25,6 +25,8 @@ func runWorker(args []string) error {
 		return runWorkerStatus(args[1:])
 	case "list":
 		return runWorkerList(args[1:])
+	case "cleanup-stuck":
+		return runWorkerCleanupStuck(args[1:])
 	case "cancel":
 		return runWorkerCancel(args[1:])
 	default:
@@ -40,6 +42,7 @@ func workerUsage() {
   agent-harness worker run --read-only --kind KIND [--payload TEXT] [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--json] -- ARGV...
   agent-harness worker status --id ID [--json]
   agent-harness worker list [--json]
+  agent-harness worker cleanup-stuck [--json]
   agent-harness worker cancel --id ID [--json]
 `)
 }

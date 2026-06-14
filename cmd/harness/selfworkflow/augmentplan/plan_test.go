@@ -80,11 +80,32 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 	if candidateByID(result.Candidates, "self-augment-signal-table").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
 		t.Fatalf("self-augment signal table should be satisfied after repo signal collection is table-driven: %+v", result.Candidates)
 	}
-	if result.SelectedCandidate == nil {
-		t.Fatalf("expected selected quality refill candidate after release hardening candidates are satisfied")
+	if candidateByID(result.Candidates, "coverage-mcp-resources").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("MCP resource coverage should be satisfied after catalog/read edge coverage is implemented: %+v", result.Candidates)
 	}
-	if result.SelectedCandidate.ID != "coverage-issueops-linking" {
-		t.Fatalf("selected candidate=%q, want coverage-issueops-linking", result.SelectedCandidate.ID)
+	if candidateByID(result.Candidates, "coverage-externalllm").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("external LLM coverage should be satisfied after malformed output, timeout, and command failure coverage is implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "coverage-issueops-linking").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("issueops linking coverage should be satisfied after boundary coverage is implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "state-write-locking").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("state write locking should be satisfied after StateWrite uses per-key locks: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "coverage-commandguard").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("commandguard coverage should be satisfied after boundary coverage is implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "worker-stuck-running-detection").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("worker stuck-running detection should be satisfied after cleanup-stuck support is implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "daemon-connection-limit").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("daemon connection limit should be satisfied after accept-loop max connection guard is implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "draftwiki-stale-lock").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("draft-wiki stale lock should be satisfied after queue lock stale recovery is implemented: %+v", result.Candidates)
+	}
+	if result.SelectedCandidate != nil {
+		t.Fatalf("expected no selected candidate after all catalog candidates are satisfied, got %+v", result.SelectedCandidate)
 	}
 	if result.TerminationEligible {
 		t.Fatalf("planner must not claim implementation termination before a diff is applied")

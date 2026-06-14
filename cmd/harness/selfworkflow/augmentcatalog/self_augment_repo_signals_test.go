@@ -66,6 +66,282 @@ func TestQualitySignalHarvesterIsSatisfiedByQualityInspectCLIAndSignals(t *testi
 	}
 }
 
+func TestIssueOpsLinkingCoverageIsSatisfiedByBoundaryTests(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "issueops", "linking", "link_test.go"), `package linking
+
+func TestLinkIssueRejectsInvalidURL() {
+	_ = "http(s) URL"
+}
+
+func TestLinkPlanRejectsBoundaryViolations() {
+	_ = "plan_path does not exist"
+	_ = "plan_path must be inside linked worktree"
+}
+
+func TestValidateIssueURL() {}
+`)
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasIssueOpsLinkingBoundaryCoverage {
+		t.Fatalf("issueops linking boundary coverage signal was not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "coverage-issueops-linking", Status: SelfAugmentCandidateStatusOpen, Score: 77.4}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("issueops linking coverage candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
+func TestStateWriteLockingIsSatisfiedByLockedStateWrite(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_io.go"), `package state
+
+func StateWrite(key, content string) (StateResult, error) {
+	err := withStateLock(dir, key, func() error {
+		_, err := writeStateRecord(dir, key, record)
+		return err
+	})
+	return result, err
+}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_lock.go"), `package state
+
+func withStateLock(dir, key string, fn func() error) error { return fn() }
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_test.go"), `package state
+
+func TestStateWriteWaitsForKeyLock() {}
+`)
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasStateWriteLocking {
+		t.Fatalf("state write locking signal was not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "state-write-locking", Status: SelfAugmentCandidateStatusOpen, Score: 77.22}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("state write locking candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
+func TestCommandguardCoverageIsSatisfiedByBoundaryTests(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "commandguard", "lifecycle_command_kubectl_test.go"), `package commandguard
+
+func TestGitOpsKubectlDecisionBlocksMutatingCommands() {}
+func TestGitOpsKubectlDecisionHandlesBoundaryTokens() {
+	_ = "separate dry-run flag allows apply"
+	_ = "shell separator stops rollout subverb"
+	_ = "rollout undo is blocked"
+}
+func TestStagedCheckDecisionWarnsForBroadBiomeCommands() {}
+func TestPackageScriptAndBiomeHelpersHandleBoundaries() {
+	_ = "non-app/lib directories should not count as broad repo dirs"
+}
+`)
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasCommandguardBoundaryCoverage {
+		t.Fatalf("commandguard boundary coverage signal was not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "coverage-commandguard", Status: SelfAugmentCandidateStatusOpen, Score: 77.08}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("commandguard coverage candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
+func TestWorkerStuckRunningDetectionIsSatisfiedByCoreAndCLI(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "worker", "store.go"), `package worker
+
+func DetectStuckWorkerJobs() (WorkerListResult, error) {
+	current.Status = WorkerStatusFailed
+	current.SafetyNotice = "worker job was stuck in running status with dead PID; auto-marked as failed"
+	return result, nil
+}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "worker", "worker_test.go"), `package worker
+
+func TestWorkerDetectStuckJobsMarksDeadPIDAsFailed() {}
+func TestWorkerDetectStuckJobsSkipsAlivePID() {}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "workflow_facade.go"), `package core
+
+func DetectStuckWorkerJobs() (WorkerListResult, error) {
+	return coreworker.DetectStuckWorkerJobs()
+}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "workercli", "worker.go"), `package workercli
+
+func runWorker(args []string) error {
+	switch args[0] {
+	case "cleanup-stuck":
+		return runWorkerCleanupStuck(args[1:])
+	}
+	return nil
+}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "workercli", "worker_queue_cli.go"), `package workercli
+
+func runWorkerCleanupStuck(args []string) error {
+	result, err := core.DetectStuckWorkerJobs()
+	_ = result
+	return err
+}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "workercli", "worker_test.go"), `package workercli
+
+func TestRunWorkerCleanupStuckMarksDeadPIDJobsFailed() {}
+`)
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasWorkerStuckRunningDetection {
+		t.Fatalf("worker stuck-running detection signal was not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "worker-stuck-running-detection", Status: SelfAugmentCandidateStatusOpen, Score: 76.96}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("worker stuck-running candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
+func TestDaemonConnectionLimitIsSatisfiedByAcceptLoopGuard(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "daemoncli", "daemon_server.go"), `package daemoncli
+
+const maxConnections = 64
+
+func runDaemonServerWithDeps() {
+	connSlots := make(chan struct{}, maxConnections)
+	_ = connSlots
+}
+
+func runDaemonAcceptLoop() {
+	select {
+	case connSlots <- struct{}{}:
+	default:
+		_ = "connection limit reached"
+	}
+}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), `package daemoncli
+
+func TestRunDaemonAcceptLoopRejectsWhenConnectionLimitReached() {}
+func TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections() {}
+`)
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasDaemonConnectionLimit {
+		t.Fatalf("daemon connection limit signal was not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "daemon-connection-limit", Status: SelfAugmentCandidateStatusOpen, Score: 76.72}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("daemon connection limit candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
+func TestDraftWikiStaleLockIsSatisfiedByQueueLockRecovery(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "draftwiki", "queue", "lock.go"), `package queue
+
+const staleLockMaxAge = 5 * time.Minute
+
+func AcquireLock(projectStateDir string) (func(), bool, error) {
+	if isStale(path) {
+		_ = os.Remove(path)
+	}
+	return func() {}, true, nil
+}
+
+func isStale(path string) bool {
+	return !processAlive(pid)
+}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "draftwiki", "queue", "queue_test.go"), `package queue
+
+func TestAcquireLockRecoversStaleDeadPIDLock() {}
+func TestAcquireLockKeepsLiveCurrentLock() {}
+func TestAcquireLockContention() {}
+`)
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasDraftWikiStaleLockDetection {
+		t.Fatalf("draft-wiki stale lock signal was not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "draftwiki-stale-lock", Status: SelfAugmentCandidateStatusOpen, Score: 76.24}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("draft-wiki stale lock candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
+func TestMCPResourceCoverageIsSatisfiedByCatalogAndReadEdgeTests(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "mcp", "resource_catalog_test.go"), `package mcp
+
+func TestResourcesExposeStableDescriptors() {}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "mcp", "catalog_test.go"), `package mcp
+
+func TestResourceMapsPreserveDescriptorShape() {}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "mcpcli", "resources", "resources_test.go"), `package resources
+
+func TestHandleResourceReadReportsInvalidUnknownAndReadErrors() {}
+func TestHandleResourceReadUsesCatalogSkillNameWhenConfigSkillNameIsEmpty() {}
+func TestContentShapeAndHarnessFileResourceMappings() {}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "mcpcli", "resources", "context_determinism_test.go"), `package resources
+
+func TestResourcesContextIsByteDeterministic() {}
+`)
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasMCPResourceCoverage {
+		t.Fatalf("MCP resource coverage signal was not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "coverage-mcp-resources", Status: SelfAugmentCandidateStatusOpen, Score: 76.16}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("MCP resource coverage candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
+func TestExternalLLMCoverageIsSatisfiedByMalformedTimeoutAndFailureTests(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "externalllm", "print_test.go"), `package externalllm
+
+func TestRunExternalLLMPrintReturnsCommandErrorWithOutput() {}
+func TestRunExternalLLMPrintTimeoutKillsProcessGroup() {}
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "externalllm", "structured_test.go"), `package externalllm
+
+func TestDecodeExternalLLMStructuredJSONObjectRejectsMalformedOutputs() {}
+func TestDecodeExternalLLMStructuredJSONObjectBoundsLargeErrorOutput() {}
+`)
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasExternalLLMCoverage {
+		t.Fatalf("external LLM coverage signal was not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "coverage-externalllm", Status: SelfAugmentCandidateStatusOpen, Score: 76}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("external LLM coverage candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
 func TestReleaseReproPackIsSatisfiedByChecklistScriptAndTestingSignal(t *testing.T) {
 	root := t.TempDir()
 	writeFileForRepoSignalTest(t, filepath.Join(root, "scripts", "release-repro-smoke.sh"), "agent-harness install-native --dry-run --project-local --json\n")

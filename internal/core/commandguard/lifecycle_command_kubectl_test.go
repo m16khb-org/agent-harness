@@ -95,6 +95,26 @@ func TestKubectlVerbSkipsFlagsAndCapturesSubverb(t *testing.T) {
 	}
 }
 
+func TestGitOpsKubectlDecisionHandlesBoundaryTokens(t *testing.T) {
+	tests := []struct {
+		name       string
+		command    string
+		wantAction string
+	}{
+		{name: "separate dry-run flag allows apply", command: "kubectl apply --dry-run client -f deploy.yaml", wantAction: ""},
+		{name: "shell separator stops rollout subverb", command: "kubectl rollout ; restart deploy/api", wantAction: ""},
+		{name: "rollout undo is blocked", command: "kubectl rollout undo deploy/api", wantAction: "block"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			action, _ := GitOpsKubectlDecision("Bash", tt.command)
+			if action != tt.wantAction {
+				t.Fatalf("action=%q, want %q", action, tt.wantAction)
+			}
+		})
+	}
+}
+
 func TestStagedCheckDecisionWarnsForBroadBiomeCommands(t *testing.T) {
 	repo := t.TempDir()
 	writeCommandGuardFile(t, filepath.Join(repo, "package.json"), `{"scripts":{"lint":"biome check apps libs","format":"biome format --staged apps"}}`)
@@ -143,6 +163,12 @@ func TestPackageScriptAndBiomeHelpersHandleBoundaries(t *testing.T) {
 	}
 	if BroadBiomeCheckCommand("biome check --since main apps libs") {
 		t.Fatalf("scoped biome command should not be broad")
+	}
+	if BroadBiomeCheckCommand("biome check packages services") {
+		t.Fatalf("non-app/lib directories should not count as broad repo dirs")
+	}
+	if got := PackageScript(repo, "empty"); got != "" {
+		t.Fatalf("empty PackageScript returned %q, want empty", got)
 	}
 }
 

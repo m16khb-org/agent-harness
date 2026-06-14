@@ -157,6 +157,10 @@ func TestLinkPlanValidatesReadinessAndPersistsAbsolutePath(t *testing.T) {
 
 func TestLinkPlanRejectsBoundaryViolations(t *testing.T) {
 	repo, worktree := issueOpsRepoAndWorktreeFixture(t, "feature/plan-boundary")
+	outsidePlanPath := filepath.Join(filepath.Dir(worktree), "outside-plan.md")
+	if err := os.WriteFile(outsidePlanPath, []byte("# outside plan\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	record := model.IssueOpsRecord{
 		ID:           "io-link-plan-boundary",
 		Repo:         repo,
@@ -180,7 +184,7 @@ func TestLinkPlanRejectsBoundaryViolations(t *testing.T) {
 			s.designReviewMissing = []string{"risks", "design_approval", "risks"}
 		}, wantErr: "design_approval, risks"},
 		{name: "missing file", path: "missing.md", wantErr: "plan_path does not exist"},
-		{name: "absolute path outside worktree", path: filepath.Join(filepath.Dir(worktree), "plan.md"), wantErr: "plan_path does not exist"},
+		{name: "absolute path outside worktree", path: outsidePlanPath, wantErr: "plan_path must be inside linked worktree"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			linkStore, store := newLinkStoreForTest(record)

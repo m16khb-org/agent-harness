@@ -7,8 +7,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"agent-harness/internal/core"
 )
@@ -169,6 +171,43 @@ func TestRunWorkerLifecycleCommands(t *testing.T) {
 	}
 	if cancelled.ID != queued.ID || cancelled.Status != core.WorkerStatusCancelled {
 		t.Fatalf("expected cancelled job %s, got %#v", queued.ID, cancelled)
+	}
+}
+
+func TestRunWorkerCleanupStuckMarksDeadPIDJobsFailed(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_WORKER_DIR", dir)
+	now := time.Now().UTC().Add(-time.Hour).Format(time.RFC3339Nano)
+	job := core.WorkerJob{
+		OK:           true,
+		ID:           "job-stuck-cli",
+		Kind:         "read-only",
+		Status:       core.WorkerStatusRunning,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+		StartedAt:    now,
+		PID:          99999999,
+		WorkerDir:    dir,
+		NoShell:      true,
+		SafetyNotice: "running before crash",
+	}
+	body, err := json.MarshalIndent(job, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, job.ID+".json"), append(body, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStatusVerifyStdout(t, func() error {
+		return runWorker([]string{"cleanup-stuck", "--json"})
+	})
+	var result core.WorkerListResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode cleanup-stuck JSON: %v\n%s", err, out)
+	}
+	if len(result.Jobs) != 1 || result.Jobs[0].ID != job.ID || result.Jobs[0].Status != core.WorkerStatusFailed {
+		t.Fatalf("expected stuck job to be failed, got %#v", result.Jobs)
 	}
 }
 

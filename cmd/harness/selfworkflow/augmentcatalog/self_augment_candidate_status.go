@@ -57,6 +57,30 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 		{"quality-signal-harvester", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasQualityInspectCLI && signals.HasQualityInspectSignals, "quality inspect CLI exists", "quality inspect emits coverage, branch complexity, and audit risk signals")
 		}},
+		{"coverage-mcp-resources", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasMCPResourceCoverage, "MCP resources cover stable descriptors, deterministic context, read errors, and catalog skill fallback")
+		}},
+		{"coverage-externalllm", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasExternalLLMCoverage, "external LLM core covers malformed structured output, bounded error output, command failure output, and timeout cancellation")
+		}},
+		{"coverage-issueops-linking", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasIssueOpsLinkingBoundaryCoverage, "issueops linking covers invalid issue URLs, missing plan files, and plan/worktree boundary violations")
+		}},
+		{"state-write-locking", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasStateWriteLocking, "StateWrite serializes writes through the per-key state lock and has regression coverage")
+		}},
+		{"coverage-commandguard", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasCommandguardBoundaryCoverage, "commandguard covers kubectl mutation denial, dry-run, shell separator, and broad Biome boundary paths")
+		}},
+		{"worker-stuck-running-detection", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasWorkerStuckRunningDetection, "worker cleanup-stuck detects running jobs with dead PIDs and marks them failed through CLI/core coverage")
+		}},
+		{"daemon-connection-limit", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasDaemonConnectionLimit, "daemon accept loop enforces maxConnections with rejection and graceful-drain coverage")
+		}},
+		{"draftwiki-stale-lock", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasDraftWikiStaleLockDetection, "draft-wiki queue lock detects stale PID/age locks and has recovery regression coverage")
+		}},
 		{"genius-mermaid-lint", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasGeniusMermaidLint, "QA gate lints Mermaid fences using GENIUS_THINK quote/<br/> rules and repo diagrams were normalized")
 		}},

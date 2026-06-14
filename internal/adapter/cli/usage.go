@@ -97,6 +97,7 @@ Usage:
   agent-harness worker run --read-only --kind KIND [--payload TEXT] [--workspace-root PATH] [--cwd PATH] [--json] -- ARGV...
   agent-harness worker status --id ID [--json]
   agent-harness worker list [--json]
+  agent-harness worker cleanup-stuck [--json]
   agent-harness worker cancel --id ID [--json]
   agent-harness install [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]
   agent-harness install-native [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]  # compatibility alias

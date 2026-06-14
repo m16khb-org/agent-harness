@@ -269,6 +269,48 @@ func TestAcquireLockContention(t *testing.T) {
 	}
 }
 
+func TestAcquireLockRecoversStaleDeadPIDLock(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, LockFile)
+	if err := os.WriteFile(lockPath, []byte("0 2024-01-01T00:00:00Z\n"), 0o600); err != nil {
+		t.Fatalf("write stale lock: %v", err)
+	}
+
+	unlock, acquired, err := AcquireLock(dir)
+	if err != nil {
+		t.Fatalf("AcquireLock: %v", err)
+	}
+	if !acquired {
+		t.Fatal("expected stale lock to be removed and reacquired")
+	}
+	defer unlock()
+
+	b, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatalf("read replacement lock: %v", err)
+	}
+	if string(b) == "0 2024-01-01T00:00:00Z\n" {
+		t.Fatal("stale lock content was not replaced")
+	}
+}
+
+func TestAcquireLockKeepsLiveCurrentLock(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, LockFile)
+	if err := os.WriteFile(lockPath, []byte("1 2024-01-01T00:00:00Z\n"), 0o600); err != nil {
+		t.Fatalf("write live lock: %v", err)
+	}
+
+	unlock, acquired, err := AcquireLock(dir)
+	if err != nil {
+		t.Fatalf("AcquireLock: %v", err)
+	}
+	if acquired {
+		unlock()
+		t.Fatal("expected live lock to remain held")
+	}
+}
+
 func TestEventID(t *testing.T) {
 	id1 := EventID("repo-1", "material", "2024-01-01")
 	id2 := EventID("repo-1", "material", "2024-01-01")

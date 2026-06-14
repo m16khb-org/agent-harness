@@ -78,6 +78,64 @@ func repoSignalRules() []repoSignalRule {
 				qualityInspectContainsTerm(root, "low_coverage_packages")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasMCPResourceCoverage = fileContainsTerm(root, filepath.Join("internal", "adapter", "mcp", "resource_catalog_test.go"), "TestResourcesExposeStableDescriptors") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "mcp", "catalog_test.go"), "TestResourceMapsPreserveDescriptorShape") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli", "resources", "resources_test.go"), "TestHandleResourceReadReportsInvalidUnknownAndReadErrors") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli", "resources", "resources_test.go"), "TestHandleResourceReadUsesCatalogSkillNameWhenConfigSkillNameIsEmpty") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli", "resources", "context_determinism_test.go"), "TestResourcesContextIsByteDeterministic")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasExternalLLMCoverage = fileContainsTerm(root, filepath.Join("internal", "core", "externalllm", "print_test.go"), "TestRunExternalLLMPrintReturnsCommandErrorWithOutput") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "externalllm", "print_test.go"), "TestRunExternalLLMPrintTimeoutKillsProcessGroup") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "externalllm", "structured_test.go"), "TestDecodeExternalLLMStructuredJSONObjectRejectsMalformedOutputs") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "externalllm", "structured_test.go"), "TestDecodeExternalLLMStructuredJSONObjectBoundsLargeErrorOutput")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasIssueOpsLinkingBoundaryCoverage = fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "TestLinkIssueRejectsInvalidURL") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "TestLinkPlanRejectsBoundaryViolations") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "plan_path does not exist") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "plan_path must be inside linked worktree") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "TestValidateIssueURL")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasStateWriteLocking = fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_io.go"), "withStateLock(dir, key") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_io.go"), "writeStateRecord(dir, key, record)") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_lock.go"), "func withStateLock") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_test.go"), "TestStateWriteWaitsForKeyLock")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasCommandguardBoundaryCoverage = fileContainsTerm(root, filepath.Join("internal", "core", "commandguard", "lifecycle_command_kubectl_test.go"), "TestGitOpsKubectlDecisionBlocksMutatingCommands") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "commandguard", "lifecycle_command_kubectl_test.go"), "TestGitOpsKubectlDecisionHandlesBoundaryTokens") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "commandguard", "lifecycle_command_kubectl_test.go"), "separate dry-run flag allows apply") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "commandguard", "lifecycle_command_kubectl_test.go"), "shell separator stops rollout subverb") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "commandguard", "lifecycle_command_kubectl_test.go"), "non-app/lib directories should not count as broad repo dirs")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasWorkerStuckRunningDetection = fileContainsTerm(root, filepath.Join("internal", "core", "worker", "store.go"), "func DetectStuckWorkerJobs") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "worker", "store.go"), "WorkerStatusFailed") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "worker", "worker_test.go"), "TestWorkerDetectStuckJobsMarksDeadPIDAsFailed") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "worker", "worker_test.go"), "TestWorkerDetectStuckJobsSkipsAlivePID") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "workflow_facade.go"), "func DetectStuckWorkerJobs") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "workercli", "worker.go"), `"cleanup-stuck"`) &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "workercli", "worker_queue_cli.go"), "runWorkerCleanupStuck") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "workercli", "worker_test.go"), "TestRunWorkerCleanupStuckMarksDeadPIDJobsFailed")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasDaemonConnectionLimit = fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "const maxConnections") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "connSlots := make(chan struct{}, maxConnections)") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "connection limit reached") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), "TestRunDaemonAcceptLoopRejectsWhenConnectionLimitReached") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), "TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasDraftWikiStaleLockDetection = fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "lock.go"), "staleLockMaxAge") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "lock.go"), "func isStale") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "lock.go"), "os.Remove(path)") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "lock.go"), "processAlive(pid)") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "queue_test.go"), "TestAcquireLockRecoversStaleDeadPIDLock") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "queue_test.go"), "TestAcquireLockKeepsLiveCurrentLock")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasGeniusMermaidLint = dirContainsTerm(root, filepath.Join("cmd", "harness", "validationcli"), "lintMermaidBlocks") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "validationcli", "validation_mcp_mermaid_native_wrappers_test.go"), "TestLintMermaidBlocksEnforcesGeniusThinkRules") &&
 				!fileContainsTerm(root, filepath.Join(".agent-harness", "ARCHITECTURE.md"), `\n`)

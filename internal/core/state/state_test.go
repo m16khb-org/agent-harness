@@ -56,6 +56,53 @@ func TestStateRoundtrip(t *testing.T) {
 	}
 }
 
+func TestStateWriteWaitsForKeyLock(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+
+	locked := make(chan struct{})
+	release := make(chan struct{})
+	lockErr := make(chan error, 1)
+	go func() {
+		lockErr <- withStateLock(dir, "locked-key", func() error {
+			close(locked)
+			<-release
+			return nil
+		})
+	}()
+	<-locked
+
+	started := make(chan struct{})
+	writeDone := make(chan error, 1)
+	go func() {
+		close(started)
+		_, err := StateWrite("locked-key", "locked content")
+		writeDone <- err
+	}()
+	<-started
+
+	select {
+	case err := <-writeDone:
+		t.Fatalf("StateWrite completed while key lock was held: %v", err)
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	close(release)
+	if err := <-lockErr; err != nil {
+		t.Fatalf("withStateLock: %v", err)
+	}
+	if err := <-writeDone; err != nil {
+		t.Fatalf("StateWrite after lock release: %v", err)
+	}
+	read, err := StateRead("locked-key")
+	if err != nil {
+		t.Fatalf("StateRead: %v", err)
+	}
+	if read.Record.Content != "locked content" {
+		t.Fatalf("content=%q", read.Record.Content)
+	}
+}
+
 func TestStateRejectsPathTraversalKeys(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	for _, key := range []string{"", "../x", "x/y", "x\\y", "x..y"} {

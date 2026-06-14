@@ -63,6 +63,9 @@ func TestStateDoctorAllowsHarnessOwnedAuxiliaryState(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "hook-failures.jsonl"), []byte(`{"hook":"pre-tool-use","error":"failed"}`+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "good.state-lock"), []byte{}, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(dir, "issueops-benchmarks"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +87,7 @@ func TestStateDoctorAllowsHarnessOwnedAuxiliaryState(t *testing.T) {
 		t.Fatalf("unknown auxiliary state should still keep doctor unhealthy: %+v", result)
 	}
 	for _, issue := range result.Issues {
-		if strings.Contains(issue.Path, "hook-failures.jsonl") || strings.Contains(issue.Path, "issueops-benchmarks") || strings.Contains(issue.Path, "audit") {
+		if strings.Contains(issue.Path, "hook-failures.jsonl") || strings.Contains(issue.Path, ".state-lock") || strings.Contains(issue.Path, "issueops-benchmarks") || strings.Contains(issue.Path, "audit") {
 			t.Fatalf("harness-owned auxiliary state should not warn: %+v", result.Issues)
 		}
 	}

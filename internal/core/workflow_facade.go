@@ -204,6 +204,10 @@ func ListWorkerJobs() (WorkerListResult, error) {
 	return coreworker.ListWorkerJobs()
 }
 
+func DetectStuckWorkerJobs() (WorkerListResult, error) {
+	return coreworker.DetectStuckWorkerJobs()
+}
+
 func RunReadOnlyWorkerJob(kind, payload string, req CommandPolicyRequest) (WorkerJob, error) {
 	return coreworker.RunReadOnlyWorkerJob(kind, payload, policy.CommandPolicyRequest(req))
 }

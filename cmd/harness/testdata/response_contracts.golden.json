@@ -3330,171 +3330,6 @@
     "self_augment_plan": {
       "candidates": [
         {
-          "category": "coverage",
-          "expected_gain": [
-            "invalid URLs, missing files, and path boundaries are pinned"
-          ],
-          "feasibility": 82,
-          "id": "coverage-issueops-linking",
-          "impact": 84,
-          "novelty": 54,
-          "risk": 16,
-          "score": 77.4,
-          "status": "open",
-          "title": "Cover IssueOps link issue and link plan boundaries",
-          "verify_with": [
-            "go test ./internal/core/issueops/linking -count=1",
-            "go test -cover ./internal/core/issueops/linking"
-          ],
-          "why_now": [
-            "IssueOps durable state gates are easy to regress with boundary paths"
-          ]
-        },
-        {
-          "category": "audit-risk",
-          "expected_gain": [
-            "concurrent state writes stop risking lost updates"
-          ],
-          "feasibility": 76,
-          "id": "state-write-locking",
-          "impact": 91,
-          "novelty": 56,
-          "risk": 28,
-          "score": 77.22,
-          "status": "open",
-          "title": "Add write locking around state file updates",
-          "verify_with": [
-            "go test ./internal/core/state -count=1",
-            "go test -race ./internal/core/state -count=1"
-          ],
-          "why_now": [
-            ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking"
-          ]
-        },
-        {
-          "category": "coverage",
-          "expected_gain": [
-            "workspace boundary regressions are caught earlier"
-          ],
-          "feasibility": 84,
-          "id": "coverage-commandguard",
-          "impact": 82,
-          "novelty": 52,
-          "risk": 14,
-          "score": 77.08,
-          "status": "open",
-          "title": "Raise commandguard coverage for boundary and denial paths",
-          "verify_with": [
-            "go test ./internal/core/commandguard -count=1",
-            "go test -cover ./internal/core/commandguard"
-          ],
-          "why_now": [
-            "command policy surfaces are safety-critical and low-coverage packages should be first candidates"
-          ]
-        },
-        {
-          "category": "audit-risk",
-          "expected_gain": [
-            "worker status can classify stale running records"
-          ],
-          "feasibility": 74,
-          "id": "worker-stuck-running-detection",
-          "impact": 88,
-          "novelty": 58,
-          "risk": 24,
-          "score": 76.36,
-          "status": "open",
-          "title": "Detect worker jobs stuck running after process crash",
-          "verify_with": [
-            "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
-          ],
-          "why_now": [
-            ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs"
-          ]
-        },
-        {
-          "category": "audit-risk",
-          "expected_gain": [
-            "daemon resource exhaustion has an explicit guard and test"
-          ],
-          "feasibility": 72,
-          "id": "daemon-connection-limit",
-          "impact": 90,
-          "novelty": 58,
-          "risk": 26,
-          "score": 76.28,
-          "status": "open",
-          "title": "Add daemon connection limit protection",
-          "verify_with": [
-            "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
-          ],
-          "why_now": [
-            ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit"
-          ]
-        },
-        {
-          "category": "audit-risk",
-          "expected_gain": [
-            "draft-wiki queue processing does not wedge on abandoned locks"
-          ],
-          "feasibility": 78,
-          "id": "draftwiki-stale-lock",
-          "impact": 86,
-          "novelty": 54,
-          "risk": 22,
-          "score": 76.24,
-          "status": "open",
-          "title": "Detect and recover stale draft-wiki locks",
-          "verify_with": [
-            "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
-          ],
-          "why_now": [
-            ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection"
-          ]
-        },
-        {
-          "category": "coverage",
-          "expected_gain": [
-            "resource schema and lookup regressions fail in package tests"
-          ],
-          "feasibility": 84,
-          "id": "coverage-mcp-resources",
-          "impact": 80,
-          "novelty": 50,
-          "risk": 12,
-          "score": 76.16,
-          "status": "open",
-          "title": "Cover MCP resource catalog edge cases",
-          "verify_with": [
-            "go test ./cmd/harness/mcpcli/resources -count=1",
-            "go test -cover ./cmd/harness/mcpcli/resources"
-          ],
-          "why_now": [
-            "MCP resource drift affects both Codex and Claude hosts"
-          ]
-        },
-        {
-          "category": "coverage",
-          "expected_gain": [
-            "malformed JSON, timeout, and command failure paths stay deterministic"
-          ],
-          "feasibility": 78,
-          "id": "coverage-externalllm",
-          "impact": 82,
-          "novelty": 56,
-          "risk": 18,
-          "score": 75.60000000000001,
-          "status": "open",
-          "title": "Cover external LLM malformed output and timeout paths",
-          "verify_with": [
-            "go test ./internal/core/externalllm -count=1",
-            "go test -cover ./internal/core/externalllm"
-          ],
-          "why_now": [
-            "IssueOps and quality gates depend on fail-closed external LLM wrappers"
-          ]
-        },
-        {
           "category": "test",
           "expected_gain": [
             "SOLID 구조의 포트 계약 보존",
@@ -3603,6 +3438,106 @@
           ]
         },
         {
+          "category": "coverage",
+          "expected_gain": [
+            "workspace boundary regressions are caught earlier"
+          ],
+          "feasibility": 84,
+          "id": "coverage-commandguard",
+          "impact": 82,
+          "novelty": 52,
+          "risk": 14,
+          "satisfaction_evidence": [
+            "commandguard covers kubectl mutation denial, dry-run, shell separator, and broad Biome boundary paths"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Raise commandguard coverage for boundary and denial paths",
+          "verify_with": [
+            "go test ./internal/core/commandguard -count=1",
+            "go test -cover ./internal/core/commandguard"
+          ],
+          "why_now": [
+            "command policy surfaces are safety-critical and low-coverage packages should be first candidates",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "coverage",
+          "expected_gain": [
+            "malformed JSON, timeout, and command failure paths stay deterministic"
+          ],
+          "feasibility": 78,
+          "id": "coverage-externalllm",
+          "impact": 82,
+          "novelty": 56,
+          "risk": 18,
+          "satisfaction_evidence": [
+            "external LLM core covers malformed structured output, bounded error output, command failure output, and timeout cancellation"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Cover external LLM malformed output and timeout paths",
+          "verify_with": [
+            "go test ./internal/core/externalllm -count=1",
+            "go test -cover ./internal/core/externalllm"
+          ],
+          "why_now": [
+            "IssueOps and quality gates depend on fail-closed external LLM wrappers",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "coverage",
+          "expected_gain": [
+            "invalid URLs, missing files, and path boundaries are pinned"
+          ],
+          "feasibility": 82,
+          "id": "coverage-issueops-linking",
+          "impact": 84,
+          "novelty": 54,
+          "risk": 16,
+          "satisfaction_evidence": [
+            "issueops linking covers invalid issue URLs, missing plan files, and plan/worktree boundary violations"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Cover IssueOps link issue and link plan boundaries",
+          "verify_with": [
+            "go test ./internal/core/issueops/linking -count=1",
+            "go test -cover ./internal/core/issueops/linking"
+          ],
+          "why_now": [
+            "IssueOps durable state gates are easy to regress with boundary paths",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "coverage",
+          "expected_gain": [
+            "resource schema and lookup regressions fail in package tests"
+          ],
+          "feasibility": 84,
+          "id": "coverage-mcp-resources",
+          "impact": 80,
+          "novelty": 50,
+          "risk": 12,
+          "satisfaction_evidence": [
+            "MCP resources cover stable descriptors, deterministic context, read errors, and catalog skill fallback"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Cover MCP resource catalog edge cases",
+          "verify_with": [
+            "go test ./cmd/harness/mcpcli/resources -count=1",
+            "go test -cover ./cmd/harness/mcpcli/resources"
+          ],
+          "why_now": [
+            "MCP resource drift affects both Codex and Claude hosts",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
           "category": "release-test",
           "expected_gain": [
             "지원 OS/arch 범위와 제외 조건 명확화",
@@ -3633,6 +3568,30 @@
           ]
         },
         {
+          "category": "audit-risk",
+          "expected_gain": [
+            "daemon resource exhaustion has an explicit guard and test"
+          ],
+          "feasibility": 72,
+          "id": "daemon-connection-limit",
+          "impact": 90,
+          "novelty": 58,
+          "risk": 26,
+          "satisfaction_evidence": [
+            "daemon accept loop enforces maxConnections with rejection and graceful-drain coverage"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Add daemon connection limit protection",
+          "verify_with": [
+            "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
+          ],
+          "why_now": [
+            ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
           "category": "release-decision",
           "expected_gain": [
             "Homebrew/tarball 선택을 임의 판단이 아니라 체크리스트 결과로 결정",
@@ -3658,6 +3617,30 @@
           ],
           "why_now": [
             "release smoke는 배포 판단 근거를 만들었지만 아직 선택 기준과 rollback 기준이 기록되지 않았다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "expected_gain": [
+            "draft-wiki queue processing does not wedge on abandoned locks"
+          ],
+          "feasibility": 78,
+          "id": "draftwiki-stale-lock",
+          "impact": 86,
+          "novelty": 54,
+          "risk": 22,
+          "satisfaction_evidence": [
+            "draft-wiki queue lock detects stale PID/age locks and has recovery regression coverage"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Detect and recover stale draft-wiki locks",
+          "verify_with": [
+            "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
+          ],
+          "why_now": [
+            ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
@@ -4092,6 +4075,31 @@
           ]
         },
         {
+          "category": "audit-risk",
+          "expected_gain": [
+            "concurrent state writes stop risking lost updates"
+          ],
+          "feasibility": 76,
+          "id": "state-write-locking",
+          "impact": 91,
+          "novelty": 56,
+          "risk": 28,
+          "satisfaction_evidence": [
+            "StateWrite serializes writes through the per-key state lock and has regression coverage"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Add write locking around state file updates",
+          "verify_with": [
+            "go test ./internal/core/state -count=1",
+            "go test -race ./internal/core/state -count=1"
+          ],
+          "why_now": [
+            ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
           "category": "worker",
           "expected_gain": [
             "worker lifecycle DTO와 storage 경계 검증",
@@ -4114,6 +4122,30 @@
           ],
           "why_now": [
             "Phase 4 worker는 필요하지만 첫 단계는 shell 실행 없는 queue/status/cancel로 제한해야 안전하다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
+          "category": "audit-risk",
+          "expected_gain": [
+            "worker status can classify stale running records"
+          ],
+          "feasibility": 74,
+          "id": "worker-stuck-running-detection",
+          "impact": 88,
+          "novelty": 58,
+          "risk": 24,
+          "satisfaction_evidence": [
+            "worker cleanup-stuck detects running jobs with dead PIDs and marks them failed through CLI/core coverage"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Detect worker jobs stuck running after process crash",
+          "verify_with": [
+            "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
+          ],
+          "why_now": [
+            ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         }
@@ -4191,14 +4223,20 @@
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
         "has_command_audit_log": true,
+        "has_commandguard_boundary_coverage": true,
         "has_compatibility_contract": true,
         "has_cross_platform_build_matrix": true,
+        "has_daemon_connection_limit": true,
         "has_distribution_decision": true,
+        "has_draftwiki_stale_lock_detection": true,
+        "has_external_llm_coverage": true,
         "has_genius_mermaid_lint": true,
         "has_genius_think": true,
         "has_goal_score_summary": true,
         "has_install_dry_run_mode": true,
+        "has_issueops_linking_boundary_coverage": true,
         "has_mcp_adapter_catalog": true,
+        "has_mcp_resource_coverage": true,
         "has_performance_baseline": true,
         "has_quality_inspect_cli": true,
         "has_quality_inspect_signals": true,
@@ -4214,7 +4252,9 @@
         "has_self_augment_state_capture": true,
         "has_self_verification_docs": true,
         "has_self_verify_cli": true,
+        "has_state_write_locking": true,
         "has_worker_mvp": true,
+        "has_worker_stuck_running_detection": true,
         "skills": [
           "atomic-commit-push",
           "berners-lee",
@@ -4286,27 +4326,6 @@
           "source": "https://github.com/openai/evals"
         }
       ],
-      "selected_candidate": {
-        "category": "coverage",
-        "expected_gain": [
-          "invalid URLs, missing files, and path boundaries are pinned"
-        ],
-        "feasibility": 82,
-        "id": "coverage-issueops-linking",
-        "impact": 84,
-        "novelty": 54,
-        "risk": 16,
-        "score": 77.4,
-        "status": "open",
-        "title": "Cover IssueOps link issue and link plan boundaries",
-        "verify_with": [
-          "go test ./internal/core/issueops/linking -count=1",
-          "go test -cover ./internal/core/issueops/linking"
-        ],
-        "why_now": [
-          "IssueOps durable state gates are easy to regress with boundary paths"
-        ]
-      },
       "selected_formulas": [
         "문제 재정의 알고리즘",
         "혁신적 솔루션 생성 공식",
@@ -7921,171 +7940,6 @@
           "json": {
             "candidates": [
               {
-                "category": "coverage",
-                "expected_gain": [
-                  "invalid URLs, missing files, and path boundaries are pinned"
-                ],
-                "feasibility": 82,
-                "id": "coverage-issueops-linking",
-                "impact": 84,
-                "novelty": 54,
-                "risk": 16,
-                "score": 77.4,
-                "status": "open",
-                "title": "Cover IssueOps link issue and link plan boundaries",
-                "verify_with": [
-                  "go test ./internal/core/issueops/linking -count=1",
-                  "go test -cover ./internal/core/issueops/linking"
-                ],
-                "why_now": [
-                  "IssueOps durable state gates are easy to regress with boundary paths"
-                ]
-              },
-              {
-                "category": "audit-risk",
-                "expected_gain": [
-                  "concurrent state writes stop risking lost updates"
-                ],
-                "feasibility": 76,
-                "id": "state-write-locking",
-                "impact": 91,
-                "novelty": 56,
-                "risk": 28,
-                "score": 77.22,
-                "status": "open",
-                "title": "Add write locking around state file updates",
-                "verify_with": [
-                  "go test ./internal/core/state -count=1",
-                  "go test -race ./internal/core/state -count=1"
-                ],
-                "why_now": [
-                  ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking"
-                ]
-              },
-              {
-                "category": "coverage",
-                "expected_gain": [
-                  "workspace boundary regressions are caught earlier"
-                ],
-                "feasibility": 84,
-                "id": "coverage-commandguard",
-                "impact": 82,
-                "novelty": 52,
-                "risk": 14,
-                "score": 77.08,
-                "status": "open",
-                "title": "Raise commandguard coverage for boundary and denial paths",
-                "verify_with": [
-                  "go test ./internal/core/commandguard -count=1",
-                  "go test -cover ./internal/core/commandguard"
-                ],
-                "why_now": [
-                  "command policy surfaces are safety-critical and low-coverage packages should be first candidates"
-                ]
-              },
-              {
-                "category": "audit-risk",
-                "expected_gain": [
-                  "worker status can classify stale running records"
-                ],
-                "feasibility": 74,
-                "id": "worker-stuck-running-detection",
-                "impact": 88,
-                "novelty": 58,
-                "risk": 24,
-                "score": 76.36,
-                "status": "open",
-                "title": "Detect worker jobs stuck running after process crash",
-                "verify_with": [
-                  "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
-                ],
-                "why_now": [
-                  ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs"
-                ]
-              },
-              {
-                "category": "audit-risk",
-                "expected_gain": [
-                  "daemon resource exhaustion has an explicit guard and test"
-                ],
-                "feasibility": 72,
-                "id": "daemon-connection-limit",
-                "impact": 90,
-                "novelty": 58,
-                "risk": 26,
-                "score": 76.28,
-                "status": "open",
-                "title": "Add daemon connection limit protection",
-                "verify_with": [
-                  "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
-                ],
-                "why_now": [
-                  ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit"
-                ]
-              },
-              {
-                "category": "audit-risk",
-                "expected_gain": [
-                  "draft-wiki queue processing does not wedge on abandoned locks"
-                ],
-                "feasibility": 78,
-                "id": "draftwiki-stale-lock",
-                "impact": 86,
-                "novelty": 54,
-                "risk": 22,
-                "score": 76.24,
-                "status": "open",
-                "title": "Detect and recover stale draft-wiki locks",
-                "verify_with": [
-                  "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
-                ],
-                "why_now": [
-                  ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection"
-                ]
-              },
-              {
-                "category": "coverage",
-                "expected_gain": [
-                  "resource schema and lookup regressions fail in package tests"
-                ],
-                "feasibility": 84,
-                "id": "coverage-mcp-resources",
-                "impact": 80,
-                "novelty": 50,
-                "risk": 12,
-                "score": 76.16,
-                "status": "open",
-                "title": "Cover MCP resource catalog edge cases",
-                "verify_with": [
-                  "go test ./cmd/harness/mcpcli/resources -count=1",
-                  "go test -cover ./cmd/harness/mcpcli/resources"
-                ],
-                "why_now": [
-                  "MCP resource drift affects both Codex and Claude hosts"
-                ]
-              },
-              {
-                "category": "coverage",
-                "expected_gain": [
-                  "malformed JSON, timeout, and command failure paths stay deterministic"
-                ],
-                "feasibility": 78,
-                "id": "coverage-externalllm",
-                "impact": 82,
-                "novelty": 56,
-                "risk": 18,
-                "score": 75.60000000000001,
-                "status": "open",
-                "title": "Cover external LLM malformed output and timeout paths",
-                "verify_with": [
-                  "go test ./internal/core/externalllm -count=1",
-                  "go test -cover ./internal/core/externalllm"
-                ],
-                "why_now": [
-                  "IssueOps and quality gates depend on fail-closed external LLM wrappers"
-                ]
-              },
-              {
                 "category": "test",
                 "expected_gain": [
                   "SOLID 구조의 포트 계약 보존",
@@ -8194,6 +8048,106 @@
                 ]
               },
               {
+                "category": "coverage",
+                "expected_gain": [
+                  "workspace boundary regressions are caught earlier"
+                ],
+                "feasibility": 84,
+                "id": "coverage-commandguard",
+                "impact": 82,
+                "novelty": 52,
+                "risk": 14,
+                "satisfaction_evidence": [
+                  "commandguard covers kubectl mutation denial, dry-run, shell separator, and broad Biome boundary paths"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Raise commandguard coverage for boundary and denial paths",
+                "verify_with": [
+                  "go test ./internal/core/commandguard -count=1",
+                  "go test -cover ./internal/core/commandguard"
+                ],
+                "why_now": [
+                  "command policy surfaces are safety-critical and low-coverage packages should be first candidates",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "coverage",
+                "expected_gain": [
+                  "malformed JSON, timeout, and command failure paths stay deterministic"
+                ],
+                "feasibility": 78,
+                "id": "coverage-externalllm",
+                "impact": 82,
+                "novelty": 56,
+                "risk": 18,
+                "satisfaction_evidence": [
+                  "external LLM core covers malformed structured output, bounded error output, command failure output, and timeout cancellation"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Cover external LLM malformed output and timeout paths",
+                "verify_with": [
+                  "go test ./internal/core/externalllm -count=1",
+                  "go test -cover ./internal/core/externalllm"
+                ],
+                "why_now": [
+                  "IssueOps and quality gates depend on fail-closed external LLM wrappers",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "coverage",
+                "expected_gain": [
+                  "invalid URLs, missing files, and path boundaries are pinned"
+                ],
+                "feasibility": 82,
+                "id": "coverage-issueops-linking",
+                "impact": 84,
+                "novelty": 54,
+                "risk": 16,
+                "satisfaction_evidence": [
+                  "issueops linking covers invalid issue URLs, missing plan files, and plan/worktree boundary violations"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Cover IssueOps link issue and link plan boundaries",
+                "verify_with": [
+                  "go test ./internal/core/issueops/linking -count=1",
+                  "go test -cover ./internal/core/issueops/linking"
+                ],
+                "why_now": [
+                  "IssueOps durable state gates are easy to regress with boundary paths",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "coverage",
+                "expected_gain": [
+                  "resource schema and lookup regressions fail in package tests"
+                ],
+                "feasibility": 84,
+                "id": "coverage-mcp-resources",
+                "impact": 80,
+                "novelty": 50,
+                "risk": 12,
+                "satisfaction_evidence": [
+                  "MCP resources cover stable descriptors, deterministic context, read errors, and catalog skill fallback"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Cover MCP resource catalog edge cases",
+                "verify_with": [
+                  "go test ./cmd/harness/mcpcli/resources -count=1",
+                  "go test -cover ./cmd/harness/mcpcli/resources"
+                ],
+                "why_now": [
+                  "MCP resource drift affects both Codex and Claude hosts",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
                 "category": "release-test",
                 "expected_gain": [
                   "지원 OS/arch 범위와 제외 조건 명확화",
@@ -8224,6 +8178,30 @@
                 ]
               },
               {
+                "category": "audit-risk",
+                "expected_gain": [
+                  "daemon resource exhaustion has an explicit guard and test"
+                ],
+                "feasibility": 72,
+                "id": "daemon-connection-limit",
+                "impact": 90,
+                "novelty": 58,
+                "risk": 26,
+                "satisfaction_evidence": [
+                  "daemon accept loop enforces maxConnections with rejection and graceful-drain coverage"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Add daemon connection limit protection",
+                "verify_with": [
+                  "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
+                ],
+                "why_now": [
+                  ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
                 "category": "release-decision",
                 "expected_gain": [
                   "Homebrew/tarball 선택을 임의 판단이 아니라 체크리스트 결과로 결정",
@@ -8249,6 +8227,30 @@
                 ],
                 "why_now": [
                   "release smoke는 배포 판단 근거를 만들었지만 아직 선택 기준과 rollback 기준이 기록되지 않았다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "audit-risk",
+                "expected_gain": [
+                  "draft-wiki queue processing does not wedge on abandoned locks"
+                ],
+                "feasibility": 78,
+                "id": "draftwiki-stale-lock",
+                "impact": 86,
+                "novelty": 54,
+                "risk": 22,
+                "satisfaction_evidence": [
+                  "draft-wiki queue lock detects stale PID/age locks and has recovery regression coverage"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Detect and recover stale draft-wiki locks",
+                "verify_with": [
+                  "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
+                ],
+                "why_now": [
+                  ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
@@ -8683,6 +8685,31 @@
                 ]
               },
               {
+                "category": "audit-risk",
+                "expected_gain": [
+                  "concurrent state writes stop risking lost updates"
+                ],
+                "feasibility": 76,
+                "id": "state-write-locking",
+                "impact": 91,
+                "novelty": 56,
+                "risk": 28,
+                "satisfaction_evidence": [
+                  "StateWrite serializes writes through the per-key state lock and has regression coverage"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Add write locking around state file updates",
+                "verify_with": [
+                  "go test ./internal/core/state -count=1",
+                  "go test -race ./internal/core/state -count=1"
+                ],
+                "why_now": [
+                  ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
                 "category": "worker",
                 "expected_gain": [
                   "worker lifecycle DTO와 storage 경계 검증",
@@ -8705,6 +8732,30 @@
                 ],
                 "why_now": [
                   "Phase 4 worker는 필요하지만 첫 단계는 shell 실행 없는 queue/status/cancel로 제한해야 안전하다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
+                "category": "audit-risk",
+                "expected_gain": [
+                  "worker status can classify stale running records"
+                ],
+                "feasibility": 74,
+                "id": "worker-stuck-running-detection",
+                "impact": 88,
+                "novelty": 58,
+                "risk": 24,
+                "satisfaction_evidence": [
+                  "worker cleanup-stuck detects running jobs with dead PIDs and marks them failed through CLI/core coverage"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Detect worker jobs stuck running after process crash",
+                "verify_with": [
+                  "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
+                ],
+                "why_now": [
+                  ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               }
@@ -8782,14 +8833,20 @@
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
               "has_command_audit_log": true,
+              "has_commandguard_boundary_coverage": true,
               "has_compatibility_contract": true,
               "has_cross_platform_build_matrix": true,
+              "has_daemon_connection_limit": true,
               "has_distribution_decision": true,
+              "has_draftwiki_stale_lock_detection": true,
+              "has_external_llm_coverage": true,
               "has_genius_mermaid_lint": true,
               "has_genius_think": true,
               "has_goal_score_summary": true,
               "has_install_dry_run_mode": true,
+              "has_issueops_linking_boundary_coverage": true,
               "has_mcp_adapter_catalog": true,
+              "has_mcp_resource_coverage": true,
               "has_performance_baseline": true,
               "has_quality_inspect_cli": true,
               "has_quality_inspect_signals": true,
@@ -8805,7 +8862,9 @@
               "has_self_augment_state_capture": true,
               "has_self_verification_docs": true,
               "has_self_verify_cli": true,
+              "has_state_write_locking": true,
               "has_worker_mvp": true,
+              "has_worker_stuck_running_detection": true,
               "skills": [
                 "atomic-commit-push",
                 "berners-lee",
@@ -8877,27 +8936,6 @@
                 "source": "https://github.com/openai/evals"
               }
             ],
-            "selected_candidate": {
-              "category": "coverage",
-              "expected_gain": [
-                "invalid URLs, missing files, and path boundaries are pinned"
-              ],
-              "feasibility": 82,
-              "id": "coverage-issueops-linking",
-              "impact": 84,
-              "novelty": 54,
-              "risk": 16,
-              "score": 77.4,
-              "status": "open",
-              "title": "Cover IssueOps link issue and link plan boundaries",
-              "verify_with": [
-                "go test ./internal/core/issueops/linking -count=1",
-                "go test -cover ./internal/core/issueops/linking"
-              ],
-              "why_now": [
-                "IssueOps durable state gates are easy to regress with boundary paths"
-              ]
-            },
             "selected_formulas": [
               "문제 재정의 알고리즘",
               "혁신적 솔루션 생성 공식",
