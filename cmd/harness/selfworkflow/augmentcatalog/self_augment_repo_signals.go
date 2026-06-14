@@ -65,6 +65,19 @@ func repoSignalRules() []repoSignalRule {
 				docsContainTerm(root, "slow_step:*")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasSelfAugmentSignalTable = fileContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow", "augmentcatalog", "self_augment_repo_signals.go"), "func repoSignalRules() []repoSignalRule") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow", "augmentcatalog", "self_augment_repo_signals.go"), "for _, rule := range repoSignalRules()")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasQualityInspectCLI = fileContainsTerm(root, filepath.Join("cmd", "harness", "qualitycli", "quality_inspect.go"), "quality inspect") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "harnessapp", "root_command_facade.go"), `"quality":`)
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
+			signals.HasQualityInspectSignals = qualityInspectContainsTerm(root, "branch_candidate_functions") &&
+				qualityInspectContainsTerm(root, "audit_p1_p2_items") &&
+				qualityInspectContainsTerm(root, "low_coverage_packages")
+		}},
+		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasGeniusMermaidLint = dirContainsTerm(root, filepath.Join("cmd", "harness", "validationcli"), "lintMermaidBlocks") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "validationcli", "validation_mcp_mermaid_native_wrappers_test.go"), "TestLintMermaidBlocksEnforcesGeniusThinkRules") &&
 				!fileContainsTerm(root, filepath.Join(".agent-harness", "ARCHITECTURE.md"), `\n`)
@@ -135,4 +148,9 @@ func hasMCPAdapterCatalog(root string) bool {
 		(dirContainsTerm(root, filepath.Join("cmd", "harness"), "mcpadapter.AdapterOwnedTools") ||
 			dirContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli"), "mcpadapter.AdapterOwnedTools") ||
 			dirContainsTerm(root, filepath.Join("cmd", "harness", "contractcli"), "mcpadapter.AdapterOwnedTools"))
+}
+
+func qualityInspectContainsTerm(root, term string) bool {
+	return dirContainsTerm(root, filepath.Join("cmd", "harness", "qualitycli"), term) ||
+		dirContainsTerm(root, filepath.Join("internal", "core", "qualityinspect"), term)
 }

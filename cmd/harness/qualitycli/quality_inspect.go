@@ -26,16 +26,19 @@ type InspectDeps struct {
 	Coverage             func(root string) (string, error)
 	SelfAugmentOpenCount func(root string) (int, error)
 	SelfVerifyOpenCount  func(root string) (int, error)
+	Candidates           func(root string) []QualityCandidate
 }
 
+type QualityCandidate = qualitycatalog.Candidate
+
 type InspectResult struct {
-	OK          bool                       `json:"ok"`
-	GeneratedAt string                     `json:"generated_at"`
-	HarnessRoot string                     `json:"harness_root"`
-	Summary     Summary                    `json:"summary"`
-	Signals     []Signal                   `json:"signals"`
-	Candidates  []qualitycatalog.Candidate `json:"candidates"`
-	Warnings    []string                   `json:"warnings"`
+	OK          bool               `json:"ok"`
+	GeneratedAt string             `json:"generated_at"`
+	HarnessRoot string             `json:"harness_root"`
+	Summary     Summary            `json:"summary"`
+	Signals     []Signal           `json:"signals"`
+	Candidates  []QualityCandidate `json:"candidates"`
+	Warnings    []string           `json:"warnings"`
 }
 
 type Summary struct {
@@ -151,7 +154,7 @@ func Inspect(root string, deps InspectDeps) InspectResult {
 			highBranchCount++
 		}
 	}
-	candidates := qualitycatalog.Candidates()
+	candidates := deps.Candidates(root)
 	signals := []Signal{
 		{ID: "self-augment-open-candidates", Category: "candidate", Status: "ok", Value: float64(selfAugmentOpen), Evidence: []string{"self-augment candidate catalog"}},
 		{ID: "self-verify-open-candidates", Category: "candidate", Status: "ok", Value: float64(selfVerifyOpen), Evidence: []string{"self-verify candidate export"}},
@@ -191,6 +194,9 @@ func (deps InspectDeps) withDefaults() InspectDeps {
 	}
 	if deps.SelfVerifyOpenCount == nil {
 		deps.SelfVerifyOpenCount = collectSelfVerifyOpenCount
+	}
+	if deps.Candidates == nil {
+		deps.Candidates = collectQualityCandidates
 	}
 	return deps
 }
@@ -240,6 +246,31 @@ func collectSelfVerifyOpenCount(root string) (int, error) {
 	defer func() { selfworkflow.HarnessRoot = oldRoot }()
 	result := selfworkflow.ExportSelfVerificationCandidates()
 	return len(selfworkflow.SelfVerificationCandidateIDsByStatus(result.Candidates, selfworkflow.SelfAugmentCandidateStatusOpen)), nil
+}
+
+func collectQualityCandidates(root string) []QualityCandidate {
+	candidates := qualitycatalog.Candidates()
+	oldRoot := selfworkflow.HarnessRoot
+	oldVersion := selfworkflow.Version
+	selfworkflow.HarnessRoot = func() string { return root }
+	selfworkflow.Version = Version
+	defer func() {
+		selfworkflow.HarnessRoot = oldRoot
+		selfworkflow.Version = oldVersion
+	}()
+
+	plan := selfworkflow.PlanSelfAugmentation(selfworkflow.SelfAugmentPlanRequest{Cycles: 1, TargetScore: 95})
+	statusByID := map[string]selfworkflow.SelfAugmentCandidate{}
+	for _, candidate := range plan.Candidates {
+		statusByID[candidate.ID] = candidate
+	}
+	for i := range candidates {
+		if projected, ok := statusByID[candidates[i].ID]; ok {
+			candidates[i].Status = projected.Status
+			candidates[i].Score = projected.Score
+		}
+	}
+	return candidates
 }
 
 func parseCoveragePackages(output string, threshold float64) []CoveragePackage {

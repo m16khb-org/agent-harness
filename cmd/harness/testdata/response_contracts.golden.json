@@ -3330,49 +3330,6 @@
     "self_augment_plan": {
       "candidates": [
         {
-          "category": "quality",
-          "expected_gain": [
-            "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
-            "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
-          ],
-          "feasibility": 92,
-          "id": "quality-signal-harvester",
-          "impact": 94,
-          "novelty": 78,
-          "risk": 14,
-          "score": 89.24,
-          "status": "open",
-          "title": "Add quality inspect signal harvesting CLI",
-          "verify_with": [
-            "go test ./cmd/harness/qualitycli -count=1",
-            "agent-harness quality inspect --json"
-          ],
-          "why_now": [
-            "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다"
-          ]
-        },
-        {
-          "category": "refactor",
-          "expected_gain": [
-            "signal additions become table rows",
-            "branch count drops below the planned threshold"
-          ],
-          "feasibility": 90,
-          "id": "self-augment-signal-table",
-          "impact": 88,
-          "novelty": 64,
-          "risk": 12,
-          "score": 83.8,
-          "status": "open",
-          "title": "Table-drive self-augment repository signal collection",
-          "verify_with": [
-            "go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"
-          ],
-          "why_now": [
-            "CollectSelfAugmentRepoSignals branch count is high for a read-only detector"
-          ]
-        },
-        {
           "category": "coverage",
           "expected_gain": [
             "invalid URLs, missing files, and path boundaries are pinned"
@@ -3945,6 +3902,33 @@
           ]
         },
         {
+          "category": "quality",
+          "expected_gain": [
+            "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
+            "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
+          ],
+          "feasibility": 92,
+          "id": "quality-signal-harvester",
+          "impact": 94,
+          "novelty": 78,
+          "risk": 14,
+          "satisfaction_evidence": [
+            "quality inspect CLI exists",
+            "quality inspect emits coverage, branch complexity, and audit risk signals"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Add quality inspect signal harvesting CLI",
+          "verify_with": [
+            "go test ./cmd/harness/qualitycli -count=1",
+            "agent-harness quality inspect --json"
+          ],
+          "why_now": [
+            "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
           "category": "memory",
           "expected_gain": [
             "실패 원인 재발 감소",
@@ -4083,6 +4067,31 @@
           ]
         },
         {
+          "category": "refactor",
+          "expected_gain": [
+            "signal additions become table rows",
+            "branch count drops below the planned threshold"
+          ],
+          "feasibility": 90,
+          "id": "self-augment-signal-table",
+          "impact": 88,
+          "novelty": 64,
+          "risk": 12,
+          "satisfaction_evidence": [
+            "self-augment repository signal collection is table-driven through repoSignalRules"
+          ],
+          "score": 0,
+          "status": "already_satisfied",
+          "title": "Table-drive self-augment repository signal collection",
+          "verify_with": [
+            "go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"
+          ],
+          "why_now": [
+            "CollectSelfAugmentRepoSignals branch count is high for a read-only detector",
+            "Already satisfied; do not select in the next self-augmentation cycle"
+          ]
+        },
+        {
           "category": "worker",
           "expected_gain": [
             "worker lifecycle DTO와 storage 경계 검증",
@@ -4191,6 +4200,8 @@
         "has_install_dry_run_mode": true,
         "has_mcp_adapter_catalog": true,
         "has_performance_baseline": true,
+        "has_quality_inspect_cli": true,
+        "has_quality_inspect_signals": true,
         "has_release_dogfood_notes": true,
         "has_release_repro_pack": true,
         "has_release_user_readme": true,
@@ -4198,6 +4209,7 @@
         "has_risk_qa_tier": true,
         "has_self_augment_lesson_capture": true,
         "has_self_augment_planner": true,
+        "has_self_augment_signal_table": true,
         "has_self_augment_skill": true,
         "has_self_augment_state_capture": true,
         "has_self_verification_docs": true,
@@ -4275,25 +4287,24 @@
         }
       ],
       "selected_candidate": {
-        "category": "quality",
+        "category": "coverage",
         "expected_gain": [
-          "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
-          "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
+          "invalid URLs, missing files, and path boundaries are pinned"
         ],
-        "feasibility": 92,
-        "id": "quality-signal-harvester",
-        "impact": 94,
-        "novelty": 78,
-        "risk": 14,
-        "score": 89.24,
+        "feasibility": 82,
+        "id": "coverage-issueops-linking",
+        "impact": 84,
+        "novelty": 54,
+        "risk": 16,
+        "score": 77.4,
         "status": "open",
-        "title": "Add quality inspect signal harvesting CLI",
+        "title": "Cover IssueOps link issue and link plan boundaries",
         "verify_with": [
-          "go test ./cmd/harness/qualitycli -count=1",
-          "agent-harness quality inspect --json"
+          "go test ./internal/core/issueops/linking -count=1",
+          "go test -cover ./internal/core/issueops/linking"
         ],
         "why_now": [
-          "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다"
+          "IssueOps durable state gates are easy to regress with boundary paths"
         ]
       },
       "selected_formulas": [
@@ -7910,49 +7921,6 @@
           "json": {
             "candidates": [
               {
-                "category": "quality",
-                "expected_gain": [
-                  "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
-                  "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
-                ],
-                "feasibility": 92,
-                "id": "quality-signal-harvester",
-                "impact": 94,
-                "novelty": 78,
-                "risk": 14,
-                "score": 89.24,
-                "status": "open",
-                "title": "Add quality inspect signal harvesting CLI",
-                "verify_with": [
-                  "go test ./cmd/harness/qualitycli -count=1",
-                  "agent-harness quality inspect --json"
-                ],
-                "why_now": [
-                  "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다"
-                ]
-              },
-              {
-                "category": "refactor",
-                "expected_gain": [
-                  "signal additions become table rows",
-                  "branch count drops below the planned threshold"
-                ],
-                "feasibility": 90,
-                "id": "self-augment-signal-table",
-                "impact": 88,
-                "novelty": 64,
-                "risk": 12,
-                "score": 83.8,
-                "status": "open",
-                "title": "Table-drive self-augment repository signal collection",
-                "verify_with": [
-                  "go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"
-                ],
-                "why_now": [
-                  "CollectSelfAugmentRepoSignals branch count is high for a read-only detector"
-                ]
-              },
-              {
                 "category": "coverage",
                 "expected_gain": [
                   "invalid URLs, missing files, and path boundaries are pinned"
@@ -8525,6 +8493,33 @@
                 ]
               },
               {
+                "category": "quality",
+                "expected_gain": [
+                  "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
+                  "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
+                ],
+                "feasibility": 92,
+                "id": "quality-signal-harvester",
+                "impact": 94,
+                "novelty": 78,
+                "risk": 14,
+                "satisfaction_evidence": [
+                  "quality inspect CLI exists",
+                  "quality inspect emits coverage, branch complexity, and audit risk signals"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Add quality inspect signal harvesting CLI",
+                "verify_with": [
+                  "go test ./cmd/harness/qualitycli -count=1",
+                  "agent-harness quality inspect --json"
+                ],
+                "why_now": [
+                  "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
                 "category": "memory",
                 "expected_gain": [
                   "실패 원인 재발 감소",
@@ -8663,6 +8658,31 @@
                 ]
               },
               {
+                "category": "refactor",
+                "expected_gain": [
+                  "signal additions become table rows",
+                  "branch count drops below the planned threshold"
+                ],
+                "feasibility": 90,
+                "id": "self-augment-signal-table",
+                "impact": 88,
+                "novelty": 64,
+                "risk": 12,
+                "satisfaction_evidence": [
+                  "self-augment repository signal collection is table-driven through repoSignalRules"
+                ],
+                "score": 0,
+                "status": "already_satisfied",
+                "title": "Table-drive self-augment repository signal collection",
+                "verify_with": [
+                  "go test ./cmd/harness/selfworkflow/augmentcatalog -count=1"
+                ],
+                "why_now": [
+                  "CollectSelfAugmentRepoSignals branch count is high for a read-only detector",
+                  "Already satisfied; do not select in the next self-augmentation cycle"
+                ]
+              },
+              {
                 "category": "worker",
                 "expected_gain": [
                   "worker lifecycle DTO와 storage 경계 검증",
@@ -8771,6 +8791,8 @@
               "has_install_dry_run_mode": true,
               "has_mcp_adapter_catalog": true,
               "has_performance_baseline": true,
+              "has_quality_inspect_cli": true,
+              "has_quality_inspect_signals": true,
               "has_release_dogfood_notes": true,
               "has_release_repro_pack": true,
               "has_release_user_readme": true,
@@ -8778,6 +8800,7 @@
               "has_risk_qa_tier": true,
               "has_self_augment_lesson_capture": true,
               "has_self_augment_planner": true,
+              "has_self_augment_signal_table": true,
               "has_self_augment_skill": true,
               "has_self_augment_state_capture": true,
               "has_self_verification_docs": true,
@@ -8855,25 +8878,24 @@
               }
             ],
             "selected_candidate": {
-              "category": "quality",
+              "category": "coverage",
               "expected_gain": [
-                "coverage, branch complexity, audit risk를 한 JSON 계약으로 수집",
-                "self-augment 후보 refill의 입력을 재현 가능하게 만든다"
+                "invalid URLs, missing files, and path boundaries are pinned"
               ],
-              "feasibility": 92,
-              "id": "quality-signal-harvester",
-              "impact": 94,
-              "novelty": 78,
-              "risk": 14,
-              "score": 89.24,
+              "feasibility": 82,
+              "id": "coverage-issueops-linking",
+              "impact": 84,
+              "novelty": 54,
+              "risk": 16,
+              "score": 77.4,
               "status": "open",
-              "title": "Add quality inspect signal harvesting CLI",
+              "title": "Cover IssueOps link issue and link plan boundaries",
               "verify_with": [
-                "go test ./cmd/harness/qualitycli -count=1",
-                "agent-harness quality inspect --json"
+                "go test ./internal/core/issueops/linking -count=1",
+                "go test -cover ./internal/core/issueops/linking"
               ],
               "why_now": [
-                "테스트 통과 여부보다 다음 결함 후보를 좁히는 측정 표면이 필요하다"
+                "IssueOps durable state gates are easy to regress with boundary paths"
               ]
             },
             "selected_formulas": [

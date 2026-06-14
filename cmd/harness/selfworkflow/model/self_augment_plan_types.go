@@ -80,6 +80,9 @@ type SelfAugmentRepoSignals struct {
 	HasGoalScoreSummary         bool     `json:"has_goal_score_summary"`
 	HasRepoLocalSandbox         bool     `json:"has_repo_local_sandbox"`
 	HasPerformanceBaseline      bool     `json:"has_performance_baseline"`
+	HasSelfAugmentSignalTable   bool     `json:"has_self_augment_signal_table"`
+	HasQualityInspectCLI        bool     `json:"has_quality_inspect_cli"`
+	HasQualityInspectSignals    bool     `json:"has_quality_inspect_signals"`
 	HasGeniusMermaidLint        bool     `json:"has_genius_mermaid_lint"`
 	HasInstallDryRunMode        bool     `json:"has_install_dry_run_mode"`
 	HasCLIAdapterSplit          bool     `json:"has_cli_adapter_split"`

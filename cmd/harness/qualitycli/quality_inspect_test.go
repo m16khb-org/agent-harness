@@ -194,8 +194,37 @@ func branchy(v int) int {
 		t.Fatalf("expected at least 10 quality candidates, got %d", len(result.Candidates))
 	}
 	for _, candidate := range result.Candidates {
-		if candidate.ID == "" || candidate.Status != "open" || candidate.Score <= 0 || len(candidate.VerifyWith) == 0 || len(candidate.Evidence) == 0 {
+		if candidate.ID == "" || candidate.Status == "" || len(candidate.VerifyWith) == 0 || len(candidate.Evidence) == 0 {
 			t.Fatalf("candidate missing required quality fields: %+v", candidate)
 		}
+	}
+}
+
+func TestInspectQualityCandidatesCanUseProjectedStatuses(t *testing.T) {
+	root := t.TempDir()
+
+	result := Inspect(root, InspectDeps{
+		Now: func() string { return "2026-06-13T00:00:00Z" },
+		Coverage: func(string) (string, error) {
+			return "ok  \tagent-harness/internal/core/commandguard\t0.011s\tcoverage: 74.3% of statements\n", nil
+		},
+		SelfAugmentOpenCount: func(string) (int, error) { return 8, nil },
+		SelfVerifyOpenCount:  func(string) (int, error) { return 0, nil },
+		Candidates: func(string) []QualityCandidate {
+			return []QualityCandidate{
+				{ID: "quality-signal-harvester", Status: "already_satisfied", Score: 0, VerifyWith: []string{"agent-harness quality inspect --json"}, Evidence: []string{"quality inspect CLI"}},
+				{ID: "coverage-issueops-linking", Status: "open", Score: 77.4, VerifyWith: []string{"go test ./internal/core/issueops/linking -count=1"}, Evidence: []string{"PROJECT_AUDIT"}},
+			}
+		},
+	})
+
+	if got := len(result.Candidates); got != 2 {
+		t.Fatalf("candidate count=%d, want injected candidate count", got)
+	}
+	if result.Candidates[0].ID != "quality-signal-harvester" || result.Candidates[0].Status != "already_satisfied" || result.Candidates[0].Score != 0 {
+		t.Fatalf("quality candidate status was not preserved: %+v", result.Candidates[0])
+	}
+	if result.Summary.CandidateCount != 2 || result.Summary.SelfAugmentOpenCandidates != 8 {
+		t.Fatalf("summary did not match injected candidate/open counts: %+v", result.Summary)
 	}
 }

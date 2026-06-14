@@ -74,11 +74,17 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 	if candidateByID(result.Candidates, "release-dogfood-notes").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
 		t.Fatalf("release dogfood notes should be satisfied after Codex/Claude dogfood transcripts are implemented: %+v", result.Candidates)
 	}
+	if candidateByID(result.Candidates, "quality-signal-harvester").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("quality signal harvester should be satisfied after quality inspect signal output is implemented: %+v", result.Candidates)
+	}
+	if candidateByID(result.Candidates, "self-augment-signal-table").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+		t.Fatalf("self-augment signal table should be satisfied after repo signal collection is table-driven: %+v", result.Candidates)
+	}
 	if result.SelectedCandidate == nil {
 		t.Fatalf("expected selected quality refill candidate after release hardening candidates are satisfied")
 	}
-	if result.SelectedCandidate.ID != "quality-signal-harvester" {
-		t.Fatalf("selected candidate=%q, want quality-signal-harvester", result.SelectedCandidate.ID)
+	if result.SelectedCandidate.ID != "coverage-issueops-linking" {
+		t.Fatalf("selected candidate=%q, want coverage-issueops-linking", result.SelectedCandidate.ID)
 	}
 	if result.TerminationEligible {
 		t.Fatalf("planner must not claim implementation termination before a diff is applied")

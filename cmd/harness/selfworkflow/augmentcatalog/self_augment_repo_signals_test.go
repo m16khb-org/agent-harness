@@ -32,6 +32,40 @@ func TestCollectSelfAugmentRepoSignalsFindsMCPAdapterCatalogInContractCLI(t *tes
 	}
 }
 
+func TestSelfAugmentSignalTableIsSatisfiedByRepoSignalRules(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "selfworkflow", "augmentcatalog", "self_augment_repo_signals.go"), "package augmentcatalog\ntype repoSignalRule struct{}\nfunc repoSignalRules() []repoSignalRule { return nil }\nfunc CollectSelfAugmentRepoSignals() { for _, rule := range repoSignalRules() { _ = rule } }\n")
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasSelfAugmentSignalTable {
+		t.Fatalf("self-augment signal table signal was not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "self-augment-signal-table", Status: SelfAugmentCandidateStatusOpen, Score: 83.8}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("self-augment signal-table candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
+func TestQualitySignalHarvesterIsSatisfiedByQualityInspectCLIAndSignals(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "qualitycli", "quality_inspect.go"), "package qualitycli\nfunc Inspect() {}\nconst marker = \"quality inspect\"\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "harnessapp", "root_command_facade.go"), "package harnessapp\nvar commands = map[string]any{\"quality\": nil}\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "qualityinspect", "inspect.go"), "package qualityinspect\nconst marker = \"branch_candidate_functions audit_p1_p2_items low_coverage_packages\"\n")
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasQualityInspectCLI || !signals.HasQualityInspectSignals {
+		t.Fatalf("quality inspect signals were not detected: %+v", signals)
+	}
+
+	candidate := SelfAugmentCandidate{ID: "quality-signal-harvester", Status: SelfAugmentCandidateStatusOpen, Score: 89.24}
+	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
+	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
+		t.Fatalf("quality signal harvester candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
 func TestReleaseReproPackIsSatisfiedByChecklistScriptAndTestingSignal(t *testing.T) {
 	root := t.TempDir()
 	writeFileForRepoSignalTest(t, filepath.Join(root, "scripts", "release-repro-smoke.sh"), "agent-harness install-native --dry-run --project-local --json\n")
