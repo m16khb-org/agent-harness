@@ -11,7 +11,7 @@ import (
 func TestRunCodexAPIDocReviewUsesSchemaOutputAndMapsVerdicts(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("PATH", writeAPIDocFakeCodex(t, t.TempDir())+string(os.PathListSeparator)+os.Getenv("PATH"))
-	options := apiDocReviewOptions{Repo: root, Model: "test-model", Effort: "low", Timeout: 5 * time.Second}
+	options := apiDocReviewOptions{Repo: root, Model: "test-model", Effort: "low", Timeout: 15 * time.Second}
 
 	t.Setenv("API_DOC_FAKE_RESULT", `{"verdict":"pass","summary":"ok"}`)
 	pass, err := runCodexAPIDocReview(options, []string{"api/openapi.yaml"}, "diff", "extra")

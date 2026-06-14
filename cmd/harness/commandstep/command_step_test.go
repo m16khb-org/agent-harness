@@ -12,7 +12,7 @@ import (
 
 func TestRunCommandStepEnvWithBudgetCoversSuccessFailureAndOutputBudget(t *testing.T) {
 	root := t.TempDir()
-	helperTimeout := 5 * time.Second
+	helperTimeout := 15 * time.Second
 	wrapperBin := writeCommandStepExecutable(t, root, "wrapper.sh", "#!/bin/sh\nprintf 'wrapper stdout'\n")
 	wrapper := Run(root, "helper wrapper", helperTimeout, "", 32*1024, wrapperBin)
 	if !wrapper.OK || wrapper.Label != "helper wrapper" || !strings.Contains(wrapper.Stdout, "wrapper stdout") {

@@ -3,10 +3,13 @@ package selfworkflow
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"agent-harness/cmd/harness/selfworkflow/llmeval"
 )
 
 func TestSelfWorkflowCandidateExportAndStateWrappers(t *testing.T) {
@@ -251,6 +254,7 @@ func TestSelfVerifyCLIAndStateWrappers(t *testing.T) {
 		t.Fatalf("ResolveSelfVerifyRunMode quick: %v", err)
 	}
 	if err := RunSelfVerifyWithDeps([]string{"--json", "--save-state", "--state-key", "verify-latest", "--seed", "100"}, SelfVerifyRunDeps{
+		LookupEnv:      func(string) (string, bool) { return "", false },
 		ProgressWriter: &bytes.Buffer{},
 		Verify: func(iterations int, seed int64, targetScore float64, text bool, reporter *SelfVerifyProgressReporter) (SelfAugmentResult, error) {
 			if iterations != 1 || seed != 100 || text {
@@ -263,6 +267,9 @@ func TestSelfVerifyCLIAndStateWrappers(t *testing.T) {
 				t.Fatalf("state key = %q", key)
 			}
 			return nil
+		},
+		ApplyLLMEval: func(SelfAugmentResult, llmeval.SelfVerifyLLMEvalOptions) (SelfAugmentResult, error) {
+			return SelfAugmentResult{}, fmt.Errorf("LLM eval should not run without an explicit flag or env")
 		},
 		PrintJSON: func(any) error { return nil },
 	}); err != nil {
