@@ -1,0 +1,40 @@
+name: CI
+
+# Mirrors the repo's already-deterministic local verification gate (AGENTS.md §9)
+# onto PRs and main pushes. The self-verify gate runs with --judge none (LLM eval
+# off by default) and a pinned --seed, so this is pure wiring of existing commands:
+# no live-skill invocation and no model is required in CI. See
+# .agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md (A1).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save runner minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build -o bin/agent-harness ./cmd/harness
+
+      - name: Test (catches golden drift + all unit/contract regressions)
+        run: go test ./... -count=1
+
+      - name: Deterministic self-verify gate (seed-pinned, --judge none)
+        run: ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
