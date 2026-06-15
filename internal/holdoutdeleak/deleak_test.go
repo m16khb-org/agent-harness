@@ -7,6 +7,7 @@ package holdoutdeleak
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -95,4 +96,25 @@ func TestEvidenceAnswerTreeStaysUntracked(t *testing.T) {
 		}
 	}
 	t.Error(".gitignore no longer blanket-ignores 'evidence' — the holdout answer tree (result.yaml) may now be tracked; A6 keeps answers OUT of git")
+}
+
+func TestEvidenceAnswerFilesNotForceTracked(t *testing.T) {
+	// Stronger than the .gitignore-line check: a `git add -f result.yaml` would
+	// bypass the ignore and silently track an answer. Assert the answer tree is
+	// genuinely untracked. Skips cleanly when git is unavailable or this is not a
+	// git work tree (keeps the unit test environment-tolerant).
+	root := repoRoot(t)
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git not available")
+	}
+	cmd := exec.Command(git, "ls-files", "--", ".agent-harness/evidence")
+	cmd.Dir = root
+	out, err := cmd.Output()
+	if err != nil {
+		t.Skipf("git ls-files unavailable (not a work tree?): %v", err)
+	}
+	if tracked := strings.TrimSpace(string(out)); tracked != "" {
+		t.Errorf("answer tree .agent-harness/evidence is git-tracked (force-added?); holdout answers (result.yaml/baselines) must stay untracked:\n%s", tracked)
+	}
 }

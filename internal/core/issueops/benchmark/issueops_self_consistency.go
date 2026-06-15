@@ -15,9 +15,11 @@ import (
 // samples; it does NOT reduce or detect the judge's systematic BIAS — a consensus
 // of a biased judge is still biased. The spread/variance figures are DESCRIPTIVE
 // statistics over the supplied samples; they are valid only if the samples are
-// genuinely independent draws (distinct provenance, enforced below) and only
-// meaningful where verdicts actually vary (on a clean 100/100 run the merged
-// verdict is bimodally pinned and its variance is degenerate — see A7).
+// genuinely independent draws (distinct sample ids + non-empty provenance are
+// enforced below; provenance MAY be shared across distinct samples from the same
+// offline source bucket) and only meaningful where verdicts actually vary (on a
+// clean 100/100 run the merged verdict is bimodally pinned and its variance is
+// degenerate — see A7).
 
 // JudgeSample is one offline-recorded judge verdict of the same artifact. SampleID
 // is REQUIRED and must be DISTINCT across samples, and Provenance must be
@@ -49,7 +51,7 @@ type ConsensusVerdict struct {
 	Caveat             string   `json:"caveat"`
 }
 
-const consensusCaveat = "descriptive over the supplied samples; reduces verdict VARIANCE not BIAS (a consensus of a biased judge is still biased); valid only if samples are independent (distinct provenance) and meaningful only where verdicts actually vary"
+const consensusCaveat = "descriptive over the supplied samples; reduces verdict VARIANCE not BIAS (a consensus of a biased judge is still biased); valid only if samples are independent (distinct sample ids + non-empty provenance enforced) and meaningful only where verdicts actually vary"
 
 // ConsensusJudgeVerdict aggregates N independent offline judge samples of the same
 // artifact into a self-consistency consensus. It fails closed on samples that lack
