@@ -896,6 +896,17 @@
           "title": "Host Operations"
         },
         {
+          "bytes": 4023,
+          "headings": [
+            "Incident → Hook 매핑 (Hashimoto 원칙)",
+            "종결 판정 (B2 수용기준)",
+            "갱신 규약"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/incident-to-hook-map.md",
+          "rel_path": ".agent-harness/operations/incident-to-hook-map.md",
+          "title": "Incident → Hook 매핑 (Hashimoto 원칙)"
+        },
+        {
           "bytes": 4522,
           "headings": [
             "Install And Sync",
@@ -1637,6 +1648,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
         "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
         "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
+        "$HARNESS_ROOT/.agent-harness/operations/incident-to-hook-map.md",
         "$HARNESS_ROOT/.agent-harness/operations/install.md",
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-optimization-strategy.md",
@@ -4289,7 +4301,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 55,
+        "docs_indexed": 56,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6402,6 +6414,17 @@
                 "title": "Host Operations"
               },
               {
+                "bytes": 4023,
+                "headings": [
+                  "Incident → Hook 매핑 (Hashimoto 원칙)",
+                  "종결 판정 (B2 수용기준)",
+                  "갱신 규약"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/incident-to-hook-map.md",
+                "rel_path": ".agent-harness/operations/incident-to-hook-map.md",
+                "title": "Incident → Hook 매핑 (Hashimoto 원칙)"
+              },
+              {
                 "bytes": 4522,
                 "headings": [
                   "Install And Sync",
@@ -7150,6 +7173,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
               "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
               "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
+              "$HARNESS_ROOT/.agent-harness/operations/incident-to-hook-map.md",
               "$HARNESS_ROOT/.agent-harness/operations/install.md",
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-optimization-strategy.md",
@@ -8970,7 +8994,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 55,
+              "docs_indexed": 56,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
