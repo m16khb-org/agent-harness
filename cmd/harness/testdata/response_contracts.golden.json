@@ -1235,6 +1235,34 @@
           "title": "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)"
         },
         {
+          "bytes": 25953,
+          "headings": [
+            "Agent-Harness 품질향상 프로그램 v2 — 외부 벤치마킹 기반",
+            "0. 현재 상태 스냅샷 (라이브 검증, evidence-bound)",
+            "0.1 이미 해소됨 — 재제안 금지",
+            "0.2 이미 field를 앞선 점 — 노력 낭비 금지 (적대 리뷰 확인)",
+            "0.3 잔존/신규 결함 (라이브 확인)",
+            "1. 전제 (외부 벤치마킹이 바꾼 관점)",
+            "2. 외부-내부 비교 매트릭스 (요약)",
+            "3. 정량 트랙 (측정 가능) — A1~A7",
+            "A1. CI 자동화 — 결정적 게이트를 GitHub Actions로 [G9, high/小, 최우선]",
+            "A2. 관측 분모 도입 — 공유 invocations 카운터 → gate-hit-rate + failure-rate + queue-depth [G4+G5+G6, med/小, 묶음]",
+            "A3. 신뢰도·분산 보고 — pass^k + credible interval [G1, high/中]",
+            "A4. Check-adequacy + 채점 축 분리 — 음성 fixture red-team [G3, high/中]",
+            "A5. 통합 기여 측정 — 결정적 오프라인 routing trace 리플레이 [G2, high/大, PRIMARY]",
+            "A6. v2 baseline 단일척도 재측정 + 내구 fixture [G8, med/中]",
+            "A7. --judge file 독립 검증 [G7, med/小]",
+            "4. 정성 트랙 (측정이 못 잡음) — B1~B6",
+            "B1. 자기교정 가드레일 명문화 [G10, low/小]",
+            "B2. Incident→hook 매핑 규약 (Hashimoto 원칙) [매트릭스#17, qual/中]",
+            "B3. Linter-as-gate PostToolUse 후크 [매트릭스#8, qual→quant/小]",
+            "B4. Plan-before-execute 게이트 1급화 [매트릭스#16, qual/中]"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
+          "rel_path": ".agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
+          "title": "Agent-Harness 품질향상 프로그램 v2 — 외부 벤치마킹 기반"
+        },
+        {
           "bytes": 13935,
           "headings": [
             "Pioneer Skill Documentation Audit \u0026 Update",
@@ -1387,6 +1415,34 @@
           "path": "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
           "rel_path": ".agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
           "title": "Karpathy AutoResearch Notes for Pioneer Skill Quality"
+        },
+        {
+          "bytes": 34205,
+          "headings": [
+            "Research: Multi-Agent Orchestration Frameworks — Quality \u0026 Reliability Patterns",
+            "TL;DR",
+            "Method",
+            "Findings by Framework",
+            "1. LangGraph",
+            "(a) Verification / Evaluation / Guardrail Primitives",
+            "(b) State \u0026 Memory Management",
+            "(c) Multi-Agent Patterns",
+            "(d) Determinism / Reproducibility",
+            "(e) Structured Output / Typed Contracts",
+            "2. OpenAI Agents SDK (incl. Swarm history)",
+            "(a) Verification / Evaluation / Guardrail Primitives",
+            "(b) State \u0026 Memory Management",
+            "(c) Multi-Agent Patterns",
+            "(d) Determinism / Reproducibility",
+            "(e) Structured Output / Typed Contracts",
+            "3. CrewAI",
+            "(a) Verification / Evaluation / Guardrail Primitives",
+            "(b) State \u0026 Memory Management",
+            "(c) Multi-Agent Patterns"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
+          "rel_path": ".agent-harness/research/multi-agent-orchestration-quality-patterns.md",
+          "title": "Research: Multi-Agent Orchestration Frameworks — Quality \u0026 Reliability Patterns"
         },
         {
           "bytes": 5789,
@@ -1600,12 +1656,14 @@
         "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
+        "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
         "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
+        "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
         "$HARNESS_ROOT/AGENTS.md",
@@ -1638,6 +1696,18 @@
       },
       "ok": true,
       "skills": [
+        {
+          "has_openai_yaml": false,
+          "has_skill_md": false,
+          "name": ".claude",
+          "path": "$HARNESS_ROOT/skills/.claude"
+        },
+        {
+          "has_openai_yaml": false,
+          "has_skill_md": false,
+          "name": ".omc",
+          "path": "$HARNESS_ROOT/skills/.omc"
+        },
         {
           "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
           "has_openai_yaml": true,
@@ -4218,7 +4288,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 53,
+        "docs_indexed": 55,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6670,6 +6740,34 @@
                 "title": "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)"
               },
               {
+                "bytes": 25953,
+                "headings": [
+                  "Agent-Harness 품질향상 프로그램 v2 — 외부 벤치마킹 기반",
+                  "0. 현재 상태 스냅샷 (라이브 검증, evidence-bound)",
+                  "0.1 이미 해소됨 — 재제안 금지",
+                  "0.2 이미 field를 앞선 점 — 노력 낭비 금지 (적대 리뷰 확인)",
+                  "0.3 잔존/신규 결함 (라이브 확인)",
+                  "1. 전제 (외부 벤치마킹이 바꾼 관점)",
+                  "2. 외부-내부 비교 매트릭스 (요약)",
+                  "3. 정량 트랙 (측정 가능) — A1~A7",
+                  "A1. CI 자동화 — 결정적 게이트를 GitHub Actions로 [G9, high/小, 최우선]",
+                  "A2. 관측 분모 도입 — 공유 invocations 카운터 → gate-hit-rate + failure-rate + queue-depth [G4+G5+G6, med/小, 묶음]",
+                  "A3. 신뢰도·분산 보고 — pass^k + credible interval [G1, high/中]",
+                  "A4. Check-adequacy + 채점 축 분리 — 음성 fixture red-team [G3, high/中]",
+                  "A5. 통합 기여 측정 — 결정적 오프라인 routing trace 리플레이 [G2, high/大, PRIMARY]",
+                  "A6. v2 baseline 단일척도 재측정 + 내구 fixture [G8, med/中]",
+                  "A7. --judge file 독립 검증 [G7, med/小]",
+                  "4. 정성 트랙 (측정이 못 잡음) — B1~B6",
+                  "B1. 자기교정 가드레일 명문화 [G10, low/小]",
+                  "B2. Incident→hook 매핑 규약 (Hashimoto 원칙) [매트릭스#17, qual/中]",
+                  "B3. Linter-as-gate PostToolUse 후크 [매트릭스#8, qual→quant/小]",
+                  "B4. Plan-before-execute 게이트 1급화 [매트릭스#16, qual/中]"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
+                "rel_path": ".agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
+                "title": "Agent-Harness 품질향상 프로그램 v2 — 외부 벤치마킹 기반"
+              },
+              {
                 "bytes": 13935,
                 "headings": [
                   "Pioneer Skill Documentation Audit \u0026 Update",
@@ -6822,6 +6920,34 @@
                 "path": "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
                 "rel_path": ".agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
                 "title": "Karpathy AutoResearch Notes for Pioneer Skill Quality"
+              },
+              {
+                "bytes": 34205,
+                "headings": [
+                  "Research: Multi-Agent Orchestration Frameworks — Quality \u0026 Reliability Patterns",
+                  "TL;DR",
+                  "Method",
+                  "Findings by Framework",
+                  "1. LangGraph",
+                  "(a) Verification / Evaluation / Guardrail Primitives",
+                  "(b) State \u0026 Memory Management",
+                  "(c) Multi-Agent Patterns",
+                  "(d) Determinism / Reproducibility",
+                  "(e) Structured Output / Typed Contracts",
+                  "2. OpenAI Agents SDK (incl. Swarm history)",
+                  "(a) Verification / Evaluation / Guardrail Primitives",
+                  "(b) State \u0026 Memory Management",
+                  "(c) Multi-Agent Patterns",
+                  "(d) Determinism / Reproducibility",
+                  "(e) Structured Output / Typed Contracts",
+                  "3. CrewAI",
+                  "(a) Verification / Evaluation / Guardrail Primitives",
+                  "(b) State \u0026 Memory Management",
+                  "(c) Multi-Agent Patterns"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
+                "rel_path": ".agent-harness/research/multi-agent-orchestration-quality-patterns.md",
+                "title": "Research: Multi-Agent Orchestration Frameworks — Quality \u0026 Reliability Patterns"
               },
               {
                 "bytes": 5789,
@@ -7042,12 +7168,14 @@
               "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
+              "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
               "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
+              "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
               "$HARNESS_ROOT/AGENTS.md",
@@ -7080,6 +7208,18 @@
             },
             "ok": true,
             "skills": [
+              {
+                "has_openai_yaml": false,
+                "has_skill_md": false,
+                "name": ".claude",
+                "path": "$HARNESS_ROOT/skills/.claude"
+              },
+              {
+                "has_openai_yaml": false,
+                "has_skill_md": false,
+                "name": ".omc",
+                "path": "$HARNESS_ROOT/skills/.omc"
+              },
               {
                 "description": "Torvalds sub-skill — safe git staging and push. Create small, reviewable git commits from local changes and push the current branch safely using a hybrid Conventional Commit subject plus Lore body. Use when the user asks to commit, split changes into atomic commits, push/publish a branch, or perform a careful commit-and-push workflow while preserving unrelated work and avoiding accidental secrets or broad staging. For advanced git operations (rebase, bisect, conflict resolution, reflog recovery, cherry-pick, worktree), see the parent skill **torvalds**.",
                 "has_openai_yaml": true,
@@ -8828,7 +8968,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 53,
+              "docs_indexed": 55,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
