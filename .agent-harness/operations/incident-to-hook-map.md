@@ -19,6 +19,7 @@
 | 8 | (신규 2026-06-15) untracked .md가 docs-index golden을 drift | llm-wiki 훅의 untracked 연구문서가 self-verify golden을 간헐 flake | hermetic docs-index(`ListDocs` git-tracked 필터) + `TestListDocsExcludesUntrackedInGitRepo` (env-fix) | ✅ test |
 | 9 | CAUTIONS §19 git identity before contributor-sensitive pushes | 잘못된 git identity로 기여자-민감 push | preflight git 점검(`internal/core/preflight/git.go`) — 단, push 차단까지의 강제는 부분적 | ○ 부분 |
 | 10 | CAUTIONS §5 Worker lifecycle 문제 (stuck running) | 프로세스 크래시 후 worker가 running으로 고착 | `MaybeDetectStuckWorkerJobs` SessionStart 자동 트리거(W1, A2) | ✅ hook |
+| 11 | plan-before-execute (S2 원칙) | 승인된 설계 검토 없이 implement(구현) 시작 | issueops implement 진입 게이트: `IssueOpsImplementationReadiness`→`issueOpsDesignReviewMissing`가 `design_review`/`design_approval` 요구(`AdvanceIssueOpsPhase` implement 차단); `TestAdvanceToImplementGatesOnDesignApproval`(B4) | ✅ gate+test |
 
 ## 종결 판정 (B2 수용기준)
 
