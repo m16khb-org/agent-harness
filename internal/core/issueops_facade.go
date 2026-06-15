@@ -59,6 +59,11 @@ type IssueOpsAutoresearchCandidate = issueops.IssueOpsAutoresearchCandidate
 type IssueOpsAutoresearchGateRequest = issueops.IssueOpsAutoresearchGateRequest
 type IssueOpsAutoresearchGateResult = issueops.IssueOpsAutoresearchGateResult
 type IssueOpsAgyJudgeRequest = issueops.IssueOpsAgyJudgeRequest
+type RecordedRun = issueops.RecordedRun
+type RecordedOutcomes = issueops.RecordedOutcomes
+type FixtureReliability = issueops.FixtureReliability
+type PassPowKPoint = issueops.PassPowKPoint
+type ReliabilityReport = issueops.ReliabilityReport
 
 type IssueOpsRemoteArtifact = issueops.IssueOpsRemoteArtifact
 type IssueOpsRemoteIssueCandidate = issueops.IssueOpsRemoteIssueCandidate
@@ -243,6 +248,14 @@ func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 
 func LoadIssueOpsBenchmarkFixtures(dir string) ([]IssueOpsBenchmarkFixture, error) {
 	return issueops.LoadIssueOpsBenchmarkFixtures(dir)
+}
+
+func ComputeReliability(rec RecordedOutcomes, alpha float64) (ReliabilityReport, error) {
+	return issueops.ComputeReliability(rec, alpha)
+}
+
+func ScoreSpread(scores []float64) (float64, float64, float64) {
+	return issueops.ScoreSpread(scores)
 }
 
 func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) IssueOpsBenchmarkScore {

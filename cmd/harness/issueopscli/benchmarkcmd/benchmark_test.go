@@ -143,6 +143,46 @@ func TestBenchmarkHelpersAndErrors(t *testing.T) {
 	}
 }
 
+func TestRunBenchmarkReliability(t *testing.T) {
+	outcomesPath := filepath.Join(t.TempDir(), "outcomes.json")
+	if err := os.WriteFile(outcomesPath, []byte(`{
+		"runs":[
+			{"run_id":"run-1","provenance":"recorded-holdout","outcomes":{"fixture-a":true,"fixture-b":true}},
+			{"run_id":"run-2","provenance":"recorded-holdout","outcomes":{"fixture-a":true,"fixture-b":false}},
+			{"run_id":"run-3","provenance":"recorded-holdout","outcomes":{"fixture-a":true,"fixture-b":true}}
+		]
+	}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run([]string{"reliability", "--outcomes", outcomesPath, "--json"}); err != nil {
+		t.Fatalf("reliability --json returned error: %v", err)
+	}
+	if err := Run([]string{"reliability", "--outcomes", outcomesPath}); err != nil {
+		t.Fatalf("reliability text output returned error: %v", err)
+	}
+
+	// The provenance guard must surface as a CLI error (duplicate run_id is a
+	// re-scoring of one artifact dressed as two runs).
+	dupPath := filepath.Join(t.TempDir(), "dup.json")
+	if err := os.WriteFile(dupPath, []byte(`{"runs":[
+		{"run_id":"dup","provenance":"p","outcomes":{"a":true}},
+		{"run_id":"dup","provenance":"p","outcomes":{"a":false}}
+	]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run([]string{"reliability", "--outcomes", dupPath, "--json"}); err == nil {
+		t.Fatal("duplicate run_id must surface as a CLI error")
+	}
+
+	badParse := filepath.Join(t.TempDir(), "badparse.json")
+	if err := os.WriteFile(badParse, []byte("{bad"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run([]string{"reliability", "--outcomes", badParse}); err == nil {
+		t.Fatal("malformed outcomes JSON must error")
+	}
+}
+
 func benchmarkRunIDs(t *testing.T) []string {
 	t.Helper()
 	entries, err := os.ReadDir(filepath.Join(core.StateDir(), "issueops-benchmarks"))

@@ -14,7 +14,7 @@ import (
 
 func Run(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops benchmark run|compare|gate [--json]")
+		fmt.Println("Usage: agent-harness issueops benchmark run|compare|gate|reliability [--json]")
 		return nil
 	}
 	if len(args) == 0 {
@@ -142,9 +142,54 @@ func Run(args []string) error {
 			fmt.Printf("- discard: %s\n", reason)
 		}
 		return nil
+	case "reliability":
+		fs := flag.NewFlagSet("issueops benchmark reliability", flag.ContinueOnError)
+		outcomesPath := fs.String("outcomes", "", "recorded offline outcomes JSON path ({\"runs\":[{\"run_id\":..,\"provenance\":..,\"outcomes\":{\"<fixtureID>\":<bool>}}]}); reads stdin when empty")
+		alpha := fs.Float64("alpha", 0.05, "confidence level alpha for Clopper-Pearson intervals (0<alpha<1)")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		rec, err := readRecordedOutcomes(*outcomesPath)
+		if err != nil {
+			return err
+		}
+		report, err := core.ComputeReliability(rec, *alpha)
+		if err != nil {
+			return err
+		}
+		if *jsonOut {
+			return printJSON(report)
+		}
+		fmt.Printf("runs=%d macro_pass_at_1=%.4f max_k=%d\n", report.Runs, report.MacroPassAt1, report.MaxK)
+		for _, point := range report.PassPowKCurve {
+			fmt.Printf("- pass^%d=%.4f\n", point.K, point.PassPowK)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown issueops benchmark subcommand %q", args[0])
 	}
+}
+
+// readRecordedOutcomes reads the offline recorded-outcomes JSON (file path, or
+// stdin when the path is empty). ComputeReliability enforces the provenance
+// guard (distinct run ids + non-empty provenance) so this loader only decodes.
+func readRecordedOutcomes(path string) (core.RecordedOutcomes, error) {
+	var raw []byte
+	var err error
+	if strings.TrimSpace(path) == "" {
+		raw, err = io.ReadAll(os.Stdin)
+	} else {
+		raw, err = os.ReadFile(path)
+	}
+	if err != nil {
+		return core.RecordedOutcomes{}, err
+	}
+	var rec core.RecordedOutcomes
+	if err := json.Unmarshal(raw, &rec); err != nil {
+		return core.RecordedOutcomes{}, fmt.Errorf("parse recorded outcomes: %w", err)
+	}
+	return rec, nil
 }
 
 func parseFlags(fs *flag.FlagSet, args []string) (bool, error) {

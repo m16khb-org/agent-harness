@@ -14,9 +14,22 @@ type IssueOpsAutoresearchCandidate = benchmark.IssueOpsAutoresearchCandidate
 type IssueOpsAutoresearchGateRequest = benchmark.IssueOpsAutoresearchGateRequest
 type IssueOpsAutoresearchGateResult = benchmark.IssueOpsAutoresearchGateResult
 type IssueOpsAgyJudgeRequest = benchmark.IssueOpsAgyJudgeRequest
+type RecordedRun = benchmark.RecordedRun
+type RecordedOutcomes = benchmark.RecordedOutcomes
+type FixtureReliability = benchmark.FixtureReliability
+type PassPowKPoint = benchmark.PassPowKPoint
+type ReliabilityReport = benchmark.ReliabilityReport
 
 func LoadIssueOpsBenchmarkFixtures(dir string) ([]IssueOpsBenchmarkFixture, error) {
 	return benchmark.LoadIssueOpsBenchmarkFixtures(dir)
+}
+
+func ComputeReliability(rec RecordedOutcomes, alpha float64) (ReliabilityReport, error) {
+	return benchmark.ComputeReliability(rec, alpha)
+}
+
+func ScoreSpread(scores []float64) (float64, float64, float64) {
+	return benchmark.ScoreSpread(scores)
 }
 
 func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) IssueOpsBenchmarkScore {
