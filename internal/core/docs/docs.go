@@ -3,6 +3,7 @@ package docs
 import (
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -29,7 +30,7 @@ type DocIndexInfo struct {
 }
 
 func ListDocs(root string) []string {
-	var docs []string
+	var candidates []string
 	for _, p := range []string{"AGENTS.md", "CLAUDE.md", "GENIUS_THINK.md", ".agent-harness", "skills/self-verify", "skills/self-augment"} {
 		full := filepath.Join(root, p)
 		info, err := os.Stat(full)
@@ -37,18 +38,72 @@ func ListDocs(root string) []string {
 			continue
 		}
 		if !info.IsDir() {
-			docs = append(docs, full)
+			candidates = append(candidates, full)
 			continue
 		}
 		_ = filepath.WalkDir(full, func(path string, d fs.DirEntry, err error) error {
 			if err == nil && !d.IsDir() && strings.HasSuffix(path, ".md") && !isExcludedDoc(root, path) {
-				docs = append(docs, path)
+				candidates = append(candidates, path)
 			}
 			return nil
 		})
 	}
+	docs := hermeticTrackedDocs(root, candidates)
 	sort.Strings(docs)
 	return docs
+}
+
+// hermeticTrackedDocs keeps only git-TRACKED candidates so the docs index — and
+// the response-contract golden that snapshots it — is hermetic: untracked files
+// (e.g. llm-wiki research artifacts written into .agent-harness/research during a
+// session) must not drift the index. It compares ROOT-RELATIVE paths and never
+// reconstructs absolute paths, so a symlinked root (macOS /var -> /private/var,
+// where git resolves the symlink but filepath.WalkDir does not) cannot cause a
+// mismatch. When git is unavailable (e.g. a non-repo temp dir) it falls back to
+// ALL candidates; and if the tracked set matched NO candidate at all — a sign the
+// matching is broken, not that every doc is untracked — it also falls back rather
+// than silently emptying the index.
+func hermeticTrackedDocs(root string, candidates []string) []string {
+	tracked, ok := gitTrackedRelPaths(root)
+	if !ok {
+		return candidates
+	}
+	matched := make([]string, 0, len(candidates))
+	for _, path := range candidates {
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			continue
+		}
+		if tracked[filepath.ToSlash(rel)] {
+			matched = append(matched, path)
+		}
+	}
+	if len(matched) == 0 && len(candidates) > 0 {
+		return candidates
+	}
+	return matched
+}
+
+// gitTrackedRelPaths returns the repo's tracked paths relative to root
+// (slash-separated), ok=true when git resolved a non-empty set. It uses -z
+// (NUL-delimited, never C-quoted) and core.quotepath=false so non-ASCII (e.g.
+// Korean) filenames match WalkDir's UTF-8 paths byte-for-byte, and never builds
+// absolute paths (which would diverge from WalkDir under a symlinked root).
+func gitTrackedRelPaths(root string) (map[string]bool, bool) {
+	out, err := exec.Command("git", "-C", root, "-c", "core.quotepath=false", "ls-files", "-z").Output()
+	if err != nil {
+		return nil, false
+	}
+	set := make(map[string]bool)
+	for p := range strings.SplitSeq(string(out), "\x00") {
+		if p != "" {
+			set[p] = true
+		}
+	}
+	if len(set) == 0 {
+		return nil, false
+	}
+	return set, true
 }
 
 // isExcludedDoc reports whether path is under a .agent-harness subtree that must not

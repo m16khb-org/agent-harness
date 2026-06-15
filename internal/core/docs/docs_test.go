@@ -2,9 +2,46 @@ package docs
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
+
+// In a real git repo, an UNTRACKED .md (e.g. an llm-wiki research artifact) must
+// be excluded from the hermetic docs index while TRACKED docs — including ones
+// under .agent-harness/research — stay. t.TempDir() sits under macOS
+// /var -> /private/var, so this also guards the symlink-divergence case where
+// git's resolved root differs from WalkDir's literal root.
+func TestListDocsExcludesUntrackedInGitRepo(t *testing.T) {
+	root := t.TempDir()
+	gitRun := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@e",
+			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@e")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Skipf("git unavailable for hermetic test: %v\n%s", err, out)
+		}
+	}
+	gitRun("init")
+	mustWrite(t, filepath.Join(root, "AGENTS.md"), "# Agents\n")
+	mustWrite(t, filepath.Join(root, ".agent-harness", "CONVENTIONS.md"), "# Conventions\n")
+	mustWrite(t, filepath.Join(root, ".agent-harness", "research", "tracked-note.md"), "# Tracked research\n")
+	gitRun("add", "AGENTS.md", ".agent-harness/CONVENTIONS.md", ".agent-harness/research/tracked-note.md")
+	gitRun("commit", "-m", "seed")
+	mustWrite(t, filepath.Join(root, ".agent-harness", "research", "untracked-llm-wiki.md"), "# Untracked\n")
+
+	index := DocsIndex(root, "test")
+	for _, want := range []string{"AGENTS.md", ".agent-harness/CONVENTIONS.md", ".agent-harness/research/tracked-note.md"} {
+		if !docIndexContains(index.Docs, want) {
+			t.Fatalf("tracked doc %s must stay in the hermetic index: %+v", want, index.Docs)
+		}
+	}
+	if docIndexContains(index.Docs, ".agent-harness/research/untracked-llm-wiki.md") {
+		t.Fatalf("untracked research artifact must be excluded from the hermetic index: %+v", index.Docs)
+	}
+}
 
 func TestDocsIndexIncludesAgentDocs(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
