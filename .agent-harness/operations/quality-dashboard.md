@@ -19,7 +19,7 @@
 
 | # | 측정면 | 계층 | 최신값 | 측정일 | 게이트 | 다음 측정 |
 |---|--------|------|--------|--------|--------|-----------|
-| 1 | Pioneer 스킬 9종 | 격리 rubric | holdout **4.92/5.0** (전 9종 ≥4.8) | 2026-06-11 | ✅ ≥4.2 | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
+| 1 | Pioneer 스킬 9종 | 격리 rubric | **v2 단일척도 holdout 4.78/5.0** (n=1, 4.92 v1→4.78 v2는 5.0-유보 재보정·회귀 아님) | 2026-06-16 | ✅ ≥4.2 | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
 | 2 | 비-pioneer 스킬 7종 | 격리 rubric | **7/7 측정 완료**, 전 skill ≥4.86, holdout ≥4.8 | 2026-06-13 | ✅ GREEN | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
 | 3 | IssueOps 산출물 벤치마크 | 통합 | **100/100** (avg·min), critical 0, 9 fixtures, `--judge file` green | 2026-06-13 | ✅ GREEN | pre-push 상시 |
 | 4 | Hook 런타임 메트릭 | 런타임 | 전 hook p95 **<40ms**, blocks 0 | 2026-06-13 | ✅ stop p95 38ms (<1s) | 상시 누적(자동) |
@@ -33,12 +33,15 @@ strict 잔여였던 ACP-O 재측정, STA-H holdout n≥3, IssueOps judge file �
 
 ## 측정면 1 — Pioneer 스킬 9종 (격리 rubric)
 
-- **Holdout 평균: 4.92/5.0** (2026-06-11, firsthand-dogfood SKILL.md 편집 후 fresh-context 재측정, 전 9종 ≥4.8, 회귀 0).
-  - 직전: 4.80/5.0 (karpathy·codd 가드레일 수정 후).
-- **27-case visible baseline: 3.10/5.0** (v1 척도, 최적화 이전 — 개선 폭의 출발선).
-- 강점 스킬: codd 4.36. 가드레일 수정 대상이었던 dijkstra(hollow-method), karpathy(overfit)는 수정 후 holdout 통과.
-- 출처: `pioneer-skill-quality-scorecard.md`, 증거 `evidence/pioneer-skills-quality/reruns/post-optimization-measurement-2026-06-11.md`.
-- 단서: 격리·단일런(holdout n=1 fresh-context). 통합 기여는 측정면 3이 별도 담당.
+- **v2 단일척도 holdout 평균: 4.78/5.0** (2026-06-16 A6 재채점, range 4.7–4.9, 전 9종 ≥4.7, n=1/skill).
+  - **단일척도 정렬**: 직전 **4.92**는 *같은 run*을 v1 앵커(5.0=완전충족)로 채점한 값. v2 5.0-유보 규칙("흠잡을 데 없음"=4.8)에서 그 5.0들이 4.8로 재보정 → **4.92 → 4.78은 척도 재보정이지 품질 회귀가 아니다.**
+  - **오프라인 artifact-bound 재채점**(2026-06-11 기록 run 재채점, 신규 dispatch·신규 측정 아님). live 다중-seed 재측정은 **user opt-in 후속**.
+  - **3.10/5.0 (27-case v1 visible baseline)** 는 *다른 케이스셋*(27 visible vs 9 holdout)이자 v1 척도라 **여기서 빼지 않는다** — "3.10→4.78"을 publish하면 A6가 제거하려는 혼합척도/혼합셋 결함을 재도입. visible-baseline v2 재채점은 후속.
+  - proportionality는 narrative가 관측한 곳만 채점, 미관측은 *inferred* 표기(날조 금지).
+- **내구 재현 하네스**: `testdata/pioneer-holdouts/`에 9종 holdout *입력만* 커밋(파일시스템 6 + in-prompt 2 + live-web 1 honest 표기). 답(`result.yaml`: 점수·root cause·fix)은 gitignored evidence 트리에 잔류; `internal/holdoutdeleak` Go 테스트가 누출 토큰 부재 + evidence 미추적을 기계검증. **정직 표기**: 커밋된 fixture는 *reproduction harness*이지 더 이상 blind holdout이 아니며, 원본 run이 아닌 *케이스*를 재현한다(원본 /tmp dir 소실).
+- 강점 스킬: dijkstra·turing v2 4.9(no-change redirect / stale-tool 거부 = 요구 초과 가치). 가드레일 수정 대상이었던 dijkstra(hollow-method), karpathy(overfit)는 수정 후 holdout 통과.
+- 출처: `pioneer-v2-regrade-2026-06-16.md`(재채점·잔여갭), `pioneer-skill-quality-scorecard.md`, 증거 `evidence/pioneer-skills-quality/reruns/post-optimization-measurement-2026-06-11.md`.
+- 단서: 격리·단일런(holdout n=1, 오프라인 재채점). 통합 기여는 측정면 3이 별도 담당. **오염 caveat**: 일반 엔지니어링 과제라 "post-cutoff"는 verbatim 암기만 방어 — 점수는 케이스 기본역량이지 held-out 일반화가 아니다.
 
 ## 측정면 2 — 비-pioneer 스킬 7종 (격리 rubric)
 

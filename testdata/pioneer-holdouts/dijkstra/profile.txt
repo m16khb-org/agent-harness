@@ -1,0 +1,6 @@
+cumulative time (one startup() call):
+  fetch_remote_manifests   522.4 ms   network I/O
+  warm_caches               18.1 ms
+  load_ids                   4.3 ms
+  dedupe_pairs               0.3 ms   0.06% of startup, N<=300
+total                      545.1 ms
