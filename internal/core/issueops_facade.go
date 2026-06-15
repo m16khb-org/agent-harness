@@ -65,6 +65,8 @@ type FixtureReliability = issueops.FixtureReliability
 type PassPowKPoint = issueops.PassPowKPoint
 type ReliabilityReport = issueops.ReliabilityReport
 type IssueOpsJudgeMap = issueops.IssueOpsJudgeMap
+type JudgeSample = issueops.JudgeSample
+type ConsensusVerdict = issueops.ConsensusVerdict
 
 type IssueOpsRemoteArtifact = issueops.IssueOpsRemoteArtifact
 type IssueOpsRemoteIssueCandidate = issueops.IssueOpsRemoteIssueCandidate
@@ -265,6 +267,10 @@ func ValidateJudgeProvenance(judge IssueOpsJudgeMap, scoredRunID, stateRoot stri
 
 func JudgeDownwardOverrideRate(deterministic, judge IssueOpsBenchmarkScore) (float64, int) {
 	return issueops.JudgeDownwardOverrideRate(deterministic, judge)
+}
+
+func ConsensusJudgeVerdict(samples []JudgeSample) (ConsensusVerdict, error) {
+	return issueops.ConsensusJudgeVerdict(samples)
 }
 
 func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) IssueOpsBenchmarkScore {

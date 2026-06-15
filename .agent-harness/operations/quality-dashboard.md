@@ -4,7 +4,7 @@
 산재한 정량 지표를 한 페이지로 인덱스한다 — 각 지표군의 **최신값 · 측정일 · 다음 측정 예정 · 출처 문서**.
 자동화는 후순위, 우선 수동 갱신 규약(아래 §갱신 규약).
 
-최종 갱신: **2026-06-13**
+최종 갱신: **2026-06-16**
 
 > **계층 분리 단서 (S6 — 고정 표기, 합산 금지)**
 > 아래 지표는 서로 다른 **3개 계층**을 측정하며 한 점수로 합산하지 않는다:
@@ -65,8 +65,9 @@ strict 잔여였던 ACP-O 재측정, STA-H holdout n≥3, IssueOps judge file �
 - 최신 (2026-06-13, `--judge none`, fixtures 9건): **average 100 / minimum 100 / critical_failure 0** → 게이트 GREEN.
 - `--judge file` 백엔드 practical run 완료: `/tmp/agent-harness-issueops-judge-map-20260613.json`을 strict decode/merge해 `/tmp/agent-harness-issueops-benchmark-judge-file-20260613.json` 생성, **average 100 / minimum 100 / critical_failure 0 / judge_failures 0**. 단, 현재 도구 정책상 fresh-context sub-agent dispatch는 사용자 명시 요청 없이는 사용하지 못해 judge map은 deterministic run output에서 생성했다.
 - **A7 judge provenance (자기참조 가드)**: `--judge file`은 이제 wrapped 포맷(`source_run_id`+`provenance`+`scores`)만 받고(legacy flat map은 decode 거부), `ValidateJudgeProvenance`가 *source_run_id가 scored run과 다르며 실제 영속 run으로 resolve됨*을 merge 전 fail-closed로 강제한다. **정직한 범위(적대리뷰 보정)**: 이는 *자기참조 가드*이지 judge 독립성 증명이 아니다 — 저자가 다른 run id를 명명할 뿐, 실제 독립 judge가 다른 artifact를 평가했음을 증명하지는 않는다. calibration 지표는 `JudgeDownwardOverrideRate`(comparable dim = non-N/A·judge가 채점한 차원, 그중 judge가 낮춘 비율; "agreement"가 아니라 *하향 발산률*). 결정적 run은 100/100이고 merge는 lowering만 허용하므로 깨끗한 run에선 구성상 **0**이며, 위 2026-06-13 self-referential map은 이 가드로 *거부*된다 → 비퇴화 calibration 수치는 genuine 독립 judge run을 대기한다.
-- 실행: `agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json`.
-- 출처: `testdata/issueops/fixtures/`, `internal/core/issueops/benchmark/`.
+- **B6 self-consistency (Wang 2022, 판정 분산 집계)**: `ConsensusJudgeVerdict`가 동일 artifact에 대한 **N개 OFFLINE-기록 judge 샘플**을 majority-vote(binarized pass/fail; tie→fail-closed) + median(평균 아님 — 결정적 채점기는 0/100 bimodal이라 mean은 어떤 샘플도 내지 않은 값에 떨어짐) + 경험적 분산으로 집계한다. **정직한 범위(적대리뷰 보정)**: ① self-consistency는 같은 모델 샘플 간 *판정 분산*만 줄이고 judge의 체계적 *편향*은 줄이지도 탐지하지도 못한다(편향된 judge의 합의는 여전히 편향됨); ② headline 레짐(깨끗한 100/100 + judge-lowers-only)에서는 판정이 bimodally pinned → 분산이 **퇴화(0)**이라 줄일 것이 없다 — 분산 수치는 *판정이 실제로 갈리는* 곳에서만 의미. ③ 독립성 가드는 A3/A7에서 이식: 샘플 id distinct + provenance non-empty를 강제해 "한 judge를 N명 유권자로 분장"하는 가짜 자유도를 fail-closed로 거부. **live N-judge는 범위 밖**(externalllm import 없음 — CI에서 judge를 N회 실행하면 결정적-eval 비목표 위반); CLI는 `issueops benchmark consensus --samples <offline.json>`로 *기록된* 샘플만 집계한다. ⟹ A7의 calibration 수치와 마찬가지로 *비퇴화* variance-reduction 실측치는 genuine 독립 judge 샘플을 대기한다.
+- 실행: `agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json`; 합의 집계 `agent-harness issueops benchmark consensus --samples <offline.json> --json`.
+- 출처: `testdata/issueops/fixtures/`, `internal/core/issueops/benchmark/` (`issueops_self_consistency.go`).
 
 ## 측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)
 

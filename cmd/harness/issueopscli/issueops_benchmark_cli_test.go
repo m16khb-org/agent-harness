@@ -50,7 +50,7 @@ func TestRunIssueOpsBenchmarkUsageAndErrorBranches(t *testing.T) {
 	usage := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"benchmark", "help"})
 	})
-	if !strings.Contains(usage, "Usage: agent-harness issueops benchmark run|compare|gate|reliability [--json]") {
+	if !strings.Contains(usage, "Usage: agent-harness issueops benchmark run|compare|gate|reliability|consensus [--json]") {
 		t.Fatalf("benchmark usage missing command summary:\n%s", usage)
 	}
 	if err := runIssueOps([]string{"benchmark", "unknown"}); err == nil || !strings.Contains(err.Error(), "unknown issueops benchmark subcommand") {

@@ -14,7 +14,7 @@ import (
 
 func Run(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops benchmark run|compare|gate|reliability [--json]")
+		fmt.Println("Usage: agent-harness issueops benchmark run|compare|gate|reliability|consensus [--json]")
 		return nil
 	}
 	if len(args) == 0 {
@@ -173,9 +173,54 @@ func Run(args []string) error {
 			fmt.Printf("- pass^%d=%.4f\n", point.K, point.PassPowK)
 		}
 		return nil
+	case "consensus":
+		fs := flag.NewFlagSet("issueops benchmark consensus", flag.ContinueOnError)
+		samplesPath := fs.String("samples", "", "offline-recorded judge samples JSON ({\"samples\":[{\"sample_id\":..,\"provenance\":..,\"score\":<IssueOpsBenchmarkScore>}]}); reads stdin when empty")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		samples, err := readJudgeSamples(*samplesPath)
+		if err != nil {
+			return err
+		}
+		verdict, err := core.ConsensusJudgeVerdict(samples)
+		if err != nil {
+			return err
+		}
+		if *jsonOut {
+			return printJSON(verdict)
+		}
+		fmt.Printf("samples=%d majority_passed=%t pass_agreement=%.4f median=%.4f spread=%.4f variance=%.4f\n",
+			verdict.Samples, verdict.MajorityPassed, verdict.PassAgreement, verdict.MedianAverageScore, verdict.ScoreSpread, verdict.SampleVariance)
+		fmt.Printf("caveat: %s\n", verdict.Caveat)
+		return nil
 	default:
 		return fmt.Errorf("unknown issueops benchmark subcommand %q", args[0])
 	}
+}
+
+// readJudgeSamples reads the offline-recorded judge samples JSON (file path, or
+// stdin when the path is empty). ConsensusJudgeVerdict enforces the independence
+// guard (distinct sample ids + non-empty provenance) so this loader only decodes.
+func readJudgeSamples(path string) ([]core.JudgeSample, error) {
+	var raw []byte
+	var err error
+	if strings.TrimSpace(path) == "" {
+		raw, err = io.ReadAll(os.Stdin)
+	} else {
+		raw, err = os.ReadFile(path)
+	}
+	if err != nil {
+		return nil, err
+	}
+	var payload struct {
+		Samples []core.JudgeSample `json:"samples"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, fmt.Errorf("parse judge samples: %w", err)
+	}
+	return payload.Samples, nil
 }
 
 // readRecordedOutcomes reads the offline recorded-outcomes JSON (file path, or
