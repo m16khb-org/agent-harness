@@ -143,6 +143,13 @@ skills/
 - symlink는 사용자 홈의 skill 경로에서 중앙 `skills/<name>`을 참조하기 위해서만 기본 사용한다.
 - adapter 설치 계약을 바꾸면 `internal/adapter/install_contract_matrix_test.go`와 `internal/adapter/testdata/native_install_contract_matrix.golden.json`을 함께 갱신해 user/global 기본 설치와 explicit project-local opt-in의 차이를 보존한다.
 
+self-augment/self-verify 교정 가드레일 (v1 S5/S6 승계):
+
+- 모든 self-augment/self-verify 교정 후보의 `VerifyWith`는 **외부 검증 메커니즘을 최소 1개 명시**해야 한다 — 실행 가능한 도구 신호(`go test`/`go build`/lint/golden/contract/smoke/coverage 또는 CLI 명령), 또는 문서·거버넌스 후보(`doc_artifact`)의 경우 구체적 산출물(ADR 엔트리·README 섹션·checklist·matrix·transcript). 모델 자기비판("inspection으로 확인했다", "읽어보니 맞다" 등)은 주관 축(문서 가독성)에 한해 advisory이며 **correctness 게이트로 절대 사용 금지**다.
+- 후보는 `VerificationKind`(`tool_signal`/`doc_artifact`)로 **명시 분류**하고, `qualitycatalog.VerifyWithGrounded`가 종류에 맞는 외부 메커니즘 명시를 강제한다(`internal/core/qualitycatalog`·`cmd/harness/selfworkflow/augmentcatalog` 테스트).
+- 본 규약은 **카탈로그 위생**(후보가 메커니즘을 *명명*하는지)을 강제한다. 메커니즘이 실제 존재·통과하는지의 *실행* 게이팅은 `agent-harness self-verify`/CI가 담당한다.
+- 근거: intrinsic self-correction은 외부 신호 없이 추론을 악화시킨다(Huang/Kamoi, CRITIC). v1 S5("measured gap or no EDIT")·S6(정직성 단서)를 문서 규약에서 Go-test 강제 불변식으로 격상한 것이다.
+
 ---
 
 ## 10. 커밋 메시지 컨벤션

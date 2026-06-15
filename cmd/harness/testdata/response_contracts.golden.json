@@ -560,7 +560,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 30330,
+          "bytes": 30705,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -625,7 +625,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 18815,
+          "bytes": 20194,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -3999,7 +3999,8 @@
           "status": "already_satisfied",
           "title": "Store self-augmentation failure lessons in state",
           "verify_with": [
-            "state_write/read"
+            "go test ./internal/core/state -count=1",
+            "state_write/read roundtrip"
           ],
           "why_now": [
             "반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다",
@@ -6065,7 +6066,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 30330,
+                "bytes": 30705,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -6130,7 +6131,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 18815,
+                "bytes": 20194,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -8679,7 +8680,8 @@
                 "status": "already_satisfied",
                 "title": "Store self-augmentation failure lessons in state",
                 "verify_with": [
-                  "state_write/read"
+                  "go test ./internal/core/state -count=1",
+                  "state_write/read roundtrip"
                 ],
                 "why_now": [
                   "반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다",

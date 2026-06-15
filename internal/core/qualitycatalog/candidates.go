@@ -1,19 +1,108 @@
 package qualitycatalog
 
+import (
+	"fmt"
+	"strings"
+)
+
 const CandidateStatusOpen = "open"
 
+// VerificationKind classifies how a candidate's change is verified externally,
+// making the tool-grounded vs documentary distinction EXPLICIT instead of
+// guessing it from free-text VerifyWith strings (which cannot reliably tell a
+// tool signal from a doc artifact from model self-critique).
+type VerificationKind string
+
+const (
+	// ToolSignalKind: a code/correctness change whose VerifyWith MUST name an
+	// executable external signal (test/build/lint/contract/smoke/coverage run or
+	// a CLI command) — never model self-critique.
+	ToolSignalKind VerificationKind = "tool_signal"
+	// DocArtifactKind: a documentation/governance change whose verification is a
+	// concrete produced artifact (ADR entry, README section, checklist, matrix,
+	// transcript). Explicitly EXEMPT from the executable-signal rule and labeled
+	// as such, so it is not falsely claimed to be tool-gated.
+	DocArtifactKind VerificationKind = "doc_artifact"
+)
+
+// toolSignalMarkers are CONCRETE executable-verification tokens (runnable
+// commands and test/contract artifact kinds). They deliberately EXCLUDE generic
+// verbs (verify/validate/inspect/check/review) and generic nouns
+// (notes/document/criteria/references/section) that self-critique prose uses as
+// readily as a real tool signal: the burden of proof is on NAMING a concrete
+// external mechanism, not on dodging a forbidden-phrase denylist.
+var toolSignalMarkers = []string{
+	"go test", "go build", "go vet", "agent-harness", "harness ", "skill ",
+	"install-native", "install tests", "npm ", "./",
+	"_test", "test", "golden", "contract", "fixture", "smoke", "lint",
+	"coverage", "-cover", "-race", "-count", "--json", "roundtrip",
+	"benchmark", "schema", "self-verify", "self-augment", "quick_validate",
+	"policy_check", "policy audit", "redaction audit", "qa gate",
+	"internal/", "cmd/", "mcp",
+}
+
+// docArtifactMarkers are concrete documentary deliverables a DocArtifact
+// candidate must name (a file/section/record), not bare self-critique.
+var docArtifactMarkers = []string{
+	"adr", "readme", "checklist", "matrix", "transcript", "decision entry",
+	"decision record", "notes document", "dogfooding notes", ".md",
+}
+
+// VerifyWithGrounded enforces the self-correction guardrail (inherits v1 S5/S6):
+// a candidate's VerifyWith must NAME at least one external verification
+// mechanism appropriate to its kind, never model self-critique. This is catalog
+// hygiene (the string names a mechanism); whether the mechanism exists and
+// PASSES is the separate execution gate enforced by `agent-harness self-verify`
+// / CI.
+func VerifyWithGrounded(kind VerificationKind, verifyWith []string) error {
+	if len(verifyWith) == 0 {
+		return fmt.Errorf("verify_with is empty")
+	}
+	for _, entry := range verifyWith {
+		if strings.TrimSpace(entry) == "" {
+			return fmt.Errorf("verify_with has a blank entry")
+		}
+	}
+	switch kind {
+	case ToolSignalKind:
+		if !verifyWithNamesAny(verifyWith, toolSignalMarkers) {
+			return fmt.Errorf("tool_signal candidate must name an executable verification (go test / golden / contract / smoke / lint / self-verify / ...), not self-critique: %v", verifyWith)
+		}
+	case DocArtifactKind:
+		if !verifyWithNamesAny(verifyWith, docArtifactMarkers) {
+			return fmt.Errorf("doc_artifact candidate must name a concrete deliverable (ADR / README / checklist / matrix / transcript), not self-critique: %v", verifyWith)
+		}
+	default:
+		return fmt.Errorf("unknown verification kind %q", kind)
+	}
+	return nil
+}
+
+func verifyWithNamesAny(verifyWith, markers []string) bool {
+	for _, entry := range verifyWith {
+		lower := strings.ToLower(entry)
+		for _, marker := range markers {
+			if strings.Contains(lower, marker) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 type CandidateSpec struct {
-	ID           string
-	Title        string
-	Category     string
-	Impact       float64
-	Feasibility  float64
-	Novelty      float64
-	Risk         float64
-	WhyNow       []string
-	ExpectedGain []string
-	VerifyWith   []string
-	Evidence     []string
+	ID               string
+	Title            string
+	Category         string
+	VerificationKind VerificationKind
+	Impact           float64
+	Feasibility      float64
+	Novelty          float64
+	Risk             float64
+	WhyNow           []string
+	ExpectedGain     []string
+	VerifyWith       []string
+	Evidence         []string
 }
 
 type Candidate struct {
@@ -30,7 +119,7 @@ type Candidate struct {
 }
 
 func CandidateSpecs() []CandidateSpec {
-	return []CandidateSpec{
+	specs := []CandidateSpec{
 		{
 			ID: "quality-signal-harvester", Title: "Add quality inspect signal harvesting CLI", Category: "quality",
 			Impact: 94, Feasibility: 92, Novelty: 78, Risk: 14,
@@ -112,6 +201,14 @@ func CandidateSpecs() []CandidateSpec {
 			Evidence:     []string{"PROJECT_AUDIT Q1 P1"},
 		},
 	}
+	// Quality specs are all code/correctness candidates; default them to
+	// ToolSignal unless a future spec explicitly classifies itself otherwise.
+	for i := range specs {
+		if specs[i].VerificationKind == "" {
+			specs[i].VerificationKind = ToolSignalKind
+		}
+	}
+	return specs
 }
 
 func Candidates() []Candidate {

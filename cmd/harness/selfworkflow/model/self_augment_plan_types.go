@@ -1,5 +1,7 @@
 package model
 
+import "agent-harness/internal/core/qualitycatalog"
+
 type SelfAugmentPlanRequest struct {
 	Cycles      int     `json:"cycles"`
 	TargetScore float64 `json:"target_score"`
@@ -63,6 +65,10 @@ type SelfAugmentCandidate struct {
 	ExpectedGain         []string `json:"expected_gain"`
 	VerifyWith           []string `json:"verify_with"`
 	SatisfactionEvidence []string `json:"satisfaction_evidence,omitempty"`
+	// VerificationKind classifies the candidate's verification (B1). Not
+	// serialized: it is catalog-hygiene metadata for the grounding enforcement,
+	// not part of the public DTO contract.
+	VerificationKind qualitycatalog.VerificationKind `json:"-"`
 }
 
 type SelfAugmentRepoSignals struct {

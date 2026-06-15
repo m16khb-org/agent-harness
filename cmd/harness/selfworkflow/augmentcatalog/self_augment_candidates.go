@@ -37,7 +37,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			Impact: 89, Feasibility: 91, Novelty: 84, Risk: 16,
 			WhyNow:       []string{"반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다"},
 			ExpectedGain: []string{"실패 원인 재발 감소", "레포별 개선 이력 검색 가능"},
-			VerifyWith:   []string{"state_write/read"},
+			VerifyWith:   []string{"go test ./internal/core/state -count=1", "state_write/read roundtrip"},
 		},
 		{
 			ID: "qa-race-tier", Title: "Conditionally attach risk-based race/static QA tier to the self-verification loop", Category: "qa",
@@ -125,7 +125,8 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 		},
 		{
 			ID: "release-user-readme", Title: "Create a user-facing release README for install, update, and rollback", Category: "release-docs",
-			Impact: 84, Feasibility: 86, Novelty: 60, Risk: 12,
+			VerificationKind: qualitycatalog.DocArtifactKind,
+			Impact:           84, Feasibility: 86, Novelty: 60, Risk: 12,
 			WhyNow:       []string{"clean-machine smoke가 생겼으므로 사람이 따라 할 최소 사용자 문서가 다음 병목이다", "Homebrew/tarball 판단 전 현재 install/update/rollback UX를 명확히 해야 한다"},
 			ExpectedGain: []string{"새 사용자가 한 화면에서 설치와 복구 절차를 이해", "배포 방식 결정 전 문서 기반 UX 결함 노출"},
 			VerifyWith:   []string{"README install/update/rollback section", "release reproducibility checklist", "docs index"},
@@ -139,14 +140,16 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 		},
 		{
 			ID: "distribution-decision-record", Title: "Record the Homebrew versus tarball distribution decision gate", Category: "release-decision",
-			Impact: 82, Feasibility: 83, Novelty: 62, Risk: 16,
+			VerificationKind: qualitycatalog.DocArtifactKind,
+			Impact:           82, Feasibility: 83, Novelty: 62, Risk: 16,
 			WhyNow:       []string{"release smoke는 배포 판단 근거를 만들었지만 아직 선택 기준과 rollback 기준이 기록되지 않았다"},
 			ExpectedGain: []string{"Homebrew/tarball 선택을 임의 판단이 아니라 체크리스트 결과로 결정", "릴리스 실패 시 되돌림 기준 명확화"},
 			VerifyWith:   []string{"ADR decision entry", "release reproducibility checklist references", "rollback criteria"},
 		},
 		{
 			ID: "release-dogfood-notes", Title: "Capture release dogfooding notes from real Codex and Claude workflows", Category: "release-observability",
-			Impact: 78, Feasibility: 88, Novelty: 58, Risk: 10,
+			VerificationKind: qualitycatalog.DocArtifactKind,
+			Impact:           78, Feasibility: 88, Novelty: 58, Risk: 10,
 			WhyNow:       []string{"Phase 7 deliverable에 dogfooding notes가 남아 있다", "Codex/Claude 같은 workflow 성공 기준은 smoke만으로는 사용자 경험 결함을 잡기 어렵다"},
 			ExpectedGain: []string{"실제 사용 흐름의 마찰 기록", "다음 릴리스 후보의 UX 우선순위 도출"},
 			VerifyWith:   []string{"dogfooding notes document", "Codex inspect/docs/state transcript", "Claude inspect/docs/state transcript or documented blocker"},
@@ -154,19 +157,23 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 	}
 	for _, spec := range qualitycatalog.CandidateSpecs() {
 		base = append(base, SelfAugmentCandidate{
-			ID:           spec.ID,
-			Title:        spec.Title,
-			Category:     spec.Category,
-			Impact:       spec.Impact,
-			Feasibility:  spec.Feasibility,
-			Novelty:      spec.Novelty,
-			Risk:         spec.Risk,
-			WhyNow:       append([]string{}, spec.WhyNow...),
-			ExpectedGain: append([]string{}, spec.ExpectedGain...),
-			VerifyWith:   append([]string{}, spec.VerifyWith...),
+			ID:               spec.ID,
+			Title:            spec.Title,
+			Category:         spec.Category,
+			VerificationKind: spec.VerificationKind,
+			Impact:           spec.Impact,
+			Feasibility:      spec.Feasibility,
+			Novelty:          spec.Novelty,
+			Risk:             spec.Risk,
+			WhyNow:           append([]string{}, spec.WhyNow...),
+			ExpectedGain:     append([]string{}, spec.ExpectedGain...),
+			VerifyWith:       append([]string{}, spec.VerifyWith...),
 		})
 	}
 	for i := range base {
+		if base[i].VerificationKind == "" {
+			base[i].VerificationKind = qualitycatalog.ToolSignalKind
+		}
 		base[i].Status = SelfAugmentCandidateStatusOpen
 		base[i].Score = SelfAugmentCandidateScore(base[i])
 		MarkSatisfiedSelfAugmentCandidate(&base[i], signals)
