@@ -7,12 +7,16 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
+	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/lifecycle/doctarget"
+	"agent-harness/internal/core/lintgate"
 )
 
 func runHookPostToolUse(args []string) error {
 	fs := flag.NewFlagSet("hook post-tool-use", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
+	host := fs.String("host", "", "hook host (claude or codex); controls whether lint feedback is injected")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -45,9 +49,19 @@ func runHookPostToolUse(args []string) error {
 			"lifecycle": result,
 		})
 	}
-	// Codex PostToolUse is on the critical path after every tool call and does
-	// not need to inject context. Keep host stdout in the broad no-op schema so
-	// lifecycle bookkeeping can never surface as a hook failure in the UI.
+	// B3 linter-as-gate: after an edit/write that touches .go files, surface a
+	// deterministic gofmt failure as feedback — but ONLY on hosts that accept
+	// PostToolUse additionalContext (Claude/Reasonix). Codex (which never gets
+	// --host here) and the clean case keep the no-op schema so lifecycle
+	// bookkeeping can never surface as a hook failure. LintEditedGoFiles is
+	// fail-open and self-gates on .go paths, so no process is spawned for
+	// non-Go edits, reads, or command tools.
+	h := strings.TrimSpace(*host)
+	if (h == "claude" || h == "reasonix") && doctarget.ToolUseMayMutateLifecycleFiles(tool, command) {
+		if failed, feedback := lintgate.LintEditedGoFiles(parsedRepo, paths); failed {
+			return printJSON(hookadapter.Resolve(h).FormatContext("PostToolUse", feedback, ""))
+		}
+	}
 	return printJSON(map[string]any{})
 }
 

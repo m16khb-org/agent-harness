@@ -100,6 +100,10 @@ func reasonixHookCommand(binPath, subcommand string) string {
 		cmd += " --host reasonix"
 	case "user-prompt":
 		cmd += " --host reasonix"
+	case "post-tool-use":
+		// --host lets post-tool-use inject a deterministic gofmt lint-failure as
+		// additionalContext (B3); Codex omits --host so it keeps its no-op shape.
+		cmd += " --host reasonix"
 	}
 	return cmd
 }

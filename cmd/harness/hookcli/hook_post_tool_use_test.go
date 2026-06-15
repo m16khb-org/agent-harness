@@ -3,10 +3,85 @@ package hookcli
 import (
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// B3: a .go edit that leaves an unformatted file injects a deterministic gofmt
+// feedback as additionalContext on Claude.
+func TestRunHookPostToolUseInjectsLintFeedbackOnClaude(t *testing.T) {
+	if _, err := exec.LookPath("gofmt"); err != nil {
+		t.Skip("gofmt not available")
+	}
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bad := filepath.Join(repo, "bad.go")
+	if err := os.WriteFile(bad, []byte("package p\nfunc F()  {\nreturn\n}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Edit","tool_input":{"file_path":"`+bad+`"}}`, func() error {
+		return runHookPostToolUse([]string{"--host", "claude"})
+	})
+	ctx := hookAdditionalContext(obj)
+	if !strings.Contains(ctx, "bad.go") || !strings.Contains(ctx, "gofmt") {
+		t.Fatalf("claude PostToolUse must inject gofmt feedback naming the file, got %q (obj=%+v)", ctx, obj)
+	}
+}
+
+func TestRunHookPostToolUseCleanEditNoFeedback(t *testing.T) {
+	if _, err := exec.LookPath("gofmt"); err != nil {
+		t.Skip("gofmt not available")
+	}
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	good := filepath.Join(repo, "good.go")
+	if err := os.WriteFile(good, []byte("package p\n\nfunc F() {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Edit","tool_input":{"file_path":"`+good+`"}}`, func() error {
+		return runHookPostToolUse([]string{"--host", "claude"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("clean .go edit must produce a no-op object, got %+v", obj)
+	}
+}
+
+// Codex gets NO --host, so even a lint failure must keep the no-op shape (Codex
+// rejects PostToolUse additionalContext as invalid hook JSON).
+func TestRunHookPostToolUseCodexStaysNoopOnLintFailure(t *testing.T) {
+	if _, err := exec.LookPath("gofmt"); err != nil {
+		t.Skip("gofmt not available")
+	}
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bad := filepath.Join(repo, "bad.go")
+	if err := os.WriteFile(bad, []byte("package p\nfunc F()  {\nreturn\n}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Edit","tool_input":{"file_path":"`+bad+`"}}`, func() error {
+		return runHookPostToolUse(nil)
+	})
+	if len(obj) != 0 {
+		t.Fatalf("codex (no --host) must stay no-op even on lint failure, got %+v", obj)
+	}
+}
+
+func TestRunHookPostToolUseSkipsNonGoEdit(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	md := filepath.Join(repo, "README.md")
+	if err := os.WriteFile(md, []byte("# x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"Edit","tool_input":{"file_path":"`+md+`"}}`, func() error {
+		return runHookPostToolUse([]string{"--host", "claude"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("non-Go edit must not be linted (no-op), got %+v", obj)
+	}
+}
 
 func TestRunHookPostToolUseDoesNotAutoQueueDraftWiki(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())

@@ -95,6 +95,11 @@ func claudeHookCommand(binPath, subcommand string) string {
 	if subcommand == "stop" {
 		cmd += " --host claude --enforce-numbered-next-actions --relay-next-action-judgement"
 	}
+	if subcommand == "post-tool-use" {
+		// --host lets post-tool-use inject a deterministic gofmt lint-failure as
+		// additionalContext (B3); Codex omits --host so it keeps its no-op shape.
+		cmd += " --host claude"
+	}
 	return cmd
 }
 
