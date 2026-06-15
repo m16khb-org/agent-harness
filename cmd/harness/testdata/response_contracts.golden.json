@@ -1067,6 +1067,22 @@
           "title": "Pioneer Skill Rerun Fixtures"
         },
         {
+          "bytes": 8962,
+          "headings": [
+            "Pioneer holdout v2 single-scale re-grade — 2026-06-16",
+            "Provenance and scope (honest, adversarial-review-bound)",
+            "v2 re-grade (5.0-reserve rule applied; rubric §v2.1–v2.2)",
+            "Single-scale delta (honest framing)",
+            "Visible 27-case baseline re-grade to v2 (closes the cross-scale gap)",
+            "TRUE single-scale delta",
+            "Calibration anchors under v2 (rubric §v2 precondition)",
+            "Residual gap (what A6 does NOT deliver)"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
+          "rel_path": ".agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
+          "title": "Pioneer holdout v2 single-scale re-grade — 2026-06-16"
+        },
+        {
           "bytes": 3793,
           "headings": [
             "Project Docs Operations",
@@ -1079,7 +1095,7 @@
           "title": "Project Docs Operations"
         },
         {
-          "bytes": 13228,
+          "bytes": 13506,
           "headings": [
             "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
             "측정면 요약 (한눈)",
@@ -1657,6 +1673,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
         "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
+        "$HARNESS_ROOT/.agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
         "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
         "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
         "$HARNESS_ROOT/.agent-harness/operations/release-dogfood-notes.md",
@@ -4301,7 +4318,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 56,
+        "docs_indexed": 57,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6585,6 +6602,22 @@
                 "title": "Pioneer Skill Rerun Fixtures"
               },
               {
+                "bytes": 8962,
+                "headings": [
+                  "Pioneer holdout v2 single-scale re-grade — 2026-06-16",
+                  "Provenance and scope (honest, adversarial-review-bound)",
+                  "v2 re-grade (5.0-reserve rule applied; rubric §v2.1–v2.2)",
+                  "Single-scale delta (honest framing)",
+                  "Visible 27-case baseline re-grade to v2 (closes the cross-scale gap)",
+                  "TRUE single-scale delta",
+                  "Calibration anchors under v2 (rubric §v2 precondition)",
+                  "Residual gap (what A6 does NOT deliver)"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
+                "rel_path": ".agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
+                "title": "Pioneer holdout v2 single-scale re-grade — 2026-06-16"
+              },
+              {
                 "bytes": 3793,
                 "headings": [
                   "Project Docs Operations",
@@ -6597,7 +6630,7 @@
                 "title": "Project Docs Operations"
               },
               {
-                "bytes": 13228,
+                "bytes": 13506,
                 "headings": [
                   "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
                   "측정면 요약 (한눈)",
@@ -7182,6 +7215,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
               "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
+              "$HARNESS_ROOT/.agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
               "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
               "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
               "$HARNESS_ROOT/.agent-harness/operations/release-dogfood-notes.md",
@@ -8994,7 +9028,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 56,
+              "docs_indexed": 57,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

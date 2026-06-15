@@ -52,6 +52,55 @@ beyond the requirement).
   mixed-scale/mixed-set defect A6 exists to remove. A true visible-baseline v2
   delta requires re-grading `baseline-27-case-results.md` to v2 (deferred).
 
+## Visible 27-case baseline re-grade to v2 (closes the cross-scale gap)
+
+The A6 adversarial review required that a TRUE single-scale delta re-grade BOTH
+endpoints to v2, not just the holdout. Re-grading the 27-case v1 baseline
+(`evidence/pioneer-skills-quality/baseline-27-case-results.md`, full per-dimension
+records, 2026-06-10) under v2:
+
+- **Methodology:** v2's only change to ALREADY-recorded dimension scores is the
+  5.0-reserve rule — each perfect `5.0` dimension recalibrates to `4.8`; every
+  dimension `< 5.0` is untouched (rubric §v2.1: "4.5 미만은 v1 앵커 그대로").
+  Gate caps (`unsafe`/`stale-contract`/`fake-tool`/`overbroad` → case max 2.0)
+  are **v2-invariant**, so gate-capped cases do not move at all.
+- **Proportionality (new dim) = UNMEASURED for the baseline:** the 2026-06-10 run
+  predates v2 and did not record ceremony-vs-risk per case, EXCEPT where an
+  `overbroad` gate flag already evidences a proportionality failure (TURING-2,
+  VON-NEUMANN-2). Not fabricated — left out of the comparable number so baseline
+  and holdout are scored on the same 5 dimensions.
+
+| Skill | v1 weighted | **v2 ≈** | note |
+|-------|:-----------:|:--------:|------|
+| codd | 4.36 | ≈4.28 | all 3 cases uncapped; perfect-5 dims recalibrate |
+| torvalds | 3.70 | ≈3.65 | boundary gate-capped (unsafe), P/O recalibrate |
+| dijkstra | 3.30 | ≈3.29 | boundary+operational gate-capped |
+| hopper | 3.34 | ≈3.28 | operational gate-capped (stale-contract) |
+| turing | 2.95 | ≈2.93 | boundary+operational gate-capped (overbroad/stale) |
+| von-neumann | 2.95 | ≈2.93 | boundary+operational gate-capped (overbroad/stale) |
+| karpathy | 2.88 | ≈2.86 | boundary+operational gate-capped (unsafe/fake-tool) |
+| berners-lee | 2.57 | ≈2.56 | boundary+operational gate-capped (unsafe/fake-tool) |
+| shannon | 1.85 | ≈1.85 | **all cases gate-capped → v2-invariant** |
+
+**v2 visible baseline family ≈ 3.07 / 5.0** (v1 was 3.10; −0.03). The per-skill
+v2 numbers are `≈` because the original v1 per-skill weighting formula is not
+exactly reverse-derivable; the shift direction/magnitude is robust (perfect-5
+count = 37 of 135 dimension scores, most inside already-capped cases).
+
+### TRUE single-scale delta
+
+- **3.07 (v2 visible baseline, 27 cases, pre-optimization) → 4.78 (v2 holdout,
+  9 cases, post-optimization) = +1.71 on ONE scale.**
+- The naive v1-mixed delta (3.10 → 4.92 = +1.82) **overstated** the gain by
+  ~0.11: the 5.0-reserve rule compresses the HIGH end (holdout −0.14) far more
+  than the LOW end (baseline −0.03), because the reserve only bites near the
+  ceiling. The honest single-scale gain is **+1.71**.
+- **Residual caveat (cross-SET, not cross-scale):** the two endpoints are now
+  on the same scale but remain different case sets (27 visible vs 9 holdout).
+  The holdouts ARE the held-out generalization of the visible family, so the
+  comparison is meaningful, but a same-set pre/post v2 measurement would need a
+  post-optimization re-run of the 27 visible cases (live dispatch → user opt-in).
+
 ## Calibration anchors under v2 (rubric §v2 precondition)
 
 The concrete anchor artifacts (known-good/borderline/known-bad) live in the
@@ -70,8 +119,10 @@ gitignored evidence tree and the original run dirs are gone, so this is a
 
 1. **Not a fresh measurement** — paper re-grade of one frozen n=1 run; live
    multi-seed re-measurement is user-opt-in.
-2. **Visible 27-case baseline not v2-regraded** — so the headline single-scale
-   number is holdout-set-only.
+2. ~~Visible 27-case baseline not v2-regraded~~ **CLOSED** (2026-06-16): both
+   endpoints are now on v2; the single-scale delta is +1.71. Remaining: the two
+   endpoints are different case SETS (27 visible vs 9 holdout); a same-set
+   post-opt v2 re-run of the 27 visible cases needs live dispatch (user opt-in).
 3. **Reproduction harness ≠ holdout** — committed fixtures
    (`testdata/pioneer-holdouts/`) reproduce the *case*, not the original *run*,
    and are no longer blind; 1 of 9 (berners-lee) is live-web and non-reproducible.
