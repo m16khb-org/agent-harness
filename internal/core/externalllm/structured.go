@@ -13,9 +13,7 @@ import (
 
 func BuildExternalLLMJSONSchemaSection(example string, fieldTypes []string) prompt.PromptDataSection {
 	var b strings.Builder
-	b.WriteString(strings.TrimSpace(`Return exactly this JSON object shape. Do not add keys outside this schema.
-
-If the external LLM provider supports native structured output, return the object as raw JSON. If native structured output is unavailable for this ` + "`agy -p`" + ` request, return the same object as the only content inside a fenced ` + "`json`" + ` block. Do not include prose before or after the JSON.`))
+	b.WriteString(strings.TrimSpace(`Return a raw JSON object with exactly these keys. Do not add extra keys. Do not wrap the JSON in markdown fences. Do not include prose before or after the JSON.`))
 	if len(fieldTypes) > 0 {
 		b.WriteString("\n\nField Types:\n")
 		for _, fieldType := range fieldTypes {

@@ -92,8 +92,8 @@ func RunExternalLLMPrint(req ExternalLLMPrintRequest) (ExternalLLMPrintResult, e
 	return externalllm.RunExternalLLMPrint(req)
 }
 
-func ExternalLLMPrintCommandPreview(command string) string {
-	return externalllm.ExternalLLMPrintCommandPreview(command)
+func ExternalLLMPrintCommandPreview() string {
+	return externalllm.ExternalLLMPrintCommandPreview()
 }
 
 func BuildExternalLLMJSONSchemaSection(example string, fieldTypes []string) prompt.PromptDataSection {

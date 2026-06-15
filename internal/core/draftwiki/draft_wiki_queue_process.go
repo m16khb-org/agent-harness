@@ -105,7 +105,7 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 		TargetWiki: targetWiki,
 		TargetType: targetType,
 	}, event.SourceMaterial, agyModel, targetType)
-	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Command: agyCommand, WorkDir: event.RepoRoot, Prompt: prompt, Timeout: timeout})
+	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Provider: agyCommand, WorkDir: event.RepoRoot, Prompt: prompt, Timeout: timeout})
 	if err != nil {
 		return failDraftWikiQueueEvent(event, fmt.Errorf("agy print failed: %w: %s", err, strings.TrimSpace(string(llm.Output))))
 	}

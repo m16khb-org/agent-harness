@@ -164,7 +164,7 @@ func TestIssueOpsAgyJudgePromptRequiresDimensionScoresArray(t *testing.T) {
 		"```json",
 		"Response Schema",
 		"Field Types",
-		"Return exactly this JSON object shape",
+		"Return a raw JSON object",
 		"ok: boolean",
 		"dimension_scores: array of objects",
 		"dimension_scores[].score: number",

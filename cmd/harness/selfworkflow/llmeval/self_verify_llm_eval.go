@@ -37,7 +37,7 @@ func ApplySelfVerifyLLMEval(result model.SelfAugmentResult, opts SelfVerifyLLMEv
 		return ApplySelfVerifyLLMGate(result, opts.TargetScore)
 	}
 
-	llm, runErr := core.RunExternalLLMPrint(core.ExternalLLMPrintRequest{Command: agyCommand, Prompt: evidencePacket, Timeout: timeout})
+	llm, runErr := core.RunExternalLLMPrint(core.ExternalLLMPrintRequest{Provider: agyCommand, Prompt: evidencePacket, Timeout: timeout})
 	eval := model.SelfVerifyLLMEvalResult{
 		Mode:                mode,
 		ExecutionClass:      "foreground_blocking",

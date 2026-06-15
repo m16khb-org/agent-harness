@@ -85,7 +85,7 @@ func SuggestDraftWiki(req DraftWikiSuggestRequest) (DraftWikiSuggestResult, erro
 		DryRun:               !req.Write,
 		Executed:             false,
 		InputPath:            inputPath,
-		Command:              ExternalLLMPrintCommandPreview(agyCommand),
+		Command:              ExternalLLMPrintCommandPreview(),
 		AgyCommand:           agyCommand,
 		AgyModel:             agyModel,
 		AgySettingsPath:      settingsPath,
@@ -99,7 +99,7 @@ func SuggestDraftWiki(req DraftWikiSuggestRequest) (DraftWikiSuggestResult, erro
 	if timeout <= 0 {
 		timeout = 5 * time.Minute
 	}
-	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Command: agyCommand, WorkDir: root, Prompt: prompt, Timeout: timeout})
+	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Provider: agyCommand, WorkDir: root, Prompt: prompt, Timeout: timeout})
 	if err != nil {
 		return DraftWikiSuggestResult{}, fmt.Errorf("agy print failed: %w: %s", err, strings.TrimSpace(string(llm.Output)))
 	}

@@ -80,8 +80,8 @@ func TestPolicyStateUtilityAndProjectDocFacades(t *testing.T) {
 	if !strings.Contains(shellQuote("a b"), "'") {
 		t.Fatal("shellQuote should quote spaces")
 	}
-	if !strings.Contains(ExternalLLMPrintCommandPreview(""), "agy") {
-		t.Fatal("ExternalLLMPrintCommandPreview should default command")
+	if !strings.Contains(ExternalLLMPrintCommandPreview(), "zai") {
+		t.Fatal("ExternalLLMPrintCommandPreview should mention zai")
 	}
 	var decoded map[string]any
 	if err := DecodeExternalLLMStructuredJSONObject("test", []byte(`{"ok":true}`), &decoded); err != nil || decoded["ok"] != true {

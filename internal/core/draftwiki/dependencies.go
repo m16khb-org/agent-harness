@@ -195,8 +195,8 @@ func DecodeExternalLLMStructuredJSONObject(label string, out []byte, target any)
 	return externalllm.DecodeExternalLLMStructuredJSONObject(label, out, target)
 }
 
-func ExternalLLMPrintCommandPreview(command string) string {
-	return externalllm.ExternalLLMPrintCommandPreview(command)
+func ExternalLLMPrintCommandPreview() string {
+	return externalllm.ExternalLLMPrintCommandPreview()
 }
 
 func StateDir() string {

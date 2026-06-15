@@ -36,7 +36,7 @@ func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, e
 	}
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
-		llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Command: command, WorkDir: req.RepoRoot, Prompt: prompt, Timeout: timeout})
+		llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Provider: command, WorkDir: req.RepoRoot, Prompt: prompt, Timeout: timeout})
 		if err != nil {
 			lastErr = fmt.Errorf("agy judge failed: %s: %w", boundedIssueOpsText(string(llm.Output)), err)
 			continue

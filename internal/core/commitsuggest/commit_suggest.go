@@ -6,17 +6,24 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/agysettings"
 	"agent-harness/internal/core/externalllm"
 	"agent-harness/internal/core/prompt"
 	"agent-harness/internal/core/repopath"
 )
 
+// CommitSuggestRequest configures the commit message suggestion.
+//
+// Model (formerly AgyModel) selects the external LLM model for Z.AI.
+// Set to empty to use the default ("glm-5-turbo").
+//
+// AgyCommand (deprecated) is ignored when empty. When set to a non-empty
+// value the legacy agy CLI is used instead of Z.AI.
 type CommitSuggestRequest struct {
 	RepoRoot        string        `json:"repo_root"`
 	Staged          bool          `json:"staged"`
-	AgyCommand      string        `json:"agy_command"`
-	AgyModel        string        `json:"agy_model"`
+	Model           string        `json:"model,omitempty"`
+	AgyCommand      string        `json:"agy_command,omitempty"`
+	AgyModel        string        `json:"agy_model,omitempty"`
 	AgySettingsPath string        `json:"-"`
 	Timeout         time.Duration `json:"-"`
 }
@@ -27,11 +34,10 @@ type CommitSuggestResult struct {
 	RepoRoot      string `json:"repo_root"`
 	Staged        bool   `json:"staged"`
 	CommitMessage string `json:"commit_message,omitempty"`
-	AgyCommand    string `json:"agy_command"`
-	AgyModel      string `json:"agy_model"`
+	Model         string `json:"model,omitempty"`
 }
 
-type commitSuggestAgyResponse struct {
+type commitSuggestResponse struct {
 	CommitMessage string `json:"commit_message"`
 }
 
@@ -64,42 +70,50 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 		}, nil
 	}
 
-	// 2. Resolve agy settings & model
+	// 2. Resolve model
+	model := strings.TrimSpace(req.Model)
+	if model == "" {
+		model = strings.TrimSpace(req.AgyModel) // backward compat
+	}
+	// If neither is set model stays empty → default "glm-5-turbo"
+
+	// 3. Determine provider
+	provider := ""
 	agyCommand := strings.TrimSpace(req.AgyCommand)
-	if agyCommand == "" {
-		agyCommand = "agy"
-	}
-	settingsPath := agysettings.ResolvePath(req.AgySettingsPath)
-	configuredModel, err := agysettings.ReadConfiguredModel(settingsPath)
-	if err != nil {
-		// Non-blocking fallback if settings file is missing or invalid
-		configuredModel = "default"
-	}
-	agyModel := strings.TrimSpace(req.AgyModel)
-	if agyModel == "" {
-		agyModel = configuredModel
+	if agyCommand != "" {
+		provider = agyCommand // legacy agy path
 	}
 
-	// 3. Compose prompt
-	prompt := BuildPrompt(diffContent)
+	// 4. Compose prompt
+	llmPrompt := BuildPrompt(diffContent)
 
-	// 4. Run agy
+	// 5. Run external LLM
 	timeout := req.Timeout
 	if timeout <= 0 {
 		timeout = 2 * time.Minute
 	}
 
-	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Command: agyCommand, WorkDir: root, Prompt: prompt, Timeout: timeout})
+	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{
+		Provider: provider,
+		Model:    model,
+		WorkDir:  root,
+		Prompt:   llmPrompt,
+		Timeout:  timeout,
+	})
 	if err != nil {
-		return CommitSuggestResult{}, fmt.Errorf("agy commit suggest failed: %w: %s", err, strings.TrimSpace(string(llm.Output)))
+		return CommitSuggestResult{}, fmt.Errorf("commit suggest LLM call failed: %w: %s", err, strings.TrimSpace(string(llm.Output)))
 	}
-	var response commitSuggestAgyResponse
-	if err := externalllm.DecodeExternalLLMStructuredJSONObject("agy commit suggest", llm.Output, &response); err != nil {
-		return CommitSuggestResult{}, fmt.Errorf("decode agy commit suggest output: %w", err)
+	var response commitSuggestResponse
+	if err := externalllm.DecodeExternalLLMStructuredJSONObject("commit suggest", llm.Output, &response); err != nil {
+		return CommitSuggestResult{}, fmt.Errorf("decode commit suggest output: %w", err)
 	}
 	commitMessage := strings.TrimSpace(response.CommitMessage)
 	if commitMessage == "" {
-		return CommitSuggestResult{}, fmt.Errorf("agy commit suggest output missing commit_message")
+		return CommitSuggestResult{}, fmt.Errorf("commit suggest output missing commit_message")
+	}
+
+	if model == "" {
+		model = externalllm.DefaultModel()
 	}
 
 	return CommitSuggestResult{
@@ -108,8 +122,7 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 		RepoRoot:      root,
 		Staged:        req.Staged,
 		CommitMessage: commitMessage,
-		AgyCommand:    agyCommand,
-		AgyModel:      agyModel,
+		Model:         model,
 	}, nil
 }
 

@@ -143,7 +143,7 @@ func TestIssueOpsRemoteAgyJudgePromptRequiresReadOnlyBackgroundJoin(t *testing.T
 		"```json",
 		"Response Schema",
 		"Field Types",
-		"Return exactly this JSON object shape",
+		"Return a raw JSON object",
 		"ok: boolean",
 		"selected_related_issues: array of scored item objects",
 		"scored item score and threshold: numbers",

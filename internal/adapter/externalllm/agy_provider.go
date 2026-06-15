@@ -45,10 +45,10 @@ func (p *AgyProvider) timeout() time.Duration {
 // Query sends a prompt to agy -p and returns the raw text response.
 func (p *AgyProvider) Query(prompt string) (string, error) {
 	result, err := corexternalllm.RunExternalLLMPrint(corexternalllm.ExternalLLMPrintRequest{
-		Command: p.command(),
-		WorkDir: p.WorkDir,
-		Prompt:  prompt,
-		Timeout: p.timeout(),
+		Provider: p.command(),
+		WorkDir:  p.WorkDir,
+		Prompt:   prompt,
+		Timeout:  p.timeout(),
 	})
 	if err != nil {
 		return "", err
@@ -67,10 +67,10 @@ func (p *AgyProvider) QueryStructured(prompt string, schema map[string]any) (map
 		}
 	}
 	result, err := corexternalllm.RunExternalLLMPrint(corexternalllm.ExternalLLMPrintRequest{
-		Command: p.command(),
-		WorkDir: p.WorkDir,
-		Prompt:  fullPrompt,
-		Timeout: p.timeout(),
+		Provider: p.command(),
+		WorkDir:  p.WorkDir,
+		Prompt:   fullPrompt,
+		Timeout:  p.timeout(),
 	})
 	if err != nil {
 		return nil, err
