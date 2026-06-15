@@ -45,6 +45,11 @@ var hookMetricDecision string
 
 func markHookMetricBlocked() { hookMetricDecision = "block" }
 
+// markHookMetricAsked records an "ask" enforcement decision so gate_hit_rate
+// counts it as a real intervention (A2/G4); previously "ask" returned before
+// any decision was recorded, making ask-gating invisible to the metric.
+func markHookMetricAsked() { hookMetricDecision = "ask" }
+
 func captureReplayableHookStdin() ([]byte, func(), error) {
 	stat, err := os.Stdin.Stat()
 	if err != nil || stat.Mode()&os.ModeCharDevice != 0 {

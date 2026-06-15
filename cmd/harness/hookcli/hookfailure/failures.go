@@ -97,7 +97,7 @@ func RunStats(args []string) error {
 		return err
 	}
 	_ = jsonOut
-	stats, err := core.SummarizeHookFailureLog()
+	stats, err := core.SummarizeHookFailureStats()
 	if err != nil {
 		return err
 	}

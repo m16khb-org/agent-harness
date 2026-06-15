@@ -147,6 +147,49 @@ func SummarizeHookFailureLog() (HookFailureStats, error) {
 	return hookfailure.SummarizeHookFailureLog()
 }
 
+// HookFailureRateStats enriches the failure summary with failures/invocations
+// (A2/G5) by joining the failure log against the hook-metrics invocation
+// counter (both keyed by hook name). FailureRate is reported only for hooks
+// with a known invocation count (>0): the failure-only "unparseable" bucket has
+// no invocations and is omitted from the rate map so its 0 is not misread as
+// "healthy" — its raw count stays visible via the embedded ByHook.
+type HookFailureRateStats struct {
+	HookFailureStats
+	Invocations        map[string]int     `json:"invocations,omitempty"`
+	FailureRate        map[string]float64 `json:"failure_rate,omitempty"`
+	FailureRateOverall float64            `json:"failure_rate_overall"`
+}
+
+// SummarizeHookFailureStats joins the failure log with the metrics invocation
+// counts to compute failure_rate = failures/invocations per hook and overall
+// (A2/G5). Read-time only, no new write path. A metric-log error degrades
+// gracefully to an empty invocation set rather than failing the whole summary.
+func SummarizeHookFailureStats() (HookFailureRateStats, error) {
+	fstats, err := hookfailure.SummarizeHookFailureLog()
+	out := HookFailureRateStats{
+		HookFailureStats: fstats,
+		Invocations:      map[string]int{},
+		FailureRate:      map[string]float64{},
+	}
+	if err != nil {
+		out.OK = false
+		return out, err
+	}
+	mstats, mErr := hookmetrics.SummarizeHookMetricsLog()
+	if mErr == nil {
+		for hook, lat := range mstats.ByHook {
+			out.Invocations[hook] = lat.Count
+		}
+	}
+	for hook, failures := range fstats.ByHook {
+		if inv := out.Invocations[hook]; inv > 0 {
+			out.FailureRate[hook] = hookmetrics.Rate(failures, inv)
+		}
+	}
+	out.FailureRateOverall = hookmetrics.Rate(fstats.Total, mstats.Total)
+	return out, nil
+}
+
 func RecordHookMetricEvent(event HookMetricEvent) error {
 	_, err := hookmetrics.RecordHookMetricEvent(event)
 	return err

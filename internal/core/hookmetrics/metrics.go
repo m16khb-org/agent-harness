@@ -7,6 +7,7 @@ package hookmetrics
 import (
 	"bufio"
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -38,14 +39,23 @@ type HookLatencyStats struct {
 	P95MS  int64 `json:"p95_ms"`
 	MaxMS  int64 `json:"max_ms"`
 	Blocks int   `json:"blocks"`
+	// Asks counts enforcement "ask" decisions; like Blocks they are real gate
+	// interventions, so both feed GateHitRate (A2/G4).
+	Asks int `json:"asks"`
+	// GateHitRate = (Blocks+Asks)/Count: the fraction of invocations where the
+	// gate actually intervened. A gate that is silently disabled keeps Count
+	// rising while this drops to ~0, which absolute Blocks alone cannot reveal.
+	GateHitRate float64 `json:"gate_hit_rate"`
 }
 
 type HookMetricsStats struct {
-	OK      bool                        `json:"ok"`
-	Path    string                      `json:"path"`
-	Total   int                         `json:"total"`
-	ByHook  map[string]HookLatencyStats `json:"by_hook,omitempty"`
-	Last24h int                         `json:"last_24h"`
+	OK     bool                        `json:"ok"`
+	Path   string                      `json:"path"`
+	Total  int                         `json:"total"`
+	ByHook map[string]HookLatencyStats `json:"by_hook,omitempty"`
+	// GateHitRate is the overall (Blocks+Asks)/Count across all hooks.
+	GateHitRate float64 `json:"gate_hit_rate"`
+	Last24h     int     `json:"last_24h"`
 }
 
 type HookMetricsPruneResult struct {
@@ -107,8 +117,11 @@ func SummarizeHookMetricsLog() (HookMetricsStats, error) {
 		}
 		entry := stats.ByHook[hook]
 		entry.Count++
-		if event.Decision == "block" {
+		switch event.Decision {
+		case "block":
 			entry.Blocks++
+		case "ask":
+			entry.Asks++
 		}
 		if event.DurationMS > entry.MaxMS {
 			entry.MaxMS = event.DurationMS
@@ -119,13 +132,17 @@ func SummarizeHookMetricsLog() (HookMetricsStats, error) {
 			stats.Last24h++
 		}
 	}
+	totalGateHits := 0
 	for hook, ds := range durations {
 		slices.Sort(ds)
 		entry := stats.ByHook[hook]
 		entry.P50MS = percentileMS(ds, 50)
 		entry.P95MS = percentileMS(ds, 95)
+		entry.GateHitRate = Rate(entry.Blocks+entry.Asks, entry.Count)
 		stats.ByHook[hook] = entry
+		totalGateHits += entry.Blocks + entry.Asks
 	}
+	stats.GateHitRate = Rate(totalGateHits, stats.Total)
 	return stats, nil
 }
 
@@ -200,6 +217,24 @@ func readHookMetricEvents(path string) ([]HookMetricEvent, error) {
 		events = append(events, event)
 	}
 	return events, scanner.Err()
+}
+
+// Rate returns num/denom clamped to [0,1] and rounded to 4 decimals; denom<=0
+// yields 0. The clamp guards the failure-rate join (A2/G5): a process that
+// crashed between recording a failure (hook.go:25) and recording the invocation
+// (hook.go:30) can transiently make failures exceed invocations, but a *_rate
+// field must stay a valid [0,1] probability — the raw counts remain available
+// alongside it for anomaly detection. gate_hit_rate cannot exceed 1 by
+// construction (block+ask <= count), so the clamp is a no-op there.
+func Rate(num, denom int) float64 {
+	if denom <= 0 {
+		return 0
+	}
+	r := float64(num) / float64(denom)
+	if r > 1 {
+		r = 1
+	}
+	return math.Round(r*10000) / 10000
 }
 
 func percentileMS(sorted []int64, pct int) int64 {

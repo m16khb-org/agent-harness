@@ -60,6 +60,7 @@ func runHookPreToolUse(args []string) error {
 		// "block" decisions differ by host: Claude uses hookSpecificOutput, Codex
 		// uses a flat decision/reason object.
 		if result.Decision == "ask" {
+			markHookMetricAsked()
 			return printJSON(ho.FormatAsk(result.Reason))
 		}
 		markHookMetricBlocked()

@@ -43,6 +43,43 @@ func TestSummarizeHookMetricsAggregatesLatencyAndDecisions(t *testing.T) {
 	}
 }
 
+// A2/G4: gate_hit_rate = (blocks+asks)/invocations turns the existing Count
+// denominator + Blocks numerator into an enforcement-effectiveness signal so a
+// silently-disabled gate (invocations continue, interventions drop to ~0) is
+// visible. "ask" is a real enforcement decision and must count toward the rate.
+func TestSummarizeHookMetricsGateHitRateCountsBlockAndAsk(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	for _, e := range []HookMetricEvent{
+		{Hook: "pre-tool-use", DurationMS: 10},                      // pass
+		{Hook: "pre-tool-use", DurationMS: 20, Decision: "block"},   // block
+		{Hook: "pre-tool-use", DurationMS: 30, Decision: "ask"},     // ask (was uncounted)
+		{Hook: "pre-tool-use", DurationMS: 40},                      // pass
+		{Hook: "stop", DurationMS: 5},                               // pass, no enforcement
+	} {
+		if _, err := RecordHookMetricEvent(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stats, err := SummarizeHookMetricsLog()
+	if err != nil || !stats.OK {
+		t.Fatalf("summarize failed: %+v err=%v", stats, err)
+	}
+	pre := stats.ByHook["pre-tool-use"]
+	if pre.Blocks != 1 || pre.Asks != 1 {
+		t.Fatalf("expected 1 block + 1 ask, got %+v", pre)
+	}
+	if pre.GateHitRate != 0.5 { // (1 block + 1 ask) / 4 invocations
+		t.Fatalf("pre-tool-use gate_hit_rate want 0.5, got %v", pre.GateHitRate)
+	}
+	// A disabled gate: invocations continue but no interventions => rate 0.
+	if stop := stats.ByHook["stop"]; stop.GateHitRate != 0 {
+		t.Fatalf("stop gate_hit_rate want 0, got %v", stop.GateHitRate)
+	}
+	if stats.GateHitRate != 0.4 { // (1+1)/5 overall
+		t.Fatalf("overall gate_hit_rate want 0.4, got %v", stats.GateHitRate)
+	}
+}
+
 func TestSummarizeHookMetricsHandlesMissingLog(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	stats, err := SummarizeHookMetricsLog()
