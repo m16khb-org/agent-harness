@@ -9,7 +9,7 @@
 > **계층 분리 단서 (S6 — 고정 표기, 합산 금지)**
 > 아래 지표는 서로 다른 **3개 계층**을 측정하며 한 점수로 합산하지 않는다:
 > ① **격리 rubric** (스킬 SKILL.md를 fresh-context에 단독 주입한 품질) — 측정면 1·2,
-> ② **통합 벤치마크** (issueops 산출물의 18-dimension 결정적 채점 + pioneer 시그니처) — 측정면 3,
+> ② **통합 벤치마크** (issueops 산출물의 19-dimension 결정적 채점 + pioneer 시그니처 + skill routing fidelity) — 측정면 3,
 > ③ **런타임 텔레메트리** (hook latency/failure/gate) — 측정면 4·5.
 > 격리 점수 4.9가 통합 기여 100을 "증명"하지 않으며 그 반대도 아니다. 세 계층은 삼각측량이다.
 
@@ -61,7 +61,7 @@ strict 잔여였던 ACP-O 재측정, STA-H holdout n≥3, IssueOps judge file �
 
 ## 측정면 3 — IssueOps 산출물 벤치마크 (통합)
 
-- **18-dimension** 결정적 채점 + pioneer 시그니처 + N/A 제외 + A/B 게이트.
+- **19-dimension** 결정적 채점 + pioneer 시그니처 + skill_routing_fidelity(recorded-trace proxy) + N/A 제외 + A/B 게이트.
 - 최신 (2026-06-13, `--judge none`, fixtures 9건): **average 100 / minimum 100 / critical_failure 0** → 게이트 GREEN.
 - `--judge file` 백엔드 practical run 완료: `/tmp/agent-harness-issueops-judge-map-20260613.json`을 strict decode/merge해 `/tmp/agent-harness-issueops-benchmark-judge-file-20260613.json` 생성, **average 100 / minimum 100 / critical_failure 0 / judge_failures 0**. 단, 현재 도구 정책상 fresh-context sub-agent dispatch는 사용자 명시 요청 없이는 사용하지 못해 judge map은 deterministic run output에서 생성했다.
 - 실행: `agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json`.

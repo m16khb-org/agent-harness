@@ -55,6 +55,9 @@ func pioneerABRunForTest(t *testing.T, fixtures []IssueOpsBenchmarkFixture, with
 		} else {
 			artifact.PioneerSkillEvidence = ""
 		}
+		// Satisfy any routing expectation so this A/B isolates the pioneer
+		// signal; routing fidelity has its own dedicated tests.
+		artifact.RoutingTrace = fixture.ExpectedRouting
 		artifacts[fixture.ID] = artifact
 	}
 	run, err := RunIssueOpsBenchmark(IssueOpsBenchmarkRunRequest{Fixtures: fixtures, Artifacts: artifacts})
@@ -122,6 +125,7 @@ func TestPioneerGateRejectsSignatureRegression(t *testing.T) {
 		if i == 0 {
 			artifact.PioneerSkillEvidence = ""
 		}
+		artifact.RoutingTrace = fixture.ExpectedRouting
 		artifacts[fixture.ID] = artifact
 	}
 	candidateRun, err := RunIssueOpsBenchmark(IssueOpsBenchmarkRunRequest{Fixtures: fixtures, Artifacts: artifacts})

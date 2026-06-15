@@ -1,0 +1,39 @@
+package benchmark
+
+import "strings"
+
+// issueOpsSkillRoutingFidelityComplete reports whether the artifact's recorded
+// RoutingTrace contains every skill-at-phase pairing the fixture expects (A5).
+//
+// This is a RECORDED-TRACE PROXY, not proof of live in-CI skill routing. The
+// deterministic benchmark run is tautological for this dimension because
+// FromFixture synthesizes RoutingTrace from the fixture's own ExpectedRouting
+// (parallel to the pioneer keyword proxy's "not live-routing proof" caveat at
+// issueops_pioneer_checks.go and issueops_benchmark_score.go). Real
+// discrimination comes from (a) the tampered-trace boundary test and (b) future
+// REAL traces recorded during non-CI issueops runs.
+//
+// Each expected (phase, skill) must match a SINGLE trace entry on BOTH fields
+// (case-insensitive, trimmed) — not two independent any-scans — so a trace
+// where the right skill fired at the WRONG phase fails.
+//
+// Fixtures without ExpectedRouting are handled as N/A by the scorer and never
+// reach this check.
+func issueOpsSkillRoutingFidelityComplete(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) bool {
+	for _, expected := range fixture.ExpectedRouting {
+		if !routingTraceHasPairing(artifact.RoutingTrace, expected) {
+			return false
+		}
+	}
+	return true
+}
+
+func routingTraceHasPairing(trace []SkillRouting, expected SkillRouting) bool {
+	for _, entry := range trace {
+		if strings.EqualFold(strings.TrimSpace(entry.Phase), strings.TrimSpace(expected.Phase)) &&
+			strings.EqualFold(strings.TrimSpace(entry.Skill), strings.TrimSpace(expected.Skill)) {
+			return true
+		}
+	}
+	return false
+}

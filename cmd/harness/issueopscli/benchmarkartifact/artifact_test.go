@@ -36,6 +36,22 @@ func TestDefaultsForNoExtraRequirementsFixture(t *testing.T) {
 	}
 }
 
+// FromFixture must forward the recorded routing trace so the deterministic
+// benchmark scores skill_routing_fidelity; without this the dim would be N/A
+// even for a fixture that declares ExpectedRouting (A5).
+func TestFromFixtureForwardsRoutingTrace(t *testing.T) {
+	withRouting := FromFixture(core.IssueOpsBenchmarkFixture{
+		ID:              "routing",
+		ExpectedRouting: []core.SkillRouting{{Phase: "plan", Skill: "codd"}},
+	})
+	if len(withRouting.RoutingTrace) != 1 || withRouting.RoutingTrace[0] != (core.SkillRouting{Phase: "plan", Skill: "codd"}) {
+		t.Fatalf("FromFixture must synthesize RoutingTrace from ExpectedRouting, got %+v", withRouting.RoutingTrace)
+	}
+	if got := FromFixture(core.IssueOpsBenchmarkFixture{ID: "no-routing"}); len(got.RoutingTrace) != 0 {
+		t.Fatalf("fixture without expected_routing must get empty RoutingTrace, got %+v", got.RoutingTrace)
+	}
+}
+
 func TestListHelpersSkipBlankItems(t *testing.T) {
 	if got := Bullets([]string{" ", "\t"}); got != "- 해당 fixture의 추가 요구사항 없음" {
 		t.Fatalf("blank bullet fallback = %q", got)

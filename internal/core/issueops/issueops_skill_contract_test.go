@@ -146,6 +146,39 @@ func TestIssueOpsPioneerFixturesCarryMethodSkipRule(t *testing.T) {
 	}
 }
 
+// Asserts every fixture declaring expected_routing also carries the paired
+// "skips expected routing" critical rule (A5), so a recorded trace where the
+// skill did not fire hard-fails a single run — parallel to "skips pioneer
+// method". PRESENCE-only, like the other contract tests in this file.
+func TestIssueOpsRoutingFixturesCarrySkipRule(t *testing.T) {
+	dir := filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := string(b)
+		if !strings.Contains(body, "\"expected_routing\"") {
+			continue
+		}
+		checked++
+		if !strings.Contains(body, "skips expected routing") {
+			t.Fatalf("fixture %s declares expected_routing but lacks the \"skips expected routing\" critical rule", entry.Name())
+		}
+	}
+	if checked == 0 {
+		t.Fatal("expected at least one fixture with expected_routing to exercise the routing-fidelity contract")
+	}
+}
+
 func readIssueOpsSkillForTest(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "skills", "issueops", "SKILL.md"))

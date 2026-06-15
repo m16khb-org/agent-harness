@@ -4,6 +4,7 @@ import "agent-harness/internal/core/issueops/benchmark"
 
 type IssueOpsBenchmarkFixture = benchmark.IssueOpsBenchmarkFixture
 type IssueOpsBenchmarkArtifact = benchmark.IssueOpsBenchmarkArtifact
+type SkillRouting = benchmark.SkillRouting
 type IssueOpsDimensionScore = benchmark.IssueOpsDimensionScore
 type IssueOpsBenchmarkScore = benchmark.IssueOpsBenchmarkScore
 type IssueOpsBenchmarkRunRequest = benchmark.IssueOpsBenchmarkRunRequest

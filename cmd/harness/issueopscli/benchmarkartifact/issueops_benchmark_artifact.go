@@ -129,7 +129,22 @@ func FromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkAr
 		ReviewFeedbackEvidence: reviewFeedbackEvidence(),
 		CompletionHygiene:      completionHygiene(),
 		PioneerSkillEvidence:   pioneerEvidenceFor(fixture.PioneerSkillTarget),
+		RoutingTrace:           routingTraceFor(fixture),
 	}
+}
+
+// routingTraceFor synthesizes the recorded routing trace from the fixture's own
+// ExpectedRouting, so the deterministic benchmark run passes skill_routing_fidelity
+// tautologically — exactly parallel to pioneerEvidenceFor. Real discrimination
+// comes from the tampered-trace boundary test and from future real traces
+// recorded during non-CI issueops runs. Fixtures without expected routing get nil.
+func routingTraceFor(fixture core.IssueOpsBenchmarkFixture) []core.SkillRouting {
+	if len(fixture.ExpectedRouting) == 0 {
+		return nil
+	}
+	trace := make([]core.SkillRouting, len(fixture.ExpectedRouting))
+	copy(trace, fixture.ExpectedRouting)
+	return trace
 }
 
 // pioneerEvidenceFor returns distinctive-method evidence satisfying the

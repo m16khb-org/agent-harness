@@ -98,17 +98,23 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 			evidence: "pioneer skill evidence carries the targeted skill's distinctive-method signature (necessary keyword proxy, not live-routing proof)",
 			failure:  "pioneer skill evidence missing the targeted skill's distinctive-method signature",
 		},
+		"skill_routing_fidelity": {
+			ok:       issueOpsSkillRoutingFidelityComplete(fixture, artifact),
+			evidence: "recorded routing trace covers every expected skill-at-phase (recorded-trace proxy, not live-routing proof)",
+			failure:  "recorded routing trace is missing an expected skill-at-phase",
+		},
 	}
 
 	score := IssueOpsBenchmarkScore{OK: true, FixtureID: fixture.ID}
 	for _, dimension := range issueOpsBenchmarkDimensions {
-		if dimension == "pioneer_skill_contribution" && strings.TrimSpace(fixture.PioneerSkillTarget) == "" {
-			// Honest N/A: recorded but excluded from average/minimum/Passed so
-			// non-pioneer fixtures neither gain a false 100 nor lose points.
+		if reason := issueOpsDimensionNotApplicable(dimension, fixture); reason != "" {
+			// Honest N/A: recorded but excluded from average/minimum/Passed so a
+			// fixture that does not exercise the dimension neither gains a false
+			// 100 nor loses points.
 			score.DimensionScores = append(score.DimensionScores, IssueOpsDimensionScore{
 				Dimension:     dimension,
 				Score:         0,
-				Evidence:      "N/A: fixture has no pioneer_skill_target; excluded from average/minimum",
+				Evidence:      reason,
 				NotApplicable: true,
 			})
 			continue
@@ -133,4 +139,22 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 	score.Passed = len(score.CriticalFailures) == 0 && len(score.DeterministicFailures) == 0 && score.MinimumScore >= issueOpsBenchmarkMaxScore
 	score.OK = score.Passed
 	return score
+}
+
+// issueOpsDimensionNotApplicable returns a non-empty N/A reason when a fixture
+// does not exercise a metadata-conditional dimension, so the dimension is
+// recorded but excluded from average/minimum/Passed. Keep every conditional
+// dimension here rather than hardcoding one name in the scoring loop.
+func issueOpsDimensionNotApplicable(dimension string, fixture IssueOpsBenchmarkFixture) string {
+	switch dimension {
+	case "pioneer_skill_contribution":
+		if strings.TrimSpace(fixture.PioneerSkillTarget) == "" {
+			return "N/A: fixture has no pioneer_skill_target; excluded from average/minimum"
+		}
+	case "skill_routing_fidelity":
+		if len(fixture.ExpectedRouting) == 0 {
+			return "N/A: fixture has no expected_routing; excluded from average/minimum"
+		}
+	}
+	return ""
 }

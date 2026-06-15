@@ -1,18 +1,26 @@
 package benchmark
 
+// SkillRouting is one "skill fired at phase" pairing. ExpectedRouting (fixture)
+// and RoutingTrace (artifact) use it to score skill_routing_fidelity (A5).
+type SkillRouting struct {
+	Phase string `json:"phase"`
+	Skill string `json:"skill"`
+}
+
 type IssueOpsBenchmarkFixture struct {
-	ID                 string   `json:"id"`
-	Title              string   `json:"title"`
-	UserPrompt         string   `json:"user_prompt"`
-	RepoContext        string   `json:"repo_context"`
-	PioneerSkillTarget string   `json:"pioneer_skill_target,omitempty"`
-	ExpectedIssue      []string `json:"expected_issue"`
-	ExpectedPlan       []string `json:"expected_plan"`
-	ExpectedTasks      []string `json:"expected_tasks"`
-	ExpectedTDD        []string `json:"expected_tdd"`
-	ExpectedSubagents  []string `json:"expected_subagents"`
-	ExpectedPR         []string `json:"expected_pr"`
-	CriticalFailures   []string `json:"critical_failures"`
+	ID                 string         `json:"id"`
+	Title              string         `json:"title"`
+	UserPrompt         string         `json:"user_prompt"`
+	RepoContext        string         `json:"repo_context"`
+	PioneerSkillTarget string         `json:"pioneer_skill_target,omitempty"`
+	ExpectedRouting    []SkillRouting `json:"expected_routing,omitempty"`
+	ExpectedIssue      []string       `json:"expected_issue"`
+	ExpectedPlan       []string       `json:"expected_plan"`
+	ExpectedTasks      []string       `json:"expected_tasks"`
+	ExpectedTDD        []string       `json:"expected_tdd"`
+	ExpectedSubagents  []string       `json:"expected_subagents"`
+	ExpectedPR         []string       `json:"expected_pr"`
+	CriticalFailures   []string       `json:"critical_failures"`
 }
 
 type IssueOpsBenchmarkArtifact struct {
@@ -36,6 +44,10 @@ type IssueOpsBenchmarkArtifact struct {
 	ReviewFeedbackEvidence string `json:"review_feedback_evidence,omitempty"`
 	CompletionHygiene      string `json:"completion_hygiene,omitempty"`
 	PioneerSkillEvidence   string `json:"pioneer_skill_evidence,omitempty"`
+	// RoutingTrace records which skill fired at which phase during the run; the
+	// skill_routing_fidelity dimension (A5) scores it against the fixture's
+	// ExpectedRouting.
+	RoutingTrace []SkillRouting `json:"routing_trace,omitempty"`
 }
 
 type IssueOpsDimensionScore struct {
@@ -131,6 +143,7 @@ var issueOpsBenchmarkDimensions = []string{
 	"completion_hygiene_quality",
 	"worktree_cleanup_quality",
 	"pioneer_skill_contribution",
+	"skill_routing_fidelity",
 }
 
 const issueOpsBenchmarkMaxScore = 100.0

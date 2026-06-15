@@ -33,7 +33,7 @@ v2 시범 재채점(분리 검증):
 - 실행: fresh-context 서브에이전트에 target SKILL.md + 케이스 요청 + fixture만 주입(rubric 88–124행). self-score 금지, main 평가자가 채점.
 - **분산 규율(프로그램 Q1 명시)**: holdout은 **n≥3** 실행, 평균±범위로 기록. 단일런 점수를 최종값으로 쓰지 않는다.
 - 근거: 최종 점수는 evidence A–C만. D(추정)는 미완 처리.
-- 적용범위 단서: 본 점수는 "격리 실행" 측정이다. issueops 산출물 통합 기여는 별개 계층(18-dimension 벤치마크)이 담당하며 두 점수를 합산하지 않는다.
+- 적용범위 단서: 본 점수는 "격리 실행" 측정이다. issueops 산출물 통합 기여는 별개 계층(19-dimension 벤치마크)이 담당하며 두 점수를 합산하지 않는다.
 
 ## Target Gate (rubric과 동일)
 

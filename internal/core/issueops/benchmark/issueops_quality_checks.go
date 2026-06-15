@@ -46,6 +46,8 @@ func detectIssueOpsQualityCriticalFailures(fixture IssueOpsBenchmarkFixture, art
 			failures = append(failures, rule)
 		case strings.Contains(ruleText, "skips pioneer method") && !issueOpsPioneerSkillEvidenceComplete(fixture, artifact):
 			failures = append(failures, rule)
+		case strings.Contains(ruleText, "skips expected routing") && len(fixture.ExpectedRouting) > 0 && !issueOpsSkillRoutingFidelityComplete(fixture, artifact):
+			failures = append(failures, rule)
 		}
 	}
 	return failures

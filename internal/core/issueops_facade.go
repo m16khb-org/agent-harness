@@ -49,6 +49,7 @@ const IssueOpsDesignReviewEvidenceExample = issueops.IssueOpsDesignReviewEvidenc
 
 type IssueOpsBenchmarkFixture = issueops.IssueOpsBenchmarkFixture
 type IssueOpsBenchmarkArtifact = issueops.IssueOpsBenchmarkArtifact
+type SkillRouting = issueops.SkillRouting
 type IssueOpsDimensionScore = issueops.IssueOpsDimensionScore
 type IssueOpsBenchmarkScore = issueops.IssueOpsBenchmarkScore
 type IssueOpsBenchmarkRunRequest = issueops.IssueOpsBenchmarkRunRequest
