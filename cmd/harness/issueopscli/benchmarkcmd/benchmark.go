@@ -25,7 +25,7 @@ func Run(args []string) error {
 		fs := flag.NewFlagSet("issueops benchmark run", flag.ContinueOnError)
 		fixturesPath := fs.String("fixtures", "", "benchmark fixtures path")
 		judge := fs.String("judge", "agy", "judge backend: none, file, or agy (legacy: external agy -p; prefer file)")
-		judgeFile := fs.String("judge-file", "", "judge score map JSON path for --judge file ({\"<fixtureID>\": <score>, ...}); reads stdin when empty")
+		judgeFile := fs.String("judge-file", "", "provenanced judge map JSON path for --judge file ({\"source_run_id\":..,\"provenance\":..,\"scores\":{\"<fixtureID>\":<score>}}); reads stdin when empty")
 		agyCommand := fs.String("agy-command", "agy", "agy command path")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if help, err := parseFlags(fs, args[1:]); help || err != nil {
@@ -63,8 +63,15 @@ func Run(args []string) error {
 				result.Scores[i] = core.MergeIssueOpsBenchmarkScoreWithJudge(result.Scores[i], judgeScore)
 			}
 		case "file":
-			judgeScores, err := readIssueOpsJudgeScoreMap(*judgeFile, fixtures)
+			judgeMap, judgeScores, err := readIssueOpsJudgeMap(*judgeFile, fixtures)
 			if err != nil {
+				return err
+			}
+			// Provenance is validated BEFORE merge and fails closed: a judge map
+			// self-attributed to this run (or naming a non-existent source run) is
+			// rejected. This is a self-reference guard, not a proof of judge
+			// independence.
+			if err := core.ValidateJudgeProvenance(judgeMap, result.ID, core.StateDir()); err != nil {
 				return err
 			}
 			for i, fixture := range fixtures {
@@ -219,13 +226,15 @@ func (f *repeatedFlag) Set(value string) error {
 	return nil
 }
 
-// readIssueOpsJudgeScoreMap reads a {"<fixtureID>": <score>} map (file path,
-// or stdin when the path is empty), strict-decodes each score value through
-// the same decoder the agy judge uses, and fails closed when the map's keys
-// do not exactly match the run's fixture IDs. Missing keys must error here:
-// merging a zero-value judge score would silently fail the fixture via
-// JudgeFailures instead of surfacing the operator mistake.
-func readIssueOpsJudgeScoreMap(path string, fixtures []core.IssueOpsBenchmarkFixture) (map[string]core.IssueOpsBenchmarkScore, error) {
+// readIssueOpsJudgeMap reads the wrapped judge map
+// {"source_run_id":..,"provenance":..,"scores":{"<fixtureID>":<score>}} (file
+// path, or stdin when empty), strict-decodes each score, and fails closed when
+// the scores' keys do not exactly match the run's fixture IDs. The wrapper is
+// the ONLY accepted shape: a legacy flat {"<fixtureID>": <score>} map fails to
+// decode (its fixture keys are unknown top-level fields) rather than silently
+// bypassing the provenance gate. Missing keys must error here: merging a
+// zero-value judge score would silently fail the fixture via JudgeFailures.
+func readIssueOpsJudgeMap(path string, fixtures []core.IssueOpsBenchmarkFixture) (core.IssueOpsJudgeMap, map[string]core.IssueOpsBenchmarkScore, error) {
 	var raw []byte
 	var err error
 	if strings.TrimSpace(path) == "" {
@@ -234,32 +243,41 @@ func readIssueOpsJudgeScoreMap(path string, fixtures []core.IssueOpsBenchmarkFix
 		raw, err = os.ReadFile(path)
 	}
 	if err != nil {
-		return nil, err
+		return core.IssueOpsJudgeMap{}, nil, err
 	}
-	var outer map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &outer); err != nil {
-		return nil, fmt.Errorf("parse judge score map: %w", err)
+	var wrapper struct {
+		SourceRunID string                     `json:"source_run_id"`
+		Provenance  string                     `json:"provenance"`
+		Scores      map[string]json.RawMessage `json:"scores"`
 	}
-	scores := make(map[string]core.IssueOpsBenchmarkScore, len(outer))
+	dec := json.NewDecoder(strings.NewReader(string(raw)))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&wrapper); err != nil {
+		return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("parse judge map (expect {\"source_run_id\":..,\"provenance\":..,\"scores\":{...}}): %w", err)
+	}
+	if wrapper.Scores == nil {
+		return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge map missing \"scores\" object")
+	}
+	scores := make(map[string]core.IssueOpsBenchmarkScore, len(wrapper.Scores))
 	known := make(map[string]bool, len(fixtures))
 	for _, fixture := range fixtures {
 		known[fixture.ID] = true
-		value, ok := outer[fixture.ID]
+		value, ok := wrapper.Scores[fixture.ID]
 		if !ok {
-			return nil, fmt.Errorf("judge score map missing fixture %q", fixture.ID)
+			return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge map missing fixture %q", fixture.ID)
 		}
 		score, err := core.DecodeIssueOpsBenchmarkJudgeJSON(value)
 		if err != nil {
-			return nil, fmt.Errorf("judge score for fixture %q: %w", fixture.ID, err)
+			return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge score for fixture %q: %w", fixture.ID, err)
 		}
 		scores[fixture.ID] = score
 	}
-	for key := range outer {
+	for key := range wrapper.Scores {
 		if !known[key] {
-			return nil, fmt.Errorf("judge score map has unknown fixture %q", key)
+			return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge map has unknown fixture %q", key)
 		}
 	}
-	return scores, nil
+	return core.IssueOpsJudgeMap{SourceRunID: wrapper.SourceRunID, Provenance: wrapper.Provenance}, scores, nil
 }
 
 func readIssueOpsAutoresearchCandidateFile(path string) (core.IssueOpsAutoresearchCandidate, error) {

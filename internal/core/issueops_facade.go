@@ -64,6 +64,7 @@ type RecordedOutcomes = issueops.RecordedOutcomes
 type FixtureReliability = issueops.FixtureReliability
 type PassPowKPoint = issueops.PassPowKPoint
 type ReliabilityReport = issueops.ReliabilityReport
+type IssueOpsJudgeMap = issueops.IssueOpsJudgeMap
 
 type IssueOpsRemoteArtifact = issueops.IssueOpsRemoteArtifact
 type IssueOpsRemoteIssueCandidate = issueops.IssueOpsRemoteIssueCandidate
@@ -256,6 +257,14 @@ func ComputeReliability(rec RecordedOutcomes, alpha float64) (ReliabilityReport,
 
 func ScoreSpread(scores []float64) (float64, float64, float64) {
 	return issueops.ScoreSpread(scores)
+}
+
+func ValidateJudgeProvenance(judge IssueOpsJudgeMap, scoredRunID, stateRoot string) error {
+	return issueops.ValidateJudgeProvenance(judge, scoredRunID, stateRoot)
+}
+
+func JudgeDownwardOverrideRate(deterministic, judge IssueOpsBenchmarkScore) (float64, int) {
+	return issueops.JudgeDownwardOverrideRate(deterministic, judge)
 }
 
 func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) IssueOpsBenchmarkScore {

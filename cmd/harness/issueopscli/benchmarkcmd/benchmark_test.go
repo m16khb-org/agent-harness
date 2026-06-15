@@ -29,15 +29,22 @@ func TestRunBenchmarkRunCompareAndGate(t *testing.T) {
 	}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := core.SaveIssueOpsBenchmarkRun(core.StateDir(), core.IssueOpsBenchmarkRunResult{ID: "judge-source", FixtureCount: 1}); err != nil {
+		t.Fatalf("save judge source run: %v", err)
+	}
 	judgePath := filepath.Join(t.TempDir(), "judge.json")
 	if err := os.WriteFile(judgePath, []byte(`{
-		"fixture-1":{
-			"ok":true,
-			"fixture_id":"fixture-1",
-			"average_score":100,
-			"minimum_score":100,
-			"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"clear"}],
-			"passed":true
+		"source_run_id":"judge-source",
+		"provenance":"recorded fresh-context judge",
+		"scores":{
+			"fixture-1":{
+				"ok":true,
+				"fixture_id":"fixture-1",
+				"average_score":100,
+				"minimum_score":100,
+				"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"clear"}],
+				"passed":true
+			}
 		}
 	}`), 0o600); err != nil {
 		t.Fatal(err)
@@ -46,8 +53,14 @@ func TestRunBenchmarkRunCompareAndGate(t *testing.T) {
 		t.Fatalf("run returned error: %v", err)
 	}
 	runs := benchmarkRunIDs(t)
-	if len(runs) != 1 {
-		t.Fatalf("expected one saved run, got %d", len(runs))
+	benchmarkRuns := 0
+	for _, id := range runs {
+		if strings.HasPrefix(id, "issueops-benchmark-") {
+			benchmarkRuns++
+		}
+	}
+	if benchmarkRuns != 1 {
+		t.Fatalf("expected one saved benchmark run, got %d (of %d total, incl. the seeded provenance source)", benchmarkRuns, len(runs))
 	}
 	baseline := benchmarkRunResult("baseline", 90, true)
 	candidate := benchmarkRunResult("candidate", 100, true)
@@ -77,27 +90,28 @@ func TestRunBenchmarkRunCompareAndGate(t *testing.T) {
 func TestBenchmarkHelpersAndErrors(t *testing.T) {
 	fixtures := []core.IssueOpsBenchmarkFixture{{ID: "known"}}
 	scorePath := filepath.Join(t.TempDir(), "scores.json")
-	if err := os.WriteFile(scorePath, []byte(`{"known":{"ok":true,"fixture_id":"known","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"ok"}],"passed":true}}`), 0o600); err != nil {
+	if err := os.WriteFile(scorePath, []byte(`{"source_run_id":"src","provenance":"recorded judge","scores":{"known":{"ok":true,"fixture_id":"known","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"ok"}],"passed":true}}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	scores, err := readIssueOpsJudgeScoreMap(scorePath, fixtures)
+	_, scores, err := readIssueOpsJudgeMap(scorePath, fixtures)
 	if err != nil {
-		t.Fatalf("read score map: %v", err)
+		t.Fatalf("read judge map: %v", err)
 	}
 	if scores["known"].MinimumScore != 100 {
 		t.Fatalf("unexpected score: %#v", scores["known"])
 	}
 	for name, body := range map[string]string{
-		"missing": `{}`,
-		"unknown": `{"known":{"ok":true,"fixture_id":"known","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"ok"}],"passed":true},"extra":{}}`,
-		"bad":     `{bad`,
+		"flat-rejected": `{"known":{"ok":true,"fixture_id":"known","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"ok"}],"passed":true}}`,
+		"missing":       `{"source_run_id":"src","provenance":"p","scores":{}}`,
+		"unknown":       `{"source_run_id":"src","provenance":"p","scores":{"known":{"ok":true,"fixture_id":"known","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"ok"}],"passed":true},"extra":{}}}`,
+		"bad":           `{bad`,
 	} {
 		path := filepath.Join(t.TempDir(), name+".json")
 		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := readIssueOpsJudgeScoreMap(path, fixtures); err == nil {
-			t.Fatalf("expected %s score map to fail", name)
+		if _, _, err := readIssueOpsJudgeMap(path, fixtures); err == nil {
+			t.Fatalf("expected %s judge map to fail", name)
 		}
 	}
 	if _, err := readIssueOpsAutoresearchCandidateFile(""); err == nil {

@@ -64,6 +64,7 @@ strict 잔여였던 ACP-O 재측정, STA-H holdout n≥3, IssueOps judge file �
 - **19-dimension** 결정적 채점 + pioneer 시그니처 + skill_routing_fidelity(recorded-trace proxy) + N/A 제외 + A/B 게이트.
 - 최신 (2026-06-13, `--judge none`, fixtures 9건): **average 100 / minimum 100 / critical_failure 0** → 게이트 GREEN.
 - `--judge file` 백엔드 practical run 완료: `/tmp/agent-harness-issueops-judge-map-20260613.json`을 strict decode/merge해 `/tmp/agent-harness-issueops-benchmark-judge-file-20260613.json` 생성, **average 100 / minimum 100 / critical_failure 0 / judge_failures 0**. 단, 현재 도구 정책상 fresh-context sub-agent dispatch는 사용자 명시 요청 없이는 사용하지 못해 judge map은 deterministic run output에서 생성했다.
+- **A7 judge provenance (자기참조 가드)**: `--judge file`은 이제 wrapped 포맷(`source_run_id`+`provenance`+`scores`)만 받고(legacy flat map은 decode 거부), `ValidateJudgeProvenance`가 *source_run_id가 scored run과 다르며 실제 영속 run으로 resolve됨*을 merge 전 fail-closed로 강제한다. **정직한 범위(적대리뷰 보정)**: 이는 *자기참조 가드*이지 judge 독립성 증명이 아니다 — 저자가 다른 run id를 명명할 뿐, 실제 독립 judge가 다른 artifact를 평가했음을 증명하지는 않는다. calibration 지표는 `JudgeDownwardOverrideRate`(comparable dim = non-N/A·judge가 채점한 차원, 그중 judge가 낮춘 비율; "agreement"가 아니라 *하향 발산률*). 결정적 run은 100/100이고 merge는 lowering만 허용하므로 깨끗한 run에선 구성상 **0**이며, 위 2026-06-13 self-referential map은 이 가드로 *거부*된다 → 비퇴화 calibration 수치는 genuine 독립 judge run을 대기한다.
 - 실행: `agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json`.
 - 출처: `testdata/issueops/fixtures/`, `internal/core/issueops/benchmark/`.
 

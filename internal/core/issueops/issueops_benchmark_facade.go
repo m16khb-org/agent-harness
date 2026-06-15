@@ -19,6 +19,7 @@ type RecordedOutcomes = benchmark.RecordedOutcomes
 type FixtureReliability = benchmark.FixtureReliability
 type PassPowKPoint = benchmark.PassPowKPoint
 type ReliabilityReport = benchmark.ReliabilityReport
+type IssueOpsJudgeMap = benchmark.IssueOpsJudgeMap
 
 func LoadIssueOpsBenchmarkFixtures(dir string) ([]IssueOpsBenchmarkFixture, error) {
 	return benchmark.LoadIssueOpsBenchmarkFixtures(dir)
@@ -30,6 +31,14 @@ func ComputeReliability(rec RecordedOutcomes, alpha float64) (ReliabilityReport,
 
 func ScoreSpread(scores []float64) (float64, float64, float64) {
 	return benchmark.ScoreSpread(scores)
+}
+
+func ValidateJudgeProvenance(judge IssueOpsJudgeMap, scoredRunID, stateRoot string) error {
+	return benchmark.ValidateJudgeProvenance(judge, scoredRunID, stateRoot)
+}
+
+func JudgeDownwardOverrideRate(deterministic, judge IssueOpsBenchmarkScore) (float64, int) {
+	return benchmark.JudgeDownwardOverrideRate(deterministic, judge)
 }
 
 func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) IssueOpsBenchmarkScore {
