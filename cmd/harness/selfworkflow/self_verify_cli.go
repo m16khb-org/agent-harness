@@ -46,7 +46,7 @@ func RunSelfVerifyWithDeps(args []string, deps SelfVerifyRunDeps) error {
 		deps.NewProgressReporter = NewSelfVerifyProgressReporter
 	}
 	if deps.Verify == nil {
-		deps.Verify = func(int, int64, float64, bool, *SelfVerifyProgressReporter) (SelfAugmentResult, error) {
+		deps.Verify = func(int, int64, float64, bool, *SelfVerifyProgressReporter, bool) (SelfAugmentResult, error) {
 			return SelfAugmentResult{}, fmt.Errorf("self-verify runner dependency is required")
 		}
 	}

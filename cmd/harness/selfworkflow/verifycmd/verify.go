@@ -17,7 +17,7 @@ type Deps struct {
 	LookupEnv           func(string) (string, bool)
 	ProgressWriter      io.Writer
 	NewProgressReporter func(string, io.Writer) (*progress.SelfVerifyProgressReporter, error)
-	Verify              func(int, int64, float64, bool, *progress.SelfVerifyProgressReporter) (model.SelfAugmentResult, error)
+	Verify              func(int, int64, float64, bool, *progress.SelfVerifyProgressReporter, bool) (model.SelfAugmentResult, error)
 	ApplyLLMEval        func(model.SelfAugmentResult, llmeval.SelfVerifyLLMEvalOptions) (model.SelfAugmentResult, error)
 	SaveSummary         func(*model.SelfAugmentResult, string) error
 	PrintJSON           func(any) error
@@ -37,6 +37,7 @@ func Run(args []string, deps Deps) error {
 	llmEvalMode := fs.String("llm-eval-mode", "advisory", "LLM evaluation mode: advisory or gate")
 	agyCommand := fs.String("agy-command", "agy", "agy executable path for --llm-eval")
 	jsonOut := fs.Bool("json", false, "print JSON summary")
+	collectAll := fs.Bool("collect-all-steps", false, "run every gate in each iteration and surface ALL failures (concurrent regression diagnosis); default fail-fast. Never weakens the gate — any failure still fails self-verify")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -58,7 +59,7 @@ func Run(args []string, deps Deps) error {
 	if err != nil {
 		return err
 	}
-	result, err := deps.Verify(mode.Iterations, *seed, *targetScore, !*jsonOut, reporter)
+	result, err := deps.Verify(mode.Iterations, *seed, *targetScore, !*jsonOut, reporter, *collectAll)
 	if err == nil && llmEvalConfig.Enabled {
 		result, err = deps.ApplyLLMEval(result, llmeval.SelfVerifyLLMEvalOptions{
 			Enabled:     true,
@@ -91,7 +92,7 @@ func (deps Deps) withDefaults() Deps {
 		deps.NewProgressReporter = progress.NewSelfVerifyProgressReporter
 	}
 	if deps.Verify == nil {
-		deps.Verify = func(int, int64, float64, bool, *progress.SelfVerifyProgressReporter) (model.SelfAugmentResult, error) {
+		deps.Verify = func(int, int64, float64, bool, *progress.SelfVerifyProgressReporter, bool) (model.SelfAugmentResult, error) {
 			return model.SelfAugmentResult{}, fmt.Errorf("self-verify runner dependency is required")
 		}
 	}

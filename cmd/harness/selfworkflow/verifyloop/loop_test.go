@@ -110,12 +110,30 @@ func decodeProgressEventsForLoopTest(t *testing.T, out string) []progress.SelfVe
 }
 
 func fakeVerifyLoopStepDeps(failLabel, failError string) steps.SelfVerifyStepDeps {
-	ok := func(label string) commandstep.StepResult {
+	return fakeVerifyLoopStepDepsOK(func(label string) commandstep.StepResult {
 		if label == failLabel {
 			return commandstep.StepResult{Label: label, OK: false, Error: failError}
 		}
 		return commandstep.StepResult{Label: label, OK: true}
+	})
+}
+
+// fakeVerifyLoopStepDepsFailing fails every label in failLabels (the rest pass),
+// for exercising collect-all-steps across multiple gates in one iteration.
+func fakeVerifyLoopStepDepsFailing(failLabels ...string) steps.SelfVerifyStepDeps {
+	fail := map[string]bool{}
+	for _, label := range failLabels {
+		fail[label] = true
 	}
+	return fakeVerifyLoopStepDepsOK(func(label string) commandstep.StepResult {
+		if fail[label] {
+			return commandstep.StepResult{Label: label, OK: false, Error: label + " failed"}
+		}
+		return commandstep.StepResult{Label: label, OK: true}
+	})
+}
+
+func fakeVerifyLoopStepDepsOK(ok func(string) commandstep.StepResult) steps.SelfVerifyStepDeps {
 	return steps.SelfVerifyStepDeps{
 		HarnessRoot: func() string { return "." },
 		RunCommandStep: func(_ string, label string, _ time.Duration, _ string, _ string, _ ...string) commandstep.StepResult {
@@ -170,5 +188,60 @@ func fakeVerifyLoopStepDeps(failLabel, failError string) steps.SelfVerifyStepDep
 			return ok("redaction audit")
 		},
 		ValidateQAGate: func(string) commandstep.StepResult { return ok("QA gate") },
+	}
+}
+
+// B5: collect-all-steps mode surfaces EVERY failing gate in an iteration (for
+// concurrent regression diagnosis) and still FAILS the gate; fail-fast (default)
+// stops at the first failure. Neither weakens the gate.
+func TestSelfVerifyCollectAllStepsSurfacesEveryFailure(t *testing.T) {
+	// "harness invariants" is the first planned step; "docs index smoke" is a
+	// later one. Both fail.
+	stepDeps := fakeVerifyLoopStepDepsFailing("harness invariants", "docs index smoke")
+
+	collect, err := SelfVerify(1, 100, 95, false, Deps{
+		HarnessRoot: func() string { return "." }, StepDeps: stepDeps, CollectAllSteps: true,
+	})
+	if err == nil || !errors.Is(err, ErrSelfVerificationGateFailed) {
+		t.Fatalf("collect-all must still fail the gate, got %v", err)
+	}
+	if collect.OK {
+		t.Fatalf("collect-all gate must not be OK: %+v", collect)
+	}
+	collectFailed := map[string]bool{}
+	for _, run := range collect.Runs {
+		for _, s := range run.Steps {
+			if !s.OK {
+				collectFailed[s.Label] = true
+			}
+		}
+	}
+	if !collectFailed["harness invariants"] || !collectFailed["docs index smoke"] {
+		t.Fatalf("collect-all must surface BOTH failures, got %v", collectFailed)
+	}
+
+	// Fail-fast (default): stops at the first failure; the later gate never runs.
+	ff, err := SelfVerify(1, 100, 95, false, Deps{
+		HarnessRoot: func() string { return "." }, StepDeps: stepDeps,
+	})
+	if err == nil || !errors.Is(err, ErrSelfVerificationGateFailed) {
+		t.Fatalf("fail-fast must fail the gate, got %v", err)
+	}
+	ffFailedFirst, ranLater := false, false
+	for _, run := range ff.Runs {
+		for _, s := range run.Steps {
+			if s.Label == "harness invariants" && !s.OK {
+				ffFailedFirst = true
+			}
+			if s.Label == "docs index smoke" {
+				ranLater = true
+			}
+		}
+	}
+	if !ffFailedFirst {
+		t.Fatal("fail-fast must surface the first failure (harness invariants)")
+	}
+	if ranLater {
+		t.Fatal("fail-fast must NOT run steps after the first failure (docs index smoke ran)")
 	}
 }

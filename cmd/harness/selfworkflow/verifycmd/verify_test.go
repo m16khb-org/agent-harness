@@ -21,7 +21,7 @@ func TestRunCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 	var saveCalled bool
 	deps := Deps{
 		LookupEnv: func(string) (string, bool) { return "", false },
-		Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, reporter *progress.SelfVerifyProgressReporter) (model.SelfAugmentResult, error) {
+		Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, reporter *progress.SelfVerifyProgressReporter, _ bool) (model.SelfAugmentResult, error) {
 			verifyCalled = true
 			if iterations != 1 || baseSeed != 42 || targetScore != 95 || verbose || reporter != nil {
 				t.Fatalf("unexpected verify args: iterations=%d seed=%d target=%v verbose=%v progress=%v", iterations, baseSeed, targetScore, verbose, reporter)
@@ -87,7 +87,7 @@ func TestRunReturnsSaveErrorAfterSuccessfulVerification(t *testing.T) {
 	out, err := captureStdoutAllowError(t, func() error {
 		return Run([]string{"--save-state", "--state-key", "bad-key", "--json"}, Deps{
 			LookupEnv: func(string) (string, bool) { return "", false },
-			Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, reporter *progress.SelfVerifyProgressReporter) (model.SelfAugmentResult, error) {
+			Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, reporter *progress.SelfVerifyProgressReporter, _ bool) (model.SelfAugmentResult, error) {
 				return model.SelfAugmentResult{OK: true, LoopKind: "self_verification", Summary: model.SelfAugmentSummary{MinimumGoalScore: 100}}, nil
 			},
 			SaveSummary: func(result *model.SelfAugmentResult, key string) error {

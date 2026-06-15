@@ -36,11 +36,11 @@ func runSelfVerify(args []string) error {
 		return runSelfVerifyCandidates(args[1:])
 	}
 	return selfworkflow.RunSelfVerifyWithDeps(args, selfworkflow.SelfVerifyRunDeps{
-		Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfworkflow.SelfVerifyProgressReporter) (SelfAugmentResult, error) {
+		Verify: func(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfworkflow.SelfVerifyProgressReporter, collectAll bool) (SelfAugmentResult, error) {
 			if progress == nil {
-				return selfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, nil)
+				return selfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, nil, collectAll)
 			}
-			return selfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, &selfVerifyProgressReporter{inner: progress})
+			return selfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, &selfVerifyProgressReporter{inner: progress}, collectAll)
 		},
 	})
 }
@@ -135,21 +135,22 @@ func boolPtr(value bool) *bool {
 }
 
 func selfVerify(iterations int, baseSeed int64, targetScore float64, verbose bool) (SelfAugmentResult, error) {
-	return selfworkflow.SelfVerify(iterations, baseSeed, targetScore, verbose, selfVerifyLoopDeps())
+	return selfworkflow.SelfVerify(iterations, baseSeed, targetScore, verbose, selfVerifyLoopDeps(false))
 }
 
-func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfVerifyProgressReporter) (SelfAugmentResult, error) {
+func selfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64, verbose bool, progress *selfVerifyProgressReporter, collectAll bool) (SelfAugmentResult, error) {
 	if progress == nil {
-		return selfworkflow.SelfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, nil, selfVerifyLoopDeps())
+		return selfworkflow.SelfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, nil, selfVerifyLoopDeps(collectAll))
 	}
-	return selfworkflow.SelfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, progress.inner, selfVerifyLoopDeps())
+	return selfworkflow.SelfVerifyWithProgress(iterations, baseSeed, targetScore, verbose, progress.inner, selfVerifyLoopDeps(collectAll))
 }
 
-func selfVerifyLoopDeps() selfworkflow.SelfVerifyLoopDeps {
+func selfVerifyLoopDeps(collectAll bool) selfworkflow.SelfVerifyLoopDeps {
 	return selfworkflow.SelfVerifyLoopDeps{
-		StepDeps:   selfVerifyStepDeps(),
-		FailedStep: failedStep,
-		PrintStep:  printStep,
+		StepDeps:        selfVerifyStepDeps(),
+		FailedStep:      failedStep,
+		PrintStep:       printStep,
+		CollectAllSteps: collectAll,
 	}
 }
 

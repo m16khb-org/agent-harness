@@ -548,7 +548,7 @@ func TestSelfVerifyFacadeWrappers(t *testing.T) {
 	_ = newSelfVerificationSummarySnapshot(result, time.Now())
 	_ = plannedSelfVerifySteps(t.TempDir(), "", 100, nil)
 	_ = cachedContractGoldenStep(StepResult{OK: false, Label: "go test"})
-	_ = selfVerifyLoopDeps()
+	_ = selfVerifyLoopDeps(false)
 	_ = selfVerifyStepDeps()
 	step := runCommandStepAdapter("", "adapter", time.Second, "", "sh", "-c", "printf ok")
 	if !step.OK {

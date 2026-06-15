@@ -23,6 +23,12 @@ type Deps struct {
 	FailedStep  func(string, error) commandstep.StepResult
 	PrintStep   func(commandstep.StepResult)
 	Printf      func(string, ...any) (int, error)
+	// CollectAllSteps, when true, keeps running the remaining steps of an
+	// iteration after a step fails (instead of fail-fast), so EVERY failing gate
+	// is surfaced for concurrent regression diagnosis. Default false preserves
+	// the fail-fast behavior. It NEVER weakens the gate: the iteration and the
+	// overall verdict still fail, and ErrSelfVerificationGateFailed is returned.
+	CollectAllSteps bool
 }
 
 func SelfVerify(iterations int, baseSeed int64, targetScore float64, verbose bool, deps Deps) (model.SelfAugmentResult, error) {
@@ -76,6 +82,8 @@ func SelfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 				StepCount:  len(plannedSteps),
 			})
 		}
+		iterationFailed := false
+		var firstFailure commandstep.StepResult
 		for index, plannedStep := range plannedSteps {
 			if reporter != nil {
 				reporter.Emit(progress.SelfVerifyProgressEvent{
@@ -98,16 +106,28 @@ func SelfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 				deps.PrintStep(step)
 			}
 			if !step.OK {
-				_ = os.RemoveAll(tempDir)
-				result.Runs = append(result.Runs, run)
-				result.ElapsedMS = time.Since(started).Milliseconds()
-				result.OK = false
-				result.Summary = summary.SummarizeSelfVerification(result, targetScore)
-				loopresult.EmitEnd(reporter, result.LoopKind, iterations, baseSeed, false, fmt.Sprintf("%s failed: %s", step.Label, step.Error))
-				return result, fmt.Errorf("%w: %s failed: %s", ErrSelfVerificationGateFailed, step.Label, step.Error)
+				if !iterationFailed {
+					firstFailure = step
+				}
+				iterationFailed = true
+				if !deps.CollectAllSteps {
+					// fail-fast: stop at the first failed gate (default).
+					break
+				}
+				// collect-all-steps: keep running so every failing gate is
+				// surfaced. Each label runs exactly once, so the goal scorer
+				// cannot be masked by a later same-label success.
 			}
 		}
 		_ = os.RemoveAll(tempDir)
+		if iterationFailed {
+			result.Runs = append(result.Runs, run)
+			result.ElapsedMS = time.Since(started).Milliseconds()
+			result.OK = false
+			result.Summary = summary.SummarizeSelfVerification(result, targetScore)
+			loopresult.EmitEnd(reporter, result.LoopKind, iterations, baseSeed, false, fmt.Sprintf("%s failed: %s", firstFailure.Label, firstFailure.Error))
+			return result, fmt.Errorf("%w: %s failed: %s", ErrSelfVerificationGateFailed, firstFailure.Label, firstFailure.Error)
+		}
 		result.Runs = append(result.Runs, run)
 		if reporter != nil {
 			reporter.Emit(progress.SelfVerifyProgressEvent{

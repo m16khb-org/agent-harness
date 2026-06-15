@@ -256,7 +256,7 @@ func TestSelfVerifyCLIAndStateWrappers(t *testing.T) {
 	if err := RunSelfVerifyWithDeps([]string{"--json", "--save-state", "--state-key", "verify-latest", "--seed", "100"}, SelfVerifyRunDeps{
 		LookupEnv:      func(string) (string, bool) { return "", false },
 		ProgressWriter: &bytes.Buffer{},
-		Verify: func(iterations int, seed int64, targetScore float64, text bool, reporter *SelfVerifyProgressReporter) (SelfAugmentResult, error) {
+		Verify: func(iterations int, seed int64, targetScore float64, text bool, reporter *SelfVerifyProgressReporter, _ bool) (SelfAugmentResult, error) {
 			if iterations != 1 || seed != 100 || text {
 				t.Fatalf("unexpected verify args iterations=%d seed=%d text=%v", iterations, seed, text)
 			}
