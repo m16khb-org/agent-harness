@@ -114,7 +114,7 @@ Draft wiki staging:
 - 목적: claude-mem 같은 companion memory에서 선별한 장기기억 후보를 사용자가 파일 diff로 직접 검토·수정·승인하는 repo-local staging area로 둔다.
 - 제공 표면: CLI `agent-harness project draft-wiki init/list/suggest/queue/approve/reject/promote`
 - Hook/worker 흐름: hook은 draft-wiki 가치 판단이나 queue append를 자동 수행하지 않는다. UserPromptSubmit은 “메인 에이전트가 장기 재사용 가치 여부를 판단하라”는 지침만 주입하고, 메인 에이전트가 의미 있는 후보라고 판단한 경우에만 `agent-harness project draft-wiki queue --stdin`(heredoc 권장) 또는 `--input`으로 bounded/redacted user-state queue(`draft-wiki-queue.jsonl`)에 명시 적재한다. hook critical path에서는 `agy`를 실행하지 않는다. `agent-harness worker draft-wiki`가 queue를 읽어 `agy -p`를 argv 실행하고 응답을 `.agent-harness/draft-wiki/draft/*.md`에 쓴다.
-- 경계: `suggest`와 `worker draft-wiki`만 `agy -p`를 호출한다. `promote --confirm`은 승인된 draft를 configured `nvk/llm-wiki` topic의 `raw/<type>/` note로 쓰고 log만 append한다. compile/query/index 관리는 upstream LLM Wiki workflow가 맡는다.
+- 경계: `suggest`와 `worker draft-wiki`만 `agy -p`를 호출한다. `promote --confirm`은 승인된 draft를 configured `m16khb/llm-wiki` topic의 `raw/<type>/` note로 쓰고 log만 append한다. validate/lint/index/query-pack 관리는 upstream LLM Wiki workflow가 맡는다.
 
 현재 `agent-harness state`는 작은 에이전트 체크포인트를 JSON 파일로 저장한다. project lifecycle state는 같은 user-state root 아래 `projects/<repo-id>/`에 격리되며 target repo의 `.agent-harness/`에는 쓰지 않는다. IssueOps 상태는 같은 user-state root 아래 `issueops/<id>.json`에 저장해 host와 세션을 넘겨 이어갈 수 있게 한다.
 
@@ -252,13 +252,13 @@ agent-harness는 10개의 pioneer skill을 `skills/` 디렉토리에 단일 진�
 
 ## LLM Wiki 정책
 
-LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `nvk/llm-wiki`의 Codex/Claude plugin 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
+LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `m16khb/llm-wiki` CLI/MCP 서버 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
 
 ## 바퀴를 재발명하지 않는 companion tool 정책
 
 이 하네스의 철학은 **바퀴를 재발명하지 않는다**이다. agent-harness는 Codex/Claude 공통 CLI, MCP proxy, state, policy, project docs, native skill 설치 같은 작은 공통 core와 접착제를 맡고, 전문 도구의 core 기능은 upstream 구현을 그대로 쓴다.
 
-- LLM Wiki: `nvk/llm-wiki` plugin을 설치/갱신한다. wiki vault, research, query, compile 기능을 하네스에 복제하지 않는다.
+- LLM Wiki: `m16khb/llm-wiki` CLI를 설치/갱신하고 Codex/Claude user-scope MCP 서버를 등록한다. wiki validation, linting, indexing, graphing, query-pack 기능을 하네스에 복제하지 않는다.
 - CodeGraph: `colbymchenry/codegraph` CLI/MCP를 설치/설정한다. symbol graph, AST parser, impact analysis를 하네스에 재구현하지 않는다.
 - claude-mem: `thedotmack/claude-mem` upstream installer를 통해 Codex/Claude hooks, MCP, worker 배선을 설치/갱신한다. memory capture/compression/store logic을 하네스 core에 넣지 않는다.
 - LazyCodex: `code-yeongyu/oh-my-openagent` / `lazycodex-ai` installer를 통해 Codex Light LazyCodex/OMO skills, hooks, LSP/AST tooling을 설치/갱신한다. 해당 skill/hook/tool 동작을 하네스 core에 복제하지 않는다.

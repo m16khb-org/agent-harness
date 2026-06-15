@@ -164,12 +164,42 @@ func TestInstallNativeUpstreamToolsUseClaudeMem(t *testing.T) {
 	}
 }
 
+func TestInstallNativeUpstreamToolsUseLLMWikiMCP(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
+	for _, want := range []string{
+		`LLM_WIKI_SOURCE="github.com/m16khb/llm-wiki/cmd/llm-wiki@latest"`,
+		`GOBIN="$(dirname "$LLM_WIKI_BIN")" go install "$LLM_WIKI_SOURCE"`,
+		`[mcp_servers.llm-wiki]`,
+		`claude mcp add-json -s user llm-wiki`,
+		`remove_codex_plugin "wiki@llm-wiki"`,
+		`remove_codex_marketplace "llm-wiki"`,
+		`remove_claude_plugin "wiki@llm-wiki"`,
+		`remove_claude_marketplace "llm-wiki"`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("install-native.sh missing llm-wiki MCP installer path %q", want)
+		}
+	}
+	for _, gone := range []string{
+		`ensure_codex_marketplace "llm-wiki" "nvk/llm-wiki"`,
+		`ensure_codex_plugin "wiki@llm-wiki"`,
+		`ensure_claude_marketplace "llm-wiki" "nvk/llm-wiki"`,
+		`ensure_claude_plugin "wiki@llm-wiki"`,
+		`llm-wiki Codex source is nvk/llm-wiki`,
+		`llm-wiki Claude source is nvk/llm-wiki`,
+	} {
+		if strings.Contains(script, gone) {
+			t.Fatalf("install-native.sh retained legacy llm-wiki marketplace/plugin path %q", gone)
+		}
+	}
+}
+
 func TestInstallNativeUpstreamToolsNoLazyCodex(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
 	if strings.Contains(script, "lazycodex-ai") || strings.Contains(script, "LazyCodex") || strings.Contains(script, "install_lazycodex") {
 		t.Fatalf("install-native.sh must not reference LazyCodex; it was removed from upstream tools")
 	}
-	want := "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem"
+	want := "dry-run: would install/update upstream tools: llm-wiki CLI/MCP, codegraph, claude-mem"
 	if !strings.Contains(script, want) {
 		t.Fatalf("install-native.sh missing expected upstream tools dry-run log %q", want)
 	}

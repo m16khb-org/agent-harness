@@ -20,7 +20,7 @@ func initSDKServer() *mcp.Server {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "agent_harness", Version: Version},
 		&mcp.ServerOptions{
-			Instructions: "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. For LLM Wiki workflows, install and use the upstream nvk/llm-wiki plugin instead of agent-harness.",
+			Instructions: "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. For LLM Wiki workflows, install and use the separate m16khb/llm-wiki MCP server instead of agent-harness.",
 			Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
 		},
 	)

@@ -68,6 +68,6 @@ Dry-run/default-write rules:
 
 ## LLM Wiki Policy
 
-LLM Wiki functionality is not implemented by `agent-harness`. Use upstream `nvk/llm-wiki` Codex/Claude plugin or portable `AGENTS.md` workflows. Do not add llm-wiki-specific harness CLI commands, MCP tools, resources, or SessionStart hooks.
+LLM Wiki functionality is not implemented by `agent-harness`. Use the upstream `m16khb/llm-wiki` CLI/MCP server or portable `AGENTS.md` workflows. Do not add llm-wiki-specific harness CLI commands, MCP tools, resources, or SessionStart hooks.
 
 Repo-local draft wiki staging remains separate from source-of-truth `.agent-harness/*.md`: draft candidates live under `.agent-harness/draft-wiki/`, and `agent-harness docs`/MCP `docs_index` must not index draft candidates as canonical project docs. Hooks do not decide whether material is worth remembering and do not auto-queue draft-wiki work; the main agent must judge reuse value and explicitly queue material with `agent-harness project draft-wiki queue --stdin` or `--input`.

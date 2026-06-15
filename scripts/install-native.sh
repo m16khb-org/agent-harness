@@ -8,6 +8,8 @@ EXPLICIT_UPSTREAM_TOOLS=0
 INIT_CODEGRAPH="${HARNESS_INIT_CODEGRAPH:-1}"
 SKIP_BUILD="${HARNESS_SKIP_BUILD:-0}"
 HARNESS_ARGS=()
+LLM_WIKI_BIN="${HOME}/.local/bin/llm-wiki"
+LLM_WIKI_SOURCE="github.com/m16khb/llm-wiki/cmd/llm-wiki@latest"
 
 usage() {
   cat <<'EOF'
@@ -161,6 +163,159 @@ remove_claude_marketplace() {
   fi
 }
 
+install_llm_wiki_cli() {
+  if [[ -x "$LLM_WIKI_BIN" ]]; then
+    log "llm-wiki CLI exists at ${LLM_WIKI_BIN}; updating from ${LLM_WIKI_SOURCE}"
+  else
+    log "installing llm-wiki CLI from ${LLM_WIKI_SOURCE}"
+  fi
+  if ! command -v go >/dev/null 2>&1; then
+    log "warning: go not found; skipping llm-wiki CLI install"
+    return 1
+  fi
+  mkdir -p "$(dirname "$LLM_WIKI_BIN")"
+  GOBIN="$(dirname "$LLM_WIKI_BIN")" go install "$LLM_WIKI_SOURCE" || {
+    log "warning: failed to install llm-wiki CLI from ${LLM_WIKI_SOURCE}; continuing"
+    return 1
+  }
+  "$LLM_WIKI_BIN" --version >/dev/null 2>&1 || {
+    log "warning: installed llm-wiki CLI did not pass version smoke; continuing"
+    return 1
+  }
+  return 0
+}
+
+resolve_llm_wiki_bin() {
+  if [[ -x "$LLM_WIKI_BIN" ]]; then
+    printf '%s\n' "$LLM_WIKI_BIN"
+    return 0
+  fi
+  command -v llm-wiki 2>/dev/null || return 1
+}
+
+remove_legacy_llm_wiki_plugins() {
+  if command -v codex >/dev/null 2>&1; then
+    remove_codex_plugin "wiki@llm-wiki"
+    remove_codex_marketplace "llm-wiki"
+  fi
+  if command -v claude >/dev/null 2>&1; then
+    remove_claude_plugin "wiki@llm-wiki"
+    remove_claude_marketplace "llm-wiki"
+  fi
+}
+
+ensure_codex_llm_wiki_mcp() {
+  local llm_wiki_bin="$1"
+  if ! command -v codex >/dev/null 2>&1; then
+    log "codex not found; skipping Codex llm-wiki MCP setup"
+    return 0
+  fi
+  local codex_home config_path
+  codex_home="${CODEX_HOME:-${HOME}/.codex}"
+  config_path="${codex_home}/config.toml"
+  log "refreshing Codex MCP server llm-wiki"
+  python3 - "$config_path" "$llm_wiki_bin" <<'PY'
+import json
+import os
+import sys
+
+path, bin_path = sys.argv[1], sys.argv[2]
+text = ""
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        text = f.read()
+except FileNotFoundError:
+    pass
+
+def remove_section(src, section):
+    marker = "[" + section + "]"
+    while True:
+        pos = src.find(marker)
+        if pos < 0:
+            return src
+        next_pos = src.find("\n[", pos + len(marker))
+        if next_pos < 0:
+            src = src[:pos].rstrip(" \t\r\n") + "\n"
+            continue
+        src = src[:pos] + src[next_pos + 1:]
+
+for section in (
+    "mcp_servers.llm-wiki",
+    "mcp_servers.llm-wiki.env",
+    "mcp_servers.llm_wiki",
+    "mcp_servers.llm_wiki.env",
+):
+    text = remove_section(text, section)
+
+if text.strip() and not text.endswith("\n"):
+    text += "\n"
+if text.strip() and not text.endswith("\n\n"):
+    text += "\n"
+
+text += """[mcp_servers.llm-wiki]
+command = {command}
+args = ["mcp"]
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+""".format(command=json.dumps(bin_path))
+
+existing = ""
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        existing = f.read()
+except FileNotFoundError:
+    pass
+if existing == text:
+    sys.exit(0)
+
+os.makedirs(os.path.dirname(path), exist_ok=True)
+backup = path + ".harness.bak"
+if existing and not os.path.exists(backup):
+    with open(backup, "w", encoding="utf-8") as f:
+        f.write(existing)
+with open(path, "w", encoding="utf-8") as f:
+    f.write(text)
+os.chmod(path, 0o600)
+PY
+}
+
+ensure_claude_llm_wiki_mcp() {
+  local llm_wiki_bin="$1"
+  if ! command -v claude >/dev/null 2>&1; then
+    log "claude not found; skipping Claude llm-wiki MCP setup"
+    return 0
+  fi
+  log "refreshing Claude user-scope MCP server llm-wiki"
+  claude mcp remove llm-wiki -s user >/dev/null 2>&1 || true
+  claude mcp remove llm_wiki -s user >/dev/null 2>&1 || true
+  claude mcp add-json -s user llm-wiki "$(python3 - "$llm_wiki_bin" <<'PY'
+import json
+import sys
+bin_path = sys.argv[1]
+print(json.dumps({
+  "type": "stdio",
+  "command": bin_path,
+  "args": ["mcp"],
+}))
+PY
+)" >/dev/null 2>&1 || log "warning: failed to register Claude llm-wiki MCP server; continuing"
+}
+
+install_llm_wiki_mcp() {
+  local llm_wiki_bin
+  if ! install_llm_wiki_cli; then
+    if ! llm_wiki_bin="$(resolve_llm_wiki_bin)"; then
+      log "warning: llm-wiki CLI unavailable; keeping any existing legacy llm-wiki plugin wiring"
+      return 0
+    fi
+  else
+    llm_wiki_bin="$(resolve_llm_wiki_bin)"
+  fi
+  remove_legacy_llm_wiki_plugins
+  ensure_codex_llm_wiki_mcp "$llm_wiki_bin"
+  ensure_claude_llm_wiki_mcp "$llm_wiki_bin"
+}
+
 install_claude_mem_for_ide() {
   local ide="$1"
   if ! command -v npm >/dev/null 2>&1; then
@@ -219,37 +374,32 @@ ensure_codegraph_on_path() {
 install_upstream_tools() {
   local dry_run="$1"
   if [[ "$dry_run" == "1" ]]; then
-    log "dry-run: would install/update upstream tools: llm-wiki, codegraph, claude-mem; would remove legacy agentmemory plugin wiring"
+    log "dry-run: would install/update upstream tools: llm-wiki CLI/MCP, codegraph, claude-mem; would remove legacy llm-wiki marketplace/plugin wiring and legacy agentmemory plugin wiring"
     return 0
   fi
 
-  if command -v codex >/dev/null 2>&1; then
-    log "setting up Codex plugins: llm-wiki, claude-mem"
-    log "llm-wiki Codex source is nvk/llm-wiki; plugin selector is wiki@llm-wiki"
-    ensure_codex_marketplace "llm-wiki" "nvk/llm-wiki"
-    ensure_codex_plugin "wiki@llm-wiki"
+  log "setting up llm-wiki CLI/MCP"
+  install_llm_wiki_mcp
 
+  if command -v codex >/dev/null 2>&1; then
+    log "setting up Codex plugins: claude-mem"
     remove_codex_plugin "agentmemory@agentmemory"
     remove_codex_marketplace "agentmemory"
     install_claude_mem_for_ide "codex-cli"
     ensure_codex_plugin "claude-mem@claude-mem-local"
     fix_claude_mem_codex_hooks_path
   else
-    log "codex not found; skipping Codex llm-wiki/claude-mem plugin setup"
+    log "codex not found; skipping Codex claude-mem plugin setup"
   fi
 
   if command -v claude >/dev/null 2>&1; then
-    log "setting up Claude plugins: llm-wiki, claude-mem"
-    log "llm-wiki Claude source is nvk/llm-wiki; plugin selector is wiki@llm-wiki"
-    ensure_claude_marketplace "llm-wiki" "nvk/llm-wiki"
-    ensure_claude_plugin "wiki@llm-wiki"
-
+    log "setting up Claude plugins: claude-mem"
     remove_claude_plugin "agentmemory@agentmemory"
     remove_claude_marketplace "agentmemory"
     install_claude_mem_for_ide "claude-code"
     ensure_claude_plugin "claude-mem@thedotmack"
   else
-    log "claude not found; skipping Claude llm-wiki/claude-mem plugin setup"
+    log "claude not found; skipping Claude claude-mem plugin setup"
   fi
 
   if command -v npm >/dev/null 2>&1; then

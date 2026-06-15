@@ -37,7 +37,7 @@ description: Chosen languages, runtimes, tools, and rationale.
 
 | 도구 | Upstream/package | 역할 | 설치 경로 |
 |------|------------------|------|-----------|
-| LLM Wiki | `nvk/llm-wiki` | research/query/compile 가능한 Markdown wiki workflow | `scripts/install-native.sh --with-upstream-tools`가 Codex/Claude plugin을 설치/갱신 |
+| LLM Wiki | `m16khb/llm-wiki` | OKF-native local wiki validation, linting, indexing, graphing, and bounded query-pack MCP tools | `scripts/install-native.sh --with-upstream-tools`가 Go CLI를 `~/.local/bin/llm-wiki`로 설치/갱신하고 Codex/Claude user-scope MCP 서버 `llm-wiki`를 등록 |
 | CodeGraph | `@colbymchenry/codegraph` | AST 기반 symbol graph와 MCP code intelligence | `npm install -g @colbymchenry/codegraph`, `codegraph install`, `codegraph init -i` |
 | claude-mem | `thedotmack/claude-mem` | session memory capture/compression | `npx claude-mem@latest install`로 Codex/Claude hooks, MCP, worker 설치/갱신 |
 | LazyCodex | `code-yeongyu/oh-my-openagent` / `lazycodex-ai` | Codex Light LazyCodex/OMO skills, hooks, LSP/AST tooling | `npx lazycodex-ai@latest install --no-tui`로 Codex integration 설치/갱신 |

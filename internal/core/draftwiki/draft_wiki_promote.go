@@ -45,7 +45,7 @@ func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, erro
 		DryRun:         !req.Confirm,
 		Confirm:        req.Confirm,
 		Executed:       false,
-		UpstreamTool:   "nvk/llm-wiki",
+		UpstreamTool:   "m16khb/llm-wiki",
 		HandoffCommand: handoff.JoinArgs(args),
 		HandoffArgs:    args,
 		From:           from,
