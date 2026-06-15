@@ -229,6 +229,62 @@ func TestCodexInstallerPatchesClaudeMemCodexHooksIdempotently(t *testing.T) {
 	}
 }
 
+func TestCodexInstallerPatchesLLMWikiSessionHookAtomicWrites(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	writeAdapterTestSkill(t, root, "alpha")
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
+	req.SkillNames = []string{"alpha"}
+
+	cacheHook := filepath.Join(req.CodexHome, "plugins", "cache", "llm-wiki", "wiki", "0.12.0", "hooks", "llm_wiki_session.py")
+	marketplaceHook := filepath.Join(req.CodexHome, ".tmp", "marketplaces", "llm-wiki", "plugins", "llm-wiki", "hooks", "llm_wiki_session.py")
+	for _, path := range []string{cacheHook, marketplaceHook} {
+		writeFile(t, path, llmWikiSessionHookWithFixedTmp())
+	}
+
+	first, err := NewInstaller().Install(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsMessage(first.Messages, "patched Codex plugin hook compatibility") {
+		t.Fatalf("first install patch message missing: %+v", first.Messages)
+	}
+	second, err := NewInstaller().Install(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if containsMessage(second.Messages, "patched Codex plugin hook compatibility") {
+		t.Fatalf("second install should not patch already-compatible llm-wiki hook: %+v", second.Messages)
+	}
+
+	for _, path := range []string{cacheHook, marketplaceHook} {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(b)
+		for _, want := range []string{"import tempfile", "tempfile.NamedTemporaryFile(", "dir=path.parent", "tmp_path.replace(path)", "except Exception as exc:", `getattr(args, "command", None) == "hook"`} {
+			if !strings.Contains(text, want) {
+				t.Fatalf("llm-wiki hook patch missing %q in %s:\n%s", want, path, text)
+			}
+		}
+		for _, gone := range []string{`tmp = path.with_name(f".{path.name}.tmp")`, "tmp.write_text(text, encoding=\"utf-8\")", "tmp.replace(path)"} {
+			if strings.Contains(text, gone) {
+				t.Fatalf("llm-wiki hook retained fixed temp write %q in %s:\n%s", gone, path, text)
+			}
+		}
+		if count := strings.Count(text, "import tempfile"); count != 1 {
+			t.Fatalf("llm-wiki hook import tempfile count=%d, want 1 in %s:\n%s", count, path, text)
+		}
+		if count := strings.Count(text, "except Exception as exc:"); count != 1 {
+			t.Fatalf("llm-wiki hook fail-open count=%d, want 1 in %s:\n%s", count, path, text)
+		}
+		if !exists(path + ".harness.bak") {
+			t.Fatalf("backup missing for patched plugin file: %s", path)
+		}
+	}
+}
+
 func TestCodexInstallerDryRunPlansPluginHookCompatibilityPatch(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
@@ -267,6 +323,35 @@ func writeFile(t *testing.T, path, text string) {
 	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func llmWikiSessionHookWithFixedTmp() string {
+	return `import os
+import sys
+from pathlib import Path
+
+def atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
+class HookSkip(Exception):
+    pass
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        return int(args.func(args))
+    except HookSkip:
+        return 0
+    except BrokenPipeError:
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())
+`
 }
 
 func containsMessage(messages []string, needle string) bool {

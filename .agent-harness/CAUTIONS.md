@@ -138,7 +138,7 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 같은 원칙으로 CodeGraph와 claude-mem도 하네스 core에 복제하지 않는다. 이 프로젝트의 철학은 **바퀴를 재발명하지 않는다**이며, `scripts/install-native.sh --with-upstream-tools`는 upstream installer/plugin을 호출하는 opt-in convenience path일 뿐이다. companion tool이 실패해도 하네스 core contract를 약화하거나 adapter에 임시 구현을 넣지 말고 upstream 설치/문서 경로를 고친다.
 
-예외: Codex native hook validator가 upstream companion plugin의 오래된/Claude 전용 출력 필드만 거부하는 경우에는, 설치/업데이트 단계에서 **기능 재구현 없이** 호환성 shim을 적용할 수 있다. 예를 들어 `suppressOutput`처럼 Codex 0.135.0에서 unsupported top-level field로 실패하는 값은 백업 후 제거하되, `hookSpecificOutput`, MCP 등록, worker 시작, context 주입 동작은 유지한다.
+예외: Codex native hook validator가 upstream companion plugin의 오래된/Claude 전용 출력 필드만 거부하거나, companion plugin의 lifecycle hook이 Codex critical path에서 병렬 실행 race로 사용자 작업을 막는 경우에는, 설치/업데이트 단계에서 **기능 재구현 없이** 호환성 shim을 적용할 수 있다. 예를 들어 `suppressOutput`처럼 Codex 0.135.0에서 unsupported top-level field로 실패하는 값은 백업 후 제거하되, `hookSpecificOutput`, MCP 등록, worker 시작, context 주입 동작은 유지한다. `llm_wiki_session.py` 같은 companion session hook을 패치할 때도 vault/query/capture 의미를 하네스에 복제하지 말고, atomic file write와 fail-open 같은 host compatibility 경계만 idempotent하게 고친다.
 
 draft-wiki는 이 예외가 아니라 별도 staging area다. `.agent-harness/draft-wiki/**`에는 사용자가 검토할 후보 Markdown만 둔다. `agent-harness project draft-wiki promote --confirm`은 configured `nvk/llm-wiki` topic의 `raw/<type>/` note와 `log.md` append까지만 수행한다. index/query/compile을 하네스가 대신 완료한 것처럼 보고하지 않는다.
 

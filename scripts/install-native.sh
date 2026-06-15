@@ -323,6 +323,10 @@ else
   (cd "$ROOT" && go build -o bin/agent-harness ./cmd/harness)
 fi
 
+if is_truthy "$WITH_UPSTREAM_TOOLS"; then
+  install_upstream_tools "$DRY_RUN"
+fi
+
 if [[ -x "$BIN" ]]; then
   if ((${#HARNESS_ARGS[@]})); then
     "$BIN" install-native "${HARNESS_ARGS[@]}"
@@ -354,8 +358,4 @@ PY
 )" >/dev/null 2>&1 || true
 elif [[ "$DRY_RUN" == "1" ]]; then
   log "dry-run: would refresh Claude user-scope MCP server agent_harness"
-fi
-
-if is_truthy "$WITH_UPSTREAM_TOOLS"; then
-  install_upstream_tools "$DRY_RUN"
 fi

@@ -15,10 +15,12 @@ func patchCodexPluginHookCompatibility(req port.NativeInstallRequest) ([]port.In
 			Globs: []string{
 				filepath.Join(req.CodexHome, "plugins", "cache", "llm-wiki-marketplace", "llm-wiki", "*", "hooks", "llm-wiki-hook.cjs"),
 				filepath.Join(req.CodexHome, "plugins", "cache", "llm-wiki", "llm-wiki", "*", "hooks", "llm-wiki-hook.cjs"),
+				filepath.Join(req.CodexHome, "plugins", "cache", "llm-wiki", "wiki", "*", "hooks", "llm_wiki_session.py"),
+				filepath.Join(req.CodexHome, ".tmp", "marketplaces", "llm-wiki", "plugins", "llm-wiki", "hooks", "llm_wiki_session.py"),
 			},
-			Replacements: []textReplacement{
+			Replacements: append([]textReplacement{
 				{Old: "    },\n    suppressOutput: true\n  }));", New: "    }\n  }));"},
-			},
+			}, llmWikiSessionHookReplacements()...),
 		},
 		{
 			Kind: "codex_plugin_hook_compat_claude_mem",
@@ -72,6 +74,55 @@ func patchCodexPluginHookCompatibility(req port.NativeInstallRequest) ([]port.In
 	return files, messages, joinErrors(errs)
 }
 
+func llmWikiSessionHookReplacements() []textReplacement {
+	return []textReplacement{
+		{Old: "import sys\nimport textwrap", New: "import sys\nimport tempfile\nimport textwrap"},
+		{Old: "import sys\nfrom pathlib import Path", New: "import sys\nimport tempfile\nfrom pathlib import Path"},
+		{
+			Old: `def atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)`,
+			New: `def atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            tmp_path = Path(handle.name)
+            handle.write(text)
+        tmp_path.replace(path)
+    finally:
+        if tmp_path is not None:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except OSError:
+                pass`,
+		},
+		{
+			Old: `    except BrokenPipeError:
+        return 1`,
+			SkipIfContains: `except Exception as exc:`,
+			New: `    except BrokenPipeError:
+        return 1
+    except Exception as exc:
+        if getattr(args, "command", None) == "hook":
+            if os.environ.get("LLM_WIKI_HOOK_DEBUG"):
+                message = redact_scalar(str(exc))
+                print(f"llm-wiki hook skipped after {exc.__class__.__name__}: {message}", file=sys.stderr)
+            return 0
+        raise`,
+		},
+	}
+}
+
 type hookCompatibilityPatch struct {
 	Kind         string
 	Globs        []string
@@ -79,8 +130,9 @@ type hookCompatibilityPatch struct {
 }
 
 type textReplacement struct {
-	Old string
-	New string
+	Old            string
+	New            string
+	SkipIfContains string
 }
 
 func expandPatchGlobs(globs []string) []string {
@@ -110,6 +162,9 @@ func applyHookCompatibilityPatch(path, kind string, replacements []textReplaceme
 	text := string(b)
 	next := text
 	for _, replacement := range replacements {
+		if replacement.SkipIfContains != "" && strings.Contains(next, replacement.SkipIfContains) {
+			continue
+		}
 		next = strings.ReplaceAll(next, replacement.Old, replacement.New)
 	}
 	next = collapseDuplicateShellTrueFallbacks(next)

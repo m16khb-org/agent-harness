@@ -175,6 +175,23 @@ func TestInstallNativeUpstreamToolsNoLazyCodex(t *testing.T) {
 	}
 }
 
+func TestInstallNativeAppliesHarnessCompatibilityAfterUpstreamTools(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
+	upstreamCall := `install_upstream_tools "$DRY_RUN"`
+	harnessInstallCall := `"$BIN" install-native`
+	upstreamIndex := strings.Index(script, upstreamCall)
+	if upstreamIndex < 0 {
+		t.Fatalf("install-native.sh missing upstream tool install call %q", upstreamCall)
+	}
+	harnessInstallIndex := strings.Index(script, harnessInstallCall)
+	if harnessInstallIndex < 0 {
+		t.Fatalf("install-native.sh missing harness install call %q", harnessInstallCall)
+	}
+	if upstreamIndex > harnessInstallIndex {
+		t.Fatalf("upstream tools must be installed before harness install-native so compatibility patches run after plugin updates")
+	}
+}
+
 func TestInstallNativeUpstreamToolsExcludeRemovedProxyCompanion(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
 	removed := strings.Join([]string{"head", "room"}, "")
