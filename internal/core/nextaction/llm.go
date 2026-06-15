@@ -79,7 +79,7 @@ func EvaluateNextActionAutoProceedLLM(req NextActionAutoProceedLLMRequest, thres
 
 	prompt := BuildLLMPrompt(*recommended, candidates)
 
-	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Command: command, WorkDir: req.WorkDir, Prompt: prompt, Timeout: timeout})
+	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Provider: command, WorkDir: req.WorkDir, Prompt: prompt, Timeout: timeout})
 	if err != nil {
 		return NextActionAutoProceedResult{}, fmt.Errorf("next-action auto-proceed LLM call failed: %w", err)
 	}

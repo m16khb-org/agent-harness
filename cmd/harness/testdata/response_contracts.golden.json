@@ -487,7 +487,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 19526,
+          "bytes": 19541,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -534,7 +534,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 23396,
+          "bytes": 23476,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -560,7 +560,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 30705,
+          "bytes": 30748,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -767,7 +767,7 @@
           "title": "Sub-Agent Usage Patterns"
         },
         {
-          "bytes": 9825,
+          "bytes": 9944,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
@@ -785,7 +785,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17944,
+          "bytes": 17996,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -907,7 +907,7 @@
           "title": "Incident → Hook 매핑 (Hashimoto 원칙)"
         },
         {
-          "bytes": 4522,
+          "bytes": 4678,
           "headings": [
             "Install And Sync",
             "First run from a fresh clone, before agent-harness is on PATH.",
@@ -1067,7 +1067,7 @@
           "title": "Pioneer Skill Rerun Fixtures"
         },
         {
-          "bytes": 3791,
+          "bytes": 3793,
           "headings": [
             "Project Docs Operations",
             "Project Bootstrap",
@@ -1499,7 +1499,7 @@
           "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
         },
         {
-          "bytes": 13266,
+          "bytes": 13275,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -1749,7 +1749,7 @@
           "path": "$HARNESS_ROOT/skills/dijkstra"
         },
         {
-          "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into nvk/llm-wiki.",
+          "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into m16khb/llm-wiki.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "draft-wiki-promoter",
@@ -6005,7 +6005,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 19526,
+                "bytes": 19541,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -6052,7 +6052,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 23396,
+                "bytes": 23476,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -6078,7 +6078,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 30705,
+                "bytes": 30748,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -6285,7 +6285,7 @@
                 "title": "Sub-Agent Usage Patterns"
               },
               {
-                "bytes": 9825,
+                "bytes": 9944,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
@@ -6303,7 +6303,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17944,
+                "bytes": 17996,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -6425,7 +6425,7 @@
                 "title": "Incident → Hook 매핑 (Hashimoto 원칙)"
               },
               {
-                "bytes": 4522,
+                "bytes": 4678,
                 "headings": [
                   "Install And Sync",
                   "First run from a fresh clone, before agent-harness is on PATH.",
@@ -6585,7 +6585,7 @@
                 "title": "Pioneer Skill Rerun Fixtures"
               },
               {
-                "bytes": 3791,
+                "bytes": 3793,
                 "headings": [
                   "Project Docs Operations",
                   "Project Bootstrap",
@@ -7017,7 +7017,7 @@
                 "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
               },
               {
-                "bytes": 13266,
+                "bytes": 13275,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
@@ -7274,7 +7274,7 @@
                 "path": "$HARNESS_ROOT/skills/dijkstra"
               },
               {
-                "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into nvk/llm-wiki.",
+                "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into m16khb/llm-wiki.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "draft-wiki-promoter",

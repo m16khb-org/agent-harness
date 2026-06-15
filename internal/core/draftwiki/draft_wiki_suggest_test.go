@@ -57,8 +57,8 @@ EOF
 	if result.Draft == nil || result.Draft.Status != "draft" || result.Draft.TargetWiki != "agent-harness" {
 		t.Fatalf("unexpected draft metadata: %+v", result.Draft)
 	}
-	if !strings.Contains(result.Command, fakeAgy+" --dangerously-skip-permissions -p") {
-		t.Fatalf("expected agy print command, got %q", result.Command)
+	if !strings.Contains(result.Command, "zai:") {
+		t.Fatalf("expected zai preview command, got %q", result.Command)
 	}
 	wantDraftName := time.Now().Format(time.DateOnly) + "-hook-policy-memory.md"
 	if _, err := os.Stat(filepath.Join(root, DraftWikiDir, "draft", wantDraftName)); err != nil {

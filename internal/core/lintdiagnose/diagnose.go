@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/agysettings"
 	"agent-harness/internal/core/externalllm"
 	"agent-harness/internal/core/repopath"
 )
@@ -14,8 +13,9 @@ import (
 type LintDiagnoseRequest struct {
 	RepoRoot        string        `json:"repo_root"`
 	CommandArgv     []string      `json:"command_argv"`
-	AgyCommand      string        `json:"agy_command"`
-	AgyModel        string        `json:"agy_model"`
+	Model           string        `json:"model,omitempty"`
+	AgyCommand      string        `json:"agy_command,omitempty"`
+	AgyModel        string        `json:"agy_model,omitempty"`
 	AgySettingsPath string        `json:"-"`
 	Timeout         time.Duration `json:"-"`
 }
@@ -26,11 +26,10 @@ type LintDiagnoseResult struct {
 	ExitCode    int      `json:"exit_code"`
 	Failed      bool     `json:"failed"`
 	Diagnosis   string   `json:"diagnosis,omitempty"`
-	AgyCommand  string   `json:"agy_command"`
-	AgyModel    string   `json:"agy_model"`
+	Model       string   `json:"model,omitempty"`
 }
 
-type lintDiagnoseAgyResponse struct {
+type lintDiagnoseResponse struct {
 	Diagnosis string `json:"diagnosis"`
 }
 
@@ -51,7 +50,6 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 	execCmd := exec.Command(cmdName, cmdArgs...)
 	execCmd.Dir = root
 
-	// Capture stdout and stderr together
 	outputBytes, runErr := execCmd.CombinedOutput()
 	outputStr := string(outputBytes)
 
@@ -62,7 +60,6 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 		if exitError, ok := runErr.(*exec.ExitError); ok {
 			exitCode = exitError.ExitCode()
 		} else {
-			// Other startup errors
 			exitCode = -1
 		}
 	}
@@ -78,55 +75,58 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 		return result, nil
 	}
 
-	// 2. Resolve agy settings & model
+	// 2. Resolve model
+	model := strings.TrimSpace(req.Model)
+	if model == "" {
+		model = strings.TrimSpace(req.AgyModel) // backward compat
+	}
+	if model == "" {
+		model = externalllm.DefaultModel()
+	}
+	result.Model = model
+
+	// 3. Determine provider
+	provider := ""
 	agyCommand := strings.TrimSpace(req.AgyCommand)
-	if agyCommand == "" {
-		agyCommand = "agy"
-	}
-	settingsPath := agysettings.ResolvePath(req.AgySettingsPath)
-	configuredModel, err := agysettings.ReadConfiguredModel(settingsPath)
-	if err != nil {
-		configuredModel = "default"
-	}
-	agyModel := strings.TrimSpace(req.AgyModel)
-	if agyModel == "" {
-		agyModel = configuredModel
+	if agyCommand != "" {
+		provider = agyCommand // legacy agy path
 	}
 
-	result.AgyCommand = agyCommand
-	result.AgyModel = agyModel
-
-	// 3. Compose prompt for diagnosis
-	// Restrict to last 150 lines to keep context clean
+	// 4. Compose prompt
 	lines := strings.Split(outputStr, "\n")
 	if len(lines) > 150 {
 		lines = lines[len(lines)-150:]
 	}
 	logTail := strings.Join(lines, "\n")
 
-	prompt := BuildPrompt(exitCode, logTail)
+	llmPrompt := BuildPrompt(exitCode, logTail)
 
-	// 4. Run agy
+	// 5. Run external LLM
 	timeout := req.Timeout
 	if timeout <= 0 {
 		timeout = 2 * time.Minute
 	}
 
-	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Command: agyCommand, WorkDir: root, Prompt: prompt, Timeout: timeout})
+	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{
+		Provider: provider,
+		Model:    model,
+		WorkDir:  root,
+		Prompt:   llmPrompt,
+		Timeout:  timeout,
+	})
 	if err != nil {
-		// Do not return hard error if agy itself fails, just record the error in diagnosis
-		result.Diagnosis = fmt.Sprintf("[Error running agy: %v]\nOriginal Output:\n%s", err, outputStr)
+		result.Diagnosis = fmt.Sprintf("[Error running external LLM: %v]\nOriginal Output:\n%s", err, outputStr)
 		return result, nil
 	}
-	var response lintDiagnoseAgyResponse
-	if err := externalllm.DecodeExternalLLMStructuredJSONObject("agy lint diagnose", llm.Output, &response); err != nil {
-		result.Diagnosis = fmt.Sprintf("[Error parsing agy JSON: %v]\nOriginal Output:\n%s", err, outputStr)
+	var response lintDiagnoseResponse
+	if err := externalllm.DecodeExternalLLMStructuredJSONObject("lint diagnose", llm.Output, &response); err != nil {
+		result.Diagnosis = fmt.Sprintf("[Error parsing LLM JSON: %v]\nOriginal Output:\n%s", err, outputStr)
 		return result, nil
 	}
 
 	diagnosis := strings.TrimSpace(response.Diagnosis)
 	if diagnosis == "" {
-		result.Diagnosis = fmt.Sprintf("[Error parsing agy JSON: missing diagnosis]\nOriginal Output:\n%s", outputStr)
+		result.Diagnosis = fmt.Sprintf("[Error parsing LLM JSON: missing diagnosis]\nOriginal Output:\n%s", outputStr)
 		return result, nil
 	}
 	result.Diagnosis = diagnosis

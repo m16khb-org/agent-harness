@@ -1,13 +1,13 @@
 ---
 name: draft-wiki-promoter
-description: Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into nvk/llm-wiki.
+description: Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into m16khb/llm-wiki.
 ---
 
 # Draft Wiki Promoter
 
 ## Purpose
 
-Curate short-term agent memory into long-term LLM Wiki knowledge without letting automation pollute the wiki. Drafts are repo-local review artifacts; only approved drafts may be promoted into `nvk/llm-wiki` raw notes.
+Curate short-term agent memory into long-term LLM Wiki knowledge without letting automation pollute the wiki. Drafts are repo-local review artifacts; only approved drafts may be promoted into `m16khb/llm-wiki` raw notes.
 
 ## Required checks
 
@@ -42,7 +42,7 @@ The CLI also provides `queue` and `prune` subcommands: `queue` is the mechanism 
 2. If creating a new candidate, run `suggest --dry-run` first. Run without `--dry-run` only when source scope and model are acceptable.
 3. Judge with the required checks above.
 4. Move accepted candidates from `draft/` to `approved/`; move failed candidates to `rejected/`. (`reject` accepts any source status — an already-approved draft can still be rejected before promotion.)
-5. Promote only approved drafts with `promote --confirm`. This writes a raw note and appends `log.md` in the configured `nvk/llm-wiki` topic; it does not compile/query/index the wiki. Note: `nvk/llm-wiki` is the upstream plugin/repo name, not a CLI — promotion writes hub files directly (the local `llm-wiki` wrapper script only handles lint/archive).
+5. Promote only approved drafts with `promote --confirm`. This writes a raw note and appends `log.md` in the configured `m16khb/llm-wiki` topic; it does not compile/query/index the wiki. Note: `m16khb/llm-wiki` is the upstream CLI/MCP repo name; promotion writes hub files directly and does not call the MCP server.
    - Failure boundary when upstream is absent: if `~/.config/llm-wiki/config.json`, the hub path, or the wiki registry is missing, only `promote --confirm` fails (config/registry read error); `init/list/suggest/approve/reject` are repo-local and keep working. Report the exact blocked step instead of treating the whole skill as unavailable.
 6. After promotion, report the raw path and suggest running the upstream `wiki` compile workflow if synthesis is needed.
 

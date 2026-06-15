@@ -21,7 +21,7 @@ func TestBuildExternalLLMJSONSchemaSectionIncludesFieldTypesAndExample(t *testin
 		t.Fatalf("Title=%q, want Response Schema", section.Title)
 	}
 	for _, want := range []string{
-		"Return exactly this JSON object shape",
+		"Return a raw JSON object",
 		"Field Types:",
 		"- summary: string",
 		"- score: integer",

@@ -82,7 +82,7 @@ Use low-level `scripts/install-native.sh` and `install-native` directly only for
 
 | Tool | Upstream | Operation |
 |------|----------|-----------|
-| LLM Wiki | `nvk/llm-wiki` | Adds or updates `wiki@llm-wiki` for Codex and Claude marketplace/plugin paths. |
+| LLM Wiki | `m16khb/llm-wiki` | Installs or updates `~/.local/bin/llm-wiki` with `go install`, removes legacy `wiki@llm-wiki` marketplace/plugin wiring after the CLI is available, and registers Codex/Claude user-scope MCP server `llm-wiki` running `llm-wiki mcp`. |
 | CodeGraph | `colbymchenry/codegraph` | Installs `@colbymchenry/codegraph`, registers Codex/Claude MCP, and initializes this repo's `.codegraph/` index when enabled. |
 | claude-mem | `thedotmack/claude-mem` | Runs `npx claude-mem@latest install` for Codex/Claude hooks, MCP, and worker wiring. |
 | Headroom | `chopratejas/headroom` / `headroom-ai` | Optional context optimization companion. Do not auto-proxy Codex/Claude traffic without explicit operator action. |

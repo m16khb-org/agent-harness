@@ -28,7 +28,7 @@ target_type: "notes"
 	if !result.OK || !result.DryRun || result.Confirm || result.Executed {
 		t.Fatalf("unexpected dry-run result: %+v", result)
 	}
-	if result.UpstreamTool != "nvk/llm-wiki" || !strings.Contains(result.HandoffCommand, "@wiki ingest") {
+	if result.UpstreamTool != "m16khb/llm-wiki" || !strings.Contains(result.HandoffCommand, "@wiki ingest") {
 		t.Fatalf("dry-run should report upstream handoff only: %+v", result)
 	}
 	rawDir := filepath.Join(hub, "topics", "agent-harness", "raw")

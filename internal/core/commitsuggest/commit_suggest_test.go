@@ -1,13 +1,16 @@
 package commitsuggest
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"agent-harness/internal/core/externalllm"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -26,18 +29,29 @@ func TestSuggestCommitReturnsNoopWhenDiffIsEmpty(t *testing.T) {
 	}
 }
 
-func TestSuggestCommitUsesFakeAgyForWorkingTreeDiff(t *testing.T) {
+func TestSuggestCommitUsesZAIAPIForWorkingTreeDiff(t *testing.T) {
 	repo := initCommitSuggestRepo(t)
 	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("changed\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	agy := writeCommitSuggestFakeAgy(t, `{"commit_message":"test(core): cover commit suggest\n\nLore:\n- Intent: Cover commit suggest.\n- Why: Characterization.\n- Changes:\n  - Use fake agy.\n- Verify: go test.\n- Risk: Low."}`)
+
+	// Mock Z.AI API
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"choices":[{"message":{"content":"{\"commit_message\":\"test(core): cover commit suggest\\n\\nLore:\\n- Intent: Cover commit suggest.\\n- Why: Characterization.\\n- Changes:\\n  - Use fake Z.AI.\\n- Verify: go test.\\n- Risk: Low.\"}"}}]}`)
+	}))
+	defer ts.Close()
+
+	// Override the externalllm package baseURL
+	origBaseURL := externalllm.SetBaseURL(ts.URL)
+	defer externalllm.SetBaseURL(origBaseURL)
+
+	t.Setenv("Z_AI_API_KEY", "test-key")
 
 	result, err := SuggestCommit(CommitSuggestRequest{
-		RepoRoot:   repo,
-		AgyCommand: agy,
-		AgyModel:   "fake-model",
-		Timeout:    10 * time.Second,
+		RepoRoot: repo,
+		Model:    "glm-5-turbo",
+		Timeout:  10 * time.Second,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -45,11 +59,11 @@ func TestSuggestCommitUsesFakeAgyForWorkingTreeDiff(t *testing.T) {
 	if !result.OK || !result.Executed {
 		t.Fatalf("suggest result = %+v", result)
 	}
-	if result.AgyCommand != agy || result.AgyModel != "fake-model" {
-		t.Fatalf("agy metadata = %+v", result)
-	}
 	if !strings.HasPrefix(result.CommitMessage, "test(core): cover commit suggest") {
 		t.Fatalf("commit message = %q", result.CommitMessage)
+	}
+	if result.Model != "glm-5-turbo" {
+		t.Fatalf("model = %q", result.Model)
 	}
 }
 
@@ -75,22 +89,4 @@ func initCommitSuggestRepo(t *testing.T) string {
 		t.Fatalf("git commit failed: %s", stderr)
 	}
 	return repo
-}
-
-func writeCommitSuggestFakeAgy(t *testing.T, output string) string {
-	t.Helper()
-	dir := t.TempDir()
-	path := filepath.Join(dir, "agy")
-	if runtime.GOOS == "windows" {
-		path += ".bat"
-	}
-	script := "#!/bin/sh\nprintf '%s\\n' " + quoteCommitSuggestShell(output) + "\n"
-	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
-
-func quoteCommitSuggestShell(value string) string {
-	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }

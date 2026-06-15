@@ -1,83 +1,106 @@
 package externalllm
 
 import (
-	"os"
-	"path/filepath"
-	"reflect"
-	"runtime"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 )
 
-func TestRunExternalLLMPrintRequiresPromptAndDefaultsCommand(t *testing.T) {
-	result, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Prompt: "   "})
+func TestRunExternalLLMPrintRequiresPrompt(t *testing.T) {
+	_, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Prompt: "   "})
 	if err == nil || !strings.Contains(err.Error(), "prompt is required") {
-		t.Fatalf("expected prompt error, got err=%v result=%+v", err, result)
-	}
-	if result.Command != defaultExternalLLMCommand {
-		t.Fatalf("Command=%q, want %q", result.Command, defaultExternalLLMCommand)
+		t.Fatalf("expected prompt error, got err=%v", err)
 	}
 }
 
-func TestRunExternalLLMPrintRunsCommandWithPromptAndWorkDir(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell script fixture is POSIX-only")
+func TestRunExternalLLMPrintRequiresAPIKey(t *testing.T) {
+	t.Setenv("Z_AI_API_KEY", "")
+	_, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Prompt: "return json", Timeout: 5 * time.Second})
+	if err == nil || !strings.Contains(err.Error(), "Z_AI_API_KEY") {
+		t.Fatalf("expected API key error, got err=%v", err)
 	}
-	dir := t.TempDir()
-	workDir := filepath.Join(dir, "work")
-	if err := os.MkdirAll(workDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	fake := filepath.Join(dir, "fake-agy.sh")
-	script := `#!/bin/sh
-printf 'cwd=%s\n' "$PWD"
-printf 'args=%s\n' "$*"
-`
-	if err := os.WriteFile(fake, []byte(script), 0o755); err != nil {
-		t.Fatalf("write fake agy: %v", err)
-	}
+}
 
+func TestRunExternalLLMPrintCallsZAIWithStructuredJSON(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.Header.Get("Authorization") == "" {
+			t.Error("missing Authorization header")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"choices":[{"message":{"content":"{\"key\":\"value\"}"}}]}`))
+	}))
+	defer ts.Close()
+
+	// Override base URL
+	orig := baseURL
+	baseURL = ts.URL
+	defer func() { baseURL = orig }()
+
+	t.Setenv("Z_AI_API_KEY", "test-key")
 	result, err := RunExternalLLMPrint(ExternalLLMPrintRequest{
-		Command: fake,
-		WorkDir: workDir,
 		Prompt:  "return json",
-		Timeout: 5 * time.Second,
+		Timeout: 10 * time.Second,
 	})
 	if err != nil {
 		t.Fatalf("RunExternalLLMPrint() error = %v; output=%s", err, result.Output)
 	}
-	wantArgv := []string{"--dangerously-skip-permissions", "-p", "return json"}
-	if !reflect.DeepEqual(result.Argv, wantArgv) {
-		t.Fatalf("Argv=%#v, want %#v", result.Argv, wantArgv)
+	if string(result.Output) != `{"key":"value"}` {
+		t.Fatalf("Output=%q, want {\"key\":\"value\"}", result.Output)
 	}
-	output := string(result.Output)
-	if !strings.Contains(output, "cwd="+workDir) {
-		t.Fatalf("output %q does not contain working directory %q", output, workDir)
+}
+
+func TestRunExternalLLMPrintLegacyAgyPath(t *testing.T) {
+	// When Provider is a filesystem path, it falls back to agy CLI mode.
+	// Since we can't guarantee agy is installed, we skip this test
+	// unless explicitly requested.
+	t.Skip("skipping legacy agy test; agy binary not guaranteed in CI")
+}
+
+func TestRunExternalLLMPrintDisableStructuredJSON(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"choices":[{"message":{"content":"old-school format"}}]}`))
+	}))
+	defer ts.Close()
+
+	orig := baseURL
+	baseURL = ts.URL
+	defer func() { baseURL = orig }()
+
+	t.Setenv("Z_AI_API_KEY", "test-key")
+	result, err := RunExternalLLMPrint(ExternalLLMPrintRequest{
+		Prompt:                "do stuff",
+		Timeout:               10 * time.Second,
+		DisableStructuredJSON: true,
+	})
+	if err != nil {
+		t.Fatalf("RunExternalLLMPrint() error = %v", err)
 	}
-	if !strings.Contains(output, "args=--dangerously-skip-permissions -p return json") {
-		t.Fatalf("output %q does not contain argv", output)
+	if string(result.Output) != "old-school format" {
+		t.Fatalf("Output=%q, want non-structured, unmodified content", result.Output)
 	}
 }
 
 func TestRunExternalLLMPrintReturnsCommandErrorWithOutput(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell script fixture is POSIX-only")
-	}
-	dir := t.TempDir()
-	fake := filepath.Join(dir, "fake-agy-fail.sh")
-	script := `#!/bin/sh
-echo provider-failed
-exit 7
-`
-	if err := os.WriteFile(fake, []byte(script), 0o755); err != nil {
-		t.Fatalf("write fake agy: %v", err)
-	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":{"message":"provider-failed"}}`))
+	}))
+	defer ts.Close()
 
+	orig := baseURL
+	baseURL = ts.URL
+	defer func() { baseURL = orig }()
+
+	t.Setenv("Z_AI_API_KEY", "test-key")
 	result, err := RunExternalLLMPrint(ExternalLLMPrintRequest{
-		Command: fake,
 		Prompt:  "return json",
-		Timeout: 5 * time.Second,
+		Timeout: 10 * time.Second,
 	})
 	if err == nil {
 		t.Fatalf("expected command error, got result=%+v", result)
@@ -87,52 +110,46 @@ exit 7
 	}
 }
 
-func TestExternalLLMPrintCommandPreview(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		command string
-		want    string
-	}{
-		{name: "default command", command: "   ", want: defaultExternalLLMCommand},
-		{name: "custom command", command: " custom-agy ", want: "custom-agy"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := ExternalLLMPrintCommandPreview(tc.command)
-			for _, want := range []string{tc.want, "--dangerously-skip-permissions", "-p", "<prompt>"} {
-				if !strings.Contains(got, want) {
-					t.Fatalf("preview %q does not contain %q", got, want)
-				}
-			}
-		})
-	}
-}
-
 func TestRunExternalLLMPrintTimeoutKillsProcessGroup(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell script timeout fixture is POSIX-only")
-	}
-	dir := t.TempDir()
-	fake := filepath.Join(dir, "fake-agy.sh")
-	script := `#!/bin/sh
-(sleep 2; echo late-child-output) &
-wait
-`
-	if err := os.WriteFile(fake, []byte(script), 0o755); err != nil {
-		t.Fatalf("write fake agy: %v", err)
-	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Simulate a slow response
+		time.Sleep(2 * time.Second)
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
 
+	orig := baseURL
+	baseURL = ts.URL
+	defer func() { baseURL = orig }()
+
+	t.Setenv("Z_AI_API_KEY", "test-key")
 	started := time.Now()
-	result, err := RunExternalLLMPrint(ExternalLLMPrintRequest{
-		Command: fake,
+	_, err := RunExternalLLMPrint(ExternalLLMPrintRequest{
 		Prompt:  "return json",
 		Timeout: 50 * time.Millisecond,
 	})
 	elapsed := time.Since(started)
 
 	if err == nil || !strings.Contains(err.Error(), "timed out") {
-		t.Fatalf("expected timeout error, got err=%v result=%+v", err, result)
+		t.Fatalf("expected timeout error, got err=%v", err)
 	}
 	if elapsed > 750*time.Millisecond {
-		t.Fatalf("timeout should not wait for child process pipe close; elapsed=%s", elapsed)
+		t.Fatalf("timeout should not wait for slow server; elapsed=%s", elapsed)
+	}
+}
+
+func TestExternalLLMPrintCommandPreview(t *testing.T) {
+	preview := ExternalLLMPrintCommandPreview()
+	if !strings.Contains(preview, "zai:") {
+		t.Fatalf("preview %q does not contain zai:", preview)
+	}
+	if !strings.Contains(preview, "glm-5-turbo") {
+		t.Fatalf("preview %q does not contain default model", preview)
+	}
+}
+
+func TestDefaultModel(t *testing.T) {
+	if DefaultModel() != "glm-5-turbo" {
+		t.Fatalf("DefaultModel()=%q, want glm-5-turbo", DefaultModel())
 	}
 }

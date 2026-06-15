@@ -1,64 +1,204 @@
 package externalllm
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
-
-	"agent-harness/internal/core/handoff"
 )
 
-const defaultExternalLLMCommand = "agy"
+const (
+	defaultProvider = "zai"
+	defaultModel    = "glm-5-turbo"
+)
 
+// baseURL is the Z.AI Coding Plan endpoint. Overridden in tests.
+var baseURL = "https://api.z.ai/api/coding/paas/v4/chat/completions"
+
+// ExternalLLMPrintRequest configures an external LLM call.
+//
+// By default, the harness uses Z.AI Coding Plan (glm-5-turbo) with
+// structured output (response_format: json_object) and thinking disabled.
+//
+// Set Provider to "agy" or a filesystem path to use the legacy agy CLI.
+// In legacy mode, Model and APIKey are ignored; the caller must supply a
+// valid agy binary path via the Provider field.
 type ExternalLLMPrintRequest struct {
-	Command string
+	// Provider selects the backend: "zai" (default), "agy", or a path to an agy binary.
+	Provider string
+	// Model for Z.AI provider (default "glm-5-turbo"). Ignored in legacy agy mode.
+	Model string
+	// APIKey overrides the $Z_AI_API_KEY environment variable.
+	APIKey string
+	// WorkDir is used only in legacy agy mode as the command working directory.
 	WorkDir string
-	Prompt  string
+	// Prompt is the text sent to the LLM.
+	Prompt string
+	// Timeout caps the total call duration.
 	Timeout time.Duration
+	// DisableStructuredJSON turns off response_format: json_object (rare).
+	DisableStructuredJSON bool
 }
 
+// ExternalLLMPrintResult holds the LLM response.
 type ExternalLLMPrintResult struct {
-	Command string
-	Argv    []string
-	Output  []byte
+	Output []byte
 }
 
+// RunExternalLLMPrint sends a prompt to the external LLM and returns the raw
+// response. By default this uses the Z.AI Coding Plan HTTP API with
+// glm-5-turbo, structured JSON output, and thinking disabled.
+//
+// Legacy agy CLI mode is used when Provider is explicitly set to "agy" or a
+// filesystem path.
 func RunExternalLLMPrint(req ExternalLLMPrintRequest) (ExternalLLMPrintResult, error) {
-	command := strings.TrimSpace(req.Command)
-	if command == "" {
-		command = defaultExternalLLMCommand
-	}
 	prompt := strings.TrimSpace(req.Prompt)
 	if prompt == "" {
-		return ExternalLLMPrintResult{Command: command}, fmt.Errorf("external llm prompt is required")
+		return ExternalLLMPrintResult{}, fmt.Errorf("external llm prompt is required")
 	}
 	timeout := req.Timeout
 	if timeout <= 0 {
 		timeout = 2 * time.Minute
 	}
-	argv := []string{"--dangerously-skip-permissions", "-p", prompt}
+
+	provider := strings.TrimSpace(req.Provider)
+	if provider == "" {
+		provider = defaultProvider
+	}
+
+	if provider == "agy" || strings.ContainsRune(provider, '/') || strings.ContainsRune(provider, '\\') || strings.HasSuffix(provider, ".sh") || strings.HasSuffix(provider, ".bat") {
+		return runAgyCLI(provider, req.WorkDir, prompt, timeout)
+	}
+
+	return runZAI(req, timeout)
+}
+
+// runZAI calls the Z.AI Coding Plan HTTP API.
+func runZAI(req ExternalLLMPrintRequest, timeout time.Duration) (ExternalLLMPrintResult, error) {
+	apiKey := strings.TrimSpace(req.APIKey)
+	if apiKey == "" {
+		apiKey = os.Getenv("Z_AI_API_KEY")
+	}
+	if apiKey == "" {
+		return ExternalLLMPrintResult{}, fmt.Errorf("external llm: Z_AI_API_KEY is not set")
+	}
+
+	model := strings.TrimSpace(req.Model)
+	if model == "" {
+		model = defaultModel
+	}
+
+	type message struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}
+	type thinking struct {
+		Type string `json:"type"`
+	}
+	payload := map[string]any{
+		"model":    model,
+		"messages": []message{{Role: "user", Content: req.Prompt}},
+		"thinking": thinking{Type: "disabled"},
+	}
+	if !req.DisableStructuredJSON {
+		payload["response_format"] = map[string]string{"type": "json_object"}
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return ExternalLLMPrintResult{}, fmt.Errorf("external llm: marshal payload: %w", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, command, argv...)
-	if strings.TrimSpace(req.WorkDir) != "" {
-		cmd.Dir = req.WorkDir
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL, bytes.NewReader(body))
+	if err != nil {
+		return ExternalLLMPrintResult{}, fmt.Errorf("external llm: create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return ExternalLLMPrintResult{}, fmt.Errorf("external llm timed out after %s", timeout)
+		}
+		return ExternalLLMPrintResult{}, fmt.Errorf("external llm request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ExternalLLMPrintResult{}, fmt.Errorf("external llm: read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ExternalLLMPrintResult{Output: respBody}, fmt.Errorf("external llm returned HTTP %d: %s", resp.StatusCode, boundedOutputText(string(respBody)))
+	}
+
+	// Extract the content from the OpenAI-compatible response.
+	var chatResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+		Error *struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(respBody, &chatResp); err != nil {
+		return ExternalLLMPrintResult{Output: respBody}, fmt.Errorf("external llm: parse response: %w", err)
+	}
+	if chatResp.Error != nil && chatResp.Error.Message != "" {
+		return ExternalLLMPrintResult{Output: respBody}, fmt.Errorf("external llm API error: %s (code %s)", chatResp.Error.Message, chatResp.Error.Code)
+	}
+	if len(chatResp.Choices) == 0 {
+		return ExternalLLMPrintResult{Output: respBody}, fmt.Errorf("external llm returned no choices")
+	}
+
+	content := strings.TrimSpace(chatResp.Choices[0].Message.Content)
+	return ExternalLLMPrintResult{Output: []byte(content)}, nil
+}
+
+// runAgyCLI is the legacy agy path kept for backward compatibility.
+func runAgyCLI(agyPath, workDir, prompt string, timeout time.Duration) (ExternalLLMPrintResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, agyPath, "--dangerously-skip-permissions", "-p", prompt)
+	if strings.TrimSpace(workDir) != "" {
+		cmd.Dir = workDir
 	}
 	out, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {
-		return ExternalLLMPrintResult{Command: command, Argv: argv, Output: out}, fmt.Errorf("external llm print timed out after %s", timeout)
+		return ExternalLLMPrintResult{Output: out}, fmt.Errorf("external llm (agy) timed out after %s", timeout)
 	}
 	if err != nil {
-		return ExternalLLMPrintResult{Command: command, Argv: argv, Output: out}, err
+		return ExternalLLMPrintResult{Output: out}, err
 	}
-	return ExternalLLMPrintResult{Command: command, Argv: argv, Output: out}, nil
+	return ExternalLLMPrintResult{Output: out}, nil
 }
 
-func ExternalLLMPrintCommandPreview(command string) string {
-	command = strings.TrimSpace(command)
-	if command == "" {
-		command = defaultExternalLLMCommand
-	}
-	return handoff.JoinArgs([]string{command, "--dangerously-skip-permissions", "-p", "<prompt>"})
+// ExternalLLMPrintCommandPreview returns a human-readable description of the
+// default external LLM configuration.
+func ExternalLLMPrintCommandPreview() string {
+	return fmt.Sprintf("zai:%s (thinking=disabled, structured_json=enabled)", defaultModel)
+}
+
+// DefaultModel returns the default model name used when none is specified.
+func DefaultModel() string { return defaultModel }
+
+// SetBaseURL overrides the Z.AI API endpoint. For tests only.
+func SetBaseURL(u string) (previous string) {
+	previous = baseURL
+	baseURL = u
+	return
 }

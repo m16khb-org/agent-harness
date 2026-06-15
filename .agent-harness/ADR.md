@@ -132,7 +132,7 @@ Acceptance criteria:
 
 ### Phase 3 — MCP stdio proxy/server
 
-상태: `agent-harness mcp`가 shared `agent-harness daemon`을 자동 시작하고 stdio를 Unix socket으로 proxy한다. llm-wiki 전용 tools/resources는 upstream plugin 사용 원칙에 따라 제거됐다.
+상태: `agent-harness mcp`가 shared `agent-harness daemon`을 자동 시작하고 stdio를 Unix socket으로 proxy한다. llm-wiki 전용 tools/resources는 별도 upstream CLI/MCP 서버 사용 원칙에 따라 제거됐다.
 
 Deliverables:
 

@@ -109,7 +109,7 @@ func HandleRequest(req RPCRequest) (any, *RPCError) {
 			"protocolVersion": "2025-06-18",
 			"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
 			"serverInfo":      map[string]any{"name": "agent_harness", "version": Version},
-			"instructions":    "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. For LLM Wiki workflows, install and use the upstream nvk/llm-wiki plugin instead of agent-harness.",
+			"instructions":    "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. For LLM Wiki workflows, install and use the separate m16khb/llm-wiki MCP server instead of agent-harness.",
 		}, nil
 	case "tools/list":
 		return map[string]any{"tools": MCPTools()}, nil
