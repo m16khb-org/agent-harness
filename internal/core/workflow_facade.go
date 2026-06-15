@@ -1,6 +1,8 @@
 package core
 
 import (
+	"time"
+
 	"agent-harness/internal/core/hookprompt"
 	"agent-harness/internal/core/lifecycle"
 	"agent-harness/internal/core/nextaction"
@@ -187,6 +189,7 @@ const (
 
 type WorkerJob = coreworker.WorkerJob
 type WorkerListResult = coreworker.WorkerListResult
+type WorkerQueueStats = coreworker.WorkerQueueStats
 
 func EnqueueWorkerJob(kind, payload string) (WorkerJob, error) {
 	return coreworker.EnqueueWorkerJob(kind, payload)
@@ -206,6 +209,10 @@ func ListWorkerJobs() (WorkerListResult, error) {
 
 func DetectStuckWorkerJobs() (WorkerListResult, error) {
 	return coreworker.DetectStuckWorkerJobs()
+}
+
+func MaybeDetectStuckWorkerJobs(minInterval time.Duration) (WorkerListResult, bool, error) {
+	return coreworker.MaybeDetectStuckWorkerJobs(minInterval)
 }
 
 func RunReadOnlyWorkerJob(kind, payload string, req CommandPolicyRequest) (WorkerJob, error) {

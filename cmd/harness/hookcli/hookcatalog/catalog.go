@@ -75,6 +75,11 @@ func RunSessionStart(args []string, config Config) error {
 	// manual command. Session start is the natural low-frequency hook for it.
 	_, _ = core.PruneHookFailureLog(720 * time.Hour)
 	_, _ = core.PruneHookMetricsLog(720 * time.Hour)
+	// Best-effort self-heal of crashed worker jobs (A2/W1): mark dead-PID running
+	// jobs failed. Amortized to at most once per 6h via a stat-only sentinel
+	// because the detector is an unbounded full-dir scan and the worker dir has
+	// no TTL — running it every session start would grow the hot path unbounded.
+	_, _, _ = core.MaybeDetectStuckWorkerJobs(6 * time.Hour)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
 		parsedRepo = hookinput.RepoFromHookInput(stdin)

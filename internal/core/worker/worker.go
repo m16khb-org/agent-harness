@@ -34,10 +34,27 @@ type WorkerJob struct {
 	Result       *policy.CommandRunResult `json:"result,omitempty"`
 }
 
+// WorkerQueueStats is a status histogram over all worker jobs (A2/G6). Depth is
+// the saturation signal — only non-terminal work (queued+running) — so a backlog
+// is visible before jobs time out, unlike the raw per-status counts alone.
+type WorkerQueueStats struct {
+	Queued    int `json:"queued"`
+	Running   int `json:"running"`
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
+	Cancelled int `json:"cancelled"`
+	Total     int `json:"total"`
+	Depth     int `json:"depth"`
+}
+
 type WorkerListResult struct {
 	OK        bool        `json:"ok"`
 	WorkerDir string      `json:"worker_dir"`
 	Jobs      []WorkerJob `json:"jobs"`
+	// Queue is the saturation histogram; populated by ListWorkerJobs (the full
+	// listing) and left nil by DetectStuckWorkerJobs, whose Jobs is only the
+	// fixed subset and would make a histogram misleading.
+	Queue *WorkerQueueStats `json:"queue,omitempty"`
 }
 
 func EnqueueWorkerJob(kind, payload string) (WorkerJob, error) {

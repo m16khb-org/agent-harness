@@ -59,7 +59,29 @@ func ListWorkerJobs() (WorkerListResult, error) {
 		}
 	}
 	sort.Slice(result.Jobs, func(i, j int) bool { return result.Jobs[i].CreatedAt > result.Jobs[j].CreatedAt })
+	result.Queue = summarizeWorkerQueue(result.Jobs)
 	return result, nil
+}
+
+// summarizeWorkerQueue builds the status histogram + saturation depth (A2/G6).
+func summarizeWorkerQueue(jobs []WorkerJob) *WorkerQueueStats {
+	q := &WorkerQueueStats{Total: len(jobs)}
+	for _, job := range jobs {
+		switch job.Status {
+		case WorkerStatusQueued:
+			q.Queued++
+		case WorkerStatusRunning:
+			q.Running++
+		case WorkerStatusSucceeded:
+			q.Succeeded++
+		case WorkerStatusFailed:
+			q.Failed++
+		case WorkerStatusCancelled:
+			q.Cancelled++
+		}
+	}
+	q.Depth = q.Queued + q.Running
+	return q
 }
 
 func writeWorkerJob(job WorkerJob) error {
@@ -157,6 +179,36 @@ func DetectStuckWorkerJobs() (WorkerListResult, error) {
 	}
 	sort.Slice(result.Jobs, func(i, j int) bool { return result.Jobs[i].CreatedAt > result.Jobs[j].CreatedAt })
 	return result, nil
+}
+
+const stuckScanSentinel = ".last-stuck-scan"
+
+// MaybeDetectStuckWorkerJobs runs DetectStuckWorkerJobs at most once per
+// minInterval, gated by a stat-only sentinel file's mtime (A2/W1). The detector
+// is an unbounded full-directory scan (ReadDir + per-job ReadFile) and the
+// worker dir has no TTL/GC, so calling it unconditionally on every session start
+// would grow the session-start hot path without bound; amortizing keeps it
+// cheap. Returns ran=false when the scan was skipped this interval. Best-effort:
+// the sentinel is touched even on detector error so a transient failure cannot
+// make every session re-run the scan.
+func MaybeDetectStuckWorkerJobs(minInterval time.Duration) (WorkerListResult, bool, error) {
+	dir, err := workerDir()
+	if err != nil {
+		return WorkerListResult{OK: false}, false, err
+	}
+	sentinel := filepath.Join(dir, stuckScanSentinel)
+	if info, statErr := os.Stat(sentinel); statErr == nil && time.Since(info.ModTime()) < minInterval {
+		return WorkerListResult{OK: true, WorkerDir: dir, Jobs: []WorkerJob{}}, false, nil
+	}
+	result, detErr := DetectStuckWorkerJobs()
+	if mkErr := os.MkdirAll(dir, 0o700); mkErr == nil {
+		if f, oErr := os.OpenFile(sentinel, os.O_CREATE|os.O_WRONLY, 0o600); oErr == nil {
+			_ = f.Close()
+		}
+		now := time.Now()
+		_ = os.Chtimes(sentinel, now, now)
+	}
+	return result, true, detErr
 }
 
 func makeWorkerJobID(kind, payload string, t time.Time) string {
