@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
+	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
 )
 
@@ -208,9 +209,13 @@ func handleMCPRemoteCreateIssue(args map[string]any) MCPToolOutcome {
 	if err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-issue failed: cannot read cycle")
 	}
-	provider := resolveRecordProviderForMCP(record)
-	if provider == "" {
+	providerName := resolveRecordProviderForMCP(record)
+	if providerName == "" {
 		return issueOpsMCPOutcome(nil, fmt.Errorf("cannot determine provider"), "IssueOps remote create-issue failed")
+	}
+	prov, err := provider.Resolve(providerName)
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-issue failed")
 	}
 	result, err := core.CreateRemoteIssue(core.IssueProviderCreateIssueRequest{
 		Repo:      record.Repo,
@@ -219,7 +224,7 @@ func handleMCPRemoteCreateIssue(args map[string]any) MCPToolOutcome {
 		Labels:    argmap.StringSlice(args, "labels"),
 		Assignees: argmap.StringSlice(args, "assignees"),
 		Confirm:   argmap.Bool(args, "confirm"),
-	}, provider)
+	}, prov)
 	return issueOpsMCPOutcome(result, err, "IssueOps remote create-issue failed")
 }
 
@@ -228,9 +233,13 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 	if err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-pr failed: cannot read cycle")
 	}
-	provider := resolveRecordProviderForMCP(record)
-	if provider == "" {
+	providerName := resolveRecordProviderForMCP(record)
+	if providerName == "" {
 		return issueOpsMCPOutcome(nil, fmt.Errorf("cannot determine provider"), "IssueOps remote create-pr failed")
+	}
+	prov, err := provider.Resolve(providerName)
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-pr failed")
 	}
 	head := argmap.String(args, "head")
 	if head == "" {
@@ -249,7 +258,7 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 		Labels:     argmap.StringSlice(args, "labels"),
 		Assignees:  argmap.StringSlice(args, "assignees"),
 		Confirm:    argmap.Bool(args, "confirm"),
-	}, provider)
+	}, prov)
 	return issueOpsMCPOutcome(result, err, "IssueOps remote create-pr failed")
 }
 

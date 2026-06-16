@@ -196,9 +196,6 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	if ScanStaleIssueOpsCycles(IssueOpsStaleScanRequest{Repo: repo}).Repo == "" {
 		t.Fatal("ScanStaleIssueOpsCycles should return repo")
 	}
-	if _, err := resolveProvider("bad"); err == nil {
-		t.Fatal("unknown provider should fail")
-	}
 	if _, err := DecodeIssueOpsBenchmarkJudgeJSON([]byte(`{"ok":true,"fixture_id":"f1","average_score":90,"minimum_score":80,"dimension_scores":[{"dimension":"intent_understanding","score":90,"evidence":"ok"}],"passed":true}`)); err != nil {
 		t.Fatalf("DecodeIssueOpsBenchmarkJudgeJSON: %v", err)
 	}

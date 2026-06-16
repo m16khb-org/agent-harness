@@ -1,13 +1,6 @@
 package core
 
-import (
-	"fmt"
-
-	"agent-harness/internal/adapter/provider/github"
-	"agent-harness/internal/adapter/provider/gitlab"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/port"
-)
+import "agent-harness/internal/core/issueops"
 
 type IssueOpsStartRequest = issueops.IssueOpsStartRequest
 type IssueOpsFeedbackItem = issueops.IssueOpsFeedbackItem
@@ -75,12 +68,6 @@ type IssueOpsRemoteScoringRequest = issueops.IssueOpsRemoteScoringRequest
 type IssueOpsRemoteScoredItem = issueops.IssueOpsRemoteScoredItem
 type IssueOpsRemoteScoringResult = issueops.IssueOpsRemoteScoringResult
 type IssueOpsRemoteAgyJudgeRequest = issueops.IssueOpsRemoteAgyJudgeRequest
-
-type IssueProviderCreateIssueRequest = port.IssueProviderCreateIssueRequest
-type IssueProviderCreateIssueResult = port.IssueProviderCreateIssueResult
-type IssueProviderCreatePullRequestRequest = port.IssueProviderCreatePullRequestRequest
-type IssueProviderCreatePullRequestResult = port.IssueProviderCreatePullRequestResult
-type IssueProvider = port.IssueProvider
 
 func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
 	return issueops.StartIssueOps(stateRoot, req)
@@ -204,37 +191,6 @@ func ForceDoneIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 
 func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest) (IssueOpsRecord, error) {
 	return issueops.AddIssueOpsDecision(stateRoot, id, req)
-}
-
-func SyncRemoteIssueGraph(record IssueOpsRecord) (map[string]any, error) {
-	return issueops.SyncRemoteIssueGraph(record)
-}
-
-func CreateRemoteIssue(req IssueProviderCreateIssueRequest, providerName string) (IssueProviderCreateIssueResult, error) {
-	prov, err := resolveProvider(providerName)
-	if err != nil {
-		return IssueProviderCreateIssueResult{OK: false}, err
-	}
-	return prov.CreateIssue(req)
-}
-
-func CreateRemotePullRequest(req IssueProviderCreatePullRequestRequest, providerName string) (IssueProviderCreatePullRequestResult, error) {
-	prov, err := resolveProvider(providerName)
-	if err != nil {
-		return IssueProviderCreatePullRequestResult{OK: false}, err
-	}
-	return prov.CreatePullRequest(req)
-}
-
-func resolveProvider(name string) (port.IssueProvider, error) {
-	switch name {
-	case "github":
-		return github.NewProvider(), nil
-	case "gitlab":
-		return gitlab.NewProvider(), nil
-	default:
-		return nil, fmt.Errorf("unknown provider %q; supported: github, gitlab", name)
-	}
 }
 
 func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
 )
 
@@ -238,9 +239,16 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 		}
 		return err
 	}
-	provider := resolveRecordProvider(record)
-	if provider == "" {
+	providerName := resolveRecordProvider(record)
+	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	prov, err := provider.Resolve(providerName)
+	if err != nil {
 		if *jsonOut {
 			_ = deps.printError(err)
 		}
@@ -253,7 +261,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 		Labels:    labels,
 		Assignees: assignees,
 		Confirm:   *confirm,
-	}, provider)
+	}, prov)
 	if err != nil {
 		if *jsonOut {
 			_ = deps.printError(err)
@@ -294,9 +302,16 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		}
 		return err
 	}
-	provider := resolveRecordProvider(record)
-	if provider == "" {
+	providerName := resolveRecordProvider(record)
+	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	prov, err := provider.Resolve(providerName)
+	if err != nil {
 		if *jsonOut {
 			_ = deps.printError(err)
 		}
@@ -316,7 +331,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		Labels:     labels,
 		Assignees:  assignees,
 		Confirm:    *confirm,
-	}, provider)
+	}, prov)
 	if err != nil {
 		if *jsonOut {
 			_ = deps.printError(err)
