@@ -210,16 +210,17 @@ ensure_codex_llm_wiki_mcp() {
     log "codex not found; skipping Codex llm-wiki MCP setup"
     return 0
   fi
-  local codex_home config_path
+  local codex_home config_path vault_path
   codex_home="${CODEX_HOME:-${HOME}/.codex}"
   config_path="${codex_home}/config.toml"
+  vault_path="${LLM_WIKI_VAULT:-${HOME}/workspace/knowledge-base/llm-wiki}"
   log "refreshing Codex MCP server llm-wiki"
-  python3 - "$config_path" "$llm_wiki_bin" <<'PY'
+  python3 - "$config_path" "$llm_wiki_bin" "$vault_path" <<'PY'
 import json
 import os
 import sys
 
-path, bin_path = sys.argv[1], sys.argv[2]
+path, bin_path, vault_path = sys.argv[1], sys.argv[2], sys.argv[3]
 text = ""
 try:
     with open(path, "r", encoding="utf-8") as f:
@@ -257,7 +258,10 @@ command = {command}
 args = ["mcp"]
 startup_timeout_sec = 10
 tool_timeout_sec = 60
-""".format(command=json.dumps(bin_path))
+
+[mcp_servers.llm-wiki.env]
+LLM_WIKI_VAULT = {vault}
+""".format(command=json.dumps(bin_path), vault=json.dumps(vault_path))
 
 existing = ""
 try:
@@ -285,17 +289,20 @@ ensure_claude_llm_wiki_mcp() {
     log "claude not found; skipping Claude llm-wiki MCP setup"
     return 0
   fi
+  local vault_path
+  vault_path="${LLM_WIKI_VAULT:-${HOME}/workspace/knowledge-base/llm-wiki}"
   log "refreshing Claude user-scope MCP server llm-wiki"
   claude mcp remove llm-wiki -s user >/dev/null 2>&1 || true
   claude mcp remove llm_wiki -s user >/dev/null 2>&1 || true
-  claude mcp add-json -s user llm-wiki "$(python3 - "$llm_wiki_bin" <<'PY'
+  claude mcp add-json -s user llm-wiki "$(python3 - "$llm_wiki_bin" "$vault_path" <<'PY'
 import json
 import sys
-bin_path = sys.argv[1]
+bin_path, vault_path = sys.argv[1], sys.argv[2]
 print(json.dumps({
   "type": "stdio",
   "command": bin_path,
   "args": ["mcp"],
+  "env": {"LLM_WIKI_VAULT": vault_path},
 }))
 PY
 )" >/dev/null 2>&1 || log "warning: failed to register Claude llm-wiki MCP server; continuing"

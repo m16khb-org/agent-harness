@@ -907,7 +907,7 @@
           "title": "Incident → Hook 매핑 (Hashimoto 원칙)"
         },
         {
-          "bytes": 4678,
+          "bytes": 4768,
           "headings": [
             "Install And Sync",
             "First run from a fresh clone, before agent-harness is on PATH.",
@@ -6457,7 +6457,7 @@
                 "title": "Incident → Hook 매핑 (Hashimoto 원칙)"
               },
               {
-                "bytes": 4678,
+                "bytes": 4768,
                 "headings": [
                   "Install And Sync",
                   "First run from a fresh clone, before agent-harness is on PATH.",
