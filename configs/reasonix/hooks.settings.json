@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook post-tool-use",
+            "command": "'./bin/agent-harness' hook post-tool-use --host reasonix",
             "timeout": 5,
             "type": "command"
           }

@@ -15,7 +15,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook post-tool-use",
+            "command": "'./bin/agent-harness' hook post-tool-use --host claude",
             "timeout": 5,
             "type": "command"
           }
