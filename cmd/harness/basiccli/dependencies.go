@@ -7,7 +7,39 @@ import (
 	"agent-harness/internal/core"
 )
 
-var HarnessRoot = func() string {
+// Deps holds the host-provided implementations the basic CLI commands depend on.
+// The composition root injects real implementations via Configure; standalone
+// use and tests fall back to defaults.
+type Deps struct {
+	HarnessRoot    func() string
+	ResolveTarget  func(string) string
+	Version        string
+	InspectHarness func(string) core.InspectInfo
+}
+
+// deps holds the currently configured dependencies. It is package-private and
+// only mutated through Configure/Reset so wiring is explicit rather than an
+// import-order-sensitive init() side effect.
+var deps = defaultDeps()
+
+// Configure installs host-provided dependencies. The composition root calls this
+// once at startup; tests call it with fakes and restore with Reset via t.Cleanup.
+func Configure(d Deps) { deps = d }
+
+// Reset restores the standalone defaults. Tests defer this to avoid cross-test
+// leakage of injected fakes.
+func Reset() { deps = defaultDeps() }
+
+func defaultDeps() Deps {
+	return Deps{
+		HarnessRoot:    defaultHarnessRoot,
+		ResolveTarget:  defaultResolveTarget,
+		Version:        "dev",
+		InspectHarness: func(string) core.InspectInfo { return core.InspectInfo{} },
+	}
+}
+
+func defaultHarnessRoot() string {
 	if root := os.Getenv("HARNESS_ROOT"); root != "" {
 		return root
 	}
@@ -18,7 +50,7 @@ var HarnessRoot = func() string {
 	return cwd
 }
 
-var ResolveTarget = func(target string) string {
+func defaultResolveTarget(target string) string {
 	if target != "" {
 		return target
 	}
@@ -27,12 +59,6 @@ var ResolveTarget = func(target string) string {
 		return "."
 	}
 	return cwd
-}
-
-var Version = "dev"
-
-var InspectHarness = func(repo string) core.InspectInfo {
-	return core.InspectInfo{}
 }
 
 func printJSON(value any) error {

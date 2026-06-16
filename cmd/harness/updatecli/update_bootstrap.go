@@ -41,7 +41,7 @@ func runInstallScriptCommand(commandName string, args []string) error {
 		return fmt.Errorf("unexpected arguments: %v", fs.Args())
 	}
 
-	root := HarnessRoot()
+	root := deps.HarnessRoot()
 	script := filepath.Join(root, "scripts", "install-native.sh")
 	if _, err := os.Stat(script); err != nil {
 		return fmt.Errorf("install script not found at %s: %w", script, err)
@@ -97,7 +97,7 @@ func hasInstallFlag(args []string, name string) bool {
 
 func runInstallScriptExec(script string, args ...string) error {
 	cmd := exec.Command(script, args...)
-	cmd.Dir = HarnessRoot()
+	cmd.Dir = deps.HarnessRoot()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin

@@ -58,7 +58,7 @@ func runInstallCommand(commandName string, args []string) error {
 	if !validInstallPathMode(*pathMode) {
 		return fmt.Errorf("invalid --path-mode %q: expected auto, manual, or skip", *pathMode)
 	}
-	root := HarnessRoot()
+	root := deps.HarnessRoot()
 	req := core.DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, filepath.Join(root, "bin", "agent-harness"))
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun

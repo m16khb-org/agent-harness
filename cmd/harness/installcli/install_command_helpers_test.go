@@ -23,9 +23,8 @@ func configureInstallCommandTest(t *testing.T, home string) string {
 	t.Setenv("HARNESS_ROOT", root)
 	t.Setenv("SHELL", "/bin/zsh")
 	t.Setenv("PATH", "/usr/bin:/bin")
-	oldHarnessRoot := HarnessRoot
-	HarnessRoot = func() string { return root }
-	t.Cleanup(func() { HarnessRoot = oldHarnessRoot })
+	Configure(Deps{HarnessRoot: func() string { return root }})
+	t.Cleanup(Reset)
 	return root
 }
 

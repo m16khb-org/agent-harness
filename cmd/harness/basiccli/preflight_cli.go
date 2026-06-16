@@ -16,7 +16,7 @@ func runPreflight(args []string) error {
 	if fs.NArg() > 0 {
 		target = fs.Arg(0)
 	}
-	result := core.GitPreflight(ResolveTarget(target), HarnessRoot())
+	result := core.GitPreflight(deps.ResolveTarget(target), deps.HarnessRoot())
 	if *jsonOut {
 		return printJSON(result)
 	}

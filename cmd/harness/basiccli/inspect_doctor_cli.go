@@ -18,7 +18,7 @@ func runInspect(args []string) error {
 	if *repo == "" && fs.NArg() > 0 {
 		*repo = fs.Arg(0)
 	}
-	info := InspectHarness(*repo)
+	info := deps.InspectHarness(*repo)
 	if *jsonOut {
 		return printJSON(info)
 	}
@@ -45,7 +45,7 @@ func runDoctor(args []string) error {
 		*repo = fs.Arg(0)
 	}
 	home, _ := os.UserHomeDir()
-	result, err := core.HarnessDoctor(core.HarnessDoctorRequest{RepoRoot: *repo, HarnessRoot: HarnessRoot(), Home: home, Version: Version})
+	result, err := core.HarnessDoctor(core.HarnessDoctorRequest{RepoRoot: *repo, HarnessRoot: deps.HarnessRoot(), Home: home, Version: deps.Version})
 	if err != nil {
 		return err
 	}

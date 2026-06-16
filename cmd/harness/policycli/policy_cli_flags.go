@@ -23,7 +23,7 @@ func parseCommandPolicyFlags(name string, args []string) (core.CommandPolicyRequ
 	}
 	root := *workspaceRoot
 	if root == "" {
-		root = ResolveTarget("")
+		root = deps.ResolveTarget("")
 	}
 	workDir := *cwd
 	if workDir == "" {
@@ -56,7 +56,7 @@ func parseCommandPolicyRunFlags(args []string) (core.CommandPolicyRequest, bool,
 	}
 	root := *workspaceRoot
 	if root == "" {
-		root = ResolveTarget("")
+		root = deps.ResolveTarget("")
 	}
 	workDir := *cwd
 	if workDir == "" {

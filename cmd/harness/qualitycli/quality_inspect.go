@@ -97,7 +97,7 @@ func Run(args []string) error {
 
 func RunInspectWithDeps(args []string, deps InspectDeps) error {
 	fs := flag.NewFlagSet("quality inspect", flag.ContinueOnError)
-	repo := fs.String("repo", HarnessRoot(), "target repository path")
+	repo := fs.String("repo", hostDeps.HarnessRoot(), "target repository path")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -107,7 +107,7 @@ func RunInspectWithDeps(args []string, deps InspectDeps) error {
 	}
 	result := Inspect(*repo, deps)
 	if *jsonOut {
-		return PrintJSON(result)
+		return hostDeps.PrintJSON(result)
 	}
 	fmt.Printf("quality inspect: ok=%v repo=%s candidates=%d warnings=%d\n", result.OK, result.HarnessRoot, len(result.Candidates), len(result.Warnings))
 	fmt.Printf("self-augment open: %d\n", result.Summary.SelfAugmentOpenCandidates)
@@ -203,7 +203,7 @@ func (deps InspectDeps) withDefaults() InspectDeps {
 
 func resolveRoot(root string) string {
 	if root == "" {
-		root = HarnessRoot()
+		root = hostDeps.HarnessRoot()
 	}
 	abs, err := filepath.Abs(root)
 	if err != nil {
@@ -231,7 +231,7 @@ func collectSelfAugmentOpenCount(root string) (int, error) {
 	oldRoot := selfworkflow.HarnessRoot
 	oldVersion := selfworkflow.Version
 	selfworkflow.HarnessRoot = func() string { return root }
-	selfworkflow.Version = Version
+	selfworkflow.Version = hostDeps.Version
 	defer func() {
 		selfworkflow.HarnessRoot = oldRoot
 		selfworkflow.Version = oldVersion
@@ -253,7 +253,7 @@ func collectQualityCandidates(root string) []QualityCandidate {
 	oldRoot := selfworkflow.HarnessRoot
 	oldVersion := selfworkflow.Version
 	selfworkflow.HarnessRoot = func() string { return root }
-	selfworkflow.Version = Version
+	selfworkflow.Version = hostDeps.Version
 	defer func() {
 		selfworkflow.HarnessRoot = oldRoot
 		selfworkflow.Version = oldVersion

@@ -8,7 +8,36 @@ import (
 	"agent-harness/internal/core"
 )
 
-var HarnessRoot = func() string {
+// Deps holds host-provided dependencies for the status CLI. The composition root
+// injects implementations via Configure; defaults support standalone use/tests.
+type Deps struct {
+	HarnessRoot       func() string
+	ResolveTarget     func(string) string
+	Version           string
+	InspectHarness    func(string) core.InspectInfo
+	CheckDaemonStatus func() daemoncli.Status
+}
+
+var deps = defaultDeps()
+
+// Configure installs host-provided dependencies (called once by the composition
+// root); Reset restores defaults for tests via t.Cleanup.
+func Configure(d Deps) { deps = d }
+
+// Reset restores standalone defaults.
+func Reset() { deps = defaultDeps() }
+
+func defaultDeps() Deps {
+	return Deps{
+		HarnessRoot:       defaultHarnessRoot,
+		ResolveTarget:     defaultResolveTarget,
+		Version:           "dev",
+		InspectHarness:    func(string) core.InspectInfo { return core.InspectInfo{} },
+		CheckDaemonStatus: daemoncli.CheckDaemonStatus,
+	}
+}
+
+func defaultHarnessRoot() string {
 	if root := os.Getenv("HARNESS_ROOT"); root != "" {
 		return root
 	}
@@ -19,7 +48,7 @@ var HarnessRoot = func() string {
 	return cwd
 }
 
-var ResolveTarget = func(target string) string {
+func defaultResolveTarget(target string) string {
 	if target != "" {
 		return target
 	}
@@ -29,14 +58,6 @@ var ResolveTarget = func(target string) string {
 	}
 	return cwd
 }
-
-var Version = "dev"
-
-var InspectHarness = func(repo string) core.InspectInfo {
-	return core.InspectInfo{}
-}
-
-var CheckDaemonStatus = daemoncli.CheckDaemonStatus
 
 func printJSON(value any) error {
 	encoder := json.NewEncoder(os.Stdout)

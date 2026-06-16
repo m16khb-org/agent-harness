@@ -66,7 +66,7 @@ func runVerifyWork(args []string) error {
 }
 
 func buildVerifyWork(repo string, all bool, argv []string) VerifyWorkResult {
-	root := ResolveTarget(repo)
+	root := deps.ResolveTarget(repo)
 	warnings := []string{}
 	evidence := []string{}
 	evidenceMatrix := []VerifyWorkEvidenceItem{}
@@ -74,7 +74,7 @@ func buildVerifyWork(repo string, all bool, argv []string) VerifyWorkResult {
 	if err != nil {
 		warnings = append(warnings, "git status: "+err.Error())
 	}
-	preflight := core.GitPreflight(root, HarnessRoot())
+	preflight := core.GitPreflight(root, deps.HarnessRoot())
 	if preflight.OK {
 		evidence = append(evidence, "git preflight completed")
 	} else {

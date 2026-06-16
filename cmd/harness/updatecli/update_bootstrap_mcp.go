@@ -43,7 +43,7 @@ func listMCPProxyProcesses() ([]mcpProxyProcess, error) {
 		// ps may be unavailable in sandboxed environments; treat as no matching processes.
 		return nil, nil
 	}
-	binary := filepath.Join(HarnessRoot(), "bin", "agent-harness")
+	binary := filepath.Join(deps.HarnessRoot(), "bin", "agent-harness")
 	var processes []mcpProxyProcess
 	for _, line := range strings.Split(string(out), "\n") {
 		process, ok := parseMCPProxyProcess(line, binary)

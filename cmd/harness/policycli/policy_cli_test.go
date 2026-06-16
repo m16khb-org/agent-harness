@@ -110,8 +110,7 @@ func containsString(items []string, want string) bool {
 }
 
 func setPolicyCLITestResolveTarget() func() {
-	previous := ResolveTarget
-	ResolveTarget = func(arg string) string {
+	Configure(Deps{ResolveTarget: func(arg string) string {
 		if arg != "" {
 			abs, err := filepath.Abs(arg)
 			if err != nil {
@@ -129,10 +128,8 @@ func setPolicyCLITestResolveTarget() func() {
 			return arg
 		}
 		return abs
-	}
-	return func() {
-		ResolveTarget = previous
-	}
+	}})
+	return Reset
 }
 
 func testEnv(name string) string {

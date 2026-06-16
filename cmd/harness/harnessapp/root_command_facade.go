@@ -8,7 +8,18 @@ import (
 )
 
 func RunRootCommand(args []string) int {
+	wireDependencies()
 	return rootCommand().Run(args)
+}
+
+// wireDependencies injects the harness implementations into the leaf CLI
+// packages. The composition root calls this explicitly at startup instead of
+// relying on package init() side effects, so dependency wiring is ordered,
+// visible, and not import-order sensitive.
+func wireDependencies() {
+	wireBasicCLIDeps()
+	wireHostCLIDeps()
+	wirePolicyCLIDeps()
 }
 
 func rootCommand() rootcmd.Command {

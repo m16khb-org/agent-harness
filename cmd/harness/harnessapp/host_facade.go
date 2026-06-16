@@ -16,8 +16,8 @@ var daemonProcessTerminator = updatecli.TerminateDaemonProcess
 var mcpProxyProcessLister = updatecli.ListMCPProxyProcesses
 var mcpProxyTerminator = updatecli.TerminateMCPProxyProcess
 
-func init() {
-	updatecli.HarnessRoot = harnessRoot
+func wireHostCLIDeps() {
+	updatecli.Configure(updatecli.Deps{HarnessRoot: harnessRoot})
 	resetUpdateFacadeDeps()
 }
 

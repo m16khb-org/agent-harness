@@ -6,7 +6,26 @@ import (
 	"strings"
 )
 
-var ResolveTarget = func(target string) string {
+// Deps holds host-provided dependencies for the worker CLI. The composition root
+// injects implementations via Configure; defaults support standalone use/tests.
+type Deps struct {
+	ResolveTarget func(string) string
+}
+
+var deps = defaultDeps()
+
+// Configure installs host-provided dependencies (called once by the composition
+// root); Reset restores defaults for tests via t.Cleanup.
+func Configure(d Deps) { deps = d }
+
+// Reset restores standalone defaults.
+func Reset() { deps = defaultDeps() }
+
+func defaultDeps() Deps {
+	return Deps{ResolveTarget: defaultResolveTarget}
+}
+
+func defaultResolveTarget(target string) string {
 	if target != "" {
 		return target
 	}

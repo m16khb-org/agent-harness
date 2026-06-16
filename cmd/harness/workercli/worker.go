@@ -62,7 +62,7 @@ func runWorkerDraftWiki(args []string) error {
 	}
 	root := *repo
 	if root == "" {
-		root = ResolveTarget("")
+		root = deps.ResolveTarget("")
 	}
 	result, err := core.ProcessDraftWikiQueue(core.DraftWikiQueueProcessRequest{
 		RepoRoot:        root,
@@ -113,7 +113,7 @@ func runWorkerRun(args []string) error {
 	}
 	root := *workspaceRoot
 	if root == "" {
-		root = ResolveTarget("")
+		root = deps.ResolveTarget("")
 	}
 	workDir := *cwd
 	if workDir == "" {

@@ -24,21 +24,27 @@ type (
 	VerifyWorkSuggestedCommand = statuscli.WorkSuggestedCommand
 )
 
-func init() {
-	basiccli.HarnessRoot = harnessRoot
-	basiccli.ResolveTarget = resolveTarget
-	basiccli.Version = version
-	basiccli.InspectHarness = inspectHarness
-	installcli.HarnessRoot = harnessRoot
-	qualitycli.HarnessRoot = harnessRoot
-	qualitycli.Version = version
-	qualitycli.PrintJSON = printJSON
-	statuscli.HarnessRoot = harnessRoot
-	statuscli.ResolveTarget = resolveTarget
-	statuscli.Version = version
-	statuscli.InspectHarness = inspectHarness
-	statuscli.CheckDaemonStatus = checkDaemonStatus
-	workercli.ResolveTarget = resolveTarget
+func wireBasicCLIDeps() {
+	basiccli.Configure(basiccli.Deps{
+		HarnessRoot:    harnessRoot,
+		ResolveTarget:  resolveTarget,
+		Version:        version,
+		InspectHarness: inspectHarness,
+	})
+	installcli.Configure(installcli.Deps{HarnessRoot: harnessRoot})
+	qualitycli.Configure(qualitycli.Deps{
+		HarnessRoot: harnessRoot,
+		Version:     version,
+		PrintJSON:   printJSON,
+	})
+	statuscli.Configure(statuscli.Deps{
+		HarnessRoot:       harnessRoot,
+		ResolveTarget:     resolveTarget,
+		Version:           version,
+		InspectHarness:    inspectHarness,
+		CheckDaemonStatus: checkDaemonStatus,
+	})
+	workercli.Configure(workercli.Deps{ResolveTarget: resolveTarget})
 }
 
 func runDocs(args []string) error {

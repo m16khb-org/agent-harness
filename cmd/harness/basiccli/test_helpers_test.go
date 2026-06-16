@@ -13,14 +13,16 @@ import (
 
 func init() {
 	root := testHarnessRoot()
-	HarnessRoot = func() string { return root }
-	ResolveTarget = testResolveTarget
-	Version = "0.1.0"
-	InspectHarness = func(repo string) core.InspectInfo {
-		target := testResolveTarget(repo)
-		home, _ := os.UserHomeDir()
-		return core.InspectHarness(root, target, home, Version, "atomic-commit-push")
-	}
+	Configure(Deps{
+		HarnessRoot:   func() string { return root },
+		ResolveTarget: testResolveTarget,
+		Version:       "0.1.0",
+		InspectHarness: func(repo string) core.InspectInfo {
+			target := testResolveTarget(repo)
+			home, _ := os.UserHomeDir()
+			return core.InspectHarness(root, target, home, "0.1.0", "atomic-commit-push")
+		},
+	})
 }
 
 func testHarnessRoot() string {

@@ -69,7 +69,7 @@ func listDaemonProcesses() ([]daemonProcess, error) {
 		// ps may be unavailable in sandboxed environments; treat as no matching processes.
 		return nil, nil
 	}
-	binary := filepath.Join(HarnessRoot(), "bin", "agent-harness")
+	binary := filepath.Join(deps.HarnessRoot(), "bin", "agent-harness")
 	var processes []daemonProcess
 	for _, line := range strings.Split(string(out), "\n") {
 		process, ok := parseDaemonProcess(line, binary)

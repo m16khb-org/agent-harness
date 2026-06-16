@@ -8,8 +8,8 @@ import (
 
 type issueOpsWorktreeToolPrepareResult = issueopscli.WorktreeToolPrepareResult
 
-func init() {
-	policycli.ResolveTarget = resolveTarget
+func wirePolicyCLIDeps() {
+	policycli.Configure(policycli.Deps{ResolveTarget: resolveTarget})
 }
 
 func runIssueOps(args []string) error {

@@ -8,7 +8,7 @@ import (
 )
 
 func runDocs(args []string) error {
-	return runDocsWithRoot(args, HarnessRoot())
+	return runDocsWithRoot(args, deps.HarnessRoot())
 }
 
 func runDocsWithRoot(args []string, root string) error {
@@ -20,7 +20,7 @@ func runDocsWithRoot(args []string, root string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result := core.DocsIndex(root, Version)
+	result := core.DocsIndex(root, deps.Version)
 	if *jsonOut {
 		return printJSON(result)
 	}
