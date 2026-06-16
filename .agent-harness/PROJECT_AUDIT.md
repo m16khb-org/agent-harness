@@ -250,29 +250,37 @@ Codex and Claude Code accept different JSON schemas for hook responses. The hook
 ## Summary Matrix
 
 > **Triage 2026-06-16** (evidence-verified against code/commits/tests; see the
-> backlog-triage workflow): of the original 24 P1/P2 items, **14 resolved**,
-> **3 partial/mitigated**, **4 open**, **3 out-of-scope/theoretical**. Only the
-> "Open / Partial" table below carries a bare `P1`/`P2` severity column, so
-> `quality inspect`'s `audit_p1_p2_items` signal now counts real remaining work
-> (7) instead of the stale 24 — the resolved and out-of-scope tables intentionally
-> omit the severity column so the parser excludes them.
+> backlog-triage + quality-hardening workflows): of the original 24 P1/P2 items,
+> **17 resolved**, **4 accepted/documented**, **3 out-of-scope/theoretical**, and
+> **1 newly-surfaced open** (SA1). Only the "Open" table below carries a bare
+> `P1`/`P2` severity column, so `quality inspect`'s `audit_p1_p2_items` signal
+> counts real remaining work (1) — the resolved/accepted/out-of-scope tables
+> intentionally omit the severity column so the parser excludes them. The 7 prior
+> open/partial items were closed in the 2026-06-16 hardening pass: H2/P2/C2 fixed,
+> D2/L2/S2/M1 accepted with documented rationale.
 
-### Open / Partial — the counted `audit_p1_p2_items`
+### Open — the counted `audit_p1_p2_items`
 
 | ID | Subsystem | Problem | Severity | Status (2026-06-16) |
 |----|-----------|---------|----------|---------------------|
-| S2 | State | No atomic multi-key transactions | P2 | open — P2/Large; accept-as-limitation or add a journal/composite-record transaction primitive |
-| C2 | Compact | Read-delete race | P2 | narrowed 2026-06-16 — compare-and-swap on CreatedAt in BuildPostCompactReminder (compact.go); residual TOCTOU + coarse-clock equality documented in code |
-| L2 | External LLM | No retry on malformed output | P2 | open — optional; zai response_format=json_object already guarantees JSON on the default path |
-| M1 | MCP proxy | Dual transport code paths | P2 | open — intentional test-pipe compat shim (serveMCPStreamLegacy); retire once SDK transport covers test pipes |
-| D2 | Daemon | NFS lock safety (O_EXCL) | P2 | partial — stale-lock + PID-liveness detection + CAUTIONS.md NFS caveat; true flock fallback tracked as task C5 |
-| H2 | Hook failure | Concurrent append > PIPE_BUF | P2 | partial — freeform fields bounded to 500B + reader counts corrupt lines (observable); full fix = flock the append |
-| P2 | Project state | Profile update locking | P2 | partial — concrete data-loss path (init race) closed via atomic hardlink; other writers target separate atomic files |
+| SA1 | Self-augment state | Snapshot write bypasses flock + atomic-rename | P2 | open — WriteSelfAugmentSnapshotRecord (self_verify_state_snapshot.go:58) uses plain os.WriteFile, unlike core.writeStateRecord (temp+rename under flock); single-key durability/locking gap surfaced by the S2 hardening triage |
+
+### Accepted / documented — excluded from the count (won't-fix with rationale)
+
+| ID | Subsystem | Problem | Disposition |
+|----|-----------|---------|-------------|
+| D2 | Daemon | NFS lock safety (O_EXCL) | accepted — daemonlock is transient (deleted after handoff) so flock is inapplicable; O_EXCL + stale/PID detection adequate; NFS caveat documented (CAUTIONS.md §13) |
+| L2 | External LLM | No retry on malformed output | accepted — decode is a pure decoder with no invoke handle; Z.AI response_format=json_object guarantees JSON; rationale comment added (structured.go); future retry belongs at the invoke layer |
+| S2 | State | No atomic multi-key transactions | accepted — no caller writes 2+ keys atomically; single-key writes already temp+rename under flock; known-limitation documented (CAUTIONS.md §6) |
+| M1 | MCP proxy | Dual transport code paths | accepted — serveMCPStreamLegacy is load-bearing for the split reader/writer stdio path (MCP smoke); SDK transport cannot cover it; both intentionally kept |
 
 ### Resolved — excluded from the count (verified fixed)
 
 | ID | Subsystem | Problem | Resolved by |
 |----|-----------|---------|-------------|
+| H2 | Hook failure | Concurrent append > PIPE_BUF | 2026-06-16 hardening (flock the append via state.WithKeyLock; line can exceed PIPE_BUF) |
+| P2 | Project state | Compact-capsule RMW lost update | 2026-06-16 hardening (state.WithKeyLock around BuildPreCompactCapsule read-merge-write — the one genuine cross-process RMW) |
+| C2 | Compact | Read-delete race | f35dd6c (CAS on CreatedAt) + 2026-06-16 hardening (per-write Nonce conjunction closes the coarse-clock equality residual) |
 | D1 | Daemon | No connection limit | 5536cc8 (connSlots cap 64) |
 | D3 | Daemon | No graceful shutdown | 5536cc8 (activeWG + 30s drain) |
 | W1 | Worker | Stuck "running" jobs on crash | b89d311 (PID + isPIDAlive + DetectStuckWorkerJobs) |

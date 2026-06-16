@@ -82,7 +82,12 @@ func TestMCPTransportStdoutAndStderrWrappers(t *testing.T) {
 	}
 }
 
-func TestMCPTransportCoversInitAndToolsWithSDK(t *testing.T) {
+// Note: this exercises the LEGACY transport (M1): strings.NewReader is not an
+// io.ReadWriter, so canUseSDKTransport returns false and ServeMCPStream routes
+// to serveMCPStreamLegacy. serveMCPStreamLegacy is load-bearing for the split
+// reader/writer stdio path (HARNESS_MCP_DIRECT MCP smoke), so both transports
+// are intentionally kept.
+func TestMCPTransportCoversInitAndToolsLegacy(t *testing.T) {
 	input := strings.Join([]string{
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
 		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,

@@ -1,13 +1,17 @@
 package compact
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"agent-harness/internal/core/lifecycle/docupkeep"
 	"agent-harness/internal/core/lifecycle/model"
+	"agent-harness/internal/core/state"
 )
 
 type Store struct {
@@ -24,30 +28,57 @@ func BuildPreCompactCapsule(store Store, repo string) model.LifecycleCompactResu
 	if !plan.Exists || !plan.NamespaceValid || len(events) == 0 {
 		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
 	}
-	capsule := model.LifecycleCompactCapsule{
-		SchemaVersion:     model.ProjectLifecycleSchemaVersion,
-		RepoRoot:          plan.RepoRoot,
-		RepoID:            plan.RepoID,
-		CreatedAt:         time.Now().UTC().Format(time.RFC3339Nano),
-		RequiredDocs:      docsFromDocUpkeepEvents(events),
-		PendingDocUpkeep:  events,
-		AdditionalSummary: "Session compaction capsule: restore these lifecycle/doc-upkeep hints after compacting to avoid rediscovering project-doc context.",
-	}
 
-	// If a capsule already exists (double PreCompact), merge PendingDocUpkeep.
-	if existing, ok := readCompactCapsule(plan.CompactPath); ok {
-		capsule.PendingDocUpkeep = mergeDocUpkeepEvents(existing.PendingDocUpkeep, capsule.PendingDocUpkeep)
-		capsule.RequiredDocs = docupkeep.NormalizeTargetDocs(append(existing.RequiredDocs, capsule.RequiredDocs...))
-		// Keep latest timestamps
-		if existing.CreatedAt > capsule.CreatedAt {
-			capsule.CreatedAt = existing.CreatedAt
+	var result model.LifecycleCompactResult
+	// P2: serialize the read-existing -> merge -> write span so two overlapping
+	// PreCompacts (the same per-repo capsule is shared across sessions) cannot
+	// lose each other's merged PendingDocUpkeep via a last-writer-wins clobber.
+	lockErr := state.WithKeyLock(plan.ProjectStateDir, "compact-capsule", func() error {
+		capsule := model.LifecycleCompactCapsule{
+			SchemaVersion:     model.ProjectLifecycleSchemaVersion,
+			RepoRoot:          plan.RepoRoot,
+			RepoID:            plan.RepoID,
+			CreatedAt:         time.Now().UTC().Format(time.RFC3339Nano),
+			RequiredDocs:      docsFromDocUpkeepEvents(events),
+			PendingDocUpkeep:  events,
+			AdditionalSummary: "Session compaction capsule: restore these lifecycle/doc-upkeep hints after compacting to avoid rediscovering project-doc context.",
 		}
-	}
+		// Fresh per-write nonce (never inherited on merge) so PostCompact's CAS can
+		// distinguish two writes that share a coarse-clock CreatedAt.
+		capsule.Nonce = compactCapsuleNonce(plan.RepoID, capsule.CreatedAt)
 
-	if err := store.WriteJSON(plan.CompactPath, capsule, 0o600); err != nil {
-		return model.LifecycleCompactResult{OK: false, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_write_error"}}
+		// If a capsule already exists (double PreCompact), merge PendingDocUpkeep.
+		if existing, ok := readCompactCapsule(plan.CompactPath); ok {
+			capsule.PendingDocUpkeep = mergeDocUpkeepEvents(existing.PendingDocUpkeep, capsule.PendingDocUpkeep)
+			capsule.RequiredDocs = docupkeep.NormalizeTargetDocs(append(existing.RequiredDocs, capsule.RequiredDocs...))
+			// Keep latest timestamp (but keep the FRESH nonce above, not existing.Nonce).
+			if existing.CreatedAt > capsule.CreatedAt {
+				capsule.CreatedAt = existing.CreatedAt
+			}
+		}
+
+		if err := store.WriteJSON(plan.CompactPath, capsule, 0o600); err != nil {
+			result = model.LifecycleCompactResult{OK: false, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_write_error"}}
+			return nil
+		}
+		result = model.LifecycleCompactResult{OK: true, Recorded: true, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath}
+		return nil
+	})
+	if lockErr != nil {
+		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_lock_error"}}
 	}
-	return model.LifecycleCompactResult{OK: true, Recorded: true, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath}
+	return result
+}
+
+// compactCapsuleNonce returns a short unique token for one capsule write. It
+// hashes the write's UnixNano (which still differs between two sequential
+// time.Now() calls even when their truncated RFC3339Nano CreatedAt strings
+// collide on coarse clocks) with the repo id and timestamp — repo idiom, no new
+// external dep, no crypto/rand.
+func compactCapsuleNonce(repoID, createdAt string) string {
+	seed := strconv.FormatInt(time.Now().UnixNano(), 10) + "\x00" + repoID + "\x00" + createdAt
+	sum := sha256.Sum256([]byte(seed))
+	return hex.EncodeToString(sum[:8])
 }
 
 // readCompactCapsule reads an existing compact capsule from disk.
@@ -135,7 +166,12 @@ func BuildPostCompactReminder(store Store, repo string) model.LifecycleCompactRe
 // compare-and-swap — a residual TOCTOU and a coarse-clock CreatedAt-equality
 // window remain — but it never loses data the prior unconditional remove kept.
 func consumeCompactCapsule(path string, consumed model.LifecycleCompactCapsule) {
-	if current, ok := readCompactCapsule(path); ok && current.CreatedAt == consumed.CreatedAt {
+	// Compare BOTH CreatedAt and Nonce (conjunction). Nonce alone would be unsafe
+	// during migration: two legacy capsules both have an empty Nonce and would
+	// falsely match. With the conjunction, an empty-nonce legacy capsule degrades
+	// to the prior CreatedAt-only behavior; new capsules carry a nonce so a newer
+	// interleaved capsule sharing a coarse-clock CreatedAt is never deleted.
+	if current, ok := readCompactCapsule(path); ok && current.CreatedAt == consumed.CreatedAt && current.Nonce == consumed.Nonce {
 		_ = os.Remove(path)
 	}
 }

@@ -64,13 +64,21 @@ func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, er
 	if err != nil {
 		return HookFailureRecordResult{OK: false, Path: path, Event: event}, err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
-	if err != nil {
-		return HookFailureRecordResult{OK: false, Path: path, Event: event}, err
-	}
-	defer f.Close()
-	if _, err := f.Write(append(line, '\n')); err != nil {
-		return HookFailureRecordResult{OK: false, Path: path, Event: event}, err
+	// H2: serialize concurrent appends across processes. A marshalled failure line
+	// can exceed PIPE_BUF (uncapped Argv/CWD plus two 500B snippet fields), so
+	// O_APPEND alone does not guarantee atomic, non-interleaved writes; the flock
+	// (via WithKeyLock) does. O_APPEND is kept so the OS still positions at EOF.
+	writeErr := corestate.WithKeyLock(filepath.Dir(path), "hook-failures", func() error {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		_, err = f.Write(append(line, '\n'))
+		return err
+	})
+	if writeErr != nil {
+		return HookFailureRecordResult{OK: false, Path: path, Event: event}, writeErr
 	}
 	return HookFailureRecordResult{OK: true, Path: path, Event: event}, nil
 }
@@ -118,10 +126,10 @@ func trimHookFailureSnippet(value string) string {
 }
 
 type HookFailurePruneResult struct {
-	OK       bool   `json:"ok"`
-	Path     string `json:"path"`
-	Pruned   int    `json:"pruned"`
-	Kept     int    `json:"kept"`
+	OK     bool   `json:"ok"`
+	Path   string `json:"path"`
+	Pruned int    `json:"pruned"`
+	Kept   int    `json:"kept"`
 }
 
 func PruneHookFailureLog(maxAge time.Duration) (HookFailurePruneResult, error) {

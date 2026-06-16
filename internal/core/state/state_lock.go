@@ -36,7 +36,7 @@ func StateUpdate(key string, transform func(StateRecord) (StateRecord, error)) (
 		}
 		path, writeErr := writeStateRecord(dir, key, next)
 		result = StateResult{
-			OK:      writeErr == nil,
+			OK:       writeErr == nil,
 			StateDir: dir,
 			Path:     path,
 			Record:   next,
@@ -47,6 +47,16 @@ func StateUpdate(key string, transform func(StateRecord) (StateRecord, error)) (
 		return result, err
 	}
 	return StateResult{OK: false, StateDir: dir}, err
+}
+
+// WithKeyLock runs fn while holding the same exclusive advisory lock that
+// StateUpdate uses (<dir>/<key>.state-lock), so callers OUTSIDE the state package
+// can serialize their own read-modify-write or append spans against concurrent
+// processes (e.g. the compact-capsule RMW and the hook-failure log append).
+// Like withStateLock, the lock file is a persistent inode that must NOT be
+// deleted between cycles.
+func WithKeyLock(dir, key string, fn func() error) error {
+	return withStateLock(dir, key, fn)
 }
 
 // withStateLock holds an exclusive advisory lock on <stateDir>/<key>.state-lock

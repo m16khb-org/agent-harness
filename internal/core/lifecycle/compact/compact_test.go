@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"agent-harness/internal/core/lifecycle/model"
@@ -190,6 +191,67 @@ func TestConsumeCompactCapsuleRespectsInterleavingWrite(t *testing.T) {
 	}
 	if survived.CreatedAt != newer.CreatedAt || len(survived.PendingDocUpkeep) != 1 || survived.PendingDocUpkeep[0].Summary != "second (interleaved)" {
 		t.Fatalf("survived capsule should be the newer one, got: %+v", survived)
+	}
+}
+
+func TestConsumeCompactCapsuleNonceDisambiguatesSameTimestamp(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, model.CompactCapsuleFile)
+	const stamp = "2026-06-16T00:00:00.000000000Z" // identical across both writes
+
+	first := model.LifecycleCompactCapsule{
+		SchemaVersion:    model.ProjectLifecycleSchemaVersion,
+		RepoID:           "repo-1",
+		CreatedAt:        stamp,
+		Nonce:            "nonce-A",
+		PendingDocUpkeep: []model.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"A.md"}, Summary: "first"}},
+	}
+	if err := writeJSONForTest(path, first, 0o600); err != nil {
+		t.Fatalf("write first: %v", err)
+	}
+	// Interleave: a newer capsule with the SAME CreatedAt but a DIFFERENT nonce.
+	second := first
+	second.Nonce = "nonce-B"
+	second.PendingDocUpkeep = []model.DocUpkeepEvent{{Kind: "doc_update", TargetDocs: []string{"B.md"}, Summary: "second"}}
+	if err := writeJSONForTest(path, second, 0o600); err != nil {
+		t.Fatalf("write second: %v", err)
+	}
+	// Consuming the FIRST (same CreatedAt, nonce-A) must NOT delete nonce-B. Under
+	// the old CreatedAt-only CAS this would falsely match and delete the survivor.
+	consumeCompactCapsule(path, first)
+	survived, ok := readCompactCapsule(path)
+	if !ok {
+		t.Fatalf("nonce-disambiguated newer capsule must not be deleted")
+	}
+	if survived.Nonce != "nonce-B" || len(survived.PendingDocUpkeep) != 1 || survived.PendingDocUpkeep[0].Summary != "second" {
+		t.Fatalf("survivor should be the second capsule, got: %+v", survived)
+	}
+}
+
+func TestPreCompactConcurrentMergeNoLostUpdate(t *testing.T) {
+	stateDir := t.TempDir()
+	plan := compactPlanForTest(t, stateDir)
+	// Two PreCompacts with DISJOINT pending events race against the same per-repo
+	// capsule. The WithKeyLock-serialized read->merge->write must keep BOTH.
+	storeA := compactStoreForTest(plan, []model.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"A.md"}, Summary: "A"}})
+	storeB := compactStoreForTest(plan, []model.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"B.md"}, Summary: "B"}})
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); BuildPreCompactCapsule(storeA, plan.RepoRoot) }()
+	go func() { defer wg.Done(); BuildPreCompactCapsule(storeB, plan.RepoRoot) }()
+	wg.Wait()
+
+	capsule, ok := readCompactCapsule(plan.CompactPath)
+	if !ok {
+		t.Fatalf("capsule missing after concurrent PreCompacts")
+	}
+	summaries := map[string]bool{}
+	for _, e := range capsule.PendingDocUpkeep {
+		summaries[e.Summary] = true
+	}
+	if !summaries["A"] || !summaries["B"] {
+		t.Fatalf("concurrent merge lost an update; got summaries: %v", summaries)
 	}
 }
 

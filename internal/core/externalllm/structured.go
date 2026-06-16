@@ -35,6 +35,12 @@ func BuildExternalLLMJSONSchemaSection(example string, fieldTypes []string) prom
 	}
 }
 
+// DecodeExternalLLMStructuredJSONObject is a PURE decoder with no invoke handle,
+// so it deliberately does NOT reprompt/retry on malformed output (L2): the Z.AI
+// provider is called with response_format=json_object (see print.go), which
+// guarantees a JSON object on the happy path, and the strict->fenced fallback
+// below absorbs the residual formatting drift. Any future retry belongs at the
+// invoke layer (next to RunExternalLLMPrint), not in this decoder.
 func DecodeExternalLLMStructuredJSONObject(label string, out []byte, target any) error {
 	label = strings.TrimSpace(label)
 	if label == "" {

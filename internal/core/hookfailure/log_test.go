@@ -1,12 +1,55 @@
 package hookfailure
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
+
+func TestRecordHookFailureEventConcurrentAppendsStayValid(t *testing.T) {
+	stateDir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateDir)
+
+	const n = 50
+	big := strings.Repeat("x", 480)                                            // near the 500B snippet cap
+	longArgv := []string{strings.Repeat("a", 2000), strings.Repeat("b", 2000)} // push each line well past PIPE_BUF
+	longCWD := strings.Repeat("/d", 1000)
+
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for range n {
+		go func() {
+			defer wg.Done()
+			_, _ = RecordHookFailureEvent(HookFailureEvent{
+				Hook:           "stop",
+				CommandSnippet: big,
+				Error:          big,
+				Argv:           longArgv,
+				CWD:            longCWD,
+			})
+		}()
+	}
+	wg.Wait()
+
+	data, err := os.ReadFile(HookFailureLogPath())
+	if err != nil {
+		t.Fatalf("read log: %v", err)
+	}
+	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	if len(lines) != n {
+		t.Fatalf("expected %d lines, got %d (interleaved/lost writes)", n, len(lines))
+	}
+	for i, ln := range lines {
+		var ev HookFailureEvent
+		if err := json.Unmarshal([]byte(ln), &ev); err != nil {
+			t.Fatalf("line %d is not valid JSON (torn concurrent append): %v", i, err)
+		}
+	}
+}
 
 func TestRecordHookFailureEventWritesRedactedJSONL(t *testing.T) {
 	stateDir := t.TempDir()

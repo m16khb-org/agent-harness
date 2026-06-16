@@ -126,6 +126,11 @@ type LifecycleCompactCapsule struct {
 	RequiredDocs      []string         `json:"required_docs,omitempty"`
 	PendingDocUpkeep  []DocUpkeepEvent `json:"pending_doc_upkeep,omitempty"`
 	AdditionalSummary string           `json:"additional_summary,omitempty"`
+	// Nonce uniquely identifies one capsule write so the PostCompact consume can
+	// compare-and-swap on (CreatedAt, Nonce) and never delete a newer capsule
+	// that happens to share a coarse-clock CreatedAt. Empty on legacy capsules,
+	// which safely degrades the CAS to CreatedAt-only (its prior behavior).
+	Nonce string `json:"nonce,omitempty"`
 }
 
 type LifecycleCompactResult struct {

@@ -72,6 +72,7 @@ persistent worker는 편하지만 stale lock, orphan process, socket 권한, 오
 - 추적할 지식은 `.agent-harness/`에 둔다.
 - cache/log/runtime state는 user state dir 또는 ignored `.harness/`에 둔다.
 - `.harness/`를 도입하면 `.gitignore`에 추가한다.
+- **S2 (known limitation, accepted)**: state store는 per-key flock RMW(`StateUpdate`/`writeStateRecord`는 temp+rename으로 단일 key 원자성)만 보장하고 **cross-key atomic transaction은 없다**. 현재 2개 이상 key를 한 단위로 commit해야 하는 caller가 없어 의도된 한계다(journal/composite-record 미도입). 그런 invariant가 생기면 그때 도입한다.
 
 ---
 
@@ -153,6 +154,7 @@ draft-wiki queue는 hook 휴리스틱이 자동 생성하지 않는다. UserProm
 - 수동 설치/빌드 후 MCP smoke 전에는 필요하면 `agent-harness daemon stop --json`으로 기존 daemon을 내린다.
 - 테스트는 `HARNESS_DAEMON_DIR=$(mktemp -d)/daemon`으로 실제 user daemon과 분리한다.
 - daemon socket/pid/log는 user state dir에 두고 repo나 wiki vault에 쓰지 않는다.
+- **D2 (NFS caveat, accepted)**: daemon single-instance locking은 `daemonlock/lock.go`의 `O_EXCL` create + stale(30s)/PID-liveness 감지로 막는다. lock 파일은 startup handoff 후 child가 삭제하므로(transient) flock fallback은 부적합하다(flock은 inode에 묶여 삭제 시 깨짐). `O_EXCL`은 NFS/FUSE에서 원자성이 보장되지 않으니 **daemon state는 로컬 FS에 둔다**; 네트워크 마운트 home에서는 이론상 두 daemon이 뜰 수 있으나 두 번째는 동일 unix socket bind에서 실패한다.
 
 ## 14. Codex vs Claude Code hook rendering drift
 
