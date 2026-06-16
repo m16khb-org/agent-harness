@@ -269,6 +269,26 @@ func TestAcquireLockContention(t *testing.T) {
 	}
 }
 
+func TestAcquireLockDoesNotStealFreshPartialLock(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, LockFile)
+	if err := os.WriteFile(lockPath, []byte{}, 0o600); err != nil {
+		t.Fatalf("write partial lock: %v", err)
+	}
+
+	unlock, acquired, err := AcquireLock(dir)
+	if err != nil {
+		t.Fatalf("AcquireLock: %v", err)
+	}
+	if acquired {
+		unlock()
+		t.Fatal("expected fresh partial lock to remain held")
+	}
+	if _, err := os.Stat(lockPath); err != nil {
+		t.Fatalf("fresh partial lock was removed: %v", err)
+	}
+}
+
 func TestAcquireLockRecoversStaleDeadPIDLock(t *testing.T) {
 	dir := t.TempDir()
 	lockPath := filepath.Join(dir, LockFile)

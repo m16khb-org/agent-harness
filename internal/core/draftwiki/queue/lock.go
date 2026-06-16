@@ -59,14 +59,17 @@ func isStale(path string) bool {
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return true
+		return false
 	}
 	fields := strings.Fields(string(data))
 	if len(fields) < 1 {
-		return true
+		return false
 	}
 	pid, err := strconv.Atoi(fields[0])
-	if err != nil || pid <= 0 {
+	if err != nil {
+		return false
+	}
+	if pid <= 0 {
 		return true
 	}
 	return !processAlive(pid)
