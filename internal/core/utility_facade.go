@@ -32,10 +32,6 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 	return commitsuggest.SuggestCommit(req)
 }
 
-func buildCommitSuggestPrompt(diff string) string {
-	return commitsuggest.BuildPrompt(diff)
-}
-
 const (
 	RegionImmutablePrefix = contextregion.RegionImmutablePrefix
 	RegionAppendOnlyLog   = contextregion.RegionAppendOnlyLog
@@ -67,10 +63,6 @@ func DocsIndex(root, version string) DocsIndexResult {
 	return coredocs.DocsIndex(root, version)
 }
 
-func readDocHeadings(path string) (string, []string) {
-	return coredocs.ReadHeadings(path)
-}
-
 type HarnessDoctorRequest = doctor.HarnessDoctorRequest
 type HarnessDoctorResult = doctor.HarnessDoctorResult
 type HarnessDoctorCheck = doctor.HarnessDoctorCheck
@@ -79,10 +71,6 @@ type HarnessDoctorFix = doctor.HarnessDoctorFix
 
 func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 	return doctor.HarnessDoctor(req)
-}
-
-func shellQuote(s string) string {
-	return doctor.ShellQuote(s)
 }
 
 type ExternalLLMPrintRequest = externalllm.ExternalLLMPrintRequest
@@ -219,10 +207,6 @@ func CodexMCPConfigured(path string) bool {
 	return coreinspect.CodexMCPConfigured(path)
 }
 
-func exists(path string) bool {
-	return coreinspect.Exists(path)
-}
-
 func DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, binPath string) port.NativeInstallRequest {
 	return coreinstall.DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, binPath)
 }
@@ -240,10 +224,6 @@ type LintDiagnoseResult = lintdiagnose.LintDiagnoseResult
 
 func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 	return lintdiagnose.DiagnoseCommand(req)
-}
-
-func buildLintDiagnosePrompt(exitCode int, logTail string) string {
-	return lintdiagnose.BuildPrompt(exitCode, logTail)
 }
 
 type PromptDataSection = prompt.PromptDataSection

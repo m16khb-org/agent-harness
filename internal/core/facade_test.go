@@ -74,12 +74,6 @@ func TestPolicyStateUtilityAndProjectDocFacades(t *testing.T) {
 	if len(ListDocs(repo)) == 0 || len(DocsIndex(repo, "v").Docs) == 0 {
 		t.Fatal("docs wrappers should find README")
 	}
-	if title, headings := readDocHeadings(filepath.Join(repo, "README.md")); title != "Repo" || len(headings) == 0 {
-		t.Fatalf("readDocHeadings = %q %#v", title, headings)
-	}
-	if !strings.Contains(shellQuote("a b"), "'") {
-		t.Fatal("shellQuote should quote spaces")
-	}
 	if !strings.Contains(ExternalLLMPrintCommandPreview(), "zai") {
 		t.Fatal("ExternalLLMPrintCommandPreview should mention zai")
 	}
@@ -97,25 +91,15 @@ func TestPolicyStateUtilityAndProjectDocFacades(t *testing.T) {
 	if InspectHarness(repo, repo, t.TempDir(), "test", "skill").HarnessRoot == "" {
 		t.Fatal("InspectHarness should return root info")
 	}
-	if exists(filepath.Join(repo, "README.md")) != true {
-		t.Fatal("exists wrapper should detect file")
-	}
 	if _, err := ListSkillNames(repo); err == nil {
 		t.Fatal("ListSkillNames on non-skill root should fail")
 	}
 	if DefaultNativeInstallRequest(repo, t.TempDir(), "", "", "bin").Root != repo {
 		t.Fatal("DefaultNativeInstallRequest should preserve root")
 	}
-	if !strings.Contains(buildLintDiagnosePrompt(1, "panic"), "panic") {
-		t.Fatal("buildLintDiagnosePrompt should include log")
-	}
 	if !strings.Contains(BuildStructuredPrompt(StructuredPromptSpec{Identity: "id", Objective: "obj"}), "obj") {
 		t.Fatal("BuildStructuredPrompt should include objective")
 	}
-	if !strings.Contains(buildCommitSuggestPrompt("diff"), "diff") {
-		t.Fatal("commit suggest prompt should include diff")
-	}
-
 	signals := AnalyzeProjectSignals(repo)
 	if len(signals.Languages) == 0 || len(renderProjectDocs(repo, signals)) == 0 {
 		t.Fatal("project docs signal/render wrappers should work")
@@ -291,17 +275,6 @@ func TestHookAndLifecycleFacades(t *testing.T) {
 	if len(result.Hints) == 0 || result.AdditionalContext == "" {
 		t.Fatalf("unexpected hook prompt result: %#v", result)
 	}
-	if renderHookMCPHintContext(result.Hints, nil, nil, "catalog") == "" {
-		t.Fatal("renderHookMCPHintContext should render context")
-	}
-	var parts []string
-	appendCompactPendingUpkeep(&parts, []DocUpkeepEvent{{Kind: "test", TargetDocs: []string{"TESTING.md"}, Summary: "update", Status: "pending"}})
-	if fallbackHintPriority(result.Hints[0]) == "" || compactHintLabel(result.Hints[0]) == "" {
-		t.Fatal("hint helpers should return labels")
-	}
-	if !containsAnySlice("abcdef", []string{"bc"}) || !containsAny("abcdef", "de") {
-		t.Fatal("contains helpers should match")
-	}
 	if BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{Repo: repo}).OK == false {
 		t.Fatal("pre tool use decision should return result")
 	}
@@ -335,10 +308,6 @@ func TestHookAndLifecycleFacades(t *testing.T) {
 	}
 	if EvaluateNextActionAutoProceed("선택지:\n1. go (추천)\n2. stop\n3. wait", 0.1).SelectedText == "" {
 		t.Fatal("auto proceed should parse recommended candidate")
-	}
-	candidates := parseNextActionCandidates("선택지:\n1. go (추천)\n2. stop\n3. wait")
-	if len(candidates) != 3 || selectRecommendedNextAction(candidates) == nil || buildNextActionAutoProceedLLMPrompt(candidates[0], candidates) == "" {
-		t.Fatalf("unexpected next action candidates: %#v", candidates)
 	}
 	if RecordStopNextActionRelay(repo, trigger).OK == false || ClearStopNextActionRelay(repo).OK == false {
 		t.Fatal("relay record/clear should succeed")

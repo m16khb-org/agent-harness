@@ -41,30 +41,6 @@ func RenderUserPromptCodexContext(result HookUserPromptResult) string {
 	return hookprompt.RenderUserPromptCodexContext(result)
 }
 
-func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
-	return hookprompt.RenderHookMCPHintContext(hints, pendingUpkeep, profile, catalog)
-}
-
-func appendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
-	hookprompt.AppendCompactPendingUpkeep(parts, events)
-}
-
-func fallbackHintPriority(h HookUserPromptHint) string {
-	return hookprompt.FallbackHintPriority(h)
-}
-
-func compactHintLabel(h HookUserPromptHint) string {
-	return hookprompt.CompactHintLabel(h)
-}
-
-func containsAnySlice(s string, needles []string) bool {
-	return hookprompt.ContainsAnySlice(s, needles)
-}
-
-func containsAny(s string, needles ...string) bool {
-	return hookprompt.ContainsAny(s, needles...)
-}
-
 const ProjectLifecycleSchemaVersion = lifecycle.ProjectLifecycleSchemaVersion
 
 type ProjectFingerprint = lifecycle.ProjectFingerprint
@@ -165,18 +141,6 @@ func EvaluateNextActionAutoProceed(message string, threshold float64) NextAction
 
 func EvaluateNextActionAutoProceedLLM(req NextActionAutoProceedLLMRequest, threshold float64) (NextActionAutoProceedResult, error) {
 	return nextaction.EvaluateNextActionAutoProceedLLM(req, threshold)
-}
-
-func parseNextActionCandidates(message string) []NextActionCandidate {
-	return nextaction.ParseCandidates(message)
-}
-
-func selectRecommendedNextAction(candidates []NextActionCandidate) *NextActionCandidate {
-	return nextaction.SelectRecommendedCandidate(candidates)
-}
-
-func buildNextActionAutoProceedLLMPrompt(recommended NextActionCandidate, candidates []NextActionCandidate) string {
-	return nextaction.BuildLLMPrompt(recommended, candidates)
 }
 
 const (
