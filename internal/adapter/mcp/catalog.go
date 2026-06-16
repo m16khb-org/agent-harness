@@ -26,50 +26,83 @@ const (
 	DispatchSelfLoop        DispatchGroup = "self_loop"
 )
 
-// toolGroup associates a catalog function with its dispatch group.
-type toolGroup struct {
-	group DispatchGroup
-	tools func() []Tool
+// catalogSection binds one catalog function to its dispatch handler group and
+// records whether its tools are advertised in the tools/list response.
+type catalogSection struct {
+	group      DispatchGroup
+	advertised bool
+	tools      func() []Tool
 }
 
-// DispatchMap returns a map from every MCP tool name to its handler group.
-// This is the single source of truth for tool-to-handler routing: adding a new
-// tool only requires adding it to the appropriate catalog function below.
-func DispatchMap() map[string]DispatchGroup {
-	groups := []toolGroup{
-		{DispatchProject, coreProjectTools},
-		{DispatchPolicyState, func() []Tool {
-			return append(CommandPolicyTools(), StateTools()...)
-		}},
-		{DispatchPolicyState, CommandPolicyAuditTools},
-		{DispatchIssueOps, IssueOpsBasicTools},
-		{DispatchIssueOps, IssueOpsLifecycleTools},
-		{DispatchAssistantWorker, AdapterOwnedTools},
-		{DispatchAssistantWorker, LocalAssistantTools},
-		{DispatchSelfLoop, selfLoopTools},
+// catalogSections is the single ordered source of truth for the MCP tool
+// catalog. Both the advertised tools/list (AdvertisedTools) and the
+// name->handler routing table (DispatchMap) derive from this slice, so adding a
+// tool means editing exactly one catalog function referenced here. The
+// advertised order matches the stable mcp_tools.golden.json snapshot.
+func catalogSections() []catalogSection {
+	return []catalogSection{
+		{DispatchProject, true, coreProjectTools},
+		{DispatchPolicyState, true, CommandPolicyTools},
+		{DispatchPolicyState, true, StateTools},
+		{DispatchIssueOps, true, IssueOpsBasicTools},
+		{DispatchIssueOps, true, IssueOpsLifecycleTools},
+		{DispatchAssistantWorker, true, func() []Tool { return []Tool{DaemonStatusTool()} }},
+		{DispatchSelfLoop, true, selfLoopAdvertisedTools},
+		{DispatchAssistantWorker, true, AdapterOwnedTools},
+		{DispatchPolicyState, true, CommandPolicyAuditTools},
+		{DispatchAssistantWorker, true, LocalAssistantTools},
+		{DispatchSelfLoop, false, selfLoopAliasTools},
 	}
-	out := make(map[string]DispatchGroup)
-	for _, g := range groups {
-		for _, t := range g.tools() {
-			out[t.Name] = g.group
+}
+
+// DaemonStatusTool returns the standalone daemon-status assistant-worker tool.
+// It lives in no sub-catalog, so it is declared once here and flows into both
+// the advertised list and DispatchMap via catalogSections.
+func DaemonStatusTool() Tool {
+	return Tool{
+		Name:        "daemon_status",
+		Description: "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",
+		InputSchema: map[string]any{"type": "object", "properties": map[string]any{}},
+	}
+}
+
+// AdvertisedTools returns every MCP tool advertised in tools/list, in the
+// stable order pinned by mcp_tools.golden.json.
+func AdvertisedTools() []Tool {
+	var out []Tool
+	for _, s := range catalogSections() {
+		if s.advertised {
+			out = append(out, s.tools()...)
 		}
 	}
-	// Core project tools and self-loop tools that live in catalog/core_tools.go
-	// are declared here via their local catalog functions.
-	for _, t := range coreProjectTools() {
-		out[t.Name] = DispatchProject
-	}
-	for _, t := range selfLoopTools() {
-		out[t.Name] = DispatchSelfLoop
-	}
-	// daemon_status is a standalone assistant worker tool not in any sub-catalog.
-	out["daemon_status"] = DispatchAssistantWorker
 	return out
 }
 
-// coreProjectTools returns the harness project-management tools that are
-// defined in the CLI catalog package. They are duplicated here so DispatchMap
-// is the single source of truth.
+// AllTools returns every MCP tool known to the catalog, advertised or not.
+func AllTools() []Tool {
+	var out []Tool
+	for _, s := range catalogSections() {
+		out = append(out, s.tools()...)
+	}
+	return out
+}
+
+// DispatchMap returns a map from every MCP tool name to its handler group.
+// It derives from catalogSections so routing can never drift from the catalog:
+// adding a tool to a section makes it both routable and (if advertised) listed.
+func DispatchMap() map[string]DispatchGroup {
+	out := make(map[string]DispatchGroup)
+	for _, s := range catalogSections() {
+		for _, t := range s.tools() {
+			out[t.Name] = s.group
+		}
+	}
+	return out
+}
+
+// coreProjectTools returns the harness project-management tools. This is their
+// single authoritative definition: the CLI catalog package derives its
+// tools/list payload from AdvertisedTools rather than re-declaring them.
 func coreProjectTools() []Tool {
 	return []Tool{
 		{
@@ -174,8 +207,9 @@ func coreProjectTools() []Tool {
 	}
 }
 
-// selfLoopTools returns the self-improvement loop tools.
-func selfLoopTools() []Tool {
+// selfLoopAdvertisedTools returns the self-improvement loop tools advertised in
+// tools/list: the self-augment plan/lesson tools and the self-verify family.
+func selfLoopAdvertisedTools() []Tool {
 	return []Tool{
 		{
 			Name:        "self_augment",
@@ -243,11 +277,21 @@ func selfLoopTools() []Tool {
 			Name:        "self_verify_promote",
 			Description: "Promote a saved self-verification loop summary checkpoint to a baseline state key. Defaults to dry-run; pass confirm=true to write the baseline.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"from_key", "baseline_key"}, "properties": map[string]any{
-				"from_key":     map[string]any{"type": "string", "description": "State key containing the candidate self-verification summary snapshot to promote."},
-				"baseline_key": map[string]any{"type": "string", "description": "State key to write as the promoted baseline."},
-				"confirm":      map[string]any{"type": "boolean", "description": "When true, write baseline_key; false or omitted performs a dry-run."},
+				"from_key":            map[string]any{"type": "string", "description": "State key containing the candidate self-verification summary snapshot to promote."},
+				"baseline_key":        map[string]any{"type": "string", "description": "State key to write as the promoted baseline."},
+				"confirm":             map[string]any{"type": "boolean", "description": "When true, write baseline_key; false or omitted performs a dry-run."},
+				"allow_failed_source": map[string]any{"type": "boolean", "description": "Promote even when the source snapshot did not pass the gate (baseline-poisoning override; off by default)."},
 			}},
 		},
+	}
+}
+
+// selfLoopAliasTools returns the self-augment-prefixed aliases of the
+// self-verify history/compare/promote tools. They route to the self-loop
+// handler but are not advertised in tools/list, keeping the catalog free of
+// duplicate-looking names.
+func selfLoopAliasTools() []Tool {
+	return []Tool{
 		{
 			Name:        "self_augment_history",
 			Description: "Alias for self_verify_history that scans self-augment prefixed state checkpoints.",
@@ -272,9 +316,10 @@ func selfLoopTools() []Tool {
 			Name:        "self_augment_promote",
 			Description: "Alias for self_verify_promote that promotes self-augment prefixed state checkpoints.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"from_key", "baseline_key"}, "properties": map[string]any{
-				"from_key":     map[string]any{"type": "string", "description": "State key containing the candidate self-augment summary snapshot to promote."},
-				"baseline_key": map[string]any{"type": "string", "description": "State key to write as the promoted baseline."},
-				"confirm":      map[string]any{"type": "boolean", "description": "When true, write baseline_key; false or omitted performs a dry-run."},
+				"from_key":            map[string]any{"type": "string", "description": "State key containing the candidate self-augment summary snapshot to promote."},
+				"baseline_key":        map[string]any{"type": "string", "description": "State key to write as the promoted baseline."},
+				"confirm":             map[string]any{"type": "boolean", "description": "When true, write baseline_key; false or omitted performs a dry-run."},
+				"allow_failed_source": map[string]any{"type": "boolean", "description": "Promote even when the source snapshot did not pass the gate (baseline-poisoning override; off by default)."},
 			}},
 		},
 	}

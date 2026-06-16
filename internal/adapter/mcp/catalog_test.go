@@ -97,21 +97,11 @@ func TestDispatchMapHasNoUnknownGroup(t *testing.T) {
 	}
 }
 
-// collectAllCatalogTools gathers every tool declared across all catalog functions.
+// collectAllCatalogTools gathers every tool declared across all catalog
+// functions. It delegates to AllTools so the test stays bound to the
+// catalogSections single source of truth and cannot drift from it.
 func collectAllCatalogTools() []Tool {
-	var all []Tool
-	all = append(all, coreProjectTools()...)
-	all = append(all, CommandPolicyTools()...)
-	all = append(all, StateTools()...)
-	all = append(all, IssueOpsBasicTools()...)
-	all = append(all, IssueOpsLifecycleTools()...)
-	all = append(all, AdapterOwnedTools()...)
-	all = append(all, CommandPolicyAuditTools()...)
-	all = append(all, LocalAssistantTools()...)
-	all = append(all, selfLoopTools()...)
-	// daemon_status is only in DispatchMap, not in any sub-catalog.
-	all = append(all, Tool{Name: "daemon_status", Description: "Daemon status.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{}}})
-	return all
+	return AllTools()
 }
 
 func TestResourceMapsPreserveDescriptorShape(t *testing.T) {
