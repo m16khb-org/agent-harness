@@ -3,8 +3,6 @@ package stateio
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"agent-harness/internal/core"
@@ -48,12 +46,10 @@ func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSn
 		UpdatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 		Bytes:         len(content),
 	}
-	b, err := json.MarshalIndent(record, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(dir, key+".json"), append(b, '\n'), 0o600)
+	// SA1: persist via the locked + atomic (temp+rename) state writer instead of a
+	// raw os.WriteFile, matching core.writeStateRecord's durability. Byte-identical
+	// on-disk output (same path, MarshalIndent, trailing newline), now crash-safe
+	// and serialized against concurrent writers.
+	_, err = core.WriteStateRecord(dir, key, record)
+	return err
 }

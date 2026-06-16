@@ -117,6 +117,24 @@ func StateList() (StateListResult, error) {
 	return StateListResult{OK: true, StateDir: dir, Keys: keys, Records: records}, nil
 }
 
+// WriteStateRecord persists record to <dir>/<key>.json atomically (temp+rename)
+// under the per-key advisory lock, for callers that must write a StateRecord to a
+// dir other than StateDir() (e.g. the self-augment snapshot writer). It is the
+// locked+atomic equivalent of a raw os.WriteFile to the record path.
+func WriteStateRecord(dir, key string, record StateRecord) (string, error) {
+	key, err := NormalizeStateKey(key)
+	if err != nil {
+		return "", err
+	}
+	var path string
+	err = withStateLock(dir, key, func() error {
+		var werr error
+		path, werr = writeStateRecord(dir, key, record)
+		return werr
+	})
+	return path, err
+}
+
 func writeStateRecord(dir, key string, record StateRecord) (string, error) {
 	path := statePath(dir, key)
 	if err := os.MkdirAll(dir, 0o700); err != nil {

@@ -251,19 +251,17 @@ Codex and Claude Code accept different JSON schemas for hook responses. The hook
 
 > **Triage 2026-06-16** (evidence-verified against code/commits/tests; see the
 > backlog-triage + quality-hardening workflows): of the original 24 P1/P2 items,
-> **17 resolved**, **4 accepted/documented**, **3 out-of-scope/theoretical**, and
-> **1 newly-surfaced open** (SA1). Only the "Open" table below carries a bare
-> `P1`/`P2` severity column, so `quality inspect`'s `audit_p1_p2_items` signal
-> counts real remaining work (1) — the resolved/accepted/out-of-scope tables
-> intentionally omit the severity column so the parser excludes them. The 7 prior
-> open/partial items were closed in the 2026-06-16 hardening pass: H2/P2/C2 fixed,
+> **18 resolved**, **4 accepted/documented**, **3 out-of-scope/theoretical**, and
+> **0 open** — including the one item (SA1) that the hardening triage itself
+> surfaced and then fixed. `quality inspect`'s `audit_p1_p2_items` signal reads **0**
+> (the "Open" table below has no bare `P1`/`P2` rows; the resolved/accepted/out-of-scope
+> tables omit the severity column so the parser excludes them). The 7 prior
+> open/partial items were closed in the 2026-06-16 hardening pass: H2/P2/C2/SA1 fixed,
 > D2/L2/S2/M1 accepted with documented rationale.
 
 ### Open — the counted `audit_p1_p2_items`
 
-| ID | Subsystem | Problem | Severity | Status (2026-06-16) |
-|----|-----------|---------|----------|---------------------|
-| SA1 | Self-augment state | Snapshot write bypasses flock + atomic-rename | P2 | open — WriteSelfAugmentSnapshotRecord (self_verify_state_snapshot.go:58) uses plain os.WriteFile, unlike core.writeStateRecord (temp+rename under flock); single-key durability/locking gap surfaced by the S2 hardening triage |
+_None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 
 ### Accepted / documented — excluded from the count (won't-fix with rationale)
 
@@ -281,6 +279,7 @@ Codex and Claude Code accept different JSON schemas for hook responses. The hook
 | H2 | Hook failure | Concurrent append > PIPE_BUF | 2026-06-16 hardening (flock the append via state.WithKeyLock; line can exceed PIPE_BUF) |
 | P2 | Project state | Compact-capsule RMW lost update | 2026-06-16 hardening (state.WithKeyLock around BuildPreCompactCapsule read-merge-write — the one genuine cross-process RMW) |
 | C2 | Compact | Read-delete race | f35dd6c (CAS on CreatedAt) + 2026-06-16 hardening (per-write Nonce conjunction closes the coarse-clock equality residual) |
+| SA1 | Self-augment state | Snapshot write bypasses flock + atomic-rename | 2026-06-16 hardening (route WriteSelfAugmentSnapshotRecord through core.WriteStateRecord: locked temp+rename; byte-identical output) |
 | D1 | Daemon | No connection limit | 5536cc8 (connSlots cap 64) |
 | D3 | Daemon | No graceful shutdown | 5536cc8 (activeWG + 30s drain) |
 | W1 | Worker | Stuck "running" jobs on crash | b89d311 (PID + isPIDAlive + DetectStuckWorkerJobs) |

@@ -31,6 +31,10 @@ func StateWrite(key, content string) (StateResult, error) {
 	return corestate.StateWrite(key, content)
 }
 
+func WriteStateRecord(dir, key string, record StateRecord) (string, error) {
+	return corestate.WriteStateRecord(dir, key, record)
+}
+
 func StateRead(key string) (StateResult, error) {
 	return corestate.StateRead(key)
 }

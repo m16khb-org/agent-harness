@@ -711,7 +711,7 @@
           "title": "Operations Map"
         },
         {
-          "bytes": 17855,
+          "bytes": 17728,
           "headings": [
             "Agent-Harness Whole-Project Audit",
             "1. Daemon Subsystem",
@@ -6246,7 +6246,7 @@
                 "title": "Operations Map"
               },
               {
-                "bytes": 17855,
+                "bytes": 17728,
                 "headings": [
                   "Agent-Harness Whole-Project Audit",
                   "1. Daemon Subsystem",
