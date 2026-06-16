@@ -187,7 +187,11 @@ func PruneHookFailureLog(maxAge time.Duration) (HookFailurePruneResult, error) {
 			break
 		}
 	}
-	_ = tmp.Close()
+	// Fold Close into writeErr: a flush failure surfacing only at Close (e.g.
+	// ENOSPC) must abort the rename so a truncated log never replaces the original.
+	if cerr := tmp.Close(); cerr != nil {
+		writeErr = true
+	}
 	if writeErr {
 		_ = os.Remove(tmpPath)
 		return result, nil

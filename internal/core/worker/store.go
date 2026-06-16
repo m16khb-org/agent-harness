@@ -100,7 +100,35 @@ func writeWorkerJob(job WorkerJob) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, job.ID+".json"), append(b, '\n'), 0o600)
+	// W3: atomic temp+rename (mirror state_io.writeStateRecord). A crash mid-write
+	// must not leave a truncated job JSON that ReadWorkerJob fails to decode and
+	// ListWorkerJobs silently drops. The lock is the CALLER's responsibility
+	// (withWorkerJobLock) — adding it here would deadlock callers that already hold it.
+	target := filepath.Join(dir, job.ID+".json")
+	tmp, err := os.CreateTemp(dir, "."+job.ID+"-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	writeErr := func() error {
+		if _, err := tmp.Write(append(b, '\n')); err != nil {
+			return err
+		}
+		if err := tmp.Chmod(0o600); err != nil {
+			return err
+		}
+		return tmp.Close()
+	}()
+	if writeErr != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return writeErr
+	}
+	if err := os.Rename(tmpName, target); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	return nil
 }
 
 func workerDir() (string, error) {

@@ -2,11 +2,83 @@ package state
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
+
+func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+
+	// rec builds a valid persistable record; StateUpdate delegates record
+	// construction (incl. Bytes, which StateRead validates) to the transform.
+	rec := func(content string) StateRecord {
+		return StateRecord{Key: "counter", SchemaVersion: StateCurrentSchemaVersion, Content: content, Bytes: len([]byte(content))}
+	}
+
+	// Create-from-absent: transform receives an empty record.
+	res, err := StateUpdate("counter", func(cur StateRecord) (StateRecord, error) {
+		if cur.Content != "" {
+			t.Fatalf("expected absent record, got %q", cur.Content)
+		}
+		return rec("1"), nil
+	})
+	if err != nil || !res.OK {
+		t.Fatalf("update create: ok=%v err=%v", res.OK, err)
+	}
+	if read, err := StateRead("counter"); err != nil || read.Record.Content != "1" {
+		t.Fatalf("expected content 1, got %q err=%v", read.Record.Content, err)
+	}
+
+	// Real transform mutates + persists.
+	if _, err := StateUpdate("counter", func(cur StateRecord) (StateRecord, error) {
+		return rec(cur.Content + "2"), nil
+	}); err != nil {
+		t.Fatalf("update mutate: %v", err)
+	}
+	if read, err := StateRead("counter"); err != nil || read.Record.Content != "12" {
+		t.Fatalf("expected content 12, got %q err=%v", read.Record.Content, err)
+	}
+
+	// Skip-write sentinel: an empty record returned by transform must NOT write.
+	if res, err := StateUpdate("counter", func(cur StateRecord) (StateRecord, error) {
+		return StateRecord{}, nil
+	}); err != nil || !res.OK {
+		t.Fatalf("update skip: ok=%v err=%v", res.OK, err)
+	}
+	if read, _ := StateRead("counter"); read.Record.Content != "12" {
+		t.Fatalf("skip-write sentinel changed content: %q", read.Record.Content)
+	}
+
+	// Concurrent no-lost-update: the flock-serialized RMW must land all increments.
+	const n = 20
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for range n {
+		go func() {
+			defer wg.Done()
+			_, _ = StateUpdate("ctr2", func(cur StateRecord) (StateRecord, error) {
+				v := 0
+				if cur.Content != "" {
+					fmt.Sscanf(cur.Content, "%d", &v)
+				}
+				content := fmt.Sprintf("%d", v+1)
+				return StateRecord{Key: "ctr2", SchemaVersion: StateCurrentSchemaVersion, Content: content, Bytes: len([]byte(content))}, nil
+			})
+		}()
+	}
+	wg.Wait()
+	read, _ := StateRead("ctr2")
+	var final int
+	fmt.Sscanf(read.Record.Content, "%d", &final)
+	if final != n {
+		t.Fatalf("lost update under StateUpdate: expected %d, got %d", n, final)
+	}
+}
 
 func TestStateRoundtrip(t *testing.T) {
 	dir := t.TempDir()

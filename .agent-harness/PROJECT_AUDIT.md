@@ -258,6 +258,15 @@ Codex and Claude Code accept different JSON schemas for hook responses. The hook
 > tables omit the severity column so the parser excludes them). The 7 prior
 > open/partial items were closed in the 2026-06-16 hardening pass: H2/P2/C2/SA1 fixed,
 > D2/L2/S2/M1 accepted with documented rationale.
+>
+> A follow-up **completeness audit** (2026-06-16) swept beyond this list and found
+> 4 more: W3/W4/TC1 fixed (worker atomic write, hook-prune Close, StateUpdate test);
+> the `quality inspect` **branch_candidate_functions** signal (261 over threshold 6,
+> permanently `needs_attention`) is **accepted structural noise** — the counter sums
+> raw branch nodes incl. every `case` arm (not cyclomatic complexity), so threshold 6
+> fires on any non-trivial dispatcher; the high-complexity tier was triaged (all
+> switch-dispatch routers or already well-tested, e.g. worktreeGuardBlockReason with
+> 514 lines of tests). Disposition: informational, not an open work item.
 
 ### Open — the counted `audit_p1_p2_items`
 
@@ -280,6 +289,9 @@ _None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 | P2 | Project state | Compact-capsule RMW lost update | 2026-06-16 hardening (state.WithKeyLock around BuildPreCompactCapsule read-merge-write — the one genuine cross-process RMW) |
 | C2 | Compact | Read-delete race | f35dd6c (CAS on CreatedAt) + 2026-06-16 hardening (per-write Nonce conjunction closes the coarse-clock equality residual) |
 | SA1 | Self-augment state | Snapshot write bypasses flock + atomic-rename | 2026-06-16 hardening (route WriteSelfAugmentSnapshotRecord through core.WriteStateRecord: locked temp+rename; byte-identical output) |
+| W3 | Worker | Job store write not atomic (truncated job dropped on crash) | 2026-06-16 completeness audit (writeWorkerJob temp+rename; EnqueueWorkerJob now under withWorkerJobLock — lone unlocked writer) |
+| W4 | Hook failure | Prune Close() error ignored before rename | 2026-06-16 completeness audit (fold tmp.Close() into writeErr so a flush failure aborts the rename) |
+| TC1 | State | StateUpdate (exported cross-process RMW) untested + 0 callers | 2026-06-16 completeness audit (TestStateUpdateLockedReadModifyWrite: create / skip-sentinel / mutate / concurrent no-lost-update under -race) |
 | D1 | Daemon | No connection limit | 5536cc8 (connSlots cap 64) |
 | D3 | Daemon | No graceful shutdown | 5536cc8 (activeWG + 30s drain) |
 | W1 | Worker | Stuck "running" jobs on crash | b89d311 (PID + isPIDAlive + DetectStuckWorkerJobs) |
@@ -334,7 +346,7 @@ _None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 | C2 | Abstract hook output format per host | `cmd/harness/hookcli/`, new `internal/adapter/hook/` |
 | C3 | Load command policy from config file | `internal/core/policy/`, new config schema |
 | C4 | Add `port.ExternalLLM` interface | `internal/port/`, `internal/adapter/externalllm/` |
-| C5 | Add daemon flock fallback for NFS | `cmd/harness/daemoncli/daemonlock/` |
+| C5 | ~~Add daemon flock fallback for NFS~~ — SUPERSEDED: D2 accepted (flock inapplicable to the transient, deleted-after-handoff lock); see Accepted table + CAUTIONS.md §13 | `cmd/harness/daemoncli/daemonlock/` |
 
 ---
 

@@ -86,7 +86,11 @@ func EnqueueWorkerJob(kind, payload string) (WorkerJob, error) {
 		NoShell:      true,
 		SafetyNotice: "worker MVP records lifecycle state only; it never executes shell commands",
 	}
-	return job, writeWorkerJob(job)
+	// W3: serialize the enqueue write under the same per-job lock the other
+	// writers use (Enqueue was the lone unlocked writeWorkerJob caller). Enqueue
+	// holds no other lock and RunReadOnlyWorkerJob calls it before taking its own,
+	// so this does not nest.
+	return job, withWorkerJobLock(dir, id, func() error { return writeWorkerJob(job) })
 }
 
 func CancelWorkerJob(id string) (WorkerJob, error) {
