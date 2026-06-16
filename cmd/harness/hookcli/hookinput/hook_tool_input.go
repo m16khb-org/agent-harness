@@ -14,6 +14,22 @@ func ToolNameFromHookInput(input []byte) string {
 	return ""
 }
 
+// SkillFromHookInput returns the skill name from a Skill-tool invocation's
+// tool_input (the "skill" or "name" argument), or "" when absent.
+func SkillFromHookInput(input []byte) string {
+	obj := hookInputObject(input)
+	toolInput, ok := obj["tool_input"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	for _, key := range []string{"skill", "name"} {
+		if value, ok := toolInput[key].(string); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
 func CommandFromHookInput(input []byte) string {
 	obj := hookInputObject(input)
 	for _, key := range []string{"command", "cmd"} {

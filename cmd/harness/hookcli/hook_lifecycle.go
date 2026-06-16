@@ -43,6 +43,14 @@ func runHookPostToolUse(args []string) error {
 	if err != nil {
 		result = core.HookToolUseLifecycleResult{OK: false, Warnings: []string{"lifecycle_record_error:" + err.Error()}}
 	}
+	// Live skill-routing capture: when a Skill tool fires during a session-bound
+	// IssueOps cycle, record (current phase, skill) so skill_routing_fidelity can
+	// be scored against observed activation. Best-effort and fail-open — it never
+	// affects the hook decision and no-ops without an active cycle. Recorded here
+	// (PostToolUse, off the critical PreToolUse path) since the tool has fired.
+	if strings.EqualFold(tool, "Skill") {
+		core.AutoRecordSkillRouting(parsedRepo, hookinput.SkillFromHookInput(stdin))
+	}
 	if *jsonOut {
 		return printJSON(map[string]any{
 			"ok":        result.OK,

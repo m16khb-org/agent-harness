@@ -216,6 +216,13 @@ func ScoreLiveRoutingFidelity(record IssueOpsRecord, expected []SkillRouting) Ro
 	return issueops.ScoreLiveRoutingFidelity(record, expected)
 }
 
+// AutoRecordSkillRouting best-effort records a skill activation against the
+// active session-bound cycle for repo (no-op when there is none). It is
+// fail-open and safe to call from non-blocking hook paths.
+func AutoRecordSkillRouting(repo, skill string) bool {
+	return issueops.AutoRecordSkillRouting(repo, skill)
+}
+
 func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
 	return issueops.ActiveIssueOpsCycleForBranch(repo, branch)
 }
