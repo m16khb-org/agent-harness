@@ -66,9 +66,24 @@ description: 중복 제거와 아키텍처 경계 정리를 위한 단계별 최
 - 대규모 패키지 rename
 - 성능 수치가 확인되지 않은 speculative micro-optimization
 
+## 4.1 2026-06-16 현재 상태
+
+이 계획은 2026-06-16 리팩터링 세션에서 대부분 완료됐다. 현재 `quality inspect --json` 기준으로 self-augment/self-verify/audit P1/P2 후보는 모두 `already_satisfied`이며, 남은 신호는 repo-wide branch complexity 관찰값이다.
+
+| 항목 | 상태 | 근거 |
+|------|------|------|
+| P0. MCP registry 단일화 | 완료 | `4e3e299 refactor(mcp): unify tool catalog into single source of truth` |
+| P1. Codex/Claude installer 공통 pipeline | 완료 | `e2a0a5e refactor(install): share host installer pipeline via installutil` |
+| P2. IssueOps facade / provider 경계 | 완료 | `26cd38f refactor(core): restore provider boundary via adapter-resolved IssueProvider` |
+| P3. CLI global dependency wiring | 완료 | `b5e850d refactor(cli): replace init() global wiring with explicit deps injection` |
+| P4. 고분기 router 분해 | 완료 | `662adb7`, `f1bba5e`, `6be7eaa` router registry commits |
+| P5. broad facade 축소 | 결정 변경 | `8046737 docs(core): codify facade boundary rules; keep facades as public surface` |
+
 ## 5. 우선순위별 실행 계획
 
 ### P0. MCP registry 단일화
+
+**상태:** 완료.
 
 **대상 파일**
 - `internal/adapter/mcp/catalog.go`
@@ -90,6 +105,8 @@ description: 중복 제거와 아키텍처 경계 정리를 위한 단계별 최
 - `./bin/agent-harness contract check --json`
 
 ### P1. Codex/Claude installer 공통 pipeline 추출
+
+**상태:** 완료.
 
 **대상 파일**
 - `internal/adapter/codex/install.go`
@@ -115,6 +132,8 @@ description: 중복 제거와 아키텍처 경계 정리를 위한 단계별 최
 
 ### P2. `internal/core/issueops_facade.go` 분리 및 provider 경계 복원
 
+**상태:** 완료.
+
 **대상 파일**
 - `internal/core/issueops_facade.go`
 - 필요 시 `internal/core/issueops/` 하위 패키지
@@ -135,6 +154,8 @@ description: 중복 제거와 아키텍처 경계 정리를 위한 단계별 최
 - `go test ./... -count=1`
 
 ### P3. CLI global dependency wiring 제거
+
+**상태:** 완료.
 
 **대상 파일**
 - `cmd/harness/harnessapp/cli_facade.go`
@@ -160,6 +181,8 @@ description: 중복 제거와 아키텍처 경계 정리를 위한 단계별 최
 
 ### P4. 고분기 router 분해
 
+**상태:** 완료.
+
 **대상 파일**
 - `cmd/harness/issueopscli/issueops.go`
 - `cmd/harness/issueopscli/benchmarkcmd/benchmark.go`
@@ -180,17 +203,20 @@ description: 중복 제거와 아키텍처 경계 정리를 위한 단계별 최
 
 ### P5. broad facade 축소
 
+**상태:** 결정 변경. facade 제거/직접 import 전환 대신 `internal/core/*_facade.go`를 의도된 공개 표면으로 유지하고, 허용 범위를 `internal/core/doc.go`와 ADR에 문서화했다.
+
 **대상 파일**
 - `internal/core/workflow_facade.go`
 - `internal/core/utility_facade.go`
 
 **변경 방향**
 - facade에 남길 규칙을 문서화한다: 조합, 타입 변환, boundary enforcement만 허용.
-- pure passthrough alias/one-line delegate는 owning package 직접 import로 되돌린다.
+- pure passthrough alias/one-line delegate 제거는 보류한다. 전수 조사에서 facade export 133개가 모두 사용 중이었고, cmd가 core 내부 subpackage에 결합되는 비용이 표면 축소 이득보다 컸다.
 
 **완료 기준**
-- facade export 수가 줄고 의미 있는 boundary만 남는다.
-- 하위 패키지 변경이 facade churn으로 번지지 않는다.
+- facade에 새 도메인 로직을 추가하지 않는 규칙이 문서화되어 있다.
+- 조합, 타입 변환, boundary enforcement를 넘는 로직은 owning subpackage로 이동한다.
+- 하위 패키지 변경이 facade churn으로 번지지 않도록 `internal/core/doc.go` 규칙을 따른다.
 
 **검증**
 - `go test ./internal/core -count=1`

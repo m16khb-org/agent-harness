@@ -1207,7 +1207,7 @@
           "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
         },
         {
-          "bytes": 8721,
+          "bytes": 10439,
           "headings": [
             "agent-harness 최적화 계획",
             "1. 배경",
@@ -1216,6 +1216,7 @@
             "주요 hotspot / 증거 파일",
             "3. 목표",
             "4. 비목표",
+            "4.1 2026-06-16 현재 상태",
             "5. 우선순위별 실행 계획",
             "P0. MCP registry 단일화",
             "P1. Codex/Claude installer 공통 pipeline 추출",
@@ -6756,7 +6757,7 @@
                 "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
               },
               {
-                "bytes": 8721,
+                "bytes": 10439,
                 "headings": [
                   "agent-harness 최적화 계획",
                   "1. 배경",
@@ -6765,6 +6766,7 @@
                   "주요 hotspot / 증거 파일",
                   "3. 목표",
                   "4. 비목표",
+                  "4.1 2026-06-16 현재 상태",
                   "5. 우선순위별 실행 계획",
                   "P0. MCP registry 단일화",
                   "P1. Codex/Claude installer 공통 pipeline 추출",
