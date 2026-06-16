@@ -148,6 +148,7 @@ type IssueOpsRecord struct {
 	RemoteArtifact         *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
 	Decisions              []IssueOpsDecision                  `json:"decisions,omitempty"`
 	Feedback               []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
+	RoutingTrace           []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt          string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead        string                              `json:"ai_slop_clean_head,omitempty"`
 	AISlopCleanFingerprint string                              `json:"ai_slop_clean_fingerprint,omitempty"`
@@ -159,6 +160,15 @@ type IssueOpsRecord struct {
 	LastHeartbeatAt        string                              `json:"last_heartbeat_at,omitempty"`
 	CreatedAt              string                              `json:"created_at"`
 	UpdatedAt              string                              `json:"updated_at"`
+}
+
+// SkillRoutingEntry records that a pioneer/CS skill fired at a given IssueOps
+// phase during a real run. Captured live, it lets skill_routing_fidelity be
+// scored against observed activation instead of a synthesized trace.
+type SkillRoutingEntry struct {
+	Phase string `json:"phase"`
+	Skill string `json:"skill"`
+	At    string `json:"at,omitempty"`
 }
 
 type IssueOpsReadiness struct {
@@ -197,15 +207,15 @@ type IssueOpsCleanupStatus struct {
 }
 
 type IssueOpsResumeResult struct {
-	OK              bool              `json:"ok"`
-	CycleID         string            `json:"cycle_id,omitempty"`
-	Phase           IssueOpsPhase     `json:"phase,omitempty"`
-	Repo            string            `json:"repo,omitempty"`
-	Branch          string            `json:"branch,omitempty"`
-	WorktreePath    string            `json:"worktree_path,omitempty"`
-	IssueURL        string            `json:"issue_url,omitempty"`
-	PlanPath        string            `json:"plan_path,omitempty"`
-	Bound           bool              `json:"bound"`
-	SuggestedCycles []string          `json:"suggested_cycles,omitempty"`
+	OK              bool               `json:"ok"`
+	CycleID         string             `json:"cycle_id,omitempty"`
+	Phase           IssueOpsPhase      `json:"phase,omitempty"`
+	Repo            string             `json:"repo,omitempty"`
+	Branch          string             `json:"branch,omitempty"`
+	WorktreePath    string             `json:"worktree_path,omitempty"`
+	IssueURL        string             `json:"issue_url,omitempty"`
+	PlanPath        string             `json:"plan_path,omitempty"`
+	Bound           bool               `json:"bound"`
+	SuggestedCycles []string           `json:"suggested_cycles,omitempty"`
 	Readiness       *IssueOpsReadiness `json:"readiness,omitempty"`
 }

@@ -102,6 +102,19 @@ func runIssueOpsLinkRelated(args []string) error {
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
+func runIssueOpsRecordRouting(args []string) error {
+	fs := flag.NewFlagSet("issueops record-routing", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	phase := fs.String("phase", "", "lifecycle phase at which the skill fired")
+	skill := fs.String("skill", "", "skill that fired (codd, dijkstra, hopper, shannon, ...)")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.RecordIssueOpsRouting(core.IssueOpsStateRoot(), *id, *phase, *skill)
+	return printIssueOpsResult(record, *jsonOut, err)
+}
+
 func runIssueOpsPhase(args []string) error {
 	fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")

@@ -122,6 +122,11 @@ func handleMCPIssueOpsAddDecision(args map[string]any) MCPToolOutcome {
 	return issueOpsMCPOutcome(result, err, "IssueOps decision record failed")
 }
 
+func handleMCPIssueOpsRecordRouting(args map[string]any) MCPToolOutcome {
+	result, err := core.RecordIssueOpsRouting(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "phase"), argmap.String(args, "skill"))
+	return issueOpsMCPOutcome(result, err, "IssueOps routing record failed")
+}
+
 func handleMCPIssueOpsMarkIssueUpdated(args map[string]any) MCPToolOutcome {
 	result, err := core.MarkIssueOpsContractFeedbackIssueUpdated(core.IssueOpsStateRoot(), argmap.String(args, "id"))
 	return issueOpsMCPOutcome(result, err, "IssueOps issue update mark failed")

@@ -193,6 +193,20 @@ func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest
 	return issueops.AddIssueOpsDecision(stateRoot, id, req)
 }
 
+type SkillRoutingEntry = issueops.SkillRoutingEntry
+
+// RecordIssueOpsRouting captures a live (phase, skill) routing pairing on the
+// cycle record so skill_routing_fidelity can score real activation.
+func RecordIssueOpsRouting(stateRoot, id, phase, skill string) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsRouting(stateRoot, id, phase, skill)
+}
+
+// RoutingTraceAsSkillRouting projects a cycle's live routing trace onto the
+// benchmark SkillRouting shape for scoring against a real run.
+func RoutingTraceAsSkillRouting(record IssueOpsRecord) []SkillRouting {
+	return issueops.RoutingTraceAsSkillRouting(record)
+}
+
 func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
 	return issueops.ActiveIssueOpsCycleForBranch(repo, branch)
 }

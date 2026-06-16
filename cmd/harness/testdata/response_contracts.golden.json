@@ -223,7 +223,7 @@
           "name": "version"
         }
       ],
-      "hash": "26fd7ba6f7cf490393103c520077ba0fee4e18540d46f2f0a0d02b636b8105e3",
+      "hash": "71c4fd1aa92b097e0934e6ba5fb50bfbe64e9f5f991b793323309fe116333892",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -253,6 +253,7 @@
         "issueops_prepare_branch",
         "issueops_prepare_worktree_tools",
         "issueops_record_intent",
+        "issueops_record_routing",
         "issueops_remote_create_issue",
         "issueops_remote_create_pr",
         "issueops_remote_score",
@@ -5776,7 +5777,7 @@
                 "name": "version"
               }
             ],
-            "hash": "26fd7ba6f7cf490393103c520077ba0fee4e18540d46f2f0a0d02b636b8105e3",
+            "hash": "71c4fd1aa92b097e0934e6ba5fb50bfbe64e9f5f991b793323309fe116333892",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -5806,6 +5807,7 @@
               "issueops_prepare_branch",
               "issueops_prepare_worktree_tools",
               "issueops_record_intent",
+              "issueops_record_routing",
               "issueops_remote_create_issue",
               "issueops_remote_create_pr",
               "issueops_remote_score",

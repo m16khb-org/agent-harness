@@ -27,6 +27,7 @@ var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
 	"issueops_prepare_branch":         handleMCPIssueOpsPrepareBranch,
 	"issueops_add_feedback":           handleMCPIssueOpsAddFeedback,
 	"issueops_add_decision":           handleMCPIssueOpsAddDecision,
+	"issueops_record_routing":         handleMCPIssueOpsRecordRouting,
 	"issueops_mark_issue_updated":     handleMCPIssueOpsMarkIssueUpdated,
 	"issueops_set_phase":              handleMCPIssueOpsSetPhase,
 	"issueops_verify_remote_artifact": handleMCPIssueOpsVerifyRemoteArtifact,

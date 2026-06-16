@@ -17,6 +17,7 @@ import (
 
 type IssueOpsStartRequest = model.IssueOpsStartRequest
 type IssueOpsFeedbackItem = model.IssueOpsFeedbackItem
+type SkillRoutingEntry = model.SkillRoutingEntry
 type IssueOpsIssueLink = model.IssueOpsIssueLink
 type IssueOpsBranchPrepareStep = model.IssueOpsBranchPrepareStep
 type IssueOpsBranchPrepare = model.IssueOpsBranchPrepare

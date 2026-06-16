@@ -897,6 +897,32 @@
     "name": "issueops_add_decision"
   },
   {
+    "description": "Record that a pioneer/CS skill (codd, dijkstra, hopper, shannon, etc.) actually fired at the current IssueOps phase during this run. Captures a live (phase, skill) routing pairing so skill_routing_fidelity can be scored against observed activation instead of a synthesized trace. Idempotent per (phase, skill).",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "phase": {
+          "description": "Lifecycle phase at which the skill fired, such as plan, implement, or grill.",
+          "type": "string"
+        },
+        "skill": {
+          "description": "Skill that fired, such as codd, dijkstra, hopper, shannon, karpathy, turing, von-neumann, or berners-lee.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "phase",
+        "skill"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_record_routing"
+  },
+  {
     "description": "Record user or review feedback for an IssueOps loop and move it to the feedback phase.",
     "inputSchema": {
       "properties": {

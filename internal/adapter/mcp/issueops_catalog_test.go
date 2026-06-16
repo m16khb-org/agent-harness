@@ -79,6 +79,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	tools := IssueOpsLifecycleTools()
 	wantNames := []string{
 		"issueops_add_decision",
+		"issueops_record_routing",
 		"issueops_add_feedback",
 		"issueops_mark_issue_updated",
 		"issueops_set_phase",
