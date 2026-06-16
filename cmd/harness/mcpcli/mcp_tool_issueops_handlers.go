@@ -1,0 +1,201 @@
+package mcpcli
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"agent-harness/cmd/harness/mcpcli/argmap"
+	"agent-harness/internal/core"
+)
+
+// This file holds one handler per IssueOps MCP tool. handleIssueOpsMCPToolCall
+// (mcp_tool_issueops.go) dispatches through the issueOpsMCPHandlers registry so
+// routing is a single map lookup instead of a high-branch switch, and each tool
+// stays a small, independently testable function.
+
+func handleMCPIssueOpsStart(args map[string]any) MCPToolOutcome {
+	result, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{
+		Repo:   argmap.String(args, "repo"),
+		Branch: argmap.String(args, "branch"),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps start failed")
+}
+
+func handleMCPIssueOpsStatus(args map[string]any) MCPToolOutcome {
+	result, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	return issueOpsMCPOutcome(result, err, "IssueOps status failed")
+}
+
+func handleMCPIssueOpsRecordIntent(args map[string]any) MCPToolOutcome {
+	result, err := core.RecordIssueOpsIntent(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsIntentRecordRequest{
+		RawRequest:        argmap.String(args, "raw_request"),
+		InterpretedIntent: argmap.String(args, "interpreted_intent"),
+		SuccessCriteria:   argmap.StringSlice(args, "success_criteria"),
+		Constraints:       argmap.StringSlice(args, "constraints"),
+		Ambiguities:       argmap.StringSlice(args, "ambiguities"),
+		NonGoals:          argmap.StringSlice(args, "non_goals"),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps intent record failed")
+}
+
+func handleMCPIssueOpsReviewDesign(args map[string]any) MCPToolOutcome {
+	result, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsDesignReviewRequest{
+		ProblemSummary: argmap.String(args, "problem_summary"),
+		ProposedDesign: argmap.String(args, "proposed_design"),
+		RefactorPlan:   argmap.String(args, "refactor_plan"),
+		Alternatives:   argmap.StringSlice(args, "alternatives"),
+		Risks:          argmap.StringSlice(args, "risks"),
+		Verification:   argmap.StringSlice(args, "verification"),
+		OpenQuestions:  argmap.StringSlice(args, "open_questions"),
+		Approved:       argmap.Bool(args, "approved"),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps design review failed")
+}
+
+func handleMCPIssueOpsLinkIssue(args map[string]any) MCPToolOutcome {
+	result, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "issue_url"))
+	return issueOpsMCPOutcome(result, err, "IssueOps issue link failed")
+}
+
+func handleMCPIssueOpsLinkPlan(args map[string]any) MCPToolOutcome {
+	result, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "plan_path"))
+	return issueOpsMCPOutcome(result, err, "IssueOps plan link failed")
+}
+
+func handleMCPIssueOpsLinkWorktree(args map[string]any) MCPToolOutcome {
+	result, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "worktree_path"))
+	return issueOpsMCPOutcome(result, err, "IssueOps worktree link failed")
+}
+
+func handleMCPIssueOpsPrepareWorktreeTools(args map[string]any) MCPToolOutcome {
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	if err == nil {
+		var result any
+		result, err = PrepareIssueOpsWorktreeTools(record)
+		return issueOpsMCPOutcome(result, err, "IssueOps worktree tool preparation failed")
+	}
+	return issueOpsMCPOutcome(nil, err, "IssueOps worktree tool preparation failed")
+}
+
+func handleMCPIssueOpsLinkChild(args map[string]any) MCPToolOutcome {
+	if err := VerifyIssueOpsChildIssueBeforeLink(argmap.String(args, "child_url")); err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps child link failed")
+	}
+	result, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "child_url"), argmap.String(args, "title"))
+	return issueOpsMCPOutcome(result, err, "IssueOps child link failed")
+}
+
+func handleMCPIssueOpsLinkRelated(args map[string]any) MCPToolOutcome {
+	result, err := core.LinkIssueOpsRelated(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "type"), argmap.String(args, "related_url"), argmap.String(args, "title"))
+	return issueOpsMCPOutcome(result, err, "IssueOps related link failed")
+}
+
+func handleMCPIssueOpsPrepareBranch(args map[string]any) MCPToolOutcome {
+	result, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsBranchPrepareRequest{
+		Provider:        argmap.String(args, "provider"),
+		IssueURL:        argmap.String(args, "issue_url"),
+		Branch:          argmap.String(args, "branch"),
+		BaseBranch:      argmap.String(args, "base_branch"),
+		BaseSHA:         argmap.String(args, "base_sha"),
+		RemoteBranchURL: argmap.String(args, "remote_branch_url"),
+		LinkVerified:    argmap.Bool(args, "link_verified"),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps branch prepare failed")
+}
+
+func handleMCPIssueOpsAddFeedback(args map[string]any) MCPToolOutcome {
+	result, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "source"), argmap.String(args, "body"), argmap.String(args, "classification"))
+	return issueOpsMCPOutcome(result, err, "IssueOps feedback failed")
+}
+
+func handleMCPIssueOpsAddDecision(args map[string]any) MCPToolOutcome {
+	result, err := core.AddIssueOpsDecision(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsDecisionRecordRequest{
+		Title:              argmap.String(args, "title"),
+		Body:               argmap.String(args, "body"),
+		Kind:               argmap.String(args, "kind"),
+		Rationale:          argmap.String(args, "rationale"),
+		Alternatives:       argmap.StringSlice(args, "alternatives"),
+		AffectedIssueLinks: argmap.StringSlice(args, "affected_issue_links"),
+		AffectedArtifacts:  argmap.StringSlice(args, "affected_artifacts"),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps decision record failed")
+}
+
+func handleMCPIssueOpsMarkIssueUpdated(args map[string]any) MCPToolOutcome {
+	result, err := core.MarkIssueOpsContractFeedbackIssueUpdated(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	return issueOpsMCPOutcome(result, err, "IssueOps issue update mark failed")
+}
+
+func handleMCPIssueOpsSetPhase(args map[string]any) MCPToolOutcome {
+	phase := argmap.String(args, "phase")
+	if strings.TrimSpace(phase) == "" {
+		phase = argmap.String(args, "to")
+	}
+	if argmap.Bool(args, "force") && phase == "done" {
+		result, err := core.ForceDoneIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+		return issueOpsMCPOutcome(result, err, "IssueOps force-done failed")
+	}
+	result, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), argmap.String(args, "id"), phase)
+	return issueOpsMCPOutcome(result, err, "IssueOps phase advance failed")
+}
+
+func handleMCPIssueOpsVerifyRemoteArtifact(args map[string]any) MCPToolOutcome {
+	result, err := verifyIssueOpsRemoteArtifactFromMCP(args)
+	return issueOpsMCPOutcome(result, err, "IssueOps remote artifact verification failed")
+}
+
+func handleMCPIssueOpsRemoteScore(args map[string]any) MCPToolOutcome {
+	req, err := issueOpsRemoteScoringRequestFromMCP(args)
+	if err == nil {
+		var result core.IssueOpsRemoteScoringResult
+		result, err = core.ScoreIssueOpsRemoteCandidates(req)
+		return issueOpsMCPOutcome(result, err, "IssueOps remote score failed")
+	}
+	return issueOpsMCPOutcome(nil, err, "IssueOps remote score failed")
+}
+
+func handleMCPIssueOpsPRReadiness(args map[string]any) MCPToolOutcome {
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps PR readiness failed")
+	}
+	if argmap.Bool(args, "strict") {
+		return mcpToolPayload(core.IssueOpsStrictPRReadiness(record))
+	}
+	return mcpToolPayload(core.IssueOpsPRReadiness(record))
+}
+
+func handleMCPIssueOpsCleanupStatus(args map[string]any) MCPToolOutcome {
+	result, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsCleanupStatusRequest{
+		Merged: IssueOpsCleanupMerged(argmap.String(args, "id"), argmap.Bool(args, "merged")),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps cleanup status failed")
+}
+
+func handleMCPIssueOpsForceRelease(args map[string]any) MCPToolOutcome {
+	result, err := core.ForceReleaseIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "reason"))
+	return issueOpsMCPOutcome(result, err, "IssueOps force-release failed")
+}
+
+func handleMCPIssueOpsCleanupStale(args map[string]any) MCPToolOutcome {
+	result := core.ScanStaleIssueOpsCycles(core.IssueOpsStaleScanRequest{
+		Repo:   argmap.String(args, "repo"),
+		MaxAge: time.Duration(argmap.Int(args, "max_age", 14)) * 24 * time.Hour,
+		Apply:  argmap.Bool(args, "apply"),
+	})
+	if !result.OK {
+		return issueOpsMCPOutcome(nil, fmt.Errorf("%s", strings.Join(result.Errors, "; ")), "IssueOps stale cleanup failed")
+	}
+	return mcpToolPayload(result)
+}
+
+func handleMCPIssueOpsResume(args map[string]any) MCPToolOutcome {
+	result := core.IssueOpsResume(argmap.String(args, "repo"))
+	if argmap.Bool(args, "bind") && result.OK && result.Bound {
+		if err := core.BindIssueOpsSession(result.Repo, result.CycleID, result.Branch, result.WorktreePath); err != nil {
+			return issueOpsMCPOutcome(nil, fmt.Errorf("resume bind: %w", err), "IssueOps resume bind failed")
+		}
+	}
+	return mcpToolPayload(result)
+}
