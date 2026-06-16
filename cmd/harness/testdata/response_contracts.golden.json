@@ -487,7 +487,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 19541,
+          "bytes": 21545,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -1207,6 +1207,31 @@
           "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
         },
         {
+          "bytes": 8721,
+          "headings": [
+            "agent-harness 최적화 계획",
+            "1. 배경",
+            "2. 근거",
+            "검증 명령",
+            "주요 hotspot / 증거 파일",
+            "3. 목표",
+            "4. 비목표",
+            "5. 우선순위별 실행 계획",
+            "P0. MCP registry 단일화",
+            "P1. Codex/Claude installer 공통 pipeline 추출",
+            "P2. `internal/core/issueops_facade.go` 분리 및 provider 경계 복원",
+            "P3. CLI global dependency wiring 제거",
+            "P4. 고분기 router 분해",
+            "P5. broad facade 축소",
+            "6. 실행 순서 제안",
+            "7. 리스크와 완화책",
+            "8. 성공 기준"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
+          "rel_path": ".agent-harness/plans/agent-harness-optimization-plan.md",
+          "title": "agent-harness 최적화 계획"
+        },
+        {
           "bytes": 20880,
           "headings": [
             "Agent-Harness 성능/안정성 개선 계획",
@@ -1683,6 +1708,7 @@
         "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
         "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+        "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
@@ -4306,7 +4332,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 57,
+        "docs_indexed": 58,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6010,7 +6036,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 19541,
+                "bytes": 21545,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -6730,6 +6756,31 @@
                 "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
               },
               {
+                "bytes": 8721,
+                "headings": [
+                  "agent-harness 최적화 계획",
+                  "1. 배경",
+                  "2. 근거",
+                  "검증 명령",
+                  "주요 hotspot / 증거 파일",
+                  "3. 목표",
+                  "4. 비목표",
+                  "5. 우선순위별 실행 계획",
+                  "P0. MCP registry 단일화",
+                  "P1. Codex/Claude installer 공통 pipeline 추출",
+                  "P2. `internal/core/issueops_facade.go` 분리 및 provider 경계 복원",
+                  "P3. CLI global dependency wiring 제거",
+                  "P4. 고분기 router 분해",
+                  "P5. broad facade 축소",
+                  "6. 실행 순서 제안",
+                  "7. 리스크와 완화책",
+                  "8. 성공 기준"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
+                "rel_path": ".agent-harness/plans/agent-harness-optimization-plan.md",
+                "title": "agent-harness 최적화 계획"
+              },
+              {
                 "bytes": 20880,
                 "headings": [
                   "Agent-Harness 성능/안정성 개선 계획",
@@ -7213,6 +7264,7 @@
               "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
               "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
+              "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
@@ -9004,7 +9056,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 57,
+              "docs_indexed": 58,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
