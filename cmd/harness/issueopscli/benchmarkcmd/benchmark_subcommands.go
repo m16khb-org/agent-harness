@@ -38,13 +38,31 @@ func runBenchmarkRun(args []string) error {
 	if err != nil {
 		return err
 	}
-	switch *judge {
+	if err := applyBenchmarkJudge(*judge, *judgeFile, *agyCommand, result, fixtures, artifacts); err != nil {
+		return err
+	}
+	result = core.FinalizeIssueOpsBenchmarkRunResult(result)
+	if err := core.SaveIssueOpsBenchmarkRun(core.StateDir(), result); err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	fmt.Printf("%s fixtures=%d average=%.2f minimum=%.2f critical_failures=%d\n", result.ID, result.FixtureCount, result.AverageScore, result.MinimumScore, result.CriticalFailureCount)
+	return nil
+}
+
+// applyBenchmarkJudge augments the deterministic run result with judge scores
+// from the selected backend (agy external command, provenance-checked file, or
+// none). Scores merge in place through the shared result.Scores backing array.
+func applyBenchmarkJudge(judge, judgeFile, agyCommand string, result core.IssueOpsBenchmarkRunResult, fixtures []core.IssueOpsBenchmarkFixture, artifacts map[string]core.IssueOpsBenchmarkArtifact) error {
+	switch judge {
 	case "agy":
 		for i, fixture := range fixtures {
 			artifact := artifacts[fixture.ID]
 			judgeScore, err := core.RunIssueOpsAgyJudge(core.IssueOpsAgyJudgeRequest{
 				RepoRoot:   ".",
-				AgyCommand: *agyCommand,
+				AgyCommand: agyCommand,
 				Fixture:    fixture,
 				Artifact:   artifact,
 			})
@@ -54,7 +72,7 @@ func runBenchmarkRun(args []string) error {
 			result.Scores[i] = core.MergeIssueOpsBenchmarkScoreWithJudge(result.Scores[i], judgeScore)
 		}
 	case "file":
-		judgeMap, judgeScores, err := readIssueOpsJudgeMap(*judgeFile, fixtures)
+		judgeMap, judgeScores, err := readIssueOpsJudgeMap(judgeFile, fixtures)
 		if err != nil {
 			return err
 		}
@@ -70,16 +88,8 @@ func runBenchmarkRun(args []string) error {
 		}
 	case "none":
 	default:
-		return fmt.Errorf("unsupported issueops benchmark judge %q", *judge)
+		return fmt.Errorf("unsupported issueops benchmark judge %q", judge)
 	}
-	result = core.FinalizeIssueOpsBenchmarkRunResult(result)
-	if err := core.SaveIssueOpsBenchmarkRun(core.StateDir(), result); err != nil {
-		return err
-	}
-	if *jsonOut {
-		return printJSON(result)
-	}
-	fmt.Printf("%s fixtures=%d average=%.2f minimum=%.2f critical_failures=%d\n", result.ID, result.FixtureCount, result.AverageScore, result.MinimumScore, result.CriticalFailureCount)
 	return nil
 }
 
