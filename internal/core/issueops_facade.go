@@ -207,6 +207,15 @@ func RoutingTraceAsSkillRouting(record IssueOpsRecord) []SkillRouting {
 	return issueops.RoutingTraceAsSkillRouting(record)
 }
 
+type RoutingFidelityResult = issueops.RoutingFidelityResult
+
+// ScoreLiveRoutingFidelity scores a cycle's recorded live routing trace against
+// expected (phase, skill) pairings, replacing the benchmark's synthesized trace
+// with real observed activation.
+func ScoreLiveRoutingFidelity(record IssueOpsRecord, expected []SkillRouting) RoutingFidelityResult {
+	return issueops.ScoreLiveRoutingFidelity(record, expected)
+}
+
 func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
 	return issueops.ActiveIssueOpsCycleForBranch(repo, branch)
 }

@@ -102,6 +102,60 @@ func runIssueOpsLinkRelated(args []string) error {
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
+func runIssueOpsRoutingScore(args []string) error {
+	fs := flag.NewFlagSet("issueops routing-score", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	expect := fs.String("expect", "", "expected routing as comma-separated phase:skill pairings (e.g. plan:codd,implement:dijkstra)")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	expected, err := parseExpectedRouting(*expect)
+	if err != nil {
+		return err
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if err != nil {
+		if *jsonOut {
+			return printIssueOpsErrorJSON(err)
+		}
+		return err
+	}
+	result := core.ScoreLiveRoutingFidelity(record, expected)
+	if *jsonOut {
+		return printJSON(result)
+	}
+	fmt.Printf("routing fidelity: ok=%v (observed %d pairings)\n", result.OK, len(record.RoutingTrace))
+	for _, m := range result.Missing {
+		fmt.Printf("- missing: %s@%s\n", m.Skill, m.Phase)
+	}
+	return nil
+}
+
+func parseExpectedRouting(spec string) ([]core.SkillRouting, error) {
+	spec = strings.TrimSpace(spec)
+	if spec == "" {
+		return nil, fmt.Errorf("--expect is required as comma-separated phase:skill pairings")
+	}
+	var out []core.SkillRouting
+	for _, p := range strings.Split(spec, ",") {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		phase, skill, ok := strings.Cut(p, ":")
+		phase, skill = strings.TrimSpace(phase), strings.TrimSpace(skill)
+		if !ok || phase == "" || skill == "" {
+			return nil, fmt.Errorf("invalid --expect pairing %q; want phase:skill", p)
+		}
+		out = append(out, core.SkillRouting{Phase: phase, Skill: skill})
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("--expect produced no pairings")
+	}
+	return out, nil
+}
+
 func runIssueOpsRecordRouting(args []string) error {
 	fs := flag.NewFlagSet("issueops record-routing", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")

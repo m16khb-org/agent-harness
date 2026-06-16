@@ -4,7 +4,21 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/issueops/benchmark"
 )
+
+// RoutingFidelityResult reports whether a cycle's live routing covered every
+// expected skill-at-phase pairing.
+type RoutingFidelityResult = benchmark.RoutingFidelityResult
+
+// ScoreLiveRoutingFidelity scores a cycle's recorded live routing trace against
+// the expected (phase, skill) pairings using the same logic as the benchmark
+// skill_routing_fidelity dimension — but on observed activation rather than a
+// synthesized trace, so the score reflects what really happened in the run.
+func ScoreLiveRoutingFidelity(record IssueOpsRecord, expected []SkillRouting) RoutingFidelityResult {
+	return benchmark.RoutingFidelity(expected, RoutingTraceAsSkillRouting(record))
+}
 
 // maxRoutingTraceEntries bounds the live routing trace so a long-running cycle
 // cannot grow the record without limit.

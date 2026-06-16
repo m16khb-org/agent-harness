@@ -20,12 +20,29 @@ import "strings"
 // Fixtures without ExpectedRouting are handled as N/A by the scorer and never
 // reach this check.
 func issueOpsSkillRoutingFidelityComplete(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) bool {
-	for _, expected := range fixture.ExpectedRouting {
-		if !routingTraceHasPairing(artifact.RoutingTrace, expected) {
-			return false
+	return RoutingFidelity(fixture.ExpectedRouting, artifact.RoutingTrace).OK
+}
+
+// RoutingFidelityResult reports whether an observed routing trace covered every
+// expected skill-at-phase pairing, listing the pairings that were not observed.
+type RoutingFidelityResult struct {
+	OK      bool           `json:"ok"`
+	Missing []SkillRouting `json:"missing,omitempty"`
+}
+
+// RoutingFidelity is the shared core of skill_routing_fidelity. It reports
+// whether observed covers every expected (phase, skill) pairing and which are
+// missing. Reused for both the benchmark dimension (observed = artifact trace)
+// and live scoring of a real run (observed = the recorded RoutingTrace), so a
+// real run is scored by the same logic instead of a synthesized tautology.
+func RoutingFidelity(expected, observed []SkillRouting) RoutingFidelityResult {
+	var missing []SkillRouting
+	for _, e := range expected {
+		if !routingTraceHasPairing(observed, e) {
+			missing = append(missing, e)
 		}
 	}
-	return true
+	return RoutingFidelityResult{OK: len(missing) == 0, Missing: missing}
 }
 
 func routingTraceHasPairing(trace []SkillRouting, expected SkillRouting) bool {

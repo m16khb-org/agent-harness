@@ -30,6 +30,7 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"worktree":       runIssueOpsWorktree,
 	"phase":          runIssueOpsPhase,
 	"record-routing": runIssueOpsRecordRouting,
+	"routing-score":  runIssueOpsRoutingScore,
 	"feedback":       runIssueOpsFeedback,
 	"cleanup":        runIssueOpsCleanup,
 	"benchmark":      func(args []string) error { return benchmarkcmd.Run(args) },
