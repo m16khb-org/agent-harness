@@ -126,6 +126,12 @@ func WriteStateRecord(dir, key string, record StateRecord) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Mirror the StateRead invariant (record.Key must match the file key): this is
+	// the first writer that accepts a caller-built record alongside a separate key
+	// arg, so guard against persisting a record StateRead would later reject.
+	if record.Key != "" && record.Key != key {
+		return "", fmt.Errorf("state record key %q does not match write key %q", record.Key, key)
+	}
 	var path string
 	err = withStateLock(dir, key, func() error {
 		var werr error

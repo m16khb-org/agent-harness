@@ -292,6 +292,8 @@ _None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 | W3 | Worker | Job store write not atomic (truncated job dropped on crash) | 2026-06-16 completeness audit (writeWorkerJob temp+rename; EnqueueWorkerJob now under withWorkerJobLock — lone unlocked writer) |
 | W4 | Hook failure | Prune Close() error ignored before rename | 2026-06-16 completeness audit (fold tmp.Close() into writeErr so a flush failure aborts the rename) |
 | TC1 | State | StateUpdate (exported cross-process RMW) untested + 0 callers | 2026-06-16 completeness audit (TestStateUpdateLockedReadModifyWrite: create / skip-sentinel / mutate / concurrent no-lost-update under -race) |
+| W5 | Hook failure | Prune renames under no lock while append now locked (asymmetry) | 2026-06-16 convergence re-audit (PruneHookFailureLog now serializes under the same hook-failures WithKeyLock as the append) |
+| TC2 | State | WriteStateRecord accepts a record.Key diverging from the write key | 2026-06-16 convergence re-audit (guard mirrors StateRead's key invariant + TestWriteStateRecordRejectsKeyMismatch) |
 | D1 | Daemon | No connection limit | 5536cc8 (connSlots cap 64) |
 | D3 | Daemon | No graceful shutdown | 5536cc8 (activeWG + 30s drain) |
 | W1 | Worker | Stuck "running" jobs on crash | b89d311 (PID + isPIDAlive + DetectStuckWorkerJobs) |

@@ -136,74 +136,83 @@ func PruneHookFailureLog(maxAge time.Duration) (HookFailurePruneResult, error) {
 	path := HookFailureLogPath()
 	result := HookFailurePruneResult{OK: false, Path: path}
 
-	f, err := os.Open(path)
-	if os.IsNotExist(err) {
+	// Serialize the read+rewrite+rename against concurrent appends, which hold the
+	// same lock (RecordHookFailureEvent). Without this, an append onto the old
+	// inode between our read and rename would be dropped when the rename unlinks it.
+	lockErr := corestate.WithKeyLock(filepath.Dir(path), "hook-failures", func() error {
+		f, err := os.Open(path)
+		if os.IsNotExist(err) {
+			result.OK = true
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		cutoff := time.Now().UTC().Add(-maxAge)
+		var kept []HookFailureEvent
+		pruned := 0
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			var event HookFailureEvent
+			if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
+				pruned++
+				continue
+			}
+			ts, err := time.Parse(time.RFC3339Nano, event.Timestamp)
+			if err != nil {
+				ts, err = time.Parse(time.RFC3339, event.Timestamp)
+			}
+			if err != nil || ts.Before(cutoff) {
+				pruned++
+				continue
+			}
+			kept = append(kept, event)
+		}
+		_ = f.Close()
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+
+		tmpPath := path + ".tmp"
+		tmp, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+		if err != nil {
+			return err
+		}
+		writeErr := false
+		for _, event := range kept {
+			line, err := json.Marshal(event)
+			if err != nil {
+				writeErr = true
+				break
+			}
+			if _, err := tmp.Write(append(line, '\n')); err != nil {
+				writeErr = true
+				break
+			}
+		}
+		// Fold Close into writeErr: a flush failure surfacing only at Close (e.g.
+		// ENOSPC) must abort the rename so a truncated log never replaces the original.
+		if cerr := tmp.Close(); cerr != nil {
+			writeErr = true
+		}
+		if writeErr {
+			_ = os.Remove(tmpPath)
+			return nil
+		}
+
+		if err := os.Rename(tmpPath, path); err != nil {
+			_ = os.Remove(tmpPath)
+			return err
+		}
+
 		result.OK = true
-		return result, nil
+		result.Pruned = pruned
+		result.Kept = len(kept)
+		return nil
+	})
+	if lockErr != nil {
+		return result, lockErr
 	}
-	if err != nil {
-		return result, err
-	}
-
-	cutoff := time.Now().UTC().Add(-maxAge)
-	var kept []HookFailureEvent
-	pruned := 0
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		var event HookFailureEvent
-		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			pruned++
-			continue
-		}
-		ts, err := time.Parse(time.RFC3339Nano, event.Timestamp)
-		if err != nil {
-			ts, err = time.Parse(time.RFC3339, event.Timestamp)
-		}
-		if err != nil || ts.Before(cutoff) {
-			pruned++
-			continue
-		}
-		kept = append(kept, event)
-	}
-	_ = f.Close()
-	if err := scanner.Err(); err != nil {
-		return result, err
-	}
-
-	tmpPath := path + ".tmp"
-	tmp, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		return result, err
-	}
-	writeErr := false
-	for _, event := range kept {
-		line, err := json.Marshal(event)
-		if err != nil {
-			writeErr = true
-			break
-		}
-		if _, err := tmp.Write(append(line, '\n')); err != nil {
-			writeErr = true
-			break
-		}
-	}
-	// Fold Close into writeErr: a flush failure surfacing only at Close (e.g.
-	// ENOSPC) must abort the rename so a truncated log never replaces the original.
-	if cerr := tmp.Close(); cerr != nil {
-		writeErr = true
-	}
-	if writeErr {
-		_ = os.Remove(tmpPath)
-		return result, nil
-	}
-
-	if err := os.Rename(tmpPath, path); err != nil {
-		_ = os.Remove(tmpPath)
-		return result, err
-	}
-
-	result.OK = true
-	result.Pruned = pruned
-	result.Kept = len(kept)
 	return result, nil
 }

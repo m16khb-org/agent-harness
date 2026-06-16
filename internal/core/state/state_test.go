@@ -5,10 +5,28 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
+
+func TestWriteStateRecordRejectsKeyMismatch(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	// A caller-built record whose Key diverges from the write key would persist a
+	// record StateRead later rejects; WriteStateRecord must reject it up front.
+	if _, err := WriteStateRecord(dir, "foo", StateRecord{Key: "bar", SchemaVersion: StateCurrentSchemaVersion, Content: "x", Bytes: 1}); err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("expected key-mismatch error, got %v", err)
+	}
+	// Matching key (or empty Key) is accepted and round-trips.
+	if _, err := WriteStateRecord(dir, "foo", StateRecord{Key: "foo", SchemaVersion: StateCurrentSchemaVersion, Content: "x", Bytes: 1}); err != nil {
+		t.Fatalf("matching key should write: %v", err)
+	}
+	if read, err := StateRead("foo"); err != nil || read.Record.Content != "x" {
+		t.Fatalf("round-trip failed: %q err=%v", read.Record.Content, err)
+	}
+}
 
 func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
 	dir := t.TempDir()
