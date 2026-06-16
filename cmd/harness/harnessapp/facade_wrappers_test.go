@@ -567,5 +567,8 @@ func qualityInspectDepsForHarnessAppTest() qualitycli.InspectDeps {
 		Coverage:             func(string) (string, error) { return "ok\tpkg\tcoverage: 100.0% of statements\n", nil },
 		SelfAugmentOpenCount: func(string) (int, error) { return 0, nil },
 		SelfVerifyOpenCount:  func(string) (int, error) { return 0, nil },
+		CodeSNR: func(string) qualitycli.SNRResult {
+			return qualitycli.SNRResult{SignalLines: 70, NoiseLines: 30, TotalLines: 100, Ratio: 0.7}
+		},
 	}
 }

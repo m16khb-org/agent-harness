@@ -27,6 +27,7 @@ type InspectDeps struct {
 	SelfAugmentOpenCount func(root string) (int, error)
 	SelfVerifyOpenCount  func(root string) (int, error)
 	Candidates           func(root string) []QualityCandidate
+	CodeSNR              func(root string) SNRResult
 }
 
 type QualityCandidate = qualitycatalog.Candidate
@@ -99,6 +100,8 @@ func RunInspectWithDeps(args []string, deps InspectDeps) error {
 	fs := flag.NewFlagSet("quality inspect", flag.ContinueOnError)
 	repo := fs.String("repo", hostDeps.HarnessRoot(), "target repository path")
 	jsonOut := fs.Bool("json", false, "print JSON")
+	saveBaseline := fs.Bool("save-baseline", false, "persist the current code-SNR as the trend baseline in harness state")
+	trend := fs.Bool("trend", false, "report the code-SNR delta versus the saved baseline")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -106,6 +109,12 @@ func RunInspectWithDeps(args []string, deps InspectDeps) error {
 		*repo = fs.Arg(0)
 	}
 	result := Inspect(*repo, deps)
+	snrRatio := signalValue(result.Signals, "code-snr")
+	if *saveBaseline {
+		if err := saveSNRBaseline(snrRatio); err != nil {
+			result.Warnings = append(result.Warnings, "save-baseline: "+err.Error())
+		}
+	}
 	if *jsonOut {
 		return hostDeps.PrintJSON(result)
 	}
@@ -115,10 +124,29 @@ func RunInspectWithDeps(args []string, deps InspectDeps) error {
 	fmt.Printf("low coverage packages: %d\n", result.Summary.LowCoveragePackages)
 	fmt.Printf("branch candidate functions: %d\n", result.Summary.BranchCandidateFunctions)
 	fmt.Printf("audit P1/P2 items: %d\n", result.Summary.AuditP1P2Items)
+	if *trend {
+		if base, ok := readSNRBaseline(); ok {
+			fmt.Printf("code-snr: %.4f (baseline %.4f, Δ %+.4f)\n", snrRatio, base, snrRatio-base)
+		} else {
+			fmt.Printf("code-snr: %.4f (no baseline saved; run with --save-baseline)\n", snrRatio)
+		}
+	} else {
+		fmt.Printf("code-snr: %.4f\n", snrRatio)
+	}
 	for _, warning := range result.Warnings {
 		fmt.Printf("warning: %s\n", warning)
 	}
 	return nil
+}
+
+// signalValue returns the Value of the signal with the given id, or 0.
+func signalValue(signals []Signal, id string) float64 {
+	for _, s := range signals {
+		if s.ID == id {
+			return s.Value
+		}
+	}
+	return 0
 }
 
 func Inspect(root string, deps InspectDeps) InspectResult {
@@ -155,6 +183,7 @@ func Inspect(root string, deps InspectDeps) InspectResult {
 		}
 	}
 	candidates := deps.Candidates(root)
+	snr := deps.CodeSNR(root)
 	signals := []Signal{
 		{ID: "self-augment-open-candidates", Category: "candidate", Status: "ok", Value: float64(selfAugmentOpen), Evidence: []string{"self-augment candidate catalog"}},
 		{ID: "self-verify-open-candidates", Category: "candidate", Status: "ok", Value: float64(selfVerifyOpen), Evidence: []string{"self-verify candidate export"}},
@@ -162,6 +191,7 @@ func Inspect(root string, deps InspectDeps) InspectResult {
 		{ID: "branch-candidate-functions", Category: "complexity", Status: statusForCount(branchCandidateCount), Value: float64(branchCandidateCount), Threshold: 6, Evidence: branchEvidence(branchFunctions, 6)},
 		{ID: "high-branch-functions", Category: "complexity", Status: statusForCount(highBranchCount), Value: float64(highBranchCount), Threshold: 12, Evidence: branchEvidence(branchFunctions, 12)},
 		{ID: "audit-p1-p2-items", Category: "audit", Status: statusForCount(len(auditItems)), Value: float64(len(auditItems)), Evidence: auditEvidence(auditItems)},
+		{ID: "code-snr", Category: "quality", Status: "ok", Value: snr.Ratio, Evidence: snrEvidence(snr)},
 	}
 	return InspectResult{
 		OK:          true,
@@ -197,6 +227,9 @@ func (deps InspectDeps) withDefaults() InspectDeps {
 	}
 	if deps.Candidates == nil {
 		deps.Candidates = collectQualityCandidates
+	}
+	if deps.CodeSNR == nil {
+		deps.CodeSNR = computeCodeSNR
 	}
 	return deps
 }

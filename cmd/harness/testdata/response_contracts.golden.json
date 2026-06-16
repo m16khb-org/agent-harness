@@ -3408,6 +3408,16 @@
           "id": "audit-p1-p2-items",
           "status": "ok",
           "value": 0
+        },
+        {
+          "category": "quality",
+          "evidence": [
+            "signal=70 noise=30 total=100 lines",
+            "Shannon-style code signal-to-noise (logic vs blank/comment/structural); higher is denser"
+          ],
+          "id": "code-snr",
+          "status": "ok",
+          "value": 0.7
         }
       ],
       "summary": {
