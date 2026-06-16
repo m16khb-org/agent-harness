@@ -2,7 +2,6 @@ package claude
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -167,18 +166,11 @@ func TestClaudeInstallerReportsInvalidExistingSettings(t *testing.T) {
 	}
 }
 
-func TestClaudeInstallHelpersCoverQuotingAndErrorJoining(t *testing.T) {
+func TestClaudeInstallHelpersCoverQuoting(t *testing.T) {
 	if got := shellQuote(""); got != "''" {
 		t.Fatalf("empty shellQuote = %q", got)
 	}
 	if got := shellQuote("it's/bin"); got != `'it'"'"'s/bin'` {
 		t.Fatalf("quoted shellQuote = %q", got)
-	}
-	if err := joinErrors(nil); err != nil {
-		t.Fatalf("joinErrors(nil) = %v", err)
-	}
-	err := joinErrors([]error{errors.New("one"), nil, errors.New("two")})
-	if err == nil || err.Error() != "one; two" {
-		t.Fatalf("joinErrors = %v", err)
 	}
 }

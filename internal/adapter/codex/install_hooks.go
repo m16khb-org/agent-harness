@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/port"
 )
 
@@ -90,9 +91,9 @@ func codexHookCommand(binPath, subcommand string) string {
 	case "user-prompt", "session-start", "post-compact":
 		cmd += " --host codex"
 	case "pre-tool-use":
-		cmd += " --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"
+		cmd += " " + installutil.PreToolUseEnforcementFlags()
 	case "stop":
-		cmd += " --enforce-numbered-next-actions --relay-next-action-judgement"
+		cmd += " " + installutil.StopEnforcementFlags()
 	}
 	return cmd
 }
@@ -110,7 +111,7 @@ func mergeHookConfig(config map[string]any, binPath string) map[string]any {
 		groups := []any{}
 		if existing, ok := hooks[spec.Event].([]any); ok {
 			for _, group := range existing {
-				if hookGroupHasHooks(group) && !hookGroupContainsAgentHarness(group) {
+				if hookGroupHasHooks(group) && !installutil.HookGroupContainsAgentHarness(group) {
 					groups = append(groups, group)
 				}
 			}
@@ -128,25 +129,4 @@ func hookGroupHasHooks(group any) bool {
 	}
 	hooks, ok := m["hooks"].([]any)
 	return ok && len(hooks) > 0
-}
-
-func hookGroupContainsAgentHarness(group any) bool {
-	m, ok := group.(map[string]any)
-	if !ok {
-		return false
-	}
-	hooks, ok := m["hooks"].([]any)
-	if !ok {
-		return false
-	}
-	for _, hook := range hooks {
-		hm, ok := hook.(map[string]any)
-		if !ok {
-			continue
-		}
-		if cmd, ok := hm["command"].(string); ok && strings.Contains(cmd, "harness") && strings.Contains(cmd, " hook ") {
-			return true
-		}
-	}
-	return false
 }

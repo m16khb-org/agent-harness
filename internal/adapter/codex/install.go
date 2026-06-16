@@ -14,56 +14,31 @@ func NewInstaller() Installer { return Installer{} }
 func (Installer) Name() string { return "codex" }
 
 func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult, error) {
-	result := port.HostInstallResult{Host: "codex", OK: true, DryRun: req.DryRun}
-	var errs []error
+	plan := installutil.NewPlan("codex", req.DryRun)
 
 	_, links, messages, skillErrs := installutil.PlanHostSkillLinks(req.Root, filepath.Join(req.CodexHome, "skills"), req.SkillNames, "codex", req.DryRun)
-	result.Messages = append(result.Messages, messages...)
-	result.Links = append(result.Links, links...)
-	errs = append(errs, skillErrs...)
+	plan.Messages(messages)
+	plan.Links(links)
+	plan.Errs(skillErrs)
 
-	globalConfig := filepath.Join(req.CodexHome, "config.toml")
-	file, err := writeGlobalConfig(globalConfig, req)
-	result.Files = append(result.Files, file)
-	if err != nil {
-		errs = append(errs, err)
-	}
+	plan.File(writeGlobalConfig(filepath.Join(req.CodexHome, "config.toml"), req))
 
-	templatePath := filepath.Join(req.Root, "configs", "codex", "mcp.config.toml")
-	file, err = installutil.WriteTextPlan(templatePath, "codex_mcp_template", codexTemplate(req), 0o644, req.DryRun)
-	result.Files = append(result.Files, file)
-	if err != nil {
-		errs = append(errs, err)
-	}
+	mcpTemplatePath := filepath.Join(req.Root, "configs", "codex", "mcp.config.toml")
+	plan.File(installutil.WriteTextPlan(mcpTemplatePath, "codex_mcp_template", codexTemplate(req), 0o644, req.DryRun))
 
-	hooksPath := filepath.Join(req.CodexHome, "hooks.json")
-	file, err = writeCodexHooks(hooksPath, req)
-	result.Files = append(result.Files, file)
-	if err != nil {
-		errs = append(errs, err)
-	}
+	plan.File(writeCodexHooks(filepath.Join(req.CodexHome, "hooks.json"), req))
 
 	hooksTemplatePath := filepath.Join(req.Root, "configs", "codex", "hooks.json")
-	file, err = installutil.WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/agent-harness"), 0o644, req.DryRun)
-	result.Files = append(result.Files, file)
-	if err != nil {
-		errs = append(errs, err)
-	}
+	plan.File(installutil.WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/agent-harness"), 0o644, req.DryRun))
 
 	patchedFiles, patchMessages, err := patchCodexPluginHookCompatibility(req)
-	result.Files = append(result.Files, patchedFiles...)
-	result.Messages = append(result.Messages, patchMessages...)
-	if err != nil {
-		errs = append(errs, err)
-	}
+	plan.Files(patchedFiles)
+	plan.Messages(patchMessages)
+	plan.Err(err)
 
 	if req.DryRun {
-		result.Messages = append(result.Messages, "dry-run: planned Codex user skill links, MCP config, and lifecycle hooks without writing")
+		plan.Message("dry-run: planned Codex user skill links, MCP config, and lifecycle hooks without writing")
 	}
 
-	if len(errs) > 0 {
-		result.OK = false
-		return result, joinErrors(errs)
-	}
-	return result, nil
+	return plan.Finish()
 }

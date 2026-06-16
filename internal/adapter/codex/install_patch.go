@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/port"
 )
 
@@ -71,7 +72,7 @@ func patchCodexPluginHookCompatibility(req port.NativeInstallRequest) ([]port.In
 			}
 		}
 	}
-	return files, messages, joinErrors(errs)
+	return files, messages, installutil.JoinErrors(errs)
 }
 
 func llmWikiSessionHookReplacements() []textReplacement {
