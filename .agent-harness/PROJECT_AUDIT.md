@@ -249,32 +249,52 @@ Codex and Claude Code accept different JSON schemas for hook responses. The hook
 
 ## Summary Matrix
 
-| ID | Subsystem | Problem | Severity | Fix Effort |
-|----|-----------|---------|----------|------------|
-| D1 | Daemon | No connection limit | P1 | Small |
-| D2 | Daemon | NFS lock safety | P2 | Small (flock fallback) |
-| D3 | Daemon | No graceful shutdown | P2 | Medium |
-| W1 | Worker | Stuck "running" jobs on crash | P1 | Small |
-| W2 | Worker | No concurrent job guard | P1 | Small |
-| S1 | State | No write locking | P1 | Small (flock) |
-| S2 | State | No multi-key transactions | P2 | Large |
-| H1 | Hook failure | Unbounded log growth | P1 | Small (prune) |
-| H2 | Hook failure | Concurrent append > PIPE_BUF | P2 | Small |
-| P1 | Project state | Init race condition | P1 | Small (O_EXCL) |
-| P2 | Project state | Profile update locking | P2 | Small |
-| Q1 | Draft wiki | No stale lock detection | P1 | Small |
-| Q2 | Draft wiki | Capsule overwrite | P2 | Small |
-| C1 | Compact | Double PreCompact overwrite | P2 | Small |
-| C2 | Compact | Read-delete race | P2 | Small |
-| N1 | Next-action | Read-write race | P2 | Theoretical |
-| V1 | Self-verify | Temp dir leak on kill | P2 | Documentation |
-| CP1 | Command policy | Hardcoded catalog | P1 | Medium |
-| CP2 | Command policy | No chained command analysis | P2 | Out of scope |
-| L1 | External LLM | Single provider | P1 | Medium |
-| L2 | External LLM | No retry on bad output | P2 | Small |
-| M1 | MCP proxy | Dual transport | P2 | Large |
-| M2 | MCP proxy | Tool catalog drift | P1 | Medium |
-| HK1 | Hooks | Host output format divergence | P1 | Medium |
+> **Triage 2026-06-16** (evidence-verified against code/commits/tests; see the
+> backlog-triage workflow): of the original 24 P1/P2 items, **14 resolved**,
+> **3 partial/mitigated**, **4 open**, **3 out-of-scope/theoretical**. Only the
+> "Open / Partial" table below carries a bare `P1`/`P2` severity column, so
+> `quality inspect`'s `audit_p1_p2_items` signal now counts real remaining work
+> (7) instead of the stale 24 — the resolved and out-of-scope tables intentionally
+> omit the severity column so the parser excludes them.
+
+### Open / Partial — the counted `audit_p1_p2_items`
+
+| ID | Subsystem | Problem | Severity | Status (2026-06-16) |
+|----|-----------|---------|----------|---------------------|
+| S2 | State | No atomic multi-key transactions | P2 | open — P2/Large; accept-as-limitation or add a journal/composite-record transaction primitive |
+| C2 | Compact | Read-delete race | P2 | narrowed 2026-06-16 — compare-and-swap on CreatedAt in BuildPostCompactReminder (compact.go); residual TOCTOU + coarse-clock equality documented in code |
+| L2 | External LLM | No retry on malformed output | P2 | open — optional; zai response_format=json_object already guarantees JSON on the default path |
+| M1 | MCP proxy | Dual transport code paths | P2 | open — intentional test-pipe compat shim (serveMCPStreamLegacy); retire once SDK transport covers test pipes |
+| D2 | Daemon | NFS lock safety (O_EXCL) | P2 | partial — stale-lock + PID-liveness detection + CAUTIONS.md NFS caveat; true flock fallback tracked as task C5 |
+| H2 | Hook failure | Concurrent append > PIPE_BUF | P2 | partial — freeform fields bounded to 500B + reader counts corrupt lines (observable); full fix = flock the append |
+| P2 | Project state | Profile update locking | P2 | partial — concrete data-loss path (init race) closed via atomic hardlink; other writers target separate atomic files |
+
+### Resolved — excluded from the count (verified fixed)
+
+| ID | Subsystem | Problem | Resolved by |
+|----|-----------|---------|-------------|
+| D1 | Daemon | No connection limit | 5536cc8 (connSlots cap 64) |
+| D3 | Daemon | No graceful shutdown | 5536cc8 (activeWG + 30s drain) |
+| W1 | Worker | Stuck "running" jobs on crash | b89d311 (PID + isPIDAlive + DetectStuckWorkerJobs) |
+| W2 | Worker | No concurrent job guard | b89d311 (per-job flock withWorkerJobLock) |
+| S1 | State | No write locking | 40013f8 (withStateLock flock + StateUpdate) |
+| H1 | Hook failure | Unbounded log growth | PruneHookFailureLog 720h on session start |
+| P1 | Project state | Init race condition | 0800fca + a56d5e8 (O_EXCL hardlink createJSONAtomic) |
+| Q1 | Draft wiki | No stale lock detection | 90409c9 (PID + staleLockMaxAge) |
+| Q2 | Draft wiki | Capsule overwrite | 0cdeeb2 (merge instead of overwrite) |
+| C1 | Compact | Double PreCompact overwrite | 0cdeeb2 (mergeDocUpkeepEvents) |
+| CP1 | Command policy | Hardcoded catalog | LoadPolicyOverrides (.agent-harness/policy.json) |
+| L1 | External LLM | Single provider | 6408774 + 32f6ddc (port.ExternalLLM + Z.AI default) |
+| M2 | MCP proxy | Tool catalog drift | b8f2f11 (auto-generated DispatchMap) |
+| HK1 | Hooks | Host output format divergence | ff0e668 (HostHookOutput interface) |
+
+### Out-of-scope / theoretical — excluded from the count
+
+| ID | Subsystem | Problem | Disposition |
+|----|-----------|---------|-------------|
+| N1 | Next-action | Read-write race | theoretical (so marked in detail §); no concrete loss path |
+| V1 | Self-verify | Temp dir leak on kill | documentation-only; temp dirs prefixed agent-harness-self-verify-* |
+| CP2 | Command policy | No chained command analysis | out of scope (so marked in detail §) |
 
 ---
 

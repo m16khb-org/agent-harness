@@ -153,6 +153,46 @@ func TestDoublePreCompactDeduplicatesByTarget(t *testing.T) {
 	}
 }
 
+func TestConsumeCompactCapsuleRespectsInterleavingWrite(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, model.CompactCapsuleFile)
+
+	capsuleWithStamp := func(stamp, summary string) model.LifecycleCompactCapsule {
+		return model.LifecycleCompactCapsule{
+			SchemaVersion:    model.ProjectLifecycleSchemaVersion,
+			RepoID:           "repo-1",
+			CreatedAt:        stamp,
+			PendingDocUpkeep: []model.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"OPERATIONS.md"}, Summary: summary}},
+		}
+	}
+
+	// Match: the capsule on disk is the one we consumed -> it is removed.
+	read := capsuleWithStamp("2026-06-16T00:00:00.000000001Z", "first")
+	if err := writeJSONForTest(path, read, 0o600); err != nil {
+		t.Fatalf("write capsule: %v", err)
+	}
+	consumeCompactCapsule(path, read)
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("matching capsule should be consumed, stat error: %v", err)
+	}
+
+	// Interleave: between our read and consume, a PreCompact wrote a NEWER capsule
+	// (different CreatedAt). Consuming the OLD one we read must NOT delete the new
+	// one, so its hints survive for the next PostCompact.
+	newer := capsuleWithStamp("2026-06-16T00:00:00.000000002Z", "second (interleaved)")
+	if err := writeJSONForTest(path, newer, 0o600); err != nil {
+		t.Fatalf("write newer capsule: %v", err)
+	}
+	consumeCompactCapsule(path, read) // still trying to consume the OLD capsule
+	survived, ok := readCompactCapsule(path)
+	if !ok {
+		t.Fatalf("interleaving newer capsule must not be deleted")
+	}
+	if survived.CreatedAt != newer.CreatedAt || len(survived.PendingDocUpkeep) != 1 || survived.PendingDocUpkeep[0].Summary != "second (interleaved)" {
+		t.Fatalf("survived capsule should be the newer one, got: %+v", survived)
+	}
+}
+
 func compactPlanForTest(t *testing.T, stateDir string) model.ProjectLifecycleStatePlan {
 	t.Helper()
 	repo := t.TempDir()

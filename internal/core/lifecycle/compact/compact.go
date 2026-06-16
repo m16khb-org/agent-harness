@@ -117,13 +117,26 @@ func BuildPostCompactReminder(store Store, repo string) model.LifecycleCompactRe
 	if strings.TrimSpace(context) == "" {
 		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
 	}
-	_ = os.Remove(plan.CompactPath)
+	consumeCompactCapsule(plan.CompactPath, capsule)
 	return model.LifecycleCompactResult{
 		OK:                true,
 		ShouldInject:      true,
 		AdditionalContext: context,
 		PendingCount:      len(capsule.PendingDocUpkeep),
 		CompactPath:       plan.CompactPath,
+	}
+}
+
+// consumeCompactCapsule removes the capsule that BuildPostCompactReminder
+// read+rendered, but ONLY if it is still the one on disk (matched by CreatedAt).
+// C2 (read-delete race): if an interleaving PreCompact replaced it with a newer
+// capsule between the read and here, the new capsule is left for the next
+// PostCompact rather than deleting unseen hints. This is a non-atomic
+// compare-and-swap — a residual TOCTOU and a coarse-clock CreatedAt-equality
+// window remain — but it never loses data the prior unconditional remove kept.
+func consumeCompactCapsule(path string, consumed model.LifecycleCompactCapsule) {
+	if current, ok := readCompactCapsule(path); ok && current.CreatedAt == consumed.CreatedAt {
+		_ = os.Remove(path)
 	}
 }
 
