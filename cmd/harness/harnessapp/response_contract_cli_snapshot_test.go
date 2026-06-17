@@ -114,6 +114,9 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["issueops_remote_create_issue"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"remote", "create-issue", "--id", issueopsID, "--title", "contract issue", "--body", "contract body", "--label", "contract", "--json"})
 	})
+	cliSnapshot["issueops_remote_create_child"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"remote", "create-child", "--id", issueopsID, "--title", "contract child", "--body", "contract child body", "--label", "contract", "--assignee", "octocat", "--json"})
+	})
 	cliSnapshot["issueops_remote_create_pr"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"remote", "create-pr", "--id", issueopsID, "--title", "contract PR", "--head", "1-contract-branch", "--base", "main", "--json"})
 	})

@@ -223,7 +223,7 @@
           "name": "version"
         }
       ],
-      "hash": "71c4fd1aa92b097e0934e6ba5fb50bfbe64e9f5f991b793323309fe116333892",
+      "hash": "83221b8ec470c8cfa8448b3752d684a5f0513076ec7c4c683481eaea33755eba",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -254,6 +254,7 @@
         "issueops_prepare_worktree_tools",
         "issueops_record_intent",
         "issueops_record_routing",
+        "issueops_remote_create_child",
         "issueops_remote_create_issue",
         "issueops_remote_create_pr",
         "issueops_remote_score",
@@ -416,6 +417,16 @@
           "ai_slop_clean_at",
           "created_at",
           "updated_at"
+        ],
+        "issueops_remote_create_child": [
+          "ok",
+          "provider",
+          "child_url",
+          "child_number",
+          "hierarchy_verified",
+          "labels",
+          "assignees",
+          "preview"
         ],
         "issueops_remote_score": [
           "ok",
@@ -2908,6 +2919,12 @@
       "phase": "problem",
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP"
+    },
+    "issueops_remote_create_child": {
+      "hierarchy_verified": false,
+      "ok": true,
+      "preview": "[dry-run] would execute: glab api graphql --hostname gitlab.example resolve Task workItemTypeId for group/project; resolve labelIds and assigneeIds; workItemCreate Task for parentIid=1; workItemHierarchyAddChildrenItems; verify children, labels, assignees: labels=contract assignees=octocat",
+      "provider": "gitlab"
     },
     "issueops_remote_create_issue": {
       "number": "",
@@ -5777,7 +5794,7 @@
                 "name": "version"
               }
             ],
-            "hash": "71c4fd1aa92b097e0934e6ba5fb50bfbe64e9f5f991b793323309fe116333892",
+            "hash": "83221b8ec470c8cfa8448b3752d684a5f0513076ec7c4c683481eaea33755eba",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -5808,6 +5825,7 @@
               "issueops_prepare_worktree_tools",
               "issueops_record_intent",
               "issueops_record_routing",
+              "issueops_remote_create_child",
               "issueops_remote_create_issue",
               "issueops_remote_create_pr",
               "issueops_remote_score",
@@ -5970,6 +5988,16 @@
                 "ai_slop_clean_at",
                 "created_at",
                 "updated_at"
+              ],
+              "issueops_remote_create_child": [
+                "ok",
+                "provider",
+                "child_url",
+                "child_number",
+                "hierarchy_verified",
+                "labels",
+                "assignees",
+                "preview"
               ],
               "issueops_remote_score": [
                 "ok",
@@ -8067,6 +8095,19 @@
             "phase": "problem",
             "repo": "$WORKSPACE",
             "updated_at": "$TIMESTAMP"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_remote_create_child": {
+      "content": [
+        {
+          "json": {
+            "hierarchy_verified": false,
+            "ok": true,
+            "preview": "[dry-run] would execute: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo; gh api repos/example/repo/issues/{child_number}; gh api -X POST repos/example/repo/issues/2/sub_issues -f sub_issue_id={child_database_id}; gh api repos/example/repo/issues/2/sub_issues",
+            "provider": "github"
           },
           "type": "text"
         }

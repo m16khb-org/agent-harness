@@ -78,6 +78,9 @@ func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--body", "Body", "--label", "bug", "--json"}, deps); err != nil {
 		t.Fatalf("create-issue dry-run returned error: %v", err)
 	}
+	if err := Run([]string{"create-child", "--id", record.ID, "--title", "Child", "--body", "Body", "--label", "bug", "--assignee", "octocat", "--json"}, deps); err != nil {
+		t.Fatalf("create-child dry-run returned error: %v", err)
+	}
 	if err := Run([]string{"create-pr", "--id", record.ID, "--title", "PR", "--body", "Body", "--head", record.Branch, "--base", "main", "--json"}, deps); err != nil {
 		t.Fatalf("create-pr dry-run returned error: %v", err)
 	}
@@ -87,8 +90,54 @@ func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 	if len(records) != 1 {
 		t.Fatalf("expected one verified record, got %d", len(records))
 	}
-	if len(printed) != 3 {
-		t.Fatalf("expected three JSON dry-run outputs, got %d", len(printed))
+	if len(printed) != 4 {
+		t.Fatalf("expected four JSON dry-run outputs, got %d", len(printed))
+	}
+}
+
+func TestRunRemoteCreateChildConfirmRecordsChildLink(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecordWithoutChild(t)
+	binDir := t.TempDir()
+	writeFakeGhForCreateChild(t, binDir)
+	t.Setenv("PATH", binDir)
+	var printed []any
+	deps := Deps{
+		PrintJSON: func(value any) error {
+			printed = append(printed, value)
+			return nil
+		},
+		PrintError: func(err error) error {
+			return nil
+		},
+	}
+
+	if err := Run([]string{"create-child", "--id", record.ID, "--title", "Child", "--body", "Body", "--label", "bug", "--assignee", "octocat", "--confirm", "--json"}, deps); err != nil {
+		t.Fatalf("create-child confirm returned error: %v", err)
+	}
+	updated, err := core.ReadIssueOps(core.IssueOpsStateRoot(), record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(updated.IssueLinks) != 1 || updated.IssueLinks[0].Type != "child" || updated.IssueLinks[0].URL != "https://github.com/acme/repo/issues/34" {
+		t.Fatalf("child link not recorded: %+v", updated.IssueLinks)
+	}
+	if len(printed) != 1 {
+		t.Fatalf("expected one JSON result, got %d", len(printed))
+	}
+}
+
+func TestRunRemoteCreateChildRequiresParentLabelsAndAssignees(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecordWithoutChild(t)
+	tests := [][]string{
+		{"create-child", "--id", record.ID, "--title", "Child", "--assignee", "octocat"},
+		{"create-child", "--id", record.ID, "--title", "Child", "--label", "bug"},
+	}
+	for _, args := range tests {
+		if err := Run(args, Deps{}); err == nil {
+			t.Fatalf("expected validation error for args %v", args)
+		}
 	}
 }
 
@@ -151,6 +200,22 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 
 func remoteIssueOpsRecord(t *testing.T) core.IssueOpsRecord {
 	t.Helper()
+	record := remoteIssueOpsRecordWithoutChild(t)
+	var err error
+	record, err = core.LinkIssueOpsChild(core.IssueOpsStateRoot(), record.ID, "https://github.com/acme/repo/issues/1235", "child")
+	if err != nil {
+		t.Fatalf("LinkIssueOpsChild: %v", err)
+	}
+	record.Phase = issueops.IssueOpsPhasePR
+	record, err = issueops.WriteIssueOps(core.IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatalf("WriteIssueOps: %v", err)
+	}
+	return record
+}
+
+func remoteIssueOpsRecordWithoutChild(t *testing.T) core.IssueOpsRecord {
+	t.Helper()
 	repo := t.TempDir()
 	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: repo, Branch: "1234-remote-cmd"})
 	if err != nil {
@@ -170,14 +235,33 @@ func remoteIssueOpsRecord(t *testing.T) core.IssueOpsRecord {
 	if err != nil {
 		t.Fatalf("PrepareIssueOpsBranch: %v", err)
 	}
-	record, err = core.LinkIssueOpsChild(core.IssueOpsStateRoot(), record.ID, "https://github.com/acme/repo/issues/1235", "child")
-	if err != nil {
-		t.Fatalf("LinkIssueOpsChild: %v", err)
-	}
-	record.Phase = issueops.IssueOpsPhasePR
-	record, err = issueops.WriteIssueOps(core.IssueOpsStateRoot(), record)
-	if err != nil {
-		t.Fatalf("WriteIssueOps: %v", err)
-	}
 	return record
+}
+
+func writeFakeGhForCreateChild(t *testing.T, binDir string) {
+	t.Helper()
+	path := filepath.Join(binDir, "gh")
+	script := `#!/bin/sh
+if [ "$1 $2" = "issue create" ]; then
+  printf 'https://github.com/acme/repo/issues/34\n'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/34" ]; then
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}]}'
+  exit 0
+fi
+if [ "$1 $2" = "api -X" ] && [ "$3" = "POST" ]; then
+  printf '{"ok":true}'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/1234/sub_issues" ]; then
+  printf '[{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34"}]'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
 }

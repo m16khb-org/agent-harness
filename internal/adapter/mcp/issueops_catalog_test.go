@@ -85,6 +85,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_set_phase",
 		"issueops_verify_remote_artifact",
 		"issueops_remote_create_issue",
+		"issueops_remote_create_child",
 		"issueops_remote_create_pr",
 		"issueops_remote_sync_graph",
 		"issueops_force_release",
@@ -137,6 +138,15 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaHasProperty(byName["issueops_remote_score"].InputSchema, "threshold") {
 		t.Fatalf("issueops_remote_score schema missing threshold: %#v", byName["issueops_remote_score"].InputSchema)
+	}
+	createChild := byName["issueops_remote_create_child"]
+	for _, required := range []string{"id", "title", "labels", "assignees"} {
+		if !schemaRequires(createChild.InputSchema, required) {
+			t.Fatalf("issueops_remote_create_child must require %q: %#v", required, createChild.InputSchema)
+		}
+	}
+	if !schemaHasProperty(createChild.InputSchema, "confirm") {
+		t.Fatalf("issueops_remote_create_child schema missing confirm: %#v", createChild.InputSchema)
 	}
 	if !schemaRequires(byName["issueops_resume"].InputSchema, "repo") {
 		t.Fatalf("issueops_resume must require repo: %#v", byName["issueops_resume"].InputSchema)

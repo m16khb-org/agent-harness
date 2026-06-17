@@ -39,6 +39,32 @@ func TestGitLabCreateIssueDryRun(t *testing.T) {
 	}
 }
 
+func TestGitLabCreateChildDryRunDoesNotExecute(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	res, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{
+		Repo:           t.TempDir(),
+		ParentIssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
+		Title:          "하위 작업",
+		Body:           "details",
+		Labels:         []string{"bug"},
+		Assignees:      []string{"habin"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !res.OK || res.Provider != "gitlab" {
+		t.Fatalf("result=%+v, want ok gitlab dry-run", res)
+	}
+	if res.ChildURL != "" || res.ChildNumber != "" || res.HierarchyVerified {
+		t.Fatalf("dry-run must not populate remote result fields: %+v", res)
+	}
+	for _, want := range []string{"[dry-run]", "gitlab.example.com", "workItemCreate", "Task", "workItemHierarchyAddChildrenItems", "verify", "bug", "habin"} {
+		if !strings.Contains(res.Preview, want) {
+			t.Fatalf("preview %q missing %q", res.Preview, want)
+		}
+	}
+}
+
 func TestGitLabCreateMRRequiresBranches(t *testing.T) {
 	_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Title: "MR"})
 	if err == nil {
@@ -57,6 +83,162 @@ func TestGitLabCreateMRDryRun(t *testing.T) {
 	}
 	if !strings.Contains(res.Preview, "mr create") || !strings.Contains(res.Preview, "--source-branch feat/x") || !strings.Contains(res.Preview, "--target-branch main") {
 		t.Errorf("preview missing expected args: %q", res.Preview)
+	}
+}
+
+func TestGitLabCreateChildConfirmCreatesAttachesAndVerifies(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "glab.calls")
+	writeFakeGlab(t, binDir, `#!/bin/sh
+printf '%s\n' "$*" >> glab.calls
+case "$*" in
+  *taskType*)
+    printf '{"data":{"namespace":{"workItemTypes":{"nodes":[{"id":"gid://gitlab/WorkItems::Type/2","name":"Task"}]}}}}'
+    exit 0
+    ;;
+  *labelLookup*)
+    printf '{"data":{"project":{"labels":{"nodes":[{"id":"gid://gitlab/ProjectLabel/7","title":"bug"}]}}}}'
+    exit 0
+    ;;
+  *userLookup*)
+    printf '{"data":{"user":{"id":"gid://gitlab/User/9","username":"habin"}}}'
+    exit 0
+    ;;
+  *workItemCreate*)
+    printf '{"data":{"workItemCreate":{"workItem":{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.com/acme/repo/-/work_items/34","labels":{"nodes":[{"title":"bug"}]},"assignees":{"nodes":[{"username":"habin"}]}}}}}'
+    exit 0
+    ;;
+  *parentIid*)
+    printf '{"data":{"project":{"issue":{"id":"gid://gitlab/WorkItem/12"}}}}'
+    exit 0
+    ;;
+  *workItemHierarchyAddChildrenItems*)
+    printf '{"data":{"workItemHierarchyAddChildrenItems":{"workItem":{"id":"gid://gitlab/WorkItem/12"},"errors":[]}}}'
+    exit 0
+    ;;
+  *children*)
+    printf '{"data":{"workItem":{"widgets":[{"type":"HIERARCHY","children":{"nodes":[{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.com/acme/repo/-/work_items/34"}]}}]}}}'
+    exit 0
+    ;;
+  *childVerify*)
+    printf '{"data":{"workItem":{"iid":"34","webUrl":"https://gitlab.com/acme/repo/-/work_items/34","labels":{"nodes":[{"title":"bug"}]},"assignees":{"nodes":[{"username":"habin"}]}}}}'
+    exit 0
+    ;;
+esac
+echo "unexpected glab call: $*" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	got, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{
+		Repo:           repo,
+		ParentIssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
+		Title:          "하위 작업",
+		Body:           "details",
+		Labels:         []string{"bug"},
+		Assignees:      []string{"habin"},
+		Confirm:        true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.OK || got.Provider != "gitlab" || got.ChildURL != "https://gitlab.com/acme/repo/-/work_items/34" || got.ChildNumber != "34" || !got.HierarchyVerified {
+		t.Fatalf("result=%+v", got)
+	}
+	if strings.Join(got.Labels, ",") != "bug" || strings.Join(got.Assignees, ",") != "habin" {
+		t.Fatalf("verification labels/assignees not reflected: %+v", got)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := strings.TrimSpace(string(log))
+	for _, want := range []string{"--hostname gitlab.example.com", "taskType", "labelLookup", "userLookup", "workItemCreate", "parentIid", "workItemHierarchyAddChildrenItems", "children", "childVerify"} {
+		if !strings.Contains(calls, want) {
+			t.Fatalf("calls missing %q:\n%s", want, calls)
+		}
+	}
+}
+
+func TestGitLabCreateChildFailureAfterCreateIncludesChildURL(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+case "$*" in
+  *taskType*)
+    printf '{"data":{"namespace":{"workItemTypes":{"nodes":[{"id":"gid://gitlab/WorkItems::Type/2","name":"Task"}]}}}}'
+    exit 0
+    ;;
+  *labelLookup*)
+    printf '{"data":{"project":{"labels":{"nodes":[{"id":"gid://gitlab/ProjectLabel/7","title":"bug"}]}}}}'
+    exit 0
+    ;;
+  *userLookup*)
+    printf '{"data":{"user":{"id":"gid://gitlab/User/9","username":"habin"}}}'
+    exit 0
+    ;;
+  *workItemCreate*)
+    printf '{"data":{"workItemCreate":{"workItem":{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.example.com/acme/repo/-/work_items/34","labels":{"nodes":[{"title":"bug"}]},"assignees":{"nodes":[{"username":"habin"}]}}}}}'
+    exit 0
+    ;;
+esac
+echo "parent lookup failed" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	_, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{
+		Repo:           repo,
+		ParentIssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
+		Title:          "하위 작업",
+		Labels:         []string{"bug"},
+		Assignees:      []string{"habin"},
+		Confirm:        true,
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "https://gitlab.example.com/acme/repo/-/work_items/34") {
+		t.Fatalf("error=%q, want created child URL for cleanup", err)
+	}
+}
+
+func TestGitLabCreateChildGraphQLFailureDoesNotFallbackToIssue(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "glab.calls")
+	writeFakeGlab(t, binDir, `#!/bin/sh
+printf '%s\n' "$*" >> glab.calls
+echo "GraphQL: field not available" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	_, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{
+		Repo:           repo,
+		ParentIssueURL: "https://gitlab.com/acme/repo/-/issues/12",
+		Title:          "하위 작업",
+		Confirm:        true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "glab graphql") {
+		t.Fatalf("error=%v, want graphql failure", err)
+	}
+	log, readErr := os.ReadFile(logPath)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if strings.Contains(string(log), "issue create") {
+		t.Fatalf("must not fall back to sibling issue create, calls:\n%s", string(log))
 	}
 }
 

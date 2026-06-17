@@ -20,11 +20,114 @@ Required phases:
 1. Problem intake: use `superpowers:brainstorming` to clarify the actual problem, constraints, success criteria, and ambiguity.
 2. Domain grill: challenge terminology, existing domain model fit, and documentation updates before committing to an issue.
 3. Issue contract: before remote issue creation, run the issue-preflight gate in `references/issue-preflight.md`; record the raw user request, interpreted intent, success criteria, constraints, non-goals, and ambiguity ledger with `agent-harness issueops intent record`; then create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions.
-4. Plan: produce an issue-based implementation plan under the target repo's planning convention, then record the reviewed design, refactor boundary, risks, alternatives, and verification matrix with `agent-harness issueops design review`.
-5. Implementation: the main agent performs TDD directly. Sub-agents are spawned only for context-isolated work matching the 12 net-positive patterns (`.agent-harness/SUB_AGENT_PATTERNS.md`). Optimize algorithmic complexity with **`dijkstra`**, design database schemas and indexes with **`codd`**, diagnose failures with **`hopper`**, manage git operations with **`torvalds`** and **`atomic-commit-push`**, and optimize agent prompts with **`karpathy`**. Do not enter implementation until the IssueOps design review is approved and has no open questions.
-6. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
-7. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
-8. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
+4. Large issue breakdown gate: Issue Contract 이후, Plan 이전에 `references/remote-issue.md`의 provider-specific hierarchy rules를 적용한다. Before entering the IssueOps `plan` phase, decide whether the parent issue is too large for one safe work item. If splitting is needed, keep the parent as the umbrella issue, create provider-native child work items with `agent-harness issueops remote create-child`, update the parent body with the child task section, verify hierarchy/labels/assignee/body, and let `create-child` record every verified child in IssueOps state. Use `agent-harness issueops link-child` only as the manual escape hatch for provider-native child work items that already exist and were verified separately. If no split is needed, record the no-split rationale before planning.
+5. Plan: produce an issue-based implementation plan under the target repo's planning convention, then record the reviewed design, refactor boundary, risks, alternatives, and verification matrix with `agent-harness issueops design review`.
+6. Implementation: the main agent performs TDD directly. Sub-agents are spawned only for context-isolated work matching the 12 net-positive patterns (`.agent-harness/SUB_AGENT_PATTERNS.md`). Optimize algorithmic complexity with **`dijkstra`**, design database schemas and indexes with **`codd`**, diagnose failures with **`hopper`**, manage git operations with **`torvalds`** and **`atomic-commit-push`**, and optimize agent prompts with **`karpathy`**. Do not enter implementation until the IssueOps design review is approved and has no open questions.
+7. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
+8. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
+9. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
+
+### Large Issue Breakdown Gate
+
+Run this gate after the remote Issue Contract exists and before entering the IssueOps `plan` phase.
+
+```text
+Before entering the IssueOps `plan` phase, evaluate whether the current remote issue is too large to implement as one safe work item.
+
+### When To Split
+
+Split the issue into provider-native child tasks when two or more of these are true:
+
+- The issue has multiple independently verifiable acceptance criteria.
+- The work touches multiple modules, layers, providers, or runtime concerns.
+- The implementation naturally has ordered phases such as routing/config, request shape, lifecycle, usage/cost, migration, or verification.
+- A single MR would hide risky behavior changes behind unrelated setup work.
+- The issue contains research findings, open assumptions, or external API semantics that need separate implementation validation.
+- The estimated work is larger than one focused implementation pass.
+- The parent issue reads like an umbrella/epic rather than a directly executable task.
+
+Do not split only because the issue body is long. Split only when the resulting child tasks have independent deliverables, verification, and rollback boundaries.
+
+### Required Behavior
+
+If splitting is needed:
+
+1. Keep the original issue as the umbrella parent.
+2. Create provider-native child work items/tasks with `agent-harness issueops remote create-child --id ID --title TEXT --body TEXT --label LABEL --assignee USER --confirm --json`, not ordinary sibling issues.
+   - GitHub: create sub-issues if supported by the project workflow.
+   - GitLab: create child `Task` work items under the parent issue/work item.
+3. Each child task must have:
+   - a Korean title
+   - a Korean body
+   - clear scope
+   - acceptance criteria
+   - verification commands or evidence
+   - non-goals when needed
+   - inherited labels from the parent unless explicitly inappropriate
+   - assignee matching the parent/current owner
+4. Link every child task to the parent using the provider-native hierarchy. The preferred command is `remote create-child`; it creates the child, attaches the hierarchy, verifies labels/assignees, and records the child link. `link-child` is only for an already-created provider-native child URL.
+5. Update the parent issue body, not a comment, with:
+   - `## 하위 Task`
+   - each child task link
+   - recommended execution order
+   - scope summary per child
+   - note that the parent is now the umbrella coordination issue
+6. Do not leave the child-task plan only in comments. Comments may be used only for temporary coordination if the provider body update fails.
+7. Verify after creation:
+   - child items are the correct work item type
+   - child-parent relationship exists
+   - labels are present
+   - assignee is present
+   - parent body contains the child task section
+8. If incorrect sibling issues were accidentally created, do not silently reuse them.
+   - Create the correct child tasks.
+   - Close the incorrect issues with a short correction note.
+   - Reflect only the correct child tasks in the parent body.
+
+### If Not Splitting
+
+If the issue is small enough, record why it remains a single task before entering `plan`.
+
+Use this format:
+
+Large Issue Breakdown Gate: no split
+
+근거:
+- <why the issue is directly executable>
+- <why acceptance criteria do not need independent child tasks>
+- <expected implementation boundary>
+
+### Output Format
+
+After the gate, report exactly one of these:
+
+분리 결정: split
+
+Parent:
+- <parent issue URL>
+
+Child tasks:
+1. <child task URL> - <scope>
+2. <child task URL> - <scope>
+3. <child task URL> - <scope>
+
+검증:
+- hierarchy verified
+- labels verified
+- assignee verified
+- parent body updated
+
+or
+
+분리 결정: no split
+
+근거:
+- <reason>
+- <reason>
+
+다음 단계:
+- proceed to IssueOps plan phase for <issue URL>
+```
 
 ## Agent-Harness Phase Assist Map
 

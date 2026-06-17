@@ -37,6 +37,7 @@ var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
 	"issueops_force_release":          handleMCPIssueOpsForceRelease,
 	"issueops_cleanup_stale":          handleMCPIssueOpsCleanupStale,
 	"issueops_remote_create_issue":    handleMCPRemoteCreateIssue,
+	"issueops_remote_create_child":    handleMCPRemoteCreateChild,
 	"issueops_remote_create_pr":       handleMCPRemoteCreatePR,
 	"issueops_remote_sync_graph":      handleMCPRemoteSyncGraph,
 	"issueops_resume":                 handleMCPIssueOpsResume,
@@ -112,6 +113,50 @@ func handleMCPRemoteCreateIssue(args map[string]any) MCPToolOutcome {
 	return issueOpsMCPOutcome(result, err, "IssueOps remote create-issue failed")
 }
 
+func handleMCPRemoteCreateChild(args map[string]any) MCPToolOutcome {
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-child failed: cannot read cycle")
+	}
+	if strings.TrimSpace(record.IssueURL) == "" {
+		return issueOpsMCPOutcome(nil, fmt.Errorf("cannot create child before linked parent issue"), "IssueOps remote create-child failed")
+	}
+	labels := argmap.StringSlice(args, "labels")
+	assignees := argmap.StringSlice(args, "assignees")
+	if err := validateMCPCreateChildInputs(argmap.String(args, "title"), labels, assignees); err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-child failed")
+	}
+	providerName := resolveRecordProviderForMCP(record)
+	if providerName == "" {
+		return issueOpsMCPOutcome(nil, fmt.Errorf("cannot determine provider"), "IssueOps remote create-child failed")
+	}
+	prov, err := provider.Resolve(providerName)
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-child failed")
+	}
+	result, err := core.CreateRemoteChild(core.IssueProviderCreateChildRequest{
+		Repo:           record.Repo,
+		ParentIssueURL: record.IssueURL,
+		Title:          argmap.String(args, "title"),
+		Body:           argmap.String(args, "body"),
+		Labels:         labels,
+		Assignees:      assignees,
+		Confirm:        argmap.Bool(args, "confirm"),
+	}, prov)
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-child failed")
+	}
+	if argmap.Bool(args, "confirm") {
+		if !result.HierarchyVerified || strings.TrimSpace(result.ChildURL) == "" {
+			return issueOpsMCPOutcome(nil, fmt.Errorf("provider did not verify child hierarchy"), "IssueOps remote create-child failed")
+		}
+		if _, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), record.ID, result.ChildURL, argmap.String(args, "title")); err != nil {
+			return issueOpsMCPOutcome(nil, err, "IssueOps remote create-child failed")
+		}
+	}
+	return issueOpsMCPOutcome(result, nil, "IssueOps remote create-child failed")
+}
+
 func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
 	if err != nil {
@@ -144,6 +189,19 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 		Confirm:    argmap.Bool(args, "confirm"),
 	}, prov)
 	return issueOpsMCPOutcome(result, err, "IssueOps remote create-pr failed")
+}
+
+func validateMCPCreateChildInputs(title string, labels, assignees []string) error {
+	if strings.TrimSpace(title) == "" {
+		return fmt.Errorf("child title is required")
+	}
+	if len(labels) == 0 {
+		return fmt.Errorf("at least one child label is required")
+	}
+	if len(assignees) == 0 {
+		return fmt.Errorf("at least one child assignee is required")
+	}
+	return nil
 }
 
 func resolveRecordProviderForMCP(record core.IssueOpsRecord) string {

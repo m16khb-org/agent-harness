@@ -18,6 +18,8 @@ type IssueProviderCreateIssueRequest = port.IssueProviderCreateIssueRequest
 type IssueProviderCreateIssueResult = port.IssueProviderCreateIssueResult
 type IssueProviderCreatePullRequestRequest = port.IssueProviderCreatePullRequestRequest
 type IssueProviderCreatePullRequestResult = port.IssueProviderCreatePullRequestResult
+type IssueProviderCreateChildRequest = port.IssueProviderCreateChildRequest
+type IssueProviderCreateChildResult = port.IssueProviderCreateChildResult
 type IssueProvider = port.IssueProvider
 
 func SyncRemoteIssueGraph(record IssueOpsRecord) (map[string]any, error) {
@@ -41,4 +43,14 @@ func CreateRemotePullRequest(req IssueProviderCreatePullRequestRequest, prov Iss
 		return IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("no issue provider configured")
 	}
 	return prov.CreatePullRequest(req)
+}
+
+// CreateRemoteChild creates and verifies a provider-native child work item
+// through the supplied provider. State recording remains explicit at the
+// caller boundary via LinkIssueOpsChild so dry-runs never mutate state.
+func CreateRemoteChild(req IssueProviderCreateChildRequest, prov IssueProvider) (IssueProviderCreateChildResult, error) {
+	if prov == nil {
+		return IssueProviderCreateChildResult{OK: false}, fmt.Errorf("no issue provider configured")
+	}
+	return prov.CreateChild(req)
 }

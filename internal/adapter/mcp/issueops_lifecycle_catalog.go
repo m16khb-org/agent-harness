@@ -138,6 +138,18 @@ func IssueOpsLifecycleTools() []Tool {
 			}},
 		},
 		{
+			Name:        "issueops_remote_create_child",
+			Description: "Create a provider-native child work item under the linked parent issue, verify hierarchy/labels/assignees, then record the child link in IssueOps state when confirm=true. Dry-run by default.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "title", "labels", "assignees"}, "properties": map[string]any{
+				"id":        map[string]any{"type": "string", "description": "IssueOps id. The parent issue URL and provider are inferred from the cycle state."},
+				"title":     map[string]any{"type": "string", "description": "Child task title."},
+				"body":      map[string]any{"type": "string", "description": "Child task body (markdown)."},
+				"labels":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Labels to apply and verify on the child."},
+				"assignees": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Assignee usernames to apply and verify on the child."},
+				"confirm":   map[string]any{"type": "boolean", "description": "Set true to create, attach, verify, and record the child; omit for dry-run preview."},
+			}},
+		},
+		{
 			Name:        "issueops_remote_create_pr",
 			Description: "Create a remote pull request / merge request for the IssueOps cycle. Dry-run by default; pass confirm=true to execute. Provider and branch info are inferred from the cycle state (branch_prepare, branch, remote_artifact).",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "title"}, "properties": map[string]any{

@@ -24,6 +24,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("  agent-harness issueops remote score --input PATH [--judge none|agy] [--json]")
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
 		return nil
@@ -119,6 +120,8 @@ func Run(args []string, deps Deps) error {
 		return deps.printResult(record, *jsonOut, err)
 	case "create-issue":
 		return runRemoteCreateIssue(args[1:], deps)
+	case "create-child":
+		return runRemoteCreateChild(args[1:], deps)
 	case "create-pr":
 		return runRemoteCreatePR(args[1:], deps)
 	case "sync-graph":
@@ -279,6 +282,96 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	return nil
 }
 
+func runRemoteCreateChild(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops remote create-child", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	title := fs.String("title", "", "child title")
+	body := fs.String("body", "", "child body (markdown)")
+	confirm := fs.Bool("confirm", false, "execute creation; without this, dry-run preview only")
+	var labels repeatedFlag
+	var assignees repeatedFlag
+	fs.Var(&labels, "label", "label to apply (repeatable)")
+	fs.Var(&assignees, "assignee", "assignee username (repeatable)")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if strings.TrimSpace(record.IssueURL) == "" {
+		err := fmt.Errorf("cannot create child before linked parent issue")
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if err := validateCreateChildInputs(*title, labels, assignees); err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	providerName := resolveRecordProvider(record)
+	if providerName == "" {
+		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	prov, err := provider.Resolve(providerName)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	result, err := core.CreateRemoteChild(core.IssueProviderCreateChildRequest{
+		Repo:           record.Repo,
+		ParentIssueURL: record.IssueURL,
+		Title:          *title,
+		Body:           *body,
+		Labels:         labels,
+		Assignees:      assignees,
+		Confirm:        *confirm,
+	}, prov)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if *confirm {
+		if !result.HierarchyVerified || strings.TrimSpace(result.ChildURL) == "" {
+			err := fmt.Errorf("provider did not verify child hierarchy")
+			if *jsonOut {
+				_ = deps.printError(err)
+			}
+			return err
+		}
+		if _, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), record.ID, result.ChildURL, *title); err != nil {
+			if *jsonOut {
+				_ = deps.printError(err)
+			}
+			return err
+		}
+	}
+	if *jsonOut {
+		return deps.printJSON(result)
+	}
+	if result.ChildURL != "" {
+		fmt.Printf("created child: %s\n", result.ChildURL)
+	} else {
+		fmt.Println(result.Preview)
+	}
+	return nil
+}
+
 func runRemoteCreatePR(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops remote create-pr", flag.ContinueOnError)
 	id := fs.String("id", "", "IssueOps id")
@@ -345,6 +438,19 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		fmt.Printf("created: %s\n", result.URL)
 	} else {
 		fmt.Println(result.Preview)
+	}
+	return nil
+}
+
+func validateCreateChildInputs(title string, labels, assignees []string) error {
+	if strings.TrimSpace(title) == "" {
+		return fmt.Errorf("child title is required")
+	}
+	if len(labels) == 0 {
+		return fmt.Errorf("at least one child label is required")
+	}
+	if len(assignees) == 0 {
+		return fmt.Errorf("at least one child assignee is required")
 	}
 	return nil
 }

@@ -140,3 +140,73 @@ func TestMCPIssueOpsRemoteScoreAcceptsCandidateAliases(t *testing.T) {
 		t.Fatalf("expected alias label to be selected: %#v", result)
 	}
 }
+
+func TestMCPIssueOpsRemoteCreateChildRecordsChildLink(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bin := t.TempDir()
+	writeFakeGhForMCPCreateChild(t, bin)
+	t.Setenv("PATH", bin)
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": repo, "branch": "12-child"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	callMCPToolForIssueOpsTest(t, "issueops_link_issue", map[string]any{
+		"id":        id,
+		"issue_url": "https://github.com/acme/repo/issues/12",
+	})
+	callMCPToolForIssueOpsTest(t, "issueops_prepare_branch", map[string]any{
+		"id":            id,
+		"provider":      "github",
+		"issue_url":     "https://github.com/acme/repo/issues/12",
+		"branch":        "12-child",
+		"base_branch":   "main",
+		"link_verified": true,
+	})
+
+	result := callMCPToolForIssueOpsTest(t, "issueops_remote_create_child", map[string]any{
+		"id":        id,
+		"title":     "Child",
+		"body":      "Body",
+		"labels":    []string{"bug"},
+		"assignees": []string{"octocat"},
+		"confirm":   true,
+	})
+	if result["child_url"] != "https://github.com/acme/repo/issues/34" || result["hierarchy_verified"] != true {
+		t.Fatalf("unexpected create-child result: %#v", result)
+	}
+	status := callMCPToolForIssueOpsTest(t, "issueops_status", map[string]any{"id": id})
+	links, ok := status["issue_links"].([]any)
+	if !ok || len(links) != 1 {
+		t.Fatalf("expected one child link in status: %#v", status)
+	}
+}
+
+func writeFakeGhForMCPCreateChild(t *testing.T, binDir string) {
+	t.Helper()
+	script := `#!/bin/sh
+if [ "$1 $2" = "issue create" ]; then
+  printf 'https://github.com/acme/repo/issues/34\n'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/34" ]; then
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}]}'
+  exit 0
+fi
+if [ "$1 $2" = "api -X" ] && [ "$3" = "POST" ]; then
+  printf '{"ok":true}'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/12/sub_issues" ]; then
+  printf '[{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34"}]'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`
+	if err := os.WriteFile(filepath.Join(binDir, "gh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+}

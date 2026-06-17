@@ -1300,6 +1300,51 @@
     "name": "issueops_remote_create_issue"
   },
   {
+    "description": "Create a provider-native child work item under the linked parent issue, verify hierarchy/labels/assignees, then record the child link in IssueOps state when confirm=true. Dry-run by default.",
+    "inputSchema": {
+      "properties": {
+        "assignees": {
+          "description": "Assignee usernames to apply and verify on the child.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "body": {
+          "description": "Child task body (markdown).",
+          "type": "string"
+        },
+        "confirm": {
+          "description": "Set true to create, attach, verify, and record the child; omit for dry-run preview.",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "IssueOps id. The parent issue URL and provider are inferred from the cycle state.",
+          "type": "string"
+        },
+        "labels": {
+          "description": "Labels to apply and verify on the child.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "description": "Child task title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "labels",
+        "assignees"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_remote_create_child"
+  },
+  {
     "description": "Create a remote pull request / merge request for the IssueOps cycle. Dry-run by default; pass confirm=true to execute. Provider and branch info are inferred from the cycle state (branch_prepare, branch, remote_artifact).",
     "inputSchema": {
       "properties": {

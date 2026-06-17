@@ -83,6 +83,30 @@ func TestIssueOpsSkillRequiresQualityUpgradeContracts(t *testing.T) {
 	}
 }
 
+func TestIssueOpsSkillDocumentsLargeIssueBreakdownGateForBothProviders(t *testing.T) {
+	skill := readIssueOpsSkillForTest(t)
+	remoteIssue := readIssueOpsReferenceForTest(t, "remote-issue.md")
+	body := skill + "\n" + remoteIssue
+
+	for _, want := range []string{
+		"Issue Contract 이후, Plan 이전",
+		"Before entering the IssueOps `plan` phase",
+		"분리 결정: split",
+		"분리 결정: no split",
+		"GitHub: create sub-issues",
+		"GitLab: create child `Task` work items",
+		"agent-harness issueops remote create-child",
+		"gh api",
+		"glab api",
+		"provider-native hierarchy",
+		"parent body updated",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("IssueOps large issue breakdown gate must document provider-neutral contract phrase %q", want)
+		}
+	}
+}
+
 func TestIssueOpsSkillDocumentsReadinessGateKeys(t *testing.T) {
 	skill := readIssueOpsSkillForTest(t)
 	for _, want := range []string{

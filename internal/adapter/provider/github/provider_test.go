@@ -46,6 +46,32 @@ func TestGitHubCreateIssueDryRunDoesNotExecute(t *testing.T) {
 	}
 }
 
+func TestGitHubCreateChildDryRunDoesNotExecute(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	res, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{
+		Repo:           t.TempDir(),
+		ParentIssueURL: "https://github.com/acme/repo/issues/12",
+		Title:          "하위 작업",
+		Body:           "details",
+		Labels:         []string{"bug"},
+		Assignees:      []string{"octocat"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !res.OK || res.Provider != "github" {
+		t.Fatalf("result=%+v, want ok github dry-run", res)
+	}
+	if res.ChildURL != "" || res.ChildNumber != "" || res.HierarchyVerified {
+		t.Fatalf("dry-run must not populate remote result fields: %+v", res)
+	}
+	for _, want := range []string{"[dry-run]", "gh issue create", "--repo acme/repo", "sub_issues", "sub_issue_id", "--label bug", "--assignee octocat"} {
+		if !strings.Contains(res.Preview, want) {
+			t.Fatalf("preview %q missing %q", res.Preview, want)
+		}
+	}
+}
+
 func TestGitHubCreatePullRequestRequiresBranches(t *testing.T) {
 	_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Title: "PR"})
 	if err == nil {
@@ -64,6 +90,103 @@ func TestGitHubCreatePullRequestDryRun(t *testing.T) {
 	}
 	if !strings.Contains(res.Preview, "pr create") || !strings.Contains(res.Preview, "--head feat/x") {
 		t.Errorf("preview missing expected args: %q", res.Preview)
+	}
+}
+
+func TestGitHubCreateChildConfirmCreatesAttachesAndVerifies(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "gh.calls")
+	writeFakeGh(t, binDir, `#!/bin/sh
+printf '%s\n' "$*" >> gh.calls
+if [ "$1 $2" = "issue create" ]; then
+  printf 'https://github.com/acme/repo/issues/34\n'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/34" ]; then
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}]}'
+  exit 0
+fi
+if [ "$1 $2" = "api -X" ] && [ "$3" = "POST" ]; then
+  printf '{"ok":true}'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/12/sub_issues" ]; then
+  printf '[{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34"}]'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	got, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{
+		Repo:           repo,
+		ParentIssueURL: "https://github.com/acme/repo/issues/12",
+		Title:          "하위 작업",
+		Body:           "details",
+		Labels:         []string{"bug"},
+		Assignees:      []string{"octocat"},
+		Confirm:        true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.OK || got.Provider != "github" || got.ChildURL != "https://github.com/acme/repo/issues/34" || got.ChildNumber != "34" || !got.HierarchyVerified {
+		t.Fatalf("result=%+v", got)
+	}
+	if strings.Join(got.Labels, ",") != "bug" || strings.Join(got.Assignees, ",") != "octocat" {
+		t.Fatalf("verification labels/assignees not reflected: %+v", got)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := strings.TrimSpace(string(log))
+	for _, want := range []string{
+		"issue create --title 하위 작업 --body details --label bug --assignee octocat --repo acme/repo",
+		"api repos/acme/repo/issues/34",
+		"api -X POST repos/acme/repo/issues/12/sub_issues -f sub_issue_id=987",
+		"api repos/acme/repo/issues/12/sub_issues",
+	} {
+		if !strings.Contains(calls, want) {
+			t.Fatalf("calls missing %q:\n%s", want, calls)
+		}
+	}
+}
+
+func TestGitHubCreateChildFailureAfterCreateIncludesChildURL(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "issue create" ]; then
+  printf 'https://github.com/acme/repo/issues/34\n'
+  exit 0
+fi
+echo "lookup failed" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	_, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{
+		Repo:           repo,
+		ParentIssueURL: "https://github.com/acme/repo/issues/12",
+		Title:          "하위 작업",
+		Labels:         []string{"bug"},
+		Assignees:      []string{"octocat"},
+		Confirm:        true,
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "https://github.com/acme/repo/issues/34") {
+		t.Fatalf("error=%q, want created child URL for cleanup", err)
 	}
 }
 

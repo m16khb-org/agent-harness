@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"agent-harness/internal/port"
@@ -89,9 +90,97 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 	}, nil
 }
 
+func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.IssueProviderCreateChildResult, error) {
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, fmt.Errorf("child title is required")
+	}
+	owner, repoName, parentNumber, err := parseGitHubIssueURL(req.ParentIssueURL)
+	if err != nil {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, err
+	}
+	createArgs := []string{"issue", "create", "--title", title}
+	body := strings.TrimSpace(req.Body)
+	if body != "" {
+		createArgs = append(createArgs, "--body", body)
+	}
+	for _, label := range req.Labels {
+		createArgs = append(createArgs, "--label", label)
+	}
+	for _, assignee := range req.Assignees {
+		createArgs = append(createArgs, "--assignee", assignee)
+	}
+	createArgs = append(createArgs, "--repo", owner+"/"+repoName)
+	if !req.Confirm {
+		preview := fmt.Sprintf("[dry-run] would execute: gh %s; gh api repos/%s/%s/issues/{child_number}; gh api -X POST repos/%s/%s/issues/%s/sub_issues -f sub_issue_id={child_database_id}; gh api repos/%s/%s/issues/%s/sub_issues",
+			strings.Join(createArgs, " "), owner, repoName, owner, repoName, parentNumber, owner, repoName, parentNumber)
+		return port.IssueProviderCreateChildResult{OK: true, Provider: "github", Preview: preview}, nil
+	}
+	child, err := runGhJSON(createArgs, req.Repo, "issue")
+	if err != nil {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, err
+	}
+	childURL := strings.TrimSpace(child.URL)
+	_, _, childNumber, err := parseGitHubIssueURL(childURL)
+	if err != nil {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, fmt.Errorf("parse created child issue URL: %w", err))
+	}
+	childIssue, err := runGhAPIJSON[githubIssue](req.Repo, []string{"repos/" + owner + "/" + repoName + "/issues/" + childNumber}, "issue lookup")
+	if err != nil {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, err)
+	}
+	if childIssue.ID == 0 {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, fmt.Errorf("created child issue is missing database id"))
+	}
+	_, err = runGhAPIJSON[map[string]any](req.Repo, []string{"-X", "POST", "repos/" + owner + "/" + repoName + "/issues/" + parentNumber + "/sub_issues", "-f", "sub_issue_id=" + strconv.FormatInt(childIssue.ID, 10)}, "sub-issue attach")
+	if err != nil {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, err)
+	}
+	children, err := runGhAPIJSON[[]githubIssue](req.Repo, []string{"repos/" + owner + "/" + repoName + "/issues/" + parentNumber + "/sub_issues"}, "sub-issue verification")
+	if err != nil {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, err)
+	}
+	if !githubIssueListContains(children, childIssue.ID, childNumber) {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, fmt.Errorf("github sub-issue hierarchy verification failed"))
+	}
+	labels := githubLabelNames(childIssue.Labels)
+	assignees := githubAssigneeLogins(childIssue.Assignees)
+	if missing := missingStrings(req.Labels, labels); len(missing) > 0 {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, fmt.Errorf("github child issue missing labels: %s", strings.Join(missing, ", ")))
+	}
+	if missing := missingStrings(req.Assignees, assignees); len(missing) > 0 {
+		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, fmt.Errorf("github child issue missing assignees: %s", strings.Join(missing, ", ")))
+	}
+	return port.IssueProviderCreateChildResult{
+		OK:                true,
+		Provider:          "github",
+		ChildURL:          firstNonEmpty(childIssue.HTMLURL, childURL),
+		ChildNumber:       childNumber,
+		HierarchyVerified: true,
+		Labels:            labels,
+		Assignees:         assignees,
+	}, nil
+}
+
 type ghResult struct {
 	URL    string `json:"url"`
 	Number string `json:"number"`
+}
+
+type githubIssue struct {
+	ID        int64            `json:"id"`
+	Number    int              `json:"number"`
+	HTMLURL   string           `json:"html_url"`
+	Labels    []githubLabel    `json:"labels"`
+	Assignees []githubAssignee `json:"assignees"`
+}
+
+type githubLabel struct {
+	Name string `json:"name"`
+}
+
+type githubAssignee struct {
+	Login string `json:"login"`
 }
 
 func runGhJSON(args []string, repo string, kind string) (ghResult, error) {
@@ -125,4 +214,107 @@ func parseGhOutput(out string, kind string) (ghResult, error) {
 	}
 	// Fall back to treating output as a URL.
 	return ghResult{URL: out}, nil
+}
+
+func runGhAPIJSON[T any](repo string, args []string, kind string) (T, error) {
+	var zero T
+	if _, err := exec.LookPath("gh"); err != nil {
+		return zero, fmt.Errorf("gh CLI is not installed; install it from https://cli.github.com")
+	}
+	cmdArgs := append([]string{"api"}, args...)
+	cmd := exec.Command("gh", cmdArgs...)
+	if repo != "" {
+		cmd.Dir = repo
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		stderr := err.Error()
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			stderr = strings.TrimSpace(string(exitErr.Stderr))
+		}
+		return zero, fmt.Errorf("gh api %s failed: %s", kind, stderr)
+	}
+	if err := json.Unmarshal(out, &zero); err != nil {
+		return zero, fmt.Errorf("parse gh api %s response: %w", kind, err)
+	}
+	return zero, nil
+}
+
+func githubCreatedChildError(childURL string, err error) error {
+	childURL = strings.TrimSpace(childURL)
+	if childURL == "" {
+		return err
+	}
+	return fmt.Errorf("created child %s but follow-up failed: %w", childURL, err)
+}
+
+func parseGitHubIssueURL(raw string) (owner, repo, number string, err error) {
+	raw = strings.TrimSpace(raw)
+	parts := strings.Split(raw, "/")
+	for i := 0; i+4 < len(parts); i++ {
+		if parts[i] == "github.com" && parts[i+3] == "issues" {
+			if parts[i+1] == "" || parts[i+2] == "" || parts[i+4] == "" {
+				break
+			}
+			return parts[i+1], parts[i+2], parts[i+4], nil
+		}
+	}
+	return "", "", "", fmt.Errorf("parent_issue_url must be a GitHub issue URL")
+}
+
+func githubIssueListContains(issues []githubIssue, id int64, number string) bool {
+	for _, issue := range issues {
+		if id != 0 && issue.ID == id {
+			return true
+		}
+		if number != "" && strconv.Itoa(issue.Number) == number {
+			return true
+		}
+	}
+	return false
+}
+
+func githubLabelNames(labels []githubLabel) []string {
+	out := make([]string, 0, len(labels))
+	for _, label := range labels {
+		if strings.TrimSpace(label.Name) != "" {
+			out = append(out, label.Name)
+		}
+	}
+	return out
+}
+
+func githubAssigneeLogins(assignees []githubAssignee) []string {
+	out := make([]string, 0, len(assignees))
+	for _, assignee := range assignees {
+		if strings.TrimSpace(assignee.Login) != "" {
+			out = append(out, assignee.Login)
+		}
+	}
+	return out
+}
+
+func missingStrings(want, got []string) []string {
+	gotSet := make(map[string]bool, len(got))
+	for _, value := range got {
+		gotSet[strings.TrimSpace(value)] = true
+	}
+	var missing []string
+	for _, value := range want {
+		value = strings.TrimSpace(value)
+		if value != "" && !gotSet[value] {
+			missing = append(missing, value)
+		}
+	}
+	return missing
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }

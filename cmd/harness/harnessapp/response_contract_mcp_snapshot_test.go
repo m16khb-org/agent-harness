@@ -112,6 +112,13 @@ func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		"id":        issueopsMCPID,
 		"plan_path": filepath.Join(mcpWorktree, "docs", "superpowers", "plans", "mcp-contract.md"),
 	})
+	mcpSnapshot["issueops_remote_create_child"] = runMCPToolContract(t, replacements, "issueops_remote_create_child", map[string]any{
+		"id":        issueopsMCPID,
+		"title":     "MCP contract child",
+		"body":      "contract child body",
+		"labels":    []string{"contract"},
+		"assignees": []string{"octocat"},
+	})
 	mcpSnapshot["issueops_link_child"] = runMCPToolContract(t, replacements, "issueops_link_child", map[string]any{
 		"id":        issueopsMCPID,
 		"child_url": "https://github.com/example/repo/issues/3",
