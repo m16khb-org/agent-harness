@@ -74,10 +74,19 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_cleanup_status",
-			Description: "Report whether a merged IssueOps PR/MR is ready for local cleanup before deleting worktrees or branches.",
+			Description: "Report whether a merged IssueOps PR/MR is ready for local cleanup before deleting worktrees or branches. Linked child tasks must have verified child-only close evidence; parent issues remain open umbrella issues.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
 				"id":     map[string]any{"type": "string", "description": "IssueOps id."},
 				"merged": map[string]any{"type": "boolean", "description": "Whether the remote PR/MR merge was verified before cleanup."},
+			}},
+		},
+		{
+			Name:        "issueops_cleanup_close_children",
+			Description: "Dry-run or execute child-only cleanup after a child PR/MR has been verified merged into its parent work branch. Closes linked GitHub sub-issues or GitLab child work items only; the parent issue stays open as the umbrella. Set confirm=true to mutate remote state and record close verification evidence.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "merged"}, "properties": map[string]any{
+				"id":      map[string]any{"type": "string", "description": "IssueOps id."},
+				"merged":  map[string]any{"type": "boolean", "description": "Whether the child PR/MR merge into the parent work branch was verified before closing child tasks."},
+				"confirm": map[string]any{"type": "boolean", "description": "When true, close linked child tasks remotely and record verified close evidence. Defaults to false dry-run preview."},
 			}},
 		},
 		{

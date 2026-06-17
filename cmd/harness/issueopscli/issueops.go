@@ -5,6 +5,7 @@ import (
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"agent-harness/cmd/harness/issueopscli/worktreecmd"
+	"agent-harness/internal/adapter/provider"
 	"flag"
 	"fmt"
 	"strings"
@@ -160,6 +161,7 @@ func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
 		PrintJSON:    printJSON,
 		PrintError:   printIssueOpsErrorJSON,
 		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
+		Provider:     provider.Resolve,
 	}
 }
 

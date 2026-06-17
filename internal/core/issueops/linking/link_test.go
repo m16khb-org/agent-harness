@@ -343,17 +343,28 @@ func TestLinkChildPersistsProviderNeutralGraph(t *testing.T) {
 	if _, err := LinkChild(store, stateRoot, parent.ID, "https://github.com/other/repo/issues/12", "other repo child"); err == nil || !strings.Contains(err.Error(), "parent issue project") {
 		t.Fatalf("GitHub child from another repo should be rejected, got %v", err)
 	}
-	if _, err := LinkChild(store, stateRoot, parent.ID, "https://github.com/example/repo/issues/not-a-number", "bad child"); err == nil || !strings.Contains(err.Error(), "numeric github issue URL") {
+	if _, err := LinkChild(store, stateRoot, parent.ID, "https://github.com/example/repo/issues/not-a-number", "bad child"); err == nil || !strings.Contains(err.Error(), "numeric github issue or work item URL") {
 		t.Fatalf("GitHub child with nonnumeric issue should be rejected, got %v", err)
 	}
 	if _, err := LinkChild(store, stateRoot, gitlab.ID, "https://gitlab.example/other/project/-/issues/21", "other project child"); err == nil || !strings.Contains(err.Error(), "parent issue project") {
 		t.Fatalf("GitLab child from another project should be rejected, got %v", err)
 	}
-	if _, err := LinkChild(store, stateRoot, gitlab.ID, "https://gitlab.example/group/project/-/issues/not-a-number", "bad child"); err == nil || !strings.Contains(err.Error(), "numeric gitlab issue URL") {
+	if _, err := LinkChild(store, stateRoot, gitlab.ID, "https://gitlab.example/group/project/-/issues/not-a-number", "bad child"); err == nil || !strings.Contains(err.Error(), "numeric gitlab issue or work item URL") {
 		t.Fatalf("GitLab child with nonnumeric issue should be rejected, got %v", err)
 	}
 	if _, err := LinkChild(store, stateRoot, gitlab.ID, "https://gitlab.example/group/project/-/issues/21", "same project child"); err != nil {
 		t.Fatalf("GitLab child in same project should be accepted: %v", err)
+	}
+	gitlabWorkItem := model.IssueOpsRecord{
+		ID:       "io-gitlab-work-item",
+		Repo:     "/repo/gitlab",
+		Branch:   "21-gitlab",
+		Phase:    model.IssueOpsPhasePlan,
+		IssueURL: "https://gitlab.example/group/project/-/issues/20",
+	}
+	_, workItemStore := newLinkStoreForTest(gitlabWorkItem)
+	if _, err := LinkChild(workItemStore, stateRoot, gitlabWorkItem.ID, "https://gitlab.example/group/project/-/work_items/22", "same project work item child"); err != nil {
+		t.Fatalf("GitLab child work item in same project should be accepted: %v", err)
 	}
 	generic, err = LinkChild(store, stateRoot, generic.ID, "https://tracker.example/acme/repo/issues/12", "generic tracker child")
 	if err != nil {

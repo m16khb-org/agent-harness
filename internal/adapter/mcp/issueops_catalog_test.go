@@ -91,6 +91,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_force_release",
 		"issueops_pr_readiness",
 		"issueops_cleanup_status",
+		"issueops_cleanup_close_children",
 		"issueops_cleanup_stale",
 		"issueops_remote_score",
 		"issueops_resume",

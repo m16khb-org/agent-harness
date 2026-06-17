@@ -190,6 +190,106 @@ exit 2
 	}
 }
 
+func TestGitHubCloseChildDryRunDoesNotExecute(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	res, err := NewProvider().CloseChild(port.IssueProviderCloseChildRequest{
+		Repo:           t.TempDir(),
+		ParentIssueURL: "https://github.com/acme/repo/issues/12",
+		ChildURL:       "https://github.com/acme/repo/issues/34",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !res.OK || res.Provider != "github" || res.Closed || res.HierarchyVerified {
+		t.Fatalf("unexpected dry-run result: %+v", res)
+	}
+	for _, want := range []string{"[dry-run]", "sub_issues", "issues/34", "state=closed", "state_reason=completed"} {
+		if !strings.Contains(res.Preview, want) {
+			t.Fatalf("preview %q missing %q", res.Preview, want)
+		}
+	}
+}
+
+func TestGitHubCloseChildConfirmVerifiesHierarchyClosesAndRechecksState(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "gh.calls")
+	writeFakeGh(t, binDir, `#!/bin/sh
+printf '%s\n' "$*" >> gh.calls
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/12/sub_issues" ]; then
+  printf '[{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","state":"open"}]'
+  exit 0
+fi
+if [ "$1 $2" = "api -X" ] && [ "$3" = "PATCH" ]; then
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","state":"closed"}'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/34" ]; then
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","state":"closed"}'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	got, err := NewProvider().CloseChild(port.IssueProviderCloseChildRequest{
+		Repo:           repo,
+		ParentIssueURL: "https://github.com/acme/repo/issues/12",
+		ChildURL:       "https://github.com/acme/repo/issues/34",
+		Confirm:        true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.OK || !got.HierarchyVerified || !got.Closed || got.State != "closed" {
+		t.Fatalf("unexpected close result: %+v", got)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := strings.TrimSpace(string(log))
+	for _, want := range []string{
+		"api repos/acme/repo/issues/12/sub_issues",
+		"api -X PATCH repos/acme/repo/issues/34 -f state=closed -f state_reason=completed",
+		"api repos/acme/repo/issues/34",
+	} {
+		if !strings.Contains(calls, want) {
+			t.Fatalf("calls missing %q:\n%s", want, calls)
+		}
+	}
+}
+
+func TestGitHubCloseChildRejectsHierarchyMismatch(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/12/sub_issues" ]; then
+  printf '[]'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	_, err := NewProvider().CloseChild(port.IssueProviderCloseChildRequest{
+		Repo:           t.TempDir(),
+		ParentIssueURL: "https://github.com/acme/repo/issues/12",
+		ChildURL:       "https://github.com/acme/repo/issues/34",
+		Confirm:        true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "hierarchy verification failed") {
+		t.Fatalf("expected hierarchy mismatch, got %v", err)
+	}
+}
+
 func TestParseGhOutput(t *testing.T) {
 	cases := []struct {
 		name       string

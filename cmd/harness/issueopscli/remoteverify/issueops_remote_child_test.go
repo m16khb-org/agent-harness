@@ -55,6 +55,28 @@ printf '%s\n' "$*" > "$HARNESS_FAKE_GLAB_LOG"
 	}
 }
 
+func TestVerifyIssueOpsChildIssueLiveRoutesGitLabWorkItemURL(t *testing.T) {
+	bin := t.TempDir()
+	logPath := filepath.Join(t.TempDir(), "glab.log")
+	writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
+printf '%s\n' "$*" > "$HARNESS_FAKE_GLAB_LOG"
+`)
+	t.Setenv("HARNESS_FAKE_GLAB_LOG", logPath)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	if err := VerifyChildIssueLive("https://gitlab.example.com/group/project/-/work_items/42"); err != nil {
+		t.Fatalf("verify GitLab child work item: %v", err)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "api projects/group%2Fproject/work_items/42 --hostname gitlab.example.com"
+	if got := strings.TrimSpace(string(log)); got != want {
+		t.Fatalf("glab args = %q, want %q", got, want)
+	}
+}
+
 func TestVerifyGitLabIssueLiveRejectsInvalidIssuePath(t *testing.T) {
 	parsed, err := url.Parse("https://gitlab.example.com/group/project")
 	if err != nil {
@@ -62,7 +84,7 @@ func TestVerifyGitLabIssueLiveRejectsInvalidIssuePath(t *testing.T) {
 	}
 
 	err = VerifyGitLabIssueLive(parsed)
-	if err == nil || !strings.Contains(err.Error(), "child_url must be a GitLab issue URL") {
+	if err == nil || !strings.Contains(err.Error(), "child_url must be a GitLab issue or work item URL") {
 		t.Fatalf("expected invalid GitLab issue URL error, got %v", err)
 	}
 }

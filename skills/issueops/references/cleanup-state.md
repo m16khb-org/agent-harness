@@ -34,6 +34,26 @@ After provider merge evidence is confirmed, run the harness cleanup status check
 agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
 ```
 
+If the IssueOps record has linked child tasks, cleanup status also requires verified child-close evidence. After a child PR/MR has been verified merged into the parent work branch, close only the linked child tasks. Do not close the parent issue at this step; the parent remains the umbrella coordination issue until the full umbrella is merged to the mainstream target such as main or release.
+
+Dry-run child cleanup first:
+
+```bash
+agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --json
+```
+
+Execute only after the dry-run matches the intended linked children:
+
+```bash
+agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --confirm --json
+```
+
+Provider behavior:
+
+- GitHub verifies the child is still listed in the parent sub-issues, closes the child issue with completed reason, then re-reads the child state.
+- GitLab verifies the child `Task` work item is still in the parent hierarchy, runs `workItemUpdate(stateEvent: CLOSE)`, then re-reads `state == CLOSED`.
+- Already-closed child tasks count as successful verification and record close evidence in IssueOps state.
+
 Present cleanup choices in `1.`, `2.`, `3.` form:
 
 ```text

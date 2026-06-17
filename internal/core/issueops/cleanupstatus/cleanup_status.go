@@ -62,6 +62,9 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 	if !req.Merged {
 		status.Missing = append(status.Missing, "remote_artifact_merged")
 	}
+	if hasUnverifiedChildClose(record) {
+		status.Missing = append(status.Missing, "child_tasks_closed")
+	}
 	worktree := strings.TrimSpace(record.WorktreePath)
 	if worktree == "" {
 		status.Missing = append(status.Missing, "worktree_path")
@@ -99,6 +102,18 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 		}
 	}
 	return finishIssueOpsCleanupStatus(status)
+}
+
+func hasUnverifiedChildClose(record model.IssueOpsRecord) bool {
+	for _, link := range record.IssueLinks {
+		if link.Type != "child" {
+			continue
+		}
+		if strings.TrimSpace(link.CloseVerifiedAt) == "" {
+			return true
+		}
+	}
+	return false
 }
 
 func finishIssueOpsCleanupStatus(status model.IssueOpsCleanupStatus) model.IssueOpsCleanupStatus {

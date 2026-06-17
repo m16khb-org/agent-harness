@@ -14,11 +14,14 @@ type IssueOpsFeedbackItem struct {
 }
 
 type IssueOpsIssueLink struct {
-	Type      string `json:"type"`
-	URL       string `json:"url"`
-	Title     string `json:"title,omitempty"`
-	Provider  string `json:"provider,omitempty"`
-	CreatedAt string `json:"created_at"`
+	Type            string `json:"type"`
+	URL             string `json:"url"`
+	Title           string `json:"title,omitempty"`
+	Provider        string `json:"provider,omitempty"`
+	CreatedAt       string `json:"created_at"`
+	ClosedAt        string `json:"closed_at,omitempty"`
+	CloseVerifiedAt string `json:"close_verified_at,omitempty"`
+	CloseReason     string `json:"close_reason,omitempty"`
 }
 
 type IssueOpsBranchPrepareStep struct {
@@ -204,6 +207,33 @@ type IssueOpsCleanupStatus struct {
 	WorktreePath      string   `json:"worktree_path,omitempty"`
 	Branch            string   `json:"branch,omitempty"`
 	RemoteArtifactURL string   `json:"remote_artifact_url,omitempty"`
+}
+
+type IssueOpsCloseChildrenRequest struct {
+	Merged  bool `json:"merged"`
+	Confirm bool `json:"confirm"`
+}
+
+type IssueOpsCloseChildResult struct {
+	URL               string `json:"url"`
+	Provider          string `json:"provider,omitempty"`
+	Closed            bool   `json:"closed"`
+	AlreadyClosed     bool   `json:"already_closed,omitempty"`
+	HierarchyVerified bool   `json:"hierarchy_verified"`
+	State             string `json:"state,omitempty"`
+	Preview           string `json:"preview,omitempty"`
+	Error             string `json:"error,omitempty"`
+}
+
+type IssueOpsCloseChildrenResult struct {
+	OK          bool                       `json:"ok"`
+	ID          string                     `json:"id"`
+	Merged      bool                       `json:"merged"`
+	Confirmed   bool                       `json:"confirmed"`
+	DryRun      bool                       `json:"dry_run"`
+	ClosedCount int                        `json:"closed_count"`
+	Children    []IssueOpsCloseChildResult `json:"children"`
+	Missing     []string                   `json:"missing,omitempty"`
 }
 
 type IssueOpsResumeResult struct {

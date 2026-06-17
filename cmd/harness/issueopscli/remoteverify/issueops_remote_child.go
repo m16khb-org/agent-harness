@@ -26,7 +26,7 @@ func VerifyChildIssueLive(childURL string) error {
 	if parsed.Hostname() == "github.com" {
 		return VerifyGitHubIssueLive(childURL)
 	}
-	if strings.Contains(parsed.Hostname(), "gitlab") || strings.Contains(parsed.EscapedPath(), "/-/issues/") {
+	if strings.Contains(parsed.Hostname(), "gitlab") || strings.Contains(parsed.EscapedPath(), "/-/issues/") || strings.Contains(parsed.EscapedPath(), "/-/work_items/") {
 		return VerifyGitLabIssueLive(parsed)
 	}
 	return nil
@@ -42,9 +42,13 @@ func VerifyGitHubIssueLive(issueURL string) error {
 func VerifyGitLabIssueLive(parsed *url.URL) error {
 	parts := remoteparse.SplitGitLabIssuePath(parsed.EscapedPath())
 	if parts.Project == "" || parts.IID == "" {
-		return fmt.Errorf("child_url must be a GitLab issue URL")
+		return fmt.Errorf("child_url must be a GitLab issue or work item URL")
 	}
-	endpoint := "projects/" + url.PathEscape(parts.Project) + "/issues/" + parts.IID
+	kind := parts.Kind
+	if kind == "" {
+		kind = "issues"
+	}
+	endpoint := "projects/" + url.PathEscape(parts.Project) + "/" + kind + "/" + parts.IID
 	cmd := exec.Command("glab", "api", endpoint, "--hostname", parsed.Hostname())
 	if _, err := cmd.Output(); err != nil {
 		return fmt.Errorf("verify GitLab child issue through glab failed: %w", commandOutputError(err))

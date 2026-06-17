@@ -1092,7 +1092,7 @@
     "name": "issueops_pr_readiness"
   },
   {
-    "description": "Report whether a merged IssueOps PR/MR is ready for local cleanup before deleting worktrees or branches.",
+    "description": "Report whether a merged IssueOps PR/MR is ready for local cleanup before deleting worktrees or branches. Linked child tasks must have verified child-only close evidence; parent issues remain open umbrella issues.",
     "inputSchema": {
       "properties": {
         "id": {
@@ -1110,6 +1110,31 @@
       "type": "object"
     },
     "name": "issueops_cleanup_status"
+  },
+  {
+    "description": "Dry-run or execute child-only cleanup after a child PR/MR has been verified merged into its parent work branch. Closes linked GitHub sub-issues or GitLab child work items only; the parent issue stays open as the umbrella. Set confirm=true to mutate remote state and record close verification evidence.",
+    "inputSchema": {
+      "properties": {
+        "confirm": {
+          "description": "When true, close linked child tasks remotely and record verified close evidence. Defaults to false dry-run preview.",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "merged": {
+          "description": "Whether the child PR/MR merge into the parent work branch was verified before closing child tasks.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "merged"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_cleanup_close_children"
   },
   {
     "description": "Scan a repo's non-done IssueOps cycles and classify abandoned ones using multi-signal liveness (confirmed-stale: worktree deleted/reused; likely-done: remote branch merged/absent; needs-review: idle past max-age). Reports only by default; set apply to force-release confirmed-stale and likely-done cycles. Maintenance tool; runs off the hot path and may consult git/remote.",

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
+	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
 )
 
@@ -176,6 +177,14 @@ func handleMCPIssueOpsCleanupStatus(args map[string]any) MCPToolOutcome {
 		Merged: IssueOpsCleanupMerged(argmap.String(args, "id"), argmap.Bool(args, "merged")),
 	})
 	return issueOpsMCPOutcome(result, err, "IssueOps cleanup status failed")
+}
+
+func handleMCPIssueOpsCleanupCloseChildren(args map[string]any) MCPToolOutcome {
+	result, err := core.CloseIssueOpsChildren(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsCloseChildrenRequest{
+		Merged:  IssueOpsCleanupMerged(argmap.String(args, "id"), argmap.Bool(args, "merged")),
+		Confirm: argmap.Bool(args, "confirm"),
+	}, provider.Resolve)
+	return issueOpsMCPOutcome(result, err, "IssueOps cleanup close-children failed")
 }
 
 func handleMCPIssueOpsForceRelease(args map[string]any) MCPToolOutcome {

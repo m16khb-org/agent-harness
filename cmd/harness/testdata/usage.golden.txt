@@ -35,6 +35,8 @@ Usage:
   agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--json]
   agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
+  agent-harness issueops cleanup status --id ID [--merged] [--json]
+  agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]
   agent-harness issueops force-release --id ID --reason REASON [--json]
   agent-harness issueops remote score --input PATH [--judge none|agy] [--agy-command PATH] [--json]
   agent-harness issueops benchmark run --fixtures PATH [--judge none|file|agy] [--judge-file PATH] [--agy-command PATH] [--json]

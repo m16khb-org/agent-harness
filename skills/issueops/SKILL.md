@@ -397,6 +397,13 @@ Post-merge cleanup status is a read-only verification step. Run it after the pro
 agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
 ```
 
+If linked child tasks exist, close children separately after the child PR/MR is verified merged into the parent work branch. This is child-only cleanup: close the GitHub sub-issue or GitLab child Task, record close verification evidence, and keep the parent issue open as the umbrella until the full umbrella reaches the mainstream merge target.
+
+```bash
+agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --json
+agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --confirm --json
+```
+
 Record feedback, optionally classifying each item (contract_change, defect, question, noise) so contract-changing feedback is distinguishable:
 
 ```bash

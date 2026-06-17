@@ -223,7 +223,7 @@
           "name": "version"
         }
       ],
-      "hash": "83221b8ec470c8cfa8448b3752d684a5f0513076ec7c4c683481eaea33755eba",
+      "hash": "b5ff4a50e5cf70a3c3c6de87e546cc7a170343c8e7319e03f567db61ced594e4",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -240,6 +240,7 @@
         "harness_inspect",
         "issueops_add_decision",
         "issueops_add_feedback",
+        "issueops_cleanup_close_children",
         "issueops_cleanup_stale",
         "issueops_cleanup_status",
         "issueops_force_release",
@@ -380,6 +381,16 @@
           "minimum_score",
           "critical_failure_count",
           "scores"
+        ],
+        "issueops_cleanup_close_children": [
+          "ok",
+          "id",
+          "merged",
+          "confirmed",
+          "dry_run",
+          "closed_count",
+          "children",
+          "missing"
         ],
         "issueops_cleanup_status": [
           "ok",
@@ -546,7 +557,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 23476,
+          "bytes": 23679,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2807,6 +2818,7 @@
       "branch": "1-contract-branch",
       "cleanup_missing": [
         "branch",
+        "child_tasks_closed",
         "pr_phase",
         "remote_artifact",
         "remote_artifact_merged",
@@ -3048,6 +3060,7 @@
       "merged": true,
       "missing": [
         "branch",
+        "child_tasks_closed",
         "pr_phase",
         "remote_artifact",
         "remote_branch_check_unavailable",
@@ -3081,6 +3094,7 @@
       "branch": "1-contract-branch",
       "cleanup_missing": [
         "branch",
+        "child_tasks_closed",
         "pr_phase",
         "remote_artifact",
         "remote_artifact_merged",
@@ -5794,7 +5808,7 @@
                 "name": "version"
               }
             ],
-            "hash": "83221b8ec470c8cfa8448b3752d684a5f0513076ec7c4c683481eaea33755eba",
+            "hash": "b5ff4a50e5cf70a3c3c6de87e546cc7a170343c8e7319e03f567db61ced594e4",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -5811,6 +5825,7 @@
               "harness_inspect",
               "issueops_add_decision",
               "issueops_add_feedback",
+              "issueops_cleanup_close_children",
               "issueops_cleanup_stale",
               "issueops_cleanup_status",
               "issueops_force_release",
@@ -5951,6 +5966,16 @@
                 "minimum_score",
                 "critical_failure_count",
                 "scores"
+              ],
+              "issueops_cleanup_close_children": [
+                "ok",
+                "id",
+                "merged",
+                "confirmed",
+                "dry_run",
+                "closed_count",
+                "children",
+                "missing"
               ],
               "issueops_cleanup_status": [
                 "ok",
@@ -6124,7 +6149,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 23476,
+                "bytes": 23679,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -7976,6 +8001,7 @@
             "branch": "2-mcp-contract",
             "cleanup_missing": [
               "branch",
+              "child_tasks_closed",
               "pr_phase",
               "remote_artifact",
               "remote_artifact_merged",

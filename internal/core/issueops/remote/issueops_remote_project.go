@@ -12,7 +12,7 @@ func ValidateChildMatchesParent(parentURL, childURL string) error {
 		return nil
 	}
 	if IssueNumber(childURL) == "" {
-		return fmt.Errorf("child issue url must be a numeric %s issue URL", provider)
+		return fmt.Errorf("child issue url must be a numeric %s issue or work item URL", provider)
 	}
 	parentKey := ProjectKey(parentURL, provider, "issue")
 	childKey := ProjectKey(childURL, provider, "issue")
@@ -44,7 +44,7 @@ func ProjectKey(rawURL, provider, kind string) string {
 		}
 		return host + "/" + strings.Join(parts[:2], "/")
 	case "gitlab:issue":
-		if host == "github.com" || len(parts) < 4 || parts[len(parts)-3] != "-" || parts[len(parts)-2] != "issues" {
+		if host == "github.com" || len(parts) < 4 || parts[len(parts)-3] != "-" || !isGitLabIssueLikePath(parts[len(parts)-2]) {
 			return ""
 		}
 		return host + "/" + strings.Join(parts[:len(parts)-3], "/")
@@ -68,7 +68,7 @@ func ProviderFromURL(issueURL string) string {
 	if host == "github.com" && strings.Contains(path, "/issues/") {
 		return "github"
 	}
-	if strings.Contains(host, "gitlab") || strings.Contains(path, "/-/issues/") {
+	if strings.Contains(host, "gitlab") || strings.Contains(path, "/-/issues/") || strings.Contains(path, "/-/work_items/") {
 		return "gitlab"
 	}
 	return ""
@@ -80,7 +80,7 @@ func IssueNumber(issueURL string) string {
 	}
 	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
 	for i, part := range parts {
-		if part == "issues" && i+1 < len(parts) {
+		if isGitLabIssueLikePath(part) && i+1 < len(parts) {
 			number := parts[i+1]
 			for _, r := range number {
 				if r < '0' || r > '9' {
@@ -91,4 +91,8 @@ func IssueNumber(issueURL string) string {
 		}
 	}
 	return ""
+}
+
+func isGitLabIssueLikePath(part string) bool {
+	return part == "issues" || part == "work_items"
 }

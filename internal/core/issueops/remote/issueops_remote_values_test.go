@@ -62,8 +62,8 @@ func TestInvalidAssignee(t *testing.T) {
 
 func TestBoundedIssueOpsText(t *testing.T) {
 	tests := []struct {
-		input       string
-		wantSuffix  string
+		input      string
+		wantSuffix string
 	}{
 		{"short text", ""},
 		{"", ""},
@@ -154,6 +154,7 @@ func TestProjectKey(t *testing.T) {
 		{"github issue", "https://github.com/user/repo/issues/1", "github", "issue", "github.com/user/repo"},
 		{"github pr", "https://github.com/user/repo/pull/2", "github", "pr", "github.com/user/repo"},
 		{"gitlab issue", "https://gitlab.com/group/subgroup/proj/-/issues/1", "gitlab", "issue", "gitlab.com/group/subgroup/proj"},
+		{"gitlab work item", "https://gitlab.com/group/subgroup/proj/-/work_items/2", "gitlab", "issue", "gitlab.com/group/subgroup/proj"},
 		{"gitlab mr", "https://gitlab.com/group/proj/-/merge_requests/2", "gitlab", "mr", "gitlab.com/group/proj"},
 		{"bad github issue path", "https://github.com/user/issues/1", "github", "issue", ""},
 		{"empty", "", "github", "issue", ""},
@@ -211,6 +212,15 @@ func TestValidateChildMatchesParent(t *testing.T) {
 		)
 		if err == nil {
 			t.Error("expected error")
+		}
+	})
+	t.Run("gitlab work item child", func(t *testing.T) {
+		err := ValidateChildMatchesParent(
+			"https://gitlab.com/group/project/-/issues/1",
+			"https://gitlab.com/group/project/-/work_items/2",
+		)
+		if err != nil {
+			t.Errorf("expected GitLab work item child URL to match parent project, got %v", err)
 		}
 	})
 }

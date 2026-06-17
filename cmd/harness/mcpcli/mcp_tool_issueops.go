@@ -34,6 +34,7 @@ var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
 	"issueops_remote_score":           handleMCPIssueOpsRemoteScore,
 	"issueops_pr_readiness":           handleMCPIssueOpsPRReadiness,
 	"issueops_cleanup_status":         handleMCPIssueOpsCleanupStatus,
+	"issueops_cleanup_close_children": handleMCPIssueOpsCleanupCloseChildren,
 	"issueops_force_release":          handleMCPIssueOpsForceRelease,
 	"issueops_cleanup_stale":          handleMCPIssueOpsCleanupStale,
 	"issueops_remote_create_issue":    handleMCPRemoteCreateIssue,

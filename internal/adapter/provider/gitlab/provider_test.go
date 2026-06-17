@@ -242,6 +242,131 @@ exit 2
 	}
 }
 
+func TestGitLabCloseChildDryRunDoesNotExecute(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	res, err := NewProvider().CloseChild(port.IssueProviderCloseChildRequest{
+		Repo:           t.TempDir(),
+		ParentIssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
+		ChildURL:       "https://gitlab.example.com/acme/repo/-/work_items/34",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !res.OK || res.Provider != "gitlab" || res.Closed || res.HierarchyVerified {
+		t.Fatalf("unexpected dry-run result: %+v", res)
+	}
+	for _, want := range []string{"[dry-run]", "gitlab.example.com", "children", "workItemUpdate", "stateEvent: CLOSE", "work_items/34"} {
+		if !strings.Contains(res.Preview, want) {
+			t.Fatalf("preview %q missing %q", res.Preview, want)
+		}
+	}
+}
+
+func TestGitLabCloseChildConfirmVerifiesHierarchyClosesAndRechecksState(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "glab.calls")
+	writeFakeGlab(t, binDir, `#!/bin/sh
+printf '%s\n' "$*" >> glab.calls
+case "$*" in
+  *parentIid*)
+    printf '{"data":{"project":{"issue":{"id":"gid://gitlab/WorkItem/12"}}}}'
+    exit 0
+    ;;
+  *children*)
+    printf '{"data":{"workItem":{"widgets":[{"type":"HIERARCHY","children":{"nodes":[{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.example.com/acme/repo/-/work_items/34","state":"OPEN"}]}}]}}}'
+    exit 0
+    ;;
+  *workItemUpdate*)
+    printf '{"data":{"workItemUpdate":{"workItem":{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.example.com/acme/repo/-/work_items/34","state":"CLOSED"},"errors":[]}}}'
+    exit 0
+    ;;
+  *childCloseVerify*)
+    printf '{"data":{"workItem":{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.example.com/acme/repo/-/work_items/34","state":"CLOSED"}}}'
+    exit 0
+    ;;
+esac
+echo "unexpected glab call: $*" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	got, err := NewProvider().CloseChild(port.IssueProviderCloseChildRequest{
+		Repo:           repo,
+		ParentIssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
+		ChildURL:       "https://gitlab.example.com/acme/repo/-/work_items/34",
+		Confirm:        true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.OK || !got.HierarchyVerified || !got.Closed || got.State != "CLOSED" {
+		t.Fatalf("unexpected close result: %+v", got)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := strings.TrimSpace(string(log))
+	for _, want := range []string{"--hostname gitlab.example.com", "parentIid", "children", "workItemUpdate", "childCloseVerify"} {
+		if !strings.Contains(calls, want) {
+			t.Fatalf("calls missing %q:\n%s", want, calls)
+		}
+	}
+}
+
+func TestGitLabCloseChildAlreadyClosedSkipsMutation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "glab.calls")
+	writeFakeGlab(t, binDir, `#!/bin/sh
+printf '%s\n' "$*" >> glab.calls
+case "$*" in
+  *parentIid*)
+    printf '{"data":{"project":{"issue":{"id":"gid://gitlab/WorkItem/12"}}}}'
+    exit 0
+    ;;
+  *children*)
+    printf '{"data":{"workItem":{"widgets":[{"type":"HIERARCHY","children":{"nodes":[{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.example.com/acme/repo/-/work_items/34","state":"CLOSED"}]}}]}}}'
+    exit 0
+    ;;
+  *childCloseVerify*)
+    printf '{"data":{"workItem":{"id":"gid://gitlab/WorkItem/34","iid":"34","webUrl":"https://gitlab.example.com/acme/repo/-/work_items/34","state":"CLOSED"}}}'
+    exit 0
+    ;;
+esac
+echo "unexpected glab call: $*" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	got, err := NewProvider().CloseChild(port.IssueProviderCloseChildRequest{
+		Repo:           repo,
+		ParentIssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
+		ChildURL:       "https://gitlab.example.com/acme/repo/-/work_items/34",
+		Confirm:        true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.AlreadyClosed || !got.Closed {
+		t.Fatalf("already closed child should succeed: %+v", got)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(log), "workItemUpdate") {
+		t.Fatalf("already closed child should not be mutated:\n%s", log)
+	}
+}
+
 func TestParseGlabOutput(t *testing.T) {
 	cases := []struct {
 		name       string

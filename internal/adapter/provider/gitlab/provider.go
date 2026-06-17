@@ -173,6 +173,78 @@ func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.Issu
 	}, nil
 }
 
+func (Provider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueProviderCloseChildResult, error) {
+	hostname, projectPath, parentIID, err := parseGitLabIssueURL(req.ParentIssueURL)
+	if err != nil {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, err
+	}
+	childHostname, childProjectPath, childIID, err := parseGitLabWorkItemURL(req.ChildURL)
+	if err != nil {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, err
+	}
+	if childHostname != hostname || childProjectPath != projectPath {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, fmt.Errorf("child issue url must match linked parent issue project")
+	}
+	if !req.Confirm {
+		preview := fmt.Sprintf("[dry-run] would execute: glab api graphql --hostname %s parentIid=%s children verify work_items/%s; workItemUpdate stateEvent: CLOSE; childCloseVerify",
+			hostname, parentIID, childIID)
+		return port.IssueProviderCloseChildResult{OK: true, Provider: "gitlab", ChildURL: strings.TrimSpace(req.ChildURL), Preview: preview}, nil
+	}
+	parent, err := runGlabGraphQL[gitlabParentIssueResponse](req.Repo, hostname, gitlabParentIssueQuery, map[string]string{
+		"projectPath": projectPath,
+		"parentIid":   parentIID,
+	})
+	if err != nil {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, err
+	}
+	parentID := strings.TrimSpace(parent.Data.Project.Issue.ID)
+	if parentID == "" {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, fmt.Errorf("gitlab parent issue lookup did not return work item id")
+	}
+	children, err := runGlabGraphQL[gitlabHierarchyChildrenResponse](req.Repo, hostname, gitlabHierarchyChildrenQuery, map[string]string{
+		"parentId": parentID,
+	})
+	if err != nil {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, err
+	}
+	child := gitlabChildByIID(children.Data.WorkItem.Widgets, childIID)
+	if strings.TrimSpace(child.ID) == "" {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, fmt.Errorf("gitlab child hierarchy verification failed")
+	}
+	alreadyClosed := strings.EqualFold(child.State, "CLOSED")
+	if !alreadyClosed {
+		closeResp, err := runGlabGraphQL[gitlabWorkItemUpdateResponse](req.Repo, hostname, gitlabWorkItemCloseMutation, map[string]string{
+			"childId": child.ID,
+		})
+		if err != nil {
+			return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, err
+		}
+		if len(closeResp.Data.WorkItemUpdate.Errors) > 0 {
+			return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, fmt.Errorf("gitlab workItemUpdate failed: %s", strings.Join(closeResp.Data.WorkItemUpdate.Errors, ", "))
+		}
+	}
+	verify, err := runGlabGraphQL[gitlabChildCloseVerifyResponse](req.Repo, hostname, gitlabChildCloseVerifyQuery, map[string]string{
+		"childId":          child.ID,
+		"childCloseVerify": "true",
+	})
+	if err != nil {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, err
+	}
+	verified := verify.Data.WorkItem
+	if !strings.EqualFold(verified.State, "CLOSED") {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "gitlab"}, fmt.Errorf("gitlab child work item close verification failed: state=%s", verified.State)
+	}
+	return port.IssueProviderCloseChildResult{
+		OK:                true,
+		Provider:          "gitlab",
+		ChildURL:          firstNonEmpty(verified.WebURL, child.WebURL, req.ChildURL),
+		HierarchyVerified: true,
+		Closed:            true,
+		AlreadyClosed:     alreadyClosed,
+		State:             verified.State,
+	}, nil
+}
+
 type glabResult struct {
 	WebURL string `json:"web_url"`
 	IID    int    `json:"iid"`
@@ -182,6 +254,7 @@ type gitlabWorkItem struct {
 	ID        string              `json:"id"`
 	IID       string              `json:"iid"`
 	WebURL    string              `json:"webUrl"`
+	State     string              `json:"state"`
 	Labels    gitlabLabelNodes    `json:"labels"`
 	Assignees gitlabAssigneeNodes `json:"assignees"`
 }
@@ -287,13 +360,30 @@ type gitlabChildVerifyResponse struct {
 	} `json:"data"`
 }
 
+type gitlabWorkItemUpdateResponse struct {
+	Data struct {
+		WorkItemUpdate struct {
+			WorkItem gitlabWorkItem `json:"workItem"`
+			Errors   []string       `json:"errors"`
+		} `json:"workItemUpdate"`
+	} `json:"data"`
+}
+
+type gitlabChildCloseVerifyResponse struct {
+	Data struct {
+		WorkItem gitlabWorkItem `json:"workItem"`
+	} `json:"data"`
+}
+
 const gitlabTaskTypeQuery = `query taskType($namespacePath: ID!) { namespace(fullPath: $namespacePath) { workItemTypes(name: TASK, onlyAvailable: true, first: 1) { nodes { id name } } } }`
 const gitlabLabelLookupQuery = `query labelLookup($projectPath: ID!, $title: String!) { project(fullPath: $projectPath) { labels(title: $title, searchIn: [TITLE], includeAncestorGroups: true, first: 1) { nodes { id title } } } }`
 const gitlabUserLookupQuery = `query userLookup($username: String!) { user(username: $username) { id username } }`
 const gitlabParentIssueQuery = `query parentIid($projectPath: ID!, $parentIid: String!) { project(fullPath: $projectPath) { issue(iid: $parentIid) { id } } }`
 const gitlabHierarchyAddQuery = `mutation workItemHierarchyAddChildrenItems($parentId: WorkItemID!, $childId: WorkItemID!) { workItemHierarchyAddChildrenItems(input: { id: $parentId, childrenIds: [$childId] }) { workItem { id } errors } }`
-const gitlabHierarchyChildrenQuery = `query children($parentId: WorkItemID!) { workItem(id: $parentId) { widgets { type ... on WorkItemWidgetHierarchy { children { nodes { id iid webUrl } } } } } }`
+const gitlabHierarchyChildrenQuery = `query children($parentId: WorkItemID!) { workItem(id: $parentId) { widgets { type ... on WorkItemWidgetHierarchy { children { nodes { id iid webUrl state } } } } } }`
 const gitlabChildVerifyQuery = `query childVerify($childId: WorkItemID!) { workItem(id: $childId) { iid webUrl labels { nodes { title } } assignees { nodes { username } } } }`
+const gitlabWorkItemCloseMutation = `mutation workItemUpdate($childId: WorkItemID!) { workItemUpdate(input: { id: $childId, stateEvent: CLOSE }) { workItem { id iid webUrl state } errors } }`
+const gitlabChildCloseVerifyQuery = `query childCloseVerify($childId: WorkItemID!) { workItem(id: $childId) { id iid webUrl state } }`
 
 func runGlabJSON(args []string, repo string, kind string) (port.IssueProviderCreateIssueResult, error) {
 	if _, err := exec.LookPath("glab"); err != nil {
@@ -531,6 +621,29 @@ func parseGitLabIssueURL(raw string) (hostname, projectPath, iid string, err err
 	return "", "", "", fmt.Errorf("parent_issue_url must be a GitLab issue URL")
 }
 
+func parseGitLabWorkItemURL(raw string) (hostname, projectPath, iid string, err error) {
+	raw = strings.TrimSpace(raw)
+	parts := strings.Split(raw, "/")
+	for i := 0; i < len(parts); i++ {
+		if !strings.Contains(parts[i], "gitlab") {
+			continue
+		}
+		var project []string
+		for j := i + 1; j < len(parts); j++ {
+			if parts[j] == "-" && j+2 < len(parts) && parts[j+1] == "work_items" {
+				if len(project) == 0 || parts[j+2] == "" {
+					break
+				}
+				return parts[i], strings.Join(project, "/"), parts[j+2], nil
+			}
+			if parts[j] != "" {
+				project = append(project, parts[j])
+			}
+		}
+	}
+	return "", "", "", fmt.Errorf("child_url must be a GitLab work item URL")
+}
+
 func gitlabChildrenContain(widgets []gitlabWorkItemWidget, id, iid string) bool {
 	for _, widget := range widgets {
 		if widget.Type != "" && !strings.EqualFold(widget.Type, "HIERARCHY") {
@@ -546,6 +659,20 @@ func gitlabChildrenContain(widgets []gitlabWorkItemWidget, id, iid string) bool 
 		}
 	}
 	return false
+}
+
+func gitlabChildByIID(widgets []gitlabWorkItemWidget, iid string) gitlabWorkItem {
+	for _, widget := range widgets {
+		if widget.Type != "" && !strings.EqualFold(widget.Type, "HIERARCHY") {
+			continue
+		}
+		for _, child := range widget.Children.Nodes {
+			if iid != "" && child.IID == iid {
+				return child
+			}
+		}
+	}
+	return gitlabWorkItem{}
 }
 
 func gitlabLabelTitles(labels []gitlabLabel) []string {

@@ -66,6 +66,29 @@ func TestRemoteArtifactMissingFieldsAreSorted(t *testing.T) {
 	}
 }
 
+func TestForRecordRequiresLinkedChildCloseEvidence(t *testing.T) {
+	record := completeCleanupRecord(t)
+	record.IssueLinks = []model.IssueOpsIssueLink{{
+		Type:      "child",
+		URL:       "https://github.com/example/repo/issues/2",
+		Provider:  "github",
+		CreatedAt: "2026-06-17T00:00:00Z",
+	}}
+
+	status := ForRecord(record, model.IssueOpsCleanupStatusRequest{Merged: true})
+	if status.Ready || !containsString(status.Missing, "child_tasks_closed") {
+		t.Fatalf("linked child without close evidence should block cleanup: %#v", status)
+	}
+
+	record.IssueLinks[0].ClosedAt = "2026-06-17T00:01:00Z"
+	record.IssueLinks[0].CloseVerifiedAt = "2026-06-17T00:01:30Z"
+	record.IssueLinks[0].CloseReason = "completed"
+	status = ForRecord(record, model.IssueOpsCleanupStatusRequest{Merged: true})
+	if containsString(status.Missing, "child_tasks_closed") {
+		t.Fatalf("verified child close evidence should unblock child cleanup: %#v", status)
+	}
+}
+
 func TestForRecordCoversWorktreeAndGitBranches(t *testing.T) {
 	record := completeCleanupRecord(t)
 	record.WorktreePath = filepath.Join(t.TempDir(), "missing")

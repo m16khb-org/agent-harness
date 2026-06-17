@@ -20,6 +20,8 @@ type IssueProviderCreatePullRequestRequest = port.IssueProviderCreatePullRequest
 type IssueProviderCreatePullRequestResult = port.IssueProviderCreatePullRequestResult
 type IssueProviderCreateChildRequest = port.IssueProviderCreateChildRequest
 type IssueProviderCreateChildResult = port.IssueProviderCreateChildResult
+type IssueProviderCloseChildRequest = port.IssueProviderCloseChildRequest
+type IssueProviderCloseChildResult = port.IssueProviderCloseChildResult
 type IssueProvider = port.IssueProvider
 
 func SyncRemoteIssueGraph(record IssueOpsRecord) (map[string]any, error) {
@@ -53,4 +55,11 @@ func CreateRemoteChild(req IssueProviderCreateChildRequest, prov IssueProvider) 
 		return IssueProviderCreateChildResult{OK: false}, fmt.Errorf("no issue provider configured")
 	}
 	return prov.CreateChild(req)
+}
+
+func CloseRemoteChild(req IssueProviderCloseChildRequest, prov IssueProvider) (IssueProviderCloseChildResult, error) {
+	if prov == nil {
+		return IssueProviderCloseChildResult{OK: false}, fmt.Errorf("no issue provider configured")
+	}
+	return prov.CloseChild(req)
 }

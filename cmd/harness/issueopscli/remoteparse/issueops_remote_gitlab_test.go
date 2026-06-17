@@ -76,6 +76,12 @@ func TestSplitGitLabIssuePath_whenValidEscapedPath(t *testing.T) {
 			wantProject: "platform/team space/repo",
 			wantIID:     "7",
 		},
+		{
+			name:        "work item child",
+			escapedPath: "/group/project/-/work_items/8",
+			wantProject: "group/project",
+			wantIID:     "8",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

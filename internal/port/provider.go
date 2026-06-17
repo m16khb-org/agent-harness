@@ -63,6 +63,29 @@ type IssueProviderCreateChildResult struct {
 	Preview           string   `json:"preview,omitempty"`
 }
 
+// IssueProviderCloseChildRequest describes closing an existing provider-native
+// child work item after its implementation PR/MR was merged into the parent
+// work branch.
+type IssueProviderCloseChildRequest struct {
+	Repo           string `json:"repo"`
+	ParentIssueURL string `json:"parent_issue_url"`
+	ChildURL       string `json:"child_url"`
+	Confirm        bool   `json:"confirm"`
+}
+
+// IssueProviderCloseChildResult reports child hierarchy verification and final
+// closed-state verification.
+type IssueProviderCloseChildResult struct {
+	OK                bool   `json:"ok"`
+	Provider          string `json:"provider"`
+	ChildURL          string `json:"child_url,omitempty"`
+	HierarchyVerified bool   `json:"hierarchy_verified"`
+	Closed            bool   `json:"closed"`
+	AlreadyClosed     bool   `json:"already_closed,omitempty"`
+	State             string `json:"state,omitempty"`
+	Preview           string `json:"preview,omitempty"`
+}
+
 // IssueProvider is implemented by provider-specific adapters such as GitHub and GitLab.
 // Every mutating operation requires Confirm=true; without it, only a dry-run preview
 // is returned.
@@ -71,4 +94,5 @@ type IssueProvider interface {
 	CreateIssue(req IssueProviderCreateIssueRequest) (IssueProviderCreateIssueResult, error)
 	CreatePullRequest(req IssueProviderCreatePullRequestRequest) (IssueProviderCreatePullRequestResult, error)
 	CreateChild(req IssueProviderCreateChildRequest) (IssueProviderCreateChildResult, error)
+	CloseChild(req IssueProviderCloseChildRequest) (IssueProviderCloseChildResult, error)
 }

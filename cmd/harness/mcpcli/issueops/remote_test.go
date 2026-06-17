@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core"
 )
 
 func TestMCPIssueOpsSetPhaseAcceptsToAlias(t *testing.T) {
@@ -62,6 +64,77 @@ func TestMCPIssueOpsCleanupStatusReportsMissingEvidence(t *testing.T) {
 	choices, ok := status["choices"].([]any)
 	if !ok || len(choices) != 3 {
 		t.Fatalf("cleanup status should expose three cleanup choices: %#v", status)
+	}
+}
+
+func TestMCPIssueOpsCleanupCloseChildrenRecordsState(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bin := t.TempDir()
+	writeFakeGhForMCPCreateChild(t, bin)
+	t.Setenv("PATH", bin)
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": repo, "branch": "12-child"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	callMCPToolForIssueOpsTest(t, "issueops_link_issue", map[string]any{
+		"id":        id,
+		"issue_url": "https://github.com/acme/repo/issues/12",
+	})
+	callMCPToolForIssueOpsTest(t, "issueops_prepare_branch", map[string]any{
+		"id":            id,
+		"provider":      "github",
+		"issue_url":     "https://github.com/acme/repo/issues/12",
+		"branch":        "12-child",
+		"base_branch":   "main",
+		"link_verified": true,
+	})
+	callMCPToolForIssueOpsTest(t, "issueops_remote_create_child", map[string]any{
+		"id":        id,
+		"title":     "Child",
+		"body":      "Body",
+		"labels":    []string{"bug"},
+		"assignees": []string{"octocat"},
+		"confirm":   true,
+	})
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.RemoteArtifact = &core.IssueOpsRemoteArtifactVerification{
+		Provider:  "github",
+		Kind:      "pr",
+		URL:       "https://github.com/acme/repo/pull/55",
+		Labels:    []string{"issueops"},
+		Assignees: []string{"octocat"},
+	}
+	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	missingMerge := callMCPToolForIssueOpsTestError(t, "issueops_cleanup_close_children", map[string]any{"id": id})
+	if missingMerge == nil || !strings.Contains(fmt.Sprint(missingMerge.Data), "merge evidence") {
+		t.Fatalf("expected merge evidence failure, got %+v", missingMerge)
+	}
+
+	closeResult := callMCPToolForIssueOpsTest(t, "issueops_cleanup_close_children", map[string]any{
+		"id":      id,
+		"merged":  true,
+		"confirm": true,
+	})
+	if closeResult["closed_count"] != float64(1) || closeResult["dry_run"] == true {
+		t.Fatalf("unexpected close-children result: %#v", closeResult)
+	}
+	status := callMCPToolForIssueOpsTest(t, "issueops_status", map[string]any{"id": id})
+	links, ok := status["issue_links"].([]any)
+	if !ok || len(links) != 1 {
+		t.Fatalf("expected one child link in status: %#v", status)
+	}
+	link := links[0].(map[string]any)
+	if link["close_verified_at"] == "" || link["close_reason"] != "completed" {
+		t.Fatalf("expected verified child close evidence in state: %#v", link)
 	}
 }
 
@@ -187,16 +260,24 @@ func TestMCPIssueOpsRemoteCreateChildRecordsChildLink(t *testing.T) {
 func writeFakeGhForMCPCreateChild(t *testing.T, binDir string) {
 	t.Helper()
 	script := `#!/bin/sh
+if [ "$1 $2" = "pr view" ]; then
+  printf '{"url":"https://github.com/acme/repo/pull/55","state":"MERGED","mergedAt":"2026-06-17T00:00:00Z","labels":[{"name":"issueops"}],"assignees":[{"login":"octocat"}]}'
+  exit 0
+fi
 if [ "$1 $2" = "issue create" ]; then
   printf 'https://github.com/acme/repo/issues/34\n'
   exit 0
 fi
 if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/34" ]; then
-  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}]}'
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","state":"closed","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}]}'
   exit 0
 fi
 if [ "$1 $2" = "api -X" ] && [ "$3" = "POST" ]; then
   printf '{"ok":true}'
+  exit 0
+fi
+if [ "$1 $2" = "api -X" ] && [ "$3" = "PATCH" ]; then
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","state":"closed"}'
   exit 0
 fi
 if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/12/sub_issues" ]; then

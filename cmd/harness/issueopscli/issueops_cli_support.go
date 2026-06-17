@@ -29,6 +29,7 @@ func issueOpsUsage() {
   agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
   agent-harness issueops cleanup status --id ID [--merged] [--json]
+  agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]
   agent-harness issueops cleanup stale --repo PATH [--max-age DAYS] [--apply] [--json]
   agent-harness issueops force-release --id ID --reason REASON [--json]
   agent-harness issueops resume --repo PATH [--bind] [--json]

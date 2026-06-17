@@ -4,6 +4,7 @@ import (
 	"agent-harness/internal/core/issueops/active"
 	"agent-harness/internal/core/issueops/artifactverify"
 	"agent-harness/internal/core/issueops/branchprepare"
+	"agent-harness/internal/core/issueops/cleanupchildren"
 	"agent-harness/internal/core/issueops/cleanupstatus"
 	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/linking"
@@ -12,6 +13,7 @@ import (
 	"agent-harness/internal/core/issueops/session"
 	"agent-harness/internal/core/issueops/start"
 	"agent-harness/internal/core/issueops/stringlist"
+	"agent-harness/internal/port"
 	"strings"
 )
 
@@ -34,6 +36,9 @@ type IssueOpsRecord = model.IssueOpsRecord
 type IssueOpsReadiness = model.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = model.IssueOpsCleanupStatusRequest
 type IssueOpsCleanupStatus = model.IssueOpsCleanupStatus
+type IssueOpsCloseChildrenRequest = model.IssueOpsCloseChildrenRequest
+type IssueOpsCloseChildResult = model.IssueOpsCloseChildResult
+type IssueOpsCloseChildrenResult = model.IssueOpsCloseChildrenResult
 type IssueOpsResumeResult = model.IssueOpsResumeResult
 type IssueOpsPhase = model.IssueOpsPhase
 
@@ -112,6 +117,20 @@ func IssueOpsCleanupStatusByID(stateRoot, id string, req IssueOpsCleanupStatusRe
 
 func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupStatusRequest) IssueOpsCleanupStatus {
 	return cleanupstatus.ForRecord(record, req)
+}
+
+func CloseIssueOpsChildren(stateRoot, id string, req IssueOpsCloseChildrenRequest, provider func(string) (port.IssueProvider, error)) (IssueOpsCloseChildrenResult, error) {
+	var result IssueOpsCloseChildrenResult
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		result, e = cleanupchildren.ByID(cleanupchildren.Store{
+			Read:       ReadIssueOps,
+			TouchWrite: touchAndWriteIssueOps,
+			Provider:   provider,
+		}, stateRoot, id, req)
+		return e
+	})
+	return result, err
 }
 
 func issueOpsRemoteArtifactMissing(record IssueOpsRecord) []string {

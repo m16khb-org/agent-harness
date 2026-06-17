@@ -162,6 +162,55 @@ func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.Issu
 	}, nil
 }
 
+func (Provider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueProviderCloseChildResult, error) {
+	owner, repoName, parentNumber, err := parseGitHubIssueURL(req.ParentIssueURL)
+	if err != nil {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "github"}, err
+	}
+	childOwner, childRepo, childNumber, err := parseGitHubIssueURL(req.ChildURL)
+	if err != nil {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "github"}, err
+	}
+	if childOwner != owner || childRepo != repoName {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "github"}, fmt.Errorf("child issue url must match linked parent issue project")
+	}
+	if !req.Confirm {
+		preview := fmt.Sprintf("[dry-run] would execute: gh api repos/%s/%s/issues/%s/sub_issues; gh api -X PATCH repos/%s/%s/issues/%s -f state=closed -f state_reason=completed; gh api repos/%s/%s/issues/%s",
+			owner, repoName, parentNumber, owner, repoName, childNumber, owner, repoName, childNumber)
+		return port.IssueProviderCloseChildResult{OK: true, Provider: "github", ChildURL: strings.TrimSpace(req.ChildURL), Preview: preview}, nil
+	}
+	children, err := runGhAPIJSON[[]githubIssue](req.Repo, []string{"repos/" + owner + "/" + repoName + "/issues/" + parentNumber + "/sub_issues"}, "sub-issue verification")
+	if err != nil {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "github"}, err
+	}
+	childIssue := githubIssueByNumber(children, childNumber)
+	if childIssue.Number == 0 {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "github"}, fmt.Errorf("github sub-issue hierarchy verification failed")
+	}
+	alreadyClosed := strings.EqualFold(childIssue.State, "closed")
+	if !alreadyClosed {
+		if _, err := runGhAPIJSON[githubIssue](req.Repo, []string{"-X", "PATCH", "repos/" + owner + "/" + repoName + "/issues/" + childNumber, "-f", "state=closed", "-f", "state_reason=completed"}, "issue close"); err != nil {
+			return port.IssueProviderCloseChildResult{OK: false, Provider: "github"}, err
+		}
+	}
+	verified, err := runGhAPIJSON[githubIssue](req.Repo, []string{"repos/" + owner + "/" + repoName + "/issues/" + childNumber}, "issue close verification")
+	if err != nil {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "github"}, err
+	}
+	if !strings.EqualFold(verified.State, "closed") {
+		return port.IssueProviderCloseChildResult{OK: false, Provider: "github"}, fmt.Errorf("github child issue close verification failed: state=%s", verified.State)
+	}
+	return port.IssueProviderCloseChildResult{
+		OK:                true,
+		Provider:          "github",
+		ChildURL:          firstNonEmpty(verified.HTMLURL, childIssue.HTMLURL, req.ChildURL),
+		HierarchyVerified: true,
+		Closed:            true,
+		AlreadyClosed:     alreadyClosed,
+		State:             verified.State,
+	}, nil
+}
+
 type ghResult struct {
 	URL    string `json:"url"`
 	Number string `json:"number"`
@@ -171,6 +220,7 @@ type githubIssue struct {
 	ID        int64            `json:"id"`
 	Number    int              `json:"number"`
 	HTMLURL   string           `json:"html_url"`
+	State     string           `json:"state"`
 	Labels    []githubLabel    `json:"labels"`
 	Assignees []githubAssignee `json:"assignees"`
 }
@@ -272,6 +322,15 @@ func githubIssueListContains(issues []githubIssue, id int64, number string) bool
 		}
 	}
 	return false
+}
+
+func githubIssueByNumber(issues []githubIssue, number string) githubIssue {
+	for _, issue := range issues {
+		if number != "" && strconv.Itoa(issue.Number) == number {
+			return issue
+		}
+	}
+	return githubIssue{}
 }
 
 func githubLabelNames(labels []githubLabel) []string {

@@ -2,8 +2,13 @@ package issueopscli
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core"
 )
 
 func TestRunIssueOpsUsageAndCleanupBranches(t *testing.T) {
@@ -86,5 +91,87 @@ func TestRunIssueOpsCleanupStatusTextAndJSON(t *testing.T) {
 	}
 	if missing, ok := status["missing"].([]any); !ok || len(missing) == 0 {
 		t.Fatalf("cleanup status should report missing gates: %#v", status)
+	}
+}
+
+func TestRunIssueOpsCleanupCloseChildrenRequiresMergedAndConfirmRecordsState(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bin := t.TempDir()
+	writeFakeGhForCloseChildren(t, bin)
+	t.Setenv("PATH", bin)
+	record := core.IssueOpsRecord{
+		ID:       core.NewIssueOpsID(repo, "12-child-cleanup"),
+		Repo:     repo,
+		Branch:   "12-child-cleanup",
+		Phase:    core.IssueOpsPhasePR,
+		IssueURL: "https://github.com/acme/repo/issues/12",
+		IssueLinks: []core.IssueOpsIssueLink{{
+			Type:     "child",
+			URL:      "https://github.com/acme/repo/issues/34",
+			Provider: "github",
+		}},
+	}
+	record.RemoteArtifact = &core.IssueOpsRemoteArtifactVerification{
+		Provider:  "github",
+		Kind:      "pr",
+		URL:       "https://github.com/acme/repo/pull/55",
+		Labels:    []string{"issueops"},
+		Assignees: []string{"octocat"},
+	}
+	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runIssueOps([]string{"cleanup", "close-children", "--id", record.ID, "--json"}); err == nil || !strings.Contains(err.Error(), "merge evidence") {
+		t.Fatalf("close-children should require merge evidence, got %v", err)
+	}
+
+	jsonOut := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"cleanup", "close-children", "--id", record.ID, "--merged", "--confirm", "--json"})
+	})
+	var result map[string]any
+	if err := json.Unmarshal([]byte(jsonOut), &result); err != nil {
+		t.Fatalf("close-children should return JSON: %v\n%s", err, jsonOut)
+	}
+	if result["closed_count"] != float64(1) || result["dry_run"] == true {
+		t.Fatalf("unexpected close-children result: %#v", result)
+	}
+	updated, err := core.ReadIssueOps(core.IssueOpsStateRoot(), record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.IssueLinks[0].CloseVerifiedAt == "" || updated.IssueLinks[0].CloseReason != "completed" {
+		t.Fatalf("close evidence not recorded: %+v", updated.IssueLinks[0])
+	}
+}
+
+func writeFakeGhForCloseChildren(t *testing.T, binDir string) {
+	t.Helper()
+	script := `#!/bin/sh
+if [ "$1 $2" = "pr view" ]; then
+  printf '{"url":"https://github.com/acme/repo/pull/55","state":"MERGED","mergedAt":"2026-06-17T00:00:00Z","labels":[{"name":"issueops"}],"assignees":[{"login":"octocat"}]}'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/12/sub_issues" ]; then
+  printf '[{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","state":"open"}]'
+  exit 0
+fi
+if [ "$1 $2" = "api -X" ] && [ "$3" = "PATCH" ]; then
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","state":"closed"}'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/34" ]; then
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","state":"closed"}'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`
+	if err := os.WriteFile(filepath.Join(binDir, "gh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
 	}
 }

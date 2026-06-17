@@ -13,6 +13,7 @@ type Deps struct {
 	PrintJSON    func(value any) error
 	PrintError   func(err error) error
 	VerifyMerged func(core.IssueOpsRemoteArtifactVerification) error
+	Provider     func(provider string) (core.IssueProvider, error)
 }
 
 func RunFeedback(args []string, deps Deps) error {
@@ -49,7 +50,7 @@ func RunFeedback(args []string, deps Deps) error {
 
 func RunCleanup(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]")
+		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]")
 		return nil
 	}
 	switch args[0] {
@@ -82,6 +83,40 @@ func RunCleanup(args []string, deps Deps) error {
 			fmt.Println("선택지:")
 			for _, choice := range status.Choices {
 				fmt.Println(choice)
+			}
+		}
+		return nil
+	case "close-children":
+		fs := flag.NewFlagSet("issueops cleanup close-children", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		merged := fs.Bool("merged", false, "confirm child PR/MR merge into the parent work branch before closing child tasks")
+		confirm := fs.Bool("confirm", false, "execute remote child close and record verification; without this, dry-run preview only")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := deps.ParseFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		verifiedMerged := CleanupMerged(*id, *merged, deps)
+		result, err := core.CloseIssueOpsChildren(core.IssueOpsStateRoot(), *id, core.IssueOpsCloseChildrenRequest{
+			Merged:  verifiedMerged,
+			Confirm: *confirm,
+		}, deps.Provider)
+		if err != nil {
+			if *jsonOut {
+				if printErr := deps.PrintError(err); printErr != nil {
+					return printErr
+				}
+			}
+			return err
+		}
+		if *jsonOut {
+			return deps.PrintJSON(result)
+		}
+		fmt.Printf("closed children: %d\n", result.ClosedCount)
+		for _, child := range result.Children {
+			if child.Preview != "" {
+				fmt.Println(child.Preview)
+			} else {
+				fmt.Printf("- %s closed=%t state=%s\n", child.URL, child.Closed, child.State)
 			}
 		}
 		return nil

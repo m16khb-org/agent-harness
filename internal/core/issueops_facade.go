@@ -20,6 +20,9 @@ type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsReadiness = issueops.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = issueops.IssueOpsCleanupStatusRequest
 type IssueOpsCleanupStatus = issueops.IssueOpsCleanupStatus
+type IssueOpsCloseChildrenRequest = issueops.IssueOpsCloseChildrenRequest
+type IssueOpsCloseChildResult = issueops.IssueOpsCloseChildResult
+type IssueOpsCloseChildrenResult = issueops.IssueOpsCloseChildrenResult
 type IssueOpsStaleScanRequest = issueops.IssueOpsStaleScanRequest
 type IssueOpsStaleScanResult = issueops.IssueOpsStaleScanResult
 
@@ -89,8 +92,16 @@ func IssueOpsStateRoot() string {
 	return issueops.IssueOpsStateRoot()
 }
 
+func NewIssueOpsID(repo, branch string) string {
+	return issueops.NewIssueOpsID(repo, branch)
+}
+
 func newIssueOpsID(repo, branch string) string {
 	return issueops.NewIssueOpsID(repo, branch)
+}
+
+func WriteIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
+	return issueops.WriteIssueOps(stateRoot, record)
 }
 
 func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
@@ -175,6 +186,10 @@ func IssueOpsCleanupStatusByID(stateRoot, id string, req IssueOpsCleanupStatusRe
 
 func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupStatusRequest) IssueOpsCleanupStatus {
 	return issueops.IssueOpsCleanupStatusForRecord(record, req)
+}
+
+func CloseIssueOpsChildren(stateRoot, id string, req IssueOpsCloseChildrenRequest, provider func(string) (IssueProvider, error)) (IssueOpsCloseChildrenResult, error) {
+	return issueops.CloseIssueOpsChildren(stateRoot, id, req, provider)
 }
 
 func ForceReleaseIssueOps(stateRoot, id, reason string) (IssueOpsRecord, error) {
