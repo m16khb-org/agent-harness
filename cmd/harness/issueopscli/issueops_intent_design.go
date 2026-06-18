@@ -9,7 +9,7 @@ import (
 
 func runIssueOpsIntent(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops intent record --id ID --raw-request TEXT --interpreted-intent TEXT --success-criteria TEXT [--constraint TEXT] [--ambiguity TEXT] [--non-goal TEXT] [--json]")
+		fmt.Println("Usage: agent-harness issueops intent record --id ID --raw-request TEXT --interpreted-intent TEXT --success-criteria TEXT [--constraint TEXT] [--ambiguity TEXT] [--non-goal TEXT] [--intent-class CLASS] [--json]")
 		return nil
 	}
 	if args[0] != "record" {
@@ -27,6 +27,7 @@ func runIssueOpsIntent(args []string) error {
 	fs.Var(&constraints, "constraint", "constraint; repeatable")
 	fs.Var(&ambiguities, "ambiguity", "resolved, deferred, or blocking ambiguity; repeatable")
 	fs.Var(&nonGoals, "non-goal", "non-goal; repeatable")
+	intentClass := fs.String("intent-class", "", "intent class controlling plan-prep gate strictness: trivial, standard, refactoring, architecture, research")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
@@ -38,6 +39,7 @@ func runIssueOpsIntent(args []string) error {
 		Constraints:       []string(constraints),
 		Ambiguities:       []string(ambiguities),
 		NonGoals:          []string(nonGoals),
+		IntentClass:       *intentClass,
 	})
 	return printIssueOpsResult(record, *jsonOut, err)
 }

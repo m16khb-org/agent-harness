@@ -21,6 +21,7 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"start":          runIssueOpsStart,
 	"status":         runIssueOpsStatus,
 	"intent":         runIssueOpsIntent,
+	"plan-prep":      runIssueOpsPlanPrep,
 	"design":         runIssueOpsDesign,
 	"link-issue":     runIssueOpsLinkIssue,
 	"link-plan":      runIssueOpsLinkPlan,
