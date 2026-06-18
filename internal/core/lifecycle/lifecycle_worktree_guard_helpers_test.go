@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"agent-harness/internal/core/issueops"
 	"os"
 	"path/filepath"
 	"strings"
@@ -165,4 +166,23 @@ func linkIssueOpsWorktreeForGuardTest(t *testing.T, repo, branch string) linkedI
 	}
 	setIssueOpsPhaseForTest(t, repo, branch, IssueOpsPhaseImplement)
 	return linkedIssueOpsWorktreeForTest{id: record.ID, path: worktree}
+}
+
+func recordIssueOpsWorktreeToolsForGuardTest(t *testing.T, id, worktree string) {
+	t.Helper()
+	record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.WorktreeTools = &issueops.IssueOpsWorktreeToolPreparation{
+		OK:                   true,
+		WorktreePath:         worktree,
+		CodeGraphProjectPath: worktree,
+		CodeGraphChecked:     true,
+		CodeGraphReady:       true,
+		PreparedAt:           "2026-06-05T00:00:00Z",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
 }

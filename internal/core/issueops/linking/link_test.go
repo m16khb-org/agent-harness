@@ -150,8 +150,8 @@ func TestLinkPlanValidatesReadinessAndPersistsAbsolutePath(t *testing.T) {
 	if got.PlanPath != planPath {
 		t.Fatalf("PlanPath=%q, want %q", got.PlanPath, planPath)
 	}
-	if got.Phase != model.IssueOpsPhaseImplement {
-		t.Fatalf("Phase=%q, want %q", got.Phase, model.IssueOpsPhaseImplement)
+	if got.Phase != model.IssueOpsPhasePlan {
+		t.Fatalf("Phase=%q, want %q", got.Phase, model.IssueOpsPhasePlan)
 	}
 }
 

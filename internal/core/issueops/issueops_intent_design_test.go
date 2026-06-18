@@ -189,8 +189,12 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 		t.Fatal(err)
 	}
 	record, err = LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans/demo.md"))
-	if err != nil || record.Phase != IssueOpsPhaseImplement {
-		t.Fatalf("approved design should allow implementation entry, got %+v err=%v", record, err)
+	if err != nil || record.Phase != IssueOpsPhasePlan {
+		t.Fatalf("approved design should allow plan attachment before tool prep, got %+v err=%v", record, err)
+	}
+	record = recordIssueOpsPreparedWorktreeToolsForTest(t, stateRoot, record.ID, worktree)
+	if record.Phase != IssueOpsPhaseImplement {
+		t.Fatalf("worktree tool prep should allow implementation entry, got %+v", record)
 	}
 }
 

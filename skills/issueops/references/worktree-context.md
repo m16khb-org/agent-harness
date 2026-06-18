@@ -36,13 +36,14 @@ agent-harness issueops design review --id "$ISSUEOPS_ID" \
   --json
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$expected_worktree/$PLAN_REL_PATH" --json
 agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json
+agent-harness issueops phase --id "$ISSUEOPS_ID" --to implement --json
 ```
 
 Keep IssueOps worktrees as siblings of the source checkout under the fixed pattern `../<repo>.worktrees/<branch-slug-with-slashes-replaced>`. Do not create ad hoc worktree paths inside the repo or under temporary directories unless the user explicitly asks for a different location.
 
 Run implementation from the worktree path, not from the source checkout. Record the expected branch and worktree path in the issue-based plan and in any worker prompt. `issueops phase --to plan` requires both linked issue and recorded intent contract. `issueops link-worktree` requires linked issue plus verified provider branch evidence and an existing worktree directory. `issueops link-plan` is recorded after `link-worktree` and approved design review, and requires the plan file to exist inside that linked worktree. If the source checkout already contains implementation edits from before this gate, stop and ask how to move or reconcile those edits into the issue branch worktree.
 
-The linked worktree path is authoritative. Once `issueops link-worktree` is recorded, the lifecycle PreToolUse guard blocks mutating tool targets outside that exact path, including the source checkout on `main` and another sibling worktree for a different issue branch. During `implement`, `ai-slop-clean`, `feedback`, and `pr`, a cycle with no linked worktree is fail-closed for source/worktree edits: create the sibling worktree and run `issueops link-worktree` before changing implementation files. The lifecycle command refuses to enter `plan` until linked issue and intent contract are recorded, refuses `implement` until provider-linked branch, plan, existing worktree evidence, and approved design review are recorded, refuses `ai-slop-clean` until implementation changes are also recorded, refuses `pr` until strict PR readiness is green, and refuses `done` until the loop has first entered `pr` and a verified remote PR/MR artifact is recorded.
+The linked worktree path is authoritative. Once `issueops link-worktree` is recorded, the lifecycle PreToolUse guard blocks mutating tool targets outside that exact path, including the source checkout on `main` and another sibling worktree for a different issue branch. During `implement`, `ai-slop-clean`, `feedback`, and `pr`, a cycle with no linked worktree is fail-closed for source/worktree edits: create the sibling worktree and run `issueops link-worktree` before changing implementation files. The lifecycle command refuses to enter `plan` until linked issue and intent contract are recorded, refuses `implement` until provider-linked branch, plan, existing worktree evidence, approved design review, and durable worktree tool preparation are recorded, refuses `ai-slop-clean` until implementation changes are also recorded, refuses `pr` until strict PR readiness is green, and refuses `done` until the loop has first entered `pr` and a verified remote PR/MR artifact is recorded.
 
 ## Edit Target Guard
 
@@ -97,7 +98,7 @@ Use this shape:
 
 ## Local Config And Dependency Links
 
-Run `agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json` before worktree tests. It prepares the CodeGraph index for the exact worktree and, for pnpm repositories, installs missing `node_modules` in the worktree with `pnpm install --frozen-lockfile --prefer-offline`.
+Run `agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json` after linking the plan and before implementation. It prepares the CodeGraph index for the exact worktree, for pnpm repositories installs missing `node_modules` in the worktree with `pnpm install --frozen-lockfile --prefer-offline`, and persists the result as `worktree_tools` on the IssueOps record. The `implement` phase remains blocked until that durable evidence is ready for the linked worktree.
 
 When the worktree needs large generated dependency directories such as `node_modules` and `prepare-tools` cannot install them automatically, prefer reusing an existing dependency directory by symlink only after verifying the package manager, lockfile, platform, and dependency state match the source checkout.
 

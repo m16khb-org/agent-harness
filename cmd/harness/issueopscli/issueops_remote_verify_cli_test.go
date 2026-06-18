@@ -94,6 +94,16 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.Iss
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), id, planPath); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), id, core.IssueOpsWorktreeToolPreparation{
+		OK:                   true,
+		WorktreePath:         worktree,
+		CodeGraphProjectPath: worktree,
+		CodeGraphChecked:     true,
+		CodeGraphReady:       true,
+		Messages:             []string{"test prepared IssueOps worktree tools"},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	writeIssueOpsCLIFileForTest(t, worktree, "internal/demo.go", "package demo\n")
 	if code, _, stderr := core.GitCmd(worktree, "add", "plans/remote-verify.md", "internal/demo.go"); code != 0 {
 		t.Fatalf("git add implementation failed: %s", stderr)

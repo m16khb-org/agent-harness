@@ -1,5 +1,7 @@
 package worktreetools
 
+import "agent-harness/internal/core"
+
 type PrepareResult struct {
 	OK                   bool     `json:"ok"`
 	ID                   string   `json:"id"`
@@ -13,4 +15,23 @@ type PrepareResult struct {
 	CodeGraphInitialized bool     `json:"codegraph_initialized,omitempty"`
 	CodeGraphReady       bool     `json:"codegraph_ready"`
 	Messages             []string `json:"messages,omitempty"`
+	PreparedAt           string   `json:"prepared_at,omitempty"`
+}
+
+func (r PrepareResult) IssueOpsWorktreeToolPreparation() core.IssueOpsWorktreeToolPreparation {
+	return core.IssueOpsWorktreeToolPreparation{
+		OK:                   r.OK,
+		ID:                   r.ID,
+		WorktreePath:         r.WorktreePath,
+		PackageManager:       r.PackageManager,
+		DependenciesChecked:  r.DependenciesChecked,
+		DependenciesReady:    r.DependenciesReady,
+		DependenciesAction:   r.DependenciesAction,
+		CodeGraphProjectPath: r.CodeGraphProjectPath,
+		CodeGraphChecked:     r.CodeGraphChecked,
+		CodeGraphInitialized: r.CodeGraphInitialized,
+		CodeGraphReady:       r.CodeGraphReady,
+		Messages:             append([]string{}, r.Messages...),
+		PreparedAt:           r.PreparedAt,
+	}
 }

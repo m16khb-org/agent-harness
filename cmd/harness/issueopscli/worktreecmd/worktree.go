@@ -67,6 +67,18 @@ func runWorktreePrepareTools(args []string, deps Deps) error {
 		}
 		return err
 	}
+	updated, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), record.ID, result.IssueOpsWorktreeToolPreparation())
+	if err != nil {
+		if *jsonOut {
+			if printErr := deps.PrintError(err); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	if updated.WorktreeTools != nil {
+		result.PreparedAt = updated.WorktreeTools.PreparedAt
+	}
 	if *jsonOut {
 		return deps.PrintJSON(result)
 	}
@@ -151,15 +163,15 @@ func runWorktreePrepare(args []string, deps Deps) error {
 		baseBranch = record.BranchPrepare.BaseBranch
 	}
 	result := map[string]any{
-		"ok":              true,
-		"id":              record.ID,
-		"repo":            repo,
-		"branch":          branch,
-		"base_branch":     baseBranch,
-		"worktree_path":   worktreePath,
-		"exists":          false,
-		"command":         []string{"git", "worktree", "add", worktreePath, branch},
-		"next_step":       "execute the command above, then run issueops link-worktree --id " + record.ID + " --worktree-path " + worktreePath,
+		"ok":            true,
+		"id":            record.ID,
+		"repo":          repo,
+		"branch":        branch,
+		"base_branch":   baseBranch,
+		"worktree_path": worktreePath,
+		"exists":        false,
+		"command":       []string{"git", "worktree", "add", worktreePath, branch},
+		"next_step":     "execute the command above, then run issueops link-worktree --id " + record.ID + " --worktree-path " + worktreePath,
 	}
 	if info, err := os.Stat(worktreePath); err == nil && info.IsDir() {
 		result["exists"] = true

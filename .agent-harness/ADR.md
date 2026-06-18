@@ -318,6 +318,7 @@ Archived entries:
 
 - Kind: `adr`
 - Source: agent-harness optimization P5
+
 - Summary: 최적화 P5에서 facade의 순수 위임을 직접 import로 되돌리는 대신, facade를 의도된 안정적 공개 표면으로 유지하고 경계 규칙을 문서화하기로 결정했다.
 - Context: 최적화 계획 P5는 internal/core/*_facade.go의 pure passthrough alias/one-line delegate를 owning package 직접 import로 되돌려 facade 표면을 축소하라고 제안했다. cmd/는 core를 단일 표면으로 import하고 core 내부 subpackage(core/issueops 등)는 직접 import하지 않는다.
 - Decision: facade(issueops/workflow/utility/policy/project_doc/state_trace/draft_wiki/issueops_remote)를 의도된 공개 표면으로 유지한다. 허용 내용은 type alias 재노출, 타입 변환, 다중 subpackage 조합, boundary enforcement이며, 순수 1-line 위임도 표면 안정성/디커플링을 위해 허용한다. 규칙은 internal/core/doc.go에 codify했다.
@@ -330,6 +331,15 @@ Archived entries:
 - Alternatives / rejected options:
   - P5 원안대로 pure passthrough를 cmd 직접 subpackage import로 되돌리기 — cmd가 core 내부 구조에 결합되고, dead export가 0이라 표면 축소 이득도 없어 거부
   - facade 내부 unexported 위임(containsAny 등) 제거 — 내부 indirection만 줄고 core 내부 caller churn 발생, 한계 가치라 보류
+
+## 2026-06-18 — IssueOps implementation requires durable worktree tool preparation
+
+- Kind: `adr`
+- Source: codex
+- Summary: IssueOps implementation entry is gated on persisted worktree dependency and CodeGraph preparation evidence, not only on linked worktree and plan paths.
+- Context: Investigation showed `issueops worktree prepare-tools` already installed supported pnpm dependencies and initialized CodeGraph for the linked worktree, but its result was transient. `link-plan` moved the cycle directly to `implement`, so agents could start implementation before proving dependencies, manual symlink/copy/install work, or CodeGraph readiness for the exact worktree.
+- Decision: Store `worktree_tools` on the IssueOps record, keep `link-plan` as plan attachment only, and let `prepare-tools` persist evidence and unlock `implement` when readiness is complete.
+- Consequences: CLI, MCP, skills, docs, and response contracts must expose `worktree_tools_prepared`, `worktree_dependencies_ready`, and `codegraph_ready` as public gates. Manual dependency reuse remains explicit: perform the symlink/copy/install in the linked worktree, rerun `prepare-tools`, then proceed.
 
 ## 2026-06-18 — IssueOps plan-prep evidence gate
 

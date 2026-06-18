@@ -131,5 +131,15 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, planPath); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), record.ID, core.IssueOpsWorktreeToolPreparation{
+		OK:                   true,
+		WorktreePath:         worktree,
+		CodeGraphProjectPath: worktree,
+		CodeGraphChecked:     true,
+		CodeGraphReady:       true,
+		Messages:             []string{"test prepared IssueOps worktree tools"},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	return linkedIssueOpsWorktree{id: record.ID, path: worktree}
 }

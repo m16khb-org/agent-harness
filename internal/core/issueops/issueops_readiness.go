@@ -93,6 +93,7 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if !issueOpsPlanInLinkedWorktree(record) {
 		missing = append(missing, "plan_in_worktree")
 	}
+	missing = append(missing, issueOpsWorktreeToolsMissing(record)...)
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
@@ -102,6 +103,27 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		WorktreePath: record.WorktreePath,
 		Branch:       record.Branch,
 	}
+}
+
+func issueOpsWorktreeToolsMissing(record IssueOpsRecord) []string {
+	prep := record.WorktreeTools
+	if prep == nil || strings.TrimSpace(prep.PreparedAt) == "" {
+		return []string{"worktree_tools_prepared"}
+	}
+	missing := []string{}
+	if !prep.OK {
+		missing = append(missing, "worktree_tools_prepared")
+	}
+	if strings.TrimSpace(prep.WorktreePath) == "" || strings.TrimSpace(record.WorktreePath) == "" || strings.TrimSpace(prep.WorktreePath) != strings.TrimSpace(record.WorktreePath) {
+		missing = append(missing, "worktree_tools_worktree_match")
+	}
+	if prep.DependenciesChecked && !prep.DependenciesReady {
+		missing = append(missing, "worktree_dependencies_ready")
+	}
+	if !prep.CodeGraphChecked || !prep.CodeGraphReady {
+		missing = append(missing, "codegraph_ready")
+	}
+	return missing
 }
 
 func issueOpsStrictGitRoot(record IssueOpsRecord) string {

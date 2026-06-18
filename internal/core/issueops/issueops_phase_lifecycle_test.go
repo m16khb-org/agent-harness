@@ -74,6 +74,10 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := LinkIssueOpsPlan(stateRoot, record.ID, filepath.Join(worktree, "plans/demo.md")); err != nil {
 		t.Fatal(err)
 	}
+	record = recordIssueOpsPreparedWorktreeToolsForTest(t, stateRoot, record.ID, worktree)
+	if record.Phase != IssueOpsPhaseImplement {
+		t.Fatalf("prepared worktree tools should move to implement phase: %+v", record)
+	}
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean)); err == nil || !strings.Contains(err.Error(), "implementation_changes") {
 		t.Fatalf("ai-slop-clean without implementation changes should be rejected, got %v", err)
 	}

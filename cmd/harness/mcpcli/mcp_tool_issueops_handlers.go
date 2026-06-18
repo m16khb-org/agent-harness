@@ -84,6 +84,17 @@ func handleMCPIssueOpsPrepareWorktreeTools(args map[string]any) MCPToolOutcome {
 	if err == nil {
 		var result any
 		result, err = PrepareIssueOpsWorktreeTools(record)
+		if err == nil {
+			if prepared, ok := result.(interface {
+				IssueOpsWorktreeToolPreparation() core.IssueOpsWorktreeToolPreparation
+			}); ok {
+				var updated core.IssueOpsRecord
+				updated, err = core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), record.ID, prepared.IssueOpsWorktreeToolPreparation())
+				if err == nil && updated.WorktreeTools != nil {
+					result = *updated.WorktreeTools
+				}
+			}
+		}
 		return issueOpsMCPOutcome(result, err, "IssueOps worktree tool preparation failed")
 	}
 	return issueOpsMCPOutcome(nil, err, "IssueOps worktree tool preparation failed")

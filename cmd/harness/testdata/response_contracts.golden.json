@@ -223,7 +223,7 @@
           "name": "version"
         }
       ],
-      "hash": "b95421cd5005840f772c76d55d46f57a2a940d2da529d0c2cecdddd6dd2bd410",
+      "hash": "ab0ddee3109b198dbb76cf4122a872e2de4d11ee823a130c5f5eca2a9adf3969",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -425,6 +425,7 @@
           "plan_path",
           "branch_prepare",
           "remote_artifact",
+          "worktree_tools",
           "feedback",
           "ai_slop_clean_at",
           "created_at",
@@ -511,7 +512,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 23621,
+          "bytes": 24796,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -558,7 +559,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 23679,
+          "bytes": 23981,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -2011,7 +2012,7 @@
       ],
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
-      "phase": "implement",
+      "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
         "prior_decisions": {
@@ -2165,7 +2166,7 @@
       ],
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
-      "phase": "implement",
+      "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
         "prior_decisions": {
@@ -2445,7 +2446,7 @@
       ],
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
-      "phase": "implement",
+      "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
         "prior_decisions": {
@@ -2607,7 +2608,7 @@
       },
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
-      "phase": "implement",
+      "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
         "prior_decisions": {
@@ -2736,7 +2737,7 @@
       ],
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
-      "phase": "implement",
+      "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
         "prior_decisions": {
@@ -2986,7 +2987,7 @@
       ],
       "issue_url": "https://gitlab.example/group/project/-/issues/1",
       "ok": true,
-      "phase": "implement",
+      "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
         "prior_decisions": {
@@ -6100,7 +6101,7 @@
                 "name": "version"
               }
             ],
-            "hash": "b95421cd5005840f772c76d55d46f57a2a940d2da529d0c2cecdddd6dd2bd410",
+            "hash": "ab0ddee3109b198dbb76cf4122a872e2de4d11ee823a130c5f5eca2a9adf3969",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6302,6 +6303,7 @@
                 "plan_path",
                 "branch_prepare",
                 "remote_artifact",
+                "worktree_tools",
                 "feedback",
                 "ai_slop_clean_at",
                 "created_at",
@@ -6395,7 +6397,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 23621,
+                "bytes": 24796,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -6442,7 +6444,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 23679,
+                "bytes": 23981,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -7883,7 +7885,7 @@
             ],
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
-            "phase": "implement",
+            "phase": "plan",
             "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "plan_prep": {
               "prior_decisions": {
@@ -8002,7 +8004,7 @@
             ],
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
-            "phase": "implement",
+            "phase": "plan",
             "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "plan_prep": {
               "prior_decisions": {
@@ -8168,7 +8170,7 @@
             },
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
-            "phase": "implement",
+            "phase": "plan",
             "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "plan_prep": {
               "prior_decisions": {
@@ -8388,7 +8390,7 @@
             ],
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
-            "phase": "implement",
+            "phase": "plan",
             "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "plan_prep": {
               "prior_decisions": {

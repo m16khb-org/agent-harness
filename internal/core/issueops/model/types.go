@@ -161,6 +161,22 @@ type IssueOpsPlanPrepRequest struct {
 	WebResearch    IssueOpsPlanPrepItemRequest
 }
 
+type IssueOpsWorktreeToolPreparation struct {
+	OK                   bool     `json:"ok"`
+	ID                   string   `json:"id"`
+	WorktreePath         string   `json:"worktree_path"`
+	PackageManager       string   `json:"package_manager,omitempty"`
+	DependenciesChecked  bool     `json:"dependencies_checked,omitempty"`
+	DependenciesReady    bool     `json:"dependencies_ready,omitempty"`
+	DependenciesAction   string   `json:"dependencies_action,omitempty"`
+	CodeGraphProjectPath string   `json:"codegraph_project_path"`
+	CodeGraphChecked     bool     `json:"codegraph_checked"`
+	CodeGraphInitialized bool     `json:"codegraph_initialized,omitempty"`
+	CodeGraphReady       bool     `json:"codegraph_ready"`
+	Messages             []string `json:"messages,omitempty"`
+	PreparedAt           string   `json:"prepared_at,omitempty"`
+}
+
 type IssueOpsRecord struct {
 	OK                     bool                                `json:"ok"`
 	ID                     string                              `json:"id"`
@@ -177,6 +193,7 @@ type IssueOpsRecord struct {
 	RemoteArtifact         *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
 	Decisions              []IssueOpsDecision                  `json:"decisions,omitempty"`
 	PlanPrep               *IssueOpsPlanPrep                   `json:"plan_prep,omitempty"`
+	WorktreeTools          *IssueOpsWorktreeToolPreparation    `json:"worktree_tools,omitempty"`
 	Feedback               []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
 	RoutingTrace           []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt          string                              `json:"ai_slop_clean_at,omitempty"`

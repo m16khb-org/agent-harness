@@ -59,8 +59,12 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.Phase != IssueOpsPhaseImplement || record.PlanPath != filepath.Join(worktree, "docs/superpowers/plans/demo.md") {
-		t.Fatalf("plan link should move to implement phase: %+v", record)
+	if record.Phase != IssueOpsPhasePlan || record.PlanPath != filepath.Join(worktree, "docs/superpowers/plans/demo.md") {
+		t.Fatalf("plan link should record the plan without skipping worktree preparation: %+v", record)
+	}
+	record = recordIssueOpsPreparedWorktreeToolsForTest(t, stateRoot, record.ID, worktree)
+	if record.Phase != IssueOpsPhaseImplement {
+		t.Fatalf("prepared worktree tools should move to implement phase: %+v", record)
 	}
 
 	record, err = AddIssueOpsFeedback(stateRoot, record.ID, "user", "tighten acceptance criteria", "")
@@ -171,6 +175,7 @@ func TestIssueOpsContractChangeFeedbackBlocksPRUntilIssueUpdateRecorded(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
+	record = recordIssueOpsPreparedWorktreeToolsForTest(t, stateRoot, record.ID, worktree)
 	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\n")
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
 	if err != nil {

@@ -48,6 +48,20 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 	if prepared["codegraph_ready"] != true || prepared["codegraph_project_path"] != worktree {
 		t.Fatalf("unexpected prepare-tools result: %#v", prepared)
 	}
+	statusOut := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"status", "--id", id, "--json"})
+	})
+	var status map[string]any
+	if err := json.Unmarshal([]byte(statusOut), &status); err != nil {
+		t.Fatalf("status should return JSON: %v\n%s", err, statusOut)
+	}
+	tools, ok := status["worktree_tools"].(map[string]any)
+	if !ok {
+		t.Fatalf("prepare-tools should persist worktree tool evidence on the IssueOps record: %#v", status)
+	}
+	if tools["codegraph_ready"] != true || tools["codegraph_project_path"] != worktree || tools["worktree_path"] != worktree {
+		t.Fatalf("unexpected persisted worktree tool evidence: %#v", tools)
+	}
 	log, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatal(err)

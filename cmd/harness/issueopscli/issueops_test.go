@@ -2,6 +2,7 @@ package issueopscli
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,6 +11,13 @@ import (
 func TestRunIssueOpsLifecycle(t *testing.T) {
 	stubIssueOpsChildIssueVerifier(t, nil)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	bin := t.TempDir()
+	codegraph := filepath.Join(bin, "codegraph")
+	if err := os.WriteFile(codegraph, []byte("#!/bin/sh\ncase \"$1\" in\nstatus) exit 0 ;;\ninit) exit 0 ;;\n*) exit 0 ;;\nesac\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
 	repo := makeIssueOpsCLIRepoForTest(t, "example")
 	start := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"start", "--repo", repo, "--branch", "1-provider-linked-branch", "--json"})
@@ -72,8 +80,28 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if err := json.Unmarshal([]byte(plan), &planRecord); err != nil {
 		t.Fatalf("plan link should return JSON: %v\n%s", err, plan)
 	}
-	if planRecord["phase"] != "implement" {
-		t.Fatalf("plan link should move to implement phase: %#v", planRecord)
+	if planRecord["phase"] != "plan" {
+		t.Fatalf("plan link should stay in plan phase until worktree tools are prepared: %#v", planRecord)
+	}
+	preparedTools := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"worktree", "prepare-tools", "--id", id, "--json"})
+	})
+	var tools map[string]any
+	if err := json.Unmarshal([]byte(preparedTools), &tools); err != nil {
+		t.Fatalf("worktree prepare-tools should return JSON: %v\n%s", err, preparedTools)
+	}
+	if tools["codegraph_ready"] != true || tools["worktree_path"] != worktreePath {
+		t.Fatalf("worktree prepare-tools should prepare the linked worktree: %#v", tools)
+	}
+	afterPrepare := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"status", "--id", id, "--json"})
+	})
+	var preparedRecord map[string]any
+	if err := json.Unmarshal([]byte(afterPrepare), &preparedRecord); err != nil {
+		t.Fatalf("status after prepare-tools should return JSON: %v\n%s", err, afterPrepare)
+	}
+	if preparedRecord["phase"] != "implement" {
+		t.Fatalf("prepare-tools should move to implement phase: %#v", preparedRecord)
 	}
 
 	child := captureStdoutForContract(t, func() error {

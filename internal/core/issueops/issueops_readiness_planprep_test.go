@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"path/filepath"
 	"testing"
 
 	"agent-harness/internal/core/issueops/model"
@@ -72,5 +73,42 @@ func TestPlanReadinessRejectsEmptyStatusItem(t *testing.T) {
 	}
 	if planPrepHasMissing(ready.Missing, "plan_prep_decisions") || planPrepHasMissing(ready.Missing, "plan_prep_related_issues") {
 		t.Fatalf("valid items must not be missing: %#v", ready.Missing)
+	}
+}
+
+func TestImplementationReadinessRequiresPreparedWorktreeTools(t *testing.T) {
+	repo := t.TempDir()
+	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
+	planPath := filepath.Join(worktree, "plans/demo.md")
+	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
+
+	rec := baseIntentRecord("trivial")
+	rec.Repo = repo
+	rec.Branch = "1-demo"
+	rec.BranchPrepare = &model.IssueOpsBranchPrepare{
+		Provider:     "github",
+		IssueURL:     rec.IssueURL,
+		Branch:       "1-demo",
+		BaseBranch:   "main",
+		LinkVerified: true,
+	}
+	rec.DesignReview = &model.IssueOpsDesignReview{
+		ProblemSummary: "prepare worktree tools",
+		ProposedDesign: "record worktree tool preparation before implementation",
+		RefactorPlan:   "durable gate only",
+		Alternatives:   []string{"prompt-only reminder"},
+		Risks:          []string{"stale worktree tool state"},
+		Verification:   []string{"design review checked alternatives and risks"},
+		Approved:       true,
+	}
+	rec.WorktreePath = worktree
+	rec.PlanPath = planPath
+
+	ready := IssueOpsImplementationReadiness(rec)
+	if ready.Ready {
+		t.Fatalf("implementation should not be ready before worktree tools are prepared: %+v", ready)
+	}
+	if !planPrepHasMissing(ready.Missing, "worktree_tools_prepared") {
+		t.Fatalf("implementation readiness should require prepared worktree tools: %#v", ready.Missing)
 	}
 }

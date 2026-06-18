@@ -112,6 +112,22 @@ func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 	}
 }
 
+func recordIssueOpsPreparedWorktreeToolsForTest(t *testing.T, stateRoot, id, worktree string) IssueOpsRecord {
+	t.Helper()
+	record, err := RecordIssueOpsWorktreeTools(stateRoot, id, IssueOpsWorktreeToolPreparation{
+		OK:                   true,
+		WorktreePath:         worktree,
+		CodeGraphProjectPath: worktree,
+		CodeGraphChecked:     true,
+		CodeGraphReady:       true,
+		Messages:             []string{"test prepared IssueOps worktree tools"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return record
+}
+
 func issueOpsIntentContractForTest() *IssueOpsIntentContract {
 	return &IssueOpsIntentContract{
 		RawRequest:        "refactor issueops flow",

@@ -791,7 +791,7 @@
     "name": "issueops_review_design"
   },
   {
-    "description": "Attach the issue-driven plan path to an IssueOps loop and move it to the implementation phase. Requires linked issue, verified provider branch evidence, linked worktree, and approved design review.",
+    "description": "Attach the issue-driven plan path to an IssueOps loop. Requires linked issue, verified provider branch evidence, linked worktree, and approved design review. This does not enter implementation by itself; run issueops_prepare_worktree_tools to prepare dependencies and CodeGraph for the linked worktree before implementation.",
     "inputSchema": {
       "properties": {
         "id": {
@@ -812,7 +812,7 @@
     "name": "issueops_link_plan"
   },
   {
-    "description": "Prepare the linked IssueOps worktree before tests by checking dependencies and initializing CodeGraph against the exact worktree path.",
+    "description": "Prepare the linked IssueOps worktree before implementation by checking dependencies, installing supported missing dependencies, and initializing CodeGraph against the exact worktree path. The result is persisted on the IssueOps record and gates implementation readiness.",
     "inputSchema": {
       "properties": {
         "id": {

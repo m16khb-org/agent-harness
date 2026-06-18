@@ -18,6 +18,7 @@ type IssueOpsDecision = issueops.IssueOpsDecision
 type IssueOpsDecisionRecordRequest = issueops.IssueOpsDecisionRecordRequest
 type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
+type IssueOpsWorktreeToolPreparation = issueops.IssueOpsWorktreeToolPreparation
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsReadiness = issueops.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = issueops.IssueOpsCleanupStatusRequest
@@ -124,6 +125,10 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 
 func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsWorktree(stateRoot, id, worktreePath)
+}
+
+func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsWorktreeTools(stateRoot, id, prep)
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {

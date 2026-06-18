@@ -72,7 +72,6 @@ func LinkPlan(store Store, stateRoot, id, planPath string) (model.IssueOpsRecord
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("plan_path must be inside linked worktree: %s", worktree)
 	}
 	record.PlanPath = path
-	record.Phase = model.IssueOpsPhaseImplement
 	return store.TouchWrite(stateRoot, record)
 }
 
@@ -102,6 +101,9 @@ func LinkWorktree(store Store, stateRoot, id, worktreePath string) (model.IssueO
 	}
 	if planPath := strings.TrimSpace(record.PlanPath); planPath != "" && !store.PlanPathInsideWorktree(path, planPath) {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("plan_path must be inside linked worktree: %s", path)
+	}
+	if record.WorktreePath != path {
+		record.WorktreeTools = nil
 	}
 	record.WorktreePath = path
 	return store.TouchWrite(stateRoot, record)

@@ -1,6 +1,10 @@
 package issueops
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
 	"agent-harness/internal/core/issueops/active"
 	"agent-harness/internal/core/issueops/artifactverify"
 	"agent-harness/internal/core/issueops/branchprepare"
@@ -14,7 +18,6 @@ import (
 	"agent-harness/internal/core/issueops/start"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/port"
-	"strings"
 )
 
 type IssueOpsStartRequest = model.IssueOpsStartRequest
@@ -36,6 +39,7 @@ type IssueOpsPlanPrep = model.IssueOpsPlanPrep
 type IssueOpsPlanPrepItem = model.IssueOpsPlanPrepItem
 type IssueOpsPlanPrepRequest = model.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = model.IssueOpsPlanPrepItemRequest
+type IssueOpsWorktreeToolPreparation = model.IssueOpsWorktreeToolPreparation
 type IssueOpsRecord = model.IssueOpsRecord
 type IssueOpsReadiness = model.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = model.IssueOpsCleanupStatusRequest
@@ -275,6 +279,39 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 			return rec, bindErr
 		}
 	}
+	return rec, err
+}
+
+func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if strings.TrimSpace(record.WorktreePath) == "" {
+			return fmt.Errorf("worktree_path is required")
+		}
+		if strings.TrimSpace(prep.WorktreePath) == "" {
+			return fmt.Errorf("prepared worktree_path is required")
+		}
+		if strings.TrimSpace(prep.WorktreePath) != strings.TrimSpace(record.WorktreePath) {
+			return fmt.Errorf("prepared worktree_path must match linked worktree_path")
+		}
+		prep.ID = record.ID
+		prep.WorktreePath = strings.TrimSpace(prep.WorktreePath)
+		prep.CodeGraphProjectPath = strings.TrimSpace(prep.CodeGraphProjectPath)
+		if prep.PreparedAt == "" {
+			prep.PreparedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		}
+		record.WorktreeTools = &prep
+		if ready := IssueOpsImplementationReadiness(record); ready.Ready && issueOpsPhaseRank(record.Phase) < issueOpsPhaseRank(IssueOpsPhaseImplement) {
+			record.Phase = IssueOpsPhaseImplement
+		}
+		var writeErr error
+		rec, writeErr = touchAndWriteIssueOps(stateRoot, record)
+		return writeErr
+	})
 	return rec, err
 }
 

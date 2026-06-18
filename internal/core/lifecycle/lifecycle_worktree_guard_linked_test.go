@@ -104,6 +104,7 @@ func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	if _, err := LinkIssueOpsPlan(IssueOpsStateRoot(), id, filepath.Join(linked, "plans", "demo.md")); err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsWorktreeToolsForGuardTest(t, id, linked)
 	writeIssueOpsGuardFileForTest(t, linked, "internal/x.go", "package internal\n")
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(IssueOpsPhaseAISlopClean)); err != nil {
 		t.Fatal(err)
