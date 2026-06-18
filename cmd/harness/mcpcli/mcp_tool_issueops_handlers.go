@@ -36,8 +36,18 @@ func handleMCPIssueOpsRecordIntent(args map[string]any) MCPToolOutcome {
 		Constraints:       argmap.StringSlice(args, "constraints"),
 		Ambiguities:       argmap.StringSlice(args, "ambiguities"),
 		NonGoals:          argmap.StringSlice(args, "non_goals"),
+		IntentClass:       argmap.String(args, "intent_class"),
 	})
 	return issueOpsMCPOutcome(result, err, "IssueOps intent record failed")
+}
+
+func handleMCPIssueOpsPlanPrepRecord(args map[string]any) MCPToolOutcome {
+	result, err := core.RecordIssueOpsPlanPrep(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsPlanPrepRequest{
+		PriorDecisions: core.IssueOpsPlanPrepItemRequest{Evidence: argmap.StringSlice(args, "decisions_evidence"), WaiveReason: argmap.String(args, "decisions_waive")},
+		RelatedIssues:  core.IssueOpsPlanPrepItemRequest{Evidence: argmap.StringSlice(args, "related_score_ref"), WaiveReason: argmap.String(args, "related_waive")},
+		WebResearch:    core.IssueOpsPlanPrepItemRequest{Evidence: argmap.StringSlice(args, "web_research_evidence"), WaiveReason: argmap.String(args, "web_research_waive")},
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps plan-prep record failed")
 }
 
 func handleMCPIssueOpsReviewDesign(args map[string]any) MCPToolOutcome {

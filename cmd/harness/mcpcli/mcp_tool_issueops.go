@@ -17,6 +17,7 @@ var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
 	"issueops_start":                  handleMCPIssueOpsStart,
 	"issueops_status":                 handleMCPIssueOpsStatus,
 	"issueops_record_intent":          handleMCPIssueOpsRecordIntent,
+	"issueops_plan_prep_record":       handleMCPIssueOpsPlanPrepRecord,
 	"issueops_review_design":          handleMCPIssueOpsReviewDesign,
 	"issueops_link_issue":             handleMCPIssueOpsLinkIssue,
 	"issueops_link_plan":              handleMCPIssueOpsLinkPlan,
