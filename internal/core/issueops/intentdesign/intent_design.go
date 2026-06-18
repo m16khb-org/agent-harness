@@ -41,6 +41,10 @@ func RecordIntent(store Store, stateRoot, id string, req model.IssueOpsIntentRec
 	if len(successCriteria) == 0 {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("success_criteria is required")
 	}
+	intentClass, err := model.NormalizeIntentClass(req.IntentClass)
+	if err != nil {
+		return model.IssueOpsRecord{OK: false}, err
+	}
 	record, err := store.Read(stateRoot, id)
 	if err != nil {
 		return record, err
@@ -52,6 +56,7 @@ func RecordIntent(store Store, stateRoot, id string, req model.IssueOpsIntentRec
 		Constraints:       CleanTextValues(req.Constraints),
 		Ambiguities:       CleanTextValues(req.Ambiguities),
 		NonGoals:          CleanTextValues(req.NonGoals),
+		IntentClass:       intentClass,
 		RecordedAt:        time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	return store.TouchWrite(stateRoot, record)
@@ -81,8 +86,15 @@ func RecordDesignReview(store Store, stateRoot, id string, req model.IssueOpsDes
 	if err != nil {
 		return record, err
 	}
+	// Design review only requires the intent contract (and issue link). The
+	// plan-prep evidence gate is enforced at plan-phase entry, not here: design
+	// review happens inside the plan phase, by which point plan-prep is already
+	// satisfied. Ignore plan_prep_* missing keys so the design-review prerequisite
+	// stays "intent contract exists".
 	if ready := store.PlanReadiness(record); !ready.Ready {
-		return model.IssueOpsRecord{OK: false}, fmt.Errorf("cannot record design review before intent contract: missing %s", strings.Join(ready.Missing, ", "))
+		if blocking := nonPlanPrepMissing(ready.Missing); len(blocking) > 0 {
+			return model.IssueOpsRecord{OK: false}, fmt.Errorf("cannot record design review before intent contract: missing %s", strings.Join(blocking, ", "))
+		}
 	}
 	if req.Approved && refactorPlan == "" {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("approved design review requires refactor_plan")
@@ -108,6 +120,16 @@ func RecordDesignReview(store Store, stateRoot, id string, req model.IssueOpsDes
 		ReviewedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	return store.TouchWrite(stateRoot, record)
+}
+
+func nonPlanPrepMissing(missing []string) []string {
+	out := []string{}
+	for _, m := range missing {
+		if !strings.HasPrefix(m, "plan_prep_") {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 func HasDesignReviewEvidence(values []string) bool {
