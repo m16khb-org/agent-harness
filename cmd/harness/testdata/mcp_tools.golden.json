@@ -540,6 +540,17 @@
           "description": "IssueOps id.",
           "type": "string"
         },
+        "intent_class": {
+          "description": "Intent class controlling plan-prep gate strictness: trivial skips the gate, other classes enforce it.",
+          "enum": [
+            "trivial",
+            "standard",
+            "refactoring",
+            "architecture",
+            "research"
+          ],
+          "type": "string"
+        },
         "interpreted_intent": {
           "description": "Main agent interpretation of the user's intent.",
           "type": "string"
@@ -572,6 +583,55 @@
       "type": "object"
     },
     "name": "issueops_record_intent"
+  },
+  {
+    "description": "Record the pre-plan evidence gate for an IssueOps loop: prior-decision lookup, related-issue scoring, and web research. Each item takes either evidence or a mutually-exclusive waive reason. Required before entering the plan phase for non-trivial intent classes.",
+    "inputSchema": {
+      "properties": {
+        "decisions_evidence": {
+          "description": "Prior-decision evidence such as ADR or decision links.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "decisions_waive": {
+          "description": "Reason prior-decision lookup is unnecessary.",
+          "type": "string"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "related_score_ref": {
+          "description": "remote score result summary (selected/rejected candidates, threshold).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "related_waive": {
+          "description": "Reason related-issue scoring is unnecessary.",
+          "type": "string"
+        },
+        "web_research_evidence": {
+          "description": "Web research evidence such as research file paths or sources.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "web_research_waive": {
+          "description": "Reason web research is unnecessary.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_plan_prep_record"
   },
   {
     "description": "Attach a GitHub/GitLab issue URL to an IssueOps loop. The loop moves to plan phase only when its intent contract is recorded.",
