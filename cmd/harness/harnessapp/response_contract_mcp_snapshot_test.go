@@ -72,6 +72,12 @@ func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		"ambiguities":        []string{"none"},
 		"non_goals":          []string{"do not continue from hook recommendation alone"},
 	})
+	mcpSnapshot["issueops_plan_prep_record"] = runMCPToolContract(t, replacements, "issueops_plan_prep_record", map[string]any{
+		"id":                    issueopsMCPID,
+		"decisions_evidence":    []string{".agent-harness/ADR.md"},
+		"related_score_ref":     []string{"remote score: selected=#1(0.81), threshold=0.70"},
+		"web_research_evidence": []string{".agent-harness/research/contract.md"},
+	})
 	mcpSnapshot["issueops_link_issue"] = runMCPToolContract(t, replacements, "issueops_link_issue", map[string]any{
 		"id":        issueopsMCPID,
 		"issue_url": "https://github.com/example/repo/issues/2",

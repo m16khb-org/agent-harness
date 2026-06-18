@@ -111,6 +111,9 @@ func TestIssueOpsSkillDocumentsReadinessGateKeys(t *testing.T) {
 	skill := readIssueOpsSkillForTest(t)
 	for _, want := range []string{
 		"intent_contract",
+		"plan_prep_decisions",
+		"plan_prep_related_issues",
+		"plan_prep_web_research",
 		"branch_prepare",
 		"branch_link_verified",
 		"worktree_path",

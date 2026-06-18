@@ -28,3 +28,13 @@ Use repo-root `PROMPT.md` as the scaffold for an ideal issue prompt. Preserve it
 - Verification checklist: tests, manual QA surface, remote artifact gates, and unresolved decisions
 
 Record an ambiguity ledger with `resolved`, `deferred`, and `blocking` entries. Blocking entries stop remote issue creation until the user answers; deferred entries become explicit open decisions in the issue.
+
+## Plan-Prep Evidence Gate
+
+Before entering the IssueOps `plan` phase, record three pre-plan evidence items with `agent-harness issueops plan-prep record`. Each item takes either concrete evidence or a mutually-exclusive waive reason:
+
+- **prior-decision lookup** (`--decisions-evidence` | `--decisions-waive`): consult `.agent-harness/ADR.md` and prior IssueOps decisions for choices that constrain this work. Evidence is the relevant ADR/decision link; waive when no recorded decision touches this area.
+- **related-issue scoring** (`--related-score-ref` | `--related-waive`): run `issueops remote score` against existing issues/labels and record the selected/rejected summary with the threshold. Waive when no comparable issues exist.
+- **web research** (`--web-research-evidence` | `--web-research-waive`): when external API semantics, library behavior, or competitive context matter, capture a `berners-lee` research file or source. Waive for purely internal changes with no external semantics.
+
+This gate is fail-closed for non-trivial intent classes: `plan`-phase entry is blocked until all three items carry evidence or a waive reason. A `trivial` intent class (set via `intent record --intent-class trivial`) skips the gate. Design review does not require plan-prep — it runs inside the plan phase, where the gate is already satisfied.

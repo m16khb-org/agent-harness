@@ -19,7 +19,7 @@ Required phases:
 
 1. Problem intake: use `superpowers:brainstorming` to clarify the actual problem, constraints, success criteria, and ambiguity.
 2. Domain grill: challenge terminology, existing domain model fit, and documentation updates before committing to an issue.
-3. Issue contract: before remote issue creation, run the issue-preflight gate in `references/issue-preflight.md`; record the raw user request, interpreted intent, success criteria, constraints, non-goals, and ambiguity ledger with `agent-harness issueops intent record`; then create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions.
+3. Issue contract: before remote issue creation, run the issue-preflight gate in `references/issue-preflight.md`; record the raw user request, interpreted intent, success criteria, constraints, non-goals, ambiguity ledger, and `--intent-class` with `agent-harness issueops intent record`; then create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions. Before entering the `plan` phase, satisfy the plan-prep evidence gate with `agent-harness issueops plan-prep record`: prior-decision lookup, related-issue scoring, and web research each take evidence or a waive reason. The gate is enforced for non-trivial intent classes (trivial skips it) and blocks `plan`-phase entry, not design review.
 4. Large issue breakdown gate: Issue Contract 이후, Plan 이전에 `references/remote-issue.md`의 provider-specific hierarchy rules를 적용한다. Before entering the IssueOps `plan` phase, decide whether the parent issue is too large for one safe work item. If splitting is needed, keep the parent as the umbrella issue, create provider-native child work items with `agent-harness issueops remote create-child`, update the parent body with the child task section, verify hierarchy/labels/assignee/body, and let `create-child` record every verified child in IssueOps state. Use `agent-harness issueops link-child` only as the manual escape hatch for provider-native child work items that already exist and were verified separately. If no split is needed, record the no-split rationale before planning.
 5. Plan: produce an issue-based implementation plan under the target repo's planning convention, then record the reviewed design, refactor boundary, risks, alternatives, and verification matrix with `agent-harness issueops design review`.
 6. Implementation: the main agent performs TDD directly. Sub-agents are spawned only for context-isolated work matching the 12 net-positive patterns (`.agent-harness/SUB_AGENT_PATTERNS.md`). Optimize algorithmic complexity with **`dijkstra`**, design database schemas and indexes with **`codd`**, diagnose failures with **`hopper`**, manage git operations with **`torvalds`** and **`atomic-commit-push`**, and optimize agent prompts with **`karpathy`**. Do not enter implementation until the IssueOps design review is approved and has no open questions.
@@ -235,7 +235,8 @@ Load from other skill directories when the phase involves specialized work:
 
 When an IssueOps command reports a missing gate, do not guess a new hidden flag. Use the command that owns that state:
 
-- `intent_contract`: run `issueops intent record` with raw request, interpreted intent, success criteria, constraints/non-goals/ambiguity when known.
+- `intent_contract`: run `issueops intent record` with raw request, interpreted intent, success criteria, constraints/non-goals/ambiguity when known. Pass `--intent-class trivial|standard|refactoring|architecture|research`; an empty class normalizes to `standard` and trivial skips the plan-prep gate.
+- `plan_prep_decisions` / `plan_prep_related_issues` / `plan_prep_web_research`: run `issueops plan-prep record` with evidence or a waive reason per item before entering the `plan` phase. Enforced only for non-trivial intent classes; design review does not require it because design review runs inside the plan phase where plan-prep is already satisfied.
 - `branch_prepare` / `branch_link_verified`: run `issueops branch prepare` only after provider-visible branch evidence exists. The branch must start with the issue/task number and a hyphen.
 - `worktree_path` / `worktree_exists`: create the sibling isolated worktree first, then run `issueops link-worktree`.
 - `design_review`, `design_approval`, `design_review_evidence`, `refactor_plan`, `alternatives`, `risks`, `design_open_questions`: run one full `issueops design review` call. Approval is recorded with the full design review payload; there is no approve-only merge step.
@@ -352,7 +353,22 @@ agent-harness issueops intent record --id "$ISSUEOPS_ID" \
   --constraint "$CONSTRAINT" \
   --ambiguity "$AMBIGUITY_LEDGER_ENTRY" \
   --non-goal "$NON_GOAL" \
+  --intent-class "$INTENT_CLASS" \
   --json
+```
+
+Record the plan-prep evidence gate before entering the `plan` phase (non-trivial intent classes). Each item takes evidence or a mutually-exclusive waive reason:
+
+```bash
+agent-harness issueops plan-prep record --id "$ISSUEOPS_ID" \
+  --decisions-evidence "$PRIOR_DECISION_LINK_OR_ADR" \
+  --related-score-ref "$REMOTE_SCORE_SUMMARY" \
+  --web-research-evidence "$RESEARCH_FILE_OR_SOURCE" \
+  --json
+# or waive an item that is genuinely unnecessary:
+#   --decisions-waive "no prior decisions touch this area"
+#   --related-waive "no comparable issues exist"
+#   --web-research-waive "purely internal refactor, no external semantics"
 ```
 
 Remote issue and plan linkage:
