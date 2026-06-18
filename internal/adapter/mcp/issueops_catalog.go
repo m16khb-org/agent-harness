@@ -28,6 +28,20 @@ func IssueOpsBasicTools() []Tool {
 				"constraints":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Known constraints."},
 				"ambiguities":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Resolved, deferred, or blocking ambiguity ledger entries."},
 				"non_goals":          map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Explicit non-goals."},
+				"intent_class":       map[string]any{"type": "string", "description": "Intent class controlling plan-prep gate strictness: trivial skips the gate, other classes enforce it.", "enum": []string{"trivial", "standard", "refactoring", "architecture", "research"}},
+			}},
+		},
+		{
+			Name:        "issueops_plan_prep_record",
+			Description: "Record the pre-plan evidence gate for an IssueOps loop: prior-decision lookup, related-issue scoring, and web research. Each item takes either evidence or a mutually-exclusive waive reason. Required before entering the plan phase for non-trivial intent classes.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id":                    map[string]any{"type": "string", "description": "IssueOps id."},
+				"decisions_evidence":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Prior-decision evidence such as ADR or decision links."},
+				"decisions_waive":       map[string]any{"type": "string", "description": "Reason prior-decision lookup is unnecessary."},
+				"related_score_ref":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "remote score result summary (selected/rejected candidates, threshold)."},
+				"related_waive":         map[string]any{"type": "string", "description": "Reason related-issue scoring is unnecessary."},
+				"web_research_evidence": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Web research evidence such as research file paths or sources."},
+				"web_research_waive":    map[string]any{"type": "string", "description": "Reason web research is unnecessary."},
 			}},
 		},
 		{

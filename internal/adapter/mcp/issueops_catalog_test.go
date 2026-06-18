@@ -11,6 +11,7 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_start",
 		"issueops_status",
 		"issueops_record_intent",
+		"issueops_plan_prep_record",
 		"issueops_link_issue",
 		"issueops_prepare_branch",
 		"issueops_link_worktree",
