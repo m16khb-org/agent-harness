@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/preflight"
 	"os"
 	"path/filepath"
@@ -78,8 +79,26 @@ func recordIssueOpsIntentForTest(t *testing.T, stateRoot, id string) {
 	}
 }
 
+func setIssueOpsPlanPrepForTest(t *testing.T, stateRoot, id string) {
+	t.Helper()
+	rec, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waived := model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "legacy lifecycle test"}
+	rec.PlanPrep = &model.IssueOpsPlanPrep{
+		PriorDecisions: waived,
+		RelatedIssues:  waived,
+		WebResearch:    waived,
+	}
+	if _, err := writeIssueOps(stateRoot, rec); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 	t.Helper()
+	setIssueOpsPlanPrepForTest(t, stateRoot, id)
 	if _, err := RecordIssueOpsDesignReview(stateRoot, id, IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",

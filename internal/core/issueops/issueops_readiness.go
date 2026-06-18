@@ -5,6 +5,7 @@ import (
 
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/intentdesign"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/readinesspaths"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
@@ -15,6 +16,9 @@ func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if strings.TrimSpace(record.IssueURL) == "" {
 		missing = append(missing, "issue_url")
 	}
+	if planPrepGateApplies(record) {
+		missing = append(missing, planPrepMissing(record.PlanPrep)...)
+	}
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
@@ -23,6 +27,44 @@ func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		PlanPath:     record.PlanPath,
 		WorktreePath: record.WorktreePath,
 		Branch:       record.Branch,
+	}
+}
+
+// planPrepGateApplies reports whether the plan-prep evidence gate is active.
+// It activates only once an intent contract exists (so intent_contract is the
+// first missing key for an empty cycle) and the intent class is not trivial.
+func planPrepGateApplies(record IssueOpsRecord) bool {
+	if record.Intent == nil {
+		return false
+	}
+	return !strings.EqualFold(strings.TrimSpace(record.Intent.IntentClass), "trivial")
+}
+
+func planPrepMissing(pp *model.IssueOpsPlanPrep) []string {
+	if pp == nil {
+		return []string{"plan_prep_decisions", "plan_prep_related_issues", "plan_prep_web_research"}
+	}
+	missing := []string{}
+	if !planPrepItemValid(pp.PriorDecisions) {
+		missing = append(missing, "plan_prep_decisions")
+	}
+	if !planPrepItemValid(pp.RelatedIssues) {
+		missing = append(missing, "plan_prep_related_issues")
+	}
+	if !planPrepItemValid(pp.WebResearch) {
+		missing = append(missing, "plan_prep_web_research")
+	}
+	return missing
+}
+
+func planPrepItemValid(item model.IssueOpsPlanPrepItem) bool {
+	switch strings.TrimSpace(item.Status) {
+	case "evidence":
+		return len(cleanIssueOpsTextValues(item.Evidence)) > 0
+	case "waived":
+		return strings.TrimSpace(item.WaiveReason) != ""
+	default:
+		return false
 	}
 }
 

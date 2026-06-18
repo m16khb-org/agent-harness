@@ -25,6 +25,7 @@ func TestIssueOpsLifecycle(t *testing.T) {
 	}
 
 	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
+	setIssueOpsPlanPrepForTest(t, stateRoot, record.ID)
 	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
 	if err != nil {
 		t.Fatal(err)

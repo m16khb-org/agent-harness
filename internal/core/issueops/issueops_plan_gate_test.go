@@ -51,6 +51,7 @@ func TestAdvanceToImplementGatesOnDesignApproval(t *testing.T) {
 	if _, err := LinkIssueOpsWorktree(stateRoot, record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
+	setIssueOpsPlanPrepForTest(t, stateRoot, record.ID)
 
 	// No design review recorded: implement entry is blocked because the review
 	// is missing entirely.

@@ -24,6 +24,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 
 	recordIssueOpsCLIIntentForTest(t, id)
+	recordIssueOpsCLIPlanPrepForTest(t, id)
 	issue := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-issue", "--id", id, "--issue-url", "https://github.com/example/repo/issues/1", "--json"})
 	})

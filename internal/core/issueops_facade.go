@@ -16,6 +16,8 @@ type IssueOpsDesignReview = issueops.IssueOpsDesignReview
 type IssueOpsDesignReviewRequest = issueops.IssueOpsDesignReviewRequest
 type IssueOpsDecision = issueops.IssueOpsDecision
 type IssueOpsDecisionRecordRequest = issueops.IssueOpsDecisionRecordRequest
+type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
+type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsReadiness = issueops.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = issueops.IssueOpsCleanupStatusRequest
@@ -82,6 +84,10 @@ func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 
 func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsIntent(stateRoot, id, req)
+}
+
+func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsPlanPrep(stateRoot, id, req)
 }
 
 func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {

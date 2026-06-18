@@ -32,6 +32,10 @@ type IssueOpsDesignReview = model.IssueOpsDesignReview
 type IssueOpsDesignReviewRequest = model.IssueOpsDesignReviewRequest
 type IssueOpsDecision = model.IssueOpsDecision
 type IssueOpsDecisionRecordRequest = model.IssueOpsDecisionRecordRequest
+type IssueOpsPlanPrep = model.IssueOpsPlanPrep
+type IssueOpsPlanPrepItem = model.IssueOpsPlanPrepItem
+type IssueOpsPlanPrepRequest = model.IssueOpsPlanPrepRequest
+type IssueOpsPlanPrepItemRequest = model.IssueOpsPlanPrepItemRequest
 type IssueOpsRecord = model.IssueOpsRecord
 type IssueOpsReadiness = model.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = model.IssueOpsCleanupStatusRequest
@@ -199,6 +203,16 @@ func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest)
 	err := withIssueOpsLock(stateRoot, id, func() error {
 		var e error
 		rec, e = intentdesign.RecordIntent(issueOpsIntentDesignStore(), stateRoot, id, req)
+		return e
+	})
+	return rec, err
+}
+
+func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = intentdesign.RecordPlanPrep(issueOpsIntentDesignStore(), stateRoot, id, req)
 		return e
 	})
 	return rec, err

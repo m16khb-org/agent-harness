@@ -107,6 +107,18 @@ func recordIssueOpsCoreIntentForCLITest(t *testing.T, id string) {
 	}
 }
 
+func recordIssueOpsCLIPlanPrepForTest(t *testing.T, id string) {
+	t.Helper()
+	waived := core.IssueOpsPlanPrepItemRequest{WaiveReason: "cli lifecycle test"}
+	if _, err := core.RecordIssueOpsPlanPrep(core.IssueOpsStateRoot(), id, core.IssueOpsPlanPrepRequest{
+		PriorDecisions: waived,
+		RelatedIssues:  waived,
+		WebResearch:    waived,
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func recordIssueOpsCoreDesignForCLITest(t *testing.T, id string) {
 	t.Helper()
 	if _, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), id, core.IssueOpsDesignReviewRequest{
