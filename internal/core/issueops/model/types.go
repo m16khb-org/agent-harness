@@ -79,6 +79,7 @@ type IssueOpsIntentContract struct {
 	Constraints       []string `json:"constraints,omitempty"`
 	Ambiguities       []string `json:"ambiguities,omitempty"`
 	NonGoals          []string `json:"non_goals,omitempty"`
+	IntentClass       string   `json:"intent_class,omitempty"`
 	RecordedAt        string   `json:"recorded_at"`
 }
 
@@ -89,6 +90,7 @@ type IssueOpsIntentRecordRequest struct {
 	Constraints       []string
 	Ambiguities       []string
 	NonGoals          []string
+	IntentClass       string
 }
 
 type IssueOpsDesignReview struct {
@@ -135,6 +137,30 @@ type IssueOpsDecisionRecordRequest struct {
 	AffectedArtifacts  []string
 }
 
+type IssueOpsPlanPrepItem struct {
+	Status      string   `json:"status"`
+	Evidence    []string `json:"evidence,omitempty"`
+	WaiveReason string   `json:"waive_reason,omitempty"`
+}
+
+type IssueOpsPlanPrep struct {
+	PriorDecisions IssueOpsPlanPrepItem `json:"prior_decisions"`
+	RelatedIssues  IssueOpsPlanPrepItem `json:"related_issues"`
+	WebResearch    IssueOpsPlanPrepItem `json:"web_research"`
+	RecordedAt     string               `json:"recorded_at"`
+}
+
+type IssueOpsPlanPrepItemRequest struct {
+	Evidence    []string
+	WaiveReason string
+}
+
+type IssueOpsPlanPrepRequest struct {
+	PriorDecisions IssueOpsPlanPrepItemRequest
+	RelatedIssues  IssueOpsPlanPrepItemRequest
+	WebResearch    IssueOpsPlanPrepItemRequest
+}
+
 type IssueOpsRecord struct {
 	OK                     bool                                `json:"ok"`
 	ID                     string                              `json:"id"`
@@ -150,6 +176,7 @@ type IssueOpsRecord struct {
 	BranchPrepare          *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
 	RemoteArtifact         *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
 	Decisions              []IssueOpsDecision                  `json:"decisions,omitempty"`
+	PlanPrep               *IssueOpsPlanPrep                   `json:"plan_prep,omitempty"`
 	Feedback               []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
 	RoutingTrace           []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt          string                              `json:"ai_slop_clean_at,omitempty"`
