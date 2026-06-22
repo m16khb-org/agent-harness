@@ -86,6 +86,7 @@ Use low-level `scripts/install-native.sh` and `install-native` directly only for
 | CodeGraph | `colbymchenry/codegraph` | Installs `@colbymchenry/codegraph`, registers Codex/Claude MCP, and initializes this repo's `.codegraph/` index when enabled. |
 | claude-mem | `thedotmack/claude-mem` | Runs `npx claude-mem@latest install` for Codex/Claude hooks, MCP, and worker wiring. |
 | Headroom | `chopratejas/headroom` / `headroom-ai` | Optional context optimization companion. Do not auto-proxy Codex/Claude traffic without explicit operator action. |
+| Ponytail | `DietrichGebert/ponytail` | Behavior-changing minimal-implementation companion (lazy-senior-dev decision ladder shipped as its own skill plus SessionStart/UserPromptSubmit lifecycle hooks). Wired as part of the upstream companion tools: `install_upstream_tools` adds the Codex/Claude plugin marketplace (`plugin marketplace add DietrichGebert/ponytail`) and installs `ponytail@ponytail` for both hosts via the existing marketplace/plugin helpers. Because `agent-harness update` defaults to `--with-upstream-tools`, a normal `update` installs/refreshes Ponytail on Codex and Claude; opt out with `--skip-upstream-tools`. It changes agent behavior globally through its lifecycle hooks, so operators who do not want that should skip upstream tools. Only the upstream marketplace plugin is wired; never copy its skill into this repo's `skills/`. |
 
 CodeGraph index creation can be skipped:
 
