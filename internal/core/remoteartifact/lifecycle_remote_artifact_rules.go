@@ -7,13 +7,18 @@ import (
 )
 
 var (
-	planLinkHeadingRe = regexp.MustCompile(`(?mi)^\s*(?:#{1,6}\s*)?(Plan Link|Plan link|계획\s*링크)\s*:?\s*$`)
-	relatedHeadingRe  = regexp.MustCompile(`(?mi)^\s*(?:#{1,6}\s*)?(Related Issues|Related issues|관련\s*이슈)\s*:?\s*$`)
+	planLinkHeadingRe             = regexp.MustCompile(`(?mi)^\s*(?:#{1,6}\s*)?(Plan Link|Plan link|계획\s*링크)\s*:?\s*$`)
+	relatedHeadingRe              = regexp.MustCompile(`(?mi)^\s*(?:#{1,6}\s*)?(Related Issues|Related issues|관련\s*이슈)\s*:?\s*$`)
+	childHierarchyLinkCommandRe   = regexp.MustCompile(`(?is)(?:^|\s)(?:\S*/)?agent-harness\s+issueops\s+link-related\b|(?:^|\s)glab\s+issue\s+link\b|(?:^|\s)glab\s+api\b.*\bissues/[^ \t\n]+/links\b`)
+	childHierarchyIntentKeywordRe = regexp.MustCompile(`(?i)\b(child|children|sub[- ]?issue|sub[- ]?task|umbrella|parent)\b|하위|자식|상위|부모|우산`)
 )
 
 func VCSIssueLinkingBlockReason(tool, command, repo string) string {
 	if !remoteArtifactGateAppliesToTool(tool) {
 		return ""
+	}
+	if reason := childHierarchyLinkedIssueBlockReason(command); reason != "" {
+		return reason
 	}
 	artifact, ok := parseGHRemoteArtifactCommand(command, repo)
 	if !ok {
@@ -45,6 +50,13 @@ func VCSIssueLinkingBlockReason(tool, command, repo string) string {
 		}
 	}
 	return ""
+}
+
+func childHierarchyLinkedIssueBlockReason(command string) string {
+	if !childHierarchyLinkCommandRe.MatchString(command) || !childHierarchyIntentKeywordRe.MatchString(command) {
+		return ""
+	}
+	return "IssueOps child-task breakdown must not be recorded as a linked issue; use `agent-harness issueops remote create-child` for new provider-native child tasks, or `agent-harness issueops link-child` only for an already verified child task"
 }
 
 func remoteAssigneePlaceholderBlockReason(artifact remoteArtifactCommand) string {

@@ -130,10 +130,10 @@ func TestParseGHRemoteArtifactCommand_LabelsAndAssignees(t *testing.T) {
 
 func TestScoreKoreanRemoteArtifactLanguage(t *testing.T) {
 	tests := []struct {
-		name                  string
-		text                  string
-		wantHangulMin         int
-		wantEnglishWordsMax   int
+		name                string
+		text                string
+		wantHangulMin       int
+		wantEnglishWordsMax int
 	}{
 		{"korean only", "안녕하세요 버그 수정 완료했습니다 확인 부탁드립니다", 20, 5},
 		{"english only", "This is a bug fix for the login feature", 0, 5},
@@ -235,6 +235,27 @@ func TestVCSIssueLinkingBlockReason_PlanLinkHeading(t *testing.T) {
 		reason := VCSIssueLinkingBlockReason("bash", `gh issue create --title "제목" --body "## Plan Link\nhttp://plan\n\n한글 본문입니다 충분한 글자 수를 확보하기 위해 더 많은 한글 텍스트를 작성합니다" --label bug --assignee user1`, "/tmp/repo")
 		if reason == "" || !strings.Contains(reason, "Plan Link") {
 			t.Errorf("expected plan link block, got %q", reason)
+		}
+	})
+}
+
+func TestVCSIssueLinkingBlockReason_ChildHierarchyLinkedIssue(t *testing.T) {
+	t.Run("issueops child title blocks link-related", func(t *testing.T) {
+		reason := VCSIssueLinkingBlockReason("bash", `agent-harness issueops link-related --id abc --type implements --related-url https://gitlab.example/group/project/-/issues/2 --title "하위 Task: 캐시 검증" --json`, "/tmp/repo")
+		if reason == "" || !strings.Contains(reason, "child-task") {
+			t.Errorf("expected child-task block, got %q", reason)
+		}
+	})
+	t.Run("gitlab child link api blocks", func(t *testing.T) {
+		reason := VCSIssueLinkingBlockReason("bash", `glab api projects/1/issues/2/links -X POST -f target_issue_iid=3 -f link_type=relates_to # child task`, "/tmp/repo")
+		if reason == "" || !strings.Contains(reason, "create-child") {
+			t.Errorf("expected create-child block, got %q", reason)
+		}
+	})
+	t.Run("ordinary related link remains allowed", func(t *testing.T) {
+		reason := VCSIssueLinkingBlockReason("bash", `agent-harness issueops link-related --id abc --type depends-on --related-url https://github.com/example/repo/issues/42 --title "upstream dependency" --json`, "/tmp/repo")
+		if reason != "" {
+			t.Errorf("expected no block, got %q", reason)
 		}
 	})
 }
