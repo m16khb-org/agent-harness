@@ -34,6 +34,24 @@ func parseRemoteArtifactArgs(artifact *remoteArtifactCommand, repo string, args 
 		case strings.HasPrefix(arg, "--description-file="):
 			artifact.bodyFilePath = strings.TrimPrefix(arg, "--description-file=")
 			artifact.body = readRemoteArtifactBodyFile(repo, artifact.bodyFilePath)
+		case arg == "--head" || arg == "-H" || arg == "--source-branch":
+			if j+1 < len(args) {
+				artifact.headBranch = args[j+1]
+				j++
+			}
+		case strings.HasPrefix(arg, "--head="):
+			artifact.headBranch = strings.TrimPrefix(arg, "--head=")
+		case strings.HasPrefix(arg, "--source-branch="):
+			artifact.headBranch = strings.TrimPrefix(arg, "--source-branch=")
+		case arg == "--base" || arg == "-B" || arg == "--target-branch":
+			if j+1 < len(args) {
+				artifact.baseBranch = args[j+1]
+				j++
+			}
+		case strings.HasPrefix(arg, "--base="):
+			artifact.baseBranch = strings.TrimPrefix(arg, "--base=")
+		case strings.HasPrefix(arg, "--target-branch="):
+			artifact.baseBranch = strings.TrimPrefix(arg, "--target-branch=")
 		case arg == "--label" || arg == "-l" || arg == "--labels" || arg == "--add-label":
 			if j+1 < len(args) {
 				artifact.labels = appendRemoteArtifactLabels(artifact.labels, args[j+1])

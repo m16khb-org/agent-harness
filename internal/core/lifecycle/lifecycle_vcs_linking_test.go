@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -99,4 +100,90 @@ func TestPreToolUseGitLabRelatedIssueMRRequiresNumericAssignee(t *testing.T) {
 	if got.Decision != "block" || !strings.Contains(got.Reason, "numeric assignee") {
 		t.Fatalf("expected GitLab issue-based MR create to require numeric assignee id, got %+v", got)
 	}
+}
+
+func TestPreToolUseVCSLinkingBlocksGitLabMRTargetBranchMismatch(t *testing.T) {
+	repo := issueOpsPRTargetGuardRepo(t, "12-child", "2435-parent")
+
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:              repo,
+		Tool:              "bash",
+		Command:           `glab mr create --title "IssueOps 대상 브랜치 검증" --description "자식 작업 MR은 기록된 부모 작업 브랜치로 합류해야 합니다." --source-branch 12-child --target-branch release/stg --label bug --assignee m16khb`,
+		EnforceVCSLinking: true,
+	})
+
+	if got.Decision != "block" || !strings.Contains(got.Reason, "branch_prepare.base_branch") || !strings.Contains(got.Reason, "2435-parent") {
+		t.Fatalf("expected mismatched GitLab MR target branch to be blocked, got %+v", got)
+	}
+}
+
+func TestPreToolUseVCSLinkingBlocksGitHubPRBaseBranchMismatch(t *testing.T) {
+	repo := issueOpsPRTargetGuardRepo(t, "12-child", "2435-parent")
+
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:              repo,
+		Tool:              "bash",
+		Command:           `gh pr create --title "IssueOps 대상 브랜치 검증" --body "자식 작업 PR은 기록된 부모 작업 브랜치로 합류해야 합니다." --head 12-child --base main --label bug --assignee habin`,
+		EnforceVCSLinking: true,
+	})
+
+	if got.Decision != "block" || !strings.Contains(got.Reason, "branch_prepare.base_branch") || !strings.Contains(got.Reason, "2435-parent") {
+		t.Fatalf("expected mismatched GitHub PR base branch to be blocked, got %+v", got)
+	}
+}
+
+func TestPreToolUseVCSLinkingAllowsPRTargetBranchFromBranchPrepare(t *testing.T) {
+	repo := issueOpsPRTargetGuardRepo(t, "12-child", "2435-parent")
+
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:              repo,
+		Tool:              "bash",
+		Command:           `gh pr create --title "IssueOps 대상 브랜치 검증" --body "자식 작업 PR이 기록된 부모 작업 브랜치로 합류합니다." --head 12-child --base 2435-parent --label bug --assignee habin`,
+		EnforceVCSLinking: true,
+	})
+
+	if got.Decision != "allow" {
+		t.Fatalf("expected matching PR base branch to be allowed, got %+v", got)
+	}
+}
+
+func TestPreToolUseVCSLinkingBlocksMissingPRTargetBranchWhenBranchPrepareExists(t *testing.T) {
+	repo := issueOpsPRTargetGuardRepo(t, "12-child", "2435-parent")
+
+	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:              repo,
+		Tool:              "bash",
+		Command:           `gh pr create --title "IssueOps 대상 브랜치 검증" --body "자식 작업 PR이 기본 브랜치로 새지 않도록 target을 명시해야 합니다." --head 12-child --label bug --assignee habin`,
+		EnforceVCSLinking: true,
+	})
+
+	if got.Decision != "block" || !strings.Contains(got.Reason, "must specify a target branch") || !strings.Contains(got.Reason, "2435-parent") {
+		t.Fatalf("expected missing PR base branch to be blocked, got %+v", got)
+	}
+}
+
+func issueOpsPRTargetGuardRepo(t *testing.T, branch, baseBranch string) string {
+	t.Helper()
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if err := os.MkdirAll(repo+"/.git", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LinkIssueOpsIssue(IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     "https://github.com/example/repo/issues/12",
+		Branch:       branch,
+		BaseBranch:   baseBranch,
+		LinkVerified: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return repo
 }

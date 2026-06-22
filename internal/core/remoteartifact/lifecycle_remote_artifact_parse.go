@@ -17,6 +17,8 @@ type remoteArtifactCommand struct {
 	bodyFilePath    string
 	labels          []string
 	assignees       []string
+	headBranch      string
+	baseBranch      string
 }
 
 func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCommand, bool) {
