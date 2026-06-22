@@ -23,7 +23,7 @@ Harness flags are passed to `agent-harness install-native`, for example:
   --json
 
 Optional upstream tools:
-  --with-upstream-tools   Also install/update upstream llm-wiki, codegraph, claude-mem, and ponytail integrations.
+  --with-upstream-tools   Also install/update upstream llm-wiki, codegraph, and claude-mem integrations.
   --skip-upstream-tools   Do not install upstream tools, even if HARNESS_INSTALL_UPSTREAM_TOOLS=1.
 
 Harness binary:
@@ -40,7 +40,7 @@ Environment:
   HARNESS_SKIP_BUILD=1              Same as --skip-build.
 
 Philosophy:
-  agent-harness does not reinvent llm-wiki, codegraph, claude-mem, or ponytail.
+  agent-harness does not reinvent llm-wiki, codegraph, or claude-mem.
   It can wire their upstream installers as optional dependencies while keeping
   harness core focused on shared CLI/MCP/state/policy orchestration.
 EOF
@@ -378,34 +378,10 @@ ensure_codegraph_on_path() {
   command -v codegraph >/dev/null 2>&1
 }
 
-# Ponytail: behavior-changing minimal-implementation companion plugin
-# (lazy-senior-dev decision ladder shipped as its own skill plus Node.js
-# lifecycle hooks). agent-harness only wires the upstream Codex/Claude
-# marketplace plugin; it never copies Ponytail's ladder/skill/hook logic.
-PONYTAIL_MARKETPLACE="ponytail"
-PONYTAIL_SOURCE="DietrichGebert/ponytail"
-PONYTAIL_SELECTOR="ponytail@ponytail"
-
-install_ponytail() {
-  if command -v codex >/dev/null 2>&1; then
-    ensure_codex_marketplace "$PONYTAIL_MARKETPLACE" "$PONYTAIL_SOURCE"
-    ensure_codex_plugin "$PONYTAIL_SELECTOR"
-  else
-    log "codex not found; skipping Codex ponytail plugin setup"
-  fi
-
-  if command -v claude >/dev/null 2>&1; then
-    ensure_claude_marketplace "$PONYTAIL_MARKETPLACE" "$PONYTAIL_SOURCE"
-    ensure_claude_plugin "$PONYTAIL_SELECTOR"
-  else
-    log "claude not found; skipping Claude ponytail plugin setup"
-  fi
-}
-
 install_upstream_tools() {
   local dry_run="$1"
   if [[ "$dry_run" == "1" ]]; then
-    log "dry-run: would install/update upstream tools: llm-wiki CLI/MCP, codegraph, claude-mem, ponytail (DietrichGebert/ponytail); would remove legacy llm-wiki marketplace/plugin wiring and legacy agentmemory plugin wiring"
+    log "dry-run: would install/update upstream tools: llm-wiki CLI/MCP, codegraph, claude-mem; would remove legacy llm-wiki marketplace/plugin wiring and legacy agentmemory plugin wiring"
     return 0
   fi
 
@@ -432,9 +408,6 @@ install_upstream_tools() {
   else
     log "claude not found; skipping Claude claude-mem plugin setup"
   fi
-
-  log "setting up Ponytail companion plugin (${PONYTAIL_SOURCE}) for Codex and Claude"
-  install_ponytail
 
   if command -v npm >/dev/null 2>&1; then
     if command -v codegraph >/dev/null 2>&1; then
