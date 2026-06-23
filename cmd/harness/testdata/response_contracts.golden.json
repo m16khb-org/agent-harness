@@ -585,7 +585,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 31686,
+          "bytes": 32309,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -909,7 +909,7 @@
           "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
         },
         {
-          "bytes": 4196,
+          "bytes": 5011,
           "headings": [
             "Host Operations",
             "Codex",
@@ -6470,7 +6470,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 31686,
+                "bytes": 32309,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -6794,7 +6794,7 @@
                 "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
               },
               {
-                "bytes": 4196,
+                "bytes": 5011,
                 "headings": [
                   "Host Operations",
                   "Codex",
