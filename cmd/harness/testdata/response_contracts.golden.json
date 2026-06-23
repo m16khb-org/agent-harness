@@ -512,7 +512,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 24796,
+          "bytes": 26185,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -529,18 +529,18 @@
             "Phase 6 — Claude Code adapter",
             "Phase 7 — Hardening / release",
             "2026-06-13 — Distribution decision gate",
+            "2026-06-23 — IssueOps hook and state-machine boundary",
             "4. MVP 범위",
             "5. 주요 위험과 대응",
             "6. 다음 작업 제안",
-            "7. Decision Log Index",
-            "2026-06-09 — Expose IssueOps gate contracts through MCP and skills"
+            "7. Decision Log Index"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
           "rel_path": ".agent-harness/ADR.md",
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 6678,
+          "bytes": 8043,
           "headings": [
             "Agent Workflow",
             "Start",
@@ -585,7 +585,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 33091,
+          "bytes": 34334,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -604,9 +604,9 @@
             "14. Codex vs Claude Code hook rendering drift",
             "15. IssueOps worktree edits must be hook-guarded",
             "16. IssueOps decision replies must have numbered choices",
+            "16.1 IssueOps hooks must not become workflow workers",
             "17. MCP tool-use risks",
-            "18. Audit harness flags must match the CLI contract",
-            "19. Verify git identity before contributor-sensitive pushes"
+            "18. Audit harness flags must match the CLI contract"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
           "rel_path": ".agent-harness/CAUTIONS.md",
@@ -909,7 +909,7 @@
           "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
         },
         {
-          "bytes": 4974,
+          "bytes": 5515,
           "headings": [
             "Host Operations",
             "Codex",
@@ -6430,7 +6430,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 24796,
+                "bytes": 26185,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -6447,18 +6447,18 @@
                   "Phase 6 — Claude Code adapter",
                   "Phase 7 — Hardening / release",
                   "2026-06-13 — Distribution decision gate",
+                  "2026-06-23 — IssueOps hook and state-machine boundary",
                   "4. MVP 범위",
                   "5. 주요 위험과 대응",
                   "6. 다음 작업 제안",
-                  "7. Decision Log Index",
-                  "2026-06-09 — Expose IssueOps gate contracts through MCP and skills"
+                  "7. Decision Log Index"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
                 "rel_path": ".agent-harness/ADR.md",
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 6678,
+                "bytes": 8043,
                 "headings": [
                   "Agent Workflow",
                   "Start",
@@ -6503,7 +6503,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 33091,
+                "bytes": 34334,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -6522,9 +6522,9 @@
                   "14. Codex vs Claude Code hook rendering drift",
                   "15. IssueOps worktree edits must be hook-guarded",
                   "16. IssueOps decision replies must have numbered choices",
+                  "16.1 IssueOps hooks must not become workflow workers",
                   "17. MCP tool-use risks",
-                  "18. Audit harness flags must match the CLI contract",
-                  "19. Verify git identity before contributor-sensitive pushes"
+                  "18. Audit harness flags must match the CLI contract"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
                 "rel_path": ".agent-harness/CAUTIONS.md",
@@ -6827,7 +6827,7 @@
                 "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
               },
               {
-                "bytes": 4974,
+                "bytes": 5515,
                 "headings": [
                   "Host Operations",
                   "Codex",

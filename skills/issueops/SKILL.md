@@ -15,6 +15,31 @@ The workflow is advisory and agent-driven. Hooks may suggest this skill, but hoo
 
 The cycle has one durable state record. Use `agent-harness issueops ... --json` or matching MCP tools when the cycle needs to survive compaction, handoff, or another host.
 
+IssueOps is a main-agent state machine:
+
+```text
+problem -> grill -> issue -> plan -> implement -> ai-slop-clean -> feedback -> pr -> cleanup
+```
+
+`agent-harness issueops ...` CLI/MCP commands own durable state, phase transitions, readiness, and remote artifact records. Lifecycle hooks are limited to fast, deterministic, inspectable guards and routing hints. A hook may block a clearly invalid tool event, but it must not perform workflow work: no issue creation, provider mutation, file edit, test run, background wait, branch/worktree preparation, PR/MR creation, review reply, merge, or cleanup.
+
+### Flow Boundary Matrix
+
+| Phase area | Automatic main-agent loop | Hook enforcement | Human-in-the-loop |
+| --- | --- | --- | --- |
+| Problem / Grill | Gather repo/docs/code/runtime evidence; draft intent class; ask only on blocking ambiguity. | UserPromptSubmit routing hint only. | Success criteria, scope, or terminology changes the implementation. |
+| Issue Contract | Record intent; run issue-preflight; score related issues and labels; pass Korean artifact gate; create/link the remote issue when credentials, target, owner, and base branch are clear. | Korean remote artifact, VCS linking metadata, missing label, and missing assignee guards. | Credentials, target project, owner, base branch, or selected label is unclear. |
+| Large Issue Breakdown | Decide split/no-split; create provider-native child tasks; verify hierarchy, labels, assignee, and parent body. | VCS artifact guard blocks body-only hierarchy when native linking is required. | Child scope is a product decision or provider hierarchy support/permission is missing. |
+| Plan / Design Review | Record plan-prep evidence or waivers; write the plan; record approved design review with risks, alternatives, and verification. | No hook enforcement. | Open question, risky alternative, or refactor boundary remains unresolved. |
+| Branch / Worktree Prep | Create provider-linked branch; create/link sibling worktree; link plan; run `worktree prepare-tools`. | Worktree guard blocks source-checkout mutation and wrong linked-worktree targets. | Base branch is user-selected/unclear/conflicting, or dependency/config linking has secret risk. |
+| Implementation | Main agent runs TDD, focused fixes, and verification directly. | Worktree guard; staged-check and live-command guards where installed. | Failure classification, destructive migration, live access, or product behavior is unclear. |
+| AI Slop Clean | Inspect the actual diff, remove lazy artifacts, rerun targeted checks, record cleanup evidence. | Worktree guard remains active. | Cleanup would widen scope or require behavior changes. |
+| Feedback | Classify CI/review/user feedback; fix valid items; update remote issue body for contract changes. | Numbered next-action shape and remote issue edit gates. | Contract change, noisy review judgment, or priority requires user choice. |
+| PR/MR | Run strict readiness; draft/create PR/MR with target branch, labels, assignee, and Korean body verified. | PR/MR base/target, label, assignee, Korean body, and numbered next-action guards. | Merge approval, target change, reviewer disagreement, or non-green CI waiver. |
+| Cleanup | Verify merge/worktree/branch/child state; present cleanup choices before deletion. | Stop hook choice-format relay only. | Worktree/local branch/remote branch deletion, force deletion, parent issue closure. |
+
+When a readiness command reports a missing gate, the automatic loop runs the command that owns that state and retries readiness. The main agent, not the hook, decides whether continuing is safe, reversible, and aligned with the latest user instruction.
+
 Required phases:
 
 1. Problem intake: use `superpowers:brainstorming` to clarify the actual problem, constraints, success criteria, and ambiguity.

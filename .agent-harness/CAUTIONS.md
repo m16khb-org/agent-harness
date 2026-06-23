@@ -193,6 +193,15 @@ When the user must choose a route, cleanup action, feedback response, or next ph
 - Keep the three choices concrete: recommended proceed, narrower/lower-risk alternative, and pause/defer.
 - If the host does not expose the final assistant message to Stop hook input, the guard must no-op and record diagnostics rather than guessing.
 
+## 16.1 IssueOps hooks must not become workflow workers
+
+IssueOps state is durable because `agent-harness issueops ...` commands record intent, issue links, branch preparation, worktree paths, tool preparation, design review, plan links, ai-slop-clean evidence, feedback joins, PR/MR readiness, and cleanup status. Moving any of that work into lifecycle hooks would make progress depend on host-specific event timing and incomplete hook payloads.
+
+주의:
+- Hooks may block fast, deterministic, inspectable violations only: wrong worktree target, Korean remote artifact failure, invalid VCS issue-linking body metadata, missing PR/MR target branch, missing labels/assignee, staged-check/live-command confirmation, or missing numbered next-action choices.
+- Hooks must not create or edit issues, mutate files, run tests, wait for background jobs, prepare branches or worktrees, create PRs/MRs, reply to reviews, merge, or delete branches/worktrees.
+- When readiness reports `intent_contract`, `plan_prep_*`, `branch_prepare`, `worktree_tools_*`, `design_review`, `plan_path`, `ai_slop_clean`, or `contract_feedback_issue_update`, run the owning `issueops` command in the main agent loop and retry readiness. Do not add a hook-side workaround.
+
 ## 17. MCP tool-use risks
 
 - Broad tool descriptions make agents over-call tools or pass wrong arguments.

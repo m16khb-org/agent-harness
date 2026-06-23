@@ -45,6 +45,10 @@ Codex/Claude host가 지원하면 `agent-harness hook ...`가 시점을 나눠 c
 - **PreToolUse**: tool 실행 직전의 빠른 preflight 지점이다(`hook pre-tool-use`). 기본 host stdout은 `{}`이고 raw `--json`은 allow/no-op 진단만 반환한다. 차단 정책은 host schema와 false-positive 위험을 별도 검증한 뒤에만 추가한다.
 - **PostToolUse**: 성공한 tool 실행 후 경량 관찰 지점이다(`hook post-tool-use`). lifecycle-relevant 파일을 실제로 수정할 수 있는 tool/명령만 user-state queue에 남기고, read-only 조회 결과나 shared docs를 직접 수정하지 않는다.
 
+IssueOps에서 hook 경계는 더 좁다. `agent-harness issueops ...` CLI/MCP가 `problem -> grill -> issue -> plan -> implement -> ai-slop-clean -> feedback -> pr -> cleanup` 상태 머신과 durable record를 소유한다. Hook은 worktree edit target, Korean remote artifact, VCS issue-linking metadata, PR/MR base branch, label/assignee, numbered next-action format처럼 빠르고 결정적으로 inspect 가능한 위반만 막는다. Hook은 issue 생성, 파일 편집, 테스트 실행, background wait, branch/worktree 준비, PR/MR 생성, review reply, merge, cleanup을 직접 수행하지 않는다.
+
+IssueOps 자동 루프는 missing gate를 읽고 해당 state owner command를 실행한 뒤 readiness를 다시 확인한다. 예를 들어 `intent_contract`는 `issueops intent record`, `plan_prep_*`는 `issueops plan-prep record`, `branch_prepare`는 `issueops branch prepare`, `worktree_tools_*`는 `issueops worktree prepare-tools`, `design_review`는 `issueops design review`, `plan_path`는 `issueops link-plan`, `ai_slop_clean`은 cleanup evidence 기록, `contract_feedback_issue_update`는 remote issue body update 후 `issueops feedback mark-issue-updated`가 소유한다. 안전성, 되돌릴 수 있음, 사용자 의도 정합성이 흔들리는 지점은 hook이 판단하지 않고 main agent가 세 가지 선택지로 멈춘다.
+
 ## MCP Usage Rule
 
 - MCP는 모델 기억 대신 현재 repo 상태, 문서 라우팅, 정책 판정, state checkpoint, durable record가 필요할 때 사용한다.
