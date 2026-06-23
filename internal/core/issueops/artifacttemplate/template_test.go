@@ -58,6 +58,64 @@ func TestRenderBugTemplateReportsMissingRequiredFields(t *testing.T) {
 	}
 }
 
+func TestRenderTemplateAcceptsCanonicalFieldAliases(t *testing.T) {
+	pr := Render(IssueOpsTemplateInput{
+		Kind:     IssueOpsArtifactPR,
+		Template: IssueOpsTemplatePullRequest,
+		Provider: "gitlab",
+		Title:    "MR",
+		Fields: map[string]string{
+			"intent":         "원격 템플릿 계약을 고정한다.",
+			"issue":          "https://gitlab.example/acme/repo/-/issues/1",
+			"changes":        "core renderer와 CLI/MCP를 추가한다.",
+			"verification":   "go test ./...",
+			"reviewer_focus": "template validation boundary",
+			"risks":          "기능 flag 없이 dry-run 기본 유지",
+			"user_impact":    "원격 artifact 품질 일관성 개선",
+			"documentation":  "IssueOps 문서 갱신",
+			"scope":          "provider adapter는 thin 유지",
+			"cleanup":        "cleanup status 확인",
+			"automation":     "AI 생성 본문은 renderer 결과로 검증",
+		},
+	})
+	if !pr.OK {
+		t.Fatalf("pr template should accept field aliases: %+v", pr)
+	}
+	for _, unexpected := range []string{"risk_rollback", "docs_migration", "scope_management", "worktree_cleanup", "automation_evidence"} {
+		if contains(pr.MissingRequiredFields, unexpected) {
+			t.Fatalf("pr template still reported canonical field %q missing: %+v", unexpected, pr.MissingRequiredFields)
+		}
+	}
+
+	bug := Render(IssueOpsTemplateInput{
+		Kind:     IssueOpsArtifactIssue,
+		Template: IssueOpsTemplateBug,
+		Provider: "github",
+		Title:    "로그인 실패",
+		Fields: map[string]string{
+			"problem":              "로그인이 실패한다.",
+			"current_evidence":     "로그인 API가 500을 반환한다.",
+			"acceptance_criteria":  "정상 계정으로 로그인된다.",
+			"reproduction_steps":   "로그인 버튼을 누른다.",
+			"expected_behavior":    "토큰이 발급된다.",
+			"actual_behavior":      "500이 반환된다.",
+			"environment":          "staging",
+			"non_goals":            "인증 정책 변경은 제외한다.",
+			"implementation_scope": "로그인 핸들러 nil guard를 확인한다.",
+			"verification":         "go test ./internal/auth/...",
+			"risks":                "재시도 흐름 회귀",
+			"feedback_log":         "실패 로그 기반 작성",
+			"logs_output":          "panic: nil pointer",
+		},
+	})
+	if !bug.OK {
+		t.Fatalf("bug template should accept logs_output alias: %+v", bug)
+	}
+	if contains(bug.MissingRequiredFields, "logs") {
+		t.Fatalf("bug template still reported logs missing: %+v", bug.MissingRequiredFields)
+	}
+}
+
 func TestValidateRejectsPlanLinkAndGitLabRelatedIssuesSection(t *testing.T) {
 	validation := Validate(IssueOpsTemplateInput{
 		Kind:     IssueOpsArtifactIssue,

@@ -135,6 +135,7 @@ func normalizeInput(input IssueOpsTemplateInput) IssueOpsTemplateInput {
 	if input.Fields == nil {
 		input.Fields = map[string]string{}
 	}
+	input.Fields = normalizeFields(input.Kind, input.Fields)
 	if input.Kind == "" {
 		input.Kind = IssueOpsArtifactIssue
 	}
@@ -149,6 +150,60 @@ func normalizeInput(input IssueOpsTemplateInput) IssueOpsTemplateInput {
 		}
 	}
 	return input
+}
+
+func normalizeFields(kind IssueOpsArtifactKind, fields map[string]string) map[string]string {
+	if len(fields) == 0 {
+		return map[string]string{}
+	}
+	out := make(map[string]string, len(fields))
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		normalized := normalizeFieldKey(key)
+		if canonical, ok := fieldAliases[normalized]; ok {
+			normalized = canonical
+		}
+		if kind == IssueOpsArtifactPR {
+			if canonical, ok := prFieldAliases[normalized]; ok {
+				normalized = canonical
+			}
+		}
+		if strings.TrimSpace(out[normalized]) != "" && strings.TrimSpace(fields[key]) == "" {
+			continue
+		}
+		out[normalized] = fields[key]
+	}
+	return out
+}
+
+func normalizeFieldKey(key string) string {
+	key = strings.ToLower(strings.TrimSpace(key))
+	key = strings.ReplaceAll(key, "-", "_")
+	key = strings.ReplaceAll(key, " ", "_")
+	return key
+}
+
+var fieldAliases = map[string]string{
+	"goal":         "task_goal",
+	"logs_output":  "logs",
+	"parent_merge": "merge_condition",
+}
+
+var prFieldAliases = map[string]string{
+	"automation":    "automation_evidence",
+	"cleanup":       "worktree_cleanup",
+	"docs":          "docs_migration",
+	"document":      "docs_migration",
+	"documents":     "docs_migration",
+	"documentation": "docs_migration",
+	"risk":          "risk_rollback",
+	"risks":         "risk_rollback",
+	"rollback":      "risk_rollback",
+	"scope":         "scope_management",
 }
 
 func renderBody(input IssueOpsTemplateInput) string {
