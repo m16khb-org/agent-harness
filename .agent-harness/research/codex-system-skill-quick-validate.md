@@ -21,7 +21,7 @@ codex-rs/skills/src/assets/samples/skill-creator/scripts/quick_validate.py
 ## Evidence
 
 - Local `codex --version` reports `codex-cli 0.142.0`.
-- The pnpm shim at `/Users/habin/Library/pnpm/codex` invokes
+- The pnpm shim at `$HOME/Library/pnpm/codex` invokes
   `@openai/codex@0.142.0`.
 - That npm package lists only `bin/codex.js` in its `files` field, so the
   embedded system skill sources are not shipped as plain package files.
@@ -41,14 +41,14 @@ The local materialized Codex copy currently passes with isolated Python because
 it has been patched locally:
 
 ```bash
-python3 -S /Users/habin/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/issueops
+python3 -S $HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/issueops
 # Skill is valid!
 ```
 
 The unpatched Claude marketplace copies still fail without PyYAML:
 
 ```bash
-python3 -S /Users/habin/.claude/plugins/marketplaces/claude-plugins-official/plugins/skill-creator/skills/skill-creator/scripts/quick_validate.py skills/issueops
+python3 -S $HOME/.claude/plugins/marketplaces/claude-plugins-official/plugins/skill-creator/skills/skill-creator/scripts/quick_validate.py skills/issueops
 # ModuleNotFoundError: No module named 'yaml'
 ```
 
