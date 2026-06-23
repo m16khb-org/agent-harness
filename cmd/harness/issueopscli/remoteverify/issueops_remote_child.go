@@ -1,6 +1,7 @@
 package remoteverify
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os/exec"
@@ -48,12 +49,46 @@ func VerifyGitLabIssueLive(parsed *url.URL) error {
 	if kind == "" {
 		kind = "issues"
 	}
-	endpoint := "projects/" + url.PathEscape(parts.Project) + "/" + kind + "/" + parts.IID
-	cmd := exec.Command("glab", "api", endpoint, "--hostname", parsed.Hostname())
-	if _, err := cmd.Output(); err != nil {
+	if kind == "work_items" {
+		if _, err := fetchGitLabIssueEndpoint(parsed.Hostname(), parts.Project, kind, parts.IID); err == nil {
+			return nil
+		}
+		out, err := fetchGitLabIssueEndpoint(parsed.Hostname(), parts.Project, "issues", parts.IID)
+		if err != nil {
+			return fmt.Errorf("verify GitLab child issue through glab failed: %w", commandOutputError(err))
+		}
+		if err := verifyGitLabIssuePayloadIsTask(out, parts.IID); err != nil {
+			return err
+		}
+		return nil
+	}
+	if _, err := fetchGitLabIssueEndpoint(parsed.Hostname(), parts.Project, kind, parts.IID); err != nil {
 		return fmt.Errorf("verify GitLab child issue through glab failed: %w", commandOutputError(err))
 	}
 	return nil
+}
+
+func fetchGitLabIssueEndpoint(hostname, project, kind, iid string) ([]byte, error) {
+	endpoint := "projects/" + url.PathEscape(project) + "/" + kind + "/" + iid
+	return exec.Command("glab", "api", endpoint, "--hostname", hostname).Output()
+}
+
+func verifyGitLabIssuePayloadIsTask(out []byte, iid string) error {
+	if len(strings.TrimSpace(string(out))) == 0 {
+		return fmt.Errorf("gitlab issues/%s fallback did not return task metadata", iid)
+	}
+	var payload struct {
+		Type      string `json:"type"`
+		IssueType string `json:"issue_type"`
+		WebURL    string `json:"web_url"`
+	}
+	if err := json.Unmarshal(out, &payload); err != nil {
+		return fmt.Errorf("decode GitLab issue fallback for work item %s: %w", iid, err)
+	}
+	if strings.EqualFold(payload.Type, "TASK") || strings.EqualFold(payload.IssueType, "task") {
+		return nil
+	}
+	return fmt.Errorf("gitlab issues/%s fallback did not return a Task work item: type=%q issue_type=%q web_url=%q", iid, payload.Type, payload.IssueType, payload.WebURL)
 }
 
 func SetChildIssueVerifier(verifier func(string) error) func(string) error {
