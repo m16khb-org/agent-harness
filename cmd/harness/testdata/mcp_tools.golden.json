@@ -828,6 +828,130 @@
     "name": "issueops_prepare_worktree_tools"
   },
   {
+    "description": "Record the durable pre-implementation execution decision: auto-proceed boundaries, hook-blocked work, human gates, and whether sub-agents are not used or explicitly planned from the documented allowlist.",
+    "inputSchema": {
+      "properties": {
+        "auto_proceed": {
+          "description": "Conditions under which the main agent may continue without asking again.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "hook_blocked": {
+          "description": "Workflow actions hooks must not perform.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "human_gates": {
+          "description": "Conditions that require human-in-the-loop confirmation.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "subagent_plans": {
+          "description": "Required when subagent_use=planned. Each plan must use a documented sub-agent pattern and benefit, list the tradeoffs, and explain why the plan remains net-positive.",
+          "items": {
+            "properties": {
+              "benefit": {
+                "enum": [
+                  "context_isolation",
+                  "parallel_speed",
+                  "fresh_review",
+                  "tool_gating",
+                  "long_running",
+                  "model_specialization",
+                  "isolated_worktree"
+                ],
+                "type": "string"
+              },
+              "fallback": {
+                "type": "string"
+              },
+              "net_positive_rationale": {
+                "description": "Why the expected benefit outweighs the recorded tradeoffs for this specific task.",
+                "type": "string"
+              },
+              "objective": {
+                "type": "string"
+              },
+              "pattern": {
+                "enum": [
+                  "high-volume-exploration",
+                  "isolated-worktree-work",
+                  "forked-context-exploration",
+                  "devils-advocate-review",
+                  "cross-verification-consensus",
+                  "parallel-independent-research",
+                  "task-fan-out-coordination",
+                  "background-long-running-work",
+                  "model-specialization-cost-routing",
+                  "tool-permission-gating",
+                  "plan-then-execute-separation",
+                  "triage-specialist-routing"
+                ],
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "tradeoffs": {
+                "description": "Known costs such as limited mid-run steering, reduced visibility, added latency/token cost, or coordination overhead.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "verification": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "objective",
+              "pattern",
+              "benefit",
+              "tradeoffs",
+              "net_positive_rationale",
+              "scope",
+              "verification",
+              "fallback"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "subagent_rationale": {
+          "description": "Required when subagent_use=none; optional top-level rationale when planned.",
+          "type": "string"
+        },
+        "subagent_use": {
+          "description": "Sub-agent usage decision.",
+          "enum": [
+            "none",
+            "planned"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "auto_proceed",
+        "hook_blocked",
+        "human_gates",
+        "subagent_use"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_record_execution_decision"
+  },
+  {
     "description": "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
     "inputSchema": {
       "properties": {

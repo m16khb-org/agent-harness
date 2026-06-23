@@ -28,6 +28,25 @@
 
 ## 12가지 Net-Positive Sub-Agent 패턴
 
+`agent-harness issueops execution decide`와 MCP `issueops_record_execution_decision`은 아래 slug만 허용한다. Sub-agent 계획은 이 slug 중 하나, 기대 이득, 알려진 tradeoff, 그리고 그 tradeoff에도 불구하고 net-positive인 이유를 함께 기록해야 한다.
+
+| # | Pattern | Validation slug |
+|---|---------|-----------------|
+| 1 | 대량 탐색 (High-Volume Exploration) | `high-volume-exploration` |
+| 2 | 격리 작업 (Isolated Worktree Work) | `isolated-worktree-work` |
+| 3 | Forked Context 탐색 (Forked Context Exploration) | `forked-context-exploration` |
+| 4 | 악마의 변호인 (Devil's Advocate / Adversarial Review) | `devils-advocate-review` |
+| 5 | 교차 검증 / 합의 (Cross-Verification / Consensus) | `cross-verification-consensus` |
+| 6 | 병렬 독립 탐색 (Parallel Independent Research) | `parallel-independent-research` |
+| 7 | 작업 분해·조정 (Task Fan-out with Coordination) | `task-fan-out-coordination` |
+| 8 | 장시간 백그라운드 작업 (Background Long-Running Work) | `background-long-running-work` |
+| 9 | 모델 특화 / 비용 라우팅 (Model Specialization / Cost Routing) | `model-specialization-cost-routing` |
+| 10 | 도구·권한 제한 (Tool/Permission Gating) | `tool-permission-gating` |
+| 11 | 계획-실행 분리 (Plan-then-Execute Separation) | `plan-then-execute-separation` |
+| 12 | Triage → 전문가 라우팅 (Triage → Specialist Routing) | `triage-specialist-routing` |
+
+허용된 기대 이득 slug: `context_isolation`, `parallel_speed`, `fresh_review`, `tool_gating`, `long_running`, `model_specialization`, `isolated_worktree`.
+
 ### Category A: 컨텍스트 오염 방지
 
 #### 1. 대량 탐색 (High-Volume Exploration)

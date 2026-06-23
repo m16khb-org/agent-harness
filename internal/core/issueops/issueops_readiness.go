@@ -94,6 +94,9 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		missing = append(missing, "plan_in_worktree")
 	}
 	missing = append(missing, issueOpsWorktreeToolsMissing(record)...)
+	if record.ExecutionDecision == nil || strings.TrimSpace(record.ExecutionDecision.RecordedAt) == "" {
+		missing = append(missing, "execution_decision")
+	}
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,

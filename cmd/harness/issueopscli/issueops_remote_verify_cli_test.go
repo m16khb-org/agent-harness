@@ -94,6 +94,15 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.Iss
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), id, planPath); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := core.RecordIssueOpsExecutionDecision(core.IssueOpsStateRoot(), id, core.IssueOpsExecutionDecisionRecordRequest{
+		AutoProceed:       []string{"remote verify test may enter implementation after durable gates"},
+		HookBlocked:       []string{"hooks do not create remote artifacts"},
+		HumanGates:        []string{"ask before destructive cleanup"},
+		SubagentUse:       "none",
+		SubagentRationale: "main agent owns this focused remote verify fixture",
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), id, core.IssueOpsWorktreeToolPreparation{
 		OK:                   true,
 		WorktreePath:         worktree,

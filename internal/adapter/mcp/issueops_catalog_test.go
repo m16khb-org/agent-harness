@@ -18,6 +18,7 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_review_design",
 		"issueops_link_plan",
 		"issueops_prepare_worktree_tools",
+		"issueops_record_execution_decision",
 		"issueops_link_child",
 		"issueops_link_related",
 	}
@@ -70,6 +71,19 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaRequires(byName["issueops_link_child"].InputSchema, "child_url") {
 		t.Fatalf("issueops_link_child must require child_url: %#v", byName["issueops_link_child"].InputSchema)
+	}
+	executionDecision := byName["issueops_record_execution_decision"]
+	for _, required := range []string{"id", "auto_proceed", "hook_blocked", "human_gates", "subagent_use"} {
+		if !schemaRequires(executionDecision.InputSchema, required) {
+			t.Fatalf("issueops_record_execution_decision must require %q: %#v", required, executionDecision.InputSchema)
+		}
+	}
+	if !schemaHasProperty(executionDecision.InputSchema, "subagent_plans") {
+		t.Fatalf("issueops_record_execution_decision schema missing subagent_plans: %#v", executionDecision.InputSchema)
+	}
+	plansDescription := schemaPropertyDescription(executionDecision.InputSchema, "subagent_plans")
+	if !strings.Contains(plansDescription, "tradeoffs") || !strings.Contains(plansDescription, "net-positive") {
+		t.Fatalf("execution decision subagent_plans must describe tradeoff handling: %s", plansDescription)
 	}
 	if !schemaRequires(byName["issueops_link_related"].InputSchema, "type") || !schemaRequires(byName["issueops_link_related"].InputSchema, "related_url") {
 		t.Fatalf("issueops_link_related must require type and related_url: %#v", byName["issueops_link_related"].InputSchema)

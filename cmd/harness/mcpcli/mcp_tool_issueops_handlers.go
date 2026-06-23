@@ -1,6 +1,8 @@
 package mcpcli
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -98,6 +100,39 @@ func handleMCPIssueOpsPrepareWorktreeTools(args map[string]any) MCPToolOutcome {
 		return issueOpsMCPOutcome(result, err, "IssueOps worktree tool preparation failed")
 	}
 	return issueOpsMCPOutcome(nil, err, "IssueOps worktree tool preparation failed")
+}
+
+func handleMCPIssueOpsRecordExecutionDecision(args map[string]any) MCPToolOutcome {
+	plans, err := issueOpsSubagentPlansFromMCP(args["subagent_plans"])
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps execution decision record failed")
+	}
+	result, err := core.RecordIssueOpsExecutionDecision(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsExecutionDecisionRecordRequest{
+		AutoProceed:       argmap.StringSlice(args, "auto_proceed"),
+		HookBlocked:       argmap.StringSlice(args, "hook_blocked"),
+		HumanGates:        argmap.StringSlice(args, "human_gates"),
+		SubagentUse:       argmap.String(args, "subagent_use"),
+		SubagentRationale: argmap.String(args, "subagent_rationale"),
+		SubagentPlans:     plans,
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps execution decision record failed")
+}
+
+func issueOpsSubagentPlansFromMCP(raw any) ([]core.IssueOpsSubAgentPlan, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var plans []core.IssueOpsSubAgentPlan
+	if err := decoder.Decode(&plans); err != nil {
+		return nil, err
+	}
+	return plans, nil
 }
 
 func handleMCPIssueOpsLinkChild(args map[string]any) MCPToolOutcome {

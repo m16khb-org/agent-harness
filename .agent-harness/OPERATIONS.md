@@ -51,6 +51,7 @@ Use `.agent-harness/operations/release-reproducibility.md` before deciding Homeb
 - Default install writes only user-level host configuration. Target repos get files only through explicit project bootstrap or project-local opt-in.
 - Host adapters are thin wrappers around the same CLI/core behavior. They must not duplicate policy, schema, or state semantics.
 - Hooks provide routing, lifecycle state, and bounded reminders only. They must not create issues/PRs, run tests, edit shared docs, or perform long network/file reads.
+- IssueOps implementation must pass the durable `execution_decision` gate. Hooks do not decide auto-proceed, human gates, or sub-agent usage; `issueops execution decide` / MCP `issueops_record_execution_decision` records that main-agent judgement before `implement`.
 - LLM Wiki, CodeGraph, claude-mem, LazyCodex, and Headroom are upstream companion tools. `agent-harness` may install or configure them only through opt-in paths; it does not reimplement their core behavior.
 - Worker functionality remains policy-gated and state-first until write/network/background execution has explicit audit, timeout, cancellation, and redaction coverage.
 

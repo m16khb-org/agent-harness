@@ -44,6 +44,7 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"force-release": runIssueOpsForceRelease,
 	"resume":        runIssueOpsResume,
 	"decision":      runIssueOpsDecision,
+	"execution":     runIssueOpsExecution,
 }
 
 func runIssueOps(args []string) error {

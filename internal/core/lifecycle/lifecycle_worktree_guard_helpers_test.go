@@ -182,6 +182,14 @@ func recordIssueOpsWorktreeToolsForGuardTest(t *testing.T, id, worktree string) 
 		CodeGraphReady:       true,
 		PreparedAt:           "2026-06-05T00:00:00Z",
 	}
+	record.ExecutionDecision = &issueops.IssueOpsExecutionDecision{
+		AutoProceed:       []string{"guard fixture may enter implementation after linked worktree readiness is durable"},
+		HookBlocked:       []string{"hooks do not prepare worktrees, create remote artifacts, or choose sub-agents"},
+		HumanGates:        []string{"ask before destructive cleanup or unclear product behavior"},
+		SubagentUse:       "none",
+		SubagentRationale: "main agent owns this focused lifecycle fixture",
+		RecordedAt:        "2026-06-23T00:00:00Z",
+	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}

@@ -10,6 +10,7 @@ import (
 	"agent-harness/internal/core/issueops/branchprepare"
 	"agent-harness/internal/core/issueops/cleanupchildren"
 	"agent-harness/internal/core/issueops/cleanupstatus"
+	"agent-harness/internal/core/issueops/executiondecision"
 	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/linking"
 	"agent-harness/internal/core/issueops/model"
@@ -35,6 +36,9 @@ type IssueOpsDesignReview = model.IssueOpsDesignReview
 type IssueOpsDesignReviewRequest = model.IssueOpsDesignReviewRequest
 type IssueOpsDecision = model.IssueOpsDecision
 type IssueOpsDecisionRecordRequest = model.IssueOpsDecisionRecordRequest
+type IssueOpsExecutionDecision = model.IssueOpsExecutionDecision
+type IssueOpsExecutionDecisionRecordRequest = model.IssueOpsExecutionDecisionRecordRequest
+type IssueOpsSubAgentPlan = model.IssueOpsSubAgentPlan
 type IssueOpsPlanPrep = model.IssueOpsPlanPrep
 type IssueOpsPlanPrepItem = model.IssueOpsPlanPrepItem
 type IssueOpsPlanPrepRequest = model.IssueOpsPlanPrepRequest
@@ -313,6 +317,23 @@ func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeTool
 		return writeErr
 	})
 	return rec, err
+}
+
+func RecordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = executiondecision.Record(issueOpsExecutionDecisionStore(), stateRoot, id, req)
+		return e
+	})
+	return rec, err
+}
+
+func issueOpsExecutionDecisionStore() executiondecision.Store {
+	return executiondecision.Store{
+		Read:       ReadIssueOps,
+		TouchWrite: touchAndWriteIssueOps,
+	}
 }
 
 // unbindIssueOpsSessionForCycle clears the repo's session binding only when

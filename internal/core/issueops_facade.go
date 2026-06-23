@@ -16,6 +16,9 @@ type IssueOpsDesignReview = issueops.IssueOpsDesignReview
 type IssueOpsDesignReviewRequest = issueops.IssueOpsDesignReviewRequest
 type IssueOpsDecision = issueops.IssueOpsDecision
 type IssueOpsDecisionRecordRequest = issueops.IssueOpsDecisionRecordRequest
+type IssueOpsExecutionDecision = issueops.IssueOpsExecutionDecision
+type IssueOpsExecutionDecisionRecordRequest = issueops.IssueOpsExecutionDecisionRecordRequest
+type IssueOpsSubAgentPlan = issueops.IssueOpsSubAgentPlan
 type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
 type IssueOpsWorktreeToolPreparation = issueops.IssueOpsWorktreeToolPreparation
@@ -93,6 +96,10 @@ func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (
 
 func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDesignReview(stateRoot, id, req)
+}
+
+func RecordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsExecutionDecision(stateRoot, id, req)
 }
 
 func IssueOpsStateRoot() string {

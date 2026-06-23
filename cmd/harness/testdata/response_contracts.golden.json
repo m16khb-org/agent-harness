@@ -223,7 +223,7 @@
           "name": "version"
         }
       ],
-      "hash": "ab0ddee3109b198dbb76cf4122a872e2de4d11ee823a130c5f5eca2a9adf3969",
+      "hash": "f7d74af8fa899f1cb30ee6a091169de5247b69302f037ca800a9e5e299eef2ee",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -254,6 +254,7 @@
         "issueops_pr_readiness",
         "issueops_prepare_branch",
         "issueops_prepare_worktree_tools",
+        "issueops_record_execution_decision",
         "issueops_record_intent",
         "issueops_record_routing",
         "issueops_remote_create_child",
@@ -426,6 +427,7 @@
           "branch_prepare",
           "remote_artifact",
           "worktree_tools",
+          "execution_decision",
           "feedback",
           "ai_slop_clean_at",
           "created_at",
@@ -512,7 +514,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 26185,
+          "bytes": 27510,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -530,17 +532,17 @@
             "Phase 7 — Hardening / release",
             "2026-06-13 — Distribution decision gate",
             "2026-06-23 — IssueOps hook and state-machine boundary",
+            "2026-06-23 — IssueOps execution decision gate",
             "4. MVP 범위",
             "5. 주요 위험과 대응",
-            "6. 다음 작업 제안",
-            "7. Decision Log Index"
+            "6. 다음 작업 제안"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
           "rel_path": ".agent-harness/ADR.md",
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 8043,
+          "bytes": 8123,
           "headings": [
             "Agent Workflow",
             "Start",
@@ -559,7 +561,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 24958,
+          "bytes": 25185,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -585,7 +587,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 34334,
+          "bytes": 34759,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -722,7 +724,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 3402,
+          "bytes": 3669,
           "headings": [
             "Operations Map",
             "Core Surfaces",
@@ -764,7 +766,7 @@
           "title": "Agent-Harness Whole-Project Audit"
         },
         {
-          "bytes": 11234,
+          "bytes": 12877,
           "headings": [
             "Sub-Agent Usage Patterns",
             "근거 요약",
@@ -6134,7 +6136,7 @@
                 "name": "version"
               }
             ],
-            "hash": "ab0ddee3109b198dbb76cf4122a872e2de4d11ee823a130c5f5eca2a9adf3969",
+            "hash": "f7d74af8fa899f1cb30ee6a091169de5247b69302f037ca800a9e5e299eef2ee",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6165,6 +6167,7 @@
               "issueops_pr_readiness",
               "issueops_prepare_branch",
               "issueops_prepare_worktree_tools",
+              "issueops_record_execution_decision",
               "issueops_record_intent",
               "issueops_record_routing",
               "issueops_remote_create_child",
@@ -6337,6 +6340,7 @@
                 "branch_prepare",
                 "remote_artifact",
                 "worktree_tools",
+                "execution_decision",
                 "feedback",
                 "ai_slop_clean_at",
                 "created_at",
@@ -6430,7 +6434,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 26185,
+                "bytes": 27510,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -6448,17 +6452,17 @@
                   "Phase 7 — Hardening / release",
                   "2026-06-13 — Distribution decision gate",
                   "2026-06-23 — IssueOps hook and state-machine boundary",
+                  "2026-06-23 — IssueOps execution decision gate",
                   "4. MVP 범위",
                   "5. 주요 위험과 대응",
-                  "6. 다음 작업 제안",
-                  "7. Decision Log Index"
+                  "6. 다음 작업 제안"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
                 "rel_path": ".agent-harness/ADR.md",
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 8043,
+                "bytes": 8123,
                 "headings": [
                   "Agent Workflow",
                   "Start",
@@ -6477,7 +6481,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 24958,
+                "bytes": 25185,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -6503,7 +6507,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 34334,
+                "bytes": 34759,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -6640,7 +6644,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 3402,
+                "bytes": 3669,
                 "headings": [
                   "Operations Map",
                   "Core Surfaces",
@@ -6682,7 +6686,7 @@
                 "title": "Agent-Harness Whole-Project Audit"
               },
               {
-                "bytes": 11234,
+                "bytes": 12877,
                 "headings": [
                   "Sub-Agent Usage Patterns",
                   "근거 요약",

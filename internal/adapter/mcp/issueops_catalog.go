@@ -105,6 +105,28 @@ func IssueOpsBasicTools() []Tool {
 			}},
 		},
 		{
+			Name:        "issueops_record_execution_decision",
+			Description: "Record the durable pre-implementation execution decision: auto-proceed boundaries, hook-blocked work, human gates, and whether sub-agents are not used or explicitly planned from the documented allowlist.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "auto_proceed", "hook_blocked", "human_gates", "subagent_use"}, "properties": map[string]any{
+				"id":                 map[string]any{"type": "string", "description": "IssueOps id."},
+				"auto_proceed":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Conditions under which the main agent may continue without asking again."},
+				"hook_blocked":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Workflow actions hooks must not perform."},
+				"human_gates":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Conditions that require human-in-the-loop confirmation."},
+				"subagent_use":       map[string]any{"type": "string", "description": "Sub-agent usage decision.", "enum": []string{"none", "planned"}},
+				"subagent_rationale": map[string]any{"type": "string", "description": "Required when subagent_use=none; optional top-level rationale when planned."},
+				"subagent_plans": map[string]any{"type": "array", "description": "Required when subagent_use=planned. Each plan must use a documented sub-agent pattern and benefit, list the tradeoffs, and explain why the plan remains net-positive.", "items": map[string]any{"type": "object", "required": []string{"objective", "pattern", "benefit", "tradeoffs", "net_positive_rationale", "scope", "verification", "fallback"}, "properties": map[string]any{
+					"objective":              map[string]any{"type": "string"},
+					"pattern":                map[string]any{"type": "string", "enum": []string{"high-volume-exploration", "isolated-worktree-work", "forked-context-exploration", "devils-advocate-review", "cross-verification-consensus", "parallel-independent-research", "task-fan-out-coordination", "background-long-running-work", "model-specialization-cost-routing", "tool-permission-gating", "plan-then-execute-separation", "triage-specialist-routing"}},
+					"benefit":                map[string]any{"type": "string", "enum": []string{"context_isolation", "parallel_speed", "fresh_review", "tool_gating", "long_running", "model_specialization", "isolated_worktree"}},
+					"tradeoffs":              map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Known costs such as limited mid-run steering, reduced visibility, added latency/token cost, or coordination overhead."},
+					"net_positive_rationale": map[string]any{"type": "string", "description": "Why the expected benefit outweighs the recorded tradeoffs for this specific task."},
+					"scope":                  map[string]any{"type": "string"},
+					"verification":           map[string]any{"type": "string"},
+					"fallback":               map[string]any{"type": "string"},
+				}}},
+			}},
+		},
+		{
 			Name:        "issueops_link_child",
 			Description: "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "child_url"}, "properties": map[string]any{

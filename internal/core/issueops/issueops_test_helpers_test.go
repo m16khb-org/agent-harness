@@ -114,6 +114,7 @@ func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 
 func recordIssueOpsPreparedWorktreeToolsForTest(t *testing.T, stateRoot, id, worktree string) IssueOpsRecord {
 	t.Helper()
+	recordIssueOpsExecutionDecisionForTest(t, stateRoot, id)
 	record, err := RecordIssueOpsWorktreeTools(stateRoot, id, IssueOpsWorktreeToolPreparation{
 		OK:                   true,
 		WorktreePath:         worktree,
@@ -128,12 +129,36 @@ func recordIssueOpsPreparedWorktreeToolsForTest(t *testing.T, stateRoot, id, wor
 	return record
 }
 
+func recordIssueOpsExecutionDecisionForTest(t *testing.T, stateRoot, id string) {
+	t.Helper()
+	if _, err := RecordIssueOpsExecutionDecision(stateRoot, id, IssueOpsExecutionDecisionRecordRequest{
+		AutoProceed:       []string{"implement after durable readiness gates are present"},
+		HookBlocked:       []string{"hooks do not create issues, prepare worktrees, or choose sub-agents"},
+		HumanGates:        []string{"ask before destructive cleanup or unclear product behavior"},
+		SubagentUse:       "none",
+		SubagentRationale: "main agent directly owns this focused implementation",
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func issueOpsIntentContractForTest() *IssueOpsIntentContract {
 	return &IssueOpsIntentContract{
 		RawRequest:        "refactor issueops flow",
 		InterpretedIntent: "keep intent and design evidence before implementation",
 		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
 		RecordedAt:        "2026-06-05T00:00:00Z",
+	}
+}
+
+func issueOpsExecutionDecisionForTest() *IssueOpsExecutionDecision {
+	return &IssueOpsExecutionDecision{
+		AutoProceed:       []string{"implement after durable readiness gates are present"},
+		HookBlocked:       []string{"hooks do not create issues, prepare worktrees, or choose sub-agents"},
+		HumanGates:        []string{"ask before destructive cleanup or unclear product behavior"},
+		SubagentUse:       "none",
+		SubagentRationale: "main agent directly owns this focused implementation",
+		RecordedAt:        "2026-06-23T00:00:00Z",
 	}
 }
 

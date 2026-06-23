@@ -83,6 +83,25 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if planRecord["phase"] != "plan" {
 		t.Fatalf("plan link should stay in plan phase until worktree tools are prepared: %#v", planRecord)
 	}
+	decision := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{
+			"execution", "decide",
+			"--id", id,
+			"--auto", "implementation may proceed after linked worktree readiness is durable",
+			"--hook-block", "hooks do not prepare worktrees, create remote artifacts, or decide sub-agent usage",
+			"--human-gate", "ask before destructive cleanup or unclear product behavior",
+			"--subagent-use", "none",
+			"--subagent-rationale", "main agent owns this focused lifecycle test implementation",
+			"--json",
+		})
+	})
+	var decisionRecord map[string]any
+	if err := json.Unmarshal([]byte(decision), &decisionRecord); err != nil {
+		t.Fatalf("execution decision should return JSON: %v\n%s", err, decision)
+	}
+	if _, ok := decisionRecord["execution_decision"].(map[string]any); !ok {
+		t.Fatalf("execution decision should be persisted before prepare-tools: %#v", decisionRecord)
+	}
 	preparedTools := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"worktree", "prepare-tools", "--id", id, "--json"})
 	})

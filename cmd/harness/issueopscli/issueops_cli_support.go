@@ -21,6 +21,7 @@ func issueOpsUsage() {
   agent-harness issueops link-worktree --id ID --worktree-path PATH [--json]
   agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] [--json]
   agent-harness issueops link-plan --id ID --plan-path PATH [--json]
+  agent-harness issueops execution decide --id ID --auto TEXT --hook-block TEXT --human-gate TEXT --subagent-use none|planned [--subagent-rationale TEXT] [--subagent-plan-file PATH] [--json]
   agent-harness issueops worktree prepare-tools --id ID [--json]
   agent-harness issueops worktree prepare --id ID [--json]
   agent-harness issueops worktree verify --id ID [--json]
