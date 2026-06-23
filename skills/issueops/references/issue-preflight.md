@@ -29,6 +29,17 @@ Use repo-root `PROMPT.md` as the scaffold for an ideal issue prompt. Preserve it
 
 Record an ambiguity ledger with `resolved`, `deferred`, and `blocking` entries. Blocking entries stop remote issue creation until the user answers; deferred entries become explicit open decisions in the issue.
 
+## Remote Template Gate
+
+Before a remote issue, child task, PR, or MR body is created or accepted, render or validate it through the shared IssueOps remote template contract:
+
+```bash
+agent-harness issueops remote render-template --kind issue --template implementation_task --provider github --title "$TITLE" --field problem="$PROBLEM" --json
+agent-harness issueops remote create-issue --id "$ISSUEOPS_ID" --template implementation_task --field problem="$PROBLEM" --label "$LABEL" --assignee "$ASSIGNEE" --json
+```
+
+Use `--body-file` for manually drafted bodies. Do not combine `--body` and `--body-file`. If a manual body is used with `--template`, it must still satisfy the canonical required sections. Confirmed writes fail closed on critical validation failures, missing labels, missing assignees, Korean artifact gate failures, and PR/MR target branch mismatch.
+
 ## Plan-Prep Evidence Gate
 
 Before entering the IssueOps `plan` phase, record three pre-plan evidence items with `agent-harness issueops plan-prep record`. Each item takes either concrete evidence or a mutually-exclusive waive reason:

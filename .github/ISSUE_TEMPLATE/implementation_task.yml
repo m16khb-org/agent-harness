@@ -27,6 +27,14 @@ body:
       required: true
 
   - type: textarea
+    id: related_labels
+    attributes:
+      label: 관련 이슈/라벨 판단
+      description: 중복 또는 관련 이슈, 선택/거절 라벨, 수동 override 이유를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
     id: acceptance
     attributes:
       label: 완료 기준

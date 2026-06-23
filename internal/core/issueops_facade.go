@@ -1,6 +1,9 @@
 package core
 
-import "agent-harness/internal/core/issueops"
+import (
+	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/issueops/artifacttemplate"
+)
 
 type IssueOpsStartRequest = issueops.IssueOpsStartRequest
 type IssueOpsFeedbackItem = issueops.IssueOpsFeedbackItem
@@ -77,6 +80,36 @@ type IssueOpsRemoteScoringRequest = issueops.IssueOpsRemoteScoringRequest
 type IssueOpsRemoteScoredItem = issueops.IssueOpsRemoteScoredItem
 type IssueOpsRemoteScoringResult = issueops.IssueOpsRemoteScoringResult
 type IssueOpsRemoteAgyJudgeRequest = issueops.IssueOpsRemoteAgyJudgeRequest
+type IssueOpsArtifactKind = artifacttemplate.IssueOpsArtifactKind
+type IssueOpsTemplateKind = artifacttemplate.IssueOpsTemplateKind
+type IssueOpsTemplateInput = artifacttemplate.IssueOpsTemplateInput
+type IssueOpsTemplateResult = artifacttemplate.IssueOpsTemplateResult
+type IssueOpsTemplateValidation = artifacttemplate.IssueOpsTemplateValidation
+
+const (
+	IssueOpsArtifactIssue = artifacttemplate.IssueOpsArtifactIssue
+	IssueOpsArtifactChild = artifacttemplate.IssueOpsArtifactChild
+	IssueOpsArtifactPR    = artifacttemplate.IssueOpsArtifactPR
+
+	IssueOpsTemplateBug                = artifacttemplate.IssueOpsTemplateBug
+	IssueOpsTemplateFeature            = artifacttemplate.IssueOpsTemplateFeature
+	IssueOpsTemplateProposal           = artifacttemplate.IssueOpsTemplateProposal
+	IssueOpsTemplateImplementationTask = artifacttemplate.IssueOpsTemplateImplementationTask
+	IssueOpsTemplateChildTask          = artifacttemplate.IssueOpsTemplateChildTask
+	IssueOpsTemplatePullRequest        = artifacttemplate.IssueOpsTemplatePullRequest
+)
+
+func RenderIssueOpsTemplate(input IssueOpsTemplateInput) IssueOpsTemplateResult {
+	return artifacttemplate.Render(input)
+}
+
+func ValidateIssueOpsTemplate(input IssueOpsTemplateInput) IssueOpsTemplateValidation {
+	return artifacttemplate.Validate(input)
+}
+
+func ParseIssueOpsTemplateFields(values []string) (map[string]string, error) {
+	return artifacttemplate.ParseFieldAssignments(values)
+}
 
 func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
 	return issueops.StartIssueOps(stateRoot, req)

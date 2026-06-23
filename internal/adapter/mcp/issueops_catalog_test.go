@@ -99,6 +99,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_mark_issue_updated",
 		"issueops_set_phase",
 		"issueops_verify_remote_artifact",
+		"issueops_remote_render_template",
 		"issueops_remote_create_issue",
 		"issueops_remote_create_child",
 		"issueops_remote_create_pr",
@@ -154,6 +155,24 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaHasProperty(byName["issueops_remote_score"].InputSchema, "threshold") {
 		t.Fatalf("issueops_remote_score schema missing threshold: %#v", byName["issueops_remote_score"].InputSchema)
+	}
+	renderTemplate := byName["issueops_remote_render_template"]
+	for _, required := range []string{"kind", "template", "title"} {
+		if !schemaRequires(renderTemplate.InputSchema, required) {
+			t.Fatalf("issueops_remote_render_template must require %q: %#v", required, renderTemplate.InputSchema)
+		}
+	}
+	for _, property := range []string{"provider", "fields", "score_summary"} {
+		if !schemaHasProperty(renderTemplate.InputSchema, property) {
+			t.Fatalf("issueops_remote_render_template schema missing %q: %#v", property, renderTemplate.InputSchema)
+		}
+	}
+	for _, toolName := range []string{"issueops_remote_create_issue", "issueops_remote_create_child", "issueops_remote_create_pr"} {
+		for _, property := range []string{"provider", "template", "fields", "score_summary"} {
+			if !schemaHasProperty(byName[toolName].InputSchema, property) {
+				t.Fatalf("%s schema missing %q: %#v", toolName, property, byName[toolName].InputSchema)
+			}
+		}
 	}
 	createChild := byName["issueops_remote_create_child"]
 	for _, required := range []string{"id", "title", "labels", "assignees"} {

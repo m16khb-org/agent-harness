@@ -223,7 +223,7 @@
           "name": "version"
         }
       ],
-      "hash": "f7d74af8fa899f1cb30ee6a091169de5247b69302f037ca800a9e5e299eef2ee",
+      "hash": "c97617f8537b4b06114c8769c923135e107bf8b97e5bb53a64e42eaacd78d4c3",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -260,6 +260,7 @@
         "issueops_remote_create_child",
         "issueops_remote_create_issue",
         "issueops_remote_create_pr",
+        "issueops_remote_render_template",
         "issueops_remote_score",
         "issueops_remote_sync_graph",
         "issueops_resume",
@@ -442,6 +443,35 @@
           "labels",
           "assignees",
           "preview"
+        ],
+        "issueops_remote_create_issue": [
+          "ok",
+          "provider",
+          "issue_url",
+          "issue_number",
+          "labels",
+          "assignees",
+          "preview"
+        ],
+        "issueops_remote_create_pr": [
+          "ok",
+          "provider",
+          "url",
+          "number",
+          "target_branch",
+          "labels",
+          "assignees",
+          "preview"
+        ],
+        "issueops_remote_render_template": [
+          "kind",
+          "template",
+          "provider",
+          "title",
+          "body",
+          "warnings",
+          "missing_required_fields",
+          "validation"
         ],
         "issueops_remote_score": [
           "ok",
@@ -1599,6 +1629,25 @@
           "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
         },
         {
+          "bytes": 7469,
+          "headings": [
+            "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions",
+            "TL;DR",
+            "Method",
+            "Findings",
+            "Context Isolation Is The Primary Benefit",
+            "Specialization And Tool Gating Are Valid Benefits",
+            "Overhead Is A Real Cost",
+            "Direction Control And Observability Are Weaker Than Main-Agent Work",
+            "Context Engineering Supports Isolation, But Not As A Blanket Rule",
+            "Decision Rule For IssueOps",
+            "Source Index"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
+          "rel_path": ".agent-harness/research/subagent-tradeoffs.md",
+          "title": "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions"
+        },
+        {
           "bytes": 13218,
           "headings": [
             "AGENTS.md",
@@ -1782,6 +1831,7 @@
         "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
+        "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
         "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -4703,7 +4753,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 60,
+        "docs_indexed": 61,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6136,7 +6186,7 @@
                 "name": "version"
               }
             ],
-            "hash": "f7d74af8fa899f1cb30ee6a091169de5247b69302f037ca800a9e5e299eef2ee",
+            "hash": "c97617f8537b4b06114c8769c923135e107bf8b97e5bb53a64e42eaacd78d4c3",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6173,6 +6223,7 @@
               "issueops_remote_create_child",
               "issueops_remote_create_issue",
               "issueops_remote_create_pr",
+              "issueops_remote_render_template",
               "issueops_remote_score",
               "issueops_remote_sync_graph",
               "issueops_resume",
@@ -6355,6 +6406,35 @@
                 "labels",
                 "assignees",
                 "preview"
+              ],
+              "issueops_remote_create_issue": [
+                "ok",
+                "provider",
+                "issue_url",
+                "issue_number",
+                "labels",
+                "assignees",
+                "preview"
+              ],
+              "issueops_remote_create_pr": [
+                "ok",
+                "provider",
+                "url",
+                "number",
+                "target_branch",
+                "labels",
+                "assignees",
+                "preview"
+              ],
+              "issueops_remote_render_template": [
+                "kind",
+                "template",
+                "provider",
+                "title",
+                "body",
+                "warnings",
+                "missing_required_fields",
+                "validation"
               ],
               "issueops_remote_score": [
                 "ok",
@@ -7519,6 +7599,25 @@
                 "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
               },
               {
+                "bytes": 7469,
+                "headings": [
+                  "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions",
+                  "TL;DR",
+                  "Method",
+                  "Findings",
+                  "Context Isolation Is The Primary Benefit",
+                  "Specialization And Tool Gating Are Valid Benefits",
+                  "Overhead Is A Real Cost",
+                  "Direction Control And Observability Are Weaker Than Main-Agent Work",
+                  "Context Engineering Supports Isolation, But Not As A Blanket Rule",
+                  "Decision Rule For IssueOps",
+                  "Source Index"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
+                "rel_path": ".agent-harness/research/subagent-tradeoffs.md",
+                "title": "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions"
+              },
+              {
                 "bytes": 13218,
                 "headings": [
                   "AGENTS.md",
@@ -7709,6 +7808,7 @@
               "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
+              "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
               "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -8707,7 +8807,7 @@
           "json": {
             "hierarchy_verified": false,
             "ok": true,
-            "preview": "[dry-run] would execute: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo; gh api repos/example/repo/issues/{child_number}; gh api -X POST repos/example/repo/issues/2/sub_issues -f sub_issue_id={child_database_id}; gh api repos/example/repo/issues/2/sub_issues",
+            "preview": "[dry-run] would execute: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo --parent 2; verify with gh api repos/example/repo/issues/2/sub_issues; fallback if --parent is unsupported: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo; gh api repos/example/repo/issues/{child_number}; gh api -X POST repos/example/repo/issues/2/sub_issues -f sub_issue_id={child_database_id}; gh api repos/example/repo/issues/2/sub_issues",
             "provider": "github"
           },
           "type": "text"
@@ -9734,7 +9834,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 60,
+              "docs_indexed": 61,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

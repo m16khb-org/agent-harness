@@ -65,7 +65,7 @@ func TestGitHubCreateChildDryRunDoesNotExecute(t *testing.T) {
 	if res.ChildURL != "" || res.ChildNumber != "" || res.HierarchyVerified {
 		t.Fatalf("dry-run must not populate remote result fields: %+v", res)
 	}
-	for _, want := range []string{"[dry-run]", "gh issue create", "--repo acme/repo", "sub_issues", "sub_issue_id", "--label bug", "--assignee octocat"} {
+	for _, want := range []string{"[dry-run]", "gh issue create", "--parent 12", "--repo acme/repo", "fallback", "sub_issues", "sub_issue_id", "--label bug", "--assignee octocat"} {
 		if !strings.Contains(res.Preview, want) {
 			t.Fatalf("preview %q missing %q", res.Preview, want)
 		}
@@ -103,6 +103,81 @@ func TestGitHubCreateChildConfirmCreatesAttachesAndVerifies(t *testing.T) {
 	writeFakeGh(t, binDir, `#!/bin/sh
 printf '%s\n' "$*" >> gh.calls
 if [ "$1 $2" = "issue create" ]; then
+  case "$*" in
+    *"--parent 12"*)
+      printf 'https://github.com/acme/repo/issues/34\n'
+      exit 0
+      ;;
+  esac
+  echo "missing preferred parent flag" >&2
+  exit 2
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/34" ]; then
+  printf '{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}]}'
+  exit 0
+fi
+if [ "$1" = "api" ] && [ "$2" = "repos/acme/repo/issues/12/sub_issues" ]; then
+  printf '[{"id":987,"number":34,"html_url":"https://github.com/acme/repo/issues/34"}]'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	got, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{
+		Repo:           repo,
+		ParentIssueURL: "https://github.com/acme/repo/issues/12",
+		Title:          "하위 작업",
+		Body:           "details",
+		Labels:         []string{"bug"},
+		Assignees:      []string{"octocat"},
+		Confirm:        true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.OK || got.Provider != "github" || got.ChildURL != "https://github.com/acme/repo/issues/34" || got.ChildNumber != "34" || !got.HierarchyVerified {
+		t.Fatalf("result=%+v", got)
+	}
+	if strings.Join(got.Labels, ",") != "bug" || strings.Join(got.Assignees, ",") != "octocat" {
+		t.Fatalf("verification labels/assignees not reflected: %+v", got)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := strings.TrimSpace(string(log))
+	for _, want := range []string{
+		"issue create --title 하위 작업 --body details --label bug --assignee octocat --repo acme/repo --parent 12",
+		"api repos/acme/repo/issues/34",
+		"api repos/acme/repo/issues/12/sub_issues",
+	} {
+		if !strings.Contains(calls, want) {
+			t.Fatalf("calls missing %q:\n%s", want, calls)
+		}
+	}
+	if strings.Contains(calls, "sub_issue_id=987") {
+		t.Fatalf("preferred --parent path must not attach with REST fallback:\n%s", calls)
+	}
+}
+
+func TestGitHubCreateChildFallsBackToRESTAttachWhenParentFlagFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "gh.calls")
+	writeFakeGh(t, binDir, `#!/bin/sh
+printf '%s\n' "$*" >> gh.calls
+if [ "$1 $2" = "issue create" ]; then
+  case "$*" in
+    *"--parent 12"*)
+      echo "unknown flag: --parent" >&2
+      exit 2
+      ;;
+  esac
   printf 'https://github.com/acme/repo/issues/34\n'
   exit 0
 fi
@@ -147,6 +222,7 @@ exit 2
 	}
 	calls := strings.TrimSpace(string(log))
 	for _, want := range []string{
+		"issue create --title 하위 작업 --body details --label bug --assignee octocat --repo acme/repo --parent 12",
 		"issue create --title 하위 작업 --body details --label bug --assignee octocat --repo acme/repo",
 		"api repos/acme/repo/issues/34",
 		"api -X POST repos/acme/repo/issues/12/sub_issues -f sub_issue_id=987",

@@ -112,11 +112,17 @@ func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.Issu
 	}
 	createArgs = append(createArgs, "--repo", owner+"/"+repoName)
 	if !req.Confirm {
-		preview := fmt.Sprintf("[dry-run] would execute: gh %s; gh api repos/%s/%s/issues/{child_number}; gh api -X POST repos/%s/%s/issues/%s/sub_issues -f sub_issue_id={child_database_id}; gh api repos/%s/%s/issues/%s/sub_issues",
-			strings.Join(createArgs, " "), owner, repoName, owner, repoName, parentNumber, owner, repoName, parentNumber)
+		preferred := append(append([]string{}, createArgs...), "--parent", parentNumber)
+		preview := fmt.Sprintf("[dry-run] would execute: gh %s; verify with gh api repos/%s/%s/issues/%s/sub_issues; fallback if --parent is unsupported: gh %s; gh api repos/%s/%s/issues/{child_number}; gh api -X POST repos/%s/%s/issues/%s/sub_issues -f sub_issue_id={child_database_id}; gh api repos/%s/%s/issues/%s/sub_issues",
+			strings.Join(preferred, " "), owner, repoName, parentNumber, strings.Join(createArgs, " "), owner, repoName, owner, repoName, parentNumber, owner, repoName, parentNumber)
 		return port.IssueProviderCreateChildResult{OK: true, Provider: "github", Preview: preview}, nil
 	}
-	child, err := runGhJSON(createArgs, req.Repo, "issue")
+	preferredCreateArgs := append(append([]string{}, createArgs...), "--parent", parentNumber)
+	child, err := runGhJSON(preferredCreateArgs, req.Repo, "issue")
+	usedParentFlag := err == nil
+	if err != nil {
+		child, err = runGhJSON(createArgs, req.Repo, "issue")
+	}
 	if err != nil {
 		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, err
 	}
@@ -132,9 +138,11 @@ func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.Issu
 	if childIssue.ID == 0 {
 		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, fmt.Errorf("created child issue is missing database id"))
 	}
-	_, err = runGhAPIJSON[map[string]any](req.Repo, []string{"-X", "POST", "repos/" + owner + "/" + repoName + "/issues/" + parentNumber + "/sub_issues", "-f", "sub_issue_id=" + strconv.FormatInt(childIssue.ID, 10)}, "sub-issue attach")
-	if err != nil {
-		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, err)
+	if !usedParentFlag {
+		_, err = runGhAPIJSON[map[string]any](req.Repo, []string{"-X", "POST", "repos/" + owner + "/" + repoName + "/issues/" + parentNumber + "/sub_issues", "-f", "sub_issue_id=" + strconv.FormatInt(childIssue.ID, 10)}, "sub-issue attach")
+		if err != nil {
+			return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, err)
+		}
 	}
 	children, err := runGhAPIJSON[[]githubIssue](req.Repo, []string{"repos/" + owner + "/" + repoName + "/issues/" + parentNumber + "/sub_issues"}, "sub-issue verification")
 	if err != nil {

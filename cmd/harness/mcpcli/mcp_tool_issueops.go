@@ -39,6 +39,7 @@ var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
 	"issueops_cleanup_close_children":    handleMCPIssueOpsCleanupCloseChildren,
 	"issueops_force_release":             handleMCPIssueOpsForceRelease,
 	"issueops_cleanup_stale":             handleMCPIssueOpsCleanupStale,
+	"issueops_remote_render_template":    handleMCPRemoteRenderTemplate,
 	"issueops_remote_create_issue":       handleMCPRemoteCreateIssue,
 	"issueops_remote_create_child":       handleMCPRemoteCreateChild,
 	"issueops_remote_create_pr":          handleMCPRemoteCreatePR,
@@ -92,12 +93,24 @@ func issueOpsRemoteScoringRequestFromMCP(args map[string]any) (core.IssueOpsRemo
 	return req, nil
 }
 
+func handleMCPRemoteRenderTemplate(args map[string]any) MCPToolOutcome {
+	result := core.RenderIssueOpsTemplate(core.IssueOpsTemplateInput{
+		Kind:         core.IssueOpsArtifactKind(argmap.String(args, "kind")),
+		Template:     core.IssueOpsTemplateKind(argmap.String(args, "template")),
+		Provider:     argmap.String(args, "provider"),
+		Title:        argmap.String(args, "title"),
+		Fields:       templateFieldsFromMCP(args),
+		ScoreSummary: scoreSummaryFromMCP(args),
+	})
+	return mcpToolPayload(result)
+}
+
 func handleMCPRemoteCreateIssue(args map[string]any) MCPToolOutcome {
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
 	if err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-issue failed: cannot read cycle")
 	}
-	providerName := resolveRecordProviderForMCP(record)
+	providerName := firstNonEmptyMCP(argmap.String(args, "provider"), resolveRecordProviderForMCP(record))
 	if providerName == "" {
 		return issueOpsMCPOutcome(nil, fmt.Errorf("cannot determine provider"), "IssueOps remote create-issue failed")
 	}
@@ -105,10 +118,17 @@ func handleMCPRemoteCreateIssue(args map[string]any) MCPToolOutcome {
 	if err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-issue failed")
 	}
+	body, err := resolveMCPTemplateBody(core.IssueOpsArtifactIssue, providerName, argmap.String(args, "title"), argmap.String(args, "body"), args)
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-issue failed")
+	}
+	if err := validateMCPConfirmRemoteCreate(argmap.Bool(args, "confirm"), argmap.StringSlice(args, "labels"), argmap.StringSlice(args, "assignees")); err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-issue failed")
+	}
 	result, err := core.CreateRemoteIssue(core.IssueProviderCreateIssueRequest{
 		Repo:      record.Repo,
 		Title:     argmap.String(args, "title"),
-		Body:      argmap.String(args, "body"),
+		Body:      body,
 		Labels:    argmap.StringSlice(args, "labels"),
 		Assignees: argmap.StringSlice(args, "assignees"),
 		Confirm:   argmap.Bool(args, "confirm"),
@@ -129,7 +149,7 @@ func handleMCPRemoteCreateChild(args map[string]any) MCPToolOutcome {
 	if err := validateMCPCreateChildInputs(argmap.String(args, "title"), labels, assignees); err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-child failed")
 	}
-	providerName := resolveRecordProviderForMCP(record)
+	providerName := firstNonEmptyMCP(argmap.String(args, "provider"), resolveRecordProviderForMCP(record))
 	if providerName == "" {
 		return issueOpsMCPOutcome(nil, fmt.Errorf("cannot determine provider"), "IssueOps remote create-child failed")
 	}
@@ -137,11 +157,15 @@ func handleMCPRemoteCreateChild(args map[string]any) MCPToolOutcome {
 	if err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-child failed")
 	}
+	body, err := resolveMCPTemplateBody(core.IssueOpsArtifactChild, providerName, argmap.String(args, "title"), argmap.String(args, "body"), args)
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-child failed")
+	}
 	result, err := core.CreateRemoteChild(core.IssueProviderCreateChildRequest{
 		Repo:           record.Repo,
 		ParentIssueURL: record.IssueURL,
 		Title:          argmap.String(args, "title"),
-		Body:           argmap.String(args, "body"),
+		Body:           body,
 		Labels:         labels,
 		Assignees:      assignees,
 		Confirm:        argmap.Bool(args, "confirm"),
@@ -165,7 +189,7 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 	if err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-pr failed: cannot read cycle")
 	}
-	providerName := resolveRecordProviderForMCP(record)
+	providerName := firstNonEmptyMCP(argmap.String(args, "provider"), resolveRecordProviderForMCP(record))
 	if providerName == "" {
 		return issueOpsMCPOutcome(nil, fmt.Errorf("cannot determine provider"), "IssueOps remote create-pr failed")
 	}
@@ -181,10 +205,17 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 	if base == "" && record.BranchPrepare != nil {
 		base = record.BranchPrepare.BaseBranch
 	}
+	body, err := resolveMCPTemplateBody(core.IssueOpsArtifactPR, providerName, argmap.String(args, "title"), argmap.String(args, "body"), args)
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-pr failed")
+	}
+	if err := validateMCPConfirmRemoteCreate(argmap.Bool(args, "confirm"), argmap.StringSlice(args, "labels"), argmap.StringSlice(args, "assignees")); err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-pr failed")
+	}
 	result, err := core.CreateRemotePullRequest(core.IssueProviderCreatePullRequestRequest{
 		Repo:       record.Repo,
 		Title:      argmap.String(args, "title"),
-		Body:       argmap.String(args, "body"),
+		Body:       body,
 		HeadBranch: head,
 		BaseBranch: base,
 		Labels:     argmap.StringSlice(args, "labels"),
@@ -205,6 +236,82 @@ func validateMCPCreateChildInputs(title string, labels, assignees []string) erro
 		return fmt.Errorf("at least one child assignee is required")
 	}
 	return nil
+}
+
+func resolveMCPTemplateBody(kind core.IssueOpsArtifactKind, providerName, title, body string, args map[string]any) (string, error) {
+	template := argmap.String(args, "template")
+	if strings.TrimSpace(template) == "" {
+		return body, nil
+	}
+	result := core.RenderIssueOpsTemplate(core.IssueOpsTemplateInput{
+		Kind:         kind,
+		Template:     core.IssueOpsTemplateKind(template),
+		Provider:     providerName,
+		Title:        title,
+		Body:         body,
+		Fields:       templateFieldsFromMCP(args),
+		ScoreSummary: scoreSummaryFromMCP(args),
+	})
+	if len(result.Validation.Critical) > 0 {
+		return "", fmt.Errorf("template validation failed: %s", strings.Join(result.Validation.Critical, ","))
+	}
+	return result.Body, nil
+}
+
+func templateFieldsFromMCP(args map[string]any) map[string]string {
+	fields := map[string]string{}
+	raw, ok := args["fields"]
+	if !ok || raw == nil {
+		return fields
+	}
+	switch v := raw.(type) {
+	case map[string]string:
+		for key, value := range v {
+			fields[key] = value
+		}
+	case map[string]any:
+		for key, value := range v {
+			if s, ok := value.(string); ok {
+				fields[key] = s
+			}
+		}
+	}
+	return fields
+}
+
+func scoreSummaryFromMCP(args map[string]any) string {
+	if summary := argmap.String(args, "score_summary"); summary != "" {
+		return summary
+	}
+	if raw, ok := args["score_result"]; ok && raw != nil {
+		if b, err := json.Marshal(raw); err == nil {
+			return string(b)
+		}
+	}
+	return ""
+}
+
+func validateMCPConfirmRemoteCreate(confirm bool, labels, assignees []string) error {
+	if !confirm {
+		return nil
+	}
+	if len(labels) == 0 {
+		return fmt.Errorf("at least one label is required with confirm=true")
+	}
+	if len(assignees) == 0 {
+		return fmt.Errorf("at least one assignee is required with confirm=true")
+	}
+	return nil
+}
+
+func firstNonEmptyMCP(values ...string) string {
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func resolveRecordProviderForMCP(record core.IssueOpsRecord) string {

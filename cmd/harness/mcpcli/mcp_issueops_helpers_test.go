@@ -65,6 +65,56 @@ func TestIssueOpsMCPHelpersAndRemoteDryRuns(t *testing.T) {
 	}
 }
 
+func TestIssueOpsMCPRemoteRenderTemplateAndCreateUsesTemplate(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := mcpIssueOpsRecord(t)
+
+	rendered := handleIssueOpsMCPToolCall(MCPToolCall{Name: "issueops_remote_render_template", Arguments: map[string]any{
+		"provider": "github",
+		"kind":     "issue",
+		"template": "feature",
+		"title":    "원격 템플릿 계약",
+		"fields": map[string]any{
+			"problem":              "본문 품질이 흔들린다.",
+			"current_evidence":     "임의 body만 받는다.",
+			"acceptance_criteria":  "렌더러 결과가 고정된다.",
+			"non_goals":            "provider 정책 복제 제외",
+			"implementation_scope": "core와 MCP",
+			"verification":         "go test ./...",
+			"risks":                "golden drift",
+			"feedback_log":         "없음",
+		},
+		"score_summary": "선택 라벨: enhancement, 거절 라벨: docs, threshold 0.70",
+	}})
+	if rendered.Err != nil {
+		t.Fatalf("render-template MCP error: %#v", rendered.Err)
+	}
+	result, ok := rendered.Payload.(core.IssueOpsTemplateResult)
+	if !ok || !strings.Contains(result.Body, "## 관련 이슈/라벨 판단") {
+		t.Fatalf("unexpected render payload: %#v", rendered.Payload)
+	}
+
+	created := handleMCPRemoteCreateIssue(map[string]any{
+		"id":       record.ID,
+		"title":    "원격 템플릿 계약",
+		"template": "feature",
+		"labels":   []any{"bug"},
+		"fields": map[string]any{
+			"problem":              "본문 품질이 흔들린다.",
+			"current_evidence":     "임의 body만 받는다.",
+			"acceptance_criteria":  "렌더러 결과가 고정된다.",
+			"non_goals":            "provider 정책 복제 제외",
+			"implementation_scope": "core와 MCP",
+			"verification":         "go test ./...",
+			"risks":                "golden drift",
+			"feedback_log":         "없음",
+		},
+	})
+	if created.Err != nil {
+		t.Fatalf("template create dry-run should render body before provider preview: %#v", created.Err)
+	}
+}
+
 func TestTransportExportedWrappers(t *testing.T) {
 	if len(MCPResources()) == 0 {
 		t.Fatal("MCPResources should expose resources")

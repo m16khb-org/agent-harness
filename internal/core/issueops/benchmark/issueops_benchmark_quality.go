@@ -96,18 +96,27 @@ func reviewPromptIsBounded(artifact IssueOpsBenchmarkArtifact) bool {
 var issueOpsIssueSectionConcepts = [][]string{
 	{"problem", "문제"},
 	{"current evidence", "근거", "현재 상태", "현재 증거"},
+	{"related issue", "label", "관련 이슈", "라벨 판단"},
 	{"acceptance criteria", "수용 기준", "완료 기준", "인수 기준"},
 	{"non-goals", "비목표", "비-목표"},
+	{"implementation scope", "구현 범위"},
 	{"verification", "검증"},
+	{"risk", "tradeoff", "위험", "트레이드오프"},
 	{"feedback log", "피드백 로그", "피드백 기록"},
 }
 
 var issueOpsPRSectionConcepts = [][]string{
 	{"intent", "의도"},
+	{"issue", "이슈"},
 	{"changes", "변경"},
 	{"verification", "검증"},
-	{"risk", "위험", "리스크"},
-	{"reviewer notes", "리뷰어 노트", "리뷰 노트", "리뷰어 참고"},
+	{"reviewer focus", "reviewer notes", "리뷰어 초점", "리뷰어 노트", "리뷰 노트", "리뷰어 참고"},
+	{"risk", "rollback", "위험", "리스크"},
+	{"user impact", "release note", "사용자 영향", "릴리즈 노트"},
+	{"documentation", "migration", "문서", "마이그레이션"},
+	{"scope", "범위 관리"},
+	{"worktree cleanup", "워크트리 정리", "cleanup status"},
+	{"automation", "AI", "자동화", "AI 개입"},
 }
 
 func hasIssueOpsGuidelineRef(artifact IssueOpsBenchmarkArtifact) bool {

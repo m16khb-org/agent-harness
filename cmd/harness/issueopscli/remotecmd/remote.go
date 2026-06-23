@@ -22,10 +22,11 @@ func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage:")
 		fmt.Println("  agent-harness issueops remote score --input PATH [--judge none|agy] [--json]")
+		fmt.Println("  agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]")
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
-		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
-		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
-		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
 		return nil
 	}
@@ -118,6 +119,8 @@ func Run(args []string, deps Deps) error {
 			record, err = core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), *id, req)
 		}
 		return deps.printResult(record, *jsonOut, err)
+	case "render-template":
+		return runRemoteRenderTemplate(args[1:], deps)
 	case "create-issue":
 		return runRemoteCreateIssue(args[1:], deps)
 	case "create-child":
@@ -211,6 +214,54 @@ func readIssueOpsRemoteScoringRequestFile(path string) (core.IssueOpsRemoteScori
 	return req, nil
 }
 
+func runRemoteRenderTemplate(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops remote render-template", flag.ContinueOnError)
+	kind := fs.String("kind", "", "artifact kind: issue, child, or pr")
+	template := fs.String("template", "", "template kind")
+	providerName := fs.String("provider", "", "remote provider: github or gitlab")
+	title := fs.String("title", "", "artifact title")
+	scoreFile := fs.String("score-file", "", "IssueOps remote score result JSON")
+	var fields repeatedFlag
+	fs.Var(&fields, "field", "template field key=value (repeatable)")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseFlags(fs, args); help || err != nil {
+		return err
+	}
+	fieldMap, err := core.ParseIssueOpsTemplateFields(fields)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	scoreSummary, err := readScoreSummaryFile(*scoreFile)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	result := core.RenderIssueOpsTemplate(core.IssueOpsTemplateInput{
+		Kind:         core.IssueOpsArtifactKind(*kind),
+		Template:     core.IssueOpsTemplateKind(*template),
+		Provider:     *providerName,
+		Title:        *title,
+		Fields:       fieldMap,
+		ScoreSummary: scoreSummary,
+	})
+	if *jsonOut {
+		return deps.printJSON(result)
+	}
+	fmt.Printf("# %s\n\n%s\n", result.Title, result.Body)
+	for _, warning := range result.Warnings {
+		fmt.Printf("warning: %s\n", warning)
+	}
+	if len(result.MissingRequiredFields) > 0 {
+		fmt.Printf("missing_required_fields: %s\n", strings.Join(result.MissingRequiredFields, ","))
+	}
+	return nil
+}
+
 func firstNonEmptyMain(values ...string) string {
 	for _, value := range values {
 		value = strings.TrimSpace(value)
@@ -226,11 +277,17 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	id := fs.String("id", "", "IssueOps id")
 	title := fs.String("title", "", "issue title")
 	body := fs.String("body", "", "issue body (markdown)")
+	bodyFile := fs.String("body-file", "", "issue body markdown file")
+	template := fs.String("template", "", "template kind")
+	providerOverride := fs.String("provider", "", "remote provider override: github or gitlab")
+	scoreFile := fs.String("score-file", "", "IssueOps remote score result JSON")
 	confirm := fs.Bool("confirm", false, "execute creation; without this, dry-run preview only")
 	var labels repeatedFlag
 	var assignees repeatedFlag
+	var fields repeatedFlag
 	fs.Var(&labels, "label", "label to apply (repeatable)")
 	fs.Var(&assignees, "assignee", "assignee username (repeatable)")
+	fs.Var(&fields, "field", "template field key=value (repeatable)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
@@ -242,7 +299,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 		}
 		return err
 	}
-	providerName := resolveRecordProvider(record)
+	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		if *jsonOut {
@@ -257,10 +314,32 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 		}
 		return err
 	}
+	finalBody, err := resolveTemplateBody(resolveTemplateBodyRequest{
+		Kind:      core.IssueOpsArtifactIssue,
+		Template:  *template,
+		Provider:  providerName,
+		Title:     *title,
+		Body:      *body,
+		BodyFile:  *bodyFile,
+		Fields:    fields,
+		ScoreFile: *scoreFile,
+	})
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
 	result, err := core.CreateRemoteIssue(core.IssueProviderCreateIssueRequest{
 		Repo:      record.Repo,
 		Title:     *title,
-		Body:      *body,
+		Body:      finalBody,
 		Labels:    labels,
 		Assignees: assignees,
 		Confirm:   *confirm,
@@ -287,11 +366,17 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	id := fs.String("id", "", "IssueOps id")
 	title := fs.String("title", "", "child title")
 	body := fs.String("body", "", "child body (markdown)")
+	bodyFile := fs.String("body-file", "", "child body markdown file")
+	template := fs.String("template", "", "template kind")
+	providerOverride := fs.String("provider", "", "remote provider override: github or gitlab")
+	scoreFile := fs.String("score-file", "", "IssueOps remote score result JSON")
 	confirm := fs.Bool("confirm", false, "execute creation; without this, dry-run preview only")
 	var labels repeatedFlag
 	var assignees repeatedFlag
+	var fields repeatedFlag
 	fs.Var(&labels, "label", "label to apply (repeatable)")
 	fs.Var(&assignees, "assignee", "assignee username (repeatable)")
+	fs.Var(&fields, "field", "template field key=value (repeatable)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
@@ -316,7 +401,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 		}
 		return err
 	}
-	providerName := resolveRecordProvider(record)
+	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		if *jsonOut {
@@ -331,11 +416,27 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 		}
 		return err
 	}
+	finalBody, err := resolveTemplateBody(resolveTemplateBodyRequest{
+		Kind:      core.IssueOpsArtifactChild,
+		Template:  *template,
+		Provider:  providerName,
+		Title:     *title,
+		Body:      *body,
+		BodyFile:  *bodyFile,
+		Fields:    fields,
+		ScoreFile: *scoreFile,
+	})
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
 	result, err := core.CreateRemoteChild(core.IssueProviderCreateChildRequest{
 		Repo:           record.Repo,
 		ParentIssueURL: record.IssueURL,
 		Title:          *title,
-		Body:           *body,
+		Body:           finalBody,
 		Labels:         labels,
 		Assignees:      assignees,
 		Confirm:        *confirm,
@@ -377,13 +478,19 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	id := fs.String("id", "", "IssueOps id")
 	title := fs.String("title", "", "PR title")
 	body := fs.String("body", "", "PR body (markdown)")
+	bodyFile := fs.String("body-file", "", "PR body markdown file")
+	template := fs.String("template", "", "template kind")
+	providerOverride := fs.String("provider", "", "remote provider override: github or gitlab")
+	scoreFile := fs.String("score-file", "", "IssueOps remote score result JSON")
 	head := fs.String("head", "", "source branch")
 	base := fs.String("base", "", "target branch")
 	confirm := fs.Bool("confirm", false, "execute creation; without this, dry-run preview only")
 	var labels repeatedFlag
 	var assignees repeatedFlag
+	var fields repeatedFlag
 	fs.Var(&labels, "label", "label to apply (repeatable)")
 	fs.Var(&assignees, "assignee", "assignee username (repeatable)")
+	fs.Var(&fields, "field", "template field key=value (repeatable)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
@@ -395,7 +502,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		}
 		return err
 	}
-	providerName := resolveRecordProvider(record)
+	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		if *jsonOut {
@@ -415,10 +522,32 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if baseBranch == "" && record.BranchPrepare != nil {
 		baseBranch = record.BranchPrepare.BaseBranch
 	}
+	finalBody, err := resolveTemplateBody(resolveTemplateBodyRequest{
+		Kind:      core.IssueOpsArtifactPR,
+		Template:  *template,
+		Provider:  providerName,
+		Title:     *title,
+		Body:      *body,
+		BodyFile:  *bodyFile,
+		Fields:    fields,
+		ScoreFile: *scoreFile,
+	})
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
 	result, err := core.CreateRemotePullRequest(core.IssueProviderCreatePullRequestRequest{
 		Repo:       record.Repo,
 		Title:      *title,
-		Body:       *body,
+		Body:       finalBody,
 		HeadBranch: headBranch,
 		BaseBranch: baseBranch,
 		Labels:     labels,
@@ -453,6 +582,112 @@ func validateCreateChildInputs(title string, labels, assignees []string) error {
 		return fmt.Errorf("at least one child assignee is required")
 	}
 	return nil
+}
+
+type resolveTemplateBodyRequest struct {
+	Kind      core.IssueOpsArtifactKind
+	Template  string
+	Provider  string
+	Title     string
+	Body      string
+	BodyFile  string
+	Fields    []string
+	ScoreFile string
+}
+
+func resolveTemplateBody(req resolveTemplateBodyRequest) (string, error) {
+	body := strings.TrimSpace(req.Body)
+	bodyFile := strings.TrimSpace(req.BodyFile)
+	if body != "" && bodyFile != "" {
+		return "", fmt.Errorf("body and body-file are mutually exclusive")
+	}
+	if bodyFile != "" {
+		b, err := os.ReadFile(bodyFile)
+		if err != nil {
+			return "", err
+		}
+		body = strings.TrimSpace(string(b))
+	}
+	template := strings.TrimSpace(req.Template)
+	if template == "" {
+		return body, nil
+	}
+	fields, err := core.ParseIssueOpsTemplateFields(req.Fields)
+	if err != nil {
+		return "", err
+	}
+	scoreSummary, err := readScoreSummaryFile(req.ScoreFile)
+	if err != nil {
+		return "", err
+	}
+	input := core.IssueOpsTemplateInput{
+		Kind:         req.Kind,
+		Template:     core.IssueOpsTemplateKind(template),
+		Provider:     req.Provider,
+		Title:        req.Title,
+		Body:         body,
+		Fields:       fields,
+		ScoreSummary: scoreSummary,
+	}
+	result := core.RenderIssueOpsTemplate(input)
+	if len(result.Validation.Critical) > 0 {
+		return "", fmt.Errorf("template validation failed: %s", strings.Join(result.Validation.Critical, ","))
+	}
+	return result.Body, nil
+}
+
+func validateConfirmRemoteCreate(confirm bool, labels, assignees []string) error {
+	if !confirm {
+		return nil
+	}
+	if len(labels) == 0 {
+		return fmt.Errorf("at least one label is required with --confirm")
+	}
+	if len(assignees) == 0 {
+		return fmt.Errorf("at least one assignee is required with --confirm")
+	}
+	return nil
+}
+
+func readScoreSummaryFile(path string) (string, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", nil
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	var result core.IssueOpsRemoteScoringResult
+	if err := json.Unmarshal(b, &result); err != nil {
+		return strings.TrimSpace(string(b)), nil
+	}
+	parts := []string{fmt.Sprintf("threshold %.2f", result.Threshold)}
+	if len(result.SelectedRelatedIssues) > 0 {
+		parts = append(parts, "선택 관련 이슈: "+joinScoredItems(result.SelectedRelatedIssues))
+	}
+	if len(result.RejectedRelatedIssues) > 0 {
+		parts = append(parts, "거절 관련 이슈: "+joinScoredItems(result.RejectedRelatedIssues))
+	}
+	if len(result.SelectedLabels) > 0 {
+		parts = append(parts, "선택 라벨: "+joinScoredItems(result.SelectedLabels))
+	}
+	if len(result.RejectedLabels) > 0 {
+		parts = append(parts, "거절 라벨: "+joinScoredItems(result.RejectedLabels))
+	}
+	return strings.Join(parts, "\n"), nil
+}
+
+func joinScoredItems(items []core.IssueOpsRemoteScoredItem) string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		name := firstNonEmptyMain(item.Name, item.ID, item.Title, item.URL)
+		if name == "" {
+			name = "unknown"
+		}
+		out = append(out, fmt.Sprintf("%s(%.2f)", name, item.Score))
+	}
+	return strings.Join(out, ", ")
 }
 
 func runRemoteSyncGraph(args []string, deps Deps) error {

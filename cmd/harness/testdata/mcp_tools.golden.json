@@ -1466,6 +1466,65 @@
     "name": "issueops_force_release"
   },
   {
+    "description": "Render and validate a canonical Korean IssueOps remote issue, child task, or PR/MR body from the shared core template policy without mutating provider state.",
+    "inputSchema": {
+      "properties": {
+        "fields": {
+          "description": "Template field values keyed by canonical field name.",
+          "type": "object"
+        },
+        "kind": {
+          "description": "Artifact kind.",
+          "enum": [
+            "issue",
+            "child",
+            "pr"
+          ],
+          "type": "string"
+        },
+        "provider": {
+          "description": "Remote provider for provider-specific body rules.",
+          "enum": [
+            "github",
+            "gitlab"
+          ],
+          "type": "string"
+        },
+        "score_result": {
+          "description": "Optional structured score result; score_summary takes precedence when both are supplied.",
+          "type": "object"
+        },
+        "score_summary": {
+          "description": "Related issue and label scoring summary to include in the rendered artifact.",
+          "type": "string"
+        },
+        "template": {
+          "description": "Template kind.",
+          "enum": [
+            "bug",
+            "feature",
+            "proposal",
+            "implementation_task",
+            "child_task",
+            "pull_request"
+          ],
+          "type": "string"
+        },
+        "title": {
+          "description": "Artifact title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "template",
+        "title"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_remote_render_template"
+  },
+  {
     "description": "Create a remote issue (GitHub/GitLab) for the IssueOps cycle. Dry-run by default; pass confirm=true to execute. Returns the URL of the created issue or a preview of what would be created.",
     "inputSchema": {
       "properties": {
@@ -1484,6 +1543,10 @@
           "description": "Set true to execute; omit for dry-run preview.",
           "type": "boolean"
         },
+        "fields": {
+          "description": "Template field values keyed by canonical field name.",
+          "type": "object"
+        },
         "id": {
           "description": "IssueOps id. The provider is inferred from the cycle's issue_url or branch_prepare records.",
           "type": "string"
@@ -1494,6 +1557,32 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "provider": {
+          "description": "Optional remote provider override.",
+          "enum": [
+            "github",
+            "gitlab"
+          ],
+          "type": "string"
+        },
+        "score_result": {
+          "description": "Optional structured score result.",
+          "type": "object"
+        },
+        "score_summary": {
+          "description": "Related issue and label scoring summary.",
+          "type": "string"
+        },
+        "template": {
+          "description": "Optional canonical template kind to render or validate.",
+          "enum": [
+            "bug",
+            "feature",
+            "proposal",
+            "implementation_task"
+          ],
+          "type": "string"
         },
         "title": {
           "description": "Issue title.",
@@ -1527,6 +1616,10 @@
           "description": "Set true to create, attach, verify, and record the child; omit for dry-run preview.",
           "type": "boolean"
         },
+        "fields": {
+          "description": "Template field values keyed by canonical field name.",
+          "type": "object"
+        },
         "id": {
           "description": "IssueOps id. The parent issue URL and provider are inferred from the cycle state.",
           "type": "string"
@@ -1537,6 +1630,29 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "provider": {
+          "description": "Optional remote provider override.",
+          "enum": [
+            "github",
+            "gitlab"
+          ],
+          "type": "string"
+        },
+        "score_result": {
+          "description": "Optional structured score result.",
+          "type": "object"
+        },
+        "score_summary": {
+          "description": "Related issue and label scoring summary.",
+          "type": "string"
+        },
+        "template": {
+          "description": "Optional canonical template kind to render or validate.",
+          "enum": [
+            "child_task"
+          ],
+          "type": "string"
         },
         "title": {
           "description": "Child task title.",
@@ -1576,6 +1692,10 @@
           "description": "Set true to execute; omit for dry-run preview.",
           "type": "boolean"
         },
+        "fields": {
+          "description": "Template field values keyed by canonical field name.",
+          "type": "object"
+        },
         "head": {
           "description": "Source branch (defaults to cycle branch).",
           "type": "string"
@@ -1590,6 +1710,29 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "provider": {
+          "description": "Optional remote provider override.",
+          "enum": [
+            "github",
+            "gitlab"
+          ],
+          "type": "string"
+        },
+        "score_result": {
+          "description": "Optional structured score result.",
+          "type": "object"
+        },
+        "score_summary": {
+          "description": "Related issue and label scoring summary.",
+          "type": "string"
+        },
+        "template": {
+          "description": "Optional canonical template kind to render or validate.",
+          "enum": [
+            "pull_request"
+          ],
+          "type": "string"
         },
         "title": {
           "description": "PR/MR title.",

@@ -46,18 +46,37 @@ If the agent realizes it implemented before creating or linking the issue, it mu
 Use this structure unless the target project already has a stronger issue template:
 
 ```markdown
-## Problem
+## 문제
 
-## Current Evidence
+## 현재 근거
 
-## Acceptance Criteria
+## 관련 이슈/라벨 판단
 
-## Non-goals
+## 완료 기준
 
-## Verification
+## 비목표
 
-## Feedback Log
+## 구현 범위
+
+## 검증
+
+## 위험과 트레이드오프
+
+## 피드백 기록
 ```
+
+Bug issues additionally include `재현 절차`, `기대 동작`, `실제 동작`, `환경`, and `로그/출력`. Child tasks use the narrower provider-native child contract: `부모 이슈`, `작업 목표`, `완료 기준`, `비목표`, `검증`, `부모 브랜치 병합 조건`, `child-only cleanup 규칙`.
+
+Prefer the shared renderer/validator when preparing a remote body:
+
+```bash
+agent-harness issueops remote render-template --kind issue --template implementation_task --provider github --title "$TITLE" --field problem="$PROBLEM" --json
+agent-harness issueops remote create-issue --id "$ISSUEOPS_ID" --template implementation_task --field problem="$PROBLEM" --label "$LABEL" --assignee "$ASSIGNEE" --json
+agent-harness issueops remote create-child --id "$ISSUEOPS_ID" --template child_task --field parent_issue="$PARENT_URL" --field goal="$GOAL" --label "$LABEL" --assignee "$ASSIGNEE" --json
+agent-harness issueops remote create-pr --id "$ISSUEOPS_ID" --template pull_request --label "$LABEL" --assignee "$ASSIGNEE" --json
+```
+
+`--body` and `--body-file` are mutually exclusive. If `--template` is set without a body, the core renderer produces the body. If `--template` is set with a body or body file, the body is validated against the canonical section policy. Confirmed remote writes fail closed on critical validation failures, missing label, missing assignee, Korean artifact failure, and PR/MR target/base branch mismatch.
 
 Do not add a `## Plan Link` / `## Plan` section or a `TBD` placeholder to the remote issue body. Plan tracking lives in `agent-harness issueops link-plan` state and, when needed, the PR/MR body — never as an issue-body section (see the Korean gate's plan-path rule below).
 
@@ -68,7 +87,7 @@ GitHub and GitLab expose similar concepts through different mechanisms. Never ap
 | Concept | GitHub mechanism | GitLab mechanism |
 | --- | --- | --- |
 | Related / non-hierarchical link | Cross-reference in the issue body (`#123` or full URL). GitHub has no native "linked items" relation, so body references are correct. | Native **linked items** (relation), not a body section. Create with `glab api projects/:id/issues/:iid/links -X POST -f target_project_id=<id> -f target_issue_iid=<iid> -f link_type=relates_to` (`relates_to` \| `blocks` \| `is_blocked_by`). |
-| Parent → child work breakdown (tasks) | **GitHub: create sub-issues**. `gh issue` has no native subcommand; use `gh api` to create or attach the child through the repository sub-issues endpoint. The hierarchy uses the child issue's numeric/database identifier required by GitHub, not a plain body bullet. | **GitLab: create child `Task` work items**. Use `glab api` against the GitLab work-items hierarchy for the parent issue/work item. The hierarchy must create child Task work items under the parent; ordinary sibling issues, `relates_to` links, and body-only task lists are not enough. |
+| Parent → child work breakdown (tasks) | **GitHub: create sub-issues**. Prefer current `gh` support: `gh issue create --parent <parent>` for new children and `gh issue edit <parent> --add-sub-issue <child>` when attaching an existing issue. If that path is unavailable or lacks permission, fall back to `gh api` against the repository sub-issues endpoint and verify the parent sub-issues list afterward. | **GitLab: create child `Task` work items**. Use `glab api` against the GitLab work-items hierarchy for the parent issue/work item. The hierarchy must create child Task work items under the parent; ordinary sibling issues, `relates_to` links, and body-only task lists are not enough. |
 | Labels | `gh issue create --label` / `gh issue edit --add-label`. | `glab issue create --label` / GitLab issue labels field. |
 | Assignee | `gh issue create --assignee` / `gh issue edit --add-assignee`. | GitLab concrete username for normal create, numeric current-user id for `glab mr for`; never `@me`. |
 

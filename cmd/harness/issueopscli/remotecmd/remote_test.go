@@ -95,6 +95,69 @@ func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 	}
 }
 
+func TestRunRenderTemplateAndCreateIssueBodyFileTemplateValidation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	bodyFile := filepath.Join(t.TempDir(), "body.md")
+	if err := os.WriteFile(bodyFile, []byte("## 문제\n\n본문\n\n## Plan Link\n\n/path/to/plan.md\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var printed []any
+	deps := Deps{
+		PrintJSON: func(value any) error {
+			printed = append(printed, value)
+			return nil
+		},
+		PrintError: func(err error) error {
+			return nil
+		},
+	}
+
+	if err := Run([]string{
+		"render-template",
+		"--kind", "issue",
+		"--template", "feature",
+		"--provider", "github",
+		"--title", "원격 템플릿 계약",
+		"--field", "problem=본문 품질이 흔들린다.",
+		"--field", "current_evidence=임의 body만 받는다.",
+		"--field", "acceptance_criteria=렌더러 결과가 고정된다.",
+		"--field", "non_goals=provider 정책 복제 제외",
+		"--field", "implementation_scope=core와 CLI",
+		"--field", "verification=go test ./...",
+		"--field", "risks=golden drift",
+		"--field", "feedback_log=없음",
+		"--json",
+	}, deps); err != nil {
+		t.Fatalf("render-template returned error: %v", err)
+	}
+	if len(printed) != 1 {
+		t.Fatalf("expected render-template JSON output, got %d", len(printed))
+	}
+
+	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--body", "Body", "--body-file", bodyFile}, deps); err == nil || !strings.Contains(err.Error(), "body and body-file are mutually exclusive") {
+		t.Fatalf("expected mutual exclusion error, got %v", err)
+	}
+	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--template", "feature", "--body-file", bodyFile, "--label", "bug", "--assignee", "octocat", "--confirm"}, deps); err == nil || !strings.Contains(err.Error(), "plan_link_section_forbidden") {
+		t.Fatalf("expected template validation error for forbidden Plan Link, got %v", err)
+	}
+}
+
+func TestRunRemoteCreatePRConfirmRequiresLabelAndAssignee(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	deps := Deps{PrintError: func(err error) error { return nil }}
+	tests := [][]string{
+		{"create-pr", "--id", record.ID, "--title", "PR", "--head", record.Branch, "--base", "main", "--assignee", "octocat", "--confirm"},
+		{"create-pr", "--id", record.ID, "--title", "PR", "--head", record.Branch, "--base", "main", "--label", "bug", "--confirm"},
+	}
+	for _, args := range tests {
+		if err := Run(args, deps); err == nil {
+			t.Fatalf("expected confirm validation error for args %v", args)
+		}
+	}
+}
+
 func TestRunRemoteCreateChildConfirmRecordsChildLink(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := remoteIssueOpsRecordWithoutChild(t)

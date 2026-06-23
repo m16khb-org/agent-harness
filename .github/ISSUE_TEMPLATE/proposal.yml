@@ -33,6 +33,14 @@ body:
       required: true
 
   - type: textarea
+    id: related_labels
+    attributes:
+      label: 관련 이슈/라벨 판단
+      description: 중복 또는 관련 이슈, 선택/거절 라벨, 수동 override 이유를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
     id: alternatives
     attributes:
       label: 대안과 기각 사유
@@ -45,6 +53,22 @@ body:
     attributes:
       label: 호환성과 마이그레이션
       description: CLI/MCP/schema/hook/skill 문서 호환성, migration 필요 여부를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: 비목표
+      description: 이번 제안에서 하지 않을 일을 적어 범위를 제한해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 구현 범위
+      description: 제안이 수락될 경우 포함할 변경과 분리해야 할 관련 없는 변경을 적어 주세요.
     validations:
       required: true
 
@@ -84,3 +108,11 @@ body:
       description: 제안 구현 시 필요한 테스트, golden, smoke, 문서 검증을 적어 주세요.
     validations:
       required: true
+
+  - type: textarea
+    id: feedback
+    attributes:
+      label: 피드백 기록
+      description: 사용자 피드백과 요구사항 변경 이력을 적어 주세요.
+    validations:
+      required: false

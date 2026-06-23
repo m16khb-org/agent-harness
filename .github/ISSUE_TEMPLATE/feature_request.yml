@@ -41,6 +41,14 @@ body:
       required: true
 
   - type: textarea
+    id: related_labels
+    attributes:
+      label: 관련 이슈/라벨 판단
+      description: 중복 또는 관련 이슈, 선택/거절 라벨, 수동 override 이유를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
     id: alternatives
     attributes:
       label: 검토한 대안
@@ -68,6 +76,14 @@ body:
       required: true
 
   - type: textarea
+    id: scope
+    attributes:
+      label: 구현 범위
+      description: 포함할 변경과 분리해야 할 관련 없는 변경을 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
     id: verification
     attributes:
       label: 검증
@@ -80,5 +96,13 @@ body:
     attributes:
       label: 위험과 트레이드오프
       description: 호환성, 보안, secret, host별 drift, 운영 위험을 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: feedback
+    attributes:
+      label: 피드백 기록
+      description: 사용자 피드백과 요구사항 변경 이력을 적어 주세요.
     validations:
       required: false
