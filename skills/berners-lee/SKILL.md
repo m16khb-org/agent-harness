@@ -85,11 +85,20 @@ If sub-agents are unavailable, run the angles sequentially or with the host's na
 
 ### Phase 1.5: Fetch Resilience — When a Source is Blocked
 
-Tim Berners-Lee's Web was designed for open access, but many modern sites block automated requests. Research does not stop because a source returns 403 — it escalates. This protocol is adapted from `insane-search` (fivetaku/insane-search, MIT license), the adaptive scheduler that never accepts "blocked" as an answer.
+Tim Berners-Lee's Web was designed for open access, but many modern sites block automated requests. Research does not stop because a source returns 403; it escalates through safe public retrieval paths and reports hard boundaries clearly.
 
 **Core principle: "Prefer official/public access paths first. HTTP 200 is the START of validation, not success."**
 
 Fetch resilience must stay inside authorization boundaries. Do not bypass login, paywalls, CAPTCHAs, robots-sensitive restrictions, or site abuse controls. If access requires authentication, subscription, or human challenge solving, stop escalation for that source and report the limitation.
+
+#### Harness Web-Fetch First
+
+When the current host exposes it, prefer the agent-harness clean-room fetch surface before hand-rolling the lower-level probes below:
+
+1. MCP tool: `web_fetch_resilient`
+2. CLI fallback: `agent-harness web-fetch fetch`, for example `agent-harness web-fetch fetch --url URL --timeout 30s --max-chars N --json`
+
+Use the returned `category`, `stop_reason`, `grid_exhausted`, `attempted_routes`, `untried_routes`, `metadata`, and `warnings` fields as evidence in the research report. Report `auth_required`, `paywalled`, `challenge`, or `blocked` cases explicitly as limitations rather than treating them as failed research. Do not add host-specific fictional tools; if neither the MCP tool nor CLI command is available, continue with the public read-only methods below and record the missing harness surface as an environment limitation.
 
 #### Level FR-0: Platform Public APIs (Try First)
 

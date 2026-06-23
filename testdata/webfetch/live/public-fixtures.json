@@ -1,0 +1,27 @@
+{
+  "fixtures": [
+    {
+      "id": "example_homepage",
+      "url": "https://example.com/",
+      "expected": ["weak_ok", "strong_ok"],
+      "min_body_chars": 80
+    },
+    {
+      "id": "iana_domains",
+      "url": "https://www.iana.org/domains/reserved",
+      "expected": ["strong_ok", "weak_ok"],
+      "min_body_chars": 500
+    },
+    {
+      "id": "gnu_gpl_text",
+      "url": "https://www.gnu.org/licenses/gpl-3.0.txt",
+      "expected": ["strong_ok"],
+      "min_body_chars": 500
+    },
+    {
+      "id": "github_api_zen",
+      "url": "https://api.github.com/zen",
+      "expected": ["weak_ok", "suspect_ok"]
+    }
+  ]
+}

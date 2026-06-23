@@ -102,6 +102,10 @@ func validatePreflightFuzz(binary, root string, seed int64) StepResult {
 	return validationcli.ValidatePreflightFuzz(binary, root, seed)
 }
 
+func validateWebFetchBattery(binary, root string, seed int64) StepResult {
+	return validationcli.ValidateWebFetchBattery(binary, root, seed)
+}
+
 func validateCommandAudit(binary, root string, seed int64) StepResult {
 	return validationcli.ValidateCommandAudit(binary, root, seed)
 }

@@ -29,5 +29,18 @@ func LocalAssistantTools() []Tool {
 				},
 			},
 		},
+		{
+			Name:        "web_fetch_resilient",
+			Description: "Run the clean-room resilient public web fetch engine with safe URL handling, route accounting, response validation, and citation-ready output.",
+			InputSchema: map[string]any{
+				"type":     "object",
+				"required": []string{"url"},
+				"properties": map[string]any{
+					"url":       map[string]any{"type": "string", "description": "Public http(s) URL to fetch."},
+					"timeout":   map[string]any{"type": "string", "description": "Optional fetch timeout such as 30s."},
+					"max_chars": map[string]any{"type": "integer", "description": "Optional maximum content characters returned."},
+				},
+			},
+		},
 	}
 }

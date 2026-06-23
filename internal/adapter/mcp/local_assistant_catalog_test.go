@@ -14,5 +14,11 @@ func TestLocalAssistantToolsExposeStableDescriptors(t *testing.T) {
 			required:   []string{"command_argv"},
 			properties: []string{"command_argv"},
 		},
+		{
+			name:                "web_fetch_resilient",
+			descriptionContains: "resilient public web fetch",
+			required:            []string{"url"},
+			properties:          []string{"url", "timeout", "max_chars"},
+		},
 	})
 }

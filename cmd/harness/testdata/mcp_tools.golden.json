@@ -2219,5 +2219,29 @@
       "type": "object"
     },
     "name": "lint_diagnose"
+  },
+  {
+    "description": "Run the clean-room resilient public web fetch engine with safe URL handling, route accounting, response validation, and citation-ready output.",
+    "inputSchema": {
+      "properties": {
+        "max_chars": {
+          "description": "Optional maximum content characters returned.",
+          "type": "integer"
+        },
+        "timeout": {
+          "description": "Optional fetch timeout such as 30s.",
+          "type": "string"
+        },
+        "url": {
+          "description": "Public http(s) URL to fetch.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "name": "web_fetch_resilient"
   }
 ]

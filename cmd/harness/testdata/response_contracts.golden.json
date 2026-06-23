@@ -207,6 +207,10 @@
           "name": "worker"
         },
         {
+          "description": "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks",
+          "name": "web-fetch"
+        },
+        {
           "description": "run harness verification gates",
           "name": "self-verify"
         },
@@ -223,7 +227,7 @@
           "name": "version"
         }
       ],
-      "hash": "c97617f8537b4b06114c8769c923135e107bf8b97e5bb53a64e42eaacd78d4c3",
+      "hash": "cd2b21972ee13ba071e65d75323d9eda903e0352cf66749f9afd54774c0c7721",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -289,6 +293,7 @@
         "state_prune",
         "state_read",
         "state_write",
+        "web_fetch_resilient",
         "worker_cancel",
         "worker_enqueue",
         "worker_list",
@@ -523,6 +528,21 @@
           "suggested_commands",
           "warnings"
         ],
+        "web_fetch": [
+          "ok",
+          "url",
+          "final_url",
+          "category",
+          "stop_reason",
+          "grid_exhausted",
+          "attempted_routes",
+          "untried_routes",
+          "content",
+          "metadata",
+          "warnings",
+          "retrieved_at",
+          "duration_ms"
+        ],
         "worker_job": [
           "ok",
           "id",
@@ -754,7 +774,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 3669,
+          "bytes": 3785,
           "headings": [
             "Operations Map",
             "Core Surfaces",
@@ -842,7 +862,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17939,
+          "bytes": 18316,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -853,6 +873,7 @@
             "4. Contract / Golden tests",
             "5. 완료 보고 기준",
             "자기 검증 QA gate",
+            "Web-Fetch Live Parity",
             "LLM Wiki 정책",
             "API documentation checks",
             "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",
@@ -6170,6 +6191,10 @@
                 "name": "worker"
               },
               {
+                "description": "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks",
+                "name": "web-fetch"
+              },
+              {
                 "description": "run harness verification gates",
                 "name": "self-verify"
               },
@@ -6186,7 +6211,7 @@
                 "name": "version"
               }
             ],
-            "hash": "c97617f8537b4b06114c8769c923135e107bf8b97e5bb53a64e42eaacd78d4c3",
+            "hash": "cd2b21972ee13ba071e65d75323d9eda903e0352cf66749f9afd54774c0c7721",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6252,6 +6277,7 @@
               "state_prune",
               "state_read",
               "state_write",
+              "web_fetch_resilient",
               "worker_cancel",
               "worker_enqueue",
               "worker_list",
@@ -6485,6 +6511,21 @@
                 "evidence_matrix",
                 "suggested_commands",
                 "warnings"
+              ],
+              "web_fetch": [
+                "ok",
+                "url",
+                "final_url",
+                "category",
+                "stop_reason",
+                "grid_exhausted",
+                "attempted_routes",
+                "untried_routes",
+                "content",
+                "metadata",
+                "warnings",
+                "retrieved_at",
+                "duration_ms"
               ],
               "worker_job": [
                 "ok",
@@ -6724,7 +6765,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 3669,
+                "bytes": 3785,
                 "headings": [
                   "Operations Map",
                   "Core Surfaces",
@@ -6812,7 +6853,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17939,
+                "bytes": 18316,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -6823,6 +6864,7 @@
                   "4. Contract / Golden tests",
                   "5. 완료 보고 기준",
                   "자기 검증 QA gate",
+                  "Web-Fetch Live Parity",
                   "LLM Wiki 정책",
                   "API documentation checks",
                   "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",

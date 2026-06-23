@@ -212,6 +212,10 @@ Golden file은 사람이 읽을 수 있게 작게 유지하고, schema 변경 �
 
 `agent-harness self-verify`는 테스트 실행뿐 아니라 QA gate를 포함한다. QA gate는 루프 문서, `GENIUS_THINK.md`, shared skill metadata, native integration 설치 상태, redaction audit, bounded stdout/stderr metadata, Mermaid 문서 lint를 확인하며, 모든 목표 점수가 95점을 초과해야 종료 가능하다. Mermaid lint는 `GENIUS_THINK.md`의 따옴표/`<br/>` 규칙을 기준으로 문서 다이어그램 파싱 오류를 조기에 막는다.
 
+## Web-Fetch Live Parity
+
+The default web-fetch battery is deterministic and must not require network access. Opt-in live parity uses `HARNESS_WEBFETCH_LIVE=1` and the fixture file at `testdata/webfetch/live/public-fixtures.json`; follow `.agent-harness/operations/web-fetch-live-parity.md` before interpreting live results or comparing against a generic baseline executable.
+
 ## LLM Wiki 정책
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `m16khb/llm-wiki` CLI/MCP 서버 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.

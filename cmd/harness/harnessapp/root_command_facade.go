@@ -52,6 +52,7 @@ func rootCommand() rootcmd.Command {
 			"update":         runUpdate,
 			"bootstrap":      runBootstrap,
 			"worker":         runWorker,
+			"web-fetch":      runWebFetch,
 			"daemon":         runDaemon,
 			"mcp":            runMCPNoArgs,
 		},

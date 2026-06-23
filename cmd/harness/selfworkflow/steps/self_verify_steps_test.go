@@ -36,6 +36,7 @@ func TestPlannedSelfVerifyStepsPreservesExecutionOrder(t *testing.T) {
 		"parallel isolation",
 		"daemon resilience",
 		"preflight fuzz",
+		"web fetch battery",
 		"native integration",
 		"redaction audit",
 		"QA gate",
@@ -178,6 +179,9 @@ func fakeSelfVerifyStepDeps(t *testing.T) SelfVerifyStepDeps {
 		},
 		ValidatePreflightFuzz: func(string, string, int64) StepResult {
 			return ok("preflight fuzz")
+		},
+		ValidateWebFetchBattery: func(string, string, int64) StepResult {
+			return ok("web fetch battery")
 		},
 		ValidateNativeIntegration: func(string) StepResult {
 			return ok("native integration")

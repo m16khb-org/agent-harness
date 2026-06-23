@@ -10,6 +10,7 @@ import (
 	"agent-harness/cmd/harness/qualitycli"
 	"agent-harness/cmd/harness/statecli"
 	"agent-harness/cmd/harness/statuscli"
+	"agent-harness/cmd/harness/webfetchcli"
 	"agent-harness/cmd/harness/workercli"
 	"agent-harness/internal/port"
 )
@@ -213,6 +214,10 @@ func buildVerifyWork(repo string, all bool, argv []string) VerifyWorkResult {
 
 func runWorker(args []string) error {
 	return workercli.Run(args)
+}
+
+func runWebFetch(args []string) error {
+	return webfetchcli.Run(args)
 }
 
 func runWorkerEnqueue(args []string) error {

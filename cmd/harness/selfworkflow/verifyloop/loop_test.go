@@ -181,6 +181,9 @@ func fakeVerifyLoopStepDepsOK(ok func(string) commandstep.StepResult) steps.Self
 		ValidatePreflightFuzz: func(string, string, int64) commandstep.StepResult {
 			return ok("preflight fuzz")
 		},
+		ValidateWebFetchBattery: func(string, string, int64) commandstep.StepResult {
+			return ok("web fetch battery")
+		},
 		ValidateNativeIntegration: func(string) commandstep.StepResult {
 			return ok("native integration")
 		},

@@ -1,8 +1,12 @@
 package mcpcli
 
 import (
+	"context"
+	"time"
+
 	"agent-harness/cmd/harness/mcpcli/argmap"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/webfetch"
 )
 
 func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
@@ -29,6 +33,20 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		})
 		if err != nil {
 			return mcpToolFailure(&RPCError{Code: -32000, Message: "lint_diagnose failed", Data: err.Error()})
+		}
+		return mcpToolPayload(result)
+	case "web_fetch_resilient":
+		timeout, err := time.ParseDuration(argmap.StringDefault(call.Arguments, "timeout", "30s"))
+		if err != nil {
+			return mcpToolFailure(&RPCError{Code: -32602, Message: "invalid timeout", Data: err.Error()})
+		}
+		result, err := webfetch.Fetch(context.Background(), webfetch.Request{
+			URL:      argmap.String(call.Arguments, "url"),
+			Timeout:  timeout,
+			MaxChars: argmap.Int(call.Arguments, "max_chars", 0),
+		})
+		if err != nil {
+			return mcpToolFailure(&RPCError{Code: -32000, Message: "web_fetch_resilient failed", Data: err.Error()})
 		}
 		return mcpToolPayload(result)
 	case "contract_schema", "contract_check":

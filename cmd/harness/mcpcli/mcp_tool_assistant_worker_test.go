@@ -21,6 +21,7 @@ func TestHandleAssistantWorkerMCPToolCallCoversLocalAssistantPayloads(t *testing
 		{name: "contract check", call: MCPToolCall{Name: "contract_check", Arguments: map[string]any{}}, wantText: "mcp_tools"},
 		{name: "commit suggest no diff", call: MCPToolCall{Name: "commit_suggest", Arguments: map[string]any{"repo": repo}}, wantText: `"executed": false`},
 		{name: "lint diagnose success", call: MCPToolCall{Name: "lint_diagnose", Arguments: map[string]any{"repo": repo, "command_argv": []any{"git", "status", "--short"}}}, wantText: `"failed": false`},
+		{name: "web fetch safety rejection", call: MCPToolCall{Name: "web_fetch_resilient", Arguments: map[string]any{"url": "http://127.0.0.1/private"}}, wantText: `"stop_reason": "safety_rejected"`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

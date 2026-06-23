@@ -1,6 +1,9 @@
 package validationcli
 
-import "agent-harness/cmd/harness/validationcli/nativeintegration"
+import (
+	"agent-harness/cmd/harness/validationcli/nativeintegration"
+	webfetchvalidation "agent-harness/cmd/harness/validationcli/webfetch"
+)
 
 func ValidateCommandPolicy(binary, root string) StepResult {
 	return validateCommandPolicy(binary, root)
@@ -36,6 +39,10 @@ func ValidateDaemonRestartResilience(binary, root string, seed int64) StepResult
 
 func ValidatePreflightFuzz(binary, root string, seed int64) StepResult {
 	return validatePreflightFuzz(binary, root, seed)
+}
+
+func ValidateWebFetchBattery(binary, root string, seed int64) StepResult {
+	return webfetchvalidation.Validate(binary, root, seed)
 }
 
 func ValidateInspect(binary, root string) StepResult {

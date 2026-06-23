@@ -60,3 +60,12 @@ func TestStabilityAuditSkillPinsSafetyModelContract(t *testing.T) {
 		"intended dogfood setup",
 	})
 }
+
+func TestBernersLeeSkillPrefersHarnessWebFetchContract(t *testing.T) {
+	assertSkillContains(t, "berners-lee", []string{
+		"`web_fetch_resilient`",
+		"`agent-harness web-fetch fetch`",
+		"Report `auth_required`, `paywalled`, `challenge`, or `blocked`",
+		"Do not add host-specific fictional tools",
+	})
+}

@@ -213,6 +213,7 @@ func selfVerifyStepDeps() selfworkflow.SelfVerifyStepDeps {
 		ValidateParallelTempIsolation:   validateParallelTempIsolation,
 		ValidateDaemonRestartResilience: validateDaemonRestartResilience,
 		ValidatePreflightFuzz:           validatePreflightFuzz,
+		ValidateWebFetchBattery:         validateWebFetchBattery,
 		ValidateNativeIntegration:       validateNativeIntegration,
 		ValidateRedactionAudit:          validateRedactionAudit,
 		ValidateQAGate:                  validateQAGate,

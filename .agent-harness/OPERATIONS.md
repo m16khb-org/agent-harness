@@ -16,6 +16,7 @@ Use this file as the quick map. Read the focused operation file that matches the
 | Release dogfood transcripts and observed release UX gaps | `.agent-harness/operations/release-dogfood-notes.md` |
 | Codex/Claude native skills, MCP registration, lifecycle hooks | `.agent-harness/operations/hosts.md` |
 | Direct CLI, daemon-backed MCP, command policy, guard, worker commands | `.agent-harness/operations/cli-and-mcp.md` |
+| Web-fetch deterministic benchmark and opt-in live parity | `.agent-harness/operations/web-fetch-live-parity.md` |
 | self-verify, self-augment, API documentation gates, smoke checks | `.agent-harness/operations/verification.md` |
 | project bootstrap, project-doc routing, MCP document update rules | `.agent-harness/operations/project-docs.md` |
 

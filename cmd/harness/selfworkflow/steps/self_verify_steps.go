@@ -34,6 +34,7 @@ type SelfVerifyStepDeps struct {
 	ValidateParallelTempIsolation   func(string, string, int64) StepResult
 	ValidateDaemonRestartResilience func(string, string, int64) StepResult
 	ValidatePreflightFuzz           func(string, string, int64) StepResult
+	ValidateWebFetchBattery         func(string, string, int64) StepResult
 	ValidateNativeIntegration       func(string) StepResult
 	ValidateRedactionAudit          func(string) StepResult
 	ValidateQAGate                  func(string) StepResult
@@ -76,6 +77,7 @@ func PlannedSelfVerifySteps(root string, tempBin string, seed int64, goTestStep 
 		{Label: "parallel isolation", Run: func() StepResult { return deps.ValidateParallelTempIsolation(tempBin, root, seed) }},
 		{Label: "daemon resilience", Run: func() StepResult { return deps.ValidateDaemonRestartResilience(tempBin, root, seed) }},
 		{Label: "preflight fuzz", Run: func() StepResult { return deps.ValidatePreflightFuzz(tempBin, root, seed) }},
+		{Label: "web fetch battery", Run: func() StepResult { return deps.ValidateWebFetchBattery(tempBin, root, seed) }},
 		{Label: "native integration", Run: func() StepResult { return deps.ValidateNativeIntegration(root) }},
 		{Label: "redaction audit", Run: func() StepResult { return deps.ValidateRedactionAudit(root) }},
 		{Label: "QA gate", Run: func() StepResult { return deps.ValidateQAGate(root) }},

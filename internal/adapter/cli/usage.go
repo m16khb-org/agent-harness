@@ -35,6 +35,7 @@ func Commands() []Command {
 		{Name: "bootstrap", Description: "set up user-level integrations; use --sync for upstream companion versions"},
 		{Name: "daemon", Description: "manage the MCP backend daemon"},
 		{Name: "worker", Description: "manage safe local worker jobs and read-only command evidence"},
+		{Name: "web-fetch", Description: "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks"},
 		{Name: "self-verify", Description: "run harness verification gates"},
 		{Name: "self-augment", Description: "plan self-augmentation candidates and lessons"},
 		{Name: "mcp", Description: "serve the MCP stdio proxy"},
@@ -106,6 +107,8 @@ Usage:
   agent-harness worker list [--json]
   agent-harness worker cleanup-stuck [--json]
   agent-harness worker cancel --id ID [--json]
+  agent-harness web-fetch fetch --url URL [--timeout 30s] [--max-chars N] [--json]
+  agent-harness web-fetch benchmark --fixtures PATH [--live] [--compare-baseline PATH] [--json]
   agent-harness install [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]
   agent-harness install-native [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]  # compatibility alias
   agent-harness update [--path-mode=auto|manual|skip] [--dry-run] [--json]
