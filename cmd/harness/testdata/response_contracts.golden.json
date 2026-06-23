@@ -1206,6 +1206,21 @@
           "title": "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트"
         },
         {
+          "bytes": 3752,
+          "headings": [
+            "13: Codex system skill quick_validate.py durable upstream fix",
+            "Context",
+            "Large Issue Breakdown Gate: no split",
+            "Plan",
+            "Findings",
+            "Verification",
+            "Risks"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
+          "rel_path": ".agent-harness/plans/13-codex-system-skill-quick-validate.md",
+          "title": "13: Codex system skill quick_validate.py durable upstream fix"
+        },
+        {
           "bytes": 1737,
           "headings": [
             "6: lifecycle state 초기화 read-while-write 레이스 수정",
@@ -1481,6 +1496,22 @@
           "title": "Von Neumann Quality Upgrade"
         },
         {
+          "bytes": 2859,
+          "headings": [
+            "Codex system skill quick_validate.py source path",
+            "Summary",
+            "Evidence",
+            "Reproduction",
+            "Skill is valid!",
+            "ModuleNotFoundError: No module named 'yaml'",
+            "Recommended upstream fix",
+            "Boundary"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
+          "rel_path": ".agent-harness/research/codex-system-skill-quick-validate.md",
+          "title": "Codex system skill quick_validate.py source path"
+        },
+        {
           "bytes": 3354,
           "headings": [
             "Karpathy AutoResearch Notes for Pioneer Skill Quality",
@@ -1732,6 +1763,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
         "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
+        "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
         "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
@@ -1743,6 +1775,7 @@
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+        "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
         "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
         "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
@@ -4668,7 +4701,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 58,
+        "docs_indexed": 60,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -7091,6 +7124,21 @@
                 "title": "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트"
               },
               {
+                "bytes": 3752,
+                "headings": [
+                  "13: Codex system skill quick_validate.py durable upstream fix",
+                  "Context",
+                  "Large Issue Breakdown Gate: no split",
+                  "Plan",
+                  "Findings",
+                  "Verification",
+                  "Risks"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
+                "rel_path": ".agent-harness/plans/13-codex-system-skill-quick-validate.md",
+                "title": "13: Codex system skill quick_validate.py durable upstream fix"
+              },
+              {
                 "bytes": 1737,
                 "headings": [
                   "6: lifecycle state 초기화 read-while-write 레이스 수정",
@@ -7366,6 +7414,22 @@
                 "title": "Von Neumann Quality Upgrade"
               },
               {
+                "bytes": 2859,
+                "headings": [
+                  "Codex system skill quick_validate.py source path",
+                  "Summary",
+                  "Evidence",
+                  "Reproduction",
+                  "Skill is valid!",
+                  "ModuleNotFoundError: No module named 'yaml'",
+                  "Recommended upstream fix",
+                  "Boundary"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
+                "rel_path": ".agent-harness/research/codex-system-skill-quick-validate.md",
+                "title": "Codex system skill quick_validate.py source path"
+              },
+              {
                 "bytes": 3354,
                 "headings": [
                   "Karpathy AutoResearch Notes for Pioneer Skill Quality",
@@ -7624,6 +7688,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
               "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
+              "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
               "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
@@ -7635,6 +7700,7 @@
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+              "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
               "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
               "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
@@ -9664,7 +9730,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 58,
+              "docs_indexed": 60,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
