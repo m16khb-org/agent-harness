@@ -66,10 +66,15 @@ codex-rs/skills/src/assets/samples/skill-creator/scripts/quick_validate.py
 Use a small stdlib fallback for simple scalar frontmatter when `import yaml`
 fails, while preserving `yaml.safe_load` behavior when PyYAML is available. Add
 a regression test or fixture that runs the validator in an isolated Python mode
-without site packages.
+without site packages. This is an upstream quality pointer, not an
+agent-harness completion dependency.
 
 ## Boundary
 
 `agent-harness` should not treat edits under `~/.codex/skills/.system` as a
 complete fix. That directory is generated from Codex's embedded system skill
 payload and can be replaced whenever the marker fingerprint changes.
+
+Agent-harness verification is intentionally independent from that upstream path:
+use `python3 scripts/validate-skill.py skills/<skill-name>` for local skill
+metadata checks.

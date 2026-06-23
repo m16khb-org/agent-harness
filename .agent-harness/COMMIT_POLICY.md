@@ -78,7 +78,7 @@ Lore:
 - Changes:
   - Add atomic-commit-push skill instructions.
   - Add read-only git preflight helper.
-- Verify: quick_validate.py skills/atomic-commit-push
+- Verify: python3 scripts/validate-skill.py skills/atomic-commit-push
 - Risk: Low; documentation and read-only helper only.
 ```
 

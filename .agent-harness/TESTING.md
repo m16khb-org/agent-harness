@@ -17,7 +17,7 @@ description: Verification standards, test practices, and required checks.
 find . -maxdepth 3 -type f | sort
 find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
 grep -R "외부 Go 하네스\|Go\|MCP\|Codex\|Claude" -n AGENTS.md CLAUDE.md .agent-harness
-python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
+python3 scripts/validate-skill.py skills/atomic-commit-push
 go test ./... -count=1
 go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1
 go build -o bin/agent-harness ./cmd/harness

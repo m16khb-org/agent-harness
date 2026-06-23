@@ -25,15 +25,15 @@ codex mcp get agent_harness
 
 Codex system skills under `~/.codex/skills/.system` are host-managed, not
 agent-harness managed. Verified on 2026-06-23 with `codex-cli 0.142.0`:
-`/Users/habin/Library/pnpm/codex` is a pnpm shim to `@openai/codex@0.142.0`,
-that package contains no `skill-creator` or `quick_validate.py` source files,
+`$HOME/Library/pnpm/codex` is a pnpm shim to `@openai/codex@0.142.0`, that
+package contains no `skill-creator` or `quick_validate.py` source files,
 `~/.codex/skills/.system/.codex-system-skills.marker` contains only the system
 skills payload hash, and `~/.codex/vendor_imports/skills-curated-cache.json`
 does not list `skill-creator`. Do not patch `~/.codex/skills/.system` as a
-durable fix; it can be re-materialized by Codex. For issues such as
-`skill-creator/scripts/quick_validate.py` requiring external `yaml`, keep a
-local dependency workaround only as an operator fix and pursue the durable fix
-through the upstream Codex system-skill distribution path.
+durable fix; it can be re-materialized by Codex. Agent-harness skill validation
+must use `python3 scripts/validate-skill.py skills/<skill-name>` so local
+verification does not depend on upstream Codex system-skill changes or local
+PyYAML installation.
 
 Codex lifecycle hooks live in `~/.codex/hooks.json`. `UserPromptSubmit` invokes `agent-harness hook user-prompt --host codex`; `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, and `Stop` call the shared hook CLI.
 

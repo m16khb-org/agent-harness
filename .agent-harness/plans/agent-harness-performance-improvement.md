@@ -48,7 +48,7 @@ agent-harness의 현재 성능 병목과 운영 노이즈를 근거 기반으로
 - `./bin/agent-harness self-verify --seed=100 --target-score=95 --json` 결과가 통과하거나, 실패 시 `MCP smoke` failure class와 재현 명령이 문서화된다.
 - `go test ./cmd/harness/mcpcli -count=1`와 관련 targeted test가 통과한다.
 - daemon stream close 처리 변경 시 `go test ./cmd/harness/daemoncli -count=1`가 통과한다.
-- skill 구조 변경 시 `python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/<changed-skill>`가 통과한다.
+- skill 구조 변경 시 `python3 scripts/validate-skill.py skills/<changed-skill>`가 통과한다.
 - 전체 변경 후 `go test ./... -count=1`, `go build -o bin/agent-harness ./cmd/harness`, `./bin/agent-harness daemon status --json`, `./bin/agent-harness inspect --json`가 통과한다.
 - 설치/runtime freshness가 필요한 경우 `./scripts/install-native.sh` 후 daemon PID/inode freshness를 확인한다.
 
@@ -255,7 +255,7 @@ Wave 2:
 
   Scenario: Changed skill validates
     Channel: bash
-    Steps: python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/codd
+    Steps: python3 scripts/validate-skill.py skills/codd
     Expected: validation exits 0
     Evidence: .agent-harness/evidence/performance-improvement/task-4-codd-validate.txt
   ```

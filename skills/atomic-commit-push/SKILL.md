@@ -97,7 +97,7 @@ Lore:
 - Changes:
   - Document the Conventional + Lore commit format.
   - Update atomic-commit-push to emit structured commit bodies.
-- Verify: quick_validate.py skills/atomic-commit-push
+- Verify: python3 scripts/validate-skill.py skills/atomic-commit-push
 - Risk: Low; documentation-only policy change.
 ```
 

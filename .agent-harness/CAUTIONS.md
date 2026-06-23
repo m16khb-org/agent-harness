@@ -275,6 +275,22 @@ The stability audit can false-fail when its smoke assumptions lag the harness co
 - `self-verify promote --confirm` refuses failed snapshots by default. Validation fixtures that intentionally promote a non-termination-eligible snapshot for state-roundtrip coverage must pass `--allow-failed-source`; production baseline promotion should not use that override.
 - Pin these assumptions in `skills/stability-audit/scripts/e2e_stability_audit_test.py` and `cmd/harness/validationcli/stateroundtrip` tests before changing the audit script.
 
+## 23. Skill validation must not depend on host-managed system skill copies
+
+Codex and Claude system skills can be re-materialized by the host and can depend
+on optional host-side Python packages. Do not use
+`~/.codex/skills/.system/.../quick_validate.py` or a marketplace plugin copy as
+the required agent-harness skill validation gate.
+
+주의:
+- Use `python3 scripts/validate-skill.py skills/<skill-name>` for
+  agent-harness skill metadata validation.
+- Treat upstream `openai/codex` `quick_validate.py` fixes as quality pointers,
+  not agent-harness completion dependencies.
+- If a host-managed validator fails because PyYAML is unavailable, that may be
+  valid upstream evidence, but it must not block local agent-harness
+  verification when the repo-owned validator passes.
+
 ## Incident Archive
 
 Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents.md`. Keep this file focused on evergreen hazards and move one-off history there.

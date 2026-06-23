@@ -585,7 +585,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 32309,
+          "bytes": 33091,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -613,7 +613,7 @@
           "title": "주의사항 모음"
         },
         {
-          "bytes": 3047,
+          "bytes": 3063,
           "headings": [
             "커밋 메시지 정책: Conventional + Lore Hybrid",
             "1. 기본 형식",
@@ -650,7 +650,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 20194,
+          "bytes": 20425,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -810,7 +810,7 @@
           "title": "기술 스택"
         },
         {
-          "bytes": 17996,
+          "bytes": 17939,
           "headings": [
             "테스트 컨벤션",
             "1. 현재 문서 단계 검증",
@@ -909,7 +909,7 @@
           "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
         },
         {
-          "bytes": 5011,
+          "bytes": 4974,
           "headings": [
             "Host Operations",
             "Codex",
@@ -1012,7 +1012,7 @@
           "title": "Pioneer Skill Quality Cases"
         },
         {
-          "bytes": 10429,
+          "bytes": 10450,
           "headings": [
             "Pioneer Skill Quality Handoff",
             "Current State",
@@ -1056,7 +1056,7 @@
           "title": "Pioneer Skill Qualitative Rubric"
         },
         {
-          "bytes": 14365,
+          "bytes": 14386,
           "headings": [
             "Pioneer Skill Quality Scorecard",
             "Target Gate",
@@ -1273,7 +1273,7 @@
           "title": "agent-harness 최적화 계획"
         },
         {
-          "bytes": 20880,
+          "bytes": 20766,
           "headings": [
             "Agent-Harness 성능/안정성 개선 계획",
             "TL;DR",
@@ -1412,7 +1412,7 @@
           "title": "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)"
         },
         {
-          "bytes": 53360,
+          "bytes": 53405,
           "headings": [
             "Pioneer Skills Qualitative Quality Improvement Plan",
             "TL;DR",
@@ -1496,7 +1496,7 @@
           "title": "Von Neumann Quality Upgrade"
         },
         {
-          "bytes": 2859,
+          "bytes": 3115,
           "headings": [
             "Codex system skill quick_validate.py source path",
             "Summary",
@@ -1597,7 +1597,7 @@
           "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
         },
         {
-          "bytes": 13275,
+          "bytes": 13218,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -6503,7 +6503,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 32309,
+                "bytes": 33091,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -6531,7 +6531,7 @@
                 "title": "주의사항 모음"
               },
               {
-                "bytes": 3047,
+                "bytes": 3063,
                 "headings": [
                   "커밋 메시지 정책: Conventional + Lore Hybrid",
                   "1. 기본 형식",
@@ -6568,7 +6568,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 20194,
+                "bytes": 20425,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -6728,7 +6728,7 @@
                 "title": "기술 스택"
               },
               {
-                "bytes": 17996,
+                "bytes": 17939,
                 "headings": [
                   "테스트 컨벤션",
                   "1. 현재 문서 단계 검증",
@@ -6827,7 +6827,7 @@
                 "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
               },
               {
-                "bytes": 5011,
+                "bytes": 4974,
                 "headings": [
                   "Host Operations",
                   "Codex",
@@ -6930,7 +6930,7 @@
                 "title": "Pioneer Skill Quality Cases"
               },
               {
-                "bytes": 10429,
+                "bytes": 10450,
                 "headings": [
                   "Pioneer Skill Quality Handoff",
                   "Current State",
@@ -6974,7 +6974,7 @@
                 "title": "Pioneer Skill Qualitative Rubric"
               },
               {
-                "bytes": 14365,
+                "bytes": 14386,
                 "headings": [
                   "Pioneer Skill Quality Scorecard",
                   "Target Gate",
@@ -7191,7 +7191,7 @@
                 "title": "agent-harness 최적화 계획"
               },
               {
-                "bytes": 20880,
+                "bytes": 20766,
                 "headings": [
                   "Agent-Harness 성능/안정성 개선 계획",
                   "TL;DR",
@@ -7330,7 +7330,7 @@
                 "title": "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)"
               },
               {
-                "bytes": 53360,
+                "bytes": 53405,
                 "headings": [
                   "Pioneer Skills Qualitative Quality Improvement Plan",
                   "TL;DR",
@@ -7414,7 +7414,7 @@
                 "title": "Von Neumann Quality Upgrade"
               },
               {
-                "bytes": 2859,
+                "bytes": 3115,
                 "headings": [
                   "Codex system skill quick_validate.py source path",
                   "Summary",
@@ -7515,7 +7515,7 @@
                 "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
               },
               {
-                "bytes": 13275,
+                "bytes": 13218,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",

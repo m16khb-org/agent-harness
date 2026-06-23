@@ -134,7 +134,7 @@ skills/
 - 각 skill은 `SKILL.md`를 반드시 포함하고, Codex UI metadata가 필요하면 `agents/openai.yaml`을 둔다.
 - host별 설치 대상이 다르면 `install.json`에 `{ "hosts": ["codex"] }` 또는 `{ "hosts": ["claude"] }`처럼 명시한다. 생략하면 모든 host에 설치하는 기존 동작을 유지한다.
 - 스킬 안에는 README, 설치 가이드, changelog 같은 보조 문서를 만들지 않는다.
-- 검증은 skill-creator의 `quick_validate.py`로 수행한다.
+- 검증은 repo-owned `python3 scripts/validate-skill.py skills/<skill-name>`로 수행한다. Codex/Claude host-managed system skill 사본의 `quick_validate.py`는 upstream 상태와 로컬 Python 패키지 설치에 따라 달라질 수 있으므로 필수 검증 경로로 쓰지 않는다.
 
 설치 adapter 규칙:
 

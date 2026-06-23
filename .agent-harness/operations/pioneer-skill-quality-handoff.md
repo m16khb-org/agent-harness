@@ -162,7 +162,7 @@ cycle	skill	batch	before_score	after_score	gates_removed	gates_added	cases_rerun
 - Fresh-context `shannon` smoke without fixture
 - Fresh-context `shannon` smoke with isolated git fixture
 - `git check-ignore -v` confirmed evidence files are ignored by `.gitignore:16:evidence`
-- `python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py` for all nine pioneer skills
+- Historical host-managed `quick_validate.py` evidence for all nine pioneer skills; current validation uses `python3 scripts/validate-skill.py`
 - Targeted `rg` stale-contract scan for removed commands/tool names/safety phrases
 - `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1`
 - `git diff --check`

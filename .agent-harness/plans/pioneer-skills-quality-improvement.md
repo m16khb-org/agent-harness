@@ -34,7 +34,10 @@ OUT:
 ### Evidence Gathered
 - `find skills -maxdepth 2 -type f -name 'SKILL.md' | sort` showed 16 skills total; the 9 person-named pioneer skills are the evaluation target.
 - `wc -l` showed 4,251 total lines across the 9 target `SKILL.md` files. `codd` is the outlier at 989 lines.
-- `python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py <skill>` passed for all 9 target skills.
+- Historical host-managed `quick_validate.py <skill>` evidence passed for all 9
+  target skills; current runs should use `python3 scripts/validate-skill.py
+  <skill>` so validation is repo-owned and independent of host system skill
+  state.
 - `./bin/agent-harness --help` and `internal/adapter/cli/usage.go:47-111` were used as the CLI contract.
 - `./bin/agent-harness project lint-diagnose --command-argv ...` failed because the CLI accepts the failed command as positional args after flags, not `--command-argv`.
 - `./bin/agent-harness issueops heartbeat --help` failed with `unknown issueops subcommand "heartbeat"`.
@@ -417,7 +420,7 @@ Wave 3: T8, T9, T10 - qualitative fixtures, docs sync, final verification.
   - Instruction priority: `.agent-harness/CONSTITUTION.md:1-80`
   - Sub-agent principle: `.agent-harness/CONSTITUTION.md:113-123`
   - Existing testing conventions: `.agent-harness/TESTING.md`
-  - Skill validation command: `python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py <skill>`
+  - Skill validation command: `python3 scripts/validate-skill.py <skill>`
 
   **Acceptance Criteria**:
   - [ ] Contract file or section exists and is referenced from at least one project doc.
@@ -590,7 +593,7 @@ Wave 3: T8, T9, T10 - qualitative fixtures, docs sync, final verification.
 
   Scenario: Skill validation after splits
     Channel: bash
-    Steps: Run `python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/codd`.
+    Steps: Run `python3 scripts/validate-skill.py skills/codd`.
     Expected: Validation passes.
     Evidence: .agent-harness/evidence/pioneer-skills-quality/task-7-progressive-disclosure.txt
   ```
@@ -687,7 +690,7 @@ Wave 3: T8, T9, T10 - qualitative fixtures, docs sync, final verification.
   - All task evidence files under `.agent-harness/evidence/pioneer-skills-quality/`
 
   **Acceptance Criteria**:
-  - [ ] `quick_validate.py` passes for all 9 target skills.
+  - [ ] `python3 scripts/validate-skill.py` passes for all 9 target skills.
   - [ ] `rg -n "command-argv|issueops heartbeat|von-neumann plan|remove-ai-slops|state write <key> <content>" skills README.md .agent-harness` has no stale instructional matches.
   - [ ] `./bin/agent-harness project lint-diagnose --help`, `./bin/agent-harness issueops phase --help`, and state write/read smoke all pass.
   - [ ] `go test ./... -count=1` passes, unless only documentation changed and the user explicitly accepts a narrower gate.
@@ -698,7 +701,7 @@ Wave 3: T8, T9, T10 - qualitative fixtures, docs sync, final verification.
   Scenario: Full structural validation
     Channel: bash
     Steps:
-      1. Run quick_validate for all 9 target skills.
+      1. Run `python3 scripts/validate-skill.py` for all 9 target skills.
       2. Run stale-reference grep.
       3. Run targeted CLI help/smoke commands.
       4. Run `go test ./... -count=1`.
@@ -717,7 +720,7 @@ Wave 3: T8, T9, T10 - qualitative fixtures, docs sync, final verification.
 ## Final Verification Wave
 - [ ] F1. Plan Compliance Audit - every TODO executed or explicitly deferred with evidence.
 - [ ] F2. Skill Quality Review - no stale command snippets, unsafe defaults, fake tools, or over-broad activation rules remain.
-- [ ] F3. Structural Validation - all target skills pass `quick_validate.py`.
+- [ ] F3. Structural Validation - all target skills pass `python3 scripts/validate-skill.py`.
 - [ ] F4. Runtime Contract Smoke - documented CLI snippets match `./bin/agent-harness` behavior.
 - [ ] F5. Scope Fidelity Check - only planned skill/doc/test fixture files changed.
 

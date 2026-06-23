@@ -151,7 +151,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ```bash
 find . -maxdepth 3 -type f | sort
 find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
-python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/atomic-commit-push
+python3 scripts/validate-skill.py skills/atomic-commit-push
 ./scripts/install-native.sh
 ./bin/agent-harness bootstrap --dry-run
 ./bin/agent-harness bootstrap --sync --dry-run

@@ -121,7 +121,7 @@ practical ceiling for body edits, with remaining variance attributable to execut
 
 Post-cycle verification already run:
 
-- `python3 ${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py` for all nine pioneer skills.
+- Historical host-managed `quick_validate.py` evidence for all nine pioneer skills; current validation uses `python3 scripts/validate-skill.py`.
 - Targeted `rg` stale-contract scan for removed commands/tool names/safety phrases.
 - `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1`.
 - `git diff --check`.
