@@ -77,6 +77,28 @@ func TestPlannedSelfVerifyStepsRunsEveryPlannedClosure(t *testing.T) {
 	}
 }
 
+func TestPlannedSelfVerifyStepsGivesGoTestFullGateTimeout(t *testing.T) {
+	var goTestStep StepResult
+	var gotTimeout time.Duration
+	deps := fakeSelfVerifyStepDeps(t)
+	deps.RunCommandStep = func(_ string, label string, timeout time.Duration, _ string, _ string, _ ...string) StepResult {
+		if label == "go test" {
+			gotTimeout = timeout
+		}
+		return StepResult{Label: label, OK: true}
+	}
+
+	steps := PlannedSelfVerifySteps("/repo", "/tmp/agent-harness", 100, &goTestStep, deps)
+	got := steps[1].Run()
+
+	if !got.OK || got.Label != "go test" {
+		t.Fatalf("go test step returned unexpected result: %#v", got)
+	}
+	if gotTimeout != 180*time.Second {
+		t.Fatalf("go test timeout = %s, want 3m0s", gotTimeout)
+	}
+}
+
 func TestCachedContractGoldenStepFallsBackWhenGoTestDidNotPass(t *testing.T) {
 	step := CachedContractGoldenStep(StepResult{Label: "go test", OK: false}, fakeSelfVerifyStepDeps(t))
 	if !step.OK || step.Label != "contract golden tests" {

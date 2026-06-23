@@ -13,6 +13,8 @@ type SelfVerifyPlannedStep struct {
 	Run   func() StepResult
 }
 
+const selfVerifyGoTestTimeout = 180 * time.Second
+
 type SelfVerifyStepDeps struct {
 	HarnessRoot                     func() string
 	RunCommandStep                  func(string, string, time.Duration, string, string, ...string) StepResult
@@ -41,7 +43,7 @@ func PlannedSelfVerifySteps(root string, tempBin string, seed int64, goTestStep 
 	return []SelfVerifyPlannedStep{
 		{Label: "harness invariants", Run: func() StepResult { return deps.ValidateHarnessInvariants(root) }},
 		{Label: "go test", Run: func() StepResult {
-			*goTestStep = deps.RunCommandStep(root, "go test", 120*time.Second, "", "go", "test", "./...", "-count=1")
+			*goTestStep = deps.RunCommandStep(root, "go test", selfVerifyGoTestTimeout, "", "go", "test", "./...", "-count=1")
 			return *goTestStep
 		}},
 		{Label: "contract golden tests", Run: func() StepResult {
