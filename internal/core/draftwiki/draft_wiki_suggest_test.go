@@ -1,27 +1,24 @@
 package draftwiki
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"agent-harness/internal/core/externalllm"
 )
 
-func TestSuggestDraftWikiUsesAgyPrintWithConfiguredModel(t *testing.T) {
+func TestSuggestDraftWikiUsesZAIWithConfiguredModel(t *testing.T) {
 	root := t.TempDir()
 	input := filepath.Join(root, "memory.md")
 	mustWrite(t, input, "Hook policy should stay bookkeeping-only.\n")
-	configPath := filepath.Join(root, "agy-settings.json")
-	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
-	fakeAgy := filepath.Join(root, "fake-agy.sh")
-	mustWrite(t, fakeAgy, `#!/bin/sh
-if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
-  echo "missing agy flags" >&2
-  exit 2
-fi
-cat <<'EOF'
-`+draftWikiAgyJSONForTest(t, `---
+	requests := withFakeDraftWikiZAI(t, draftWikiLLMJSONForTest(t, `---
 title: "Hook policy memory"
 source: "claude-mem"
 target_wiki: "agent-harness"
@@ -31,28 +28,24 @@ summary: "Main agents should explicitly queue work instead of hooks running long
 
 # Hook policy memory
 
-Main agents should explicitly queue judged material and leave LLM summarization to a worker.`)+`
-EOF
-`)
-	if err := os.Chmod(fakeAgy, 0o755); err != nil {
-		t.Fatal(err)
-	}
+Main agents should explicitly queue judged material and leave LLM summarization to a worker.`))
 
 	result, err := SuggestDraftWiki(DraftWikiSuggestRequest{
-		RepoRoot:        root,
-		InputPath:       input,
-		Title:           "Hook policy memory",
-		TargetWiki:      "agent-harness",
-		AgyCommand:      fakeAgy,
-		AgyModel:        "Gemini 3.5 Flash (High)",
-		AgySettingsPath: configPath,
-		Write:           true,
+		RepoRoot:   root,
+		InputPath:  input,
+		Title:      "Hook policy memory",
+		TargetWiki: "agent-harness",
+		Model:      "glm-5-turbo",
+		Write:      true,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.OK || result.DryRun || !result.Executed || result.ModelSelectionMethod != "settings_json" {
+	if !result.OK || result.DryRun || !result.Executed || result.Model != "glm-5-turbo" {
 		t.Fatalf("unexpected suggest result: %+v", result)
+	}
+	if got := atomic.LoadInt32(requests); got != 1 {
+		t.Fatalf("expected one Z.AI request, got %d", got)
 	}
 	if result.Draft == nil || result.Draft.Status != "draft" || result.Draft.TargetWiki != "agent-harness" {
 		t.Fatalf("unexpected draft metadata: %+v", result.Draft)
@@ -66,42 +59,27 @@ EOF
 	}
 }
 
-func TestSuggestDraftWikiStripsAgyModeBanner(t *testing.T) {
+func TestSuggestDraftWikiStripsModeBanner(t *testing.T) {
 	root := t.TempDir()
 	input := filepath.Join(root, "memory.md")
 	mustWrite(t, input, "Hook policy should stay bookkeeping-only.\n")
-	configPath := filepath.Join(root, "agy-settings.json")
-	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
-	fakeAgy := filepath.Join(root, "fake-agy.sh")
-	mustWrite(t, fakeAgy, `#!/bin/sh
-cat <<'EOF'
-ULTRAWORK MODE ENABLED!
-
-`+draftWikiAgyJSONForTest(t, `---
+	withFakeDraftWikiZAI(t, "ULTRAWORK MODE ENABLED!\n\n"+draftWikiLLMJSONForTest(t, `---
 title: "Banner-safe draft"
 source: "claude-mem"
 target_wiki: "agent-harness"
 target_type: "notes"
-summary: "Agy mode banners are not part of the draft."
+summary: "Model mode banners are not part of the draft."
 ---
 
 # Banner-safe draft
 
-The useful draft body remains.`)+`
-EOF
-`)
-	if err := os.Chmod(fakeAgy, 0o755); err != nil {
-		t.Fatal(err)
-	}
+The useful draft body remains.`))
 
 	result, err := SuggestDraftWiki(DraftWikiSuggestRequest{
-		RepoRoot:        root,
-		InputPath:       input,
-		TargetWiki:      "agent-harness",
-		AgyCommand:      fakeAgy,
-		AgyModel:        "Gemini 3.5 Flash (High)",
-		AgySettingsPath: configPath,
-		Write:           true,
+		RepoRoot:   root,
+		InputPath:  input,
+		TargetWiki: "agent-harness",
+		Write:      true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -114,65 +92,30 @@ EOF
 		t.Fatal(err)
 	}
 	if strings.Contains(string(body), "ULTRAWORK MODE ENABLED") {
-		t.Fatalf("agy mode banner leaked into draft: %s", string(body))
+		t.Fatalf("mode banner leaked into draft: %s", string(body))
 	}
 }
 
-func TestSuggestDraftWikiRejectsWrongAgyModel(t *testing.T) {
-	root := t.TempDir()
-	input := filepath.Join(root, "memory.md")
-	mustWrite(t, input, "memory\n")
-	configPath := filepath.Join(root, "agy-settings.json")
-	mustWrite(t, configPath, `{"model":"Claude Opus 4.6 (Thinking)"}`)
-
-	_, err := SuggestDraftWiki(DraftWikiSuggestRequest{
-		RepoRoot:        root,
-		InputPath:       input,
-		AgyCommand:      "agy",
-		AgyModel:        "Gemini 3.5 Flash (High)",
-		AgySettingsPath: configPath,
-		Write:           true,
-	})
-	if err == nil || !strings.Contains(err.Error(), "agy model mismatch") {
-		t.Fatalf("expected model mismatch, got %v", err)
-	}
-}
-
-func TestDraftWikiQueueWorkerRunsAgyAndWritesDraft(t *testing.T) {
+func TestDraftWikiQueueWorkerRunsZAIAndWritesDraft(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	configPath := filepath.Join(root, "agy-settings.json")
-	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
-	fakeAgy := filepath.Join(root, "fake-agy.sh")
-	mustWrite(t, fakeAgy, `#!/bin/sh
-if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
-  echo "missing agy flags" >&2
-  exit 2
-fi
-printf '%s\n' "$3" > prompt.txt
-cat <<'EOF'
-`+draftWikiAgyJSONForTest(t, `---
+	requests := withFakeDraftWikiZAI(t, draftWikiLLMJSONForTest(t, `---
 title: "Explicit queued memory"
 source: "claude-mem"
 target_wiki: "agent-harness"
 target_type: "notes"
-summary: "The main agent explicitly queues draft-wiki work and the worker performs agy summarization."
+summary: "The main agent explicitly queues draft-wiki work and the worker performs LLM summarization."
 ---
 
 # Explicit queued memory
 
-The main agent explicitly queues draft-wiki work; the worker calls agy -p outside the hook critical path.`)+`
-EOF
-`)
-	if err := os.Chmod(fakeAgy, 0o755); err != nil {
-		t.Fatal(err)
-	}
+The main agent explicitly queues draft-wiki work; the worker calls the Z.AI LLM outside the hook critical path.`))
 
 	queued, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{
 		RepoRoot:       root,
 		Tool:           "Bash",
 		Command:        "claude-mem export observations",
-		SourceMaterial: "Main agents should enqueue judged work and a worker should call agy -p.",
+		SourceMaterial: "Main agents should enqueue judged work and a worker should call Z.AI.",
 		TargetWiki:     "agent-harness",
 		TargetType:     "notes",
 		Source:         "main-agent",
@@ -185,11 +128,9 @@ EOF
 	}
 
 	processed, err := ProcessDraftWikiQueue(DraftWikiQueueProcessRequest{
-		RepoRoot:        root,
-		AgyCommand:      fakeAgy,
-		AgyModel:        "Gemini 3.5 Flash (High)",
-		AgySettingsPath: configPath,
-		Limit:           1,
+		RepoRoot: root,
+		Model:    "glm-5-turbo",
+		Limit:    1,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -203,8 +144,8 @@ EOF
 	if !strings.Contains(processed.Events[0].DraftRelPath, ".agent-harness/draft-wiki/draft/") {
 		t.Fatalf("missing draft rel path: %+v", processed.Events[0])
 	}
-	if _, err := os.Stat(filepath.Join(root, "prompt.txt")); err != nil {
-		t.Fatalf("fake agy did not receive prompt: %v", err)
+	if got := atomic.LoadInt32(requests); got != 1 {
+		t.Fatalf("expected one Z.AI request, got %d", got)
 	}
 	drafts, err := ListDraftWiki(DraftWikiListRequest{RepoRoot: root})
 	if err != nil {
@@ -213,4 +154,21 @@ EOF
 	if len(drafts.Drafts) != 1 || drafts.Drafts[0].Status != "draft" || drafts.Drafts[0].Title != "Explicit queued memory" {
 		t.Fatalf("worker did not write draft-wiki/draft candidate: %+v", drafts)
 	}
+}
+
+func withFakeDraftWikiZAI(t *testing.T, content string) *int32 {
+	t.Helper()
+	t.Setenv("Z_AI_API_KEY", "test-key")
+	var requests int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		atomic.AddInt32(&requests, 1)
+		_, _ = fmt.Fprintf(w, `{"choices":[{"message":{"content":%q}}]}`, content)
+	}))
+	t.Cleanup(server.Close)
+	previous := externalllm.SetBaseURL(server.URL)
+	t.Cleanup(func() { externalllm.SetBaseURL(previous) })
+	return &requests
 }

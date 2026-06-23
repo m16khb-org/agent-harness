@@ -39,9 +39,9 @@ func mustWrite(t *testing.T, path, content string) {
 	}
 }
 
-func draftWikiAgyJSONForTest(t *testing.T, bodyMarkdown string) string {
+func draftWikiLLMJSONForTest(t *testing.T, bodyMarkdown string) string {
 	t.Helper()
-	b, err := json.Marshal(DraftWikiSuggestAgyResponse{BodyMarkdown: bodyMarkdown})
+	b, err := json.Marshal(DraftWikiSuggestLLMResponse{BodyMarkdown: bodyMarkdown})
 	if err != nil {
 		t.Fatal(err)
 	}

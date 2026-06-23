@@ -15,9 +15,9 @@ import (
 func runBenchmarkRun(args []string) error {
 	fs := flag.NewFlagSet("issueops benchmark run", flag.ContinueOnError)
 	fixturesPath := fs.String("fixtures", "", "benchmark fixtures path")
-	judge := fs.String("judge", "agy", "judge backend: none, file, or agy (legacy: external agy -p; prefer file)")
+	judge := fs.String("judge", "llm", "judge backend: none, file, or llm")
 	judgeFile := fs.String("judge-file", "", "provenanced judge map JSON path for --judge file ({\"source_run_id\":..,\"provenance\":..,\"scores\":{\"<fixtureID>\":<score>}}); reads stdin when empty")
-	agyCommand := fs.String("agy-command", "agy", "agy command path")
+	model := fs.String("model", "", "Z.AI model; defaults to glm-5-turbo")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
@@ -38,7 +38,7 @@ func runBenchmarkRun(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := applyBenchmarkJudge(*judge, *judgeFile, *agyCommand, result, fixtures, artifacts); err != nil {
+	if err := applyBenchmarkJudge(*judge, *judgeFile, *model, result, fixtures, artifacts); err != nil {
 		return err
 	}
 	result = core.FinalizeIssueOpsBenchmarkRunResult(result)
@@ -53,18 +53,18 @@ func runBenchmarkRun(args []string) error {
 }
 
 // applyBenchmarkJudge augments the deterministic run result with judge scores
-// from the selected backend (agy external command, provenance-checked file, or
+// from the selected backend (Z.AI LLM, provenance-checked file, or
 // none). Scores merge in place through the shared result.Scores backing array.
-func applyBenchmarkJudge(judge, judgeFile, agyCommand string, result core.IssueOpsBenchmarkRunResult, fixtures []core.IssueOpsBenchmarkFixture, artifacts map[string]core.IssueOpsBenchmarkArtifact) error {
+func applyBenchmarkJudge(judge, judgeFile, model string, result core.IssueOpsBenchmarkRunResult, fixtures []core.IssueOpsBenchmarkFixture, artifacts map[string]core.IssueOpsBenchmarkArtifact) error {
 	switch judge {
-	case "agy":
+	case "llm":
 		for i, fixture := range fixtures {
 			artifact := artifacts[fixture.ID]
-			judgeScore, err := core.RunIssueOpsAgyJudge(core.IssueOpsAgyJudgeRequest{
-				RepoRoot:   ".",
-				AgyCommand: agyCommand,
-				Fixture:    fixture,
-				Artifact:   artifact,
+			judgeScore, err := core.RunIssueOpsLLMJudge(core.IssueOpsLLMJudgeRequest{
+				RepoRoot: ".",
+				Model:    model,
+				Fixture:  fixture,
+				Artifact: artifact,
 			})
 			if err != nil {
 				return err

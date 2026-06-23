@@ -1,21 +1,15 @@
 package nextaction
 
 import (
-	"os"
-	"path/filepath"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
-)
 
-func writeFakeAgyScript(t *testing.T, body string) string {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "fake-agy.sh")
-	script := "#!/bin/sh\nif [ \"$1\" != \"--dangerously-skip-permissions\" ] || [ \"$2\" != \"-p\" ]; then echo missing agy flags >&2; exit 2; fi\n" + body + "\n"
-	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
+	"agent-harness/internal/core/externalllm"
+)
 
 func safeRecommendedMessage() string {
 	return strings.Join([]string{
@@ -27,10 +21,9 @@ func safeRecommendedMessage() string {
 }
 
 func TestEvaluateNextActionAutoProceedLLMAutoProceedsWhenLLMApproves(t *testing.T) {
-	agy := writeFakeAgyScript(t, `printf '%s' '{"auto_proceed":true,"reason":"safe forward step"}'`)
+	withFakeNextActionZAI(t, nextActionFakeZAIResponse{Content: `{"auto_proceed":true,"reason":"safe forward step"}`})
 	result, err := EvaluateNextActionAutoProceedLLM(NextActionAutoProceedLLMRequest{
-		Message:    safeRecommendedMessage(),
-		AgyCommand: agy,
+		Message: safeRecommendedMessage(),
 	}, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -47,10 +40,9 @@ func TestEvaluateNextActionAutoProceedLLMAutoProceedsWhenLLMApproves(t *testing.
 }
 
 func TestEvaluateNextActionAutoProceedLLMDoesNotProceedWhenLLMDeclines(t *testing.T) {
-	agy := writeFakeAgyScript(t, `printf '%s' '{"auto_proceed":false,"reason":"needs user confirmation"}'`)
+	withFakeNextActionZAI(t, nextActionFakeZAIResponse{Content: `{"auto_proceed":false,"reason":"needs user confirmation"}`})
 	result, err := EvaluateNextActionAutoProceedLLM(NextActionAutoProceedLLMRequest{
-		Message:    safeRecommendedMessage(),
-		AgyCommand: agy,
+		Message: safeRecommendedMessage(),
 	}, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -63,8 +55,8 @@ func TestEvaluateNextActionAutoProceedLLMDoesNotProceedWhenLLMDeclines(t *testin
 	}
 }
 
-func TestEvaluateNextActionAutoProceedLLMHardVetoesDestructiveWithoutCallingAgy(t *testing.T) {
-	agy := writeFakeAgyScript(t, `echo "agy must not be called for destructive recommendations" >&2; exit 3`)
+func TestEvaluateNextActionAutoProceedLLMHardVetoesDestructiveWithoutCallingModel(t *testing.T) {
+	requests := withFakeNextActionZAI(t, nextActionFakeZAIResponse{Content: `{"auto_proceed":true,"reason":"must not be called"}`})
 	message := strings.Join([]string{
 		"선택지:",
 		"1. 정리 진행: merged worktree와 branch를 삭제합니다. (추천)",
@@ -72,11 +64,13 @@ func TestEvaluateNextActionAutoProceedLLMHardVetoesDestructiveWithoutCallingAgy(
 		"3. 확장 정리: 전체를 점검합니다.",
 	}, "\n")
 	result, err := EvaluateNextActionAutoProceedLLM(NextActionAutoProceedLLMRequest{
-		Message:    message,
-		AgyCommand: agy,
+		Message: message,
 	}, 0)
 	if err != nil {
-		t.Fatalf("destructive hard-veto must not invoke agy or error, got %v", err)
+		t.Fatalf("destructive hard-veto must not invoke LLM or error, got %v", err)
+	}
+	if got := atomic.LoadInt32(requests); got != 0 {
+		t.Fatalf("destructive hard-veto invoked LLM %d times", got)
 	}
 	if result.AutoProceed {
 		t.Fatalf("destructive recommendation must never auto-proceed, got %+v", result)
@@ -86,32 +80,34 @@ func TestEvaluateNextActionAutoProceedLLMHardVetoesDestructiveWithoutCallingAgy(
 	}
 }
 
-func TestEvaluateNextActionAutoProceedLLMReturnsErrorWhenAgyMissing(t *testing.T) {
+func TestEvaluateNextActionAutoProceedLLMReturnsErrorWhenZAIRequestFails(t *testing.T) {
+	withFakeNextActionZAI(t, nextActionFakeZAIResponse{Status: http.StatusInternalServerError, Body: `{"error":{"message":"model unavailable"}}`})
 	_, err := EvaluateNextActionAutoProceedLLM(NextActionAutoProceedLLMRequest{
-		Message:    safeRecommendedMessage(),
-		AgyCommand: filepath.Join(t.TempDir(), "nonexistent-agy"),
+		Message: safeRecommendedMessage(),
 	}, 0)
 	if err == nil {
-		t.Fatal("expected error when agy command is missing so caller can fall back to heuristic")
+		t.Fatal("expected error when Z.AI request fails so caller can fall back to heuristic")
 	}
 }
 
-func TestEvaluateNextActionAutoProceedLLMNoRecommendationDoesNotCallAgy(t *testing.T) {
-	agy := writeFakeAgyScript(t, `echo "agy must not be called without a recommendation" >&2; exit 3`)
+func TestEvaluateNextActionAutoProceedLLMNoRecommendationDoesNotCallModel(t *testing.T) {
+	requests := withFakeNextActionZAI(t, nextActionFakeZAIResponse{Content: `{"auto_proceed":true,"reason":"must not be called"}`})
 	message := strings.Join([]string{
 		"선택지:",
 		"1. 해석 A로 구현합니다.",
 		"2. 해석 B로 구현합니다.",
 	}, "\n")
 	result, err := EvaluateNextActionAutoProceedLLM(NextActionAutoProceedLLMRequest{
-		Message:    message,
-		AgyCommand: agy,
+		Message: message,
 	}, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if result.AutoProceed {
 		t.Fatalf("no explicit recommendation must not auto-proceed, got %+v", result)
+	}
+	if got := atomic.LoadInt32(requests); got != 0 {
+		t.Fatalf("no-recommendation path invoked LLM %d times", got)
 	}
 }
 
@@ -135,4 +131,39 @@ func TestBuildNextActionAutoProceedLLMPromptRendersSchemaAndChoices(t *testing.T
 			t.Fatalf("LLM prompt missing %q:\n%s", want, prompt)
 		}
 	}
+}
+
+type nextActionFakeZAIResponse struct {
+	Status  int
+	Body    string
+	Content string
+}
+
+func withFakeNextActionZAI(t *testing.T, responses ...nextActionFakeZAIResponse) *int32 {
+	t.Helper()
+	if len(responses) == 0 {
+		t.Fatal("missing fake Z.AI responses")
+	}
+	t.Setenv("Z_AI_API_KEY", "test-key")
+	var requests int32
+	index := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requests, 1)
+		response := responses[index]
+		if index < len(responses)-1 {
+			index++
+		}
+		if response.Status != 0 {
+			w.WriteHeader(response.Status)
+		}
+		if response.Body != "" {
+			_, _ = w.Write([]byte(response.Body))
+			return
+		}
+		_, _ = fmt.Fprintf(w, `{"choices":[{"message":{"content":%q}}]}`, response.Content)
+	}))
+	t.Cleanup(server.Close)
+	previous := externalllm.SetBaseURL(server.URL)
+	t.Cleanup(func() { externalllm.SetBaseURL(previous) })
+	return &requests
 }

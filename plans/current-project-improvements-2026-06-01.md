@@ -35,7 +35,7 @@ Improve reliability and operator trust by eliminating public-surface drift, safe
 ### Deliverables
 1. `update` appears consistently in dispatch, command catalog, usage text, README guidance, and golden contracts.
 2. MCP exposes a policy-gated `worker_run_read_only` tool. This plan chooses MCP parity rather than CLI-only documentation.
-3. Draft-wiki queue processing is serialized or single-worker guarded; malformed lines are reported; running-state persistence failure prevents external `agy` execution.
+3. Draft-wiki queue processing is serialized or single-worker guarded; malformed lines are reported; running-state persistence failure prevents external `zai` execution.
 4. Worker/daemon verification covers timeout, denial/cancellation, stale state, socket permission/start-status-stop, and race-sensitive packages.
 5. Codex/Claude installer duplication is reduced through shared helpers without behavior changes.
 6. Hook routing moves to a Go-owned declarative rule table while preserving host output schemas and checked-in templates.
@@ -177,8 +177,8 @@ PY2
 
 - [x] 3. Harden draft-wiki queue processing for concurrency, malformed lines, and persistence errors
 
-  **What to do**: Add a per-project queue lock or explicit single-worker lease file under project state. Return the running-state rewrite error before invoking `agy`. Report malformed JSONL lines as bounded warnings while continuing valid event processing.
-  **Must NOT do**: Do not run real `agy` in tests; use a fake executable. Do not expose `SourceMaterial` in response JSON.
+  **What to do**: Add a per-project queue lock or explicit single-worker lease file under project state. Return the running-state rewrite error before invoking `zai`. Report malformed JSONL lines as bounded warnings while continuing valid event processing.
+  **Must NOT do**: Do not run real `zai` in tests; use a fake executable. Do not expose `SourceMaterial` in response JSON.
 
   **Parallelization**: Can Parallel: YES | Wave 2 | Blocks: 4, 7, final | Blocked By: 1
 
@@ -191,7 +191,7 @@ PY2
 
   **Acceptance Criteria**:
   - [ ] Concurrent two-worker test proves one queued event is processed exactly once.
-  - [ ] Running-state rewrite failure test proves `agy` is not invoked.
+  - [ ] Running-state rewrite failure test proves `zai` is not invoked.
   - [ ] Malformed JSONL line is reported with line number and bounded/redacted text; valid events continue.
   - [ ] Queue responses still omit `SourceMaterial`.
   - [ ] `go test ./internal/core -run 'DraftWikiQueue' -count=1` passes.
@@ -200,13 +200,13 @@ PY2
   ```
   Scenario: two workers race safely
     Tool: tmux
-    Steps: create temp repo/state/fake agy; enqueue one event; run two `./bin/agent-harness worker draft-wiki --repo <repo> --agy-command <fake> --limit 1 --json` commands in parallel tmux panes; capture both panes.
+    Steps: create temp repo/state/fake Z.AI; enqueue one event; run two `./bin/agent-harness worker draft-wiki --repo <repo> --model <fake> --limit 1 --json` commands in parallel tmux panes; capture both panes.
     Expected: exactly one result succeeds, the other is no-op/locked; only one draft file exists.
     Evidence: evidence/current-project-improvements-2026-06-01/task-3-draft-wiki-race.txt
 
   Scenario: malformed queue line is reported safely
     Tool: bash
-    Steps: write invalid JSONL plus one valid queued event into temp project state; run worker with fake agy and capture JSON.
+    Steps: write invalid JSONL plus one valid queued event into temp project state; run worker with fake Z.AI and capture JSON.
     Expected: JSON has bounded malformed-line warning and no secret/source material; valid event follows report-and-continue behavior.
     Evidence: evidence/current-project-improvements-2026-06-01/task-3-draft-wiki-malformed.json
   ```
@@ -289,8 +289,8 @@ PY2
 
 - [x] 6. Replace heuristic hook routing internals with a Go-owned declarative rule table
 
-  **What to do**: Add a small core `HookRoutingRule` table for keyword sets, target tools/actions, priority, and compact labels. Refactor `BuildUserPromptMCPHints` to iterate rules. Preserve current outputs through characterization tests, including Codex/Claude host differences and opt-in `agy -p` hints.
-  **Must NOT do**: Do not make agy hints default-on. Do not move rules to unchecked external config. Do not inject noisy prose into Codex-visible additional context.
+  **What to do**: Add a small core `HookRoutingRule` table for keyword sets, target tools/actions, priority, and compact labels. Refactor `BuildUserPromptMCPHints` to iterate rules. Preserve current outputs through characterization tests, including Codex/Claude host differences and opt-in `Z.AI Coding Plan` hints.
+  **Must NOT do**: Do not make Z.AI hints default-on. Do not move rules to unchecked external config. Do not inject noisy prose into Codex-visible additional context.
 
   **Parallelization**: Can Parallel: YES | Wave 4 | Blocks: final | Blocked By: 1
 
@@ -302,32 +302,32 @@ PY2
   - Cautions: `.agent-harness/CAUTIONS.md` hook rendering guidance.
 
   **Acceptance Criteria**:
-  - [ ] Characterization tests cover API docs, project docs, CodeGraph, LLM Wiki, claude-mem, and opt-in agy.
+  - [ ] Characterization tests cover API docs, project docs, CodeGraph, LLM Wiki, claude-mem, and opt-in Z.AI.
   - [ ] Rule table refactor passes same tests without output drift except accepted ordering normalization.
   - [ ] Template/installer tests prove checked-in hook configs match generated command strings.
-  - [ ] `--enable-agy-hints` and `HARNESS_ENABLE_AGY_HINTS` remain opt-in only.
+  - [ ] `--enable-llm-hints` and `HARNESS_ENABLE_LLM_HINTS` remain opt-in only.
 
   **QA Scenarios**:
   ```
   Scenario: prompt routing remains stable
     Tool: bash
-    Steps: printf '{"prompt":"endpoint와 DTO를 추가하고 리뷰해줘"}' | ./bin/agent-harness hook user-prompt --enable-agy-hints --json > evidence/current-project-improvements-2026-06-01/task-6-hook-routing.json; python3 - <<'PY2'
+    Steps: printf '{"prompt":"endpoint와 DTO를 추가하고 리뷰해줘"}' | ./bin/agent-harness hook user-prompt --enable-llm-hints --json > evidence/current-project-improvements-2026-06-01/task-6-hook-routing.json; python3 - <<'PY2'
 import json
 text=open('evidence/current-project-improvements-2026-06-01/task-6-hook-routing.json').read()
-assert 'agy -p' in text and 'api' in text.lower()
+assert 'Z.AI Coding Plan' in text and 'api' in text.lower()
 json.loads(text)
 PY2
-    Expected: JSON includes expected routing hints and agy only when enabled.
+    Expected: JSON includes expected routing hints and Z.AI only when enabled.
     Evidence: evidence/current-project-improvements-2026-06-01/task-6-hook-routing.json
 
-  Scenario: default agy hint remains absent
+  Scenario: default Z.AI hint remains absent
     Tool: bash
-    Steps: printf '{"prompt":"리뷰해줘"}' | ./bin/agent-harness hook user-prompt --json > evidence/current-project-improvements-2026-06-01/task-6-hook-no-agy.json; python3 - <<'PY2'
-text=open('evidence/current-project-improvements-2026-06-01/task-6-hook-no-agy.json').read()
-assert 'agy -p' not in text
+    Steps: printf '{"prompt":"리뷰해줘"}' | ./bin/agent-harness hook user-prompt --json > evidence/current-project-improvements-2026-06-01/task-6-hook-no-Z.AI.json; python3 - <<'PY2'
+text=open('evidence/current-project-improvements-2026-06-01/task-6-hook-no-Z.AI.json').read()
+assert 'Z.AI Coding Plan' not in text
 PY2
-    Expected: no agy hint without opt-in.
-    Evidence: evidence/current-project-improvements-2026-06-01/task-6-hook-no-agy.json
+    Expected: no Z.AI hint without opt-in.
+    Evidence: evidence/current-project-improvements-2026-06-01/task-6-hook-no-Z.AI.json
   ```
 
   **Commit**: YES | Message: `refactor(hook): centralize prompt routing rules` | Files: `internal/core/hook_prompt.go`, `internal/core/hook_prompt_test.go`, `cmd/harness/hook_user_prompt_test.go`, config/template tests if added
@@ -335,7 +335,7 @@ PY2
 - [x] 7. Expand draft-wiki and LLM Wiki promotion integration QA
 
   **What to do**: Add tests and CLI/tmux QA for queue suggestion to draft file, approve/reject, promote dry-run/confirm, collision handling, invalid target type, and upstream handoff boundaries. Confirm agent-harness writes only approved raw note/log handoff files and does not compile/query/index llm-wiki.
-  **Must NOT do**: Do not call real upstream LLM Wiki or real `agy`; use temp wiki roots and fake agy.
+  **Must NOT do**: Do not call real upstream LLM Wiki or real `zai`; use temp wiki roots and fake Z.AI.
 
   **Parallelization**: Can Parallel: YES | Wave 3 | Blocks: final | Blocked By: 3
 

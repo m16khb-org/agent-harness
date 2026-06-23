@@ -29,7 +29,7 @@ func TestStripMarkdownFence(t *testing.T) {
 	}
 }
 
-func TestStripAgyOutputPreamble(t *testing.T) {
+func TestStripLLMOutputPreamble(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
@@ -42,9 +42,9 @@ func TestStripAgyOutputPreamble(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := StripAgyOutputPreamble(tt.input)
+			got := StripLLMOutputPreamble(tt.input)
 			if got != tt.expect {
-				t.Errorf("StripAgyOutputPreamble(%q) = %q, want %q", tt.input, got, tt.expect)
+				t.Errorf("StripLLMOutputPreamble(%q) = %q, want %q", tt.input, got, tt.expect)
 			}
 		})
 	}

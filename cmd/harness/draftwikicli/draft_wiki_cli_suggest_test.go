@@ -12,21 +12,20 @@ import (
 
 func TestRunProjectDraftWikiSuggest_printsDryRunText_whenInputIsPositional(t *testing.T) {
 	// Given
-	root, input, settings := draftWikiSuggestCLIFixture(t)
+	root, input := draftWikiSuggestCLIFixture(t)
 
 	// When
 	out := captureStdoutForContract(t, func() error {
 		return runProjectDraftWiki([]string{
 			"suggest",
 			"--repo", root,
-			"--agy-settings", settings,
 			"--dry-run",
 			input,
 		})
 	})
 
 	// Then
-	if !strings.Contains(out, "draft-wiki suggest dry-run:") || !strings.Contains(out, `model="Gemini 3.5 Flash (High)"`) {
+	if !strings.Contains(out, "draft-wiki suggest dry-run:") || !strings.Contains(out, `model="glm-5-turbo"`) {
 		t.Fatalf("unexpected suggest dry-run text:\n%s", out)
 	}
 	if !strings.Contains(out, "prompt_bytes=") {
@@ -36,7 +35,7 @@ func TestRunProjectDraftWikiSuggest_printsDryRunText_whenInputIsPositional(t *te
 
 func TestRunProjectDraftWikiSuggest_printsDryRunJSON_whenJSONFlagIsSet(t *testing.T) {
 	// Given
-	root, input, settings := draftWikiSuggestCLIFixture(t)
+	root, input := draftWikiSuggestCLIFixture(t)
 
 	// When
 	out := captureStdoutForContract(t, func() error {
@@ -45,8 +44,7 @@ func TestRunProjectDraftWikiSuggest_printsDryRunJSON_whenJSONFlagIsSet(t *testin
 			"--input", input,
 			"--target-wiki", "agent-harness",
 			"--target-type", "notes",
-			"--agy-settings", settings,
-			"--agy-model", "Gemini 3.5 Flash (High)",
+			"--model", "glm-5-turbo",
 			"--dry-run",
 			"--json",
 		})
@@ -60,7 +58,7 @@ func TestRunProjectDraftWikiSuggest_printsDryRunJSON_whenJSONFlagIsSet(t *testin
 	if !result.OK || !result.DryRun || result.Write || result.Executed {
 		t.Fatalf("unexpected suggest dry-run result: %+v", result)
 	}
-	if result.Kind != "draft_wiki_suggest" || result.AgyModel != "Gemini 3.5 Flash (High)" {
+	if result.Kind != "draft_wiki_suggest" || result.Model != "glm-5-turbo" {
 		t.Fatalf("unexpected suggest metadata: %+v", result)
 	}
 	if result.PromptBytes <= 0 || result.Draft != nil {
@@ -81,35 +79,37 @@ func TestRunProjectDraftWikiSuggest_returnsInputPathError_whenInputMissing(t *te
 	}
 }
 
-func TestRunProjectDraftWikiSuggest_returnsModelMismatch_whenAgyModelDiffers(t *testing.T) {
+func TestRunProjectDraftWikiSuggest_acceptsModelFlag(t *testing.T) {
 	// Given
-	root, input, settings := draftWikiSuggestCLIFixture(t)
+	root, input := draftWikiSuggestCLIFixture(t)
 
 	// When
-	err := runProjectDraftWikiSuggest([]string{
-		"--repo", root,
-		"--input", input,
-		"--agy-settings", settings,
-		"--agy-model", "Claude Opus 4.6 (Thinking)",
-		"--dry-run",
+	out := captureStdoutForContract(t, func() error {
+		return runProjectDraftWikiSuggest([]string{
+			"--repo", root,
+			"--input", input,
+			"--model", "glm-5-turbo",
+			"--dry-run",
+			"--json",
+		})
 	})
 
 	// Then
-	if err == nil || !strings.Contains(err.Error(), "agy model mismatch") {
-		t.Fatalf("expected model mismatch error, got %v", err)
+	var result core.DraftWikiSuggestResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode suggest dry-run json: %v\n%s", err, out)
+	}
+	if result.Model != "glm-5-turbo" {
+		t.Fatalf("expected custom model, got %+v", result)
 	}
 }
 
-func draftWikiSuggestCLIFixture(t *testing.T) (root, input, settings string) {
+func draftWikiSuggestCLIFixture(t *testing.T) (root, input string) {
 	t.Helper()
 	root = t.TempDir()
 	input = filepath.Join(root, "memory.md")
 	if err := os.WriteFile(input, []byte("Hook policy should stay bookkeeping-only.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	settings = filepath.Join(root, "agy-settings.json")
-	if err := os.WriteFile(settings, []byte(`{"model":"Gemini 3.5 Flash (High)"}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return root, input, settings
+	return root, input
 }

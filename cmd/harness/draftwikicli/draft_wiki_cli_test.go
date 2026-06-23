@@ -2,6 +2,9 @@ package draftwikicli
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +13,7 @@ import (
 
 	"agent-harness/cmd/harness/workercli"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/externalllm"
 )
 
 func TestRunProjectDraftWikiPruneJSON(t *testing.T) {
@@ -49,22 +53,7 @@ func TestRunProjectDraftWikiQueueAndWorkerWritesDraft(t *testing.T) {
 	if err := os.WriteFile(materialPath, []byte("The main agent judged this hook policy reusable enough for draft wiki."), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	configPath := filepath.Join(root, "agy-settings.json")
-	if err := os.WriteFile(configPath, []byte(`{"model":"Gemini 3.5 Flash (High)"}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	fakeAgy := filepath.Join(root, "fake-agy.sh")
-	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh
-if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
-  echo "missing agy flags" >&2
-  exit 2
-fi
-cat <<'EOF'
-{"body_markdown":"---\ntitle: \"Explicit queued draft\"\nsource: \"main-agent\"\ntarget_wiki: \"agent-harness\"\ntarget_type: \"notes\"\nsummary: \"The main agent explicitly queues reusable draft-wiki material.\"\n---\n\n# Explicit queued draft\n\nThe main agent, not a heuristic hook, decides whether material is worth queueing."}
-EOF
-`), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	withFakeDraftWikiCLIZAI(t, `{"body_markdown":"---\ntitle: \"Explicit queued draft\"\nsource: \"main-agent\"\ntarget_wiki: \"agent-harness\"\ntarget_type: \"notes\"\nsummary: \"The main agent explicitly queues reusable draft-wiki material.\"\n---\n\n# Explicit queued draft\n\nThe main agent, not a heuristic hook, decides whether material is worth queueing."}`)
 
 	queuedOut := captureStdoutForContract(t, func() error {
 		return runProjectDraftWiki([]string{"queue", "--repo", root, "--input", materialPath, "--target-wiki", "agent-harness", "--json"})
@@ -78,7 +67,7 @@ EOF
 	}
 
 	out := captureStdoutForContract(t, func() error {
-		return workercli.Run([]string{"draft-wiki", "--repo", root, "--agy-command", fakeAgy, "--agy-settings", configPath, "--json"})
+		return workercli.Run([]string{"draft-wiki", "--repo", root, "--model", "glm-5-turbo", "--json"})
 	})
 	var processed map[string]any
 	if err := json.Unmarshal([]byte(out), &processed); err != nil {
@@ -91,6 +80,20 @@ EOF
 	if _, err := os.Stat(filepath.Join(root, ".agent-harness", "draft-wiki", "draft", wantDraftName)); err != nil {
 		t.Fatalf("draft-wiki draft file missing after explicit queue+worker: %v", err)
 	}
+}
+
+func withFakeDraftWikiCLIZAI(t *testing.T, content string) {
+	t.Helper()
+	t.Setenv("Z_AI_API_KEY", "test-key")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		_, _ = fmt.Fprintf(w, `{"choices":[{"message":{"content":%q}}]}`, content)
+	}))
+	t.Cleanup(server.Close)
+	previous := externalllm.SetBaseURL(server.URL)
+	t.Cleanup(func() { externalllm.SetBaseURL(previous) })
 }
 
 func TestRunProjectDraftWikiQueueReadsStdin(t *testing.T) {

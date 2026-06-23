@@ -119,7 +119,7 @@ func hookCatalogConfig() hookcatalog.Config {
 
 func hookUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  agent-harness hook user-prompt [--prompt TEXT] [--host codex|claude] [--enable-agy-hints] [--json]
+  agent-harness hook user-prompt [--prompt TEXT] [--host codex|claude] [--enable-llm-hints] [--json]
   agent-harness hook pre-tool-use [--repo PATH] [--host codex|claude] [--enforce-search-routing] [--enforce-worktree] [--enforce-staged-checks] [--enforce-gitops-kubectl] [--json]
   agent-harness hook post-tool-use [--repo PATH] [--json]
   agent-harness hook pre-compact [--repo PATH] [--json]

@@ -38,7 +38,7 @@ func runWorker(args []string) error {
 func workerUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   agent-harness worker enqueue --kind KIND [--payload TEXT] [--json]
-  agent-harness worker draft-wiki [--repo PATH] [--agy-command agy] [--agy-model MODEL] [--agy-settings PATH] [--target-wiki NAME] [--target-type notes] [--limit 1] [--json]
+  agent-harness worker draft-wiki [--repo PATH] [--model glm-5-turbo] [--target-wiki NAME] [--target-type notes] [--limit 1] [--json]
   agent-harness worker run --read-only --kind KIND [--payload TEXT] [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--json] -- ARGV...
   agent-harness worker status --id ID [--json]
   agent-harness worker list [--json]
@@ -50,9 +50,7 @@ func workerUsage() {
 func runWorkerDraftWiki(args []string) error {
 	fs := flag.NewFlagSet("worker draft-wiki", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path")
-	agyCommand := fs.String("agy-command", "agy", "Antigravity CLI executable")
-	agyModel := fs.String("agy-model", "", "required agy settings.json model label; defaults to current settings model")
-	agySettings := fs.String("agy-settings", "", "agy settings.json path; defaults to ~/.gemini/antigravity-cli/settings.json")
+	model := fs.String("model", "", "Z.AI model; defaults to glm-5-turbo")
 	targetWiki := fs.String("target-wiki", "", "target upstream LLM Wiki topic; overrides queue event target_wiki")
 	targetType := fs.String("target-type", "", "target upstream LLM Wiki raw type; defaults to queue event target_type or notes")
 	limit := fs.Int("limit", 1, "maximum queued draft-wiki items to process")
@@ -65,13 +63,11 @@ func runWorkerDraftWiki(args []string) error {
 		root = deps.ResolveTarget("")
 	}
 	result, err := core.ProcessDraftWikiQueue(core.DraftWikiQueueProcessRequest{
-		RepoRoot:        root,
-		AgyCommand:      *agyCommand,
-		AgyModel:        *agyModel,
-		AgySettingsPath: *agySettings,
-		TargetWiki:      *targetWiki,
-		TargetType:      *targetType,
-		Limit:           *limit,
+		RepoRoot:   root,
+		Model:      *model,
+		TargetWiki: *targetWiki,
+		TargetType: *targetType,
+		Limit:      *limit,
 	})
 	if *jsonOut {
 		_ = printJSON(result)

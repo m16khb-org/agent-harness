@@ -11,9 +11,7 @@ func runProjectCommitSuggest(args []string) error {
 	fs := flag.NewFlagSet("project commit-suggest", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
 	staged := fs.Bool("staged", false, "suggest commit based on staged changes (git diff --cached)")
-	agyCommand := fs.String("agy-command", "agy", "Antigravity CLI executable")
-	agyModel := fs.String("agy-model", "", "required agy settings.json model label; defaults to current settings model")
-	agySettings := fs.String("agy-settings", "", "agy settings.json path; defaults to ~/.gemini/antigravity-cli/settings.json")
+	model := fs.String("model", "", "Z.AI model; defaults to glm-5-turbo")
 	jsonOut := fs.Bool("json", false, "print JSON")
 
 	if err := fs.Parse(args); err != nil {
@@ -21,11 +19,9 @@ func runProjectCommitSuggest(args []string) error {
 	}
 
 	result, err := core.SuggestCommit(core.CommitSuggestRequest{
-		RepoRoot:        *repo,
-		Staged:          *staged,
-		AgyCommand:      *agyCommand,
-		AgyModel:        *agyModel,
-		AgySettingsPath: *agySettings,
+		RepoRoot: *repo,
+		Staged:   *staged,
+		Model:    *model,
 	})
 	if err != nil {
 		return err

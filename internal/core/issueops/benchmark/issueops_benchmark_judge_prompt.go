@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 )
 
-func buildIssueOpsAgyJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
+func buildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
 	payload, err := json.Marshal(struct {
 		Fixture  IssueOpsBenchmarkFixture  `json:"fixture"`
 		Artifact IssueOpsBenchmarkArtifact `json:"artifact"`
@@ -63,8 +63,8 @@ func buildIssueOpsAgyJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact Issu
 	}), nil
 }
 
-func BuildIssueOpsAgyJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
-	return buildIssueOpsAgyJudgePrompt(fixture, artifact)
+func BuildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
+	return buildIssueOpsLLMJudgePrompt(fixture, artifact)
 }
 
 func issueOpsBenchmarkScoreResponseSchemaExample() string {

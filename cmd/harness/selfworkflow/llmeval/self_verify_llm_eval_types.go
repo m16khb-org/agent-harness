@@ -9,7 +9,7 @@ import (
 type SelfVerifyLLMEvalOptions struct {
 	Enabled     bool
 	Mode        string
-	AgyCommand  string
+	Model       string
 	TargetScore float64
 	Timeout     time.Duration
 }

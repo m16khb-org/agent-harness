@@ -14,10 +14,8 @@ func runProjectDraftWikiSuggest(args []string) error {
 	title := fs.String("title", "", "draft title hint")
 	targetWiki := fs.String("target-wiki", "", "target upstream LLM Wiki topic")
 	targetType := fs.String("target-type", "notes", "target upstream LLM Wiki raw type")
-	agyCommand := fs.String("agy-command", "agy", "Antigravity CLI executable")
-	agyModel := fs.String("agy-model", "", "required agy settings.json model label; defaults to current settings model")
-	agySettings := fs.String("agy-settings", "", "agy settings.json path; defaults to ~/.gemini/antigravity-cli/settings.json")
-	dryRun := fs.Bool("dry-run", false, "validate inputs and model selection without invoking agy")
+	model := fs.String("model", "", "Z.AI model; defaults to glm-5-turbo")
+	dryRun := fs.Bool("dry-run", false, "validate inputs without invoking the external LLM")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -26,15 +24,13 @@ func runProjectDraftWikiSuggest(args []string) error {
 		*input = fs.Arg(0)
 	}
 	result, err := core.SuggestDraftWiki(core.DraftWikiSuggestRequest{
-		RepoRoot:        *repo,
-		InputPath:       *input,
-		Title:           *title,
-		TargetWiki:      *targetWiki,
-		TargetType:      *targetType,
-		AgyCommand:      *agyCommand,
-		AgyModel:        *agyModel,
-		AgySettingsPath: *agySettings,
-		Write:           !*dryRun,
+		RepoRoot:   *repo,
+		InputPath:  *input,
+		Title:      *title,
+		TargetWiki: *targetWiki,
+		TargetType: *targetType,
+		Model:      *model,
+		Write:      !*dryRun,
 	})
 	if err != nil {
 		return err
@@ -43,7 +39,7 @@ func runProjectDraftWikiSuggest(args []string) error {
 		return printJSON(result)
 	}
 	if result.DryRun {
-		fmt.Printf("draft-wiki suggest dry-run: %s model=%q prompt_bytes=%d\n", result.Command, result.AgyModel, result.PromptBytes)
+		fmt.Printf("draft-wiki suggest dry-run: %s model=%q prompt_bytes=%d\n", result.Command, result.Model, result.PromptBytes)
 		return nil
 	}
 	fmt.Printf("suggested draft: %s\n", result.Draft.RelPath)

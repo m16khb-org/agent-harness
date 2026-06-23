@@ -15,10 +15,9 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		return mcpToolPayload(DaemonStatus())
 	case "commit_suggest":
 		result, err := core.SuggestCommit(core.CommitSuggestRequest{
-			RepoRoot:   ResolveTarget(argmap.String(call.Arguments, "repo")),
-			Staged:     argmap.Bool(call.Arguments, "staged"),
-			AgyCommand: argmap.String(call.Arguments, "agy_command"),
-			AgyModel:   argmap.String(call.Arguments, "agy_model"),
+			RepoRoot: ResolveTarget(argmap.String(call.Arguments, "repo")),
+			Staged:   argmap.Bool(call.Arguments, "staged"),
+			Model:    argmap.String(call.Arguments, "model"),
 		})
 		if err != nil {
 			return mcpToolFailure(&RPCError{Code: -32000, Message: "commit_suggest failed", Data: err.Error()})
@@ -28,8 +27,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		result, err := core.DiagnoseCommand(core.LintDiagnoseRequest{
 			RepoRoot:    ResolveTarget(argmap.String(call.Arguments, "repo")),
 			CommandArgv: argmap.StringSlice(call.Arguments, "command_argv"),
-			AgyCommand:  argmap.String(call.Arguments, "agy_command"),
-			AgyModel:    argmap.String(call.Arguments, "agy_model"),
+			Model:       argmap.String(call.Arguments, "model"),
 		})
 		if err != nil {
 			return mcpToolFailure(&RPCError{Code: -32000, Message: "lint_diagnose failed", Data: err.Error()})

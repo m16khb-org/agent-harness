@@ -10,9 +10,7 @@ import (
 func runProjectLintDiagnose(args []string) error {
 	fs := flag.NewFlagSet("project lint-diagnose", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
-	agyCommand := fs.String("agy-command", "agy", "Antigravity CLI executable")
-	agyModel := fs.String("agy-model", "", "required agy settings.json model label; defaults to current settings model")
-	agySettings := fs.String("agy-settings", "", "agy settings.json path; defaults to ~/.gemini/antigravity-cli/settings.json")
+	model := fs.String("model", "", "Z.AI model; defaults to glm-5-turbo")
 	jsonOut := fs.Bool("json", false, "print JSON")
 
 	if err := fs.Parse(args); err != nil {
@@ -25,11 +23,9 @@ func runProjectLintDiagnose(args []string) error {
 	}
 
 	result, err := core.DiagnoseCommand(core.LintDiagnoseRequest{
-		RepoRoot:        *repo,
-		CommandArgv:     commandArgv,
-		AgyCommand:      *agyCommand,
-		AgyModel:        *agyModel,
-		AgySettingsPath: *agySettings,
+		RepoRoot:    *repo,
+		CommandArgv: commandArgv,
+		Model:       *model,
 	})
 	if err != nil {
 		return err

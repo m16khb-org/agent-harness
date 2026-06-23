@@ -2,9 +2,13 @@ package issueopscli
 
 import (
 	"encoding/json"
-	"os"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
+
+	"agent-harness/internal/core/externalllm"
 )
 
 func TestRunIssueOpsBenchmarkCLI(t *testing.T) {
@@ -21,19 +25,12 @@ func TestRunIssueOpsBenchmarkCLI(t *testing.T) {
 	}
 }
 
-func TestRunIssueOpsBenchmarkCLIAgyKeepsOneScorePerFixture(t *testing.T) {
+func TestRunIssueOpsBenchmarkCLILLMKeepsOneScorePerFixture(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	fakeAgy := filepath.Join(t.TempDir(), "fake-agy.sh")
-	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh
-cat <<'EOF'
-{"ok":true,"fixture_id":"fixture","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"judge ok"}],"deterministic_failures":[],"judge_failures":[],"critical_failures":[],"passed":true}
-EOF
-`), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	withFakeIssueOpsCLIZAI(t, `{"ok":true,"fixture_id":"fixture","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"judge ok"}],"deterministic_failures":[],"judge_failures":[],"critical_failures":[],"passed":true}`)
 
 	out := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"benchmark", "run", "--fixtures", filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures"), "--judge", "agy", "--agy-command", fakeAgy, "--json"})
+		return runIssueOps([]string{"benchmark", "run", "--fixtures", filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures"), "--judge", "llm", "--model", "glm-5-turbo", "--json"})
 	})
 	var result struct {
 		OK           bool             `json:"ok"`
@@ -46,4 +43,18 @@ EOF
 	if !result.OK || len(result.Scores) != result.FixtureCount {
 		t.Fatalf("expected one merged score per fixture: %+v", result)
 	}
+}
+
+func withFakeIssueOpsCLIZAI(t *testing.T, content string) {
+	t.Helper()
+	t.Setenv("Z_AI_API_KEY", "test-key")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		_, _ = fmt.Fprintf(w, `{"choices":[{"message":{"content":%q}}]}`, content)
+	}))
+	t.Cleanup(server.Close)
+	previous := externalllm.SetBaseURL(server.URL)
+	t.Cleanup(func() { externalllm.SetBaseURL(previous) })
 }

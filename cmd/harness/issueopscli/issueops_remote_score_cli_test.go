@@ -92,32 +92,21 @@ func TestRunIssueOpsRemoteScoreFailureWithJSONEmitsStructuredError(t *testing.T)
 	}
 }
 
-func TestRunIssueOpsRemoteScoreCLIAgyUsesExternalLLMWrapper(t *testing.T) {
-	fakeAgy := filepath.Join(t.TempDir(), "fake-agy.sh")
-	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh
-if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
-  echo missing agy flags >&2
-  exit 2
-fi
-cat <<'EOF'
-{"ok":true,"provider":"gitlab","threshold":0.7,"execution_class":"background_join","read_only":true,"join_before":"remote_artifact_write","selected_related_issues":[{"id":"#11","score":0.91,"threshold":0.7,"selected":true,"evidence":["same IssueOps workflow"],"apply_hint":"link in issue body: #11"}],"rejected_related_issues":[],"selected_labels":[{"name":"enhancement","score":0.94,"threshold":0.7,"selected":true,"evidence":["feature request"],"apply_hint":"apply GitLab label: enhancement"}],"rejected_labels":[],"apply_instructions":["apply selected labels with the GitLab issue labels field or glab issue create --label: enhancement"],"warnings":[]}
-EOF
-`), 0o755); err != nil {
-		t.Fatal(err)
-	}
+func TestRunIssueOpsRemoteScoreCLILLMUsesExternalLLMWrapper(t *testing.T) {
+	withFakeIssueOpsCLIZAI(t, `{"ok":true,"provider":"gitlab","threshold":0.7,"execution_class":"background_join","read_only":true,"join_before":"remote_artifact_write","selected_related_issues":[{"id":"#11","score":0.91,"threshold":0.7,"selected":true,"evidence":["same IssueOps workflow"],"apply_hint":"link in issue body: #11"}],"rejected_related_issues":[],"selected_labels":[{"name":"enhancement","score":0.94,"threshold":0.7,"selected":true,"evidence":["feature request"],"apply_hint":"apply GitLab label: enhancement"}],"rejected_labels":[],"apply_instructions":["apply selected labels with the GitLab issue labels field or glab issue create --label: enhancement"],"warnings":[]}`)
 	input := writeIssueOpsRemoteScoreRequestForCLITest(t, core.IssueOpsRemoteScoringRequest{
 		Provider: "gitlab",
 		Issue:    core.IssueOpsRemoteArtifact{Title: "IssueOps GitLab remote scoring"},
 	})
 	out := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "agy", "--agy-command", fakeAgy, "--json"})
+		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "llm", "--model", "glm-5-turbo", "--json"})
 	})
 	var result core.IssueOpsRemoteScoringResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
-		t.Fatalf("remote agy score should return JSON: %v\n%s", err, out)
+		t.Fatalf("remote LLM score should return JSON: %v\n%s", err, out)
 	}
 	if result.Provider != "gitlab" || len(result.SelectedLabels) != 1 {
-		t.Fatalf("expected GitLab agy score result: %+v", result)
+		t.Fatalf("expected GitLab LLM score result: %+v", result)
 	}
 }
 

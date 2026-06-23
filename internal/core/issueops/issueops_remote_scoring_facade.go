@@ -8,7 +8,7 @@ type IssueOpsRemoteLabelCandidate = remote.IssueOpsRemoteLabelCandidate
 type IssueOpsRemoteScoringRequest = remote.IssueOpsRemoteScoringRequest
 type IssueOpsRemoteScoredItem = remote.IssueOpsRemoteScoredItem
 type IssueOpsRemoteScoringResult = remote.IssueOpsRemoteScoringResult
-type IssueOpsRemoteAgyJudgeRequest = remote.IssueOpsRemoteAgyJudgeRequest
+type IssueOpsRemoteLLMJudgeRequest = remote.IssueOpsRemoteLLMJudgeRequest
 
 func DecodeIssueOpsRemoteScoringRequest(data []byte) (IssueOpsRemoteScoringRequest, error) {
 	return remote.DecodeIssueOpsRemoteScoringRequest(data)
@@ -18,6 +18,6 @@ func ScoreIssueOpsRemoteCandidates(req IssueOpsRemoteScoringRequest) (IssueOpsRe
 	return remote.ScoreIssueOpsRemoteCandidates(req)
 }
 
-func RunIssueOpsRemoteAgyJudge(req IssueOpsRemoteAgyJudgeRequest) (IssueOpsRemoteScoringResult, error) {
-	return remote.RunIssueOpsRemoteAgyJudge(req)
+func RunIssueOpsRemoteLLMJudge(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteScoringResult, error) {
+	return remote.RunIssueOpsRemoteLLMJudge(req)
 }

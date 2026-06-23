@@ -11,13 +11,10 @@ import (
 )
 
 type LintDiagnoseRequest struct {
-	RepoRoot        string        `json:"repo_root"`
-	CommandArgv     []string      `json:"command_argv"`
-	Model           string        `json:"model,omitempty"`
-	AgyCommand      string        `json:"agy_command,omitempty"`
-	AgyModel        string        `json:"agy_model,omitempty"`
-	AgySettingsPath string        `json:"-"`
-	Timeout         time.Duration `json:"-"`
+	RepoRoot    string        `json:"repo_root"`
+	CommandArgv []string      `json:"command_argv"`
+	Model       string        `json:"model,omitempty"`
+	Timeout     time.Duration `json:"-"`
 }
 
 type LintDiagnoseResult struct {
@@ -78,19 +75,9 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 	// 2. Resolve model
 	model := strings.TrimSpace(req.Model)
 	if model == "" {
-		model = strings.TrimSpace(req.AgyModel) // backward compat
-	}
-	if model == "" {
 		model = externalllm.DefaultModel()
 	}
 	result.Model = model
-
-	// 3. Determine provider
-	provider := ""
-	agyCommand := strings.TrimSpace(req.AgyCommand)
-	if agyCommand != "" {
-		provider = agyCommand // legacy agy path
-	}
 
 	// 4. Compose prompt
 	lines := strings.Split(outputStr, "\n")
@@ -108,11 +95,10 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 	}
 
 	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{
-		Provider: provider,
-		Model:    model,
-		WorkDir:  root,
-		Prompt:   llmPrompt,
-		Timeout:  timeout,
+		Model:   model,
+		WorkDir: root,
+		Prompt:  llmPrompt,
+		Timeout: timeout,
 	})
 	if err != nil {
 		result.Diagnosis = fmt.Sprintf("[Error running external LLM: %v]\nOriginal Output:\n%s", err, outputStr)

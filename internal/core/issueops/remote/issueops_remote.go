@@ -97,10 +97,10 @@ type IssueOpsRemoteScoringResult struct {
 	Warnings              []string                   `json:"warnings"`
 }
 
-type IssueOpsRemoteAgyJudgeRequest struct {
-	RepoRoot   string
-	AgyCommand string
-	Timeout    time.Duration
-	Attempts   int
-	Request    IssueOpsRemoteScoringRequest
+type IssueOpsRemoteLLMJudgeRequest struct {
+	RepoRoot string
+	Model    string
+	Timeout  time.Duration
+	Attempts int
+	Request  IssueOpsRemoteScoringRequest
 }

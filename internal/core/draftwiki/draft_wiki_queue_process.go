@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/agysettings"
+	"agent-harness/internal/core/externalllm"
 )
 
 func ProcessDraftWikiQueue(req DraftWikiQueueProcessRequest) (DraftWikiQueueProcessResult, error) {
@@ -80,21 +80,9 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 	if targetWiki == "" {
 		targetWiki = strings.TrimSpace(event.TargetWiki)
 	}
-	agyCommand := strings.TrimSpace(req.AgyCommand)
-	if agyCommand == "" {
-		agyCommand = "agy"
-	}
-	settingsPath := agysettings.ResolvePath(req.AgySettingsPath)
-	configuredModel, err := agysettings.ReadConfiguredModel(settingsPath)
-	if err != nil {
-		return failDraftWikiQueueEvent(event, err)
-	}
-	agyModel := strings.TrimSpace(req.AgyModel)
-	if agyModel == "" {
-		agyModel = configuredModel
-	}
-	if configuredModel != agyModel {
-		return failDraftWikiQueueEvent(event, fmt.Errorf("agy model mismatch: settings %s has %q, want %q", settingsPath, configuredModel, agyModel))
+	model := strings.TrimSpace(req.Model)
+	if model == "" {
+		model = externalllm.DefaultModel()
 	}
 	timeout := req.Timeout
 	if timeout <= 0 {
@@ -104,16 +92,16 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 		Title:      "Draft wiki queued memory",
 		TargetWiki: targetWiki,
 		TargetType: targetType,
-	}, event.SourceMaterial, agyModel, targetType)
-	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Provider: agyCommand, WorkDir: event.RepoRoot, Prompt: prompt, Timeout: timeout})
+	}, event.SourceMaterial, model, targetType)
+	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Model: model, WorkDir: event.RepoRoot, Prompt: prompt, Timeout: timeout})
 	if err != nil {
-		return failDraftWikiQueueEvent(event, fmt.Errorf("agy print failed: %w: %s", err, strings.TrimSpace(string(llm.Output))))
+		return failDraftWikiQueueEvent(event, fmt.Errorf("draft-wiki LLM call failed: %w: %s", err, strings.TrimSpace(string(llm.Output))))
 	}
-	draftBody, err := decodeDraftWikiSuggestAgyOutput(llm.Output)
+	draftBody, err := decodeDraftWikiSuggestLLMOutput(llm.Output)
 	if err != nil {
 		return failDraftWikiQueueEvent(event, err)
 	}
-	draftPath, err := writeSuggestedDraft(event.RepoRoot, "Draft wiki queued memory", targetWiki, targetType, agyModel, draftBody)
+	draftPath, err := writeSuggestedDraft(event.RepoRoot, "Draft wiki queued memory", targetWiki, targetType, model, draftBody)
 	if err != nil {
 		return failDraftWikiQueueEvent(event, err)
 	}

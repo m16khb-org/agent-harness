@@ -3,20 +3,15 @@ package draftwiki
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
 func TestDraftWikiQueueReportsMalformedLinesAndContinues(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	configPath := filepath.Join(root, "agy-settings.json")
-	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
-	fakeAgy := filepath.Join(root, "fake-agy.sh")
-	mustWrite(t, fakeAgy, `#!/bin/sh
-cat <<'EOF'
-`+draftWikiAgyJSONForTest(t, `---
+	withFakeDraftWikiZAI(t, draftWikiLLMJSONForTest(t, `---
 title: "Malformed queue still processes"
 source: "claude-mem"
 target_wiki: "agent-harness"
@@ -26,12 +21,7 @@ summary: "Valid queued events continue after malformed lines."
 
 # Malformed queue still processes
 
-Valid queued events continue after malformed lines.`)+`
-EOF
-`)
-	if err := os.Chmod(fakeAgy, 0o755); err != nil {
-		t.Fatal(err)
-	}
+Valid queued events continue after malformed lines.`))
 
 	queued, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{
 		RepoRoot:       root,
@@ -52,11 +42,8 @@ EOF
 	}
 
 	processed, err := ProcessDraftWikiQueue(DraftWikiQueueProcessRequest{
-		RepoRoot:        root,
-		AgyCommand:      fakeAgy,
-		AgyModel:        "Gemini 3.5 Flash (High)",
-		AgySettingsPath: configPath,
-		Limit:           1,
+		RepoRoot: root,
+		Limit:    1,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -83,21 +70,21 @@ EOF
 	}
 }
 
-func TestDraftWikiQueueRunningRewriteFailureDoesNotInvokeAgy(t *testing.T) {
+func TestDraftWikiQueueRunningRewriteFailureDoesNotInvokeLLM(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	configPath := filepath.Join(root, "agy-settings.json")
-	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
-	invoked := filepath.Join(root, "agy-invoked")
-	fakeAgy := filepath.Join(root, "fake-agy.sh")
-	mustWrite(t, fakeAgy, `#!/bin/sh
-touch "`+invoked+`"
-echo should-not-run
-`)
-	if err := os.Chmod(fakeAgy, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{RepoRoot: root, SourceMaterial: "must persist running before agy"}); err != nil {
+	requests := withFakeDraftWikiZAI(t, draftWikiLLMJSONForTest(t, `---
+title: "Should not invoke"
+source: "test"
+target_wiki: "agent-harness"
+target_type: "notes"
+summary: "Should not invoke."
+---
+
+# Should not invoke
+
+Should not invoke.`))
+	if _, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{RepoRoot: root, SourceMaterial: "must persist running before LLM call"}); err != nil {
 		t.Fatal(err)
 	}
 	originalRewrite := rewriteDraftWikiQueueEventsFunc
@@ -107,32 +94,21 @@ echo should-not-run
 	t.Cleanup(func() { rewriteDraftWikiQueueEventsFunc = originalRewrite })
 
 	processed, err := ProcessDraftWikiQueue(DraftWikiQueueProcessRequest{
-		RepoRoot:        root,
-		AgyCommand:      fakeAgy,
-		AgyModel:        "Gemini 3.5 Flash (High)",
-		AgySettingsPath: configPath,
-		Limit:           1,
+		RepoRoot: root,
+		Limit:    1,
 	})
 	if err == nil {
 		t.Fatalf("expected running-state rewrite error, got result %+v", processed)
 	}
-	if _, statErr := os.Stat(invoked); !os.IsNotExist(statErr) {
-		t.Fatalf("fake agy was invoked despite rewrite failure: %v", statErr)
+	if got := atomic.LoadInt32(requests); got != 0 {
+		t.Fatalf("LLM was invoked despite rewrite failure: %d requests", got)
 	}
 }
 
 func TestDraftWikiQueueConcurrentWorkersProcessOneEventOnce(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	configPath := filepath.Join(root, "agy-settings.json")
-	mustWrite(t, configPath, `{"model":"Gemini 3.5 Flash (High)"}`)
-	invocations := filepath.Join(root, "agy-invocations.log")
-	fakeAgy := filepath.Join(root, "fake-agy.sh")
-	mustWrite(t, fakeAgy, `#!/bin/sh
-printf 'invoke\n' >> "`+invocations+`"
-sleep 0.2
-cat <<'EOF'
-`+draftWikiAgyJSONForTest(t, `---
+	requests := withFakeDraftWikiZAI(t, draftWikiLLMJSONForTest(t, `---
 title: "Concurrent queue event"
 source: "claude-mem"
 target_wiki: "agent-harness"
@@ -142,12 +118,7 @@ summary: "One concurrent worker should process the queued event."
 
 # Concurrent queue event
 
-Only one worker should process this event.`)+`
-EOF
-`)
-	if err := os.Chmod(fakeAgy, 0o755); err != nil {
-		t.Fatal(err)
-	}
+Only one worker should process this event.`))
 	if _, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{RepoRoot: root, SourceMaterial: "race one event"}); err != nil {
 		t.Fatal(err)
 	}
@@ -159,11 +130,8 @@ EOF
 		go func() {
 			<-start
 			res, err := ProcessDraftWikiQueue(DraftWikiQueueProcessRequest{
-				RepoRoot:        root,
-				AgyCommand:      fakeAgy,
-				AgyModel:        "Gemini 3.5 Flash (High)",
-				AgySettingsPath: configPath,
-				Limit:           1,
+				RepoRoot: root,
+				Limit:    1,
 			})
 			results <- res
 			errs <- err
@@ -181,12 +149,8 @@ EOF
 	if processedTotal != 1 {
 		t.Fatalf("expected exactly one processed event, got %d", processedTotal)
 	}
-	log, err := os.ReadFile(invocations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := strings.Count(string(log), "invoke"); got != 1 {
-		t.Fatalf("expected one agy invocation, got %d log=%q", got, log)
+	if got := atomic.LoadInt32(requests); got != 1 {
+		t.Fatalf("expected one Z.AI invocation, got %d", got)
 	}
 	drafts, err := ListDraftWiki(DraftWikiListRequest{RepoRoot: root})
 	if err != nil {

@@ -57,7 +57,7 @@ func TestProjectBootstrapPromptUsesStructuredContract(t *testing.T) {
 
 func mustIssueOpsJudgePromptForTest(t *testing.T) string {
 	t.Helper()
-	promptText, err := issueops.BuildIssueOpsAgyJudgePrompt(
+	promptText, err := issueops.BuildIssueOpsLLMJudgePrompt(
 		issueops.IssueOpsBenchmarkFixture{ID: "fixture", Title: "Fixture", UserPrompt: "prompt", RepoContext: "context", CriticalFailures: []string{"critical"}},
 		issueops.IssueOpsBenchmarkArtifact{ProblemSummary: "summary"},
 	)

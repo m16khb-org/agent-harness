@@ -6,11 +6,11 @@ import (
 	"strings"
 )
 
-type draftWikiSuggestAgyResponse struct {
+type draftWikiSuggestLLMResponse struct {
 	BodyMarkdown string `json:"body_markdown"`
 }
 
-func buildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, agyModel, targetType string) string {
+func buildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, model, targetType string) string {
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
 		title = "Draft wiki candidate"
@@ -47,9 +47,9 @@ source: "claude-mem"
 target_wiki: %q
 target_type: %q
 summary: "<one sentence>"
-suggester: "agy -p"
+suggester: "zai:%s"
 model: %q
----`, title, targetWiki, targetType, agyModel),
+---`, title, targetWiki, targetType, model, model),
 		},
 		VerificationChecklist: []string{
 			"body_markdown has valid YAML frontmatter.",
@@ -58,7 +58,7 @@ model: %q
 			"The document is reviewable as a repo-local draft.",
 		},
 		Data: []PromptDataSection{
-			BuildExternalLLMJSONSchemaSection(draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType, agyModel), []string{
+			BuildExternalLLMJSONSchemaSection(draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType, model), []string{
 				"body_markdown: string, required, the complete Markdown draft including YAML frontmatter.",
 			}),
 			{Title: "Source Material", Content: input},
@@ -66,33 +66,33 @@ model: %q
 	})
 }
 
-func decodeDraftWikiSuggestAgyOutput(out []byte) (string, error) {
-	var response draftWikiSuggestAgyResponse
-	if err := DecodeExternalLLMStructuredJSONObject("agy draft wiki suggest", out, &response); err != nil {
-		return "", fmt.Errorf("decode agy draft wiki output: %w", err)
+func decodeDraftWikiSuggestLLMOutput(out []byte) (string, error) {
+	var response draftWikiSuggestLLMResponse
+	if err := DecodeExternalLLMStructuredJSONObject("draft wiki suggest", out, &response); err != nil {
+		return "", fmt.Errorf("decode draft wiki LLM output: %w", err)
 	}
 	body := strings.TrimSpace(response.BodyMarkdown)
 	if body == "" {
-		return "", fmt.Errorf("agy draft wiki output missing body_markdown")
+		return "", fmt.Errorf("draft wiki LLM output missing body_markdown")
 	}
 	return body, nil
 }
 
-func draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType, agyModel string) string {
+func draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType, model string) string {
 	body := fmt.Sprintf(`---
 title: %q
 source: "claude-mem"
 target_wiki: %q
 target_type: %q
 summary: "One sentence summary."
-suggester: "agy -p"
+suggester: "zai:%s"
 model: %q
 ---
 
 # %s
 
-Durable reusable knowledge goes here.`, title, targetWiki, targetType, agyModel, title)
-	b, err := json.MarshalIndent(draftWikiSuggestAgyResponse{BodyMarkdown: body}, "", "  ")
+Durable reusable knowledge goes here.`, title, targetWiki, targetType, model, model, title)
+	b, err := json.MarshalIndent(draftWikiSuggestLLMResponse{BodyMarkdown: body}, "", "  ")
 	if err != nil {
 		return `{"body_markdown":"---\ntitle: \"Draft wiki candidate\"\n---\n\n# Draft wiki candidate\n"}`
 	}

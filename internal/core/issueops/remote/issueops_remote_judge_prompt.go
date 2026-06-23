@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 )
 
-func buildIssueOpsRemoteAgyJudgePrompt(req IssueOpsRemoteScoringRequest) (string, error) {
+func buildIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteScoringRequest) (string, error) {
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return "", err

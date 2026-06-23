@@ -13,7 +13,7 @@ type IssueOpsBenchmarkCompareResult = benchmark.IssueOpsBenchmarkCompareResult
 type IssueOpsAutoresearchCandidate = benchmark.IssueOpsAutoresearchCandidate
 type IssueOpsAutoresearchGateRequest = benchmark.IssueOpsAutoresearchGateRequest
 type IssueOpsAutoresearchGateResult = benchmark.IssueOpsAutoresearchGateResult
-type IssueOpsAgyJudgeRequest = benchmark.IssueOpsAgyJudgeRequest
+type IssueOpsLLMJudgeRequest = benchmark.IssueOpsLLMJudgeRequest
 type RecordedRun = benchmark.RecordedRun
 type RecordedOutcomes = benchmark.RecordedOutcomes
 type FixtureReliability = benchmark.FixtureReliability
@@ -79,14 +79,14 @@ func EvaluateIssueOpsAutoresearchGate(req IssueOpsAutoresearchGateRequest) Issue
 	return benchmark.EvaluateIssueOpsAutoresearchGate(req)
 }
 
-func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, error) {
-	return benchmark.RunIssueOpsAgyJudge(req)
+func RunIssueOpsLLMJudge(req IssueOpsLLMJudgeRequest) (IssueOpsBenchmarkScore, error) {
+	return benchmark.RunIssueOpsLLMJudge(req)
 }
 
 func DecodeIssueOpsBenchmarkJudgeJSON(out []byte) (IssueOpsBenchmarkScore, error) {
 	return benchmark.DecodeIssueOpsBenchmarkJudgeJSON(out)
 }
 
-func BuildIssueOpsAgyJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
-	return benchmark.BuildIssueOpsAgyJudgePrompt(fixture, artifact)
+func BuildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
+	return benchmark.BuildIssueOpsLLMJudgePrompt(fixture, artifact)
 }

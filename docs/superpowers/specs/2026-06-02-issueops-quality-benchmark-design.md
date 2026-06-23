@@ -11,7 +11,7 @@ Without a benchmark, prompt or workflow changes can only claim improvement subje
 - IssueOps has repo-local synthetic fixtures that can be run without GitHub/GitLab credentials.
 - A benchmark run scores IssueOps artifacts across intent, issue, plan, task, TDD, subagent, implementation-readiness, and PR/MR dimensions.
 - Scoring combines deterministic checks with an LLM judge.
-- The initial LLM judge backend uses `agy -p`, but the score schema is backend-neutral.
+- The initial LLM judge backend uses `Z.AI Coding Plan`, but the score schema is backend-neutral.
 - Judge output must decode as strict JSON and pass schema validation; decode or schema failure is a critical failure.
 - Benchmark compare can prove whether a candidate improves over a baseline using average score, minimum score, critical failure count, and per-dimension regressions.
 - The benchmark also checks IssueOps workflow contract quality: phase choices after every step and isolated worktree gating after issue creation.
@@ -37,7 +37,7 @@ Without a benchmark, prompt or workflow changes can only claim improvement subje
 - **Fixture**: a repo-local synthetic problem scenario with user request, repo context, expected quality criteria, and critical failure rules.
 - **Artifact bundle**: the IssueOps outputs being judged for a fixture, such as problem summary, issue draft, plan, task breakdown, TDD plan, subagent prompts, implementation notes, and PR/MR draft.
 - **Deterministic check**: a parser or rule that verifies required structure, fields, commands, links, phase gates, and isolation evidence.
-- **LLM judge check**: an `agy -p` evaluation that scores semantic quality against the fixture rubric.
+- **LLM judge check**: an `Z.AI Coding Plan` evaluation that scores semantic quality against the fixture rubric.
 - **Critical failure**: a failure that prevents passing regardless of average score.
 - **Phase choice gate**: the requirement that each IssueOps phase ends by presenting next-step options and waiting for user choice.
 - **Isolated worktree gate**: the requirement that implementation work only begins after an issue-based branch is provided and an isolated git worktree is created.
@@ -131,7 +131,7 @@ These checks should run without an LLM and should be deterministic enough for CI
 
 ## LLM Judge
 
-The initial judge backend is `agy -p`.
+The initial judge backend is `Z.AI Coding Plan`.
 
 The judge prompt must:
 
@@ -143,7 +143,7 @@ The judge prompt must:
 
 The harness must:
 
-- execute `agy -p` through an explicit judge adapter,
+- execute `Z.AI Coding Plan` through an explicit judge adapter,
 - parse the first successful strict JSON response,
 - validate the schema,
 - retry only within a small bounded retry count when output is malformed,
@@ -156,7 +156,7 @@ The score schema must not depend on Gemini-specific fields so another judge back
 Add benchmark subcommands under `issueops`.
 
 ```bash
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge agy --json
+agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --json
 agent-harness issueops benchmark compare --baseline KEY --candidate KEY --json
 ```
 
@@ -231,7 +231,7 @@ Implementation should be verified with:
 
 - fixture schema tests,
 - deterministic scorer tests,
-- fake `agy` judge tests for valid JSON, malformed output retry, and schema failure,
+- fake Z.AI judge tests for valid JSON, malformed output retry, and schema failure,
 - CLI benchmark run and compare tests,
 - worktree cleanup gate tests for clean, dirty, merged, unmerged, and user-declined cleanup scenarios,
 - worker context gate tests for `pwd`, branch, `HEAD`, expected worktree path, and mismatch stop instructions,

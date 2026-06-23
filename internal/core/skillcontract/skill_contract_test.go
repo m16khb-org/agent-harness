@@ -41,7 +41,7 @@ func TestKarpathySkillPinsPrivacyAndProportionalityContract(t *testing.T) {
 func TestDraftWikiPromoterSkillPinsHookAndPromotionContract(t *testing.T) {
 	assertSkillContains(t, "draft-wiki-promoter", []string{
 		// Hook boundary.
-		"Never run `agy -p` inside PostToolUse hooks",
+		"Never run external LLM calls inside PostToolUse hooks",
 		// Promotion gate.
 		"only approved drafts may be promoted",
 		// Operational-measurement fixes (DWP-O findings).

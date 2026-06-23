@@ -13,19 +13,13 @@ import (
 
 // CommitSuggestRequest configures the commit message suggestion.
 //
-// Model (formerly AgyModel) selects the external LLM model for Z.AI.
+// Model selects the external LLM model for Z.AI.
 // Set to empty to use the default ("glm-5-turbo").
-//
-// AgyCommand (deprecated) is ignored when empty. When set to a non-empty
-// value the legacy agy CLI is used instead of Z.AI.
 type CommitSuggestRequest struct {
-	RepoRoot        string        `json:"repo_root"`
-	Staged          bool          `json:"staged"`
-	Model           string        `json:"model,omitempty"`
-	AgyCommand      string        `json:"agy_command,omitempty"`
-	AgyModel        string        `json:"agy_model,omitempty"`
-	AgySettingsPath string        `json:"-"`
-	Timeout         time.Duration `json:"-"`
+	RepoRoot string        `json:"repo_root"`
+	Staged   bool          `json:"staged"`
+	Model    string        `json:"model,omitempty"`
+	Timeout  time.Duration `json:"-"`
 }
 
 type CommitSuggestResult struct {
@@ -72,17 +66,7 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 
 	// 2. Resolve model
 	model := strings.TrimSpace(req.Model)
-	if model == "" {
-		model = strings.TrimSpace(req.AgyModel) // backward compat
-	}
 	// If neither is set model stays empty → default "glm-5-turbo"
-
-	// 3. Determine provider
-	provider := ""
-	agyCommand := strings.TrimSpace(req.AgyCommand)
-	if agyCommand != "" {
-		provider = agyCommand // legacy agy path
-	}
 
 	// 4. Compose prompt
 	llmPrompt := BuildPrompt(diffContent)
@@ -94,11 +78,10 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 	}
 
 	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{
-		Provider: provider,
-		Model:    model,
-		WorkDir:  root,
-		Prompt:   llmPrompt,
-		Timeout:  timeout,
+		Model:   model,
+		WorkDir: root,
+		Prompt:  llmPrompt,
+		Timeout: timeout,
 	})
 	if err != nil {
 		return CommitSuggestResult{}, fmt.Errorf("commit suggest LLM call failed: %w: %s", err, strings.TrimSpace(string(llm.Output)))

@@ -257,7 +257,7 @@ Load from other skill directories when the phase involves specialized work:
 - Torvalds commit protocol: every commit must be atomic (one intent per commit). Use Conventional Commit + Lore body format per `.agent-harness/COMMIT_POLICY.md`. Never force-push shared branches. Always create a backup branch before history rewrite.
 - Berners-Lee research protocol: during grill and issue phases, external claims must cite sources with retrieval dates. Claims without ≥2 independent sources are flagged as single-sourced. Research reports are committed to `.agent-harness/research/`.
 - Completion hygiene: before reporting done, verify the final diff, target branch, remote issue/PR/MR prose freshness, single-commit or declared commit policy, and cleanup/worktree status.
-- External LLM wrapper: all IssueOps `agy -p` usage must go through the shared harness external LLM wrapper and remain read-only judgment.
+- External LLM wrapper: all IssueOps LLM judging must go through the shared harness external LLM wrapper, defaulting to Z.AI `glm-5-turbo`, and remain read-only judgment.
 
 ## Gate Quick Reference
 
@@ -301,7 +301,7 @@ IssueOps must leave an auditable decision trail for labels, large issue breakdow
 Use this remote issue scoring choice shape before creating or editing an issue:
 
 ```text
-관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 agy judge, 실패 시 deterministic fallback으로 진행합니다.
+관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 Z.AI `glm-5-turbo` LLM judge, 실패 시 deterministic fallback으로 진행합니다.
 ```
 
 Use this review thread reply shape:
@@ -355,13 +355,13 @@ External LLM judges are read-only evaluators. Their prompts must forbid workspac
 
 ### Benchmark Judge Protocol (subagent-first)
 
-When an issueops benchmark needs an LLM judge, prefer a fresh-context sub-agent over the legacy external `agy -p` backend:
+When an issueops benchmark needs an LLM judge, use the Z.AI `glm-5-turbo` backend or a fresh-context sub-agent for independent review:
 
 1. Run the deterministic pass first: `agent-harness issueops benchmark run --fixtures <dir> --judge none --json`.
 2. The main agent dispatches a **fresh-context** sub-agent (no inherited conversation context, never the author of the artifacts being judged — no self-scoring) with a deterministic input packet: ① the rubric dimension list with one-line definitions, ② the artifact fields to judge, ③ the required output: a `{"<fixtureID>": <IssueOpsBenchmarkScore>}` map as JSON only, no preamble.
 3. Feed the returned map through `agent-harness issueops benchmark run --fixtures <dir> --judge file --judge-file <map.json> --json`. The CLI strict-decodes each score and fails closed on missing/unknown fixture keys.
 
-`--judge agy` remains as a legacy external-LLM fallback. Honesty note: the no-self-approval constraint is a documented orchestration protocol — the Go `--judge file` layer only sees bytes and cannot verify who produced the judgment; enforcement lives in the main agent's dispatch discipline.
+`--judge llm` uses the shared Z.AI external-LLM wrapper. Honesty note: the no-self-approval constraint is a documented orchestration protocol — the Go `--judge file` layer only sees bytes and cannot verify who produced the judgment; enforcement lives in the main agent's dispatch discipline.
 
 ## Operational Start
 
@@ -467,7 +467,7 @@ agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source review --body "
 agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
 ```
 
-Remote scoring runs deterministically and is also available as the MCP tool `issueops_remote_score` for cross-host (Codex/Claude) use; the agy judge path stays CLI/`remote score --judge agy`. Benchmark commands (`benchmark run|compare|gate`) are CLI-only developer/autoresearch tooling, not a runtime MCP gate.
+Remote scoring runs deterministically and is also available as the MCP tool `issueops_remote_score` for cross-host (Codex/Claude) use; the LLM judge path stays CLI/`remote score --judge llm --model glm-5-turbo`. Benchmark commands (`benchmark run|compare|gate`) are CLI-only developer/autoresearch tooling, not a runtime MCP gate.
 
 ## Stop Conditions
 

@@ -1,20 +1,20 @@
-# Self-Verify Opt-In LLM Evaluation via agy -p
+# Self-Verify Opt-In LLM Evaluation via Z.AI Coding Plan
 
 ## TL;DR
-> Summary:      Add opt-in LLM evaluation to `agent-harness self-verify` by invoking `agy -p` after the deterministic loop, without changing default deterministic behavior.
+> Summary:      Add opt-in LLM evaluation to `agent-harness self-verify` by invoking `Z.AI Coding Plan` after the deterministic loop, without changing default deterministic behavior.
 > Deliverables:
-> - `--llm-eval`, `--llm-eval-mode=advisory|gate`, `--agy-command`, and `internal default timeout` across CLI usage, tests, and MCP parity.
-> - Structured `llm_eval` JSON with bounded prompt/output/error handling and fake-`agy` tests/QA.
+> - `--llm-eval`, `--llm-eval-mode=advisory|gate`, `--model`, and `internal default timeout` across CLI usage, tests, and MCP parity.
+> - Structured `llm_eval` JSON with bounded prompt/output/error handling and fake Z.AI tests/QA.
 > - Narrow documentation exception for opt-in post-loop LLM evaluation, preserving the “no model calls on default/hook paths” rule.
 > Effort:       Medium
 > Risk:         Medium - current worktree already has partial uncommitted implementation and this feature touches CLI, MCP schema, goldens, docs, and process execution semantics.
 
 ## Scope
 ### Must have
-- Preserve default `self-verify` output and deterministic behavior: no `agy`, no model/network dependency, and no `llm_eval` field unless `--llm-eval` or matching MCP argument is explicitly enabled.
-- Invoke exactly `agy -p <bounded-evidence-packet>` for LLM evaluation, using configurable command path and timeout; tests and QA must use fake `agy` scripts only.
+- Preserve default `self-verify` output and deterministic behavior: no `zai`, no model/network dependency, and no `llm_eval` field unless `--llm-eval` or matching MCP argument is explicitly enabled.
+- Invoke exactly `Z.AI Coding Plan <bounded-evidence-packet>` for LLM evaluation, using configurable command path and timeout; tests and QA must use fake Z.AI scripts only.
 - Return structured `llm_eval` in immediate JSON output with fields for `ok`, `mode`, `score`, `summary`, `blockers`, `risks`, `recommended_next_actions`, `evidence_packet_bytes`, and bounded `error`.
-- Make advisory mode the default: malformed output or `agy` failure is recorded in `llm_eval` and does not fail deterministic self-verify when deterministic self-verify passed.
+- Make advisory mode the default: malformed output or `zai` failure is recorded in `llm_eval` and does not fail deterministic self-verify when deterministic self-verify passed.
 - Support gate mode: LLM `ok=false`, score below target, blockers, command failure, timeout, or parse failure make the overall self-verify result not OK and return a gate error while still emitting structured JSON when `--json` is used.
 - Keep LLM evaluation once-after-deterministic-loop; do not add LLM calls inside the 10-iteration self-verify loop.
 - Keep CLI and MCP argument/result contracts aligned and update contract/golden fixtures.
@@ -22,18 +22,18 @@
 - Capture tmux QA artifacts under `evidence/`.
 
 ### Must NOT have (guardrails, anti-slop, scope boundaries)
-- Must not call real `agy` in tests or automated QA; use fake scripts with deterministic JSON.
-- Must not add `--dangerously-skip-permissions` or any other implicit `agy` flags beyond `-p` unless the user explicitly approves a new requirement.
+- Must not call real `zai` in tests or automated QA; use fake scripts with deterministic JSON.
+- Must not add `--dangerously-skip-permissions` or any other implicit `zai` flags beyond `-p` unless the user explicitly approves a new requirement.
 - Must not change deterministic scoring, minimum 10-iteration rule, candidate export, history, compare, or promote semantics except where the immediate `self-verify` result records opt-in `llm_eval`.
 - Must not persist raw LLM prompt/output or secrets in state, logs, docs, tests, fixtures, or MCP responses.
-- Must not make hooks, native install/update, daemon status, or default MCP tool calls invoke `agy`.
+- Must not make hooks, native install/update, daemon status, or default MCP tool calls invoke `zai`.
 - Must not overwrite or revert unrelated dirty worktree changes; current dirty files include code, goldens, adapters, docs plans, and untracked `cmd/harness/self_verify_llm_eval.go`.
 - Must not reimplement LLM Wiki or broader agent-advisor behavior.
 
 ## Verification strategy
 > Zero human intervention - all verification is agent-executed.
 - Test decision: TDD + Go `testing`; each implementation task starts by adding/fixing the failing test or golden assertion, captures RED evidence against the pre-fix state or temporary clean worktree, then captures GREEN evidence after code changes.
-- QA policy: every task has agent-executed scenarios using fake `agy` where LLM evaluation is involved.
+- QA policy: every task has agent-executed scenarios using fake Z.AI where LLM evaluation is involved.
 - Evidence: `evidence/task-<N>-<slug>.<ext>`
 
 ## Execution strategy
@@ -47,7 +47,7 @@ Wave 1 (no dependencies):
 - Task 1: Baseline worktree, schema/default-off contract, and TDD guard
 
 Wave 2 (after Wave 1):
-- Task 2: depends [1] - Harden fake-`agy` execution, prompt budget, parser, and advisory/gate semantics
+- Task 2: depends [1] - Harden fake Z.AI execution, prompt budget, parser, and advisory/gate semantics
 - Task 5: depends [1] - Document narrow opt-in architecture exception
 
 Wave 3 (after Wave 2):
@@ -55,7 +55,7 @@ Wave 3 (after Wave 2):
 - Task 4: depends [2] - Add MCP `self_verify` LLM-eval parity and contract coverage
 
 Wave 4 (after Wave 3):
-- Task 6: depends [3, 4, 5] - Run fake-`agy` tmux QA and cleanup receipts
+- Task 6: depends [3, 4, 5] - Run fake Z.AI tmux QA and cleanup receipts
 
 Critical path: Task 1 -> Task 2 -> Task 3 -> Task 6
 
@@ -76,7 +76,7 @@ Critical path: Task 1 -> Task 2 -> Task 3 -> Task 6
 - [ ] 1. Baseline worktree, schema/default-off contract, and TDD guard
 
   What to do: Capture current dirty worktree status before touching anything; preserve existing partial uncommitted work instead of reverting it. Lock the result schema and default-off behavior with tests first. Treat the untracked `cmd/harness/self_verify_llm_eval.go` as current work-in-progress to review, not as a clean accepted implementation. Ensure `SelfAugmentResult.LLMEval` remains `omitempty` and no default JSON contains `llm_eval`.
-  Must NOT do: Do not run real `agy`; do not edit docs or MCP schema in this task; do not stage unrelated dirty files.
+  Must NOT do: Do not run real `zai`; do not edit docs or MCP schema in this task; do not stage unrelated dirty files.
 
   Parallelization: Can parallel: NO | Wave 1 | Blocks: [2, 5] | Blocked by: []
 
@@ -114,7 +114,7 @@ PY`
     Expected: command exits 0 and test output includes PASS; the test fails if marshalled default JSON contains llm_eval.
     Evidence: evidence/task-1-self-verify-llm-eval-default.txt
 
-  Scenario: Advisory fake agy result is structured
+  Scenario: Advisory fake Z.AI result is structured
     Tool:     bash
     Steps:    go test ./cmd/harness -run TestSelfVerifyLLMEvalAdvisorySuccess -count=1 | tee evidence/task-1-self-verify-llm-eval-advisory.txt
     Expected: command exits 0; the fake reviewer score, risks, next actions, and evidence_packet_bytes are preserved in llm_eval.
@@ -123,23 +123,23 @@ PY`
 
   Commit: YES | Message: `test(self-verify): lock llm eval contract` | Files: [`cmd/harness/main.go`, `cmd/harness/self_verify_llm_eval.go`, `cmd/harness/self_augment_summary_test.go`, `evidence/task-1-self-verify-llm-eval-*.txt`, `evidence/task-1-self-verify-llm-eval-baseline-diff.patch`]
 
-- [ ] 2. Harden fake-`agy` execution, prompt budget, parser, and advisory/gate semantics
+- [ ] 2. Harden fake Z.AI execution, prompt budget, parser, and advisory/gate semantics
 
-  What to do: Make `cmd/harness/self_verify_llm_eval.go` execute `agy -p` exactly, with `context.WithTimeout`, bounded evidence packet, strict single-JSON-object decoding, bounded error strings, and deterministic advisory/gate behavior. Update fake-`agy` tests so the first argument must be `-p`; remove the current `--dangerously-skip-permissions` expectation from `cmd/harness/self_augment_summary_test.go:1016-1024` and from execution at `cmd/harness/self_verify_llm_eval.go:91-94`. Add missing tests for command failure, timeout, extra JSON values, prompt budget, default timeout, empty command fallback, and gate failure on parse/command errors.
+  What to do: Make `cmd/harness/self_verify_llm_eval.go` execute `Z.AI Coding Plan` exactly, with `context.WithTimeout`, bounded evidence packet, strict single-JSON-object decoding, bounded error strings, and deterministic advisory/gate behavior. Update fake Z.AI tests so the first argument must be `-p`; remove the current `--dangerously-skip-permissions` expectation from `cmd/harness/self_augment_summary_test.go:1016-1024` and from execution at `cmd/harness/self_verify_llm_eval.go:91-94`. Add missing tests for command failure, timeout, extra JSON values, prompt budget, default timeout, empty command fallback, and gate failure on parse/command errors.
   Must NOT do: Do not add unrequested prompt configurability; do not include raw full self-verify runs in the prompt; do not loosen JSON parsing to accept prose around JSON.
 
   Parallelization: Can parallel: YES | Wave 2 | Blocks: [3, 4] | Blocked by: [1]
 
   References (executor has NO interview context - be exhaustive):
-  - Pattern:  `internal/core/draft_wiki_queue.go:218-223` - existing safe `exec.CommandContext(ctx, agyCommand, "-p", prompt).CombinedOutput()` pattern.
-  - Pattern:  `internal/core/draft_wiki_test.go:244-319` - fake `agy` script pattern that checks `$1 = -p` and records prompt content.
+  - Pattern:  `internal/core/draft_wiki_queue.go:218-223` - existing safe `exec.CommandContext(ctx, Z.AICommand, "-p", prompt).CombinedOutput()` pattern.
+  - Pattern:  `internal/core/draft_wiki_test.go:244-319` - fake Z.AI script pattern that checks `$1 = -p` and records prompt content.
   - API/Type: `cmd/harness/self_verify_llm_eval.go:14-35` - budget constants and result DTO fields.
   - Pattern:  `cmd/harness/self_verify_llm_eval.go:64-112` - current apply function; revise command argv, timeout, error, and gate handling here.
   - Pattern:  `cmd/harness/self_verify_llm_eval.go:115-140` - current bounded prompt builder; keep bounded and focused on summary/last run.
   - Pattern:  `cmd/harness/self_verify_llm_eval.go:143-155` - strict decoder rejects extra JSON values.
   - Pattern:  `cmd/harness/self_verify_llm_eval.go:168-188` - gate semantics currently flips OK and termination eligibility.
   - Test:     `cmd/harness/self_augment_summary_test.go:982-1007` - malformed output and gate failure tests to expand.
-  - External: local `agy --help` evidence from `$HOME/.local/bin/agy` shows `-p, --print` and `--print-timeout`, so this feature should pass prompt via `-p` and keep timeout owned by harness.
+  - External: local `Z.AI --help` evidence from `$HOME/.local/bin/Z.AI` shows `-p, --print` and `--print-timeout`, so this feature should pass prompt via `-p` and keep timeout owned by harness.
 
   Acceptance criteria (agent-executable only):
   - [ ] RED tests captured before implementation changes for all new execution edge cases:
@@ -150,7 +150,7 @@ PY`
     `python3 - <<'PY'
 from pathlib import Path
 src = Path('cmd/harness/self_verify_llm_eval.go').read_text()
-assert 'exec.CommandContext(ctx, agyCommand, "-p", evidencePacket)' in src
+assert 'exec.CommandContext(ctx, Z.AICommand, "-p", evidencePacket)' in src
 assert '--dangerously-skip-permissions' not in src
 print('ok')
 PY`
@@ -166,24 +166,24 @@ PY`
 
   QA scenarios (MANDATORY - task incomplete without these):
   ```
-  Scenario: Malformed fake agy is advisory-only structured failure
+  Scenario: Malformed fake Z.AI is advisory-only structured failure
     Tool:     bash
     Steps:    go test ./cmd/harness -run TestSelfVerifyLLMEvalMalformedOutputIsStructured -count=1 | tee evidence/task-2-self-verify-llm-eval-malformed.txt
     Expected: command exits 0; result remains OK in advisory mode and llm_eval.ok=false with bounded parse error.
     Evidence: evidence/task-2-self-verify-llm-eval-malformed.txt
 
-  Scenario: Gate mode converts fake agy blocker into self-verify gate failure
+  Scenario: Gate mode converts fake Z.AI blocker into self-verify gate failure
     Tool:     bash
     Steps:    go test ./cmd/harness -run TestSelfVerifyLLMEvalGateFailsOnBlocker -count=1 | tee evidence/task-2-self-verify-llm-eval-gate.txt
     Expected: command exits 0; test asserts overall OK=false, termination_eligible=false, and error contains LLM evaluation gate failed.
     Evidence: evidence/task-2-self-verify-llm-eval-gate.txt
   ```
 
-  Commit: YES | Message: `fix(self-verify): harden agy eval execution` | Files: [`cmd/harness/self_verify_llm_eval.go`, `cmd/harness/self_augment_summary_test.go`, `evidence/task-2-self-verify-llm-eval-*.txt`]
+  Commit: YES | Message: `fix(self-verify): harden Z.AI eval execution` | Files: [`cmd/harness/self_verify_llm_eval.go`, `cmd/harness/self_augment_summary_test.go`, `evidence/task-2-self-verify-llm-eval-*.txt`]
 
 - [ ] 3. Finish CLI flags, usage, save-state boundary, and golden coverage
 
-  What to do: Complete the CLI surface so `--llm-eval`, `--llm-eval-mode`, `--agy-command`, and `internal default timeout` are discoverable, validated, covered by tests, and represented in usage goldens. Keep `--save-state` compact-summary behavior unchanged unless a test explicitly proves current summaries need a boolean marker; immediate JSON should contain `llm_eval`, history/compare/promote should not store raw LLM review data.
+  What to do: Complete the CLI surface so `--llm-eval`, `--llm-eval-mode`, `--model`, and `internal default timeout` are discoverable, validated, covered by tests, and represented in usage goldens. Keep `--save-state` compact-summary behavior unchanged unless a test explicitly proves current summaries need a boolean marker; immediate JSON should contain `llm_eval`, history/compare/promote should not store raw LLM review data.
   Must NOT do: Do not make `--llm-eval-mode` meaningful without `--llm-eval` beyond validation; do not silently run LLM eval during `history`, `compare`, `promote`, or `candidates`.
 
   Parallelization: Can parallel: YES | Wave 3 | Blocks: [6] | Blocked by: [2]
@@ -199,9 +199,9 @@ PY`
 
   Acceptance criteria (agent-executable only):
   - [ ] RED captured for CLI usage/flag behavior before fixes:
-    `go test ./cmd/harness -run 'TestUsageGolden|TestRunSelfVerifyRejectsUnknownLLMEvalMode|TestRunSelfVerifyLLMEvalAdvisoryFakeAgy|TestRunSelfVerifyLLMEvalGateFakeAgy|TestRunSelfVerifyLLMEvalTimeoutFlag' -count=1 | tee evidence/task-3-self-verify-llm-eval-red.txt`
+    `go test ./cmd/harness -run 'TestUsageGolden|TestRunSelfVerifyRejectsUnknownLLMEvalMode|TestRunSelfVerifyLLMEvalAdvisoryFakeLLM|TestRunSelfVerifyLLMEvalGateFakeLLM|TestRunSelfVerifyLLMEvalTimeoutFlag' -count=1 | tee evidence/task-3-self-verify-llm-eval-red.txt`
   - [ ] GREEN captured after fixes:
-    `go test ./cmd/harness -run 'TestUsageGolden|TestRunSelfVerifyRejectsUnknownLLMEvalMode|TestRunSelfVerifyLLMEvalAdvisoryFakeAgy|TestRunSelfVerifyLLMEvalGateFakeAgy|TestRunSelfVerifyLLMEvalTimeoutFlag' -count=1 | tee evidence/task-3-self-verify-llm-eval-green.txt`
+    `go test ./cmd/harness -run 'TestUsageGolden|TestRunSelfVerifyRejectsUnknownLLMEvalMode|TestRunSelfVerifyLLMEvalAdvisoryFakeLLM|TestRunSelfVerifyLLMEvalGateFakeLLM|TestRunSelfVerifyLLMEvalTimeoutFlag' -count=1 | tee evidence/task-3-self-verify-llm-eval-green.txt`
   - [ ] Usage source and golden both expose timeout:
     `python3 - <<'PY'
 from pathlib import Path
@@ -215,14 +215,14 @@ PY`
 
   QA scenarios (MANDATORY - task incomplete without these):
   ```
-  Scenario: CLI advisory fake agy emits llm_eval in JSON
+  Scenario: CLI advisory fake Z.AI emits llm_eval in JSON
     Tool:     bash
-    Steps:    go build -o bin/agent-harness ./cmd/harness && tmp="$(mktemp -d)" && cat > "$tmp/agy" <<'SH'
+    Steps:    go build -o bin/agent-harness ./cmd/harness && tmp="$(mktemp -d)" && cat > "$tmp/Z.AI" <<'SH'
 #!/bin/sh
 [ "$1" = "-p" ] || { echo "expected -p" >&2; exit 9; }
 printf '{"ok":true,"score":98,"summary":"fake advisory ok","blockers":[],"risks":[],"recommended_next_actions":[]}\n'
 SH
-chmod +x "$tmp/agy" && ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --agy-command "$tmp/agy" internal default timeout=2s --json > evidence/task-3-self-verify-llm-eval-cli.json && python3 - <<'PY'
+chmod +x "$tmp/Z.AI" && ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --model "$tmp/Z.AI" internal default timeout=2s --json > evidence/task-3-self-verify-llm-eval-cli.json && python3 - <<'PY'
 import json
 from pathlib import Path
 obj = json.loads(Path('evidence/task-3-self-verify-llm-eval-cli.json').read_text())
@@ -234,7 +234,7 @@ PY
     Expected: command exits 0; JSON has llm_eval.mode=advisory, llm_eval.ok=true, score 98.
     Evidence: evidence/task-3-self-verify-llm-eval-cli.json
 
-  Scenario: CLI invalid mode fails before fake agy is needed
+  Scenario: CLI invalid mode fails before fake Z.AI is needed
     Tool:     bash
     Steps:    set +e; ./bin/agent-harness self-verify --llm-eval --llm-eval-mode=unknown --json > evidence/task-3-self-verify-llm-eval-invalid.out 2>&1; code=$?; set -e; python3 - "$code" <<'PY'
 import sys
@@ -253,7 +253,7 @@ PY
 
 - [ ] 4. Add MCP `self_verify` LLM-eval parity and contract coverage
 
-  What to do: Add `llm_eval`, `llm_eval_mode`, `agy_command`, and `llm_eval_timeout` to the MCP `self_verify` input schema and handler. Route MCP through the same LLM eval function as CLI after deterministic `selfVerify(...)`. Validate durations and mode exactly as CLI. Preserve default MCP behavior when `llm_eval` is absent. Update MCP tool and response contract goldens.
+  What to do: Add `llm_eval`, `llm_eval_mode`, `model`, and `llm_eval_timeout` to the MCP `self_verify` input schema and handler. Route MCP through the same LLM eval function as CLI after deterministic `selfVerify(...)`. Validate durations and mode exactly as CLI. Preserve default MCP behavior when `llm_eval` is absent. Update MCP tool and response contract goldens.
   Must NOT do: Do not create a separate MCP-only DTO or schema drift; do not return JSON-RPC errors for advisory LLM parse/command failures; gate failures should return the structured self-verify payload consistently with existing self-verification gate handling unless existing MCP contract tests prove otherwise.
 
   Parallelization: Can parallel: YES | Wave 3 | Blocks: [6] | Blocked by: [2]
@@ -271,9 +271,9 @@ PY
 
   Acceptance criteria (agent-executable only):
   - [ ] RED captured for MCP schema/handler tests:
-    `go test ./cmd/harness -run 'TestMCPToolsGolden|TestResponseContractsGolden|TestMCPSelfVerifyLLMEvalDefaultOmitted|TestMCPSelfVerifyLLMEvalAdvisoryFakeAgy|TestMCPSelfVerifyLLMEvalGateFakeAgy|TestMCPSelfVerifyLLMEvalInvalidTimeout' -count=1 | tee evidence/task-4-self-verify-llm-eval-red.txt`
+    `go test ./cmd/harness -run 'TestMCPToolsGolden|TestResponseContractsGolden|TestMCPSelfVerifyLLMEvalDefaultOmitted|TestMCPSelfVerifyLLMEvalAdvisoryFakeLLM|TestMCPSelfVerifyLLMEvalGateFakeLLM|TestMCPSelfVerifyLLMEvalInvalidTimeout' -count=1 | tee evidence/task-4-self-verify-llm-eval-red.txt`
   - [ ] GREEN captured after implementation:
-    `go test ./cmd/harness -run 'TestMCPToolsGolden|TestResponseContractsGolden|TestMCPSelfVerifyLLMEvalDefaultOmitted|TestMCPSelfVerifyLLMEvalAdvisoryFakeAgy|TestMCPSelfVerifyLLMEvalGateFakeAgy|TestMCPSelfVerifyLLMEvalInvalidTimeout' -count=1 | tee evidence/task-4-self-verify-llm-eval-green.txt`
+    `go test ./cmd/harness -run 'TestMCPToolsGolden|TestResponseContractsGolden|TestMCPSelfVerifyLLMEvalDefaultOmitted|TestMCPSelfVerifyLLMEvalAdvisoryFakeLLM|TestMCPSelfVerifyLLMEvalGateFakeLLM|TestMCPSelfVerifyLLMEvalInvalidTimeout' -count=1 | tee evidence/task-4-self-verify-llm-eval-green.txt`
   - [ ] MCP golden contains all new inputs:
     `python3 - <<'PY'
 import json
@@ -281,7 +281,7 @@ from pathlib import Path
 tools = json.loads(Path('cmd/harness/testdata/mcp_tools.golden.json').read_text())
 self_verify = next(t for t in tools if t['name'] == 'self_verify')
 props = self_verify['inputSchema']['properties']
-for key in ['llm_eval','llm_eval_mode','agy_command','llm_eval_timeout']:
+for key in ['llm_eval','llm_eval_mode','model','llm_eval_timeout']:
     assert key in props, key
 print('ok')
 PY`
@@ -296,9 +296,9 @@ PY`
     Expected: command exits 0; MCP payload omits llm_eval when llm_eval argument is absent.
     Evidence: evidence/task-4-self-verify-llm-eval-mcp-default.txt
 
-  Scenario: MCP self_verify advisory fake agy returns structured llm_eval
+  Scenario: MCP self_verify advisory fake Z.AI returns structured llm_eval
     Tool:     bash
-    Steps:    go test ./cmd/harness -run TestMCPSelfVerifyLLMEvalAdvisoryFakeAgy -count=1 | tee evidence/task-4-self-verify-llm-eval-mcp-advisory.txt
+    Steps:    go test ./cmd/harness -run TestMCPSelfVerifyLLMEvalAdvisoryFakeLLM -count=1 | tee evidence/task-4-self-verify-llm-eval-mcp-advisory.txt
     Expected: command exits 0; MCP payload contains llm_eval.mode=advisory and fake score.
     Evidence: evidence/task-4-self-verify-llm-eval-mcp-advisory.txt
   ```
@@ -307,19 +307,19 @@ PY`
 
 - [ ] 5. Document narrow opt-in architecture exception
 
-  What to do: Update project docs to explicitly allow only this post-loop, opt-in `self-verify --llm-eval` path to invoke `agy -p`, while preserving the default no-model-call invariant. Clarify that hooks and default install/update/native paths must not call `agy`; fake `agy` is required in tests; prompt/output are bounded and must not persist raw secrets; CLI and MCP options are equivalent.
+  What to do: Update project docs to explicitly allow only this post-loop, opt-in `self-verify --llm-eval` path to invoke `Z.AI Coding Plan`, while preserving the default no-model-call invariant. Clarify that hooks and default install/update/native paths must not call `zai`; fake Z.AI is required in tests; prompt/output are bounded and must not persist raw secrets; CLI and MCP options are equivalent.
   Must NOT do: Do not broaden this into a generic LLM advisor, worker policy, LLM Wiki clone, or default self-verify behavior.
 
   Parallelization: Can parallel: YES | Wave 2 | Blocks: [6] | Blocked by: [1]
 
   References (executor has NO interview context - be exhaustive):
   - Project:  `.agent-harness/ADR.md:332-350` - current ADR says the harness does not call models; add a narrow exception rather than contradicting it.
-  - Project:  `.agent-harness/ARCHITECTURE.md:110-116` - current architecture lists existing `agy -p` surfaces; add self-verify opt-in post-loop as bounded exception.
+  - Project:  `.agent-harness/ARCHITECTURE.md:110-116` - current architecture lists existing `Z.AI Coding Plan` surfaces; add self-verify opt-in post-loop as bounded exception.
   - Project:  `.agent-harness/OPERATIONS.md:176-185` - self-verify CLI examples; add advisory/gate examples with fake/test caution.
   - Project:  `.agent-harness/OPERATIONS.md:227-231` - progress/save-state/history/compare behavior; clarify `llm_eval` immediate JSON vs compact state boundary.
   - Project:  `.agent-harness/CAUTIONS.md:101-108` - self-verify drift cautions; add no LLM inside the loop and no lower iteration minimum.
   - Project:  `.agent-harness/CAUTIONS.md:122-132` - no LLM Wiki reimplementation and hook critical path caution; preserve this boundary.
-  - Project:  `.agent-harness/TESTING.md:125-149` - fake tests policy; add fake `agy` requirement for self-verify LLM eval.
+  - Project:  `.agent-harness/TESTING.md:125-149` - fake tests policy; add fake Z.AI requirement for self-verify LLM eval.
   - Project:  `.agent-harness/CONVENTIONS.md:78-86` - schema/golden drift rule; mention CLI/MCP LLM eval parity if needed.
 
   Acceptance criteria (agent-executable only):
@@ -327,11 +327,11 @@ PY`
     `python3 - <<'PY'
 from pathlib import Path
 checks = {
-  '.agent-harness/ADR.md': ['self-verify --llm-eval', 'opt-in', 'agy -p'],
+  '.agent-harness/ADR.md': ['self-verify --llm-eval', 'opt-in', 'Z.AI Coding Plan'],
   '.agent-harness/ARCHITECTURE.md': ['self-verify --llm-eval', 'post-loop'],
   '.agent-harness/OPERATIONS.md': ['--llm-eval', '--llm-eval-mode=gate', 'internal default timeout'],
-  '.agent-harness/CAUTIONS.md': ['self-verify --llm-eval', 'hook', 'fake agy'],
-  '.agent-harness/TESTING.md': ['fake agy', 'llm_eval'],
+  '.agent-harness/CAUTIONS.md': ['self-verify --llm-eval', 'hook', 'fake Z.AI'],
+  '.agent-harness/TESTING.md': ['fake Z.AI', 'llm_eval'],
 }
 for path, needles in checks.items():
     text = Path(path).read_text()
@@ -341,12 +341,12 @@ print('ok')
 PY`
   - [ ] Docs diff contains only LLM-eval boundary updates and no unrelated cleanup:
     `git diff -- .agent-harness/ADR.md .agent-harness/ARCHITECTURE.md .agent-harness/OPERATIONS.md .agent-harness/CAUTIONS.md .agent-harness/TESTING.md > evidence/task-5-self-verify-llm-eval-docs.diff`
-  - [ ] No docs mention default self-verify calling `agy`:
+  - [ ] No docs mention default self-verify calling `zai`:
     `python3 - <<'PY'
 from pathlib import Path
 for path in ['.agent-harness/ADR.md','.agent-harness/ARCHITECTURE.md','.agent-harness/OPERATIONS.md','.agent-harness/CAUTIONS.md','.agent-harness/TESTING.md']:
     text = Path(path).read_text().lower()
-    assert 'default self-verify calls agy' not in text
+    assert 'default self-verify calls Z.AI' not in text
 print('ok')
 PY`
 
@@ -357,7 +357,7 @@ PY`
     Steps:    python3 - <<'PY' | tee evidence/task-5-self-verify-llm-eval-operations-docs.txt
 from pathlib import Path
 text = Path('.agent-harness/OPERATIONS.md').read_text()
-for needle in ['agent-harness self-verify --llm-eval', '--llm-eval-mode=gate', '--agy-command', 'internal default timeout']:
+for needle in ['agent-harness self-verify --llm-eval', '--llm-eval-mode=gate', '--model', 'internal default timeout']:
     assert needle in text, needle
 print('ok')
 PY
@@ -380,25 +380,25 @@ PY
 
   Commit: YES | Message: `docs(self-verify): document opt-in llm eval boundary` | Files: [`.agent-harness/ADR.md`, `.agent-harness/ARCHITECTURE.md`, `.agent-harness/OPERATIONS.md`, `.agent-harness/CAUTIONS.md`, `.agent-harness/TESTING.md`, `.agent-harness/CONVENTIONS.md`, `evidence/task-5-self-verify-llm-eval-*`]
 
-- [ ] 6. Run fake-`agy` tmux QA and cleanup receipts
+- [ ] 6. Run fake Z.AI tmux QA and cleanup receipts
 
-  What to do: Build the local CLI and run end-to-end tmux QA using fake `agy` only. Capture advisory success, default no-LLM behavior, gate failure behavior, malformed advisory behavior, and cleanup proof. Use the real compiled binary but fake `agy` scripts. Record exact stdout/stderr and JSON artifacts under `evidence/`.
-  Must NOT do: Do not call real `agy`; do not leave tmux sessions running; do not commit generated binaries.
+  What to do: Build the local CLI and run end-to-end tmux QA using fake Z.AI only. Capture advisory success, default no-LLM behavior, gate failure behavior, malformed advisory behavior, and cleanup proof. Use the real compiled binary but fake Z.AI scripts. Record exact stdout/stderr and JSON artifacts under `evidence/`.
+  Must NOT do: Do not call real `zai`; do not leave tmux sessions running; do not commit generated binaries.
 
   Parallelization: Can parallel: NO | Wave 4 | Blocks: [final] | Blocked by: [3, 4, 5]
 
   References (executor has NO interview context - be exhaustive):
   - Pattern:  `cmd/harness/main.go:646-671` - CLI flag behavior to exercise.
-  - Pattern:  `cmd/harness/self_verify_llm_eval.go:91-112` - fake `agy` process execution path to exercise.
+  - Pattern:  `cmd/harness/self_verify_llm_eval.go:91-112` - fake Z.AI process execution path to exercise.
   - Pattern:  `cmd/harness/self_verify_llm_eval.go:168-188` - gate failure path to exercise.
-  - Test:     `cmd/harness/self_augment_summary_test.go:1016-1024` - fake `agy` helper behavior to mirror after Task 2 updates it to `-p` only.
+  - Test:     `cmd/harness/self_augment_summary_test.go:1016-1024` - fake Z.AI helper behavior to mirror after Task 2 updates it to `-p` only.
   - Project:  `.agent-harness/TESTING.md:193-205` - completion evidence and QA requirements.
-  - External: local `agy --help` evidence says `-p, --print`; QA fake must reject any argv shape other than `-p <prompt>`.
+  - External: local `Z.AI --help` evidence says `-p, --print`; QA fake must reject any argv shape other than `-p <prompt>`.
 
   Acceptance criteria (agent-executable only):
   - [ ] Build succeeds:
     `go build -o bin/agent-harness ./cmd/harness | tee evidence/task-6-self-verify-llm-eval-build.txt`
-  - [ ] Fake-`agy` tmux script exits 0 and writes all expected artifacts:
+  - [ ] Fake-`zai` tmux script exits 0 and writes all expected artifacts:
     `bash evidence/run-task-6-self-verify-llm-eval-tmux.sh | tee evidence/task-6-self-verify-llm-eval-tmux-run.txt`
   - [ ] Artifact JSON checks pass:
     `python3 - <<'PY'
@@ -423,23 +423,23 @@ PY`
 
   QA scenarios (MANDATORY - task incomplete without these):
   ```
-  Scenario: tmux advisory/default/malformed/gate e2e with fake agy
+  Scenario: tmux advisory/default/malformed/gate e2e with fake Z.AI
     Tool:     tmux
     Steps:    cat > evidence/run-task-6-self-verify-llm-eval-tmux.sh <<'SH'
 set -euo pipefail
 mkdir -p evidence
 tmp="$(mktemp -d)"
-cat > "$tmp/agy" <<'AGY'
+cat > "$tmp/Z.AI" <<'ZAI'
 #!/bin/sh
 [ "$1" = "-p" ] || { echo "expected -p" >&2; exit 9; }
-case "${AGY_MODE:-advisory}" in
+case "${ZAI_MODE:-advisory}" in
   advisory) printf '{"ok":true,"score":98,"summary":"fake advisory ok","blockers":[],"risks":[],"recommended_next_actions":[]}\n' ;;
   gate) printf '{"ok":false,"score":40,"summary":"blocked","blockers":["missing QA"],"risks":[],"recommended_next_actions":["run QA"]}\n' ;;
   malformed) printf 'not-json\n' ;;
-  *) echo "unknown AGY_MODE" >&2; exit 10 ;;
+  *) echo "unknown ZAI_MODE" >&2; exit 10 ;;
 esac
-AGY
-chmod +x "$tmp/agy"
+ZAI
+chmod +x "$tmp/Z.AI"
 run_session() {
   session="$1"; shift
   tmux new-session -d -s "$session" "cd '$PWD' && $*; tmux wait-for -S ${session}-done"
@@ -447,10 +447,10 @@ run_session() {
   tmux kill-session -t "$session" 2>/dev/null || true
 }
 run_session ah-sv-llm-default "./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --json > evidence/task-6-self-verify-llm-eval-default.json 2> evidence/task-6-self-verify-llm-eval-default.err"
-run_session ah-sv-llm-advisory "AGY_MODE=advisory ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --agy-command '$tmp/agy' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-advisory.json 2> evidence/task-6-self-verify-llm-eval-advisory.err"
-run_session ah-sv-llm-malformed "AGY_MODE=malformed ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --agy-command '$tmp/agy' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-malformed.json 2> evidence/task-6-self-verify-llm-eval-malformed.err"
+run_session ah-sv-llm-advisory "ZAI_MODE=advisory ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --model '$tmp/Z.AI' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-advisory.json 2> evidence/task-6-self-verify-llm-eval-advisory.err"
+run_session ah-sv-llm-malformed "ZAI_MODE=malformed ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --model '$tmp/Z.AI' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-malformed.json 2> evidence/task-6-self-verify-llm-eval-malformed.err"
 set +e
-run_session ah-sv-llm-gate "AGY_MODE=gate ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --llm-eval-mode=gate --agy-command '$tmp/agy' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-gate.json 2> evidence/task-6-self-verify-llm-eval-gate.err"
+run_session ah-sv-llm-gate "ZAI_MODE=gate ./bin/agent-harness self-verify --iterations=10 --seed=100 --target-score=95 --llm-eval --llm-eval-mode=gate --model '$tmp/Z.AI' internal default timeout=2s --json > evidence/task-6-self-verify-llm-eval-gate.json 2> evidence/task-6-self-verify-llm-eval-gate.err"
 set -e
 SH
 bash evidence/run-task-6-self-verify-llm-eval-tmux.sh
@@ -484,7 +484,7 @@ bash evidence/run-task-6-self-verify-llm-eval-tmux.sh
 
 ## Reviewer fix notes
 - Strict LLM JSON parsing now rejects unknown fields.
-- Command failure is covered by a fake agy non-zero exit test.
+- Command failure is covered by a fake Z.AI non-zero exit test.
 - Large evidence remains valid JSON by wrapping bounded evidence under `evidence_json`.
-- `llm_eval.evidence_packet_bytes` reports the actual bounded prompt bytes sent to agy.
+- `llm_eval.evidence_packet_bytes` reports the actual bounded prompt bytes sent to Z.AI.
 - Fresh tmux QA keeps non-empty default/advisory/gate JSON artifacts.

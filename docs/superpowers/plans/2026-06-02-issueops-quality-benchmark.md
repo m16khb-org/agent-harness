@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an IssueOps quality benchmark that scores issue-driven workflow artifacts with deterministic checks and an `agy -p` JSON judge, then compares baseline and candidate runs.
+**Goal:** Add an IssueOps quality benchmark that scores issue-driven workflow artifacts with deterministic checks and an `Z.AI Coding Plan` JSON judge, then compares baseline and candidate runs.
 
 **Architecture:** Keep benchmark logic in focused core files under `internal/core`, expose it through `agent-harness issueops benchmark ...`, and reuse existing response contract/golden patterns. Fixtures are source-controlled JSON; benchmark results are compact harness state records.
 
-**Tech Stack:** Go core/CLI in `internal/core` and `cmd/harness`; JSON fixtures under `testdata/issueops/fixtures`; `agy -p` via bounded `exec.CommandContext`; existing golden tests and state helpers.
+**Tech Stack:** Go core/CLI in `internal/core` and `cmd/harness`; JSON fixtures under `testdata/issueops/fixtures`; `Z.AI Coding Plan` via bounded `exec.CommandContext`; existing golden tests and state helpers.
 
 ---
 
@@ -306,7 +306,7 @@ go test ./internal/core -run 'IssueOpsBenchmark|ScoreIssueOps' -count=1
 
 Expected: PASS.
 
-### Task 3: Agy Judge Adapter With Strict JSON
+### Task 3: LLM Judge Adapter With Strict JSON
 
 **Files:**
 - Create: `internal/core/issueops_benchmark_judge.go`
@@ -317,11 +317,11 @@ Expected: PASS.
 Create tests:
 
 ```go
-func TestIssueOpsAgyJudgeParsesStrictJSON(t *testing.T) {
-	fake := writeFakeAgy(t, `{"ok":true,"dimension_scores":[{"dimension":"intent_understanding","score":5,"evidence":"matches request"}],"critical_failures":[]}`)
-	result, err := RunIssueOpsAgyJudge(IssueOpsAgyJudgeRequest{
+func TestIssueOpsLLMJudgeParsesStrictJSON(t *testing.T) {
+	fake := writeFakeZAI(t, `{"ok":true,"dimension_scores":[{"dimension":"intent_understanding","score":5,"evidence":"matches request"}],"critical_failures":[]}`)
+	result, err := RunIssueOpsLLMJudge(IssueOpsLLMJudgeRequest{
 		RepoRoot: t.TempDir(),
-		AgyCommand: fake,
+		Model: fake,
 		Fixture: IssueOpsBenchmarkFixture{ID: "fixture"},
 		Artifact: IssueOpsBenchmarkArtifact{ProblemSummary: "summary"},
 	})
@@ -330,9 +330,9 @@ func TestIssueOpsAgyJudgeParsesStrictJSON(t *testing.T) {
 	}
 }
 
-func TestIssueOpsAgyJudgeRejectsNoisyOutput(t *testing.T) {
-	fake := writeFakeAgy(t, `I will judge now. {"ok":true}`)
-	_, err := RunIssueOpsAgyJudge(IssueOpsAgyJudgeRequest{RepoRoot: t.TempDir(), AgyCommand: fake, Fixture: IssueOpsBenchmarkFixture{ID: "fixture"}})
+func TestIssueOpsLLMJudgeRejectsNoisyOutput(t *testing.T) {
+	fake := writeFakeZAI(t, `I will judge now. {"ok":true}`)
+	_, err := RunIssueOpsLLMJudge(IssueOpsLLMJudgeRequest{RepoRoot: t.TempDir(), Model: fake, Fixture: IssueOpsBenchmarkFixture{ID: "fixture"}})
 	if err == nil {
 		t.Fatal("expected strict JSON error")
 	}
@@ -344,7 +344,7 @@ func TestIssueOpsAgyJudgeRejectsNoisyOutput(t *testing.T) {
 Run:
 
 ```bash
-go test ./internal/core -run IssueOpsAgyJudge -count=1
+go test ./internal/core -run IssueOpsLLMJudge -count=1
 ```
 
 Expected: FAIL with undefined judge functions.
@@ -354,22 +354,22 @@ Expected: FAIL with undefined judge functions.
 Create:
 
 ```go
-type IssueOpsAgyJudgeRequest struct {
+type IssueOpsLLMJudgeRequest struct {
 	RepoRoot string
-	AgyCommand string
+	Model string
 	Timeout time.Duration
 	Fixture IssueOpsBenchmarkFixture
 	Artifact IssueOpsBenchmarkArtifact
 }
 
-func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, error)
+func RunIssueOpsLLMJudge(req IssueOpsLLMJudgeRequest) (IssueOpsBenchmarkScore, error)
 ```
 
 Implementation requirements:
 
-- default command: `agy`,
+- default command: `zai`,
 - default timeout: `2 * time.Minute`,
-- execute `agy -p <prompt>` in `RepoRoot`,
+- execute `Z.AI Coding Plan <prompt>` in `RepoRoot`,
 - use `json.Decoder` with `DisallowUnknownFields`,
 - reject output unless the entire trimmed output is one JSON object,
 - return bounded error strings for failures.
@@ -379,7 +379,7 @@ Implementation requirements:
 Run:
 
 ```bash
-go test ./internal/core -run IssueOpsAgyJudge -count=1
+go test ./internal/core -run IssueOpsLLMJudge -count=1
 ```
 
 Expected: PASS.
@@ -518,7 +518,7 @@ Add `case "benchmark": return runIssueOpsBenchmark(args[1:])` in `runIssueOps`.
 Support:
 
 ```bash
-agent-harness issueops benchmark run --fixtures PATH --judge none|agy --agy-command agy --json
+agent-harness issueops benchmark run --fixtures PATH --judge none|Z.AI --model Z.AI --json
 agent-harness issueops benchmark compare --baseline KEY --candidate KEY --json
 ```
 
@@ -529,7 +529,7 @@ Use `--judge none` for deterministic-only tests.
 Add usage lines:
 
 ```text
-agent-harness issueops benchmark run --fixtures PATH [--judge none|agy] [--agy-command PATH] [--json]
+agent-harness issueops benchmark run --fixtures PATH [--judge none|Z.AI] [--model PATH] [--json]
 agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
 ```
 
@@ -616,7 +616,7 @@ git commit -m "feat(issueops): add quality benchmark scoring" -m "Lore:
 - Intent: Add deterministic and judge-backed IssueOps quality benchmark scoring.
 - Why: IssueOps improvements need measurable quality evidence before prompt or workflow optimization.
 - Changes:
-  - Add benchmark fixtures, scoring, agy judge adapter, CLI run/compare, and response contracts.
+  - Add benchmark fixtures, scoring, Z.AI judge adapter, CLI run/compare, and response contracts.
 - Verify: go test ./... -count=1; go build -o bin/agent-harness ./cmd/harness; issueops benchmark smoke; git diff --check
 - Risk: Medium; new benchmark schema and CLI surface."
 ```

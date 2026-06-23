@@ -7,20 +7,17 @@ import (
 	"time"
 )
 
-type IssueOpsAgyJudgeRequest struct {
-	RepoRoot   string
-	AgyCommand string
-	Timeout    time.Duration
-	Attempts   int
-	Fixture    IssueOpsBenchmarkFixture
-	Artifact   IssueOpsBenchmarkArtifact
+type IssueOpsLLMJudgeRequest struct {
+	RepoRoot string
+	Model    string
+	Timeout  time.Duration
+	Attempts int
+	Fixture  IssueOpsBenchmarkFixture
+	Artifact IssueOpsBenchmarkArtifact
 }
 
-func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, error) {
-	command := strings.TrimSpace(req.AgyCommand)
-	if command == "" {
-		command = "agy"
-	}
+func RunIssueOpsLLMJudge(req IssueOpsLLMJudgeRequest) (IssueOpsBenchmarkScore, error) {
+	model := strings.TrimSpace(req.Model)
 	timeout := req.Timeout
 	if timeout == 0 {
 		timeout = 2 * time.Minute
@@ -30,15 +27,15 @@ func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, e
 		attempts = 3
 	}
 
-	prompt, err := buildIssueOpsAgyJudgePrompt(req.Fixture, req.Artifact)
+	prompt, err := buildIssueOpsLLMJudgePrompt(req.Fixture, req.Artifact)
 	if err != nil {
 		return IssueOpsBenchmarkScore{}, err
 	}
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
-		llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Provider: command, WorkDir: req.RepoRoot, Prompt: prompt, Timeout: timeout})
+		llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Model: model, WorkDir: req.RepoRoot, Prompt: prompt, Timeout: timeout})
 		if err != nil {
-			lastErr = fmt.Errorf("agy judge failed: %s: %w", boundedIssueOpsText(string(llm.Output)), err)
+			lastErr = fmt.Errorf("issueops benchmark LLM judge failed: %s: %w", boundedIssueOpsText(string(llm.Output)), err)
 			continue
 		}
 		score, err := decodeStrictIssueOpsBenchmarkScore(llm.Output)
@@ -47,11 +44,11 @@ func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, e
 		}
 		lastErr = err
 	}
-	return IssueOpsBenchmarkScore{}, fmt.Errorf("agy judge failed after %d strict-output attempts: %w", attempts, lastErr)
+	return IssueOpsBenchmarkScore{}, fmt.Errorf("issueops benchmark LLM judge failed after %d strict-output attempts: %w", attempts, lastErr)
 }
 
 // DecodeIssueOpsBenchmarkJudgeJSON strictly decodes ONE judge score object
-// (the same shape the agy judge returns). Callers holding a map of
+// (the same shape the LLM judge returns). Callers holding a map of
 // fixture-ID -> score must decode the outer map themselves and feed each
 // value through this function; the strict decoder rejects unknown fields, so
 // passing the whole map here fails by design.
@@ -61,11 +58,11 @@ func DecodeIssueOpsBenchmarkJudgeJSON(out []byte) (IssueOpsBenchmarkScore, error
 
 func decodeStrictIssueOpsBenchmarkScore(out []byte) (IssueOpsBenchmarkScore, error) {
 	var score IssueOpsBenchmarkScore
-	if err := externalllm.DecodeExternalLLMStructuredJSONObject("agy judge", out, &score); err != nil {
+	if err := externalllm.DecodeExternalLLMStructuredJSONObject("issueops benchmark LLM judge", out, &score); err != nil {
 		return IssueOpsBenchmarkScore{}, err
 	}
 	if len(score.DimensionScores) == 0 {
-		return IssueOpsBenchmarkScore{}, fmt.Errorf("agy judge output missing dimension_scores")
+		return IssueOpsBenchmarkScore{}, fmt.Errorf("issueops benchmark LLM judge output missing dimension_scores")
 	}
 	return score, nil
 }

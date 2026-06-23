@@ -22,7 +22,7 @@ func prDraft(fixture core.IssueOpsBenchmarkFixture, issueNumber, branchName, wor
 		"",
 		"## Verification",
 		"",
-		"- `./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge agy --json`",
+		"- `./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --model glm-5-turbo --json`",
 		"- `go test ./... -count=1`",
 		"- `git status --short --branch`",
 		"",

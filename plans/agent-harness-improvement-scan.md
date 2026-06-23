@@ -207,7 +207,7 @@ Wave 4: Final verification.
 - [ ] 5. Harden draft-wiki queue processing against concurrent workers and stale/racy queue state
 
   **What to do**: Add a test that simulates concurrent queue processing or interrupted processing, then implement locking/atomic rewrite or an explicit single-worker guard.
-  **Must NOT do**: Do not run real `agy` in tests; use a fake executable.
+  **Must NOT do**: Do not run real `zai` in tests; use a fake executable.
 
   **Parallelization**: Can Parallel: YES | Wave 3 | Blocks: final verification | Blocked By: Task 1
 
@@ -225,13 +225,13 @@ Wave 4: Final verification.
   ```
   Scenario: two workers race on one queued draft
     Tool: tmux
-    Steps: create temp repo/state and fake agy, enqueue one event, run two `worker draft-wiki --limit 1 --json` panes concurrently, capture both panes
+    Steps: create temp repo/state and fake Z.AI, enqueue one event, run two `worker draft-wiki --limit 1 --json` panes concurrently, capture both panes
     Expected: exactly one succeeded event and no duplicate draft output
     Evidence: evidence/agent-harness-improvement-scan/task-5-race.txt
 
   Scenario: malformed queue line is reported safely
     Tool: bash
-    Steps: write one invalid JSONL line plus one valid queued event, run worker draft-wiki with fake agy
+    Steps: write one invalid JSONL line plus one valid queued event, run worker draft-wiki with fake Z.AI
     Expected: error identifies malformed line without secret leakage; valid event handling is defined by test
     Evidence: evidence/agent-harness-improvement-scan/task-5-malformed.txt
   ```

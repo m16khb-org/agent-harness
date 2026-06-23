@@ -8,7 +8,7 @@ import (
 type HookUserPromptRequest struct {
 	Prompt         string `json:"prompt"`
 	Repo           string `json:"repo,omitempty"`
-	EnableAgyHints bool   `json:"enable_agy_hints,omitempty"`
+	EnableLLMHints bool   `json:"enable_llm_hints,omitempty"`
 }
 
 const (
@@ -64,7 +64,7 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	// main agent decides which to read. Keyword rules now only route to MCP
 	// tools/actions, never to a required/consider doc verdict.
 	for _, rule := range hookRoutingRules {
-		if rule.Matches(prompt, lower, req.EnableAgyHints) {
+		if rule.Matches(prompt, lower, req.EnableLLMHints) {
 			addPriority(rule.Tool, rule.Reason, rule.Priority)
 		}
 	}

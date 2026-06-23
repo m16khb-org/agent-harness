@@ -5,7 +5,7 @@
 package port
 
 // ExternalLLM is the interface for calling an external LLM.
-// Implementations may use a local CLI (e.g. agy), a cloud API, or a mock.
+// Implementations may use a cloud API or a mock.
 type ExternalLLM interface {
 	// Query sends a prompt to the LLM and returns the raw text response.
 	Query(prompt string) (string, error)

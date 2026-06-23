@@ -23,7 +23,7 @@ type DraftWikiPromoteRequest = draftwiki.DraftWikiPromoteRequest
 type DraftWikiPromoteResult = draftwiki.DraftWikiPromoteResult
 type DraftWikiSuggestRequest = draftwiki.DraftWikiSuggestRequest
 type DraftWikiSuggestResult = draftwiki.DraftWikiSuggestResult
-type draftWikiSuggestAgyResponse = draftwiki.DraftWikiSuggestAgyResponse
+type draftWikiSuggestLLMResponse = draftwiki.DraftWikiSuggestLLMResponse
 type DraftWikiQueueAppendRequest = draftwiki.DraftWikiQueueAppendRequest
 type DraftWikiQueueEvent = draftwiki.DraftWikiQueueEvent
 type DraftWikiQueueAppendResult = draftwiki.DraftWikiQueueAppendResult
@@ -74,12 +74,12 @@ func ProcessDraftWikiQueue(req DraftWikiQueueProcessRequest) (DraftWikiQueueProc
 	return draftwiki.ProcessDraftWikiQueue(req)
 }
 
-func buildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, agyModel, targetType string) string {
-	return draftwiki.BuildDraftWikiSuggestPrompt(req, input, agyModel, targetType)
+func buildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, model, targetType string) string {
+	return draftwiki.BuildDraftWikiSuggestPrompt(req, input, model, targetType)
 }
 
-func generatedDraftFrontmatter(title, targetWiki, targetType, agyModel string) string {
-	return draftwiki.GeneratedDraftFrontmatter(title, targetWiki, targetType, agyModel)
+func generatedDraftFrontmatter(title, targetWiki, targetType, model string) string {
+	return draftwiki.GeneratedDraftFrontmatter(title, targetWiki, targetType, model)
 }
 
 func failDraftWikiQueueEvent(event DraftWikiQueueEvent, err error) DraftWikiQueueEvent {

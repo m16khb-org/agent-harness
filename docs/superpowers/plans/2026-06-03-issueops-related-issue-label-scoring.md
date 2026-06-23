@@ -6,9 +6,9 @@ Make `$issueops` proactively score related issues and labels when creating or up
 
 ## Scope
 
-- Add a shared external LLM print wrapper for all `agy -p` usage.
-- Route existing `agy` call sites through the wrapper with `--dangerously-skip-permissions`.
-- Add `agent-harness issueops remote score` with deterministic scoring and active `agy` judge support.
+- Add a shared external LLM print wrapper for all `Z.AI Coding Plan` usage.
+- Route existing `zai` call sites through the wrapper with `--dangerously-skip-permissions`.
+- Add `agent-harness issueops remote score` with deterministic scoring and active `zai` judge support.
 - Update the IssueOps skill so agents propose related issue/label scoring and issue-body SOT updates without waiting for the user to suggest them.
 - Cover GitHub and GitLab apply instructions.
 

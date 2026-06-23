@@ -37,7 +37,7 @@ func projectDraftWikiUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   agent-harness project draft-wiki init [--repo PATH] [--dry-run] [--json]
   agent-harness project draft-wiki list [--repo PATH] [--json]
-  agent-harness project draft-wiki suggest [--repo PATH] --input PATH [--title TITLE] [--target-wiki NAME] [--target-type notes] [--agy-command agy] [--agy-model MODEL] [--dry-run] [--json]
+  agent-harness project draft-wiki suggest [--repo PATH] --input PATH [--title TITLE] [--target-wiki NAME] [--target-type notes] [--model glm-5-turbo] [--dry-run] [--json]
   agent-harness project draft-wiki queue [--repo PATH] (--input PATH|--material TEXT|--stdin) [--target-wiki NAME] [--target-type notes] [--json]
   agent-harness project draft-wiki approve [--repo PATH] [--json] PATH
   agent-harness project draft-wiki reject [--repo PATH] [--json] PATH

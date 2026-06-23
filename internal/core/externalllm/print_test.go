@@ -3,6 +3,8 @@ package externalllm
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -54,11 +56,25 @@ func TestRunExternalLLMPrintCallsZAIWithStructuredJSON(t *testing.T) {
 	}
 }
 
-func TestRunExternalLLMPrintLegacyAgyPath(t *testing.T) {
-	// When Provider is a filesystem path, it falls back to agy CLI mode.
-	// Since we can't guarantee agy is installed, we skip this test
-	// unless explicitly requested.
-	t.Skip("skipping legacy agy test; agy binary not guaranteed in CI")
+func TestRunExternalLLMPrintRejectsLegacyCommandProviderWithoutExecution(t *testing.T) {
+	tmp := t.TempDir()
+	marker := filepath.Join(tmp, "executed")
+	fake := filepath.Join(tmp, "fake-legacy-llm.sh")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\ntouch '"+marker+"'\nprintf 'legacy-output'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := RunExternalLLMPrint(ExternalLLMPrintRequest{
+		Provider: fake,
+		Prompt:   "return json",
+		Timeout:  5 * time.Second,
+	})
+	if err == nil || !strings.Contains(err.Error(), "unsupported external llm provider") {
+		t.Fatalf("expected unsupported provider error, got %v", err)
+	}
+	if _, statErr := os.Stat(marker); !os.IsNotExist(statErr) {
+		t.Fatalf("legacy command provider was executed; stat marker err=%v", statErr)
+	}
 }
 
 func TestRunExternalLLMPrintDisableStructuredJSON(t *testing.T) {

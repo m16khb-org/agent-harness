@@ -1,12 +1,12 @@
 # Restore Agent-Harness Full Test Baseline
 
 ## TL;DR
-> Summary:      Restore the current `go test ./... -count=1` baseline by treating `TestResponseContractsGolden` as the red/green driver, refreshing `cmd/harness/testdata/response_contracts.golden.json` only after proving the generated contract is correct, and preserving the existing CodeGraph PreToolUse + opt-in `agy -p` hook changes.
+> Summary:      Restore the current `go test ./... -count=1` baseline by treating `TestResponseContractsGolden` as the red/green driver, refreshing `cmd/harness/testdata/response_contracts.golden.json` only after proving the generated contract is correct, and preserving the existing CodeGraph PreToolUse + opt-in `Z.AI Coding Plan` hook changes.
 > Deliverables:
 > - Red/green evidence for `TestResponseContractsGolden` and `go test ./cmd/harness -run Golden -count=1`
 > - A validated response-contract golden refresh, or a documented no-op if the working tree already contains the correct generated snapshot
 > - Focused verification that CodeGraph PreToolUse enforcement still blocks raw repo-source searches only when opted in
-> - Focused verification that `agy -p` hints remain core opt-in while Codex/Claude hook templates explicitly enable them
+> - Focused verification that `Z.AI Coding Plan` hints remain core opt-in while Codex/Claude hook templates explicitly enable them
 > - Full Go baseline evidence and one clean atomic commit instruction
 > Effort:       Short
 > Risk:         Medium - a golden refresh can accidentally hide a contract regression or host-hook schema drift if not diff-reviewed.
@@ -22,7 +22,7 @@
 
 ### Must NOT have (guardrails, anti-slop, scope boundaries)
 - Do not revert or weaken CodeGraph PreToolUse enforcement in `internal/core/lifecycle_state.go:415-432`.
-- Do not make `agy -p` hints default-on in core; `HookUserPromptRequest.EnableAgyHints` is opt-in in `internal/core/hook_prompt.go:6-13` and tested in `internal/core/hook_prompt_test.go:78-89`.
+- Do not make `Z.AI Coding Plan` hints default-on in core; `HookUserPromptRequest.EnableLLMHints` is opt-in in `internal/core/hook_prompt.go:6-13` and tested in `internal/core/hook_prompt_test.go:78-89`.
 - Do not add new source abstractions, new hook commands, new MCP tools, or any unrelated refactor.
 - Do not write user-level `~/.codex`, `~/.claude`, `.claude/skills`, daemon state, or upstream companion plugin cache files.
 - Do not update `cmd/harness/testdata/response_contracts.golden.json` if the generated output includes unnormalized local paths, timestamps, secret-like values, or unexpected response fields.
@@ -42,7 +42,7 @@
 Wave 1 (no dependencies):
 - Task 1: Capture baseline failure and protect working-tree scope
 - Task 3: Preserve CodeGraph PreToolUse behavior with focused tests and CLI smoke
-- Task 4: Preserve opt-in `agy -p` hint behavior with focused tests and CLI smoke
+- Task 4: Preserve opt-in `Z.AI Coding Plan` hint behavior with focused tests and CLI smoke
 - Task 5: Validate Codex/Claude hook template parsing and command strings
 - Task 6: Check contract/golden safety constraints before accepting a snapshot refresh
 
@@ -195,56 +195,56 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
 
   Commit: NO | Message: `feat(hooks): enforce CodeGraph source search opt-in` | Files: [internal/core/lifecycle_state.go, internal/core/lifecycle_state_test.go, cmd/harness/hook_user_prompt.go, cmd/harness/hook_user_prompt_test.go, evidence/task-3-codegraph-core.txt, evidence/task-3-codegraph-cli-tests.txt, evidence/task-3-codegraph-block.json, evidence/task-3-codegraph-default.json]
 
-- [ ] 4. Preserve opt-in `agy -p` hint behavior with focused tests and CLI smoke
+- [ ] 4. Preserve opt-in `Z.AI Coding Plan` hint behavior with focused tests and CLI smoke
 
-  What to do: Run focused core and CLI tests for `agy -p` hint routing. If a focused test fails, apply only the minimal correction in `internal/core/hook_prompt.go` or `cmd/harness/hook_user_prompt.go`; keep core default disabled and require `--enable-agy-hints` or `HARNESS_ENABLE_AGY_HINTS` for injection.
-  Must NOT do: Do not inject `agy -p` hints for every prompt, do not add noisy route/action/profile prose to Codex-visible additional context, and do not remove existing CodeGraph/LLM Wiki/claude-mem routing.
+  What to do: Run focused core and CLI tests for `Z.AI Coding Plan` hint routing. If a focused test fails, apply only the minimal correction in `internal/core/hook_prompt.go` or `cmd/harness/hook_user_prompt.go`; keep core default disabled and require `--enable-llm-hints` or `HARNESS_ENABLE_LLM_HINTS` for injection.
+  Must NOT do: Do not inject `Z.AI Coding Plan` hints for every prompt, do not add noisy route/action/profile prose to Codex-visible additional context, and do not remove existing CodeGraph/LLM Wiki/claude-mem routing.
 
   Parallelization: Can parallel: YES | Wave 1 | Blocks: [7] | Blocked by: []
 
   References (executor has NO interview context - be exhaustive):
-  - API/Type: `internal/core/hook_prompt.go:6-13` - `HookUserPromptRequest` includes `EnableAgyHints`.
-  - Pattern:  `internal/core/hook_prompt.go:88-95` - agy hint is added only when opt-in and the prompt asks for review/analysis/plan/research.
-  - Pattern:  `internal/core/hook_prompt.go:208-214` - agy is classified as a secondary hint.
-  - Pattern:  `internal/core/hook_prompt.go:269-275` - compact label renders `agy -p for LLM second-pass review`.
+  - API/Type: `internal/core/hook_prompt.go:6-13` - `HookUserPromptRequest` includes `EnableLLMHints`.
+  - Pattern:  `internal/core/hook_prompt.go:88-95` - Z.AI hint is added only when opt-in and the prompt asks for review/analysis/plan/research.
+  - Pattern:  `internal/core/hook_prompt.go:208-214` - Z.AI is classified as a secondary hint.
+  - Pattern:  `internal/core/hook_prompt.go:269-275` - compact label renders `Z.AI Coding Plan for LLM second-pass review`.
   - Pattern:  `cmd/harness/hook_user_prompt.go:52-87` - CLI flag/env wiring and host-neutral UserPromptSubmit output.
   - Test:     `internal/core/hook_prompt_test.go:78-89` - core default-off and enabled-on behavior.
-  - Test:     `cmd/harness/hook_user_prompt_test.go:68-79` - CLI default-off and `--enable-agy-hints` behavior.
+  - Test:     `cmd/harness/hook_user_prompt_test.go:68-79` - CLI default-off and `--enable-llm-hints` behavior.
   - Project:  `.agent-harness/CAUTIONS.md:143-152` - Codex visible hook context must avoid noisy prose and host-rendering assumptions.
 
   Acceptance criteria (agent-executable only):
-  - [ ] `go test ./internal/core -run TestBuildUserPromptMCPHintsRoutesLLMReviewToAgyWhenEnabled -count=1` exits 0 and is saved to `evidence/task-4-agy-core.txt`.
-  - [ ] `go test ./cmd/harness -run TestRunHookUserPromptAgyHintsAreOptIn -count=1` exits 0 and is saved to `evidence/task-4-agy-cli-tests.txt`.
-  - [ ] CLI smoke without `--enable-agy-hints` produces no `agy -p` in `hookSpecificOutput.additionalContext`.
-  - [ ] CLI smoke with `--enable-agy-hints` includes `agy -p for LLM second-pass review`.
+  - [ ] `go test ./internal/core -run TestBuildUserPromptMCPHintsRoutesLLMReviewToLLMWhenEnabled -count=1` exits 0 and is saved to `evidence/task-4-Z.AI-core.txt`.
+  - [ ] `go test ./cmd/harness -run TestRunHookUserPromptLLMHintsAreOptIn -count=1` exits 0 and is saved to `evidence/task-4-Z.AI-cli-tests.txt`.
+  - [ ] CLI smoke without `--enable-llm-hints` produces no `Z.AI Coding Plan` in `hookSpecificOutput.additionalContext`.
+  - [ ] CLI smoke with `--enable-llm-hints` includes `Z.AI Coding Plan for LLM second-pass review`.
 
   QA scenarios (MANDATORY - task incomplete without these):
   > Name the exact tool AND its exact invocation - not "verify it works". Browser use: use Chrome to drive the page; if Chrome is not available, download and use agent-browser (https://github.com/vercel-labs/agent-browser). Computer use: OS-level GUI automation for a non-browser desktop app.
   ```
-  Scenario: agy default remains disabled
+  Scenario: Z.AI default remains disabled
     Tool:     bash
-    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && printf '%s\n' '{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"/Users/user/Workspace/agent-harness"}' | go run ./cmd/harness hook user-prompt | tee evidence/task-4-agy-disabled.json && python3 - <<'PY'
+    Steps:    cd /Users/user/Workspace/agent-harness && mkdir -p evidence && printf '%s\n' '{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"/Users/user/Workspace/agent-harness"}' | go run ./cmd/harness hook user-prompt | tee evidence/task-4-Z.AI-disabled.json && python3 - <<'PY'
               import json
-              data=json.load(open('evidence/task-4-agy-disabled.json'))
+              data=json.load(open('evidence/task-4-Z.AI-disabled.json'))
               ctx=data['hookSpecificOutput'].get('additionalContext','')
-              assert 'agy -p' not in ctx, ctx
+              assert 'Z.AI Coding Plan' not in ctx, ctx
               PY
-    Expected: Python assertion exits 0; no `agy -p` hint appears by default.
-    Evidence: evidence/task-4-agy-disabled.json
+    Expected: Python assertion exits 0; no `Z.AI Coding Plan` hint appears by default.
+    Evidence: evidence/task-4-Z.AI-disabled.json
 
-  Scenario: agy enabled flag injects secondary hint
+  Scenario: Z.AI enabled flag injects secondary hint
     Tool:     bash
-    Steps:    cd /Users/user/Workspace/agent-harness && printf '%s\n' '{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"/Users/user/Workspace/agent-harness"}' | go run ./cmd/harness hook user-prompt --enable-agy-hints | tee evidence/task-4-agy-enabled.json && python3 - <<'PY'
+    Steps:    cd /Users/user/Workspace/agent-harness && printf '%s\n' '{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"/Users/user/Workspace/agent-harness"}' | go run ./cmd/harness hook user-prompt --enable-llm-hints | tee evidence/task-4-Z.AI-enabled.json && python3 - <<'PY'
               import json
-              data=json.load(open('evidence/task-4-agy-enabled.json'))
+              data=json.load(open('evidence/task-4-Z.AI-enabled.json'))
               ctx=data['hookSpecificOutput'].get('additionalContext','')
-              assert 'agy -p for LLM second-pass review' in ctx, ctx
+              assert 'Z.AI Coding Plan for LLM second-pass review' in ctx, ctx
               PY
-    Expected: Python assertion exits 0; enabled output includes the secondary agy hint.
-    Evidence: evidence/task-4-agy-enabled.json
+    Expected: Python assertion exits 0; enabled output includes the secondary Z.AI hint.
+    Evidence: evidence/task-4-Z.AI-enabled.json
   ```
 
-  Commit: NO | Message: `feat(hooks): add opt-in agy review hints` | Files: [internal/core/hook_prompt.go, internal/core/hook_prompt_test.go, cmd/harness/hook_user_prompt.go, cmd/harness/hook_user_prompt_test.go, evidence/task-4-agy-core.txt, evidence/task-4-agy-cli-tests.txt, evidence/task-4-agy-disabled.json, evidence/task-4-agy-enabled.json]
+  Commit: NO | Message: `feat(hooks): add opt-in Z.AI review hints` | Files: [internal/core/hook_prompt.go, internal/core/hook_prompt_test.go, cmd/harness/hook_user_prompt.go, cmd/harness/hook_user_prompt_test.go, evidence/task-4-Z.AI-core.txt, evidence/task-4-Z.AI-cli-tests.txt, evidence/task-4-Z.AI-disabled.json, evidence/task-4-Z.AI-enabled.json]
 
 - [ ] 5. Validate Codex/Claude hook template parsing and command strings
 
@@ -255,16 +255,16 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
 
   References (executor has NO interview context - be exhaustive):
   - Pattern:  `configs/codex/hooks.json:36-43` - Codex PreToolUse template invokes `hook pre-tool-use`; search-routing enforcement is opt-in.
-  - Pattern:  `configs/codex/hooks.json:69-76` - Codex UserPromptSubmit template invokes `hook user-prompt --host codex --enable-agy-hints`.
+  - Pattern:  `configs/codex/hooks.json:69-76` - Codex UserPromptSubmit template invokes `hook user-prompt --host codex --enable-llm-hints`.
   - Pattern:  `configs/claude/hooks.settings.json:37-46` - Claude PreToolUse template invokes `hook pre-tool-use --host claude` under matcher `*`; search-routing enforcement is opt-in.
-  - Pattern:  `configs/claude/hooks.settings.json:71-78` - Claude UserPromptSubmit template invokes `hook user-prompt --enable-agy-hints`.
+  - Pattern:  `configs/claude/hooks.settings.json:71-78` - Claude UserPromptSubmit template invokes `hook user-prompt --enable-llm-hints`.
   - Project:  `.agent-harness/CONSTITUTION.md:50-57` - host adapters must not bypass core policy.
   - Project:  `.agent-harness/CONVENTIONS.md:210-213` - host-specific hook settings belong in templates; common routing remains in CLI/core.
 
   Acceptance criteria (agent-executable only):
   - [ ] `python3 -m json.tool configs/codex/hooks.json >/dev/null` exits 0 and is recorded in `evidence/task-5-config-parse.txt`.
   - [ ] `python3 -m json.tool configs/claude/hooks.settings.json >/dev/null` exits 0 and is recorded in `evidence/task-5-config-parse.txt`.
-  - [ ] A Python assertion over parsed JSON confirms neither config contains `--enforce-search-routing`; Codex contains `--host codex --enable-agy-hints`; Claude contains `hook user-prompt --enable-agy-hints`.
+  - [ ] A Python assertion over parsed JSON confirms neither config contains `--enforce-search-routing`; Codex contains `--host codex --enable-llm-hints`; Claude contains `hook user-prompt --enable-llm-hints`.
   - [ ] `git diff -- configs/codex/hooks.json configs/claude/hooks.settings.json` contains no unrelated timeout/matcher/schema churn.
 
   QA scenarios (MANDATORY - task incomplete without these):
@@ -279,9 +279,9 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
               codex_text=json.dumps(codex)
               claude_text=json.dumps(claude)
               assert "--enforce-search-routing" not in codex_text, codex_text
-              assert "--host codex --enable-agy-hints" in codex_text, codex_text
+              assert "--host codex --enable-llm-hints" in codex_text, codex_text
               assert "--enforce-search-routing" not in claude_text, claude_text
-              assert "hook user-prompt --enable-agy-hints" in claude_text, claude_text
+              assert "hook user-prompt --enable-llm-hints" in claude_text, claude_text
               PY' 2>&1 | tee evidence/task-5-config-parse.txt
     Expected: command exits 0; evidence file has no JSON parse error or assertion traceback.
     Evidence: evidence/task-5-config-parse.txt
@@ -396,10 +396,10 @@ Critical path: Task 1 + Task 6 -> Task 2 -> Task 7
   ```text
   Lore:
   - Intent: Preserve guarded hook routing and restore the response-contract test baseline.
-  - Why: The current full-test baseline is blocked by a stale response-contract golden after CodeGraph PreToolUse and opt-in agy hint changes.
+  - Why: The current full-test baseline is blocked by a stale response-contract golden after CodeGraph PreToolUse and opt-in Z.AI hint changes.
   - Changes:
     - Add/keep opt-in CodeGraph raw source-search enforcement and focused tests.
-    - Add/keep opt-in agy review hints and focused tests.
+    - Add/keep opt-in Z.AI review hints and focused tests.
     - Refresh the generated response contract golden only after RED/GREEN review.
   - Verify: go test ./cmd/harness -run Golden -count=1; go test ./... -count=1; go vet ./...; go test -race ./... -count=1; go build -o bin/agent-harness ./cmd/harness
   - Risk: Medium; hook stdout contracts and generated golden fixtures are sensitive to host/runtime schema drift.

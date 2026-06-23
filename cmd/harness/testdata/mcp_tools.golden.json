@@ -2165,15 +2165,11 @@
     "name": "command_policy_audit"
   },
   {
-    "description": "Generate a Conventional + Lore Hybrid commit message suggestion based on git diff using Gemini 3.5 Flash.",
+    "description": "Generate a Conventional + Lore Hybrid commit message suggestion based on git diff using Z.AI Coding Plan.",
     "inputSchema": {
       "properties": {
-        "agy_command": {
-          "description": "Antigravity CLI executable path. Defaults to 'agy'.",
-          "type": "string"
-        },
-        "agy_model": {
-          "description": "required agy settings.json model label; defaults to current settings model.",
+        "model": {
+          "description": "Z.AI Coding Plan model. Defaults to glm-5-turbo.",
           "type": "string"
         },
         "repo": {
@@ -2190,23 +2186,19 @@
     "name": "commit_suggest"
   },
   {
-    "description": "Run a command, capture failure outputs, and provide a diagnosis using Gemini 3.5 Flash.",
+    "description": "Run a command, capture failure outputs, and provide a diagnosis using Z.AI Coding Plan.",
     "inputSchema": {
       "properties": {
-        "agy_command": {
-          "description": "Antigravity CLI executable path. Defaults to 'agy'.",
-          "type": "string"
-        },
-        "agy_model": {
-          "description": "required agy settings.json model label; defaults to current settings model.",
-          "type": "string"
-        },
         "command_argv": {
           "description": "The command argv array to run and diagnose.",
           "items": {
             "type": "string"
           },
           "type": "array"
+        },
+        "model": {
+          "description": "Z.AI Coding Plan model. Defaults to glm-5-turbo.",
+          "type": "string"
         },
         "repo": {
           "description": "Target repository path. Defaults to current directory.",

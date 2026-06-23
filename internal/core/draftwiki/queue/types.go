@@ -49,14 +49,12 @@ type AppendResult struct {
 }
 
 type ProcessRequest struct {
-	RepoRoot        string        `json:"repo_root"`
-	AgyCommand      string        `json:"agy_command,omitempty"`
-	AgyModel        string        `json:"agy_model,omitempty"`
-	AgySettingsPath string        `json:"-"`
-	TargetWiki      string        `json:"target_wiki,omitempty"`
-	TargetType      string        `json:"target_type,omitempty"`
-	Limit           int           `json:"limit,omitempty"`
-	Timeout         time.Duration `json:"-"`
+	RepoRoot   string        `json:"repo_root"`
+	Model      string        `json:"model,omitempty"`
+	TargetWiki string        `json:"target_wiki,omitempty"`
+	TargetType string        `json:"target_type,omitempty"`
+	Limit      int           `json:"limit,omitempty"`
+	Timeout    time.Duration `json:"-"`
 }
 
 type ProcessResult struct {

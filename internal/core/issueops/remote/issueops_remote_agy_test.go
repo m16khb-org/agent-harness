@@ -2,15 +2,16 @@ package remote
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/externalllm"
 )
 
-func TestRunIssueOpsRemoteAgyJudgeUsesStrictJSONWrapper(t *testing.T) {
-	dir := t.TempDir()
-	fakeAgy := filepath.Join(dir, "fake-agy.sh")
+func TestRunIssueOpsRemoteLLMJudgeUsesStrictJSONWrapper(t *testing.T) {
 	out := IssueOpsRemoteScoringResult{
 		OK:             true,
 		Provider:       "github",
@@ -40,13 +41,10 @@ func TestRunIssueOpsRemoteAgyJudgeUsesStrictJSONWrapper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(fakeAgy, []byte("#!/bin/sh\nif [ \"$1\" != \"--dangerously-skip-permissions\" ] || [ \"$2\" != \"-p\" ]; then echo missing agy flags >&2; exit 2; fi\nprintf '%s' '"+string(b)+"'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	withFakeIssueOpsRemoteZAI(t, remoteFakeZAIResponse{Content: string(b)})
 
-	result, err := RunIssueOpsRemoteAgyJudge(IssueOpsRemoteAgyJudgeRequest{
-		RepoRoot:   dir,
-		AgyCommand: fakeAgy,
+	result, err := RunIssueOpsRemoteLLMJudge(IssueOpsRemoteLLMJudgeRequest{
+		RepoRoot: t.TempDir(),
 		Request: IssueOpsRemoteScoringRequest{
 			Provider: "github",
 			Issue:    IssueOpsRemoteArtifact{Title: "IssueOps related issue scoring"},
@@ -56,44 +54,36 @@ func TestRunIssueOpsRemoteAgyJudgeUsesStrictJSONWrapper(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(result.SelectedRelatedIssues) != 1 || len(result.SelectedLabels) != 1 {
-		t.Fatalf("expected strict JSON result from fake agy: %+v", result)
+		t.Fatalf("expected strict JSON result from fake Z.AI: %+v", result)
 	}
 	if result.ExecutionClass != "background_join" || !result.ReadOnly {
-		t.Fatalf("expected agy result to be normalized with background read-only classification: %+v", result)
+		t.Fatalf("expected LLM result to be normalized with background read-only classification: %+v", result)
 	}
 }
 
-func TestRunIssueOpsRemoteAgyJudgeParsesFencedJSON(t *testing.T) {
-	fakeAgy := filepath.Join(t.TempDir(), "fake-agy.sh")
+func TestRunIssueOpsRemoteLLMJudgeParsesFencedJSON(t *testing.T) {
 	output := "```json\n" + `{"ok":true,"provider":"github","threshold":0.7,"execution_class":"background_join","read_only":true,"join_before":"remote_artifact_write","selected_related_issues":[],"rejected_related_issues":[],"selected_labels":[],"rejected_labels":[],"apply_instructions":[],"warnings":[]}` + "\n```"
-	if err := os.WriteFile(fakeAgy, []byte("#!/bin/sh\nif [ \"$1\" != \"--dangerously-skip-permissions\" ] || [ \"$2\" != \"-p\" ]; then echo missing agy flags >&2; exit 2; fi\ncat <<'EOF'\n"+output+"\nEOF\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	withFakeIssueOpsRemoteZAI(t, remoteFakeZAIResponse{Content: output})
 
-	result, err := RunIssueOpsRemoteAgyJudge(IssueOpsRemoteAgyJudgeRequest{
-		RepoRoot:   t.TempDir(),
-		AgyCommand: fakeAgy,
+	result, err := RunIssueOpsRemoteLLMJudge(IssueOpsRemoteLLMJudgeRequest{
+		RepoRoot: t.TempDir(),
 		Request: IssueOpsRemoteScoringRequest{
 			Provider: "github",
 			Issue:    IssueOpsRemoteArtifact{Title: "IssueOps remote fenced JSON scoring"},
 		},
 	})
 	if err != nil || !result.OK {
-		t.Fatalf("expected fenced JSON result from fake agy: result=%+v err=%v", result, err)
+		t.Fatalf("expected fenced JSON result from fake Z.AI: result=%+v err=%v", result, err)
 	}
 }
 
-func TestRunIssueOpsRemoteAgyJudgeRejectsFencedUnknownField(t *testing.T) {
-	fakeAgy := filepath.Join(t.TempDir(), "fake-agy.sh")
+func TestRunIssueOpsRemoteLLMJudgeRejectsFencedUnknownField(t *testing.T) {
 	output := "```json\n" + `{"ok":true,"provider":"github","threshold":0.7,"selected_related_issues":[],"selected_labels":[],"apply_instructions":[],"unexpected":true}` + "\n```"
-	if err := os.WriteFile(fakeAgy, []byte("#!/bin/sh\ncat <<'EOF'\n"+output+"\nEOF\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	withFakeIssueOpsRemoteZAI(t, remoteFakeZAIResponse{Content: output})
 
-	_, err := RunIssueOpsRemoteAgyJudge(IssueOpsRemoteAgyJudgeRequest{
-		RepoRoot:   t.TempDir(),
-		AgyCommand: fakeAgy,
-		Attempts:   1,
+	_, err := RunIssueOpsRemoteLLMJudge(IssueOpsRemoteLLMJudgeRequest{
+		RepoRoot: t.TempDir(),
+		Attempts: 1,
 		Request: IssueOpsRemoteScoringRequest{
 			Provider: "github",
 			Issue:    IssueOpsRemoteArtifact{Title: "IssueOps remote fenced JSON scoring"},
@@ -104,17 +94,13 @@ func TestRunIssueOpsRemoteAgyJudgeRejectsFencedUnknownField(t *testing.T) {
 	}
 }
 
-func TestRunIssueOpsRemoteAgyJudgeRejectsInvalidLifecycleMetadata(t *testing.T) {
-	fakeAgy := filepath.Join(t.TempDir(), "fake-agy.sh")
+func TestRunIssueOpsRemoteLLMJudgeRejectsInvalidLifecycleMetadata(t *testing.T) {
 	output := `{"ok":true,"provider":"github","threshold":0.7,"execution_class":"foreground_blocking","read_only":false,"join_before":"never","selected_related_issues":[],"rejected_related_issues":[],"selected_labels":[],"rejected_labels":[],"apply_instructions":[],"warnings":[]}`
-	if err := os.WriteFile(fakeAgy, []byte("#!/bin/sh\nprintf '%s' '"+output+"'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	withFakeIssueOpsRemoteZAI(t, remoteFakeZAIResponse{Content: output})
 
-	_, err := RunIssueOpsRemoteAgyJudge(IssueOpsRemoteAgyJudgeRequest{
-		RepoRoot:   t.TempDir(),
-		AgyCommand: fakeAgy,
-		Attempts:   1,
+	_, err := RunIssueOpsRemoteLLMJudge(IssueOpsRemoteLLMJudgeRequest{
+		RepoRoot: t.TempDir(),
+		Attempts: 1,
 		Request: IssueOpsRemoteScoringRequest{
 			Provider: "github",
 			Issue:    IssueOpsRemoteArtifact{Title: "IssueOps remote lifecycle contract"},
@@ -125,8 +111,8 @@ func TestRunIssueOpsRemoteAgyJudgeRejectsInvalidLifecycleMetadata(t *testing.T) 
 	}
 }
 
-func TestIssueOpsRemoteAgyJudgePromptRequiresReadOnlyBackgroundJoin(t *testing.T) {
-	prompt, err := buildIssueOpsRemoteAgyJudgePrompt(IssueOpsRemoteScoringRequest{
+func TestIssueOpsRemoteLLMJudgePromptRequiresReadOnlyBackgroundJoin(t *testing.T) {
+	prompt, err := buildIssueOpsRemoteLLMJudgePrompt(IssueOpsRemoteScoringRequest{
 		Provider: "github",
 		Issue:    IssueOpsRemoteArtifact{Title: "IssueOps remote scoring prompt hardening"},
 	})
@@ -156,37 +142,14 @@ func TestIssueOpsRemoteAgyJudgePromptRequiresReadOnlyBackgroundJoin(t *testing.T
 	}
 }
 
-func TestRunIssueOpsRemoteAgyJudgeRetriesExternalLLMFailure(t *testing.T) {
-	dir := t.TempDir()
-	counter := filepath.Join(dir, "counter")
-	fakeAgy := filepath.Join(dir, "fake-agy.sh")
-	if err := os.WriteFile(fakeAgy, []byte(`#!/bin/sh
-if [ "$1" != "--dangerously-skip-permissions" ] || [ "$2" != "-p" ]; then
-  echo missing agy flags >&2
-  exit 2
-fi
-count=0
-if [ -f "$COUNTER_FILE" ]; then
-  count=$(cat "$COUNTER_FILE")
-fi
-count=$((count + 1))
-printf '%s' "$count" > "$COUNTER_FILE"
-if [ "$count" -eq 1 ]; then
-  echo transient failure >&2
-  exit 7
-fi
-cat <<'EOF'
-{"ok":true,"provider":"github","threshold":0.7,"execution_class":"background_join","read_only":true,"join_before":"remote_artifact_write","selected_related_issues":[],"rejected_related_issues":[],"selected_labels":[],"rejected_labels":[],"apply_instructions":[],"warnings":[]}
-EOF
-`), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("COUNTER_FILE", counter)
-
-	result, err := RunIssueOpsRemoteAgyJudge(IssueOpsRemoteAgyJudgeRequest{
-		RepoRoot:   dir,
-		AgyCommand: fakeAgy,
-		Attempts:   2,
+func TestRunIssueOpsRemoteLLMJudgeRetriesExternalLLMFailure(t *testing.T) {
+	withFakeIssueOpsRemoteZAI(t,
+		remoteFakeZAIResponse{Status: http.StatusInternalServerError, Body: `{"error":{"message":"transient failure"}}`},
+		remoteFakeZAIResponse{Content: `{"ok":true,"provider":"github","threshold":0.7,"execution_class":"background_join","read_only":true,"join_before":"remote_artifact_write","selected_related_issues":[],"rejected_related_issues":[],"selected_labels":[],"rejected_labels":[],"apply_instructions":[],"warnings":[]}`},
+	)
+	result, err := RunIssueOpsRemoteLLMJudge(IssueOpsRemoteLLMJudgeRequest{
+		RepoRoot: t.TempDir(),
+		Attempts: 2,
 		Request: IssueOpsRemoteScoringRequest{
 			Provider: "github",
 			Issue:    IssueOpsRemoteArtifact{Title: "IssueOps remote scoring retry"},
@@ -195,4 +158,39 @@ EOF
 	if err != nil || !result.OK {
 		t.Fatalf("expected retry to recover external LLM failure: result=%+v err=%v", result, err)
 	}
+}
+
+type remoteFakeZAIResponse struct {
+	Status  int
+	Body    string
+	Content string
+}
+
+func withFakeIssueOpsRemoteZAI(t *testing.T, responses ...remoteFakeZAIResponse) {
+	t.Helper()
+	if len(responses) == 0 {
+		t.Fatal("missing fake Z.AI responses")
+	}
+	t.Setenv("Z_AI_API_KEY", "test-key")
+	index := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		response := responses[index]
+		if index < len(responses)-1 {
+			index++
+		}
+		if response.Status != 0 {
+			w.WriteHeader(response.Status)
+		}
+		if response.Body != "" {
+			_, _ = w.Write([]byte(response.Body))
+			return
+		}
+		_, _ = fmt.Fprintf(w, `{"choices":[{"message":{"content":%q}}]}`, response.Content)
+	}))
+	t.Cleanup(server.Close)
+	previous := externalllm.SetBaseURL(server.URL)
+	t.Cleanup(func() { externalllm.SetBaseURL(previous) })
 }

@@ -2,7 +2,7 @@
 
 ## Problem
 
-IssueOps already has durable workflow state, a Korean remote artifact gate, isolated worktree requirements, and a benchmark with deterministic plus `agy -p` judging. What it lacks is an explicit improvement loop that turns IssueOps changes into repeatable experiments.
+IssueOps already has durable workflow state, a Korean remote artifact gate, isolated worktree requirements, and a benchmark with deterministic plus `Z.AI Coding Plan` judging. What it lacks is an explicit improvement loop that turns IssueOps changes into repeatable experiments.
 
 The requested improvement is to adapt the useful parts of Karpathy-style autoresearch to IssueOps itself. The goal is not to recreate the ML training repository. The goal is to make IssueOps changes follow a small research loop: write a brief, limit the edit surface, run the same quality gate against baseline and candidate, and keep only changes that improve the measured result.
 
@@ -30,14 +30,14 @@ For IssueOps, those translate into:
 - Baseline and candidate runs can be compared through stable JSON output.
 - The candidate passes only when the quality gate reports no critical failures and no dimension regression.
 - The deterministic benchmark remains usable without network credentials or real model calls.
-- The `agy -p` judge remains opt-in for real LLM review, while tests use fake `agy`.
+- The `Z.AI Coding Plan` judge remains opt-in for real LLM review, while tests use fake Z.AI.
 - The IssueOps skill and project docs explain when to use this loop and when not to.
 
 ## Non-Goals
 
 - Do not build a detached overnight runner.
 - Do not let hooks create issues, branches, worktrees, commits, PRs, or MRs.
-- Do not call real `agy` from automated tests.
+- Do not call real `zai` from automated tests.
 - Do not relax fixtures, judge prompts, or benchmark thresholds to make a weak candidate pass.
 - Do not add a provider-specific score schema.
 - Do not create a broad workflow engine outside IssueOps.
@@ -63,11 +63,11 @@ The quality gate is the existing IssueOps benchmark:
 
 ```bash
 agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge agy --json
+agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --json
 agent-harness issueops benchmark compare --baseline KEY --candidate KEY --json
 ```
 
-`--judge none` is the deterministic local gate. `--judge agy` is the opt-in LLM gate when Antigravity quota is available. A candidate must not require real GitHub, GitLab, or real model calls to pass local tests.
+`--judge none` is the deterministic local gate. `--judge llm` is the opt-in LLM gate when Z.AI quota is available. A candidate must not require real GitHub, GitLab, or real model calls to pass local tests.
 
 ### Keep Or Discard
 
@@ -95,7 +95,7 @@ Discard or revise a candidate when:
 5. Implement one bounded candidate.
 6. Run focused tests and the deterministic candidate benchmark.
 7. Compare baseline and candidate.
-8. Optionally run fake-`agy` tests and real `--judge agy` only when explicitly available.
+8. Optionally run fake Z.AI tests and real `--judge llm` only when explicitly available.
 9. Keep the candidate only if the gate passes; otherwise record the failure and revise or discard.
 10. Draft the PR only after IssueOps `pr-readiness` reports issue and plan links.
 
@@ -126,14 +126,14 @@ go build -o bin/agent-harness ./cmd/harness
 agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
 ```
 
-Fake `agy` tests must cover strict JSON success, malformed output failure, schema failure, and gate/regression handling when the implementation touches judge behavior.
+Fake Z.AI tests must cover strict JSON success, malformed output failure, schema failure, and gate/regression handling when the implementation touches judge behavior.
 
 ## Risks
 
 - The loop can become performative if it only writes research briefs without comparing metrics.
 - The benchmark can become self-serving if fixtures are weakened during candidate implementation.
 - A broad edit surface would recreate the same ambiguity autoresearch is meant to prevent.
-- Real `agy` calls can make CI nondeterministic, so local tests must stay fake-backed.
+- Real `zai` calls can make CI nondeterministic, so local tests must stay fake-backed.
 
 ## Issue Link
 

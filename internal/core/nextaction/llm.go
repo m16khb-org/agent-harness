@@ -9,7 +9,7 @@ import (
 )
 
 // DEPRECATED / CURRENTLY UNUSED: as of 2026-06-04 the Stop hook no longer calls
-// this external-LLM gate. A synchronous agy/Gemini call measured ~13-25s, which is
+// this external-LLM gate. A synchronous CLI-mediated model call measured ~13-25s, which is
 // unusable inside a Stop hook's latency budget, so the live decision path uses only
 // the static heuristic (EvaluateNextActionAutoProceed) and the gate's intent is
 // delivered to the main agent as prompting via the UserPromptSubmit hook. This code
@@ -21,10 +21,10 @@ import (
 // When used, the LLM is the primary decision; the static heuristic in
 // EvaluateNextActionAutoProceed is the fallback the caller uses on any error.
 type NextActionAutoProceedLLMRequest struct {
-	Message    string
-	AgyCommand string
-	WorkDir    string
-	Timeout    time.Duration
+	Message string
+	Model   string
+	WorkDir string
+	Timeout time.Duration
 }
 
 type nextActionAutoProceedLLMResponse struct {
@@ -68,10 +68,6 @@ func EvaluateNextActionAutoProceedLLM(req NextActionAutoProceedLLMRequest, thres
 		return result, nil
 	}
 
-	command := strings.TrimSpace(req.AgyCommand)
-	if command == "" {
-		command = "agy"
-	}
 	timeout := req.Timeout
 	if timeout <= 0 {
 		timeout = 25 * time.Second
@@ -79,13 +75,13 @@ func EvaluateNextActionAutoProceedLLM(req NextActionAutoProceedLLMRequest, thres
 
 	prompt := BuildLLMPrompt(*recommended, candidates)
 
-	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Provider: command, WorkDir: req.WorkDir, Prompt: prompt, Timeout: timeout})
+	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Model: req.Model, WorkDir: req.WorkDir, Prompt: prompt, Timeout: timeout})
 	if err != nil {
 		return NextActionAutoProceedResult{}, fmt.Errorf("next-action auto-proceed LLM call failed: %w", err)
 	}
 
 	var response nextActionAutoProceedLLMResponse
-	if err := externalllm.DecodeExternalLLMStructuredJSONObject("agy next-action auto-proceed", llm.Output, &response); err != nil {
+	if err := externalllm.DecodeExternalLLMStructuredJSONObject("next-action auto-proceed", llm.Output, &response); err != nil {
 		return NextActionAutoProceedResult{}, fmt.Errorf("next-action auto-proceed LLM decode failed: %w", err)
 	}
 

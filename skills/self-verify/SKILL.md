@@ -26,7 +26,7 @@ HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --seed=100 --t
 
 Default `self-verify` is quick mode: one deterministic evidence pass followed by the final LLM evaluator when LLM eval is enabled. Use `--full` for the full ten-plus-iteration gate. Passing `--iterations` without `--full` is invalid.
 
-`HARNESS_SELF_VERIFY_LLM_EVAL` defaults to off. Set it to `advisory` or `gate` to run the `agy --dangerously-skip-permissions -p` LLM evaluator after deterministic self-verification; explicit CLI flags (`--llm-eval`, `--llm-eval=false`, `--llm-eval-mode`) override the environment.
+`HARNESS_SELF_VERIFY_LLM_EVAL` defaults to off. Set it to `advisory` or `gate` to run the Z.AI Coding Plan (`glm-5-turbo`) LLM evaluator after deterministic self-verification; explicit CLI flags (`--llm-eval`, `--llm-eval=false`, `--llm-eval-mode`) override the environment.
 
 ## Gate
 

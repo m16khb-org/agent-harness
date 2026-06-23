@@ -27,7 +27,7 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - 기존 IssueOps CLI state surface: `cmd/harness/issueops.go`
 - 기존 IssueOps core state helper: `internal/core/issueops.go`
 - 기존 response contract/golden 패턴은 CLI/MCP JSON surface와 self-verify score 비교를 포함한다.
-- 기존 `agy -p` 통합 패턴은 commit suggestion, lint diagnosis, draft wiki suggestion, self-verify LLM evaluation 경로에 있다.
+- 기존 `Z.AI Coding Plan` 통합 패턴은 commit suggestion, lint diagnosis, draft wiki suggestion, self-verify LLM evaluation 경로에 있다.
 
 ## 완료 기준
 
@@ -40,7 +40,7 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - deterministic benchmark는 issue draft와 PR/MR draft가 한글로 작성됐는지 검사한다.
 - deterministic benchmark는 issue draft와 PR/MR draft가 `docs/superpowers/specs/issueops-issue-pr-guidelines.md`를 참조하고 핵심 section을 만족하는지 검사한다.
 - deterministic benchmark는 복잡도 근거 없이 억지로 넣은 다이어그램을 지양하고, 다이어그램은 review value가 명확할 때만 허용한다.
-- `agy -p` LLM judge adapter를 추가하고, judge output은 strict JSON-only schema로 검증한다.
+- `Z.AI Coding Plan` LLM judge adapter를 추가하고, judge output은 strict JSON-only schema로 검증한다.
 - malformed judge output은 작은 bounded retry 안에서만 재시도하고, 최종 decode/schema failure는 critical failure로 기록한다.
 - 다음 score dimension을 포함한다.
   - `intent_understanding`
@@ -57,7 +57,7 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
   - `worktree_cleanup_quality`
 - benchmark output은 average score, minimum score, per-dimension score, deterministic failure, judge failure, critical failure, pass/fail을 포함한다.
 - CLI 명령을 추가한다.
-  - `agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge agy --json`
+  - `agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --json`
   - `agent-harness issueops benchmark compare --baseline KEY --candidate KEY --json`
 - baseline/candidate run을 비교할 수 있도록 compact benchmark result를 harness state에 저장한다.
 - branch/worktree 요구사항을 기록하고 judge할 수 있도록 IssueOps workflow state 또는 contract evidence를 확장한다.
@@ -84,13 +84,13 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - benchmark fixture에서 live GitHub/GitLab issue 또는 PR 생성을 요구하지 않는다.
 - wall-clock latency를 IssueOps 품질의 primary metric으로 삼지 않는다.
 - hook이 issue, worktree, branch, commit, PR, MR을 직접 생성하지 않는다.
-- `agy`를 유일한 미래 judge backend로 고정하지 않는다. score schema는 backend-neutral하게 유지한다.
+- `zai`를 유일한 미래 judge backend로 고정하지 않는다. score schema는 backend-neutral하게 유지한다.
 
 ## 검증
 
 - Fixture schema test 통과.
 - Deterministic scorer test 통과.
-- Fake `agy` test가 valid JSON, noisy output rejection, schema failure를 커버.
+- Fake Z.AI test가 valid JSON, noisy output rejection, schema failure를 커버.
 - CLI benchmark `run`과 `compare` test 통과.
 - Worktree cleanup gate test가 clean, dirty, merged, unmerged, user-declined cleanup scenario를 커버.
 - CLI/MCP contract 변경 시 response contract/golden test 통과.
@@ -103,7 +103,7 @@ IssueOps는 에이전트 작업의 속도보다 품질을 높이는 것이 목�
 - 사용자는 IssueOps prompt 변경 전에 IssueOps Quality Score와 benchmark harness를 먼저 만들자는 범위를 수락했다.
 - 사용자는 repo-local synthetic fixture를 수락했다.
 - 사용자는 deterministic check와 LLM judge를 함께 쓰는 hybrid scoring을 수락했다.
-- 사용자는 strict JSON/schema validation이 있는 초기 judge backend로 `agy -p`를 수락했다.
+- 사용자는 strict JSON/schema validation이 있는 초기 judge backend로 `Z.AI Coding Plan`를 수락했다.
 - 사용자는 phase choice gate와 isolated worktree requirement를 추가했다.
 - 사용자는 isolated worktree path convention으로 `<repo>.worktrees/<branch-slug>`를 수락했다.
 - 사용자는 worktree cleanup을 IssueOps completion step에 포함하라고 요구했다.

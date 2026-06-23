@@ -1,7 +1,7 @@
 // Package lintgate provides a DETERMINISTIC, fail-open lint check for the
 // PostToolUse hook (B3). It deliberately has NO dependency on externalllm /
-// agysettings, so the per-edit critical-path hook can never invoke an LLM
-// (unlike lintdiagnose.DiagnoseCommand, which calls agy).
+// provider settings, so the per-edit critical-path hook can never invoke an LLM
+// (unlike lintdiagnose.DiagnoseCommand, which calls the shared external LLM wrapper).
 package lintgate
 
 import (

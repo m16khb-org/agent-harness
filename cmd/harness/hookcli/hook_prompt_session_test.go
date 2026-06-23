@@ -23,17 +23,17 @@ func TestRunHookUserPromptDropsCatalog(t *testing.T) {
 	}
 }
 
-func TestRunHookUserPromptAgyHintsAreOptIn(t *testing.T) {
+func TestRunHookUserPromptLLMHintsAreOptIn(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := hookTempRepoWithDoc(t)
 	input := `{"prompt":"이 계획을 검토하고 개선점을 분석해줘","cwd":"` + repo + `"}`
 	disabled := runHookCapture(t, input, func() error { return runHookUserPrompt(nil) })
-	if strings.Contains(hookAdditionalContext(disabled), "agy -p") {
-		t.Fatalf("agy hint should be disabled by default: %q", hookAdditionalContext(disabled))
+	if strings.Contains(hookAdditionalContext(disabled), "Z.AI glm-5-turbo") {
+		t.Fatalf("LLM hint should be disabled by default: %q", hookAdditionalContext(disabled))
 	}
-	enabled := runHookCapture(t, input, func() error { return runHookUserPrompt([]string{"--enable-agy-hints"}) })
-	if !strings.Contains(hookAdditionalContext(enabled), "agy -p for LLM second-pass review") {
-		t.Fatalf("agy hint should be enabled by flag: %q", hookAdditionalContext(enabled))
+	enabled := runHookCapture(t, input, func() error { return runHookUserPrompt([]string{"--enable-llm-hints"}) })
+	if !strings.Contains(hookAdditionalContext(enabled), "Z.AI glm-5-turbo for LLM second-pass review") {
+		t.Fatalf("LLM hint should be enabled by flag: %q", hookAdditionalContext(enabled))
 	}
 }
 

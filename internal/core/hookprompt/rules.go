@@ -8,7 +8,7 @@ type HookRoutingRule struct {
 	Priority        string
 	LowerKeywords   []string
 	PromptKeywords  []string
-	RequireAgyOptIn bool
+	RequireLLMOptIn bool
 }
 
 var hookRoutingRules = []HookRoutingRule{
@@ -88,12 +88,12 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords: []string{"전에", "지난번", "이미 해결"},
 	},
 	{
-		Tool:            "agy -p",
-		Reason:          "Secondary hint: consider agy -p for foreground second-pass LLM review or background synthesis when extra model judgment is useful.",
+		Tool:            "Z.AI Coding Plan",
+		Reason:          "Secondary hint: consider Z.AI glm-5-turbo for foreground second-pass LLM review or background synthesis when extra model judgment is useful.",
 		Priority:        PrioritySecondary,
 		LowerKeywords:   []string{"review", "analyze", "analysis", "critique", "second opinion", "plan", "research"},
 		PromptKeywords:  []string{"검토", "리뷰", "분석", "비평", "계획", "리서치", "조사"},
-		RequireAgyOptIn: true,
+		RequireLLMOptIn: true,
 	},
 	// CS pioneer skill routing (issue #10): keyword hints so the matching
 	// specialist skill surfaces on ordinary, non-issueops requests too.
@@ -164,15 +164,15 @@ var hookRoutingRules = []HookRoutingRule{
 
 var RoutingRules = hookRoutingRules
 
-func (rule HookRoutingRule) matches(prompt, lower string, enableAgyHints bool) bool {
-	if rule.RequireAgyOptIn && !enableAgyHints {
+func (rule HookRoutingRule) matches(prompt, lower string, enableLLMHints bool) bool {
+	if rule.RequireLLMOptIn && !enableLLMHints {
 		return false
 	}
 	return containsAnySlice(lower, rule.LowerKeywords) || containsAnySlice(prompt, rule.PromptKeywords)
 }
 
-func (rule HookRoutingRule) Matches(prompt, lower string, enableAgyHints bool) bool {
-	return rule.matches(prompt, lower, enableAgyHints)
+func (rule HookRoutingRule) Matches(prompt, lower string, enableLLMHints bool) bool {
+	return rule.matches(prompt, lower, enableLLMHints)
 }
 
 func containsAnySlice(s string, needles []string) bool {

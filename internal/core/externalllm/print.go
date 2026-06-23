@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -25,18 +24,14 @@ var baseURL = "https://api.z.ai/api/coding/paas/v4/chat/completions"
 //
 // By default, the harness uses Z.AI Coding Plan (glm-5-turbo) with
 // structured output (response_format: json_object) and thinking disabled.
-//
-// Set Provider to "agy" or a filesystem path to use the legacy agy CLI.
-// In legacy mode, Model and APIKey are ignored; the caller must supply a
-// valid agy binary path via the Provider field.
 type ExternalLLMPrintRequest struct {
-	// Provider selects the backend: "zai" (default), "agy", or a path to an agy binary.
+	// Provider selects the backend. Empty and "zai" both use Z.AI.
 	Provider string
-	// Model for Z.AI provider (default "glm-5-turbo"). Ignored in legacy agy mode.
+	// Model for Z.AI provider (default "glm-5-turbo").
 	Model string
 	// APIKey overrides the $Z_AI_API_KEY environment variable.
 	APIKey string
-	// WorkDir is used only in legacy agy mode as the command working directory.
+	// WorkDir is retained for callers that still carry workspace context.
 	WorkDir string
 	// Prompt is the text sent to the LLM.
 	Prompt string
@@ -54,9 +49,6 @@ type ExternalLLMPrintResult struct {
 // RunExternalLLMPrint sends a prompt to the external LLM and returns the raw
 // response. By default this uses the Z.AI Coding Plan HTTP API with
 // glm-5-turbo, structured JSON output, and thinking disabled.
-//
-// Legacy agy CLI mode is used when Provider is explicitly set to "agy" or a
-// filesystem path.
 func RunExternalLLMPrint(req ExternalLLMPrintRequest) (ExternalLLMPrintResult, error) {
 	prompt := strings.TrimSpace(req.Prompt)
 	if prompt == "" {
@@ -72,8 +64,8 @@ func RunExternalLLMPrint(req ExternalLLMPrintRequest) (ExternalLLMPrintResult, e
 		provider = defaultProvider
 	}
 
-	if provider == "agy" || strings.ContainsRune(provider, '/') || strings.ContainsRune(provider, '\\') || strings.HasSuffix(provider, ".sh") || strings.HasSuffix(provider, ".bat") {
-		return runAgyCLI(provider, req.WorkDir, prompt, timeout)
+	if provider != defaultProvider {
+		return ExternalLLMPrintResult{}, fmt.Errorf("unsupported external llm provider %q; use zai:%s", provider, defaultModel)
 	}
 
 	return runZAI(req, timeout)
@@ -167,24 +159,6 @@ func runZAI(req ExternalLLMPrintRequest, timeout time.Duration) (ExternalLLMPrin
 
 	content := strings.TrimSpace(chatResp.Choices[0].Message.Content)
 	return ExternalLLMPrintResult{Output: []byte(content)}, nil
-}
-
-// runAgyCLI is the legacy agy path kept for backward compatibility.
-func runAgyCLI(agyPath, workDir, prompt string, timeout time.Duration) (ExternalLLMPrintResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, agyPath, "--dangerously-skip-permissions", "-p", prompt)
-	if strings.TrimSpace(workDir) != "" {
-		cmd.Dir = workDir
-	}
-	out, err := cmd.CombinedOutput()
-	if ctx.Err() == context.DeadlineExceeded {
-		return ExternalLLMPrintResult{Output: out}, fmt.Errorf("external llm (agy) timed out after %s", timeout)
-	}
-	if err != nil {
-		return ExternalLLMPrintResult{Output: out}, err
-	}
-	return ExternalLLMPrintResult{Output: out}, nil
 }
 
 // ExternalLLMPrintCommandPreview returns a human-readable description of the

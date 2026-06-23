@@ -18,7 +18,7 @@ Always inspect the current issue list and label list before deciding whether to 
 Run the scoring gate with the external LLM judge when available:
 
 ```bash
-agent-harness issueops remote score --input issueops-remote-score.json --judge agy --json
+agent-harness issueops remote score --input issueops-remote-score.json --judge llm --model glm-5-turbo --json
 ```
 
 Use deterministic fallback only when the external LLM is unavailable or intentionally disabled:
@@ -34,7 +34,7 @@ The scoring summary is the **threshold-based label decision**. It must name sele
 The agent must propose the operational choice instead of leaving the user to invent it. Example:
 
 ```text
-관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 agy judge, 실패 시 deterministic fallback으로 진행합니다.
+관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 Z.AI `glm-5-turbo` LLM judge, 실패 시 deterministic fallback으로 진행합니다.
 ```
 
 Only prepare a local issue draft instead of creating a remote issue when credentials, target provider, ownership, or branch target are unclear, or when the user explicitly asks not to create a remote issue.

@@ -58,7 +58,7 @@ func runHookStop(args []string) error {
 	}
 	ho := hookadapter.Resolve(strings.TrimSpace(*host))
 	// The external-LLM gate (core.EvaluateNextActionAutoProceedLLM) is intentionally
-	// not called here: a synchronous agy/Gemini call measured ~13-25s, which is
+	// not called here: synchronous external LLM calls measured ~13-25s, which is
 	// unusable inside a Stop hook's latency budget. The hook also does not replace
 	// that LLM with a local scorer. It reports only that the response reached an
 	// explicit next-action judgement point and sends the observed facts to the main

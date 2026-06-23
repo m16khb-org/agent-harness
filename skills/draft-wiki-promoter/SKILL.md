@@ -34,7 +34,7 @@ agent-harness project draft-wiki promote --repo . --confirm --json PATH
 
 The CLI also provides `queue` and `prune` subcommands: `queue` is the mechanism behind the hook boundary below (hooks enqueue signals; a worker processes them out-of-band), and `prune` trims old queue entries.
 
-`draft-wiki suggest` uses `agy -p`. Antigravity CLI model selection is persistent configuration, not a per-call flag: verify `~/.gemini/antigravity-cli/settings.json` has the desired `model` value. Omit `--agy-model` to accept the currently selected settings model, or pass an exact label to enforce it. Do not pass `--model` to `agy`; current `agy` rejects that flag.
+`draft-wiki suggest` uses Z.AI Coding Plan and defaults to `glm-5-turbo`. Use `--model` only when an explicit Z.AI model override is needed.
 
 ## Workflow
 
@@ -48,6 +48,6 @@ The CLI also provides `queue` and `prune` subcommands: `queue` is the mechanism 
 
 ## Boundaries
 
-- Never run `agy -p` inside PostToolUse hooks; hooks may enqueue signals only.
+- Never run external LLM calls inside PostToolUse hooks; hooks may enqueue signals only.
 - Never edit LLM Wiki compiled `wiki/` articles from this skill. Promotion writes raw source notes only.
 - Never delete rejected drafts unless the user explicitly asks.

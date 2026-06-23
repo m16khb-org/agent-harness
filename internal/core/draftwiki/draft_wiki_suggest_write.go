@@ -4,20 +4,20 @@ import (
 	"agent-harness/internal/core/draftwiki/suggestdraft"
 )
 
-func writeSuggestedDraft(root, title, targetWiki, targetType, agyModel, output string) (string, error) {
-	return suggestdraft.Write(root, DraftWikiDir, title, targetWiki, targetType, agyModel, output)
+func writeSuggestedDraft(root, title, targetWiki, targetType, model, output string) (string, error) {
+	return suggestdraft.Write(root, DraftWikiDir, title, targetWiki, targetType, model, output)
 }
 
-func generatedDraftFrontmatter(title, targetWiki, targetType, agyModel string) string {
-	return suggestdraft.Frontmatter(title, targetWiki, targetType, agyModel)
+func generatedDraftFrontmatter(title, targetWiki, targetType, model string) string {
+	return suggestdraft.Frontmatter(title, targetWiki, targetType, model)
 }
 
 func stripMarkdownFence(output string) string {
 	return suggestdraft.StripMarkdownFence(output)
 }
 
-func stripAgyOutputPreamble(output string) string {
-	return suggestdraft.StripAgyOutputPreamble(output)
+func stripLLMOutputPreamble(output string) string {
+	return suggestdraft.StripLLMOutputPreamble(output)
 }
 
 func slugifyDraftWiki(value string) string {

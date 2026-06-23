@@ -1247,6 +1247,20 @@
           "title": "Verification Operations"
         },
         {
+          "bytes": 2906,
+          "headings": [
+            "Web-Fetch Live Parity",
+            "Scope",
+            "Safety Boundary",
+            "Commands",
+            "Report Fields",
+            "CI Candidate Gate"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
+          "rel_path": ".agent-harness/operations/web-fetch-live-parity.md",
+          "title": "Web-Fetch Live Parity"
+        },
+        {
           "bytes": 1363,
           "headings": [
             "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트",
@@ -1777,7 +1791,7 @@
           "title": "Self-verification candidate catalog"
         },
         {
-          "bytes": 2723,
+          "bytes": 2716,
           "headings": [
             "Self-verification loop",
             "Goal",
@@ -1834,6 +1848,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/release-reproducibility.md",
         "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
         "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+        "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
         "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
         "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
@@ -4774,7 +4789,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 61,
+        "docs_indexed": 62,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -7238,6 +7253,20 @@
                 "title": "Verification Operations"
               },
               {
+                "bytes": 2906,
+                "headings": [
+                  "Web-Fetch Live Parity",
+                  "Scope",
+                  "Safety Boundary",
+                  "Commands",
+                  "Report Fields",
+                  "CI Candidate Gate"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
+                "rel_path": ".agent-harness/operations/web-fetch-live-parity.md",
+                "title": "Web-Fetch Live Parity"
+              },
+              {
                 "bytes": 1363,
                 "headings": [
                   "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트",
@@ -7768,7 +7797,7 @@
                 "title": "Self-verification candidate catalog"
               },
               {
-                "bytes": 2723,
+                "bytes": 2716,
                 "headings": [
                   "Self-verification loop",
                   "Goal",
@@ -7832,6 +7861,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/release-reproducibility.md",
               "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
               "$HARNESS_ROOT/.agent-harness/operations/verification.md",
+              "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
               "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
               "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
@@ -9876,7 +9906,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 61,
+              "docs_indexed": 62,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

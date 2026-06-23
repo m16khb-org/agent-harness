@@ -147,10 +147,10 @@ Run the 100-point quality benchmark:
 
 ```bash
 agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge none --json
-agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge agy --json
+agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --model glm-5-turbo --json
 ```
 
-The benchmark passes only when every fixture has `average_score: 100`, `minimum_score: 100`, and `critical_failure_count: 0`. Use `--judge agy` for the real LLM gate when quota is available; use `--judge none` only for deterministic local evidence.
+The benchmark passes only when every fixture has `average_score: 100`, `minimum_score: 100`, and `critical_failure_count: 0`. Use `--judge llm --model glm-5-turbo` for the real LLM gate when quota is available; use `--judge none` only for deterministic local evidence.
 
 Run the autoresearch keep/discard gate for IssueOps improvement candidates:
 
@@ -160,4 +160,4 @@ agent-harness issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CA
 
 The candidate file records the hypothesis, target dimensions, edit surface, and keep/discard criteria. The gate keeps a candidate only when the candidate benchmark passes, baseline comparison has no regression, target dimensions do not regress, and every changed path is inside the declared edit surface.
 
-All `agy -p` usage must go through the shared external LLM wrapper in the harness core. The wrapper invokes `agy --dangerously-skip-permissions -p <prompt>` so IssueOps gates do not block on permission prompts.
+All IssueOps LLM judging must go through the shared external LLM wrapper in the harness core. The wrapper invokes the Z.AI Coding Plan chat completions API with `glm-5-turbo` by default.

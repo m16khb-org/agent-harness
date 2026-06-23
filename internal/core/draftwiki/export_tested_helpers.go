@@ -2,12 +2,12 @@ package draftwiki
 
 import "agent-harness/internal/core/draftwiki/llmpromote"
 
-func BuildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, agyModel, targetType string) string {
-	return buildDraftWikiSuggestPrompt(req, input, agyModel, targetType)
+func BuildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, model, targetType string) string {
+	return buildDraftWikiSuggestPrompt(req, input, model, targetType)
 }
 
-func GeneratedDraftFrontmatter(title, targetWiki, targetType, agyModel string) string {
-	return generatedDraftFrontmatter(title, targetWiki, targetType, agyModel)
+func GeneratedDraftFrontmatter(title, targetWiki, targetType, model string) string {
+	return generatedDraftFrontmatter(title, targetWiki, targetType, model)
 }
 
 func FailDraftWikiQueueEvent(event DraftWikiQueueEvent, err error) DraftWikiQueueEvent {
@@ -26,4 +26,4 @@ func DraftWikiSeedFiles() map[string]string {
 	return draftWikiSeedFiles()
 }
 
-type DraftWikiSuggestAgyResponse = draftWikiSuggestAgyResponse
+type DraftWikiSuggestLLMResponse = draftWikiSuggestLLMResponse

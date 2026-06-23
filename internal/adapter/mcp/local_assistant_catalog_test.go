@@ -7,7 +7,7 @@ func TestLocalAssistantToolsExposeStableDescriptors(t *testing.T) {
 		{
 			name:                "commit_suggest",
 			descriptionContains: "Conventional + Lore Hybrid",
-			properties:          []string{"agy_model"},
+			properties:          []string{"model"},
 		},
 		{
 			name:       "lint_diagnose",

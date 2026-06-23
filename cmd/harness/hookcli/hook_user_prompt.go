@@ -18,7 +18,7 @@ func runHookUserPrompt(args []string) error {
 	promptFlag := fs.String("prompt", "", "user prompt text; defaults to hook stdin JSON prompt")
 	hostFlag := fs.String("host", "", "hook host (codex or claude); controls user-visible compatibility fields")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
-	enableAgyHints := fs.Bool("enable-agy-hints", false, "suggest agy -p for LLM second-pass review when the prompt fits")
+	enableLLMHints := fs.Bool("enable-llm-hints", false, "suggest Z.AI glm-5-turbo for LLM second-pass review when the prompt fits")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func runHookUserPrompt(args []string) error {
 	if hookprompt.IsExplicitNextActionInstruction(prompt) {
 		core.ClearStopNextActionRelay(repo)
 	}
-	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo, EnableAgyHints: *enableAgyHints || hookenv.Bool("HARNESS_ENABLE_AGY_HINTS")})
+	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo, EnableLLMHints: *enableLLMHints || hookenv.Bool("HARNESS_ENABLE_LLM_HINTS")})
 	if *jsonOut {
 		return printJSON(result)
 	}

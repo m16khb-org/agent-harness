@@ -3,10 +3,10 @@ package handoff
 import "testing"
 
 func TestJoinHandoffArgsQuotesShellSensitiveArguments(t *testing.T) {
-	args := []string{"agy", "--flag", "plain", "two words", "it's", "line\nbreak", `"quoted"`}
+	args := []string{"zai", "--flag", "plain", "two words", "it's", "line\nbreak", `"quoted"`}
 
 	got := JoinArgs(args)
-	want := `agy --flag plain 'two words' 'it'"'"'s' 'line
+	want := `zai --flag plain 'two words' 'it'"'"'s' 'line
 break' '"quoted"'`
 
 	if got != want {

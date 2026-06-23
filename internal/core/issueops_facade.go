@@ -63,7 +63,7 @@ type IssueOpsBenchmarkCompareResult = issueops.IssueOpsBenchmarkCompareResult
 type IssueOpsAutoresearchCandidate = issueops.IssueOpsAutoresearchCandidate
 type IssueOpsAutoresearchGateRequest = issueops.IssueOpsAutoresearchGateRequest
 type IssueOpsAutoresearchGateResult = issueops.IssueOpsAutoresearchGateResult
-type IssueOpsAgyJudgeRequest = issueops.IssueOpsAgyJudgeRequest
+type IssueOpsLLMJudgeRequest = issueops.IssueOpsLLMJudgeRequest
 type RecordedRun = issueops.RecordedRun
 type RecordedOutcomes = issueops.RecordedOutcomes
 type FixtureReliability = issueops.FixtureReliability
@@ -79,7 +79,7 @@ type IssueOpsRemoteLabelCandidate = issueops.IssueOpsRemoteLabelCandidate
 type IssueOpsRemoteScoringRequest = issueops.IssueOpsRemoteScoringRequest
 type IssueOpsRemoteScoredItem = issueops.IssueOpsRemoteScoredItem
 type IssueOpsRemoteScoringResult = issueops.IssueOpsRemoteScoringResult
-type IssueOpsRemoteAgyJudgeRequest = issueops.IssueOpsRemoteAgyJudgeRequest
+type IssueOpsRemoteLLMJudgeRequest = issueops.IssueOpsRemoteLLMJudgeRequest
 type IssueOpsArtifactKind = artifacttemplate.IssueOpsArtifactKind
 type IssueOpsTemplateKind = artifacttemplate.IssueOpsTemplateKind
 type IssueOpsTemplateInput = artifacttemplate.IssueOpsTemplateInput
@@ -357,16 +357,16 @@ func EvaluateIssueOpsAutoresearchGate(req IssueOpsAutoresearchGateRequest) Issue
 	return issueops.EvaluateIssueOpsAutoresearchGate(req)
 }
 
-func RunIssueOpsAgyJudge(req IssueOpsAgyJudgeRequest) (IssueOpsBenchmarkScore, error) {
-	return issueops.RunIssueOpsAgyJudge(req)
+func RunIssueOpsLLMJudge(req IssueOpsLLMJudgeRequest) (IssueOpsBenchmarkScore, error) {
+	return issueops.RunIssueOpsLLMJudge(req)
 }
 
 func DecodeIssueOpsBenchmarkJudgeJSON(out []byte) (IssueOpsBenchmarkScore, error) {
 	return issueops.DecodeIssueOpsBenchmarkJudgeJSON(out)
 }
 
-func buildIssueOpsAgyJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
-	return issueops.BuildIssueOpsAgyJudgePrompt(fixture, artifact)
+func buildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
+	return issueops.BuildIssueOpsLLMJudgePrompt(fixture, artifact)
 }
 
 func DecodeIssueOpsRemoteScoringRequest(data []byte) (IssueOpsRemoteScoringRequest, error) {
@@ -377,8 +377,8 @@ func ScoreIssueOpsRemoteCandidates(req IssueOpsRemoteScoringRequest) (IssueOpsRe
 	return issueops.ScoreIssueOpsRemoteCandidates(req)
 }
 
-func RunIssueOpsRemoteAgyJudge(req IssueOpsRemoteAgyJudgeRequest) (IssueOpsRemoteScoringResult, error) {
-	return issueops.RunIssueOpsRemoteAgyJudge(req)
+func RunIssueOpsRemoteLLMJudge(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteScoringResult, error) {
+	return issueops.RunIssueOpsRemoteLLMJudge(req)
 }
 
 // Session binding for multi-session continuity.

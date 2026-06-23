@@ -205,10 +205,10 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	if len(draftWikiSeedFiles()) == 0 || draftWikiRawFileName("2026-06-13", "Draft.md") == "" {
 		t.Fatal("draft wiki helpers should return data")
 	}
-	if !strings.Contains(generatedDraftFrontmatter("Title", "wiki", "notes", "agy"), "Title") {
+	if !strings.Contains(generatedDraftFrontmatter("Title", "wiki", "notes", "glm-5-turbo"), "Title") {
 		t.Fatal("generated frontmatter should include title")
 	}
-	if !strings.Contains(buildDraftWikiSuggestPrompt(DraftWikiSuggestRequest{RepoRoot: repo}, "input", "agy", "notes"), "input") {
+	if !strings.Contains(buildDraftWikiSuggestPrompt(DraftWikiSuggestRequest{RepoRoot: repo}, "input", "glm-5-turbo", "notes"), "input") {
 		t.Fatal("suggest prompt should include input")
 	}
 	event := DraftWikiQueueEvent{ID: "id", Kind: "draft", SourceMaterial: "material", Status: "pending"}
