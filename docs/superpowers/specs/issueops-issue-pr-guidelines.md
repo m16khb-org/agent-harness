@@ -75,6 +75,8 @@ agent-harness issueops remote create-pr --id "$ISSUEOPS_ID" --template pull_requ
 
 `--body` and `--body-file` are mutually exclusive. When `--template` is used with an explicit body, the body is validated against the same canonical section policy. Confirmed remote writes fail closed on critical validation failures, missing label, missing assignee, Korean artifact failure, and PR/MR target branch mismatch.
 
+`--field` accepts canonical template keys and the aliases documented in `skills/issueops/references/remote-issue.md` (`goal`, `logs_output`, PR/MR `risks`, `documentation`, `scope`, `cleanup`, and `automation`).
+
 ## Benchmark Quality Gate
 
 The deterministic benchmark fails when:

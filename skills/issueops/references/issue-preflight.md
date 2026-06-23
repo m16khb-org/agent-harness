@@ -40,6 +40,8 @@ agent-harness issueops remote create-issue --id "$ISSUEOPS_ID" --template implem
 
 Use `--body-file` for manually drafted bodies. Do not combine `--body` and `--body-file`. If a manual body is used with `--template`, it must still satisfy the canonical required sections. Confirmed writes fail closed on critical validation failures, missing labels, missing assignees, Korean artifact gate failures, and PR/MR target branch mismatch.
 
+`--field` accepts canonical template keys and the aliases documented in `remote-issue.md` (`goal`, `logs_output`, PR/MR `risks`, `documentation`, `scope`, `cleanup`, and `automation`).
+
 ## Plan-Prep Evidence Gate
 
 Before entering the IssueOps `plan` phase, record three pre-plan evidence items with `agent-harness issueops plan-prep record`. Each item takes either concrete evidence or a mutually-exclusive waive reason:

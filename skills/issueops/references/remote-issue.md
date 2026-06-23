@@ -78,6 +78,19 @@ agent-harness issueops remote create-pr --id "$ISSUEOPS_ID" --template pull_requ
 
 `--body` and `--body-file` are mutually exclusive. If `--template` is set without a body, the core renderer produces the body. If `--template` is set with a body or body file, the body is validated against the canonical section policy. Confirmed remote writes fail closed on critical validation failures, missing label, missing assignee, Korean artifact failure, and PR/MR target/base branch mismatch.
 
+`--field` accepts canonical template keys and these documented aliases:
+
+| Template scope | Alias | Canonical key |
+| --- | --- | --- |
+| Any | `goal` | `task_goal` |
+| Any | `parent_merge` | `merge_condition` |
+| Bug issue | `logs_output` | `logs` |
+| PR/MR | `automation` | `automation_evidence` |
+| PR/MR | `cleanup` | `worktree_cleanup` |
+| PR/MR | `docs`, `document`, `documents`, `documentation` | `docs_migration` |
+| PR/MR | `risk`, `risks`, `rollback` | `risk_rollback` |
+| PR/MR | `scope` | `scope_management` |
+
 Do not add a `## Plan Link` / `## Plan` section or a `TBD` placeholder to the remote issue body. Plan tracking lives in `agent-harness issueops link-plan` state and, when needed, the PR/MR body — never as an issue-body section (see the Korean gate's plan-path rule below).
 
 ## Provider-Specific Linking And Hierarchy

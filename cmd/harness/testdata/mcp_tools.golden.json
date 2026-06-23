@@ -1470,7 +1470,7 @@
     "inputSchema": {
       "properties": {
         "fields": {
-          "description": "Template field values keyed by canonical field name.",
+          "description": "Template field values keyed by canonical field name or documented alias.",
           "type": "object"
         },
         "kind": {
@@ -1544,7 +1544,7 @@
           "type": "boolean"
         },
         "fields": {
-          "description": "Template field values keyed by canonical field name.",
+          "description": "Template field values keyed by canonical field name or documented alias.",
           "type": "object"
         },
         "id": {
@@ -1617,7 +1617,7 @@
           "type": "boolean"
         },
         "fields": {
-          "description": "Template field values keyed by canonical field name.",
+          "description": "Template field values keyed by canonical field name or documented alias.",
           "type": "object"
         },
         "id": {
@@ -1693,7 +1693,7 @@
           "type": "boolean"
         },
         "fields": {
-          "description": "Template field values keyed by canonical field name.",
+          "description": "Template field values keyed by canonical field name or documented alias.",
           "type": "object"
         },
         "head": {

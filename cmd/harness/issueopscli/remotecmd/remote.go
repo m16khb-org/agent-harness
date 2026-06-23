@@ -222,7 +222,7 @@ func runRemoteRenderTemplate(args []string, deps Deps) error {
 	title := fs.String("title", "", "artifact title")
 	scoreFile := fs.String("score-file", "", "IssueOps remote score result JSON")
 	var fields repeatedFlag
-	fs.Var(&fields, "field", "template field key=value (repeatable)")
+	fs.Var(&fields, "field", "template field key=value (canonical or documented alias; repeatable)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
@@ -287,7 +287,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	var fields repeatedFlag
 	fs.Var(&labels, "label", "label to apply (repeatable)")
 	fs.Var(&assignees, "assignee", "assignee username (repeatable)")
-	fs.Var(&fields, "field", "template field key=value (repeatable)")
+	fs.Var(&fields, "field", "template field key=value (canonical or documented alias; repeatable)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
@@ -376,7 +376,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	var fields repeatedFlag
 	fs.Var(&labels, "label", "label to apply (repeatable)")
 	fs.Var(&assignees, "assignee", "assignee username (repeatable)")
-	fs.Var(&fields, "field", "template field key=value (repeatable)")
+	fs.Var(&fields, "field", "template field key=value (canonical or documented alias; repeatable)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
@@ -490,7 +490,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	var fields repeatedFlag
 	fs.Var(&labels, "label", "label to apply (repeatable)")
 	fs.Var(&assignees, "assignee", "assignee username (repeatable)")
-	fs.Var(&fields, "field", "template field key=value (repeatable)")
+	fs.Var(&fields, "field", "template field key=value (canonical or documented alias; repeatable)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
