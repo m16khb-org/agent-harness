@@ -1913,6 +1913,13 @@
           "path": "$HARNESS_ROOT/skills/berners-lee"
         },
         {
+          "description": "Use when converting NAVER Clova Note transcripts, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas meeting docs, Canvas index updates, Slack recaps, action-item tables, or reusable meeting-minutes prompts.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "clova-meeting-minutes",
+          "path": "$HARNESS_ROOT/skills/clova-meeting-minutes"
+        },
+        {
           "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \\\"A relational model of data for large shared data banks\\\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -4829,6 +4836,7 @@
         "skills": [
           "atomic-commit-push",
           "berners-lee",
+          "clova-meeting-minutes",
           "codd",
           "dijkstra",
           "draft-wiki-promoter",
@@ -7926,6 +7934,13 @@
                 "path": "$HARNESS_ROOT/skills/berners-lee"
               },
               {
+                "description": "Use when converting NAVER Clova Note transcripts, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas meeting docs, Canvas index updates, Slack recaps, action-item tables, or reusable meeting-minutes prompts.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "clova-meeting-minutes",
+                "path": "$HARNESS_ROOT/skills/clova-meeting-minutes"
+              },
+              {
                 "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \\\"A relational model of data for large shared data banks\\\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -9946,6 +9961,7 @@
               "skills": [
                 "atomic-commit-push",
                 "berners-lee",
+                "clova-meeting-minutes",
                 "codd",
                 "dijkstra",
                 "draft-wiki-promoter",
