@@ -564,7 +564,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 27510,
+          "bytes": 27901,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -581,11 +581,11 @@
             "Phase 6 — Claude Code adapter",
             "Phase 7 — Hardening / release",
             "2026-06-13 — Distribution decision gate",
+            "2026-06-24 — Skill local background separation",
             "2026-06-23 — IssueOps hook and state-machine boundary",
             "2026-06-23 — IssueOps execution decision gate",
             "4. MVP 범위",
-            "5. 주요 위험과 대응",
-            "6. 다음 작업 제안"
+            "5. 주요 위험과 대응"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
           "rel_path": ".agent-harness/ADR.md",
@@ -1913,13 +1913,6 @@
           "path": "$HARNESS_ROOT/skills/berners-lee"
         },
         {
-          "description": "Use when converting NAVER Clova Note transcripts, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas meeting docs, Canvas index updates, Slack recaps, action-item tables, or reusable meeting-minutes prompts.",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "clova-meeting-minutes",
-          "path": "$HARNESS_ROOT/skills/clova-meeting-minutes"
-        },
-        {
           "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \\\"A relational model of data for large shared data banks\\\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -1939,6 +1932,13 @@
           "has_skill_md": true,
           "name": "draft-wiki-promoter",
           "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
+        },
+        {
+          "description": "Use when converting meeting transcripts, NAVER Clova Note exports, Slack huddle notes, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas-ready meeting docs, manual index-binding handoffs, Slack recaps, action tables, or reusable meeting-minutes prompts.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "engelbart",
+          "path": "$HARNESS_ROOT/skills/engelbart"
         },
         {
           "description": "Systematic debugging specialist that translates failure symptoms into root cause diagnoses through scientific-method isolation, bisect search, trace analysis, and LLM-assisted diagnosis. Named after Grace Hopper — inventor of the first compiler (A-0 System), originator of the term \"debugging\" (literally removing a moth from the Harvard Mark II), and pioneer of machine-independent programming (COBOL). Just as her compiler translated English into machine code, this skill translates failure outputs into root cause diagnoses. Use when reporting a bug, fixing a test failure, investigating a regression, or asking \"why is X broken?",
@@ -4836,10 +4836,10 @@
         "skills": [
           "atomic-commit-push",
           "berners-lee",
-          "clova-meeting-minutes",
           "codd",
           "dijkstra",
           "draft-wiki-promoter",
+          "engelbart",
           "hopper",
           "issueops",
           "karpathy",
@@ -6578,7 +6578,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 27510,
+                "bytes": 27901,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -6595,11 +6595,11 @@
                   "Phase 6 — Claude Code adapter",
                   "Phase 7 — Hardening / release",
                   "2026-06-13 — Distribution decision gate",
+                  "2026-06-24 — Skill local background separation",
                   "2026-06-23 — IssueOps hook and state-machine boundary",
                   "2026-06-23 — IssueOps execution decision gate",
                   "4. MVP 범위",
-                  "5. 주요 위험과 대응",
-                  "6. 다음 작업 제안"
+                  "5. 주요 위험과 대응"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
                 "rel_path": ".agent-harness/ADR.md",
@@ -7934,13 +7934,6 @@
                 "path": "$HARNESS_ROOT/skills/berners-lee"
               },
               {
-                "description": "Use when converting NAVER Clova Note transcripts, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas meeting docs, Canvas index updates, Slack recaps, action-item tables, or reusable meeting-minutes prompts.",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "clova-meeting-minutes",
-                "path": "$HARNESS_ROOT/skills/clova-meeting-minutes"
-              },
-              {
                 "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \\\"A relational model of data for large shared data banks\\\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7960,6 +7953,13 @@
                 "has_skill_md": true,
                 "name": "draft-wiki-promoter",
                 "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
+              },
+              {
+                "description": "Use when converting meeting transcripts, NAVER Clova Note exports, Slack huddle notes, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas-ready meeting docs, manual index-binding handoffs, Slack recaps, action tables, or reusable meeting-minutes prompts.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "engelbart",
+                "path": "$HARNESS_ROOT/skills/engelbart"
               },
               {
                 "description": "Systematic debugging specialist that translates failure symptoms into root cause diagnoses through scientific-method isolation, bisect search, trace analysis, and LLM-assisted diagnosis. Named after Grace Hopper — inventor of the first compiler (A-0 System), originator of the term \"debugging\" (literally removing a moth from the Harvard Mark II), and pioneer of machine-independent programming (COBOL). Just as her compiler translated English into machine code, this skill translates failure outputs into root cause diagnoses. Use when reporting a bug, fixing a test failure, investigating a regression, or asking \"why is X broken?",
@@ -9961,10 +9961,10 @@
               "skills": [
                 "atomic-commit-push",
                 "berners-lee",
-                "clova-meeting-minutes",
                 "codd",
                 "dijkstra",
                 "draft-wiki-promoter",
+                "engelbart",
                 "hopper",
                 "issueops",
                 "karpathy",

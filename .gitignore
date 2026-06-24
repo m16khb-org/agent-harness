@@ -23,3 +23,6 @@ __pycache__/
 
 # Prompt examples
 GOOD_PROMPT_EXAMPLE.md
+
+# Local, non-portable skill background
+skills/*/background.local.md

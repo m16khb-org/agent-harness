@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engelbart"
+  short_description: "Create Slack Canvas meeting minutes"
+  default_prompt: "Use $engelbart to convert this meeting transcript or Slack huddle note into a Korean Slack Canvas-ready meeting doc for #dev-team-backend, then provide manual Slack List binding values."

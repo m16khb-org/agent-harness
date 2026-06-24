@@ -219,6 +219,10 @@ Acceptance criteria:
 
 Decision: prefer a tarball/manual archive release first. Defer Homebrew until the release checklist, cross-platform build matrix, rollback criteria, and at least one dogfood release note are green.
 
+### 2026-06-24 — Skill local background separation
+
+Decision: keep reusable skill instructions portable and store team-specific meeting-minutes background in gitignored `skills/*/background.local.md` files. Tracked skills may reference the local background path and provide an example template, but must not embed private team rosters or service operating context directly in `SKILL.md`.
+
 Rationale:
 
 - `scripts/release-repro-smoke.sh` verifies install planning without writing the operator's real home.
