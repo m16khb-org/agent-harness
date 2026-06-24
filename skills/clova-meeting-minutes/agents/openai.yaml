@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clova Meeting Minutes"
+  short_description: "Create Slack Canvas meeting minutes"
+  default_prompt: "Use $clova-meeting-minutes to convert this NAVER Clova Note transcript into a fixed-format Slack Canvas meeting doc and index update."
