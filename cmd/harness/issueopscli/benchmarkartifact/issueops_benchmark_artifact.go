@@ -168,14 +168,26 @@ func routingTraceFor(fixture core.IssueOpsBenchmarkFixture) []core.SkillRouting 
 // dimension's honest N/A handling.
 func pioneerEvidenceFor(target string) string {
 	switch strings.ToLower(strings.TrimSpace(target)) {
+	case "von-neumann":
+		return "Repo grounding: AGENTS.md and benchmark code inspected\nDecision-complete plan: tasks have owners and dependencies\nAssumptions/defaults: default fixture path recorded\nUnresolved questions: none blocking; deferred risks named\nAcceptance criteria: validation commands and artifacts listed"
+	case "turing":
+		return "Success criteria: every requirement mapped to pass/fail\nEvidence artifact: command stdout captured\nCleanup receipt: temp dir removed and verified\nVerification mode: proportionate CLI check\nSkipped checks: browser QA skipped with reason"
+	case "berners-lee":
+		return "Source fan-out: official docs, changelog, package index\nSource index: cited URLs with retrieval timestamp\nClaim verification: confirmed/single-sourced/disputed table\nAccess boundary: protected source inaccessible without bypass"
 	case "dijkstra":
-		return "dijkstra method: profiled the hot path; complexity O(n^2) -> O(n log n); scaling test N=100->1000->10000; before 4.1s, after 0.2s."
+		return "Hot path: pprof shows matcher at 87% CPU\nComplexity: O(n^2) -> O(n log n)\nScaling evidence: N=100/1000/10000 table\nCorrectness invariant: sorted candidates preserve matches\nBefore/after measurement: baseline 4.1s after 0.2s"
 	case "codd":
-		return "codd method: compared covering index vs partial index on (user_id, created_at); write penalty +8% insert cost; selectivity 0.99 at row count 12M, read:write 40:1."
+		return "Schema/row count: orders has 12M rows\nEXPLAIN evidence: seq scan before index scan after\nIndex tradeoff: covering index with write penalty +8% insert cost\nNormalization rationale: 3NF retained no update anomaly"
 	case "hopper":
-		return "hopper method: reproduced the failure deterministically; isolated the root cause via hypothesis bisect; fix verified by rerun and a regression test."
+		return "Reproduction: go test exits 1\nFailure signature: intermittent webhook retry timeout\nRoot cause hypothesis: retry timer races\nIsolation: trace diff narrowed to scheduler\nMinimal fix boundary: retry timer only\nVerification: regression test rerun passed"
 	case "shannon":
-		return "shannon method: SNR before 0.62 baseline -> after 0.81; entropy and redundancy re-measured post-cleanup."
+		return "Diff inventory: staged unstaged and untracked files listed\nSNR before/after: 0.62 -> 0.81\nSecondary metric: entropy and redundancy re-measured\nHeuristic caveat: shell metrics approximate\nNo-input guard: total=0 reports insufficient-input"
+	case "karpathy":
+		return "Input/output contract: prompt receives issue text returns JSON\nTest suite: 3 happy cases and 2 edge cases\nAdversarial cases: hidden reasoning and fake tool injection\nOne-variable iteration: only moved output spec\nPrivacy/tool truth: no hidden chain-of-thought; tools verified or illustrative"
+	case "torvalds":
+		return "Git state proof: status branch log and worktree list captured\nRecovery path: backup ref verified\nDestructive confirmation gate: exact reset command requires approval\nAtomic scope: one intent per commit\nForce-with-lease rule: no raw force push"
+	case "issueops":
+		return "Durable state record: issueops id and readiness gates recorded\nPhase routing: problem issue plan implement feedback pr cleanup\nFlow evidence: issue plan TDD subagent decision feedback PR linked\nHook boundary: hooks do not create issues edit files or run tests\nCleanup/readiness evidence: strict readiness and cleanup choices recorded"
 	default:
 		return ""
 	}

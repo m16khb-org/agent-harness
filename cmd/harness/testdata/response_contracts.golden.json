@@ -1081,7 +1081,7 @@
           "title": "Pioneer Skill Quality Handoff"
         },
         {
-          "bytes": 24310,
+          "bytes": 26309,
           "headings": [
             "Pioneer Skill Qualitative Rubric",
             "Rubric Sufficiency Verdict",
@@ -1089,6 +1089,7 @@
             "Evaluation Unit",
             "Holdout and Mutation Protocol",
             "Fresh-Context Sub-Agent Execution",
+            "Deterministic Pioneer Signature Proxy",
             "Pre-Score Critical Checks",
             "Granularity v2 (세분화 확장, 2026-06-12)",
             "v2.1 점수 세분화: 0.1 단위 + 5.0 유보 규칙",
@@ -1101,8 +1102,7 @@
             "2. Completion",
             "3. Method Fidelity",
             "4. Evidence and Verification",
-            "5. Safety and Portability",
-            "Gate Flags"
+            "5. Safety and Portability"
           ],
           "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
           "rel_path": ".agent-harness/operations/pioneer-skill-quality-rubric.md",
@@ -7087,7 +7087,7 @@
                 "title": "Pioneer Skill Quality Handoff"
               },
               {
-                "bytes": 24310,
+                "bytes": 26309,
                 "headings": [
                   "Pioneer Skill Qualitative Rubric",
                   "Rubric Sufficiency Verdict",
@@ -7095,6 +7095,7 @@
                   "Evaluation Unit",
                   "Holdout and Mutation Protocol",
                   "Fresh-Context Sub-Agent Execution",
+                  "Deterministic Pioneer Signature Proxy",
                   "Pre-Score Critical Checks",
                   "Granularity v2 (세분화 확장, 2026-06-12)",
                   "v2.1 점수 세분화: 0.1 단위 + 5.0 유보 규칙",
@@ -7107,8 +7108,7 @@
                   "2. Completion",
                   "3. Method Fidelity",
                   "4. Evidence and Verification",
-                  "5. Safety and Portability",
-                  "Gate Flags"
+                  "5. Safety and Portability"
                 ],
                 "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
                 "rel_path": ".agent-harness/operations/pioneer-skill-quality-rubric.md",

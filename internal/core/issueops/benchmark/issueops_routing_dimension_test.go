@@ -5,9 +5,8 @@ import (
 	"testing"
 )
 
-// A2/A5 codd keyword evidence that satisfies issueOpsPioneerSkillEvidenceComplete
-// (index AND write-penalty AND a normalization/selectivity term).
-const coddKeywordEvidence = "codd method: compared covering index vs partial index on (user_id, created_at); write penalty +8% insert cost; selectivity 0.99 at row count 12M, read:write 40:1."
+// A2/A5 codd evidence that satisfies issueOpsPioneerSkillEvidenceComplete.
+const coddKeywordEvidence = "Schema/row count: orders has 12M rows\nEXPLAIN evidence: seq scan before, index scan after\nIndex tradeoff: compared covering index vs partial index; write penalty +8% insert cost\nNormalization rationale: 3NF retained; no update anomaly"
 
 // Same-entry pairing: the expected (phase,skill) must match ONE trace entry on
 // BOTH fields. A trace with the right skill at the WRONG phase must fail.

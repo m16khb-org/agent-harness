@@ -8,19 +8,20 @@ type SkillRouting struct {
 }
 
 type IssueOpsBenchmarkFixture struct {
-	ID                 string         `json:"id"`
-	Title              string         `json:"title"`
-	UserPrompt         string         `json:"user_prompt"`
-	RepoContext        string         `json:"repo_context"`
-	PioneerSkillTarget string         `json:"pioneer_skill_target,omitempty"`
-	ExpectedRouting    []SkillRouting `json:"expected_routing,omitempty"`
-	ExpectedIssue      []string       `json:"expected_issue"`
-	ExpectedPlan       []string       `json:"expected_plan"`
-	ExpectedTasks      []string       `json:"expected_tasks"`
-	ExpectedTDD        []string       `json:"expected_tdd"`
-	ExpectedSubagents  []string       `json:"expected_subagents"`
-	ExpectedPR         []string       `json:"expected_pr"`
-	CriticalFailures   []string       `json:"critical_failures"`
+	ID                      string         `json:"id"`
+	Title                   string         `json:"title"`
+	UserPrompt              string         `json:"user_prompt"`
+	RepoContext             string         `json:"repo_context"`
+	PioneerSkillTarget      string         `json:"pioneer_skill_target,omitempty"`
+	ExpectedRouting         []SkillRouting `json:"expected_routing,omitempty"`
+	ExpectedIssue           []string       `json:"expected_issue"`
+	ExpectedPlan            []string       `json:"expected_plan"`
+	ExpectedTasks           []string       `json:"expected_tasks"`
+	ExpectedTDD             []string       `json:"expected_tdd"`
+	ExpectedSubagents       []string       `json:"expected_subagents"`
+	ExpectedPR              []string       `json:"expected_pr"`
+	ExpectedPioneerArtifact []string       `json:"expected_pioneer_artifact,omitempty"`
+	CriticalFailures        []string       `json:"critical_failures"`
 }
 
 type IssueOpsBenchmarkArtifact struct {

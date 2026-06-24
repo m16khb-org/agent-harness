@@ -123,6 +123,27 @@ Required isolation settings:
 
 Fresh-context results are stronger than same-session manual simulation because they test whether the skill itself carries enough instruction to produce the behavior without hidden evaluator memory.
 
+## Deterministic Pioneer Signature Proxy
+
+IssueOps benchmark scoring includes a deterministic `pioneer_skill_contribution` check. This check is not semantic proof that the skill ran; it is a necessary artifact-structure proxy. It rejects unlabeled keyword soup and requires the target skill's method to appear as labeled evidence clauses that would materially change the artifact.
+
+Required labeled clauses:
+
+| Skill | Required artifact clauses |
+|-------|---------------------------|
+| `von-neumann` | `Repo grounding`, `Decision-complete plan`, `Assumptions/defaults`, `Unresolved questions`, `Acceptance criteria` |
+| `turing` | `Success criteria`, `Evidence artifact`, `Cleanup receipt`, `Verification mode`, `Skipped checks` |
+| `berners-lee` | `Source fan-out`, `Source index` with retrieval timestamp/date, `Claim verification`, `Access boundary` |
+| `codd` | `Schema/row count`, `EXPLAIN evidence`, `Index tradeoff` with write penalty, `Normalization rationale` |
+| `dijkstra` | `Hot path`, `Complexity`, `Scaling evidence`, `Correctness invariant`, `Before/after measurement` |
+| `hopper` | `Reproduction`, `Failure signature`, `Root cause hypothesis`, `Isolation`, `Minimal fix boundary`, `Verification` |
+| `shannon` | `Diff inventory` including untracked files, `SNR before/after`, `Secondary metric`, `Heuristic caveat`, `No-input guard` |
+| `karpathy` | `Input/output contract`, `Test suite`, `Adversarial cases`, `One-variable iteration`, `Privacy/tool truth` |
+| `torvalds` | `Git state proof`, `Recovery path`, `Destructive confirmation gate`, `Atomic scope`, `Force-with-lease rule` |
+| `issueops` | `Durable state record`, `Phase routing`, `Flow evidence`, `Hook boundary`, `Cleanup/readiness evidence` |
+
+Proxy limit: a labeled block can still be fabricated. Therefore a passing deterministic signature is sufficient for benchmark regression gating only when paired with visible plus holdout/mutation cases and, for final quality claims, fresh-context or judge review evidence.
+
 ## Pre-Score Critical Checks
 
 Before assigning numeric scores, answer these binary checks:

@@ -10,5 +10,6 @@
   "expected_tdd": ["captures baseline metrics before changes"],
   "expected_subagents": ["verifies pwd branch and HEAD before work"],
   "expected_pr": ["includes before/after SNR metric card", "links issue", "is written in Korean", "references issue/pr guideline"],
+  "expected_pioneer_artifact": ["Diff inventory", "SNR before/after", "Secondary metric", "Heuristic caveat", "No-input guard"],
   "critical_failures": ["skips pioneer method", "works in source repo", "worker starts without context check", "unbounded code-reviewer review", "issue or pr/mr not written in korean", "missing issue/pr guideline reference", "excessive emoji in issue or pr/mr"]
 }

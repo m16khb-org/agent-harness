@@ -65,5 +65,6 @@ func completeBenchmarkArtifactForTest() IssueOpsBenchmarkArtifact {
 		LiveEvidenceMatrix:     "Environment matrix covers dev, stg, and prod. Repo config evidence is compared with runtime evidence. Remediation order is recorded before edits.",
 		ReviewFeedbackEvidence: "Classification: valid defect from Kodus or Gemini Code Assist review-agent feedback. Verification: command and file:line evidence. Thread reply: posted with verdict. Resolution: resolveReviewThread/resolved=true re-checked after fix.",
 		CompletionHygiene:      "Draft issue completion record stored with final diff, evidence, labels, children, PR URL, and unresolved follow-ups. Final diff reviewed, target branch verified, remote artifact issue/PR/MR refreshed, single commit policy checked, cleanup status recorded.",
+		PioneerSkillEvidence:   "Durable state record: issueops state id and readiness gates recorded\nPhase routing: problem issue plan implement feedback pr cleanup\nFlow evidence: issue plan TDD subagent decision feedback PR linked\nHook boundary: hooks do not create issues edit files or run tests\nCleanup/readiness evidence: strict readiness and cleanup choices recorded",
 	}
 }

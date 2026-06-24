@@ -23,6 +23,20 @@ problem -> grill -> issue -> plan -> implement -> ai-slop-clean -> feedback -> p
 
 `agent-harness issueops ...` CLI/MCP commands own durable state, phase transitions, readiness, and remote artifact records. Lifecycle hooks are limited to fast, deterministic, inspectable guards and routing hints. A hook may block a clearly invalid tool event, but it must not perform workflow work: no issue creation, provider mutation, file edit, test run, background wait, branch/worktree preparation, PR/MR creation, review reply, merge, or cleanup.
 
+### IssueOps Benchmark Artifact Contract
+
+When IssueOps contributes to a benchmark response, include a compact labeled evidence block. The block must describe durable workflow state, not just intentions.
+
+```text
+Durable state record: <IssueOps id, phase, readiness gates, state path/tool output>
+Phase routing: <problem -> grill -> issue -> plan -> implement -> feedback -> pr -> cleanup decisions>
+Flow evidence: <issue, plan, TDD, subagent decision, feedback, PR/MR artifacts>
+Hook boundary: <what hooks may suggest/block and what only the main agent/CLI owns>
+Cleanup/readiness evidence: <strict readiness, merge/cleanup status, remaining choices>
+```
+
+If no IssueOps cycle exists, do not fabricate one. Record that the workflow is not active and route to the appropriate standalone skill.
+
 ### Flow Boundary Matrix
 
 | Phase area | Automatic main-agent loop | Hook enforcement | Human-in-the-loop |
