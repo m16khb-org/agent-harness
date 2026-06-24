@@ -11,6 +11,10 @@ SKILL = ROOT / "skills" / "engelbart" / "SKILL.md"
 OPENAI = ROOT / "skills" / "engelbart" / "agents" / "openai.yaml"
 GITIGNORE = ROOT / ".gitignore"
 LOCAL_BACKGROUND = ROOT / "skills" / "engelbart" / "background.local.md"
+TESTDATA = ROOT / "skills" / "engelbart" / "testdata"
+HANDOFF = TESTDATA / "ai_devops_onboarding_handoff.md"
+BAD_HANDOFF = TESTDATA / "ai_devops_onboarding_handoff.bad.md"
+RUBRIC = ROOT / "scripts" / "engelbart_quality_rubric.py"
 
 
 class EngelbartSkillContractTest(unittest.TestCase):
@@ -100,6 +104,35 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertNotIn("## Meeting Index List Schema", content)
         self.assertNotIn("Render the persistent index as a Slack List by default", content)
         self.assertNotIn("Manual Slack List creation when tools are unavailable", content)
+
+    def test_manual_index_binding_handoff_is_forward_tested(self) -> None:
+        self.assertTrue(HANDOFF.exists(), "good manual handoff fixture must exist")
+        self.assertTrue(BAD_HANDOFF.exists(), "bad manual handoff fixture must exist")
+        self.assertTrue(RUBRIC.exists(), "quality rubric script must exist")
+
+        handoff = HANDOFF.read_text(encoding="utf-8")
+        bad_handoff = BAD_HANDOFF.read_text(encoding="utf-8")
+        rubric = RUBRIC.read_text(encoding="utf-8")
+
+        for field in [
+            "수동 List 바인딩 값",
+            "- 이름: AI DevOps R&R 및 추천 시스템 온보딩",
+            "- Date: 2026-06-24",
+            "- Topic: 온보딩",
+            "- Status: Follow-up 필요",
+            "- Counts: 결정 9 / 액션 10 / 질문 6",
+            "- Meeting Canvas: https://bubbletap.slack.com/docs/T048JBUDF9U/F0BDLM3631N",
+        ]:
+            self.assertIn(field, handoff)
+        self.assertNotIn("- Title:", handoff)
+        self.assertNotIn("생성 후 인덱스 참조", handoff)
+
+        self.assertIn("- Title:", bad_handoff)
+        self.assertIn("생성 후 인덱스 참조", bad_handoff)
+        self.assertIn("manual_handoff_failures", rubric)
+        self.assertIn("manual_handoff_uses_title_field", rubric)
+        self.assertIn("manual_handoff_placeholder", rubric)
+        self.assertIn("manual_handoff_missing_canvas_url", rubric)
 
     def test_meeting_canvas_schema_preserves_audit_appendix(self) -> None:
         content = self.read_skill()

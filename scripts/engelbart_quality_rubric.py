@@ -14,6 +14,8 @@ SKILL = ROOT / "skills" / "engelbart" / "SKILL.md"
 BASELINE_OUTPUT = TESTDATA / "ai_devops_onboarding_output.baseline.md"
 CURRENT_OUTPUT = TESTDATA / "ai_devops_onboarding_output.md"
 BAD_CANVAS_READBACK = TESTDATA / "ai_devops_onboarding_output.bad_canvas_readback.md"
+CURRENT_HANDOFF = TESTDATA / "ai_devops_onboarding_handoff.md"
+BAD_HANDOFF = TESTDATA / "ai_devops_onboarding_handoff.bad.md"
 TRANSCRIPT = TESTDATA / "ai_devops_onboarding_transcript.txt"
 
 BASELINE_EXPECTED_MIN = 25
@@ -217,7 +219,7 @@ def table_cells_under_limit(output: str, limit: int = 300) -> tuple[bool, int]:
     return max_cells < limit, max_cells
 
 
-def wide_table_violations(output: str, max_columns: int = 6) -> list[str]:
+def wide_table_violations(output: str, max_columns: int = 5) -> list[str]:
     violations: list[str] = []
     for line_no, line in enumerate(output.splitlines(), start=1):
         if line.startswith("|") and line.endswith("|"):
@@ -323,6 +325,33 @@ def canvas_has_index_or_url_placeholder(output: str) -> bool:
     return "## 회의록 인덱스 항목" in output or any(placeholder in output for placeholder in placeholders)
 
 
+def manual_handoff_failures(path: Path) -> list[str]:
+    handoff = path.read_text(encoding="utf-8")
+    failures: list[str] = []
+    required = (
+        "수동 List 바인딩 값",
+        "- 이름: AI DevOps R&R 및 추천 시스템 온보딩",
+        "- Date: 2026-06-24",
+        "- Topic: 온보딩",
+        "- Status: Follow-up 필요",
+        "- Counts: 결정 9 / 액션 10 / 질문 6",
+        "- Meeting Canvas: https://bubbletap.slack.com/docs/T048JBUDF9U/F0BDLM3631N",
+    )
+    missing = [item for item in required if item not in handoff]
+    if missing:
+        failures.append(f"manual_handoff_required_fields: missing {missing}")
+    if "- Title:" in handoff:
+        failures.append("manual_handoff_uses_title_field: use Slack List `이름`, not a separate Title field")
+    if re.search(r"(^|\n)\|.*\|", handoff):
+        failures.append("manual_handoff_table: handoff must be bullet fields, not a Canvas table")
+    placeholder_markers = ("미정", "생성 후 인덱스 참조", "{Canvas URL}", "{Canvas 링크}")
+    if any(marker in handoff for marker in placeholder_markers):
+        failures.append("manual_handoff_placeholder: handoff must not contain placeholders after Canvas URL exists")
+    if "https://bubbletap.slack.com/docs/" not in handoff:
+        failures.append("manual_handoff_missing_canvas_url: handoff must include the verified Canvas URL")
+    return failures
+
+
 def known_team_lead_owner_leaks(output: str) -> bool:
     followup_block = section_between(output, "## 후속 확인", "## 리스크/열린 질문")
     risk_block = section_between(output, "## 리스크/열린 질문", "## 보정 및 원문 부록")
@@ -422,10 +451,14 @@ def main() -> int:
     baseline_score, baseline_failures = evaluate(BASELINE_OUTPUT)
     current_score, current_failures = evaluate(CURRENT_OUTPUT)
     bad_score, bad_failures = evaluate(BAD_CANVAS_READBACK)
+    handoff_failures = manual_handoff_failures(CURRENT_HANDOFF)
+    bad_handoff_failures = manual_handoff_failures(BAD_HANDOFF)
 
     print(f"baseline_score={baseline_score} expected_min={BASELINE_EXPECTED_MIN}")
     print(f"current_score={current_score} pass_line={CURRENT_PASS_LINE}")
     print(f"bad_canvas_readback_score={bad_score} must_fail_below={CURRENT_PASS_LINE}")
+    print(f"manual_handoff_failures={len(handoff_failures)}")
+    print(f"bad_manual_handoff_failures={len(bad_handoff_failures)}")
     print(f"improvement={current_score - baseline_score} min_improvement={MIN_IMPROVEMENT}")
     if baseline_failures:
         print("baseline_failures:")
@@ -438,6 +471,14 @@ def main() -> int:
     if bad_failures:
         print("bad_canvas_readback_failures:")
         for failure in bad_failures:
+            print(f"- {failure}")
+    if handoff_failures:
+        print("manual_handoff_failures:")
+        for failure in handoff_failures:
+            print(f"- {failure}")
+    if bad_handoff_failures:
+        print("bad_manual_handoff_failures:")
+        for failure in bad_handoff_failures:
             print(f"- {failure}")
 
     if baseline_score < BASELINE_EXPECTED_MIN:
@@ -456,6 +497,23 @@ def main() -> int:
         return 1
     if bad_score >= CURRENT_PASS_LINE:
         print("error: bad Canvas fixture unexpectedly meets the pass line", file=sys.stderr)
+        return 1
+    if handoff_failures:
+        print("error: current manual handoff fixture failed quality checks", file=sys.stderr)
+        return 1
+    expected_bad_handoff_failure_names = (
+        "manual_handoff_required_fields",
+        "manual_handoff_uses_title_field",
+        "manual_handoff_placeholder",
+        "manual_handoff_missing_canvas_url",
+    )
+    missing_bad_handoff_failures = [
+        name
+        for name in expected_bad_handoff_failure_names
+        if not any(failure.startswith(name) for failure in bad_handoff_failures)
+    ]
+    if missing_bad_handoff_failures:
+        print(f"error: bad handoff fixture did not trigger expected failures: {missing_bad_handoff_failures}", file=sys.stderr)
         return 1
     if current_score < CURRENT_PASS_LINE:
         print("error: current fixture is below current pass line", file=sys.stderr)

@@ -27,7 +27,7 @@ Use these proven patterns:
 - **Progressive disclosure:** put the answer first (`TL;DR`, decisions, actions), then topic detail, then follow-up, then uncertainty and appendix. Readers should understand the meeting without reaching the transcript.
 - **Layer-cake headings:** headings must be meaningful on their own. A reader scanning only headings should see the meeting flow.
 - **Chunk dense facts:** split long decision/action/risk lines into short nested bullets with labels. Do not pack decision, evidence, owner, impact, and status into one sentence.
-- **Use tables only where comparison helps:** keep metadata and index as small tables; avoid wide tables for decisions, risks, or corrections because Slack Canvas tables compress columns aggressively.
+- **Use tables only where comparison helps:** keep metadata as a compact two-column table; avoid wide tables for decisions, risks, corrections, or meeting indexes because Slack Canvas tables compress columns aggressively.
 - **Use callouts sparingly:** one scope/status callout near the top, optional warning callout only for high-impact caveats. Do not wrap normal body sections in callouts.
 - **Prefer numerals and concrete labels:** counts, dates, owners, status, and tracker names should be visible without reading full prose.
 - **Mirror source-specific UI when useful:** if a source Canvas or user-provided example has a clearer pattern, extract the pattern and adapt it, but do not copy irrelevant formatting.
@@ -152,7 +152,7 @@ Reject these outputs before they reach Slack:
 - Do not put callouts, tables, or code blocks inside layout columns. Slack Canvas does not support those nested combinations reliably.
 - Do not create a skeleton Canvas and stop there. If a fallback skeleton is created, it must be followed by section updates until the full readable meeting Canvas is present.
 - Do not hide uncertainty in decisions. Keep uncertain speaker mappings, term mappings, policy details, and architecture assumptions in `리스크/열린 질문` or the correction appendix.
-- Do not widen the index to include every field. The index is for finding the meeting; the linked meeting Canvas is for details.
+- Do not put meeting-index maintenance inside the meeting Canvas. The Canvas is for meeting content; the user manually binds the Canvas link into their Slack List.
 - Do not replace the verbatim transcript with representative excerpts unless a hard Slack/API limit forces a degraded output and the output is explicitly labeled `원문 전사본 발췌`.
 
 ## Default Slack Target
