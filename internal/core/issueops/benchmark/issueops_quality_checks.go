@@ -16,7 +16,21 @@ func issueOpsHierarchyEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool 
 	hasChildWork := containsAnyFold(text, "sub-issue", "subissue", "child item", "child work item") &&
 		containsAnyFold(text, "link-child", "provider-native", "github sub-issue", "gitlab child")
 	hasNonSplitReason := containsAnyFold(text, "non-split reason", "explicit non-split reason", "분리하지 않는 이유", "비분할 사유")
-	return hasChildWork || hasNonSplitReason
+	hasLargeUnsafeRationale := containsAnyFold(text,
+		"one issue would be unsafe",
+		"unsafe as one work item",
+		"single issue would hide",
+		"single mr would hide",
+		"large issue is unsafe",
+		"umbrella issue",
+	)
+	hasCollaborationRationale := containsAnyFold(text,
+		"explicitly requested for collaboration",
+		"collaboration requested",
+		"multiple owners",
+		"parallel ownership",
+	)
+	return hasNonSplitReason || (hasChildWork && (hasLargeUnsafeRationale || hasCollaborationRationale))
 }
 
 func issueOpsDraftIssueCompletionEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {

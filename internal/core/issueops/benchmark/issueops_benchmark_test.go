@@ -169,6 +169,47 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresIssueOpsQualityUpgradeEvidence(t 
 	}
 }
 
+func TestScoreIssueOpsBenchmarkArtifactAcceptsSmallIssueNoSplitRationale(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "small-no-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	artifact := completeBenchmarkArtifactForTest()
+	artifact.TaskBreakdown = "Single worker owns internal/core only. Task stays as one directly executable issue. 비분할 사유: acceptance criteria share one implementation boundary, no independent child tasks, and verification is one focused go test run."
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	if containsString(score.CriticalFailures, "flattens large issue hierarchy") {
+		t.Fatalf("small issue with explicit no-split rationale must satisfy hierarchy gate: %+v", score)
+	}
+}
+
+func TestScoreIssueOpsBenchmarkArtifactRejectsRoutineChildSplitWithoutLargeOrCollaborationRationale(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "routine-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	artifact := completeBenchmarkArtifactForTest()
+	artifact.TaskBreakdown = "Worker A owns tests. Worker B owns implementation. Uses provider-native child work items and records them with issueops link-child."
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	if !containsString(score.CriticalFailures, "flattens large issue hierarchy") {
+		t.Fatalf("routine child split without large-risk or collaboration rationale must fail: %+v", score)
+	}
+}
+
+func TestScoreIssueOpsBenchmarkArtifactAcceptsSplitForLargeUnsafeOrCollaborativeIssue(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "justified-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
+
+	for name, taskBreakdown := range map[string]string{
+		"large unsafe":  "Worker A owns routing. Worker B owns migration. Large issue is unsafe as one work item because one issue would hide risky behavior changes. Uses provider-native child work items and records them with issueops link-child.",
+		"collaboration": "Worker A owns API docs. Worker B owns runtime verification. Split explicitly requested for collaboration and parallel ownership. Uses provider-native child work items and records them with issueops link-child.",
+	} {
+		t.Run(name, func(t *testing.T) {
+			artifact := completeBenchmarkArtifactForTest()
+			artifact.TaskBreakdown = taskBreakdown
+
+			score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+			if containsString(score.CriticalFailures, "flattens large issue hierarchy") {
+				t.Fatalf("justified split must satisfy hierarchy gate: %+v", score)
+			}
+		})
+	}
+}
+
 func TestScoreIssueOpsBenchmarkArtifactDetectsEvidenceCriticalFailures(t *testing.T) {
 	fixture := IssueOpsBenchmarkFixture{ID: "evidence-critical", CriticalFailures: []string{
 		"skips domain contract evidence",

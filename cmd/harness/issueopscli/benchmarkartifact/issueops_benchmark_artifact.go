@@ -117,7 +117,7 @@ func FromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkAr
 			"Worker B also owns judge adapter wiring, benchmark result JSON output, and issueops CLI integration.",
 			"Worker C owns skills/issueops/SKILL.md and .agent-harness documentation if docs need updates.",
 			"Each worker owns a non-overlapping task and reports expected output, touched files, tests, and remaining risk.",
-			"Large issues use provider-native child work items: GitHub sub-issue or GitLab child item, then issueops link-child records the remote child.",
+			"Large Issue Breakdown Gate default no split. 비분할 사유: benchmark fixture work is directly executable as one planning artifact unless one issue would be unsafe or collaboration is explicitly requested.",
 			"Fixture-specific task ownership:",
 			expectedTasks,
 		}, "\n"),

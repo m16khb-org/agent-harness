@@ -59,7 +59,7 @@ Required phases:
 1. Problem intake: use `superpowers:brainstorming` to clarify the actual problem, constraints, success criteria, and ambiguity.
 2. Domain grill: challenge terminology, existing domain model fit, and documentation updates before committing to an issue.
 3. Issue contract: before remote issue creation, run the issue-preflight gate in `references/issue-preflight.md`; record the raw user request, interpreted intent, success criteria, constraints, non-goals, ambiguity ledger, and `--intent-class` with `agent-harness issueops intent record`; then create or prepare a GitHub/GitLab issue with problem, acceptance criteria, non-goals, verification, and open decisions. Before entering the `plan` phase, satisfy the plan-prep evidence gate with `agent-harness issueops plan-prep record`: prior-decision lookup, related-issue scoring, and web research each take evidence or a waive reason. The gate is enforced for non-trivial intent classes (trivial skips it) and blocks `plan`-phase entry, not design review.
-4. Large issue breakdown gate: Issue Contract 이후, Plan 이전에 `references/remote-issue.md`의 provider-specific hierarchy rules를 적용한다. Before entering the IssueOps `plan` phase, decide whether the parent issue is too large for one safe work item. If splitting is needed, keep the parent as the umbrella issue, create provider-native child work items with `agent-harness issueops remote create-child`, update the parent body with the child task section, verify hierarchy/labels/assignee/body, and let `create-child` record every verified child in IssueOps state. Use `agent-harness issueops link-child` only as the manual escape hatch for provider-native child work items that already exist and were verified separately. If no split is needed, record the no-split rationale before planning.
+4. Large issue breakdown gate: Issue Contract 이후, Plan 이전에 `references/remote-issue.md`의 provider-specific hierarchy rules를 적용한다. Before entering the IssueOps `plan` phase, decide whether the parent issue is too large for one safe work item. The default decision is no split. Split only when one issue would be unsafe because the work is genuinely large, risky, or hides independent delivery decisions, or when the user/owners explicitly requested for collaboration. If splitting is needed, keep the parent as the umbrella issue, create provider-native child work items with `agent-harness issueops remote create-child`, update the parent body with the child task section, verify hierarchy/labels/assignee/body, and let `create-child` record every verified child in IssueOps state. Use `agent-harness issueops link-child` only as the manual escape hatch for provider-native child work items that already exist and were verified separately. If no split is needed, record the no-split rationale before planning.
 5. Plan: produce an issue-based implementation plan under the target repo's planning convention, then record the reviewed design, refactor boundary, risks, alternatives, and verification matrix with `agent-harness issueops design review`.
 6. Worktree tool preparation: after linking the plan and before implementation, run `agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json` or MCP `issueops_prepare_worktree_tools`. This step persists dependency readiness, supported install action, and CodeGraph readiness on the IssueOps record.
 7. Execution decision gate: before entering implementation, record `agent-harness issueops execution decide` or MCP `issueops_record_execution_decision`. Capture auto-proceed boundaries, hook-blocked workflow work, human-in-the-loop gates, and sub-agent usage. Default is `--subagent-use none` with a rationale. `--subagent-use planned` requires each plan to use a `.agent-harness/SUB_AGENT_PATTERNS.md` slug, expected benefit, known tradeoffs, net-positive rationale, scope, verification, and fallback. Use `.agent-harness/research/subagent-tradeoffs.md` for the tradeoff basis.
@@ -77,7 +77,14 @@ Before entering the IssueOps `plan` phase, evaluate whether the current remote i
 
 ### When To Split
 
-Split the issue into provider-native child tasks when two or more of these are true:
+The default decision is no split. A directly executable issue stays as one issue even when it has several checklist items.
+
+Split the issue into provider-native child tasks only when at least one primary split trigger is true:
+
+- One issue would be unsafe because the work is genuinely large, risky, or would hide independent delivery decisions, verification, rollback, or review boundaries.
+- The user, product owner, or multiple implementers explicitly requested for collaboration, parallel ownership, or separate assignees.
+
+Supporting signals are not sufficient by themselves. Use them only as evidence for one of the primary split triggers:
 
 - The issue has multiple independently verifiable acceptance criteria.
 - The work touches multiple modules, layers, providers, or runtime concerns.
@@ -87,17 +94,18 @@ Split the issue into provider-native child tasks when two or more of these are t
 - The estimated work is larger than one focused implementation pass.
 - The parent issue reads like an umbrella/epic rather than a directly executable task.
 
-Do not split only because the issue body is long. Split only when the resulting child tasks have independent deliverables, verification, and rollback boundaries.
+Do not split only because the issue body is long, has multiple bullets, touches multiple files, or can be described as phases. Split only when keeping it as one issue would create concrete delivery risk, or when collaboration requires separate child ownership. If the issue is small enough for one focused owner and one reviewable MR, record a no-split rationale.
 
 ### Required Behavior
 
 If splitting is needed:
 
 1. Keep the original issue as the umbrella parent.
-2. Create provider-native child work items/tasks with `agent-harness issueops remote create-child --id ID --title TEXT --body TEXT --label LABEL --assignee USER --confirm --json`, not ordinary sibling issues.
+2. State the split trigger in the parent body: either `one issue would be unsafe` with the concrete risk, or `explicitly requested for collaboration` with the owner/assignee boundary.
+3. Create provider-native child work items/tasks with `agent-harness issueops remote create-child --id ID --title TEXT --body TEXT --label LABEL --assignee USER --confirm --json`, not ordinary sibling issues.
    - GitHub: create sub-issues if supported by the project workflow.
    - GitLab: create child `Task` work items under the parent issue/work item.
-3. Each child task must have:
+4. Each child task must have:
    - a Korean title
    - a Korean body
    - clear scope
@@ -106,21 +114,21 @@ If splitting is needed:
    - non-goals when needed
    - inherited labels from the parent unless explicitly inappropriate
    - assignee matching the parent/current owner
-4. Link every child task to the parent using the provider-native hierarchy. The preferred command is `remote create-child`; it creates the child, attaches the hierarchy, verifies labels/assignees, and records the child link. `link-child` is only for an already-created provider-native child URL.
-5. Update the parent issue body, not a comment, with:
+5. Link every child task to the parent using the provider-native hierarchy. The preferred command is `remote create-child`; it creates the child, attaches the hierarchy, verifies labels/assignees, and records the child link. `link-child` is only for an already-created provider-native child URL.
+6. Update the parent issue body, not a comment, with:
    - `## 하위 Task`
    - each child task link
    - recommended execution order
    - scope summary per child
    - note that the parent is now the umbrella coordination issue
-6. Do not leave the child-task plan only in comments. Comments may be used only for temporary coordination if the provider body update fails.
-7. Verify after creation:
+7. Do not leave the child-task plan only in comments. Comments may be used only for temporary coordination if the provider body update fails.
+8. Verify after creation:
    - child items are the correct work item type
    - child-parent relationship exists
    - labels are present
    - assignee is present
    - parent body contains the child task section
-8. If incorrect sibling issues were accidentally created, do not silently reuse them.
+9. If incorrect sibling issues were accidentally created, do not silently reuse them.
    - Create the correct child tasks.
    - Close the incorrect issues with a short correction note.
    - Reflect only the correct child tasks in the parent body.
@@ -137,6 +145,7 @@ Large Issue Breakdown Gate: no split
 - <why the issue is directly executable>
 - <why acceptance criteria do not need independent child tasks>
 - <expected implementation boundary>
+- <why no collaboration split was requested or needed>
 
 ### Output Format
 
@@ -309,6 +318,7 @@ IssueOps must leave an auditable decision trail for labels, large issue breakdow
 
 - Before any remote issue or PR/MR write, record the **threshold-based label decision**: selected labels, rejected labels, and manual override reason when no label crosses threshold. Use `issueops remote score` first, then apply only selected labels or stop before writing.
 - For broad or multi-step work, run the **Large Issue Breakdown Gate**: create provider-native child work items before implementation when the parent issue would otherwise hide independent tasks. Use GitHub sub-issues or GitLab child items, then record each existing child with `agent-harness issueops link-child`.
+- Do not split merely because work is broad or multi-step. The gate's default is no split; create provider-native child work items only when one issue would be unsafe or collaboration/parallel ownership was explicitly requested.
 - On completion, write a **draft issue completion record** in the remote issue or PR/MR-ready notes before reporting done. It must summarize final diff, verification evidence, selected labels, child links, PR/MR URL, cleanup status, and unresolved follow-ups.
 - Treat Kodus, Gemini Code Assist, and similar automated reviewers as **review-agent feedback**. Verify each claim, reply in the original thread with verdict and evidence, and resolve only threads whose fix or obsolescence has been verified.
 

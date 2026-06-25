@@ -91,6 +91,10 @@ func TestIssueOpsSkillDocumentsLargeIssueBreakdownGateForBothProviders(t *testin
 	for _, want := range []string{
 		"Issue Contract 이후, Plan 이전",
 		"Before entering the IssueOps `plan` phase",
+		"default decision is no split",
+		"one issue would be unsafe",
+		"explicitly requested for collaboration",
+		"Supporting signals are not sufficient by themselves",
 		"분리 결정: split",
 		"분리 결정: no split",
 		"GitHub: create sub-issues",
