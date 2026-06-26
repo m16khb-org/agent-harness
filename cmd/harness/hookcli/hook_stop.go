@@ -1,6 +1,7 @@
 package hookcli
 
 import (
+	"encoding/json"
 	"flag"
 	"io"
 	"os"
@@ -16,6 +17,7 @@ func runHookStop(args []string) error {
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
 	host := fs.String("host", "", "hook host (codex or claude); reserved for host-compatible stop output")
 	enforceNumberedNextActions := fs.Bool("enforce-numbered-next-actions", false, "block Stop when the final response lacks 1/2/3 next-action choices")
+	enforceEngelbartCanvasSections := fs.Bool("enforce-engelbart-canvas-sections", false, "block Stop when Engelbart meeting Canvas output lacks required appendix/transcript sections")
 	relayNextActionJudgement := fs.Bool("relay-next-action-judgement", false, "re-enter the main agent when the final response contains inspectable next-action facts")
 	autoProceedNextActions := fs.Bool("auto-proceed-next-actions", false, "deprecated alias for --relay-next-action-judgement")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
@@ -35,6 +37,7 @@ func runHookStop(args []string) error {
 	if message == "" {
 		message = hookinput.ReadLastAssistantMessageFromTranscript(hookinput.TranscriptPathFromHookInput(stdin))
 	}
+	transcriptPath := hookinput.TranscriptPathFromHookInput(stdin)
 	nextActions := core.BuildNumberedNextActionsDecision(
 		message,
 		*enforceNumberedNextActions,
@@ -47,6 +50,7 @@ func runHookStop(args []string) error {
 	nextActionTriggerEnabled := *relayNextActionJudgement || *autoProceedNextActions
 	nextActionTrigger := core.BuildNextActionJudgementTrigger(message)
 	noAutoProceedJudgement := core.IsNoAutoProceedJudgement(message)
+	engelbartCanvasBlock, engelbartCanvasReason := buildEngelbartCanvasSectionsBlock(message, transcriptPath, *enforceEngelbartCanvasSections)
 	if *jsonOut {
 		return printJSON(map[string]any{
 			"lifecycle":                    result,
@@ -54,6 +58,10 @@ func runHookStop(args []string) error {
 			"next_action_judgement":        nextActionTrigger,
 			"next_action_judgement_active": nextActionTriggerEnabled,
 			"no_auto_proceed_judgement":    noAutoProceedJudgement,
+			"engelbart_canvas_sections": map[string]any{
+				"decision": map[bool]string{true: "block", false: "allow"}[engelbartCanvasBlock],
+				"reason":   engelbartCanvasReason,
+			},
 		})
 	}
 	ho := hookadapter.Resolve(strings.TrimSpace(*host))
@@ -69,6 +77,10 @@ func runHookStop(args []string) error {
 			return printJSON(ho.FormatNoop())
 		}
 		return printJSON(ho.FormatStopBlock(core.BuildNextActionJudgementRelayReason(nextActionTrigger)))
+	}
+	if engelbartCanvasBlock {
+		markHookMetricBlocked()
+		return printJSON(ho.FormatStopBlock(engelbartCanvasReason))
 	}
 	// Block a Stop that lacks numbered next actions, but drive an IN-TURN
 	// continuation rather than a hard stop. Verified against the host schemas:
@@ -94,4 +106,189 @@ func runHookStop(args []string) error {
 	// hookSpecificOutput makes Codex report "invalid stop hook JSON output". Keep the
 	// raw reminder available behind --json, but emit a no-op host payload here.
 	return printJSON(ho.FormatNoop())
+}
+
+func buildEngelbartCanvasSectionsBlock(message, transcriptPath string, enforce bool) (bool, string) {
+	if !enforce {
+		return false, ""
+	}
+	canvasWrites := collectSlackCanvasCreateContents(transcriptPath)
+	evidence := strings.Join(canvasWrites, "\n")
+	if strings.TrimSpace(evidence) == "" {
+		if !looksLikeEngelbartCanvasCreationContext(message) {
+			return false, ""
+		}
+		evidence = message
+	}
+	if !looksLikeEngelbartCanvasContext(message + "\n" + evidence) {
+		return false, ""
+	}
+	if len(missingRequiredEngelbartCanvasBlocks(evidence)) == 0 || len(missingRequiredEngelbartCanvasBlocks(message)) == 0 {
+		return false, ""
+	}
+	missing := missingRequiredEngelbartCanvasBlocks(evidence)
+	if len(missing) == 0 {
+		missing = missingRequiredEngelbartCanvasBlocks(message)
+	}
+	return true, "Stop hook blocked because Engelbart meeting Canvas creation is missing required template blocks: " + strings.Join(missing, ", ") + ". Create the Canvas with the full Engelbart template before finalizing; do not ask the user to re-request this."
+}
+
+func looksLikeEngelbartCanvasContext(text string) bool {
+	lower := strings.ToLower(text)
+	hasCanvas := strings.Contains(lower, "canvas") || strings.Contains(text, "캔버스") || strings.Contains(lower, "bubbletap.slack.com/docs")
+	hasMeeting := strings.Contains(text, "회의록") || strings.Contains(text, "회의") || strings.Contains(text, "전사") || strings.Contains(lower, "clova") || strings.Contains(lower, "engelbart")
+	return hasCanvas && hasMeeting
+}
+
+func looksLikeEngelbartCanvasCreationContext(text string) bool {
+	if !looksLikeEngelbartCanvasContext(text) {
+		return false
+	}
+	lower := strings.ToLower(text)
+	return strings.Contains(text, "생성") ||
+		strings.Contains(text, "만들") ||
+		strings.Contains(text, "새 Canvas") ||
+		strings.Contains(text, "새 캔버스") ||
+		strings.Contains(lower, "created") ||
+		strings.Contains(lower, "create_canvas")
+}
+
+type requiredEngelbartBlock struct {
+	Label        string
+	Alternatives []string
+}
+
+func missingRequiredEngelbartCanvasBlocks(text string) []string {
+	blocks := []requiredEngelbartBlock{
+		{Label: "top callout", Alternatives: []string{"::: {.callout}"}},
+		{Label: "## 메타데이터", Alternatives: []string{"## 메타데이터"}},
+		{Label: "metadata table", Alternatives: []string{"|Field|Value|", "| Field | Value |", "|Field | Value|", "| Field|Value |"}},
+		{Label: "## TL;DR", Alternatives: []string{"## TL;DR"}},
+		{Label: "## 결정사항", Alternatives: []string{"## 결정사항"}},
+		{Label: "## 액션 보드", Alternatives: []string{"## 액션 보드"}},
+		{Label: "## 주제별 논의", Alternatives: []string{"## 주제별 논의"}},
+		{Label: "## 후속 확인", Alternatives: []string{"## 후속 확인"}},
+		{Label: "## 리스크/열린 질문", Alternatives: []string{"## 리스크/열린 질문", "## 리스크 / 열린 질문"}},
+		{Label: "appendix divider", Alternatives: []string{"\n---\n", "\r\n---\r\n"}},
+		{Label: "## 보정 및 원문 부록", Alternatives: []string{"## 보정 및 원문 부록"}},
+		{Label: "### 용어 보정", Alternatives: []string{"### 용어 보정"}},
+		{Label: "### 불확실 단어/문장 보정", Alternatives: []string{"### 불확실 단어/문장 보정"}},
+		{Label: "### 참석자/화자 보정", Alternatives: []string{"### 참석자/화자 보정"}},
+		{Label: "### 원문 전사본 전문", Alternatives: []string{"### 원문 전사본 전문"}},
+		{Label: "원문 text 코드블록", Alternatives: []string{"```text"}},
+	}
+	missing := []string{}
+	lastIndex := -1
+	for _, block := range blocks {
+		index := indexOfAny(text, block.Alternatives)
+		if index < 0 {
+			missing = append(missing, block.Label)
+			continue
+		}
+		if index < lastIndex {
+			missing = append(missing, block.Label+"(order)")
+			continue
+		}
+		lastIndex = index
+	}
+	return missing
+}
+
+func indexOfAny(text string, alternatives []string) int {
+	best := -1
+	for _, alternative := range alternatives {
+		index := strings.Index(text, alternative)
+		if index < 0 {
+			continue
+		}
+		if best < 0 || index < best {
+			best = index
+		}
+	}
+	return best
+}
+
+func collectSlackCanvasCreateContents(transcriptPath string) []string {
+	transcriptPath = strings.TrimSpace(transcriptPath)
+	if transcriptPath == "" {
+		return nil
+	}
+	b, err := os.ReadFile(transcriptPath)
+	if err != nil {
+		return nil
+	}
+	contents := []string{}
+	for _, line := range strings.Split(string(b), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var value any
+		if err := json.Unmarshal([]byte(line), &value); err != nil {
+			continue
+		}
+		contents = append(contents, collectCanvasCreateContentValues(value, false)...)
+	}
+	return contents
+}
+
+func collectCanvasCreateContentValues(value any, inCanvasCreateTool bool) []string {
+	switch v := value.(type) {
+	case map[string]any:
+		inCanvasCreateTool = inCanvasCreateTool || mapNamesSlackCanvasCreateTool(v)
+		contents := []string{}
+		for key, child := range v {
+			if inCanvasCreateTool && strings.EqualFold(key, "content") {
+				if text, ok := child.(string); ok && strings.TrimSpace(text) != "" {
+					contents = append(contents, text)
+				}
+			}
+			contents = append(contents, collectCanvasCreateContentValues(child, inCanvasCreateTool)...)
+			if text, ok := child.(string); ok {
+				contents = append(contents, collectCanvasCreateContentValuesFromJSONString(text, inCanvasCreateTool)...)
+			}
+		}
+		return contents
+	case []any:
+		contents := []string{}
+		for _, child := range v {
+			contents = append(contents, collectCanvasCreateContentValues(child, inCanvasCreateTool)...)
+		}
+		return contents
+	case string:
+		return collectCanvasCreateContentValuesFromJSONString(v, inCanvasCreateTool)
+	default:
+		return nil
+	}
+}
+
+func collectCanvasCreateContentValuesFromJSONString(text string, inCanvasCreateTool bool) []string {
+	trimmed := strings.TrimSpace(text)
+	if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+		return nil
+	}
+	var parsed any
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+		return nil
+	}
+	return collectCanvasCreateContentValues(parsed, inCanvasCreateTool)
+}
+
+func mapNamesSlackCanvasCreateTool(m map[string]any) bool {
+	for _, key := range []string{"name", "tool_name", "recipient_name"} {
+		value, ok := m[key].(string)
+		if !ok {
+			continue
+		}
+		if isSlackCanvasCreateTool(value) {
+			return true
+		}
+	}
+	return false
+}
+
+func isSlackCanvasCreateTool(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	return strings.Contains(name, "slack_create_canvas") ||
+		strings.Contains(name, "_slack_create_canvas")
 }

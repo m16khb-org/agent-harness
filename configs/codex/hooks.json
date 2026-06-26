@@ -59,7 +59,7 @@
       {
         "hooks": [
           {
-            "command": "'./bin/agent-harness' hook stop --enforce-numbered-next-actions --relay-next-action-judgement",
+            "command": "'./bin/agent-harness' hook stop --enforce-numbered-next-actions --enforce-engelbart-canvas-sections --relay-next-action-judgement",
             "timeout": 5,
             "type": "command"
           }

@@ -71,7 +71,7 @@ func TestEnforcementFlagBundles(t *testing.T) {
 		t.Fatalf("PreToolUse flags must not enable blocking search routing by default: %s", pre)
 	}
 	stop := StopEnforcementFlags()
-	for _, want := range []string{"--enforce-numbered-next-actions", "--relay-next-action-judgement"} {
+	for _, want := range []string{"--enforce-numbered-next-actions", "--enforce-engelbart-canvas-sections", "--relay-next-action-judgement"} {
 		if !strings.Contains(stop, want) {
 			t.Fatalf("StopEnforcementFlags missing %q: %s", want, stop)
 		}

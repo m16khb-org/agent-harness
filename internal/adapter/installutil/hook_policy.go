@@ -22,6 +22,7 @@ func PreToolUseEnforcementFlags() string {
 func StopEnforcementFlags() string {
 	return strings.Join([]string{
 		"--enforce-numbered-next-actions",
+		"--enforce-engelbart-canvas-sections",
 		"--relay-next-action-judgement",
 	}, " ")
 }

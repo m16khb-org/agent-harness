@@ -125,7 +125,7 @@ func hookUsage() {
   agent-harness hook pre-compact [--repo PATH] [--json]
   agent-harness hook post-compact [--repo PATH] [--host codex|claude] [--json]
   agent-harness hook session-start [--repo PATH] [--host codex|claude] [--json]
-  agent-harness hook stop [--repo PATH] [--host codex|claude] [--enforce-numbered-next-actions] [--relay-next-action-judgement] [--json]
+  agent-harness hook stop [--repo PATH] [--host codex|claude] [--enforce-numbered-next-actions] [--enforce-engelbart-canvas-sections] [--relay-next-action-judgement] [--json]
   agent-harness hook failures [--limit N] [--json]
   agent-harness hook failures --prune DURATION [--json]
   agent-harness hook failures prune --max-age DURATION [--json]
