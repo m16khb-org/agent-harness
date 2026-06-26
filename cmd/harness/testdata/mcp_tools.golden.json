@@ -952,6 +952,62 @@
     "name": "issueops_record_execution_decision"
   },
   {
+    "description": "Record the IssueOps compatibility-review phase: backward compatibility findings, side effects, rollback plan, verification evidence, unresolved blockers, and approval before implementation may proceed.",
+    "inputSchema": {
+      "properties": {
+        "approved": {
+          "description": "Whether compatibility and side effects are resolved enough to proceed.",
+          "type": "boolean"
+        },
+        "backward_compatibility": {
+          "description": "Findings about existing public behavior, state JSON, CLI/MCP/API, schema, or migration compatibility.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "blockers": {
+          "description": "Unresolved blockers. Must be empty when approved is true.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "rollback_plan": {
+          "description": "Concrete rollback or mitigation path if the compatibility review was wrong.",
+          "type": "string"
+        },
+        "side_effects": {
+          "description": "Expected side effects and their affected surfaces.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "verification": {
+          "description": "Verification evidence for compatibility and side effects.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "backward_compatibility",
+        "side_effects",
+        "rollback_plan",
+        "verification"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_record_compatibility_review"
+  },
+  {
     "description": "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
     "inputSchema": {
       "properties": {
@@ -1153,7 +1209,7 @@
     "name": "issueops_mark_issue_updated"
   },
   {
-    "description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The plan phase requires a linked issue and recorded intent contract; implement requires linked issue, provider-linked branch, plan, linked worktree, and an approved design review with no open questions; ai-slop-clean additionally requires implementation changes; pr requires strict PR readiness; done requires prior pr phase plus verified remote PR/MR artifact state (unless force=true).",
+    "description": "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, compatibility-review, implement, ai-slop-clean, feedback, pr, done). The plan phase requires a linked issue and recorded intent contract; compatibility-review requires linked issue, provider-linked branch, linked worktree, approved design review, and linked plan; implement additionally requires approved compatibility review, durable worktree preparation, and execution decision; ai-slop-clean additionally requires implementation changes; pr requires strict PR readiness; done requires prior pr phase plus verified remote PR/MR artifact state (unless force=true).",
     "inputSchema": {
       "properties": {
         "force": {
@@ -1165,11 +1221,12 @@
           "type": "string"
         },
         "phase": {
-          "description": "Target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, or done.",
+          "description": "Target phase: problem, grill, plan, compatibility-review, implement, ai-slop-clean, feedback, pr, or done.",
           "enum": [
             "problem",
             "grill",
             "plan",
+            "compatibility-review",
             "implement",
             "ai-slop-clean",
             "feedback",
@@ -1184,6 +1241,7 @@
             "problem",
             "grill",
             "plan",
+            "compatibility-review",
             "implement",
             "ai-slop-clean",
             "feedback",

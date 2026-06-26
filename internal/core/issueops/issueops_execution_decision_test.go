@@ -37,8 +37,13 @@ func TestIssueOpsImplementationReadinessRequiresExecutionDecision(t *testing.T) 
 	}
 	record.ExecutionDecision = issueOpsExecutionDecisionForTest()
 	ready = IssueOpsImplementationReadiness(record)
+	if ready.Ready || !containsString(ready.Missing, "compatibility_review") {
+		t.Fatalf("execution decision should leave compatibility_review as the remaining implementation gate, got %+v", ready)
+	}
+	record.CompatibilityReview = issueOpsCompatibilityReviewForTest()
+	ready = IssueOpsImplementationReadiness(record)
 	if !ready.Ready || len(ready.Missing) != 0 {
-		t.Fatalf("execution decision should satisfy the last implementation gate, got %+v", ready)
+		t.Fatalf("execution decision plus compatibility review should satisfy implementation gates, got %+v", ready)
 	}
 }
 
@@ -88,6 +93,7 @@ func TestIssueOpsPhaseImplementRequiresExecutionDecision(t *testing.T) {
 		t.Fatalf("implement phase should require execution_decision, got %v", err)
 	}
 	recordIssueOpsExecutionDecisionForTest(t, stateRoot, record.ID)
+	recordIssueOpsCompatibilityReviewForTest(t, stateRoot, record.ID)
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement))
 	if err != nil {
 		t.Fatal(err)

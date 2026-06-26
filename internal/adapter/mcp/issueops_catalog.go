@@ -127,6 +127,19 @@ func IssueOpsBasicTools() []Tool {
 			}},
 		},
 		{
+			Name:        "issueops_record_compatibility_review",
+			Description: "Record the IssueOps compatibility-review phase: backward compatibility findings, side effects, rollback plan, verification evidence, unresolved blockers, and approval before implementation may proceed.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "backward_compatibility", "side_effects", "rollback_plan", "verification"}, "properties": map[string]any{
+				"id":                     map[string]any{"type": "string", "description": "IssueOps id."},
+				"backward_compatibility": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Findings about existing public behavior, state JSON, CLI/MCP/API, schema, or migration compatibility."},
+				"side_effects":           map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Expected side effects and their affected surfaces."},
+				"rollback_plan":          map[string]any{"type": "string", "description": "Concrete rollback or mitigation path if the compatibility review was wrong."},
+				"verification":           map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Verification evidence for compatibility and side effects."},
+				"blockers":               map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Unresolved blockers. Must be empty when approved is true."},
+				"approved":               map[string]any{"type": "boolean", "description": "Whether compatibility and side effects are resolved enough to proceed."},
+			}},
+		},
+		{
 			Name:        "issueops_link_child",
 			Description: "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "child_url"}, "properties": map[string]any{

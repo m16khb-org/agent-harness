@@ -172,7 +172,7 @@ func runIssueOpsRecordRouting(args []string) error {
 func runIssueOpsPhase(args []string) error {
 	fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
-	to := fs.String("to", "", "target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, done")
+	to := fs.String("to", "", "target phase: problem, grill, plan, compatibility-review, implement, ai-slop-clean, feedback, pr, done")
 	force := fs.Bool("force", false, "bypass remote artifact verification when advancing to done")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {

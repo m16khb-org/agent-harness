@@ -10,6 +10,7 @@ import (
 	"agent-harness/internal/core/issueops/branchprepare"
 	"agent-harness/internal/core/issueops/cleanupchildren"
 	"agent-harness/internal/core/issueops/cleanupstatus"
+	"agent-harness/internal/core/issueops/compatibilityreview"
 	"agent-harness/internal/core/issueops/executiondecision"
 	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/linking"
@@ -39,6 +40,8 @@ type IssueOpsDecisionRecordRequest = model.IssueOpsDecisionRecordRequest
 type IssueOpsExecutionDecision = model.IssueOpsExecutionDecision
 type IssueOpsExecutionDecisionRecordRequest = model.IssueOpsExecutionDecisionRecordRequest
 type IssueOpsSubAgentPlan = model.IssueOpsSubAgentPlan
+type IssueOpsCompatibilityReview = model.IssueOpsCompatibilityReview
+type IssueOpsCompatibilityReviewRequest = model.IssueOpsCompatibilityReviewRequest
 type IssueOpsPlanPrep = model.IssueOpsPlanPrep
 type IssueOpsPlanPrepItem = model.IssueOpsPlanPrepItem
 type IssueOpsPlanPrepRequest = model.IssueOpsPlanPrepRequest
@@ -55,14 +58,15 @@ type IssueOpsResumeResult = model.IssueOpsResumeResult
 type IssueOpsPhase = model.IssueOpsPhase
 
 const (
-	IssueOpsPhaseProblem     = model.IssueOpsPhaseProblem
-	IssueOpsPhaseGrill       = model.IssueOpsPhaseGrill
-	IssueOpsPhasePlan        = model.IssueOpsPhasePlan
-	IssueOpsPhaseImplement   = model.IssueOpsPhaseImplement
-	IssueOpsPhaseAISlopClean = model.IssueOpsPhaseAISlopClean
-	IssueOpsPhaseFeedback    = model.IssueOpsPhaseFeedback
-	IssueOpsPhasePR          = model.IssueOpsPhasePR
-	IssueOpsPhaseDone        = model.IssueOpsPhaseDone
+	IssueOpsPhaseProblem             = model.IssueOpsPhaseProblem
+	IssueOpsPhaseGrill               = model.IssueOpsPhaseGrill
+	IssueOpsPhasePlan                = model.IssueOpsPhasePlan
+	IssueOpsPhaseCompatibilityReview = model.IssueOpsPhaseCompatibilityReview
+	IssueOpsPhaseImplement           = model.IssueOpsPhaseImplement
+	IssueOpsPhaseAISlopClean         = model.IssueOpsPhaseAISlopClean
+	IssueOpsPhaseFeedback            = model.IssueOpsPhaseFeedback
+	IssueOpsPhasePR                  = model.IssueOpsPhasePR
+	IssueOpsPhaseDone                = model.IssueOpsPhaseDone
 )
 
 var IssueOpsPhases = model.IssueOpsPhases
@@ -333,6 +337,25 @@ func issueOpsExecutionDecisionStore() executiondecision.Store {
 	return executiondecision.Store{
 		Read:       ReadIssueOps,
 		TouchWrite: touchAndWriteIssueOps,
+	}
+}
+
+func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = compatibilityreview.Record(issueOpsCompatibilityReviewStore(), stateRoot, id, req)
+		return e
+	})
+	return rec, err
+}
+
+func issueOpsCompatibilityReviewStore() compatibilityreview.Store {
+	return compatibilityreview.Store{
+		Read:       ReadIssueOps,
+		TouchWrite: touchAndWriteIssueOps,
+		Ready:      IssueOpsCompatibilityReviewReadiness,
+		PhaseRank:  issueOpsPhaseRank,
 	}
 }
 

@@ -63,6 +63,11 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter plan phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
+	if phase == IssueOpsPhaseCompatibilityReview {
+		if ready := IssueOpsCompatibilityReviewReadiness(record); !ready.Ready {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter compatibility-review phase: missing %s", strings.Join(ready.Missing, ", "))
+		}
+	}
 	if phase == IssueOpsPhaseImplement {
 		if ready := IssueOpsImplementationReadiness(record); !ready.Ready {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter implement phase: missing %s", strings.Join(ready.Missing, ", "))

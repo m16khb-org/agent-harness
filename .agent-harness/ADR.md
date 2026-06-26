@@ -381,3 +381,12 @@ Archived entries:
   - intent contract에 3개 필드 직접 추가 — '의도 계약'과 '증거 수집'이 한 곳에 뒤섞여 거부하고 별도 PlanPrep sub-record 채택
   - 무조건 강제(waive 불가) — trivial/순수 내부 작업까지 막혀 마찰이 커 거부하고 사유 기반 면제 채택
   - design review까지 plan-prep 강제 — 수많은 design 검증 테스트가 깨지고 실제 흐름상 이중 검사라 거부하고 plan-phase 진입에만 강제
+
+## 2026-06-26 — IssueOps compatibility review phase
+
+- Kind: `adr`
+- Source: codex
+- Summary: IssueOps implementation entry now requires a dedicated `compatibility-review` phase for backward compatibility, side effects, rollback, and verification judgement.
+- Context: The existing `execution_decision` gate recorded auto-proceed and HITL/sub-agent judgement, but backward compatibility and side-effect review were not first-class state. Hook-side judgement would make progress host-event-dependent and hard to replay.
+- Decision: Add `compatibility-review` between `plan` and `implement`, persist `compatibility_review` on the IssueOps record, expose CLI/MCP owner commands, and make `implement` fail closed until the review is approved and blocker-free.
+- Consequences: Agents must run `issueops compatibility review` or MCP `issueops_record_compatibility_review` before implementation. Missing readiness keys are public contract (`compatibility_review`, `backward_compatibility`, `side_effects`, `rollback_plan`, `compatibility_verification`, `compatibility_blockers`, `compatibility_approval`) and must stay documented with CLI/MCP/schema changes.

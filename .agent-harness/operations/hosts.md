@@ -86,6 +86,6 @@ Claude project-local hooks can be committed, so do not create `.claude/settings.
 
 ## IssueOps Host Rule
 
-Hooks may suggest IssueOps but must not create issues, edit files, run tests, wait on background jobs, prepare branches/worktrees, open PRs/MRs, reply to review threads, merge, or clean up branches/worktrees. The main agent loop owns the `problem -> grill -> issue -> plan -> implement -> ai-slop-clean -> feedback -> pr -> cleanup` state machine through `agent-harness issueops ...` CLI/MCP state.
+Hooks may suggest IssueOps but must not create issues, edit files, run tests, wait on background jobs, prepare branches/worktrees, open PRs/MRs, reply to review threads, merge, or clean up branches/worktrees. The main agent loop owns the `problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup` state machine through `agent-harness issueops ...` CLI/MCP state.
 
 Installed hooks enforce only fast deterministic boundaries: linked worktree targets, Korean remote artifacts, VCS issue-linking metadata, PR/MR target/base branch, label and assignee evidence, staged-check/live-command confirmation, and numbered next-action format. The main agent owns remote writes and must pass Korean artifact gates before issue or PR/MR mutation.

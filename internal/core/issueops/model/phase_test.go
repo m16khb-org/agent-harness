@@ -15,6 +15,13 @@ func TestIssueOpsPhaseOrderingAndClassification(t *testing.T) {
 	if IssueOpsPhaseRank("unknown") != 0 {
 		t.Fatal("unknown phase should have rank 0")
 	}
+	if !KnownIssueOpsPhase(IssueOpsPhaseCompatibilityReview) {
+		t.Fatal("compatibility-review phase should be known")
+	}
+	if IssueOpsPhaseRank(IssueOpsPhaseCompatibilityReview) <= IssueOpsPhaseRank(IssueOpsPhasePlan) ||
+		IssueOpsPhaseRank(IssueOpsPhaseCompatibilityReview) >= IssueOpsPhaseRank(IssueOpsPhaseImplement) {
+		t.Fatalf("compatibility-review should sit between plan and implement, got rank %d", IssueOpsPhaseRank(IssueOpsPhaseCompatibilityReview))
+	}
 	for _, phase := range []IssueOpsPhase{IssueOpsPhaseImplement, IssueOpsPhaseAISlopClean, IssueOpsPhaseFeedback, IssueOpsPhasePR} {
 		if !IssueOpsPhaseExpectsWorktree(phase) {
 			t.Fatalf("%s should expect a worktree", phase)

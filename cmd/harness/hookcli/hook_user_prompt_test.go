@@ -131,6 +131,15 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, planPath); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), record.ID, core.IssueOpsCompatibilityReviewRequest{
+		BackwardCompatibility: []string{"hook fixture preserves linked worktree behavior"},
+		SideEffects:           []string{"CodeGraph projectPath guard still blocks the source checkout from linked worktree cwd"},
+		RollbackPlan:          "remove fixture IssueOps state and rerun hook tests",
+		Verification:          []string{"go test ./cmd/harness/hookcli"},
+		Approved:              true,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := core.RecordIssueOpsExecutionDecision(core.IssueOpsStateRoot(), record.ID, core.IssueOpsExecutionDecisionRecordRequest{
 		AutoProceed:       []string{"hook fixture may enter implementation after linked worktree readiness is durable"},
 		HookBlocked:       []string{"hooks do not prepare worktrees, create remote artifacts, or choose sub-agents"},

@@ -22,6 +22,8 @@ type IssueOpsDecisionRecordRequest = issueops.IssueOpsDecisionRecordRequest
 type IssueOpsExecutionDecision = issueops.IssueOpsExecutionDecision
 type IssueOpsExecutionDecisionRecordRequest = issueops.IssueOpsExecutionDecisionRecordRequest
 type IssueOpsSubAgentPlan = issueops.IssueOpsSubAgentPlan
+type IssueOpsCompatibilityReview = issueops.IssueOpsCompatibilityReview
+type IssueOpsCompatibilityReviewRequest = issueops.IssueOpsCompatibilityReviewRequest
 type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
 type IssueOpsWorktreeToolPreparation = issueops.IssueOpsWorktreeToolPreparation
@@ -38,14 +40,15 @@ type IssueOpsStaleScanResult = issueops.IssueOpsStaleScanResult
 type IssueOpsPhase = issueops.IssueOpsPhase
 
 const (
-	IssueOpsPhaseProblem     = issueops.IssueOpsPhaseProblem
-	IssueOpsPhaseGrill       = issueops.IssueOpsPhaseGrill
-	IssueOpsPhasePlan        = issueops.IssueOpsPhasePlan
-	IssueOpsPhaseImplement   = issueops.IssueOpsPhaseImplement
-	IssueOpsPhaseAISlopClean = issueops.IssueOpsPhaseAISlopClean
-	IssueOpsPhaseFeedback    = issueops.IssueOpsPhaseFeedback
-	IssueOpsPhasePR          = issueops.IssueOpsPhasePR
-	IssueOpsPhaseDone        = issueops.IssueOpsPhaseDone
+	IssueOpsPhaseProblem             = issueops.IssueOpsPhaseProblem
+	IssueOpsPhaseGrill               = issueops.IssueOpsPhaseGrill
+	IssueOpsPhasePlan                = issueops.IssueOpsPhasePlan
+	IssueOpsPhaseCompatibilityReview = issueops.IssueOpsPhaseCompatibilityReview
+	IssueOpsPhaseImplement           = issueops.IssueOpsPhaseImplement
+	IssueOpsPhaseAISlopClean         = issueops.IssueOpsPhaseAISlopClean
+	IssueOpsPhaseFeedback            = issueops.IssueOpsPhaseFeedback
+	IssueOpsPhasePR                  = issueops.IssueOpsPhasePR
+	IssueOpsPhaseDone                = issueops.IssueOpsPhaseDone
 )
 
 var IssueOpsPhases = issueops.IssueOpsPhases
@@ -135,6 +138,10 @@ func RecordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecution
 	return issueops.RecordIssueOpsExecutionDecision(stateRoot, id, req)
 }
 
+func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsCompatibilityReview(stateRoot, id, req)
+}
+
 func IssueOpsStateRoot() string {
 	return issueops.IssueOpsStateRoot()
 }
@@ -217,6 +224,10 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 
 func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	return issueops.IssueOpsImplementationReadiness(record)
+}
+
+func IssueOpsCompatibilityReviewReadiness(record IssueOpsRecord) IssueOpsReadiness {
+	return issueops.IssueOpsCompatibilityReviewReadiness(record)
 }
 
 func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {

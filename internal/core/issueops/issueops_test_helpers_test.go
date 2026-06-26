@@ -114,6 +114,7 @@ func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 
 func recordIssueOpsPreparedWorktreeToolsForTest(t *testing.T, stateRoot, id, worktree string) IssueOpsRecord {
 	t.Helper()
+	recordIssueOpsCompatibilityReviewForTest(t, stateRoot, id)
 	recordIssueOpsExecutionDecisionForTest(t, stateRoot, id)
 	record, err := RecordIssueOpsWorktreeTools(stateRoot, id, IssueOpsWorktreeToolPreparation{
 		OK:                   true,
@@ -142,12 +143,36 @@ func recordIssueOpsExecutionDecisionForTest(t *testing.T, stateRoot, id string) 
 	}
 }
 
+func recordIssueOpsCompatibilityReviewForTest(t *testing.T, stateRoot, id string) {
+	t.Helper()
+	if _, err := RecordIssueOpsCompatibilityReview(stateRoot, id, IssueOpsCompatibilityReviewRequest{
+		BackwardCompatibility: []string{"existing IssueOps state records remain readable"},
+		SideEffects:           []string{"phase order changes are limited to IssueOps lifecycle readiness"},
+		RollbackPlan:          "Revert the compatibility-review phase and readiness gate.",
+		Verification:          []string{"compatibility review checked backward compatibility and side effects", "go test ./internal/core/issueops"},
+		Approved:              true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func issueOpsIntentContractForTest() *IssueOpsIntentContract {
 	return &IssueOpsIntentContract{
 		RawRequest:        "refactor issueops flow",
 		InterpretedIntent: "keep intent and design evidence before implementation",
 		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
 		RecordedAt:        "2026-06-05T00:00:00Z",
+	}
+}
+
+func issueOpsCompatibilityReviewForTest() *IssueOpsCompatibilityReview {
+	return &IssueOpsCompatibilityReview{
+		BackwardCompatibility: []string{"existing IssueOps state records remain readable"},
+		SideEffects:           []string{"phase order changes are limited to IssueOps lifecycle readiness"},
+		RollbackPlan:          "Revert the compatibility-review phase and readiness gate.",
+		Verification:          []string{"compatibility review checked backward compatibility and side effects", "go test ./internal/core/issueops"},
+		Approved:              true,
+		ReviewedAt:            "2026-06-26T00:00:00Z",
 	}
 }
 

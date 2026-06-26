@@ -83,6 +83,25 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if planRecord["phase"] != "plan" {
 		t.Fatalf("plan link should stay in plan phase until worktree tools are prepared: %#v", planRecord)
 	}
+	compatibility := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{
+			"compatibility", "review",
+			"--id", id,
+			"--backward-compatibility", "existing IssueOps JSON records remain readable",
+			"--side-effect", "phase ordering changes are limited to IssueOps lifecycle gates",
+			"--rollback-plan", "revert compatibility-review phase and readiness gate",
+			"--verification", "compatibility review checked backward compatibility and side effects",
+			"--approved",
+			"--json",
+		})
+	})
+	var compatibilityRecord map[string]any
+	if err := json.Unmarshal([]byte(compatibility), &compatibilityRecord); err != nil {
+		t.Fatalf("compatibility review should return JSON: %v\n%s", err, compatibility)
+	}
+	if compatibilityRecord["phase"] != "compatibility-review" {
+		t.Fatalf("compatibility review should move to compatibility-review phase: %#v", compatibilityRecord)
+	}
 	decision := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{
 			"execution", "decide",

@@ -80,6 +80,30 @@ func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	return ready
 }
 
+func IssueOpsCompatibilityReviewReadiness(record IssueOpsRecord) IssueOpsReadiness {
+	missing := issueOpsBaseImplementationMissing(record)
+	if path := strings.TrimSpace(record.WorktreePath); path == "" {
+		missing = append(missing, "worktree_path")
+	} else if !issueOpsWorktreePathValid(path) {
+		missing = append(missing, "worktree_exists")
+	}
+	if strings.TrimSpace(record.PlanPath) != "" && !issueOpsPlanPathExists(issueOpsPlanExistenceRoot(record), record.PlanPath) {
+		missing = append(missing, "plan_exists")
+	}
+	if !issueOpsPlanInLinkedWorktree(record) {
+		missing = append(missing, "plan_in_worktree")
+	}
+	return IssueOpsReadiness{
+		OK:           true,
+		Ready:        len(missing) == 0,
+		Missing:      stringlist.UniqueSorted(missing),
+		IssueURL:     record.IssueURL,
+		PlanPath:     record.PlanPath,
+		WorktreePath: record.WorktreePath,
+		Branch:       record.Branch,
+	}
+}
+
 func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	missing := issueOpsBaseImplementationMissing(record)
 	if path := strings.TrimSpace(record.WorktreePath); path == "" {
@@ -97,6 +121,7 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if record.ExecutionDecision == nil || strings.TrimSpace(record.ExecutionDecision.RecordedAt) == "" {
 		missing = append(missing, "execution_decision")
 	}
+	missing = append(missing, issueOpsCompatibilityReviewMissing(record)...)
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
@@ -106,6 +131,33 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		WorktreePath: record.WorktreePath,
 		Branch:       record.Branch,
 	}
+}
+
+func issueOpsCompatibilityReviewMissing(record IssueOpsRecord) []string {
+	review := record.CompatibilityReview
+	if review == nil {
+		return []string{"compatibility_review"}
+	}
+	missing := []string{}
+	if len(cleanIssueOpsTextValues(review.BackwardCompatibility)) == 0 {
+		missing = append(missing, "backward_compatibility")
+	}
+	if len(cleanIssueOpsTextValues(review.SideEffects)) == 0 {
+		missing = append(missing, "side_effects")
+	}
+	if strings.TrimSpace(review.RollbackPlan) == "" {
+		missing = append(missing, "rollback_plan")
+	}
+	if len(cleanIssueOpsTextValues(review.Verification)) == 0 {
+		missing = append(missing, "compatibility_verification")
+	}
+	if len(cleanIssueOpsTextValues(review.Blockers)) > 0 {
+		missing = append(missing, "compatibility_blockers")
+	}
+	if !review.Approved {
+		missing = append(missing, "compatibility_approval")
+	}
+	return missing
 }
 
 func issueOpsWorktreeToolsMissing(record IssueOpsRecord) []string {

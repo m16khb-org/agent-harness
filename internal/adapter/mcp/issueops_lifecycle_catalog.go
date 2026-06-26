@@ -44,11 +44,11 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_set_phase",
-			Description: "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The plan phase requires a linked issue and recorded intent contract; implement requires linked issue, provider-linked branch, plan, linked worktree, and an approved design review with no open questions; ai-slop-clean additionally requires implementation changes; pr requires strict PR readiness; done requires prior pr phase plus verified remote PR/MR artifact state (unless force=true).",
+			Description: "Advance an IssueOps loop to a named lifecycle phase (problem, grill, plan, compatibility-review, implement, ai-slop-clean, feedback, pr, done). The plan phase requires a linked issue and recorded intent contract; compatibility-review requires linked issue, provider-linked branch, linked worktree, approved design review, and linked plan; implement additionally requires approved compatibility review, durable worktree preparation, and execution decision; ai-slop-clean additionally requires implementation changes; pr requires strict PR readiness; done requires prior pr phase plus verified remote PR/MR artifact state (unless force=true).",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
 				"id":    map[string]any{"type": "string", "description": "IssueOps id."},
-				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, implement, ai-slop-clean, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
-				"to":    map[string]any{"type": "string", "description": "Compatibility alias for phase, matching the CLI --to flag.", "enum": []string{"problem", "grill", "plan", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
+				"phase": map[string]any{"type": "string", "description": "Target phase: problem, grill, plan, compatibility-review, implement, ai-slop-clean, feedback, pr, or done.", "enum": []string{"problem", "grill", "plan", "compatibility-review", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
+				"to":    map[string]any{"type": "string", "description": "Compatibility alias for phase, matching the CLI --to flag.", "enum": []string{"problem", "grill", "plan", "compatibility-review", "implement", "ai-slop-clean", "feedback", "pr", "done"}},
 				"force": map[string]any{"type": "boolean", "description": "When true and phase is done, bypass remote artifact verification requirement. The skip reason is recorded in force_release_reason."},
 			}},
 		},

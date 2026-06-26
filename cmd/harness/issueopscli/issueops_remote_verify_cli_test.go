@@ -103,6 +103,15 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.Iss
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), id, core.IssueOpsCompatibilityReviewRequest{
+		BackwardCompatibility: []string{"existing IssueOps JSON records remain readable"},
+		SideEffects:           []string{"phase ordering changes are limited to IssueOps lifecycle gates"},
+		RollbackPlan:          "Revert compatibility-review phase and readiness gate.",
+		Verification:          []string{"compatibility review checked backward compatibility and side effects"},
+		Approved:              true,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), id, core.IssueOpsWorktreeToolPreparation{
 		OK:                   true,
 		WorktreePath:         worktree,

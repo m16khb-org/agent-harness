@@ -207,6 +207,25 @@ type IssueOpsExecutionDecisionRecordRequest struct {
 	SubagentPlans     []IssueOpsSubAgentPlan
 }
 
+type IssueOpsCompatibilityReview struct {
+	BackwardCompatibility []string `json:"backward_compatibility"`
+	SideEffects           []string `json:"side_effects"`
+	RollbackPlan          string   `json:"rollback_plan"`
+	Verification          []string `json:"verification"`
+	Blockers              []string `json:"blockers,omitempty"`
+	Approved              bool     `json:"approved"`
+	ReviewedAt            string   `json:"reviewed_at"`
+}
+
+type IssueOpsCompatibilityReviewRequest struct {
+	BackwardCompatibility []string
+	SideEffects           []string
+	RollbackPlan          string
+	Verification          []string
+	Blockers              []string
+	Approved              bool
+}
+
 type IssueOpsRecord struct {
 	OK                     bool                                `json:"ok"`
 	ID                     string                              `json:"id"`
@@ -225,6 +244,7 @@ type IssueOpsRecord struct {
 	PlanPrep               *IssueOpsPlanPrep                   `json:"plan_prep,omitempty"`
 	WorktreeTools          *IssueOpsWorktreeToolPreparation    `json:"worktree_tools,omitempty"`
 	ExecutionDecision      *IssueOpsExecutionDecision          `json:"execution_decision,omitempty"`
+	CompatibilityReview    *IssueOpsCompatibilityReview        `json:"compatibility_review,omitempty"`
 	Feedback               []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
 	RoutingTrace           []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt          string                              `json:"ai_slop_clean_at,omitempty"`

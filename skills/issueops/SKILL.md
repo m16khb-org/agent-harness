@@ -18,7 +18,7 @@ The cycle has one durable state record. Use `agent-harness issueops ... --json` 
 IssueOps is a main-agent state machine:
 
 ```text
-problem -> grill -> issue -> plan -> implement -> ai-slop-clean -> feedback -> pr -> cleanup
+problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup
 ```
 
 `agent-harness issueops ...` CLI/MCP commands own durable state, phase transitions, readiness, and remote artifact records. Lifecycle hooks are limited to fast, deterministic, inspectable guards and routing hints. A hook may block a clearly invalid tool event, but it must not perform workflow work: no issue creation, provider mutation, file edit, test run, background wait, branch/worktree preparation, PR/MR creation, review reply, merge, or cleanup.
@@ -29,7 +29,7 @@ When IssueOps contributes to a benchmark response, include a compact labeled evi
 
 ```text
 Durable state record: <IssueOps id, phase, readiness gates, state path/tool output>
-Phase routing: <problem -> grill -> issue -> plan -> implement -> feedback -> pr -> cleanup decisions>
+Phase routing: <problem -> grill -> issue -> plan -> compatibility-review -> implement -> ai-slop-clean -> feedback -> pr -> cleanup decisions>
 Flow evidence: <issue, plan, TDD, subagent decision, feedback, PR/MR artifacts>
 Hook boundary: <what hooks may suggest/block and what only the main agent/CLI owns>
 Cleanup/readiness evidence: <strict readiness, merge/cleanup status, remaining choices>
@@ -45,7 +45,8 @@ If no IssueOps cycle exists, do not fabricate one. Record that the workflow is n
 | Issue Contract | Record intent; run issue-preflight; score related issues and labels; pass Korean artifact gate; create/link the remote issue when credentials, target, owner, and base branch are clear. | Korean remote artifact, VCS linking metadata, missing label, and missing assignee guards. | Credentials, target project, owner, base branch, or selected label is unclear. |
 | Large Issue Breakdown | Decide split/no-split; create provider-native child tasks; verify hierarchy, labels, assignee, and parent body. | VCS artifact guard blocks body-only hierarchy when native linking is required. | Child scope is a product decision or provider hierarchy support/permission is missing. |
 | Plan / Design Review | Record plan-prep evidence or waivers; write the plan; record approved design review with risks, alternatives, and verification. | No hook enforcement. | Open question, risky alternative, or refactor boundary remains unresolved. |
-| Branch / Worktree Prep | Create provider-linked branch; create/link sibling worktree; link plan; run `worktree prepare-tools`; record `execution_decision` before `implement`. | Worktree guard blocks source-checkout mutation and wrong linked-worktree targets. | Base branch is user-selected/unclear/conflicting, or dependency/config linking has secret risk. |
+| Branch / Worktree Prep | Create provider-linked branch; create/link sibling worktree; link plan; run `worktree prepare-tools`; record compatibility review and `execution_decision` before `implement`. | Worktree guard blocks source-checkout mutation and wrong linked-worktree targets. | Base branch is user-selected/unclear/conflicting, or dependency/config linking has secret risk. |
+| Compatibility Review | Review backward compatibility, side effects, rollback plan, verification evidence, and blockers; record approval with `issueops compatibility review` or MCP `issueops_record_compatibility_review`. | Hook may only block missing durable state/readiness; it does not judge compatibility or side effects. | Any unresolved blocker, public contract risk, migration risk, or rollback uncertainty remains. |
 | Implementation | Main agent runs TDD, focused fixes, and verification directly unless `execution_decision` records a net-positive sub-agent plan. | Worktree guard; staged-check and live-command guards where installed. Hooks do not decide sub-agent usage. | Failure classification, destructive migration, live access, product behavior, or sub-agent tradeoff judgment is unclear. |
 | AI Slop Clean | Inspect the actual diff, remove lazy artifacts, rerun targeted checks, record cleanup evidence. | Worktree guard remains active. | Cleanup would widen scope or require behavior changes. |
 | Feedback | Classify CI/review/user feedback; fix valid items; update remote issue body for contract changes. | Numbered next-action shape and remote issue edit gates. | Contract change, noisy review judgment, or priority requires user choice. |
@@ -62,11 +63,12 @@ Required phases:
 4. Large issue breakdown gate: Issue Contract 이후, Plan 이전에 `references/remote-issue.md`의 provider-specific hierarchy rules를 적용한다. Before entering the IssueOps `plan` phase, decide whether the parent issue is too large for one safe work item. The default decision is no split. Split only when one issue would be unsafe because the work is genuinely large, risky, or hides independent delivery decisions, or when the user/owners explicitly requested for collaboration. If splitting is needed, keep the parent as the umbrella issue, create provider-native child work items with `agent-harness issueops remote create-child`, update the parent body with the child task section, verify hierarchy/labels/assignee/body, and let `create-child` record every verified child in IssueOps state. Use `agent-harness issueops link-child` only as the manual escape hatch for provider-native child work items that already exist and were verified separately. If no split is needed, record the no-split rationale before planning.
 5. Plan: produce an issue-based implementation plan under the target repo's planning convention, then record the reviewed design, refactor boundary, risks, alternatives, and verification matrix with `agent-harness issueops design review`.
 6. Worktree tool preparation: after linking the plan and before implementation, run `agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json` or MCP `issueops_prepare_worktree_tools`. This step persists dependency readiness, supported install action, and CodeGraph readiness on the IssueOps record.
-7. Execution decision gate: before entering implementation, record `agent-harness issueops execution decide` or MCP `issueops_record_execution_decision`. Capture auto-proceed boundaries, hook-blocked workflow work, human-in-the-loop gates, and sub-agent usage. Default is `--subagent-use none` with a rationale. `--subagent-use planned` requires each plan to use a `.agent-harness/SUB_AGENT_PATTERNS.md` slug, expected benefit, known tradeoffs, net-positive rationale, scope, verification, and fallback. Use `.agent-harness/research/subagent-tradeoffs.md` for the tradeoff basis.
-8. Implementation: the main agent performs TDD directly. Sub-agents are spawned only when the execution decision records a net-positive plan matching the 12 documented patterns. Optimize algorithmic complexity with **`dijkstra`**, design database schemas and indexes with **`codd`**, diagnose failures with **`hopper`**, manage git operations with **`torvalds`** and **`atomic-commit-push`**, and optimize agent prompts with **`karpathy`**. Do not enter implementation until the IssueOps design review is approved and has no open questions, worktree tool preparation evidence is ready, and `execution_decision` is recorded.
-9. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
-10. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
-11. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
+7. Compatibility review gate: before entering implementation, record `agent-harness issueops compatibility review` or MCP `issueops_record_compatibility_review`. Capture backward compatibility findings, side effects, rollback plan, verification evidence, blockers, and approval. Approved compatibility reviews must have no blockers.
+8. Execution decision gate: before entering implementation, record `agent-harness issueops execution decide` or MCP `issueops_record_execution_decision`. Capture auto-proceed boundaries, hook-blocked workflow work, human-in-the-loop gates, and sub-agent usage. Default is `--subagent-use none` with a rationale. `--subagent-use planned` requires each plan to use a `.agent-harness/SUB_AGENT_PATTERNS.md` slug, expected benefit, known tradeoffs, net-positive rationale, scope, verification, and fallback. Use `.agent-harness/research/subagent-tradeoffs.md` for the tradeoff basis.
+9. Implementation: the main agent performs TDD directly. Sub-agents are spawned only when the execution decision records a net-positive plan matching the 12 documented patterns. Optimize algorithmic complexity with **`dijkstra`**, design database schemas and indexes with **`codd`**, diagnose failures with **`hopper`**, manage git operations with **`torvalds`** and **`atomic-commit-push`**, and optimize agent prompts with **`karpathy`**. Do not enter implementation until the IssueOps design review is approved and has no open questions, worktree tool preparation evidence is ready, compatibility review is approved with no blockers, and `execution_decision` is recorded.
+10. AI slop clean: before PR/MR drafting, load `references/ai-slop-clean.md` and remove lazy agent artifacts such as vague explanations, unverified claims, overbroad abstractions, dead scaffolding, generic comments, noisy generated prose, and brittle shortcuts; keep only evidence-backed, repo-style code/docs/tests.
+11. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
+12. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
 
 ### Large Issue Breakdown Gate
 
@@ -184,7 +186,7 @@ or
 IssueOps phases are supported by 9 agent-harness native skills covering strategy, research, design, execution, debugging, optimization, git operations, quality measurement, and cleanup. Each skill works standalone or integrated; when an IssueOps cycle exists, state is persisted through `agent-harness` CLI/MCP. Skills form a pipeline from problem discovery through PR/MR completion:
 
 ```
-problem → grill → issue → plan → implement → ai-slop-clean → feedback → pr → cleanup
+problem → grill → issue → plan → compatibility-review → implement → ai-slop-clean → feedback → pr → cleanup
    │        │       │       │         │            │            │        │       │
    ▼        ▼       ▼       ▼         ▼            ▼            ▼        ▼       ▼
   von-    berners  von-     von-     turing      shannon      hopper   turing  torvalds
@@ -291,6 +293,7 @@ When an IssueOps command reports a missing gate, do not guess a new hidden flag.
 - `branch_prepare` / `branch_link_verified`: run `issueops branch prepare` only after provider-visible branch evidence exists. The branch must start with the issue/task number and a hyphen.
 - `worktree_path` / `worktree_exists`: create the sibling isolated worktree first, then run `issueops link-worktree`.
 - `worktree_tools_prepared` / `worktree_dependencies_ready` / `codegraph_ready`: run `issueops worktree prepare-tools` or MCP `issueops_prepare_worktree_tools` after linking the plan. If the package manager requires manual dependency reuse, symlink, copy, or install, do that in the linked worktree and rerun prepare-tools until the durable evidence is ready.
+- `compatibility_review` / `backward_compatibility` / `side_effects` / `rollback_plan` / `compatibility_verification` / `compatibility_blockers` / `compatibility_approval`: run `issueops compatibility review` or MCP `issueops_record_compatibility_review`. Record backward compatibility findings, side effects, rollback plan, verification evidence, and approval. Do not approve while blockers remain.
 - `execution_decision`: run `issueops execution decide` or MCP `issueops_record_execution_decision`. Record at least one auto-proceed condition, hook-blocked workflow action, and human gate. For `subagent_use=none`, include a rationale. For `subagent_use=planned`, every plan must include objective, documented pattern slug, expected benefit, tradeoffs, net-positive rationale, scope, verification, and fallback.
 - `design_review`, `design_approval`, `design_review_evidence`, `refactor_plan`, `alternatives`, `risks`, `design_open_questions`: run one full `issueops design review` call. Approval is recorded with the full design review payload; there is no approve-only merge step.
 - `plan_path` / `plan_exists` / `plan_in_worktree`: create the plan file inside the linked worktree, then run `issueops link-plan`.
@@ -447,7 +450,17 @@ agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
 
 `branch prepare` records the required provider-linked branch contract before local worktree creation: use the provider MCP first, use the provider API/CLI fallback second, and fail closed if both cannot create a branch that the issue shows as linked. For GitLab, branch names must start with the issue or task number followed by a hyphen, for example `123-fix-login`.
 
-`link-worktree` fails closed until issue-linked branch evidence exists and the worktree path already exists on disk. `link-plan` attaches the reviewed implementation plan but does not enter implementation by itself. It fails closed until the issue is linked, `branch prepare --link-verified` has recorded provider-visible branch evidence, the worktree is linked, the design review is approved with no open questions, and the plan path exists inside that linked worktree. Run `worktree prepare-tools` after `link-plan`, then record the execution decision before `implement`:
+`link-worktree` fails closed until issue-linked branch evidence exists and the worktree path already exists on disk. `link-plan` attaches the reviewed implementation plan but does not enter implementation by itself. It fails closed until the issue is linked, `branch prepare --link-verified` has recorded provider-visible branch evidence, the worktree is linked, the design review is approved with no open questions, and the plan path exists inside that linked worktree. Run `worktree prepare-tools` after `link-plan`, record the compatibility review, then record the execution decision before `implement`:
+
+```bash
+agent-harness issueops compatibility review --id "$ISSUEOPS_ID" \
+  --backward-compatibility "existing state/CLI/MCP/API contracts checked" \
+  --side-effect "side effects are limited to the reviewed implementation surface" \
+  --rollback-plan "$ROLLBACK_PLAN" \
+  --verification "$COMPATIBILITY_VERIFICATION" \
+  --approved \
+  --json
+```
 
 ```bash
 agent-harness issueops execution decide --id "$ISSUEOPS_ID" \

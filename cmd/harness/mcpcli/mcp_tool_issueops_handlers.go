@@ -118,6 +118,18 @@ func handleMCPIssueOpsRecordExecutionDecision(args map[string]any) MCPToolOutcom
 	return issueOpsMCPOutcome(result, err, "IssueOps execution decision record failed")
 }
 
+func handleMCPIssueOpsRecordCompatibilityReview(args map[string]any) MCPToolOutcome {
+	result, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsCompatibilityReviewRequest{
+		BackwardCompatibility: argmap.StringSlice(args, "backward_compatibility"),
+		SideEffects:           argmap.StringSlice(args, "side_effects"),
+		RollbackPlan:          argmap.String(args, "rollback_plan"),
+		Verification:          argmap.StringSlice(args, "verification"),
+		Blockers:              argmap.StringSlice(args, "blockers"),
+		Approved:              argmap.Bool(args, "approved"),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps compatibility review record failed")
+}
+
 func issueOpsSubagentPlansFromMCP(raw any) ([]core.IssueOpsSubAgentPlan, error) {
 	if raw == nil {
 		return nil, nil

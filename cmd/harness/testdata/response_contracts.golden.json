@@ -227,7 +227,7 @@
           "name": "version"
         }
       ],
-      "hash": "cd2b21972ee13ba071e65d75323d9eda903e0352cf66749f9afd54774c0c7721",
+      "hash": "528a3db7c8034e3ece30119f3924f4736a3d20d3880bc34e445d6c7a17e06b8a",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -258,6 +258,7 @@
         "issueops_pr_readiness",
         "issueops_prepare_branch",
         "issueops_prepare_worktree_tools",
+        "issueops_record_compatibility_review",
         "issueops_record_execution_decision",
         "issueops_record_intent",
         "issueops_record_routing",
@@ -564,7 +565,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 27901,
+          "bytes": 29056,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -592,7 +593,7 @@
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 8123,
+          "bytes": 8234,
           "headings": [
             "Agent Workflow",
             "Start",
@@ -611,7 +612,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 25185,
+          "bytes": 25510,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -637,7 +638,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 34759,
+          "bytes": 34924,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -774,7 +775,7 @@
           "title": "OpenAPI Spec Guidance"
         },
         {
-          "bytes": 3785,
+          "bytes": 3991,
           "headings": [
             "Operations Map",
             "Core Surfaces",
@@ -962,7 +963,7 @@
           "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
         },
         {
-          "bytes": 5515,
+          "bytes": 5539,
           "headings": [
             "Host Operations",
             "Codex",
@@ -6234,7 +6235,7 @@
                 "name": "version"
               }
             ],
-            "hash": "cd2b21972ee13ba071e65d75323d9eda903e0352cf66749f9afd54774c0c7721",
+            "hash": "528a3db7c8034e3ece30119f3924f4736a3d20d3880bc34e445d6c7a17e06b8a",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6265,6 +6266,7 @@
               "issueops_pr_readiness",
               "issueops_prepare_branch",
               "issueops_prepare_worktree_tools",
+              "issueops_record_compatibility_review",
               "issueops_record_execution_decision",
               "issueops_record_intent",
               "issueops_record_routing",
@@ -6578,7 +6580,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 27901,
+                "bytes": 29056,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -6606,7 +6608,7 @@
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 8123,
+                "bytes": 8234,
                 "headings": [
                   "Agent Workflow",
                   "Start",
@@ -6625,7 +6627,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 25185,
+                "bytes": 25510,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -6651,7 +6653,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 34759,
+                "bytes": 34924,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -6788,7 +6790,7 @@
                 "title": "OpenAPI Spec Guidance"
               },
               {
-                "bytes": 3785,
+                "bytes": 3991,
                 "headings": [
                   "Operations Map",
                   "Core Surfaces",
@@ -6976,7 +6978,7 @@
                 "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
               },
               {
-                "bytes": 5515,
+                "bytes": 5539,
                 "headings": [
                   "Host Operations",
                   "Codex",

@@ -182,6 +182,14 @@ func recordIssueOpsWorktreeToolsForGuardTest(t *testing.T, id, worktree string) 
 		CodeGraphReady:       true,
 		PreparedAt:           "2026-06-05T00:00:00Z",
 	}
+	record.CompatibilityReview = &issueops.IssueOpsCompatibilityReview{
+		BackwardCompatibility: []string{"guard fixture preserves existing worktree edit boundaries"},
+		SideEffects:           []string{"source checkout edits remain blocked after implementation starts"},
+		RollbackPlan:          "reset fixture state and rerun lifecycle guard tests",
+		Verification:          []string{"go test ./internal/core/lifecycle"},
+		Approved:              true,
+		ReviewedAt:            "2026-06-26T00:00:00Z",
+	}
 	record.ExecutionDecision = &issueops.IssueOpsExecutionDecision{
 		AutoProceed:       []string{"guard fixture may enter implementation after linked worktree readiness is durable"},
 		HookBlocked:       []string{"hooks do not prepare worktrees, create remote artifacts, or choose sub-agents"},
