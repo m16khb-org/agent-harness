@@ -98,6 +98,8 @@ Use this shape:
 
 ## Local Config And Dependency Links
 
+`worktree prepare` and `worktree prepare-tools` are different commands: `worktree prepare` only reports the isolated worktree path and the next command — it does NOT satisfy any readiness gate. Only `worktree prepare-tools` records the `worktree_tools` evidence that gates implementation. "worktree exists" is not "worktree tools are prepared".
+
 Run `agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json` after linking the plan and before implementation. It prepares the CodeGraph index for the exact worktree, for pnpm repositories installs missing `node_modules` in the worktree with `pnpm install --frozen-lockfile --prefer-offline`, and persists the result as `worktree_tools` on the IssueOps record. The `implement` phase remains blocked until that durable evidence, an approved compatibility review, and an execution decision are ready for the linked worktree.
 
 When the worktree needs large generated dependency directories such as `node_modules` and `prepare-tools` cannot install them automatically, prefer reusing an existing dependency directory by symlink only after verifying the package manager, lockfile, platform, and dependency state match the source checkout.

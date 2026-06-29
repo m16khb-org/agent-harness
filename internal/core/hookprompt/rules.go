@@ -162,10 +162,10 @@ var hookRoutingRules = []HookRoutingRule{
 	},
 	{
 		Tool:           "karpathy",
-		Reason:         "Secondary hint: use the karpathy skill for prompt design and optimization — contracts, eval cases, adversarial tests.",
-		Priority:       PrioritySecondary,
-		LowerKeywords:  []string{"prompt engineering", "optimize this prompt", "system prompt", "prompt injection"},
-		PromptKeywords: []string{"프롬프트"},
+		Reason:         "Augment prompts with the karpathy skill — prompt quality directly drives output quality. Harden every authored prompt before dispatch: plan-generation, sub-agent dispatch (incl. devil's-advocate reviewers), and reviewer prompts. In IssueOps, run karpathy on the prompt before spawning any sub-agent.",
+		Priority:       PriorityAction,
+		LowerKeywords:  []string{"prompt engineering", "optimize this prompt", "system prompt", "prompt injection", "issueops", "sub-agent", "subagent", "dispatch prompt", "agent prompt", "reviewer prompt", "plan-generation prompt"},
+		PromptKeywords: []string{"프롬프트", "서브에이전트", "프롬프트 증강", "에이전트 프롬프트"},
 	},
 }
 

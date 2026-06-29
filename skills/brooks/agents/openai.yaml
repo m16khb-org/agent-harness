@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brooks"
+  short_description: "Devil's-advocate review of a plan or design before implementation"
+  default_prompt: "Use $brooks as a devil's-advocate sub-agent to adversarially review this plan or design before any code is written: separate essential from accidental complexity, defend conceptual integrity, expose the second-system effect, and challenge schedule optimism. Return a structured verdict (proceed | revise | stop) with the single most dangerous flaw. Must run as an isolated sub-agent, never inline."
