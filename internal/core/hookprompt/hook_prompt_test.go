@@ -173,6 +173,35 @@ func TestBuildUserPromptMCPHintsRoutesMemoryToClaudeMem(t *testing.T) {
 	}
 }
 
+func TestBuildUserPromptMCPHintsRequiresGitLabUsecase(t *testing.T) {
+	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "GitLab child items와 linked items를 정리하고 MR까지 진행해줘"})
+	for _, want := range []string{"required:", "gitlab-usecase", "linked items from child items", "actions:", "VCS remote work"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("GitLab usecase hint missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
+func TestBuildUserPromptMCPHintsRequiresGitLabUsecaseFromRepoProfile(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".git", "config"), []byte("[remote \"origin\"]\n\turl = git@gitlab.example.internal:group/app.git\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
+		t.Fatal(err)
+	}
+	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이슈 만들고 MR까지 진행해줘", Repo: root})
+	for _, want := range []string{"required:", "gitlab-usecase", "profile:", "gitlab/self-hosted@gitlab.example.internal"} {
+		if !strings.Contains(got.AdditionalContext, want) {
+			t.Fatalf("GitLab repo profile hint missing %q:\n%s", want, got.AdditionalContext)
+		}
+	}
+}
+
 func TestBuildUserPromptMCPHintsRoutesLLMReviewWhenEnabled(t *testing.T) {
 	disabled := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이 계획을 검토하고 개선점을 분석해줘"})
 	if strings.Contains(disabled.AdditionalContext, "Z.AI glm-5-turbo") {

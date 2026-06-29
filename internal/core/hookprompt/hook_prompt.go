@@ -80,6 +80,9 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 			addPriority("project_docs_read/project_docs_update", "Pending lifecycle state indicates shared .agent-harness docs may need an evidence-preserving refresh.", hintPriorityAction)
 		}
 	}
+	if repoProfile != nil && strings.EqualFold(repoProfile.VCS.Provider, "gitlab") && promptLooksLikeVCSRemoteWork(prompt, lower) {
+		addPriority("gitlab-usecase", "Required for GitLab repo remote work; distinguish linked items from child items and verify body, labels, assignee, target branch, and review-thread state.", hintPriorityRequired)
+	}
 
 	// The stable project-doc catalog is no longer injected per turn here; it is
 	// established once via the SessionStart hook and re-established on PostCompact.
@@ -91,4 +94,9 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	result.ShouldInject = true
 	result.AdditionalContext = renderHookMCPHintContext(result.Hints, pendingUpkeep, repoProfile, "")
 	return result
+}
+
+func promptLooksLikeVCSRemoteWork(prompt, lower string) bool {
+	return containsAnySlice(lower, []string{"issue", "merge request", "pull request", " mr", " pr", "review", "branch", "child", "linked"}) ||
+		containsAnySlice(prompt, []string{"이슈", "MR", "PR", "리뷰", "브랜치", "하위", "자식", "링크"})
 }

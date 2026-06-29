@@ -41,6 +41,8 @@ func compactHintLabel(h Hint) string {
 		return "issueops issue-driven workflow; hooks must not create issues or PRs"
 	case "vcs_remote_auth":
 		return "VCS remote work: use authenticated CLI first; on missing token or auth/permission error use MCP fallback; do not print tokens"
+	case "gitlab-usecase":
+		return "use gitlab-usecase before GitLab work; distinguish linked items from child items and verify remote state"
 	case "CodeGraph":
 		return "CodeGraph for structural lookup; rg for exact strings"
 	case "LLM Wiki":

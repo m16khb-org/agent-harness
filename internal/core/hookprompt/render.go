@@ -16,6 +16,7 @@ func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpk
 	if catalog != "" {
 		appendContextLine(&parts, "catalog", catalog)
 	}
+	appendCompactHintGroup(&parts, "required", groups[hintPriorityRequired])
 	appendCompactHintGroup(&parts, "docs", groups[hintPriorityRoute])
 	appendCompactHintGroup(&parts, "actions", groups[hintPriorityAction])
 	appendCompactProjectProfile(&parts, profile)

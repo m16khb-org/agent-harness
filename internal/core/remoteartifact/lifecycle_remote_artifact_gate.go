@@ -71,6 +71,9 @@ func remoteArtifactGateAppliesToTool(tool string) bool {
 	if !(strings.Contains(tool, "github") || strings.Contains(tool, "gitlab") || strings.Contains(tool, "glab")) {
 		return false
 	}
+	if strings.Contains(tool, "glab") && strings.Contains(tool, "api") {
+		return true
+	}
 	if !(strings.Contains(tool, "issue") || strings.Contains(tool, "merge_request") || strings.Contains(tool, "pull_request") || strings.Contains(tool, "_mr") || strings.Contains(tool, "_pr")) {
 		return false
 	}

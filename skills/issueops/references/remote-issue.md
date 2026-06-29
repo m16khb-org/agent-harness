@@ -95,6 +95,8 @@ Do not add a `## Plan Link` / `## Plan` section or a `TBD` placeholder to the re
 
 ## Provider-Specific Linking And Hierarchy
 
+For GitLab remote work, use the `gitlab-usecase` skill before creating or mutating issues, linked items, child items, MRs, review discussions, or cleanup state.
+
 GitHub and GitLab expose similar concepts through different mechanisms. Never apply one provider's mechanism to the other; detect the provider first, then use its native feature. Use the authenticated provider CLI first (`gh api` for GitHub, `glab api` for GitLab); if auth, token scope, or permission errors block the CLI path in a host that provides a VCS MCP fallback, use that MCP fallback and verify the same remote fields afterward.
 
 | Concept | GitHub mechanism | GitLab mechanism |

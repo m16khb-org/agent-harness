@@ -43,6 +43,9 @@ func CommandFromHookInput(input []byte) string {
 				return strings.TrimSpace(value)
 			}
 		}
+		if command := mcpGlabAPICommandFromHookObject(obj, toolInput); command != "" {
+			return command
+		}
 		if command := mcpRemoteArtifactCommandFromHookObject(obj, toolInput); command != "" {
 			return command
 		}

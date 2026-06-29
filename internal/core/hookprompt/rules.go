@@ -27,6 +27,13 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords: []string{"PR", "MR", "이슈", "깃허브", "깃랩", "머지리퀘스트", "풀리퀘스트"},
 	},
 	{
+		Tool:           "gitlab-usecase",
+		Reason:         "Required for GitLab/glab/GitLab MCP/IssueOps remote work; distinguish linked items from child items, verify issue body, labels, assignee, target branch, and review-thread state.",
+		Priority:       PriorityRequired,
+		LowerKeywords:  []string{"gitlab", "glab", "gitlab mcp", "merge request", "linked item", "linked items", "child item", "child items", "work item", "work items", "kody", "kodus"},
+		PromptKeywords: []string{"깃랩", "머지리퀘스트", "링크드", "하위 Task", "하위 태스크", "자식", "상위", "부모", "Kody", "Kodus"},
+	},
+	{
 		Tool:           "project_docs_record",
 		Reason:         "When a structural decision or rejected alternative matters long-term, consider kind=adr for ADR.md.",
 		Priority:       PriorityAction,

@@ -72,6 +72,19 @@ func TestToolCommandAndProjectPathExtraction(t *testing.T) {
 	}
 }
 
+func TestToolCommandExtractionForStructuredGlabAPI(t *testing.T) {
+	input := []byte(`{"tool_name":"mcp__glab__glab_api","tool_input":{"endpoint":"projects/1/issues/2/links","method":"POST","flags":{"target_issue_iid":3,"link_type":"relates_to","note":"child task relation","private_token":"redacted"}}}`)
+	command := CommandFromHookInput(input)
+	for _, want := range []string{`glab api "projects/1/issues/2/links"`, `-X "POST"`, `-f "link_type=relates_to"`, `-f "note=child task relation"`, `-f "target_issue_iid=3"`} {
+		if !strings.Contains(command, want) {
+			t.Fatalf("expected structured glab API command to contain %q, got %q", want, command)
+		}
+	}
+	if strings.Contains(command, "private_token") || strings.Contains(command, "redacted") {
+		t.Fatalf("structured glab API command must not include token-like fields, got %q", command)
+	}
+}
+
 func TestTranscriptHelpersExtractAssistantText(t *testing.T) {
 	input := []byte(`{"lastAssistantMessage":" done ","transcriptPath":" /tmp/t.jsonl "}`)
 	if got := LastAssistantMessageFromHookInput(input); got != "done" {

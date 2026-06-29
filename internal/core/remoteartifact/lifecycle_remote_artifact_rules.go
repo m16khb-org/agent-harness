@@ -56,7 +56,7 @@ func childHierarchyLinkedIssueBlockReason(command string) string {
 	if !childHierarchyLinkCommandRe.MatchString(command) || !childHierarchyIntentKeywordRe.MatchString(command) {
 		return ""
 	}
-	return "IssueOps child-task breakdown must not be recorded as a linked issue; use `agent-harness issueops remote create-child` for new provider-native child tasks, or `agent-harness issueops link-child` only for an already verified child task"
+	return "GitLab linked items and child items are different: the issue links API (`/issues/:iid/links`, `relates_to`, `blocks`, `is_blocked_by`) is only for related/non-hierarchical links. IssueOps child-task breakdown must use `agent-harness issueops remote create-child` for new provider-native child Tasks, or `agent-harness issueops link-child` only for an already verified child item"
 }
 
 func remoteAssigneePlaceholderBlockReason(artifact remoteArtifactCommand) string {

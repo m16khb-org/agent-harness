@@ -1942,6 +1942,13 @@
           "path": "$HARNESS_ROOT/skills/engelbart"
         },
         {
+          "description": "Use before GitLab, glab, GitLab MCP, IssueOps remote issue/MR, linked-item, child-item, work-item, Kody/Kodus review, issue-body update, branch-target, or cleanup work. Prevents repeated GitLab mistakes by distinguishing native linked items from child items, enforcing body-of-record rules, authenticated CLI/MCP fallback, labels/assignee/target-branch checks, and review-thread verification.",
+          "has_openai_yaml": false,
+          "has_skill_md": true,
+          "name": "gitlab-usecase",
+          "path": "$HARNESS_ROOT/skills/gitlab-usecase"
+        },
+        {
           "description": "Systematic debugging specialist that translates failure symptoms into root cause diagnoses through scientific-method isolation, bisect search, trace analysis, and LLM-assisted diagnosis. Named after Grace Hopper — inventor of the first compiler (A-0 System), originator of the term \"debugging\" (literally removing a moth from the Harvard Mark II), and pioneer of machine-independent programming (COBOL). Just as her compiler translated English into machine code, this skill translates failure outputs into root cause diagnoses. Use when reporting a bug, fixing a test failure, investigating a regression, or asking \"why is X broken?",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -4841,6 +4848,7 @@
           "dijkstra",
           "draft-wiki-promoter",
           "engelbart",
+          "gitlab-usecase",
           "hopper",
           "issueops",
           "karpathy",
@@ -7964,6 +7972,13 @@
                 "path": "$HARNESS_ROOT/skills/engelbart"
               },
               {
+                "description": "Use before GitLab, glab, GitLab MCP, IssueOps remote issue/MR, linked-item, child-item, work-item, Kody/Kodus review, issue-body update, branch-target, or cleanup work. Prevents repeated GitLab mistakes by distinguishing native linked items from child items, enforcing body-of-record rules, authenticated CLI/MCP fallback, labels/assignee/target-branch checks, and review-thread verification.",
+                "has_openai_yaml": false,
+                "has_skill_md": true,
+                "name": "gitlab-usecase",
+                "path": "$HARNESS_ROOT/skills/gitlab-usecase"
+              },
+              {
                 "description": "Systematic debugging specialist that translates failure symptoms into root cause diagnoses through scientific-method isolation, bisect search, trace analysis, and LLM-assisted diagnosis. Named after Grace Hopper — inventor of the first compiler (A-0 System), originator of the term \"debugging\" (literally removing a moth from the Harvard Mark II), and pioneer of machine-independent programming (COBOL). Just as her compiler translated English into machine code, this skill translates failure outputs into root cause diagnoses. Use when reporting a bug, fixing a test failure, investigating a regression, or asking \"why is X broken?",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -9967,6 +9982,7 @@
                 "dijkstra",
                 "draft-wiki-promoter",
                 "engelbart",
+                "gitlab-usecase",
                 "hopper",
                 "issueops",
                 "karpathy",

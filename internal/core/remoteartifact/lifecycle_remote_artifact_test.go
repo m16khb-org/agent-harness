@@ -248,8 +248,14 @@ func TestVCSIssueLinkingBlockReason_ChildHierarchyLinkedIssue(t *testing.T) {
 	})
 	t.Run("gitlab child link api blocks", func(t *testing.T) {
 		reason := VCSIssueLinkingBlockReason("bash", `glab api projects/1/issues/2/links -X POST -f target_issue_iid=3 -f link_type=relates_to # child task`, "/tmp/repo")
-		if reason == "" || !strings.Contains(reason, "create-child") {
+		if reason == "" || !strings.Contains(reason, "linked items and child items are different") || !strings.Contains(reason, "create-child") {
 			t.Errorf("expected create-child block, got %q", reason)
+		}
+	})
+	t.Run("gitlab child items wording blocks issue links api", func(t *testing.T) {
+		reason := VCSIssueLinkingBlockReason("bash", `glab api projects/1/issues/2/links -X POST -f target_issue_iid=3 -f link_type=relates_to -f note="child items under umbrella"`, "/tmp/repo")
+		if reason == "" || !strings.Contains(reason, "IssueOps child-task breakdown") {
+			t.Errorf("expected child item block, got %q", reason)
 		}
 	})
 	t.Run("ordinary related link remains allowed", func(t *testing.T) {
