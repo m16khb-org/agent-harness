@@ -104,6 +104,16 @@ func TestIssueOpsSkillDocumentsLargeIssueBreakdownGateForBothProviders(t *testin
 		"glab api",
 		"provider-native hierarchy",
 		"parent body updated",
+		"parallelizable",
+		"sequential",
+		"[p]",
+		"[s]",
+		"prerequisites",
+		"execution waves",
+		"workItemCreate",
+		"workItemHierarchyAddChildrenItems",
+		"REST Issues API `issue_type=task`",
+		"GraphQL failure is a blocker",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("IssueOps large issue breakdown gate must document provider-neutral contract phrase %q", want)

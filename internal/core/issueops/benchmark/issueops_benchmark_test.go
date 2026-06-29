@@ -195,8 +195,8 @@ func TestScoreIssueOpsBenchmarkArtifactAcceptsSplitForLargeUnsafeOrCollaborative
 	fixture := IssueOpsBenchmarkFixture{ID: "justified-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
 
 	for name, taskBreakdown := range map[string]string{
-		"large unsafe":  "Worker A owns routing. Worker B owns migration. Large issue is unsafe as one work item because one issue would hide risky behavior changes. Uses provider-native child work items and records them with issueops link-child.",
-		"collaboration": "Worker A owns API docs. Worker B owns runtime verification. Split explicitly requested for collaboration and parallel ownership. Uses provider-native child work items and records them with issueops link-child.",
+		"large unsafe":  "Worker A owns routing. Worker B owns migration. Large issue is unsafe as one work item because one issue would hide risky behavior changes. Uses provider-native child work items and records them with issueops link-child. Execution order: Wave 1 [p] routing is parallelizable with docs; Wave 2 [s] migration is sequential and depends on routing.",
+		"collaboration": "Worker A owns API docs. Worker B owns runtime verification. Split explicitly requested for collaboration and parallel ownership. Uses provider-native child work items and records them with issueops link-child. Execution wave 1: [p] API docs and test inventory can run in parallel. Execution wave 2: [s] runtime verification is sequential and requires the inventory prerequisite.",
 	} {
 		t.Run(name, func(t *testing.T) {
 			artifact := completeBenchmarkArtifactForTest()
@@ -207,6 +207,28 @@ func TestScoreIssueOpsBenchmarkArtifactAcceptsSplitForLargeUnsafeOrCollaborative
 				t.Fatalf("justified split must satisfy hierarchy gate: %+v", score)
 			}
 		})
+	}
+}
+
+func TestScoreIssueOpsBenchmarkArtifactRequiresChildTaskExecutionDependencyClassification(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "dependency-classification", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	artifact := completeBenchmarkArtifactForTest()
+	artifact.TaskBreakdown = "Worker A owns routing. Worker B owns migration. Large issue is unsafe as one work item because one issue would hide risky behavior changes. Uses provider-native child work items and records them with issueops link-child."
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	if !containsString(score.CriticalFailures, "flattens large issue hierarchy") {
+		t.Fatalf("split child tasks without parallel/sequential dependency classification must fail: %+v", score)
+	}
+}
+
+func TestScoreIssueOpsBenchmarkArtifactRequiresChildTaskMarkers(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "dependency-markers", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	artifact := completeBenchmarkArtifactForTest()
+	artifact.TaskBreakdown = "Worker A owns routing. Worker B owns migration. Large issue is unsafe as one work item because one issue would hide risky behavior changes. Uses provider-native child work items and records them with issueops link-child. Execution order: Wave 1 routing is parallelizable with docs; Wave 2 migration is sequential and depends on routing."
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	if !containsString(score.CriticalFailures, "flattens large issue hierarchy") {
+		t.Fatalf("split child tasks without [p]/[s] markers must fail: %+v", score)
 	}
 }
 

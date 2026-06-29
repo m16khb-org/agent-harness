@@ -30,7 +30,54 @@ func issueOpsHierarchyEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool 
 		"multiple owners",
 		"parallel ownership",
 	)
-	return hasNonSplitReason || (hasChildWork && (hasLargeUnsafeRationale || hasCollaborationRationale))
+	return hasNonSplitReason || (hasChildWork && (hasLargeUnsafeRationale || hasCollaborationRationale) && issueOpsChildTaskDependencyClassificationComplete(text))
+}
+
+func issueOpsChildTaskDependencyClassificationComplete(text string) bool {
+	return issueOpsChildTaskMarkersComplete(text) &&
+		containsAnyFold(text,
+			"parallelizable",
+			"parallel-ready",
+			"can run in parallel",
+			"parallel execution",
+			"parallel wave",
+			"병렬 가능",
+			"병렬 처리",
+			"병렬 실행",
+		) &&
+		containsAnyFold(text,
+			"sequential",
+			"must run after",
+			"ordered task",
+			"serial task",
+			"순차",
+			"선행 작업 이후",
+		) &&
+		containsAnyFold(text,
+			"depends on",
+			"dependency",
+			"prerequisite",
+			"requires",
+			"blocks",
+			"의존",
+			"선행",
+			"전제",
+		) &&
+		containsAnyFold(text,
+			"execution order",
+			"execution wave",
+			"wave 1",
+			"wave 2",
+			"recommended execution order",
+			"실행 순서",
+			"실행 웨이브",
+			"권장 순서",
+		)
+}
+
+func issueOpsChildTaskMarkersComplete(text string) bool {
+	lower := strings.ToLower(text)
+	return strings.Contains(lower, "[p]") && strings.Contains(lower, "[s]")
 }
 
 func issueOpsDraftIssueCompletionEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {

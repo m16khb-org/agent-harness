@@ -86,6 +86,8 @@ Split the issue into provider-native child tasks only when at least one primary 
 - One issue would be unsafe because the work is genuinely large, risky, or would hide independent delivery decisions, verification, rollback, or review boundaries.
 - The user, product owner, or multiple implementers explicitly requested for collaboration, parallel ownership, or separate assignees.
 
+When splitting, classify child execution dependencies before creating the tasks. Mark each child as `[p] parallelizable` or `[s] sequential`, name its prerequisites, and group children into execution waves. `[p]` means the task can start without another child task's output and its verification can run independently. `[s]` means the task must wait for another child's code, schema, remote state, migration, fixture, or decision output. The `[p]`/`[s]` prefix is mandatory in each child title and in the parent child-task section. If this classification is unclear, stop for a product/engineering choice instead of guessing.
+
 Supporting signals are not sufficient by themselves. Use them only as evidence for one of the primary split triggers:
 
 - The issue has multiple independently verifiable acceptance criteria.
@@ -106,11 +108,15 @@ If splitting is needed:
 2. State the split trigger in the parent body: either `one issue would be unsafe` with the concrete risk, or `explicitly requested for collaboration` with the owner/assignee boundary.
 3. Create provider-native child work items/tasks with `agent-harness issueops remote create-child --id ID --title TEXT --body TEXT --label LABEL --assignee USER --confirm --json`, not ordinary sibling issues.
    - GitHub: create sub-issues if supported by the project workflow.
-   - GitLab: create child `Task` work items under the parent issue/work item.
+   - GitLab: create child `Task` work items under the parent issue/work item through the GraphQL work-item hierarchy path owned by `remote create-child`. Do not fall back to the REST Issues API `issue_type=task` path or ordinary `glab issue create` as the creation/attachment mechanism.
 4. Each child task must have:
    - a Korean title
+   - a mandatory title prefix: `[p]` for `parallelizable` or `[s]` for `sequential`
    - a Korean body
    - clear scope
+   - execution class: `[p] parallelizable` or `[s] sequential`
+   - prerequisites/dependencies, or `none`
+   - execution wave/order
    - acceptance criteria
    - verification commands or evidence
    - non-goals when needed
@@ -121,6 +127,9 @@ If splitting is needed:
    - `## 하위 Task`
    - each child task link
    - recommended execution order
+   - `[p]`/`[s]` prefix for every child link
+   - execution waves that separate parallelizable child tasks from sequential child tasks
+   - prerequisites/dependencies for every sequential child task
    - scope summary per child
    - note that the parent is now the umbrella coordination issue
 7. Do not leave the child-task plan only in comments. Comments may be used only for temporary coordination if the provider body update fails.
@@ -159,15 +168,16 @@ Parent:
 - <parent issue URL>
 
 Child tasks:
-1. <child task URL> - <scope>
-2. <child task URL> - <scope>
-3. <child task URL> - <scope>
+1. [p] <child task URL> - <scope> - class: parallelizable - prerequisites: none - wave: <N>
+2. [s] <child task URL> - <scope> - class: sequential - prerequisites: <child URLs> - wave: <N>
+3. [p|s] <child task URL> - <scope> - class: parallelizable|sequential - prerequisites: <none or child URLs> - wave: <N>
 
 검증:
 - hierarchy verified
 - labels verified
 - assignee verified
 - parent body updated
+- execution waves and prerequisites documented
 
 or
 
