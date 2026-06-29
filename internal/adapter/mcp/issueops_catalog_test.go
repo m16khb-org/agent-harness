@@ -20,6 +20,10 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_prepare_worktree_tools",
 		"issueops_record_execution_decision",
 		"issueops_record_compatibility_review",
+		"issueops_record_domain_review",
+		"issueops_record_ai_slop_clean_evidence",
+		"issueops_resolve_feedback",
+		"issueops_regress_for_replan",
 		"issueops_link_child",
 		"issueops_link_related",
 	}

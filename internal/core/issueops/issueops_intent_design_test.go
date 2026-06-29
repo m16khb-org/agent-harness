@@ -78,6 +78,7 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, recordWithoutIssue.ID, string(IssueOpsPhasePlan)); err == nil || !strings.Contains(err.Error(), "issue_url") {
 		t.Fatalf("plan phase should require issue_url after intent, got %v", err)
 	}
+	recordIssueOpsGrillArtifactsForTest(t, stateRoot, record.ID)
 	setIssueOpsPlanPrepForTest(t, stateRoot, record.ID)
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePlan))
 	if err != nil || record.Phase != IssueOpsPhasePlan {

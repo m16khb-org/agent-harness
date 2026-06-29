@@ -28,7 +28,12 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// problem -> grill is a valid forward step.
+	// problem completion (intent contract) is required before grill is entered.
+	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseGrill)); err == nil || !strings.Contains(err.Error(), "intent_contract") {
+		t.Fatalf("grill entry should require problem completion (intent_contract), got %v", err)
+	}
+	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
+	// problem -> grill is a valid forward step once problem is complete.
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseGrill))
 	if err != nil || record.Phase != IssueOpsPhaseGrill {
 		t.Fatalf("expected grill phase, got %+v err=%v", record, err)
@@ -50,7 +55,6 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR)); err == nil {
 		t.Fatalf("pr phase without readiness should be rejected")
 	}
-	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
 	if _, err := LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1"); err != nil {
 		t.Fatal(err)
 	}

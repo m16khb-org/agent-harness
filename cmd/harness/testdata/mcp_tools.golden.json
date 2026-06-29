@@ -1008,6 +1008,131 @@
     "name": "issueops_record_compatibility_review"
   },
   {
+    "description": "Record the IssueOps grill-phase domain review: terminology, how the change fits the current domain model, risks, and unresolved uncertainties. Backs the grill domain_review phase-ledger artifact.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "model_fit": {
+          "description": "How the change fits the current domain model. Required unless terminology is provided.",
+          "type": "string"
+        },
+        "open_uncertainties": {
+          "description": "Unresolved uncertainties to carry into planning.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "risks": {
+          "description": "Domain risks surfaced during grilling.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "terminology": {
+          "description": "Domain terminology notes.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_record_domain_review"
+  },
+  {
+    "description": "Record AI-slop-clean evidence: which cleanup categories were checked or cleaned and which verifications were rerun afterwards. Backs the ai-slop-clean cleanup_evidence and verification_evidence phase-ledger artifacts.",
+    "inputSchema": {
+      "properties": {
+        "categories": {
+          "description": "Cleanup categories checked or cleaned.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "verification": {
+          "description": "Verifications rerun after cleanup.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "categories",
+        "verification"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_record_ai_slop_clean_evidence"
+  },
+  {
+    "description": "Record the resolution outcome of an IssueOps feedback item by index. Backs the feedback feedback_resolution phase-ledger artifact.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "index": {
+          "description": "0-based index of the feedback item to resolve.",
+          "type": "integer"
+        },
+        "resolution": {
+          "description": "Resolution outcome.",
+          "enum": [
+            "valid-defect",
+            "question-answered",
+            "noise-dismissed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "index",
+        "resolution"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_resolve_feedback"
+  },
+  {
+    "description": "Take the IssueOps feedback loop backward when the Brooks devil's advocate returns a stop verdict: regress a plan or compatibility-review cycle to grill so scope is re-investigated and the plan redone. Records the stop reason as a scope decision, clears the rejected design's approval, and marks the plan/compatibility-review ledger entries stale. Does not delete the worktree, branch, or remote artifacts.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "The Brooks stop verdict / why the plan must be redone.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_regress_for_replan"
+  },
+  {
     "description": "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
     "inputSchema": {
       "properties": {

@@ -24,6 +24,9 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"plan-prep":      runIssueOpsPlanPrep,
 	"design":         runIssueOpsDesign,
 	"compatibility":  runIssueOpsCompatibility,
+	"domain-review":  runIssueOpsDomainReview,
+	"ai-slop-clean":  runIssueOpsAISlopClean,
+	"regress":        runIssueOpsRegress,
 	"link-issue":     runIssueOpsLinkIssue,
 	"link-plan":      runIssueOpsLinkPlan,
 	"link-worktree":  runIssueOpsLinkWorktree,
@@ -96,6 +99,9 @@ func parseIssueOpsFlags(fs *flag.FlagSet, args []string) (bool, error) {
 }
 
 func runIssueOpsFeedback(args []string) error {
+	if len(args) > 0 && args[0] == "resolve" {
+		return runIssueOpsFeedbackResolve(args[1:])
+	}
 	return feedbackcleanup.RunFeedback(args, issueOpsFeedbackCleanupDeps())
 }
 

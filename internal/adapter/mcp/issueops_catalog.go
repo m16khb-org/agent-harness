@@ -140,6 +140,43 @@ func IssueOpsBasicTools() []Tool {
 			}},
 		},
 		{
+			Name:        "issueops_record_domain_review",
+			Description: "Record the IssueOps grill-phase domain review: terminology, how the change fits the current domain model, risks, and unresolved uncertainties. Backs the grill domain_review phase-ledger artifact.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id":                 map[string]any{"type": "string", "description": "IssueOps id."},
+				"model_fit":          map[string]any{"type": "string", "description": "How the change fits the current domain model. Required unless terminology is provided."},
+				"terminology":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Domain terminology notes."},
+				"risks":              map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Domain risks surfaced during grilling."},
+				"open_uncertainties": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Unresolved uncertainties to carry into planning."},
+			}},
+		},
+		{
+			Name:        "issueops_record_ai_slop_clean_evidence",
+			Description: "Record AI-slop-clean evidence: which cleanup categories were checked or cleaned and which verifications were rerun afterwards. Backs the ai-slop-clean cleanup_evidence and verification_evidence phase-ledger artifacts.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "categories", "verification"}, "properties": map[string]any{
+				"id":           map[string]any{"type": "string", "description": "IssueOps id."},
+				"categories":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Cleanup categories checked or cleaned."},
+				"verification": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Verifications rerun after cleanup."},
+			}},
+		},
+		{
+			Name:        "issueops_resolve_feedback",
+			Description: "Record the resolution outcome of an IssueOps feedback item by index. Backs the feedback feedback_resolution phase-ledger artifact.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "index", "resolution"}, "properties": map[string]any{
+				"id":         map[string]any{"type": "string", "description": "IssueOps id."},
+				"index":      map[string]any{"type": "integer", "description": "0-based index of the feedback item to resolve."},
+				"resolution": map[string]any{"type": "string", "description": "Resolution outcome.", "enum": []string{"valid-defect", "question-answered", "noise-dismissed"}},
+			}},
+		},
+		{
+			Name:        "issueops_regress_for_replan",
+			Description: "Take the IssueOps feedback loop backward when the Brooks devil's advocate returns a stop verdict: regress a plan or compatibility-review cycle to grill so scope is re-investigated and the plan redone. Records the stop reason as a scope decision, clears the rejected design's approval, and marks the plan/compatibility-review ledger entries stale. Does not delete the worktree, branch, or remote artifacts.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "reason"}, "properties": map[string]any{
+				"id":     map[string]any{"type": "string", "description": "IssueOps id."},
+				"reason": map[string]any{"type": "string", "description": "The Brooks stop verdict / why the plan must be redone."},
+			}},
+		},
+		{
 			Name:        "issueops_link_child",
 			Description: "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "child_url"}, "properties": map[string]any{

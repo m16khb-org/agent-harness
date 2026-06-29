@@ -120,7 +120,7 @@ Draft wiki staging:
 
 - 기본 위치: `~/.local/state/agent-harness/`
 - project lifecycle 위치: `~/.local/state/agent-harness/projects/<repo-id>/project.json` 및 `doc-upkeep-queue.jsonl`; `<repo-id>`는 repo fingerprint hash라 같은 머신의 여러 repo가 섞이지 않는다.
-- IssueOps 위치: `~/.local/state/agent-harness/issueops/<id>.json`; issue URL, intent contract, design review, plan path, feedback log, PR/MR readiness evidence를 저장한다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
+- IssueOps 위치: `~/.local/state/agent-harness/issueops/<id>.json`; issue URL, intent contract, design review, domain review, plan path, feedback log(+resolution), PR/MR readiness evidence, 그리고 phase별 진입/완료를 인덱싱하는 additive `phase_ledger`를 저장한다. `phase_ledger`는 phase 전이 시에만 실관측 timestamp로 stamp되고(매 write 아님), 없으면 status가 read 시 sentinel timestamp로 파생한다. `grill` 진입은 problem 완료(intent), `plan` 진입은 grill 완료(issue_url+branch+plan_prep+split_decision+domain_review)를 fail-closed로 요구한다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
 - override: `HARNESS_STATE_DIR`
 - 파일: `<key>.json`
 - key 제한: `[A-Za-z0-9._-]`, 최대 128자, `/`, `\`, `..` 금지

@@ -35,10 +35,10 @@ func TestAdvanceToImplementGatesOnDesignApproval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseGrill)); err != nil {
 		t.Fatal(err)
 	}
-	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
 	if _, err := LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1"); err != nil {
 		t.Fatal(err)
 	}

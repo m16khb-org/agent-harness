@@ -85,11 +85,12 @@ func verificationFromRequest(record model.IssueOpsRecord, req model.IssueOpsRemo
 		return model.IssueOpsRemoteArtifactVerification{}, fmt.Errorf("remote artifact assignee must be a verified provider user, not placeholder %q", invalid)
 	}
 	return model.IssueOpsRemoteArtifactVerification{
-		Provider:   provider,
-		Kind:       kind,
-		URL:        artifactURL,
-		Labels:     labels,
-		Assignees:  assignees,
-		VerifiedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		Provider:     provider,
+		Kind:         kind,
+		URL:          artifactURL,
+		Labels:       labels,
+		Assignees:    assignees,
+		TargetBranch: strings.TrimSpace(req.TargetBranch),
+		VerifiedAt:   time.Now().UTC().Format(time.RFC3339Nano),
 	}, nil
 }

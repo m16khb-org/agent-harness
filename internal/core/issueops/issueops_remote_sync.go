@@ -17,9 +17,9 @@ func SyncRemoteIssueGraph(record IssueOpsRecord) (map[string]any, error) {
 	}
 	if len(record.IssueLinks) == 0 {
 		return map[string]any{
-			"ok":       true,
-			"synced":   false,
-			"message":  "no issue graph links to sync",
+			"ok":      true,
+			"synced":  false,
+			"message": "no issue graph links to sync",
 		}, nil
 	}
 	provider := resolveRecordProviderForCore(record)

@@ -58,9 +58,25 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 	if issueOpsPhaseRank(phase) < issueOpsPhaseRank(record.Phase) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot move issueops phase backward from %s to %s", record.Phase, phase)
 	}
+	// Fail-closed (rules 1/8): problem and grill have no other readiness gate, so
+	// these are the only enforcement of the problem/grill completion contracts.
+	// grill entry requires problem complete; plan entry requires grill complete.
+	// Downstream phases keep their own readiness gates (which transitively require
+	// plan, and thus grill, on the normal sequential path).
+	if phase == IssueOpsPhaseGrill {
+		if ready := IssueOpsProblemReadiness(record); !ready.Ready {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter grill phase: missing %s", strings.Join(ready.Missing, ", "))
+		}
+	}
 	if phase == IssueOpsPhasePlan {
+		// Plan readiness first: it carries intent_contract/issue_url/plan_prep, so
+		// the most fundamental missing key surfaces before the grill-completion
+		// delta (split_decision/domain_review/branch).
 		if ready := IssueOpsPlanReadiness(record); !ready.Ready {
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter plan phase: missing %s", strings.Join(ready.Missing, ", "))
+		}
+		if ready := IssueOpsGrillReadiness(record); !ready.Ready {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter plan phase: grill incomplete: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
 	if phase == IssueOpsPhaseCompatibilityReview {
@@ -94,13 +110,16 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter done phase before remote artifact verification: missing %s", strings.Join(missing, ", "))
 		}
 	}
+	prevPhase := record.Phase
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.Phase = phase
 	if phase == IssueOpsPhaseAISlopClean && strings.TrimSpace(record.AISlopCleanAt) == "" {
-		record.AISlopCleanAt = time.Now().UTC().Format(time.RFC3339Nano)
+		record.AISlopCleanAt = now
 	}
 	if phase == IssueOpsPhaseAISlopClean {
 		record.AISlopCleanHead = issueOpsCurrentHead(record)
 		record.AISlopCleanFingerprint = implementation.ChangeFingerprint(record)
 	}
+	record.PhaseLedger = stampIssueOpsForwardTransition(record.PhaseLedger, prevPhase, phase, now)
 	return touchAndWriteIssueOps(stateRoot, record)
 }

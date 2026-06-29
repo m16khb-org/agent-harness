@@ -227,7 +227,7 @@
           "name": "version"
         }
       ],
-      "hash": "528a3db7c8034e3ece30119f3924f4736a3d20d3880bc34e445d6c7a17e06b8a",
+      "hash": "aa2fdc888a56b161f667d4e20528959047a11719a51f23d2cede2dd113e51897",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -258,16 +258,20 @@
         "issueops_pr_readiness",
         "issueops_prepare_branch",
         "issueops_prepare_worktree_tools",
+        "issueops_record_ai_slop_clean_evidence",
         "issueops_record_compatibility_review",
+        "issueops_record_domain_review",
         "issueops_record_execution_decision",
         "issueops_record_intent",
         "issueops_record_routing",
+        "issueops_regress_for_replan",
         "issueops_remote_create_child",
         "issueops_remote_create_issue",
         "issueops_remote_create_pr",
         "issueops_remote_render_template",
         "issueops_remote_score",
         "issueops_remote_sync_graph",
+        "issueops_resolve_feedback",
         "issueops_resume",
         "issueops_review_design",
         "issueops_set_phase",
@@ -565,7 +569,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 29056,
+          "bytes": 32325,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -593,7 +597,7 @@
           "title": "agent-harness 구현 계획"
         },
         {
-          "bytes": 8234,
+          "bytes": 9229,
           "headings": [
             "Agent Workflow",
             "Start",
@@ -612,7 +616,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 25510,
+          "bytes": 25936,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -1912,6 +1916,13 @@
           "has_skill_md": true,
           "name": "berners-lee",
           "path": "$HARNESS_ROOT/skills/berners-lee"
+        },
+        {
+          "description": "Devil's-advocate design and plan critic. Adversarially stress-tests a plan or design BEFORE implementation: separates essential from accidental complexity, defends conceptual integrity, exposes the second-system effect (gold-plating, speculative generality), and challenges schedule/effort optimism. Named after Fred Brooks — author of The Mythical Man-Month (1975) and No Silver Bullet (1986), manager of IBM System/360, originator of Brooks's Law (\\\"adding manpower to a late software project makes it later\\\"), the second-system effect, and the principle that conceptual integrity is the most important consideration in system design. His core insight: \\\"Plan to throw one away; you will, anyhow.\\\" Use when a plan, design, architecture, or scope decision needs an independent adversarial review before code is written — especially when the author has sunk cost in their own approach, the design feels over-engineered, complexity is growing, or the schedule feels optimistic. MUST be invoked as a sub-agent, never inline.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "brooks",
+          "path": "$HARNESS_ROOT/skills/brooks"
         },
         {
           "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \\\"A relational model of data for large shared data banks\\\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
@@ -4844,6 +4855,7 @@
         "skills": [
           "atomic-commit-push",
           "berners-lee",
+          "brooks",
           "codd",
           "dijkstra",
           "draft-wiki-promoter",
@@ -6243,7 +6255,7 @@
                 "name": "version"
               }
             ],
-            "hash": "528a3db7c8034e3ece30119f3924f4736a3d20d3880bc34e445d6c7a17e06b8a",
+            "hash": "aa2fdc888a56b161f667d4e20528959047a11719a51f23d2cede2dd113e51897",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6274,16 +6286,20 @@
               "issueops_pr_readiness",
               "issueops_prepare_branch",
               "issueops_prepare_worktree_tools",
+              "issueops_record_ai_slop_clean_evidence",
               "issueops_record_compatibility_review",
+              "issueops_record_domain_review",
               "issueops_record_execution_decision",
               "issueops_record_intent",
               "issueops_record_routing",
+              "issueops_regress_for_replan",
               "issueops_remote_create_child",
               "issueops_remote_create_issue",
               "issueops_remote_create_pr",
               "issueops_remote_render_template",
               "issueops_remote_score",
               "issueops_remote_sync_graph",
+              "issueops_resolve_feedback",
               "issueops_resume",
               "issueops_review_design",
               "issueops_set_phase",
@@ -6588,7 +6604,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 29056,
+                "bytes": 32325,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -6616,7 +6632,7 @@
                 "title": "agent-harness 구현 계획"
               },
               {
-                "bytes": 8234,
+                "bytes": 9229,
                 "headings": [
                   "Agent Workflow",
                   "Start",
@@ -6635,7 +6651,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 25510,
+                "bytes": 25936,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -7942,6 +7958,13 @@
                 "has_skill_md": true,
                 "name": "berners-lee",
                 "path": "$HARNESS_ROOT/skills/berners-lee"
+              },
+              {
+                "description": "Devil's-advocate design and plan critic. Adversarially stress-tests a plan or design BEFORE implementation: separates essential from accidental complexity, defends conceptual integrity, exposes the second-system effect (gold-plating, speculative generality), and challenges schedule/effort optimism. Named after Fred Brooks — author of The Mythical Man-Month (1975) and No Silver Bullet (1986), manager of IBM System/360, originator of Brooks's Law (\\\"adding manpower to a late software project makes it later\\\"), the second-system effect, and the principle that conceptual integrity is the most important consideration in system design. His core insight: \\\"Plan to throw one away; you will, anyhow.\\\" Use when a plan, design, architecture, or scope decision needs an independent adversarial review before code is written — especially when the author has sunk cost in their own approach, the design feels over-engineered, complexity is growing, or the schedule feels optimistic. MUST be invoked as a sub-agent, never inline.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "brooks",
+                "path": "$HARNESS_ROOT/skills/brooks"
               },
               {
                 "description": "Relational database design and query optimization specialist. Designs normalized schemas by expected row count, selects optimal indexes and join strategies, diagnoses query performance through EXPLAIN ANALYZE analysis, configures connection pooling, and verifies every recommendation with measurable before/after evidence. Named after Edgar F. Codd — inventor of the relational model (1970), normalization theory (1NF/2NF/3NF/BCNF), and relational algebra. His core insight: \\\"A relational model of data for large shared data banks\\\" — database design prevents anomalies before application code does. Use when the user asks about schema design, normalization, indexing, slow queries, connection pooling, N+1 detection, partitioning, or database optimization.",
@@ -9978,6 +10001,7 @@
               "skills": [
                 "atomic-commit-push",
                 "berners-lee",
+                "brooks",
                 "codd",
                 "dijkstra",
                 "draft-wiki-promoter",

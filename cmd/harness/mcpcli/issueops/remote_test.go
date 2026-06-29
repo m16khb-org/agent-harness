@@ -18,6 +18,12 @@ func TestMCPIssueOpsSetPhaseAcceptsToAlias(t *testing.T) {
 	if !ok || id == "" {
 		t.Fatalf("unexpected MCP start payload: %#v", start)
 	}
+	callMCPToolForIssueOpsTest(t, "issueops_record_intent", map[string]any{
+		"id":                 id,
+		"raw_request":        "exercise the phase alias",
+		"interpreted_intent": "advance the cycle to grill via the to alias",
+		"success_criteria":   []any{"phase aliases to grill"},
+	})
 	record := callMCPToolForIssueOpsTest(t, "issueops_set_phase", map[string]any{"id": id, "to": "grill"})
 	if record["phase"] != "grill" {
 		t.Fatalf("expected MCP to alias to phase, got %#v", record)

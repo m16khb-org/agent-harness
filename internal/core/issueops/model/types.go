@@ -11,6 +11,9 @@ type IssueOpsFeedbackItem struct {
 	Classification string `json:"classification,omitempty"`
 	CreatedAt      string `json:"created_at"`
 	IssueUpdatedAt string `json:"issue_updated_at,omitempty"`
+	// Resolution records the outcome of the feedback item, distinct from the
+	// intake Classification (e.g. valid-defect | question-answered | noise-dismissed).
+	Resolution string `json:"resolution,omitempty"`
 }
 
 type IssueOpsIssueLink struct {
@@ -62,14 +65,18 @@ type IssueOpsRemoteArtifactVerification struct {
 	Labels     []string `json:"labels"`
 	Assignees  []string `json:"assignees"`
 	VerifiedAt string   `json:"verified_at"`
+	// TargetBranch is the PR/MR target branch, compared to BranchPrepare.BaseBranch
+	// for the target_branch_match check.
+	TargetBranch string `json:"target_branch,omitempty"`
 }
 
 type IssueOpsRemoteArtifactVerificationRequest struct {
-	Provider  string
-	Kind      string
-	URL       string
-	Labels    []string
-	Assignees []string
+	Provider     string
+	Kind         string
+	URL          string
+	Labels       []string
+	Assignees    []string
+	TargetBranch string
 }
 
 type IssueOpsIntentContract struct {
@@ -226,38 +233,78 @@ type IssueOpsCompatibilityReviewRequest struct {
 	Approved              bool
 }
 
+// IssueOpsDomainReview captures the grill-phase domain grilling outcome:
+// terminology, current model fit, risks, and unresolved uncertainties. It is a
+// net-new source-of-truth field; grilling produced no record state before.
+type IssueOpsDomainReview struct {
+	Terminology       []string `json:"terminology,omitempty"`
+	ModelFit          string   `json:"model_fit,omitempty"`
+	Risks             []string `json:"risks,omitempty"`
+	OpenUncertainties []string `json:"open_uncertainties,omitempty"`
+	ReviewedAt        string   `json:"reviewed_at"`
+}
+
+// IssueOpsPhaseLedgerEntry records that a phase was entered and (optionally)
+// completed, plus which artifacts satisfied it. It is an index over existing
+// source-of-truth fields, not their replacement. The owning map's key is the
+// authoritative phase identity; Phase is a self-describing copy that must equal
+// its key.
+type IssueOpsDomainReviewRequest struct {
+	Terminology       []string
+	ModelFit          string
+	Risks             []string
+	OpenUncertainties []string
+}
+
+type IssueOpsPhaseLedgerEntry struct {
+	Phase       IssueOpsPhase `json:"phase"`
+	EnteredAt   string        `json:"entered_at,omitempty"`
+	CompletedAt string        `json:"completed_at,omitempty"`
+	Artifacts   []string      `json:"artifacts,omitempty"`
+	Missing     []string      `json:"missing,omitempty"`
+	Notes       []string      `json:"notes,omitempty"`
+}
+
+// IssueOpsPhaseLedger indexes phase completion. Iterate in IssueOpsPhases order
+// (never Go map order) when rendering or comparing for determinism.
+type IssueOpsPhaseLedger map[IssueOpsPhase]IssueOpsPhaseLedgerEntry
+
 type IssueOpsRecord struct {
-	OK                     bool                                `json:"ok"`
-	ID                     string                              `json:"id"`
-	Repo                   string                              `json:"repo"`
-	Branch                 string                              `json:"branch,omitempty"`
-	Phase                  IssueOpsPhase                       `json:"phase"`
-	Intent                 *IssueOpsIntentContract             `json:"intent,omitempty"`
-	DesignReview           *IssueOpsDesignReview               `json:"design_review,omitempty"`
-	IssueURL               string                              `json:"issue_url,omitempty"`
-	PlanPath               string                              `json:"plan_path,omitempty"`
-	WorktreePath           string                              `json:"worktree_path,omitempty"`
-	IssueLinks             []IssueOpsIssueLink                 `json:"issue_links,omitempty"`
-	BranchPrepare          *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
-	RemoteArtifact         *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
-	Decisions              []IssueOpsDecision                  `json:"decisions,omitempty"`
-	PlanPrep               *IssueOpsPlanPrep                   `json:"plan_prep,omitempty"`
-	WorktreeTools          *IssueOpsWorktreeToolPreparation    `json:"worktree_tools,omitempty"`
-	ExecutionDecision      *IssueOpsExecutionDecision          `json:"execution_decision,omitempty"`
-	CompatibilityReview    *IssueOpsCompatibilityReview        `json:"compatibility_review,omitempty"`
-	Feedback               []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
-	RoutingTrace           []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
-	AISlopCleanAt          string                              `json:"ai_slop_clean_at,omitempty"`
-	AISlopCleanHead        string                              `json:"ai_slop_clean_head,omitempty"`
-	AISlopCleanFingerprint string                              `json:"ai_slop_clean_fingerprint,omitempty"`
-	ForceReleasedAt        string                              `json:"force_released_at,omitempty"`
-	ForceReleaseReason     string                              `json:"force_release_reason,omitempty"`
-	StaleResetAt           string                              `json:"stale_reset_at,omitempty"`
-	StaleResetPriorPhase   string                              `json:"stale_reset_prior_phase,omitempty"`
-	OrphanWorktreePath     string                              `json:"orphan_worktree_path,omitempty"`
-	LastHeartbeatAt        string                              `json:"last_heartbeat_at,omitempty"`
-	CreatedAt              string                              `json:"created_at"`
-	UpdatedAt              string                              `json:"updated_at"`
+	OK                      bool                                `json:"ok"`
+	ID                      string                              `json:"id"`
+	Repo                    string                              `json:"repo"`
+	Branch                  string                              `json:"branch,omitempty"`
+	Phase                   IssueOpsPhase                       `json:"phase"`
+	Intent                  *IssueOpsIntentContract             `json:"intent,omitempty"`
+	DesignReview            *IssueOpsDesignReview               `json:"design_review,omitempty"`
+	DomainReview            *IssueOpsDomainReview               `json:"domain_review,omitempty"`
+	IssueURL                string                              `json:"issue_url,omitempty"`
+	PlanPath                string                              `json:"plan_path,omitempty"`
+	WorktreePath            string                              `json:"worktree_path,omitempty"`
+	IssueLinks              []IssueOpsIssueLink                 `json:"issue_links,omitempty"`
+	BranchPrepare           *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
+	RemoteArtifact          *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
+	Decisions               []IssueOpsDecision                  `json:"decisions,omitempty"`
+	PlanPrep                *IssueOpsPlanPrep                   `json:"plan_prep,omitempty"`
+	WorktreeTools           *IssueOpsWorktreeToolPreparation    `json:"worktree_tools,omitempty"`
+	ExecutionDecision       *IssueOpsExecutionDecision          `json:"execution_decision,omitempty"`
+	CompatibilityReview     *IssueOpsCompatibilityReview        `json:"compatibility_review,omitempty"`
+	Feedback                []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
+	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
+	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
+	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`
+	AISlopCleanFingerprint  string                              `json:"ai_slop_clean_fingerprint,omitempty"`
+	AISlopCleanCategories   []string                            `json:"ai_slop_clean_categories,omitempty"`
+	AISlopCleanVerification []string                            `json:"ai_slop_clean_verification,omitempty"`
+	ForceReleasedAt         string                              `json:"force_released_at,omitempty"`
+	ForceReleaseReason      string                              `json:"force_release_reason,omitempty"`
+	StaleResetAt            string                              `json:"stale_reset_at,omitempty"`
+	StaleResetPriorPhase    string                              `json:"stale_reset_prior_phase,omitempty"`
+	OrphanWorktreePath      string                              `json:"orphan_worktree_path,omitempty"`
+	LastHeartbeatAt         string                              `json:"last_heartbeat_at,omitempty"`
+	PhaseLedger             IssueOpsPhaseLedger                 `json:"phase_ledger,omitempty"`
+	CreatedAt               string                              `json:"created_at"`
+	UpdatedAt               string                              `json:"updated_at"`
 }
 
 // SkillRoutingEntry records that a pioneer/CS skill fired at a given IssueOps

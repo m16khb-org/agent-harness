@@ -46,5 +46,5 @@ func runIssueOpsDecision(args []string) error {
 
 type sliceFlag []string
 
-func (f *sliceFlag) String() string   { return strings.Join(*f, ", ") }
+func (f *sliceFlag) String() string     { return strings.Join(*f, ", ") }
 func (f *sliceFlag) Set(v string) error { *f = append(*f, v); return nil }

@@ -96,8 +96,30 @@ func setIssueOpsPlanPrepForTest(t *testing.T, stateRoot, id string) {
 	}
 }
 
+// recordIssueOpsGrillArtifactsForTest satisfies the grill completion gate
+// (split_decision + domain_review) so legacy tests can still advance past the
+// grill->plan boundary. split_decision is recorded as a no-split scope decision.
+func recordIssueOpsGrillArtifactsForTest(t *testing.T, stateRoot, id string) {
+	t.Helper()
+	if _, err := AddIssueOpsDecision(stateRoot, id, IssueOpsDecisionRecordRequest{
+		Title: "no split",
+		Body:  "single focused work item; no provider-native child tasks needed",
+		Kind:  "scope",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RecordIssueOpsDomainReview(stateRoot, id, IssueOpsDomainReviewRequest{
+		ModelFit:          "change fits the existing IssueOps phase model",
+		Terminology:       []string{"phase ledger", "completion gate"},
+		OpenUncertainties: []string{"none blocking"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 	t.Helper()
+	recordIssueOpsGrillArtifactsForTest(t, stateRoot, id)
 	setIssueOpsPlanPrepForTest(t, stateRoot, id)
 	if _, err := RecordIssueOpsDesignReview(stateRoot, id, IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",

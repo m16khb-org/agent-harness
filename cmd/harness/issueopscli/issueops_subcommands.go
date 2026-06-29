@@ -32,7 +32,7 @@ func runIssueOpsStatus(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	record, err := core.IssueOpsStatus(core.IssueOpsStateRoot(), *id)
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 

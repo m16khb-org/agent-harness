@@ -26,7 +26,7 @@ func handleMCPIssueOpsStart(args map[string]any) MCPToolOutcome {
 }
 
 func handleMCPIssueOpsStatus(args map[string]any) MCPToolOutcome {
-	result, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	result, err := core.IssueOpsStatus(core.IssueOpsStateRoot(), argmap.String(args, "id"))
 	return issueOpsMCPOutcome(result, err, "IssueOps status failed")
 }
 
@@ -128,6 +128,31 @@ func handleMCPIssueOpsRecordCompatibilityReview(args map[string]any) MCPToolOutc
 		Approved:              argmap.Bool(args, "approved"),
 	})
 	return issueOpsMCPOutcome(result, err, "IssueOps compatibility review record failed")
+}
+
+func handleMCPIssueOpsRecordDomainReview(args map[string]any) MCPToolOutcome {
+	result, err := core.RecordIssueOpsDomainReview(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsDomainReviewRequest{
+		Terminology:       argmap.StringSlice(args, "terminology"),
+		ModelFit:          argmap.String(args, "model_fit"),
+		Risks:             argmap.StringSlice(args, "risks"),
+		OpenUncertainties: argmap.StringSlice(args, "open_uncertainties"),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps domain review record failed")
+}
+
+func handleMCPIssueOpsRecordAISlopCleanEvidence(args map[string]any) MCPToolOutcome {
+	result, err := core.RecordIssueOpsAISlopCleanEvidence(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.StringSlice(args, "categories"), argmap.StringSlice(args, "verification"))
+	return issueOpsMCPOutcome(result, err, "IssueOps ai-slop-clean evidence record failed")
+}
+
+func handleMCPIssueOpsResolveFeedback(args map[string]any) MCPToolOutcome {
+	result, err := core.ResolveIssueOpsFeedback(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.Int(args, "index", -1), argmap.String(args, "resolution"))
+	return issueOpsMCPOutcome(result, err, "IssueOps resolve feedback failed")
+}
+
+func handleMCPIssueOpsRegressForReplan(args map[string]any) MCPToolOutcome {
+	result, err := core.RegressIssueOpsForReplan(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "reason"))
+	return issueOpsMCPOutcome(result, err, "IssueOps regress for replan failed")
 }
 
 func issueOpsSubagentPlansFromMCP(raw any) ([]core.IssueOpsSubAgentPlan, error) {

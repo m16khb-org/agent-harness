@@ -24,6 +24,8 @@ type IssueOpsExecutionDecisionRecordRequest = issueops.IssueOpsExecutionDecision
 type IssueOpsSubAgentPlan = issueops.IssueOpsSubAgentPlan
 type IssueOpsCompatibilityReview = issueops.IssueOpsCompatibilityReview
 type IssueOpsCompatibilityReviewRequest = issueops.IssueOpsCompatibilityReviewRequest
+type IssueOpsDomainReview = issueops.IssueOpsDomainReview
+type IssueOpsDomainReviewRequest = issueops.IssueOpsDomainReviewRequest
 type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
 type IssueOpsWorktreeToolPreparation = issueops.IssueOpsWorktreeToolPreparation
@@ -118,6 +120,10 @@ func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, 
 	return issueops.StartIssueOps(stateRoot, req)
 }
 
+func IssueOpsStatus(stateRoot, id string) (IssueOpsRecord, error) {
+	return issueops.IssueOpsStatus(stateRoot, id)
+}
+
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	return issueops.ReadIssueOps(stateRoot, id)
 }
@@ -140,6 +146,22 @@ func RecordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecution
 
 func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsCompatibilityReview(stateRoot, id, req)
+}
+
+func RecordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsDomainReview(stateRoot, id, req)
+}
+
+func RecordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verification []string) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsAISlopCleanEvidence(stateRoot, id, categories, verification)
+}
+
+func ResolveIssueOpsFeedback(stateRoot, id string, index int, resolution string) (IssueOpsRecord, error) {
+	return issueops.ResolveIssueOpsFeedback(stateRoot, id, index, resolution)
+}
+
+func RegressIssueOpsForReplan(stateRoot, id, reason string) (IssueOpsRecord, error) {
+	return issueops.RegressIssueOpsForReplan(stateRoot, id, reason)
 }
 
 func IssueOpsStateRoot() string {

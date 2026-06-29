@@ -73,6 +73,7 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	} else if !issueOpsWorktreePathValid(path) {
 		missing = append(missing, "worktree_exists")
 	}
+	missing = append(missing, issueOpsTargetBranchMatchMissing(record)...)
 
 	ready.Missing = stringlist.UniqueSorted(missing)
 	ready.Warnings = warnings
