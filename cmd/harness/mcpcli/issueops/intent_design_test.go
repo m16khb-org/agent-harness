@@ -2,7 +2,6 @@ package issueops
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -59,16 +58,16 @@ func TestMCPIssueOpsIntentAndDesignRejectInvalidInputs(t *testing.T) {
 		"raw_request":        "IssueOps must understand intent",
 		"interpreted_intent": "Persist main-agent intent before planning",
 	})
-	if intentErr == nil || !strings.Contains(fmt.Sprint(intentErr.Data), "success_criteria is required") {
-		t.Fatalf("expected MCP intent validation error, got %+v", intentErr)
+	if !strings.Contains(intentErr, "success_criteria is required") {
+		t.Fatalf("expected MCP intent validation error, got %q", intentErr)
 	}
 	missingVerificationErr := callMCPToolForIssueOpsTestError(t, "issueops_review_design", map[string]any{
 		"id":              id,
 		"problem_summary": "IssueOps needs a design gate",
 		"proposed_design": "Require approved design before implementation",
 	})
-	if missingVerificationErr == nil || !strings.Contains(fmt.Sprint(missingVerificationErr.Data), "verification is required") {
-		t.Fatalf("expected MCP design missing verification error, got %+v", missingVerificationErr)
+	if !strings.Contains(missingVerificationErr, "verification is required") {
+		t.Fatalf("expected MCP design missing verification error, got %q", missingVerificationErr)
 	}
 	designErr := callMCPToolForIssueOpsTestError(t, "issueops_review_design", map[string]any{
 		"id":              id,
@@ -78,8 +77,8 @@ func TestMCPIssueOpsIntentAndDesignRejectInvalidInputs(t *testing.T) {
 		"open_questions":  []string{"which design?"},
 		"approved":        true,
 	})
-	if designErr == nil || !strings.Contains(fmt.Sprint(designErr.Data), "open_questions") {
-		t.Fatalf("expected MCP design validation error, got %+v", designErr)
+	if !strings.Contains(designErr, "open_questions") {
+		t.Fatalf("expected MCP design validation error, got %q", designErr)
 	}
 	callMCPToolForIssueOpsTest(t, "issueops_record_intent", map[string]any{
 		"id":                 id,
@@ -101,8 +100,8 @@ func TestMCPIssueOpsIntentAndDesignRejectInvalidInputs(t *testing.T) {
 		"verification":    []string{"go test ./cmd/harness/mcpcli"},
 		"approved":        true,
 	})
-	if evidenceErr == nil || !strings.Contains(fmt.Sprint(evidenceErr.Data), "design_review_evidence") {
-		t.Fatalf("expected MCP design evidence validation error, got %+v", evidenceErr)
+	if !strings.Contains(evidenceErr, "design_review_evidence") {
+		t.Fatalf("expected MCP design evidence validation error, got %q", evidenceErr)
 	}
 }
 
@@ -168,8 +167,8 @@ func TestMCPIssueOpsApprovedDesignRequiresRefactorReviewEvidence(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			errPayload := callMCPToolForIssueOpsTestError(t, "issueops_review_design", tc.args)
-			if errPayload == nil || !strings.Contains(fmt.Sprint(errPayload.Data), tc.want) {
-				t.Fatalf("expected MCP design validation error %q, got %+v", tc.want, errPayload)
+			if !strings.Contains(errPayload, tc.want) {
+				t.Fatalf("expected MCP design validation error %q, got %q", tc.want, errPayload)
 			}
 		})
 	}

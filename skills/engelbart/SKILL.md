@@ -1,6 +1,6 @@
 ---
 name: engelbart
-description: "Use when converting meeting transcripts, NAVER Clova Note exports, Slack huddle notes, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas-ready meeting docs, manual index-binding handoffs, Slack recaps, action tables, or reusable meeting-minutes prompts."
+description: "Meeting-record augmentation / team-memory specialist. Named after Douglas Engelbart — inventor of the mouse, hypertext, and the Augment human-intellect program. His core insight: tools should augment collective human intellect, and shared living records are how a team thinks together. Use when converting meeting transcripts, NAVER Clova Note exports, Slack huddle notes, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas-ready meeting docs, manual index-binding handoffs, Slack recaps, action tables, or reusable meeting-minutes prompts."
 ---
 
 # Engelbart

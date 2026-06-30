@@ -142,6 +142,45 @@ func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	mcpSnapshot["issueops_pr_readiness"] = runMCPToolContract(t, replacements, "issueops_pr_readiness", map[string]any{
 		"id": issueopsMCPID,
 	})
+	// Phase-ledger tools. The cycle is already at plan (link_issue auto-advances
+	// once plan readiness is met), so the sequence exercises real transitions:
+	// status (derived ledger at plan) -> regress_for_replan (Brooks stop, plan ->
+	// grill, stale-marks the ledger) -> record_domain_review (re-satisfies the
+	// grill gate) -> set_phase (grill -> plan, a real forward transition that
+	// stamps the ledger) -> record_ai_slop_clean_evidence -> resolve_feedback.
+	mcpSnapshot["issueops_status"] = runMCPToolContract(t, replacements, "issueops_status", map[string]any{
+		"id": issueopsMCPID,
+	})
+	mcpSnapshot["issueops_regress_for_replan"] = runMCPToolContract(t, replacements, "issueops_regress_for_replan", map[string]any{
+		"id":     issueopsMCPID,
+		"reason": "brooks stop: scope too broad for one cycle",
+	})
+	mcpSnapshot["issueops_record_domain_review"] = runMCPToolContract(t, replacements, "issueops_record_domain_review", map[string]any{
+		"id":          issueopsMCPID,
+		"model_fit":   "fits the IssueOps phase-ledger domain model",
+		"terminology": []string{"phase ledger"},
+		"risks":       []string{"ledger drift between CLI and MCP"},
+	})
+	mcpSnapshot["issueops_set_phase"] = runMCPToolContract(t, replacements, "issueops_set_phase", map[string]any{
+		"id": issueopsMCPID,
+		"to": "plan",
+	})
+	mcpSnapshot["issueops_record_ai_slop_clean_evidence"] = runMCPToolContract(t, replacements, "issueops_record_ai_slop_clean_evidence", map[string]any{
+		"id":           issueopsMCPID,
+		"categories":   []string{"naming"},
+		"verification": []string{"go test ./cmd/harness/harnessapp -run Golden"},
+	})
+	mcpSnapshot["issueops_resolve_feedback"] = runMCPToolContract(t, replacements, "issueops_resolve_feedback", map[string]any{
+		"id":         issueopsMCPID,
+		"index":      0,
+		"resolution": "valid-defect",
+	})
+	// Error-path snapshot: a tool-level FAILURE (missing model_fit/terminology) must
+	// pin the #8 normalized error contract — {ok:false,error:...} content marked as
+	// an error result — rather than a -32602 "Invalid params" JSON-RPC error.
+	mcpSnapshot["issueops_record_domain_review_error"] = runMCPToolContract(t, replacements, "issueops_record_domain_review", map[string]any{
+		"id": issueopsMCPID,
+	})
 	mcpSnapshot["self_augment"] = runMCPToolContract(t, replacements, "self_augment", map[string]any{
 		"target_score": 95,
 	})

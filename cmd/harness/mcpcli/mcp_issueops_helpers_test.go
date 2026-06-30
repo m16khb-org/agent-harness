@@ -15,8 +15,10 @@ func TestIssueOpsMCPHelpersAndRemoteDryRuns(t *testing.T) {
 	if outcome := issueOpsMCPOutcome(map[string]any{"ok": true}, nil, "failed"); outcome.Err != nil || outcome.Payload == nil {
 		t.Fatalf("success outcome = %#v", outcome)
 	}
-	if outcome := issueOpsMCPOutcome(nil, errMCPFixture("bad"), "failed"); outcome.Err == nil || outcome.Err.Code != -32602 {
-		t.Fatalf("error outcome = %#v", outcome)
+	if outcome := issueOpsMCPOutcome(nil, errMCPFixture("bad"), "failed"); outcome.Err != nil || !outcome.IsError {
+		t.Fatalf("error outcome should be a normalized error result, got %#v", outcome)
+	} else if body, ok := outcome.Payload.(map[string]any); !ok || body["ok"] != false || body["error"] != "failed: bad" {
+		t.Fatalf("error outcome payload = %#v", outcome.Payload)
 	}
 	if provider := resolveRecordProviderForMCP(core.IssueOpsRecord{BranchPrepare: &core.IssueOpsBranchPrepare{Provider: "github"}}); provider != "github" {
 		t.Fatalf("branch provider = %q", provider)
@@ -60,8 +62,48 @@ func TestIssueOpsMCPHelpersAndRemoteDryRuns(t *testing.T) {
 			t.Fatalf("%s dry-run error: %#v", name, outcome.Err)
 		}
 	}
-	if outcome := handleIssueOpsMCPToolCall(MCPToolCall{Name: "issueops_remote_score", Arguments: map[string]any{"bad": true}}); outcome.Err == nil {
-		t.Fatal("invalid remote score call should fail")
+	if outcome := handleIssueOpsMCPToolCall(MCPToolCall{Name: "issueops_remote_score", Arguments: map[string]any{"bad": true}}); !outcome.IsError {
+		t.Fatalf("invalid remote score call should be a normalized error result, got %#v", outcome)
+	}
+}
+
+// TestIssueOpsMCPToolCallReturnsNormalizedError pins the #8 contract: an IssueOps
+// tool-level failure flows through HandleToolCall as a normalized error tool
+// result ({ok:false,error:...} content marked isError) rather than a -32602
+// "Invalid params" JSON-RPC protocol error. Before the fix HandleToolCall
+// returned (nil, &RPCError{Code:-32602}); this asserts the new shape.
+func TestIssueOpsMCPToolCallReturnsNormalizedError(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := mcpIssueOpsRecord(t)
+	params, err := json.Marshal(map[string]any{
+		"name":      "issueops_record_domain_review",
+		"arguments": map[string]any{"id": record.ID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, rpcErr := HandleToolCall(params)
+	if rpcErr != nil {
+		t.Fatalf("tool-level failure must not be a JSON-RPC protocol error, got %#v", rpcErr)
+	}
+	m, ok := result.(map[string]any)
+	if !ok || m["isError"] != true {
+		t.Fatalf("expected isError tool result, got %#v", result)
+	}
+	content, ok := m["content"].([]map[string]any)
+	if !ok || len(content) == 0 {
+		t.Fatalf("expected text content, got %#v", m["content"])
+	}
+	text, _ := content[0]["text"].(string)
+	var body map[string]any
+	if err := json.Unmarshal([]byte(text), &body); err != nil {
+		t.Fatalf("error body is not JSON: %v (%q)", err, text)
+	}
+	if body["ok"] != false {
+		t.Fatalf("error body should report ok:false, got %#v", body)
+	}
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "domain review requires model_fit or terminology") {
+		t.Fatalf("error body missing core error: %#v", body)
 	}
 }
 
@@ -166,8 +208,8 @@ func TestHandleIssueOpsMCPToolCallLifecycleCases(t *testing.T) {
 	for _, call := range cases {
 		outcome := handleIssueOpsMCPToolCall(call)
 		if call.Name == "issueops_prepare_branch" {
-			if outcome.Err == nil {
-				t.Fatal("missing record prepare branch should fail")
+			if !outcome.IsError {
+				t.Fatalf("missing record prepare branch should be a normalized error result, got %#v", outcome)
 			}
 			continue
 		}
@@ -175,8 +217,8 @@ func TestHandleIssueOpsMCPToolCallLifecycleCases(t *testing.T) {
 			t.Fatalf("%s outcome error: %#v", call.Name, outcome.Err)
 		}
 	}
-	if outcome := handleIssueOpsMCPToolCall(MCPToolCall{Name: "issueops_link_child", Arguments: map[string]any{"id": record.ID, "child_url": "not-a-url"}}); outcome.Err == nil {
-		t.Fatal("invalid child URL should fail")
+	if outcome := handleIssueOpsMCPToolCall(MCPToolCall{Name: "issueops_link_child", Arguments: map[string]any{"id": record.ID, "child_url": "not-a-url"}}); !outcome.IsError {
+		t.Fatalf("invalid child URL should be a normalized error result, got %#v", outcome)
 	}
 	if outcome := handleIssueOpsMCPToolCall(MCPToolCall{Name: "unknown"}); outcome.Handled {
 		t.Fatalf("unknown IssueOps tool should not be handled: %#v", outcome)

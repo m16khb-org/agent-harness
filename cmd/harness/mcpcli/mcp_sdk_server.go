@@ -65,7 +65,10 @@ func sdkToolHandler(groupHandler func(MCPToolCall) MCPToolOutcome, toolName stri
 			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}, nil
 		}
 		b, _ := json.MarshalIndent(outcome.Payload, "", "  ")
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(b)}}}, nil
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: string(b)}},
+			IsError: outcome.IsError,
+		}, nil
 	}
 }
 

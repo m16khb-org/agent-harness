@@ -1,7 +1,6 @@
 package issueops
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -29,8 +28,8 @@ func TestMCPIssueOpsSetPhasePinsIntentAndIssuePlanGate(t *testing.T) {
 		t.Fatalf("unexpected MCP start payload: %#v", start)
 	}
 	intentErr := callMCPToolForIssueOpsTestError(t, "issueops_set_phase", map[string]any{"id": id, "to": "plan"})
-	if intentErr == nil || !strings.Contains(fmt.Sprint(intentErr.Data), "intent_contract") {
-		t.Fatalf("expected MCP plan phase to require intent, got %+v", intentErr)
+	if !strings.Contains(intentErr, "intent_contract") {
+		t.Fatalf("expected MCP plan phase to require intent, got %q", intentErr)
 	}
 	callMCPToolForIssueOpsTest(t, "issueops_record_intent", map[string]any{
 		"id":                 id,
@@ -39,8 +38,8 @@ func TestMCPIssueOpsSetPhasePinsIntentAndIssuePlanGate(t *testing.T) {
 		"success_criteria":   []string{"intent is recorded"},
 	})
 	issueErr := callMCPToolForIssueOpsTestError(t, "issueops_set_phase", map[string]any{"id": id, "to": "plan"})
-	if issueErr == nil || !strings.Contains(fmt.Sprint(issueErr.Data), "issue_url") {
-		t.Fatalf("expected MCP plan phase to require linked issue after intent, got %+v", issueErr)
+	if !strings.Contains(issueErr, "issue_url") {
+		t.Fatalf("expected MCP plan phase to require linked issue after intent, got %q", issueErr)
 	}
 }
 

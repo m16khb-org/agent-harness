@@ -60,9 +60,17 @@ func handleIssueOpsMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	return handler(call.Arguments)
 }
 
+// issueOpsMCPOutcome returns IssueOps tool-level FAILURES (cycle-not-found,
+// validation, disk/lock, live-verify) as a normalized error tool result
+// mirroring the CLI's {ok:false,error:...} body, instead of collapsing every
+// error into a -32602 "Invalid params" JSON-RPC protocol error. message carries
+// the operation context the CLI error string already implies.
 func issueOpsMCPOutcome(payload any, err error, message string) MCPToolOutcome {
 	if err != nil {
-		return mcpToolFailure(&RPCError{Code: -32602, Message: message, Data: err.Error()})
+		return mcpToolErrorPayload(map[string]any{
+			"ok":    false,
+			"error": fmt.Sprintf("%s: %s", message, err.Error()),
+		})
 	}
 	return mcpToolPayload(payload)
 }

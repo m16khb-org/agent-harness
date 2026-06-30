@@ -111,6 +111,31 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["issueops_pr_readiness"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"pr-readiness", "--id", issueopsID, "--json"})
 	})
+	// Phase-ledger tools. The cycle is already at plan (link-issue auto-advances
+	// once plan readiness is met), so the sequence exercises real transitions
+	// before force-release ends the cycle in done: status (derived ledger at plan)
+	// -> regress (Brooks stop, plan -> grill, stale-marks the ledger) ->
+	// domain-review record (re-satisfies the grill gate) -> set-phase (grill ->
+	// plan, a real forward transition that stamps the ledger) -> ai-slop-clean
+	// evidence -> feedback resolve.
+	cliSnapshot["issueops_status"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"status", "--id", issueopsID, "--json"})
+	})
+	cliSnapshot["issueops_regress_for_replan"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"regress", "--id", issueopsID, "--reason", "brooks stop: scope too broad for one cycle", "--json"})
+	})
+	cliSnapshot["issueops_domain_review"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"domain-review", "record", "--id", issueopsID, "--model-fit", "fits the IssueOps phase-ledger domain model", "--terminology", "phase ledger", "--risk", "ledger drift between CLI and MCP", "--json"})
+	})
+	cliSnapshot["issueops_set_phase"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"phase", "--id", issueopsID, "--to", "plan", "--json"})
+	})
+	cliSnapshot["issueops_ai_slop_clean"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"ai-slop-clean", "record", "--id", issueopsID, "--category", "naming", "--verification", "go test ./cmd/harness/harnessapp -run Golden", "--json"})
+	})
+	cliSnapshot["issueops_feedback_resolve"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"feedback", "resolve", "--id", issueopsID, "--index", "0", "--resolution", "valid-defect", "--json"})
+	})
 	cliSnapshot["issueops_force_release"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"force-release", "--id", issueopsID, "--reason", "contract snapshot force-release", "--json"})
 	})

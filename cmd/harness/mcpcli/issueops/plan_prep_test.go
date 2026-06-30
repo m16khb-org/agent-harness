@@ -42,7 +42,7 @@ func TestMCPIssueOpsPlanPrepRejectsBothEvidenceAndWaive(t *testing.T) {
 		"related_score_ref":  []string{"score"},
 		"web_research_waive": "internal",
 	})
-	if err == nil {
+	if err == "" {
 		t.Fatal("evidence + waive on one item must error via MCP")
 	}
 }

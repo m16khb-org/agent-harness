@@ -1,7 +1,6 @@
 package issueops
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +37,7 @@ func TestMCPIssueOpsVerifyRemoteArtifactRejectsBeforePR(t *testing.T) {
 	if !ok || id == "" {
 		t.Fatalf("unexpected MCP start payload: %#v", start)
 	}
-	rpcErr := callMCPToolForIssueOpsTestError(t, "issueops_verify_remote_artifact", map[string]any{
+	verifyErr := callMCPToolForIssueOpsTestError(t, "issueops_verify_remote_artifact", map[string]any{
 		"id":        id,
 		"provider":  "github",
 		"kind":      "pr",
@@ -46,8 +45,8 @@ func TestMCPIssueOpsVerifyRemoteArtifactRejectsBeforePR(t *testing.T) {
 		"labels":    []string{"bug"},
 		"assignees": []string{"habin"},
 	})
-	if rpcErr == nil || !strings.Contains(rpcErr.Message, "remote artifact") || !strings.Contains(fmt.Sprint(rpcErr.Data), "before pr phase") {
-		t.Fatalf("expected MCP remote artifact verification to reject before PR phase, got %+v", rpcErr)
+	if !strings.Contains(verifyErr, "remote artifact") || !strings.Contains(verifyErr, "before pr phase") {
+		t.Fatalf("expected MCP remote artifact verification to reject before PR phase, got %q", verifyErr)
 	}
 }
 
@@ -121,8 +120,8 @@ func TestMCPIssueOpsCleanupCloseChildrenRecordsState(t *testing.T) {
 	}
 
 	missingMerge := callMCPToolForIssueOpsTestError(t, "issueops_cleanup_close_children", map[string]any{"id": id})
-	if missingMerge == nil || !strings.Contains(fmt.Sprint(missingMerge.Data), "merge evidence") {
-		t.Fatalf("expected merge evidence failure, got %+v", missingMerge)
+	if !strings.Contains(missingMerge, "merge evidence") {
+		t.Fatalf("expected merge evidence failure, got %q", missingMerge)
 	}
 
 	closeResult := callMCPToolForIssueOpsTest(t, "issueops_cleanup_close_children", map[string]any{

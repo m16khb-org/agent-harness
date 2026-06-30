@@ -40,14 +40,46 @@ func callMCPToolForIssueOpsTest(t *testing.T, name string, args map[string]any) 
 	return payload
 }
 
-func callMCPToolForIssueOpsTestError(t *testing.T, name string, args map[string]any) *mcpcli.RPCError {
+// callMCPToolForIssueOpsTestError drives a tool expected to FAIL and returns the
+// normalized error body's `error` string. Tool-level failures are now reported as
+// normalized error tool results ({ok:false,error:...} content marked isError),
+// not -32602 JSON-RPC protocol errors, so this asserts that shape and surfaces the
+// message for substring checks. The returned string is empty only if the body
+// carried no error text.
+func callMCPToolForIssueOpsTestError(t *testing.T, name string, args map[string]any) string {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": name, "arguments": args})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, rpcErr := mcpcli.HandleToolCall(params)
-	return rpcErr
+	result, rpcErr := mcpcli.HandleToolCall(params)
+	if rpcErr != nil {
+		t.Fatalf("tool-level failure must be a normalized error result, got JSON-RPC error: %+v", rpcErr)
+	}
+	outer, ok := result.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected MCP result type %T", result)
+	}
+	if outer["isError"] != true {
+		t.Fatalf("expected isError tool result, got %#v", outer)
+	}
+	content, ok := outer["content"].([]map[string]any)
+	if !ok || len(content) != 1 {
+		t.Fatalf("unexpected MCP content: %#v", outer["content"])
+	}
+	text, ok := content[0]["text"].(string)
+	if !ok {
+		t.Fatalf("unexpected MCP text content: %#v", content[0])
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(text), &payload); err != nil {
+		t.Fatalf("invalid MCP JSON text: %v\n%s", err, text)
+	}
+	if payload["ok"] != false {
+		t.Fatalf("normalized error body should report ok:false, got %#v", payload)
+	}
+	msg, _ := payload["error"].(string)
+	return msg
 }
 
 func configureIssueOpsMCPForTest(t *testing.T) {
