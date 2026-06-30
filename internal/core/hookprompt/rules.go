@@ -127,10 +127,10 @@ var hookRoutingRules = []HookRoutingRule{
 	},
 	{
 		Tool:           "codd",
-		Reason:         "Secondary hint: use the codd skill for schema/index/query design — normalization, write-penalty trade-offs, query plans.",
+		Reason:         "Secondary hint: use the codd skill for schema/index/query design and concurrency — normalization, write-penalty trade-offs, query plans, locks/deadlocks/isolation.",
 		Priority:       PrioritySecondary,
-		LowerKeywords:  []string{"schema", "index design", "query plan", "normalization", "slow query", "n+1"},
-		PromptKeywords: []string{"스키마", "인덱스", "쿼리", "정규화"},
+		LowerKeywords:  []string{"schema", "index design", "query plan", "normalization", "slow query", "n+1", "deadlock", "lock contention", "isolation level", "transaction"},
+		PromptKeywords: []string{"스키마", "인덱스", "쿼리", "정규화", "데드락", "락", "트랜잭션", "격리수준"},
 	},
 	{
 		Tool:           "torvalds",
@@ -159,6 +159,13 @@ var hookRoutingRules = []HookRoutingRule{
 		Priority:       PrioritySecondary,
 		LowerKeywords:  []string{"snr", "code quality measure", "quality baseline", "slop"},
 		PromptKeywords: []string{"품질 측정", "슬롭", "품질 비교"},
+	},
+	{
+		Tool:           "brooks",
+		Reason:         "Secondary hint: dispatch the brooks skill as a SUB-AGENT (sub-agent-only, never inline) for adversarial design/plan review — separate essential from accidental complexity, defend conceptual integrity, expose the second-system effect before code is written.",
+		Priority:       PrioritySecondary,
+		LowerKeywords:  []string{"devil's advocate", "devils advocate", "over-engineered", "over engineered", "second-system", "conceptual integrity", "stress-test the plan", "review this design before"},
+		PromptKeywords: []string{"과설계", "계획 검토", "악마의 변호인", "설계 검토"},
 	},
 	{
 		Tool:           "karpathy",
