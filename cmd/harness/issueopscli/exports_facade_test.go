@@ -85,3 +85,42 @@ func TestIssueOpsDecisionAndCleanupCLIBranches(t *testing.T) {
 		t.Fatalf("cleanup stale dry run: %v", err)
 	}
 }
+
+func TestIssueOpsSubcommandSuggestions(t *testing.T) {
+	cases := []struct {
+		input        string
+		mustContain  string
+		mustNotMatch bool
+	}{
+		// Concept hints: domain vocabulary mistaken for subcommands.
+		{"grill", "issueops phase --to grill", false},
+		{"split", "issueops remote create-child", false},
+		{"problem", "issueops phase --to problem", false},
+		{"implement", "issueops phase --to implement", false},
+		// Prefix matches against the real registry.
+		{"domain", "domain-review", false},
+		{"compat", "compatibility", false},
+		{"worktre", "worktree", false},
+		// No suggestion for garbage input — bare error only.
+		{"totally-bogus", "", true},
+	}
+	for _, tc := range cases {
+		err := RunIssueOps([]string{tc.input})
+		if err == nil {
+			t.Fatalf("input %q should fail", tc.input)
+		}
+		msg := err.Error()
+		if !strings.Contains(msg, `unknown issueops subcommand`) {
+			t.Fatalf("input %q: error missing canonical prefix: %q", tc.input, msg)
+		}
+		if tc.mustNotMatch {
+			if strings.Contains(msg, "did you mean") {
+				t.Fatalf("input %q: should have no suggestion, got %q", tc.input, msg)
+			}
+			continue
+		}
+		if !strings.Contains(msg, "did you mean") || !strings.Contains(msg, tc.mustContain) {
+			t.Fatalf("input %q: expected suggestion containing %q, got %q", tc.input, tc.mustContain, msg)
+		}
+	}
+}

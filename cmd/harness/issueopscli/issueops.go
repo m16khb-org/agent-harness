@@ -58,9 +58,42 @@ func runIssueOps(args []string) error {
 	}
 	handler, ok := issueOpsSubcommands[args[0]]
 	if !ok {
-		return fmt.Errorf("unknown issueops subcommand %q", args[0])
+		return fmt.Errorf("unknown issueops subcommand %q%s", args[0], suggestIssueOpsSubcommand(args[0]))
 	}
 	return handler(args[1:])
+}
+
+// issueOpsConceptHints maps IssueOps domain vocabulary — lifecycle phase names,
+// decision verbs, and ledger artifact names — that agents frequently mistake
+// for CLI subcommands. The skill prose uses vivid nouns (grill, split, domain)
+// while the CLI uses generic verbs (phase, remote, link-related). This hint
+// bridges the naming gap so a wrong guess produces actionable guidance instead
+// of a bare "unknown subcommand".
+var issueOpsConceptHints = map[string]string{
+	"grill":     "did you mean `issueops phase --to grill`? (grill is a lifecycle phase, not a subcommand)",
+	"problem":   "did you mean `issueops phase --to problem`? (problem is a lifecycle phase, not a subcommand)",
+	"implement": "did you mean `issueops phase --to implement`? (implement is a lifecycle phase, not a subcommand)",
+	"split":     "did you mean `issueops remote create-child` or `issueops link-related --type splits-from`? (split is a breakdown decision, not a subcommand)",
+}
+
+// suggestIssueOpsSubcommand returns a suggestion suffix for an unknown
+// subcommand: a concept hint for known phase/decision words, else a prefix
+// match against the real subcommand registry. It returns "" when no useful
+// suggestion exists.
+func suggestIssueOpsSubcommand(input string) string {
+	if hint, ok := issueOpsConceptHints[input]; ok {
+		return "; " + hint
+	}
+	var matches []string
+	for name := range issueOpsSubcommands {
+		if strings.HasPrefix(name, input) {
+			matches = append(matches, name)
+		}
+	}
+	if len(matches) == 1 {
+		return fmt.Sprintf("; did you mean `%s`?", matches[0])
+	}
+	return ""
 }
 
 func issueOpsRemoteDeps() remotecmd.Deps {
