@@ -332,6 +332,20 @@ agent-harness issueops design review --id "$ISSUEOPS_ID" \
   --json
 ```
 
+## Concept → Command Map
+
+The IssueOps skill prose uses vivid domain nouns — phase names, decision verbs, ledger artifact names — that are **not** `issueops` subcommands. The CLI uses generic verbs (`phase`, `remote`, `link-related`). Guessing `issueops <domain-word>` fails. When unsure, run `issueops --help` for the real registry; the CLI also emits a did-you-mean hint for the common confusions below.
+
+| Domain word in this skill | What it actually is | Real CLI command |
+|---|---|---|
+| `grill` / `problem` / `implement` / `ai-slop-clean` / `feedback` / `pr` | **lifecycle phase** | `issueops phase --id ID --to <phase>` |
+| `split` | **breakdown decision** (no-split default; see Large Issue Breakdown Gate) | `issueops remote create-child` to create child tasks, `issueops link-related --type splits-from` to link an existing one |
+| `domain` (review) | **grill-phase ledger artifact** | `issueops domain-review record` |
+| `compatibility` (review) | **plan-phase ledger artifact** | `issueops compatibility review` |
+| `design` (review) | **plan-phase ledger artifact** | `issueops design review` |
+| `intent` (contract) | **problem-phase ledger artifact** | `issueops intent record` |
+| `regress` (for replan) | **feedback action** | `issueops regress` |
+
 ## Quality Upgrade Gates
 
 IssueOps must leave an auditable decision trail for labels, large issue breakdown, draft issue completion, and PR/MR review-agent feedback.
