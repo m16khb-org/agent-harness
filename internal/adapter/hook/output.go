@@ -9,8 +9,8 @@ package hook
 type Host string
 
 const (
-	HostCodex   Host = "codex"
-	HostClaude  Host = "claude"
+	HostCodex    Host = "codex"
+	HostClaude   Host = "claude"
 	HostReasonix Host = "reasonix"
 )
 

@@ -38,12 +38,12 @@ func TestClopperPearsonRejectsBadDomain(t *testing.T) {
 		c, n  int
 		alpha float64
 	}{
-		{1, 0, 0.05},                          // n<=0
-		{5, 4, 0.05},                          // c>n
-		{-1, 4, 0.05},                         // c<0
-		{1, 4, 0},                             // alpha<=0
-		{1, 4, 1},                             // alpha>=1
-		{1, maxReliabilityTrials + 1, 0.05},   // n over cap
+		{1, 0, 0.05},                        // n<=0
+		{5, 4, 0.05},                        // c>n
+		{-1, 4, 0.05},                       // c<0
+		{1, 4, 0},                           // alpha<=0
+		{1, 4, 1},                           // alpha>=1
+		{1, maxReliabilityTrials + 1, 0.05}, // n over cap
 	} {
 		if _, _, err := clopperPearson(tc.c, tc.n, tc.alpha); err == nil {
 			t.Fatalf("clopperPearson(%d,%d,%v) must error on bad domain", tc.c, tc.n, tc.alpha)
@@ -56,13 +56,13 @@ func TestPassPowKKernel(t *testing.T) {
 		c, n, k int
 		want    float64
 	}{
-		{8, 10, 0, 1.0},       // k=0 -> 1
-		{8, 10, 1, 0.8},       // = c/n
-		{8, 10, 3, 0.46667},   // = C(8,3)/C(10,3)
-		{8, 10, 8, 0.02222},   // = C(8,8)/C(10,8)
-		{8, 10, 9, 0.0},       // k>successes -> 0
-		{0, 5, 1, 0.0},        // no successes
-		{3, 3, 3, 1.0},        // all pass, all drawn
+		{8, 10, 0, 1.0},     // k=0 -> 1
+		{8, 10, 1, 0.8},     // = c/n
+		{8, 10, 3, 0.46667}, // = C(8,3)/C(10,3)
+		{8, 10, 8, 0.02222}, // = C(8,8)/C(10,8)
+		{8, 10, 9, 0.0},     // k>successes -> 0
+		{0, 5, 1, 0.0},      // no successes
+		{3, 3, 3, 1.0},      // all pass, all drawn
 	}
 	for _, tc := range cases {
 		got, err := passPowK(tc.c, tc.n, tc.k)

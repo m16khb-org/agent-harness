@@ -164,7 +164,7 @@ func TestIsDocsOrFixtureTarget(t *testing.T) {
 		{"golden/snapshot.json", true},
 		{"fixtures/data.json", true},
 		{"README.md", true},
-		{"readme.txt", true},  // "readme." prefix matches "readme.txt"
+		{"readme.txt", true}, // "readme." prefix matches "readme.txt"
 		{"src/main.go", false},
 		{"cmd/harness/main.go", false},
 	}

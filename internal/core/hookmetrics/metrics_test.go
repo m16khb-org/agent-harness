@@ -50,11 +50,11 @@ func TestSummarizeHookMetricsAggregatesLatencyAndDecisions(t *testing.T) {
 func TestSummarizeHookMetricsGateHitRateCountsBlockAndAsk(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	for _, e := range []HookMetricEvent{
-		{Hook: "pre-tool-use", DurationMS: 10},                      // pass
-		{Hook: "pre-tool-use", DurationMS: 20, Decision: "block"},   // block
-		{Hook: "pre-tool-use", DurationMS: 30, Decision: "ask"},     // ask (was uncounted)
-		{Hook: "pre-tool-use", DurationMS: 40},                      // pass
-		{Hook: "stop", DurationMS: 5},                               // pass, no enforcement
+		{Hook: "pre-tool-use", DurationMS: 10},                    // pass
+		{Hook: "pre-tool-use", DurationMS: 20, Decision: "block"}, // block
+		{Hook: "pre-tool-use", DurationMS: 30, Decision: "ask"},   // ask (was uncounted)
+		{Hook: "pre-tool-use", DurationMS: 40},                    // pass
+		{Hook: "stop", DurationMS: 5},                             // pass, no enforcement
 	} {
 		if _, err := RecordHookMetricEvent(e); err != nil {
 			t.Fatal(err)

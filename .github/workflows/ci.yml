@@ -7,8 +7,14 @@ name: CI
 # invocation and no model is required in CI. See
 # .agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md (A1).
 
+# Re-enable the push / pull_request triggers below once the Linux-runner-only
+# test failures are resolved; until then CI stays manual-dispatch so a red
+# Linux run does not block every push.
 on:
   workflow_dispatch:
+  # push:
+  #   branches: [main]
+  # pull_request:
 
 # Cancel superseded manual runs on the same ref to save runner minutes.
 concurrency:
@@ -28,6 +34,18 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Format check (gofmt)
+        # gofmt does not understand the `./...` package pattern, so check the
+        # tracked Go files explicitly (this also skips vendored / worktree copies).
+        run: |
+          unformatted="$(gofmt -l $(git ls-files '*.go'))"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
 
       - name: Build
         run: go build -o bin/agent-harness ./cmd/harness

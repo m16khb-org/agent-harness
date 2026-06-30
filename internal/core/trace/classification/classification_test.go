@@ -4,8 +4,8 @@ import "testing"
 
 func TestProposedKnobForStep(t *testing.T) {
 	tests := []struct {
-		step       string
-		contains   string
+		step     string
+		contains string
 	}{
 		{"contract golden test", "tighten CLI/MCP contract"},
 		{"secret redaction", "extend redaction audit"},
