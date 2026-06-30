@@ -66,7 +66,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
-`agent-harness`는 Codex와 Claude Code 양쪽에서 같은 방식으로 사용할 수 있는 개인 에이전트 하네스 프로젝트다.
+`agent-harness`는 Codex, Claude Code, GJC 세 호스트에서 같은 방식으로 사용할 수 있는 개인 에이전트 하네스 프로젝트다.
 이 문서는 에이전트가 이 저장소에서 작업할 때 먼저 읽어야 하는 루트 규칙이다.
 
 <!-- project rules -->
@@ -168,6 +168,9 @@ tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness s
 ./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
 codex mcp get agent_harness
 claude mcp list
+gjc plugin list
+gjc config get skills.enabled
+gjc config get skills.customDirectories
 ```
 
 Go 코드가 추가된 뒤 표준 검증:
@@ -181,7 +184,7 @@ go build -o bin/agent-harness ./cmd/harness
 
 ## 10. Critical Invariants
 
-- Codex와 Claude Code에서 관찰되는 하네스 결과가 같아야 한다.
+- Codex, Claude Code, GJC에서 관찰되는 하네스 결과가 같아야 한다. GJC는 plugin bundle(`mcps`) + first-party lifecycle hook(`~/.gjc/agent/hooks/`) + filesystem skill discovery(`skills.customDirectories`)로 통합되며, `agent-harness update`가 세 호스트를 모두 갱신한다.
 - 같은 스킬을 두 host에 복사해 중복 관리하지 않는다. `skills/`의 단일 원본을 사용자 홈 skill 경로에서 참조한다. 적용 대상 repo에는 기본 설치가 파일을 남기지 않는다.
 - LLM Wiki 기능은 이 하네스가 재구현하지 않는다. 필요하면 upstream `m16khb/llm-wiki` CLI/MCP 서버 또는 portable AGENTS.md를 사용한다.
 - 하네스 철학은 **바퀴를 재발명하지 않는다**이다. llm-wiki, CodeGraph, claude-mem, LazyCodex 같은 전문 도구는 `scripts/install-native.sh --with-upstream-tools`로 upstream installer/MCP/plugin 배선을 연결하고, core 동작을 agent-harness에 복제하지 않는다.

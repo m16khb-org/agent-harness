@@ -66,7 +66,7 @@ agent-harness bootstrap --sync
 
 | Pillar | Command | Purpose |
 | --- | --- | --- |
-| Install | `./install.sh`, then `agent-harness update` | Build the binary, install user-level Codex/Claude skills, hooks, MCP wiring, and PATH shim. |
+| Install | `./install.sh`, then `agent-harness update` | Build the binary, install user-level Codex/Claude/GJC skills, hooks, MCP wiring, and PATH shim. |
 | Project docs | `agent-harness project bootstrap --repo /path/to/repo --dry-run --json` | Plan AGENTS routing and `.agent-harness/` operating docs for a target repo. |
 | IssueOps | `agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json` | Start durable state for issue -> plan -> worktree -> feedback -> PR/MR workflows. |
 | Policy | `agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | Decide whether a command is safe before execution. |
@@ -392,7 +392,7 @@ agent-harness bootstrap --sync
 
 | 영역 | 명령 | 용도 |
 | --- | --- | --- |
-| 설치 | `./install.sh`, 이후 `agent-harness update` | binary build, user-level Codex/Claude skill, hook, MCP wiring, PATH shim 설치. |
+| 설치 | `./install.sh`, 이후 `agent-harness update` | binary build, user-level Codex/Claude/GJC skill, hook, MCP wiring, PATH shim 설치. |
 | 프로젝트 문서 | `agent-harness project bootstrap --repo /path/to/repo --dry-run --json` | 대상 repo의 AGENTS routing과 `.agent-harness/` 운영 문서 계획. |
 | IssueOps | `agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json` | issue -> plan -> worktree -> feedback -> PR/MR workflow state 시작. |
 | Policy | `agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | 명령 실행 전에 안전성 판단. |
