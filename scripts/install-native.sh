@@ -516,3 +516,23 @@ PY
 elif [[ "$DRY_RUN" == "1" ]]; then
   log "dry-run: would refresh Claude user-scope MCP server agent_harness"
 fi
+
+# --- GJC host integration: plugin bundle (MCP+launcher), first-party lifecycle hook,
+# and filesystem skill discovery. The plugin manifest only carries `mcps` (GJC
+# forbids `skills` in bundles and plugin hooks are constrained to one declared
+# event, which does not fit agent-harness's multi-event hook), so skills and
+# hooks are wired via GJC's first-party discovery surfaces here.
+if command -v gjc >/dev/null 2>&1 && [[ "$DRY_RUN" != "1" ]]; then
+  log "refreshing GJC plugin agent-harness (user scope)"
+  gjc plugin install --user --force "$ROOT" >/dev/null 2>&1 || true
+
+  log "syncing agent-harness lifecycle hook to ~/.gjc/agent/hooks/"
+  mkdir -p "$HOME/.gjc/agent/hooks"
+  cp "$ROOT/gjc-plugin/hook.ts" "$HOME/.gjc/agent/hooks/agent-harness.ts"
+
+  log "ensuring GJC filesystem skill discovery points at agent-harness skills/"
+  gjc config set skills.enabled true >/dev/null 2>&1 || true
+  gjc config set skills.customDirectories "[\"$ROOT/skills\"]" >/dev/null 2>&1 || true
+elif [[ "$DRY_RUN" == "1" ]]; then
+  log "dry-run: would refresh GJC plugin, lifecycle hook, and skill discovery"
+fi
