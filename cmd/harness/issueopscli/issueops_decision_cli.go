@@ -3,7 +3,6 @@ package issueopscli
 import (
 	"flag"
 	"fmt"
-	"strings"
 
 	"agent-harness/internal/core"
 )
@@ -23,9 +22,9 @@ func runIssueOpsDecision(args []string) error {
 	kind := fs.String("kind", "", "decision kind: product, architecture, implementation, test, review, scope, follow-up")
 	rationale := fs.String("rationale", "", "decision rationale")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	var alternatives sliceFlag
-	var affectedLinks sliceFlag
-	var affectedArtifacts sliceFlag
+	var alternatives repeatedFlag
+	var affectedLinks repeatedFlag
+	var affectedArtifacts repeatedFlag
 	fs.Var(&alternatives, "alternative", "alternatives considered (repeatable)")
 	fs.Var(&affectedLinks, "affected-link", "affected issue link URLs (repeatable)")
 	fs.Var(&affectedArtifacts, "affected-artifact", "affected artifacts: issue, plan, test, implementation, review, pr_mr, follow-up (repeatable)")
@@ -43,8 +42,3 @@ func runIssueOpsDecision(args []string) error {
 	})
 	return printIssueOpsResult(record, *jsonOut, err)
 }
-
-type sliceFlag []string
-
-func (f *sliceFlag) String() string     { return strings.Join(*f, ", ") }
-func (f *sliceFlag) Set(v string) error { *f = append(*f, v); return nil }
