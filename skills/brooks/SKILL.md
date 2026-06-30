@@ -33,7 +33,9 @@ This maps to `.agent-harness/SUB_AGENT_PATTERNS.md` pattern #4 (Devil's Advocate
 
 **Red flag — you are violating the mandate if:** you are reasoning through these gates in the same context that produced the plan. Stop. Dispatch a sub-agent.
 
-## IssueOps Benchmark Artifact Contract
+## Devil's-Advocate Verdict Evidence — feeds the IssueOps regress audit
+
+Brooks has no pioneer-evidence scorer (unlike codd/dijkstra/turing, there is no `brooks` case in `issueOpsPioneerSkillEvidenceComplete`). This block is not graded as pioneer-skill evidence; it feeds the regress/devil's-advocate audit, where a `stop` verdict takes an IssueOps cycle backward to `grill`.
 
 When Brooks contributes to an IssueOps artifact or benchmark response, include a compact labeled evidence block. Do not produce this block for a plan you refused to review or could not access; report the blocker instead.
 
@@ -76,7 +78,7 @@ Return a structured verdict, not prose:
 2. **The single most dangerous flaw** (one sentence) + the cheapest experiment that would prove you wrong.
 3. **Per-gate findings** (only gates that found something — cite the exact step/assumption/artifact).
 4. **The smaller plan** Brooks would ship instead (concrete, not "simplify it").
-5. The IssueOps Benchmark Artifact Contract block above.
+5. The Devil's-Advocate Verdict Evidence block above.
 
 If the plan survives all five gates, say so plainly and return `proceed` — a devil's advocate that never approves anything is noise. Earned approval is a real signal.
 

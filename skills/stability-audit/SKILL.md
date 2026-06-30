@@ -51,7 +51,7 @@ If the script reports `ok: false`, inspect `failures`, patch the root cause, and
 
 3. **Hook contract sweep**
    - Invoke every configured `~/.codex/hooks.json` event with representative JSON.
-   - Fail on non-zero exit, invalid JSON, unsupported `suppressOutput`, Stop hook keys outside `decision`/`reason`, or noisy multi-line `UserPromptSubmit` context.
+   - Fail on non-zero exit, invalid JSON, unsupported `suppressOutput`, Stop hook keys outside the emitted stop-control set (`continue`/`decision`/`reason`/`systemMessage`), or noisy multi-line `UserPromptSubmit` context.
 
 4. **MCP and daemon sweep**
    - Run standalone JSON-RPC through `./bin/agent-harness mcp` with temp state/daemon dirs.
