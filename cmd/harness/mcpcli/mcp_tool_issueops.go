@@ -106,6 +106,13 @@ func issueOpsRemoteScoringRequestFromMCP(args map[string]any) (core.IssueOpsRemo
 	return req, nil
 }
 
+// The issueops_remote_* handlers below are CLI-only. create-issue, create-child,
+// create-pr, and sync-graph resolve a provider via provider.Resolve, which shells
+// out to the gh (GitHub) or glab (GitLab) CLI; render-template only formats
+// artifact text locally. The harness embeds no remote MCP client, so the
+// documented "CLI-first, MCP fallback" rule has no in-harness fallback here:
+// that fallback requires a separately configured EXTERNAL github/gitlab MCP
+// server, not these tools.
 func handleMCPRemoteRenderTemplate(args map[string]any) MCPToolOutcome {
 	result := core.RenderIssueOpsTemplate(core.IssueOpsTemplateInput{
 		Kind:         core.IssueOpsArtifactKind(argmap.String(args, "kind")),

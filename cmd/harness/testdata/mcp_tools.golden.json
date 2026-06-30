@@ -1515,6 +1515,10 @@
           "description": "Age in days after which an idle non-done cycle is flagged needs-review. Defaults to 14.",
           "type": "number"
         },
+        "prune_done": {
+          "description": "Go duration (e.g. 720h) after which done cycles are pruned; only takes effect together with apply. Defaults to 720h (30 days), matching the CLI --prune-done flag.",
+          "type": "string"
+        },
         "repo": {
           "description": "Source repository path whose cycles are scanned.",
           "type": "string"

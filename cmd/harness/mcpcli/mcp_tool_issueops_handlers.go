@@ -286,10 +286,21 @@ func handleMCPIssueOpsForceRelease(args map[string]any) MCPToolOutcome {
 }
 
 func handleMCPIssueOpsCleanupStale(args map[string]any) MCPToolOutcome {
+	// prune_done mirrors the CLI --prune-done flag (default 720h): it lets the
+	// MCP cleanup-stale tool prune done cycles past the retention window, which
+	// only takes effect together with apply.
+	pruneDoneAge, err := time.ParseDuration(argmap.StringDefault(args, "prune_done", "720h"))
+	if err != nil {
+		return issueOpsMCPOutcome(nil, fmt.Errorf("invalid prune_done duration: %w", err), "IssueOps stale cleanup failed")
+	}
+	if pruneDoneAge < 0 {
+		return issueOpsMCPOutcome(nil, fmt.Errorf("prune_done must be non-negative, got %s", pruneDoneAge), "IssueOps stale cleanup failed")
+	}
 	result := core.ScanStaleIssueOpsCycles(core.IssueOpsStaleScanRequest{
-		Repo:   argmap.String(args, "repo"),
-		MaxAge: time.Duration(argmap.Int(args, "max_age", 14)) * 24 * time.Hour,
-		Apply:  argmap.Bool(args, "apply"),
+		Repo:         argmap.String(args, "repo"),
+		MaxAge:       time.Duration(argmap.Int(args, "max_age", 14)) * 24 * time.Hour,
+		Apply:        argmap.Bool(args, "apply"),
+		PruneDoneAge: pruneDoneAge,
 	})
 	if !result.OK {
 		return issueOpsMCPOutcome(nil, fmt.Errorf("%s", strings.Join(result.Errors, "; ")), "IssueOps stale cleanup failed")
