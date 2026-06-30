@@ -78,7 +78,11 @@ func runHookStop(args []string) error {
 		}
 		return printJSON(ho.FormatStopBlock(core.BuildNextActionJudgementRelayReason(nextActionTrigger)))
 	}
-	if engelbartCanvasBlock {
+	// Guard the Engelbart canvas block with stop_hook_active, mirroring the
+	// missing-choice gate below: hosts set it true when this Stop is itself a
+	// continuation of a prior stop-hook block, so re-blocking a re-entered turn
+	// would loop forever even after the response recovered.
+	if engelbartCanvasBlock && !stopHookActive {
 		markHookMetricBlocked()
 		return printJSON(ho.FormatStopBlock(engelbartCanvasReason))
 	}
@@ -112,15 +116,32 @@ func buildEngelbartCanvasSectionsBlock(message, transcriptPath string, enforce b
 	if !enforce {
 		return false, ""
 	}
-	canvasWrites := collectSlackCanvasCreateContents(transcriptPath)
-	evidence := strings.Join(canvasWrites, "\n")
+	// Scope evidence to the most recent canvas write instead of joining the whole
+	// transcript: a stale earlier-incomplete canvas must not block a now-complete
+	// one, and a corrected second create_canvas must not trip the cross-blob section
+	// order check.
+	write, hasWrite := latestSlackCanvasWrite(transcriptPath)
+	evidence := ""
+	createContext := false
+	if hasWrite {
+		evidence = write.Content
+		createContext = write.IsCreate
+	}
 	if strings.TrimSpace(evidence) == "" {
 		if !looksLikeEngelbartCanvasCreationContext(message) {
 			return false, ""
 		}
 		evidence = message
+		createContext = true
 	}
 	if !looksLikeEngelbartCanvasContext(message + "\n" + evidence) {
+		return false, ""
+	}
+	// Only a freshly created canvas must carry the full template. A
+	// slack_update_canvas is an incremental fix, so it can clear the gate when it is
+	// the most recent write (the canvas was corrected) but never blocks on its own
+	// (a partial append must not be forced to repeat the whole template).
+	if !createContext {
 		return false, ""
 	}
 	if len(missingRequiredEngelbartCanvasBlocks(evidence)) == 0 || len(missingRequiredEngelbartCanvasBlocks(message)) == 0 {
@@ -208,16 +229,37 @@ func indexOfAny(text string, alternatives []string) int {
 	return best
 }
 
-func collectSlackCanvasCreateContents(transcriptPath string) []string {
+// slackCanvasWrite is one Slack canvas tool result captured from the transcript.
+type slackCanvasWrite struct {
+	Content  string
+	IsCreate bool // true for slack_create_canvas, false for slack_update_canvas
+}
+
+// slackCanvasToolKind distinguishes the canvas tool context while walking a
+// transcript line so nested content is attributed to the right write.
+type slackCanvasToolKind int
+
+const (
+	slackCanvasToolNone slackCanvasToolKind = iota
+	slackCanvasToolCreate
+	slackCanvasToolUpdate
+)
+
+// latestSlackCanvasWrite returns the most recent Slack canvas write (create or
+// update) recorded in the transcript. Scoping to the single most-recent canvas
+// keeps stale earlier-incomplete content from blocking a now-complete canvas and
+// lets a slack_update_canvas fix clear the gate.
+func latestSlackCanvasWrite(transcriptPath string) (slackCanvasWrite, bool) {
 	transcriptPath = strings.TrimSpace(transcriptPath)
 	if transcriptPath == "" {
-		return nil
+		return slackCanvasWrite{}, false
 	}
 	b, err := os.ReadFile(transcriptPath)
 	if err != nil {
-		return nil
+		return slackCanvasWrite{}, false
 	}
-	contents := []string{}
+	var latest slackCanvasWrite
+	found := false
 	for _, line := range strings.Split(string(b), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -227,42 +269,47 @@ func collectSlackCanvasCreateContents(transcriptPath string) []string {
 		if err := json.Unmarshal([]byte(line), &value); err != nil {
 			continue
 		}
-		contents = append(contents, collectCanvasCreateContentValues(value, false)...)
+		for _, write := range collectCanvasWriteValues(value, slackCanvasToolNone) {
+			latest = write
+			found = true
+		}
 	}
-	return contents
+	return latest, found
 }
 
-func collectCanvasCreateContentValues(value any, inCanvasCreateTool bool) []string {
+func collectCanvasWriteValues(value any, kind slackCanvasToolKind) []slackCanvasWrite {
 	switch v := value.(type) {
 	case map[string]any:
-		inCanvasCreateTool = inCanvasCreateTool || mapNamesSlackCanvasCreateTool(v)
-		contents := []string{}
+		if mapped := slackCanvasToolKindForMap(v); mapped != slackCanvasToolNone {
+			kind = mapped
+		}
+		writes := []slackCanvasWrite{}
 		for key, child := range v {
-			if inCanvasCreateTool && strings.EqualFold(key, "content") {
+			if kind != slackCanvasToolNone && strings.EqualFold(key, "content") {
 				if text, ok := child.(string); ok && strings.TrimSpace(text) != "" {
-					contents = append(contents, text)
+					writes = append(writes, slackCanvasWrite{Content: text, IsCreate: kind == slackCanvasToolCreate})
 				}
 			}
-			contents = append(contents, collectCanvasCreateContentValues(child, inCanvasCreateTool)...)
+			writes = append(writes, collectCanvasWriteValues(child, kind)...)
 			if text, ok := child.(string); ok {
-				contents = append(contents, collectCanvasCreateContentValuesFromJSONString(text, inCanvasCreateTool)...)
+				writes = append(writes, collectCanvasWriteValuesFromJSONString(text, kind)...)
 			}
 		}
-		return contents
+		return writes
 	case []any:
-		contents := []string{}
+		writes := []slackCanvasWrite{}
 		for _, child := range v {
-			contents = append(contents, collectCanvasCreateContentValues(child, inCanvasCreateTool)...)
+			writes = append(writes, collectCanvasWriteValues(child, kind)...)
 		}
-		return contents
+		return writes
 	case string:
-		return collectCanvasCreateContentValuesFromJSONString(v, inCanvasCreateTool)
+		return collectCanvasWriteValuesFromJSONString(v, kind)
 	default:
 		return nil
 	}
 }
 
-func collectCanvasCreateContentValuesFromJSONString(text string, inCanvasCreateTool bool) []string {
+func collectCanvasWriteValuesFromJSONString(text string, kind slackCanvasToolKind) []slackCanvasWrite {
 	trimmed := strings.TrimSpace(text)
 	if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
 		return nil
@@ -271,24 +318,31 @@ func collectCanvasCreateContentValuesFromJSONString(text string, inCanvasCreateT
 	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
 		return nil
 	}
-	return collectCanvasCreateContentValues(parsed, inCanvasCreateTool)
+	return collectCanvasWriteValues(parsed, kind)
 }
 
-func mapNamesSlackCanvasCreateTool(m map[string]any) bool {
+func slackCanvasToolKindForMap(m map[string]any) slackCanvasToolKind {
 	for _, key := range []string{"name", "tool_name", "recipient_name"} {
 		value, ok := m[key].(string)
 		if !ok {
 			continue
 		}
 		if isSlackCanvasCreateTool(value) {
-			return true
+			return slackCanvasToolCreate
+		}
+		if isSlackCanvasUpdateTool(value) {
+			return slackCanvasToolUpdate
 		}
 	}
-	return false
+	return slackCanvasToolNone
 }
 
 func isSlackCanvasCreateTool(name string) bool {
 	name = strings.ToLower(strings.TrimSpace(name))
-	return strings.Contains(name, "slack_create_canvas") ||
-		strings.Contains(name, "_slack_create_canvas")
+	return strings.Contains(name, "slack_create_canvas")
+}
+
+func isSlackCanvasUpdateTool(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	return strings.Contains(name, "slack_update_canvas")
 }
