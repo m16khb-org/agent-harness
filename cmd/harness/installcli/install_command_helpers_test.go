@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"agent-harness/internal/port"
@@ -71,6 +72,15 @@ func captureInstallCommandOutput(t *testing.T, input io.Reader, fn func() error)
 	os.Stdout = outWrite
 	os.Stderr = errWrite
 
+	// Drain both pipes concurrently so a command that writes more than the OS
+	// pipe buffer (~64KB) does not deadlock on a full pipe before fn() returns
+	// (and before the writers are closed below).
+	var stdout, stderr bytes.Buffer
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); _, _ = io.Copy(&stdout, outRead) }()
+	go func() { defer wg.Done(); _, _ = io.Copy(&stderr, errRead) }()
+
 	if input != nil {
 		if _, err := io.Copy(inWrite, input); err != nil {
 			t.Fatalf("write stdin pipe: %v", err)
@@ -86,14 +96,7 @@ func captureInstallCommandOutput(t *testing.T, input io.Reader, fn func() error)
 	if err := errWrite.Close(); err != nil {
 		t.Fatalf("close stderr pipe: %v", err)
 	}
-
-	var stdout, stderr bytes.Buffer
-	if _, err := io.Copy(&stdout, outRead); err != nil {
-		t.Fatalf("read stdout pipe: %v", err)
-	}
-	if _, err := io.Copy(&stderr, errRead); err != nil {
-		t.Fatalf("read stderr pipe: %v", err)
-	}
+	wg.Wait()
 	return stdout.String(), stderr.String(), callErr
 }
 
