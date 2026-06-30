@@ -34,7 +34,9 @@ func VerifyChildIssueLive(childURL string) error {
 }
 
 func VerifyGitHubIssueLive(issueURL string) error {
-	if _, err := exec.Command("gh", "issue", "view", strings.TrimSpace(issueURL), "--json", "url,state,title").Output(); err != nil {
+	if _, err := runRemoteVerifyCommand(func() *exec.Cmd {
+		return exec.Command("gh", "issue", "view", strings.TrimSpace(issueURL), "--json", "url,state,title")
+	}); err != nil {
 		return fmt.Errorf("verify GitHub child issue through gh failed: %w", commandOutputError(err))
 	}
 	return nil
@@ -70,7 +72,9 @@ func VerifyGitLabIssueLive(parsed *url.URL) error {
 
 func fetchGitLabIssueEndpoint(hostname, project, kind, iid string) ([]byte, error) {
 	endpoint := "projects/" + url.PathEscape(project) + "/" + kind + "/" + iid
-	return exec.Command("glab", "api", endpoint, "--hostname", hostname).Output()
+	return runRemoteVerifyCommand(func() *exec.Cmd {
+		return exec.Command("glab", "api", endpoint, "--hostname", hostname)
+	})
 }
 
 func verifyGitLabIssuePayloadIsTask(out []byte, iid string) error {

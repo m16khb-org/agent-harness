@@ -12,7 +12,9 @@ import (
 )
 
 func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, error) {
-	out, err := exec.Command("gh", "pr", "view", artifactURL, "--json", "url,labels,assignees,state,mergedAt").Output()
+	out, err := runRemoteVerifyCommand(func() *exec.Cmd {
+		return exec.Command("gh", "pr", "view", artifactURL, "--json", "url,labels,assignees,state,mergedAt")
+	})
 	if err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("verify GitHub PR through gh failed: %w", commandOutputError(err))
 	}
@@ -51,8 +53,9 @@ func fetchGitLabMergeRequestArtifact(artifactURL string) (liveRemoteArtifact, er
 		return liveRemoteArtifact{}, fmt.Errorf("remote artifact url must be a GitLab merge request URL")
 	}
 	endpoint := "projects/" + url.PathEscape(parts.Project) + "/merge_requests/" + parts.IID
-	cmd := exec.Command("glab", "api", endpoint, "--hostname", parsed.Hostname())
-	out, err := cmd.Output()
+	out, err := runRemoteVerifyCommand(func() *exec.Cmd {
+		return exec.Command("glab", "api", endpoint, "--hostname", parsed.Hostname())
+	})
 	if err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("verify GitLab MR through glab failed: %w", commandOutputError(err))
 	}
