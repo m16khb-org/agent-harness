@@ -1669,6 +1669,24 @@
           "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
         },
         {
+          "bytes": 19223,
+          "headings": [
+            "Agent-Harness Quality Audit — 2026-06-30",
+            "Executive Summary",
+            "Prioritized Findings",
+            "Recommendations by Bucket",
+            "A. Quick wins (quick effort, real value) — do this first",
+            "B. Structural / correctness (medium+ effort)",
+            "C. Skills \u0026 DX polish (mostly P3)",
+            "Doc/code drift to reconcile",
+            "What's Already Solid",
+            "Independent cross-check (main-agent)"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
+          "rel_path": ".agent-harness/research/quality-audit-2026-06-30.md",
+          "title": "Agent-Harness Quality Audit — 2026-06-30"
+        },
+        {
           "bytes": 7469,
           "headings": [
             "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions",
@@ -1872,6 +1890,7 @@
         "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
+        "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
         "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
@@ -1889,10 +1908,16 @@
         "codex_mcp_configured": false,
         "codex_skill_installed": false,
         "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
+        "gjc_hook_shim_installed": false,
+        "gjc_plugin_installed": false,
+        "gjc_skill_installed": false,
+        "gjc_skill_path": "$HOME/.gjc/agent/skills/atomic-commit-push",
         "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
         "project_claude_mcp_config": true,
         "project_claude_skill": "$PROJECT_SKILL_PRESENCE",
         "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push",
+        "project_gjc_skill": false,
+        "project_gjc_skill_path": "$HARNESS_ROOT/.gjc/skills/atomic-commit-push",
         "project_reasonix_settings": false,
         "project_reasonix_skill": false,
         "project_reasonix_skill_path": "$HARNESS_ROOT/.reasonix/skills/atomic-commit-push",
@@ -6088,7 +6113,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 62,
+        "docs_indexed": 63,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -8977,6 +9002,24 @@
                 "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
               },
               {
+                "bytes": 19223,
+                "headings": [
+                  "Agent-Harness Quality Audit — 2026-06-30",
+                  "Executive Summary",
+                  "Prioritized Findings",
+                  "Recommendations by Bucket",
+                  "A. Quick wins (quick effort, real value) — do this first",
+                  "B. Structural / correctness (medium+ effort)",
+                  "C. Skills \u0026 DX polish (mostly P3)",
+                  "Doc/code drift to reconcile",
+                  "What's Already Solid",
+                  "Independent cross-check (main-agent)"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
+                "rel_path": ".agent-harness/research/quality-audit-2026-06-30.md",
+                "title": "Agent-Harness Quality Audit — 2026-06-30"
+              },
+              {
                 "bytes": 7469,
                 "headings": [
                   "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions",
@@ -9187,6 +9230,7 @@
               "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
+              "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
               "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
@@ -9204,10 +9248,16 @@
               "codex_mcp_configured": false,
               "codex_skill_installed": false,
               "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
+              "gjc_hook_shim_installed": false,
+              "gjc_plugin_installed": false,
+              "gjc_skill_installed": false,
+              "gjc_skill_path": "$HOME/.gjc/agent/skills/atomic-commit-push",
               "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
               "project_claude_mcp_config": true,
               "project_claude_skill": "$PROJECT_SKILL_PRESENCE",
               "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push",
+              "project_gjc_skill": false,
+              "project_gjc_skill_path": "$HARNESS_ROOT/.gjc/skills/atomic-commit-push",
               "project_reasonix_settings": false,
               "project_reasonix_skill": false,
               "project_reasonix_skill_path": "$HARNESS_ROOT/.reasonix/skills/atomic-commit-push",
@@ -12316,7 +12366,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 62,
+              "docs_indexed": 63,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

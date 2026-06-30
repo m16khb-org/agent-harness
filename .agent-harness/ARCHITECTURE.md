@@ -198,12 +198,13 @@ Draft wiki staging:
 
 ---
 
-## 7. Codex / Claude integration map
+## 7. Codex / Claude / GJC integration map
 
 | Host | 최소 통합 | 권장 통합 | 주의 |
 |------|----------|----------|------|
 | Codex | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
 | Claude Code | `CLAUDE.md` + shell에서 `agent-harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server + `~/.claude/settings.json` UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.claude/settings.json`/`.mcp.json` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
+| GJC (gajae-code) | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.gjc/agent/skills/*` native skills + `gjc plugin install`로 등록된 always-on MCP bundle + `~/.gjc/agent/hooks/agent-harness.ts` TS HookAPI shim(context/session_start/turn_end/auto_compaction/tool_call/tool_result → user-prompt/session-start/stop/pre-compact/post-compact/pre-post-tool-use) | GJC의 shell-hook discovery는 pre/post-tool만 지원하므로 user-prompt/session-start/stop/compact는 TS HookAPI shim으로 연결한다. `.gjc/skills` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
 
 ---
 

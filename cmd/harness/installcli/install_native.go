@@ -9,6 +9,7 @@ import (
 
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
+	gjcadapter "agent-harness/internal/adapter/gjc"
 	reasonixadapter "agent-harness/internal/adapter/reasonix"
 	"agent-harness/internal/core"
 )
@@ -62,7 +63,7 @@ func runInstallCommand(commandName string, args []string) error {
 	req := core.DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, filepath.Join(root, "bin", "agent-harness"))
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
-	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller(), reasonixadapter.NewInstaller())
+	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller(), reasonixadapter.NewInstaller(), gjcadapter.NewInstaller())
 	if pathErr := applyInstallPathPlan(&result, req, *pathMode); pathErr != nil {
 		result.OK = false
 		err = errors.Join(err, pathErr)

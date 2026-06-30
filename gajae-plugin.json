@@ -1,0 +1,14 @@
+{
+  "kind": "gajae-code-plugin",
+  "name": "agent-harness",
+  "version": "0.1.0",
+  "mcps": [
+    {
+      "name": "agent_harness",
+      "transport": "stdio",
+      "command": "bun",
+      "args": ["gjc-plugin/launcher.ts"],
+      "cwd": "."
+    }
+  ]
+}
