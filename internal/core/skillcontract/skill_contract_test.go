@@ -2,6 +2,7 @@ package skillcontract
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -68,4 +69,88 @@ func TestBernersLeeSkillPrefersHarnessWebFetchContract(t *testing.T) {
 		"Report `auth_required`, `paywalled`, `challenge`, or `blocked`",
 		"Do not add host-specific fictional tools",
 	})
+}
+
+func TestAtomicCommitPushSkillPinsStagingAndPushSafetyContract(t *testing.T) {
+	assertSkillContains(t, "atomic-commit-push", []string{
+		// Broad-staging guardrail.
+		"Never use `git add .` or `git commit -a`",
+		// Secret-blocker guardrail.
+		"as blockers until inspected or excluded",
+		// Force-push guardrail.
+		"Never force-push unless explicitly requested",
+	})
+}
+
+func TestGitlabUsecaseSkillPinsAssigneeContract(t *testing.T) {
+	assertSkillContains(t, "gitlab-usecase", []string{
+		// Concrete-assignee guardrail (no `@me` placeholder).
+		"Do not use `@me`",
+	})
+}
+
+func TestSelfVerifySkillPinsGateContract(t *testing.T) {
+	assertSkillContains(t, "self-verify", []string{
+		// QA-gate boundary: this loop does not pick improvements itself.
+		"This skill is a QA gate; it does not choose improvements by itself.",
+		// Promote safety: confirmed promote refuses a failed source snapshot.
+		"Confirmed promote refuses a source snapshot that did not pass the gate",
+	})
+}
+
+func TestSelfAugmentSkillPinsImplementationContract(t *testing.T) {
+	assertSkillContains(t, "self-augment", []string{
+		// Augmentation must produce a real change, not a report.
+		"A report-only analysis or test-only run is not enough.",
+		// Cosmetic-only edits do not satisfy the loop.
+		"Cosmetic-only changes do not count.",
+	})
+}
+
+func TestProjectBootstrapSkillPinsSafetyContract(t *testing.T) {
+	assertSkillContains(t, "project-bootstrap", []string{
+		// Never clobber an existing AGENTS.md.
+		"Never overwrite an existing `AGENTS.md` wholesale.",
+		// Generated docs are evidence-backed drafts, not authoritative.
+		"Treat generated docs as evidence-backed drafts.",
+	})
+}
+
+// TestAllSkillsFrontmatterValidates closes the gap where only a handful of
+// skills were pinned by phrase: it runs scripts/validate-skill.py over every
+// directory under skills/ so every SKILL.md's frontmatter is validated on each
+// `go test` run (including CI's `go test ./...`).
+func TestAllSkillsFrontmatterValidates(t *testing.T) {
+	python, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skipf("python3 not available: %v", err)
+	}
+	repoRoot := filepath.Join("..", "..", "..")
+	validator := filepath.Join(repoRoot, "scripts", "validate-skill.py")
+	if _, err := os.Stat(validator); err != nil {
+		t.Fatalf("validate-skill.py not found: %v", err)
+	}
+	skillsDir := filepath.Join(repoRoot, "skills")
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := 0
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		skillDir := filepath.Join(skillsDir, entry.Name())
+		if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); err != nil {
+			continue
+		}
+		checked++
+		out, err := exec.Command(python, validator, skillDir).CombinedOutput()
+		if err != nil {
+			t.Errorf("validate-skill.py failed for skills/%s: %v\n%s", entry.Name(), err, out)
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no skills/* directory with a SKILL.md was validated")
+	}
 }

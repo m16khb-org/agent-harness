@@ -47,6 +47,16 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Validate all skill frontmatter
+        # Runs scripts/validate-skill.py over every skills/* dir so no SKILL.md
+        # ships with malformed/unexpected frontmatter. `bash -e` (the default)
+        # fails the step on the first invalid skill.
+        run: |
+          for dir in skills/*/; do
+            [ -f "${dir}SKILL.md" ] || continue
+            python3 scripts/validate-skill.py "$dir"
+          done
+
       - name: Build
         run: go build -o bin/agent-harness ./cmd/harness
 
