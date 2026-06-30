@@ -232,6 +232,19 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresChildTaskMarkers(t *testing.T) {
 	}
 }
 
+func TestScoreIssueOpsBenchmarkArtifactAcceptsAllParallelSplitWithoutSequentialMarker(t *testing.T) {
+	fixture := IssueOpsBenchmarkFixture{ID: "all-parallel-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	artifact := completeBenchmarkArtifactForTest()
+	// Parallelizable-by-default policy: a split with only [p] children and no
+	// [s] marker is valid when every child can start and verify independently.
+	artifact.TaskBreakdown = "Worker A owns docs. Worker B owns tests. Worker C owns prompt evaluation. Large issue is unsafe as one work item because one issue would hide risky behavior changes. Uses provider-native child work items and records them with issueops link-child. Execution wave 1: [p] docs is parallelizable, prerequisite none; [p] tests is parallelizable, prerequisite none; [p] prompt evaluation is parallelizable, prerequisite none. No child depends on another child's output. Execution order: all children run in parallel in wave 1."
+
+	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
+	if containsString(score.CriticalFailures, "flattens large issue hierarchy") {
+		t.Fatalf("all-parallel split without [s] marker must satisfy hierarchy gate under parallel-by-default policy: %+v", score)
+	}
+}
+
 func TestScoreIssueOpsBenchmarkArtifactDetectsEvidenceCriticalFailures(t *testing.T) {
 	fixture := IssueOpsBenchmarkFixture{ID: "evidence-critical", CriticalFailures: []string{
 		"skips domain contract evidence",

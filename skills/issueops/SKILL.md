@@ -86,7 +86,7 @@ Split the issue into provider-native child tasks only when at least one primary 
 - One issue would be unsafe because the work is genuinely large, risky, or would hide independent delivery decisions, verification, rollback, or review boundaries.
 - The user, product owner, or multiple implementers explicitly requested for collaboration, parallel ownership, or separate assignees.
 
-When splitting, classify child execution dependencies before creating the tasks. Mark each child as `[p] parallelizable` or `[s] sequential`, name its prerequisites, and group children into execution waves. `[p]` means the task can start without another child task's output and its verification can run independently. `[s]` means the task must wait for another child's code, schema, remote state, migration, fixture, or decision output. The `[p]`/`[s]` prefix is mandatory in each child title and in the parent child-task section. If this classification is unclear, stop for a product/engineering choice instead of guessing.
+When splitting, design every child to be `[p] parallelizable` by default. Decompose at the `[p]` unit wherever the scope boundary allows an independent start and independent verification; reserve `[s] sequential` only for a child with a genuinely unavoidable cross-child dependency — where one child's code, schema, remote state, migration, fixture, or decision output is a hard input to another and no contract/interface decoupling can remove that ordering. Before marking a child `[s]`, state the specific unavoidable dependency that blocks parallelization (for example, a shared database migration that must land before dependent code compiles). If you cannot name a concrete hard dependency, the child must be `[p]`. Name each child's prerequisites (`none` for `[p]`) and group children into execution waves. `[p]` means the task can start without another child task's output and its verification can run independently. `[s]` means the task must wait for another child's output. The `[p]`/`[s]` prefix is mandatory in each child title and in the parent child-task section. If this classification is unclear, stop for a product/engineering choice instead of guessing.
 
 Supporting signals are not sufficient by themselves. Use them only as evidence for one of the primary split triggers:
 
@@ -111,11 +111,12 @@ If splitting is needed:
    - GitLab: create child `Task` work items under the parent issue/work item through the GraphQL work-item hierarchy path owned by `remote create-child`. Do not fall back to the REST Issues API `issue_type=task` path or ordinary `glab issue create` as the creation/attachment mechanism.
 4. Each child task must have:
    - a Korean title
-   - a mandatory title prefix: `[p]` for `parallelizable` or `[s]` for `sequential`
+   - a mandatory title prefix: `[p]` for `parallelizable` (default) or `[s]` for `sequential` (only with a named unavoidable dependency)
    - a Korean body
    - clear scope
-   - execution class: `[p] parallelizable` or `[s] sequential`
+   - execution class: `[p] parallelizable` (default) or `[s] sequential` (only when a hard cross-child dependency is stated)
    - prerequisites/dependencies, or `none`
+   - for `[s]` only: the specific unavoidable dependency that prevents parallelization (omit for `[p]`)
    - execution wave/order
    - acceptance criteria
    - verification commands or evidence
@@ -128,8 +129,8 @@ If splitting is needed:
    - each child task link
    - recommended execution order
    - `[p]`/`[s]` prefix for every child link
-   - execution waves that separate parallelizable child tasks from sequential child tasks
-   - prerequisites/dependencies for every sequential child task
+   - execution waves grouping parallelizable (`[p]`) children first, then sequential (`[s]`) children if any
+   - prerequisites/dependencies for every child, and the unavoidable dependency that forces each `[s]` child
    - scope summary per child
    - note that the parent is now the umbrella coordination issue
 7. Do not leave the child-task plan only in comments. Comments may be used only for temporary coordination if the provider body update fails.
@@ -167,6 +168,7 @@ After the gate, report exactly one of these:
 Parent:
 - <parent issue URL>
 
+Default decomposition is all-`[p]` parallelizable children; include `[s]` lines only when a child has a stated unavoidable dependency. Omit every `[s]` example below when the split is fully parallelizable.
 Child tasks:
 1. [p] <child task URL> - <scope> - class: parallelizable - prerequisites: none - wave: <N>
 2. [s] <child task URL> - <scope> - class: sequential - prerequisites: <child URLs> - wave: <N>
