@@ -7,12 +7,30 @@
 // (~/.local/bin/agent-harness -> the repo's current build), and cwd is set to the
 // agent-harness repo so HARNESS_ROOT is auto-detected by the binary. This keeps
 // the plugin live across `go build` rebuilds without re-installing the plugin.
-//
-// AGENT_HARNESS_ROOT is machine-local by design: this is a personal harness on a
-// single workstation. Update it if the repo moves.
 import { spawn } from "node:child_process";
 
-const AGENT_HARNESS_ROOT = "/Users/habin/workspace/agent-harness";
+// Resolve the agent-harness repo root from the PATH shim
+// (~/.local/bin/agent-harness -> <repo>/bin/agent-harness), so the launcher is
+// machine-independent: the copied bundle inside ~/.gjc/agent/gjc-plugins/ stays
+// correct across workstations and `go build` rebuilds without re-installing.
+// AGENT_HARNESS_ROOT env wins when set; cwd is the final fallback.
+import { readlinkSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+function resolveHarnessRoot(): string {
+	if (process.env.AGENT_HARNESS_ROOT) return process.env.AGENT_HARNESS_ROOT;
+	const shim = path.join(os.homedir(), ".local", "bin", "agent-harness");
+	try {
+		// <repo>/bin/agent-harness -> <repo>
+		const target = readlinkSync(shim);
+		return path.dirname(path.dirname(target));
+	} catch {
+		return process.cwd();
+	}
+}
+
+const AGENT_HARNESS_ROOT = resolveHarnessRoot();
 
 const child = spawn("agent-harness", ["mcp"], {
 	cwd: AGENT_HARNESS_ROOT,
