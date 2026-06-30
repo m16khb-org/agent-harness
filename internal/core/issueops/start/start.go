@@ -64,11 +64,18 @@ func Start(store Store, stateRoot string, req model.IssueOpsStartRequest) (model
 // releasing the cycle. Resuming such a record would resurrect old phase/plan/
 // intent state for what is effectively new work and would immediately re-trigger
 // the source-checkout worktree guard. In that case the cycle is reset to a fresh
-// problem-phase record that keeps repo+branch identity, CreatedAt, and the issue
-// linkage anchors (IssueURL/IssueLinks) for recovery, and records the prior
-// phase plus a timestamp for audit. The in-worktree artifacts (plan, intent,
-// design review, branch prepare, decisions, feedback) are cleared because they
-// described the abandoned worktree. The pr phase is never reset here — see
+// problem-phase record that keeps repo+branch identity, CreatedAt, the issue
+// linkage anchors (IssueURL/IssueLinks), and the non-worktree analysis/audit
+// metadata (Intent/DesignReview/DomainReview/Decisions/PlanPrep/
+// CompatibilityReview/ExecutionDecision/RoutingTrace). That metadata lives in
+// the state JSON, not the worktree, and describes the problem/plan that carries
+// into re-work, so a transient worktree-miss must not destroy it. The
+// design/compatibility approval flags inside that metadata are cleared, so the
+// re-entered cycle must re-earn those gates while keeping the analysis content.
+// The prior phase plus a timestamp are recorded for audit. Only the artifacts that
+// genuinely describe the abandoned worktree (PlanPath, WorktreePath,
+// BranchPrepare, WorktreeTools, ai-slop-clean evidence) and the transient
+// feedback queue are cleared. The pr phase is never reset here — see
 // model.IssueOpsPhaseResettableOnStaleWorktree — so remote PR linkage survives.
 func resumeOrReset(store Store, stateRoot string, existing model.IssueOpsRecord) (model.IssueOpsRecord, error) {
 	if !staleResettableWorktreeCycle(store, existing) {
@@ -80,19 +87,47 @@ func resumeOrReset(store Store, stateRoot string, existing model.IssueOpsRecord)
 		createdAt = now
 	}
 	reset := model.IssueOpsRecord{
-		OK:                   true,
-		ID:                   existing.ID,
-		Repo:                 existing.Repo,
-		Branch:               existing.Branch,
-		Phase:                model.IssueOpsPhaseProblem,
-		IssueURL:             existing.IssueURL,
-		IssueLinks:           existing.IssueLinks,
-		Feedback:             []model.IssueOpsFeedbackItem{},
+		OK:     true,
+		ID:     existing.ID,
+		Repo:   existing.Repo,
+		Branch: existing.Branch,
+		Phase:  model.IssueOpsPhaseProblem,
+		// Non-worktree analysis/audit metadata: this state lives in the state
+		// JSON (not the deleted worktree) and describes the problem/plan that
+		// carries into re-work, so it survives the reset.
+		Intent:              existing.Intent,
+		DesignReview:        existing.DesignReview,
+		DomainReview:        existing.DomainReview,
+		IssueURL:            existing.IssueURL,
+		IssueLinks:          existing.IssueLinks,
+		Decisions:           existing.Decisions,
+		PlanPrep:            existing.PlanPrep,
+		ExecutionDecision:   existing.ExecutionDecision,
+		CompatibilityReview: existing.CompatibilityReview,
+		Feedback:            []model.IssueOpsFeedbackItem{},
+		RoutingTrace:        existing.RoutingTrace,
+		// Audit breadcrumbs for the abandoned worktree.
 		StaleResetAt:         now,
 		StaleResetPriorPhase: string(existing.Phase),
 		OrphanWorktreePath:   existing.WorktreePath,
 		CreatedAt:            createdAt,
 		UpdatedAt:            now,
+	}
+	// A stale-reset re-enters at problem phase as effectively new work, so the
+	// design/compatibility *approval gates* must be re-earned even though the
+	// review content above is preserved for reference. This mirrors
+	// RegressIssueOpsForReplan, which clears DesignReview.Approved when sending a
+	// cycle back for re-plan. Copy the structs so clearing the gate flag does not
+	// mutate the prior record's pointers.
+	if existing.DesignReview != nil {
+		dr := *existing.DesignReview
+		dr.Approved = false
+		reset.DesignReview = &dr
+	}
+	if existing.CompatibilityReview != nil {
+		cr := *existing.CompatibilityReview
+		cr.Approved = false
+		reset.CompatibilityReview = &cr
 	}
 	return store.Write(stateRoot, reset)
 }

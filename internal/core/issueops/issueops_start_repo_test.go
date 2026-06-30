@@ -52,8 +52,11 @@ func TestStartIssueOpsResetsStaleCycleWhenWorktreeDeleted(t *testing.T) {
 	if record.Phase != IssueOpsPhaseProblem {
 		t.Fatalf("stale cycle with deleted worktree should reset to problem phase, got %q", record.Phase)
 	}
-	if record.PlanPath != "" || record.Intent != nil {
-		t.Fatalf("reset should clear plan/intent, got plan=%q intent=%v", record.PlanPath, record.Intent)
+	if record.PlanPath != "" {
+		t.Fatalf("reset should clear the in-worktree plan path, got plan=%q", record.PlanPath)
+	}
+	if record.Intent == nil || record.Intent.RawRequest != "old work" {
+		t.Fatalf("reset should preserve recoverable intent metadata (state JSON, not worktree), got intent=%v", record.Intent)
 	}
 	if record.StaleResetAt == "" {
 		t.Fatalf("reset should stamp stale_reset_at for audit, got empty")
@@ -131,8 +134,11 @@ func TestStartIssueOpsResetPreservesIssueLinkageAnchors(t *testing.T) {
 	if record.StaleResetPriorPhase != string(IssueOpsPhaseImplement) {
 		t.Fatalf("reset must record prior phase for audit, got %q", record.StaleResetPriorPhase)
 	}
-	if record.PlanPath != "" || record.Intent != nil {
-		t.Fatalf("reset must clear in-worktree artifacts, got plan=%q intent=%v", record.PlanPath, record.Intent)
+	if record.PlanPath != "" {
+		t.Fatalf("reset must clear the in-worktree plan path, got plan=%q", record.PlanPath)
+	}
+	if record.Intent == nil {
+		t.Fatalf("reset must preserve recoverable intent metadata (state JSON, not worktree), got intent=nil")
 	}
 }
 
