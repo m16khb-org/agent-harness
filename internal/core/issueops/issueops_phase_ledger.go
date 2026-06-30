@@ -268,6 +268,19 @@ func IssueOpsStatus(stateRoot, id string) (IssueOpsRecord, error) {
 	}
 	if len(record.PhaseLedger) == 0 {
 		record.PhaseLedger = DeriveIssueOpsPhaseLedger(record)
+	} else {
+		// Backfill phases absent from a partial persisted ledger (a multi-phase
+		// forward jump only stamps its endpoints; a post-regress ledger persists
+		// just the stale plan/compatibility-review entries) so status never
+		// under-reports a phase whose artifacts are complete. Read-only: persisted
+		// entries (real timestamps, stale notes) always win — only phases missing
+		// from the persisted ledger are filled in from the derived ledger.
+		derived := DeriveIssueOpsPhaseLedger(record)
+		for phase, entry := range derived {
+			if _, ok := record.PhaseLedger[phase]; !ok {
+				record.PhaseLedger[phase] = entry
+			}
+		}
 	}
 	return record, nil
 }
@@ -291,6 +304,10 @@ func stampIssueOpsForwardTransition(ledger IssueOpsPhaseLedger, prevPhase, newPh
 	prev.CompletedAt = now
 	prev.Artifacts = issueOpsPhaseArtifactKeys(prevPhase)
 	prev.Missing = nil
+	// A genuinely re-observed forward transition completing this phase clears any
+	// stale-regression mark left by RegressIssueOpsForReplan: a phase that has been
+	// legitimately re-completed is no longer stale.
+	prev.Notes = clearStaleLedgerNotes(prev.Notes)
 	ledger[prevPhase] = prev
 
 	entry := ledger[newPhase]
@@ -300,4 +317,25 @@ func stampIssueOpsForwardTransition(ledger IssueOpsPhaseLedger, prevPhase, newPh
 	}
 	ledger[newPhase] = entry
 	return ledger
+}
+
+// clearStaleLedgerNotes removes stale-regression markers (see
+// markIssueOpsLedgerStale) from a ledger entry's notes. Called when a forward
+// transition re-completes a previously-regressed phase, so the stale mark — which
+// no longer applies — does not linger in status forever.
+func clearStaleLedgerNotes(notes []string) []string {
+	if len(notes) == 0 {
+		return notes
+	}
+	kept := make([]string, 0, len(notes))
+	for _, n := range notes {
+		if strings.HasPrefix(n, "stale:") {
+			continue
+		}
+		kept = append(kept, n)
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+	return kept
 }

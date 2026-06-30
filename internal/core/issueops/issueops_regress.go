@@ -58,7 +58,12 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (IssueOpsRecor
 	}
 
 	// Rule 12: retain the now-ahead plan/compatibility-review ledger entries as
-	// audit, but mark them stale so they no longer read as complete.
+	// audit, but mark them stale so they no longer read as complete. A cycle can
+	// reach plan/compatibility-review with an empty or partial ledger (linking and
+	// compatibility-review recorders don't stamp it), so this may persist just the
+	// two stale entries; IssueOpsStatus backfills the remaining phases for display
+	// rather than persisting a derived ledger here (keeping derived ledgers
+	// out of the persisted state).
 	record.PhaseLedger = markIssueOpsLedgerStale(record.PhaseLedger, reason,
 		IssueOpsPhasePlan, IssueOpsPhaseCompatibilityReview)
 
