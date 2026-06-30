@@ -466,3 +466,69 @@ func writeFakeGlab(t *testing.T, binDir, script string) {
 		t.Fatal(err)
 	}
 }
+
+func TestParseGitLabIssueURLAcceptsSelfHostedCustomDomain(t *testing.T) {
+	cases := []struct {
+		name        string
+		raw         string
+		wantHost    string
+		wantProject string
+		wantIID     string
+	}{
+		{"gitlab.example.com", "https://gitlab.example.com/acme/repo/-/issues/12", "gitlab.example.com", "acme/repo", "12"},
+		{"custom domain without gitlab substring", "https://code.company.com/group/proj/-/issues/5", "code.company.com", "group/proj", "5"},
+		{"internal host with subgroups", "https://git.internal/group/subgroup/proj/-/issues/9", "git.internal", "group/subgroup/proj", "9"},
+		{"scheme-less self-hosted (back-compat)", "gitlab.example.com/acme/repo/-/issues/12", "gitlab.example.com", "acme/repo", "12"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			host, project, iid, err := parseGitLabIssueURL(tc.raw)
+			if err != nil {
+				t.Fatalf("parseGitLabIssueURL(%q) error: %v", tc.raw, err)
+			}
+			if host != tc.wantHost || project != tc.wantProject || iid != tc.wantIID {
+				t.Fatalf("got host=%q project=%q iid=%q, want host=%q project=%q iid=%q", host, project, iid, tc.wantHost, tc.wantProject, tc.wantIID)
+			}
+		})
+	}
+}
+
+func TestParseGitLabIssueURLRejectsNonIssue(t *testing.T) {
+	if _, _, _, err := parseGitLabIssueURL("https://code.company.com/group/proj/-/work_items/5"); err == nil {
+		t.Fatal("work item URL must not parse as a parent issue URL")
+	}
+	if _, _, _, err := parseGitLabIssueURL("https://github.com/acme/repo/issues/5"); err == nil {
+		t.Fatal("GitHub issue URL must be rejected by the GitLab issue parser")
+	}
+}
+
+func TestParseGitLabWorkItemURLAcceptsSelfHostedCustomDomain(t *testing.T) {
+	cases := []struct {
+		name        string
+		raw         string
+		wantHost    string
+		wantProject string
+		wantIID     string
+	}{
+		{"gitlab.example.com", "https://gitlab.example.com/acme/repo/-/work_items/34", "gitlab.example.com", "acme/repo", "34"},
+		{"custom domain without gitlab substring", "https://code.company.com/group/proj/-/work_items/7", "code.company.com", "group/proj", "7"},
+		{"internal host with subgroups", "https://git.internal/group/subgroup/proj/-/work_items/3", "git.internal", "group/subgroup/proj", "3"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			host, project, iid, err := parseGitLabWorkItemURL(tc.raw)
+			if err != nil {
+				t.Fatalf("parseGitLabWorkItemURL(%q) error: %v", tc.raw, err)
+			}
+			if host != tc.wantHost || project != tc.wantProject || iid != tc.wantIID {
+				t.Fatalf("got host=%q project=%q iid=%q, want host=%q project=%q iid=%q", host, project, iid, tc.wantHost, tc.wantProject, tc.wantIID)
+			}
+		})
+	}
+}
+
+func TestParseGitLabWorkItemURLRejectsNonWorkItem(t *testing.T) {
+	if _, _, _, err := parseGitLabWorkItemURL("https://code.company.com/group/proj/-/issues/5"); err == nil {
+		t.Fatal("issue URL must not parse as a work item URL")
+	}
+}

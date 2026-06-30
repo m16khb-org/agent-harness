@@ -3,10 +3,12 @@ package gitlab
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os/exec"
 	"strconv"
 	"strings"
 
+	"agent-harness/cmd/harness/issueopscli/remoteparse"
 	"agent-harness/internal/port"
 )
 
@@ -599,49 +601,47 @@ func gitlabCreatedChildError(childURL string, err error) error {
 }
 
 func parseGitLabIssueURL(raw string) (hostname, projectPath, iid string, err error) {
-	raw = strings.TrimSpace(raw)
-	parts := strings.Split(raw, "/")
-	for i := 0; i < len(parts); i++ {
-		if !strings.Contains(parts[i], "gitlab") {
-			continue
-		}
-		var project []string
-		for j := i + 1; j < len(parts); j++ {
-			if parts[j] == "-" && j+2 < len(parts) && parts[j+1] == "issues" {
-				if len(project) == 0 || parts[j+2] == "" {
-					break
-				}
-				return parts[i], strings.Join(project, "/"), parts[j+2], nil
-			}
-			if parts[j] != "" {
-				project = append(project, parts[j])
-			}
-		}
+	host, project, issueIID, kind, perr := splitGitLabIssueURL(raw)
+	if perr != nil || kind != "issues" {
+		return "", "", "", fmt.Errorf("parent_issue_url must be a GitLab issue URL")
 	}
-	return "", "", "", fmt.Errorf("parent_issue_url must be a GitLab issue URL")
+	return host, project, issueIID, nil
 }
 
 func parseGitLabWorkItemURL(raw string) (hostname, projectPath, iid string, err error) {
-	raw = strings.TrimSpace(raw)
-	parts := strings.Split(raw, "/")
-	for i := 0; i < len(parts); i++ {
-		if !strings.Contains(parts[i], "gitlab") {
-			continue
-		}
-		var project []string
-		for j := i + 1; j < len(parts); j++ {
-			if parts[j] == "-" && j+2 < len(parts) && parts[j+1] == "work_items" {
-				if len(project) == 0 || parts[j+2] == "" {
-					break
-				}
-				return parts[i], strings.Join(project, "/"), parts[j+2], nil
-			}
-			if parts[j] != "" {
-				project = append(project, parts[j])
-			}
+	host, project, itemIID, kind, perr := splitGitLabIssueURL(raw)
+	if perr != nil || kind != "work_items" {
+		return "", "", "", fmt.Errorf("child_url must be a GitLab work item URL")
+	}
+	return host, project, itemIID, nil
+}
+
+// splitGitLabIssueURL structurally decodes a GitLab issue or work item URL using
+// net/url plus the shared remoteparse path splitter (keyed on the /-/issues/ and
+// /-/work_items/ markers). This accepts self-hosted instances on custom domains
+// that do not contain the literal substring "gitlab", matching the structural
+// detection already used by the verify layer (remoteverify.VerifyGitLabIssueLive).
+func splitGitLabIssueURL(raw string) (hostname, projectPath, iid, kind string, err error) {
+	trimmed := strings.TrimSpace(raw)
+	parsed, perr := url.Parse(trimmed)
+	if perr != nil {
+		return "", "", "", "", perr
+	}
+	// A scheme-less URL (e.g. "gitlab.example.com/group/proj/-/issues/1") parses
+	// with an empty Host and the authority folded into Path; re-parse with an
+	// https scheme so the host is recovered, matching what the old substring
+	// scanner tolerated.
+	if parsed.Hostname() == "" && !strings.Contains(trimmed, "://") {
+		if reparsed, rerr := url.Parse("https://" + trimmed); rerr == nil {
+			parsed = reparsed
 		}
 	}
-	return "", "", "", fmt.Errorf("child_url must be a GitLab work item URL")
+	hostname = parsed.Hostname()
+	parts := remoteparse.SplitGitLabIssuePath(parsed.EscapedPath())
+	if hostname == "" || parts.Project == "" || parts.IID == "" {
+		return "", "", "", "", fmt.Errorf("not a GitLab issue or work item URL")
+	}
+	return hostname, parts.Project, parts.IID, parts.Kind, nil
 }
 
 func gitlabChildrenContain(widgets []gitlabWorkItemWidget, id, iid string) bool {
