@@ -616,7 +616,7 @@
           "title": "Agent Workflow"
         },
         {
-          "bytes": 25936,
+          "bytes": 26540,
           "headings": [
             "agent-harness 아키텍처",
             "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -626,7 +626,7 @@
             "4. Planned package boundaries",
             "5. Docs / state / config / logs",
             "6. Command / policy model",
-            "7. Codex / Claude integration map",
+            "7. Codex / Claude / GJC integration map",
             "8. 변경 체크리스트",
             "9. Pioneer Skills Layer",
             "스킬 목록과 IssueOps 연동",
@@ -1584,6 +1584,31 @@
           "title": "Codex system skill quick_validate.py source path"
         },
         {
+          "bytes": 13590,
+          "headings": [
+            "Research: Can agent-harness integrate its 7 lifecycle hooks into GJC (gajae-code) the way it does into Codex/Claude Code?",
+            "TL;DR",
+            "Method",
+            "Findings",
+            "Finding 1 — Claude Code exposes a very wide lifecycle hook set via shell-command handlers",
+            "Finding 2 — Codex exposes a Claude-style command-hook set via hooks.json",
+            "Finding 3 — GJC's runtime emits a lifecycle event set comparable to Claude/Codex",
+            "Finding 4 — GJC's user-facing hook registration is split into two narrow surfaces",
+            "Finding 5 — GJC's first-party \"HookAPI\" is the intended extension model and is not shell-command based",
+            "Cross-check (adversarial)",
+            "Conclusion",
+            "Access boundary",
+            "Addendum (2026-06-30) — CORRECTION: full lifecycle integration IS possible via the first-party TS HookAPI",
+            "What changed",
+            "New conclusion",
+            "Sources for the correction",
+            "Impact on the upstream issue"
+          ],
+          "path": "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
+          "rel_path": ".agent-harness/research/gjc-hook-lifecycle-gap.md",
+          "title": "Research: Can agent-harness integrate its 7 lifecycle hooks into GJC (gajae-code) the way it does into Codex/Claude Code?"
+        },
+        {
           "bytes": 3354,
           "headings": [
             "Karpathy AutoResearch Notes for Pioneer Skill Quality",
@@ -1787,7 +1812,7 @@
           "title": "Self-verification and self-augmentation loops"
         },
         {
-          "bytes": 4830,
+          "bytes": 4847,
           "headings": [
             "Self-augmentation loop",
             "Goal",
@@ -1886,6 +1911,7 @@
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
         "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
+        "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
         "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
         "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
@@ -6113,7 +6139,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 63,
+        "docs_indexed": 64,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -7949,7 +7975,7 @@
                 "title": "Agent Workflow"
               },
               {
-                "bytes": 25936,
+                "bytes": 26540,
                 "headings": [
                   "agent-harness 아키텍처",
                   "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
@@ -7959,7 +7985,7 @@
                   "4. Planned package boundaries",
                   "5. Docs / state / config / logs",
                   "6. Command / policy model",
-                  "7. Codex / Claude integration map",
+                  "7. Codex / Claude / GJC integration map",
                   "8. 변경 체크리스트",
                   "9. Pioneer Skills Layer",
                   "스킬 목록과 IssueOps 연동",
@@ -8917,6 +8943,31 @@
                 "title": "Codex system skill quick_validate.py source path"
               },
               {
+                "bytes": 13590,
+                "headings": [
+                  "Research: Can agent-harness integrate its 7 lifecycle hooks into GJC (gajae-code) the way it does into Codex/Claude Code?",
+                  "TL;DR",
+                  "Method",
+                  "Findings",
+                  "Finding 1 — Claude Code exposes a very wide lifecycle hook set via shell-command handlers",
+                  "Finding 2 — Codex exposes a Claude-style command-hook set via hooks.json",
+                  "Finding 3 — GJC's runtime emits a lifecycle event set comparable to Claude/Codex",
+                  "Finding 4 — GJC's user-facing hook registration is split into two narrow surfaces",
+                  "Finding 5 — GJC's first-party \"HookAPI\" is the intended extension model and is not shell-command based",
+                  "Cross-check (adversarial)",
+                  "Conclusion",
+                  "Access boundary",
+                  "Addendum (2026-06-30) — CORRECTION: full lifecycle integration IS possible via the first-party TS HookAPI",
+                  "What changed",
+                  "New conclusion",
+                  "Sources for the correction",
+                  "Impact on the upstream issue"
+                ],
+                "path": "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
+                "rel_path": ".agent-harness/research/gjc-hook-lifecycle-gap.md",
+                "title": "Research: Can agent-harness integrate its 7 lifecycle hooks into GJC (gajae-code) the way it does into Codex/Claude Code?"
+              },
+              {
                 "bytes": 3354,
                 "headings": [
                   "Karpathy AutoResearch Notes for Pioneer Skill Quality",
@@ -9120,7 +9171,7 @@
                 "title": "Self-verification and self-augmentation loops"
               },
               {
-                "bytes": 4830,
+                "bytes": 4847,
                 "headings": [
                   "Self-augmentation loop",
                   "Goal",
@@ -9226,6 +9277,7 @@
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
               "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
+              "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
               "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
               "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
@@ -12366,7 +12418,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 63,
+              "docs_indexed": 64,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
