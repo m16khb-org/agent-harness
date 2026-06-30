@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -193,8 +194,23 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 	}
 }
 
+// issueOpsStartLockID computes the lock id used by StartIssueOps. It must
+// mirror start.Start's record-id derivation exactly: trim repo+branch and
+// abs-normalize the repo (filepath.Abs) before hashing, so that a relative and
+// the equivalent absolute repo path take the SAME lock and serialize on the
+// SAME record. newIssueOpsID does no abs-normalization, so hashing the raw repo
+// here would let concurrent relative/absolute starts hold different locks while
+// read-modify-writing one record (lost-update TOCTOU).
+func issueOpsStartLockID(repo, branch string) string {
+	repo = strings.TrimSpace(repo)
+	if abs, err := filepath.Abs(repo); err == nil {
+		repo = abs
+	}
+	return newIssueOpsID(repo, strings.TrimSpace(branch))
+}
+
 func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
-	id := newIssueOpsID(strings.TrimSpace(req.Repo), strings.TrimSpace(req.Branch))
+	id := issueOpsStartLockID(req.Repo, req.Branch)
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(stateRoot, id, func() error {
 		var e error
@@ -365,11 +381,11 @@ func issueOpsCompatibilityReviewStore() compatibilityreview.Store {
 
 // unbindIssueOpsSessionForCycle clears the repo's session binding only when
 // it still points at the given cycle, so closing one cycle never drops a
-// binding that another active cycle owns.
+// binding that another active cycle owns. The read-compare-delete runs
+// atomically under the per-repo session lock to close the TOCTOU where a
+// concurrent cycle's bind is dropped between the read and the delete.
 func unbindIssueOpsSessionForCycle(repo, id string) {
-	if binding, err := ReadIssueOpsSession(repo); err == nil && binding.CycleID == id {
-		_ = UnbindIssueOpsSession(repo)
-	}
+	_ = session.UnbindForCycle(issueOpsSessionStore(), repo, id)
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {

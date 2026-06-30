@@ -166,7 +166,10 @@ func TestScanStalePruneDoneCycles(t *testing.T) {
 
 	stateRoot := IssueOpsStateRoot()
 
-	// Pre-create lock files for the old done cycle so we can verify they're removed.
+	// Pre-create a lock file for the old done cycle so we can verify prune does
+	// NOT delete it (flock locks are inode-based; deleting a live lock between
+	// lock/unlock cycles splits the inode). The lock is reclaimed by the
+	// orphan-lock sweep on a later run once the .json is gone.
 	oldLockPath := filepath.Join(stateRoot, oldID+".lock")
 	if err := os.WriteFile(oldLockPath, []byte{}, 0o600); err != nil {
 		t.Fatal(err)
@@ -188,9 +191,12 @@ func TestScanStalePruneDoneCycles(t *testing.T) {
 		t.Fatalf("old done cycle JSON should be removed, got stat err=%v", err)
 	}
 
-	// Old lock file must be gone.
-	if _, err := os.Stat(oldLockPath); !os.IsNotExist(err) {
-		t.Fatalf("old lock file should be removed, got stat err=%v", err)
+	// Old lock file must still exist: prune-done removes only the .json. Deleting
+	// the live .lock here would reintroduce the flock inode-split bug. The orphan
+	// sweep that runs before prune saw the .json still present this pass, so the
+	// lock survives and is reclaimed on a subsequent scan.
+	if _, err := os.Stat(oldLockPath); err != nil {
+		t.Fatalf("old lock file must persist (only .json is pruned), got stat err=%v", err)
 	}
 
 	// Recent done cycle must still exist.

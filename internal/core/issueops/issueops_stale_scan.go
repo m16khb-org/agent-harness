@@ -81,17 +81,20 @@ func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResu
 			result.Released = append(result.Released, finding.ID)
 		}
 	}
-	// After releasing stale cycles, run git worktree prune on the repo to clean
-	// up stale .git/worktrees/<name> registrations left behind by deleted/reset
+	// Whenever --apply is set, run git worktree prune on the repo to clean up
+	// stale .git/worktrees/<name> registrations left behind by deleted/reset
 	// worktrees. Also remove any still-present orphan worktree directories that
-	// were stamped by a previous force-release or stale-reset (these are
-	// off-hot-path git calls, per CAUTIONS 21).
-	if req.Apply && len(result.Released) > 0 {
+	// were stamped by a previous force-release or stale-reset, and sweep orphan
+	// .lock files whose .json cycle is gone (these are off-hot-path git calls,
+	// per CAUTIONS 21). This must run even when no cycle was released this pass so
+	// the orphan-lock sweep reclaims locks left by earlier prune-done runs.
+	if req.Apply {
 		issueOpsGitWorktreeCleanup(repo, &result)
 	}
 	// Prune done cycles older than PruneDoneAge when --apply is set. This
-	// removes old JSON + lock files for cycles that have already reached the
-	// done phase and are past the retention threshold.
+	// removes the old JSON file for cycles that have already reached the done
+	// phase and are past the retention threshold (the .lock is left for the
+	// orphan-lock sweep so flock inodes are not split).
 	if req.Apply && req.PruneDoneAge > 0 {
 		pruneDoneCycles(repo, req.PruneDoneAge, &result)
 	}
@@ -147,9 +150,10 @@ func issueOpsGitWorktreeCleanup(repo string, result *IssueOpsStaleScanResult) {
 	}
 }
 
-// pruneDoneCycles removes done-cycle JSON and lock files older than maxAge for
-// the given repo. This is only called from the off-hot-path stale scan with
-// --apply and --prune-done set.
+// pruneDoneCycles removes done-cycle JSON files older than maxAge for the given
+// repo. The matching .lock is intentionally left in place (flock inodes must not
+// be split); the orphan-lock sweep reclaims it once the .json is gone. This is
+// only called from the off-hot-path stale scan with --apply and --prune-done set.
 func pruneDoneCycles(repo string, maxAge time.Duration, result *IssueOpsStaleScanResult) {
 	stateRoot := IssueOpsStateRoot()
 	entries, err := os.ReadDir(stateRoot)
@@ -172,9 +176,12 @@ func pruneDoneCycles(repo string, maxAge time.Duration, result *IssueOpsStaleSca
 			continue
 		}
 		jsonPath := filepath.Join(stateRoot, entry.Name())
-		lockPath := filepath.Join(stateRoot, id+".lock")
+		// Remove ONLY the .json. The .lock must NOT be deleted here: flock locks
+		// are inode-based, so deleting a live lock file between lock/unlock cycles
+		// splits the inode and breaks mutual exclusion (see issueops_lock_unix.go).
+		// Once the .json is gone the .lock is orphaned and the off-hot-path
+		// orphan-lock sweep in issueOpsGitWorktreeCleanup reclaims it.
 		os.Remove(jsonPath)
-		os.Remove(lockPath)
 		result.PrunedDone++
 	}
 }

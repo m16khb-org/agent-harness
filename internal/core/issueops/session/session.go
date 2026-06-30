@@ -37,12 +37,22 @@ type Store struct {
 }
 
 // Bind records a session-to-cycle binding. It overwrites any existing binding
-// for the same repo. Pass an empty cycleID to unbind.
+// for the same repo. Pass an empty cycleID to unbind. The write runs under the
+// per-repo session lock so concurrent cycles racing on the shared per-repo
+// binding file cannot interleave their read-modify-write spans.
 func Bind(store Store, repo, cycleID, branch, expectedWorktree string) error {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
 		return fmt.Errorf("repo is required")
 	}
+	return withSessionLock(store, repo, func() error {
+		return writeBinding(store, repo, cycleID, branch, expectedWorktree)
+	})
+}
+
+// writeBinding performs the actual binding-file mutation. Callers must hold the
+// per-repo session lock and pass an already-trimmed, non-empty repo.
+func writeBinding(store Store, repo, cycleID, branch, expectedWorktree string) error {
 	key := bindingKey(repo)
 	dir := store.StateRoot()
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -144,6 +154,44 @@ func Unbind(store Store, repo string) error {
 	return Bind(store, repo, "", "", "")
 }
 
+// UnbindForCycle removes the session binding for a repo only when it still
+// points at cycleID. The read-compare-delete runs atomically under the per-repo
+// session lock so closing one cycle never drops a binding that a concurrent
+// cycle wrote between the read and the delete (TOCTOU).
+func UnbindForCycle(store Store, repo, cycleID string) error {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return fmt.Errorf("repo is required")
+	}
+	cycleID = strings.TrimSpace(cycleID)
+	return withSessionLock(store, repo, func() error {
+		b, err := Read(store, repo)
+		if err != nil {
+			return err
+		}
+		if b.CycleID != cycleID {
+			return nil
+		}
+		return writeBinding(store, repo, "", "", "")
+	})
+}
+
+// withSessionLock serializes all binding-file mutations for a repo under a
+// per-repo advisory lock held on <stateRoot>/<bindingKey>.lock. The per-cycle
+// IssueOps lock cannot serialize two different cycles racing on the shared
+// per-repo binding file, so this lock guards bind vs cross-cycle unbind.
+func withSessionLock(store Store, repo string, fn func() error) error {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return fmt.Errorf("repo is required")
+	}
+	dir := store.StateRoot()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	return withFileLock(lockPath(dir, bindingKey(repo)), fn)
+}
+
 func bindingKey(repo string) string {
 	sum := sha256.Sum256([]byte(repo))
 	return "issueops-session-" + hex.EncodeToString(sum[:])[:16]
@@ -151,4 +199,8 @@ func bindingKey(repo string) string {
 
 func bindingPath(dir, key string) string {
 	return filepath.Join(dir, key+".json")
+}
+
+func lockPath(dir, key string) string {
+	return filepath.Join(dir, key+".lock")
 }
