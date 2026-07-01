@@ -24,7 +24,13 @@ Before producing or creating meeting minutes, require both:
 - A participant list from the user or source metadata. This is the access-grant participant list for the final Canvas.
 - The meeting transcript text that will be preserved under `원문 전사본 전문`.
 
-If either the participant list or transcript is missing, stop and ask for the missing input before drafting, creating, or indexing the meeting artifact. Do not infer the access-grant participant list solely from generic speaker labels such as `참석자 1`; speaker labels can supplement the correction appendix, but they do not satisfy the required participant list. A final meeting Canvas must not be created from fallback placeholder content.
+Input collection order is sequential. If either the participant list or transcript is missing, stop and ask for the missing input before drafting, creating, or indexing the meeting artifact, but ask in this order:
+
+1. When no participant list is present, ask only for the participant list. Do not ask for the transcript in the same response.
+2. After the participant list is provided, confirm the received participants, then ask for the meeting transcript text.
+3. When both inputs are present, continue with the normal Engelbart workflow.
+
+Do not infer the access-grant participant list solely from generic speaker labels such as `참석자 1`; speaker labels can supplement the correction appendix, but they do not satisfy the required participant list. A final meeting Canvas must not be created from fallback placeholder content.
 
 ## Canvas UI/UX Principles
 
@@ -197,9 +203,9 @@ Use local background as high-confidence correction candidates for product names,
 
 1. Identify the requested output: full minutes, Slack Canvas meeting doc, manual index-binding handoff, Slack recap, action table, or prompt.
 2. Confirm required inputs before drafting or writing:
-   - Require the participant list.
-   - Require the meeting transcript text.
-   - If either is missing, ask for the missing input and stop.
+   - If no participant list is present, ask only for the participant list and stop.
+   - If a participant list is present but the transcript is missing, confirm the received participants, ask for the meeting transcript text, and stop.
+   - If both participant list and transcript are present, continue with the normal Engelbart workflow.
 3. Resolve Canvas target:
    - Use `#dev-team-backend` by default.
    - Apply a user-provided 채널 override when present.

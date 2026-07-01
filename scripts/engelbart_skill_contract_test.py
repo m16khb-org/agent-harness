@@ -87,6 +87,17 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("## Aliases", local_background)
         self.assertIn("프로님: 이푸름", local_background)
 
+    def test_required_meeting_inputs_are_requested_sequentially(self) -> None:
+        content = self.read_skill()
+
+        self.assertIn("## Required Meeting Inputs", content)
+        self.assertIn("Input collection order is sequential", content)
+        self.assertIn("When no participant list is present, ask only for the participant list", content)
+        self.assertIn("Do not ask for the transcript in the same response", content)
+        self.assertIn("After the participant list is provided, confirm the received participants", content)
+        self.assertIn("then ask for the meeting transcript text", content)
+        self.assertIn("When both inputs are present, continue with the normal Engelbart workflow", content)
+
     def test_manual_index_binding_handoff_replaces_list_control(self) -> None:
         content = self.read_skill()
 
