@@ -345,6 +345,17 @@ the required agent-harness skill validation gate.
 - 골든 재생성은 같은 문서 편집 커밋에 포함하거나 바로 뒤의 `chore(contract)` 커밋으로 남겨 red를 남기지 않는다.
 - 골든이 이미 red라면 무관한 변경 탓으로 오인하기 전에 clean HEAD에서 재현해 pre-existing 드리프트인지 먼저 확인한다.
 
+## 28. 새 fail-closed readiness 게이트는 모든 전진 테스트/공유 픽스처로 파급된다
+
+IssueOps에 새 implement-entry(또는 임의 phase) fail-closed 게이트를 추가하면, 그 phase로 사이클을 전진시키거나 readiness를 단언하는 **모든 테스트가 깨진다**. 게이트 코드만 고치고 인접 패키지를 안 돌리면 CI에서 뒤늦게 터진다. 실제로 devil's-advocate 게이트 추가 시 `internal/core/issueops`뿐 아니라 `cmd/harness/issueopscli`, `cmd/harness/mcpcli/issueops`, `cmd/harness/harnessapp`(response 골든 스냅샷), `internal/core/lifecycle`, `cmd/harness/hookcli`, `internal/adapter/mcp`(catalog count)까지 픽스처를 손봐야 했다.
+
+주의:
+- 게이트를 추가하면 `IssueOpsImplementationReadiness`(또는 대상 readiness)를 단언하거나 그 phase로 `AdvanceIssueOpsPhase`하는 테스트를 **넓게 grep**한다: `grep -rn 'IssueOpsImplementationReadiness\|to.*implement\|ai-slop-clean' --include='*_test.go'`.
+- 새 아티팩트를 **공유 픽스처 헬퍼**(예: `recordIssueOpsCompatibilityReviewForTest`, lifecycle/hook의 implement-ready seeder)에 seed하면 다수 테스트가 한 번에 통과한다. 직접 필드-set하는 readiness 단언 테스트는 개별 수정한다.
+- MCP 도구를 추가하면 catalog count 테스트(`IssueOpsBasicTools`/`IssueOpsLifecycleTools`의 exhaustive `wantNames`)와 `mcp_tools.golden.json`을 함께 갱신한다.
+- 게이트가 derived phase-ledger에 나타나면 `response_contracts.golden.json` 스냅샷도 드리프트한다(§27). 스냅샷이 그 phase로 전진하면 전제조건을 실제로 충족(fake CLI 포함)시켜야 한다.
+- 증분 검증만 믿지 말고 커밋 전 `go test ./...` 전체를 한 번 돌려 미검출 패키지 파급을 잡는다.
+
 ## Incident Archive
 
 Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents.md`. Keep this file focused on evergreen hazards and move one-off history there.
