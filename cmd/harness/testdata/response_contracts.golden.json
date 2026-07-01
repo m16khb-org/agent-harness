@@ -569,7 +569,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 32325,
+          "bytes": 33920,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -642,7 +642,7 @@
           "title": "agent-harness 아키텍처"
         },
         {
-          "bytes": 34924,
+          "bytes": 36386,
           "headings": [
             "주의사항 모음",
             "1. Host-specific lock-in",
@@ -707,7 +707,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 20425,
+          "bytes": 21445,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -735,7 +735,7 @@
           "title": "구현 컨벤션"
         },
         {
-          "bytes": 25117,
+          "bytes": 26862,
           "headings": [
             "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis",
             "1. Lock \u0026 Concurrency Analysis",
@@ -793,7 +793,7 @@
           "title": "Operations Map"
         },
         {
-          "bytes": 19551,
+          "bytes": 19844,
           "headings": [
             "Agent-Harness Whole-Project Audit",
             "1. Daemon Subsystem",
@@ -849,14 +849,14 @@
           "title": "Sub-Agent Usage Patterns"
         },
         {
-          "bytes": 9944,
+          "bytes": 10996,
           "headings": [
             "기술 스택",
             "1. 언어 선택",
             "2. 런타임 / 패키지 관리",
             "2.1 Upstream companion dependencies",
-            "2.2 Project pioneer skills",
-            "3. 예상 라이브러리 후보",
+            "2.2 Project skills",
+            "3. 확정 라이브러리",
             "4. 예정 명령어",
             "5. 주요 설정/상태 위치",
             "Native integration 확인",
@@ -1731,7 +1731,7 @@
           "title": "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions"
         },
         {
-          "bytes": 13218,
+          "bytes": 13536,
           "headings": [
             "AGENTS.md",
             "1. Think Before Coding",
@@ -7928,7 +7928,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 32325,
+                "bytes": 33920,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -8001,7 +8001,7 @@
                 "title": "agent-harness 아키텍처"
               },
               {
-                "bytes": 34924,
+                "bytes": 36386,
                 "headings": [
                   "주의사항 모음",
                   "1. Host-specific lock-in",
@@ -8066,7 +8066,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 20425,
+                "bytes": 21445,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",
@@ -8094,7 +8094,7 @@
                 "title": "구현 컨벤션"
               },
               {
-                "bytes": 25117,
+                "bytes": 26862,
                 "headings": [
                   "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis",
                   "1. Lock \u0026 Concurrency Analysis",
@@ -8152,7 +8152,7 @@
                 "title": "Operations Map"
               },
               {
-                "bytes": 19551,
+                "bytes": 19844,
                 "headings": [
                   "Agent-Harness Whole-Project Audit",
                   "1. Daemon Subsystem",
@@ -8208,14 +8208,14 @@
                 "title": "Sub-Agent Usage Patterns"
               },
               {
-                "bytes": 9944,
+                "bytes": 10996,
                 "headings": [
                   "기술 스택",
                   "1. 언어 선택",
                   "2. 런타임 / 패키지 관리",
                   "2.1 Upstream companion dependencies",
-                  "2.2 Project pioneer skills",
-                  "3. 예상 라이브러리 후보",
+                  "2.2 Project skills",
+                  "3. 확정 라이브러리",
                   "4. 예정 명령어",
                   "5. 주요 설정/상태 위치",
                   "Native integration 확인",
@@ -9090,7 +9090,7 @@
                 "title": "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions"
               },
               {
-                "bytes": 13218,
+                "bytes": 13536,
                 "headings": [
                   "AGENTS.md",
                   "1. Think Before Coding",
