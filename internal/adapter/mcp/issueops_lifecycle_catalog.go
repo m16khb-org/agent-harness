@@ -166,6 +166,15 @@ func IssueOpsLifecycleTools() []Tool {
 			}},
 		},
 		{
+			Name:        "issueops_remote_reflect_devils_advocate",
+			Description: "Reflect the recorded devil's-advocate findings into the linked issue's managed body section (GitHub/GitLab). Dry-run by default; pass confirm=true to write and stamp issue_reflected_at, which the regress precondition requires before re-planning a stop verdict.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id":       map[string]any{"type": "string", "description": "IssueOps id. The provider is inferred from the cycle's issue_url or branch_prepare records."},
+				"provider": map[string]any{"type": "string", "description": "Optional remote provider override.", "enum": []string{"github", "gitlab"}},
+				"confirm":  map[string]any{"type": "boolean", "description": "Set true to write to the remote issue; omit for dry-run preview."},
+			}},
+		},
+		{
 			Name:        "issueops_remote_create_child",
 			Description: "Create a provider-native child work item under the linked parent issue, verify hierarchy/labels/assignees, then record the child link in IssueOps state when confirm=true. Dry-run by default.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "title", "labels", "assignees"}, "properties": map[string]any{

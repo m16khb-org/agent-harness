@@ -23,6 +23,8 @@ type IssueProviderCreateChildResult = port.IssueProviderCreateChildResult
 type IssueProviderCloseChildRequest = port.IssueProviderCloseChildRequest
 type IssueProviderCloseChildResult = port.IssueProviderCloseChildResult
 type IssueProvider = port.IssueProvider
+type IssueProviderUpdateIssueBodySectionRequest = port.IssueProviderUpdateIssueBodySectionRequest
+type IssueProviderUpdateIssueBodySectionResult = port.IssueProviderUpdateIssueBodySectionResult
 
 func SyncRemoteIssueGraph(record IssueOpsRecord) (map[string]any, error) {
 	return issueops.SyncRemoteIssueGraph(record)
@@ -36,6 +38,13 @@ func CreateRemoteIssue(req IssueProviderCreateIssueRequest, prov IssueProvider) 
 		return IssueProviderCreateIssueResult{OK: false}, fmt.Errorf("no issue provider configured")
 	}
 	return prov.CreateIssue(req)
+}
+
+// ReflectIssueOpsDevilsAdvocateFindings reflects the recorded devil's-advocate
+// findings into the linked issue body through the supplied provider, stamping
+// IssueReflectedAt on a confirmed success. The caller resolves the provider.
+func ReflectIssueOpsDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov IssueProvider) (IssueOpsRecord, IssueProviderUpdateIssueBodySectionResult, error) {
+	return issueops.ReflectDevilsAdvocateFindings(stateRoot, id, confirm, prov)
 }
 
 // CreateRemotePullRequest opens a pull/merge request through the supplied

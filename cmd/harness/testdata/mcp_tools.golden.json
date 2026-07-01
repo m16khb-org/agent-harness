@@ -1821,6 +1821,34 @@
     "name": "issueops_remote_create_issue"
   },
   {
+    "description": "Reflect the recorded devil's-advocate findings into the linked issue's managed body section (GitHub/GitLab). Dry-run by default; pass confirm=true to write and stamp issue_reflected_at, which the regress precondition requires before re-planning a stop verdict.",
+    "inputSchema": {
+      "properties": {
+        "confirm": {
+          "description": "Set true to write to the remote issue; omit for dry-run preview.",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "IssueOps id. The provider is inferred from the cycle's issue_url or branch_prepare records.",
+          "type": "string"
+        },
+        "provider": {
+          "description": "Optional remote provider override.",
+          "enum": [
+            "github",
+            "gitlab"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_remote_reflect_devils_advocate"
+  },
+  {
     "description": "Create a provider-native child work item under the linked parent issue, verify hierarchy/labels/assignees, then record the child link in IssueOps state when confirm=true. Dry-run by default.",
     "inputSchema": {
       "properties": {

@@ -227,7 +227,7 @@
           "name": "version"
         }
       ],
-      "hash": "bc85444a2bb15de59db51ef1f363cce7b0cd3af9e6347cf60592309e4ff05b45",
+      "hash": "b67e5cfb9c2e1873f1059e9da1a0b51608b2d40c0fe6517820dfca0e7d87502b",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -269,6 +269,7 @@
         "issueops_remote_create_child",
         "issueops_remote_create_issue",
         "issueops_remote_create_pr",
+        "issueops_remote_reflect_devils_advocate",
         "issueops_remote_render_template",
         "issueops_remote_score",
         "issueops_remote_sync_graph",
@@ -7581,7 +7582,7 @@
                 "name": "version"
               }
             ],
-            "hash": "bc85444a2bb15de59db51ef1f363cce7b0cd3af9e6347cf60592309e4ff05b45",
+            "hash": "b67e5cfb9c2e1873f1059e9da1a0b51608b2d40c0fe6517820dfca0e7d87502b",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -7623,6 +7624,7 @@
               "issueops_remote_create_child",
               "issueops_remote_create_issue",
               "issueops_remote_create_pr",
+              "issueops_remote_reflect_devils_advocate",
               "issueops_remote_render_template",
               "issueops_remote_score",
               "issueops_remote_sync_graph",

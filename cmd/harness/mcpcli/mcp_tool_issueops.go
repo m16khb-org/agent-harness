@@ -14,43 +14,44 @@ import (
 // is a single map lookup so handleIssueOpsMCPToolCall stays low-branch and each
 // tool is a small handler in mcp_tool_issueops_handlers.go.
 var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
-	"issueops_start":                         handleMCPIssueOpsStart,
-	"issueops_status":                        handleMCPIssueOpsStatus,
-	"issueops_record_intent":                 handleMCPIssueOpsRecordIntent,
-	"issueops_plan_prep_record":              handleMCPIssueOpsPlanPrepRecord,
-	"issueops_review_design":                 handleMCPIssueOpsReviewDesign,
-	"issueops_link_issue":                    handleMCPIssueOpsLinkIssue,
-	"issueops_link_plan":                     handleMCPIssueOpsLinkPlan,
-	"issueops_link_worktree":                 handleMCPIssueOpsLinkWorktree,
-	"issueops_prepare_worktree_tools":        handleMCPIssueOpsPrepareWorktreeTools,
-	"issueops_record_execution_decision":     handleMCPIssueOpsRecordExecutionDecision,
-	"issueops_record_compatibility_review":   handleMCPIssueOpsRecordCompatibilityReview,
-	"issueops_record_devils_advocate_review": handleMCPIssueOpsRecordDevilsAdvocateReview,
-	"issueops_record_domain_review":          handleMCPIssueOpsRecordDomainReview,
-	"issueops_record_ai_slop_clean_evidence": handleMCPIssueOpsRecordAISlopCleanEvidence,
-	"issueops_resolve_feedback":              handleMCPIssueOpsResolveFeedback,
-	"issueops_regress_for_replan":            handleMCPIssueOpsRegressForReplan,
-	"issueops_link_child":                    handleMCPIssueOpsLinkChild,
-	"issueops_link_related":                  handleMCPIssueOpsLinkRelated,
-	"issueops_prepare_branch":                handleMCPIssueOpsPrepareBranch,
-	"issueops_add_feedback":                  handleMCPIssueOpsAddFeedback,
-	"issueops_add_decision":                  handleMCPIssueOpsAddDecision,
-	"issueops_record_routing":                handleMCPIssueOpsRecordRouting,
-	"issueops_mark_issue_updated":            handleMCPIssueOpsMarkIssueUpdated,
-	"issueops_set_phase":                     handleMCPIssueOpsSetPhase,
-	"issueops_verify_remote_artifact":        handleMCPIssueOpsVerifyRemoteArtifact,
-	"issueops_remote_score":                  handleMCPIssueOpsRemoteScore,
-	"issueops_pr_readiness":                  handleMCPIssueOpsPRReadiness,
-	"issueops_cleanup_status":                handleMCPIssueOpsCleanupStatus,
-	"issueops_cleanup_close_children":        handleMCPIssueOpsCleanupCloseChildren,
-	"issueops_force_release":                 handleMCPIssueOpsForceRelease,
-	"issueops_cleanup_stale":                 handleMCPIssueOpsCleanupStale,
-	"issueops_remote_render_template":        handleMCPRemoteRenderTemplate,
-	"issueops_remote_create_issue":           handleMCPRemoteCreateIssue,
-	"issueops_remote_create_child":           handleMCPRemoteCreateChild,
-	"issueops_remote_create_pr":              handleMCPRemoteCreatePR,
-	"issueops_remote_sync_graph":             handleMCPRemoteSyncGraph,
-	"issueops_resume":                        handleMCPIssueOpsResume,
+	"issueops_start":                          handleMCPIssueOpsStart,
+	"issueops_status":                         handleMCPIssueOpsStatus,
+	"issueops_record_intent":                  handleMCPIssueOpsRecordIntent,
+	"issueops_plan_prep_record":               handleMCPIssueOpsPlanPrepRecord,
+	"issueops_review_design":                  handleMCPIssueOpsReviewDesign,
+	"issueops_link_issue":                     handleMCPIssueOpsLinkIssue,
+	"issueops_link_plan":                      handleMCPIssueOpsLinkPlan,
+	"issueops_link_worktree":                  handleMCPIssueOpsLinkWorktree,
+	"issueops_prepare_worktree_tools":         handleMCPIssueOpsPrepareWorktreeTools,
+	"issueops_record_execution_decision":      handleMCPIssueOpsRecordExecutionDecision,
+	"issueops_record_compatibility_review":    handleMCPIssueOpsRecordCompatibilityReview,
+	"issueops_record_devils_advocate_review":  handleMCPIssueOpsRecordDevilsAdvocateReview,
+	"issueops_record_domain_review":           handleMCPIssueOpsRecordDomainReview,
+	"issueops_record_ai_slop_clean_evidence":  handleMCPIssueOpsRecordAISlopCleanEvidence,
+	"issueops_resolve_feedback":               handleMCPIssueOpsResolveFeedback,
+	"issueops_regress_for_replan":             handleMCPIssueOpsRegressForReplan,
+	"issueops_link_child":                     handleMCPIssueOpsLinkChild,
+	"issueops_link_related":                   handleMCPIssueOpsLinkRelated,
+	"issueops_prepare_branch":                 handleMCPIssueOpsPrepareBranch,
+	"issueops_add_feedback":                   handleMCPIssueOpsAddFeedback,
+	"issueops_add_decision":                   handleMCPIssueOpsAddDecision,
+	"issueops_record_routing":                 handleMCPIssueOpsRecordRouting,
+	"issueops_mark_issue_updated":             handleMCPIssueOpsMarkIssueUpdated,
+	"issueops_set_phase":                      handleMCPIssueOpsSetPhase,
+	"issueops_verify_remote_artifact":         handleMCPIssueOpsVerifyRemoteArtifact,
+	"issueops_remote_score":                   handleMCPIssueOpsRemoteScore,
+	"issueops_pr_readiness":                   handleMCPIssueOpsPRReadiness,
+	"issueops_cleanup_status":                 handleMCPIssueOpsCleanupStatus,
+	"issueops_cleanup_close_children":         handleMCPIssueOpsCleanupCloseChildren,
+	"issueops_force_release":                  handleMCPIssueOpsForceRelease,
+	"issueops_cleanup_stale":                  handleMCPIssueOpsCleanupStale,
+	"issueops_remote_render_template":         handleMCPRemoteRenderTemplate,
+	"issueops_remote_create_issue":            handleMCPRemoteCreateIssue,
+	"issueops_remote_reflect_devils_advocate": handleMCPRemoteReflectDevilsAdvocate,
+	"issueops_remote_create_child":            handleMCPRemoteCreateChild,
+	"issueops_remote_create_pr":               handleMCPRemoteCreatePR,
+	"issueops_remote_sync_graph":              handleMCPRemoteSyncGraph,
+	"issueops_resume":                         handleMCPIssueOpsResume,
 }
 
 func handleIssueOpsMCPToolCall(call MCPToolCall) MCPToolOutcome {
@@ -174,6 +175,29 @@ func handleMCPRemoteCreateIssue(args map[string]any) MCPToolOutcome {
 		}
 	}
 	return issueOpsMCPOutcome(result, nil, "IssueOps remote create-issue failed")
+}
+
+func handleMCPRemoteReflectDevilsAdvocate(args map[string]any) MCPToolOutcome {
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote reflect-devils-advocate failed: cannot read cycle")
+	}
+	providerName := firstNonEmptyMCP(argmap.String(args, "provider"), resolveRecordProviderForMCP(record))
+	if providerName == "" {
+		return issueOpsMCPOutcome(nil, fmt.Errorf("cannot determine provider"), "IssueOps remote reflect-devils-advocate failed")
+	}
+	prov, err := provider.Resolve(providerName)
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote reflect-devils-advocate failed")
+	}
+	updated, result, err := core.ReflectIssueOpsDevilsAdvocateFindings(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.Bool(args, "confirm"), prov)
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote reflect-devils-advocate failed")
+	}
+	if argmap.Bool(args, "confirm") && result.Updated {
+		return issueOpsMCPOutcome(updated, nil, "IssueOps remote reflect-devils-advocate failed")
+	}
+	return issueOpsMCPOutcome(result, nil, "IssueOps remote reflect-devils-advocate failed")
 }
 
 func handleMCPRemoteCreateChild(args map[string]any) MCPToolOutcome {

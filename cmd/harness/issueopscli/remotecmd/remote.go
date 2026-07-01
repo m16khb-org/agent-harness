@@ -129,9 +129,60 @@ func Run(args []string, deps Deps) error {
 		return runRemoteCreatePR(args[1:], deps)
 	case "sync-graph":
 		return runRemoteSyncGraph(args[1:], deps)
+	case "reflect-devils-advocate":
+		return runRemoteReflectDevilsAdvocate(args[1:], deps)
 	default:
 		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
 	}
+}
+
+func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops remote reflect-devils-advocate", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	providerOverride := fs.String("provider", "", "remote provider override: github or gitlab")
+	confirm := fs.Bool("confirm", false, "write to the remote issue; without this, dry-run preview only")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
+	if providerName == "" {
+		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	prov, err := provider.Resolve(providerName)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	_, result, err := core.ReflectIssueOpsDevilsAdvocateFindings(core.IssueOpsStateRoot(), *id, *confirm, prov)
+	if err != nil {
+		if *jsonOut {
+			_ = deps.printError(err)
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.printJSON(result)
+	}
+	if result.Updated {
+		fmt.Printf("reflected devil's-advocate findings: %s\n", result.URL)
+	} else {
+		fmt.Println(result.Preview)
+	}
+	return nil
 }
 
 func (deps Deps) printJSON(v any) error {
