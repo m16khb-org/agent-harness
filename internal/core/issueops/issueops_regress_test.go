@@ -20,6 +20,7 @@ func recordAtPhaseForRegressTest(t *testing.T, phase IssueOpsPhase) (string, str
 	}
 	rec.Phase = phase
 	rec.DesignReview = &model.IssueOpsDesignReview{ProblemSummary: "s", ProposedDesign: "d", Verification: []string{"v"}, Approved: true, ReviewedAt: "2026-06-29T00:00:00Z"}
+	rec.DevilsAdvocateReview = &model.IssueOpsDevilsAdvocateReview{Verdict: "stop", Findings: []string{"gold-plating"}, RecordedAt: "2026-06-29T00:00:00Z", IssueReflectedAt: "2026-06-29T00:02:00Z"}
 	rec.PlanPath = "/repo/plans/x.md"
 	rec.PhaseLedger = IssueOpsPhaseLedger{
 		IssueOpsPhasePlan: IssueOpsPhaseLedgerEntry{Phase: IssueOpsPhasePlan, CompletedAt: "2026-06-29T00:01:00Z", Artifacts: []string{"plan_path"}},
@@ -46,6 +47,9 @@ func TestRegressIssueOpsForReplanFromPlan(t *testing.T) {
 	}
 	if out.DesignReview == nil || out.DesignReview.Approved {
 		t.Fatalf("regression must clear design approval to force re-plan: %#v", out.DesignReview)
+	}
+	if out.DevilsAdvocateReview != nil {
+		t.Fatalf("regression must clear the devil's-advocate review so the gate re-fires: %#v", out.DevilsAdvocateReview)
 	}
 	// audit: a scope decision captures the brooks stop reason
 	found := false
@@ -77,5 +81,35 @@ func TestRegressIssueOpsForReplanRejectedOutsidePlanCompat(t *testing.T) {
 	stateRoot, id := recordAtPhaseForRegressTest(t, IssueOpsPhaseProblem)
 	if _, err := RegressIssueOpsForReplan(stateRoot, id, "too early"); err == nil {
 		t.Fatal("regression from problem phase must be rejected")
+	}
+}
+
+func TestRegressIssueOpsForReplanRequiresReflectedStop(t *testing.T) {
+	// No devil's-advocate stop verdict → rejected.
+	stateRoot, id := recordAtPhaseForRegressTest(t, IssueOpsPhasePlan)
+	rec, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec.DevilsAdvocateReview = nil
+	if _, err := touchAndWriteIssueOps(stateRoot, rec); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RegressIssueOpsForReplan(stateRoot, id, "reason"); err == nil || !strings.Contains(err.Error(), "stop verdict") {
+		t.Fatalf("regress without a stop verdict must be rejected, got %v", err)
+	}
+
+	// Stop verdict recorded but findings not yet reflected to the issue → rejected.
+	stateRoot2, id2 := recordAtPhaseForRegressTest(t, IssueOpsPhasePlan)
+	rec2, err := ReadIssueOps(stateRoot2, id2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec2.DevilsAdvocateReview.IssueReflectedAt = ""
+	if _, err := touchAndWriteIssueOps(stateRoot2, rec2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RegressIssueOpsForReplan(stateRoot2, id2, "reason"); err == nil || !strings.Contains(err.Error(), "reflect the devil's-advocate findings") {
+		t.Fatalf("regress before reflecting findings must be rejected, got %v", err)
 	}
 }

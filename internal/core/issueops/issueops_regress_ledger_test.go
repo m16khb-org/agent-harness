@@ -24,6 +24,7 @@ func TestRegressIssueOpsForReplanStatusBackfillsAllPhases(t *testing.T) {
 	// compatibility-review paths that record artifacts without a ledger).
 	rec.Phase = IssueOpsPhasePlan
 	rec.DesignReview = &model.IssueOpsDesignReview{ProblemSummary: "s", ProposedDesign: "d", Verification: []string{"v"}, Approved: true, ReviewedAt: "2026-06-29T00:00:00Z"}
+	rec.DevilsAdvocateReview = &model.IssueOpsDevilsAdvocateReview{Verdict: "stop", Findings: []string{"gold-plating"}, RecordedAt: "2026-06-29T00:00:00Z", IssueReflectedAt: "2026-06-29T00:02:00Z"}
 	rec.PlanPath = "/repo/plans/x.md"
 	rec.PhaseLedger = nil
 	if _, err := touchAndWriteIssueOps(stateRoot, rec); err != nil {

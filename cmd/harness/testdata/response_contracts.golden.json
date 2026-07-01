@@ -4024,6 +4024,169 @@
       "repo": "$WORKSPACE",
       "updated_at": "$TIMESTAMP"
     },
+    "issueops_record_devils_advocate_review": {
+      "branch": "1-contract-branch",
+      "branch_prepare": {
+        "base_branch": "main",
+        "branch": "1-contract-branch",
+        "created_at": "$TIMESTAMP",
+        "issue_url": "https://gitlab.example/group/project/-/issues/1",
+        "link_verified": true,
+        "provider": "gitlab",
+        "steps": [
+          {
+            "description": "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
+            "order": 1,
+            "strategy": "mcp",
+            "tool": "mcp__glab.glab_api",
+            "tool_arguments": {
+              "endpoint": "projects/:fullpath/repository/branches",
+              "field": [
+                "branch=1-contract-branch",
+                "ref=main"
+              ],
+              "method": "POST"
+            }
+          },
+          {
+            "command": [
+              "glab",
+              "api",
+              "projects/:fullpath/repository/branches",
+              "-X",
+              "POST",
+              "-f",
+              "branch=1-contract-branch",
+              "-f",
+              "ref=main"
+            ],
+            "description": "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
+            "order": 2,
+            "strategy": "fallback_api"
+          },
+          {
+            "description": "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
+            "order": 3,
+            "strategy": "fail"
+          }
+        ]
+      },
+      "created_at": "$TIMESTAMP",
+      "decisions": [
+        {
+          "affected_artifacts": [
+            "test",
+            "implementation"
+          ],
+          "alternatives": [
+            "Approach B: live-only verification",
+            "Approach C: manual review"
+          ],
+          "body": "Chose approach A over B for contract snapshot coverage",
+          "created_at": "$TIMESTAMP",
+          "kind": "architecture",
+          "rationale": "Approach A keeps snapshots deterministic",
+          "title": "Contract decision"
+        }
+      ],
+      "design_review": {
+        "alternatives": [
+          "docs-only guidance"
+        ],
+        "approved": true,
+        "problem_summary": "IssueOps needs explicit design review",
+        "proposed_design": "Gate implementation on approved design",
+        "refactor_plan": "Keep changes local to IssueOps state and adapters",
+        "reviewed_at": "$TIMESTAMP",
+        "risks": [
+          "golden contract drift"
+        ],
+        "verification": [
+          "design review checked contract drift risk",
+          "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
+        ]
+      },
+      "devils_advocate_review": {
+        "findings": [
+          "second-system effect: three cache backends for one need"
+        ],
+        "recorded_at": "$TIMESTAMP",
+        "reviewer_pattern": "devils-advocate-review",
+        "verdict": "stop"
+      },
+      "feedback": [
+        {
+          "body": "tighten contract",
+          "classification": "contract_change",
+          "created_at": "$TIMESTAMP",
+          "issue_updated_at": "$TIMESTAMP",
+          "source": "user"
+        }
+      ],
+      "id": "$ISSUEOPS_ID",
+      "intent": {
+        "ambiguities": [
+          "none"
+        ],
+        "constraints": [
+          "keep contract deterministic"
+        ],
+        "intent_class": "standard",
+        "interpreted_intent": "Persist main-agent judgment before planning",
+        "non_goals": [
+          "do not continue from hook recommendation alone"
+        ],
+        "raw_request": "Refactor IssueOps intent flow",
+        "recorded_at": "$TIMESTAMP",
+        "success_criteria": [
+          "intent is recorded"
+        ]
+      },
+      "issue_links": [
+        {
+          "created_at": "$TIMESTAMP",
+          "provider": "gitlab",
+          "title": "contract child",
+          "type": "child",
+          "url": "https://gitlab.example/group/project/-/issues/2"
+        },
+        {
+          "created_at": "$TIMESTAMP",
+          "provider": "github",
+          "title": "upstream dependency",
+          "type": "depends-on",
+          "url": "https://github.com/example/repo/issues/42"
+        }
+      ],
+      "issue_url": "https://gitlab.example/group/project/-/issues/1",
+      "ok": true,
+      "phase": "plan",
+      "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
+      "plan_prep": {
+        "prior_decisions": {
+          "evidence": [
+            ".agent-harness/ADR.md"
+          ],
+          "status": "evidence"
+        },
+        "recorded_at": "$TIMESTAMP",
+        "related_issues": {
+          "evidence": [
+            "remote score: selected=#1(0.81), threshold=0.70"
+          ],
+          "status": "evidence"
+        },
+        "web_research": {
+          "evidence": [
+            ".agent-harness/research/contract.md"
+          ],
+          "status": "evidence"
+        }
+      },
+      "repo": "$WORKSPACE",
+      "updated_at": "$TIMESTAMP",
+      "worktree_path": "$ISSUEOPS_WORKTREE"
+    },
     "issueops_record_intent": {
       "branch": "1-contract-branch",
       "created_at": "$TIMESTAMP",
@@ -4244,6 +4407,11 @@
       "ok": true,
       "preview": "[dry-run] would execute: glab mr create --title contract PR --source-branch 1-contract-branch --target-branch main",
       "url": ""
+    },
+    "issueops_remote_reflect_devils_advocate": {
+      "ok": true,
+      "updated": true,
+      "url": "https://gitlab.example/group/project/-/issues/1"
     },
     "issueops_review_design": {
       "branch": "1-contract-branch",
@@ -10321,20 +10489,11 @@
               ]
             },
             "created_at": "$TIMESTAMP",
-            "decisions": [
-              {
-                "body": "brooks stop: scope too broad for one cycle",
-                "created_at": "$TIMESTAMP",
-                "kind": "scope",
-                "rationale": "regressed from plan to grill for re-plan",
-                "title": "brooks devil's-advocate stop"
-              }
-            ],
             "design_review": {
               "alternatives": [
                 "docs-only guidance"
               ],
-              "approved": false,
+              "approved": true,
               "problem_summary": "IssueOps needs explicit design review",
               "proposed_design": "Gate implementation on approved design",
               "refactor_plan": "Keep changes local to IssueOps state and adapters",
@@ -10346,6 +10505,14 @@
                 "design review checked contract drift risk",
                 "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
+            },
+            "devils_advocate_review": {
+              "findings": [
+                "second-system effect: three cache backends for one need"
+              ],
+              "recorded_at": "$TIMESTAMP",
+              "reviewer_pattern": "devils-advocate-review",
+              "verdict": "stop"
             },
             "domain_review": {
               "model_fit": "fits the IssueOps phase-ledger domain model",
@@ -10397,33 +10564,142 @@
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "plan",
-            "phase_ledger": {
-              "compatibility-review": {
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
+            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
+            "plan_prep": {
+              "prior_decisions": {
+                "evidence": [
+                  ".agent-harness/ADR.md"
                 ],
-                "phase": "compatibility-review"
+                "status": "evidence"
               },
-              "grill": {
-                "artifacts": [
-                  "issue_url",
-                  "branch",
-                  "plan_prep",
-                  "split_decision",
-                  "domain_review"
+              "recorded_at": "$TIMESTAMP",
+              "related_issues": {
+                "evidence": [
+                  "remote score: selected=#1(0.81), threshold=0.70"
                 ],
-                "completed_at": "$TIMESTAMP",
-                "entered_at": "$TIMESTAMP",
-                "phase": "grill"
+                "status": "evidence"
               },
-              "plan": {
-                "entered_at": "$TIMESTAMP",
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
+              "web_research": {
+                "evidence": [
+                  ".agent-harness/research/contract.md"
                 ],
-                "phase": "plan"
+                "status": "evidence"
               }
             },
+            "repo": "$WORKSPACE",
+            "updated_at": "$TIMESTAMP",
+            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "issueops_record_devils_advocate_review": {
+      "content": [
+        {
+          "json": {
+            "branch": "2-mcp-contract",
+            "branch_prepare": {
+              "base_branch": "main",
+              "branch": "2-mcp-contract",
+              "created_at": "$TIMESTAMP",
+              "issue_url": "https://github.com/example/repo/issues/2",
+              "link_verified": true,
+              "provider": "github",
+              "steps": [
+                {
+                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
+                  "order": 1,
+                  "strategy": "mcp_unavailable"
+                },
+                {
+                  "command": [
+                    "gh",
+                    "issue",
+                    "develop",
+                    "https://github.com/example/repo/issues/2",
+                    "--base",
+                    "main",
+                    "--name",
+                    "2-mcp-contract"
+                  ],
+                  "description": "Create a GitHub linked development branch through gh issue develop.",
+                  "order": 2,
+                  "strategy": "fallback_api"
+                },
+                {
+                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+                  "order": 3,
+                  "strategy": "fail"
+                }
+              ]
+            },
+            "created_at": "$TIMESTAMP",
+            "design_review": {
+              "alternatives": [
+                "docs-only guidance"
+              ],
+              "approved": true,
+              "problem_summary": "IssueOps needs explicit design review",
+              "proposed_design": "Gate implementation on approved design",
+              "refactor_plan": "Keep changes local to IssueOps state and adapters",
+              "reviewed_at": "$TIMESTAMP",
+              "risks": [
+                "golden contract drift"
+              ],
+              "verification": [
+                "design review checked contract drift risk",
+                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
+              ]
+            },
+            "devils_advocate_review": {
+              "findings": [
+                "second-system effect: three cache backends for one need"
+              ],
+              "recorded_at": "$TIMESTAMP",
+              "reviewer_pattern": "devils-advocate-review",
+              "verdict": "stop"
+            },
+            "feedback": [
+              {
+                "body": "tighten MCP contract",
+                "classification": "contract_change",
+                "created_at": "$TIMESTAMP",
+                "issue_updated_at": "$TIMESTAMP",
+                "source": "review"
+              }
+            ],
+            "id": "$ISSUEOPS_ID",
+            "intent": {
+              "ambiguities": [
+                "none"
+              ],
+              "constraints": [
+                "keep contract deterministic"
+              ],
+              "intent_class": "standard",
+              "interpreted_intent": "Persist main-agent judgment before planning",
+              "non_goals": [
+                "do not continue from hook recommendation alone"
+              ],
+              "raw_request": "Refactor IssueOps intent flow",
+              "recorded_at": "$TIMESTAMP",
+              "success_criteria": [
+                "intent is recorded"
+              ]
+            },
+            "issue_links": [
+              {
+                "created_at": "$TIMESTAMP",
+                "provider": "github",
+                "title": "MCP contract child",
+                "type": "child",
+                "url": "https://github.com/example/repo/issues/3"
+              }
+            ],
+            "issue_url": "https://github.com/example/repo/issues/2",
+            "ok": true,
+            "phase": "plan",
             "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "plan_prep": {
               "prior_decisions": {
@@ -10495,20 +10771,11 @@
               ]
             },
             "created_at": "$TIMESTAMP",
-            "decisions": [
-              {
-                "body": "brooks stop: scope too broad for one cycle",
-                "created_at": "$TIMESTAMP",
-                "kind": "scope",
-                "rationale": "regressed from plan to grill for re-plan",
-                "title": "brooks devil's-advocate stop"
-              }
-            ],
             "design_review": {
               "alternatives": [
                 "docs-only guidance"
               ],
-              "approved": false,
+              "approved": true,
               "problem_summary": "IssueOps needs explicit design review",
               "proposed_design": "Gate implementation on approved design",
               "refactor_plan": "Keep changes local to IssueOps state and adapters",
@@ -10520,6 +10787,14 @@
                 "design review checked contract drift risk",
                 "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
+            },
+            "devils_advocate_review": {
+              "findings": [
+                "second-system effect: three cache backends for one need"
+              ],
+              "recorded_at": "$TIMESTAMP",
+              "reviewer_pattern": "devils-advocate-review",
+              "verdict": "stop"
             },
             "domain_review": {
               "model_fit": "fits the IssueOps phase-ledger domain model",
@@ -10570,21 +10845,7 @@
             ],
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
-            "phase": "grill",
-            "phase_ledger": {
-              "compatibility-review": {
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-                ],
-                "phase": "compatibility-review"
-              },
-              "plan": {
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-                ],
-                "phase": "plan"
-              }
-            },
+            "phase": "plan",
             "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "plan_prep": {
               "prior_decisions": {
@@ -10665,152 +10926,13 @@
       "content": [
         {
           "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "decisions": [
-              {
-                "body": "brooks stop: scope too broad for one cycle",
-                "created_at": "$TIMESTAMP",
-                "kind": "scope",
-                "rationale": "regressed from plan to grill for re-plan",
-                "title": "brooks devil's-advocate stop"
-              }
-            ],
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": false,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "feedback": [
-              {
-                "body": "tighten MCP contract",
-                "classification": "contract_change",
-                "created_at": "$TIMESTAMP",
-                "issue_updated_at": "$TIMESTAMP",
-                "source": "review"
-              }
-            ],
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "grill",
-            "phase_ledger": {
-              "compatibility-review": {
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-                ],
-                "phase": "compatibility-review"
-              },
-              "plan": {
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-                ],
-                "phase": "plan"
-              }
-            },
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
+            "error": "IssueOps regress for replan failed: reflect the devil's-advocate findings to the issue before regressing (issueops remote reflect-devils-advocate --confirm)",
+            "ok": false
           },
           "type": "text"
         }
-      ]
+      ],
+      "isError": true
     },
     "issueops_remote_create_child": {
       "content": [
@@ -10824,6 +10946,18 @@
           "type": "text"
         }
       ]
+    },
+    "issueops_remote_reflect_devils_advocate": {
+      "content": [
+        {
+          "json": {
+            "error": "IssueOps remote reflect-devils-advocate failed: gh issue view failed: To get started with GitHub CLI, please run:  gh auth login\nAlternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.",
+            "ok": false
+          },
+          "type": "text"
+        }
+      ],
+      "isError": true
     },
     "issueops_resolve_feedback": {
       "content": [
@@ -10872,20 +11006,11 @@
               ]
             },
             "created_at": "$TIMESTAMP",
-            "decisions": [
-              {
-                "body": "brooks stop: scope too broad for one cycle",
-                "created_at": "$TIMESTAMP",
-                "kind": "scope",
-                "rationale": "regressed from plan to grill for re-plan",
-                "title": "brooks devil's-advocate stop"
-              }
-            ],
             "design_review": {
               "alternatives": [
                 "docs-only guidance"
               ],
-              "approved": false,
+              "approved": true,
               "problem_summary": "IssueOps needs explicit design review",
               "proposed_design": "Gate implementation on approved design",
               "refactor_plan": "Keep changes local to IssueOps state and adapters",
@@ -10897,6 +11022,14 @@
                 "design review checked contract drift risk",
                 "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
+            },
+            "devils_advocate_review": {
+              "findings": [
+                "second-system effect: three cache backends for one need"
+              ],
+              "recorded_at": "$TIMESTAMP",
+              "reviewer_pattern": "devils-advocate-review",
+              "verdict": "stop"
             },
             "domain_review": {
               "model_fit": "fits the IssueOps phase-ledger domain model",
@@ -10949,33 +11082,6 @@
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "plan",
-            "phase_ledger": {
-              "compatibility-review": {
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-                ],
-                "phase": "compatibility-review"
-              },
-              "grill": {
-                "artifacts": [
-                  "issue_url",
-                  "branch",
-                  "plan_prep",
-                  "split_decision",
-                  "domain_review"
-                ],
-                "completed_at": "$TIMESTAMP",
-                "entered_at": "$TIMESTAMP",
-                "phase": "grill"
-              },
-              "plan": {
-                "entered_at": "$TIMESTAMP",
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-                ],
-                "phase": "plan"
-              }
-            },
             "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "plan_prep": {
               "prior_decisions": {
@@ -11156,20 +11262,11 @@
               ]
             },
             "created_at": "$TIMESTAMP",
-            "decisions": [
-              {
-                "body": "brooks stop: scope too broad for one cycle",
-                "created_at": "$TIMESTAMP",
-                "kind": "scope",
-                "rationale": "regressed from plan to grill for re-plan",
-                "title": "brooks devil's-advocate stop"
-              }
-            ],
             "design_review": {
               "alternatives": [
                 "docs-only guidance"
               ],
-              "approved": false,
+              "approved": true,
               "problem_summary": "IssueOps needs explicit design review",
               "proposed_design": "Gate implementation on approved design",
               "refactor_plan": "Keep changes local to IssueOps state and adapters",
@@ -11181,6 +11278,14 @@
                 "design review checked contract drift risk",
                 "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
               ]
+            },
+            "devils_advocate_review": {
+              "findings": [
+                "second-system effect: three cache backends for one need"
+              ],
+              "recorded_at": "$TIMESTAMP",
+              "reviewer_pattern": "devils-advocate-review",
+              "verdict": "stop"
             },
             "domain_review": {
               "model_fit": "fits the IssueOps phase-ledger domain model",
@@ -11232,33 +11337,6 @@
             "issue_url": "https://github.com/example/repo/issues/2",
             "ok": true,
             "phase": "plan",
-            "phase_ledger": {
-              "compatibility-review": {
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-                ],
-                "phase": "compatibility-review"
-              },
-              "grill": {
-                "artifacts": [
-                  "issue_url",
-                  "branch",
-                  "plan_prep",
-                  "split_decision",
-                  "domain_review"
-                ],
-                "completed_at": "$TIMESTAMP",
-                "entered_at": "$TIMESTAMP",
-                "phase": "grill"
-              },
-              "plan": {
-                "entered_at": "$TIMESTAMP",
-                "notes": [
-                  "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-                ],
-                "phase": "plan"
-              }
-            },
             "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
             "plan_prep": {
               "prior_decisions": {

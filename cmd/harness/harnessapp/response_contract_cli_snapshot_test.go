@@ -12,6 +12,7 @@ import (
 
 func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]string, stateDir, workspaceDir, gitRepoDir string) map[string]any {
 	t.Helper()
+	installFakeGlabForDevilsAdvocateReflect(t)
 	cliSnapshot := map[string]any{}
 	cliSnapshot["inspect"] = runCLIJSONContract(t, replacements, func() error {
 		return runInspect([]string{"--json", "--repo", workspaceDir})
@@ -121,6 +122,12 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["issueops_status"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"status", "--id", issueopsID, "--json"})
 	})
+	cliSnapshot["issueops_record_devils_advocate_review"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"devils-advocate", "review", "--id", issueopsID, "--verdict", "stop", "--finding", "second-system effect: three cache backends for one need", "--json"})
+	})
+	cliSnapshot["issueops_remote_reflect_devils_advocate"] = runCLIJSONContract(t, replacements, func() error {
+		return runIssueOps([]string{"remote", "reflect-devils-advocate", "--id", issueopsID, "--confirm", "--json"})
+	})
 	cliSnapshot["issueops_regress_for_replan"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"regress", "--id", issueopsID, "--reason", "brooks stop: scope too broad for one cycle", "--json"})
 	})
@@ -220,4 +227,27 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		return runWorker([]string{"enqueue", "--kind", "contract", "--payload", "TOKEN=secret-value", "--json"})
 	})
 	return cliSnapshot
+}
+
+// installFakeGlabForDevilsAdvocateReflect puts a fake glab on PATH so the
+// reflect-devils-advocate step can round-trip the gitlab issue description
+// without a real network call. It answers the REST GET with a body and the PUT
+// with success.
+func installFakeGlabForDevilsAdvocateReflect(t *testing.T) {
+	t.Helper()
+	bin := t.TempDir()
+	script := `#!/bin/sh
+case "$*" in
+  *"--method PUT"*)
+    printf '{"web_url":"https://gitlab.example/group/project/-/issues/1"}'
+    exit 0
+    ;;
+esac
+printf '{"description":"contract issue body","web_url":"https://gitlab.example/group/project/-/issues/1"}'
+exit 0
+`
+	if err := os.WriteFile(filepath.Join(bin, "glab"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 }

@@ -151,6 +151,15 @@ func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	mcpSnapshot["issueops_status"] = runMCPToolContract(t, replacements, "issueops_status", map[string]any{
 		"id": issueopsMCPID,
 	})
+	mcpSnapshot["issueops_record_devils_advocate_review"] = runMCPToolContract(t, replacements, "issueops_record_devils_advocate_review", map[string]any{
+		"id":       issueopsMCPID,
+		"verdict":  "stop",
+		"findings": []string{"second-system effect: three cache backends for one need"},
+	})
+	mcpSnapshot["issueops_remote_reflect_devils_advocate"] = runMCPToolContract(t, replacements, "issueops_remote_reflect_devils_advocate", map[string]any{
+		"id":      issueopsMCPID,
+		"confirm": true,
+	})
 	mcpSnapshot["issueops_regress_for_replan"] = runMCPToolContract(t, replacements, "issueops_regress_for_replan", map[string]any{
 		"id":     issueopsMCPID,
 		"reason": "brooks stop: scope too broad for one cycle",

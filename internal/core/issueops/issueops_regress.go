@@ -39,6 +39,15 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (IssueOpsRecor
 	if rank < issueOpsPhaseRank(IssueOpsPhasePlan) || rank > issueOpsPhaseRank(IssueOpsPhaseCompatibilityReview) {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("brooks regression only applies from plan or compatibility-review phase, not %s", record.Phase)
 	}
+	// A regress is the machine consequence of a devil's-advocate stop whose
+	// findings were reflected into the issue, so require both before rewinding.
+	review := record.DevilsAdvocateReview
+	if review == nil || review.Verdict != "stop" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("regress requires a recorded devil's-advocate stop verdict")
+	}
+	if strings.TrimSpace(review.IssueReflectedAt) == "" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("reflect the devil's-advocate findings to the issue before regressing (issueops remote reflect-devils-advocate --confirm)")
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	priorPhase := record.Phase
 
@@ -66,6 +75,10 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (IssueOpsRecor
 	// out of the persisted state).
 	record.PhaseLedger = markIssueOpsLedgerStale(record.PhaseLedger, reason,
 		IssueOpsPhasePlan, IssueOpsPhaseCompatibilityReview)
+
+	// Clear the consumed devil's-advocate review so the re-planned cycle must earn
+	// a fresh verdict before implement (the gate re-fires).
+	record.DevilsAdvocateReview = nil
 
 	record.Phase = IssueOpsPhaseGrill
 	record.UpdatedAt = now
