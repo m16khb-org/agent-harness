@@ -571,7 +571,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 36172,
+          "bytes": 42057,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -709,7 +709,7 @@
           "title": "프로젝트 헌법"
         },
         {
-          "bytes": 21445,
+          "bytes": 23487,
           "headings": [
             "구현 컨벤션",
             "1. 네이밍 / 구조",
@@ -8101,7 +8101,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 36172,
+                "bytes": 42057,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
@@ -8239,7 +8239,7 @@
                 "title": "프로젝트 헌법"
               },
               {
-                "bytes": 21445,
+                "bytes": 23487,
                 "headings": [
                   "구현 컨벤션",
                   "1. 네이밍 / 구조",

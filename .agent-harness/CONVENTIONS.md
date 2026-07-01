@@ -255,3 +255,12 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 - `agent-harness doctor`는 종합 진단 표면이고 기본 read-only다. 자동 수정은 별도 `--fix` 같은 명시 플래그가 있을 때만 추가한다.
 - `agent-harness state doctor`는 checkpoint store 무결성 전용으로 유지한다. 사용자 안내와 troubleshooting 문서는 top-level doctor를 우선한다.
 - `project bootstrap`은 target repo 문서와 별도로 user-state의 repo별 lifecycle namespace를 초기화한다. target repo에는 `.agent-harness/state/`나 schema 파일을 생성하지 않는다.
+
+## State machine reducer contract
+
+12-factor #12(stateless reducer)를 IssueOps 상태머신에 명문화한 계약이다. 코드에 이미 성립하는 불변식을 규율로 고정하는 것이지, 새 추상을 도입하는 것이 아니다.
+
+- IssueOps phase 전이의 **판정(validation)은 record만 읽는 순수 함수**다. readiness 게이트(`IssueOpsProblemReadiness`/`IssueOpsPlanReadiness`/`IssueOpsGrillReadiness`/`IssueOpsCompatibilityReviewReadiness`/`IssueOpsImplementationReadiness`/`IssueOpsAISlopCleanReadiness`/`IssueOpsStrictPRReadiness`)는 `IssueOpsRecord`만 인자로 받아 `Ready/Missing`을 돌려주며 clock·git·FS·network를 건드리지 않는다(`internal/core/issueops/issueops_phase.go:46-112`, `issueops_readiness.go`, `issueops_pr_readiness_strict.go`).
+- **비결정·side-effect는 전이 함수 밖 wrapper가 소유한다**: wall-clock(`time.Now()`, `issueops_phase.go:114`), git/FS read(`issueOpsCurrentHead`/`ChangeFingerprint`, `:120-121`), 디스크 write(`touchAndWriteIssueOps`, `:124`), session unbind(`unbindIssueOpsSessionForCycle`, `:31-32`). 이 값들은 wrapper가 계산해 record에 주입하거나 전이 후 적용한다.
+- ledger stamp(`stampIssueOpsForwardTransition(ledger, prev, new, now)`, `issueops_phase_ledger.go`)는 `now`를 **주입받으면 순수**하다. 같은 `(record, to, now)`는 항상 같은 record를 낳아 replay/derive가 결정적이며, 이는 `DeriveIssueOpsPhaseLedger`의 결정성 테스트로 보장된다(`issueops_phase_ledger_test.go`).
+- **신규 상태머신은 이 경계를 따른다**: 판정 로직에 clock/rand/uuid/IO를 섞지 않고, 비결정 입력은 값으로 주입한다(`nondeterministic-context-serialization` guard와 같은 정신). 결정성 검증이 필요해지고 두 번째 사용처가 생기면 그때 순수 함수를 *전체* 판정 블록 단위로 추출한다. 동작 무변화를 위해 `AdvanceIssueOpsPhase`를 선제적으로 리팩터하지 않는다(§28 게이트 파급이 큰 최고-민감 함수).
