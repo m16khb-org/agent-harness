@@ -6,8 +6,10 @@ import (
 	"net/url"
 	"os/exec"
 	"strings"
+	"time"
 
 	"agent-harness/cmd/harness/issueopscli/remoteparse"
+	"agent-harness/internal/adapter/provider/issuebody"
 	"agent-harness/internal/port"
 )
 
@@ -705,4 +707,61 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func (Provider) UpdateIssueBodySection(req port.IssueProviderUpdateIssueBodySectionRequest) (port.IssueProviderUpdateIssueBodySectionResult, error) {
+	hostname, projectPath, iid, err := parseGitLabIssueURL(req.IssueURL)
+	if err != nil {
+		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
+	}
+	section := issuebody.RenderDevilsAdvocateSection(req.Findings, time.Now().UTC().Format(time.RFC3339))
+	endpoint := "projects/" + url.PathEscape(projectPath) + "/issues/" + iid
+	if !req.Confirm {
+		return port.IssueProviderUpdateIssueBodySectionResult{
+			OK:      true,
+			Preview: fmt.Sprintf("[dry-run] would execute: glab api %s --hostname %s; then --method PUT -f description=<merged devil's-advocate section>", endpoint, hostname),
+		}, nil
+	}
+	current, err := runGlabAPI(req.Repo, hostname, endpoint)
+	if err != nil {
+		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
+	}
+	var payload struct {
+		Description string `json:"description"`
+		WebURL      string `json:"web_url"`
+	}
+	if err := json.Unmarshal(current, &payload); err != nil {
+		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, fmt.Errorf("parse glab issue description: %w", err)
+	}
+	merged := issuebody.MergeIssueBodySection(payload.Description, section)
+	if _, err := runGlabAPI(req.Repo, hostname, endpoint, "--method", "PUT", "-f", "description="+merged); err != nil {
+		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
+	}
+	return port.IssueProviderUpdateIssueBodySectionResult{OK: true, URL: firstNonEmpty(payload.WebURL, req.IssueURL), Updated: true}, nil
+}
+
+// runGlabAPI runs a REST `glab api <endpoint> --hostname <host> [extra...]` call,
+// mirroring the hostname/order shape the verify layer uses for issue reads.
+func runGlabAPI(repo, hostname, endpoint string, extra ...string) ([]byte, error) {
+	if _, err := exec.LookPath("glab"); err != nil {
+		return nil, fmt.Errorf("glab CLI is not installed; install it from https://gitlab.com/gitlab-org/cli")
+	}
+	cmdArgs := []string{"api", endpoint}
+	if strings.TrimSpace(hostname) != "" {
+		cmdArgs = append(cmdArgs, "--hostname", strings.TrimSpace(hostname))
+	}
+	cmdArgs = append(cmdArgs, extra...)
+	cmd := exec.Command("glab", cmdArgs...)
+	if repo != "" {
+		cmd.Dir = repo
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		stderr := err.Error()
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			stderr = strings.TrimSpace(string(exitErr.Stderr))
+		}
+		return nil, fmt.Errorf("glab api failed: %s", stderr)
+	}
+	return out, nil
 }

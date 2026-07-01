@@ -86,6 +86,23 @@ type IssueProviderCloseChildResult struct {
 	Preview           string `json:"preview,omitempty"`
 }
 
+// IssueProviderUpdateIssueBodySectionRequest describes reflecting findings into a
+// managed, delimited section of an existing remote issue body.
+type IssueProviderUpdateIssueBodySectionRequest struct {
+	Repo     string   `json:"repo"`      // local repo path for provider auth context
+	IssueURL string   `json:"issue_url"` // issue whose body is updated
+	Findings []string `json:"findings"`  // devil's-advocate findings to render
+	Confirm  bool     `json:"confirm"`   // must be true to write; false = dry-run preview
+}
+
+// IssueProviderUpdateIssueBodySectionResult reports the outcome of a body update.
+type IssueProviderUpdateIssueBodySectionResult struct {
+	OK      bool   `json:"ok"`
+	URL     string `json:"url,omitempty"`
+	Updated bool   `json:"updated"`
+	Preview string `json:"preview,omitempty"`
+}
+
 // IssueProvider is implemented by provider-specific adapters such as GitHub and GitLab.
 // Every mutating operation requires Confirm=true; without it, only a dry-run preview
 // is returned.
@@ -95,4 +112,5 @@ type IssueProvider interface {
 	CreatePullRequest(req IssueProviderCreatePullRequestRequest) (IssueProviderCreatePullRequestResult, error)
 	CreateChild(req IssueProviderCreateChildRequest) (IssueProviderCreateChildResult, error)
 	CloseChild(req IssueProviderCloseChildRequest) (IssueProviderCloseChildResult, error)
+	UpdateIssueBodySection(req IssueProviderUpdateIssueBodySectionRequest) (IssueProviderUpdateIssueBodySectionResult, error)
 }

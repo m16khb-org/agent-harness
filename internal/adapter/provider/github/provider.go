@@ -6,7 +6,9 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
+	"agent-harness/internal/adapter/provider/issuebody"
 	"agent-harness/internal/port"
 )
 
@@ -374,4 +376,67 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func (Provider) UpdateIssueBodySection(req port.IssueProviderUpdateIssueBodySectionRequest) (port.IssueProviderUpdateIssueBodySectionResult, error) {
+	issueURL := strings.TrimSpace(req.IssueURL)
+	if issueURL == "" {
+		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, fmt.Errorf("issue url is required")
+	}
+	section := issuebody.RenderDevilsAdvocateSection(req.Findings, time.Now().UTC().Format(time.RFC3339))
+	if !req.Confirm {
+		return port.IssueProviderUpdateIssueBodySectionResult{
+			OK:      true,
+			Preview: fmt.Sprintf("[dry-run] would execute: gh issue view %s --json body; gh issue edit %s --body <merged devil's-advocate section>", issueURL, issueURL),
+		}, nil
+	}
+	body, err := readGhIssueBody(req.Repo, issueURL)
+	if err != nil {
+		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
+	}
+	if err := runGhIssueEdit(req.Repo, issueURL, issuebody.MergeIssueBodySection(body, section)); err != nil {
+		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
+	}
+	return port.IssueProviderUpdateIssueBodySectionResult{OK: true, URL: issueURL, Updated: true}, nil
+}
+
+func readGhIssueBody(repo, issueURL string) (string, error) {
+	if _, err := exec.LookPath("gh"); err != nil {
+		return "", fmt.Errorf("gh CLI is not installed; install it from https://cli.github.com")
+	}
+	cmd := exec.Command("gh", "issue", "view", issueURL, "--json", "body")
+	if repo != "" {
+		cmd.Dir = repo
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("gh issue view failed: %s", ghExecStderr(err))
+	}
+	var payload struct {
+		Body string `json:"body"`
+	}
+	if err := json.Unmarshal(out, &payload); err != nil {
+		return "", fmt.Errorf("parse gh issue body: %w", err)
+	}
+	return payload.Body, nil
+}
+
+func runGhIssueEdit(repo, issueURL, body string) error {
+	cmd := exec.Command("gh", "issue", "edit", issueURL, "--body", body)
+	if repo != "" {
+		cmd.Dir = repo
+	}
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("gh issue edit failed: %s", ghExecStderr(err))
+	}
+	return nil
+}
+
+func ghExecStderr(err error) string {
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		if stderr := strings.TrimSpace(string(exitErr.Stderr)); stderr != "" {
+			return stderr
+		}
+	}
+	return err.Error()
 }

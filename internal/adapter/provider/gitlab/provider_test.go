@@ -461,6 +461,74 @@ exit 2
 	}
 }
 
+func TestGitLabUpdateIssueBodySectionDryRun(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	res, err := NewProvider().UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
+		IssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
+		Findings: []string{"gold-plating"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !res.OK || res.Updated {
+		t.Fatalf("dry-run must not update: %+v", res)
+	}
+	if !strings.Contains(res.Preview, "glab api projects/acme%2Frepo/issues/12") || !strings.Contains(res.Preview, "PUT") {
+		t.Fatalf("preview missing expected command: %q", res.Preview)
+	}
+}
+
+func TestGitLabUpdateIssueBodySectionConfirmMergesIdempotently(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "glab.put")
+	writeFakeGlab(t, binDir, `#!/bin/sh
+case "$*" in
+  *"--method PUT"*)
+    printf '%s' "$*" > glab.put
+    printf '{"web_url":"https://gitlab.example.com/acme/repo/-/issues/12"}'
+    exit 0
+    ;;
+esac
+printf '{"description":"original body\\n\\n<!-- issueops:devils-advocate:start -->\\nstale-finding\\n<!-- issueops:devils-advocate:end -->\\n","web_url":"https://gitlab.example.com/acme/repo/-/issues/12"}'
+exit 0
+`)
+	t.Setenv("PATH", binDir)
+
+	res, err := NewProvider().UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
+		Repo:     repo,
+		IssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
+		Findings: []string{"gold-plating", "schedule optimism"},
+		Confirm:  true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.OK || !res.Updated {
+		t.Fatalf("confirm should update: %+v", res)
+	}
+	put, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(put)
+	if !strings.Contains(body, "--method PUT") || !strings.Contains(body, "original body") {
+		t.Fatalf("PUT must round-trip surrounding body: %q", body)
+	}
+	if strings.Contains(body, "stale-finding") {
+		t.Fatalf("stale managed section must be replaced: %q", body)
+	}
+	if strings.Count(body, "issueops:devils-advocate:start") != 1 {
+		t.Fatalf("managed section must not be duplicated: %q", body)
+	}
+	if !strings.Contains(body, "gold-plating") || !strings.Contains(body, "schedule optimism") {
+		t.Fatalf("findings missing from PUT description: %q", body)
+	}
+}
+
 func writeFakeGlab(t *testing.T, binDir, script string) {
 	t.Helper()
 	path := filepath.Join(binDir, "glab")

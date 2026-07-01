@@ -442,6 +442,75 @@ exit 2
 	}
 }
 
+func TestGitHubUpdateIssueBodySectionDryRun(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	res, err := NewProvider().UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
+		IssueURL: "https://github.com/acme/repo/issues/12",
+		Findings: []string{"gold-plating"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !res.OK || res.Updated {
+		t.Fatalf("dry-run must not update: %+v", res)
+	}
+	if !strings.Contains(res.Preview, "gh issue edit") || !strings.Contains(res.Preview, "gh issue view") {
+		t.Fatalf("preview missing expected commands: %q", res.Preview)
+	}
+}
+
+func TestGitHubUpdateIssueBodySectionConfirmMergesIdempotently(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	logPath := filepath.Join(repo, "gh.edit")
+	writeFakeGh(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "issue view" ]; then
+  printf '{"body":"original body\\n\\n<!-- issueops:devils-advocate:start -->\\nstale-finding\\n<!-- issueops:devils-advocate:end -->\\n"}'
+  exit 0
+fi
+if [ "$1 $2" = "issue edit" ]; then
+  printf '%s' "$*" > gh.edit
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+
+	res, err := NewProvider().UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
+		Repo:     repo,
+		IssueURL: "https://github.com/acme/repo/issues/12",
+		Findings: []string{"gold-plating", "schedule optimism"},
+		Confirm:  true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.OK || !res.Updated {
+		t.Fatalf("confirm should update: %+v", res)
+	}
+	edited, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(edited)
+	if !strings.Contains(body, "original body") {
+		t.Fatalf("surrounding body must round-trip: %q", body)
+	}
+	if strings.Contains(body, "stale-finding") {
+		t.Fatalf("stale managed section must be replaced, not kept: %q", body)
+	}
+	if strings.Count(body, "issueops:devils-advocate:start") != 1 {
+		t.Fatalf("managed section must not be duplicated: %q", body)
+	}
+	if !strings.Contains(body, "gold-plating") || !strings.Contains(body, "schedule optimism") {
+		t.Fatalf("findings missing from edited body: %q", body)
+	}
+}
+
 func writeFakeGh(t *testing.T, binDir, script string) {
 	t.Helper()
 	path := filepath.Join(binDir, "gh")
