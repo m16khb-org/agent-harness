@@ -44,40 +44,63 @@ description: Chosen languages, runtimes, tools, and rationale.
 
 이 optional path는 네트워크와 user-level host 설정 변경을 수반하므로 기본 install-native에는 포함하지 않고 `--with-upstream-tools` 또는 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`일 때만 실행한다.
 
-## 2.2 Project pioneer skills
+## 2.2 Project skills
 
-agent-harness의 `skills/` 디렉토리에는 10개의 pioneer skill이 있으며, 각 스킬은 컴퓨터 과학 선구자의 이름을 따서 명명되었다. 상세한 namesake 설명은 `README.md` "Skills & Their Namesakes" 표를 참조한다.
+agent-harness의 `skills/` 디렉토리에는 **19개** 스킬이 있다(`ls skills/` 기준). 두 부류로
+나뉘며 분해 합계는 **pioneer-namesake 11 + operational 8 = 19**이다. 상세한 namesake 설명은
+`README.md` "Skills & Their Namesakes" 표를 참조한다.
 
-| 스킬 | 경로 | 역할 |
-|------|------|------|
-| `von-neumann` | `skills/von-neumann/SKILL.md` | Strategic Planning — decision-complete 계획 수립 |
-| `turing` | `skills/turing/SKILL.md` | Evidence-Bound Execution — 증거 기반 목표 실행 |
-| `berners-lee` | `skills/berners-lee/SKILL.md` | Web Research — 다중 소스 출처 인용 조사 |
-| `codd` | `skills/codd/SKILL.md` | Database Design & Optimization |
-| `dijkstra` | `skills/dijkstra/SKILL.md` | Algorithm Design & Complexity Optimization |
-| `hopper` | `skills/hopper/SKILL.md` | Systematic Debugging — 7단계 과학적 디버깅 |
-| `shannon` | `skills/shannon/SKILL.md` | Signal-to-Noise Quality Measurement |
-| `karpathy` | `skills/karpathy/SKILL.md` | Prompt Engineering & Optimization |
-| `torvalds` | `skills/torvalds/SKILL.md` | Git Operations — atomic commit, bisect, rebase |
-| `issueops` | `skills/issueops/SKILL.md` | Issue-Driven Work Cycle Router |
+**Pioneer-namesake (11)** — 컴퓨터 과학 선구자의 이름을 딴 language/tech agnostic 스킬:
 
-이 스킬들은 Codex, Claude Code, Reasonix 세 호스트에서 동일하게 사용되며, `scripts/install-native.sh`를 통해 사용자 홈(`~/.codex/skills/`, `~/.claude/skills/`)에 symlink로 설치된다. 모든 스킬은 language/tech agnostic을 원칙으로 하며(6f31c55 검증 완료), hub-and-spoke cross-reference mesh(`turing`·`issueops`가 hub)를 형성한다.
+| 스킬 | 역할 |
+|------|------|
+| `berners-lee` | Web Research — 다중 소스 출처 인용 조사 |
+| `brooks` | Devil's-advocate design/plan critic — 구현 전 계획 적대 검증 |
+| `codd` | Database Design & Optimization |
+| `dijkstra` | Algorithm Design & Complexity Optimization |
+| `engelbart` | Meeting-record augmentation / team-memory |
+| `hopper` | Systematic Debugging — 과학적 디버깅 |
+| `karpathy` | Prompt Engineering & Optimization |
+| `shannon` | Signal-to-Noise Quality Measurement |
+| `torvalds` | Git Operations — rebase, bisect, conflict, reflog |
+| `turing` | Evidence-Bound Execution — 증거 기반 목표 실행 |
+| `von-neumann` | Strategic Planning — decision-complete 계획 수립 |
+
+**Operational (8)** — 하네스 운영 workflow 스킬(설계상 harness-specific):
+
+| 스킬 | 역할 |
+|------|------|
+| `atomic-commit-push` | Torvalds sub-skill — 안전한 atomic 커밋/푸시 |
+| `draft-wiki-promoter` | draft-wiki 후보 판정·승격 |
+| `gitlab-usecase` | GitLab/glab/IssueOps remote 가이드 |
+| `issueops` | Issue-Driven Work Cycle Router |
+| `project-bootstrap` | repo-local AGENTS.md + `.agent-harness/` 문서 생성 |
+| `self-augment` | 자가 개선 루프(95점 게이트) |
+| `self-verify` | 자가 검증 루프(95점 게이트) |
+| `stability-audit` | 설치/안정성 전수조사 |
+
+모든 스킬은 `scripts/install-native.sh`를 통해 사용자 홈(`~/.codex/skills/`, `~/.claude/skills/`)에
+symlink로 설치된다. Pioneer-namesake 11개는 language/tech agnostic을 원칙으로 하고(6f31c55 검증 완료),
+operational 8개는 agent-harness 운영에 특화되어 있다. 스킬 mesh는 hub-and-spoke cross-reference(
+`turing`·`issueops`가 hub)를 형성한다.
 
 ---
 
-## 3. 예상 라이브러리 후보
+## 3. 확정 라이브러리
 
-최종 dependency는 구현 시 검증 후 확정한다.
+핵심 dependency는 구현되어 확정되었다. 아래는 `go.mod`와 실제 import 기준의 확정값이다.
 
-| 영역 | 후보 | 비고 |
+| 영역 | 확정 | 근거 |
 |------|------|------|
-| CLI | 표준 `flag` 또는 `spf13/cobra` | MVP는 표준 library 우선, command가 늘면 Cobra 검토 |
-| Config | `gopkg.in/yaml.v3` 또는 JSON/TOML | 초기에는 JSON/YAML 중 하나만 선택 |
-| Logging | 표준 `log/slog` | secret redaction wrapper 필요 |
-| MCP | 안정적인 Go MCP SDK 또는 직접 JSON-RPC 최소 구현 | SDK 선택 전 schema 안정성 확인 |
-| IPC | Unix socket | 현재 MCP proxy daemon은 Unix socket 사용. localhost HTTP는 future worker 필요 시 검토 |
-| State | 표준 library JSON 파일 저장 | `HARNESS_STATE_DIR` 또는 `~/.local/state/agent-harness/` |
-| Testing | 표준 `testing`, golden file, `httptest` | 외부 agent host 없이 core contract 검증 |
+| CLI | 표준 `flag` | `cmd/harness/**`의 63개 파일이 stdlib `flag` 사용; Cobra는 도입하지 않음 |
+| Config/State 직렬화 | 표준 `encoding/json` | 설정·상태는 JSON으로 직렬화; 외부 config 라이브러리(yaml.v3/toml)는 의존성에 없음 |
+| Logging | 표준 `log/slog` | secret redaction은 host 어댑터 계층에서 처리 |
+| MCP | `github.com/modelcontextprotocol/go-sdk` v1.6.1 | daemon socket transport의 기본 SDK. 분리 reader/writer stdio smoke를 위한 legacy JSON-RPC 경로를 병행 유지(ADR "MCP go-sdk 채택" 참조) |
+| IPC | Unix socket | MCP proxy daemon은 Unix socket 사용. localhost HTTP는 future worker 필요 시 검토 |
+| State 저장 | 표준 library JSON 파일 + `flock` | `HARNESS_STATE_DIR` 또는 `~/.local/state/agent-harness/`; 동시성은 `golang.org/x/sys` flock으로 직렬화 |
+| Testing | 표준 `testing`, golden file, `net/http/httptest` | 외부 agent host 없이 core contract 검증; `httptest`는 13개 파일에서 사용 중(대부분 `*_test.go`) |
+
+직접 의존성(`go.mod`): `golang.org/x/term`, `golang.org/x/sys`, `github.com/modelcontextprotocol/go-sdk` v1.6.1.
 
 ---
 
