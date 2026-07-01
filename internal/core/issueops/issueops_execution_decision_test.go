@@ -42,8 +42,13 @@ func TestIssueOpsImplementationReadinessRequiresExecutionDecision(t *testing.T) 
 	}
 	record.CompatibilityReview = issueOpsCompatibilityReviewForTest()
 	ready = IssueOpsImplementationReadiness(record)
+	if ready.Ready || !containsString(ready.Missing, "devils_advocate_review") {
+		t.Fatalf("compatibility review should leave devils_advocate_review as the remaining implementation gate, got %+v", ready)
+	}
+	record.DevilsAdvocateReview = issueOpsDevilsAdvocateReviewForTest()
+	ready = IssueOpsImplementationReadiness(record)
 	if !ready.Ready || len(ready.Missing) != 0 {
-		t.Fatalf("execution decision plus compatibility review should satisfy implementation gates, got %+v", ready)
+		t.Fatalf("execution decision, compatibility, and devils-advocate reviews should satisfy implementation gates, got %+v", ready)
 	}
 }
 

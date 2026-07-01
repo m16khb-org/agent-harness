@@ -122,6 +122,7 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		missing = append(missing, "execution_decision")
 	}
 	missing = append(missing, issueOpsCompatibilityReviewMissing(record)...)
+	missing = append(missing, issueOpsDevilsAdvocateReviewMissing(record)...)
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
@@ -131,6 +132,20 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		WorktreePath: record.WorktreePath,
 		Branch:       record.Branch,
 	}
+}
+
+// issueOpsDevilsAdvocateReviewMissing is the fail-closed implement-entry gate for
+// the brooks devil's advocate: a review must be recorded, and a stop/revise
+// verdict must be explicitly waived, before implementation can begin.
+func issueOpsDevilsAdvocateReviewMissing(record IssueOpsRecord) []string {
+	review := record.DevilsAdvocateReview
+	if review == nil || strings.TrimSpace(review.RecordedAt) == "" {
+		return []string{"devils_advocate_review"}
+	}
+	if (review.Verdict == "stop" || review.Verdict == "revise") && !review.Waived {
+		return []string{"devils_advocate_review"}
+	}
+	return nil
 }
 
 func issueOpsCompatibilityReviewMissing(record IssueOpsRecord) []string {

@@ -176,6 +176,11 @@ func recordIssueOpsCompatibilityReviewForTest(t *testing.T, stateRoot, id string
 	}); err != nil {
 		t.Fatal(err)
 	}
+	// The devil's-advocate verdict is a fail-closed implement-entry gate, so bring
+	// the cycle to implement-readiness with a pass verdict alongside compatibility.
+	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, id, IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func issueOpsIntentContractForTest() *IssueOpsIntentContract {
@@ -195,6 +200,14 @@ func issueOpsCompatibilityReviewForTest() *IssueOpsCompatibilityReview {
 		Verification:          []string{"compatibility review checked backward compatibility and side effects", "go test ./internal/core/issueops"},
 		Approved:              true,
 		ReviewedAt:            "2026-06-26T00:00:00Z",
+	}
+}
+
+func issueOpsDevilsAdvocateReviewForTest() *IssueOpsDevilsAdvocateReview {
+	return &IssueOpsDevilsAdvocateReview{
+		Verdict:         "pass",
+		ReviewerPattern: "devils-advocate-review",
+		RecordedAt:      "2026-06-29T00:00:00Z",
 	}
 }
 

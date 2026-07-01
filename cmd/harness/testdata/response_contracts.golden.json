@@ -4746,6 +4746,7 @@
         "implement": {
           "missing": [
             "compatibility_review",
+            "devils_advocate_review",
             "execution_decision",
             "implementation_changes",
             "worktree_tools_prepared"
@@ -11452,6 +11453,7 @@
               "implement": {
                 "missing": [
                   "compatibility_review",
+                  "devils_advocate_review",
                   "execution_decision",
                   "implementation_changes",
                   "worktree_tools_prepared"

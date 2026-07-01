@@ -37,8 +37,13 @@ func TestIssueOpsImplementationReadinessRequiresCompatibilityReview(t *testing.T
 	}
 	record.CompatibilityReview = issueOpsCompatibilityReviewForTest()
 	ready = IssueOpsImplementationReadiness(record)
+	if ready.Ready || !containsString(ready.Missing, "devils_advocate_review") {
+		t.Fatalf("compatibility review alone should still require devils_advocate_review, got %+v", ready)
+	}
+	record.DevilsAdvocateReview = issueOpsDevilsAdvocateReviewForTest()
+	ready = IssueOpsImplementationReadiness(record)
 	if !ready.Ready || len(ready.Missing) != 0 {
-		t.Fatalf("compatibility review should satisfy the last implementation gate, got %+v", ready)
+		t.Fatalf("compatibility + devils-advocate review should satisfy the last implementation gate, got %+v", ready)
 	}
 }
 
@@ -99,11 +104,14 @@ func TestIssueOpsPhaseImplementRequiresCompatibilityReviewPhase(t *testing.T) {
 	if record.Phase != IssueOpsPhaseCompatibilityReview {
 		t.Fatalf("compatibility review should persist the compatibility-review phase, got %+v", record)
 	}
+	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, record.ID, IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+		t.Fatal(err)
+	}
 	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if record.Phase != IssueOpsPhaseImplement {
-		t.Fatalf("compatibility review should allow implement phase, got %+v", record)
+		t.Fatalf("compatibility and devils-advocate review should allow implement phase, got %+v", record)
 	}
 }

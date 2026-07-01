@@ -121,6 +121,9 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if _, ok := decisionRecord["execution_decision"].(map[string]any); !ok {
 		t.Fatalf("execution decision should be persisted before prepare-tools: %#v", decisionRecord)
 	}
+	captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"devils-advocate", "review", "--id", id, "--verdict", "pass", "--json"})
+	})
 	preparedTools := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"worktree", "prepare-tools", "--id", id, "--json"})
 	})

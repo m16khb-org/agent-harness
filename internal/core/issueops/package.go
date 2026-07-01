@@ -43,6 +43,7 @@ type IssueOpsExecutionDecision = model.IssueOpsExecutionDecision
 type IssueOpsExecutionDecisionRecordRequest = model.IssueOpsExecutionDecisionRecordRequest
 type IssueOpsSubAgentPlan = model.IssueOpsSubAgentPlan
 type IssueOpsCompatibilityReview = model.IssueOpsCompatibilityReview
+type IssueOpsDevilsAdvocateReview = model.IssueOpsDevilsAdvocateReview
 type IssueOpsCompatibilityReviewRequest = model.IssueOpsCompatibilityReviewRequest
 type IssueOpsDevilsAdvocateReviewRequest = model.IssueOpsDevilsAdvocateReviewRequest
 type IssueOpsPlanPrep = model.IssueOpsPlanPrep

@@ -112,6 +112,9 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.Iss
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), id, core.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), id, core.IssueOpsWorktreeToolPreparation{
 		OK:                   true,
 		WorktreePath:         worktree,
