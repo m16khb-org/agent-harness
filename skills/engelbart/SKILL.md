@@ -166,6 +166,18 @@ Reject these outputs before they reach Slack:
 
 Do not claim to have created, shared, pinned, attached, or updated a Slack Canvas unless a Slack tool call or user confirmation proves it. If only drafting text, call it Canvas-ready content.
 
+## Participant Access Grant
+
+Meeting canvases are created with default "invited people only" access, so a freshly created Canvas is visible to its creator alone. Do not leave it creator-only, and do not make it workspace-wide by default. Grant access to the meeting's actual participants.
+
+- Accept a participant list as input. Sources, in priority order: an explicit participant list the user provides, an attendee/participant field in the source (Clova Note, calendar invite, huddle roster), then speaker labels resolved to real people.
+- Resolve each participant to a Slack user by name (default): match the name against the workspace user directory (`users.list`, or MCP `slack_search_users` / `slack_read_user_profile`) with normalization for spacing and Korean honorifics (`님`, `프로`, `팀리더`, etc.). An explicit `PARTICIPANT_USER_IDS` skips lookup; email lookup (`users.lookupByEmail`) is optional and not required.
+  - Only auto-grant on a single unambiguous match. On no match or multiple matches (동명이인), do NOT guess — a wrong grant leaks the meeting record to the wrong person.
+- Record unresolved or ambiguous participants in `참석자/화자 보정` with confidence and how to confirm, and surface them in the final handoff. Do not silently drop them and do not silently invite a look-alike.
+- Access level defaults to `read`; use `write` only when the user asks for collaborative editing.
+- Granting access needs the Slack Web API `canvases.access.set` with `user_ids`. Do NOT grant via a public-channel `channel_ids` share — that exposes the Canvas to the whole workspace, which is not the intent. `canvases.access.set` also rejects `channel_ids` and `user_ids` in the same call, so send participants as `user_ids` only.
+- The current MCP surface has no `canvases.access.set` tool. Resolve users and create/read the Canvas via MCP, but run the access grant (and optional List registration) through the Web API path in `scripts/publish_meeting_canvas.py`. Requires a token with `canvases:write`, `users:read` (and `lists:write` for List registration; `users:read.email` only if you opt into email lookup); Lists/Canvas are paid-plan features.
+
 ## Local Background
 
 Before resolving terms, services, participants, or speaker labels, check for `skills/engelbart/background.local.md`. That file is gitignored on purpose; use `skills/engelbart/background.local.example.md` as the tracked template and keep team-specific names, service names, and private operating context out of `SKILL.md`.
@@ -179,6 +191,7 @@ Use local background as high-confidence correction candidates for product names,
    - Use `#dev-team-backend` by default.
    - Apply a user-provided 채널 override when present.
    - Record target channel, access assumption, source, and last-updated metadata in the output.
+   - Collect the meeting participant list (explicit user input, an attendee field in the source, or resolvable speaker labels) for the later access grant.
 3. Read optional local background, then read the transcript and build correction maps:
    - technical terms
    - uncertain words or sentences
@@ -192,7 +205,8 @@ Use local background as high-confidence correction candidates for product names,
 5. Render the meeting in reader order: executive summary, decisions, actions, topic discussion, follow-up checks, then risks/open questions immediately before the correction appendix.
 6. Group discussion by topic, not by timestamp, unless exact timeline matters.
 7. Produce the requested Korean artifact. When creating an individual meeting Canvas, return the manual index-binding values separately after read-back verification.
-8. Preserve the full transcript verbatim in the audit appendix unless the user explicitly excludes it. Only redact security-sensitive strings.
+8. Grant Canvas access to the resolved meeting participants (see `Participant Access Grant`). Report unresolved or ambiguous participants instead of guessing.
+9. Preserve the full transcript verbatim in the audit appendix unless the user explicitly excludes it. Only redact security-sensitive strings.
 
 ## Canvas Naming Rules
 
