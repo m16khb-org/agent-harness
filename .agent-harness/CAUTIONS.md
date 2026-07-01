@@ -356,6 +356,17 @@ IssueOps에 새 implement-entry(또는 임의 phase) fail-closed 게이트를 �
 - 게이트가 derived phase-ledger에 나타나면 `response_contracts.golden.json` 스냅샷도 드리프트한다(§27). 스냅샷이 그 phase로 전진하면 전제조건을 실제로 충족(fake CLI 포함)시켜야 한다.
 - 증분 검증만 믿지 말고 커밋 전 `go test ./...` 전체를 한 번 돌려 미검출 패키지 파급을 잡는다.
 
+## 29. Slack List create payload와 readback schema는 다를 수 있다
+
+`slackLists.items.create` 입력 schema와 `slackLists.items.list` readback schema를 같은 것으로 가정하면 live List write가 실패한다. 2026-07-01 Engelbart live E2E에서 link 컬럼을 readback 모양인 `originalUrl`로 보냈더니 `missing required field: original_url`로 실패했다. 같은 link는 readback에서는 `originalUrl`로 보이지만 create payload는 `original_url`을 요구한다.
+
+주의:
+- Slack List link 컬럼 생성 payload는 `{"link":[{"original_url":"https://..."}]}`를 사용한다. readback의 `originalUrl`을 그대로 create payload로 재사용하지 않는다.
+- 회의록 List의 `이름` 컬럼은 날짜를 포함하지 않는 topic-prefix 제목을 쓴다. 날짜는 `회의일` 컬럼에 따로 들어간다. 예: `[AI] Vertex BYOK 비용 비교 회의`, `[배포] TC NCP 마이그레이션 및 플랫폼 정책 회의`.
+- Canvas 제목 규칙(`YYYY-MM-DD [Topic] Title`)과 List row 제목 규칙(`[Topic] Title`)을 혼동하지 않는다.
+- Raw Slack Web API `canvases.create/edit`의 `document_content` 지원 목록은 `quote block`은 포함하지만 `callout`은 명시하지 않는다. Connector의 Canvas-flavored markdown은 callout을 문법으로 받을 수 있어도, raw Web API 경로에서 `::: {.callout}`이 일반 문단으로 보이면 quote block(`> ...`) 또는 검증된 connector 경로로 대체한다.
+- 팀 공용 Slack List 테스트 write는 삭제/재생성해도 알림이나 흔적이 남을 수 있다. 테스트 항목은 `[TEST] ...`처럼 명확히 표시하고, 사용자 승인 없이 rename/delete/recreate 하지 않는다.
+
 ## Incident Archive
 
 Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents.md`. Keep this file focused on evergreen hazards and move one-off history there.

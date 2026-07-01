@@ -17,6 +17,15 @@ Do not produce a chronological transcript summary unless the user explicitly ask
 
 Decision statements must be certain and attributable. 결정사항에는 불확실한 내용을 넣지 않는다. Put uncertain transcript-backed claims in `리스크/열린 질문` and in the correction appendix instead.
 
+## Required Meeting Inputs
+
+Before producing or creating meeting minutes, require both:
+
+- A participant list from the user or source metadata. This is the access-grant participant list for the final Canvas.
+- The meeting transcript text that will be preserved under `원문 전사본 전문`.
+
+If either the participant list or transcript is missing, stop and ask for the missing input before drafting, creating, or indexing the meeting artifact. Do not infer the access-grant participant list solely from generic speaker labels such as `참석자 1`; speaker labels can supplement the correction appendix, but they do not satisfy the required participant list. A final meeting Canvas must not be created from fallback placeholder content.
+
 ## Canvas UI/UX Principles
 
 Slack Canvas is a fully formatted surface for information that does not fit in a normal message. Design meeting Canvases for scanning first, then audit depth.
@@ -187,26 +196,30 @@ Use local background as high-confidence correction candidates for product names,
 ## Workflow
 
 1. Identify the requested output: full minutes, Slack Canvas meeting doc, manual index-binding handoff, Slack recap, action table, or prompt.
-2. Resolve Canvas target:
+2. Confirm required inputs before drafting or writing:
+   - Require the participant list.
+   - Require the meeting transcript text.
+   - If either is missing, ask for the missing input and stop.
+3. Resolve Canvas target:
    - Use `#dev-team-backend` by default.
    - Apply a user-provided 채널 override when present.
    - Record target channel, access assumption, source, and last-updated metadata in the output.
-   - Collect the meeting participant list (explicit user input, an attendee field in the source, or resolvable speaker labels) for the later access grant.
-3. Read optional local background, then read the transcript and build correction maps:
+   - Use the required participant list for the later access grant; use speaker-label resolution only as supplementary evidence, not as a replacement for the list.
+4. Read optional local background, then read the transcript and build correction maps:
    - technical terms
    - uncertain words or sentences
    - participants and speaker labels
-4. Extract outcomes before narrative:
+5. Extract outcomes before narrative:
    - TL;DR
    - decisions
    - action items
    - risks/open questions
    - follow-up checks
-5. Render the meeting in reader order: executive summary, decisions, actions, topic discussion, follow-up checks, then risks/open questions immediately before the correction appendix.
-6. Group discussion by topic, not by timestamp, unless exact timeline matters.
-7. Produce the requested Korean artifact. When creating an individual meeting Canvas, return the manual index-binding values separately after read-back verification.
-8. Grant Canvas access to the resolved meeting participants (see `Participant Access Grant`). Report unresolved or ambiguous participants instead of guessing.
-9. Preserve the full transcript verbatim in the audit appendix unless the user explicitly excludes it. Only redact security-sensitive strings.
+6. Render the meeting in reader order: executive summary, decisions, actions, topic discussion, follow-up checks, then risks/open questions immediately before the correction appendix.
+7. Group discussion by topic, not by timestamp, unless exact timeline matters.
+8. Produce the requested Korean artifact. When creating an individual meeting Canvas, return the manual index-binding values separately after read-back verification.
+9. Grant Canvas access to the resolved meeting participants (see `Participant Access Grant`). Report unresolved or ambiguous participants instead of guessing.
+10. Preserve the full transcript verbatim in the audit appendix unless the user explicitly excludes it. Only redact security-sensitive strings.
 
 ## Canvas Naming Rules
 

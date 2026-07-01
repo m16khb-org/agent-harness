@@ -11,6 +11,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 TESTDATA = ROOT / "skills" / "engelbart" / "testdata"
 SKILL = ROOT / "skills" / "engelbart" / "SKILL.md"
+PUBLISH_SCRIPT = ROOT / "skills" / "engelbart" / "scripts" / "publish_meeting_canvas.py"
 BASELINE_OUTPUT = TESTDATA / "ai_devops_onboarding_output.baseline.md"
 CURRENT_OUTPUT = TESTDATA / "ai_devops_onboarding_output.md"
 BAD_CANVAS_READBACK = TESTDATA / "ai_devops_onboarding_output.bad_canvas_readback.md"
@@ -188,6 +189,11 @@ RUBRIC: tuple[RubricItem, ...] = (
             "replacement body must not repeat the same heading",
             "The pasted transcript must appear exactly once",
             "marker count or hash",
+            "Required Meeting Inputs",
+            "Before producing or creating meeting minutes",
+            "If either the participant list or transcript is missing, stop and ask for the missing input",
+            "Do not infer the access-grant participant list solely from generic speaker labels",
+            "A final meeting Canvas must not be created from fallback placeholder content",
             "A created or read-back meeting Canvas must not retain placeholder cells",
             "provide separate manual index-binding handoff values that use Slack's built-in `이름` field as the title",
             "If local background and meeting role identify a team lead owner",
@@ -352,6 +358,26 @@ def manual_handoff_failures(path: Path) -> list[str]:
     return failures
 
 
+def publish_script_required_input_failures() -> list[str]:
+    script = PUBLISH_SCRIPT.read_text(encoding="utf-8")
+    failures: list[str] = []
+    required_snippets = (
+        "def usage()",
+        "--help",
+        "validate_required_inputs",
+        "PARTICIPANT_NAMES 또는 PARTICIPANT_USER_IDS",
+        "CANVAS_MARKDOWN 환경변수가 필요합니다",
+        "### 원문 전사본 전문",
+        "```text",
+    )
+    missing = [snippet for snippet in required_snippets if snippet not in script]
+    if missing:
+        failures.append(f"publish_required_input_contract: missing {missing}")
+    if "canvas_markdown\": os.environ.get(\"CANVAS_MARKDOWN\", \"# 회의록\\n\\n(본문)\")" in script:
+        failures.append("publish_placeholder_default: script must not create a Canvas from fallback placeholder markdown")
+    return failures
+
+
 def known_team_lead_owner_leaks(output: str) -> bool:
     followup_block = section_between(output, "## 후속 확인", "## 리스크/열린 질문")
     risk_block = section_between(output, "## 리스크/열린 질문", "## 보정 및 원문 부록")
@@ -453,12 +479,14 @@ def main() -> int:
     bad_score, bad_failures = evaluate(BAD_CANVAS_READBACK)
     handoff_failures = manual_handoff_failures(CURRENT_HANDOFF)
     bad_handoff_failures = manual_handoff_failures(BAD_HANDOFF)
+    publish_failures = publish_script_required_input_failures()
 
     print(f"baseline_score={baseline_score} expected_min={BASELINE_EXPECTED_MIN}")
     print(f"current_score={current_score} pass_line={CURRENT_PASS_LINE}")
     print(f"bad_canvas_readback_score={bad_score} must_fail_below={CURRENT_PASS_LINE}")
     print(f"manual_handoff_failures={len(handoff_failures)}")
     print(f"bad_manual_handoff_failures={len(bad_handoff_failures)}")
+    print(f"publish_required_input_failures={len(publish_failures)}")
     print(f"improvement={current_score - baseline_score} min_improvement={MIN_IMPROVEMENT}")
     if baseline_failures:
         print("baseline_failures:")
@@ -480,6 +508,10 @@ def main() -> int:
         print("bad_manual_handoff_failures:")
         for failure in bad_handoff_failures:
             print(f"- {failure}")
+    if publish_failures:
+        print("publish_required_input_failures:")
+        for failure in publish_failures:
+            print(f"- {failure}")
 
     if baseline_score < BASELINE_EXPECTED_MIN:
         print("error: baseline fixture drifted below expected baseline minimum", file=sys.stderr)
@@ -500,6 +532,9 @@ def main() -> int:
         return 1
     if handoff_failures:
         print("error: current manual handoff fixture failed quality checks", file=sys.stderr)
+        return 1
+    if publish_failures:
+        print("error: publish script does not enforce required meeting inputs", file=sys.stderr)
         return 1
     expected_bad_handoff_failure_names = (
         "manual_handoff_required_fields",

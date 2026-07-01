@@ -28,10 +28,49 @@ Engelbart 회의 Canvas 발행 규칙을 하나의 원자적 절차로 묶는다
 
 import json
 import os
+import sys
 import urllib.request
 import urllib.error
 
 SLACK_API = "https://slack.com/api/"
+
+
+def usage() -> str:
+    return """usage: publish_meeting_canvas.py [--help]
+
+필수 환경변수:
+  SLACK_TOKEN
+  MEETING_LIST_ID
+  CANVAS_MARKDOWN    완성된 회의록 Markdown. `### 원문 전사본 전문`과 ```text 코드블록 포함.
+  PARTICIPANT_NAMES 또는 PARTICIPANT_USER_IDS
+
+선택 환경변수:
+  MEETING_TITLE, MEETING_DATE, PARTICIPANT_ACCESS_LEVEL, COL_NAME, COL_DATE,
+  COL_PARTICIPANTS, COL_CANVAS_URL
+"""
+
+
+def split_env_list(name: str) -> list[str]:
+    return [x.strip() for x in os.environ.get(name, "").split(",") if x.strip()]
+
+
+def validate_required_inputs() -> None:
+    """Slack 쓰기 전에 참석자 목록과 원문 전사본 입력을 강제한다."""
+    missing = []
+    if not (split_env_list("PARTICIPANT_NAMES") or split_env_list("PARTICIPANT_USER_IDS")):
+        missing.append("PARTICIPANT_NAMES 또는 PARTICIPANT_USER_IDS")
+
+    canvas_markdown = os.environ.get("CANVAS_MARKDOWN", "").strip()
+    if not canvas_markdown:
+        missing.append("CANVAS_MARKDOWN 환경변수가 필요합니다")
+    else:
+        if "### 원문 전사본 전문" not in canvas_markdown:
+            missing.append("CANVAS_MARKDOWN 안에 ### 원문 전사본 전문 섹션")
+        if "```text" not in canvas_markdown:
+            missing.append("CANVAS_MARKDOWN 안에 원문 전사본 ```text 코드블록")
+
+    if missing:
+        raise SystemExit("필수 회의 입력이 없습니다: " + ", ".join(missing))
 
 
 def slack_call(method: str, payload: dict, token: str) -> dict:
@@ -127,9 +166,9 @@ def resolve_participants(token: str):
     이름 기반은 유일 매칭만 자동 부여하고, 없음/동명이인은 report 에 남겨
     추측 부여로 회의록이 엉뚱한 사람에게 노출되는 것을 막는다.
     """
-    ids = [x.strip() for x in os.environ.get("PARTICIPANT_USER_IDS", "").split(",") if x.strip()]
+    ids = split_env_list("PARTICIPANT_USER_IDS")
     report = []
-    names = [x.strip() for x in os.environ.get("PARTICIPANT_NAMES", "").split(",") if x.strip()]
+    names = split_env_list("PARTICIPANT_NAMES")
     if names:
         users = fetch_workspace_users(token)
         for name in names:
@@ -151,7 +190,8 @@ def build_initial_fields(cols: dict, meta: dict, participant_ids: list) -> list:
     - name        : rich_text 컬럼 (회의 제목)
     - date        : date 컬럼, 값은 ["YYYY-MM-DD"] 문자열 (epoch 아님)
     - participants: user 컬럼, 값은 user_id 배열 (Canvas 권한 부여 목록과 동일)
-    - canvas_url  : link 컬럼, 값은 [{"originalUrl": "..."}] (key 는 url 아님)
+    - canvas_url  : link 컬럼, 생성 payload 값은 [{"original_url": "..."}]
+                    (readback 은 originalUrl 로 정규화될 수 있음)
     """
     fields = []
     if cols.get("name"):
@@ -163,12 +203,23 @@ def build_initial_fields(cols: dict, meta: dict, participant_ids: list) -> list:
     if cols.get("canvas_url") and meta.get("canvas_url"):
         fields.append({
             "column_id": cols["canvas_url"],
-            "link": [{"originalUrl": meta["canvas_url"]}],
+            # slackLists.items.create validates snake_case, while readback may
+            # return camelCase originalUrl for the same stored link field.
+            "link": [{"original_url": meta["canvas_url"]}],
         })
     return fields
 
 
-def main():
+def main(argv: list[str] | None = None):
+    argv = sys.argv[1:] if argv is None else argv
+    if any(arg in {"-h", "--help"} for arg in argv):
+        print(usage())
+        return
+    if argv:
+        raise SystemExit("지원하지 않는 인자입니다. --help 를 확인하세요: " + " ".join(argv))
+
+    validate_required_inputs()
+
     token = os.environ.get("SLACK_TOKEN")
     list_id = os.environ.get("MEETING_LIST_ID")
     if not token or not list_id:
@@ -181,12 +232,14 @@ def main():
             print(f"    참석자 '{name}' -> {val} (자동 부여)")
         else:
             print(f"    참석자 '{name}' -> {status}: 자동 부여 생략, 수동 확인 필요 ({val})")
+    if not participant_ids:
+        raise SystemExit("해석된 참석자 user_id가 없습니다. PARTICIPANT_USER_IDS를 지정하거나 PARTICIPANT_NAMES를 확인하세요.")
 
     # --- 회의 메타데이터 (실전에서는 engelbart 산출물에서 채워 넣는다) ---
     meeting = {
         "title": os.environ.get("MEETING_TITLE", "2026-07-01 [확인필요] 제목"),
         "date_str": os.environ.get("MEETING_DATE", "2026-07-01"),  # "YYYY-MM-DD"
-        "canvas_markdown": os.environ.get("CANVAS_MARKDOWN", "# 회의록\n\n(본문)"),
+        "canvas_markdown": os.environ["CANVAS_MARKDOWN"],
     }
 
     # 1) Canvas 생성 -----------------------------------------------------------
