@@ -149,6 +149,9 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), record.ID, core.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), record.ID, core.IssueOpsWorktreeToolPreparation{
 		OK:                   true,
 		WorktreePath:         worktree,

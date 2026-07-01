@@ -198,6 +198,11 @@ func recordIssueOpsWorktreeToolsForGuardTest(t *testing.T, id, worktree string) 
 		SubagentRationale: "main agent owns this focused lifecycle fixture",
 		RecordedAt:        "2026-06-23T00:00:00Z",
 	}
+	record.DevilsAdvocateReview = &issueops.IssueOpsDevilsAdvocateReview{
+		Verdict:         "pass",
+		ReviewerPattern: "devils-advocate-review",
+		RecordedAt:      "2026-06-29T00:00:00Z",
+	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
