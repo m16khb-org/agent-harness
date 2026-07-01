@@ -233,6 +233,27 @@ type IssueOpsCompatibilityReviewRequest struct {
 	Approved              bool
 }
 
+// IssueOpsDevilsAdvocateReview captures the brooks devil's-advocate verdict on
+// the completed plan/design. A pass (or a stop/revise explicitly waived with
+// rationale) is a fail-closed precondition of implement entry; a stop's findings
+// are reflected into the remote issue before the cycle regresses.
+type IssueOpsDevilsAdvocateReview struct {
+	Verdict          string   `json:"verdict"` // pass | revise | stop
+	Findings         []string `json:"findings,omitempty"`
+	Waived           bool     `json:"waived,omitempty"`
+	WaiverRationale  string   `json:"waiver_rationale,omitempty"`
+	ReviewerPattern  string   `json:"reviewer_pattern,omitempty"`
+	RecordedAt       string   `json:"recorded_at"`
+	IssueReflectedAt string   `json:"issue_reflected_at,omitempty"`
+}
+
+type IssueOpsDevilsAdvocateReviewRequest struct {
+	Verdict         string
+	Findings        []string
+	Waived          bool
+	WaiverRationale string
+}
+
 // IssueOpsDomainReview captures the grill-phase domain grilling outcome:
 // terminology, current model fit, risks, and unresolved uncertainties. It is a
 // net-new source-of-truth field; grilling produced no record state before.
@@ -289,6 +310,7 @@ type IssueOpsRecord struct {
 	WorktreeTools           *IssueOpsWorktreeToolPreparation    `json:"worktree_tools,omitempty"`
 	ExecutionDecision       *IssueOpsExecutionDecision          `json:"execution_decision,omitempty"`
 	CompatibilityReview     *IssueOpsCompatibilityReview        `json:"compatibility_review,omitempty"`
+	DevilsAdvocateReview    *IssueOpsDevilsAdvocateReview       `json:"devils_advocate_review,omitempty"`
 	Feedback                []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`

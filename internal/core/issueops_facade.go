@@ -24,6 +24,7 @@ type IssueOpsExecutionDecisionRecordRequest = issueops.IssueOpsExecutionDecision
 type IssueOpsSubAgentPlan = issueops.IssueOpsSubAgentPlan
 type IssueOpsCompatibilityReview = issueops.IssueOpsCompatibilityReview
 type IssueOpsCompatibilityReviewRequest = issueops.IssueOpsCompatibilityReviewRequest
+type IssueOpsDevilsAdvocateReviewRequest = issueops.IssueOpsDevilsAdvocateReviewRequest
 type IssueOpsDomainReview = issueops.IssueOpsDomainReview
 type IssueOpsDomainReviewRequest = issueops.IssueOpsDomainReviewRequest
 type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
@@ -146,6 +147,10 @@ func RecordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecution
 
 func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsCompatibilityReview(stateRoot, id, req)
+}
+
+func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsDevilsAdvocateReview(stateRoot, id, req)
 }
 
 func RecordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRequest) (IssueOpsRecord, error) {

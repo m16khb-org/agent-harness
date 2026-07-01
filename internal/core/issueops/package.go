@@ -12,6 +12,7 @@ import (
 	"agent-harness/internal/core/issueops/cleanupchildren"
 	"agent-harness/internal/core/issueops/cleanupstatus"
 	"agent-harness/internal/core/issueops/compatibilityreview"
+	"agent-harness/internal/core/issueops/devilsadvocate"
 	"agent-harness/internal/core/issueops/executiondecision"
 	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/linking"
@@ -43,6 +44,7 @@ type IssueOpsExecutionDecisionRecordRequest = model.IssueOpsExecutionDecisionRec
 type IssueOpsSubAgentPlan = model.IssueOpsSubAgentPlan
 type IssueOpsCompatibilityReview = model.IssueOpsCompatibilityReview
 type IssueOpsCompatibilityReviewRequest = model.IssueOpsCompatibilityReviewRequest
+type IssueOpsDevilsAdvocateReviewRequest = model.IssueOpsDevilsAdvocateReviewRequest
 type IssueOpsPlanPrep = model.IssueOpsPlanPrep
 type IssueOpsPlanPrepItem = model.IssueOpsPlanPrepItem
 type IssueOpsPlanPrepRequest = model.IssueOpsPlanPrepRequest
@@ -377,6 +379,16 @@ func issueOpsCompatibilityReviewStore() compatibilityreview.Store {
 		Ready:      IssueOpsCompatibilityReviewReadiness,
 		PhaseRank:  issueOpsPhaseRank,
 	}
+}
+
+func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest) (IssueOpsRecord, error) {
+	var rec IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, id, func() error {
+		var e error
+		rec, e = devilsadvocate.Record(devilsadvocate.Store{Read: ReadIssueOps, TouchWrite: touchAndWriteIssueOps}, stateRoot, id, req)
+		return e
+	})
+	return rec, err
 }
 
 // unbindIssueOpsSessionForCycle clears the repo's session binding only when
