@@ -368,23 +368,21 @@ exit 2
 
 func TestParseGhOutput(t *testing.T) {
 	cases := []struct {
-		name       string
-		in         string
-		wantURL    string
-		wantNumber string
+		name    string
+		in      string
+		wantURL string
 	}{
-		{"empty", "", "", ""},
-		{"plain url", "https://github.com/o/r/issues/12\n", "https://github.com/o/r/issues/12", ""},
-		{"json", `{"url":"https://github.com/o/r/pull/7","number":"7"}`, "https://github.com/o/r/pull/7", "7"},
+		{"empty", "", ""},
+		{"plain url", "https://github.com/o/r/issues/12\n", "https://github.com/o/r/issues/12"},
+		// gh create never passes --json, so JSON is never emitted; any non-URL
+		// output is taken verbatim as the URL (the IID/number branch is gone).
+		{"json no longer parsed", `{"url":"https://github.com/o/r/pull/7","number":"7"}`, `{"url":"https://github.com/o/r/pull/7","number":"7"}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := parseGhOutput(tc.in, "issue")
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if got.URL != tc.wantURL || got.Number != tc.wantNumber {
-				t.Errorf("got %+v, want url=%q number=%q", got, tc.wantURL, tc.wantNumber)
+			got := parseGhOutput(tc.in)
+			if got.URL != tc.wantURL {
+				t.Errorf("got %+v, want url=%q", got, tc.wantURL)
 			}
 		})
 	}
@@ -407,7 +405,7 @@ func TestRunGhJSONExecutesInRepoAndParsesOutput(t *testing.T) {
 	logPath := filepath.Join(repo, "gh.args")
 	writeFakeGh(t, binDir, `#!/bin/sh
 printf '%s\n' "$PWD|$*" > gh.args
-printf '{"url":"https://github.com/o/r/issues/12","number":"12"}'
+printf 'https://github.com/o/r/issues/12\n'
 `)
 	t.Setenv("PATH", binDir)
 
@@ -415,7 +413,7 @@ printf '{"url":"https://github.com/o/r/issues/12","number":"12"}'
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.URL != "https://github.com/o/r/issues/12" || got.Number != "12" {
+	if got.URL != "https://github.com/o/r/issues/12" {
 		t.Fatalf("result=%+v", got)
 	}
 	log, err := os.ReadFile(logPath)

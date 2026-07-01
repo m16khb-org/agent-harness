@@ -376,11 +376,13 @@ func TestParseGlabOutput(t *testing.T) {
 	}{
 		{"empty", "", "", ""},
 		{"plain url", "creating...\nhttps://gitlab.com/g/p/-/issues/9\n", "https://gitlab.com/g/p/-/issues/9", ""},
-		{"json with iid", `{"web_url":"https://gitlab.com/g/p/-/issues/9","iid":9}`, "https://gitlab.com/g/p/-/issues/9", "9"},
+		// glab create never emits JSON, so a JSON line is not an https line and is
+		// ignored; the IID/number branch was removed, so number is always empty.
+		{"json no longer parsed", `{"web_url":"https://gitlab.com/g/p/-/issues/9","iid":9}`, "", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			url, number := parseGlabOutput(tc.in, "issue")
+			url, number := parseGlabOutput(tc.in)
 			if url != tc.wantURL || number != tc.wantNumber {
 				t.Errorf("got url=%q number=%q, want url=%q number=%q", url, number, tc.wantURL, tc.wantNumber)
 			}
@@ -410,7 +412,7 @@ func TestRunGlabJSONExecutesInRepoAndParsesOutput(t *testing.T) {
 	logPath := filepath.Join(repo, "glab.args")
 	writeFakeGlab(t, binDir, `#!/bin/sh
 printf '%s\n' "$PWD|$*" > glab.args
-printf '{"web_url":"https://gitlab.com/g/p/-/issues/9","iid":9}'
+printf 'https://gitlab.com/g/p/-/issues/9\n'
 `)
 	t.Setenv("PATH", binDir)
 
@@ -418,7 +420,7 @@ printf '{"web_url":"https://gitlab.com/g/p/-/issues/9","iid":9}'
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !got.OK || got.URL != "https://gitlab.com/g/p/-/issues/9" || got.Number != "9" {
+	if !got.OK || got.URL != "https://gitlab.com/g/p/-/issues/9" || got.Number != "" {
 		t.Fatalf("result=%+v", got)
 	}
 	log, err := os.ReadFile(logPath)
@@ -437,7 +439,7 @@ func TestRunGlabMRJSONExecutesAndReportsStderr(t *testing.T) {
 	binDir := t.TempDir()
 	writeFakeGlab(t, binDir, `#!/bin/sh
 if [ "$1" = "mr" ]; then
-  printf '{"web_url":"https://gitlab.com/g/p/-/merge_requests/4","iid":4}'
+  printf 'https://gitlab.com/g/p/-/merge_requests/4\n'
   exit 0
 fi
 echo "provider rejected request" >&2
@@ -449,7 +451,7 @@ exit 2
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !mr.OK || mr.URL != "https://gitlab.com/g/p/-/merge_requests/4" || mr.Number != "4" {
+	if !mr.OK || mr.URL != "https://gitlab.com/g/p/-/merge_requests/4" || mr.Number != "" {
 		t.Fatalf("mr result=%+v", mr)
 	}
 

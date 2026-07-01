@@ -45,9 +45,8 @@ func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.Issu
 		return port.IssueProviderCreateIssueResult{OK: false}, err
 	}
 	return port.IssueProviderCreateIssueResult{
-		OK:     true,
-		URL:    result.URL,
-		Number: result.Number,
+		OK:  true,
+		URL: result.URL,
 	}, nil
 }
 
@@ -84,9 +83,8 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 		return port.IssueProviderCreatePullRequestResult{OK: false}, err
 	}
 	return port.IssueProviderCreatePullRequestResult{
-		OK:     true,
-		URL:    result.URL,
-		Number: result.Number,
+		OK:  true,
+		URL: result.URL,
 	}, nil
 }
 
@@ -220,8 +218,7 @@ func (Provider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueP
 }
 
 type ghResult struct {
-	URL    string `json:"url"`
-	Number string `json:"number"`
+	URL string `json:"url"`
 }
 
 type githubIssue struct {
@@ -257,21 +254,14 @@ func runGhJSON(args []string, repo string, kind string) (ghResult, error) {
 		}
 		return ghResult{}, fmt.Errorf("gh %s create failed: %s", kind, stderr)
 	}
-	return parseGhOutput(string(out), kind)
+	return parseGhOutput(string(out)), nil
 }
 
-func parseGhOutput(out string, kind string) (ghResult, error) {
-	out = strings.TrimSpace(out)
-	if out == "" {
-		return ghResult{}, nil
-	}
-	// gh can output either a URL string or JSON. Try JSON first.
-	var result ghResult
-	if err := json.Unmarshal([]byte(out), &result); err == nil && (result.URL != "" || result.Number != "") {
-		return result, nil
-	}
-	// Fall back to treating output as a URL.
-	return ghResult{URL: out}, nil
+// parseGhOutput extracts the created artifact's URL from gh output. No create
+// call passes --json, so gh issue/pr create always emits the artifact URL as a
+// bare line; the output is treated verbatim as that URL.
+func parseGhOutput(out string) ghResult {
+	return ghResult{URL: strings.TrimSpace(out)}
 }
 
 func runGhAPIJSON[T any](repo string, args []string, kind string) (T, error) {

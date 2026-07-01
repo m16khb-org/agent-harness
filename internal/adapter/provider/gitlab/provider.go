@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	"agent-harness/cmd/harness/issueopscli/remoteparse"
@@ -247,11 +246,6 @@ func (Provider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueP
 	}, nil
 }
 
-type glabResult struct {
-	WebURL string `json:"web_url"`
-	IID    int    `json:"iid"`
-}
-
 type gitlabWorkItem struct {
 	ID        string              `json:"id"`
 	IID       string              `json:"iid"`
@@ -405,7 +399,7 @@ func runGlabJSON(args []string, repo string, kind string) (port.IssueProviderCre
 		return port.IssueProviderCreateIssueResult{OK: false},
 			fmt.Errorf("glab %s create failed: %s", kind, stderr)
 	}
-	url, number := parseGlabOutput(string(out), kind)
+	url, number := parseGlabOutput(string(out))
 	return port.IssueProviderCreateIssueResult{OK: true, URL: url, Number: number}, nil
 }
 
@@ -427,27 +421,20 @@ func runGlabMRJSON(args []string, repo string) (port.IssueProviderCreatePullRequ
 		return port.IssueProviderCreatePullRequestResult{OK: false},
 			fmt.Errorf("glab mr create failed: %s", stderr)
 	}
-	url, number := parseGlabOutput(string(out), "mr")
+	url, number := parseGlabOutput(string(out))
 	return port.IssueProviderCreatePullRequestResult{OK: true, URL: url, Number: number}, nil
 }
 
-// parseGlabOutput extracts the web URL and item number (IID) from glab output,
-// preferring JSON and falling back to scanning lines for an https URL.
-func parseGlabOutput(out string, kind string) (url string, number string) {
+// parseGlabOutput extracts the created artifact's web URL by scanning glab
+// output for the first https line. No create call passes a JSON flag, so glab
+// issue/mr create always emits a bare URL and the IID never appears in the
+// output; number is therefore always empty and kept only to mirror the port
+// result's (url, number) shape.
+func parseGlabOutput(out string) (url string, number string) {
 	out = strings.TrimSpace(out)
 	if out == "" {
 		return "", ""
 	}
-	// Try JSON first.
-	var result glabResult
-	if err := json.Unmarshal([]byte(out), &result); err == nil && (result.WebURL != "" || result.IID != 0) {
-		number = ""
-		if result.IID != 0 {
-			number = strconv.Itoa(result.IID)
-		}
-		return result.WebURL, number
-	}
-	// Fall back: scan lines for an https URL.
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "https://") {
