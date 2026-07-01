@@ -21,7 +21,7 @@ Decision statements must be certain and attributable. 결정사항에는 불확�
 
 Before producing or creating meeting minutes, require both:
 
-- A participant list from the user or source metadata. This is the access-grant participant list for the final Canvas.
+- A participant list from the user or source metadata. This participant list remains required metadata for the final Canvas and for speaker/owner correction; it is not the default Canvas access target.
 - The meeting transcript text that will be preserved under `원문 전사본 전문`.
 
 Input collection order is sequential. If either the participant list or transcript is missing, stop and ask for the missing input before drafting, creating, or indexing the meeting artifact, but ask in this order:
@@ -30,7 +30,7 @@ Input collection order is sequential. If either the participant list or transcri
 2. After the participant list is provided, confirm the received participants, then ask for the meeting transcript text.
 3. When both inputs are present, continue with the normal Engelbart workflow.
 
-Do not infer the access-grant participant list solely from generic speaker labels such as `참석자 1`; speaker labels can supplement the correction appendix, but they do not satisfy the required participant list. A final meeting Canvas must not be created from fallback placeholder content.
+Do not infer the required participant metadata solely from generic speaker labels such as `참석자 1`; speaker labels can supplement the correction appendix, but they do not satisfy the required participant list. A final meeting Canvas must not be created from fallback placeholder content.
 
 ## Canvas UI/UX Principles
 
@@ -183,15 +183,14 @@ Do not claim to have created, shared, pinned, attached, or updated a Slack Canva
 
 ## Participant Access Grant
 
-Meeting canvases are created with default "invited people only" access, so a freshly created Canvas is visible to its creator alone. Do not leave it creator-only, and do not make it workspace-wide by default. Grant access to the meeting's actual participants.
+Meeting canvases are created with default "invited people only" access, so a freshly created Canvas can be creator-only until sharing is applied. The default sharing policy is **Bubbletap 누구나 볼 수 있음**: give the Canvas public channel based `read` access so anyone in the Bubbletap workspace who can use that public channel visibility path can view it.
 
-- Accept a participant list as input. Sources, in priority order: an explicit participant list the user provides, an attendee/participant field in the source (Clova Note, calendar invite, huddle roster), then speaker labels resolved to real people.
-- Resolve each participant to a Slack user by name (default): match the name against the workspace user directory (`users.list`, or MCP `slack_search_users` / `slack_read_user_profile`) with normalization for spacing and Korean honorifics (`님`, `프로`, `팀리더`, etc.). An explicit `PARTICIPANT_USER_IDS` skips lookup; email lookup (`users.lookupByEmail`) is optional and not required.
-  - Only auto-grant on a single unambiguous match. On no match or multiple matches (동명이인), do NOT guess — a wrong grant leaks the meeting record to the wrong person.
-- Record unresolved or ambiguous participants in `참석자/화자 보정` with confidence and how to confirm, and surface them in the final handoff. Do not silently drop them and do not silently invite a look-alike.
-- Access level defaults to `read`; use `write` only when the user asks for collaborative editing.
-- Granting access needs the Slack Web API `canvases.access.set` with `user_ids`. Do NOT grant via a public-channel `channel_ids` share — that exposes the Canvas to the whole workspace, which is not the intent. `canvases.access.set` also rejects `channel_ids` and `user_ids` in the same call, so send participants as `user_ids` only.
-- The current MCP surface has no `canvases.access.set` tool. Resolve users and create/read the Canvas via MCP, but run the access grant (and optional List registration) through the Web API path in `scripts/publish_meeting_canvas.py`. Requires a token with `canvases:write`, `users:read` (and `lists:write` for List registration; `users:read.email` only if you opt into email lookup); Lists/Canvas are paid-plan features.
+- Use `#dev-team-backend` as the default public-channel sharing target unless the user names another channel. The API call needs Slack channel IDs, so set `CANVAS_ACCESS_CHANNEL_IDS` (comma-separated `C...` IDs) before using the Web API helper.
+- Granting access needs the Slack Web API `canvases.access.set` with `channel_ids` and `access_level: read`. Access level defaults to `read`; use `write` only when the user asks for collaborative editing.
+- Do not pass `channel_ids` and `user_ids` together. Slack rejects mixed target types in one `canvases.access.set` call. Use `channel_ids` for the default Bubbletap visibility path.
+- The participant list remains required metadata: include it in the Canvas metadata, use it for owner/speaker correction, and record unresolved or ambiguous participant/speaker mappings in `참석자/화자 보정`. Do not silently convert generic speaker labels to real people.
+- Use participant `user_ids` only when the user explicitly asks for restricted participant-only sharing or the public-channel target cannot be provided. In that restricted mode, only auto-resolve users on a single unambiguous match; on no match or multiple matches (동명이인), do not guess.
+- The current MCP surface has no `canvases.access.set` tool. Create/read the Canvas via MCP when available, but run the access grant through the Web API path in `scripts/publish_meeting_canvas.py`. Requires a token with `canvases:write` (plus `users:read` only for restricted participant lookup, and `lists:write` only if optional List registration is used); Lists/Canvas are paid-plan features.
 
 ## Local Background
 
@@ -210,7 +209,7 @@ Use local background as high-confidence correction candidates for product names,
    - Use `#dev-team-backend` by default.
    - Apply a user-provided 채널 override when present.
    - Record target channel, access assumption, source, and last-updated metadata in the output.
-   - Use the required participant list for the later access grant; use speaker-label resolution only as supplementary evidence, not as a replacement for the list.
+   - Use the required participant list as Canvas metadata and correction evidence; use the public-channel target for the default Bubbletap access grant.
 4. Read optional local background, then read the transcript and build correction maps:
    - technical terms
    - uncertain words or sentences
@@ -224,7 +223,7 @@ Use local background as high-confidence correction candidates for product names,
 6. Render the meeting in reader order: executive summary, decisions, actions, topic discussion, follow-up checks, then risks/open questions immediately before the correction appendix.
 7. Group discussion by topic, not by timestamp, unless exact timeline matters.
 8. Produce the requested Korean artifact. When creating an individual meeting Canvas, return the manual index-binding values separately after read-back verification.
-9. Grant Canvas access to the resolved meeting participants (see `Participant Access Grant`). Report unresolved or ambiguous participants instead of guessing.
+9. Grant Canvas access through the Bubbletap public-channel visibility path by default (see `Participant Access Grant`). Report unresolved or ambiguous participant/speaker mappings instead of guessing.
 10. Preserve the full transcript verbatim in the audit appendix unless the user explicitly excludes it. Only redact security-sensitive strings.
 
 ## Canvas Naming Rules

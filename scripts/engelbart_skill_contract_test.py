@@ -15,6 +15,7 @@ TESTDATA = ROOT / "skills" / "engelbart" / "testdata"
 HANDOFF = TESTDATA / "ai_devops_onboarding_handoff.md"
 BAD_HANDOFF = TESTDATA / "ai_devops_onboarding_handoff.bad.md"
 RUBRIC = ROOT / "scripts" / "engelbart_quality_rubric.py"
+PUBLISH_SCRIPT = ROOT / "skills" / "engelbart" / "scripts" / "publish_meeting_canvas.py"
 
 
 class EngelbartSkillContractTest(unittest.TestCase):
@@ -97,6 +98,22 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("After the participant list is provided, confirm the received participants", content)
         self.assertIn("then ask for the meeting transcript text", content)
         self.assertIn("When both inputs are present, continue with the normal Engelbart workflow", content)
+
+    def test_canvas_access_defaults_to_bubbletap_anyone_can_view(self) -> None:
+        content = self.read_skill()
+        script = PUBLISH_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("Bubbletap 누구나 볼 수 있음", content)
+        self.assertIn("participant list remains required metadata", content)
+        self.assertIn("public channel based `read` access", content)
+        self.assertIn("CANVAS_ACCESS_CHANNEL_IDS", content)
+        self.assertIn("Do not pass `channel_ids` and `user_ids` together", content)
+        self.assertNotIn("Do NOT grant via a public-channel `channel_ids` share", content)
+
+        self.assertIn("CANVAS_ACCESS_MODE", script)
+        self.assertIn('"bubbletap_anyone"', script)
+        self.assertIn('"channel_ids": access_channel_ids', script)
+        self.assertIn('"user_ids": participant_ids', script)
 
     def test_manual_index_binding_handoff_replaces_list_control(self) -> None:
         content = self.read_skill()

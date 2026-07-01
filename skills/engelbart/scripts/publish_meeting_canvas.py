@@ -5,22 +5,26 @@ publish_meeting_canvas.py
 Engelbart 회의 Canvas 발행 규칙을 하나의 원자적 절차로 묶는다:
 
   1) canvases.create        - 회의록 Canvas 생성 (markdown 본문)
-  2) canvases.access.set     - 회의 참여자를 user_ids 로 초대(read)
-                               => 참여자만 열람 가능 (워크스페이스 전체 공개 아님)
+  2) canvases.access.set     - Bubbletap 누구나 볼 수 있음 정책:
+                               public channel_ids 로 read 권한 부여
   3) slackLists.items.create - 회의 인덱스 List에 한 행 자동 등록
 
 의존성 없음(파이썬 표준 라이브러리만 사용). 유료 Slack 플랜 + 아래 scope 필요:
-  canvases:write, lists:write, users:read   (이메일 조회 안 쓰므로 users:read.email 불필요)
+  canvases:write, lists:write
+  restricted participant-only 모드에서 이름 조회 시 users:read
 
 환경변수:
   SLACK_TOKEN               xoxb-... 또는 xoxp-...  (필수)
   MEETING_LIST_ID           회의 인덱스 List의 list_id (예: F0BDM7J7AV6)  (필수)
   PARTICIPANT_NAMES         회의 참여자 이름, 콤마 구분 (이름 기반 자동 조회)
   PARTICIPANT_USER_IDS      회의 참여자 user_id, 콤마 구분 (직접 지정 시)
+  CANVAS_ACCESS_MODE        bubbletap_anyone | channel | participants (기본: bubbletap_anyone)
+  CANVAS_ACCESS_CHANNEL_IDS Bubbletap 누구나 볼 수 있음 대상 public channel_id, 콤마 구분
   PARTICIPANT_ACCESS_LEVEL  read | write (기본: read)
 
-이름 기반 조회는 users.list 에서 유일 매칭일 때만 자동 부여한다.
-동명이인/불일치는 부여를 생략하고 로그로 보고한다(오초대 방지).
+기본 access grant는 channel_ids 를 사용한다. Slack API는 channel_ids 와 user_ids 를
+한 호출에 함께 받지 않으므로 섞지 않는다. participants 모드의 이름 기반 조회는
+users.list 에서 유일 매칭일 때만 자동 부여한다.
 
 컬럼 매핑(List 컬럼명 -> 역할). List 실제 컬럼명에 맞게 조정:
   COL_NAME(이름/title), COL_DATE, COL_PARTICIPANTS, COL_CANVAS_URL
@@ -43,15 +47,21 @@ def usage() -> str:
   MEETING_LIST_ID
   CANVAS_MARKDOWN    완성된 회의록 Markdown. `### 원문 전사본 전문`과 ```text 코드블록 포함.
   PARTICIPANT_NAMES 또는 PARTICIPANT_USER_IDS
+  CANVAS_ACCESS_CHANNEL_IDS  기본 CANVAS_ACCESS_MODE=bubbletap_anyone 에서 필요
 
 선택 환경변수:
-  MEETING_TITLE, MEETING_DATE, PARTICIPANT_ACCESS_LEVEL, COL_NAME, COL_DATE,
-  COL_PARTICIPANTS, COL_CANVAS_URL
+  MEETING_TITLE, MEETING_DATE, CANVAS_ACCESS_MODE, PARTICIPANT_ACCESS_LEVEL,
+  COL_NAME, COL_DATE, COL_PARTICIPANTS, COL_CANVAS_URL
 """
 
 
 def split_env_list(name: str) -> list[str]:
     return [x.strip() for x in os.environ.get(name, "").split(",") if x.strip()]
+
+
+def canvas_access_mode() -> str:
+    mode = os.environ.get("CANVAS_ACCESS_MODE", "bubbletap_anyone").strip()
+    return mode or "bubbletap_anyone"
 
 
 def validate_required_inputs() -> None:
@@ -68,6 +78,12 @@ def validate_required_inputs() -> None:
             missing.append("CANVAS_MARKDOWN 안에 ### 원문 전사본 전문 섹션")
         if "```text" not in canvas_markdown:
             missing.append("CANVAS_MARKDOWN 안에 원문 전사본 ```text 코드블록")
+
+    mode = canvas_access_mode()
+    if mode not in {"bubbletap_anyone", "channel", "participants"}:
+        missing.append("CANVAS_ACCESS_MODE 값은 bubbletap_anyone, channel, participants 중 하나")
+    if mode in {"bubbletap_anyone", "channel"} and not split_env_list("CANVAS_ACCESS_CHANNEL_IDS"):
+        missing.append("CANVAS_ACCESS_CHANNEL_IDS")
 
     if missing:
         raise SystemExit("필수 회의 입력이 없습니다: " + ", ".join(missing))
@@ -189,7 +205,8 @@ def build_initial_fields(cols: dict, meta: dict, participant_ids: list) -> list:
     실측 스키마(List F0BDM7J7AV6) 기준 역할 키: name/date/participants/canvas_url.
     - name        : rich_text 컬럼 (회의 제목)
     - date        : date 컬럼, 값은 ["YYYY-MM-DD"] 문자열 (epoch 아님)
-    - participants: user 컬럼, 값은 user_id 배열 (Canvas 권한 부여 목록과 동일)
+    - participants: user 컬럼, 값은 user_id 배열 (회의 참석자 메타데이터용;
+                    기본 Canvas 권한 부여는 CANVAS_ACCESS_CHANNEL_IDS 를 사용)
     - canvas_url  : link 컬럼, 생성 payload 값은 [{"original_url": "..."}]
                     (readback 은 originalUrl 로 정규화될 수 있음)
     """
@@ -225,14 +242,26 @@ def main(argv: list[str] | None = None):
     if not token or not list_id:
         raise SystemExit("SLACK_TOKEN 과 MEETING_LIST_ID 환경변수가 필요합니다.")
 
-    participant_ids, resolve_report = resolve_participants(token)
+    access_mode = canvas_access_mode()
+    access_channel_ids = split_env_list("CANVAS_ACCESS_CHANNEL_IDS")
+    participant_ids = split_env_list("PARTICIPANT_USER_IDS")
+    resolve_report = []
+    if access_mode == "participants":
+        participant_ids, resolve_report = resolve_participants(token)
+    elif split_env_list("PARTICIPANT_NAMES"):
+        resolve_report = [
+            (name, "metadata_only", None)
+            for name in split_env_list("PARTICIPANT_NAMES")
+        ]
     access_level = os.environ.get("PARTICIPANT_ACCESS_LEVEL", "read")
     for name, status, val in resolve_report:
         if status == "resolved":
             print(f"    참석자 '{name}' -> {val} (자동 부여)")
+        elif status == "metadata_only":
+            print(f"    참석자 '{name}' -> metadata_only: 기본 Bubbletap 공유는 channel_ids 사용")
         else:
             print(f"    참석자 '{name}' -> {status}: 자동 부여 생략, 수동 확인 필요 ({val})")
-    if not participant_ids:
+    if access_mode == "participants" and not participant_ids:
         raise SystemExit("해석된 참석자 user_id가 없습니다. PARTICIPANT_USER_IDS를 지정하거나 PARTICIPANT_NAMES를 확인하세요.")
 
     # --- 회의 메타데이터 (실전에서는 engelbart 산출물에서 채워 넣는다) ---
@@ -260,8 +289,19 @@ def main(argv: list[str] | None = None):
     meeting["canvas_url"] = canvas_url
     print(f"[1/3] canvas 생성 완료: {canvas_id}")
 
-    # 2) 회의 참여자만 초대(read) => 참여자 열람, 워크스페이스 전체 공개 아님 ----
-    if participant_ids:
+    # 2) Bubbletap 누구나 볼 수 있음: public channel_ids 로 read 부여 ---------
+    if access_mode in {"bubbletap_anyone", "channel"}:
+        slack_call(
+            "canvases.access.set",
+            {
+                "canvas_id": canvas_id,
+                "access_level": access_level,
+                "channel_ids": access_channel_ids,
+            },
+            token,
+        )
+        print(f"[2/3] Bubbletap 누구나 볼 수 있음 공유({access_level}): {access_channel_ids}")
+    elif participant_ids:
         slack_call(
             "canvases.access.set",
             {
@@ -271,7 +311,7 @@ def main(argv: list[str] | None = None):
             },
             token,
         )
-        print(f"[2/3] 참여자 {len(participant_ids)}명 초대({access_level}): {participant_ids}")
+        print(f"[2/3] 제한 공유 참여자 {len(participant_ids)}명 초대({access_level}): {participant_ids}")
     else:
         print("[2/3] 초대할 참여자 ID/이메일이 없어 접근권한 변경 생략(생성자만 열람).")
 
