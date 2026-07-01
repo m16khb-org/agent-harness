@@ -18,25 +18,25 @@ description: Coding conventions, package structure, and layer boundaries.
 - Go 패키지명은 짧은 소문자 단어를 사용한다.
 - 테스트 파일은 대상 파일 가까이에 `*_test.go`로 둔다.
 
-현재/예정 구조:
+현재 구조(대표 경로):
 
 ```text
 cmd/harness/main.go
-internal/core/docs/docs.go
-internal/core/project_docs.go
-internal/core/inspect/inspect.go
-internal/core/policy.go
-internal/core/preflight.go
-internal/core/state.go
+cmd/harness/<cli>/                 # harnessapp, issueopscli, mcpcli, workercli, daemoncli, hookcli, installcli, ...
 cmd/harness/testdata/*.golden.*
+internal/core/<domain>_facade.go   # 의도된 공개 표면: issueops, issueops_remote, workflow, policy, state_trace, utility, draft_wiki, project_doc
+internal/core/doc.go               # facade 경계 규칙 codify (ADR 2026-06-16)
+internal/core/<subpackage>/        # 분할 도메인: issueops, lifecycle, state, policy, worker, docs, inspect, preflight, ...
 internal/port/
 internal/adapter/cli/
 internal/adapter/mcp/
 internal/adapter/codex/
 internal/adapter/claude/
+internal/adapter/gjc/
+internal/adapter/reasonix/
+internal/adapter/hook/
 internal/adapter/installutil/
-internal/adapter/worker/
-internal/adapter/fs/
+internal/adapter/provider/         # github/gitlab issue provider
 configs/codex/
 configs/claude/
 skills/
@@ -49,14 +49,17 @@ skills/
 
 | 레이어 | 책임 | 의존 가능 | 금지 |
 |--------|------|-----------|------|
-| `core` | workspace/docs/state/policy/preflight/inspect usecase. 현재 host-neutral core 로직이 여기 있다 | `port`, 표준 라이브러리 | Codex/Claude SDK, CLI flag, MCP transport 직접 의존 |
+| `core` | workspace/docs/state/policy/preflight/inspect/worker/issueops/lifecycle usecase. host-neutral 도메인은 `internal/core/<subpackage>/`로 분할되고 `internal/core/*_facade.go`가 의도된 공개 표면이다(경계 규칙은 `internal/core/doc.go`) | `port`, 표준 라이브러리 | Codex/Claude SDK, CLI flag, MCP transport 직접 의존 |
 | `port` | interface, DTO, error contract | 표준 라이브러리 | adapter concrete type 의존 |
 | `adapter/cli` | flag/stdout/stderr/exit code | `core`, CLI library | 정책 복제 |
 | `adapter/mcp` | MCP tool schema/transport | `core`, MCP library | CLI와 다른 의미의 응답 |
 | `adapter/codex` | Codex user skill/MCP 설치 구현 | `core`, `port`, 표준 라이브러리 | 적용 대상 repo 파일 쓰기 |
 | `adapter/claude` | Claude user skill/hook/MCP 설치 구현 | `core`, `port`, 표준 라이브러리 | 기본 설치에서 `.claude/skills` 같은 repo-local 파일 쓰기 |
-| `adapter/worker` | local daemon, job lifecycle, IPC | `core`, stdlib/net | command policy 우회 |
-| `adapter/fs` | filesystem/git/process 구현 | `port`, os/exec 등 | root 밖 접근을 암묵 허용 |
+| `adapter/gjc`, `adapter/reasonix` | 제3 host 어댑터(codex/claude와 같은 user/global 설치 규칙) | `core`, `port`, 표준 라이브러리 | 적용 대상 repo 파일 쓰기 |
+| `adapter/hook` | host별 hook 출력 schema formatter | `core`, `port` | host schema와 다른 응답 |
+| `adapter/provider` | github/gitlab issue·PR/MR·child 생성/검증(gh·glab CLI) | `core`, `port`, os/exec | 정책 복제, root 밖 접근 |
+
+> Worker daemon/job lifecycle는 별도 adapter가 아니라 `internal/core/worker`(+`cmd/harness/daemoncli`)에 있다. filesystem/git/process는 전용 `adapter/fs` 없이 각 usecase가 `os/exec`로 직접 다룬다.
 
 ---
 
