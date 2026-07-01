@@ -350,6 +350,23 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 		}
 		return err
 	}
+	// Mirror create-child's verification gate: once an issue is really created,
+	// confirm the live issue carries the requested labels/assignees before the
+	// command reports success. Without --confirm this is a dry-run preview only.
+	if *confirm && strings.TrimSpace(result.URL) != "" {
+		if err := deps.verifyLive(core.IssueOpsRemoteArtifactVerificationRequest{
+			Provider:  providerName,
+			Kind:      "issue",
+			URL:       result.URL,
+			Labels:    labels,
+			Assignees: assignees,
+		}); err != nil {
+			if *jsonOut {
+				_ = deps.printError(err)
+			}
+			return err
+		}
+	}
 	if *jsonOut {
 		return deps.printJSON(result)
 	}

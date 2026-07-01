@@ -26,6 +26,10 @@ func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest
 	var artifact liveRemoteArtifact
 	var err error
 	switch provider + ":" + kind {
+	case "github:issue":
+		artifact, err = fetchGitHubIssueArtifact(strings.TrimSpace(req.URL))
+	case "gitlab:issue":
+		artifact, err = fetchGitLabIssueArtifact(strings.TrimSpace(req.URL))
 	case "github:pr":
 		artifact, err = fetchGitHubPullRequestArtifact(strings.TrimSpace(req.URL))
 	case "gitlab:mr":

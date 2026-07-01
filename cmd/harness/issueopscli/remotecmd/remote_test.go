@@ -328,3 +328,68 @@ exit 2
 		t.Fatal(err)
 	}
 }
+
+func TestRunRemoteCreateIssueConfirmVerifiesLiveIssue(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecordWithoutChild(t)
+	binDir := t.TempDir()
+	writeFakeGhForCreateIssue(t, binDir)
+	t.Setenv("PATH", binDir)
+
+	var verified []core.IssueOpsRemoteArtifactVerificationRequest
+	deps := Deps{
+		PrintJSON:  func(any) error { return nil },
+		PrintError: func(error) error { return nil },
+		VerifyLive: func(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+			verified = append(verified, req)
+			return nil
+		},
+	}
+	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--body", "Body", "--label", "bug", "--assignee", "octocat", "--confirm", "--json"}, deps); err != nil {
+		t.Fatalf("create-issue confirm returned error: %v", err)
+	}
+	if len(verified) != 1 {
+		t.Fatalf("expected one live verification, got %d", len(verified))
+	}
+	got := verified[0]
+	if got.Kind != "issue" || got.Provider != "github" || got.URL != "https://github.com/acme/repo/issues/77" {
+		t.Fatalf("unexpected verify request: %+v", got)
+	}
+	if strings.Join(got.Labels, ",") != "bug" || strings.Join(got.Assignees, ",") != "octocat" {
+		t.Fatalf("labels/assignees not forwarded to verification: %+v", got)
+	}
+}
+
+func TestRunRemoteCreateIssueConfirmFailsWhenLiveVerificationFails(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecordWithoutChild(t)
+	binDir := t.TempDir()
+	writeFakeGhForCreateIssue(t, binDir)
+	t.Setenv("PATH", binDir)
+
+	deps := Deps{
+		PrintError: func(error) error { return nil },
+		VerifyLive: func(core.IssueOpsRemoteArtifactVerificationRequest) error {
+			return errors.New("remote artifact missing verified label(s): bug")
+		},
+	}
+	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--body", "Body", "--label", "bug", "--assignee", "octocat", "--confirm"}, deps); err == nil || !strings.Contains(err.Error(), "missing verified label") {
+		t.Fatalf("expected live verification failure to propagate, got %v", err)
+	}
+}
+
+func writeFakeGhForCreateIssue(t *testing.T, binDir string) {
+	t.Helper()
+	path := filepath.Join(binDir, "gh")
+	script := `#!/bin/sh
+if [ "$1 $2" = "issue create" ]; then
+  printf 'https://github.com/acme/repo/issues/77\n'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+}

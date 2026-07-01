@@ -296,3 +296,76 @@ exit 2
 		t.Fatal(err)
 	}
 }
+
+func TestMCPIssueOpsRemoteCreateIssueConfirmVerifiesLiveIssue(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bin := t.TempDir()
+	writeFakeGhForMCPCreateIssue(t, bin, `[{"name":"bug"}]`)
+	t.Setenv("PATH", bin)
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": repo, "branch": "1-demo"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	result := callMCPToolForIssueOpsTest(t, "issueops_remote_create_issue", map[string]any{
+		"id":        id,
+		"provider":  "github",
+		"title":     "Title",
+		"body":      "Body",
+		"labels":    []string{"bug"},
+		"assignees": []string{"octocat"},
+		"confirm":   true,
+	})
+	if result["url"] != "https://github.com/acme/repo/issues/77" {
+		t.Fatalf("unexpected create-issue result: %#v", result)
+	}
+}
+
+func TestMCPIssueOpsRemoteCreateIssueConfirmFailsWhenLiveLabelsMissing(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	bin := t.TempDir()
+	// Live issue carries the wrong label, so the post-create verification gate
+	// must reject the otherwise-successful creation.
+	writeFakeGhForMCPCreateIssue(t, bin, `[{"name":"other"}]`)
+	t.Setenv("PATH", bin)
+	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": repo, "branch": "1-demo"})
+	id, ok := start["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("unexpected MCP start payload: %#v", start)
+	}
+	createErr := callMCPToolForIssueOpsTestError(t, "issueops_remote_create_issue", map[string]any{
+		"id":        id,
+		"provider":  "github",
+		"title":     "Title",
+		"body":      "Body",
+		"labels":    []string{"bug"},
+		"assignees": []string{"octocat"},
+		"confirm":   true,
+	})
+	if !strings.Contains(createErr, "label") {
+		t.Fatalf("expected live label verification failure, got %q", createErr)
+	}
+}
+
+func writeFakeGhForMCPCreateIssue(t *testing.T, binDir, labelsJSON string) {
+	t.Helper()
+	script := `#!/bin/sh
+if [ "$1 $2" = "issue create" ]; then
+  printf 'https://github.com/acme/repo/issues/77\n'
+  exit 0
+fi
+if [ "$1 $2" = "issue view" ]; then
+  printf '{"url":"https://github.com/acme/repo/issues/77","labels":` + labelsJSON + `,"assignees":[{"login":"octocat"}],"state":"OPEN"}'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`
+	if err := os.WriteFile(filepath.Join(binDir, "gh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+}

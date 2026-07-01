@@ -145,15 +145,34 @@ func handleMCPRemoteCreateIssue(args map[string]any) MCPToolOutcome {
 	if err := validateMCPConfirmRemoteCreate(argmap.Bool(args, "confirm"), argmap.StringSlice(args, "labels"), argmap.StringSlice(args, "assignees")); err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-issue failed")
 	}
+	labels := argmap.StringSlice(args, "labels")
+	assignees := argmap.StringSlice(args, "assignees")
 	result, err := core.CreateRemoteIssue(core.IssueProviderCreateIssueRequest{
 		Repo:      record.Repo,
 		Title:     argmap.String(args, "title"),
 		Body:      body,
-		Labels:    argmap.StringSlice(args, "labels"),
-		Assignees: argmap.StringSlice(args, "assignees"),
+		Labels:    labels,
+		Assignees: assignees,
 		Confirm:   argmap.Bool(args, "confirm"),
 	}, prov)
-	return issueOpsMCPOutcome(result, err, "IssueOps remote create-issue failed")
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-issue failed")
+	}
+	// Mirror create-child's verification gate: a confirmed creation must be
+	// followed by a live check that the issue carries the requested
+	// labels/assignees before success is reported.
+	if argmap.Bool(args, "confirm") && strings.TrimSpace(result.URL) != "" {
+		if err := VerifyIssueOpsRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
+			Provider:  providerName,
+			Kind:      "issue",
+			URL:       result.URL,
+			Labels:    labels,
+			Assignees: assignees,
+		}); err != nil {
+			return issueOpsMCPOutcome(nil, err, "IssueOps remote create-issue failed")
+		}
+	}
+	return issueOpsMCPOutcome(result, nil, "IssueOps remote create-issue failed")
 }
 
 func handleMCPRemoteCreateChild(args map[string]any) MCPToolOutcome {
