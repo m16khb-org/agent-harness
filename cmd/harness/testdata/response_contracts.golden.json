@@ -571,7 +571,7 @@
     "docs_index": {
       "docs": [
         {
-          "bytes": 33920,
+          "bytes": 36172,
           "headings": [
             "agent-harness 구현 계획",
             "1. 최종 결정",
@@ -8101,7 +8101,7 @@
           "json": {
             "docs": [
               {
-                "bytes": 33920,
+                "bytes": 36172,
                 "headings": [
                   "agent-harness 구현 계획",
                   "1. 최종 결정",
