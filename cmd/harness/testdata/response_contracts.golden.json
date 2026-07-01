@@ -227,7 +227,7 @@
           "name": "version"
         }
       ],
-      "hash": "aa2fdc888a56b161f667d4e20528959047a11719a51f23d2cede2dd113e51897",
+      "hash": "bc85444a2bb15de59db51ef1f363cce7b0cd3af9e6347cf60592309e4ff05b45",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -260,6 +260,7 @@
         "issueops_prepare_worktree_tools",
         "issueops_record_ai_slop_clean_evidence",
         "issueops_record_compatibility_review",
+        "issueops_record_devils_advocate_review",
         "issueops_record_domain_review",
         "issueops_record_execution_decision",
         "issueops_record_intent",
@@ -7580,7 +7581,7 @@
                 "name": "version"
               }
             ],
-            "hash": "aa2fdc888a56b161f667d4e20528959047a11719a51f23d2cede2dd113e51897",
+            "hash": "bc85444a2bb15de59db51ef1f363cce7b0cd3af9e6347cf60592309e4ff05b45",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -7613,6 +7614,7 @@
               "issueops_prepare_worktree_tools",
               "issueops_record_ai_slop_clean_evidence",
               "issueops_record_compatibility_review",
+              "issueops_record_devils_advocate_review",
               "issueops_record_domain_review",
               "issueops_record_execution_decision",
               "issueops_record_intent",

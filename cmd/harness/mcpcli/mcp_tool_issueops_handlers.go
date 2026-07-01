@@ -130,6 +130,16 @@ func handleMCPIssueOpsRecordCompatibilityReview(args map[string]any) MCPToolOutc
 	return issueOpsMCPOutcome(result, err, "IssueOps compatibility review record failed")
 }
 
+func handleMCPIssueOpsRecordDevilsAdvocateReview(args map[string]any) MCPToolOutcome {
+	result, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsDevilsAdvocateReviewRequest{
+		Verdict:         argmap.String(args, "verdict"),
+		Findings:        argmap.StringSlice(args, "findings"),
+		Waived:          argmap.Bool(args, "waived"),
+		WaiverRationale: argmap.String(args, "waiver_rationale"),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps devils-advocate review record failed")
+}
+
 func handleMCPIssueOpsRecordDomainReview(args map[string]any) MCPToolOutcome {
 	result, err := core.RecordIssueOpsDomainReview(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsDomainReviewRequest{
 		Terminology:       argmap.StringSlice(args, "terminology"),

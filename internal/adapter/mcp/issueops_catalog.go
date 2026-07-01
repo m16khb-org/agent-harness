@@ -140,6 +140,17 @@ func IssueOpsBasicTools() []Tool {
 			}},
 		},
 		{
+			Name:        "issueops_record_devils_advocate_review",
+			Description: "Record the brooks devil's-advocate verdict on the completed plan: pass, revise, or stop, with surfaced findings and an optional explicit waiver. A recorded pass (or a waived stop/revise) is a fail-closed precondition of implement entry; a stop is reflected into the remote issue before the cycle regresses.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "verdict"}, "properties": map[string]any{
+				"id":               map[string]any{"type": "string", "description": "IssueOps id."},
+				"verdict":          map[string]any{"type": "string", "description": "Devil's-advocate verdict: pass, revise, or stop."},
+				"findings":         map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Surfaced problems. Required for a stop/revise verdict unless waived."},
+				"waived":           map[string]any{"type": "boolean", "description": "Explicitly waive a stop/revise verdict to proceed."},
+				"waiver_rationale": map[string]any{"type": "string", "description": "Rationale required when waived is true."},
+			}},
+		},
+		{
 			Name:        "issueops_record_domain_review",
 			Description: "Record the IssueOps grill-phase domain review: terminology, how the change fits the current domain model, risks, and unresolved uncertainties. Backs the grill domain_review phase-ledger artifact.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
