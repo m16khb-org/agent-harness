@@ -267,6 +267,11 @@ Codex and Claude Code accept different JSON schemas for hook responses. The hook
 > fires on any non-trivial dispatcher; the high-complexity tier was triaged (all
 > switch-dispatch routers or already well-tested, e.g. worktreeGuardBlockReason with
 > 514 lines of tests). Disposition: informational, not an open work item.
+>
+> **Last reconciled against HEAD `116ebef` (2026-07-01).** No P1/P2 regressions since
+> the 2026-06-16 triage; the recent IssueOps locking/TOCTOU and phase-ledger hardening
+> (`1f7d077`, `805d622`, `b1354bd`, `878e04a`) is recorded in ISSUEOPS_AUDIT.md and
+> reopens no item in this matrix.
 
 ### Open — the counted `audit_p1_p2_items`
 

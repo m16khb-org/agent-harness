@@ -377,6 +377,24 @@ Lock files persist until orphaned cleanup removes only those with no matching `.
 | 6.1 | Remote artifact trust-based | Requires provider API integration |
 | 6.2 | ls-remote blocks cleanup | Design choice: fail-safe over convenience |
 
+### Reconciliation (2026-07-01)
+
+Last reconciled against HEAD `116ebef` (2026-07-01). Locking/TOCTOU and phase-gate
+hardening landed since the 2026-06-14 status above; each row was verified against the
+cited commit's diff before marking it resolved.
+
+| ID | Problem | Resolved by |
+|----|---------|-------------|
+| 1.1 / 6.4 | Start() lock-id TOCTOU; Start()↔ForceRelease race | `1f7d077` — `StartIssueOps` abs-normalizes the repo before hashing the lock id (`issueOpsStartLockID` in `package.go`), so a relative path and its absolute equivalent serialize on the SAME record; this closes the residual lost-update window where `Start()` could overwrite a just-force-released cycle (LK-01). |
+| 2.1 | Session-binding read-modify-write race | `1f7d077` — a per-repo advisory `flock` (`session/session_lock_unix.go`, `session/session_lock_other.go`) wraps bind/unbind, and unbind is a locked compare-and-delete, so two cycles cannot race the shared per-repo binding file. |
+| 1.3 | Orphaned `.lock` sweep off-hot-path | `1f7d077` — the orphan-lock sweep now runs on any `issueops cleanup stale --apply`, not only when a cycle was released; `.lock` files are intentionally left for the sweep to preserve the flock inode invariant. |
+| — | Fail-closed grill/plan phase gates; partial-ledger backfill | `805d622` (phase ledger with fail-closed grill/plan gates), `b1354bd` (backfill partial phase ledger, clear stale notes). |
+| — | Stale-reset preserves analysis metadata and resets approval gates | `878e04a`. |
+
+1.4 (stale-scan snapshot window) remains theoretical/mitigated by the
+re-read-and-re-classify-under-lock design described in §1.4. Deferred items 1.2,
+4.1/4.2, 4.3, 5.3, 6.1, and 6.2 remain as recorded in the tables above.
+
 These scenarios should be manually verified after Phase 1+2 fixes:
 
 ### A1: Basic Multi-Session Continuity
