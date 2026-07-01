@@ -312,6 +312,39 @@ the required agent-harness skill validation gate.
 - `domain`(review), `compatibility`(review), `design`(review), `intent`(record)는 ledger artifact이며 각각 `issueops domain-review record`, `issueops compatibility review`, `issueops design review`, `issueops intent record`가 실제 명령이다.
 - CLI는 잘못된 서브커맨드에 대해 did-you-mean 힌트를 출력한다(`issueops.go`의 `suggestIssueOpsSubcommand`). 매핑 전체는 `skills/issueops/SKILL.md`의 "Concept → Command Map" 섹션을 참조.
 
+---
+
+## 25. gh/glab create 출력은 항상 bare URL — JSON/Number 파싱 추가 금지
+
+`gh issue/pr create`와 `glab issue/mr create`는 어떤 create 경로에서도 `--json` 플래그를 넘기지 않는다. 따라서 stdout은 항상 bare 아티팩트 URL 한 줄이다. 과거에 `parseGhOutput`/`parseGlabOutput`에 JSON-first 분기(`ghResult.Number`/`glabResult.IID` 채우기)를 뒀지만 도달 불가능한 죽은 코드였고 port 결과의 `Number`는 항상 ""였다(9d6be19에서 제거).
+
+주의:
+- create-output 파서는 URL을 trim해서 반환만 한다. JSON 디코딩/Number 추출 분기를 되살리지 말 것.
+- 아티팩트 번호가 필요하면 URL에서 파싱한다(예: `parseGitHubIssueURL`), create 출력 JSON을 기대하지 않는다.
+- provider가 JSON을 내는 경로는 `gh api`/`glab api graphql`(별도 `runGhAPIJSON`/`runGlabGraphQL`)뿐이며 create 파서와 무관하다.
+
+---
+
+## 26. `ValidateArtifactURL`은 verify-artifact(pr/mr) 전용 — issue 케이스 추가 금지
+
+`remote.ValidateArtifactURL`의 유일한 prod 호출자는 `artifactverify.verificationFromRequest`이고, 이 함수는 호출 전에 `kind != pr/mr`을 하드 거부한다(이슈는 사이클의 remote-artifact가 아니다 — 사이클의 RemoteArtifact는 PR/MR이다). `create-issue --confirm`의 라이브 검증 게이트는 이 계층을 **거치지 않고** `VerifyRemoteArtifactLive` → `fetchGitHubIssueArtifact`/`fetchGitLabIssueArtifact`로 직행하며, fetcher가 자체 URL 파싱(GitLab은 `SplitGitLabIssuePath`+kind 체크, GitHub은 `gh issue view`)을 한다.
+
+주의:
+- `ValidateArtifactURL`/`verificationFromRequest`에 `github:issue`/`gitlab:issue` 분기를 추가하면 죽은 코드가 된다(116ebef 리뷰에서 지적·제거).
+- 새 아티팩트 종류의 라이브 검증을 배선할 때는 실제 도달 경로(`VerifyRemoteArtifactLive` switch + fetcher)를 확장하고, "이미 라우팅된다"는 주석은 도달 경로를 실증한 뒤에만 쓴다.
+- 게이트 배선은 prod에서 CLI `issueOpsRemoteDeps`(`VerifyLive`)와 MCP `harnessapp/mcp_facade`(`VerifyIssueOpsRemoteArtifactLive`)가 주입한다. 미배선 기본값은 "dependency is not configured"를 반환하므로 게이트가 실제로 살아있는지 이 배선을 확인한다.
+
+---
+
+## 27. `.agent-harness/*.md` 편집은 response-contract 골든을 드리프트시킨다
+
+`cmd/harness/testdata/response_contracts.golden.json`은 `.agent-harness/*.md` 문서의 `docs_index`(byte 수 + heading + title)를 캡처한다. 문서 본문을 고치거나 heading을 바꾸면 `TestResponseContractsGolden`이 실패한다. 문서 커밋이 골든을 재생성하지 않으면 pre-existing red로 남아 무관한 변경이 오인 reject된다.
+
+주의:
+- `.agent-harness/*.md`를 편집하면 `go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -update`로 골든을 재생성하고, diff가 `docs_index`(bytes/headings/title)만인지 확인한다(tool schema/response 계약 변화가 섞이면 안 된다).
+- 골든 재생성은 같은 문서 편집 커밋에 포함하거나 바로 뒤의 `chore(contract)` 커밋으로 남겨 red를 남기지 않는다.
+- 골든이 이미 red라면 무관한 변경 탓으로 오인하기 전에 clean HEAD에서 재현해 pre-existing 드리프트인지 먼저 확인한다.
+
 ## Incident Archive
 
 Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents.md`. Keep this file focused on evergreen hazards and move one-off history there.
