@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitLab Usecase"
+  short_description: "Guard GitLab IssueOps, MR, work-item, and review workflows"
+  default_prompt: "Use $gitlab-usecase before GitLab, glab, GitLab MCP, IssueOps remote issue/MR, child task, work item, Kody/Kodus review, issue-body update, branch-target, or cleanup work. Identify the exact GitLab object type, distinguish linked items from child hierarchy, verify remote state after mutations, and keep the issue body as the durable source of truth."

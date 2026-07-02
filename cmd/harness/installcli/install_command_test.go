@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"agent-harness/internal/port"
 )
@@ -85,6 +86,34 @@ func TestInstallCommandInteractiveDryRunSelectsProjectLocalAndManualPathMode(t *
 	}
 	if !messagesContain(result.Messages, `export PATH="$HOME/.local/bin:$PATH"`) {
 		t.Fatalf("manual path mode did not include PATH export guidance: %+v", result.Messages)
+	}
+}
+
+func TestInstallCommandInteractiveDryRunClosedStdinFailsBeforeDeadline(t *testing.T) {
+	home := t.TempDir()
+	configureInstallCommandTest(t, home)
+	t.Setenv("AGENT_HARNESS_INSTALL_HELPER", "1")
+
+	type result struct {
+		stdout string
+		stderr string
+		err    error
+	}
+	done := make(chan result, 1)
+	go func() {
+		stdout, stderr, err := captureInstallCommandOutput(t, strings.NewReader(""), func() error {
+			return RunInstallCommand("install", []string{"--interactive", "--dry-run", "--json"})
+		})
+		done <- result{stdout: stdout, stderr: stderr, err: err}
+	}()
+
+	select {
+	case got := <-done:
+		if got.err == nil || !strings.Contains(got.err.Error(), "interactive input ended before Enable project-local files? [y/N]:") {
+			t.Fatalf("interactive closed stdin error = %v\nstdout=%s\nstderr=%s", got.err, got.stdout, got.stderr)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("interactive dry-run hung after stdin closed")
 	}
 }
 

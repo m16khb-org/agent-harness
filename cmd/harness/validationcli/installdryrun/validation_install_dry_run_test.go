@@ -41,13 +41,22 @@ func TestValidateInstallDryRunSmokeWithDepsCoversSuccessAndSetupFailures(t *test
 		},
 		removeAll: func(string) error { return nil },
 		makeDirAll: func(path string, _ uint32) error {
-			if path != filepath.Join(tempRoot, "skills", skillName) {
+			if path != filepath.Join(tempRoot, "skills", skillName) && path != filepath.Join(tempRoot, "gjc-plugin") {
 				t.Fatalf("unexpected skill dir: %s", path)
 			}
 			return nil
 		},
 		writeFile: func(path string, data []byte, _ uint32) error {
-			if path != filepath.Join(tempRoot, "skills", skillName, "SKILL.md") || !strings.Contains(string(data), "install dry-run smoke") {
+			switch path {
+			case filepath.Join(tempRoot, "skills", skillName, "SKILL.md"):
+				if !strings.Contains(string(data), "install dry-run smoke") {
+					t.Fatalf("unexpected skill file data: %q", string(data))
+				}
+			case filepath.Join(tempRoot, "gjc-plugin", "hook.ts"):
+				if !strings.Contains(string(data), "GJC hook shim smoke fixture") {
+					t.Fatalf("unexpected GJC hook shim data: %q", string(data))
+				}
+			default:
 				t.Fatalf("unexpected skill file write: path=%s data=%q", path, string(data))
 			}
 			return nil
