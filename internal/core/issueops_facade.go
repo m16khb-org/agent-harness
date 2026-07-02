@@ -43,6 +43,7 @@ type IssueOpsStaleScanResult = issueops.IssueOpsStaleScanResult
 type IssueOpsPhase = issueops.IssueOpsPhase
 
 const (
+	IssueOpsCurrentSchemaVersion     = issueops.IssueOpsCurrentSchemaVersion
 	IssueOpsPhaseProblem             = issueops.IssueOpsPhaseProblem
 	IssueOpsPhaseGrill               = issueops.IssueOpsPhaseGrill
 	IssueOpsPhasePlan                = issueops.IssueOpsPhasePlan

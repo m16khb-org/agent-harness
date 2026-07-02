@@ -49,14 +49,22 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 		}
 		return record, nil
 	}
-	if record.Phase == IssueOpsPhaseDone {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot leave done phase")
-	}
 	if shouldRefreshIssueOpsAISlopClean(record, phase) {
 		return refreshIssueOpsAISlopClean(stateRoot, record)
 	}
+	if err := validateIssueOpsPhaseTransition(record, phase); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
+	record = applyIssueOpsPhaseTransition(record, phase)
+	return touchAndWriteIssueOps(stateRoot, record)
+}
+
+func validateIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase) error {
+	if record.Phase == IssueOpsPhaseDone {
+		return fmt.Errorf("cannot leave done phase")
+	}
 	if issueOpsPhaseRank(phase) < issueOpsPhaseRank(record.Phase) {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot move issueops phase backward from %s to %s", record.Phase, phase)
+		return fmt.Errorf("cannot move issueops phase backward from %s to %s", record.Phase, phase)
 	}
 	// Fail-closed (rules 1/8): problem and grill have no other readiness gate, so
 	// these are the only enforcement of the problem/grill completion contracts.
@@ -65,7 +73,7 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 	// plan, and thus grill, on the normal sequential path).
 	if phase == IssueOpsPhaseGrill {
 		if ready := IssueOpsProblemReadiness(record); !ready.Ready {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter grill phase: missing %s", strings.Join(ready.Missing, ", "))
+			return fmt.Errorf("cannot enter grill phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
 	if phase == IssueOpsPhasePlan {
@@ -73,43 +81,47 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 		// the most fundamental missing key surfaces before the grill-completion
 		// delta (split_decision/domain_review/branch).
 		if ready := IssueOpsPlanReadiness(record); !ready.Ready {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter plan phase: missing %s", strings.Join(ready.Missing, ", "))
+			return fmt.Errorf("cannot enter plan phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 		if ready := IssueOpsGrillReadiness(record); !ready.Ready {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter plan phase: grill incomplete: missing %s", strings.Join(ready.Missing, ", "))
+			return fmt.Errorf("cannot enter plan phase: grill incomplete: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
 	if phase == IssueOpsPhaseCompatibilityReview {
 		if ready := IssueOpsCompatibilityReviewReadiness(record); !ready.Ready {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter compatibility-review phase: missing %s", strings.Join(ready.Missing, ", "))
+			return fmt.Errorf("cannot enter compatibility-review phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
 	if phase == IssueOpsPhaseImplement {
 		if ready := IssueOpsImplementationReadiness(record); !ready.Ready {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter implement phase: missing %s", strings.Join(ready.Missing, ", "))
+			return fmt.Errorf("cannot enter implement phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
 	if phase == IssueOpsPhaseAISlopClean {
 		if ready := IssueOpsAISlopCleanReadiness(record); !ready.Ready {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter ai-slop-clean phase: missing %s", strings.Join(ready.Missing, ", "))
+			return fmt.Errorf("cannot enter ai-slop-clean phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
 	if phase == IssueOpsPhaseFeedback && strings.TrimSpace(record.AISlopCleanAt) == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter feedback phase before ai-slop-clean phase")
+		return fmt.Errorf("cannot enter feedback phase before ai-slop-clean phase")
 	}
 	if phase == IssueOpsPhasePR {
 		if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
+			return fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}
 	if phase == IssueOpsPhaseDone && record.Phase != IssueOpsPhasePR {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter done phase before pr phase")
+		return fmt.Errorf("cannot enter done phase before pr phase")
 	}
 	if phase == IssueOpsPhaseDone {
 		if missing := issueOpsRemoteArtifactMissing(record); len(missing) > 0 {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter done phase before remote artifact verification: missing %s", strings.Join(missing, ", "))
+			return fmt.Errorf("cannot enter done phase before remote artifact verification: missing %s", strings.Join(missing, ", "))
 		}
 	}
+	return nil
+}
+
+func applyIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase) IssueOpsRecord {
 	prevPhase := record.Phase
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.Phase = phase
@@ -121,5 +133,5 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 		record.AISlopCleanFingerprint = implementation.ChangeFingerprint(record)
 	}
 	record.PhaseLedger = stampIssueOpsForwardTransition(record.PhaseLedger, prevPhase, phase, now)
-	return touchAndWriteIssueOps(stateRoot, record)
+	return record
 }

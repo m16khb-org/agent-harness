@@ -147,32 +147,20 @@ func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
 	}
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	prov, err := provider.Resolve(providerName)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	_, result, err := core.ReflectIssueOpsDevilsAdvocateFindings(core.IssueOpsStateRoot(), *id, *confirm, prov)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	if *jsonOut {
 		return deps.printJSON(result)
@@ -204,6 +192,18 @@ func (deps Deps) printError(err error) error {
 func (deps Deps) printResult(record core.IssueOpsRecord, jsonOut bool, err error) error {
 	if deps.PrintResult != nil {
 		return deps.PrintResult(record, jsonOut, err)
+	}
+	return err
+}
+
+func (deps Deps) printErrorResult(jsonOut bool, err error) error {
+	if err == nil {
+		return nil
+	}
+	if jsonOut {
+		if printErr := deps.printError(err); printErr != nil {
+			return printErr
+		}
 	}
 	return err
 }
@@ -280,17 +280,11 @@ func runRemoteRenderTemplate(args []string, deps Deps) error {
 	}
 	fieldMap, err := core.ParseIssueOpsTemplateFields(fields)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	scoreSummary, err := readScoreSummaryFile(*scoreFile)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	result := core.RenderIssueOpsTemplate(core.IssueOpsTemplateInput{
 		Kind:         core.IssueOpsArtifactKind(*kind),
@@ -345,25 +339,16 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	}
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	prov, err := provider.Resolve(providerName)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	finalBody, err := resolveTemplateBody(resolveTemplateBodyRequest{
 		Kind:      core.IssueOpsArtifactIssue,
@@ -376,16 +361,10 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 		ScoreFile: *scoreFile,
 	})
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	result, err := core.CreateRemoteIssue(core.IssueProviderCreateIssueRequest{
 		Repo:      record.Repo,
@@ -396,10 +375,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 		Confirm:   *confirm,
 	}, prov)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	// Mirror create-child's verification gate: once an issue is really created,
 	// confirm the live issue carries the requested labels/assignees before the
@@ -412,10 +388,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 			Labels:    labels,
 			Assignees: assignees,
 		}); err != nil {
-			if *jsonOut {
-				_ = deps.printError(err)
-			}
-			return err
+			return deps.printErrorResult(*jsonOut, err)
 		}
 	}
 	if *jsonOut {
@@ -451,38 +424,23 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	}
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	if strings.TrimSpace(record.IssueURL) == "" {
 		err := fmt.Errorf("cannot create child before linked parent issue")
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	if err := validateCreateChildInputs(*title, labels, assignees); err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	prov, err := provider.Resolve(providerName)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	finalBody, err := resolveTemplateBody(resolveTemplateBodyRequest{
 		Kind:      core.IssueOpsArtifactChild,
@@ -495,10 +453,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 		ScoreFile: *scoreFile,
 	})
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	result, err := core.CreateRemoteChild(core.IssueProviderCreateChildRequest{
 		Repo:           record.Repo,
@@ -510,24 +465,15 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 		Confirm:        *confirm,
 	}, prov)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	if *confirm {
 		if !result.HierarchyVerified || strings.TrimSpace(result.ChildURL) == "" {
 			err := fmt.Errorf("provider did not verify child hierarchy")
-			if *jsonOut {
-				_ = deps.printError(err)
-			}
-			return err
+			return deps.printErrorResult(*jsonOut, err)
 		}
 		if _, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), record.ID, result.ChildURL, *title); err != nil {
-			if *jsonOut {
-				_ = deps.printError(err)
-			}
-			return err
+			return deps.printErrorResult(*jsonOut, err)
 		}
 	}
 	if *jsonOut {
@@ -565,25 +511,16 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	}
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	prov, err := provider.Resolve(providerName)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	headBranch := firstNonEmptyMain(*head, record.Branch)
 	baseBranch := *base
@@ -601,16 +538,10 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		ScoreFile: *scoreFile,
 	})
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	result, err := core.CreateRemotePullRequest(core.IssueProviderCreatePullRequestRequest{
 		Repo:       record.Repo,
@@ -623,10 +554,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		Confirm:    *confirm,
 	}, prov)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	if *jsonOut {
 		return deps.printJSON(result)
@@ -768,10 +696,7 @@ func runRemoteSyncGraph(args []string, deps Deps) error {
 	}
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	if !*confirm {
 		links := len(record.IssueLinks)
@@ -793,10 +718,7 @@ func runRemoteSyncGraph(args []string, deps Deps) error {
 	}
 	result, err := core.SyncRemoteIssueGraph(record)
 	if err != nil {
-		if *jsonOut {
-			_ = deps.printError(err)
-		}
-		return err
+		return deps.printErrorResult(*jsonOut, err)
 	}
 	if *jsonOut {
 		return deps.printJSON(result)

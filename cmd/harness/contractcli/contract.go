@@ -115,7 +115,7 @@ func BuildCompatibilityContract() CompatibilityContract {
 			"guard_check":                     {"ok", "repo_root", "mode", "checked_files", "findings", "summary"},
 			"trace_analysis":                  {"ok", "kind", "input", "input_source", "trace_types", "finding_count", "findings", "warnings"},
 			"worker_job":                      {"ok", "id", "kind", "status", "created_at", "updated_at", "no_shell"},
-			"issueops_record":                 {"ok", "id", "repo", "branch", "phase", "intent", "design_review", "issue_url", "plan_path", "branch_prepare", "remote_artifact", "worktree_tools", "execution_decision", "feedback", "ai_slop_clean_at", "created_at", "updated_at"},
+			"issueops_record":                 {"ok", "schema_version", "id", "repo", "branch", "phase", "intent", "design_review", "issue_url", "plan_path", "branch_prepare", "remote_artifact", "worktree_tools", "execution_decision", "feedback", "ai_slop_clean_at", "created_at", "updated_at"},
 			"issueops_pr_readiness":           {"ok", "ready", "missing", "issue_url", "plan_path", "branch"},
 			"issueops_cleanup_status":         {"ok", "ready", "id", "merged", "missing", "warnings", "choices", "worktree_path", "branch", "remote_artifact_url"},
 			"issueops_cleanup_close_children": {"ok", "id", "merged", "confirmed", "dry_run", "closed_count", "children", "missing"},

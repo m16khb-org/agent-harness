@@ -29,6 +29,9 @@ func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	if record.ID != id {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: file has %q", record.ID)
 	}
+	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
+		return IssueOpsRecord{OK: false, ID: id}, err
+	}
 	record.OK = true
 	return record, nil
 }
@@ -53,6 +56,10 @@ func touchAndWriteIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRec
 
 func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
 	if _, err := normalizeIssueOpsID(record.ID); err != nil {
+		record.OK = false
+		return record, err
+	}
+	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
 		record.OK = false
 		return record, err
 	}
@@ -119,4 +126,18 @@ func normalizeIssueOpsID(id string) (string, error) {
 		return "", fmt.Errorf("invalid issueops id %q", id)
 	}
 	return id, nil
+}
+
+func normalizeIssueOpsSchemaVersion(record *IssueOpsRecord) error {
+	switch {
+	case record.SchemaVersion == 0:
+		record.SchemaVersion = IssueOpsCurrentSchemaVersion
+		return nil
+	case record.SchemaVersion == IssueOpsCurrentSchemaVersion:
+		return nil
+	case record.SchemaVersion > IssueOpsCurrentSchemaVersion:
+		return fmt.Errorf("unsupported issueops schema_version %d; current is %d", record.SchemaVersion, IssueOpsCurrentSchemaVersion)
+	default:
+		return fmt.Errorf("unsupported issueops schema_version %d", record.SchemaVersion)
+	}
 }

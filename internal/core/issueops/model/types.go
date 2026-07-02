@@ -290,8 +290,11 @@ type IssueOpsPhaseLedgerEntry struct {
 // (never Go map order) when rendering or comparing for determinism.
 type IssueOpsPhaseLedger map[IssueOpsPhase]IssueOpsPhaseLedgerEntry
 
+const IssueOpsCurrentSchemaVersion = 1
+
 type IssueOpsRecord struct {
 	OK                      bool                                `json:"ok"`
+	SchemaVersion           int                                 `json:"schema_version"`
 	ID                      string                              `json:"id"`
 	Repo                    string                              `json:"repo"`
 	Branch                  string                              `json:"branch,omitempty"`

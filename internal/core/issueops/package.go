@@ -66,6 +66,7 @@ type IssueOpsResumeResult = model.IssueOpsResumeResult
 type IssueOpsPhase = model.IssueOpsPhase
 
 const (
+	IssueOpsCurrentSchemaVersion     = model.IssueOpsCurrentSchemaVersion
 	IssueOpsPhaseProblem             = model.IssueOpsPhaseProblem
 	IssueOpsPhaseGrill               = model.IssueOpsPhaseGrill
 	IssueOpsPhasePlan                = model.IssueOpsPhasePlan
