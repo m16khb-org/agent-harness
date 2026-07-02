@@ -5,7 +5,7 @@
 - 전환됨(✅): 그 실수를 결정적으로 차단/탐지하는 hook 또는 테스트가 존재한다(증거 = 파일/플래그).
 - 미전환(○): 아직 문서 규약만 있고 기계 강제장치가 없다 → 후속 전환 후보.
 
-최종 갱신: **2026-06-15**
+최종 갱신: **2026-07-02**
 
 | # | Incident (출처) | 관찰된 실패 | 결정적 강제장치 (hook/test) | 상태 |
 |---|------------------|-------------|------------------------------|------|
@@ -20,11 +20,14 @@
 | 9 | CAUTIONS §19 git identity before contributor-sensitive pushes | 잘못된 git identity로 기여자-민감 push | preflight git 점검(`internal/core/preflight/git.go`) — 단, push 차단까지의 강제는 부분적 | ○ 부분 |
 | 10 | CAUTIONS §5 Worker lifecycle 문제 (stuck running) | 프로세스 크래시 후 worker가 running으로 고착 | `MaybeDetectStuckWorkerJobs` SessionStart 자동 트리거(W1, A2) | ✅ hook |
 | 11 | plan-before-execute (S2 원칙) | 승인된 설계 검토 없이 implement(구현) 시작 | issueops implement 진입 게이트: `IssueOpsImplementationReadiness`→`issueOpsDesignReviewMissing`가 `design_review`/`design_approval` 요구(`AdvanceIssueOpsPhase` implement 차단); `TestAdvanceToImplementGatesOnDesignApproval`(B4) | ✅ gate+test |
+| 12 | CP1 command policy override | 첫 workspace root의 policy catalog가 같은 프로세스의 다른 repo 평가로 새는 문제 | `.agent-harness/policy.json` per-evaluation load + two-root isolation tests (`internal/core/policy/policy_catalog_test.go`, `cmd/harness/policycli/policy_cli_test.go`, `cmd/harness/mcpcli/mcp_tool_policy_state_test.go`) | ✅ test |
+| 13 | IssueOps record format drift | legacy/future `IssueOpsRecord` JSON을 같은 방식으로 읽어 상태를 잘못 해석 | `schema_version` normalization/future-version rejection (`internal/core/issueops/issueops_schema_version_test.go`) | ✅ test |
+| 14 | docs-index content churn | 문서 본문/목록 변화가 response contract golden을 과민하게 깨뜨림 | docs-index projection golden (`cmd/harness/harnessapp/response_contract_docs_projection_test.go`) keeps schema/count/required docs while CLI/MCP schema remains fixed | ✅ golden test |
 
 ## 종결 판정 (B2 수용기준)
 
 - **incident→hook 매핑 테이블 1개**: 본 문서. ✅
-- **기존 CAUTIONS 항목 ≥3건이 hook/테스트로 전환됐는지 표기**: §15·§16·§4·§14·§7·§10·§5 등 **7건 이상 ✅ 전환** 표기(증거 파일 명시). 미전환(○) §19는 후속 후보로 명시. ✅
+- **기존 CAUTIONS 항목 ≥3건이 hook/테스트로 전환됐는지 표기**: §15·§16·§4·§14·§7·§10·§5·CP1·IssueOps schema·docs-index 등 **10건 이상 ✅ 전환** 표기(증거 파일 명시). 미전환(○) §19와 Slack List schema live-write test는 후속 후보로 유지. ✅
 
 ## 갱신 규약
 

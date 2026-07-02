@@ -451,3 +451,15 @@ Archived entries:
   - 계획대로 store/queue/signature/capsule 빌드 — rejected: 존재하지 않는 기준선 대비 토큰 절약을 주장했고, resolve 인프라 신규 비용을 과소평가했으며, 아키텍처적으로 "own the context"를 소유하지 않는 hook에 이식하는 우발적 복잡도.
   - Codex `additionalContext`에도 에러 digest 주입 — rejected: §14(사용자 노출 산문 경계) + Codex TUI가 이미 tool 에러 표시 → 중복 노이즈.
   - resolved 판정에 "N턴 미재발" 규칙 추가 — rejected: wall-clock/turn-count 도입으로 결정성 훼손.
+
+## 2026-07-02 — External LLM stays Z.AI-only until a second provider is real
+
+- Kind: `adr`
+- Source: quality optimization Track 1 L1 cleanup
+- Summary: Delete the unused `internal/port.ExternalLLM` interface and keep external LLM invocation as the concrete Z.AI wrapper in `internal/core/externalllm`.
+- Context: `internal/port/externalllm.go` defined `ExternalLLM`, but no implementation or caller used it. Real call sites (`commitsuggest`, `draftwiki`, `issueops` scoring/benchmark, `lintdiagnose`, `nextaction`, self-verify LLM eval) call `internal/core/externalllm.RunExternalLLMPrint`, which already hard-rejects non-Z.AI providers. Keeping the orphan interface made the audit appear solved by an abstraction that did not exist in the runtime path.
+- Decision: Remove `port.ExternalLLM`. Do not add a replacement provider abstraction in this pass. Treat Z.AI-only as an explicit YAGNI decision until a second provider is required by a real caller and can be tested through the same CLI/MCP contracts.
+- Consequences: There is no CLI/MCP public contract change. Provider extensibility is intentionally deferred; future provider work must introduce the abstraction together with a concrete second implementation, tests, and an ADR update.
+- Alternatives / rejected options:
+  - Wire existing call sites through `port.ExternalLLM` now — rejected because there is only one provider and no observed variation point.
+  - Keep the unused interface as a placeholder — rejected because it falsely signals decoupling and is not exercised by tests or runtime.

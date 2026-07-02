@@ -226,11 +226,11 @@ Once a cycle reaches `done`, its JSON file persists forever. `NonDoneCyclesForRe
 
 **Fix:** Periodic maintenance via `issueops cleanup stale --apply --max-age 720h` or add a `--prune-done` flag.
 
-### 5.3 No State Compaction/Migration for IssueOps (P2)
+### 5.3 IssueOps Schema Versioning Is Minimal (P2)
 
-Generic state migration exists (`state_migrate.go`), but IssueOps records don't participate. If the `IssueOpsRecord` schema changes, old records may fail to parse.
+IssueOps records now carry `schema_version=1`. Legacy records without a version are read as the current schema, and records claiming an unsupported future version fail closed before any phase logic runs.
 
-**Fix:** Add schema version to `IssueOpsRecord` and implement migration.
+**Remaining:** Do not add a migration framework until a second IssueOps schema version exists. Keep future schema changes at the `ReadIssueOps`/`WriteIssueOps` boundary so CLI and MCP paths share the same compatibility rules.
 
 ---
 
@@ -331,7 +331,7 @@ If session A detects a stale cycle and begins resetting it while session B force
 | 14 | Add optional remote artifact verification | `cleanupstatus/`, `remoteartifact/` | Independent |
 | 15 | Distinguish transient vs permanent ls-remote failures | `cleanupstatus/cleanup_status.go` | Independent |
 | 16 | Minimum force-release reason length | `issueops_force_release.go` | Independent |
-| 17 | Add IssueOpsRecord schema version + migration | `model/types.go`, `state_migrate.go` | Independent |
+| 17 | Add IssueOpsRecord schema version + fail-safe read/write | `model/types.go`, `issueops_state.go` | Done 2026-07-02 |
 
 ---
 

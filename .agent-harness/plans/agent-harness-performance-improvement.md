@@ -1,5 +1,12 @@
 # Agent-Harness 성능/안정성 개선 계획
 
+## 2026-07-02 Status Update
+
+- Skill context-cost work was implemented as document restructuring, not a runtime lazy-loader. `skills/codd/SKILL.md` now keeps only the first-turn contract and routes detailed SQL/catalog/index/concurrency material to `skills/codd/references/deep-database-review.md`; `issueops` and `engelbart` moved long operational/UI examples into references while preserving contract-tested entrypoint phrases.
+- No measured daemon/MCP latency regression was found in this quality pass, and no measurement-backed micro-optimization was attempted. The accepted threshold remains: optimize only after a before/after command or self-verify step duration shows a concrete bottleneck.
+- Quick verification evidence for this pass uses `go test ./...`, `go vet ./...`, `go build -o bin/agent-harness ./cmd/harness`, skill validation, and `self-verify --seed=100`; the full 10-iteration gate is still the release-grade proof.
+- Deferred by design: automatic `/tmp` reaper and Slack List schema write test. `/tmp` cleanup remains explicit hygiene, and Slack List schema testing needs an isolated fixture or approved test List to avoid live workspace side effects.
+
 ## TL;DR
 > **Summary**: 현재 daemon은 reachable이고 `go test ./...` 및 `cmd/harness/mcpcli` 단독 테스트는 통과하지만, self-verify quick은 daemon-backed MCP smoke에서 실패한다. 개선은 "MCP smoke transport 재현/수정 -> 로그 노이즈 축소 -> 스킬 컨텍스트 비용 축소 -> 검증/기준선 기록" 순서로 진행한다.
 > **Deliverables**:

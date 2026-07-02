@@ -256,7 +256,7 @@ Manual builds, smoke tests, and ad-hoc verification runs can leave stale binarie
 
 주의:
 - Harness Go code never writes to `/tmp/agent-harness-*` — these are always manual developer artifacts.
-- Self-verify temp directories (`/tmp/agent-harness-self-verify-*`, `/tmp/ahd-*`) are properly cleaned after each run.
+- Self-verify temp directories (`/tmp/agent-harness-self-verify-*`, `/tmp/ahd-*`) are cleaned on normal completion paths, but SIGKILL or host crash can still leave them behind. No automatic `/tmp` reaper is implemented; cleanup remains explicit hygiene.
 - To clean up stale manual artifacts: `rm -f /tmp/agent-harness-*`. Add this to a periodic workspace hygiene routine.
 - CI and automated scripts should prefer `mktemp -d` or Go `t.TempDir()` / `os.MkdirTemp` over hardcoded `/tmp/` paths.
 - Build scripts (`scripts/install-native.sh`) build to `$ROOT/bin/agent-harness`, not `/tmp`.
@@ -366,6 +366,7 @@ IssueOps에 새 implement-entry(또는 임의 phase) fail-closed 게이트를 �
 - Canvas 제목 규칙(`YYYY-MM-DD [Topic] Title`)과 List row 제목 규칙(`[Topic] Title`)을 혼동하지 않는다.
 - Raw Slack Web API `canvases.create/edit`의 `document_content` 지원 목록은 `quote block`은 포함하지만 `callout`은 명시하지 않는다. Connector의 Canvas-flavored markdown은 callout을 문법으로 받을 수 있어도, raw Web API 경로에서 `::: {.callout}`이 일반 문단으로 보이면 quote block(`> ...`) 또는 검증된 connector 경로로 대체한다.
 - 팀 공용 Slack List 테스트 write는 삭제/재생성해도 알림이나 흔적이 남을 수 있다. 테스트 항목은 `[TEST] ...`처럼 명확히 표시하고, 사용자 승인 없이 rename/delete/recreate 하지 않는다.
+- Slack List schema regression test는 아직 구현하지 않았다. Live Slack 쓰기 부작용 때문에 자동 테스트로 옮기기 전에는 connector fixture 또는 승인된 isolated test List가 필요하다.
 
 ## Incident Archive
 

@@ -1,22 +1,17 @@
 name: CI
 
 # Mirrors the repo's already-deterministic local verification gate (AGENTS.md §9)
-# as a manual workflow while the Linux runner-only test failures are investigated.
+# on every branch push and pull request.
 # The self-verify gate runs with --judge none (LLM eval off by default) and a
 # pinned --seed, so this is pure wiring of existing commands: no live-skill
 # invocation and no model is required in CI. See
 # .agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md (A1).
-
-# Re-enable the push / pull_request triggers below once the Linux-runner-only
-# test failures are resolved; until then CI stays manual-dispatch so a red
-# Linux run does not block every push.
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
-  # pull_request:
+  push:
+  pull_request:
 
-# Cancel superseded manual runs on the same ref to save runner minutes.
+# Cancel superseded runs on the same ref to save runner minutes.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true

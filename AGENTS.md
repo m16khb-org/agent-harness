@@ -121,6 +121,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - 커밋 메시지는 `.agent-harness/COMMIT_POLICY.md`의 **Conventional Commit subject + Lore body** 형식을 따른다.
 - CLI는 사람이 직접 실행해도 이해 가능한 JSON/text 출력을 제공해야 한다.
 - MCP tool schema와 CLI JSON 출력은 호스트별로 다르게 만들지 않는다.
+- command policy는 built-in catalog를 기본으로 하되 workspace별 `.agent-harness/policy.json` override를 매 평가마다 로드한다. load/parse 문제는 기존 `warnings` 필드로 노출하고, 전역 first-root cache를 만들지 않는다.
+- IssueOps record JSON에는 `schema_version`이 포함된다. missing/zero legacy record는 현재 버전으로 읽고, future/unsupported schema는 fail-safe로 거부한다.
 - local job worker는 workspace 경계, command policy, secret redaction, audit log가 준비된 뒤 도입한다. 현재 daemon은 MCP proxy backend다.
 - 에이전트 state는 repo 소스와 분리한다. 추적해야 할 지식은 `.agent-harness/`에, 런타임 캐시/로그는 user state 또는 ignored workspace state에 둔다.
 
@@ -158,6 +160,7 @@ python3 scripts/validate-skill.py skills/atomic-commit-push
 ./bin/agent-harness install-native --dry-run --json
 go test ./... -count=1
 go test ./cmd/harness -run Golden -count=1
+go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
 go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
@@ -189,6 +192,7 @@ go build -o bin/agent-harness ./cmd/harness
 - LLM Wiki 기능은 이 하네스가 재구현하지 않는다. 필요하면 upstream `m16khb/llm-wiki` CLI/MCP 서버 또는 portable AGENTS.md를 사용한다.
 - 하네스 철학은 **바퀴를 재발명하지 않는다**이다. llm-wiki, CodeGraph, claude-mem, LazyCodex 같은 전문 도구는 `scripts/install-native.sh --with-upstream-tools`로 upstream installer/MCP/plugin 배선을 연결하고, core 동작을 agent-harness에 복제하지 않는다.
 - host adapter는 인증·권한·명령 실행 정책을 우회할 수 없다.
+- response-contract golden은 CLI command list, MCP tool list, 필수 response fields를 고정한다. docs-index는 문서 본문/목록 churn에 과민하지 않도록 required-doc projection과 count/schema만 검증한다.
 - worker/CLI/MCP는 workspace root를 명시적으로 식별하고, root 밖 파일 접근은 정책으로 통제한다.
 - shell 실행 기능은 allowlist/denylist, timeout, cwd, env redaction, audit log를 포함해야 한다.
 - secret 원문은 문서, 로그, 테스트 fixture, MCP 응답에 남기지 않는다.

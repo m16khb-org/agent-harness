@@ -21,7 +21,7 @@ Many harnesses focus on making one agent code faster. agent-harness also focuses
 
 The problem it addresses is not only agent capability. It addresses the coordination failures around capable agents: context trapped in private chats, ambiguous requests becoming code too early, plan changes disappearing from the issue, feedback losing its source of truth, and PR/MR reviews receiving work that cannot be traced back to the original decision. IDD defines the working contract; IssueOps makes that contract durable and enforceable.
 
-Current status: early but functional MVP. The CLI, daemon-backed MCP proxy, native skill installer, project-doc tools, IssueOps state, command policy, read-only evidence runner, guard/verify-work gates, API-doc review gate, state checkpoints, worker MVP, self-verification, and self-augmentation surfaces exist. The worker remains state-first and policy-gated; it is not a general writable shell runner.
+Current status: early but functional MVP. The CLI, daemon-backed MCP proxy, native skill installer, project-doc tools, IssueOps state, command policy, read-only evidence runner, guard/verify-work gates, API-doc review gate, state checkpoints, worker MVP, self-verification, and self-augmentation surfaces exist. CI runs on push, pull request, and manual dispatch. The worker remains state-first and policy-gated; it is not a general writable shell runner.
 
 ### What It Is For
 
@@ -69,7 +69,7 @@ agent-harness bootstrap --sync
 | Install | `./install.sh`, then `agent-harness update` | Build the binary, install user-level Codex/Claude/GJC skills, hooks, MCP wiring, and PATH shim. |
 | Project docs | `agent-harness project bootstrap --repo /path/to/repo --dry-run --json` | Plan AGENTS routing and `.agent-harness/` operating docs for a target repo. |
 | IssueOps | `agent-harness issueops start --repo "$PWD" --branch "$(git branch --show-current)" --json` | Start durable state for issue -> plan -> worktree -> feedback -> PR/MR workflows. |
-| Policy | `agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | Decide whether a command is safe before execution. |
+| Policy | `agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short` | Decide whether a command is safe before execution, including workspace-local `.agent-harness/policy.json` overrides. |
 | Verification | `agent-harness self-verify --seed=100 --target-score=95 --json` | Run the quick harness quality gate before claiming the harness is healthy. |
 
 ### Core Surfaces
@@ -78,9 +78,9 @@ agent-harness bootstrap --sync
 | --- | --- | --- |
 | CLI health | `version`, `inspect`, `preflight`, `status`, `doctor`, `docs` | Inspect installation, repository state, docs, daemon, and health signals. |
 | MCP backend | `mcp`, `daemon start/status/stop` | Run a stdio MCP proxy backed by a user-level daemon. |
-| Command policy | `policy check`, `policy fake-run`, `policy run --read-only`, `policy audit` | Evaluate argv, workspace root, cwd, write/network intent, timeout, shell use, and audit metadata. |
+| Command policy | `policy check`, `policy fake-run`, `policy run --read-only`, `policy audit` | Evaluate argv, workspace root, cwd, write/network intent, timeout, shell use, workspace-local policy overrides, and audit metadata. |
 | Project docs | `project bootstrap/docs/route-docs/record`, `project draft-wiki ...` | Bootstrap, index, route, record, stage, approve, reject, and promote project knowledge. |
-| IssueOps | `issueops start/status/intent/link-issue/link-plan/link-related/decision/worktree/feedback/pr-readiness/force-release` | Preserve issue-driven workflow evidence across sessions and hosts. |
+| IssueOps | `issueops start/status/intent/link-issue/link-plan/link-related/decision/worktree/feedback/pr-readiness/force-release` | Preserve versioned issue-driven workflow evidence across sessions and hosts. Legacy records without `schema_version` are read as current; future unsupported records fail closed. |
 | Quality gates | `guard check`, `verify-work`, `trace analyze`, `contract check`, `api-doc check` | Catch anti-patterns, evidence gaps, response-contract drift, trace issues, and API-doc drift. |
 | State | `state write/read/list/prune/doctor/migrate` | Store small JSON checkpoints in user state. |
 | Worker MVP | `worker enqueue/status/list/cancel`, `worker run --read-only`, `worker draft-wiki` | Record lifecycle jobs and run policy-gated read-only evidence commands. |

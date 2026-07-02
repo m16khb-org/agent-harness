@@ -173,13 +173,13 @@ If two `PreCompact` events fire without a `PostCompact` between them, the second
 
 ## 10. Command Policy
 
-### 10.1 Hardcoded Catalog (P1)
+### 10.1 Workspace Policy Overrides (Resolved)
 
 **File:** `internal/core/policy/policy_catalog.go`
 
-The allow/deny lists for commands, subcommands, shell interpreters, and read-only commands are hardcoded in Go. Users cannot customize the policy per-project or per-workspace.
+The built-in allow/deny lists remain the baseline, but workspace roots can now extend the catalog with `.agent-harness/policy.json`. The override is loaded per evaluation/root so same-process checks across two repositories do not leak the first root's policy into the second. Load and parse problems are surfaced through the existing `warnings` field instead of adding a new JSON top-level field.
 
-**Fix:** Load policy from a config file (`.agent-harness/policy.json` or similar) that extends/customizes the built-in lists.
+**Verification:** `policy check`, `policy fake-run`, read-only command execution, and MCP policy state tests cover missing files, invalid JSON warnings, and two-root isolation.
 
 ### 10.2 No Chained Command Analysis (P2)
 
@@ -197,13 +197,13 @@ Shebang lines in scripts are not inspected. Running `./malicious.sh` where the s
 
 ## 11. External LLM
 
-### 11.1 Single Provider (agy Only) (P1)
+### 11.1 Single Provider (Z.AI Only) (Accepted)
 
-**File:** `internal/core/externalllm/structured.go`
+**File:** `internal/core/externalllm/print.go`
 
-All external LLM calls go through `agy -p`. There's no abstraction for other providers (OpenAI, Anthropic direct, Ollama, etc.).
+All external LLM calls go through the Z.AI chat-completions API wrapper in `internal/core/externalllm`. There is no provider abstraction for OpenAI, Anthropic direct, Ollama, etc.
 
-**Fix:** Add a `port.ExternalLLM` interface with `agy` as the default adapter.
+**Disposition:** Accepted YAGNI. The unused `port.ExternalLLM` interface was deleted on 2026-07-02; add a provider interface only after a second provider is actually required by a real caller.
 
 ### 11.2 No Retry on Malformed Responses (P2)
 
@@ -309,8 +309,8 @@ _None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 | Q1 | Draft wiki | No stale lock detection | 90409c9 (PID + staleLockMaxAge) |
 | Q2 | Draft wiki | Capsule overwrite | 0cdeeb2 (merge instead of overwrite) |
 | C1 | Compact | Double PreCompact overwrite | 0cdeeb2 (mergeDocUpkeepEvents) |
-| CP1 | Command policy | Hardcoded catalog | LoadPolicyOverrides (.agent-harness/policy.json) |
-| L1 | External LLM | Single provider | 6408774 + 32f6ddc (port.ExternalLLM + Z.AI default) |
+| CP1 | Command policy | Hardcoded catalog | resolved 2026-07-02 (`.agent-harness/policy.json` per workspace/root, warnings on load/parse failure) |
+| L1 | External LLM | Single provider | accepted 2026-07-02 (Z.AI-only wrapper; unused `port.ExternalLLM` removed) |
 | M2 | MCP proxy | Tool catalog drift | b8f2f11 (auto-generated DispatchMap) |
 | HK1 | Hooks | Host output format divergence | ff0e668 (HostHookOutput interface) |
 
@@ -319,7 +319,7 @@ _None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 | ID | Subsystem | Problem | Disposition |
 |----|-----------|---------|-------------|
 | N1 | Next-action | Read-write race | theoretical (so marked in detail §); no concrete loss path |
-| V1 | Self-verify | Temp dir leak on kill | documentation-only; temp dirs prefixed agent-harness-self-verify-* |
+| V1 | Self-verify | Temp dir leak on kill | documentation-only; no automatic `/tmp` cleanup implemented; temp dirs are prefixed for explicit hygiene |
 | CP2 | Command policy | No chained command analysis | out of scope (so marked in detail §) |
 
 ---
@@ -352,7 +352,7 @@ _None. All triaged P1/P2 items are resolved or accepted-with-rationale below._
 | C1 | Generate MCP dispatch from adapter catalog | `internal/adapter/mcp/`, `cmd/harness/mcpcli/` |
 | C2 | Abstract hook output format per host | `cmd/harness/hookcli/`, new `internal/adapter/hook/` |
 | C3 | Load command policy from config file | `internal/core/policy/`, new config schema |
-| C4 | Add `port.ExternalLLM` interface | `internal/port/`, `internal/adapter/externalllm/` |
+| C4 | ~~Add `port.ExternalLLM` interface~~ — REJECTED 2026-07-02: single Z.AI provider is intentional until a second real provider exists | `internal/core/externalllm/` |
 | C5 | ~~Add daemon flock fallback for NFS~~ — SUPERSEDED: D2 accepted (flock inapplicable to the transient, deleted-after-handoff lock); see Accepted table + CAUTIONS.md §13 | `cmd/harness/daemoncli/daemonlock/` |
 
 ---
