@@ -86,7 +86,10 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("## Team", local_background)
         self.assertIn("## Products And Services", local_background)
         self.assertIn("## Aliases", local_background)
-        self.assertIn("프로님: 이푸름", local_background)
+        self.assertTrue(
+            "프로님: 이푸름" in local_background or "`프로님`: `이푸름`" in local_background,
+            "local background should map 프로님 to 이푸름",
+        )
 
     def test_required_meeting_inputs_are_requested_sequentially(self) -> None:
         content = self.read_skill()

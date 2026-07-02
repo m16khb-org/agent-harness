@@ -425,119 +425,17 @@ When an issueops benchmark needs an LLM judge, use the Z.AI `glm-5-turbo` backen
 
 ## Operational Start
 
-Start or resume state after deriving the issue branch slug. The IssueOps branch must be the issue branch, not the source checkout's current branch:
+Start or resume state only after deriving the issue branch slug. The IssueOps branch must be the issue branch, not the source checkout's current branch. The compact command sequence and examples live in `references/operational-start.md`; load that reference only when you are actively running or documenting an IssueOps cycle.
 
-```bash
-branch_slug="3-webhook-delivery"
-agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
-agent-harness issueops status --id "$ISSUEOPS_ID" --json
-```
+The first-turn essentials are:
 
-Record the intent contract before plan phase or issue-link auto-advance:
+- Start/status: `agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json`, then `agent-harness issueops status --id "$ISSUEOPS_ID" --json`.
+- Intent and plan prep: run `agent-harness issueops intent record`; record the raw request, interpreted intent, success criteria, constraints, ambiguity ledger, non-goals, `intent_contract`, `plan_prep_decisions`, `plan_prep_related_issues`, and `plan_prep_web_research` before plan entry.
+- Branch/worktree/design: run `agent-harness issueops design review`; record `branch_prepare`, `branch_link_verified`, `worktree_path`, `worktree_exists`, `design_review`, `design_approval`, `design_review_evidence`, `refactor_plan`, `alternatives`, `risks`, `design_open_questions`, `plan_path`, `plan_exists`, and `plan_in_worktree`.
+- Implementation gates: run `worktree prepare-tools`, record compatibility review, record execution decision, then enter implementation only when the design review is approved and has no open questions.
+- Cleanup gates: `ai_slop_clean` evidence must be current before `pr`; `contract_feedback_issue_update` must be recorded after any contract-changing feedback; `done` requires prior `pr` phase and verified remote artifact evidence.
 
-```bash
-agent-harness issueops intent record --id "$ISSUEOPS_ID" \
-  --raw-request "$RAW_USER_REQUEST" \
-  --interpreted-intent "$INTERPRETED_INTENT" \
-  --success-criteria "$SUCCESS_CRITERION" \
-  --constraint "$CONSTRAINT" \
-  --ambiguity "$AMBIGUITY_LEDGER_ENTRY" \
-  --non-goal "$NON_GOAL" \
-  --intent-class "$INTENT_CLASS" \
-  --json
-```
-
-Record the plan-prep evidence gate before entering the `plan` phase (non-trivial intent classes). Each item takes evidence or a mutually-exclusive waive reason:
-
-```bash
-agent-harness issueops plan-prep record --id "$ISSUEOPS_ID" \
-  --decisions-evidence "$PRIOR_DECISION_LINK_OR_ADR" \
-  --related-score-ref "$REMOTE_SCORE_SUMMARY" \
-  --web-research-evidence "$RESEARCH_FILE_OR_SOURCE" \
-  --json
-# or waive an item that is genuinely unnecessary:
-#   --decisions-waive "no prior decisions touch this area"
-#   --related-waive "no comparable issues exist"
-#   --web-research-waive "purely internal refactor, no external semantics"
-```
-
-Remote issue and plan linkage:
-
-```bash
-agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
-agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" --issue-url "$ISSUE_URL" --branch "$branch_slug" --base-branch "$BASE_BRANCH" --link-verified --json
-agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
-agent-harness issueops design review --id "$ISSUEOPS_ID" \
-  --problem-summary "$PROBLEM_SUMMARY" \
-  --proposed-design "$PROPOSED_DESIGN" \
-  --refactor-plan "$REFACTOR_PLAN" \
-  --risk "$RISK" \
-  --alternative "$ALTERNATIVE" \
-  --verification "$VERIFICATION_STEP" \
-  --approved \
-  --json
-agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$EXPECTED_WORKTREE/$PLAN_REL_PATH" --json
-agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$CHILD_ISSUE_URL" --title "$CHILD_TITLE" --json
-agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
-```
-
-`branch prepare` records the required provider-linked branch contract before local worktree creation: use the provider MCP first, use the provider API/CLI fallback second, and fail closed if both cannot create a branch that the issue shows as linked. For GitLab, branch names must start with the issue or task number followed by a hyphen, for example `123-fix-login`.
-
-`link-worktree` fails closed until issue-linked branch evidence exists and the worktree path already exists on disk. `link-plan` attaches the reviewed implementation plan but does not enter implementation by itself. It fails closed until the issue is linked, `branch prepare --link-verified` has recorded provider-visible branch evidence, the worktree is linked, the design review is approved with no open questions, and the plan path exists inside that linked worktree. Run `worktree prepare-tools` after `link-plan`, record the compatibility review, then record the execution decision before `implement`:
-
-```bash
-agent-harness issueops compatibility review --id "$ISSUEOPS_ID" \
-  --backward-compatibility "existing state/CLI/MCP/API contracts checked" \
-  --side-effect "side effects are limited to the reviewed implementation surface" \
-  --rollback-plan "$ROLLBACK_PLAN" \
-  --verification "$COMPATIBILITY_VERIFICATION" \
-  --approved \
-  --json
-```
-
-```bash
-agent-harness issueops execution decide --id "$ISSUEOPS_ID" \
-  --auto "implementation may proceed after linked worktree readiness is durable" \
-  --hook-block "hooks do not create issues, prepare worktrees, run tests, or decide sub-agent usage" \
-  --human-gate "ask before destructive cleanup, live access, or unclear product behavior" \
-  --subagent-use none \
-  --subagent-rationale "main agent owns this focused implementation" \
-  --json
-```
-
-`link-child` records a provider-native child work item after it exists remotely. On GitHub that child should be a sub-issue; on GitLab it should be a child item/task. The command does not create remote issues and must not be used as a substitute for the provider-specific hierarchy rules.
-
-Advance the lifecycle phase (problem, grill, plan, implement, ai-slop-clean, feedback, pr, done). The `ai-slop-clean` phase requires linked issue, provider-linked branch, plan, an existing linked worktree, and implementation changes under that worktree. The `pr` phase requires strict PR readiness, including ai-slop-clean evidence. The `done` phase requires the loop to have already entered `pr` and a verified remote PR/MR artifact with provider URL, label, and assignee evidence:
-
-```bash
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill --json
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to ai-slop-clean --json
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to pr --json
-agent-harness issueops remote verify-artifact --id "$ISSUEOPS_ID" --provider "$PROVIDER" --kind pr|mr --url "$PR_URL" --label "$LABEL" --assignee "$ASSIGNEE" --json
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to done --json
-```
-
-Post-merge cleanup status is a read-only verification step. Run it after the provider reports the PR/MR merged and before deleting worktrees or branches:
-
-```bash
-agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
-```
-
-If linked child tasks exist, close children separately after the child PR/MR is verified merged into the parent work branch. This is child-only cleanup: close the GitHub sub-issue or GitLab child Task, record close verification evidence, and keep the parent issue open as the umbrella until the full umbrella reaches the mainstream merge target.
-
-```bash
-agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --json
-agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --confirm --json
-```
-
-Record feedback, optionally classifying each item (contract_change, defect, question, noise) so contract-changing feedback is distinguishable:
-
-```bash
-agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source review --body "$FEEDBACK" --classification contract_change --json
-agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
-```
-
-Remote scoring runs deterministically and is also available as the MCP tool `issueops_remote_score` for cross-host (Codex/Claude) use; the LLM judge path stays CLI/`remote score --judge llm --model glm-5-turbo`. Benchmark commands (`benchmark run|compare|gate`) are CLI-only developer/autoresearch tooling, not a runtime MCP gate.
+Remote scoring runs deterministically and is also available as the MCP tool `issueops_remote_score` for cross-host use. The LLM judge path stays CLI/`remote score --judge llm --model glm-5-turbo`. Benchmark commands (`benchmark run|compare|gate`) are CLI-only developer/autoresearch tooling, not a runtime MCP gate.
 
 ## Stop Conditions
 
