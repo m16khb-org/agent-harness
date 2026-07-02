@@ -170,7 +170,7 @@
             },
             {
               "kind": "reasonix_user_mcp_config",
-              "path": "$HOME/Library/Application Support/reasonix/config.toml",
+              "path": "$REASONIX_CONFIG/config.toml",
               "written": true,
               "content_sha256": "8cd691bdd1af2b95b762f6ea3ab38ff710dac0c0cd9125af8d5ddf634f29f1a6",
               "content": "[[plugins]]\nname = \"agent_harness_project\"\ncommand = \"$BIN\"\nargs = [\"mcp\"]\n"
@@ -362,7 +362,7 @@
             },
             {
               "kind": "reasonix_user_mcp_config",
-              "path": "$HOME/Library/Application Support/reasonix/config.toml",
+              "path": "$REASONIX_CONFIG/config.toml",
               "written": true,
               "content_sha256": "8cd691bdd1af2b95b762f6ea3ab38ff710dac0c0cd9125af8d5ddf634f29f1a6",
               "content": "[[plugins]]\nname = \"agent_harness_project\"\ncommand = \"$BIN\"\nargs = [\"mcp\"]\n"

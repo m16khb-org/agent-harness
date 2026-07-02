@@ -495,9 +495,11 @@ func normalizeInstallContractString(value string, req port.NativeInstallRequest)
 	replacements := map[string]string{
 		req.CodexHome:    "$CODEX_HOME",
 		req.ReasonixHome: "$REASONIX_HOME",
-		req.Home:         "$HOME",
-		req.Root:         "$ROOT",
-		req.BinPath:      "$BIN",
+		filepath.Join(req.Home, "Library", "Application Support", "reasonix"): "$REASONIX_CONFIG",
+		filepath.Join(req.Home, ".config", "reasonix"):                        "$REASONIX_CONFIG",
+		req.Home:    "$HOME",
+		req.Root:    "$ROOT",
+		req.BinPath: "$BIN",
 	}
 	keys := make([]string, 0, len(replacements))
 	for from := range replacements {
