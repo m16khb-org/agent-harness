@@ -17,9 +17,9 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["inspect"] = runCLIJSONContract(t, replacements, func() error {
 		return runInspect([]string{"--json", "--repo", workspaceDir})
 	})
-	cliSnapshot["docs_index"] = runCLIJSONContract(t, replacements, func() error {
+	cliSnapshot["docs_index"] = docsIndexContractProjection(runCLIJSONContract(t, replacements, func() error {
 		return runDocs([]string{"--json"})
-	})
+	}))
 	cliSnapshot["preflight"] = runCLIJSONContract(t, replacements, func() error {
 		return runPreflight([]string{"--json", gitRepoDir})
 	})

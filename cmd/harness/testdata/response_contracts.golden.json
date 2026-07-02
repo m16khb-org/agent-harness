@@ -227,7 +227,7 @@
           "name": "version"
         }
       ],
-      "hash": "b67e5cfb9c2e1873f1059e9da1a0b51608b2d40c0fe6517820dfca0e7d87502b",
+      "hash": "0e715d13f40bfcaeb0b4effd37046da09f9aaa3d0653251d154e54b674b91ffe",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -429,6 +429,7 @@
         ],
         "issueops_record": [
           "ok",
+          "schema_version",
           "id",
           "repo",
           "branch",
@@ -569,1296 +570,23 @@
       "warnings": []
     },
     "docs_index": {
-      "docs": [
-        {
-          "bytes": 42057,
-          "headings": [
-            "agent-harness 구현 계획",
-            "1. 최종 결정",
-            "1.1 Plugin 방식 vs 외부 worker 방식",
-            "1.2 언어 선택",
-            "2. 목표 아키텍처",
-            "3. Phase별 계획",
-            "Phase 0 — 문서 기반 세팅",
-            "Phase 1 — Go 프로젝트 부트스트랩",
-            "Phase 2 — Core capability MVP",
-            "Phase 3 — MCP stdio proxy/server",
-            "Phase 4 — Local job worker daemon",
-            "Phase 5 — Codex adapter",
-            "Phase 6 — Claude Code adapter",
-            "Phase 7 — Hardening / release",
-            "2026-06-13 — Distribution decision gate",
-            "2026-06-24 — Skill local background separation",
-            "2026-06-23 — IssueOps hook and state-machine boundary",
-            "2026-06-23 — IssueOps execution decision gate",
-            "4. MVP 범위",
-            "5. 주요 위험과 대응"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
-          "rel_path": ".agent-harness/ADR.md",
-          "title": "agent-harness 구현 계획"
-        },
-        {
-          "bytes": 9229,
-          "headings": [
-            "Agent Workflow",
-            "Start",
-            "Work",
-            "Verify",
-            "Finish",
-            "Hook context injection and lifecycle observation",
-            "MCP Usage Rule",
-            ".agent-harness Upkeep via MCP",
-            "Evidence-backed MCP Heuristics",
-            "API documentation gate",
-            "OpenAPI prompt source"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/AGENT_WORKFLOW.md",
-          "rel_path": ".agent-harness/AGENT_WORKFLOW.md",
-          "title": "Agent Workflow"
-        },
-        {
-          "bytes": 26540,
-          "headings": [
-            "agent-harness 아키텍처",
-            "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
-            "2. Target Architecture",
-            "Core engine / port / host adapter 구조",
-            "3. 실행 모드",
-            "4. Planned package boundaries",
-            "5. Docs / state / config / logs",
-            "6. Command / policy model",
-            "7. Codex / Claude / GJC integration map",
-            "8. 변경 체크리스트",
-            "9. Pioneer Skills Layer",
-            "스킬 목록과 IssueOps 연동",
-            "Cross-reference mesh",
-            "설계 원칙",
-            "LLM Wiki 정책",
-            "바퀴를 재발명하지 않는 companion tool 정책",
-            "MCP tool design guidance",
-            "현재 hardening 추가 사항"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/ARCHITECTURE.md",
-          "rel_path": ".agent-harness/ARCHITECTURE.md",
-          "title": "agent-harness 아키텍처"
-        },
-        {
-          "bytes": 43266,
-          "headings": [
-            "주의사항 모음",
-            "1. Host-specific lock-in",
-            "2. Plugin-only 착각",
-            "3. 위험한 shell 실행",
-            "4. Secret leakage",
-            "5. Worker lifecycle 문제",
-            "6. State 위치 혼동",
-            "7. MCP schema drift",
-            "8. IssueOps local-only branch 착각",
-            "9. Shared skill drift",
-            "10. 자기 검증/자가 증강 drift",
-            "11. 과도한 초기 추상화",
-            "12. LLM Wiki 재구현 금지",
-            "13. Daemon lifecycle drift",
-            "14. Codex vs Claude Code hook rendering drift",
-            "15. IssueOps worktree edits must be hook-guarded",
-            "16. IssueOps decision replies must have numbered choices",
-            "16.1 IssueOps hooks must not become workflow workers",
-            "17. MCP tool-use risks",
-            "18. Audit harness flags must match the CLI contract"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
-          "rel_path": ".agent-harness/CAUTIONS.md",
-          "title": "주의사항 모음"
-        },
-        {
-          "bytes": 3063,
-          "headings": [
-            "커밋 메시지 정책: Conventional + Lore Hybrid",
-            "1. 기본 형식",
-            "2. Subject 규칙",
-            "3. Lore body 규칙",
-            "4. Atomic commit과의 관계"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
-          "rel_path": ".agent-harness/COMMIT_POLICY.md",
-          "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
-        },
-        {
-          "bytes": 11387,
-          "headings": [
-            "프로젝트 헌법",
-            "제0장: 문서 우선순위",
-            "제1장: 언어 규칙",
-            "제2장: 안전 / 정확성 우선",
-            "제2.5장: 사용자 요청 검증 원칙",
-            "검증 의무",
-            "거부 권리와 의무",
-            "맹신 금지 — 구체적 예시",
-            "확신도 표시 의무",
-            "제3장: 아키텍처 원칙",
-            "Sub-Agent 사용 원칙",
-            "제4장: 설계 3원칙",
-            "KISS",
-            "DRY",
-            "YAGNI",
-            "제5장: 하네스 검증 불변식"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
-          "rel_path": ".agent-harness/CONSTITUTION.md",
-          "title": "프로젝트 헌법"
-        },
-        {
-          "bytes": 23487,
-          "headings": [
-            "구현 컨벤션",
-            "1. 네이밍 / 구조",
-            "2. 레이어 경계",
-            "3. CLI 컨벤션",
-            "4. MCP 컨벤션",
-            "5. Worker 컨벤션",
-            "6. Config / env",
-            "7. Logging / secret hygiene",
-            "8. Dependency 원칙",
-            "9. Shared Skill 컨벤션",
-            "10. 커밋 메시지 컨벤션",
-            "API Documentation Gate",
-            "Prompt Structure Convention",
-            "Project Docs Bootstrap 컨벤션",
-            "API Documentation Convention",
-            "Single-object response convention",
-            "SOLID / Design Pattern 적용 지침",
-            "좋은 케이스",
-            "나쁜 케이스",
-            "적용 규칙"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
-          "rel_path": ".agent-harness/CONVENTIONS.md",
-          "title": "구현 컨벤션"
-        },
-        {
-          "bytes": 26862,
-          "headings": [
-            "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis",
-            "1. Lock \u0026 Concurrency Analysis",
-            "1.1 Start() Lacks Locking (P0)",
-            "1.2 Non-Unix Lock Fallback Is In-Process Only (P1)",
-            "1.3 Orphaned .lock Files Never Cleaned (P2)",
-            "1.4 TOCTOU in Stale Scan Snapshot (P1)",
-            "2. Multi-Session State Continuity",
-            "2.1 No Session-to-Cycle Binding (P0) — RESOLVED 2026-06-12",
-            "2.2 ExpectedWorktree Env Var Is Ephemeral (P1) — RESOLVED 2026-06-12",
-            "2.3 Phase Continuity After Session Interruption (P1)",
-            "2.4 Multiple Parallel Cycles in Same Repo (P1)",
-            "3. Worktree Lifecycle \u0026 Cleanup",
-            "3.1 Stale Cycle Detection Relies on Worktree Existence (P1)",
-            "3.2 No Inactivity-Based Session Abandonment Detection (P2)",
-            "3.3 Orphan Worktree Cleanup Is Off-Hot-Path Only (P2)",
-            "3.4 Worktree Branch Mismatch = Stale (P2)",
-            "4. Hook Guard Coverage",
-            "4.1 MCP Guard Only Covers Known Tool Patterns (P2)",
-            "4.2 Edit Guard Only Blocks \"Mutating\" Tools (P2)",
-            "4.3 Hook Input Parsing Varies by Host (P1)"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/ISSUEOPS_AUDIT.md",
-          "rel_path": ".agent-harness/ISSUEOPS_AUDIT.md",
-          "title": "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis"
-        },
-        {
-          "bytes": 3362,
-          "headings": [
-            "OpenAPI Spec Guidance",
-            "Purpose",
-            "Gate order",
-            "또는 통합 실행",
-            "Static omissions to block",
-            "Agent review prompt",
-            "Clean Swagger style",
-            "Single-object response shape"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
-          "rel_path": ".agent-harness/OPEN_API_SPEC.md",
-          "title": "OpenAPI Spec Guidance"
-        },
-        {
-          "bytes": 3991,
-          "headings": [
-            "Operations Map",
-            "Core Surfaces",
-            "Daily Commands",
-            "Release Smoke",
-            "Invariants",
-            "Quick Smoke"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
-          "rel_path": ".agent-harness/OPERATIONS.md",
-          "title": "Operations Map"
-        },
-        {
-          "bytes": 19844,
-          "headings": [
-            "Agent-Harness Whole-Project Audit",
-            "1. Daemon Subsystem",
-            "1.1 No Connection Limit (P1)",
-            "1.2 O_EXCL Lock on Network Filesystems (P2)",
-            "1.3 No Graceful Shutdown of In-Flight Connections (P2)",
-            "2. Worker/Job System",
-            "2.1 Jobs Stuck in \"running\" on Process Crash (P1)",
-            "2.2 No Concurrent Job Execution Guard (P1)",
-            "2.3 No Retry, No Scheduling (P2)",
-            "3. State Subsystem (Generic)",
-            "3.1 No Write Locking (P1)",
-            "3.2 No Atomic Multi-Key Transactions (P2)",
-            "4. Hook Failure Logging",
-            "4.1 Unbounded Log Growth (P1)",
-            "4.2 Concurrent Append Safety (P2)",
-            "5. Project Lifecycle State",
-            "5.1 Init Race Condition (P1)",
-            "5.2 No Lock on Profile Updates (P2)",
-            "6. Draft Wiki Queue",
-            "6.1 No Stale Lock Detection (P1)"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
-          "rel_path": ".agent-harness/PROJECT_AUDIT.md",
-          "title": "Agent-Harness Whole-Project Audit"
-        },
-        {
-          "bytes": 12877,
-          "headings": [
-            "Sub-Agent Usage Patterns",
-            "근거 요약",
-            "현대 에이전트 방법론 수렴점 (2024-2026)",
-            "핵심 결론",
-            "12가지 Net-Positive Sub-Agent 패턴",
-            "Category A: 컨텍스트 오염 방지",
-            "1. 대량 탐색 (High-Volume Exploration)",
-            "2. 격리 작업 (Isolated Worktree Work)",
-            "3. Forked Context 탐색 (Forked Context Exploration)",
-            "Category B: 다른 관점 필요",
-            "4. 악마의 변호인 (Devil's Advocate / Adversarial Review)",
-            "5. 교차 검증 / 합의 (Cross-Verification / Consensus)",
-            "Category C: 병렬화 의미",
-            "6. 병렬 독립 탐색 (Parallel Independent Research)",
-            "7. 작업 분해·조정 (Task Fan-out with Coordination)",
-            "8. 장시간 백그라운드 작업 (Background Long-Running Work)",
-            "Category D: 다른 권한·모델 필요",
-            "9. 모델 특화 / 비용 라우팅 (Model Specialization / Cost Routing)",
-            "10. 도구·권한 제한 (Tool/Permission Gating)",
-            "11. 계획-실행 분리 (Plan-then-Execute Separation)"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/SUB_AGENT_PATTERNS.md",
-          "rel_path": ".agent-harness/SUB_AGENT_PATTERNS.md",
-          "title": "Sub-Agent Usage Patterns"
-        },
-        {
-          "bytes": 10996,
-          "headings": [
-            "기술 스택",
-            "1. 언어 선택",
-            "2. 런타임 / 패키지 관리",
-            "2.1 Upstream companion dependencies",
-            "2.2 Project skills",
-            "3. 확정 라이브러리",
-            "4. 예정 명령어",
-            "5. 주요 설정/상태 위치",
-            "Native integration 확인",
-            "구현된 hardening commands"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
-          "rel_path": ".agent-harness/TECH_STACK.md",
-          "title": "기술 스택"
-        },
-        {
-          "bytes": 18316,
-          "headings": [
-            "테스트 컨벤션",
-            "1. 현재 문서 단계 검증",
-            "2. Go 코드 변경 기본 검증",
-            "3. 테스트 작성 기준",
-            "Well-structured tests",
-            "Poorly-structured tests",
-            "4. Contract / Golden tests",
-            "5. 완료 보고 기준",
-            "자기 검증 QA gate",
-            "Web-Fetch Live Parity",
-            "LLM Wiki 정책",
-            "API documentation checks",
-            "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",
-            "Business logic error response coverage",
-            "Agent-backed verification boundary",
-            "Prompt contract tests",
-            "OpenAPI prompt source",
-            "Contract/audit/worker verification",
-            "Lifecycle state tests"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
-          "rel_path": ".agent-harness/TESTING.md",
-          "title": "테스트 컨벤션"
-        },
-        {
-          "bytes": 23725,
-          "headings": [
-            "ADR History Archive",
-            "LLM Wiki 정책",
-            "2026-05-29 — Upstream companion tools are opt-in dependencies",
-            "ADR note: MCP-backed project memory records",
-            "ADR note: Adapter 분리, compatibility contract, audit log, worker MVP",
-            "2026-05-29 — Return quality gate failures as normal MCP payloads",
-            "2026-05-29 — Public command identity follows project identity",
-            "2026-05-29 — Simple bootstrap/project-bootstrap commands",
-            "2026-05-30 — Static project-doc catalog injection (작업 레포 .agent-harness 메뉴)",
-            "2026-05-30 — Host-specific UserPromptSubmit display contract",
-            "2026-05-31 — Shared PreToolUse hook and prompt/tool lifecycle split",
-            "2026-05-31 — Repo-local draft wiki staging before upstream LLM Wiki ingest",
-            "2026-06-02 — IssueOps split",
-            "2026-06-04 — Auto-proceed gate is heuristic + prompt injection, not an external LLM call"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
-          "rel_path": ".agent-harness/archive/adr-history.md",
-          "title": "ADR History Archive"
-        },
-        {
-          "bytes": 4929,
-          "headings": [
-            "Cautions Incident Archive",
-            "2026-05-31 — Codex PreCompact hook stdout schema",
-            "2026-05-31 — PreToolUse false-positive risk",
-            "2026-05-31 — Do not patch upstream companion plugin caches",
-            "2026-06-03 — Do not leave self-verify invariant failures as reports only",
-            "2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup",
-            "2026-06-03 — Do not stop at cosmetic symptom fixes"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
-          "rel_path": ".agent-harness/archive/cautions-incidents.md",
-          "title": "Cautions Incident Archive"
-        },
-        {
-          "bytes": 3620,
-          "headings": [
-            "CLI And MCP Operations",
-            "Direct CLI",
-            "Command Policy",
-            "State",
-            "Daemon And MCP",
-            "Worker",
-            "Contract And Audit"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
-          "rel_path": ".agent-harness/operations/cli-and-mcp.md",
-          "title": "CLI And MCP Operations"
-        },
-        {
-          "bytes": 11315,
-          "headings": [
-            "Harness Skill Quality Scorecard (비-pioneer 7종)",
-            "v2 세분화 적용 (2026-06-12)",
-            "측정 프로토콜 (rubric 준수 + 프로그램 보강)",
-            "Target Gate (rubric과 동일)",
-            "케이스 정의 (스킬당 P/B/O + H)",
-            "issueops",
-            "atomic-commit-push",
-            "self-verify",
-            "self-augment",
-            "project-bootstrap",
-            "draft-wiki-promoter",
-            "stability-audit",
-            "Baseline (미측정 — 측정 시 갱신)"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
-          "rel_path": ".agent-harness/operations/harness-skill-quality-scorecard.md",
-          "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
-        },
-        {
-          "bytes": 5539,
-          "headings": [
-            "Host Operations",
-            "Codex",
-            "Claude Code",
-            "IssueOps Host Rule"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
-          "rel_path": ".agent-harness/operations/hosts.md",
-          "title": "Host Operations"
-        },
-        {
-          "bytes": 4379,
-          "headings": [
-            "Incident → Hook 매핑 (Hashimoto 원칙)",
-            "종결 판정 (B2 수용기준)",
-            "갱신 규약"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/incident-to-hook-map.md",
-          "rel_path": ".agent-harness/operations/incident-to-hook-map.md",
-          "title": "Incident → Hook 매핑 (Hashimoto 원칙)"
-        },
-        {
-          "bytes": 4768,
-          "headings": [
-            "Install And Sync",
-            "First run from a fresh clone, before agent-harness is on PATH.",
-            "Scriptable install or refresh after agent-harness is on PATH.",
-            "Ongoing refresh from the current checkout.",
-            "Also refresh opt-in upstream companion tools.",
-            "Initialize project docs/profile for a target repository.",
-            "Refresh existing project docs/profile from current templates and evidence.",
-            "`--sync`",
-            "Upstream Companion Tools"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/install.md",
-          "rel_path": ".agent-harness/operations/install.md",
-          "title": "Install And Sync"
-        },
-        {
-          "bytes": 4241,
-          "headings": [
-            "Pioneer Skill Live Invocation Summary",
-            "Summary Table",
-            "Completion Status"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
-          "rel_path": ".agent-harness/operations/pioneer-skill-live-invocation-summary.md",
-          "title": "Pioneer Skill Live Invocation Summary"
-        },
-        {
-          "bytes": 22118,
-          "headings": [
-            "Pioneer Skill Optimization Strategy (firsthand dogfood)",
-            "Round 1",
-            "shannon — firsthand: measured `ae5832a..a859773` (this session's commits)",
-            "hopper — firsthand: diagnosed the real pre-existing `TestResponseContractsGolden` failure",
-            "torvalds — firsthand: dated the golden pollution via history archaeology",
-            "Cross-round finding (harness defect, not a skill issue)",
-            "Round 2",
-            "dijkstra — firsthand: decided no-change on the bounded startup loop",
-            "codd — firsthand: applied to the events-table task; confirmed a structural verification gap",
-            "karpathy — firsthand: critiqued my own holdout sub-agent prompt; it caught a real bug",
-            "Round 3",
-            "turing — firsthand: applied to a 2-file validate + build; confirmed the proportionality gap",
-            "von-neumann — firsthand: correctly routed the golden fix to direct execution (no over-planning)",
-            "berners-lee — firsthand: researched Go golden-test hermeticity (and it confirmed the fix direction)",
-            "Cross-skill synthesis",
-            "Recommended edit priority (all are skill-body/doc edits, reversible)"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-optimization-strategy.md",
-          "rel_path": ".agent-harness/operations/pioneer-skill-optimization-strategy.md",
-          "title": "Pioneer Skill Optimization Strategy (firsthand dogfood)"
-        },
-        {
-          "bytes": 18132,
-          "headings": [
-            "Pioneer Skill Quality Cases",
-            "berners-lee",
-            "Case BERNERS-LEE-1: Cited Research Happy Path",
-            "Case BERNERS-LEE-2: Access-Control Boundary",
-            "Case BERNERS-LEE-3: Operational Report",
-            "codd",
-            "Case CODD-1: Slow Query Optimization",
-            "Case CODD-2: Premature Denormalization Boundary",
-            "Case CODD-3: Pool and Concurrency Advice",
-            "dijkstra",
-            "Case DIJKSTRA-1: Algorithm Improvement",
-            "Case DIJKSTRA-2: Over-Engineering Boundary",
-            "Case DIJKSTRA-3: Scaling Explanation",
-            "hopper",
-            "Case HOPPER-1: Reproducible Failure",
-            "Case HOPPER-2: Trivial Failure Boundary",
-            "Case HOPPER-3: lint-diagnose Contract",
-            "karpathy",
-            "Case KARPATHY-1: Prompt Design Happy Path",
-            "Case KARPATHY-2: Reasoning Privacy Boundary"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-cases.md",
-          "rel_path": ".agent-harness/operations/pioneer-skill-quality-cases.md",
-          "title": "Pioneer Skill Quality Cases"
-        },
-        {
-          "bytes": 10450,
-          "headings": [
-            "Pioneer Skill Quality Handoff",
-            "Current State",
-            "Baseline Scores",
-            "Fresh-Context Sub-Agent Protocol",
-            "Fresh-Context Smoke Results",
-            "Files Added Or Updated",
-            "Recommended Resume Order",
-            "Verification Already Run"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-handoff.md",
-          "rel_path": ".agent-harness/operations/pioneer-skill-quality-handoff.md",
-          "title": "Pioneer Skill Quality Handoff"
-        },
-        {
-          "bytes": 26309,
-          "headings": [
-            "Pioneer Skill Qualitative Rubric",
-            "Rubric Sufficiency Verdict",
-            "Rubric Quality Bar",
-            "Evaluation Unit",
-            "Holdout and Mutation Protocol",
-            "Fresh-Context Sub-Agent Execution",
-            "Deterministic Pioneer Signature Proxy",
-            "Pre-Score Critical Checks",
-            "Granularity v2 (세분화 확장, 2026-06-12)",
-            "v2.1 점수 세분화: 0.1 단위 + 5.0 유보 규칙",
-            "v2.2 Dimension별 sub-criteria (채점 시 3개 모두 명시 기록 의무)",
-            "v2.3 케이스 유형별 가중 (case_score 공식 확장)",
-            "v2.4 기록 전용 보조 지표: discovery (점수 비반영)",
-            "v2.5 Required Result Record 추가 필드",
-            "Five Scored Dimensions",
-            "1. Request Fit",
-            "2. Completion",
-            "3. Method Fidelity",
-            "4. Evidence and Verification",
-            "5. Safety and Portability"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
-          "rel_path": ".agent-harness/operations/pioneer-skill-quality-rubric.md",
-          "title": "Pioneer Skill Qualitative Rubric"
-        },
-        {
-          "bytes": 14386,
-          "headings": [
-            "Pioneer Skill Quality Scorecard",
-            "Target Gate",
-            "Current Baseline",
-            "Improvement Progress Since Baseline",
-            "Follow-up measurement (2026-06-11, post-karpathy-fix) — `.agent-harness/evidence/pioneer-skills-quality/reruns/variance-and-postfix-2026-06-11.md`",
-            "Post-optimization measurement (2026-06-11, after firsthand-dogfood skill edits) — `.agent-harness/evidence/pioneer-skills-quality/reruns/post-optimization-measurement-2026-06-11.md`",
-            "Augmentation Loop",
-            "Cycle 0: Baseline",
-            "Cycle N: Improve the Lowest Trust Surface",
-            "Cycle Ledger",
-            "Remaining Improvement Priority",
-            "Per-Cycle Report Shape",
-            "Cycle N"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
-          "rel_path": ".agent-harness/operations/pioneer-skill-quality-scorecard.md",
-          "title": "Pioneer Skill Quality Scorecard"
-        },
-        {
-          "bytes": 8276,
-          "headings": [
-            "Pioneer Skill Rerun Fixtures",
-            "Execution Contract",
-            "Result Record Template",
-            "Fixture Matrix",
-            "Calibration Rerun Set",
-            "Current Execution Status",
-            "Completion Criteria"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
-          "rel_path": ".agent-harness/operations/pioneer-skill-rerun-fixtures.md",
-          "title": "Pioneer Skill Rerun Fixtures"
-        },
-        {
-          "bytes": 8962,
-          "headings": [
-            "Pioneer holdout v2 single-scale re-grade — 2026-06-16",
-            "Provenance and scope (honest, adversarial-review-bound)",
-            "v2 re-grade (5.0-reserve rule applied; rubric §v2.1–v2.2)",
-            "Single-scale delta (honest framing)",
-            "Visible 27-case baseline re-grade to v2 (closes the cross-scale gap)",
-            "TRUE single-scale delta",
-            "Calibration anchors under v2 (rubric §v2 precondition)",
-            "Residual gap (what A6 does NOT deliver)"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
-          "rel_path": ".agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
-          "title": "Pioneer holdout v2 single-scale re-grade — 2026-06-16"
-        },
-        {
-          "bytes": 3793,
-          "headings": [
-            "Project Docs Operations",
-            "Project Bootstrap",
-            "MCP Project Docs",
-            "LLM Wiki Policy"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
-          "rel_path": ".agent-harness/operations/project-docs.md",
-          "title": "Project Docs Operations"
-        },
-        {
-          "bytes": 13512,
-          "headings": [
-            "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
-            "측정면 요약 (한눈)",
-            "측정면 1 — Pioneer 스킬 9종 (격리 rubric)",
-            "측정면 2 — 비-pioneer 스킬 7종 (격리 rubric)",
-            "측정면 3 — IssueOps 산출물 벤치마크 (통합)",
-            "측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)",
-            "측정면 5 — Hook 실패율 (Q2)",
-            "측정면 6 — 운영 안정성 baseline (Q4, 2회분 실측 완료)",
-            "갱신 규약 (수동)",
-            "프로그램 종결 판정 (참고)"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
-          "rel_path": ".agent-harness/operations/quality-dashboard.md",
-          "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
-        },
-        {
-          "bytes": 3006,
-          "headings": [
-            "Release Dogfood Notes",
-            "Codex MCP transcript",
-            "Claude MCP transcript",
-            "inspect/docs/state workflow",
-            "UX findings",
-            "Next release check"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/release-dogfood-notes.md",
-          "rel_path": ".agent-harness/operations/release-dogfood-notes.md",
-          "title": "Release Dogfood Notes"
-        },
-        {
-          "bytes": 4688,
-          "headings": [
-            "Release Reproducibility",
-            "Release Checklist",
-            "Clean-Machine Smoke",
-            "Cross-Platform Build Matrix",
-            "Release User Guide: Install, Update, Rollback",
-            "Distribution Decision Gate",
-            "Release Dogfood Notes"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/release-reproducibility.md",
-          "rel_path": ".agent-harness/operations/release-reproducibility.md",
-          "title": "Release Reproducibility"
-        },
-        {
-          "bytes": 5070,
-          "headings": [
-            "Agent-Harness 운영 안정성 Baseline (시계열)",
-            "측정 명령",
-            "핵심 지표 정의 (프로그램 Q4 명시 4종 + 보강)",
-            "시계열 측정 기록",
-            "갱신 규약",
-            "잔여 작업 (Q4 종결 조건)"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
-          "rel_path": ".agent-harness/operations/stability-baseline.md",
-          "title": "Agent-Harness 운영 안정성 Baseline (시계열)"
-        },
-        {
-          "bytes": 3912,
-          "headings": [
-            "Verification Operations",
-            "Self-Verify",
-            "Self-Augment",
-            "API Documentation Gate",
-            "General Verification"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/verification.md",
-          "rel_path": ".agent-harness/operations/verification.md",
-          "title": "Verification Operations"
-        },
-        {
-          "bytes": 2906,
-          "headings": [
-            "Web-Fetch Live Parity",
-            "Scope",
-            "Safety Boundary",
-            "Commands",
-            "Report Fields",
-            "CI Candidate Gate"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
-          "rel_path": ".agent-harness/operations/web-fetch-live-parity.md",
-          "title": "Web-Fetch Live Parity"
-        },
-        {
-          "bytes": 1363,
-          "headings": [
-            "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트",
-            "Fix (rules.go 데이터 + 테스트)",
-            "Acceptance",
-            "Non-goals"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
-          "rel_path": ".agent-harness/plans/10-pioneer-skill-routing-hints.md",
-          "title": "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트"
-        },
-        {
-          "bytes": 3752,
-          "headings": [
-            "13: Codex system skill quick_validate.py durable upstream fix",
-            "Context",
-            "Large Issue Breakdown Gate: no split",
-            "Plan",
-            "Findings",
-            "Verification",
-            "Risks"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
-          "rel_path": ".agent-harness/plans/13-codex-system-skill-quick-validate.md",
-          "title": "13: Codex system skill quick_validate.py durable upstream fix"
-        },
-        {
-          "bytes": 1737,
-          "headings": [
-            "6: lifecycle state 초기화 read-while-write 레이스 수정",
-            "Root Cause (확정)",
-            "Fix (단일 task, \u003c20줄)",
-            "Acceptance (이슈와 동일)",
-            "Non-goals"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
-          "rel_path": ".agent-harness/plans/6-fix-lifecycle-state-init-race.md",
-          "title": "6: lifecycle state 초기화 read-while-write 레이스 수정"
-        },
-        {
-          "bytes": 1521,
-          "headings": [
-            "8: validation smoke의 truncate-후-JSON-파싱 결함 수정",
-            "Root Cause (확정)",
-            "Fix (단일 파일, \u003c30줄)",
-            "Acceptance (이슈와 동일)",
-            "Non-goals"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
-          "rel_path": ".agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
-          "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
-        },
-        {
-          "bytes": 10439,
-          "headings": [
-            "agent-harness 최적화 계획",
-            "1. 배경",
-            "2. 근거",
-            "검증 명령",
-            "주요 hotspot / 증거 파일",
-            "3. 목표",
-            "4. 비목표",
-            "4.1 2026-06-16 현재 상태",
-            "5. 우선순위별 실행 계획",
-            "P0. MCP registry 단일화",
-            "P1. Codex/Claude installer 공통 pipeline 추출",
-            "P2. `internal/core/issueops_facade.go` 분리 및 provider 경계 복원",
-            "P3. CLI global dependency wiring 제거",
-            "P4. 고분기 router 분해",
-            "P5. broad facade 축소",
-            "6. 실행 순서 제안",
-            "7. 리스크와 완화책",
-            "8. 성공 기준"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
-          "rel_path": ".agent-harness/plans/agent-harness-optimization-plan.md",
-          "title": "agent-harness 최적화 계획"
-        },
-        {
-          "bytes": 20766,
-          "headings": [
-            "Agent-Harness 성능/안정성 개선 계획",
-            "TL;DR",
-            "Context",
-            "Original Request",
-            "Confirmed Evidence",
-            "Gap Analysis",
-            "Work Objectives",
-            "Core Objective",
-            "Definition of Done",
-            "Must Have",
-            "Must NOT Have",
-            "Verification Strategy",
-            "Execution Strategy",
-            "Parallel Execution Waves",
-            "Dependency Matrix",
-            "TODOs",
-            "Final Verification Wave",
-            "Commit Strategy",
-            "Success Criteria"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
-          "rel_path": ".agent-harness/plans/agent-harness-performance-improvement.md",
-          "title": "Agent-Harness 성능/안정성 개선 계획"
-        },
-        {
-          "bytes": 14139,
-          "headings": [
-            "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)",
-            "0. 전수조사 핵심 발견 (현재 상태 스냅샷)",
-            "측정 커버리지 비대칭이 가장 큰 구조적 결함이다",
-            "강점 (유지·확산할 패턴)",
-            "이번 전수조사가 발굴한 신규 실측 결함",
-            "기존 문서화된 결함 (재발견 아님, 미해결 잔존)",
-            "1. 정량 트랙 (측정 가능한 품질)",
-            "Q1. 비-pioneer 스킬 스코어카드 확장 — 커버리지 9/16 → 16/16 [최우선]",
-            "Q2. Hook 런타임 메트릭 도입 — 현재 0개 → 4개 [신규 측정면]",
-            "Q3. issueops 벤치마크 정기화 + judge file 실전 1회전 [구축물 활용]",
-            "Q4. 운영 안정성 정량 baseline [stability-audit 정례화]",
-            "Q6. lifecycle state 동시성 레이스 수정 [신규 실측 결함, P1]",
-            "Q5. 정량 대시보드 단일화 [통합 가시성] — ✅ 완료 (2026-06-13)",
-            "2. 정성 트랙 (측정이 못 잡는 품질)",
-            "S1. Firsthand 도그푸드 정례화 [입증된 채널의 제도화]",
-            "S2. 다관점 사전 리뷰를 플랜 게이트로 [입증된 채널 2]",
-            "S3. 결손 contract test 3건 신설 [정성→정량 전환]",
-            "S4. P0/P1 구조 결함 해소 [정성적 신뢰성]",
-            "S5. Proportionate mode 확산 5/16 → 적용 가능 전수 [검증된 패턴 확산]",
-            "S6. 정직성 단서 일괄 정비 [보고서 권고 3 잔여분]"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
-          "rel_path": ".agent-harness/plans/harness-quality-improvement-program.md",
-          "title": "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)"
-        },
-        {
-          "bytes": 25953,
-          "headings": [
-            "Agent-Harness 품질향상 프로그램 v2 — 외부 벤치마킹 기반",
-            "0. 현재 상태 스냅샷 (라이브 검증, evidence-bound)",
-            "0.1 이미 해소됨 — 재제안 금지",
-            "0.2 이미 field를 앞선 점 — 노력 낭비 금지 (적대 리뷰 확인)",
-            "0.3 잔존/신규 결함 (라이브 확인)",
-            "1. 전제 (외부 벤치마킹이 바꾼 관점)",
-            "2. 외부-내부 비교 매트릭스 (요약)",
-            "3. 정량 트랙 (측정 가능) — A1~A7",
-            "A1. CI 자동화 — 결정적 게이트를 GitHub Actions로 [G9, high/小, 최우선]",
-            "A2. 관측 분모 도입 — 공유 invocations 카운터 → gate-hit-rate + failure-rate + queue-depth [G4+G5+G6, med/小, 묶음]",
-            "A3. 신뢰도·분산 보고 — pass^k + credible interval [G1, high/中]",
-            "A4. Check-adequacy + 채점 축 분리 — 음성 fixture red-team [G3, high/中]",
-            "A5. 통합 기여 측정 — 결정적 오프라인 routing trace 리플레이 [G2, high/大, PRIMARY]",
-            "A6. v2 baseline 단일척도 재측정 + 내구 fixture [G8, med/中]",
-            "A7. --judge file 독립 검증 [G7, med/小]",
-            "4. 정성 트랙 (측정이 못 잡음) — B1~B6",
-            "B1. 자기교정 가드레일 명문화 [G10, low/小]",
-            "B2. Incident→hook 매핑 규약 (Hashimoto 원칙) [매트릭스#17, qual/中]",
-            "B3. Linter-as-gate PostToolUse 후크 [매트릭스#8, qual→quant/小]",
-            "B4. Plan-before-execute 게이트 1급화 [매트릭스#16, qual/中]"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
-          "rel_path": ".agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
-          "title": "Agent-Harness 품질향상 프로그램 v2 — 외부 벤치마킹 기반"
-        },
-        {
-          "bytes": 13935,
-          "headings": [
-            "Pioneer Skill Documentation Audit \u0026 Update",
-            "TL;DR",
-            "Context",
-            "Original Request",
-            "Interview Summary",
-            "Gap Analysis",
-            "Work Objectives",
-            "Core Objective",
-            "Deliverables",
-            "Definition of Done",
-            "Expected: \u003e0 matches for at least 3 skill names",
-            "Expected: \u003e0 matches for at least 3 skill names",
-            "Expected: no hardcoded language assumptions (0 matches for implementation-context mentions)",
-            "Must Have",
-            "Must NOT Have",
-            "Verification Strategy",
-            "Execution Strategy",
-            "Parallel Execution Waves",
-            "Dependency Matrix",
-            "TODOs"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
-          "rel_path": ".agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
-          "title": "Pioneer Skill Documentation Audit \u0026 Update"
-        },
-        {
-          "bytes": 42139,
-          "headings": [
-            "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)",
-            "TL;DR",
-            "Context",
-            "Original Request",
-            "적대적 리뷰 반영(rev.2)",
-            "judge 백엔드 흡수(rev.3)",
-            "Gap Analysis",
-            "Work Objectives",
-            "Core Objective",
-            "Deliverables",
-            "Definition of Done (검증 가능 조건)",
-            "Must Have",
-            "Must NOT Have (guardrails)",
-            "Verification Strategy",
-            "Execution Strategy",
-            "Parallel Execution Waves",
-            "Dependency Matrix",
-            "TODOs",
-            "Final Verification Wave (MANDATORY) — rev.5: 전부 binary·agent-executable 명령",
-            "Commit Strategy"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
-          "rel_path": ".agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
-          "title": "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)"
-        },
-        {
-          "bytes": 53405,
-          "headings": [
-            "Pioneer Skills Qualitative Quality Improvement Plan",
-            "TL;DR",
-            "Context",
-            "Original Request",
-            "Scope",
-            "Evidence Gathered",
-            "Evaluation Correction",
-            "Request-Fulfillment Rubric",
-            "Full-Function Evaluation Coverage Matrix",
-            "Gap Analysis",
-            "Initial Static Risk Matrix",
-            "Cross-Cutting Findings",
-            "T0 Request-Fulfillment Results",
-            "Highest-Leverage Fix Order",
-            "Improvement Target",
-            "Work Objectives",
-            "Core Objective",
-            "Deliverables",
-            "Definition of Done",
-            "Must Have"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
-          "rel_path": ".agent-harness/plans/pioneer-skills-quality-improvement.md",
-          "title": "Pioneer Skills Qualitative Quality Improvement Plan"
-        },
-        {
-          "bytes": 16284,
-          "headings": [
-            "Claude Shannon — Signal-to-Noise Quality Gate",
-            "TL;DR",
-            "Context",
-            "Original Request",
-            "Research Findings (oh-my-openagent + agent-harness + academic)",
-            "Gap Analysis (Shannon vs 기존 도구)",
-            "정보이론 → 코드 품질 매핑",
-            "Work Objectives",
-            "Core Objective",
-            "Deliverables",
-            "Definition of Done",
-            "Must Have",
-            "Must NOT Have",
-            "Shannon Skill Architecture",
-            "4-Phase Protocol",
-            "Turing Final Quality Gate 통합",
-            "IssueOps Phase Map 통합",
-            "Execution Strategy",
-            "Parallel Execution Waves",
-            "TODOs"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
-          "rel_path": ".agent-harness/plans/shannon-skill.md",
-          "title": "Claude Shannon — Signal-to-Noise Quality Gate"
-        },
-        {
-          "bytes": 14883,
-          "headings": [
-            "Von Neumann Quality Upgrade",
-            "TL;DR",
-            "Context",
-            "Original Request",
-            "Gap Analysis (Von Neumann vs Prometheus)",
-            "핵심 원칙",
-            "Work Objectives",
-            "Core Objective",
-            "Deliverables",
-            "Definition of Done",
-            "Must Have",
-            "Must NOT Have",
-            "Verification Strategy",
-            "Execution Strategy",
-            "Parallel Execution Waves",
-            "Dependency Matrix",
-            "TODOs",
-            "Final Verification Wave (MANDATORY — after ALL implementation tasks)",
-            "Commit Strategy",
-            "Success Criteria"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
-          "rel_path": ".agent-harness/plans/von-neumann-quality-upgrade.md",
-          "title": "Von Neumann Quality Upgrade"
-        },
-        {
-          "bytes": 3115,
-          "headings": [
-            "Codex system skill quick_validate.py source path",
-            "Summary",
-            "Evidence",
-            "Reproduction",
-            "Skill is valid!",
-            "ModuleNotFoundError: No module named 'yaml'",
-            "Recommended upstream fix",
-            "Boundary"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
-          "rel_path": ".agent-harness/research/codex-system-skill-quick-validate.md",
-          "title": "Codex system skill quick_validate.py source path"
-        },
-        {
-          "bytes": 13590,
-          "headings": [
-            "Research: Can agent-harness integrate its 7 lifecycle hooks into GJC (gajae-code) the way it does into Codex/Claude Code?",
-            "TL;DR",
-            "Method",
-            "Findings",
-            "Finding 1 — Claude Code exposes a very wide lifecycle hook set via shell-command handlers",
-            "Finding 2 — Codex exposes a Claude-style command-hook set via hooks.json",
-            "Finding 3 — GJC's runtime emits a lifecycle event set comparable to Claude/Codex",
-            "Finding 4 — GJC's user-facing hook registration is split into two narrow surfaces",
-            "Finding 5 — GJC's first-party \"HookAPI\" is the intended extension model and is not shell-command based",
-            "Cross-check (adversarial)",
-            "Conclusion",
-            "Access boundary",
-            "Addendum (2026-06-30) — CORRECTION: full lifecycle integration IS possible via the first-party TS HookAPI",
-            "What changed",
-            "New conclusion",
-            "Sources for the correction",
-            "Impact on the upstream issue"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
-          "rel_path": ".agent-harness/research/gjc-hook-lifecycle-gap.md",
-          "title": "Research: Can agent-harness integrate its 7 lifecycle hooks into GJC (gajae-code) the way it does into Codex/Claude Code?"
-        },
-        {
-          "bytes": 3354,
-          "headings": [
-            "Karpathy AutoResearch Notes for Pioneer Skill Quality",
-            "Relevant Pattern",
-            "Adaptation for Skill Quality",
-            "Important Codex Adjustment",
-            "Loop Rules to Import",
-            "Skill-Quality Autoresearch Stop Condition"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
-          "rel_path": ".agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
-          "title": "Karpathy AutoResearch Notes for Pioneer Skill Quality"
-        },
-        {
-          "bytes": 34205,
-          "headings": [
-            "Research: Multi-Agent Orchestration Frameworks — Quality \u0026 Reliability Patterns",
-            "TL;DR",
-            "Method",
-            "Findings by Framework",
-            "1. LangGraph",
-            "(a) Verification / Evaluation / Guardrail Primitives",
-            "(b) State \u0026 Memory Management",
-            "(c) Multi-Agent Patterns",
-            "(d) Determinism / Reproducibility",
-            "(e) Structured Output / Typed Contracts",
-            "2. OpenAI Agents SDK (incl. Swarm history)",
-            "(a) Verification / Evaluation / Guardrail Primitives",
-            "(b) State \u0026 Memory Management",
-            "(c) Multi-Agent Patterns",
-            "(d) Determinism / Reproducibility",
-            "(e) Structured Output / Typed Contracts",
-            "3. CrewAI",
-            "(a) Verification / Evaluation / Guardrail Primitives",
-            "(b) State \u0026 Memory Management",
-            "(c) Multi-Agent Patterns"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
-          "rel_path": ".agent-harness/research/multi-agent-orchestration-quality-patterns.md",
-          "title": "Research: Multi-Agent Orchestration Frameworks — Quality \u0026 Reliability Patterns"
-        },
-        {
-          "bytes": 5789,
-          "headings": [
-            "Research: Pioneer Skill Design Pattern Audit",
-            "TL;DR",
-            "Method",
-            "Findings",
-            "1. Namesake-Specialist Pattern is Effective",
-            "2. archimedes Successfully Replaced by von-neumann (Corrected 2026-06-10)",
-            "3. Cross-Reference Mesh Follows Hub-and-Spoke Pattern",
-            "4. Language/Tech Agnosticism Needs Ongoing Vigilance",
-            "5. Documentation Gaps Identified",
-            "Cross-Check Results",
-            "Open Questions",
-            "Source Index"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
-          "rel_path": ".agent-harness/research/pioneer-skill-audit.md",
-          "title": "Research: Pioneer Skill Design Pattern Audit"
-        },
-        {
-          "bytes": 15039,
-          "headings": [
-            "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서",
-            "0. 한 줄 결론",
-            "1. 현재 측정 시스템의 실제 구조 (근거 기반)",
-            "계층 A — Pioneer Skill Quality Rubric / Scorecard (격리 측정)",
-            "계층 B — IssueOps Quality Benchmark (산출물 측정)",
-            "계층 C — IssueOps Skill Contract Test (텍스트 존재 측정)",
-            "2. 각 질문에 대한 진단",
-            "Q1. 지금의 평가기준이 적합한가?",
-            "Q2. 품질 향상을 위해 새 평가기준을 도입할 필요가 있는가?",
-            "Q3. 단순히 스킬만으로 충분한가?",
-            "Q4. issueops에서 CS pioneer 스킬이 적절히 호출되어 적절한 퍼포먼스를 보이는가?",
-            "3. 다각도 종합: 측정 토폴로지의 공백",
-            "4. 권고 (우선순위, 모두 가역적·증거 기반)",
-            "5. 명시적 비-주장 (정직성)",
-            "부록 A — 근거 인덱스"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
-          "rel_path": ".agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
-          "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
-        },
-        {
-          "bytes": 19223,
-          "headings": [
-            "Agent-Harness Quality Audit — 2026-06-30",
-            "Executive Summary",
-            "Prioritized Findings",
-            "Recommendations by Bucket",
-            "A. Quick wins (quick effort, real value) — do this first",
-            "B. Structural / correctness (medium+ effort)",
-            "C. Skills \u0026 DX polish (mostly P3)",
-            "Doc/code drift to reconcile",
-            "What's Already Solid",
-            "Independent cross-check (main-agent)"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
-          "rel_path": ".agent-harness/research/quality-audit-2026-06-30.md",
-          "title": "Agent-Harness Quality Audit — 2026-06-30"
-        },
-        {
-          "bytes": 7469,
-          "headings": [
-            "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions",
-            "TL;DR",
-            "Method",
-            "Findings",
-            "Context Isolation Is The Primary Benefit",
-            "Specialization And Tool Gating Are Valid Benefits",
-            "Overhead Is A Real Cost",
-            "Direction Control And Observability Are Weaker Than Main-Agent Work",
-            "Context Engineering Supports Isolation, But Not As A Blanket Rule",
-            "Decision Rule For IssueOps",
-            "Source Index"
-          ],
-          "path": "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
-          "rel_path": ".agent-harness/research/subagent-tradeoffs.md",
-          "title": "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions"
-        },
-        {
-          "bytes": 13536,
-          "headings": [
-            "AGENTS.md",
-            "1. Think Before Coding",
-            "2. Simplicity First",
-            "3. Surgical Changes",
-            "4. Goal-Driven Execution",
-            "0. 검증 우선 — 추측·회피 금지 (Verify, don't hedge)",
-            "5. 프로젝트 결정 요약",
-            "6. Required Reading / Agent Docs",
-            "7. Working Contract",
-            "8. Planned Directory Map",
-            "9. Essential Commands",
-            "10. Critical Invariants",
-            "11. Manual Notes",
-            "12. API Documentation Gate"
-          ],
-          "path": "$HARNESS_ROOT/AGENTS.md",
-          "rel_path": "AGENTS.md",
-          "title": "AGENTS.md"
-        },
-        {
-          "bytes": 1326,
-          "headings": [
-            "CLAUDE.md",
-            "API docs"
-          ],
-          "path": "$HARNESS_ROOT/CLAUDE.md",
-          "rel_path": "CLAUDE.md",
-          "title": "CLAUDE.md"
-        },
-        {
-          "bytes": 7580,
-          "headings": [
-            "1. 천재적 통찰 도출 공식 (Genius Insight Formula)",
-            "2. 다차원적 분석 프레임워크",
-            "3. 창의적 연결 매트릭스",
-            "4. 문제 재정의 알고리즘",
-            "5. 혁신적 솔루션 생성 공식",
-            "6. 인사이트 증폭 공식",
-            "7. 사고의 진화 방정식",
-            "8. 복잡성 해결 매트릭스",
-            "9. 직관적 도약 공식",
-            "10. 통합적 지혜 공식",
-            "사용 가이드라인",
-            "Mermaid 다이어그램 작성 가이드라인",
-            "필수 규칙",
-            "1. 텍스트 인용부호 사용",
-            "2. HTML 태그 규칙",
-            "3. 특수문자 처리",
-            "4. 한글 텍스트 처리",
-            "올바른 예시",
-            "잘못된 예시 (파싱 에러 발생)",
-            "검증 체크리스트"
-          ],
-          "path": "$HARNESS_ROOT/GENIUS_THINK.md",
-          "rel_path": "GENIUS_THINK.md",
-          "title": "Mermaid 다이어그램 작성 가이드라인"
-        },
-        {
-          "bytes": 7275,
-          "headings": [
-            "Self-verification and self-augmentation loops",
-            "1. Self-verification loop",
-            "Purpose",
-            "CLI/MCP surface",
-            "Required steps",
-            "Score goals",
-            "2. Self-augmentation loop",
-            "Purpose",
-            "Surface",
-            "Exit goals",
-            "GENIUS_THINK.md usage",
-            "3. External strategies adopted",
-            "4. Operating rules"
-          ],
-          "path": "$HARNESS_ROOT/skills/self-augment/SELF_AUGMENTATION.md",
-          "rel_path": "skills/self-augment/SELF_AUGMENTATION.md",
-          "title": "Self-verification and self-augmentation loops"
-        },
-        {
-          "bytes": 4847,
-          "headings": [
-            "Self-augmentation loop",
-            "Goal",
-            "Required distinction",
-            "Exit criteria",
-            "Workflow",
-            "Reference"
-          ],
-          "path": "$HARNESS_ROOT/skills/self-augment/SKILL.md",
-          "rel_path": "skills/self-augment/SKILL.md",
-          "title": "Self-augmentation loop"
-        },
-        {
-          "bytes": 5715,
-          "headings": [
-            "Self-verification candidate catalog",
-            "Current evidence",
-            "Candidate generation method",
-            "Candidate list",
-            "Completion criteria"
-          ],
-          "path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
-          "rel_path": "skills/self-verify/CANDIDATES.md",
-          "title": "Self-verification candidate catalog"
-        },
-        {
-          "bytes": 2716,
-          "headings": [
-            "Self-verification loop",
-            "Goal",
-            "Commands",
-            "Confirmed promote refuses a source snapshot that did not pass the gate; --allow-failed-source is an",
-            "explicit, deliberate override for accepted deviations only — never a pressure/demo shortcut.",
-            "Gate",
-            "Candidate catalog"
-          ],
-          "path": "$HARNESS_ROOT/skills/self-verify/SKILL.md",
-          "rel_path": "skills/self-verify/SKILL.md",
-          "title": "Self-verification loop"
-        }
-      ],
-      "generated_at": "$TIMESTAMP",
+      "docs_count": 67,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
+      "required_docs": {
+        ".agent-harness/ADR.md": true,
+        ".agent-harness/AGENT_WORKFLOW.md": true,
+        ".agent-harness/ARCHITECTURE.md": true,
+        ".agent-harness/CAUTIONS.md": true,
+        ".agent-harness/CONSTITUTION.md": true,
+        ".agent-harness/CONVENTIONS.md": true,
+        ".agent-harness/OPERATIONS.md": true,
+        ".agent-harness/TESTING.md": true,
+        "AGENTS.md": true,
+        "CLAUDE.md": true,
+        "skills/self-augment/SELF_AUGMENTATION.md": true,
+        "skills/self-verify/SKILL.md": true
+      },
       "version": "0.1.0"
     },
     "inspect": {
@@ -1913,12 +641,15 @@
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
         "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
+        "$HARNESS_ROOT/.agent-harness/research/deferred-followups.md",
         "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
+        "$HARNESS_ROOT/.agent-harness/research/harness-engineering-12factor.md",
         "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
         "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
         "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
+        "$HARNESS_ROOT/.agent-harness/research/spike-tool-error-nudge.md",
         "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
@@ -2007,7 +738,7 @@
         },
         {
           "description": "Use before GitLab, glab, GitLab MCP, IssueOps remote issue/MR, linked-item, child-item, work-item, Kody/Kodus review, issue-body update, branch-target, or cleanup work. Prevents repeated GitLab mistakes by distinguishing native linked items from child items, enforcing body-of-record rules, authenticated CLI/MCP fallback, labels/assignee/target-branch checks, and review-thread verification.",
-          "has_openai_yaml": false,
+          "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "gitlab-usecase",
           "path": "$HARNESS_ROOT/skills/gitlab-usecase"
@@ -2295,6 +1026,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2441,6 +1173,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2627,6 +1360,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2781,6 +1515,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2987,6 +1722,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3196,6 +1932,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3318,6 +2055,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3368,6 +2106,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_link_plan": {
@@ -3480,6 +2219,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3609,6 +2349,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3704,6 +2445,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3859,6 +2601,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3908,6 +2651,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_pr_readiness": {
@@ -4022,6 +2766,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_record_devils_advocate_review": {
@@ -4184,6 +2929,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -4212,6 +2958,7 @@
       "ok": true,
       "phase": "problem",
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_regress_for_replan": {
@@ -4387,6 +3134,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -4522,6 +3270,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -4721,6 +3470,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -4731,6 +3481,7 @@
       "ok": true,
       "phase": "problem",
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_status": {
@@ -4981,6 +3732,7 @@
         }
       },
       "repo": "$WORKSPACE",
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -6310,7 +5062,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 64,
+        "docs_indexed": 67,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -7750,7 +6502,7 @@
                 "name": "version"
               }
             ],
-            "hash": "b67e5cfb9c2e1873f1059e9da1a0b51608b2d40c0fe6517820dfca0e7d87502b",
+            "hash": "0e715d13f40bfcaeb0b4effd37046da09f9aaa3d0653251d154e54b674b91ffe",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -7952,6 +6704,7 @@
               ],
               "issueops_record": [
                 "ok",
+                "schema_version",
                 "id",
                 "repo",
                 "branch",
@@ -8099,1296 +6852,23 @@
       "content": [
         {
           "json": {
-            "docs": [
-              {
-                "bytes": 42057,
-                "headings": [
-                  "agent-harness 구현 계획",
-                  "1. 최종 결정",
-                  "1.1 Plugin 방식 vs 외부 worker 방식",
-                  "1.2 언어 선택",
-                  "2. 목표 아키텍처",
-                  "3. Phase별 계획",
-                  "Phase 0 — 문서 기반 세팅",
-                  "Phase 1 — Go 프로젝트 부트스트랩",
-                  "Phase 2 — Core capability MVP",
-                  "Phase 3 — MCP stdio proxy/server",
-                  "Phase 4 — Local job worker daemon",
-                  "Phase 5 — Codex adapter",
-                  "Phase 6 — Claude Code adapter",
-                  "Phase 7 — Hardening / release",
-                  "2026-06-13 — Distribution decision gate",
-                  "2026-06-24 — Skill local background separation",
-                  "2026-06-23 — IssueOps hook and state-machine boundary",
-                  "2026-06-23 — IssueOps execution decision gate",
-                  "4. MVP 범위",
-                  "5. 주요 위험과 대응"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/ADR.md",
-                "rel_path": ".agent-harness/ADR.md",
-                "title": "agent-harness 구현 계획"
-              },
-              {
-                "bytes": 9229,
-                "headings": [
-                  "Agent Workflow",
-                  "Start",
-                  "Work",
-                  "Verify",
-                  "Finish",
-                  "Hook context injection and lifecycle observation",
-                  "MCP Usage Rule",
-                  ".agent-harness Upkeep via MCP",
-                  "Evidence-backed MCP Heuristics",
-                  "API documentation gate",
-                  "OpenAPI prompt source"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/AGENT_WORKFLOW.md",
-                "rel_path": ".agent-harness/AGENT_WORKFLOW.md",
-                "title": "Agent Workflow"
-              },
-              {
-                "bytes": 26540,
-                "headings": [
-                  "agent-harness 아키텍처",
-                  "1. 핵심 판단: plugin-only가 아니라 외부 하네스 코어",
-                  "2. Target Architecture",
-                  "Core engine / port / host adapter 구조",
-                  "3. 실행 모드",
-                  "4. Planned package boundaries",
-                  "5. Docs / state / config / logs",
-                  "6. Command / policy model",
-                  "7. Codex / Claude / GJC integration map",
-                  "8. 변경 체크리스트",
-                  "9. Pioneer Skills Layer",
-                  "스킬 목록과 IssueOps 연동",
-                  "Cross-reference mesh",
-                  "설계 원칙",
-                  "LLM Wiki 정책",
-                  "바퀴를 재발명하지 않는 companion tool 정책",
-                  "MCP tool design guidance",
-                  "현재 hardening 추가 사항"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/ARCHITECTURE.md",
-                "rel_path": ".agent-harness/ARCHITECTURE.md",
-                "title": "agent-harness 아키텍처"
-              },
-              {
-                "bytes": 43266,
-                "headings": [
-                  "주의사항 모음",
-                  "1. Host-specific lock-in",
-                  "2. Plugin-only 착각",
-                  "3. 위험한 shell 실행",
-                  "4. Secret leakage",
-                  "5. Worker lifecycle 문제",
-                  "6. State 위치 혼동",
-                  "7. MCP schema drift",
-                  "8. IssueOps local-only branch 착각",
-                  "9. Shared skill drift",
-                  "10. 자기 검증/자가 증강 drift",
-                  "11. 과도한 초기 추상화",
-                  "12. LLM Wiki 재구현 금지",
-                  "13. Daemon lifecycle drift",
-                  "14. Codex vs Claude Code hook rendering drift",
-                  "15. IssueOps worktree edits must be hook-guarded",
-                  "16. IssueOps decision replies must have numbered choices",
-                  "16.1 IssueOps hooks must not become workflow workers",
-                  "17. MCP tool-use risks",
-                  "18. Audit harness flags must match the CLI contract"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/CAUTIONS.md",
-                "rel_path": ".agent-harness/CAUTIONS.md",
-                "title": "주의사항 모음"
-              },
-              {
-                "bytes": 3063,
-                "headings": [
-                  "커밋 메시지 정책: Conventional + Lore Hybrid",
-                  "1. 기본 형식",
-                  "2. Subject 규칙",
-                  "3. Lore body 규칙",
-                  "4. Atomic commit과의 관계"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/COMMIT_POLICY.md",
-                "rel_path": ".agent-harness/COMMIT_POLICY.md",
-                "title": "커밋 메시지 정책: Conventional + Lore Hybrid"
-              },
-              {
-                "bytes": 11387,
-                "headings": [
-                  "프로젝트 헌법",
-                  "제0장: 문서 우선순위",
-                  "제1장: 언어 규칙",
-                  "제2장: 안전 / 정확성 우선",
-                  "제2.5장: 사용자 요청 검증 원칙",
-                  "검증 의무",
-                  "거부 권리와 의무",
-                  "맹신 금지 — 구체적 예시",
-                  "확신도 표시 의무",
-                  "제3장: 아키텍처 원칙",
-                  "Sub-Agent 사용 원칙",
-                  "제4장: 설계 3원칙",
-                  "KISS",
-                  "DRY",
-                  "YAGNI",
-                  "제5장: 하네스 검증 불변식"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
-                "rel_path": ".agent-harness/CONSTITUTION.md",
-                "title": "프로젝트 헌법"
-              },
-              {
-                "bytes": 23487,
-                "headings": [
-                  "구현 컨벤션",
-                  "1. 네이밍 / 구조",
-                  "2. 레이어 경계",
-                  "3. CLI 컨벤션",
-                  "4. MCP 컨벤션",
-                  "5. Worker 컨벤션",
-                  "6. Config / env",
-                  "7. Logging / secret hygiene",
-                  "8. Dependency 원칙",
-                  "9. Shared Skill 컨벤션",
-                  "10. 커밋 메시지 컨벤션",
-                  "API Documentation Gate",
-                  "Prompt Structure Convention",
-                  "Project Docs Bootstrap 컨벤션",
-                  "API Documentation Convention",
-                  "Single-object response convention",
-                  "SOLID / Design Pattern 적용 지침",
-                  "좋은 케이스",
-                  "나쁜 케이스",
-                  "적용 규칙"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
-                "rel_path": ".agent-harness/CONVENTIONS.md",
-                "title": "구현 컨벤션"
-              },
-              {
-                "bytes": 26862,
-                "headings": [
-                  "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis",
-                  "1. Lock \u0026 Concurrency Analysis",
-                  "1.1 Start() Lacks Locking (P0)",
-                  "1.2 Non-Unix Lock Fallback Is In-Process Only (P1)",
-                  "1.3 Orphaned .lock Files Never Cleaned (P2)",
-                  "1.4 TOCTOU in Stale Scan Snapshot (P1)",
-                  "2. Multi-Session State Continuity",
-                  "2.1 No Session-to-Cycle Binding (P0) — RESOLVED 2026-06-12",
-                  "2.2 ExpectedWorktree Env Var Is Ephemeral (P1) — RESOLVED 2026-06-12",
-                  "2.3 Phase Continuity After Session Interruption (P1)",
-                  "2.4 Multiple Parallel Cycles in Same Repo (P1)",
-                  "3. Worktree Lifecycle \u0026 Cleanup",
-                  "3.1 Stale Cycle Detection Relies on Worktree Existence (P1)",
-                  "3.2 No Inactivity-Based Session Abandonment Detection (P2)",
-                  "3.3 Orphan Worktree Cleanup Is Off-Hot-Path Only (P2)",
-                  "3.4 Worktree Branch Mismatch = Stale (P2)",
-                  "4. Hook Guard Coverage",
-                  "4.1 MCP Guard Only Covers Known Tool Patterns (P2)",
-                  "4.2 Edit Guard Only Blocks \"Mutating\" Tools (P2)",
-                  "4.3 Hook Input Parsing Varies by Host (P1)"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/ISSUEOPS_AUDIT.md",
-                "rel_path": ".agent-harness/ISSUEOPS_AUDIT.md",
-                "title": "IssueOps Audit: Multi-Session, Multi-Worktree, and State Management Analysis"
-              },
-              {
-                "bytes": 3362,
-                "headings": [
-                  "OpenAPI Spec Guidance",
-                  "Purpose",
-                  "Gate order",
-                  "또는 통합 실행",
-                  "Static omissions to block",
-                  "Agent review prompt",
-                  "Clean Swagger style",
-                  "Single-object response shape"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
-                "rel_path": ".agent-harness/OPEN_API_SPEC.md",
-                "title": "OpenAPI Spec Guidance"
-              },
-              {
-                "bytes": 3991,
-                "headings": [
-                  "Operations Map",
-                  "Core Surfaces",
-                  "Daily Commands",
-                  "Release Smoke",
-                  "Invariants",
-                  "Quick Smoke"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
-                "rel_path": ".agent-harness/OPERATIONS.md",
-                "title": "Operations Map"
-              },
-              {
-                "bytes": 19844,
-                "headings": [
-                  "Agent-Harness Whole-Project Audit",
-                  "1. Daemon Subsystem",
-                  "1.1 No Connection Limit (P1)",
-                  "1.2 O_EXCL Lock on Network Filesystems (P2)",
-                  "1.3 No Graceful Shutdown of In-Flight Connections (P2)",
-                  "2. Worker/Job System",
-                  "2.1 Jobs Stuck in \"running\" on Process Crash (P1)",
-                  "2.2 No Concurrent Job Execution Guard (P1)",
-                  "2.3 No Retry, No Scheduling (P2)",
-                  "3. State Subsystem (Generic)",
-                  "3.1 No Write Locking (P1)",
-                  "3.2 No Atomic Multi-Key Transactions (P2)",
-                  "4. Hook Failure Logging",
-                  "4.1 Unbounded Log Growth (P1)",
-                  "4.2 Concurrent Append Safety (P2)",
-                  "5. Project Lifecycle State",
-                  "5.1 Init Race Condition (P1)",
-                  "5.2 No Lock on Profile Updates (P2)",
-                  "6. Draft Wiki Queue",
-                  "6.1 No Stale Lock Detection (P1)"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
-                "rel_path": ".agent-harness/PROJECT_AUDIT.md",
-                "title": "Agent-Harness Whole-Project Audit"
-              },
-              {
-                "bytes": 12877,
-                "headings": [
-                  "Sub-Agent Usage Patterns",
-                  "근거 요약",
-                  "현대 에이전트 방법론 수렴점 (2024-2026)",
-                  "핵심 결론",
-                  "12가지 Net-Positive Sub-Agent 패턴",
-                  "Category A: 컨텍스트 오염 방지",
-                  "1. 대량 탐색 (High-Volume Exploration)",
-                  "2. 격리 작업 (Isolated Worktree Work)",
-                  "3. Forked Context 탐색 (Forked Context Exploration)",
-                  "Category B: 다른 관점 필요",
-                  "4. 악마의 변호인 (Devil's Advocate / Adversarial Review)",
-                  "5. 교차 검증 / 합의 (Cross-Verification / Consensus)",
-                  "Category C: 병렬화 의미",
-                  "6. 병렬 독립 탐색 (Parallel Independent Research)",
-                  "7. 작업 분해·조정 (Task Fan-out with Coordination)",
-                  "8. 장시간 백그라운드 작업 (Background Long-Running Work)",
-                  "Category D: 다른 권한·모델 필요",
-                  "9. 모델 특화 / 비용 라우팅 (Model Specialization / Cost Routing)",
-                  "10. 도구·권한 제한 (Tool/Permission Gating)",
-                  "11. 계획-실행 분리 (Plan-then-Execute Separation)"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/SUB_AGENT_PATTERNS.md",
-                "rel_path": ".agent-harness/SUB_AGENT_PATTERNS.md",
-                "title": "Sub-Agent Usage Patterns"
-              },
-              {
-                "bytes": 10996,
-                "headings": [
-                  "기술 스택",
-                  "1. 언어 선택",
-                  "2. 런타임 / 패키지 관리",
-                  "2.1 Upstream companion dependencies",
-                  "2.2 Project skills",
-                  "3. 확정 라이브러리",
-                  "4. 예정 명령어",
-                  "5. 주요 설정/상태 위치",
-                  "Native integration 확인",
-                  "구현된 hardening commands"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/TECH_STACK.md",
-                "rel_path": ".agent-harness/TECH_STACK.md",
-                "title": "기술 스택"
-              },
-              {
-                "bytes": 18316,
-                "headings": [
-                  "테스트 컨벤션",
-                  "1. 현재 문서 단계 검증",
-                  "2. Go 코드 변경 기본 검증",
-                  "3. 테스트 작성 기준",
-                  "Well-structured tests",
-                  "Poorly-structured tests",
-                  "4. Contract / Golden tests",
-                  "5. 완료 보고 기준",
-                  "자기 검증 QA gate",
-                  "Web-Fetch Live Parity",
-                  "LLM Wiki 정책",
-                  "API documentation checks",
-                  "target repo에 package script가 있으면 그 repo에서는 다음 wrapper를 권장한다.",
-                  "Business logic error response coverage",
-                  "Agent-backed verification boundary",
-                  "Prompt contract tests",
-                  "OpenAPI prompt source",
-                  "Contract/audit/worker verification",
-                  "Lifecycle state tests"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/TESTING.md",
-                "rel_path": ".agent-harness/TESTING.md",
-                "title": "테스트 컨벤션"
-              },
-              {
-                "bytes": 23725,
-                "headings": [
-                  "ADR History Archive",
-                  "LLM Wiki 정책",
-                  "2026-05-29 — Upstream companion tools are opt-in dependencies",
-                  "ADR note: MCP-backed project memory records",
-                  "ADR note: Adapter 분리, compatibility contract, audit log, worker MVP",
-                  "2026-05-29 — Return quality gate failures as normal MCP payloads",
-                  "2026-05-29 — Public command identity follows project identity",
-                  "2026-05-29 — Simple bootstrap/project-bootstrap commands",
-                  "2026-05-30 — Static project-doc catalog injection (작업 레포 .agent-harness 메뉴)",
-                  "2026-05-30 — Host-specific UserPromptSubmit display contract",
-                  "2026-05-31 — Shared PreToolUse hook and prompt/tool lifecycle split",
-                  "2026-05-31 — Repo-local draft wiki staging before upstream LLM Wiki ingest",
-                  "2026-06-02 — IssueOps split",
-                  "2026-06-04 — Auto-proceed gate is heuristic + prompt injection, not an external LLM call"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
-                "rel_path": ".agent-harness/archive/adr-history.md",
-                "title": "ADR History Archive"
-              },
-              {
-                "bytes": 4929,
-                "headings": [
-                  "Cautions Incident Archive",
-                  "2026-05-31 — Codex PreCompact hook stdout schema",
-                  "2026-05-31 — PreToolUse false-positive risk",
-                  "2026-05-31 — Do not patch upstream companion plugin caches",
-                  "2026-06-03 — Do not leave self-verify invariant failures as reports only",
-                  "2026-06-03 — Separate PR/MR merge from IssueOps worktree cleanup",
-                  "2026-06-03 — Do not stop at cosmetic symptom fixes"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
-                "rel_path": ".agent-harness/archive/cautions-incidents.md",
-                "title": "Cautions Incident Archive"
-              },
-              {
-                "bytes": 3620,
-                "headings": [
-                  "CLI And MCP Operations",
-                  "Direct CLI",
-                  "Command Policy",
-                  "State",
-                  "Daemon And MCP",
-                  "Worker",
-                  "Contract And Audit"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
-                "rel_path": ".agent-harness/operations/cli-and-mcp.md",
-                "title": "CLI And MCP Operations"
-              },
-              {
-                "bytes": 11315,
-                "headings": [
-                  "Harness Skill Quality Scorecard (비-pioneer 7종)",
-                  "v2 세분화 적용 (2026-06-12)",
-                  "측정 프로토콜 (rubric 준수 + 프로그램 보강)",
-                  "Target Gate (rubric과 동일)",
-                  "케이스 정의 (스킬당 P/B/O + H)",
-                  "issueops",
-                  "atomic-commit-push",
-                  "self-verify",
-                  "self-augment",
-                  "project-bootstrap",
-                  "draft-wiki-promoter",
-                  "stability-audit",
-                  "Baseline (미측정 — 측정 시 갱신)"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
-                "rel_path": ".agent-harness/operations/harness-skill-quality-scorecard.md",
-                "title": "Harness Skill Quality Scorecard (비-pioneer 7종)"
-              },
-              {
-                "bytes": 5539,
-                "headings": [
-                  "Host Operations",
-                  "Codex",
-                  "Claude Code",
-                  "IssueOps Host Rule"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
-                "rel_path": ".agent-harness/operations/hosts.md",
-                "title": "Host Operations"
-              },
-              {
-                "bytes": 4379,
-                "headings": [
-                  "Incident → Hook 매핑 (Hashimoto 원칙)",
-                  "종결 판정 (B2 수용기준)",
-                  "갱신 규약"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/incident-to-hook-map.md",
-                "rel_path": ".agent-harness/operations/incident-to-hook-map.md",
-                "title": "Incident → Hook 매핑 (Hashimoto 원칙)"
-              },
-              {
-                "bytes": 4768,
-                "headings": [
-                  "Install And Sync",
-                  "First run from a fresh clone, before agent-harness is on PATH.",
-                  "Scriptable install or refresh after agent-harness is on PATH.",
-                  "Ongoing refresh from the current checkout.",
-                  "Also refresh opt-in upstream companion tools.",
-                  "Initialize project docs/profile for a target repository.",
-                  "Refresh existing project docs/profile from current templates and evidence.",
-                  "`--sync`",
-                  "Upstream Companion Tools"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/install.md",
-                "rel_path": ".agent-harness/operations/install.md",
-                "title": "Install And Sync"
-              },
-              {
-                "bytes": 4241,
-                "headings": [
-                  "Pioneer Skill Live Invocation Summary",
-                  "Summary Table",
-                  "Completion Status"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-live-invocation-summary.md",
-                "rel_path": ".agent-harness/operations/pioneer-skill-live-invocation-summary.md",
-                "title": "Pioneer Skill Live Invocation Summary"
-              },
-              {
-                "bytes": 22118,
-                "headings": [
-                  "Pioneer Skill Optimization Strategy (firsthand dogfood)",
-                  "Round 1",
-                  "shannon — firsthand: measured `ae5832a..a859773` (this session's commits)",
-                  "hopper — firsthand: diagnosed the real pre-existing `TestResponseContractsGolden` failure",
-                  "torvalds — firsthand: dated the golden pollution via history archaeology",
-                  "Cross-round finding (harness defect, not a skill issue)",
-                  "Round 2",
-                  "dijkstra — firsthand: decided no-change on the bounded startup loop",
-                  "codd — firsthand: applied to the events-table task; confirmed a structural verification gap",
-                  "karpathy — firsthand: critiqued my own holdout sub-agent prompt; it caught a real bug",
-                  "Round 3",
-                  "turing — firsthand: applied to a 2-file validate + build; confirmed the proportionality gap",
-                  "von-neumann — firsthand: correctly routed the golden fix to direct execution (no over-planning)",
-                  "berners-lee — firsthand: researched Go golden-test hermeticity (and it confirmed the fix direction)",
-                  "Cross-skill synthesis",
-                  "Recommended edit priority (all are skill-body/doc edits, reversible)"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-optimization-strategy.md",
-                "rel_path": ".agent-harness/operations/pioneer-skill-optimization-strategy.md",
-                "title": "Pioneer Skill Optimization Strategy (firsthand dogfood)"
-              },
-              {
-                "bytes": 18132,
-                "headings": [
-                  "Pioneer Skill Quality Cases",
-                  "berners-lee",
-                  "Case BERNERS-LEE-1: Cited Research Happy Path",
-                  "Case BERNERS-LEE-2: Access-Control Boundary",
-                  "Case BERNERS-LEE-3: Operational Report",
-                  "codd",
-                  "Case CODD-1: Slow Query Optimization",
-                  "Case CODD-2: Premature Denormalization Boundary",
-                  "Case CODD-3: Pool and Concurrency Advice",
-                  "dijkstra",
-                  "Case DIJKSTRA-1: Algorithm Improvement",
-                  "Case DIJKSTRA-2: Over-Engineering Boundary",
-                  "Case DIJKSTRA-3: Scaling Explanation",
-                  "hopper",
-                  "Case HOPPER-1: Reproducible Failure",
-                  "Case HOPPER-2: Trivial Failure Boundary",
-                  "Case HOPPER-3: lint-diagnose Contract",
-                  "karpathy",
-                  "Case KARPATHY-1: Prompt Design Happy Path",
-                  "Case KARPATHY-2: Reasoning Privacy Boundary"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-cases.md",
-                "rel_path": ".agent-harness/operations/pioneer-skill-quality-cases.md",
-                "title": "Pioneer Skill Quality Cases"
-              },
-              {
-                "bytes": 10450,
-                "headings": [
-                  "Pioneer Skill Quality Handoff",
-                  "Current State",
-                  "Baseline Scores",
-                  "Fresh-Context Sub-Agent Protocol",
-                  "Fresh-Context Smoke Results",
-                  "Files Added Or Updated",
-                  "Recommended Resume Order",
-                  "Verification Already Run"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-handoff.md",
-                "rel_path": ".agent-harness/operations/pioneer-skill-quality-handoff.md",
-                "title": "Pioneer Skill Quality Handoff"
-              },
-              {
-                "bytes": 26309,
-                "headings": [
-                  "Pioneer Skill Qualitative Rubric",
-                  "Rubric Sufficiency Verdict",
-                  "Rubric Quality Bar",
-                  "Evaluation Unit",
-                  "Holdout and Mutation Protocol",
-                  "Fresh-Context Sub-Agent Execution",
-                  "Deterministic Pioneer Signature Proxy",
-                  "Pre-Score Critical Checks",
-                  "Granularity v2 (세분화 확장, 2026-06-12)",
-                  "v2.1 점수 세분화: 0.1 단위 + 5.0 유보 규칙",
-                  "v2.2 Dimension별 sub-criteria (채점 시 3개 모두 명시 기록 의무)",
-                  "v2.3 케이스 유형별 가중 (case_score 공식 확장)",
-                  "v2.4 기록 전용 보조 지표: discovery (점수 비반영)",
-                  "v2.5 Required Result Record 추가 필드",
-                  "Five Scored Dimensions",
-                  "1. Request Fit",
-                  "2. Completion",
-                  "3. Method Fidelity",
-                  "4. Evidence and Verification",
-                  "5. Safety and Portability"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-rubric.md",
-                "rel_path": ".agent-harness/operations/pioneer-skill-quality-rubric.md",
-                "title": "Pioneer Skill Qualitative Rubric"
-              },
-              {
-                "bytes": 14386,
-                "headings": [
-                  "Pioneer Skill Quality Scorecard",
-                  "Target Gate",
-                  "Current Baseline",
-                  "Improvement Progress Since Baseline",
-                  "Follow-up measurement (2026-06-11, post-karpathy-fix) — `.agent-harness/evidence/pioneer-skills-quality/reruns/variance-and-postfix-2026-06-11.md`",
-                  "Post-optimization measurement (2026-06-11, after firsthand-dogfood skill edits) — `.agent-harness/evidence/pioneer-skills-quality/reruns/post-optimization-measurement-2026-06-11.md`",
-                  "Augmentation Loop",
-                  "Cycle 0: Baseline",
-                  "Cycle N: Improve the Lowest Trust Surface",
-                  "Cycle Ledger",
-                  "Remaining Improvement Priority",
-                  "Per-Cycle Report Shape",
-                  "Cycle N"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-quality-scorecard.md",
-                "rel_path": ".agent-harness/operations/pioneer-skill-quality-scorecard.md",
-                "title": "Pioneer Skill Quality Scorecard"
-              },
-              {
-                "bytes": 8276,
-                "headings": [
-                  "Pioneer Skill Rerun Fixtures",
-                  "Execution Contract",
-                  "Result Record Template",
-                  "Fixture Matrix",
-                  "Calibration Rerun Set",
-                  "Current Execution Status",
-                  "Completion Criteria"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-skill-rerun-fixtures.md",
-                "rel_path": ".agent-harness/operations/pioneer-skill-rerun-fixtures.md",
-                "title": "Pioneer Skill Rerun Fixtures"
-              },
-              {
-                "bytes": 8962,
-                "headings": [
-                  "Pioneer holdout v2 single-scale re-grade — 2026-06-16",
-                  "Provenance and scope (honest, adversarial-review-bound)",
-                  "v2 re-grade (5.0-reserve rule applied; rubric §v2.1–v2.2)",
-                  "Single-scale delta (honest framing)",
-                  "Visible 27-case baseline re-grade to v2 (closes the cross-scale gap)",
-                  "TRUE single-scale delta",
-                  "Calibration anchors under v2 (rubric §v2 precondition)",
-                  "Residual gap (what A6 does NOT deliver)"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
-                "rel_path": ".agent-harness/operations/pioneer-v2-regrade-2026-06-16.md",
-                "title": "Pioneer holdout v2 single-scale re-grade — 2026-06-16"
-              },
-              {
-                "bytes": 3793,
-                "headings": [
-                  "Project Docs Operations",
-                  "Project Bootstrap",
-                  "MCP Project Docs",
-                  "LLM Wiki Policy"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/project-docs.md",
-                "rel_path": ".agent-harness/operations/project-docs.md",
-                "title": "Project Docs Operations"
-              },
-              {
-                "bytes": 13512,
-                "headings": [
-                  "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)",
-                  "측정면 요약 (한눈)",
-                  "측정면 1 — Pioneer 스킬 9종 (격리 rubric)",
-                  "측정면 2 — 비-pioneer 스킬 7종 (격리 rubric)",
-                  "측정면 3 — IssueOps 산출물 벤치마크 (통합)",
-                  "측정면 4 — Hook 런타임 메트릭 (Q2 신규 측정면)",
-                  "측정면 5 — Hook 실패율 (Q2)",
-                  "측정면 6 — 운영 안정성 baseline (Q4, 2회분 실측 완료)",
-                  "갱신 규약 (수동)",
-                  "프로그램 종결 판정 (참고)"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/quality-dashboard.md",
-                "rel_path": ".agent-harness/operations/quality-dashboard.md",
-                "title": "Agent-Harness 품질 대시보드 (단일 가시성 인덱스)"
-              },
-              {
-                "bytes": 3006,
-                "headings": [
-                  "Release Dogfood Notes",
-                  "Codex MCP transcript",
-                  "Claude MCP transcript",
-                  "inspect/docs/state workflow",
-                  "UX findings",
-                  "Next release check"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/release-dogfood-notes.md",
-                "rel_path": ".agent-harness/operations/release-dogfood-notes.md",
-                "title": "Release Dogfood Notes"
-              },
-              {
-                "bytes": 4688,
-                "headings": [
-                  "Release Reproducibility",
-                  "Release Checklist",
-                  "Clean-Machine Smoke",
-                  "Cross-Platform Build Matrix",
-                  "Release User Guide: Install, Update, Rollback",
-                  "Distribution Decision Gate",
-                  "Release Dogfood Notes"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/release-reproducibility.md",
-                "rel_path": ".agent-harness/operations/release-reproducibility.md",
-                "title": "Release Reproducibility"
-              },
-              {
-                "bytes": 5070,
-                "headings": [
-                  "Agent-Harness 운영 안정성 Baseline (시계열)",
-                  "측정 명령",
-                  "핵심 지표 정의 (프로그램 Q4 명시 4종 + 보강)",
-                  "시계열 측정 기록",
-                  "갱신 규약",
-                  "잔여 작업 (Q4 종결 조건)"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/stability-baseline.md",
-                "rel_path": ".agent-harness/operations/stability-baseline.md",
-                "title": "Agent-Harness 운영 안정성 Baseline (시계열)"
-              },
-              {
-                "bytes": 3912,
-                "headings": [
-                  "Verification Operations",
-                  "Self-Verify",
-                  "Self-Augment",
-                  "API Documentation Gate",
-                  "General Verification"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/verification.md",
-                "rel_path": ".agent-harness/operations/verification.md",
-                "title": "Verification Operations"
-              },
-              {
-                "bytes": 2906,
-                "headings": [
-                  "Web-Fetch Live Parity",
-                  "Scope",
-                  "Safety Boundary",
-                  "Commands",
-                  "Report Fields",
-                  "CI Candidate Gate"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
-                "rel_path": ".agent-harness/operations/web-fetch-live-parity.md",
-                "title": "Web-Fetch Live Parity"
-              },
-              {
-                "bytes": 1363,
-                "headings": [
-                  "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트",
-                  "Fix (rules.go 데이터 + 테스트)",
-                  "Acceptance",
-                  "Non-goals"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
-                "rel_path": ".agent-harness/plans/10-pioneer-skill-routing-hints.md",
-                "title": "10: 비-issueops 요청의 pioneer 스킬 라우팅 힌트"
-              },
-              {
-                "bytes": 3752,
-                "headings": [
-                  "13: Codex system skill quick_validate.py durable upstream fix",
-                  "Context",
-                  "Large Issue Breakdown Gate: no split",
-                  "Plan",
-                  "Findings",
-                  "Verification",
-                  "Risks"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
-                "rel_path": ".agent-harness/plans/13-codex-system-skill-quick-validate.md",
-                "title": "13: Codex system skill quick_validate.py durable upstream fix"
-              },
-              {
-                "bytes": 1737,
-                "headings": [
-                  "6: lifecycle state 초기화 read-while-write 레이스 수정",
-                  "Root Cause (확정)",
-                  "Fix (단일 task, \u003c20줄)",
-                  "Acceptance (이슈와 동일)",
-                  "Non-goals"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
-                "rel_path": ".agent-harness/plans/6-fix-lifecycle-state-init-race.md",
-                "title": "6: lifecycle state 초기화 read-while-write 레이스 수정"
-              },
-              {
-                "bytes": 1521,
-                "headings": [
-                  "8: validation smoke의 truncate-후-JSON-파싱 결함 수정",
-                  "Root Cause (확정)",
-                  "Fix (단일 파일, \u003c30줄)",
-                  "Acceptance (이슈와 동일)",
-                  "Non-goals"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
-                "rel_path": ".agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
-                "title": "8: validation smoke의 truncate-후-JSON-파싱 결함 수정"
-              },
-              {
-                "bytes": 10439,
-                "headings": [
-                  "agent-harness 최적화 계획",
-                  "1. 배경",
-                  "2. 근거",
-                  "검증 명령",
-                  "주요 hotspot / 증거 파일",
-                  "3. 목표",
-                  "4. 비목표",
-                  "4.1 2026-06-16 현재 상태",
-                  "5. 우선순위별 실행 계획",
-                  "P0. MCP registry 단일화",
-                  "P1. Codex/Claude installer 공통 pipeline 추출",
-                  "P2. `internal/core/issueops_facade.go` 분리 및 provider 경계 복원",
-                  "P3. CLI global dependency wiring 제거",
-                  "P4. 고분기 router 분해",
-                  "P5. broad facade 축소",
-                  "6. 실행 순서 제안",
-                  "7. 리스크와 완화책",
-                  "8. 성공 기준"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
-                "rel_path": ".agent-harness/plans/agent-harness-optimization-plan.md",
-                "title": "agent-harness 최적화 계획"
-              },
-              {
-                "bytes": 20766,
-                "headings": [
-                  "Agent-Harness 성능/안정성 개선 계획",
-                  "TL;DR",
-                  "Context",
-                  "Original Request",
-                  "Confirmed Evidence",
-                  "Gap Analysis",
-                  "Work Objectives",
-                  "Core Objective",
-                  "Definition of Done",
-                  "Must Have",
-                  "Must NOT Have",
-                  "Verification Strategy",
-                  "Execution Strategy",
-                  "Parallel Execution Waves",
-                  "Dependency Matrix",
-                  "TODOs",
-                  "Final Verification Wave",
-                  "Commit Strategy",
-                  "Success Criteria"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
-                "rel_path": ".agent-harness/plans/agent-harness-performance-improvement.md",
-                "title": "Agent-Harness 성능/안정성 개선 계획"
-              },
-              {
-                "bytes": 14139,
-                "headings": [
-                  "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)",
-                  "0. 전수조사 핵심 발견 (현재 상태 스냅샷)",
-                  "측정 커버리지 비대칭이 가장 큰 구조적 결함이다",
-                  "강점 (유지·확산할 패턴)",
-                  "이번 전수조사가 발굴한 신규 실측 결함",
-                  "기존 문서화된 결함 (재발견 아님, 미해결 잔존)",
-                  "1. 정량 트랙 (측정 가능한 품질)",
-                  "Q1. 비-pioneer 스킬 스코어카드 확장 — 커버리지 9/16 → 16/16 [최우선]",
-                  "Q2. Hook 런타임 메트릭 도입 — 현재 0개 → 4개 [신규 측정면]",
-                  "Q3. issueops 벤치마크 정기화 + judge file 실전 1회전 [구축물 활용]",
-                  "Q4. 운영 안정성 정량 baseline [stability-audit 정례화]",
-                  "Q6. lifecycle state 동시성 레이스 수정 [신규 실측 결함, P1]",
-                  "Q5. 정량 대시보드 단일화 [통합 가시성] — ✅ 완료 (2026-06-13)",
-                  "2. 정성 트랙 (측정이 못 잡는 품질)",
-                  "S1. Firsthand 도그푸드 정례화 [입증된 채널의 제도화]",
-                  "S2. 다관점 사전 리뷰를 플랜 게이트로 [입증된 채널 2]",
-                  "S3. 결손 contract test 3건 신설 [정성→정량 전환]",
-                  "S4. P0/P1 구조 결함 해소 [정성적 신뢰성]",
-                  "S5. Proportionate mode 확산 5/16 → 적용 가능 전수 [검증된 패턴 확산]",
-                  "S6. 정직성 단서 일괄 정비 [보고서 권고 3 잔여분]"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
-                "rel_path": ".agent-harness/plans/harness-quality-improvement-program.md",
-                "title": "Agent-Harness 품질향상 프로그램 (전수조사 기반, 정량+정성 투트랙)"
-              },
-              {
-                "bytes": 25953,
-                "headings": [
-                  "Agent-Harness 품질향상 프로그램 v2 — 외부 벤치마킹 기반",
-                  "0. 현재 상태 스냅샷 (라이브 검증, evidence-bound)",
-                  "0.1 이미 해소됨 — 재제안 금지",
-                  "0.2 이미 field를 앞선 점 — 노력 낭비 금지 (적대 리뷰 확인)",
-                  "0.3 잔존/신규 결함 (라이브 확인)",
-                  "1. 전제 (외부 벤치마킹이 바꾼 관점)",
-                  "2. 외부-내부 비교 매트릭스 (요약)",
-                  "3. 정량 트랙 (측정 가능) — A1~A7",
-                  "A1. CI 자동화 — 결정적 게이트를 GitHub Actions로 [G9, high/小, 최우선]",
-                  "A2. 관측 분모 도입 — 공유 invocations 카운터 → gate-hit-rate + failure-rate + queue-depth [G4+G5+G6, med/小, 묶음]",
-                  "A3. 신뢰도·분산 보고 — pass^k + credible interval [G1, high/中]",
-                  "A4. Check-adequacy + 채점 축 분리 — 음성 fixture red-team [G3, high/中]",
-                  "A5. 통합 기여 측정 — 결정적 오프라인 routing trace 리플레이 [G2, high/大, PRIMARY]",
-                  "A6. v2 baseline 단일척도 재측정 + 내구 fixture [G8, med/中]",
-                  "A7. --judge file 독립 검증 [G7, med/小]",
-                  "4. 정성 트랙 (측정이 못 잡음) — B1~B6",
-                  "B1. 자기교정 가드레일 명문화 [G10, low/小]",
-                  "B2. Incident→hook 매핑 규약 (Hashimoto 원칙) [매트릭스#17, qual/中]",
-                  "B3. Linter-as-gate PostToolUse 후크 [매트릭스#8, qual→quant/小]",
-                  "B4. Plan-before-execute 게이트 1급화 [매트릭스#16, qual/中]"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
-                "rel_path": ".agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
-                "title": "Agent-Harness 품질향상 프로그램 v2 — 외부 벤치마킹 기반"
-              },
-              {
-                "bytes": 13935,
-                "headings": [
-                  "Pioneer Skill Documentation Audit \u0026 Update",
-                  "TL;DR",
-                  "Context",
-                  "Original Request",
-                  "Interview Summary",
-                  "Gap Analysis",
-                  "Work Objectives",
-                  "Core Objective",
-                  "Deliverables",
-                  "Definition of Done",
-                  "Expected: \u003e0 matches for at least 3 skill names",
-                  "Expected: \u003e0 matches for at least 3 skill names",
-                  "Expected: no hardcoded language assumptions (0 matches for implementation-context mentions)",
-                  "Must Have",
-                  "Must NOT Have",
-                  "Verification Strategy",
-                  "Execution Strategy",
-                  "Parallel Execution Waves",
-                  "Dependency Matrix",
-                  "TODOs"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
-                "rel_path": ".agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
-                "title": "Pioneer Skill Documentation Audit \u0026 Update"
-              },
-              {
-                "bytes": 42139,
-                "headings": [
-                  "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)",
-                  "TL;DR",
-                  "Context",
-                  "Original Request",
-                  "적대적 리뷰 반영(rev.2)",
-                  "judge 백엔드 흡수(rev.3)",
-                  "Gap Analysis",
-                  "Work Objectives",
-                  "Core Objective",
-                  "Deliverables",
-                  "Definition of Done (검증 가능 조건)",
-                  "Must Have",
-                  "Must NOT Have (guardrails)",
-                  "Verification Strategy",
-                  "Execution Strategy",
-                  "Parallel Execution Waves",
-                  "Dependency Matrix",
-                  "TODOs",
-                  "Final Verification Wave (MANDATORY) — rev.5: 전부 binary·agent-executable 명령",
-                  "Commit Strategy"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
-                "rel_path": ".agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
-                "title": "Pioneer Skill ↔ IssueOps 통합 기여도 측정 추가 플랜 (rev.5, 검증-적정성 리뷰 반영)"
-              },
-              {
-                "bytes": 53405,
-                "headings": [
-                  "Pioneer Skills Qualitative Quality Improvement Plan",
-                  "TL;DR",
-                  "Context",
-                  "Original Request",
-                  "Scope",
-                  "Evidence Gathered",
-                  "Evaluation Correction",
-                  "Request-Fulfillment Rubric",
-                  "Full-Function Evaluation Coverage Matrix",
-                  "Gap Analysis",
-                  "Initial Static Risk Matrix",
-                  "Cross-Cutting Findings",
-                  "T0 Request-Fulfillment Results",
-                  "Highest-Leverage Fix Order",
-                  "Improvement Target",
-                  "Work Objectives",
-                  "Core Objective",
-                  "Deliverables",
-                  "Definition of Done",
-                  "Must Have"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
-                "rel_path": ".agent-harness/plans/pioneer-skills-quality-improvement.md",
-                "title": "Pioneer Skills Qualitative Quality Improvement Plan"
-              },
-              {
-                "bytes": 16284,
-                "headings": [
-                  "Claude Shannon — Signal-to-Noise Quality Gate",
-                  "TL;DR",
-                  "Context",
-                  "Original Request",
-                  "Research Findings (oh-my-openagent + agent-harness + academic)",
-                  "Gap Analysis (Shannon vs 기존 도구)",
-                  "정보이론 → 코드 품질 매핑",
-                  "Work Objectives",
-                  "Core Objective",
-                  "Deliverables",
-                  "Definition of Done",
-                  "Must Have",
-                  "Must NOT Have",
-                  "Shannon Skill Architecture",
-                  "4-Phase Protocol",
-                  "Turing Final Quality Gate 통합",
-                  "IssueOps Phase Map 통합",
-                  "Execution Strategy",
-                  "Parallel Execution Waves",
-                  "TODOs"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
-                "rel_path": ".agent-harness/plans/shannon-skill.md",
-                "title": "Claude Shannon — Signal-to-Noise Quality Gate"
-              },
-              {
-                "bytes": 14883,
-                "headings": [
-                  "Von Neumann Quality Upgrade",
-                  "TL;DR",
-                  "Context",
-                  "Original Request",
-                  "Gap Analysis (Von Neumann vs Prometheus)",
-                  "핵심 원칙",
-                  "Work Objectives",
-                  "Core Objective",
-                  "Deliverables",
-                  "Definition of Done",
-                  "Must Have",
-                  "Must NOT Have",
-                  "Verification Strategy",
-                  "Execution Strategy",
-                  "Parallel Execution Waves",
-                  "Dependency Matrix",
-                  "TODOs",
-                  "Final Verification Wave (MANDATORY — after ALL implementation tasks)",
-                  "Commit Strategy",
-                  "Success Criteria"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
-                "rel_path": ".agent-harness/plans/von-neumann-quality-upgrade.md",
-                "title": "Von Neumann Quality Upgrade"
-              },
-              {
-                "bytes": 3115,
-                "headings": [
-                  "Codex system skill quick_validate.py source path",
-                  "Summary",
-                  "Evidence",
-                  "Reproduction",
-                  "Skill is valid!",
-                  "ModuleNotFoundError: No module named 'yaml'",
-                  "Recommended upstream fix",
-                  "Boundary"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
-                "rel_path": ".agent-harness/research/codex-system-skill-quick-validate.md",
-                "title": "Codex system skill quick_validate.py source path"
-              },
-              {
-                "bytes": 13590,
-                "headings": [
-                  "Research: Can agent-harness integrate its 7 lifecycle hooks into GJC (gajae-code) the way it does into Codex/Claude Code?",
-                  "TL;DR",
-                  "Method",
-                  "Findings",
-                  "Finding 1 — Claude Code exposes a very wide lifecycle hook set via shell-command handlers",
-                  "Finding 2 — Codex exposes a Claude-style command-hook set via hooks.json",
-                  "Finding 3 — GJC's runtime emits a lifecycle event set comparable to Claude/Codex",
-                  "Finding 4 — GJC's user-facing hook registration is split into two narrow surfaces",
-                  "Finding 5 — GJC's first-party \"HookAPI\" is the intended extension model and is not shell-command based",
-                  "Cross-check (adversarial)",
-                  "Conclusion",
-                  "Access boundary",
-                  "Addendum (2026-06-30) — CORRECTION: full lifecycle integration IS possible via the first-party TS HookAPI",
-                  "What changed",
-                  "New conclusion",
-                  "Sources for the correction",
-                  "Impact on the upstream issue"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
-                "rel_path": ".agent-harness/research/gjc-hook-lifecycle-gap.md",
-                "title": "Research: Can agent-harness integrate its 7 lifecycle hooks into GJC (gajae-code) the way it does into Codex/Claude Code?"
-              },
-              {
-                "bytes": 3354,
-                "headings": [
-                  "Karpathy AutoResearch Notes for Pioneer Skill Quality",
-                  "Relevant Pattern",
-                  "Adaptation for Skill Quality",
-                  "Important Codex Adjustment",
-                  "Loop Rules to Import",
-                  "Skill-Quality Autoresearch Stop Condition"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
-                "rel_path": ".agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
-                "title": "Karpathy AutoResearch Notes for Pioneer Skill Quality"
-              },
-              {
-                "bytes": 34205,
-                "headings": [
-                  "Research: Multi-Agent Orchestration Frameworks — Quality \u0026 Reliability Patterns",
-                  "TL;DR",
-                  "Method",
-                  "Findings by Framework",
-                  "1. LangGraph",
-                  "(a) Verification / Evaluation / Guardrail Primitives",
-                  "(b) State \u0026 Memory Management",
-                  "(c) Multi-Agent Patterns",
-                  "(d) Determinism / Reproducibility",
-                  "(e) Structured Output / Typed Contracts",
-                  "2. OpenAI Agents SDK (incl. Swarm history)",
-                  "(a) Verification / Evaluation / Guardrail Primitives",
-                  "(b) State \u0026 Memory Management",
-                  "(c) Multi-Agent Patterns",
-                  "(d) Determinism / Reproducibility",
-                  "(e) Structured Output / Typed Contracts",
-                  "3. CrewAI",
-                  "(a) Verification / Evaluation / Guardrail Primitives",
-                  "(b) State \u0026 Memory Management",
-                  "(c) Multi-Agent Patterns"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
-                "rel_path": ".agent-harness/research/multi-agent-orchestration-quality-patterns.md",
-                "title": "Research: Multi-Agent Orchestration Frameworks — Quality \u0026 Reliability Patterns"
-              },
-              {
-                "bytes": 5789,
-                "headings": [
-                  "Research: Pioneer Skill Design Pattern Audit",
-                  "TL;DR",
-                  "Method",
-                  "Findings",
-                  "1. Namesake-Specialist Pattern is Effective",
-                  "2. archimedes Successfully Replaced by von-neumann (Corrected 2026-06-10)",
-                  "3. Cross-Reference Mesh Follows Hub-and-Spoke Pattern",
-                  "4. Language/Tech Agnosticism Needs Ongoing Vigilance",
-                  "5. Documentation Gaps Identified",
-                  "Cross-Check Results",
-                  "Open Questions",
-                  "Source Index"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
-                "rel_path": ".agent-harness/research/pioneer-skill-audit.md",
-                "title": "Research: Pioneer Skill Design Pattern Audit"
-              },
-              {
-                "bytes": 15039,
-                "headings": [
-                  "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서",
-                  "0. 한 줄 결론",
-                  "1. 현재 측정 시스템의 실제 구조 (근거 기반)",
-                  "계층 A — Pioneer Skill Quality Rubric / Scorecard (격리 측정)",
-                  "계층 B — IssueOps Quality Benchmark (산출물 측정)",
-                  "계층 C — IssueOps Skill Contract Test (텍스트 존재 측정)",
-                  "2. 각 질문에 대한 진단",
-                  "Q1. 지금의 평가기준이 적합한가?",
-                  "Q2. 품질 향상을 위해 새 평가기준을 도입할 필요가 있는가?",
-                  "Q3. 단순히 스킬만으로 충분한가?",
-                  "Q4. issueops에서 CS pioneer 스킬이 적절히 호출되어 적절한 퍼포먼스를 보이는가?",
-                  "3. 다각도 종합: 측정 토폴로지의 공백",
-                  "4. 권고 (우선순위, 모두 가역적·증거 기반)",
-                  "5. 명시적 비-주장 (정직성)",
-                  "부록 A — 근거 인덱스"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
-                "rel_path": ".agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
-                "title": "Pioneer 스킬 평가기준·issueops 통합 다각도 진단 보고서"
-              },
-              {
-                "bytes": 19223,
-                "headings": [
-                  "Agent-Harness Quality Audit — 2026-06-30",
-                  "Executive Summary",
-                  "Prioritized Findings",
-                  "Recommendations by Bucket",
-                  "A. Quick wins (quick effort, real value) — do this first",
-                  "B. Structural / correctness (medium+ effort)",
-                  "C. Skills \u0026 DX polish (mostly P3)",
-                  "Doc/code drift to reconcile",
-                  "What's Already Solid",
-                  "Independent cross-check (main-agent)"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
-                "rel_path": ".agent-harness/research/quality-audit-2026-06-30.md",
-                "title": "Agent-Harness Quality Audit — 2026-06-30"
-              },
-              {
-                "bytes": 7469,
-                "headings": [
-                  "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions",
-                  "TL;DR",
-                  "Method",
-                  "Findings",
-                  "Context Isolation Is The Primary Benefit",
-                  "Specialization And Tool Gating Are Valid Benefits",
-                  "Overhead Is A Real Cost",
-                  "Direction Control And Observability Are Weaker Than Main-Agent Work",
-                  "Context Engineering Supports Isolation, But Not As A Blanket Rule",
-                  "Decision Rule For IssueOps",
-                  "Source Index"
-                ],
-                "path": "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
-                "rel_path": ".agent-harness/research/subagent-tradeoffs.md",
-                "title": "Research: Sub-Agent Tradeoffs For IssueOps Execution Decisions"
-              },
-              {
-                "bytes": 13536,
-                "headings": [
-                  "AGENTS.md",
-                  "1. Think Before Coding",
-                  "2. Simplicity First",
-                  "3. Surgical Changes",
-                  "4. Goal-Driven Execution",
-                  "0. 검증 우선 — 추측·회피 금지 (Verify, don't hedge)",
-                  "5. 프로젝트 결정 요약",
-                  "6. Required Reading / Agent Docs",
-                  "7. Working Contract",
-                  "8. Planned Directory Map",
-                  "9. Essential Commands",
-                  "10. Critical Invariants",
-                  "11. Manual Notes",
-                  "12. API Documentation Gate"
-                ],
-                "path": "$HARNESS_ROOT/AGENTS.md",
-                "rel_path": "AGENTS.md",
-                "title": "AGENTS.md"
-              },
-              {
-                "bytes": 1326,
-                "headings": [
-                  "CLAUDE.md",
-                  "API docs"
-                ],
-                "path": "$HARNESS_ROOT/CLAUDE.md",
-                "rel_path": "CLAUDE.md",
-                "title": "CLAUDE.md"
-              },
-              {
-                "bytes": 7580,
-                "headings": [
-                  "1. 천재적 통찰 도출 공식 (Genius Insight Formula)",
-                  "2. 다차원적 분석 프레임워크",
-                  "3. 창의적 연결 매트릭스",
-                  "4. 문제 재정의 알고리즘",
-                  "5. 혁신적 솔루션 생성 공식",
-                  "6. 인사이트 증폭 공식",
-                  "7. 사고의 진화 방정식",
-                  "8. 복잡성 해결 매트릭스",
-                  "9. 직관적 도약 공식",
-                  "10. 통합적 지혜 공식",
-                  "사용 가이드라인",
-                  "Mermaid 다이어그램 작성 가이드라인",
-                  "필수 규칙",
-                  "1. 텍스트 인용부호 사용",
-                  "2. HTML 태그 규칙",
-                  "3. 특수문자 처리",
-                  "4. 한글 텍스트 처리",
-                  "올바른 예시",
-                  "잘못된 예시 (파싱 에러 발생)",
-                  "검증 체크리스트"
-                ],
-                "path": "$HARNESS_ROOT/GENIUS_THINK.md",
-                "rel_path": "GENIUS_THINK.md",
-                "title": "Mermaid 다이어그램 작성 가이드라인"
-              },
-              {
-                "bytes": 7275,
-                "headings": [
-                  "Self-verification and self-augmentation loops",
-                  "1. Self-verification loop",
-                  "Purpose",
-                  "CLI/MCP surface",
-                  "Required steps",
-                  "Score goals",
-                  "2. Self-augmentation loop",
-                  "Purpose",
-                  "Surface",
-                  "Exit goals",
-                  "GENIUS_THINK.md usage",
-                  "3. External strategies adopted",
-                  "4. Operating rules"
-                ],
-                "path": "$HARNESS_ROOT/skills/self-augment/SELF_AUGMENTATION.md",
-                "rel_path": "skills/self-augment/SELF_AUGMENTATION.md",
-                "title": "Self-verification and self-augmentation loops"
-              },
-              {
-                "bytes": 4847,
-                "headings": [
-                  "Self-augmentation loop",
-                  "Goal",
-                  "Required distinction",
-                  "Exit criteria",
-                  "Workflow",
-                  "Reference"
-                ],
-                "path": "$HARNESS_ROOT/skills/self-augment/SKILL.md",
-                "rel_path": "skills/self-augment/SKILL.md",
-                "title": "Self-augmentation loop"
-              },
-              {
-                "bytes": 5715,
-                "headings": [
-                  "Self-verification candidate catalog",
-                  "Current evidence",
-                  "Candidate generation method",
-                  "Candidate list",
-                  "Completion criteria"
-                ],
-                "path": "$HARNESS_ROOT/skills/self-verify/CANDIDATES.md",
-                "rel_path": "skills/self-verify/CANDIDATES.md",
-                "title": "Self-verification candidate catalog"
-              },
-              {
-                "bytes": 2716,
-                "headings": [
-                  "Self-verification loop",
-                  "Goal",
-                  "Commands",
-                  "Confirmed promote refuses a source snapshot that did not pass the gate; --allow-failed-source is an",
-                  "explicit, deliberate override for accepted deviations only — never a pressure/demo shortcut.",
-                  "Gate",
-                  "Candidate catalog"
-                ],
-                "path": "$HARNESS_ROOT/skills/self-verify/SKILL.md",
-                "rel_path": "skills/self-verify/SKILL.md",
-                "title": "Self-verification loop"
-              }
-            ],
-            "generated_at": "$TIMESTAMP",
+            "docs_count": 67,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
+            "required_docs": {
+              ".agent-harness/ADR.md": true,
+              ".agent-harness/AGENT_WORKFLOW.md": true,
+              ".agent-harness/ARCHITECTURE.md": true,
+              ".agent-harness/CAUTIONS.md": true,
+              ".agent-harness/CONSTITUTION.md": true,
+              ".agent-harness/CONVENTIONS.md": true,
+              ".agent-harness/OPERATIONS.md": true,
+              ".agent-harness/TESTING.md": true,
+              "AGENTS.md": true,
+              "CLAUDE.md": true,
+              "skills/self-augment/SELF_AUGMENTATION.md": true,
+              "skills/self-verify/SKILL.md": true
+            },
             "version": "0.1.0"
           },
           "type": "text"
@@ -9450,12 +6930,15 @@
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
               "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
+              "$HARNESS_ROOT/.agent-harness/research/deferred-followups.md",
               "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
+              "$HARNESS_ROOT/.agent-harness/research/harness-engineering-12factor.md",
               "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
               "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
               "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
+              "$HARNESS_ROOT/.agent-harness/research/spike-tool-error-nudge.md",
               "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
@@ -9544,7 +7027,7 @@
               },
               {
                 "description": "Use before GitLab, glab, GitLab MCP, IssueOps remote issue/MR, linked-item, child-item, work-item, Kody/Kodus review, issue-body update, branch-target, or cleanup work. Prevents repeated GitLab mistakes by distinguishing native linked items from child items, enforcing body-of-record rules, authenticated CLI/MCP fallback, labels/assignee/target-branch checks, and review-thread verification.",
-                "has_openai_yaml": false,
+                "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "gitlab-usecase",
                 "path": "$HARNESS_ROOT/skills/gitlab-usecase"
@@ -9754,6 +7237,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -9873,6 +7357,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -9930,6 +7415,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -10039,6 +7525,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -10131,6 +7618,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -10259,6 +7747,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -10315,6 +7804,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -10436,6 +7926,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -10587,6 +8078,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -10723,6 +8215,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -10869,6 +8362,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -10916,6 +8410,7 @@
             "ok": true,
             "phase": "problem",
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -11105,6 +8600,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -11214,6 +8710,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -11360,6 +8857,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -11377,6 +8875,7 @@
             "ok": true,
             "phase": "problem",
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -11600,6 +9099,7 @@
               }
             },
             "repo": "$WORKSPACE",
+            "schema_version": 1,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -12502,7 +10002,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 64,
+              "docs_indexed": 67,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
