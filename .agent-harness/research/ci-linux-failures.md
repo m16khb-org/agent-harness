@@ -23,3 +23,11 @@
 - Cause: the response contract still compared machine-dependent details: Go JSON output exposed equivalent two-decimal quality scores with different floating-point tails, and the `gh issue view` authentication error differed between local unauthenticated shells and GitHub Actions without `GH_TOKEN`.
 - Fix: normalize `score` fields to two decimal places and normalize `IssueOps remote reflect-devils-advocate` GitHub auth failures to `$GH_AUTH_ERROR`; refresh `response_contracts.golden.json`.
 - Verification: `go test ./cmd/harness/harnessapp/responsecontract -count=1`; `go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1`; `go test ./cmd/harness/harnessapp ./internal/adapter -count=1`; rerun GitHub Actions CI on the updated branch.
+
+## 2026-07-02: self-verify native integration on fresh runner
+
+- Run: GitHub Actions `CI` push run `28561931246` on `quality-optimization-2026-07-02` at `cc67970`.
+- Failure: `go test ./... -count=1` passed, then `./bin/agent-harness self-verify --seed=100 --target-score=95 --json` failed at the `native_integration` goal.
+- Cause: the self-verify native integration step checks actual user-home Codex/Claude skill, MCP, and hook wiring. A fresh GitHub runner has no agent-harness native install unless the workflow performs one first.
+- Fix: add a CI step that runs `./scripts/install-native.sh --skip-upstream-tools --skip-build --path-mode=skip` after the build/test steps and before the self-verify gate.
+- Verification: temp-HOME reproduction of `install-native` followed by `self-verify`; rerun GitHub Actions CI on the updated branch.

@@ -58,5 +58,8 @@ jobs:
       - name: Test (catches golden drift + all unit/contract regressions)
         run: go test ./... -count=1
 
+      - name: Install native integrations for self-verify
+        run: ./scripts/install-native.sh --skip-upstream-tools --skip-build --path-mode=skip
+
       - name: Deterministic self-verify gate (seed-pinned, --judge none)
         run: ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
