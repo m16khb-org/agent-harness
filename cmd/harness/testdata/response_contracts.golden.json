@@ -570,7 +570,7 @@
       "warnings": []
     },
     "docs_index": {
-      "docs_count": 67,
+      "docs_count": 68,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -640,6 +640,7 @@
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+        "$HARNESS_ROOT/.agent-harness/research/ci-linux-failures.md",
         "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
         "$HARNESS_ROOT/.agent-harness/research/deferred-followups.md",
         "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
@@ -5062,7 +5063,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 67,
+        "docs_indexed": 68,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6852,7 +6853,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 67,
+            "docs_count": 68,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -6929,6 +6930,7 @@
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
+              "$HARNESS_ROOT/.agent-harness/research/ci-linux-failures.md",
               "$HARNESS_ROOT/.agent-harness/research/codex-system-skill-quick-validate.md",
               "$HARNESS_ROOT/.agent-harness/research/deferred-followups.md",
               "$HARNESS_ROOT/.agent-harness/research/gjc-hook-lifecycle-gap.md",
@@ -10002,7 +10004,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 67,
+              "docs_indexed": 68,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
