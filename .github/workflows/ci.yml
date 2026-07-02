@@ -58,8 +58,13 @@ jobs:
       - name: Test (catches golden drift + all unit/contract regressions)
         run: go test ./... -count=1
 
-      - name: Install native integrations for self-verify
-        run: ./scripts/install-native.sh --skip-upstream-tools --skip-build --path-mode=skip
-
       - name: Deterministic self-verify gate (seed-pinned, --judge none)
-        run: ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
+        run: |
+          tmp_home="$(mktemp -d)"
+          cleanup() {
+            chmod -R u+w "$tmp_home" 2>/dev/null || true
+            rm -rf "$tmp_home"
+          }
+          trap cleanup EXIT
+          HOME="$tmp_home" CODEX_HOME="$tmp_home/.codex" ./scripts/install-native.sh --skip-upstream-tools --skip-build --path-mode=skip
+          HOME="$tmp_home" CODEX_HOME="$tmp_home/.codex" ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
