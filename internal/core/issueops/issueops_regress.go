@@ -16,6 +16,12 @@ import (
 // downstream plan/compatibility-review ledger entries stale (retained as audit
 // per the backward-regression rule). It does not delete the worktree, branch,
 // or remote artifacts.
+// issueOpsRegressCap bounds stop→reflect→regress rounds per cycle. Each round
+// already costs a fresh devil's-advocate verdict plus a remote reflection, so
+// repeated rounds signal the plan is thrashing, not converging; past the cap
+// the cycle escalates to a human decision instead of another automatic re-plan.
+const issueOpsRegressCap = 3
+
 func RegressIssueOpsForReplan(stateRoot, id, reason string) (IssueOpsRecord, error) {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
@@ -48,8 +54,20 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (IssueOpsRecor
 	if strings.TrimSpace(review.IssueReflectedAt) == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("reflect the devil's-advocate findings to the issue before regressing (issueops remote reflect-devils-advocate --confirm)")
 	}
+	if len(record.RegressEvents) >= issueOpsRegressCap {
+		return IssueOpsRecord{OK: false}, fmt.Errorf(
+			"regress cap reached: cycle %s already went through %d stop→re-plan rounds, so the plan is thrashing rather than converging; a human decision is required before any further automatic re-plan",
+			id, issueOpsRegressCap)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	priorPhase := record.Phase
+
+	// Audit trail backing the cap: one event per successful regression.
+	record.RegressEvents = append(record.RegressEvents, IssueOpsRegressEvent{
+		Reason:    reason,
+		FromPhase: priorPhase,
+		At:        now,
+	})
 
 	// Audit: record the devil's-advocate stop as a scope decision.
 	record.Decisions = append(record.Decisions, IssueOpsDecision{

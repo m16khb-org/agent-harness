@@ -290,6 +290,15 @@ type IssueOpsPhaseLedgerEntry struct {
 // (never Go map order) when rendering or comparing for determinism.
 type IssueOpsPhaseLedger map[IssueOpsPhase]IssueOpsPhaseLedgerEntry
 
+// IssueOpsRegressEvent is the audit trail of one Brooks regression (stop →
+// reflect → regress). Its count backs the regress cap: repeated stop/regress
+// rounds on one cycle stop consuming tokens and escalate to a human decision.
+type IssueOpsRegressEvent struct {
+	Reason    string        `json:"reason"`
+	FromPhase IssueOpsPhase `json:"from_phase"`
+	At        string        `json:"at"`
+}
+
 const IssueOpsCurrentSchemaVersion = 1
 
 type IssueOpsRecord struct {
@@ -315,6 +324,7 @@ type IssueOpsRecord struct {
 	CompatibilityReview     *IssueOpsCompatibilityReview        `json:"compatibility_review,omitempty"`
 	DevilsAdvocateReview    *IssueOpsDevilsAdvocateReview       `json:"devils_advocate_review,omitempty"`
 	Feedback                []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
+	RegressEvents           []IssueOpsRegressEvent              `json:"regress_events,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`

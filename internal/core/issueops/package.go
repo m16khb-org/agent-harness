@@ -52,6 +52,7 @@ type IssueOpsPlanPrepRequest = model.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = model.IssueOpsPlanPrepItemRequest
 type IssueOpsWorktreeToolPreparation = model.IssueOpsWorktreeToolPreparation
 type IssueOpsRecord = model.IssueOpsRecord
+type IssueOpsRegressEvent = model.IssueOpsRegressEvent
 type IssueOpsReadiness = model.IssueOpsReadiness
 type IssueOpsDomainReview = model.IssueOpsDomainReview
 type IssueOpsDomainReviewRequest = model.IssueOpsDomainReviewRequest
