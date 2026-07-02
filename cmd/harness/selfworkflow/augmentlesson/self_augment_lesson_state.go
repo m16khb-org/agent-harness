@@ -63,7 +63,9 @@ func SaveSelfAugmentLesson(req model.SelfAugmentLessonRequest, deps Deps) (model
 	}
 	key := strings.TrimSpace(req.StateKey)
 	if key == "" {
-		key = fmt.Sprintf("self-augment-lesson-%s-%s", StateKeySlug(candidateID), now.Format("20060102T150405Z"))
+		// Nanosecond suffix: second-granularity keys collide when lessons are
+		// recorded back-to-back in one loop, silently dropping earlier lessons.
+		key = fmt.Sprintf("self-augment-lesson-%s-%s-%09d", StateKeySlug(candidateID), now.Format("20060102T150405Z"), now.Nanosecond())
 	}
 	snapshot := model.SelfAugmentLessonStateSnapshot{
 		SchemaVersion: 1,
