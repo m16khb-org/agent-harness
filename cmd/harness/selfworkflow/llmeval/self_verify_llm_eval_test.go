@@ -202,6 +202,9 @@ func withFakeSelfVerifyZAI(t *testing.T, responses ...selfVerifyFakeZAIResponse)
 		t.Fatal("missing fake Z.AI responses")
 	}
 	t.Setenv("Z_AI_API_KEY", "test-key")
+	// Isolate the state dir: the usage recorder writes an observation record
+	// per LLM call and must not touch the developer's real state.
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	index := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := responses[index]

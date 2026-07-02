@@ -41,9 +41,14 @@ type ExternalLLMPrintRequest struct {
 	DisableStructuredJSON bool
 }
 
-// ExternalLLMPrintResult holds the LLM response.
+// ExternalLLMPrintResult holds the LLM response plus per-call observation
+// data (resolved model, wall-clock duration, and the provider usage block
+// when the response carries one).
 type ExternalLLMPrintResult struct {
-	Output []byte
+	Output     []byte
+	Model      string
+	DurationMS int64
+	Usage      *ExternalLLMUsage
 }
 
 // RunExternalLLMPrint sends a prompt to the external LLM and returns the raw
@@ -85,6 +90,7 @@ func runZAI(req ExternalLLMPrintRequest, timeout time.Duration) (ExternalLLMPrin
 	if model == "" {
 		model = defaultModel
 	}
+	started := time.Now()
 
 	type message struct {
 		Role    string `json:"role"`
@@ -142,6 +148,7 @@ func runZAI(req ExternalLLMPrintRequest, timeout time.Duration) (ExternalLLMPrin
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
+		Usage *ExternalLLMUsage `json:"usage,omitempty"`
 		Error *struct {
 			Code    string `json:"code"`
 			Message string `json:"message"`
@@ -158,7 +165,22 @@ func runZAI(req ExternalLLMPrintRequest, timeout time.Duration) (ExternalLLMPrin
 	}
 
 	content := strings.TrimSpace(chatResp.Choices[0].Message.Content)
-	return ExternalLLMPrintResult{Output: []byte(content)}, nil
+	result := ExternalLLMPrintResult{
+		Output:     []byte(content),
+		Model:      model,
+		DurationMS: time.Since(started).Milliseconds(),
+		Usage:      chatResp.Usage,
+	}
+	if usageRecorder != nil {
+		usageRecorder(ExternalLLMUsageObservation{
+			Provider:   defaultProvider,
+			Model:      model,
+			Usage:      result.Usage,
+			DurationMS: result.DurationMS,
+			OK:         true,
+		})
+	}
+	return result, nil
 }
 
 // ExternalLLMPrintCommandPreview returns a human-readable description of the
