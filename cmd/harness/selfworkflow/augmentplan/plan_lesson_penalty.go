@@ -20,8 +20,10 @@ const (
 )
 
 func severeLessonSeverity(severity string) bool {
+	// "error" is the severe tier of the CLI convention (info|warning|error);
+	// major/critical/blocker cover free-text MCP callers.
 	switch strings.ToLower(strings.TrimSpace(severity)) {
-	case "major", "critical", "blocker":
+	case "error", "major", "critical", "blocker":
 		return true
 	}
 	return false

@@ -73,9 +73,10 @@ func TestSevereLessonCountsCountsOnlySevereLessonSnapshots(t *testing.T) {
 		}
 	}
 
-	writeLesson(t, "self-augment-lesson-cand-a-1", "cand-a", "major")
+	writeLesson(t, "self-augment-lesson-cand-a-1", "cand-a", "error")
 	writeLesson(t, "self-augment-lesson-cand-a-2", "cand-a", "MAJOR")
 	writeLesson(t, "self-augment-lesson-cand-a-3", "cand-a", "info")
+	writeLesson(t, "self-augment-lesson-cand-a-4", "cand-a", "warning")
 	writeLesson(t, "self-augment-lesson-cand-b-1", "cand-b", "critical")
 	if _, err := core.StateWrite("self-augment-lesson-broken-1", "{not json"); err != nil {
 		t.Fatalf("write malformed lesson: %v", err)
@@ -87,7 +88,7 @@ func TestSevereLessonCountsCountsOnlySevereLessonSnapshots(t *testing.T) {
 	counts, warnings := severeLessonCounts()
 
 	if got := counts["cand-a"]; got != 2 {
-		t.Errorf("cand-a severe count = %d, want 2 (info lesson excluded)", got)
+		t.Errorf("cand-a severe count = %d, want 2 (info/warning lessons excluded, CLI-convention error included)", got)
 	}
 	if got := counts["cand-b"]; got != 1 {
 		t.Errorf("cand-b severe count = %d, want 1", got)
