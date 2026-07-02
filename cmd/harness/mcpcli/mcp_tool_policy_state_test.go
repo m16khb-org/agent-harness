@@ -2,6 +2,8 @@ package mcpcli
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -43,6 +45,28 @@ func TestHandlePolicyStateMCPToolCallCoversPolicyPayloads(t *testing.T) {
 				t.Fatalf("payload text = %s, want %q", text, tc.wantText)
 			}
 		})
+	}
+}
+
+func TestHandlePolicyStateMCPToolCallUsesWorkspacePolicyOverride(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".agent-harness"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".agent-harness", "policy.json"), []byte(`{"additional_read_only_commands":["repo-tool"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outcome := handlePolicyStateMCPToolCall(MCPToolCall{Name: "command_policy_check", Arguments: map[string]any{
+		"workspace_root": repo,
+		"cwd":            repo,
+		"argv":           []any{"repo-tool"},
+	}})
+	if !outcome.Handled || outcome.Err != nil || outcome.Direct {
+		t.Fatalf("unexpected MCP outcome: %#v", outcome)
+	}
+	text := mcpPolicyStatePayloadText(t, outcome.Payload)
+	if !strings.Contains(text, `"allowed": true`) {
+		t.Fatalf("workspace policy override was not reflected in MCP payload: %s", text)
 	}
 }
 

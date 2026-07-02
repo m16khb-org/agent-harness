@@ -9,41 +9,41 @@ func commandBase(command string) string {
 	return strings.ToLower(filepath.Base(command))
 }
 
-func isShellCommand(command string) bool {
-	return policyShellInterpreters[commandBase(command)]
+func (catalog policyCatalog) isShellCommand(command string) bool {
+	return catalog.shellInterpreters[commandBase(command)]
 }
 
-func commandUsesNetwork(argv []string) bool {
+func (catalog policyCatalog) commandUsesNetwork(argv []string) bool {
 	if len(argv) == 0 {
 		return false
 	}
 	base := commandBase(argv[0])
-	if policyNetworkCommands[base] {
+	if catalog.networkCommands[base] {
 		return true
 	}
-	return subcommandAllowed(policyNetworkSubcommands, base, argv)
+	return subcommandAllowed(catalog.networkSubcommands, base, argv)
 }
 
-func commandWrites(argv []string) bool {
+func (catalog policyCatalog) commandWrites(argv []string) bool {
 	if len(argv) == 0 {
 		return false
 	}
 	base := commandBase(argv[0])
-	if policyWriteCommands[base] {
+	if catalog.writeCommands[base] {
 		return true
 	}
-	return subcommandAllowed(policyWriteSubcommands, base, argv)
+	return subcommandAllowed(catalog.writeSubcommands, base, argv)
 }
 
-func readOnlyAllowed(argv []string) bool {
+func (catalog policyCatalog) readOnlyAllowed(argv []string) bool {
 	if len(argv) == 0 {
 		return false
 	}
 	base := commandBase(argv[0])
-	if policyReadOnlyCommands[base] {
+	if catalog.readOnlyCommands[base] {
 		return true
 	}
-	return subcommandAllowed(policyReadOnlySubcommands, base, argv)
+	return subcommandAllowed(catalog.readOnlySubcommands, base, argv)
 }
 
 func subcommandAllowed(catalog map[string]map[string]bool, base string, argv []string) bool {

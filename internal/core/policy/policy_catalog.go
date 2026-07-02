@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"sync"
+	"strings"
 )
 
 var secretPathRe = regexp.MustCompile(`(?i)(^|/)(\.env(\.|$)|id_rsa|id_dsa|id_ecdsa|id_ed25519|.*\.pem$|.*\.key$|.*\.p12$|.*\.pfx$|.*credentials.*|.*secret.*)`)
@@ -37,32 +37,28 @@ var builtinReadOnlySubcommands = map[string]map[string]bool{
 	"go":  stringSet("version", "env", "list"),
 }
 
-// Active policy sets, initialized to built-in defaults and optionally
-// merged with overrides from .agent-harness/policy.json.
-var (
-	policyShellInterpreters   map[string]bool
-	policyNetworkCommands     map[string]bool
-	policyNetworkSubcommands  map[string]map[string]bool
-	policyWriteCommands       map[string]bool
-	policyWriteSubcommands    map[string]map[string]bool
-	policyReadOnlyCommands    map[string]bool
-	policyReadOnlySubcommands map[string]map[string]bool
-
-	policyOverridesOnce sync.Once
-)
-
-func init() {
-	initPolicySets()
+type policyCatalog struct {
+	shellInterpreters   map[string]bool
+	networkCommands     map[string]bool
+	networkSubcommands  map[string]map[string]bool
+	writeCommands       map[string]bool
+	writeSubcommands    map[string]map[string]bool
+	readOnlyCommands    map[string]bool
+	readOnlySubcommands map[string]map[string]bool
+	warnings            []string
 }
 
-func initPolicySets() {
-	policyShellInterpreters = copyStringSet(builtinShellInterpreters)
-	policyNetworkCommands = copyStringSet(builtinNetworkCommands)
-	policyNetworkSubcommands = copySubcommandCatalog(builtinNetworkSubcommands)
-	policyWriteCommands = copyStringSet(builtinWriteCommands)
-	policyWriteSubcommands = copySubcommandCatalog(builtinWriteSubcommands)
-	policyReadOnlyCommands = copyStringSet(builtinReadOnlyCommands)
-	policyReadOnlySubcommands = copySubcommandCatalog(builtinReadOnlySubcommands)
+func builtinPolicyCatalogSnapshot() policyCatalog {
+	return policyCatalog{
+		shellInterpreters:   copyStringSet(builtinShellInterpreters),
+		networkCommands:     copyStringSet(builtinNetworkCommands),
+		networkSubcommands:  copySubcommandCatalog(builtinNetworkSubcommands),
+		writeCommands:       copyStringSet(builtinWriteCommands),
+		writeSubcommands:    copySubcommandCatalog(builtinWriteSubcommands),
+		readOnlyCommands:    copyStringSet(builtinReadOnlyCommands),
+		readOnlySubcommands: copySubcommandCatalog(builtinReadOnlySubcommands),
+		warnings:            []string{},
+	}
 }
 
 // PolicyOverrides describes additional allow/deny entries loaded from
@@ -78,28 +74,17 @@ type PolicyOverrides struct {
 	AdditionalReadOnlySubcommands map[string][]string `json:"additional_read_only_subcommands,omitempty"`
 }
 
-// LoadPolicyOverrides reads .agent-harness/policy.json from repoRoot if it
-// exists and merges additional allow/deny entries into the active policy
-// sets. Overrides are additive and cannot remove built-in entries.
-// If the file does not exist, the built-in catalog is used unchanged.
-// This function is safe to call multiple times; the file is read at most
-// once (first call wins).
-func LoadPolicyOverrides(repoRoot string) {
-	policyOverridesOnce.Do(func() {
-		initPolicySets()
-		overrides, err := readPolicyOverrides(repoRoot)
-		if err != nil || overrides == nil {
-			return
-		}
-		mergePolicyOverrides(overrides)
-	})
-}
-
-// ResetPolicyOverrides resets the policy sets to built-in defaults.
-// Exposed for tests.
-func ResetPolicyOverrides() {
-	policyOverridesOnce = sync.Once{}
-	initPolicySets()
+func policyCatalogForWorkspace(repoRoot string) policyCatalog {
+	catalog := builtinPolicyCatalogSnapshot()
+	overrides, err := readPolicyOverrides(repoRoot)
+	if err != nil {
+		catalog.warnings = append(catalog.warnings, policyOverrideWarning(err))
+		return catalog
+	}
+	if overrides != nil {
+		mergePolicyOverrides(&catalog, overrides)
+	}
+	return catalog
 }
 
 func readPolicyOverrides(repoRoot string) (*PolicyOverrides, error) {
@@ -109,50 +94,61 @@ func readPolicyOverrides(repoRoot string) (*PolicyOverrides, error) {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("read policy overrides: %w", err)
+		return nil, fmt.Errorf("policy_override_read_failed: %w", err)
 	}
 	var overrides PolicyOverrides
 	if err := json.Unmarshal(data, &overrides); err != nil {
-		return nil, fmt.Errorf("parse policy overrides: %w", err)
+		return nil, fmt.Errorf("policy_override_parse_failed: %w", err)
 	}
 	return &overrides, nil
 }
 
-func mergePolicyOverrides(o *PolicyOverrides) {
+func policyOverrideWarning(err error) string {
+	msg := err.Error()
+	if strings.HasPrefix(msg, "policy_override_parse_failed:") {
+		return "policy_override_parse_failed"
+	}
+	if strings.HasPrefix(msg, "policy_override_read_failed:") {
+		return "policy_override_read_failed"
+	}
+	return "policy_override_failed"
+}
+
+func mergePolicyOverrides(catalog *policyCatalog, o *PolicyOverrides) {
 	for _, v := range o.AdditionalShellInterpreters {
-		policyShellInterpreters[v] = true
+		catalog.shellInterpreters[v] = true
 	}
 	for _, v := range o.AdditionalNetworkCommands {
-		policyNetworkCommands[v] = true
+		catalog.networkCommands[v] = true
 	}
 	for cmd, subs := range o.AdditionalNetworkSubcommands {
-		if policyNetworkSubcommands[cmd] == nil {
-			policyNetworkSubcommands[cmd] = map[string]bool{}
+		if catalog.networkSubcommands[cmd] == nil {
+			catalog.networkSubcommands[cmd] = map[string]bool{}
 		}
 		for _, s := range subs {
-			policyNetworkSubcommands[cmd][s] = true
+			catalog.networkSubcommands[cmd][s] = true
 		}
 	}
 	for _, v := range o.AdditionalWriteCommands {
-		policyWriteCommands[v] = true
+		catalog.writeCommands[v] = true
 	}
 	for cmd, subs := range o.AdditionalWriteSubcommands {
-		if policyWriteSubcommands[cmd] == nil {
-			policyWriteSubcommands[cmd] = map[string]bool{}
+		if catalog.writeSubcommands[cmd] == nil {
+			catalog.writeSubcommands[cmd] = map[string]bool{}
 		}
 		for _, s := range subs {
-			policyWriteSubcommands[cmd][s] = true
+			catalog.writeSubcommands[cmd][s] = true
 		}
 	}
 	for _, v := range o.AdditionalReadOnlyCommands {
-		policyReadOnlyCommands[v] = true
+		catalog.readOnlyCommands[v] = true
 	}
 	for cmd, subs := range o.AdditionalReadOnlySubcommands {
-		if policyReadOnlySubcommands[cmd] == nil {
-			policyReadOnlySubcommands[cmd] = map[string]bool{}
+		if catalog.readOnlySubcommands[cmd] == nil {
+			catalog.readOnlySubcommands[cmd] = map[string]bool{}
 		}
 		for _, s := range subs {
-			policyReadOnlySubcommands[cmd][s] = true
+			catalog.readOnlySubcommands[cmd][s] = true
 		}
 	}
 }
@@ -174,14 +170,15 @@ func copySubcommandCatalog(src map[string]map[string]bool) map[string]map[string
 }
 
 func commandPolicyCatalog() map[string]any {
+	catalog := builtinPolicyCatalogSnapshot()
 	return map[string]any{
-		"shell_interpreters":     sortedKeys(policyShellInterpreters),
-		"network_commands":       sortedKeys(policyNetworkCommands),
-		"network_subcommands":    sortedSubcommandCatalog(policyNetworkSubcommands),
-		"write_commands":         sortedKeys(policyWriteCommands),
-		"write_subcommands":      sortedSubcommandCatalog(policyWriteSubcommands),
-		"read_only_commands":     sortedKeys(policyReadOnlyCommands),
-		"read_only_subcommands":  sortedSubcommandCatalog(policyReadOnlySubcommands),
+		"shell_interpreters":     sortedKeys(catalog.shellInterpreters),
+		"network_commands":       sortedKeys(catalog.networkCommands),
+		"network_subcommands":    sortedSubcommandCatalog(catalog.networkSubcommands),
+		"write_commands":         sortedKeys(catalog.writeCommands),
+		"write_subcommands":      sortedSubcommandCatalog(catalog.writeSubcommands),
+		"read_only_commands":     sortedKeys(catalog.readOnlyCommands),
+		"read_only_subcommands":  sortedSubcommandCatalog(catalog.readOnlySubcommands),
 		"secret_path_patterns":   []string{"env files", "private keys", "credentials", "secret-like paths"},
 		"secret_arg_assignments": []string{"token=", "password=", "secret=", "api_key=", "credential=", "authorization="},
 	}

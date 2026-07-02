@@ -93,10 +93,7 @@ func TestCommandPolicySummaryIncludesCatalog(t *testing.T) {
 	}
 }
 
-func TestLoadPolicyOverridesMergesAdditionalEntries(t *testing.T) {
-	ResetPolicyOverrides()
-	defer ResetPolicyOverrides()
-
+func TestPolicyOverridesLoadPerEvaluation(t *testing.T) {
 	repoRoot := t.TempDir()
 	agentHarnessDir := repoRoot + "/.agent-harness"
 	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
@@ -115,64 +112,53 @@ func TestLoadPolicyOverridesMergesAdditionalEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	LoadPolicyOverrides(repoRoot)
-
-	// Verify overrides are present.
-	if !policyShellInterpreters["tsh"] {
-		t.Error("expected tsh in shell interpreters")
-	}
-	if !policyNetworkCommands["nc"] {
-		t.Error("expected nc in network commands")
-	}
-	if !policyNetworkSubcommands["git"]["archive"] {
-		t.Error("expected git archive in network subcommands")
-	}
-	if !policyWriteCommands["tr"] {
-		t.Error("expected tr in write commands")
-	}
-	if !policyWriteSubcommands["git"]["tag"] {
-		t.Error("expected git tag in write subcommands")
-	}
-	if !policyReadOnlyCommands["echo"] {
-		t.Error("expected echo in read-only commands")
-	}
-	if !policyReadOnlySubcommands["git"]["stash"] {
-		t.Error("expected git stash in read-only subcommands")
+	result := EvaluateCommandPolicy(CommandPolicyRequest{
+		WorkspaceRoot: repoRoot,
+		CWD:           repoRoot,
+		Argv:          []string{"echo", "ok"},
+		Timeout:       "30s",
+	})
+	if !result.Allowed {
+		t.Fatalf("expected additional read-only command to be allowed: %+v", result)
 	}
 
-	// Verify built-in entries are still present.
-	if !policyShellInterpreters["bash"] {
-		t.Error("expected bash still in shell interpreters")
+	network := EvaluateCommandPolicy(CommandPolicyRequest{
+		WorkspaceRoot:  repoRoot,
+		CWD:            repoRoot,
+		Argv:           []string{"nc", "example.invalid", "80"},
+		Timeout:        "30s",
+		NetworkAllowed: true,
+		WriteAllowed:   true,
+	})
+	if !network.Allowed {
+		t.Fatalf("expected additional network command to be recognized and allowed with flags: %+v", network)
 	}
-	if !policyNetworkCommands["curl"] {
-		t.Error("expected curl still in network commands")
-	}
-	if !policyReadOnlyCommands["ls"] {
-		t.Error("expected ls still in read-only commands")
+
+	shell := EvaluateCommandPolicy(CommandPolicyRequest{
+		WorkspaceRoot: repoRoot,
+		CWD:           repoRoot,
+		Argv:          []string{"bash", "-c", "true"},
+		Timeout:       "30s",
+	})
+	if !containsString(shell.DenyReasons, "shell_interpreter_not_allowed") {
+		t.Fatalf("built-in shell interpreter classification was lost: %+v", shell)
 	}
 }
 
 func TestLoadPolicyOverridesNoFileIsBackwardCompatible(t *testing.T) {
-	ResetPolicyOverrides()
-	defer ResetPolicyOverrides()
-
 	repoRoot := t.TempDir()
-	// No .agent-harness/policy.json file.
-	LoadPolicyOverrides(repoRoot)
-
-	// Built-in catalog should be used unchanged.
-	if !policyShellInterpreters["bash"] {
-		t.Error("expected bash in shell interpreters")
-	}
-	if len(policyShellInterpreters) != len(builtinShellInterpreters) {
-		t.Errorf("expected %d shell interpreters, got %d", len(builtinShellInterpreters), len(policyShellInterpreters))
+	result := EvaluateCommandPolicy(CommandPolicyRequest{
+		WorkspaceRoot: repoRoot,
+		CWD:           repoRoot,
+		Argv:          []string{"git", "status", "--short"},
+		Timeout:       "30s",
+	})
+	if !result.Allowed || len(result.Warnings) != 0 {
+		t.Fatalf("built-in catalog without override should stay warning-free: %+v", result)
 	}
 }
 
-func TestLoadPolicyOverridesInvalidJSONIsIgnored(t *testing.T) {
-	ResetPolicyOverrides()
-	defer ResetPolicyOverrides()
-
+func TestPolicyOverridesInvalidJSONWarnsAndUsesBuiltins(t *testing.T) {
 	repoRoot := t.TempDir()
 	agentHarnessDir := repoRoot + "/.agent-harness"
 	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
@@ -182,18 +168,21 @@ func TestLoadPolicyOverridesInvalidJSONIsIgnored(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	LoadPolicyOverrides(repoRoot)
-
-	// Built-in catalog should still be intact.
-	if !policyShellInterpreters["bash"] {
-		t.Error("expected bash in shell interpreters after invalid override")
+	result := EvaluateCommandPolicy(CommandPolicyRequest{
+		WorkspaceRoot: repoRoot,
+		CWD:           repoRoot,
+		Argv:          []string{"git", "status", "--short"},
+		Timeout:       "30s",
+	})
+	if !result.Allowed {
+		t.Fatalf("invalid override should not break built-in policy: %+v", result)
+	}
+	if !containsString(result.Warnings, "policy_override_parse_failed") {
+		t.Fatalf("invalid override parse warning missing: %+v", result)
 	}
 }
 
 func TestPolicyOverrideAffectsEvaluation(t *testing.T) {
-	ResetPolicyOverrides()
-	defer ResetPolicyOverrides()
-
 	repoRoot := t.TempDir()
 	agentHarnessDir := repoRoot + "/.agent-harness"
 	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
@@ -204,10 +193,6 @@ func TestPolicyOverrideAffectsEvaluation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	LoadPolicyOverrides(repoRoot)
-
-	// Without override, "my-readonly-tool" would be denied as not in read-only allowlist.
-	// With override, it should be allowed.
 	result := EvaluateCommandPolicy(CommandPolicyRequest{
 		WorkspaceRoot: repoRoot,
 		CWD:           repoRoot,
@@ -216,6 +201,38 @@ func TestPolicyOverrideAffectsEvaluation(t *testing.T) {
 	})
 	if !result.Allowed {
 		t.Fatalf("expected my-readonly-tool to be allowed with override: %+v", result)
+	}
+}
+
+func TestPolicyOverridesDoNotLeakAcrossWorkspaceRoots(t *testing.T) {
+	rootWithOverride := t.TempDir()
+	agentHarnessDir := rootWithOverride + "/.agent-harness"
+	if err := os.MkdirAll(agentHarnessDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(agentHarnessDir+"/policy.json", []byte(`{"additional_read_only_commands":["repo-tool"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rootWithoutOverride := t.TempDir()
+
+	allowed := EvaluateCommandPolicy(CommandPolicyRequest{
+		WorkspaceRoot: rootWithOverride,
+		CWD:           rootWithOverride,
+		Argv:          []string{"repo-tool"},
+		Timeout:       "30s",
+	})
+	if !allowed.Allowed {
+		t.Fatalf("root with override should allow repo-tool: %+v", allowed)
+	}
+
+	denied := EvaluateCommandPolicy(CommandPolicyRequest{
+		WorkspaceRoot: rootWithoutOverride,
+		CWD:           rootWithoutOverride,
+		Argv:          []string{"repo-tool"},
+		Timeout:       "30s",
+	})
+	if denied.Allowed || !containsString(denied.DenyReasons, "command_not_in_read_only_allowlist") {
+		t.Fatalf("override leaked into another root: %+v", denied)
 	}
 }
 

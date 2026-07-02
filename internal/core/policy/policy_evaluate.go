@@ -11,6 +11,7 @@ import (
 func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 	root := absOrOriginal(req.WorkspaceRoot)
 	cwd := absOrOriginal(req.CWD)
+	catalog := policyCatalogForWorkspace(root)
 	canonicalRoot := canonicalPotentialPath(root)
 	canonicalCWD := canonicalPotentialPath(cwd)
 	argv := append([]string{}, req.Argv...)
@@ -36,7 +37,7 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 		ShellReason:    redactFreeform(req.ShellReason),
 		Tier:           resolvePolicyTier(req),
 		DenyReasons:    []string{},
-		Warnings:       []string{},
+		Warnings:       append([]string{}, catalog.warnings...),
 		GeneratedAt:    time.Now().UTC().Format(time.RFC3339),
 	}
 	addDeny := func(reason string) {
@@ -83,7 +84,7 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 		if commandReferencesOutsideWorkspace(canonicalRoot, canonicalCWD, argv) {
 			addDeny("path_outside_workspace")
 		}
-		if isShellCommand(argv[0]) {
+		if catalog.isShellCommand(argv[0]) {
 			if !req.ShellAllowed {
 				addDeny("shell_interpreter_not_allowed")
 			} else if strings.TrimSpace(req.ShellReason) == "" {
@@ -92,13 +93,13 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 				addWarn("shell_interpreter_exception")
 			}
 		}
-		if commandUsesNetwork(argv) && !req.NetworkAllowed {
+		if catalog.commandUsesNetwork(argv) && !req.NetworkAllowed {
 			addDeny("network_not_allowed")
 		}
-		if commandWrites(argv) && !req.WriteAllowed {
+		if catalog.commandWrites(argv) && !req.WriteAllowed {
 			addDeny("write_not_allowed")
 		}
-		if !req.WriteAllowed && !readOnlyAllowed(argv) {
+		if !req.WriteAllowed && !catalog.readOnlyAllowed(argv) {
 			addDeny("command_not_in_read_only_allowlist")
 		}
 	}

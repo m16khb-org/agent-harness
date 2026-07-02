@@ -1,7 +1,10 @@
 package policycli
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -90,6 +93,27 @@ func TestRunPolicyRunReturnsDeniedPolicyError(t *testing.T) {
 	}
 }
 
+func TestRunPolicyCheckUsesWorkspacePolicyOverride(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".agent-harness"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".agent-harness", "policy.json"), []byte(`{"additional_read_only_commands":["repo-tool"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout := capturePolicyCLIStdout(t, func() error {
+		return runPolicyCheck([]string{"--json", "--workspace-root", repo, "--cwd", repo, "--", "repo-tool"})
+	})
+	var result core.CommandPolicyEvaluation
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal policy check output %q: %v", stdout, err)
+	}
+	if !result.Allowed {
+		t.Fatalf("workspace policy override was not applied: %+v", result)
+	}
+}
+
 func runStatusVerifyTestCommand(t *testing.T, dir string, name string, args ...string) {
 	t.Helper()
 	cmd := exec.Command(name, args...)
@@ -98,6 +122,30 @@ func runStatusVerifyTestCommand(t *testing.T, dir string, name string, args ...s
 	if err != nil {
 		t.Fatalf("%s %v failed: %v\n%s", name, args, err, string(out))
 	}
+}
+
+func capturePolicyCLIStdout(t *testing.T, fn func() error) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	defer func() { os.Stdout = oldStdout }()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	os.Stdout = w
+	callErr := fn()
+	if closeErr := w.Close(); closeErr != nil {
+		t.Fatal(closeErr)
+	}
+	if callErr != nil {
+		t.Fatalf("policy CLI call failed: %v", callErr)
+	}
+	var out bytes.Buffer
+	if _, err := io.Copy(&out, r); err != nil {
+		t.Fatal(err)
+	}
+	return out.String()
 }
 
 func containsString(items []string, want string) bool {
