@@ -18,6 +18,7 @@ func TestNormalizeContractValueRewritesDynamicFields(t *testing.T) {
 		"record":               map[string]any{"key": "self-verify-baseline", "schema_version": float64(1), "updated_at": "x", "bytes": float64(20)},
 		"history":              map[string]any{"key": "self-verify-candidate", "generated_at": "x", "updated_at": "y", "bytes": float64(30)},
 		"items":                []any{"2026-06-13T12:00:00Z"},
+		"score":                89.23999999999998,
 	}
 	got := NormalizeContractValue(input, map[string]string{"/tmp/repo": "$REPO"}).(map[string]any)
 	assertEqual(t, got["updated_at"], "$TIMESTAMP")
@@ -34,6 +35,7 @@ func TestNormalizeContractValueRewritesDynamicFields(t *testing.T) {
 	assertEqual(t, got["record"].(map[string]any)["bytes"], "$STATE_RECORD_BYTES")
 	assertEqual(t, got["history"].(map[string]any)["bytes"], "$STATE_RECORD_BYTES")
 	assertEqual(t, got["items"].([]any)[0], "$TIMESTAMP")
+	assertEqual(t, got["score"], 89.24)
 }
 
 func TestNormalizeContractValueIssueOpsIDAndStringReplacements(t *testing.T) {
@@ -45,6 +47,17 @@ func TestNormalizeContractValueIssueOpsIDAndStringReplacements(t *testing.T) {
 	assertEqual(t, got["path"], "$SUB")
 	if normalizeContractString("not a timestamp", nil) != "not a timestamp" {
 		t.Fatal("unexpected normal string rewrite")
+	}
+}
+
+func TestNormalizeContractValueRewritesGitHubAuthDrift(t *testing.T) {
+	cases := []string{
+		"IssueOps remote reflect-devils-advocate failed: gh issue view failed: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable.",
+		"IssueOps remote reflect-devils-advocate failed: gh issue view failed: You are not logged into any GitHub hosts. To log in, run: gh auth login",
+	}
+	for _, input := range cases {
+		got := NormalizeContractValue(input, nil)
+		assertEqual(t, got, "IssueOps remote reflect-devils-advocate failed: gh issue view failed: $GH_AUTH_ERROR")
 	}
 }
 

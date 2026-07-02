@@ -15,3 +15,11 @@
 - Cause: adding this research note changed the docs-index projection from 67 to 68 indexed docs. The relaxed response contract intentionally keeps `docs_count` and the required docs list golden-pinned while avoiding full docs body snapshots.
 - Fix: refresh `response_contracts.golden.json` so the docs projection includes this research note.
 - Verification: `go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1`; `go test ./... -count=1`; rerun GitHub Actions CI on the updated branch.
+
+## 2026-07-02: response contract CI auth and float drift
+
+- Run: GitHub Actions `CI` push run `28561705733` on `quality-optimization-2026-07-02` at `9451496`.
+- Failure: `go test ./... -count=1` failed in `agent-harness/cmd/harness/harnessapp`, `TestResponseContractsGolden`.
+- Cause: the response contract still compared machine-dependent details: Go JSON output exposed equivalent two-decimal quality scores with different floating-point tails, and the `gh issue view` authentication error differed between local unauthenticated shells and GitHub Actions without `GH_TOKEN`.
+- Fix: normalize `score` fields to two decimal places and normalize `IssueOps remote reflect-devils-advocate` GitHub auth failures to `$GH_AUTH_ERROR`; refresh `response_contracts.golden.json`.
+- Verification: `go test ./cmd/harness/harnessapp/responsecontract -count=1`; `go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1`; `go test ./cmd/harness/harnessapp ./internal/adapter -count=1`; rerun GitHub Actions CI on the updated branch.

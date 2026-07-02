@@ -2,6 +2,7 @@ package responsecontract
 
 import (
 	"encoding/json"
+	"math"
 	"regexp"
 	"sort"
 	"strings"
@@ -63,6 +64,12 @@ func NormalizeContractValue(value any, replacements map[string]string) any {
 			if key == "head" || key == "sha" {
 				out[key] = "$GIT_SHA"
 				continue
+			}
+			if key == "score" {
+				if score, ok := child.(float64); ok {
+					out[key] = math.Round(score*100) / 100
+					continue
+				}
 			}
 			out[key] = NormalizeContractValue(child, replacements)
 		}
@@ -175,6 +182,12 @@ func normalizeContractString(value string, replacements map[string]string) strin
 	}
 	if gitSubjectPrefixRe.MatchString(value) {
 		return "$GIT_SHA " + strings.TrimSpace(gitSubjectPrefixRe.ReplaceAllString(value, ""))
+	}
+	if strings.HasPrefix(value, "IssueOps remote reflect-devils-advocate failed: gh issue view failed:") &&
+		(strings.Contains(value, "gh auth login") ||
+			strings.Contains(value, "GitHub CLI") ||
+			strings.Contains(value, "GH_TOKEN")) {
+		return "IssueOps remote reflect-devils-advocate failed: gh issue view failed: $GH_AUTH_ERROR"
 	}
 	if isRFC3339Like(value) {
 		return "$TIMESTAMP"
