@@ -59,6 +59,9 @@ func Plan(req Request, root, version string) Result {
 		goals[i].Passed = goals[i].Score > goals[i].TargetScore
 	}
 	candidates := augmentcatalog.SelfAugmentCandidates(signals)
+	lessonCounts, lessonWarnings := severeLessonCounts()
+	warnings = append(warnings, lessonWarnings...)
+	warnings = append(warnings, applyLessonPenalties(candidates, lessonCounts)...)
 	sort.Slice(candidates, func(i, j int) bool {
 		leftOpen := candidates[i].Status == augmentcatalog.SelfAugmentCandidateStatusOpen
 		rightOpen := candidates[j].Status == augmentcatalog.SelfAugmentCandidateStatusOpen
