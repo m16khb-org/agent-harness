@@ -181,7 +181,7 @@ type requiredEngelbartBlock struct {
 
 func missingRequiredEngelbartCanvasBlocks(text string) []string {
 	blocks := []requiredEngelbartBlock{
-		{Label: "top callout", Alternatives: []string{"::: {.callout}"}},
+		{Label: "top status block", Alternatives: []string{"::: {.callout}", "> 회의일"}},
 		{Label: "## 메타데이터", Alternatives: []string{"## 메타데이터"}},
 		{Label: "metadata table", Alternatives: []string{"|Field|Value|", "| Field | Value |", "|Field | Value|", "| Field|Value |"}},
 		{Label: "## TL;DR", Alternatives: []string{"## TL;DR"}},

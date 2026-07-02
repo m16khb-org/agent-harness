@@ -11,12 +11,16 @@
 | Topic | 온보딩 / AI DevOps / Recommendation |
 | Status | Follow-up 필요 |
 | Owner | 김현호 팀리더 |
-| Participants | 김현호 팀리더, 김승민 님, 김하빈 님, 이푸름 님, 김관식 님. speaker별 실명 매핑은 일부 확인 필요. |
+| Participants | 김현호 외 4명 |
 | Source | pasted transcript |
 | Slack thread | 미정 |
-| Tracking | GitLab Issue/Slack/Recommendation 문서 링크 필요 |
+| Tracking | GitLab / Slack / Recommendation |
 | Access | #dev-team-backend |
 | Last updated | 2026-06-24 |
+
+### 메타데이터 메모
+- Participants: 김현호 팀리더, 김승민 님, 김하빈 님, 이푸름 님, 김관식 님. speaker별 실명 매핑은 일부 확인 필요.
+- Tracking: GitLab Issue/Slack/Recommendation 문서 링크 필요.
 
 ## TL;DR
 - 팀 R&R은 `백엔드 아키텍처 설계 및 구현`, `인텔리전트 인프라 운영`, `AI 에이전트 개발 및 서비스 융합` 세 축으로 정리됐고 팀 방향은 AI DevOps로 재정의됐다.

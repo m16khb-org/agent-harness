@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import unittest
 from pathlib import Path
 
@@ -22,6 +23,14 @@ class EngelbartSkillContractTest(unittest.TestCase):
     def read_skill(self) -> str:
         self.assertTrue(SKILL.exists(), "skills/engelbart/SKILL.md must exist")
         return SKILL.read_text(encoding="utf-8")
+
+    def load_publish_script(self):
+        spec = importlib.util.spec_from_file_location("publish_meeting_canvas", PUBLISH_SCRIPT)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
 
     def assert_ordered(self, content: str, needles: list[str]) -> None:
         positions = [content.index(needle) for needle in needles]
@@ -55,12 +64,12 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("기본 대상 채널", content)
         self.assertIn("다른 채널", content)
         self.assertIn("채널 override", content)
-        self.assertIn("Default artifact: create or draft only the individual meeting Canvas", content)
-        self.assertIn("Do not create, update, search, or manage Slack Lists", content)
-        self.assertIn("After a Canvas is created and read back, provide a separate manual index-binding handoff", content)
+        self.assertIn("Default artifact: create the individual meeting Canvas for `#dev-team-backend`", content)
+        self.assertIn("register the meeting in the existing Slack List", content)
+        self.assertIn("Slack List registration is automatic for published meeting Canvases", content)
+        self.assertIn("After a Canvas is created and read back, register or update the existing Slack List row", content)
         self.assertNotIn("When Slack List tools are available", content)
-        self.assertNotIn("reuse and update that List", content)
-        self.assertNotIn("do not create a duplicate index List", content)
+        self.assertNotIn("Do not create, update, search, or manage Slack Lists", content)
 
     def test_local_background_file_is_configured_for_term_and_speaker_resolution(self) -> None:
         content = self.read_skill()
@@ -115,26 +124,57 @@ class EngelbartSkillContractTest(unittest.TestCase):
 
         self.assertIn("CANVAS_ACCESS_MODE", script)
         self.assertIn('"bubbletap_anyone"', script)
+        self.assertIn("def canvas_document_body", script)
+        self.assertIn("Slack Web API title", script)
+        self.assertIn('"markdown": canvas_document_body(meeting["canvas_markdown"])', script)
         self.assertIn('"channel_ids": access_channel_ids', script)
         self.assertIn('"user_ids": participant_ids', script)
 
-    def test_manual_index_binding_handoff_replaces_list_control(self) -> None:
+    def test_slack_list_registration_is_default_publish_contract(self) -> None:
         content = self.read_skill()
 
-        self.assertIn("## Manual Index Binding Handoff", content)
-        self.assertIn("The agent creates and verifies the meeting Canvas only", content)
-        self.assertIn("The user manually binds that Canvas into their Slack List", content)
-        self.assertIn("수동 List 바인딩 값", content)
+        self.assertIn("## Slack List Registration", content)
+        self.assertIn("The default published artifact is not complete until both surfaces are done", content)
+        self.assertIn("Inspect the existing Slack List convention", content)
+        self.assertIn("Create or update one Slack List row with the verified Canvas URL", content)
+        self.assertIn("Read back or otherwise verify the row/item ID", content)
+        self.assertIn("Slack List 등록 값", content)
         for field in ["- 이름:", "- Date:", "- Topic:", "- Status:", "- Counts:", "- Meeting Canvas:"]:
             self.assertIn(field, content)
-        self.assertIn("Do not call Slack List tools", content)
+        self.assertIn("Do not skip Slack List registration for a published meeting Canvas", content)
+        self.assertIn("If List tooling or permission fails, verify the failure", content)
+        self.assertIn("manual handoff fallback", content)
         self.assertIn("Do not create an index Canvas as a substitute for the List", content)
         self.assertIn("Do not put an index row preview in the meeting Canvas body by default", content)
-        self.assertIn("set handoff `Date` to the same value as `Last updated`", content)
+        self.assertIn("set the List `Date` to the same value as `Last updated`", content)
         self.assertIn("Use Slack's built-in List `이름` field as the meeting title", content)
+        self.assertIn("workspace docs URL", content)
+        self.assertIn("`https://{workspace}.slack.com/docs/{team_id}/{canvas_id}`", content)
+        self.assertIn("Do not store `https://slack.com/canvas/", content)
         self.assertNotIn("## Meeting Index List Schema", content)
         self.assertNotIn("Render the persistent index as a Slack List by default", content)
-        self.assertNotIn("Manual Slack List creation when tools are unavailable", content)
+        self.assertNotIn("The user manually binds that Canvas into their Slack List", content)
+
+    def test_publish_script_uses_workspace_docs_url_for_list_links(self) -> None:
+        script = PUBLISH_SCRIPT.read_text(encoding="utf-8")
+        module = self.load_publish_script()
+
+        self.assertIn("build_workspace_docs_canvas_url", script)
+        self.assertIn("auth.test", script)
+        self.assertIn("validate_list_canvas_url", script)
+        self.assertIn("SLACK_DOCS_CANVAS_URL_RE", script)
+        self.assertNotIn('f"https://slack.com/canvas/{canvas_id}"', script)
+
+        self.assertEqual(
+            module.build_workspace_docs_canvas_url(
+                "F0BE78HN5P1",
+                {"url": "https://bubbletap.slack.com/", "team_id": "T048JBUDF9U"},
+            ),
+            "https://bubbletap.slack.com/docs/T048JBUDF9U/F0BE78HN5P1",
+        )
+        module.validate_list_canvas_url("https://bubbletap.slack.com/docs/T048JBUDF9U/F0BE78HN5P1")
+        with self.assertRaises(SystemExit):
+            module.validate_list_canvas_url("https://slack.com/canvas/F0BE78HN5P1")
 
     def test_manual_index_binding_handoff_is_forward_tested(self) -> None:
         self.assertTrue(HANDOFF.exists(), "good manual handoff fixture must exist")
@@ -169,17 +209,16 @@ class EngelbartSkillContractTest(unittest.TestCase):
         content = self.read_skill()
 
         self.assertIn("## Canvas UI/UX Principles", content)
-        self.assertIn("Top callout box UI", content)
-        self.assertIn("rounded box", content)
-        self.assertIn("tinted background", content)
-        self.assertIn("집계 기간", content)
+        self.assertIn("Top status block UI", content)
+        self.assertIn("Web API-safe quote line", content)
+        self.assertIn("raw Slack Web API `canvases.create`/`canvases.edit` does not support that callout syntax", content)
         self.assertIn("Progressive disclosure", content)
         self.assertIn("Layer-cake headings", content)
         self.assertIn("Use tables only where comparison helps", content)
         self.assertIn("::: {.callout}", content)
         self.assertIn("## Slack Canvas UI Block Palette", content)
         for block in [
-            "Callout box",
+            "Callout/status quote",
             "2-column vertical table",
             "Narrow table",
             "Checklist bullets",
@@ -195,7 +234,7 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("Default meeting Canvas UI recipe", content)
         self.assertIn("Do not put tables, callouts, or transcript/code blocks inside layouts", content)
         self.assertIn("## Canvas UI Pattern Examples", content)
-        self.assertIn("Status callout", content)
+        self.assertIn("Status block", content)
         self.assertIn("Metadata table", content)
         self.assertIn("Action checklist", content)
         self.assertIn("Audit divider", content)
@@ -209,8 +248,12 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("Do not hide uncertainty in decisions", content)
         self.assertIn("회의일 YYYY-MM-DD", content)
         self.assertIn("## 메타데이터", content)
-        self.assertIn("| Field | Value |", content)
-        self.assertIn("| Date | YYYY-MM-DD. If the source has no explicit meeting date, use `Last updated`. |", content)
+        self.assertIn("|Field|Value|", content)
+        self.assertIn("|  ---  |  ---  |", content)
+        self.assertIn("| Date | YYYY-MM-DD |", content)
+        self.assertIn("### 메타데이터 메모", content)
+        self.assertIn("긴 참석자 전체 명단", content)
+        self.assertIn("short summary in the table", content)
         self.assertIn("| Last updated | YYYY-MM-DD |", content)
         self.assertIn("- [ ] {담당}: {산출물 중심 작업}", content)
         for heading in [
@@ -250,9 +293,9 @@ class EngelbartSkillContractTest(unittest.TestCase):
     def test_quality_rules_cover_canvas_limits_and_sensitive_redaction(self) -> None:
         content = self.read_skill()
 
-        self.assertIn("top callout box", content)
+        self.assertIn("top status block", content)
         self.assertIn("scope/status facts", content)
-        self.assertIn("rounded, padded box", content)
+        self.assertIn("Web API Markdown support does not include callout blocks", content)
         self.assertIn("default UI recipe", content)
         self.assertIn("top-level divider before the audit appendix", content)
         self.assertIn("Render `TL;DR` as 2-4 bullets", content)
@@ -260,6 +303,9 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("300 cells", content)
         self.assertIn("용어 보정 1", content)
         self.assertIn("Any table over 5 columns is a quality failure", content)
+        self.assertIn("Keep the metadata table narrow", content)
+        self.assertIn("wide metadata cells", content)
+        self.assertIn("Slack Canvas table width follows the longest cell", content)
         self.assertIn("absence of index-row sections", content)
         self.assertIn("Keep actions as checklist bullets", content)
         self.assertIn("secret/token/password", content)
@@ -282,16 +328,21 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("marker count or hash", content)
         self.assertIn("Do not summarize, normalize, translate, or substitute representative blocks", content)
         self.assertIn("원문 전사본 발췌", content)
-        self.assertIn("provide separate manual index-binding handoff values that use Slack's built-in `이름` field as the title", content)
+        self.assertIn("register it in the existing Slack List", content)
+        self.assertIn("verified row/item ID", content)
         self.assertIn("exactly one `### 원문 전사본 전문` heading", content)
         self.assertIn("Duplicate adjacent transcript headings", content)
-        self.assertIn("compact top callout box", content)
-        self.assertIn("rounded box UI", content)
+        self.assertIn("compact top status block", content)
+        self.assertIn("literal `::: {.callout}` is a failed Canvas", content)
         self.assertIn("TL;DR` -> `결정사항` -> `액션 보드` -> `주제별 논의` -> `후속 확인` -> `리스크/열린 질문`", content)
         self.assertIn("decisions use multi-line bullets", content)
         self.assertIn("two-line meeting summary is a failed output", content)
         self.assertIn("A created or read-back meeting Canvas must not retain placeholder cells", content)
         self.assertIn("must not contain Canvas URL placeholders such as `미정`, `{Canvas 링크}`, or `생성 후 인덱스 참조`", content)
+        self.assertIn("raw table edits can leave unaddressable empty rows", content)
+        self.assertIn("duplicate metadata tables", content)
+        self.assertIn("no long participant/source/tracking/access cells", content)
+        self.assertIn("`|||` blank table rows", content)
         self.assertIn("If local background and meeting role identify a team lead owner", content)
         self.assertIn("Do not leave team-lead-owned follow-ups as `참석자 1`", content)
         self.assertIn("A one-line risk that packs all fields into one sentence is a Slack Canvas readability failure", content)
@@ -315,12 +366,27 @@ class EngelbartSkillContractTest(unittest.TestCase):
         self.assertIn("not another `### 원문 전사본 전문` line", content)
         self.assertIn("reject adjacent duplicate headings", content)
         self.assertIn("2-column metadata table", content)
-        self.assertIn("manual index-binding handoff", content)
+        self.assertIn("wrong or too wide after publish", content)
+        self.assertIn("Slack List row", content)
         self.assertIn("Do not leave the skeleton as the final artifact", content)
         self.assertIn("Invalid text passed", content)
-        self.assertIn("do not use tools", content)
-        self.assertIn("The user manually binds the meeting Canvas into their Slack List", content)
+        self.assertIn("use tools/API by default", content)
+        self.assertIn("First inspect the existing List convention", content)
+        self.assertIn("verify the resulting row/item ID", content)
         self.assertIn("Avoid destructive full-canvas replace", content)
+
+    def test_publish_script_rejects_wide_or_corrupt_metadata_tables(self) -> None:
+        script = PUBLISH_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("MAX_METADATA_CELL_WIDTH", script)
+        self.assertIn("MAX_METADATA_ROW_WIDTH", script)
+        self.assertIn("def display_width", script)
+        self.assertIn("def validate_metadata_table_shape", script)
+        self.assertIn("Slack blank-table rows such as `|||`", script)
+        self.assertIn("malformed metadata table rows left by partial Slack table repair", script)
+        self.assertIn("metadata_table_cell_width", script)
+        self.assertIn("metadata_table_row_width", script)
+        self.assertIn("move detail to `### 메타데이터 메모`", script)
 
 
 if __name__ == "__main__":

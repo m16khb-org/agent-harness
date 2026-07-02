@@ -154,6 +154,26 @@ func TestRunHookStopAllowsEngelbartCanvasWithRequiredBlocks(t *testing.T) {
 	}
 }
 
+func TestRunHookStopAllowsEngelbartCanvasWithWebAPISafeStatusQuote(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	calloutHeader := strings.Join([]string{
+		"::: {.callout}",
+		"회의일 2026-06-26 · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요",
+		":::",
+	}, "\n")
+	quoteHeader := "> 회의일 2026-06-26 · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요"
+	canvasContent := strings.Replace(completeEngelbartCanvasContent(), calloutHeader, quoteHeader, 1)
+	transcript := writeTranscriptForTest(t, writeCanvasToolLine(t, "mcp__codex_apps__slack._slack_create_canvas", canvasContent))
+	msg := "새 회의록 Canvas를 만들었습니다: https://bubbletap.slack.com/docs/T048JBUDF9U/F0TEST"
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--enforce-engelbart-canvas-sections"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("expected Web API-safe top status quote to satisfy Engelbart Canvas blocks, got %+v", obj)
+	}
+}
+
 func TestRunHookStopDoesNotRequireFullEngelbartTemplateForCanvasUpdates(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

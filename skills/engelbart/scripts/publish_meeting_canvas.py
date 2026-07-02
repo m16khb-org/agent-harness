@@ -7,7 +7,8 @@ Engelbart 회의 Canvas 발행 규칙을 하나의 원자적 절차로 묶는다
   1) canvases.create        - 회의록 Canvas 생성 (markdown 본문)
   2) canvases.access.set     - Bubbletap 누구나 볼 수 있음 정책:
                                public channel_ids 로 read 권한 부여
-  3) slackLists.items.create - 회의 인덱스 List에 한 행 자동 등록
+  3) slackLists.items.list   - 기존 회의 인덱스 List 컨벤션 확인
+  4) slackLists.items.create - 회의 인덱스 List에 한 행 자동 등록
 
 의존성 없음(파이썬 표준 라이브러리만 사용). 유료 Slack 플랜 + 아래 scope 필요:
   canvases:write, lists:write
@@ -26,17 +27,26 @@ Engelbart 회의 Canvas 발행 규칙을 하나의 원자적 절차로 묶는다
 한 호출에 함께 받지 않으므로 섞지 않는다. participants 모드의 이름 기반 조회는
 users.list 에서 유일 매칭일 때만 자동 부여한다.
 
+Slack List의 meeting_canvas 링크는 `https://{workspace}.slack.com/docs/{team_id}/{canvas_id}`
+형식의 workspace docs URL만 사용한다. 범용 `https://slack.com/canvas/{canvas_id}`
+fallback은 기존 List 컨벤션과 다르므로 저장하지 않는다.
+
 컬럼 매핑(List 컬럼명 -> 역할). List 실제 컬럼명에 맞게 조정:
   COL_NAME(이름/title), COL_DATE, COL_PARTICIPANTS, COL_CANVAS_URL
 """
 
 import json
 import os
+import re
 import sys
+import unicodedata
 import urllib.request
 import urllib.error
 
 SLACK_API = "https://slack.com/api/"
+MAX_METADATA_CELL_WIDTH = 56
+MAX_METADATA_ROW_WIDTH = 88
+SLACK_DOCS_CANVAS_URL_RE = re.compile(r"^https://[^/\s]+\.slack\.com/docs/T[A-Z0-9]+/F[A-Z0-9]+$")
 
 
 def usage() -> str:
@@ -45,7 +55,8 @@ def usage() -> str:
 필수 환경변수:
   SLACK_TOKEN
   MEETING_LIST_ID
-  CANVAS_MARKDOWN    완성된 회의록 Markdown. `### 원문 전사본 전문`과 ```text 코드블록 포함.
+  CANVAS_MARKDOWN    완성된 회의록 Markdown. Web API-safe `> 회의일 ...` 상태줄,
+                     `### 원문 전사본 전문`, ```text 코드블록 포함.
   PARTICIPANT_NAMES 또는 PARTICIPANT_USER_IDS
   CANVAS_ACCESS_CHANNEL_IDS  기본 CANVAS_ACCESS_MODE=bubbletap_anyone 에서 필요
 
@@ -64,6 +75,71 @@ def canvas_access_mode() -> str:
     return mode or "bubbletap_anyone"
 
 
+def display_width(text: str) -> int:
+    width = 0
+    for char in text:
+        width += 2 if unicodedata.east_asian_width(char) in {"F", "W"} else 1
+    return width
+
+
+def table_cells(line: str) -> list[str]:
+    stripped = line.strip()
+    if not stripped.startswith("|") or not stripped.endswith("|"):
+        return []
+    return [cell.strip() for cell in stripped.strip("|").split("|")]
+
+
+def markdown_section(markdown: str, heading: str) -> str:
+    match = re.search(rf"(?m)^{re.escape(heading)}\s*$", markdown)
+    if not match:
+        return ""
+    next_heading = re.search(r"(?m)^##\s+", markdown[match.end():])
+    end = match.end() + next_heading.start() if next_heading else len(markdown)
+    return markdown[match.end():end]
+
+
+def validate_metadata_table_shape(markdown: str) -> list[str]:
+    """Prevent Slack Canvas metadata tables from rendering as wide or corrupted tables."""
+    failures: list[str] = []
+    if re.search(r"(?m)^\|\|\|", markdown):
+        failures.append("CANVAS_MARKDOWN must not contain Slack blank-table rows such as `|||`; recreate from clean source markdown")
+    if re.search(r"(?m)^\|\|Value\|", markdown) or re.search(r"(?m)^\|Date\|\|", markdown):
+        failures.append("CANVAS_MARKDOWN must not contain malformed metadata table rows left by partial Slack table repair")
+
+    metadata_heading_count = len(re.findall(r"(?m)^## 메타데이터\s*$", markdown))
+    if metadata_heading_count != 1:
+        failures.append("CANVAS_MARKDOWN must contain exactly one `## 메타데이터` section")
+
+    header_count = len(re.findall(r"(?m)^\|\s*Field\s*\|\s*Value\s*\|$", markdown))
+    if header_count != 1:
+        failures.append("CANVAS_MARKDOWN must contain exactly one compact `|Field|Value|` metadata table")
+
+    metadata = markdown_section(markdown, "## 메타데이터")
+    lines = [line for line in metadata.splitlines() if line.strip()]
+    table_lines = [line for line in lines if line.strip().startswith("|")]
+    if not table_lines:
+        failures.append("CANVAS_MARKDOWN `## 메타데이터` must start with a compact 2-column table")
+        return failures
+
+    for line in table_lines:
+        cells = table_cells(line)
+        if len(cells) != 2:
+            failures.append(f"metadata_table_columns: expected 2 cells, got {len(cells)} in `{line}`")
+            continue
+        if display_width(line) > MAX_METADATA_ROW_WIDTH:
+            failures.append(
+                "metadata_table_row_width: keep metadata rows short; move detail to `### 메타데이터 메모`"
+            )
+        for cell in cells:
+            if re.fullmatch(r":?-{3,}:?", cell.replace(" ", "")):
+                continue
+            if display_width(cell) > MAX_METADATA_CELL_WIDTH:
+                failures.append(
+                    f"metadata_table_cell_width: `{cell[:30]}` is too long for Slack Canvas metadata; use a short summary and move detail to `### 메타데이터 메모`"
+                )
+    return failures
+
+
 def validate_required_inputs() -> None:
     """Slack 쓰기 전에 참석자 목록과 원문 전사본 입력을 강제한다."""
     missing = []
@@ -78,6 +154,11 @@ def validate_required_inputs() -> None:
             missing.append("CANVAS_MARKDOWN 안에 ### 원문 전사본 전문 섹션")
         if "```text" not in canvas_markdown:
             missing.append("CANVAS_MARKDOWN 안에 원문 전사본 ```text 코드블록")
+        if "::: {.callout}" in canvas_markdown:
+            missing.append("CANVAS_MARKDOWN은 Web API-safe `> 회의일 ...` 상태줄을 사용해야 하며 `::: {.callout}`는 literal로 렌더링됩니다")
+        if not re.search(r"(?m)^>\s*회의일\s+", canvas_markdown):
+            missing.append("CANVAS_MARKDOWN 안에 Web API-safe `> 회의일 ...` 상태줄")
+        missing.extend(validate_metadata_table_shape(canvas_markdown))
 
     mode = canvas_access_mode()
     if mode not in {"bubbletap_anyone", "channel", "participants"}:
@@ -109,6 +190,24 @@ def slack_call(method: str, payload: dict, token: str) -> dict:
     if not body.get("ok"):
         raise SystemExit(f"[{method}] Slack error: {body.get('error')} | {body}")
     return body
+
+
+def build_workspace_docs_canvas_url(canvas_id: str, auth: dict) -> str:
+    workspace_url = (auth.get("url") or "").strip()
+    team_id = (auth.get("team_id") or "").strip()
+    if not workspace_url or not team_id:
+        raise SystemExit("auth.test 결과에 workspace url/team_id가 없어 Slack List용 Canvas docs URL을 만들 수 없습니다.")
+    return f"{workspace_url.rstrip('/')}/docs/{team_id}/{canvas_id}"
+
+
+def validate_list_canvas_url(canvas_url: str) -> None:
+    if SLACK_DOCS_CANVAS_URL_RE.match(canvas_url):
+        return
+    raise SystemExit(
+        "Slack List `meeting_canvas` 링크는 workspace docs URL이어야 합니다: "
+        "`https://{workspace}.slack.com/docs/{team_id}/{canvas_id}`. "
+        f"잘못된 URL: {canvas_url}"
+    )
 
 
 def rich_text_value(column_id: str, text: str) -> dict:
@@ -199,11 +298,67 @@ def resolve_participants(token: str):
     return list(dict.fromkeys(ids)), report
 
 
+def short_sample(value) -> str:
+    text = json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value
+    return text if len(text) <= 90 else text[:87] + "..."
+
+
+def field_value_sample(field: dict) -> str:
+    for key in ("value", "rich_text", "date", "user", "link"):
+        if key in field:
+            return short_sample(field[key])
+    return short_sample(field)
+
+
+def inspect_existing_list_convention(token: str, list_id: str) -> dict:
+    """최근 List row를 읽어 실제 field key/column_id 컨벤션을 출력한다."""
+    body = slack_call("slackLists.items.list", {"list_id": list_id, "limit": 3}, token)
+    items = body.get("items", [])
+    if not items:
+        print("[3/4] List 컨벤션 확인: 기존 row 없음. 기본/환경변수 컬럼 매핑 사용")
+        return {}
+
+    print(f"[3/4] List 컨벤션 확인: 최근 row {len(items)}개")
+    inferred = {}
+    for item in items:
+        print(f"    item {item.get('id', '?')}")
+        for field in item.get("fields", []):
+            key = field.get("key") or ""
+            column_id = field.get("column_id") or ""
+            sample = field_value_sample(field)
+            print(f"      key={key or '-'} column_id={column_id or '-'} sample={sample}")
+
+            if key == "name" and column_id:
+                inferred.setdefault("name", column_id)
+            elif key == "meeting_canvas" and column_id:
+                inferred.setdefault("canvas_url", column_id)
+            elif column_id and "date" in field:
+                inferred.setdefault("date", column_id)
+            elif column_id and "user" in field:
+                inferred.setdefault("participants", column_id)
+    return inferred
+
+
+def default_list_title(canvas_title: str) -> str:
+    """Canvas title에서 날짜 prefix를 제거해 Slack List `이름` 컨벤션에 맞춘다."""
+    return re.sub(r"^\d{4}-\d{2}-\d{2}\s+", "", canvas_title).strip() or canvas_title
+
+
+def canvas_document_body(markdown: str) -> str:
+    """Slack Web API title과 중복되지 않도록 본문 첫 H1 제목을 제거한다."""
+    lines = markdown.splitlines()
+    if lines and lines[0].startswith("# "):
+        lines = lines[1:]
+        while lines and lines[0] == "":
+            lines = lines[1:]
+    return "\n".join(lines).strip()
+
+
 def build_initial_fields(cols: dict, meta: dict, participant_ids: list) -> list:
     """컬럼 매핑 + 회의 메타데이터 -> initial_fields 배열.
 
     실측 스키마(List F0BDM7J7AV6) 기준 역할 키: name/date/participants/canvas_url.
-    - name        : rich_text 컬럼 (회의 제목)
+    - name        : rich_text 컬럼 (List 제목, 날짜 prefix 없음: `[Topic] 제목`)
     - date        : date 컬럼, 값은 ["YYYY-MM-DD"] 문자열 (epoch 아님)
     - participants: user 컬럼, 값은 user_id 배열 (회의 참석자 메타데이터용;
                     기본 Canvas 권한 부여는 CANVAS_ACCESS_CHANNEL_IDS 를 사용)
@@ -212,12 +367,13 @@ def build_initial_fields(cols: dict, meta: dict, participant_ids: list) -> list:
     """
     fields = []
     if cols.get("name"):
-        fields.append(rich_text_value(cols["name"], meta["title"]))
+        fields.append(rich_text_value(cols["name"], meta.get("list_title") or meta["title"]))
     if cols.get("date") and meta.get("date_str"):
         fields.append({"column_id": cols["date"], "date": [meta["date_str"]]})
     if cols.get("participants") and participant_ids:
         fields.append({"column_id": cols["participants"], "user": participant_ids})
     if cols.get("canvas_url") and meta.get("canvas_url"):
+        validate_list_canvas_url(meta["canvas_url"])
         fields.append({
             "column_id": cols["canvas_url"],
             # slackLists.items.create validates snake_case, while readback may
@@ -270,6 +426,7 @@ def main(argv: list[str] | None = None):
         "date_str": os.environ.get("MEETING_DATE", "2026-07-01"),  # "YYYY-MM-DD"
         "canvas_markdown": os.environ["CANVAS_MARKDOWN"],
     }
+    meeting["list_title"] = os.environ.get("MEETING_LIST_TITLE") or default_list_title(meeting["title"])
 
     # 1) Canvas 생성 -----------------------------------------------------------
     created = slack_call(
@@ -278,16 +435,16 @@ def main(argv: list[str] | None = None):
             "title": meeting["title"],
             "document_content": {
                 "type": "markdown",
-                "markdown": meeting["canvas_markdown"],
+                "markdown": canvas_document_body(meeting["canvas_markdown"]),
             },
         },
         token,
     )
     canvas_id = created["canvas_id"]
-    canvas_url = created.get("canvas", {}).get("url") \
-        or f"https://slack.com/canvas/{canvas_id}"
+    auth = slack_call("auth.test", {}, token)
+    canvas_url = build_workspace_docs_canvas_url(canvas_id, auth)
     meeting["canvas_url"] = canvas_url
-    print(f"[1/3] canvas 생성 완료: {canvas_id}")
+    print(f"[1/4] canvas 생성 완료: {canvas_id}")
 
     # 2) Bubbletap 누구나 볼 수 있음: public channel_ids 로 read 부여 ---------
     if access_mode in {"bubbletap_anyone", "channel"}:
@@ -300,7 +457,7 @@ def main(argv: list[str] | None = None):
             },
             token,
         )
-        print(f"[2/3] Bubbletap 누구나 볼 수 있음 공유({access_level}): {access_channel_ids}")
+        print(f"[2/4] Bubbletap 누구나 볼 수 있음 공유({access_level}): {access_channel_ids}")
     elif participant_ids:
         slack_call(
             "canvases.access.set",
@@ -311,17 +468,22 @@ def main(argv: list[str] | None = None):
             },
             token,
         )
-        print(f"[2/3] 제한 공유 참여자 {len(participant_ids)}명 초대({access_level}): {participant_ids}")
+        print(f"[2/4] 제한 공유 참여자 {len(participant_ids)}명 초대({access_level}): {participant_ids}")
     else:
-        print("[2/3] 초대할 참여자 ID/이메일이 없어 접근권한 변경 생략(생성자만 열람).")
+        print("[2/4] 초대할 참여자 ID/이메일이 없어 접근권한 변경 생략(생성자만 열람).")
 
     # 3) List 등록 -------------------------------------------------------------
-    # 실측 확정 컬럼 ID (List F0BDM7J7AV6). 다른 List 면 COL_* 로 덮어쓴다.
+    inferred_cols = inspect_existing_list_convention(token, list_id)
+    # 실측 확정 컬럼 ID (List F0BDM7J7AV6). 다른 List 면 관측값 또는 COL_* 로 덮어쓴다.
     role_map = {
-        "name": os.environ.get("COL_NAME", "Col0BCWJ2LEA0"),          # 제목(rich_text)
-        "date": os.environ.get("COL_DATE", "Col0BCLJFH0RH"),          # 회의일(date)
-        "participants": os.environ.get("COL_PARTICIPANTS", "Col0BD5G8GDE0"),  # 참석자(user)
-        "canvas_url": os.environ.get("COL_CANVAS_URL", "Col0BDM7XNCBS"),      # Canvas 링크(link)
+        "name": os.environ.get("COL_NAME") or inferred_cols.get("name") or "Col0BCWJ2LEA0",
+        "date": os.environ.get("COL_DATE") or inferred_cols.get("date") or "Col0BCLJFH0RH",
+        "participants": os.environ.get("COL_PARTICIPANTS")
+        or inferred_cols.get("participants")
+        or "Col0BD5G8GDE0",
+        "canvas_url": os.environ.get("COL_CANVAS_URL")
+        or inferred_cols.get("canvas_url")
+        or "Col0BDM7XNCBS",
     }
     role_map = {k: v for k, v in role_map.items() if v}
 
@@ -334,7 +496,7 @@ def main(argv: list[str] | None = None):
         {"list_id": list_id, "initial_fields": fields},
         token,
     )
-    print(f"[3/3] List 등록 완료: item {item.get('item', {}).get('id', '?')}")
+    print(f"[4/4] List 등록 완료: item {item.get('item', {}).get('id', '?')}")
     print(f"\n완료. Canvas URL: {canvas_url}")
 
 

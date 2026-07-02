@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import re
 import sys
+import unicodedata
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,7 +39,6 @@ RUBRIC: tuple[RubricItem, ...] = (
         weight=10,
         required=(
             "#dev-team-backend",
-            "::: {.callout}",
             "회의일 2026-06-24 · 대상 #dev-team-backend · Source pasted transcript · Status Follow-up 필요",
             "## 메타데이터",
             "## TL;DR",
@@ -134,13 +134,14 @@ RUBRIC: tuple[RubricItem, ...] = (
             "Verbatim full transcript handling",
             "Do not summarize, normalize, translate, or substitute representative blocks",
             "원문 전사본 발췌",
-            "Manual Index Binding Handoff",
-            "The agent creates and verifies the meeting Canvas only",
-            "The user manually binds that Canvas into their Slack List",
-            "Do not call Slack List tools",
+            "Slack List Registration",
+            "The default published artifact is not complete until both surfaces are done",
+            "Inspect the existing Slack List convention",
+            "Create or update one Slack List row with the verified Canvas URL",
+            "Do not skip Slack List registration for a published meeting Canvas",
             "Do not create an index Canvas as a substitute for the List",
             "Do not put an index row preview in the meeting Canvas body by default",
-            "set handoff `Date` to the same value as `Last updated`",
+            "set the List `Date` to the same value as `Last updated`",
             "Use Slack's built-in List `이름` field as the meeting title",
             "Any table over 5 columns is a quality failure",
             "Canvas UI/UX Principles",
@@ -149,7 +150,7 @@ RUBRIC: tuple[RubricItem, ...] = (
             "Product and service names from local background are preferred",
             "`킹글 스테이징` should resolve to `팅글 staging`",
             "Canvas UI Pattern Examples",
-            "Status callout",
+            "Status block",
             "Metadata table",
             "Action checklist",
             "Audit divider",
@@ -161,10 +162,10 @@ RUBRIC: tuple[RubricItem, ...] = (
             "Do not put callouts, tables, or code blocks inside layout columns",
             "Do not create a skeleton Canvas and stop there",
             "Do not hide uncertainty in decisions",
-            "Top callout box UI",
-            "rounded box",
-            "compact top callout box",
-            "rounded box UI",
+            "Top status block UI",
+            "Web API-safe quote line",
+            "compact top status block",
+            "literal `::: {.callout}` is a failed Canvas",
             "2-column vertical table",
             "Checklist bullets",
             "Heading hierarchy",
@@ -205,7 +206,13 @@ RUBRIC: tuple[RubricItem, ...] = (
             "Do not pass `channel_ids` and `user_ids` together",
             "A final meeting Canvas must not be created from fallback placeholder content",
             "A created or read-back meeting Canvas must not retain placeholder cells",
-            "provide separate manual index-binding handoff values that use Slack's built-in `이름` field as the title",
+            "register it in the existing Slack List",
+            "verified row/item ID",
+            "raw table edits can leave unaddressable empty rows",
+            "duplicate metadata tables",
+            "wide metadata cells",
+            "no long participant/source/tracking/access cells",
+            "`|||` blank table rows",
             "If local background and meeting role identify a team lead owner",
             "Do not leave team-lead-owned follow-ups as `참석자 1`",
             "Render every risk/open-question item as a titled multi-line bullet",
@@ -242,6 +249,40 @@ def wide_table_violations(output: str, max_columns: int = 5) -> list[str]:
             columns = max(0, line.count("|") - 1)
             if columns > max_columns:
                 violations.append(f"line {line_no}: {columns} columns")
+    return violations
+
+
+def display_width(text: str) -> int:
+    width = 0
+    for char in text:
+        width += 2 if unicodedata.east_asian_width(char) in {"F", "W"} else 1
+    return width
+
+
+def metadata_table_width_violations(output: str, max_cell_width: int = 56, max_row_width: int = 88) -> list[str]:
+    block = section_between(output, "## 메타데이터", "## TL;DR")
+    violations: list[str] = []
+    if not block:
+        return ["metadata section missing"]
+    if block.count("| Field | Value |") + block.count("|Field|Value|") != 1:
+        violations.append("expected exactly one Field/Value metadata table")
+    for line_no, line in enumerate(block.splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped.startswith("|") or not stripped.endswith("|"):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if len(cells) != 2:
+            violations.append(f"line {line_no}: expected 2 metadata cells, got {len(cells)}")
+            continue
+        if display_width(stripped) > max_row_width:
+            violations.append(f"line {line_no}: metadata row too wide")
+        for cell in cells:
+            if re.fullmatch(r":?-{3,}:?", cell.replace(" ", "")):
+                continue
+            if display_width(cell) > max_cell_width:
+                violations.append(f"line {line_no}: metadata cell too wide `{cell[:30]}`")
+    if "|||" in block or "||Value|" in block or "|Date||" in block:
+        violations.append("malformed blank metadata table row remains")
     return violations
 
 
@@ -326,10 +367,20 @@ def has_audit_divider(output: str) -> bool:
     return "\n---\n\n" in before_appendix[-500:]
 
 
+def has_top_status_block(output: str) -> bool:
+    return "::: {.callout}" in output or re.search(r"(?m)^>\s*회의일\s+", output) is not None
+
+
+def has_metadata_table(output: str) -> bool:
+    compact = "|Field|Value|" in output
+    spaced = "| Field | Value |" in output
+    return compact or spaced
+
+
 def uses_default_canvas_ui_recipe(output: str) -> bool:
     return (
-        "::: {.callout}" in output
-        and "| Field | Value |" in output
+        has_top_status_block(output)
+        and has_metadata_table(output)
         and re.search(r"^- \[ \] ", output, flags=re.MULTILINE) is not None
         and "```text" in output
         and "::: {.layout}" not in output
@@ -379,6 +430,20 @@ def publish_script_required_input_failures() -> list[str]:
         "CANVAS_MARKDOWN 환경변수가 필요합니다",
         "### 원문 전사본 전문",
         "```text",
+        "Web API-safe `> 회의일 ...` 상태줄",
+        "`::: {.callout}`는 literal로 렌더링됩니다",
+        "MAX_METADATA_CELL_WIDTH",
+        "MAX_METADATA_ROW_WIDTH",
+        "validate_metadata_table_shape",
+        "metadata_table_cell_width",
+        "metadata_table_row_width",
+        "Slack blank-table rows such as `|||`",
+        "move detail to `### 메타데이터 메모`",
+        "SLACK_DOCS_CANVAS_URL_RE",
+        "build_workspace_docs_canvas_url",
+        "auth.test",
+        "validate_list_canvas_url",
+        "`https://{workspace}.slack.com/docs/{team_id}/{canvas_id}`",
     )
     missing = [snippet for snippet in required_snippets if snippet not in script]
     if missing:
@@ -435,6 +500,10 @@ def evaluate(path: Path) -> tuple[int, list[str]]:
         if wide_tables:
             failures.append(f"slack_canvas_wide_tables: {wide_tables}")
             score = max(0, score - 20)
+        metadata_width = metadata_table_width_violations(output)
+        if metadata_width:
+            failures.append(f"slack_canvas_metadata_width: {metadata_width}")
+            score = max(0, score - 20)
         if "12-column index schema" in output:
             failures.append("slack_canvas_index_rendering: internal schema leaked into output")
             score = max(0, score - 10)
@@ -454,7 +523,7 @@ def evaluate(path: Path) -> tuple[int, list[str]]:
             failures.append("audit_separator: long meeting Canvas must include one top-level divider before 보정 및 원문 부록")
             score = max(0, score - 8)
         if not uses_default_canvas_ui_recipe(output):
-            failures.append("canvas_ui_recipe: expected callout, vertical metadata table, checklist actions, transcript code block, and no default layout columns")
+            failures.append("canvas_ui_recipe: expected top status block, vertical metadata table, checklist actions, transcript code block, and no default layout columns")
             score = max(0, score - 12)
         if canvas_has_index_or_url_placeholder(output):
             failures.append("meeting_canvas_placeholder: Canvas body must not include index-row sections or Canvas URL placeholders after creation")
