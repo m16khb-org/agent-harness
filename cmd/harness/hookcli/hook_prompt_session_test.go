@@ -57,6 +57,36 @@ func TestRunHookUserPromptKarpathyFirstSkipsChoiceReplies(t *testing.T) {
 	}
 }
 
+func TestRunHookUserPromptExpandsChoiceReplyFromStopRelay(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := "작업 완료.\\n\\n선택지:\\n1. 킬스위치를 구현 (추천)\\n2. 계획 문서만 커밋\\n3. 보류"
+	first := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if first["decision"] != "block" {
+		t.Fatalf("expected Stop hook to record and relay the choices: %+v", first)
+	}
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","prompt":"2번"}`, func() error {
+		return runHookUserPrompt([]string{"--host", "claude"})
+	})
+	if sysMsg, _ := obj["systemMessage"].(string); !strings.Contains(sysMsg, "선택지 2번") {
+		t.Fatalf("choice expansion must surface a user notice: %+v", obj)
+	}
+	ctx := hookAdditionalContext(obj)
+	if !strings.Contains(ctx, "선택지 2번을 선택했다") || !strings.Contains(ctx, "계획 문서만 커밋") {
+		t.Fatalf("choice expansion must inject the chosen option text: %q", ctx)
+	}
+	// The relay record must still be cleared after consumption so a later
+	// choices block relays again instead of being suppressed as pending.
+	after := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if after["decision"] != "block" {
+		t.Fatalf("expected relay to be cleared after the choice reply: %+v", after)
+	}
+}
+
 func TestRunHookUserPromptKarpathyFirstCanBeDisabledByEnv(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	t.Setenv("HARNESS_DISABLE_KARPATHY_FIRST", "1")

@@ -77,6 +77,10 @@ func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTrigg
 	return nextactionrelay.Record(stopNextActionRelayStore(), repoRoot, trigger)
 }
 
+func ReadStopNextActionRelay(repoRoot string) (StopNextActionRelayRecord, bool) {
+	return nextactionrelay.Read(stopNextActionRelayStore(), repoRoot)
+}
+
 func ClearStopNextActionRelay(repoRoot string) StopNextActionRelayResult {
 	return nextactionrelay.Clear(stopNextActionRelayStore(), repoRoot)
 }

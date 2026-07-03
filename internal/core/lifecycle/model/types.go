@@ -101,12 +101,19 @@ type LifecycleStopReminderResult struct {
 	PendingCount      int    `json:"pending_count"`
 }
 
+type StopNextActionRelayCandidate struct {
+	Index       int    `json:"index"`
+	Recommended bool   `json:"recommended,omitempty"`
+	Text        string `json:"text"`
+}
+
 type StopNextActionRelayRecord struct {
-	SchemaVersion    int    `json:"schema_version"`
-	Fingerprint      string `json:"fingerprint"`
-	RecommendedIndex int    `json:"recommended_index,omitempty"`
-	RecommendedText  string `json:"recommended_text,omitempty"`
-	UpdatedAt        string `json:"updated_at"`
+	SchemaVersion    int                            `json:"schema_version"`
+	Fingerprint      string                         `json:"fingerprint"`
+	RecommendedIndex int                            `json:"recommended_index,omitempty"`
+	RecommendedText  string                         `json:"recommended_text,omitempty"`
+	Candidates       []StopNextActionRelayCandidate `json:"candidates,omitempty"`
+	UpdatedAt        string                         `json:"updated_at"`
 }
 
 type StopNextActionRelayResult struct {

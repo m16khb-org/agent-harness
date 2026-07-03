@@ -167,6 +167,50 @@ dispatch 시 dispatch 프롬프트도 karpathy 하드닝. PreToolUse `updatedInp
 
 2026-07-03 현재 repo 검색에서 관련 관찰 기록은 확인되지 않았다(`rg "날프롬프트|karpathy-first 지시를 무시|updatedInput|harden-subagent"` 결과가 이 계획 문서에만 한정). 따라서 아래 구현 계획은 유지하되 착수하지 않는다.
 
+### Dogfood 관찰 로그
+
+- 2026-07-03 15:58 KST: `./bin/agent-harness hook user-prompt --host claude --prompt '§7 dogfood 관찰 진행'` 결과 `additionalContext`에 `- karpathy-first:`가 포함되고 `systemMessage`로 karpathy-first notice가 표시됨. 동일 입력의 `--json` 결과도 `karpathy_first: true`.
+- 2026-07-03 15:58 KST: repo 검색(`rg "날프롬프트|karpathy-first 지시를 무시|updatedInput|harden-subagent" .agent-harness internal cmd skills scripts AGENTS.md CLAUDE.md`) 결과는 이 계획 문서의 설계/게이트 문구에만 한정됨.
+- 판정: 이번 dogfood에서는 main agent가 karpathy-first 지시에 따라 증강 요청을 먼저 표기했고, sub-agent dispatch도 발생하지 않았다. §7 착수 조건인 "지시 무시 + raw sub-agent prompt dispatch"는 **미관찰** 상태이므로 구현 착수 금지 상태를 유지한다.
+
+### §7 착수 후보 관찰 템플릿
+
+§7 착수 조건을 여는 관찰은 단순 체감이나 기억이 아니라 아래 템플릿을 채운 재현 가능한 기록이어야 한다. 전문 prompt를 문서에 붙이지 말고 bounded excerpt, hash, length만 기록한다.
+
+```text
+- 시각/host/session:
+  - observed_at_kst:
+  - host: codex|claude|reasonix
+  - session_or_transcript:
+- 원문 prompt와 hook evidence:
+  - user_prompt_excerpt:
+  - hook_json_command:
+  - karpathy_first: true|false
+  - additional_context_has_karpathy_first: true|false
+  - user_visible_notice: present|absent|unknown
+- main-agent 응답 evidence:
+  - response_started_with_augmented_request: true|false
+  - response_started_with_no_augmentation_needed: true|false
+  - transcript_line_or_summary:
+- dispatch evidence:
+  - tool_name: Task|Agent
+  - tool_prompt_hash:
+  - tool_prompt_length:
+  - tool_prompt_bounded_excerpt:
+  - raw_prompt_evidence:
+- 영향/필요성:
+  - missing_contract_or_guardrail:
+  - observed_failure_or_rework:
+- 재현/반복성:
+  - reproduction_count:
+  - high_risk_single_case_reason:
+- 판정:
+  - opens_section_7_gate: true|false
+  - next_step: keep advisory|run updatedInput spike
+```
+
+판정 기준: `opens_section_7_gate=true`는 UserPromptSubmit에서 karpathy-first가 주입됐는데도 main agent가 `증강된 요청:`/`증강 불필요` 없이 `Task`/`Agent`를 raw prompt로 dispatch했고, 그 결과 누락된 계약·제약·tool truth·privacy guardrail 중 하나 이상이 실제 실패나 재작업으로 이어졌을 때만 허용한다.
+
 **목표**: `Task`/`Agent` tool 호출의 `prompt` 파라미터를 PreToolUse에서 결정적으로
 하드닝해 치환한다(진짜 "바꿔서 들어가게"가 가능한 유일한 지점). LLM 호출 없음 —
 PreToolUse는 매 tool 호출 크리티컬 패스이므로(`hook_pre_tool_use.go:69-71` 주석)
@@ -211,7 +255,34 @@ CLI updatedInput 페이로드 형태(claude)·Noop(codex/플래그 OFF), golden 
 4·5(어댑터+CLI) → 6(감사) → 테스트/측정 → 플래그 OFF로 커밋 → dogfood 레포에서만
 플래그 ON.
 
-## 8. 실행 순서 (전체)
+## 8. 후속 피처 C — 선택지 응답 복원 증강 (구현 완료)
+
+**목표**: 사용자가 "1", "2번", "추천대로" 같은 선택지 응답만 입력해도, 그 선택지의
+**전문을 복원**해 karpathy-first 증강 대상으로 삼는다. (기존에는 선택지 응답을 통째로
+증강 제외했음.)
+
+**구조**: 훅은 대화 전사에 접근할 수 없지만, Stop 훅의 next-action relay가 선택지를
+이미 파싱한다는 점을 활용:
+
+1. `StopNextActionRelayRecord`에 `Candidates [](Index/Recommended/Text)` 추가
+   (`model/types.go`) — Stop 훅 기록 시점에 전체 선택지 전문을 저장. additive 필드,
+   스키마 버전 유지, 상태 레코드라 response golden 무관.
+2. `nextactionrelay.Read` 신설 — 무변경 읽기. `lifecycle.ReadStopNextActionRelay` →
+   `hookprompt` dependencies 배선.
+3. `hookprompt.resolveChoiceExpansion` — 숫자 선택("2번")과 "추천대로"/"추천"만 복원
+   대상(그 외 ack는 비확장). 6시간 초과 stale 레코드 무시. 복원 성공 시
+   `사용자가 선택지 N번을 선택했다: "<전문>" — 이 선택지를 원문 요청으로 삼아 …` 지시와
+   `🧪 … 선택지 N번 내용을 복원해 증강합니다` notice 주입.
+4. CLI에서 relay clear를 Build **뒤로** 이동 — 복원이 소비보다 먼저.
+   clear 동작 자체는 유지(소비 후 삭제, 중복 relay 억제 해제).
+5. 게이트 공유: `HARNESS_DISABLE_KARPATHY_FIRST`와 `그대로:` 접두사(`그대로: 1`)는
+   복원 증강도 함께 끈다.
+
+**한계(수용)**: relay 레코드가 있을 때만 동작하는 best-effort — Stop enforcement가
+없는 레포에선 자연 비활성이고, 판단 턴이 tool 호출을 하면 post-tool-use가 레코드를
+중간에 지울 수 있다(그 경우 기존 동작으로 무해하게 폴백).
+
+## 9. 실행 순서 (전체)
 
 1. 3.1 지시 블록 + 3.2 발동 정책 구현 (rules 또는 hook_prompt.go 증강 단계) + 테스트.
 2. p50 전/후 측정으로 훅 지연 무회귀 확인.

@@ -35,15 +35,17 @@ func runHookUserPrompt(args []string) error {
 	if repo == "" {
 		repo = ResolveTarget("")
 	}
-	if hookprompt.IsExplicitNextActionInstruction(prompt) {
-		core.ClearStopNextActionRelay(repo)
-	}
 	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{
 		Prompt:               prompt,
 		Repo:                 repo,
 		EnableLLMHints:       *enableLLMHints || hookenv.Bool("HARNESS_ENABLE_LLM_HINTS"),
 		DisableKarpathyFirst: *disableKarpathyFirst || hookenv.Bool("HARNESS_DISABLE_KARPATHY_FIRST"),
 	})
+	// Clear only after BuildUserPromptMCPHints: choice replies ("1", "2번")
+	// read the relay record to expand the chosen option before it is consumed.
+	if hookprompt.IsExplicitNextActionInstruction(prompt) {
+		core.ClearStopNextActionRelay(repo)
+	}
 	if *jsonOut {
 		return printJSON(result)
 	}

@@ -57,11 +57,20 @@ func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgement
 			return result
 		}
 	}
+	candidates := make([]model.StopNextActionRelayCandidate, 0, len(trigger.Candidates))
+	for _, candidate := range trigger.Candidates {
+		candidates = append(candidates, model.StopNextActionRelayCandidate{
+			Index:       candidate.Index,
+			Recommended: candidate.Recommended,
+			Text:        strings.TrimSpace(candidate.Text),
+		})
+	}
 	record := model.StopNextActionRelayRecord{
 		SchemaVersion:    model.ProjectLifecycleSchemaVersion,
 		Fingerprint:      fingerprint,
 		RecommendedIndex: trigger.RecommendedIndex,
 		RecommendedText:  trigger.RecommendedText,
+		Candidates:       candidates,
 		UpdatedAt:        time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	if err := store.WriteJSON(path, record, 0o600); err != nil {
@@ -71,6 +80,27 @@ func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgement
 	result.ShouldRelay = true
 	result.Reason = "recorded_next_action_relay"
 	return result
+}
+
+// Read returns the pending relay record so the next user prompt can expand a
+// bare choice reply ("1", "2번") back into the chosen option's full text. It
+// never mutates state; Clear still owns record removal.
+func Read(store Store, repoRoot string) (model.StopNextActionRelayRecord, bool) {
+	var record model.StopNextActionRelayRecord
+	plan, err := store.Validate(repoRoot)
+	if err != nil || !plan.Exists || !plan.NamespaceValid {
+		return record, false
+	}
+	b, err := os.ReadFile(filepath.Join(plan.ProjectStateDir, model.StopNextActionRelayFile))
+	if err != nil {
+		return record, false
+	}
+	if err := json.Unmarshal(b, &record); err != nil ||
+		record.SchemaVersion != model.ProjectLifecycleSchemaVersion ||
+		strings.TrimSpace(record.Fingerprint) == "" {
+		return model.StopNextActionRelayRecord{}, false
+	}
+	return record, true
 }
 
 func Clear(store Store, repoRoot string) model.StopNextActionRelayResult {

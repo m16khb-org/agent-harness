@@ -52,12 +52,28 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		return result
 	}
 	karpathyFirst, cleaned := karpathyFirstDecision(prompt)
+	optedOut := strings.HasPrefix(prompt, karpathyOptOutPrefix)
 	if req.DisableKarpathyFirst {
 		karpathyFirst = false
 	}
 	prompt = cleaned
 	if prompt == "" {
 		return result
+	}
+	karpathyLine := ""
+	karpathyNotice := ""
+	if karpathyFirst {
+		karpathyLine = "- karpathy-first: " + karpathyFirstDirective
+		karpathyNotice = KarpathyFirstUserNotice
+	} else if !req.DisableKarpathyFirst && !optedOut {
+		// A bare choice reply carries no content, but the Stop next-action
+		// relay still knows what the numbers meant: expand the chosen option
+		// back into an augmentable request.
+		if index, text, ok := resolveChoiceExpansion(prompt, req.Repo); ok {
+			karpathyFirst = true
+			karpathyLine = karpathyChoiceContextLine(index, text)
+			karpathyNotice = karpathyChoiceUserNotice(index)
+		}
 	}
 	lower := strings.ToLower(prompt)
 	addPriority := func(tool, reason, priority string) {
@@ -105,9 +121,9 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	result.ShouldInject = true
 	context := renderHookMCPHintContext(result.Hints, pendingUpkeep, repoProfile, "")
 	if karpathyFirst {
-		context += "\n- karpathy-first: " + karpathyFirstDirective
+		context += "\n" + karpathyLine
 		result.KarpathyFirst = true
-		result.UserNotice = KarpathyFirstUserNotice
+		result.UserNotice = karpathyNotice
 	}
 	result.AdditionalContext = context
 	return result
