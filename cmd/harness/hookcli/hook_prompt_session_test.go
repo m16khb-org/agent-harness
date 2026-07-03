@@ -23,6 +23,40 @@ func TestRunHookUserPromptDropsCatalog(t *testing.T) {
 	}
 }
 
+func TestRunHookUserPromptKarpathyFirstNoticeIsClaudeVisible(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := hookTempRepoWithDoc(t)
+	input := `{"prompt":"로그인 세션이 끊기는 원인 좀 찾아줘","cwd":"` + repo + `"}`
+	claude := runHookCapture(t, input, func() error { return runHookUserPrompt([]string{"--host", "claude"}) })
+	if sysMsg, _ := claude["systemMessage"].(string); !strings.Contains(sysMsg, "karpathy-first") || !strings.Contains(sysMsg, "🧪") {
+		t.Fatalf("claude host must surface the karpathy-first notice via systemMessage: %+v", claude)
+	}
+	if !strings.Contains(hookAdditionalContext(claude), "- karpathy-first: ") {
+		t.Fatalf("claude host must inject the karpathy-first directive: %q", hookAdditionalContext(claude))
+	}
+	// Codex has no separate systemMessage channel for user-prompt: the notice
+	// must not replace the hint context.
+	codex := runHookCapture(t, input, func() error { return runHookUserPrompt(nil) })
+	if _, ok := codex["systemMessage"]; ok {
+		t.Fatalf("codex host must not carry a systemMessage: %+v", codex)
+	}
+	if !strings.Contains(hookAdditionalContext(codex), "- karpathy-first: ") {
+		t.Fatalf("codex host must keep the karpathy-first directive in context: %q", hookAdditionalContext(codex))
+	}
+}
+
+func TestRunHookUserPromptKarpathyFirstSkipsChoiceReplies(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := hookTempRepoWithDoc(t)
+	obj := runHookCapture(t, `{"prompt":"1번 진행해줘","cwd":"`+repo+`"}`, func() error { return runHookUserPrompt([]string{"--host", "claude"}) })
+	if _, ok := obj["systemMessage"]; ok {
+		t.Fatalf("choice reply must not surface the karpathy-first notice: %+v", obj)
+	}
+	if strings.Contains(hookAdditionalContext(obj), "karpathy-first") {
+		t.Fatalf("choice reply must not inject the directive: %q", hookAdditionalContext(obj))
+	}
+}
+
 func TestRunHookUserPromptLLMHintsAreOptIn(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := hookTempRepoWithDoc(t)

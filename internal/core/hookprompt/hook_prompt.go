@@ -33,6 +33,8 @@ type HookUserPromptResult struct {
 	AdditionalContext string                   `json:"additional_context,omitempty"`
 	Hints             []HookUserPromptHint     `json:"hints,omitempty"`
 	ProjectDocs       []ProjectDocCatalogEntry `json:"project_docs,omitempty"`
+	KarpathyFirst     bool                     `json:"karpathy_first,omitempty"`
+	UserNotice        string                   `json:"user_notice,omitempty"`
 }
 
 type HookUserPromptHint = Hint
@@ -45,6 +47,11 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		GeneratedAt: time.Now().Format(time.RFC3339),
 		Hints:       []HookUserPromptHint{},
 	}
+	if prompt == "" {
+		return result
+	}
+	karpathyFirst, cleaned := karpathyFirstDecision(prompt)
+	prompt = cleaned
 	if prompt == "" {
 		return result
 	}
@@ -88,11 +95,17 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	// established once via the SessionStart hook and re-established on PostCompact.
 	// UserPromptSubmit now carries only the dynamic, per-turn signals (routing,
 	// actions, profile, pending upkeep, rule).
-	if len(result.Hints) == 0 && len(pendingUpkeep) == 0 && repoProfile == nil {
+	if len(result.Hints) == 0 && len(pendingUpkeep) == 0 && repoProfile == nil && !karpathyFirst {
 		return result
 	}
 	result.ShouldInject = true
-	result.AdditionalContext = renderHookMCPHintContext(result.Hints, pendingUpkeep, repoProfile, "")
+	context := renderHookMCPHintContext(result.Hints, pendingUpkeep, repoProfile, "")
+	if karpathyFirst {
+		context += "\n- karpathy-first: " + karpathyFirstDirective
+		result.KarpathyFirst = true
+		result.UserNotice = KarpathyFirstUserNotice
+	}
+	result.AdditionalContext = context
 	return result
 }
 

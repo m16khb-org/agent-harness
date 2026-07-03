@@ -42,7 +42,10 @@ func TestBuildUserPromptMCPHintsKeepsAutoContinuationContextShort(t *testing.T) 
 	if !strings.Contains(got.AdditionalContext, "next-action:") {
 		t.Fatalf("expected short next-action reminder:\n%s", got.AdditionalContext)
 	}
-	if len(got.AdditionalContext) > 500 {
+	// Budget raised from 500 when the default-on karpathy-first directive line
+	// was added (intentional contract change): one compact line, still short
+	// enough for the inline Codex transcript.
+	if len(got.AdditionalContext) > 900 {
 		t.Fatalf("UserPromptSubmit context is too long for Codex transcript (%d chars):\n%s", len(got.AdditionalContext), got.AdditionalContext)
 	}
 }
