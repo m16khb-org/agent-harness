@@ -30,28 +30,8 @@ func TestRegressIssueOpsForReplanRecordsRegressEvent(t *testing.T) {
 }
 
 func TestRegressIssueOpsForReplanCapsRepeatedRegressions(t *testing.T) {
-	seedEvents := func(t *testing.T, count int) (string, string) {
-		t.Helper()
-		stateRoot, id := recordAtPhaseForRegressTest(t, IssueOpsPhasePlan)
-		rec, err := ReadIssueOps(stateRoot, id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for range count {
-			rec.RegressEvents = append(rec.RegressEvents, model.IssueOpsRegressEvent{
-				Reason:    "earlier stop",
-				FromPhase: IssueOpsPhasePlan,
-				At:        "2026-07-02T00:00:00Z",
-			})
-		}
-		if _, err := touchAndWriteIssueOps(stateRoot, rec); err != nil {
-			t.Fatal(err)
-		}
-		return stateRoot, id
-	}
-
 	// One below the cap: the regress is still allowed and appends its event.
-	stateRoot, id := seedEvents(t, issueOpsRegressCap-1)
+	stateRoot, id := seedRegressEvents(t, issueOpsRegressCap-1)
 	out, err := RegressIssueOpsForReplan(stateRoot, id, "still within cap")
 	if err != nil {
 		t.Fatalf("regress below cap must be allowed: %v", err)
@@ -61,7 +41,7 @@ func TestRegressIssueOpsForReplanCapsRepeatedRegressions(t *testing.T) {
 	}
 
 	// At the cap: fail-closed refusal that demands a human decision, no rewind.
-	stateRoot2, id2 := seedEvents(t, issueOpsRegressCap)
+	stateRoot2, id2 := seedRegressEvents(t, issueOpsRegressCap)
 	if _, err := RegressIssueOpsForReplan(stateRoot2, id2, "one stop too many"); err == nil ||
 		!strings.Contains(err.Error(), "human decision") {
 		t.Fatalf("regress at cap must be refused with a human-decision escalation, got %v", err)
@@ -76,4 +56,36 @@ func TestRegressIssueOpsForReplanCapsRepeatedRegressions(t *testing.T) {
 	if len(rec2.RegressEvents) != issueOpsRegressCap {
 		t.Fatalf("refused regress must not append events, got %d", len(rec2.RegressEvents))
 	}
+}
+
+func TestRegressCapErrorReportsActualEventCount(t *testing.T) {
+	stateRoot, id := seedRegressEvents(t, issueOpsRegressCap+2)
+
+	_, err := RegressIssueOpsForReplan(stateRoot, id, "too many stops")
+	if err == nil {
+		t.Fatal("expected cap error")
+	}
+	if !strings.Contains(err.Error(), "already went through 5 stop") {
+		t.Fatalf("cap error should report actual event count, got %v", err)
+	}
+}
+
+func seedRegressEvents(t *testing.T, count int) (string, string) {
+	t.Helper()
+	stateRoot, id := recordAtPhaseForRegressTest(t, IssueOpsPhasePlan)
+	rec, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range count {
+		rec.RegressEvents = append(rec.RegressEvents, model.IssueOpsRegressEvent{
+			Reason:    "earlier stop",
+			FromPhase: IssueOpsPhasePlan,
+			At:        "2026-07-02T00:00:00Z",
+		})
+	}
+	if _, err := touchAndWriteIssueOps(stateRoot, rec); err != nil {
+		t.Fatal(err)
+	}
+	return stateRoot, id
 }

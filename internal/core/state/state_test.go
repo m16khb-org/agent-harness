@@ -250,6 +250,54 @@ func TestStatePruneDryRunAndConfirm(t *testing.T) {
 	}
 }
 
+func TestStatePrunePrefixAppliesAgeAndCountOnlyToMatchingKeys(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+
+	write := func(key, updatedAt string) {
+		t.Helper()
+		if _, err := StateWrite(key, "content "+key); err != nil {
+			t.Fatalf("StateWrite %s: %v", key, err)
+		}
+		read, err := StateRead(key)
+		if err != nil {
+			t.Fatalf("StateRead %s: %v", key, err)
+		}
+		read.Record.UpdatedAt = updatedAt
+		b, err := json.MarshalIndent(read.Record, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal %s: %v", key, err)
+		}
+		if err := os.WriteFile(read.Path, append(b, '\n'), 0o600); err != nil {
+			t.Fatalf("rewrite %s: %v", key, err)
+		}
+	}
+
+	write("external-llm-usage-old", "2000-01-01T00:00:00Z")
+	write("external-llm-usage-recent-1", "2026-07-03T00:00:01Z")
+	write("external-llm-usage-recent-2", "2026-07-03T00:00:02Z")
+	write("external-llm-usage-recent-3", "2026-07-03T00:00:03Z")
+	write("self-augment-lesson-old", "2000-01-01T00:00:00Z")
+
+	result, err := StatePrunePrefix("external-llm-usage-", 365*24*time.Hour, 2, true)
+	if err != nil {
+		t.Fatalf("StatePrunePrefix: %v", err)
+	}
+	if !result.OK || !result.Confirm || !containsString(result.DeletedKeys, "external-llm-usage-old") || !containsString(result.DeletedKeys, "external-llm-usage-recent-1") {
+		t.Fatalf("unexpected prefix prune result: %+v", result)
+	}
+	for _, key := range []string{"external-llm-usage-recent-2", "external-llm-usage-recent-3", "self-augment-lesson-old"} {
+		if _, err := StateRead(key); err != nil {
+			t.Fatalf("%s should be kept: %v", key, err)
+		}
+	}
+	for _, key := range []string{"external-llm-usage-old", "external-llm-usage-recent-1"} {
+		if _, err := StateRead(key); err == nil {
+			t.Fatalf("%s should be pruned", key)
+		}
+	}
+}
+
 func TestStatePruneRejectsInvalidMaxAge(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	if _, err := StatePrune(0, false); err == nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"agent-harness/cmd/harness/selfworkflow/augmentcatalog"
 	"agent-harness/cmd/harness/selfworkflow/model"
@@ -51,6 +52,7 @@ func TestApplyLessonPenaltiesDemotesRepeatedSevereLessons(t *testing.T) {
 
 func TestSevereLessonCountsCountsOnlySevereLessonSnapshots(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	now := time.Now().UTC()
 
 	writeLesson := func(t *testing.T, key, candidateID, severity string) {
 		t.Helper()
@@ -63,6 +65,7 @@ func TestSevereLessonCountsCountsOnlySevereLessonSnapshots(t *testing.T) {
 			Lesson:        "lesson for " + candidateID,
 			NextAction:    "retry",
 			Severity:      severity,
+			GeneratedAt:   now.Format(time.RFC3339Nano),
 		}
 		b, err := json.Marshal(snapshot)
 		if err != nil {
@@ -101,6 +104,49 @@ func TestSevereLessonCountsCountsOnlySevereLessonSnapshots(t *testing.T) {
 	}
 }
 
+func TestSevereLessonCountsIgnoresOldLessonsOutsideRecentWindow(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+
+	writeLesson := func(t *testing.T, key, candidateID, generatedAt string) {
+		t.Helper()
+		snapshot := model.SelfAugmentLessonStateSnapshot{
+			SchemaVersion: 1,
+			Kind:          model.SelfAugmentationLessonKind,
+			LoopKind:      "self_augmentation",
+			OK:            true,
+			CandidateID:   candidateID,
+			Lesson:        "lesson for " + candidateID,
+			NextAction:    "retry",
+			Severity:      "error",
+			GeneratedAt:   generatedAt,
+		}
+		b, err := json.Marshal(snapshot)
+		if err != nil {
+			t.Fatalf("marshal lesson: %v", err)
+		}
+		if _, err := core.StateWrite(key, string(b)); err != nil {
+			t.Fatalf("write lesson state %s: %v", key, err)
+		}
+	}
+
+	writeLesson(t, "self-augment-lesson-old-1", "old-candidate", "2000-01-01T00:00:00Z")
+	writeLesson(t, "self-augment-lesson-old-2", "old-candidate", "2000-01-02T00:00:00Z")
+	writeLesson(t, "self-augment-lesson-recent-1", "recent-candidate", time.Now().UTC().Format(time.RFC3339Nano))
+	writeLesson(t, "self-augment-lesson-recent-2", "recent-candidate", time.Now().UTC().Format(time.RFC3339Nano))
+
+	counts, warnings := severeLessonCounts()
+
+	if got := counts["old-candidate"]; got != 0 {
+		t.Fatalf("old-candidate severe count = %d, want 0 outside recent lesson window", got)
+	}
+	if got := counts["recent-candidate"]; got != 2 {
+		t.Fatalf("recent-candidate severe count = %d, want 2", got)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %v, want none", warnings)
+	}
+}
+
 func TestPlanAppliesLessonPenaltyAndRotatesSelection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
@@ -122,6 +168,7 @@ func TestPlanAppliesLessonPenaltyAndRotatesSelection(t *testing.T) {
 			Lesson:        "implementation attempt failed",
 			NextAction:    "redesign",
 			Severity:      "major",
+			GeneratedAt:   time.Now().UTC().Format(time.RFC3339Nano),
 		}
 		b, err := json.Marshal(snapshot)
 		if err != nil {

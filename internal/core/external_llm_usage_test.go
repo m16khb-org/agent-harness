@@ -73,6 +73,34 @@ func TestExternalLLMUsageObservationWritesStateRecord(t *testing.T) {
 	}
 }
 
+func TestExternalLLMUsagePrunesOldUsageRecords(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	if _, err := StateWrite("external-llm-usage-old", `{"kind":"external_llm_usage"}`); err != nil {
+		t.Fatalf("write old usage: %v", err)
+	}
+	old, err := StateRead("external-llm-usage-old")
+	if err != nil {
+		t.Fatalf("read old usage: %v", err)
+	}
+	old.Record.UpdatedAt = "2000-01-01T00:00:00Z"
+	b, err := json.MarshalIndent(old.Record, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal old usage: %v", err)
+	}
+	if err := os.WriteFile(old.Path, append(b, '\n'), 0o600); err != nil {
+		t.Fatalf("rewrite old usage: %v", err)
+	}
+	withCoreUsageFakeZAI(t, `{"choices":[{"message":{"content":"{\"ok\":true}"}}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`)
+
+	if _, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Prompt: "observe and prune"}); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	if _, err := StateRead("external-llm-usage-old"); err == nil {
+		t.Fatalf("old external usage record should be pruned")
+	}
+}
+
 func TestExternalLLMUsageRecordingFailureDoesNotBlockCall(t *testing.T) {
 	// Point the state dir at a regular file so every StateWrite fails.
 	blocked := filepath.Join(t.TempDir(), "not-a-dir")

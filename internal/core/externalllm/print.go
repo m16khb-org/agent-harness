@@ -73,11 +73,35 @@ func RunExternalLLMPrint(req ExternalLLMPrintRequest) (ExternalLLMPrintResult, e
 		return ExternalLLMPrintResult{}, fmt.Errorf("unsupported external llm provider %q; use zai:%s", provider, defaultModel)
 	}
 
+	req.Provider = provider
 	return runZAI(req, timeout)
 }
 
 // runZAI calls the Z.AI Coding Plan HTTP API.
-func runZAI(req ExternalLLMPrintRequest, timeout time.Duration) (ExternalLLMPrintResult, error) {
+func runZAI(req ExternalLLMPrintRequest, timeout time.Duration) (result ExternalLLMPrintResult, err error) {
+	model := strings.TrimSpace(req.Model)
+	if model == "" {
+		model = defaultModel
+	}
+	provider := strings.TrimSpace(req.Provider)
+	if provider == "" {
+		provider = defaultProvider
+	}
+	started := time.Now()
+	defer func() {
+		result.DurationMS = time.Since(started).Milliseconds()
+		result.Model = model
+		if usageRecorder != nil {
+			usageRecorder(ExternalLLMUsageObservation{
+				Provider:   provider,
+				Model:      model,
+				Usage:      result.Usage,
+				DurationMS: result.DurationMS,
+				OK:         err == nil,
+			})
+		}
+	}()
+
 	apiKey := strings.TrimSpace(req.APIKey)
 	if apiKey == "" {
 		apiKey = os.Getenv("Z_AI_API_KEY")
@@ -85,12 +109,6 @@ func runZAI(req ExternalLLMPrintRequest, timeout time.Duration) (ExternalLLMPrin
 	if apiKey == "" {
 		return ExternalLLMPrintResult{}, fmt.Errorf("external llm: Z_AI_API_KEY is not set")
 	}
-
-	model := strings.TrimSpace(req.Model)
-	if model == "" {
-		model = defaultModel
-	}
-	started := time.Now()
 
 	type message struct {
 		Role    string `json:"role"`
@@ -158,27 +176,18 @@ func runZAI(req ExternalLLMPrintRequest, timeout time.Duration) (ExternalLLMPrin
 		return ExternalLLMPrintResult{Output: respBody}, fmt.Errorf("external llm: parse response: %w", err)
 	}
 	if chatResp.Error != nil && chatResp.Error.Message != "" {
-		return ExternalLLMPrintResult{Output: respBody}, fmt.Errorf("external llm API error: %s (code %s)", chatResp.Error.Message, chatResp.Error.Code)
+		return ExternalLLMPrintResult{Output: respBody, Usage: chatResp.Usage}, fmt.Errorf("external llm API error: %s (code %s)", chatResp.Error.Message, chatResp.Error.Code)
 	}
 	if len(chatResp.Choices) == 0 {
-		return ExternalLLMPrintResult{Output: respBody}, fmt.Errorf("external llm returned no choices")
+		return ExternalLLMPrintResult{Output: respBody, Usage: chatResp.Usage}, fmt.Errorf("external llm returned no choices")
 	}
 
 	content := strings.TrimSpace(chatResp.Choices[0].Message.Content)
-	result := ExternalLLMPrintResult{
+	result = ExternalLLMPrintResult{
 		Output:     []byte(content),
 		Model:      model,
 		DurationMS: time.Since(started).Milliseconds(),
 		Usage:      chatResp.Usage,
-	}
-	if usageRecorder != nil {
-		usageRecorder(ExternalLLMUsageObservation{
-			Provider:   defaultProvider,
-			Model:      model,
-			Usage:      result.Usage,
-			DurationMS: result.DurationMS,
-			OK:         true,
-		})
 	}
 	return result, nil
 }

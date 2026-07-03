@@ -57,7 +57,7 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (IssueOpsRecor
 	if len(record.RegressEvents) >= issueOpsRegressCap {
 		return IssueOpsRecord{OK: false}, fmt.Errorf(
 			"regress cap reached: cycle %s already went through %d stop→re-plan rounds, so the plan is thrashing rather than converging; a human decision is required before any further automatic re-plan",
-			id, issueOpsRegressCap)
+			id, len(record.RegressEvents))
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	priorPhase := record.Phase

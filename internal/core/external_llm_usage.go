@@ -28,6 +28,12 @@ type externalLLMUsageStateSnapshot struct {
 	GeneratedAt      string `json:"generated_at"`
 }
 
+const (
+	externalLLMUsageStateKeyPrefix = "external-llm-usage-"
+	observationStateMaxAge         = 30 * 24 * time.Hour
+	observationStateMaxRecords     = 10000
+)
+
 // recordExternalLLMUsage appends one usage observation per LLM call as an
 // external-llm-usage-* state record. Observation only: every failure path
 // returns silently so recording can never block or fail the call it observes.
@@ -51,7 +57,9 @@ func recordExternalLLMUsage(obs externalllm.ExternalLLMUsageObservation) {
 	if err != nil {
 		return
 	}
-	key := fmt.Sprintf("external-llm-usage-%s-%09d", now.Format("20060102T150405Z"), now.Nanosecond())
+	key := fmt.Sprintf("%s%s-%09d", externalLLMUsageStateKeyPrefix, now.Format("20060102T150405Z"), now.Nanosecond())
 	// Best-effort by design: a broken state dir must not surface into the call.
-	_, _ = StateWrite(key, string(b))
+	if _, err := StateWrite(key, string(b)); err == nil {
+		_, _ = StatePrunePrefix(externalLLMUsageStateKeyPrefix, observationStateMaxAge, observationStateMaxRecords, true)
+	}
 }

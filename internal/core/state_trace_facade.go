@@ -51,6 +51,10 @@ func StatePrune(maxAge time.Duration, confirm bool) (StatePruneResult, error) {
 	return corestate.StatePrune(maxAge, confirm)
 }
 
+func StatePrunePrefix(prefix string, maxAge time.Duration, maxRecords int, confirm bool) (StatePruneResult, error) {
+	return corestate.StatePrunePrefix(prefix, maxAge, maxRecords, confirm)
+}
+
 func StateMigrate(confirm bool) (StateMigrateResult, error) {
 	return corestate.StateMigrate(confirm)
 }

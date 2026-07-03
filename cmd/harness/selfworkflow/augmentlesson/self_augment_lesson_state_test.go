@@ -2,6 +2,7 @@ package augmentlesson
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -36,6 +37,38 @@ func TestSaveSelfAugmentLesson(t *testing.T) {
 	}
 	if snapshot.Kind != model.SelfAugmentationLessonKind || snapshot.CandidateID != "reflexion-state-memory" || snapshot.NextAction == "" {
 		t.Fatalf("unexpected lesson snapshot: %+v", snapshot)
+	}
+}
+
+func TestSaveSelfAugmentLessonPrunesOldLessonRecords(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	if _, err := core.StateWrite("self-augment-lesson-old", `{"kind":"self_augmentation_lesson"}`); err != nil {
+		t.Fatalf("write old lesson: %v", err)
+	}
+	old, err := core.StateRead("self-augment-lesson-old")
+	if err != nil {
+		t.Fatalf("read old lesson: %v", err)
+	}
+	old.Record.UpdatedAt = "2000-01-01T00:00:00Z"
+	b, err := json.MarshalIndent(old.Record, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal old lesson: %v", err)
+	}
+	if err := os.WriteFile(old.Path, append(b, '\n'), 0o600); err != nil {
+		t.Fatalf("rewrite old lesson: %v", err)
+	}
+
+	if _, err := SaveSelfAugmentLesson(model.SelfAugmentLessonRequest{
+		CandidateID: "candidate-one",
+		Lesson:      "old lessons should not grow forever",
+		NextAction:  "keep only recent lesson state",
+		Severity:    "error",
+	}, Deps{}); err != nil {
+		t.Fatalf("SaveSelfAugmentLesson: %v", err)
+	}
+
+	if _, err := core.StateRead("self-augment-lesson-old"); err == nil {
+		t.Fatalf("old lesson record should be pruned")
 	}
 }
 

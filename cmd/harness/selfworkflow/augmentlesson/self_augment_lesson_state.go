@@ -16,6 +16,12 @@ type Deps struct {
 	SelectCandidate func() *model.SelfAugmentCandidate
 }
 
+const (
+	selfAugmentLessonStateKeyPrefix  = "self-augment-lesson-"
+	selfAugmentLessonStateMaxAge     = 30 * 24 * time.Hour
+	selfAugmentLessonStateMaxRecords = 10000
+)
+
 func SaveSelfAugmentLesson(req model.SelfAugmentLessonRequest, deps Deps) (model.SelfAugmentLessonResult, error) {
 	root := "."
 	if deps.HarnessRoot != nil {
@@ -65,7 +71,7 @@ func SaveSelfAugmentLesson(req model.SelfAugmentLessonRequest, deps Deps) (model
 	if key == "" {
 		// Nanosecond suffix: second-granularity keys collide when lessons are
 		// recorded back-to-back in one loop, silently dropping earlier lessons.
-		key = fmt.Sprintf("self-augment-lesson-%s-%s-%09d", StateKeySlug(candidateID), now.Format("20060102T150405Z"), now.Nanosecond())
+		key = fmt.Sprintf("%s%s-%s-%09d", selfAugmentLessonStateKeyPrefix, StateKeySlug(candidateID), now.Format("20060102T150405Z"), now.Nanosecond())
 	}
 	snapshot := model.SelfAugmentLessonStateSnapshot{
 		SchemaVersion: 1,
@@ -100,6 +106,7 @@ func SaveSelfAugmentLesson(req model.SelfAugmentLessonRequest, deps Deps) (model
 		Path:     state.Path,
 		Bytes:    state.Record.Bytes,
 	}
+	_, _ = core.StatePrunePrefix(selfAugmentLessonStateKeyPrefix, selfAugmentLessonStateMaxAge, selfAugmentLessonStateMaxRecords, true)
 	return result, nil
 }
 

@@ -3,7 +3,9 @@ package externalllm
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 func withUsageFakeZAI(t *testing.T, body string) {
@@ -58,6 +60,27 @@ func TestRunExternalLLMPrintParsesUsageAndNotifiesRecorder(t *testing.T) {
 	}
 }
 
+func TestRunZAIUsageObservationUsesRequestProvider(t *testing.T) {
+	withUsageFakeZAI(t, `{"choices":[{"message":{"content":"{\"ok\":true}"}}],"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}`)
+
+	var observed []ExternalLLMUsageObservation
+	previous := SetUsageRecorder(func(obs ExternalLLMUsageObservation) {
+		observed = append(observed, obs)
+	})
+	t.Cleanup(func() { SetUsageRecorder(previous) })
+
+	_, err := runZAI(ExternalLLMPrintRequest{Provider: "zai-coding-plan", Prompt: "measure provider"}, time.Second)
+	if err != nil {
+		t.Fatalf("runZAI: %v", err)
+	}
+	if len(observed) != 1 {
+		t.Fatalf("recorder observations = %d, want exactly 1", len(observed))
+	}
+	if observed[0].Provider != "zai-coding-plan" {
+		t.Fatalf("observation provider = %q, want request provider", observed[0].Provider)
+	}
+}
+
 func TestRunExternalLLMPrintWithoutRecorderStillSucceeds(t *testing.T) {
 	withUsageFakeZAI(t, `{"choices":[{"message":{"content":"{\"ok\":true}"}}]}`)
 
@@ -70,5 +93,71 @@ func TestRunExternalLLMPrintWithoutRecorderStillSucceeds(t *testing.T) {
 	}
 	if result.Usage != nil {
 		t.Errorf("usage = %+v, want nil when the response has no usage block", result.Usage)
+	}
+}
+
+func TestRunExternalLLMPrintNotifiesRecorderOnHTTPFailure(t *testing.T) {
+	t.Setenv("Z_AI_API_KEY", "test-key")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":{"message":"rate limited"}}`))
+	}))
+	t.Cleanup(server.Close)
+	previousURL := SetBaseURL(server.URL)
+	t.Cleanup(func() { SetBaseURL(previousURL) })
+
+	var observed []ExternalLLMUsageObservation
+	previousRecorder := SetUsageRecorder(func(obs ExternalLLMUsageObservation) {
+		observed = append(observed, obs)
+	})
+	t.Cleanup(func() { SetUsageRecorder(previousRecorder) })
+
+	_, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Prompt: "measure failed call"})
+	if err == nil || !strings.Contains(err.Error(), "HTTP 429") {
+		t.Fatalf("expected HTTP failure, got %v", err)
+	}
+	if len(observed) != 1 {
+		t.Fatalf("recorder observations = %d, want exactly 1", len(observed))
+	}
+	obs := observed[0]
+	if obs.OK {
+		t.Fatal("failed HTTP call observation must set OK=false")
+	}
+	if obs.Provider != "zai" || obs.Model != DefaultModel() {
+		t.Fatalf("observation provider/model = %q/%q, want zai/%s", obs.Provider, obs.Model, DefaultModel())
+	}
+	if obs.DurationMS < 0 {
+		t.Fatalf("duration_ms = %d, want >= 0", obs.DurationMS)
+	}
+	if obs.Usage != nil {
+		t.Fatalf("HTTP failure usage = %+v, want nil when no usage block is parsed", obs.Usage)
+	}
+}
+
+func TestRunExternalLLMPrintNotifiesRecorderOnAPIErrorWithUsage(t *testing.T) {
+	withUsageFakeZAI(t, `{"error":{"message":"provider refused","code":"rate_limit"},"usage":{"prompt_tokens":11,"completion_tokens":0,"total_tokens":11}}`)
+
+	var observed []ExternalLLMUsageObservation
+	previous := SetUsageRecorder(func(obs ExternalLLMUsageObservation) {
+		observed = append(observed, obs)
+	})
+	t.Cleanup(func() { SetUsageRecorder(previous) })
+
+	_, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Prompt: "measure api error"})
+	if err == nil || !strings.Contains(err.Error(), "provider refused") {
+		t.Fatalf("expected API error, got %v", err)
+	}
+	if len(observed) != 1 {
+		t.Fatalf("recorder observations = %d, want exactly 1", len(observed))
+	}
+	obs := observed[0]
+	if obs.OK {
+		t.Fatal("failed API call observation must set OK=false")
+	}
+	if obs.Usage == nil || obs.Usage.TotalTokens != 11 {
+		t.Fatalf("observation usage = %+v, want total 11", obs.Usage)
+	}
+	if obs.DurationMS < 0 {
+		t.Fatalf("duration_ms = %d, want >= 0", obs.DurationMS)
 	}
 }

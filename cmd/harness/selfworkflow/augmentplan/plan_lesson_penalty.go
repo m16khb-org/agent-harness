@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"agent-harness/cmd/harness/selfworkflow/augmentcatalog"
 	"agent-harness/cmd/harness/selfworkflow/model"
@@ -17,6 +18,7 @@ const (
 	// the next best option, but they never auto-fail or remove the candidate.
 	lessonPenaltyThreshold = 2
 	lessonPenaltyPerSevere = 15.0
+	recentLessonWindow     = 30 * 24 * time.Hour
 )
 
 func severeLessonSeverity(severity string) bool {
@@ -30,6 +32,10 @@ func severeLessonSeverity(severity string) bool {
 }
 
 func severeLessonCounts() (map[string]int, []string) {
+	return severeLessonCountsAt(time.Now().UTC())
+}
+
+func severeLessonCountsAt(now time.Time) (map[string]int, []string) {
 	counts := map[string]int{}
 	list, err := core.StateList()
 	if err != nil {
@@ -53,9 +59,23 @@ func severeLessonCounts() (map[string]int, []string) {
 		if snapshot.CandidateID == "" || !severeLessonSeverity(snapshot.Severity) {
 			continue
 		}
+		if !recentLesson(snapshot.GeneratedAt, now) {
+			continue
+		}
 		counts[snapshot.CandidateID]++
 	}
 	return counts, nil
+}
+
+func recentLesson(generatedAt string, now time.Time) bool {
+	t, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(generatedAt))
+	if err != nil {
+		return false
+	}
+	if t.After(now) {
+		return true
+	}
+	return now.Sub(t) <= recentLessonWindow
 }
 
 func applyLessonPenalties(candidates []model.SelfAugmentCandidate, severeCounts map[string]int) []string {
