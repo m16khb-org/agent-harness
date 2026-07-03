@@ -1026,6 +1026,13 @@
           "status": "evidence"
         }
       },
+      "regress_events": [
+        {
+          "at": "$TIMESTAMP",
+          "from_phase": "plan",
+          "reason": "brooks stop: scope too broad for one cycle"
+        }
+      ],
       "repo": "$WORKSPACE",
       "schema_version": 1,
       "updated_at": "$TIMESTAMP",
@@ -1360,6 +1367,13 @@
           "status": "evidence"
         }
       },
+      "regress_events": [
+        {
+          "at": "$TIMESTAMP",
+          "from_phase": "plan",
+          "reason": "brooks stop: scope too broad for one cycle"
+        }
+      ],
       "repo": "$WORKSPACE",
       "schema_version": 1,
       "updated_at": "$TIMESTAMP",
@@ -1722,6 +1736,13 @@
           "status": "evidence"
         }
       },
+      "regress_events": [
+        {
+          "at": "$TIMESTAMP",
+          "from_phase": "plan",
+          "reason": "brooks stop: scope too broad for one cycle"
+        }
+      ],
       "repo": "$WORKSPACE",
       "schema_version": 1,
       "updated_at": "$TIMESTAMP",
@@ -1932,6 +1953,13 @@
           "status": "evidence"
         }
       },
+      "regress_events": [
+        {
+          "at": "$TIMESTAMP",
+          "from_phase": "plan",
+          "reason": "brooks stop: scope too broad for one cycle"
+        }
+      ],
       "repo": "$WORKSPACE",
       "schema_version": 1,
       "updated_at": "$TIMESTAMP",
@@ -3134,6 +3162,13 @@
           "status": "evidence"
         }
       },
+      "regress_events": [
+        {
+          "at": "$TIMESTAMP",
+          "from_phase": "plan",
+          "reason": "brooks stop: scope too broad for one cycle"
+        }
+      ],
       "repo": "$WORKSPACE",
       "schema_version": 1,
       "updated_at": "$TIMESTAMP",
@@ -3470,6 +3505,13 @@
           "status": "evidence"
         }
       },
+      "regress_events": [
+        {
+          "at": "$TIMESTAMP",
+          "from_phase": "plan",
+          "reason": "brooks stop: scope too broad for one cycle"
+        }
+      ],
       "repo": "$WORKSPACE",
       "schema_version": 1,
       "updated_at": "$TIMESTAMP",
