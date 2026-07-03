@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"agent-harness/internal/core/lifecycle/model"
+	corestate "agent-harness/internal/core/state"
 )
 
 func TestAppendWritesJSONL(t *testing.T) {
@@ -88,6 +90,76 @@ func TestReadPendingFiltersLimitsAndSkipsMalformedLines(t *testing.T) {
 	}
 	if len(events) != 2 || events[0].ID != "blank-status" || events[1].ID != "pending-2" {
 		t.Fatalf("events=%+v, want last two pending/blank-status events", events)
+	}
+}
+
+func TestReadPendingCompactsQueueToPendingEvents(t *testing.T) {
+	plan := docUpkeepPlanForTest(t)
+	lines := []string{
+		`{"id":"done","kind":"docs","summary":"done","status":"done"}`,
+		`not-json`,
+		`{"id":"pending-1","kind":"docs","summary":"pending one","status":"pending"}`,
+		`{"id":"resolved","kind":"docs","summary":"resolved","status":"resolved"}`,
+		`{"id":"blank-status","kind":"docs","summary":"blank status"}`,
+	}
+	if err := os.MkdirAll(plan.ProjectStateDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(plan.QueuePath, []byte(joinLines(lines...)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store := Store{Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return plan, nil }}
+
+	events, _, err := ReadPending(store, plan.RepoRoot, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("events=%+v, want two pending events", events)
+	}
+	raw, err := os.ReadFile(plan.QueuePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "done") || strings.Contains(string(raw), "resolved") || strings.Contains(string(raw), "not-json") {
+		t.Fatalf("queue should compact away resolved and malformed records:\n%s", raw)
+	}
+	if !strings.Contains(string(raw), `"id":"pending-1"`) || !strings.Contains(string(raw), `"id":"blank-status"`) {
+		t.Fatalf("queue should preserve pending records:\n%s", raw)
+	}
+}
+
+func TestAppendWaitsForDocUpkeepLock(t *testing.T) {
+	plan := docUpkeepPlanForTest(t)
+	store := Store{
+		Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return plan, nil },
+		Init:     func(string, bool) (model.ProjectLifecycleStatePlan, error) { return plan, nil },
+	}
+
+	started := make(chan struct{})
+	done := make(chan error, 1)
+	if err := corestate.WithKeyLock(plan.ProjectStateDir, "doc-upkeep", func() error {
+		go func() {
+			close(started)
+			_, err := Append(store, plan.RepoRoot, model.DocUpkeepEvent{
+				Kind:    "operation_change",
+				Summary: "Hook behavior changed.",
+				Source:  "test",
+			})
+			done <- err
+		}()
+		<-started
+		select {
+		case err := <-done:
+			t.Fatalf("append should wait for doc-upkeep lock, returned early with %v", err)
+		case <-time.After(50 * time.Millisecond):
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("append after lock release: %v", err)
 	}
 }
 

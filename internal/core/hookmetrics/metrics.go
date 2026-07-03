@@ -16,7 +16,12 @@ import (
 	corestate "agent-harness/internal/core/state"
 )
 
-const hookMetricsLogFile = "hook-metrics.jsonl"
+const (
+	hookMetricsLogFile        = "hook-metrics.jsonl"
+	defaultHookMetricsEntries = 10000
+	defaultHookMetricsBytes   = 1 << 20
+	defaultStaleTempAge       = time.Hour
+)
 
 type HookMetricEvent struct {
 	Timestamp  string `json:"timestamp,omitempty"`
@@ -59,10 +64,17 @@ type HookMetricsStats struct {
 }
 
 type HookMetricsPruneResult struct {
-	OK     bool   `json:"ok"`
-	Path   string `json:"path"`
-	Pruned int    `json:"pruned"`
-	Kept   int    `json:"kept"`
+	OK               bool   `json:"ok"`
+	Path             string `json:"path"`
+	Pruned           int    `json:"pruned"`
+	Kept             int    `json:"kept"`
+	StaleTempRemoved int    `json:"stale_temp_removed,omitempty"`
+}
+
+type hookMetricsPruneLimits struct {
+	MaxEntries   int
+	MaxBytes     int64
+	StaleTempAge time.Duration
 }
 
 func HookMetricsLogPath() string {
@@ -82,12 +94,15 @@ func RecordHookMetricEvent(event HookMetricEvent) (HookMetricRecordResult, error
 	if err != nil {
 		return result, err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
-	if err != nil {
-		return result, err
-	}
-	defer f.Close()
-	if _, err := f.Write(append(line, '\n')); err != nil {
+	if err := corestate.WithKeyLock(filepath.Dir(path), "hook-metrics", func() error {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		_, err = f.Write(append(line, '\n'))
+		return err
+	}); err != nil {
 		return result, err
 	}
 	result.OK = true
@@ -147,53 +162,129 @@ func SummarizeHookMetricsLog() (HookMetricsStats, error) {
 }
 
 func PruneHookMetricsLog(maxAge time.Duration) (HookMetricsPruneResult, error) {
+	return pruneHookMetricsLog(maxAge, hookMetricsPruneLimits{
+		MaxEntries:   defaultHookMetricsEntries,
+		MaxBytes:     defaultHookMetricsBytes,
+		StaleTempAge: defaultStaleTempAge,
+	})
+}
+
+func pruneHookMetricsLog(maxAge time.Duration, limits hookMetricsPruneLimits) (HookMetricsPruneResult, error) {
 	path := HookMetricsLogPath()
 	result := HookMetricsPruneResult{OK: false, Path: path}
+	err := corestate.WithKeyLock(filepath.Dir(path), "hook-metrics", func() error {
+		if removed, err := sweepStaleHookMetricTemps(filepath.Dir(path), limits.StaleTempAge); err != nil {
+			return err
+		} else {
+			result.StaleTempRemoved = removed
+		}
 
-	events, err := readHookMetricEvents(path)
-	if os.IsNotExist(err) {
+		events, err := readHookMetricEvents(path)
+		if os.IsNotExist(err) {
+			result.OK = true
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		cutoff := time.Now().UTC().Add(-maxAge)
+		kept := make([]HookMetricEvent, 0, len(events))
+		for _, event := range events {
+			ts, err := time.Parse(time.RFC3339Nano, event.Timestamp)
+			if err == nil && ts.Before(cutoff) {
+				result.Pruned++
+				continue
+			}
+			kept = append(kept, event)
+		}
+		bounded, boundedPruned, err := boundHookMetricEvents(kept, limits)
+		if err != nil {
+			return err
+		}
+		kept = bounded
+		result.Pruned += boundedPruned
+		tmp, err := os.CreateTemp(filepath.Dir(path), "."+hookMetricsLogFile+"-*.tmp")
+		if err != nil {
+			return err
+		}
+		tmpName := tmp.Name()
+		defer os.Remove(tmpName)
+		for _, event := range kept {
+			line, err := json.Marshal(event)
+			if err != nil {
+				_ = tmp.Close()
+				return err
+			}
+			if _, err := tmp.Write(append(line, '\n')); err != nil {
+				_ = tmp.Close()
+				return err
+			}
+		}
+		if err := tmp.Close(); err != nil {
+			return err
+		}
+		if err := os.Rename(tmpName, path); err != nil {
+			return err
+		}
 		result.OK = true
-		return result, nil
+		result.Kept = len(kept)
+		return nil
+	})
+	return result, err
+}
+
+func sweepStaleHookMetricTemps(dir string, staleAfter time.Duration) (int, error) {
+	if staleAfter <= 0 {
+		return 0, nil
 	}
+	matches, err := filepath.Glob(filepath.Join(dir, "."+hookMetricsLogFile+"-*.tmp"))
 	if err != nil {
-		return result, err
+		return 0, err
 	}
-	cutoff := time.Now().UTC().Add(-maxAge)
-	kept := make([]HookMetricEvent, 0, len(events))
-	for _, event := range events {
-		ts, err := time.Parse(time.RFC3339Nano, event.Timestamp)
-		if err == nil && ts.Before(cutoff) {
-			result.Pruned++
+	now := time.Now()
+	removed := 0
+	for _, path := range matches {
+		info, err := os.Stat(path)
+		if os.IsNotExist(err) {
 			continue
 		}
-		kept = append(kept, event)
-	}
-	tmp, err := os.CreateTemp(filepath.Dir(path), "."+hookMetricsLogFile+"-*.tmp")
-	if err != nil {
-		return result, err
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
-	for _, event := range kept {
-		line, err := json.Marshal(event)
 		if err != nil {
-			_ = tmp.Close()
-			return result, err
+			return removed, err
 		}
-		if _, err := tmp.Write(append(line, '\n')); err != nil {
-			_ = tmp.Close()
-			return result, err
+		if now.Sub(info.ModTime()) < staleAfter {
+			continue
 		}
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return removed, err
+		}
+		removed++
 	}
-	if err := tmp.Close(); err != nil {
-		return result, err
+	return removed, nil
+}
+
+func boundHookMetricEvents(events []HookMetricEvent, limits hookMetricsPruneLimits) ([]HookMetricEvent, int, error) {
+	original := len(events)
+	if limits.MaxEntries > 0 && len(events) > limits.MaxEntries {
+		events = events[len(events)-limits.MaxEntries:]
 	}
-	if err := os.Rename(tmpName, path); err != nil {
-		return result, err
+	if limits.MaxBytes > 0 && len(events) > 0 {
+		total := int64(0)
+		start := len(events)
+		for i := len(events) - 1; i >= 0; i-- {
+			line, err := json.Marshal(events[i])
+			if err != nil {
+				return nil, 0, err
+			}
+			lineBytes := int64(len(line) + 1)
+			if total+lineBytes > limits.MaxBytes && start < len(events) {
+				break
+			}
+			total += lineBytes
+			start = i
+		}
+		events = events[start:]
 	}
-	result.OK = true
-	result.Kept = len(kept)
-	return result, nil
+	return events, original - len(events), nil
 }
 
 func readHookMetricEvents(path string) ([]HookMetricEvent, error) {

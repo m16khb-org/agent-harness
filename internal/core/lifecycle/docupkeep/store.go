@@ -14,6 +14,7 @@ import (
 
 	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/projectdoc"
+	corestate "agent-harness/internal/core/state"
 )
 
 type Store struct {
@@ -55,16 +56,19 @@ func Append(store Store, repoRoot string, event model.DocUpkeepEvent) (model.Doc
 	if err := os.MkdirAll(plan.ProjectStateDir, 0o700); err != nil {
 		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
 	}
-	f, err := os.OpenFile(plan.QueuePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
-	if err != nil {
-		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
-	}
-	defer f.Close()
 	b, err := json.Marshal(event)
 	if err != nil {
 		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
 	}
-	if _, err := f.Write(append(b, '\n')); err != nil {
+	if err := corestate.WithKeyLock(plan.ProjectStateDir, "doc-upkeep", func() error {
+		f, err := os.OpenFile(plan.QueuePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		_, err = f.Write(append(b, '\n'))
+		return err
+	}); err != nil {
 		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
 	}
 	return model.DocUpkeepAppendResult{OK: true, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath, Event: event}, nil
@@ -75,26 +79,40 @@ func ReadPending(store Store, repoRoot string, limit int) ([]model.DocUpkeepEven
 	if err != nil || !plan.Exists || !plan.NamespaceValid {
 		return []model.DocUpkeepEvent{}, plan, err
 	}
-	f, err := os.Open(plan.QueuePath)
-	if os.IsNotExist(err) {
-		return []model.DocUpkeepEvent{}, plan, nil
-	}
-	if err != nil {
-		return []model.DocUpkeepEvent{}, plan, err
-	}
-	defer f.Close()
 	events := []model.DocUpkeepEvent{}
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		var event model.DocUpkeepEvent
-		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			continue
+	if err := corestate.WithKeyLock(plan.ProjectStateDir, "doc-upkeep", func() error {
+		f, err := os.Open(plan.QueuePath)
+		if os.IsNotExist(err) {
+			return nil
 		}
-		if event.Status == "" || event.Status == "pending" {
-			events = append(events, event)
+		if err != nil {
+			return err
 		}
-	}
-	if err := scanner.Err(); err != nil {
+		defer f.Close()
+		validCount := 0
+		malformedCount := 0
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			var event model.DocUpkeepEvent
+			if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
+				malformedCount++
+				continue
+			}
+			validCount++
+			if event.Status == "" || event.Status == "pending" {
+				events = append(events, event)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+		if malformedCount > 0 || validCount != len(events) {
+			if err := rewriteDocUpkeepQueue(plan.QueuePath, events); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return events, plan, err
 	}
 	if limit > 0 && len(events) > limit {
@@ -127,4 +145,28 @@ func NormalizeTargetDocs(docs []string) []string {
 func docUpkeepEventID(repoID string, event model.DocUpkeepEvent, at string) string {
 	sum := sha256.Sum256([]byte(repoID + "\x00" + event.Kind + "\x00" + event.Summary + "\x00" + strings.Join(event.TargetDocs, ",") + "\x00" + at))
 	return hex.EncodeToString(sum[:])[:24]
+}
+
+func rewriteDocUpkeepQueue(path string, events []model.DocUpkeepEvent) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	for _, event := range events {
+		line, err := json.Marshal(event)
+		if err != nil {
+			_ = tmp.Close()
+			return err
+		}
+		if _, err := tmp.Write(append(line, '\n')); err != nil {
+			_ = tmp.Close()
+			return err
+		}
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }

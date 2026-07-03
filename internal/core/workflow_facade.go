@@ -105,6 +105,10 @@ func ClearStopNextActionRelay(repoRoot string) StopNextActionRelayResult {
 	return lifecycle.ClearStopNextActionRelay(repoRoot)
 }
 
+func ClearStopNextActionRelayIfPresent(repoRoot string) StopNextActionRelayResult {
+	return lifecycle.ClearStopNextActionRelayIfPresent(repoRoot)
+}
+
 func projectProfilesToLifecycle(profiles []ProjectProfile) []projectdocs.ProjectProfile {
 	out := make([]projectdocs.ProjectProfile, 0, len(profiles))
 	for _, profile := range profiles {
