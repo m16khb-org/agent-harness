@@ -54,3 +54,5 @@ flowchart LR
 ## 피드백 기록
 
 사용자 피드백과 요구사항 변경 이력을 적어 주세요.
+
+/label ~"enhancement"

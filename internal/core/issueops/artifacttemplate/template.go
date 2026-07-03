@@ -204,6 +204,11 @@ var prFieldAliases = map[string]string{
 	"risks":         "risk_rollback",
 	"rollback":      "risk_rollback",
 	"scope":         "scope_management",
+	"type":          "change_type",
+	"breaking":      "breaking_changes",
+	"breakage":      "breaking_changes",
+	"change_kind":   "change_type",
+	"change_type":   "change_type",
 }
 
 func renderBody(input IssueOpsTemplateInput) string {
@@ -222,10 +227,12 @@ func renderBody(input IssueOpsTemplateInput) string {
 		return renderSections([]section{
 			{"의도", field(input, "intent")},
 			{"이슈", field(input, "issue")},
+			{"변경 유형", field(input, "change_type")},
 			{"변경 사항", field(input, "changes")},
 			{"검증", field(input, "verification")},
 			{"리뷰어 초점", field(input, "reviewer_focus")},
 			{"위험/rollback", field(input, "risk_rollback")},
+			{"Breaking Changes", field(input, "breaking_changes")},
 			{"사용자 영향/릴리즈 노트", field(input, "user_impact")},
 			{"문서/마이그레이션", field(input, "docs_migration")},
 			{"범위 관리", field(input, "scope_management")},
@@ -308,7 +315,7 @@ func requiredFields(input IssueOpsTemplateInput) []string {
 	case IssueOpsArtifactChild:
 		return []string{"parent_issue", "task_goal", "acceptance", "non_goals", "verification", "merge_condition", "cleanup"}
 	case IssueOpsArtifactPR:
-		return []string{"intent", "issue", "changes", "verification", "reviewer_focus", "risk_rollback", "user_impact", "docs_migration", "scope_management", "worktree_cleanup", "automation_evidence"}
+		return []string{"intent", "issue", "change_type", "changes", "verification", "reviewer_focus", "risk_rollback", "breaking_changes", "user_impact", "docs_migration", "scope_management", "worktree_cleanup", "automation_evidence"}
 	default:
 		fields := []string{"problem", "current_evidence", "acceptance_criteria", "non_goals", "implementation_scope", "verification", "risks", "feedback_log"}
 		if input.Template == IssueOpsTemplateBug {
@@ -323,6 +330,18 @@ func fieldSatisfiedByBody(body, key string) bool {
 		return false
 	}
 	heading := map[string][]string{
+		"intent":               {"## 의도", "## Intent"},
+		"issue":                {"## 이슈", "## Issue", "## Related Issue"},
+		"change_type":          {"## 변경 유형", "## Type", "## Change Type"},
+		"changes":              {"## 변경 사항", "## 변경사항", "## 변경", "## Changes"},
+		"reviewer_focus":       {"## 리뷰어 초점", "## Reviewer Focus", "## Reviewer Notes"},
+		"risk_rollback":        {"## 위험/rollback", "## 위험", "## Risk", "## Risks", "## Rollback"},
+		"breaking_changes":     {"## Breaking Changes", "## 브레이킹 변경", "## 호환성 영향"},
+		"user_impact":          {"## 사용자 영향/릴리즈 노트", "## 사용자 영향", "## User Impact", "## Release Notes"},
+		"docs_migration":       {"## 문서/마이그레이션", "## Documentation", "## Migration"},
+		"scope_management":     {"## 범위 관리", "## Scope Management", "## Scope"},
+		"worktree_cleanup":     {"## 워크트리 정리", "## Worktree Cleanup", "## Cleanup"},
+		"automation_evidence":  {"## 자동화/AI 개입 근거", "## 자동화", "## Automation", "## AI Evidence"},
 		"problem":              {"## 문제", "## Problem"},
 		"current_evidence":     {"## 현재 근거", "## Current Evidence"},
 		"acceptance_criteria":  {"## 완료 기준", "## Acceptance Criteria"},

@@ -8,11 +8,16 @@ CLI / MCP / hook / skill / installer/bootstrap / docs / tests / other 중 해당
 
 ## 환경과 버전
 
+<details>
+<summary>환경과 버전</summary>
+
 OS, Go 버전, `agent-harness version`, 관련 host(Codex/Claude/GitLab/GitHub) 정보를 적어 주세요.
 
 ```text
 
 ```
+
+</details>
 
 ## 재현 절차
 
@@ -30,9 +35,14 @@ OS, Go 버전, `agent-harness version`, 관련 host(Codex/Claude/GitLab/GitHub) 
 
 실제 출력, 에러, 로그 요약을 적어 주세요. secret 원문은 제거하세요.
 
+<details>
+<summary>실제 출력, 에러, 로그</summary>
+
 ```text
 
 ```
+
+</details>
 
 ## 현재 근거
 
@@ -70,3 +80,5 @@ OS, Go 버전, `agent-harness version`, 관련 host(Codex/Claude/GitLab/GitHub) 
 ## 추가 정보
 
 관련 제약, 우회 방법, 스크린샷이 필요한 경우 설명을 적어 주세요.
+
+/label ~"bug"

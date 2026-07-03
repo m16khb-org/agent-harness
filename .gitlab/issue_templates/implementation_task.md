@@ -47,3 +47,5 @@
 ## 가이드라인 참조
 
 - docs/superpowers/specs/issueops-issue-pr-guidelines.md
+
+/label ~"enhancement"

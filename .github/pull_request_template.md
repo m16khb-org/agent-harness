@@ -6,6 +6,15 @@
 
 Closes #
 
+## 변경 유형
+
+- [ ] fix
+- [ ] feat
+- [ ] docs
+- [ ] refactor
+- [ ] chore
+- [ ] 기타:
+
 ## 변경 사항
 
 -
@@ -25,6 +34,11 @@ Closes #
 ## 위험/rollback
 
 남는 리스크, rollback 방법, follow-up 필요 여부를 적어 주세요.
+
+## Breaking Changes
+
+- [ ] 없음
+- [ ] 있음:
 
 ## 사용자 영향/릴리즈 노트
 

@@ -70,7 +70,9 @@ func TestRenderTemplateAcceptsCanonicalFieldAliases(t *testing.T) {
 			"changes":        "core renderer와 CLI/MCP를 추가한다.",
 			"verification":   "go test ./...",
 			"reviewer_focus": "template validation boundary",
+			"type":           "- [x] fix",
 			"risks":          "기능 flag 없이 dry-run 기본 유지",
+			"breaking":       "- [x] 없음",
 			"user_impact":    "원격 artifact 품질 일관성 개선",
 			"documentation":  "IssueOps 문서 갱신",
 			"scope":          "provider adapter는 thin 유지",
@@ -81,7 +83,7 @@ func TestRenderTemplateAcceptsCanonicalFieldAliases(t *testing.T) {
 	if !pr.OK {
 		t.Fatalf("pr template should accept field aliases: %+v", pr)
 	}
-	for _, unexpected := range []string{"risk_rollback", "docs_migration", "scope_management", "worktree_cleanup", "automation_evidence"} {
+	for _, unexpected := range []string{"change_type", "risk_rollback", "breaking_changes", "docs_migration", "scope_management", "worktree_cleanup", "automation_evidence"} {
 		if contains(pr.MissingRequiredFields, unexpected) {
 			t.Fatalf("pr template still reported canonical field %q missing: %+v", unexpected, pr.MissingRequiredFields)
 		}
@@ -163,7 +165,9 @@ func TestRenderChildAndPRTemplatesIncludeContractSections(t *testing.T) {
 			"changes":             "core renderer와 CLI/MCP를 추가한다.",
 			"verification":        "go test ./...",
 			"reviewer_focus":      "template validation boundary",
+			"change_type":         "- [x] fix",
 			"risk_rollback":       "기능 flag 없이 dry-run 기본 유지",
+			"breaking_changes":    "- [x] 없음",
 			"user_impact":         "원격 artifact 품질 일관성 개선",
 			"docs_migration":      "IssueOps 문서 갱신",
 			"scope_management":    "provider adapter는 thin 유지",
@@ -178,13 +182,72 @@ func TestRenderChildAndPRTemplatesIncludeContractSections(t *testing.T) {
 		want []string
 	}{
 		{"child", child.Body, []string{"## 부모 이슈", "## 작업 목표", "## 부모 브랜치 병합 조건", "## child-only cleanup 규칙"}},
-		{"pr", pr.Body, []string{"## 의도", "## 이슈", "## 리뷰어 초점", "## 위험/rollback", "## 자동화/AI 개입 근거"}},
+		{"pr", pr.Body, []string{"## 의도", "## 이슈", "## 변경 유형", "## 리뷰어 초점", "## 위험/rollback", "## Breaking Changes", "## 자동화/AI 개입 근거"}},
 	} {
 		for _, want := range tc.want {
 			if !strings.Contains(tc.body, want) {
 				t.Fatalf("%s body missing %q:\n%s", tc.name, want, tc.body)
 			}
 		}
+	}
+}
+
+func TestPRTemplateRequiresTypeAndBreakingChanges(t *testing.T) {
+	result := Render(IssueOpsTemplateInput{
+		Kind:     IssueOpsArtifactPR,
+		Template: IssueOpsTemplatePullRequest,
+		Provider: "github",
+		Title:    "PR",
+		Fields: map[string]string{
+			"intent":              "원격 템플릿 계약을 고정한다.",
+			"issue":               "Closes #1",
+			"changes":             "core renderer와 CLI/MCP를 추가한다.",
+			"verification":        "go test ./...",
+			"reviewer_focus":      "template validation boundary",
+			"risk_rollback":       "기능 flag 없이 dry-run 기본 유지",
+			"user_impact":         "원격 artifact 품질 일관성 개선",
+			"docs_migration":      "IssueOps 문서 갱신",
+			"scope_management":    "provider adapter는 thin 유지",
+			"worktree_cleanup":    "cleanup status 확인",
+			"automation_evidence": "AI 생성 본문은 renderer 결과로 검증",
+		},
+	})
+
+	if result.OK {
+		t.Fatalf("PR template without type and breaking changes must not be OK: %+v", result)
+	}
+	for _, want := range []string{"change_type", "breaking_changes"} {
+		if !contains(result.MissingRequiredFields, want) {
+			t.Fatalf("missing required fields %v did not include %q", result.MissingRequiredFields, want)
+		}
+	}
+}
+
+func TestValidateAcceptsPRTypeAndBreakingChangesSectionsInBody(t *testing.T) {
+	validation := Validate(IssueOpsTemplateInput{
+		Kind:     IssueOpsArtifactPR,
+		Template: IssueOpsTemplatePullRequest,
+		Provider: "gitlab",
+		Title:    "MR",
+		Body: strings.Join([]string{
+			"## 의도\n\n원격 템플릿 계약을 고정한다.",
+			"## 이슈\n\nCloses #1",
+			"## 변경 유형\n\n- [x] fix",
+			"## 변경 사항\n\ncore renderer와 CLI/MCP를 추가한다.",
+			"## 검증\n\ngo test ./...",
+			"## 리뷰어 초점\n\ntemplate validation boundary",
+			"## 위험/rollback\n\n기능 flag 없이 dry-run 기본 유지",
+			"## Breaking Changes\n\n- [x] 없음",
+			"## 사용자 영향/릴리즈 노트\n\n원격 artifact 품질 일관성 개선",
+			"## 문서/마이그레이션\n\nIssueOps 문서 갱신",
+			"## 범위 관리\n\nprovider adapter는 thin 유지",
+			"## 워크트리 정리\n\ncleanup status 확인",
+			"## 자동화/AI 개입 근거\n\nAI 생성 본문은 renderer 결과로 검증",
+		}, "\n\n"),
+	})
+
+	if !validation.OK {
+		t.Fatalf("validation should accept complete PR body sections: %+v", validation)
 	}
 }
 

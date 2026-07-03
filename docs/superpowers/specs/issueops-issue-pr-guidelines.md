@@ -50,10 +50,12 @@ An IssueOps PR/MR draft should include:
 
 - 의도: 이 변경이 해결하는 문제.
 - 이슈 링크: 관련 issue URL 또는 `Closes/Fixes` 정책에 맞는 참조.
+- 변경 유형: fix/feat/docs/refactor/chore/기타 중 리뷰어가 변경 성격을 즉시 분류할 수 있는 선택.
 - 변경사항: 리뷰 가능한 단위의 변경 요약.
 - 검증: 실제 실행한 테스트, 빌드, 스모크 체크와 결과.
 - 리뷰어 초점: reviewer가 집중해야 할 계약, 경계, 회귀 위험.
 - 위험/rollback: reviewer가 집중해야 할 리스크, 남은 한계, 되돌림 방법.
+- Breaking Changes: 호환성 영향이 없는지, 있으면 어떤 계약이 깨지는지 이진으로 명시한다.
 - 사용자 영향/릴리즈 노트: 사용자에게 보이는 영향과 release-note 필요 여부.
 - 문서/마이그레이션: 문서, schema, 설정, migration 필요 여부.
 - 범위 관리: 관련 없는 수정이 섞이지 않았다는 근거 또는 분리 계획.
@@ -75,7 +77,7 @@ agent-harness issueops remote create-pr --id "$ISSUEOPS_ID" --template pull_requ
 
 `--body` and `--body-file` are mutually exclusive. When `--template` is used with an explicit body, the body is validated against the same canonical section policy. Confirmed remote writes fail closed on critical validation failures, missing label, missing assignee, Korean artifact failure, and PR/MR target branch mismatch.
 
-`--field` accepts canonical template keys and the aliases documented in `skills/issueops/references/remote-issue.md` (`goal`, `logs_output`, PR/MR `risks`, `documentation`, `scope`, `cleanup`, and `automation`).
+`--field` accepts canonical template keys and the aliases documented in `skills/issueops/references/remote-issue.md` (`goal`, `logs_output`, PR/MR `type`, `change_kind`, `risks`, `breaking`, `documentation`, `scope`, `cleanup`, and `automation`).
 
 ## Benchmark Quality Gate
 

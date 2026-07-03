@@ -25,3 +25,7 @@ child branch가 parent branch에 병합되기 전 필요한 검증과 리뷰 조
 ## child-only cleanup 규칙
 
 child 완료 후 닫을 artifact와 parent에 남길 후속 상태를 적어 주세요.
+
+<!-- #<parent>를 실제 부모 이슈 번호 또는 URL로 바꿔 저장하세요. -->
+/set_parent #<parent>
+/label ~"enhancement"

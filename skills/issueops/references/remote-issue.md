@@ -86,6 +86,8 @@ agent-harness issueops remote create-pr --id "$ISSUEOPS_ID" --template pull_requ
 | Any | `parent_merge` | `merge_condition` |
 | Bug issue | `logs_output` | `logs` |
 | PR/MR | `automation` | `automation_evidence` |
+| PR/MR | `breaking`, `breakage` | `breaking_changes` |
+| PR/MR | `type`, `change_kind` | `change_type` |
 | PR/MR | `cleanup` | `worktree_cleanup` |
 | PR/MR | `docs`, `document`, `documents`, `documentation` | `docs_migration` |
 | PR/MR | `risk`, `risks`, `rollback` | `risk_rollback` |
