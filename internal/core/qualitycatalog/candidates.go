@@ -7,6 +7,13 @@ import (
 
 const CandidateStatusOpen = "open"
 
+var resolvedCandidateIDs = map[string]bool{
+	"daemon-connection-limit":        true,
+	"worker-stuck-running-detection": true,
+	"state-write-locking":            true,
+	"draftwiki-stale-lock":           true,
+}
+
 // VerificationKind classifies how a candidate's change is verified externally,
 // making the tool-grounded vs documentary distinction EXPLICIT instead of
 // guessing it from free-text VerifyWith strings (which cannot reliably tell a
@@ -215,6 +222,9 @@ func Candidates() []Candidate {
 	specs := CandidateSpecs()
 	out := make([]Candidate, 0, len(specs))
 	for _, spec := range specs {
+		if resolvedCandidateIDs[spec.ID] {
+			continue
+		}
 		out = append(out, Candidate{
 			ID:          spec.ID,
 			Title:       spec.Title,

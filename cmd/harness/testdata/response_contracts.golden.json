@@ -570,7 +570,7 @@
       "warnings": []
     },
     "docs_index": {
-      "docs_count": 68,
+      "docs_count": 71,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -634,8 +634,11 @@
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
+        "$HARNESS_ROOT/.agent-harness/plans/harness-quality-performance-program-v3-measurement-audit.md",
+        "$HARNESS_ROOT/.agent-harness/plans/harness-quality-performance-program-v3.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+        "$HARNESS_ROOT/.agent-harness/plans/p3-doc-upkeep-pending-retention-policy.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
@@ -4043,71 +4046,6 @@
             "go test ./internal/core/issueops/linking -count=1",
             "go test -cover ./internal/core/issueops/linking"
           ]
-        },
-        {
-          "category": "audit-risk",
-          "evidence": [
-            "PROJECT_AUDIT D1 P1"
-          ],
-          "feasibility": 72,
-          "id": "daemon-connection-limit",
-          "impact": 90,
-          "risk": 26,
-          "score": 76.28,
-          "status": "open",
-          "title": "Add daemon connection limit protection",
-          "verify_with": [
-            "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
-          ]
-        },
-        {
-          "category": "audit-risk",
-          "evidence": [
-            "PROJECT_AUDIT W1 P1"
-          ],
-          "feasibility": 74,
-          "id": "worker-stuck-running-detection",
-          "impact": 88,
-          "risk": 24,
-          "score": 76.36,
-          "status": "open",
-          "title": "Detect worker jobs stuck running after process crash",
-          "verify_with": [
-            "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
-          ]
-        },
-        {
-          "category": "audit-risk",
-          "evidence": [
-            "PROJECT_AUDIT S1 P1"
-          ],
-          "feasibility": 76,
-          "id": "state-write-locking",
-          "impact": 91,
-          "risk": 28,
-          "score": 77.22,
-          "status": "open",
-          "title": "Add write locking around state file updates",
-          "verify_with": [
-            "go test ./internal/core/state -count=1",
-            "go test -race ./internal/core/state -count=1"
-          ]
-        },
-        {
-          "category": "audit-risk",
-          "evidence": [
-            "PROJECT_AUDIT Q1 P1"
-          ],
-          "feasibility": 78,
-          "id": "draftwiki-stale-lock",
-          "impact": 86,
-          "risk": 22,
-          "score": 76.24,
-          "status": "open",
-          "title": "Detect and recover stale draft-wiki locks",
-          "verify_with": [
-            "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
-          ]
         }
       ],
       "generated_at": "$TIMESTAMP",
@@ -4185,7 +4123,7 @@
       "summary": {
         "audit_p1_p2_items": 0,
         "branch_candidate_functions": 0,
-        "candidate_count": 10,
+        "candidate_count": 6,
         "high_branch_functions": 0,
         "low_coverage_packages": 1,
         "self_augment_open_candidates": 10,
@@ -5105,7 +5043,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 68,
+        "docs_indexed": 71,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6895,7 +6833,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 68,
+            "docs_count": 71,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -6966,8 +6904,11 @@
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-performance-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-improvement-program.md",
+              "$HARNESS_ROOT/.agent-harness/plans/harness-quality-performance-program-v3-measurement-audit.md",
+              "$HARNESS_ROOT/.agent-harness/plans/harness-quality-performance-program-v3.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+              "$HARNESS_ROOT/.agent-harness/plans/p3-doc-upkeep-pending-retention-policy.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
@@ -10046,7 +9987,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 68,
+              "docs_indexed": 71,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

@@ -58,6 +58,9 @@ jobs:
       - name: Test (catches golden drift + all unit/contract regressions)
         run: go test ./... -count=1
 
+      - name: Race test internal core
+        run: go test -race ./internal/core/... -count=1
+
       - name: Deterministic self-verify gate (seed-pinned, --judge none)
         run: |
           tmp_home="$(mktemp -d)"

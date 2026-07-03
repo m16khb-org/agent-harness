@@ -8,13 +8,20 @@ func TestCandidatesProjectSpecsIntoOpenCandidates(t *testing.T) {
 	if len(specs) < 10 {
 		t.Fatalf("expected at least 10 quality specs, got %d", len(specs))
 	}
-	if len(candidates) != len(specs) {
-		t.Fatalf("got %d candidates, want %d", len(candidates), len(specs))
+	if len(candidates) >= len(specs) {
+		t.Fatalf("resolved specs should not be projected as open candidates: got %d candidates from %d specs", len(candidates), len(specs))
 	}
-	for i, candidate := range candidates {
-		spec := specs[i]
+	specByID := map[string]CandidateSpec{}
+	for _, spec := range specs {
+		specByID[spec.ID] = spec
+	}
+	for _, candidate := range candidates {
+		spec, ok := specByID[candidate.ID]
+		if !ok {
+			t.Fatalf("candidate %q did not come from CandidateSpecs", candidate.ID)
+		}
 		if candidate.ID != spec.ID || candidate.Title != spec.Title || candidate.Category != spec.Category {
-			t.Fatalf("candidate %d did not preserve identity: %#v from %#v", i, candidate, spec)
+			t.Fatalf("candidate did not preserve identity: %#v from %#v", candidate, spec)
 		}
 		if candidate.Status != CandidateStatusOpen {
 			t.Fatalf("candidate %s status = %q", candidate.ID, candidate.Status)
@@ -26,8 +33,22 @@ func TestCandidatesProjectSpecsIntoOpenCandidates(t *testing.T) {
 			t.Fatalf("candidate %s missing verification evidence", candidate.ID)
 		}
 		candidate.VerifyWith[0] = "mutated"
-		if specs[i].VerifyWith[0] == "mutated" {
+		if specByID[candidate.ID].VerifyWith[0] == "mutated" {
 			t.Fatal("candidate VerifyWith should be a defensive copy")
+		}
+	}
+}
+
+func TestCandidatesExcludeResolvedAuditDuplicates(t *testing.T) {
+	resolved := map[string]bool{
+		"daemon-connection-limit":        true,
+		"worker-stuck-running-detection": true,
+		"state-write-locking":            true,
+		"draftwiki-stale-lock":           true,
+	}
+	for _, candidate := range Candidates() {
+		if resolved[candidate.ID] {
+			t.Fatalf("resolved audit duplicate %q should not be returned as an open quality candidate", candidate.ID)
 		}
 	}
 }

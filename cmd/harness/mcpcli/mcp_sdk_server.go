@@ -137,19 +137,26 @@ func sdkResourceHandler() mcp.ResourceHandler {
 		if m, ok := result.(map[string]any); ok {
 			if contents, ok := m["contents"].([]any); ok && len(contents) > 0 {
 				if cm, ok := contents[0].(map[string]any); ok {
-					uri, _ := cm["uri"].(string)
-					mimeType, _ := cm["mimeType"].(string)
-					text, _ := cm["text"].(string)
-					return &mcp.ReadResourceResult{
-						Contents: []*mcp.ResourceContents{{URI: uri, MIMEType: mimeType, Text: text}},
-					}, nil
+					return sdkReadResourceResult(cm), nil
 				}
+			}
+			if contents, ok := m["contents"].([]map[string]any); ok && len(contents) > 0 {
+				return sdkReadResourceResult(contents[0]), nil
 			}
 		}
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return &mcp.ReadResourceResult{
 			Contents: []*mcp.ResourceContents{{URI: req.Params.URI, MIMEType: "application/json", Text: string(b)}},
 		}, nil
+	}
+}
+
+func sdkReadResourceResult(content map[string]any) *mcp.ReadResourceResult {
+	uri, _ := content["uri"].(string)
+	mimeType, _ := content["mimeType"].(string)
+	text, _ := content["text"].(string)
+	return &mcp.ReadResourceResult{
+		Contents: []*mcp.ResourceContents{{URI: uri, MIMEType: mimeType, Text: text}},
 	}
 }
 

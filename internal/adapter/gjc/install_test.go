@@ -91,3 +91,20 @@ func TestGJCInstallerFailsWhenHookShimSourceMissing(t *testing.T) {
 		t.Fatal("expected failure when hook shim source is missing")
 	}
 }
+
+func TestCanWriteToCreatesFreshGJCAgentDir(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), ".gjc", "agent")
+	if !canWriteTo(dir) {
+		t.Fatal("fresh GJC agent directory should be writable")
+	}
+	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+		t.Fatalf("expected fresh GJC agent directory to be created, info=%v err=%v", info, err)
+	}
+	matches, err := filepath.Glob(filepath.Join(dir, ".harness-write-test-*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("write probe left temp files behind: %v", matches)
+	}
+}

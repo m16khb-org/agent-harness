@@ -83,6 +83,27 @@ func TestRunBenchmarkJSONLoadsFixtureFile(t *testing.T) {
 	}
 }
 
+func TestLoadFixturesDirectorySkipsNonJSONAndSortsFiles(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "z.json"), []byte(`{"id":"z","status_code":200,"body":"ok","expected":["strong_ok"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a.json"), []byte(`{"id":"a","status_code":200,"body":"ok","expected":["strong_ok"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "notes.txt"), []byte(`{"id":"ignored"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	fixtures, err := loadFixtures(dir)
+	if err != nil {
+		t.Fatalf("loadFixtures returned error: %v", err)
+	}
+	if len(fixtures) != 2 || fixtures[0].ID != "a" || fixtures[1].ID != "z" {
+		t.Fatalf("fixtures not sorted or non-JSON not skipped: %#v", fixtures)
+	}
+}
+
 func TestRunBenchmarkLiveRequiresEnvironmentOptIn(t *testing.T) {
 	t.Setenv("HARNESS_WEBFETCH_LIVE", "")
 

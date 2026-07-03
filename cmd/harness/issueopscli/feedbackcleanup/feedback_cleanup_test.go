@@ -75,16 +75,26 @@ func TestRunCleanupStatusAndJSONError(t *testing.T) {
 func TestCleanupMergedAndCommandBoundaries(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := feedbackCleanupIssueOpsRecord(t)
+	verified := 0
 	deps := Deps{
-		ParseFlags:   parseFeedbackCleanupFlags,
-		PrintResult:  func(core.IssueOpsRecord, bool, error) error { return nil },
-		VerifyMerged: func(core.IssueOpsRemoteArtifactVerification) error { return nil },
+		ParseFlags:  parseFeedbackCleanupFlags,
+		PrintResult: func(core.IssueOpsRecord, bool, error) error { return nil },
+		VerifyMerged: func(core.IssueOpsRemoteArtifactVerification) error {
+			verified++
+			return nil
+		},
 	}
 	if CleanupMerged(record.ID, false, deps) {
 		t.Fatal("unrequested merge confirmation should be false")
 	}
+	if verified != 0 {
+		t.Fatalf("merge verifier should not run without --merged, ran %d times", verified)
+	}
 	if CleanupMerged("missing", true, deps) {
 		t.Fatal("missing record should not verify merged")
+	}
+	if verified != 0 {
+		t.Fatalf("merge verifier should not run for missing records, ran %d times", verified)
 	}
 	if err := RunFeedback(nil, deps); err != nil {
 		t.Fatalf("help feedback returned error: %v", err)

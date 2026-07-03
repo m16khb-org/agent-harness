@@ -23,6 +23,19 @@ func TestParseCoverageFindsPackagesBelowThreshold(t *testing.T) {
 	}
 }
 
+func TestParseCoverageSuppressesFacadeCorePackage(t *testing.T) {
+	output := "ok  \tagent-harness/internal/core\t0.011s\tcoverage: 55.4% of statements\n" +
+		"ok  \tagent-harness/internal/core/commandguard\t0.012s\tcoverage: 54.3% of statements\n"
+
+	got := parseCoveragePackages(output, 60)
+	if len(got) != 1 {
+		t.Fatalf("low coverage packages=%#v, want one non-facade package", got)
+	}
+	if got[0].Package != "agent-harness/internal/core/commandguard" {
+		t.Fatalf("facade package was not suppressed: %#v", got)
+	}
+}
+
 func TestRunRoutesQualityCommands(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -190,10 +203,13 @@ func branchy(v int) int {
 	if len(result.Signals) == 0 {
 		t.Fatalf("expected quality signals")
 	}
-	if len(result.Candidates) < 10 {
-		t.Fatalf("expected at least 10 quality candidates, got %d", len(result.Candidates))
+	if len(result.Candidates) == 0 {
+		t.Fatalf("expected quality candidates")
 	}
 	for _, candidate := range result.Candidates {
+		if candidate.ID == "daemon-connection-limit" || candidate.ID == "worker-stuck-running-detection" || candidate.ID == "state-write-locking" || candidate.ID == "draftwiki-stale-lock" {
+			t.Fatalf("resolved audit candidate should not be listed by quality inspect: %+v", candidate)
+		}
 		if candidate.ID == "" || candidate.Status == "" || len(candidate.VerifyWith) == 0 || len(candidate.Evidence) == 0 {
 			t.Fatalf("candidate missing required quality fields: %+v", candidate)
 		}
