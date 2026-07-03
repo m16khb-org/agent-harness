@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"agent-harness/cmd/harness/issueopscli/remoteparse"
+	"agent-harness/internal/adapter/provider/remoteparse"
 )
 
 var childIssueVerifier = VerifyChildIssueLive

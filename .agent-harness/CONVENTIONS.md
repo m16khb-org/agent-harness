@@ -60,6 +60,7 @@ skills/
 | `adapter/provider` | github/gitlab issue·PR/MR·child 생성/검증(gh·glab CLI) | `core`, `port`, os/exec | 정책 복제, root 밖 접근 |
 
 > Worker daemon/job lifecycle는 별도 adapter가 아니라 `internal/core/worker`(+`cmd/harness/daemoncli`)에 있다. filesystem/git/process는 전용 `adapter/fs` 없이 각 usecase가 `os/exec`로 직접 다룬다.
+> `cmd/harness`는 기본적으로 `internal/core` facade를 import한다. 예외는 cmd-local 품질/진단/fixture 도구가 subpackage 전용 메커니즘을 직접 검사하는 경우로 제한한다. `state`와 `issueops` lifecycle record 접근은 여러 command의 계약이므로 facade 경유를 유지하고, 내부 검사 helper를 숨기기 위한 새 one-line facade wrapper는 만들지 않는다.
 
 ---
 

@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/cmd/harness/issueopscli/remoteparse"
 	"agent-harness/internal/adapter/provider/issuebody"
+	"agent-harness/internal/adapter/provider/providerutil"
+	"agent-harness/internal/adapter/provider/remoteparse"
 	"agent-harness/internal/port"
 )
 
@@ -156,20 +157,20 @@ func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.Issu
 		return port.IssueProviderCreateChildResult{OK: false, Provider: "gitlab"}, gitlabCreatedChildError(childURL, err)
 	}
 	verifiedChild := verify.Data.WorkItem
-	childURL = firstNonEmpty(verifiedChild.WebURL, childURL)
+	childURL = providerutil.FirstNonEmpty(verifiedChild.WebURL, childURL)
 	labels := gitlabLabelTitles(verifiedChild.Labels.Nodes)
 	assignees := gitlabAssigneeUsernames(verifiedChild.Assignees.Nodes)
-	if missing := missingStrings(req.Labels, labels); len(missing) > 0 {
+	if missing := providerutil.MissingStrings(req.Labels, labels); len(missing) > 0 {
 		return port.IssueProviderCreateChildResult{OK: false, Provider: "gitlab"}, gitlabCreatedChildError(childURL, fmt.Errorf("gitlab child work item missing labels: %s", strings.Join(missing, ", ")))
 	}
-	if missing := missingStrings(req.Assignees, assignees); len(missing) > 0 {
+	if missing := providerutil.MissingStrings(req.Assignees, assignees); len(missing) > 0 {
 		return port.IssueProviderCreateChildResult{OK: false, Provider: "gitlab"}, gitlabCreatedChildError(childURL, fmt.Errorf("gitlab child work item missing assignees: %s", strings.Join(missing, ", ")))
 	}
 	return port.IssueProviderCreateChildResult{
 		OK:                true,
 		Provider:          "gitlab",
 		ChildURL:          childURL,
-		ChildNumber:       firstNonEmpty(verifiedChild.IID, child.IID),
+		ChildNumber:       providerutil.FirstNonEmpty(verifiedChild.IID, child.IID),
 		HierarchyVerified: true,
 		Labels:            labels,
 		Assignees:         assignees,
@@ -240,7 +241,7 @@ func (Provider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueP
 	return port.IssueProviderCloseChildResult{
 		OK:                true,
 		Provider:          "gitlab",
-		ChildURL:          firstNonEmpty(verified.WebURL, child.WebURL, req.ChildURL),
+		ChildURL:          providerutil.FirstNonEmpty(verified.WebURL, child.WebURL, req.ChildURL),
 		HierarchyVerified: true,
 		Closed:            true,
 		AlreadyClosed:     alreadyClosed,
@@ -684,31 +685,6 @@ func gitlabAssigneeUsernames(assignees []gitlabAssignee) []string {
 	return out
 }
 
-func missingStrings(want, got []string) []string {
-	gotSet := make(map[string]bool, len(got))
-	for _, value := range got {
-		gotSet[strings.TrimSpace(value)] = true
-	}
-	var missing []string
-	for _, value := range want {
-		value = strings.TrimSpace(value)
-		if value != "" && !gotSet[value] {
-			missing = append(missing, value)
-		}
-	}
-	return missing
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value != "" {
-			return value
-		}
-	}
-	return ""
-}
-
 func (Provider) UpdateIssueBodySection(req port.IssueProviderUpdateIssueBodySectionRequest) (port.IssueProviderUpdateIssueBodySectionResult, error) {
 	hostname, projectPath, iid, err := parseGitLabIssueURL(req.IssueURL)
 	if err != nil {
@@ -737,7 +713,7 @@ func (Provider) UpdateIssueBodySection(req port.IssueProviderUpdateIssueBodySect
 	if _, err := runGlabAPI(req.Repo, hostname, endpoint, "--method", "PUT", "-f", "description="+merged); err != nil {
 		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
 	}
-	return port.IssueProviderUpdateIssueBodySectionResult{OK: true, URL: firstNonEmpty(payload.WebURL, req.IssueURL), Updated: true}, nil
+	return port.IssueProviderUpdateIssueBodySectionResult{OK: true, URL: providerutil.FirstNonEmpty(payload.WebURL, req.IssueURL), Updated: true}, nil
 }
 
 // runGlabAPI runs a REST `glab api <endpoint> --hostname <host> [extra...]` call,

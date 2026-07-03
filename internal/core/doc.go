@@ -26,6 +26,14 @@
 // rather than bloated; do not "flatten" delegates into direct subpackage imports
 // from cmd/, which would couple cmd/ to core's internal structure.
 //
+// cmd/harness may import a core subpackage directly only for cmd-local tooling,
+// diagnostics, or tests whose subject is that subpackage-specific mechanism
+// rather than the stable harness domain API. State and IssueOps lifecycle access
+// stay behind the core facade because those records are cross-command contracts.
+// Do not add a facade wrapper just to hide an internal-only inspection helper;
+// either keep the direct import local to the tool or promote the behavior when a
+// real external caller needs it.
+//
 // What does NOT belong in a facade: new domain logic. If a facade function grows
 // beyond conversion/composition/enforcement, move the logic into the owning
 // subpackage and keep the facade thin.

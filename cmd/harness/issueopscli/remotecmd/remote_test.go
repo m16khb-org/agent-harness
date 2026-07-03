@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/issueops"
 )
 
 func TestRunScoreWithJudgeNoneAndErrorPaths(t *testing.T) {
@@ -269,8 +268,8 @@ func remoteIssueOpsRecord(t *testing.T) core.IssueOpsRecord {
 	if err != nil {
 		t.Fatalf("LinkIssueOpsChild: %v", err)
 	}
-	record.Phase = issueops.IssueOpsPhasePR
-	record, err = issueops.WriteIssueOps(core.IssueOpsStateRoot(), record)
+	record.Phase = core.IssueOpsPhasePR
+	record, err = core.WriteIssueOps(core.IssueOpsStateRoot(), record)
 	if err != nil {
 		t.Fatalf("WriteIssueOps: %v", err)
 	}

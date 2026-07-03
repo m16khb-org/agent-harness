@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/provider/issuebody"
+	"agent-harness/internal/adapter/provider/providerutil"
 	"agent-harness/internal/port"
 )
 
@@ -153,16 +154,16 @@ func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.Issu
 	}
 	labels := githubLabelNames(childIssue.Labels)
 	assignees := githubAssigneeLogins(childIssue.Assignees)
-	if missing := missingStrings(req.Labels, labels); len(missing) > 0 {
+	if missing := providerutil.MissingStrings(req.Labels, labels); len(missing) > 0 {
 		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, fmt.Errorf("github child issue missing labels: %s", strings.Join(missing, ", ")))
 	}
-	if missing := missingStrings(req.Assignees, assignees); len(missing) > 0 {
+	if missing := providerutil.MissingStrings(req.Assignees, assignees); len(missing) > 0 {
 		return port.IssueProviderCreateChildResult{OK: false, Provider: "github"}, githubCreatedChildError(childURL, fmt.Errorf("github child issue missing assignees: %s", strings.Join(missing, ", ")))
 	}
 	return port.IssueProviderCreateChildResult{
 		OK:                true,
 		Provider:          "github",
-		ChildURL:          firstNonEmpty(childIssue.HTMLURL, childURL),
+		ChildURL:          providerutil.FirstNonEmpty(childIssue.HTMLURL, childURL),
 		ChildNumber:       childNumber,
 		HierarchyVerified: true,
 		Labels:            labels,
@@ -211,7 +212,7 @@ func (Provider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueP
 	return port.IssueProviderCloseChildResult{
 		OK:                true,
 		Provider:          "github",
-		ChildURL:          firstNonEmpty(verified.HTMLURL, childIssue.HTMLURL, req.ChildURL),
+		ChildURL:          providerutil.FirstNonEmpty(verified.HTMLURL, childIssue.HTMLURL, req.ChildURL),
 		HierarchyVerified: true,
 		Closed:            true,
 		AlreadyClosed:     alreadyClosed,
@@ -351,31 +352,6 @@ func githubAssigneeLogins(assignees []githubAssignee) []string {
 		}
 	}
 	return out
-}
-
-func missingStrings(want, got []string) []string {
-	gotSet := make(map[string]bool, len(got))
-	for _, value := range got {
-		gotSet[strings.TrimSpace(value)] = true
-	}
-	var missing []string
-	for _, value := range want {
-		value = strings.TrimSpace(value)
-		if value != "" && !gotSet[value] {
-			missing = append(missing, value)
-		}
-	}
-	return missing
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value != "" {
-			return value
-		}
-	}
-	return ""
 }
 
 func (Provider) UpdateIssueBodySection(req port.IssueProviderUpdateIssueBodySectionRequest) (port.IssueProviderUpdateIssueBodySectionResult, error) {
