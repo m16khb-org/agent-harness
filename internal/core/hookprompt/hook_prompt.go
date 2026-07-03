@@ -6,9 +6,10 @@ import (
 )
 
 type HookUserPromptRequest struct {
-	Prompt         string `json:"prompt"`
-	Repo           string `json:"repo,omitempty"`
-	EnableLLMHints bool   `json:"enable_llm_hints,omitempty"`
+	Prompt               string `json:"prompt"`
+	Repo                 string `json:"repo,omitempty"`
+	EnableLLMHints       bool   `json:"enable_llm_hints,omitempty"`
+	DisableKarpathyFirst bool   `json:"disable_karpathy_first,omitempty"`
 }
 
 const (
@@ -51,6 +52,9 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		return result
 	}
 	karpathyFirst, cleaned := karpathyFirstDecision(prompt)
+	if req.DisableKarpathyFirst {
+		karpathyFirst = false
+	}
 	prompt = cleaned
 	if prompt == "" {
 		return result

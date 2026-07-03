@@ -19,6 +19,7 @@ func runHookUserPrompt(args []string) error {
 	hostFlag := fs.String("host", "", "hook host (codex or claude); controls user-visible compatibility fields")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	enableLLMHints := fs.Bool("enable-llm-hints", false, "suggest Z.AI glm-5-turbo for LLM second-pass review when the prompt fits")
+	disableKarpathyFirst := fs.Bool("disable-karpathy-first", false, "disable the karpathy-first prompt augmentation directive for this hook invocation")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -37,7 +38,12 @@ func runHookUserPrompt(args []string) error {
 	if hookprompt.IsExplicitNextActionInstruction(prompt) {
 		core.ClearStopNextActionRelay(repo)
 	}
-	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{Prompt: prompt, Repo: repo, EnableLLMHints: *enableLLMHints || hookenv.Bool("HARNESS_ENABLE_LLM_HINTS")})
+	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{
+		Prompt:               prompt,
+		Repo:                 repo,
+		EnableLLMHints:       *enableLLMHints || hookenv.Bool("HARNESS_ENABLE_LLM_HINTS"),
+		DisableKarpathyFirst: *disableKarpathyFirst || hookenv.Bool("HARNESS_DISABLE_KARPATHY_FIRST"),
+	})
 	if *jsonOut {
 		return printJSON(result)
 	}

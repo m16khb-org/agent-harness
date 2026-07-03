@@ -13,6 +13,8 @@
 >   `hook_prompt.go`(통합), `rules.go`(dispatch 키워드 확장),
 >   `cmd/harness/hookcli/hook_user_prompt.go`(systemMessage 방출),
 >   테스트 `karpathy_first_test.go` + CLI 가시성 테스트 2건.
+> - §6 kill switch 구현 완료: request field `DisableKarpathyFirst`,
+>   CLI `--disable-karpathy-first`, env `HARNESS_DISABLE_KARPATHY_FIRST`.
 > - hook-metrics 발동/제외 태깅(§3.5)은 이번 패스에서 **미구현** — dogfood 관찰은
 >   systemMessage 육안 확인으로 시작하고, 계측 필요성이 확인되면 후속 작업으로 추가.
 
@@ -137,7 +139,79 @@ dispatch 시 dispatch 프롬프트도 karpathy 하드닝. PreToolUse `updatedInp
 - 행동 검증(dogfood): 실제 세션에서 증강 프롬프트가 서두에 표기되고 그 기준으로 작업이
   진행되는지, 사소 프롬프트에서 "증강 불필요" 스킵이 작동하는지 관찰.
 
-## 6. 실행 순서
+## 6. 후속 피처 A — 세션/전역 kill switch (구현 완료)
+
+**목표**: dogfood 중 증강이 방해되면 revert/재빌드 없이 환경변수 하나로 기능을 끈다.
+프롬프트 단위 opt-out(`그대로:`)의 상위 스위치.
+
+**설계**: 기존 `HARNESS_ENABLE_LLM_HINTS` 패턴(`hook_user_prompt.go:40`,
+`hookenv.Bool`)을 그대로 복제한다. core는 env를 직접 읽지 않고 요청 필드로 받는다
+(테스트 용이성 + 기존 관례).
+
+| 변경 파일 | 내용 |
+|---|---|
+| `internal/core/hookprompt/hook_prompt.go` | `HookUserPromptRequest`에 `DisableKarpathyFirst bool` 추가; true면 발동 강제 해제(접두사 strip은 유지) |
+| `cmd/harness/hookcli/hook_user_prompt.go` | `--disable-karpathy-first` 플래그 + `hookenv.Bool("HARNESS_DISABLE_KARPATHY_FIRST")` OR 결합 |
+| 테스트 | core: 필드 true 시 지시/notice 미발동 + 라우팅 정상. CLI: `t.Setenv`로 env 켜고 systemMessage/지시 라인 부재 확인 |
+
+- **계약 영향**: 요청 필드 추가는 omitempty 없는 입력 계약이지만 request는 golden 대상
+  아님(response만 golden). 영향 없음 예상 — 구현 시 `go test ./cmd/harness/...`로 확인.
+- **검증 기준**: env 설정/해제 각각에서 실바이너리 출력 확인 + 패키지 테스트 green.
+- **구현 근거**: `go test ./internal/core/hookprompt ./cmd/harness/hookcli -count=1` green.
+- **규모/리스크**: ~30 LOC, Low. 롤백은 커밋 revert.
+
+## 7. 후속 피처 B — Phase 2: PreToolUse `updatedInput` dispatch 프롬프트 강제 하드닝 (착수 보류)
+
+**착수 조건(선행)**: dogfood에서 에이전트가 karpathy-first 지시를 무시하고 서브에이전트를
+날프롬프트로 dispatch하는 사례가 관찰될 것. 관찰 전 착수 금지(§6-4, YAGNI).
+
+2026-07-03 현재 repo 검색에서 관련 관찰 기록은 확인되지 않았다(`rg "날프롬프트|karpathy-first 지시를 무시|updatedInput|harden-subagent"` 결과가 이 계획 문서에만 한정). 따라서 아래 구현 계획은 유지하되 착수하지 않는다.
+
+**목표**: `Task`/`Agent` tool 호출의 `prompt` 파라미터를 PreToolUse에서 결정적으로
+하드닝해 치환한다(진짜 "바꿔서 들어가게"가 가능한 유일한 지점). LLM 호출 없음 —
+PreToolUse는 매 tool 호출 크리티컬 패스이므로(`hook_pre_tool_use.go:69-71` 주석)
+결정적 문자열 연산만 허용.
+
+**단계별 변경**:
+
+1. **입력 파싱** — `hookinput`에 `SubagentPromptFromHookInput` 추가: `tool_name`이
+   `Task`/`Agent`일 때 `tool_input.prompt`(string)와 **전체 tool_input 맵**을 반환.
+   updatedInput은 부분 패치가 아니라 수정된 입력 전체를 담아야 하므로 원본 맵 보존 필수.
+2. **하드닝 함수** — `internal/core/hookprompt/karpathy_dispatch.go`:
+   `HardenSubagentPrompt(prompt) (string, bool)`. 컴팩트 계약 헤더(입출력 계약·제약
+   상단·포맷 하단 지시)를 프리펜드. **멱등성 마커**(헤더 첫 줄 고정 문자열) 존재 시
+   무변경 반환 — 재시도/중첩 하드닝 방지.
+3. **결과 계약** — `model/types.go`의 `HookPreToolUseDecisionResult`에
+   `UpdatedInput map[string]any \`json:"updated_input,omitempty"\`` 추가.
+   ⚠️ `response_contracts.golden.json` 갱신 필요 — TESTING.md §4에 따라 **의도적 계약
+   변경임을 커밋 메시지에 명시**하고 diff를 사람이 리뷰.
+4. **어댑터** — `HostHookOutput`에 `FormatUpdatedInput(updatedInput map[string]any)`
+   추가. Claude/Reasonix: `hookSpecificOutput{hookEventName, updatedInput}`.
+   Codex: updatedInput 채널이 없으므로 Noop(기능은 Claude 계열 전용, 주석 명문화).
+   인터페이스 확장이라 어댑터 3종 + 테스트 동시 수정.
+5. **CLI** — `--harden-subagent-prompts` 플래그(기본 OFF, 기존 enforce-* 패턴).
+   decision이 allow이고 하드닝이 변경을 만든 경우에만 updatedInput 방출, 아니면 Noop.
+6. **감사 가시성** — 치환은 사용자에게 보이지 않으므로 발동 시 systemMessage 한 줄
+   (`🧪 dispatch 프롬프트 하드닝 적용`) + hook-metrics 이벤트(kind=subagent_prompt_hardened,
+   전문이 아닌 before/after 길이·해시만 기록 — 무한성장 방지, c88f472의 bounded 로그 원칙).
+7. **사전 검증 스파이크(구현 첫 단계)** — Claude Code가 실제로
+   `hookSpecificOutput.updatedInput`을 적용하는지 최소 훅으로 실증(무해한 필드 에코 치환).
+   호스트 버전에 따라 미지원이면 전체 계획 중단하고 advisory 유지 — 이 스파이크가
+   게이트다.
+
+**테스트**: hookinput 파싱(Task/Agent/기타 tool/입력 없음), 하드닝 멱등성·마커 보존,
+CLI updatedInput 페이로드 형태(claude)·Noop(codex/플래그 OFF), golden 갱신 diff 리뷰,
+`hook pre-tool-use` p50 전/후 재측정(크리티컬 패스 무회귀 필수).
+
+**규모/리스크**: ~250 LOC + golden 1건. 리스크: (a) updatedInput 호스트 지원 여부 —
+스파이크로 게이트, (b) 이중 하드닝 — 멱등성 마커로 차단, (c) Codex 비대칭 — 명문화로
+수용. 롤백은 플래그 OFF(기본값)로 즉시, 코드 제거는 revert.
+
+**실행 순서**: 7(스파이크 게이트) → 1·2(파싱+하드닝, 병행 가능) → 3(계약+golden) →
+4·5(어댑터+CLI) → 6(감사) → 테스트/측정 → 플래그 OFF로 커밋 → dogfood 레포에서만
+플래그 ON.
+
+## 8. 실행 순서 (전체)
 
 1. 3.1 지시 블록 + 3.2 발동 정책 구현 (rules 또는 hook_prompt.go 증강 단계) + 테스트.
 2. p50 전/후 측정으로 훅 지연 무회귀 확인.

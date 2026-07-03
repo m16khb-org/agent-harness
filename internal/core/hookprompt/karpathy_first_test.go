@@ -72,6 +72,25 @@ func TestKarpathyFirstOptOutPrefixSkipsButKeepsRouting(t *testing.T) {
 	}
 }
 
+func TestKarpathyFirstDisableSwitchSkipsButKeepsRouting(t *testing.T) {
+	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{
+		Prompt:               "변경사항 커밋하고 푸시해줘",
+		DisableKarpathyFirst: true,
+	})
+	if got.KarpathyFirst || got.UserNotice != "" || strings.Contains(got.AdditionalContext, "karpathy-first") {
+		t.Fatalf("disable switch must skip karpathy-first: %+v", got)
+	}
+	found := false
+	for _, hint := range got.Hints {
+		if hint.Tool == "atomic-commit-push" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("disable switch must not disable normal routing: %+v", got.Hints)
+	}
+}
+
 func TestKarpathyFirstOptOutPrefixAloneDoesNotInject(t *testing.T) {
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "그대로:"})
 	if got.ShouldInject || got.AdditionalContext != "" {

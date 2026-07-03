@@ -57,6 +57,20 @@ func TestRunHookUserPromptKarpathyFirstSkipsChoiceReplies(t *testing.T) {
 	}
 }
 
+func TestRunHookUserPromptKarpathyFirstCanBeDisabledByEnv(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_DISABLE_KARPATHY_FIRST", "1")
+	repo := hookTempRepoWithDoc(t)
+	input := `{"prompt":"로그인 세션이 끊기는 원인 좀 찾아줘","cwd":"` + repo + `"}`
+	obj := runHookCapture(t, input, func() error { return runHookUserPrompt([]string{"--host", "claude"}) })
+	if _, ok := obj["systemMessage"]; ok {
+		t.Fatalf("disabled karpathy-first must not surface a systemMessage: %+v", obj)
+	}
+	if strings.Contains(hookAdditionalContext(obj), "karpathy-first") {
+		t.Fatalf("disabled karpathy-first must not inject the directive: %q", hookAdditionalContext(obj))
+	}
+}
+
 func TestRunHookUserPromptLLMHintsAreOptIn(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := hookTempRepoWithDoc(t)
