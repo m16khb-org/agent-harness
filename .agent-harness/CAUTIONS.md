@@ -164,6 +164,7 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - Codex shows `hookSpecificOutput.additionalContext` in the TUI `hook context:` row, so anything injected for the model is also visible to the user and may be newline-collapsed.
 - Claude Code can use `systemMessage` as the user-visible channel while keeping `additionalContext` as model-facing context.
 - Do not assume a hook field is hidden just because another host hides it. Verify the installed host runtime/schema before changing hook output.
+- Codex 0.142.5 rejects PreToolUse `hookSpecificOutput.permissionDecision="ask"` with `unsupported permissionDecision:ask`. Codex ask-style gates must fall back to a normal `decision="block"` response; hosts with native ask support can keep `permissionDecision="ask"`.
 - For Codex, keep the project-doc catalog in `additionalContext` because the agent needs it, but avoid route/action/profile/pending-upkeep status prose there.
 - Keep project-doc frontmatter descriptions concise English metadata; `project bootstrap` and `project bootstrap --sync` use this canonical metadata, so verbose descriptions multiply across every target repo.
 

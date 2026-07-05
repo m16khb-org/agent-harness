@@ -23,8 +23,8 @@ type HostHookOutput interface {
 	FormatBlock(reason string) map[string]any
 
 	// FormatAsk returns a host-compatible JSON object for an "ask"
-	// decision in pre-tool-use hooks. All hosts use hookSpecificOutput
-	// with permissionDecision="ask" since no host has a native "ask" concept.
+	// decision in pre-tool-use hooks. Hosts with native ask support use
+	// permissionDecision="ask"; Codex falls back to a normal block.
 	FormatAsk(reason string) map[string]any
 
 	// FormatContext returns a host-compatible JSON object for injecting
@@ -66,13 +66,7 @@ func (CodexHookOutput) FormatBlock(reason string) map[string]any {
 }
 
 func (CodexHookOutput) FormatAsk(reason string) map[string]any {
-	return map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":            "PreToolUse",
-			"permissionDecision":       "ask",
-			"permissionDecisionReason": reason,
-		},
-	}
+	return CodexHookOutput{}.FormatBlock(reason)
 }
 
 func (CodexHookOutput) FormatContext(eventName, additionalContext, userView string) map[string]any {

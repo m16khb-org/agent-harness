@@ -82,7 +82,7 @@ func TestRunHookPreToolUseAsksForBroadStagedChecks(t *testing.T) {
 	}
 }
 
-func TestRunHookPreToolUseCodexHostAsksForKubectlLiveAccess(t *testing.T) {
+func TestRunHookPreToolUseCodexHostBlocksKubectlLiveAccessAsk(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	payload, err := json.Marshal(map[string]any{
@@ -98,12 +98,11 @@ func TestRunHookPreToolUseCodexHostAsksForKubectlLiveAccess(t *testing.T) {
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-gitops-kubectl"})
 	})
-	if obj["decision"] != nil {
-		t.Fatalf("Codex host ask must not use legacy decision field, got %+v", obj)
+	if obj["decision"] != "block" {
+		t.Fatalf("Codex host ask fallback must block, got %+v", obj)
 	}
-	hso, _ := obj["hookSpecificOutput"].(map[string]any)
-	if hso["hookEventName"] != "PreToolUse" || hso["permissionDecision"] != "ask" {
-		t.Fatalf("expected Codex PreToolUse ask decision, got %+v", obj)
+	if _, ok := obj["hookSpecificOutput"]; ok {
+		t.Fatalf("Codex host ask fallback must not emit unsupported hookSpecificOutput, got %+v", obj)
 	}
 }
 

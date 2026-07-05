@@ -128,9 +128,21 @@ func TestFormatNoop(t *testing.T) {
 	}
 }
 
-func TestFormatAsk(t *testing.T) {
-	// All hosts use hookSpecificOutput with permissionDecision="ask"
-	for _, h := range []HostHookOutput{CodexHookOutput{}, ClaudeHookOutput{}, ReasonixHookOutput{}} {
+func TestCodexFormatAskFallsBackToBlock(t *testing.T) {
+	out := CodexHookOutput{}.FormatAsk("please confirm")
+	if out["decision"] != "block" {
+		t.Fatalf("Codex ask fallback must use block decision, got %+v", out)
+	}
+	if out["reason"] != "please confirm" {
+		t.Fatalf("expected reason, got %+v", out)
+	}
+	if _, ok := out["hookSpecificOutput"]; ok {
+		t.Fatalf("Codex ask fallback must not emit unsupported hookSpecificOutput, got %+v", out)
+	}
+}
+
+func TestFormatAskForHostsWithNativeAsk(t *testing.T) {
+	for _, h := range []HostHookOutput{ClaudeHookOutput{}, ReasonixHookOutput{}} {
 		out := h.FormatAsk("please confirm")
 		hso := out["hookSpecificOutput"].(map[string]any)
 		if hso["permissionDecision"] != "ask" {
