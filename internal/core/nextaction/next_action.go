@@ -29,6 +29,11 @@ func BuildNumberedNextActionsDecision(message string, enforce bool, source strin
 	}
 	candidates := parseNextActionCandidateFacts(message)
 	if candidatesFormWellFormedChoiceSet(candidates) && countRecommendedCandidates(candidates) == 1 {
+		if reason := choiceQualityBlockReason(message, candidates); reason != "" {
+			result.Decision = "block"
+			result.Reason = reason
+			return result
+		}
 		return result
 	}
 	result.Decision = "block"
@@ -120,5 +125,5 @@ func IsNoAutoProceedJudgement(message string) bool {
 }
 
 func missingNumberedNextActionsReason() string {
-	return "Stop hook blocked because the final response lacks well-formed numbered next actions. If this is a no-auto-proceed response to a Stop next-action relay, state the no-auto-proceed rationale on a line starting with `자동진행하지 않음` and stop without adding another choices block. Otherwise, continue by briefly explaining that missing or malformed next-action choices caused the block, then present a context-specific `선택지:` section with exactly three numbered options and exactly one `(추천)` option."
+	return "Stop hook blocked because the final response lacks well-formed numbered next actions. If this is a no-auto-proceed response to a Stop next-action relay, state the no-auto-proceed rationale on a line starting with `자동진행하지 않음` and stop without adding another choices block. Otherwise, continue by briefly explaining that missing or malformed next-action choices caused the block, then present a context-specific `선택지:` section with exactly three numbered options, exactly one `(추천)` option, and a `선택지 품질 증거` section covering context 확인, 추천 근거, and 사용자 승인 경계."
 }

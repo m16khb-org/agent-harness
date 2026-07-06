@@ -5,6 +5,15 @@ import (
 	"testing"
 )
 
+func withChoiceQualityEvidence(message string) string {
+	return message + `
+
+## 선택지 품질 증거
+- context 확인: git status, 테스트 결과, 사용자 요청 범위를 확인했습니다.
+- 추천 근거: safe=상태 변경 없음, reversible=되돌릴 작업 없음, aligned=사용자 요청 범위와 일치합니다.
+- 사용자 승인 경계: 원격 push/delete/destructive 작업은 추천하지 않았습니다.`
+}
+
 func TestNumberedNextActionsDecisionBlocksMissingChoices(t *testing.T) {
 	got := BuildNumberedNextActionsDecision("작업했습니다.", true, "stop")
 	if got.Decision != "block" || !strings.Contains(got.Reason, "numbered next actions") {
@@ -13,12 +22,12 @@ func TestNumberedNextActionsDecisionBlocksMissingChoices(t *testing.T) {
 }
 
 func TestNumberedNextActionsDecisionAllowsChoices(t *testing.T) {
-	got := BuildNumberedNextActionsDecision(`완료했습니다.
+	got := BuildNumberedNextActionsDecision(withChoiceQualityEvidence(`완료했습니다.
 
 선택지:
 1. 진행: 다음 검증을 실행합니다. (추천)
 2. 축소 진행: 작은 범위만 확인합니다.
-3. 보류: 여기서 멈춥니다.`, true, "stop")
+3. 보류: 여기서 멈춥니다.`), true, "stop")
 	if got.Decision != "allow" {
 		t.Fatalf("expected numbered choices to allow, got %+v", got)
 	}
@@ -49,12 +58,12 @@ func TestNumberedNextActionsDecisionBlocksMultipleRecommendations(t *testing.T) 
 }
 
 func TestNumberedNextActionsDecisionAllowsMarkdownListChoices(t *testing.T) {
-	got := BuildNumberedNextActionsDecision(`완료했습니다.
+	got := BuildNumberedNextActionsDecision(withChoiceQualityEvidence(`완료했습니다.
 
 선택지:
 - 1. 진행: 다음 검증을 실행합니다. (추천)
 * 2. 축소 진행: 작은 범위만 확인합니다.
-+ 3. 보류: 여기서 멈춥니다.`, true, "stop")
++ 3. 보류: 여기서 멈춥니다.`), true, "stop")
 	if got.Decision != "allow" {
 		t.Fatalf("expected markdown list numbered choices to allow, got %+v", got)
 	}
@@ -183,12 +192,12 @@ func TestBuildNextActionJudgementRelayReasonRequiresOneDecision(t *testing.T) {
 }
 
 func TestNumberedNextActionsDecisionIgnoresBareRecommendWordInOptionText(t *testing.T) {
-	got := BuildNumberedNextActionsDecision(`완료했습니다.
+	got := BuildNumberedNextActionsDecision(withChoiceQualityEvidence(`완료했습니다.
 
 선택지:
 1. 추천 로직 리뷰를 진행합니다. (추천)
 2. 추천 마커 파서만 손봅니다.
-3. 보류: 멈춥니다.`, true, "stop")
+3. 보류: 멈춥니다.`), true, "stop")
 	if got.Decision != "allow" {
 		t.Fatalf("bare 추천 word in option text must not count as a marker, got %+v", got)
 	}
@@ -209,7 +218,7 @@ func TestNextActionIsRecommendedRequiresExplicitMarker(t *testing.T) {
 }
 
 func TestParseNextActionSectionClosesAtProseAfterCandidates(t *testing.T) {
-	message := strings.Join([]string{
+	message := withChoiceQualityEvidence(strings.Join([]string{
 		"선택지:",
 		"1. 진행: 구현합니다. (추천)",
 		"2. 검증: 테스트만 돌립니다.",
@@ -218,7 +227,7 @@ func TestParseNextActionSectionClosesAtProseAfterCandidates(t *testing.T) {
 		"참고한 문서:",
 		"1. ADR.md",
 		"2. CAUTIONS.md",
-	}, "\n")
+	}, "\n"))
 	result := BuildNextActionJudgementTrigger(message)
 	if result.ChoiceCount != 3 {
 		t.Fatalf("numbered list after the choices block must not pollute candidates, got %+v", result)
@@ -265,15 +274,63 @@ func TestParseNextActionLastSectionWins(t *testing.T) {
 
 func TestParseNextActionRecognizesMarkdownHeadingSectionHeader(t *testing.T) {
 	for _, header := range []string{"## 선택지:", "**선택지:**", "### Options:"} {
-		message := strings.Join([]string{
+		message := withChoiceQualityEvidence(strings.Join([]string{
 			header,
 			"1. 진행: 구현합니다. (추천)",
 			"2. 검증: 테스트합니다.",
 			"3. 보류: 멈춥니다.",
-		}, "\n")
+		}, "\n"))
 		if got := BuildNumberedNextActionsDecision(message, true, "stop"); got.Decision != "allow" {
 			t.Fatalf("header %q must be recognized, got %+v", header, got)
 		}
+	}
+}
+
+func TestNumberedNextActionsDecisionBlocksMissingChoiceQualityEvidence(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(`완료했습니다.
+
+선택지:
+1. 진행: 다음 검증을 실행합니다. (추천)
+2. 축소 진행: 작은 범위만 확인합니다.
+3. 보류: 여기서 멈춥니다.`, true, "stop")
+	if got.Decision != "block" || !strings.Contains(got.Reason, "choice quality evidence") {
+		t.Fatalf("expected missing choice quality evidence to block, got %+v", got)
+	}
+}
+
+func TestNumberedNextActionsDecisionBlocksDuplicateMeaningChoices(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(withChoiceQualityEvidence(`완료했습니다.
+
+선택지:
+1. 완료: 여기서 종료합니다. (추천)
+2. 추가 작업 없음: 그대로 둡니다.
+3. 그대로 둠: 현재 상태를 유지합니다.`), true, "stop")
+	if got.Decision != "block" || !strings.Contains(got.Reason, "distinct") {
+		t.Fatalf("expected duplicate no-op choices to block, got %+v", got)
+	}
+}
+
+func TestNumberedNextActionsDecisionBlocksDestructiveRecommendedChoice(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(withChoiceQualityEvidence(`검증이 끝났습니다.
+
+선택지:
+1. origin/main에 push합니다. (추천)
+2. 로컬 상태만 보고합니다.
+3. 보류합니다.`), true, "stop")
+	if got.Decision != "block" || !strings.Contains(got.Reason, "destructive") {
+		t.Fatalf("expected destructive recommended choice to block, got %+v", got)
+	}
+}
+
+func TestNumberedNextActionsDecisionBlocksEnglishChoicesInKoreanContext(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(withChoiceQualityEvidence(`작업이 끝났습니다.
+
+Options:
+1. Finish here. (recommended)
+2. Keep files as-is.
+3. Do nothing else.`), true, "stop")
+	if got.Decision != "block" || !strings.Contains(got.Reason, "conversation language") {
+		t.Fatalf("expected English choices in Korean context to block, got %+v", got)
 	}
 }
 

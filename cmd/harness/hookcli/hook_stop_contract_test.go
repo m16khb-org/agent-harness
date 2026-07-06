@@ -10,6 +10,8 @@ import (
 	"agent-harness/internal/core/lifecycle"
 )
 
+const hookChoiceQualityEvidenceEscaped = `\n\n## 선택지 품질 증거\n- context 확인: git status, 테스트 결과, 사용자 요청 범위를 확인했습니다.\n- 추천 근거: safe=상태 변경 없음, reversible=되돌릴 작업 없음, aligned=사용자 요청 범위와 일치합니다.\n- 사용자 승인 경계: 원격 push/delete/destructive 작업은 추천하지 않았습니다.`
+
 func TestRunHookStopEmitsCodexCompatibleNoopJSON(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -301,7 +303,7 @@ func TestRunHookStopBlockReasonTellsAgentToPresentContextSpecificChoices(t *test
 func TestRunHookStopAllowsNumberedNextActionsWhenExpected(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"선택지:\n1. 진행: 검증합니다. (추천)\n2. 축소 진행: 일부만 합니다.\n3. 보류: 멈춥니다."}`, func() error {
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"선택지:\n1. 진행: 검증합니다. (추천)\n2. 축소 진행: 일부만 합니다.\n3. 보류: 멈춥니다.`+hookChoiceQualityEvidenceEscaped+`"}`, func() error {
 		return runHookStop([]string{"--enforce-numbered-next-actions"})
 	})
 	if len(obj) != 0 {
@@ -375,7 +377,7 @@ func TestRunHookStopDoesNotRelayNextActionJudgementWithoutFlag(t *testing.T) {
 	// The relay flag is the on/off switch. Even with a valid recommended choice
 	// present, omitting it must not re-enter the main agent.
 	repo := t.TempDir()
-	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
+	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다." + hookChoiceQualityEvidenceEscaped
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--enforce-numbered-next-actions"})
 	})
