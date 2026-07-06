@@ -8,6 +8,7 @@ import (
 
 type DocUpkeepEvent = lifecycle.DocUpkeepEvent
 type StopNextActionRelayRecord = lifecycle.StopNextActionRelayRecord
+type IssueOpsRecord = lifecycle.IssueOpsRecord
 type ProjectProfile = projectdocs.ProjectProfile
 type ProjectDocCatalogEntry = projectdoc.ProjectDocCatalogEntry
 
@@ -21,6 +22,14 @@ func ReadPendingDocUpkeepEvents(repoRoot string, limit int) ([]DocUpkeepEvent, l
 
 func ReadStopNextActionRelay(repoRoot string) (StopNextActionRelayRecord, bool) {
 	return lifecycle.ReadStopNextActionRelay(repoRoot)
+}
+
+func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
+	return lifecycle.ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
+}
+
+func IssueOpsPhaseExpectsWorktree(phase lifecycle.IssueOpsPhase) bool {
+	return lifecycle.IssueOpsPhaseExpectsWorktree(phase)
 }
 
 func DiscoverProjectDocs(repoRoot string) []ProjectDocCatalogEntry {

@@ -11,15 +11,34 @@ type ProjectDocCatalogContext struct {
 
 func BuildProjectDocCatalogContext(repo string) ProjectDocCatalogContext {
 	docs := DiscoverProjectDocs(repo)
-	if len(docs) == 0 {
+	worktreeReminder := activeWorktreeReminderValue(repo)
+	if len(docs) == 0 && worktreeReminder == "" {
 		return ProjectDocCatalogContext{}
+	}
+	compact := FormatProjectDocCatalog(docs)
+	userView := renderProjectDocCatalogUserView(docs)
+	if worktreeReminder != "" {
+		compact = appendCatalogContextLine(compact, "worktree: "+worktreeReminder)
+		userView = appendCatalogContextLine(userView, "• worktree: "+worktreeReminder)
 	}
 	return ProjectDocCatalogContext{
 		ShouldInject: true,
 		ProjectDocs:  docs,
-		Compact:      FormatProjectDocCatalog(docs),
-		UserView:     renderProjectDocCatalogUserView(docs),
+		Compact:      compact,
+		UserView:     userView,
 	}
+}
+
+func appendCatalogContextLine(context, line string) string {
+	context = strings.TrimSpace(context)
+	line = strings.TrimSpace(line)
+	if context == "" {
+		return line
+	}
+	if line == "" {
+		return context
+	}
+	return context + "\n" + line
 }
 
 func renderProjectDocCatalogUserView(docs []ProjectDocCatalogEntry) string {

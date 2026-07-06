@@ -120,6 +120,11 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	}
 	result.ShouldInject = true
 	context := renderHookMCPHintContext(result.Hints, pendingUpkeep, repoProfile, "")
+	if strings.TrimSpace(req.Repo) != "" {
+		parts := strings.Split(context, "\n")
+		appendCompactWorktreeReminder(&parts, req.Repo)
+		context = strings.Join(parts, "\n")
+	}
 	if karpathyFirst {
 		context += "\n" + karpathyLine
 		result.KarpathyFirst = true

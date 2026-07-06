@@ -28,6 +28,10 @@ func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpk
 	return strings.Join(parts, "\n")
 }
 
+func appendCompactWorktreeReminder(parts *[]string, repo string) {
+	appendContextLine(parts, "worktree", activeWorktreeReminderValue(repo))
+}
+
 func RenderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
 	return renderHookMCPHintContext(hints, pendingUpkeep, profile, catalog)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -138,6 +139,28 @@ func TestRunHookSessionStartInjectsCatalogClaude(t *testing.T) {
 	}
 	if ctx := hookAdditionalContext(obj); !strings.Contains(ctx, "project docs (read what's relevant):") {
 		t.Fatalf("SessionStart should inject the compact catalog additionalContext: %q", ctx)
+	}
+}
+
+func TestRunHookSessionStartInjectsWorktreeReminder(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := filepath.Join(t.TempDir(), "agent-harness")
+	writeHookFixtureFile(t, repo, ".agent-harness/ARCHITECTURE.md", "# Arch\n")
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cycle := createLinkedIssueOpsWorktree(t, repo, "2519-test-quality-comprehensive")
+	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), cycle.id, string(core.IssueOpsPhaseImplement)); err != nil {
+		t.Fatal(err)
+	}
+
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","source":"startup"}`, func() error { return runHookSessionStart(nil) })
+	ctx := hookAdditionalContext(obj)
+	if !strings.Contains(ctx, "worktree: "+cycle.path) || !strings.Contains(ctx, "편집 전 cwd/절대경로 확인") {
+		t.Fatalf("SessionStart should inject worktree reminder: %q", ctx)
 	}
 }
 
