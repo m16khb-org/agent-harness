@@ -27,7 +27,8 @@ func BuildNumberedNextActionsDecision(message string, enforce bool, source strin
 		result.Reason = "no assistant message available to inspect"
 		return result
 	}
-	if hasNumberedNextActions(message) && hasExactlyOneRecommendedNextAction(message) {
+	candidates := parseNextActionCandidateFacts(message)
+	if candidatesFormWellFormedChoiceSet(candidates) && countRecommendedCandidates(candidates) == 1 {
 		return result
 	}
 	result.Decision = "block"

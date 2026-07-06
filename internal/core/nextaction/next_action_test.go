@@ -196,14 +196,111 @@ func TestNumberedNextActionsDecisionIgnoresBareRecommendWordInOptionText(t *test
 
 func TestNextActionIsRecommendedRequiresExplicitMarker(t *testing.T) {
 	for text, want := range map[string]bool{
-		"진행합니다. (추천)":      true,
-		"proceed (Recommended)": true,
-		"추천 로직을 검토합니다":     false,
-		"이 방식은 추천하지 않습니다":  false,
+		"진행합니다. (추천)":             true,
+		"proceed (Recommended)":   true,
+		"추천 로직을 검토합니다":            false,
+		"이 방식은 추천하지 않습니다":         false,
 		"this is not recommended": false,
 	} {
 		if got := nextActionIsRecommended(text); got != want {
 			t.Fatalf("nextActionIsRecommended(%q) = %v, want %v", text, got, want)
 		}
+	}
+}
+
+func TestParseNextActionSectionClosesAtProseAfterCandidates(t *testing.T) {
+	message := strings.Join([]string{
+		"선택지:",
+		"1. 진행: 구현합니다. (추천)",
+		"2. 검증: 테스트만 돌립니다.",
+		"3. 보류: 멈춥니다.",
+		"",
+		"참고한 문서:",
+		"1. ADR.md",
+		"2. CAUTIONS.md",
+	}, "\n")
+	result := BuildNextActionJudgementTrigger(message)
+	if result.ChoiceCount != 3 {
+		t.Fatalf("numbered list after the choices block must not pollute candidates, got %+v", result)
+	}
+	if got := BuildNumberedNextActionsDecision(message, true, "stop"); got.Decision != "allow" {
+		t.Fatalf("well-formed choices followed by another numbered list must allow, got %+v", got)
+	}
+}
+
+func TestParseNextActionIgnoresDecimalNumbers(t *testing.T) {
+	message := strings.Join([]string{
+		"선택지:",
+		"1. 진행: 구현합니다. (추천)",
+		"2. 검증: 1.5배 커버리지 목표로 테스트합니다.",
+		"3. 보류: 멈춥니다.",
+		"",
+		"성능은 1.8배 개선되었습니다.",
+	}, "\n")
+	result := BuildNextActionJudgementTrigger(message)
+	if result.ChoiceCount != 3 {
+		t.Fatalf("decimal numbers must not parse as candidates, got %+v", result)
+	}
+}
+
+func TestParseNextActionLastSectionWins(t *testing.T) {
+	message := strings.Join([]string{
+		"선택지:",
+		"1. 옛 선택지 A (추천)",
+		"2. 옛 선택지 B",
+		"3. 옛 선택지 C",
+		"",
+		"정정합니다.",
+		"",
+		"선택지:",
+		"1. 새 선택지 A",
+		"2. 새 선택지 B (추천)",
+		"3. 새 선택지 C",
+	}, "\n")
+	result := BuildNextActionJudgementTrigger(message)
+	if result.ChoiceCount != 3 || result.RecommendedIndex != 2 {
+		t.Fatalf("the last choices section must win, got %+v", result)
+	}
+}
+
+func TestParseNextActionRecognizesMarkdownHeadingSectionHeader(t *testing.T) {
+	for _, header := range []string{"## 선택지:", "**선택지:**", "### Options:"} {
+		message := strings.Join([]string{
+			header,
+			"1. 진행: 구현합니다. (추천)",
+			"2. 검증: 테스트합니다.",
+			"3. 보류: 멈춥니다.",
+		}, "\n")
+		if got := BuildNumberedNextActionsDecision(message, true, "stop"); got.Decision != "allow" {
+			t.Fatalf("header %q must be recognized, got %+v", header, got)
+		}
+	}
+}
+
+func TestNumberedNextActionsDecisionBlocksMoreThanThreeChoices(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(`선택지:
+1. 진행합니다. (추천)
+2. 검증합니다.
+3. 보류합니다.
+4. 문서화합니다.`, true, "stop")
+	if got.Decision != "block" {
+		t.Fatalf("four options must block (exactly three required), got %+v", got)
+	}
+}
+
+func TestParseNextActionKeepsFirstDuplicateIndex(t *testing.T) {
+	message := strings.Join([]string{
+		"선택지:",
+		"1. 첫 번째 (추천)",
+		"1. 중복 번호",
+		"2. 두 번째",
+		"3. 세 번째",
+	}, "\n")
+	result := BuildNextActionJudgementTrigger(message)
+	if result.ChoiceCount != 3 {
+		t.Fatalf("duplicate index must keep the first occurrence only, got %+v", result)
+	}
+	if result.Candidates[0].Text != "첫 번째 (추천)" {
+		t.Fatalf("first occurrence must win, got %+v", result.Candidates)
 	}
 }
