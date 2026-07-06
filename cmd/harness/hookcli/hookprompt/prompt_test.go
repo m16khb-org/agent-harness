@@ -20,7 +20,7 @@ func TestFromHookInputExtractsPromptFromKnownShapes(t *testing.T) {
 	}
 }
 
-func TestStopContinuationAndExplicitInstructionDetection(t *testing.T) {
+func TestStopContinuationDetection(t *testing.T) {
 	stopPrompts := []string{
 		`<hook_prompt hook_run_id="stop:1">blocked</hook_prompt>`,
 		"Stop hook blocked feedback: choose",
@@ -32,21 +32,28 @@ func TestStopContinuationAndExplicitInstructionDetection(t *testing.T) {
 		if !IsStopContinuation(prompt) {
 			t.Fatalf("expected stop continuation for %q", prompt)
 		}
-		if IsExplicitNextActionInstruction(prompt) {
-			t.Fatalf("stop continuation should not be explicit instruction: %q", prompt)
-		}
-	}
-	for _, prompt := range []string{"계속 진행", "please continue", "2번", "go ahead"} {
-		if !IsExplicitNextActionInstruction(prompt) {
-			t.Fatalf("expected explicit instruction for %q", prompt)
-		}
-	}
-	for _, prompt := range []string{"", "active goal continuation", "without an explicit user choice"} {
-		if IsExplicitNextActionInstruction(prompt) {
-			t.Fatalf("unexpected explicit instruction for %q", prompt)
-		}
 	}
 	if !hasNextActionSection("선택지:\n1. a") || !hasNextActionSection("Options:\n1. a") || !hasNextActionSection("Next actions:\n1. a") {
 		t.Fatal("expected next action section detection")
+	}
+}
+
+func TestShouldConsumeNextActionRelay(t *testing.T) {
+	for prompt, want := range map[string]bool{
+		"1":          true,
+		"2번":         true,
+		"버그 3개를 고쳐줘": true,
+		"ㅎㅇ":         true,
+		"":           false,
+		`<hook_prompt hook_run_id="stop:1">blocked</hook_prompt>`: false,
+		"Stop hook blocked feedback: choose":                      false,
+		"Active goal: keep working":                               false,
+		"goal continuation: resume the loop":                      false,
+		"no-auto-proceed judgement was left; do not resume":       false,
+		"do not resume without an explicit user choice":           false,
+	} {
+		if got := ShouldConsumeNextActionRelay(prompt); got != want {
+			t.Fatalf("ShouldConsumeNextActionRelay(%q) = %v, want %v", prompt, got, want)
+		}
 	}
 }

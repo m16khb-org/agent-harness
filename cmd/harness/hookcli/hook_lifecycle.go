@@ -29,7 +29,6 @@ func runHookPostToolUse(args []string) error {
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
 	}
-	core.ClearStopNextActionRelayIfPresent(parsedRepo)
 	tool := hookinput.ToolNameFromHookInput(stdin)
 	paths := hookinput.PathsFromHookInput(stdin)
 	command := hookinput.CommandFromHookInput(stdin)

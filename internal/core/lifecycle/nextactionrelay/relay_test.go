@@ -40,6 +40,11 @@ func TestRecordDuplicatesAndClear(t *testing.T) {
 		t.Fatalf("expected pending relay suppression for changed fingerprint: %+v", pending)
 	}
 
+	refreshed, found := Read(store.lifecycleStore(), repoRoot)
+	if !found || len(refreshed.Candidates) != 1 || refreshed.Candidates[0].Text != "continue with another slice" {
+		t.Fatalf("expected pending record to refresh to the latest candidates, got found=%v %+v", found, refreshed)
+	}
+
 	cleared := Clear(store.lifecycleStore(), repoRoot)
 	if !cleared.OK || cleared.Reason != "cleared_next_action_relay" {
 		t.Fatalf("expected relay record to clear: %+v", cleared)

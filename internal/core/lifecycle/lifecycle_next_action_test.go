@@ -43,23 +43,3 @@ func TestRecordStopNextActionRelaySuppressesWhenStateCannotPersist(t *testing.T)
 		t.Fatalf("expected unpersistable Stop relay to fail closed, got %+v", got)
 	}
 }
-
-func TestClearStopNextActionRelayIfPresentSkipsProfileReadWhenRelayMissing(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := t.TempDir()
-	plan, err := InitProjectLifecycleState(repo, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(plan.ProjectJSONPath, []byte("{not-json"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	got := ClearStopNextActionRelayIfPresent(repo)
-	if !got.OK || got.Reason != "no_next_action_relay" || len(got.Warnings) != 0 {
-		t.Fatalf("missing relay should skip lifecycle profile validation, got %+v", got)
-	}
-	if got.Path != filepath.Join(plan.ProjectStateDir, stopNextActionRelayFile) {
-		t.Fatalf("relay path = %q, want %q", got.Path, filepath.Join(plan.ProjectStateDir, stopNextActionRelayFile))
-	}
-}

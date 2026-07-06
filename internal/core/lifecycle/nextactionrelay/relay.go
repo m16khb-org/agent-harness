@@ -51,12 +51,29 @@ func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgement
 			result.ShouldRelay = false
 			if previous.Fingerprint == fingerprint {
 				result.Reason = "duplicate_next_action_relay"
-			} else {
-				result.Reason = "pending_next_action_relay"
+				return result
+			}
+			// The choices changed while a relay is still pending this turn.
+			// Refresh the stored candidates so a later bare choice reply
+			// ("1", "2번") expands to what the user actually saw, but do not
+			// relay again: one judgement relay per user turn is the loop guard.
+			result.Reason = "pending_next_action_relay"
+			if err := store.WriteJSON(path, buildRelayRecord(fingerprint, trigger), 0o600); err != nil {
+				result.Warnings = append(result.Warnings, "stop_next_action_relay_write_error")
 			}
 			return result
 		}
 	}
+	if err := store.WriteJSON(path, buildRelayRecord(fingerprint, trigger), 0o600); err != nil {
+		result.Warnings = append(result.Warnings, "stop_next_action_relay_write_error")
+		return result
+	}
+	result.ShouldRelay = true
+	result.Reason = "recorded_next_action_relay"
+	return result
+}
+
+func buildRelayRecord(fingerprint string, trigger nextaction.NextActionJudgementTriggerResult) model.StopNextActionRelayRecord {
 	candidates := make([]model.StopNextActionRelayCandidate, 0, len(trigger.Candidates))
 	for _, candidate := range trigger.Candidates {
 		candidates = append(candidates, model.StopNextActionRelayCandidate{
@@ -65,7 +82,7 @@ func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgement
 			Text:        strings.TrimSpace(candidate.Text),
 		})
 	}
-	record := model.StopNextActionRelayRecord{
+	return model.StopNextActionRelayRecord{
 		SchemaVersion:    model.ProjectLifecycleSchemaVersion,
 		Fingerprint:      fingerprint,
 		RecommendedIndex: trigger.RecommendedIndex,
@@ -73,13 +90,6 @@ func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgement
 		Candidates:       candidates,
 		UpdatedAt:        time.Now().UTC().Format(time.RFC3339Nano),
 	}
-	if err := store.WriteJSON(path, record, 0o600); err != nil {
-		result.Warnings = append(result.Warnings, "stop_next_action_relay_write_error")
-		return result
-	}
-	result.ShouldRelay = true
-	result.Reason = "recorded_next_action_relay"
-	return result
 }
 
 // Read returns the pending relay record so the next user prompt can expand a

@@ -49,7 +49,11 @@ func IsStopContinuation(prompt string) bool {
 		strings.Contains(trimmed, "훅이 관찰한 근거")
 }
 
-func IsExplicitNextActionInstruction(prompt string) bool {
+// ShouldConsumeNextActionRelay reports whether a user prompt consumes the
+// pending Stop next-action relay record. Any real user prompt makes the
+// previously presented choices obsolete, while synthetic continuation prompts
+// keep the record because the user never answered them.
+func ShouldConsumeNextActionRelay(prompt string) bool {
 	trimmed := strings.TrimSpace(prompt)
 	if trimmed == "" || IsStopContinuation(trimmed) {
 		return false
@@ -61,33 +65,7 @@ func IsExplicitNextActionInstruction(prompt string) bool {
 		strings.Contains(lower, "without an explicit user choice") {
 		return false
 	}
-	for _, phrase := range []string{
-		"계속",
-		"진행",
-		"해줘",
-		"해주세요",
-		"실행",
-		"게시",
-		"정리",
-		"draft 해제",
-		"merge",
-		"post",
-		"comment",
-		"proceed",
-		"continue",
-		"go ahead",
-		"do it",
-	} {
-		if strings.Contains(lower, phrase) {
-			return true
-		}
-	}
-	for _, prefix := range []string{"1", "1.", "1번", "2", "2.", "2번", "3", "3.", "3번"} {
-		if strings.HasPrefix(lower, prefix) {
-			return true
-		}
-	}
-	return false
+	return true
 }
 
 func hasNextActionSection(prompt string) bool {

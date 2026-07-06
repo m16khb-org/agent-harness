@@ -65,7 +65,7 @@ func TestRunHookStopSuppressesRephrasedNextActionChoicesUntilProgress(t *testing
 	}
 }
 
-func TestRunHookPostToolUseClearsSuppressedNextActionRelay(t *testing.T) {
+func TestRunHookPostToolUseDoesNotClearSuppressedNextActionRelay(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
@@ -81,8 +81,8 @@ func TestRunHookPostToolUseClearsSuppressedNextActionRelay(t *testing.T) {
 	afterProgress := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
 		return runHookStop([]string{"--relay-next-action-judgement"})
 	})
-	if afterProgress["continue"] != true || afterProgress["decision"] != "block" {
-		t.Fatalf("expected PostToolUse to clear relay suppression, got %+v", afterProgress)
+	if len(afterProgress) != 0 {
+		t.Fatalf("PostToolUse must not clear relay suppression in the same turn, got %+v", afterProgress)
 	}
 }
 
