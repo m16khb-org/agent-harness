@@ -82,6 +82,9 @@ func TestPrepareWorktreeToolsSuccessAndErrors(t *testing.T) {
 	if !result.OK || !result.CodeGraphChecked || !result.CodeGraphReady || result.WorktreePath != worktree {
 		t.Fatalf("unexpected prepare tools result: %#v", result)
 	}
+	if want := "export HARNESS_EXPECTED_WORKTREE=" + worktree; result.Guidance != want {
+		t.Fatalf("expected guidance %q, got %q", want, result.Guidance)
+	}
 	if _, err := PrepareWorktreeTools(core.IssueOpsRecord{}); err == nil || !strings.Contains(err.Error(), "worktree_path is required") {
 		t.Fatalf("expected missing worktree error, got %v", err)
 	}
@@ -136,6 +139,11 @@ func TestRunPrepareToolsAndBoundaries(t *testing.T) {
 	}
 	if len(printed) != 1 {
 		t.Fatalf("expected prepare-tools JSON output, got %d", len(printed))
+	}
+	if result, ok := printed[0].(PrepareResult); !ok {
+		t.Fatalf("expected PrepareResult JSON output, got %T", printed[0])
+	} else if want := "export HARNESS_EXPECTED_WORKTREE=" + worktree; result.Guidance != want {
+		t.Fatalf("expected guidance %q, got %q", want, result.Guidance)
 	}
 	if err := Run(nil, deps); err != nil {
 		t.Fatalf("help returned error: %v", err)

@@ -460,6 +460,14 @@ func ExpectedWorktreeFromSession(repo string, cycleWorktree func() string) strin
 	return session.ExpectedWorktree(issueOpsSessionStore(), repo, cycleWorktree)
 }
 
+func ExpectedWorktreeEnvGuidance(worktree string) string {
+	worktree = strings.TrimSpace(worktree)
+	if worktree == "" {
+		return ""
+	}
+	return "export HARNESS_EXPECTED_WORKTREE=" + worktree
+}
+
 // ActiveSessionCycleID returns the cycle ID bound to the current session, or
 // empty when unbound.
 func ActiveSessionCycleID(repo string) string {
@@ -488,6 +496,7 @@ func IssueOpsResume(repo string) IssueOpsResumeResult {
 			return IssueOpsResumeResult{OK: false}
 		}
 		readiness := IssueOpsImplementationReadiness(rec)
+		expectedWorktree := ExpectedWorktreeFromSession(repo, func() string { return rec.WorktreePath })
 		return IssueOpsResumeResult{
 			OK:           true,
 			CycleID:      rec.ID,
@@ -499,6 +508,7 @@ func IssueOpsResume(repo string) IssueOpsResumeResult {
 			PlanPath:     rec.PlanPath,
 			Bound:        true,
 			Readiness:    &readiness,
+			Guidance:     ExpectedWorktreeEnvGuidance(expectedWorktree),
 		}
 	}
 

@@ -259,6 +259,9 @@ func runIssueOpsResume(args []string) error {
 		} else {
 			fmt.Printf("readiness: ready\n")
 		}
+		if result.Guidance != "" {
+			fmt.Printf("guidance: %s\n", result.Guidance)
+		}
 	} else {
 		fmt.Printf("not bound. suggested cycles: %s\n", strings.Join(result.SuggestedCycles, ", "))
 	}

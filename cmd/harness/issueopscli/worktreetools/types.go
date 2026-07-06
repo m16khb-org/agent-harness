@@ -16,6 +16,7 @@ type PrepareResult struct {
 	CodeGraphReady       bool     `json:"codegraph_ready"`
 	Messages             []string `json:"messages,omitempty"`
 	PreparedAt           string   `json:"prepared_at,omitempty"`
+	Guidance             string   `json:"guidance,omitempty"`
 }
 
 func (r PrepareResult) IssueOpsWorktreeToolPreparation() core.IssueOpsWorktreeToolPreparation {

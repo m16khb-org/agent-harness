@@ -92,6 +92,9 @@ func runWorktreePrepareTools(args []string, deps Deps) error {
 	}
 	fmt.Printf("codegraph_project_path: %s\n", result.CodeGraphProjectPath)
 	fmt.Printf("codegraph_ready: %v\n", result.CodeGraphReady)
+	if result.Guidance != "" {
+		fmt.Printf("guidance: %s\n", result.Guidance)
+	}
 	for _, message := range result.Messages {
 		fmt.Printf("- %s\n", message)
 	}
@@ -105,6 +108,7 @@ func PrepareWorktreeTools(record core.IssueOpsRecord) (PrepareResult, error) {
 		ID:                   record.ID,
 		WorktreePath:         worktree,
 		CodeGraphProjectPath: worktree,
+		Guidance:             core.ExpectedWorktreeEnvGuidance(worktree),
 	}
 	if worktree == "" {
 		result.OK = false

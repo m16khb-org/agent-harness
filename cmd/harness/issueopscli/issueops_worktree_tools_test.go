@@ -48,6 +48,9 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 	if prepared["codegraph_ready"] != true || prepared["codegraph_project_path"] != worktree {
 		t.Fatalf("unexpected prepare-tools result: %#v", prepared)
 	}
+	if want := "export HARNESS_EXPECTED_WORKTREE=" + worktree; prepared["guidance"] != want {
+		t.Fatalf("expected prepare-tools guidance %q, got %#v", want, prepared["guidance"])
+	}
 	statusOut := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"status", "--id", id, "--json"})
 	})

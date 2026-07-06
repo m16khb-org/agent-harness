@@ -443,6 +443,10 @@ func ExpectedWorktreeFromSession(repo string, cycleWorktree func() string) strin
 	return issueops.ExpectedWorktreeFromSession(repo, cycleWorktree)
 }
 
+func ExpectedWorktreeEnvGuidance(worktree string) string {
+	return issueops.ExpectedWorktreeEnvGuidance(worktree)
+}
+
 // IssueOpsResume reads the session-to-cycle binding for repo and returns a
 // resume result with cycle details, readiness, or suggested cycles.
 type IssueOpsResumeResult = issueops.IssueOpsResumeResult

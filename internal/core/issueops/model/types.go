@@ -425,4 +425,5 @@ type IssueOpsResumeResult struct {
 	Bound           bool               `json:"bound"`
 	SuggestedCycles []string           `json:"suggested_cycles,omitempty"`
 	Readiness       *IssueOpsReadiness `json:"readiness,omitempty"`
+	Guidance        string             `json:"guidance,omitempty"`
 }

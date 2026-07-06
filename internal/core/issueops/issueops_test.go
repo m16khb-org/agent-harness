@@ -469,6 +469,38 @@ func TestIssueOpsResumeBound(t *testing.T) {
 	}
 }
 
+func TestIssueOpsResumeBoundIncludesExpectedWorktreeGuidance(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	repo := initIssueOpsRepo(t)
+	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "100-resume-worktree"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordIssueOpsIntentForTest(t, IssueOpsStateRoot(), record.ID)
+	record, err = LinkIssueOpsIssue(IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/100")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(IssueOpsStateRoot(), record.ID, IssueOpsBranchPrepareRequest{
+		Provider: "github", IssueURL: record.IssueURL,
+		Branch: "100-resume-worktree", BaseBranch: "main", LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "100-resume-worktree")
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), record.ID, worktree); err != nil {
+		t.Fatal(err)
+	}
+
+	result := IssueOpsResume(repo)
+	want := "export HARNESS_EXPECTED_WORKTREE=" + worktree
+	if result.Guidance != want {
+		t.Fatalf("expected guidance %q, got %q in %+v", want, result.Guidance, result)
+	}
+}
+
 func TestIssueOpsResumeUnboundNoBranches(t *testing.T) {
 	stateRoot := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateRoot)
