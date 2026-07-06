@@ -65,6 +65,10 @@ func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecyc
 	return lifecycle.RecordLifecycleToolUse(req)
 }
 
+func SourceCheckoutMisdirectWarning(req HookToolUseLifecycleRequest) string {
+	return lifecycle.SourceCheckoutMisdirectWarning(req)
+}
+
 func BuildLifecycleStopReminder(repo string) LifecycleStopReminderResult {
 	return lifecycle.BuildLifecycleStopReminder(repo)
 }

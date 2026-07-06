@@ -32,16 +32,18 @@ func runHookPostToolUse(args []string) error {
 	tool := hookinput.ToolNameFromHookInput(stdin)
 	paths := hookinput.PathsFromHookInput(stdin)
 	command := hookinput.CommandFromHookInput(stdin)
-	result, err := core.RecordLifecycleToolUse(core.HookToolUseLifecycleRequest{
+	req := core.HookToolUseLifecycleRequest{
 		Repo:    parsedRepo,
 		Tool:    tool,
 		Paths:   paths,
 		Command: command,
 		Source:  "post-tool-use",
-	})
+	}
+	result, err := core.RecordLifecycleToolUse(req)
 	if err != nil {
 		result = core.HookToolUseLifecycleResult{OK: false, Warnings: []string{"lifecycle_record_error:" + err.Error()}}
 	}
+	misdirectWarning := core.SourceCheckoutMisdirectWarning(req)
 	// Live skill-routing capture: when a Skill tool fires during a session-bound
 	// IssueOps cycle, record (current phase, skill) so skill_routing_fidelity can
 	// be scored against observed activation. Best-effort and fail-open — it never
@@ -52,8 +54,9 @@ func runHookPostToolUse(args []string) error {
 	}
 	if *jsonOut {
 		return printJSON(map[string]any{
-			"ok":        result.OK,
-			"lifecycle": result,
+			"ok":                result.OK,
+			"lifecycle":         result,
+			"misdirect_warning": misdirectWarning,
 		})
 	}
 	// B3 linter-as-gate: after an edit/write that touches .go files, surface a
@@ -65,8 +68,15 @@ func runHookPostToolUse(args []string) error {
 	// non-Go edits, reads, or command tools.
 	h := strings.TrimSpace(*host)
 	if (h == "claude" || h == "reasonix") && doctarget.ToolUseMayMutateLifecycleFiles(tool, command) {
+		feedbackParts := []string{}
+		if misdirectWarning != "" {
+			feedbackParts = append(feedbackParts, misdirectWarning)
+		}
 		if failed, feedback := lintgate.LintEditedGoFiles(parsedRepo, paths); failed {
-			return printJSON(hookadapter.Resolve(h).FormatContext("PostToolUse", feedback, ""))
+			feedbackParts = append(feedbackParts, feedback)
+		}
+		if len(feedbackParts) > 0 {
+			return printJSON(hookadapter.Resolve(h).FormatContext("PostToolUse", strings.Join(feedbackParts, "\n"), ""))
 		}
 	}
 	return printJSON(map[string]any{})

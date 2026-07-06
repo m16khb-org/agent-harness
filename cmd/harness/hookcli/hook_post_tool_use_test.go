@@ -7,7 +7,34 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core"
 )
+
+func TestRunHookPostToolUseInjectsSourceCheckoutMisdirectWarningOnClaude(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := filepath.Join(t.TempDir(), "agent-harness")
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cycle := createLinkedIssueOpsWorktree(t, repo, "2519-test-quality-comprehensive")
+	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), cycle.id, string(core.IssueOpsPhaseImplement)); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(repo, "src", "a.ts")
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"apply_patch","tool_input":{"file_path":"`+target+`"}}`, func() error {
+		return runHookPostToolUse([]string{"--host", "claude"})
+	})
+	ctx := hookAdditionalContext(obj)
+	for _, want := range []string{cycle.id, cycle.path, "소스 체크아웃", "의도한 대상인지 확인"} {
+		if !strings.Contains(ctx, want) {
+			t.Fatalf("PostToolUse warning missing %q in context %q (obj=%+v)", want, ctx, obj)
+		}
+	}
+}
 
 // B3: a .go edit that leaves an unformatted file injects a deterministic gofmt
 // feedback as additionalContext on Claude.
