@@ -304,3 +304,32 @@ func TestParseNextActionKeepsFirstDuplicateIndex(t *testing.T) {
 		t.Fatalf("first occurrence must win, got %+v", result.Candidates)
 	}
 }
+
+func TestIsNoAutoProceedJudgementRequiresLineStartMarker(t *testing.T) {
+	for message, want := range map[string]bool{
+		"자동진행하지 않음 판단입니다.\n사용자 결정이 필요합니다.":            true,
+		"자동진행하지 않겠습니다.\n\n판단 근거: 파괴적 작업입니다.":          true,
+		"**자동진행하지 않음** - 사용자 결정 필요":                   true,
+		"no-auto-proceed: this needs a user decision": true,
+		"이 훅은 자동진행하지 않음 판단을 요구한다는 룰을 설명하는 리뷰입니다.":     false,
+		"릴레이 문구에는 no-auto-proceed 라는 표현이 들어 있습니다.":    false,
+		"": false,
+	} {
+		if got := IsNoAutoProceedJudgement(message); got != want {
+			t.Fatalf("IsNoAutoProceedJudgement(%q) = %v, want %v", message, got, want)
+		}
+	}
+}
+
+func TestBuildJudgementRelayReasonInstructsLineStartMarker(t *testing.T) {
+	trigger := BuildNextActionJudgementTrigger(strings.Join([]string{
+		"선택지:",
+		"1. 진행합니다. (추천)",
+		"2. 검증합니다.",
+		"3. 보류합니다.",
+	}, "\n"))
+	reason := BuildJudgementRelayReason(trigger)
+	if !strings.Contains(reason, "`자동진행하지 않") {
+		t.Fatalf("relay reason must instruct the line-start marker, got:\n%s", reason)
+	}
+}
