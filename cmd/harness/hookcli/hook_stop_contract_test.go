@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/lifecycle"
 )
 
 func TestRunHookStopEmitsCodexCompatibleNoopJSON(t *testing.T) {
@@ -171,6 +173,55 @@ func TestRunHookStopAllowsEngelbartCanvasWithWebAPISafeStatusQuote(t *testing.T)
 	})
 	if len(obj) != 0 {
 		t.Fatalf("expected Web API-safe top status quote to satisfy Engelbart Canvas blocks, got %+v", obj)
+	}
+}
+
+func TestRunHookStopRelaysOncePerTurnAndRefreshesRecord(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	choicesA := `선택지:\n1. 계획 A로 진행합니다. (추천)\n2. 검증만 합니다.\n3. 보류합니다.`
+	choicesB := `선택지:\n1. 계획 B로 진행합니다. (추천)\n2. 리뷰만 합니다.\n3. 보류합니다.`
+
+	first := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+choicesA+`"}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--relay-next-action-judgement"})
+	})
+	if first["decision"] != "block" {
+		t.Fatalf("first stop with fresh choices must relay the judgement, got %+v", first)
+	}
+
+	second := runHookCapture(t, `{"cwd":"`+repo+`","stop_hook_active":true,"last_assistant_message":"`+choicesB+`"}`, func() error {
+		return runHookStop([]string{"--enforce-numbered-next-actions", "--relay-next-action-judgement"})
+	})
+	if len(second) != 0 {
+		t.Fatalf("continuation stop with changed choices must not re-relay, got %+v", second)
+	}
+
+	record, found := lifecycle.ReadStopNextActionRelay(repo)
+	if !found {
+		t.Fatalf("relay record must survive the turn for choice-reply expansion")
+	}
+	if len(record.Candidates) != 3 || !strings.Contains(record.Candidates[0].Text, "계획 B") {
+		t.Fatalf("relay record must hold the latest displayed choices, got %+v", record)
+	}
+}
+
+func TestRunHookUserPromptConsumesRelayAfterExpansion(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	choices := `선택지:\n1. 계획 A로 진행합니다. (추천)\n2. 검증만 합니다.\n3. 보류합니다.`
+	runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+choices+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+
+	out := runHookCapture(t, `{"cwd":"`+repo+`","prompt":"1"}`, func() error {
+		return runHookUserPrompt([]string{"--host", "claude"})
+	})
+	b, _ := json.Marshal(out)
+	if !strings.Contains(string(b), "계획 A") {
+		t.Fatalf("bare choice reply must expand to the recorded option text, got %s", b)
+	}
+	if _, found := lifecycle.ReadStopNextActionRelay(repo); found {
+		t.Fatalf("a real user prompt must consume the relay record after expansion")
 	}
 }
 
