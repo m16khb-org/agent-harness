@@ -154,3 +154,47 @@ func TestRunHookPreToolUseBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T
 		t.Fatalf("expected linked IssueOps worktree edit to be allowed, got %+v", obj)
 	}
 }
+
+func TestRunHookPreToolUseAsksForSessionBoundMirrorFileEdit(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cycle := createLinkedIssueOpsWorktree(t, source, "2519-test-quality-comprehensive")
+	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), cycle.id, string(core.IssueOpsPhaseImplement)); err != nil {
+		t.Fatal(err)
+	}
+	writeHookFixtureFile(t, cycle.path, "src/a.ts", "export const a = 1;\n")
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "apply_patch",
+		"tool_input": map[string]any{
+			"file_path": filepath.Join(source, "src", "a.ts"),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
+	})
+	if obj["decision"] != "ask" {
+		t.Fatalf("expected raw PreToolUse decision to ask, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	if !strings.Contains(reason, cycle.path) || !strings.Contains(reason, "force-release") {
+		t.Fatalf("expected ask reason to name worktree and escape, got %q", reason)
+	}
+
+	claude := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "claude", "--enforce-worktree"})
+	})
+	hso, _ := claude["hookSpecificOutput"].(map[string]any)
+	if hso["hookEventName"] != "PreToolUse" || hso["permissionDecision"] != "ask" {
+		t.Fatalf("expected Claude native ask output, got %+v", claude)
+	}
+}

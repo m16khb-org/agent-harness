@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"agent-harness/internal/core/issueops"
 	"os"
 	"path/filepath"
 	"strings"
@@ -224,6 +225,76 @@ func TestWorktreeGuardAllowsTempFileBashWrites(t *testing.T) {
 	if res.Decision == "block" {
 		t.Fatalf("temp file bash writes should not be treated as source checkout edits, got %+v", res)
 	}
+}
+
+func TestWorktreeGuardAsksForSessionBoundMirrorFileEditInSourceCheckout(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := sourceCheckoutRepoForMisdirectTest(t)
+	cycle := linkIssueOpsWorktreeForGuardTest(t, repo, "2519-test-quality-comprehensive")
+	writeIssueOpsGuardFileForTest(t, cycle.path, "src/a.ts", "export const a = 1;\n")
+	if err := issueops.BindIssueOpsSession(repo, cycle.id, "2519-test-quality-comprehensive", cycle.path); err != nil {
+		t.Fatal(err)
+	}
+
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo:            repo,
+		Tool:            "apply_patch",
+		Paths:           []string{filepath.Join(repo, "src", "a.ts")},
+		EnforceWorktree: true,
+	})
+	if res.Decision != "ask" {
+		t.Fatalf("session-bound mirror file edit should ask, got %+v", res)
+	}
+	if !strings.Contains(res.Reason, cycle.path) || !strings.Contains(res.Reason, "force-release") {
+		t.Fatalf("ask reason must name worktree and escape, got %q", res.Reason)
+	}
+}
+
+func TestWorktreeGuardMirrorAskSkipsFalseCases(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := sourceCheckoutRepoForMisdirectTest(t)
+	cycle := linkIssueOpsWorktreeForGuardTest(t, repo, "2519-test-quality-comprehensive")
+
+	t.Run("no session binding", func(t *testing.T) {
+		res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:            repo,
+			Tool:            "apply_patch",
+			Paths:           []string{filepath.Join(repo, "src", "a.ts")},
+			EnforceWorktree: true,
+		})
+		if res.Decision != "allow" {
+			t.Fatalf("unbound source edit should remain allow, got %+v", res)
+		}
+	})
+
+	if err := issueops.BindIssueOpsSession(repo, cycle.id, "2519-test-quality-comprehensive", cycle.path); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("missing mirror file", func(t *testing.T) {
+		res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:            repo,
+			Tool:            "apply_patch",
+			Paths:           []string{filepath.Join(repo, "src", "new.ts")},
+			EnforceWorktree: true,
+		})
+		if res.Decision != "allow" {
+			t.Fatalf("source-only new file should remain allow, got %+v", res)
+		}
+	})
+
+	setIssueOpsPhaseForTest(t, repo, "2519-test-quality-comprehensive", IssueOpsPhasePlan)
+	writeIssueOpsGuardFileForTest(t, cycle.path, "src/plan.ts", "export const plan = true;\n")
+	t.Run("binding cycle phase does not expect worktree", func(t *testing.T) {
+		res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			Repo:            repo,
+			Tool:            "apply_patch",
+			Paths:           []string{filepath.Join(repo, "src", "plan.ts")},
+			EnforceWorktree: true,
+		})
+		if res.Decision != "allow" {
+			t.Fatalf("non-worktree phase should remain allow, got %+v", res)
+		}
+	})
 }
 
 func TestWorktreeGuardBlocksBashCommandThatChangesIntoUnlinkedWorktree(t *testing.T) {

@@ -40,6 +40,12 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 			result.Reason = reason
 		}
 	}
+	if result.Decision != "block" && req.EnforceWorktree {
+		if decision, reason := sourceCheckoutMirrorEditAskReason(req); decision != "" {
+			result.Decision = decision
+			result.Reason = reason
+		}
+	}
 	if result.Decision != "block" && req.EnforceKoreanRemote {
 		if reason := remoteartifact.KoreanBlockReason(req.Tool, req.Command, req.Repo); reason != "" {
 			result.Decision = "block"

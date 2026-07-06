@@ -1,6 +1,8 @@
 package lifecycle
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -18,6 +20,49 @@ func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
 		return sourceCheckoutWorktreeGuardBlockReason(req)
 	}
 	return expectedWorktreeGuardBlockReason(req, expected)
+}
+
+func sourceCheckoutMirrorEditAskReason(req HookToolUseLifecycleRequest) (string, string) {
+	if !toolUseMayMutateLifecycleFiles(req.Tool, req.Command) {
+		return "", ""
+	}
+	repo := cleanAbsPath(req.Repo)
+	if repo == "" {
+		return "", ""
+	}
+	binding, err := readIssueOpsSession(repo)
+	if err != nil || binding.CycleID == "" {
+		return "", ""
+	}
+	record, err := ReadIssueOps(IssueOpsStateRoot(), binding.CycleID)
+	if err != nil || !IssueOpsPhaseExpectsWorktree(record.Phase) {
+		return "", ""
+	}
+	worktree := cleanAbsPath(binding.ExpectedWorktree)
+	if worktree == "" {
+		worktree = cleanAbsPath(record.WorktreePath)
+	}
+	if worktree == "" {
+		return "", ""
+	}
+	for _, target := range worktreeGuardEditTargets(req) {
+		cleanTarget := cleanAbsPath(target)
+		if cleanTarget == "" || !pathWithin(cleanTarget, repo) || isInsideWorktreesPath(cleanTarget) {
+			continue
+		}
+		rel, err := filepath.Rel(repo, cleanTarget)
+		if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(worktree, rel)); err != nil {
+			continue
+		}
+		reason := "세션이 IssueOps 워크트리 " + worktree + "에 바인딩되어 있고 소스 체크아웃의 같은 상대 경로가 워크트리에도 있습니다. " +
+			"이 편집이 사이클 작업이면 워크트리에서 편집하세요; 무관한 소스 체크아웃 작업이면 승인하세요. " +
+			"사이클이 stale이면 `issueops force-release --id " + record.ID + " --reason <why>`로 해제하세요."
+		return "ask", reason
+	}
+	return "", ""
 }
 
 func sourceCheckoutWorktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
