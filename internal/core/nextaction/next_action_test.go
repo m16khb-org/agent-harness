@@ -16,7 +16,7 @@ func withChoiceQualityEvidence(message string) string {
 
 func TestNumberedNextActionsDecisionBlocksMissingChoices(t *testing.T) {
 	got := BuildNumberedNextActionsDecision("작업했습니다.", true, "stop")
-	if got.Decision != "block" || !strings.Contains(got.Reason, "numbered next actions") {
+	if got.Decision != "block" || !strings.Contains(got.Reason, "한국어로 작성") {
 		t.Fatalf("expected missing numbered next actions to block, got %+v", got)
 	}
 }
@@ -40,7 +40,7 @@ func TestNumberedNextActionsDecisionBlocksMissingRecommendation(t *testing.T) {
 1. 진행: 다음 검증을 실행합니다.
 2. 축소 진행: 작은 범위만 확인합니다.
 3. 보류: 여기서 멈춥니다.`, true, "stop")
-	if got.Decision != "block" || !strings.Contains(got.Reason, "exactly three numbered options") {
+	if got.Decision != "block" || !strings.Contains(got.Reason, "정확히 3개") {
 		t.Fatalf("expected missing recommendation to block, got %+v", got)
 	}
 }
@@ -52,7 +52,7 @@ func TestNumberedNextActionsDecisionBlocksMultipleRecommendations(t *testing.T) 
 1. 진행: 다음 검증을 실행합니다. (추천)
 2. 축소 진행: 작은 범위만 확인합니다. (추천)
 3. 보류: 여기서 멈춥니다.`, true, "stop")
-	if got.Decision != "block" || !strings.Contains(got.Reason, "exactly three numbered options") {
+	if got.Decision != "block" || !strings.Contains(got.Reason, "정확히 3개") {
 		t.Fatalf("expected multiple recommendations to block, got %+v", got)
 	}
 }
@@ -183,6 +183,7 @@ func TestBuildNextActionJudgementRelayReasonRequiresOneDecision(t *testing.T) {
 		"둘을 같은 답변에서 섞지 마세요",
 		"no-auto-proceed 판단을 남겼다면 같은 작업을 자동 goal continuation으로 재개하지 마세요",
 		"자동진행 결과 보고에는 `선택지:` 3개와 정확히 하나의 `(추천)`",
+		"선택지 3개와 `선택지 품질 증거`는 모두 한국어",
 		"자동진행하지 않음 판단에는 선택지 블록을 다시 붙이지 마세요",
 	} {
 		if !strings.Contains(reason, want) {
@@ -293,7 +294,7 @@ func TestNumberedNextActionsDecisionBlocksMissingChoiceQualityEvidence(t *testin
 1. 진행: 다음 검증을 실행합니다. (추천)
 2. 축소 진행: 작은 범위만 확인합니다.
 3. 보류: 여기서 멈춥니다.`, true, "stop")
-	if got.Decision != "block" || !strings.Contains(got.Reason, "choice quality evidence") {
+	if got.Decision != "block" || !strings.Contains(got.Reason, "선택지 품질 증거") {
 		t.Fatalf("expected missing choice quality evidence to block, got %+v", got)
 	}
 }
@@ -305,7 +306,7 @@ func TestNumberedNextActionsDecisionBlocksDuplicateMeaningChoices(t *testing.T) 
 1. 완료: 여기서 종료합니다. (추천)
 2. 추가 작업 없음: 그대로 둡니다.
 3. 그대로 둠: 현재 상태를 유지합니다.`), true, "stop")
-	if got.Decision != "block" || !strings.Contains(got.Reason, "distinct") {
+	if got.Decision != "block" || !strings.Contains(got.Reason, "서로 다른") {
 		t.Fatalf("expected duplicate no-op choices to block, got %+v", got)
 	}
 }
@@ -317,7 +318,7 @@ func TestNumberedNextActionsDecisionBlocksDestructiveRecommendedChoice(t *testin
 1. origin/main에 push합니다. (추천)
 2. 로컬 상태만 보고합니다.
 3. 보류합니다.`), true, "stop")
-	if got.Decision != "block" || !strings.Contains(got.Reason, "destructive") {
+	if got.Decision != "block" || !strings.Contains(got.Reason, "파괴적") {
 		t.Fatalf("expected destructive recommended choice to block, got %+v", got)
 	}
 }
@@ -329,8 +330,25 @@ Options:
 1. Finish here. (recommended)
 2. Keep files as-is.
 3. Do nothing else.`), true, "stop")
-	if got.Decision != "block" || !strings.Contains(got.Reason, "conversation language") {
+	if got.Decision != "block" || !strings.Contains(got.Reason, "한국어 선택지") {
 		t.Fatalf("expected English choices in Korean context to block, got %+v", got)
+	}
+}
+
+func TestNumberedNextActionsDecisionBlocksEnglishChoicesWithKoreanRecommendationMarker(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(`Implementation and verification already completed.
+
+선택지:
+1. (추천) Review the generated v2 contact sheet and decide whether the art quality is acceptable as the active sprite set.
+2. Ask me to refine specific sprites or rows, such as boss debris cleanup, VFX timing, or pet scale.
+3. Ask me to prepare the changes for commit after you approve the visual output.
+
+선택지 품질 증거:
+context 확인: Implementation and verification already completed; remaining decision is visual acceptance or refinement.
+추천 근거: Visual approval is the only subjective gate that automated tests cannot fully prove.
+사용자 승인 경계: I will not commit, push, or further change assets unless you choose that direction.`, true, "stop")
+	if got.Decision != "block" || !strings.Contains(got.Reason, "한국어 선택지") {
+		t.Fatalf("expected English choices with Korean recommendation marker to block, got %+v", got)
 	}
 }
 

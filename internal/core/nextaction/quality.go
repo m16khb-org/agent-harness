@@ -7,16 +7,16 @@ import (
 
 func choiceQualityBlockReason(message string, candidates []NextActionCandidate) string {
 	if !hasChoiceQualityEvidence(message) {
-		return "Stop hook blocked because the final response lacks choice quality evidence. Add a `선택지 품질 증거` section with context 확인, 추천 근거, and 사용자 승인 경계."
+		return "Stop hook이 선택지 품질 증거 누락으로 차단했습니다. `선택지 품질 증거` 섹션에 context 확인, 추천 근거, 사용자 승인 경계를 포함하세요."
 	}
 	if choicesIgnoreConversationLanguage(message, candidates) {
-		return "Stop hook blocked because the next-action choices do not match the conversation language. Use Korean choices in a Korean conversation."
+		return "Stop hook이 대화 언어와 맞지 않는 선택지 때문에 차단했습니다. 한국어 대화에서는 선택지 본문을 한국어 선택지로 작성하세요."
 	}
 	if hasDuplicateChoiceMeaning(candidates) {
-		return "Stop hook blocked because the next-action choices are not distinct. Present three materially different actions instead of repeated no-op or equivalent choices."
+		return "Stop hook이 서로 다른 선택지가 아니어서 차단했습니다. 반복된 no-op 또는 같은 의미의 선택지 대신 실질적으로 서로 다른 행동 3개를 제시하세요."
 	}
 	if recommendedChoiceIsDestructive(candidates) {
-		return "Stop hook blocked because the recommended next action appears destructive or externally mutating. Do not recommend push/delete/deploy/merge/destructive actions without an explicit user choice."
+		return "Stop hook이 추천 선택지가 파괴적이거나 외부 상태를 바꾸는 작업으로 보여 차단했습니다. 명시적 사용자 선택 없이 push/delete/deploy/merge 같은 작업을 추천하지 마세요."
 	}
 	return ""
 }
@@ -92,11 +92,18 @@ func choicesIgnoreConversationLanguage(message string, candidates []NextActionCa
 	}
 	nonKoreanChoices := 0
 	for _, candidate := range candidates {
-		if !containsHangul(candidate.Text) {
+		if !containsHangul(choiceLanguageText(candidate.Text)) {
 			nonKoreanChoices++
 		}
 	}
 	return nonKoreanChoices == len(candidates)
+}
+
+func choiceLanguageText(text string) string {
+	text = strings.ReplaceAll(text, "(추천)", "")
+	text = strings.ReplaceAll(text, "(recommended)", "")
+	text = strings.ReplaceAll(text, "(Recommended)", "")
+	return strings.TrimSpace(text)
 }
 
 func containsHangul(text string) bool {

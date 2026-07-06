@@ -295,7 +295,7 @@ func TestRunHookStopBlockReasonTellsAgentToPresentContextSpecificChoices(t *test
 	if obj["continue"] != true || obj["decision"] != "block" {
 		t.Fatalf("expected Stop hook to block missing choices with an in-turn continuation, got %+v", obj)
 	}
-	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "caused the block") || !strings.Contains(reason, "context-specific") || !strings.Contains(reason, "no-auto-proceed") {
+	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "차단 원인") || !strings.Contains(reason, "한국어로 작성한 `선택지:`") || !strings.Contains(reason, "no-auto-proceed") {
 		t.Fatalf("expected Stop hook reason to tell the agent why it blocked and to create context-specific choices, got %q", reason)
 	}
 }
@@ -343,7 +343,7 @@ func TestRunHookStopDoesNotTreatNumberedExplanationAsAutoProceedChoices(t *testi
 	if obj["decision"] != "block" {
 		t.Fatalf("expected Stop hook to block missing choices, got %+v", obj)
 	}
-	if !strings.Contains(reason, "lacks well-formed numbered next actions") {
+	if !strings.Contains(reason, "올바른 numbered next actions") {
 		t.Fatalf("expected missing-next-actions block, got %+v", obj)
 	}
 	if strings.Contains(reason, "자동진행 후보") {
