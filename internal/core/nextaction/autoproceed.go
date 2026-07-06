@@ -118,7 +118,7 @@ var nextActionDestructiveWordRe = regexp.MustCompile(`(?i)\b(?:` + strings.Join(
 
 func nextActionIsRecommended(text string) bool {
 	lower := strings.ToLower(text)
-	return strings.Contains(text, "추천") || strings.Contains(lower, "(recommended)") || strings.Contains(lower, "recommended")
+	return strings.Contains(text, "(추천)") || strings.Contains(lower, "(recommended)")
 }
 
 func nextActionIsDestructive(text string) bool {

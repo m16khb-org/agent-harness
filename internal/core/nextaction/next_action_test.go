@@ -181,3 +181,29 @@ func TestBuildNextActionJudgementRelayReasonRequiresOneDecision(t *testing.T) {
 		}
 	}
 }
+
+func TestNumberedNextActionsDecisionIgnoresBareRecommendWordInOptionText(t *testing.T) {
+	got := BuildNumberedNextActionsDecision(`완료했습니다.
+
+선택지:
+1. 추천 로직 리뷰를 진행합니다. (추천)
+2. 추천 마커 파서만 손봅니다.
+3. 보류: 멈춥니다.`, true, "stop")
+	if got.Decision != "allow" {
+		t.Fatalf("bare 추천 word in option text must not count as a marker, got %+v", got)
+	}
+}
+
+func TestNextActionIsRecommendedRequiresExplicitMarker(t *testing.T) {
+	for text, want := range map[string]bool{
+		"진행합니다. (추천)":      true,
+		"proceed (Recommended)": true,
+		"추천 로직을 검토합니다":     false,
+		"이 방식은 추천하지 않습니다":  false,
+		"this is not recommended": false,
+	} {
+		if got := nextActionIsRecommended(text); got != want {
+			t.Fatalf("nextActionIsRecommended(%q) = %v, want %v", text, got, want)
+		}
+	}
+}
