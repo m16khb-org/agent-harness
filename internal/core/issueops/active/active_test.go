@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"agent-harness/internal/core/issueops/model"
@@ -134,6 +135,14 @@ func (s *activeTestStore) issueOpsStore() Store {
 		},
 		NewID: func(string, string) string {
 			return "io-active"
+		},
+		ListIDs: func(string) ([]string, error) {
+			ids := make([]string, 0, len(s.records))
+			for id := range s.records {
+				ids = append(ids, id)
+			}
+			sort.Strings(ids)
+			return ids, nil
 		},
 	}
 }

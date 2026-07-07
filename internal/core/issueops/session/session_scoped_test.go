@@ -2,7 +2,6 @@ package session
 
 import (
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 )
@@ -37,8 +36,8 @@ func TestScopedBindingDoesNotClobberPrimary(t *testing.T) {
 		t.Fatalf("scoped binding mismatch: got %+v", scoped)
 	}
 
-	if _, err := os.Stat(bindingPath(dir, bindingKey(repo)+"-"+childID)); err != nil {
-		t.Fatalf("expected scoped binding file to exist: %v", err)
+	if again, err := readBindingForKey(store, repo, bindingKey(repo)+"-"+childID); err != nil || again.CycleID != childID {
+		t.Fatalf("expected scoped binding record to exist: %+v err=%v", again, err)
 	}
 
 	bindings, err := ListBindings(store, repo)

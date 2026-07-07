@@ -72,6 +72,9 @@ func newDB(abs string) (*DB, error) {
 		return nil, err
 	}
 	dataPath := filepath.Join(abs, dataDBFile)
+	if err := touchPrivate(dataPath); err != nil {
+		return nil, fmt.Errorf("sqlstore create data db: %w", err)
+	}
 	data, err := openSQLite(dataPath, "_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)")
 	if err != nil {
 		return nil, fmt.Errorf("sqlstore open data db: %w", err)
@@ -86,6 +89,10 @@ func newDB(abs string) (*DB, error) {
 		return nil, fmt.Errorf("sqlstore init schema: %w", err)
 	}
 	spanPath := filepath.Join(abs, spanDBFile)
+	if err := touchPrivate(spanPath); err != nil {
+		data.Close()
+		return nil, fmt.Errorf("sqlstore create span db: %w", err)
+	}
 	span, err := openSQLite(spanPath, "_pragma=busy_timeout(60000)&_txlock=immediate")
 	if err != nil {
 		data.Close()
@@ -98,10 +105,22 @@ func newDB(abs string) (*DB, error) {
 		span.Close()
 		return nil, fmt.Errorf("sqlstore init span db: %w", err)
 	}
-	for _, p := range []string{dataPath, spanPath} {
-		_ = os.Chmod(p, 0o600)
-	}
 	return &DB{dir: abs, data: data, span: span}, nil
+}
+
+// touchPrivate pre-creates path with 0600 so SQLite (and its -wal/-shm
+// sidecars, which inherit the database file's mode) never exposes state with
+// wider permissions.
+func touchPrivate(path string) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return err
+	}
+	if err := f.Chmod(0o600); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 func openSQLite(path, params string) (*sql.DB, error) {

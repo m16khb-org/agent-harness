@@ -141,6 +141,7 @@ func issueOpsActiveStore() active.Store {
 		StateRoot: IssueOpsStateRoot,
 		Read:      ReadIssueOps,
 		NewID:     newIssueOpsID,
+		ListIDs:   ListIssueOpsIDs,
 	}
 }
 

@@ -81,15 +81,13 @@ func TestStartIssueOpsRelativeThenAbsoluteShareOneRecordAndLock(t *testing.T) {
 		t.Fatalf("absolute-path lock id %q must match the record id %q it mutates", got, first.ID)
 	}
 
-	// Behavioral proof that StartIssueOps actually routes its withIssueOpsLock id
-	// through the abs-normalized helper: the lock file is created (and preserved)
-	// under the record id, while the raw relative-hash lock file the buggy code
-	// would have used was never created.
-	if _, err := os.Stat(filepath.Join(stateRoot, first.ID+".lock")); err != nil {
-		t.Fatalf("StartIssueOps must lock on the abs-normalized record id %q; lock file missing: %v", first.ID, err)
+	// Behavioral proof that StartIssueOps writes under the abs-normalized record
+	// id: the record exists under first.ID, while the raw relative-hash id the
+	// buggy code would have used was never written.
+	if !issueOpsRecordExists(t, stateRoot, first.ID) {
+		t.Fatalf("StartIssueOps must persist under the abs-normalized record id %q", first.ID)
 	}
-	rawLock := filepath.Join(stateRoot, newIssueOpsID(".", branch)+".lock")
-	if _, err := os.Stat(rawLock); err == nil {
-		t.Fatalf("StartIssueOps must not lock on the raw relative hash; stray lock file exists at %q", rawLock)
+	if issueOpsRecordExists(t, stateRoot, newIssueOpsID(".", branch)) {
+		t.Fatalf("StartIssueOps must not persist under the raw relative hash")
 	}
 }

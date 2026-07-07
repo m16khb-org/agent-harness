@@ -2,7 +2,6 @@ package issueops
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -186,20 +185,12 @@ func DropIssueOpsChild(stateRoot, parentID, childID, reason string) (IssueOpsChi
 }
 
 func scanIssueOpsChildrenForParent(stateRoot string, parent IssueOpsRecord) (map[string]IssueOpsRecord, error) {
-	entries, err := os.ReadDir(stateRoot)
+	ids, err := ListIssueOpsIDs(stateRoot)
 	if err != nil {
 		return nil, err
 	}
 	children := map[string]IssueOpsRecord{}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if !strings.HasPrefix(name, "io-") || !strings.HasSuffix(name, ".json") {
-			continue
-		}
-		id := strings.TrimSuffix(name, ".json")
+	for _, id := range ids {
 		child, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
 			continue

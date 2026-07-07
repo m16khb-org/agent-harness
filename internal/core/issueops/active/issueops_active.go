@@ -14,6 +14,7 @@ type Store struct {
 	StateRoot func() string
 	Read      func(stateRoot, id string) (model.IssueOpsRecord, error)
 	NewID     func(repo, branch string) string
+	ListIDs   func(stateRoot string) ([]string, error)
 }
 
 func CycleForBranch(store Store, repo, branch string) (model.IssueOpsRecord, bool) {
@@ -68,16 +69,12 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		return nil
 	}
 	stateRoot := store.StateRoot()
-	entries, err := os.ReadDir(stateRoot)
+	ids, err := store.ListIDs(stateRoot)
 	if err != nil {
 		return nil
 	}
 	records := []model.IssueOpsRecord{}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		id := strings.TrimSuffix(entry.Name(), ".json")
+	for _, id := range ids {
 		record, err := store.Read(stateRoot, id)
 		if err != nil {
 			continue
@@ -124,16 +121,12 @@ func NonDoneCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
 		return nil
 	}
 	stateRoot := store.StateRoot()
-	entries, err := os.ReadDir(stateRoot)
+	ids, err := store.ListIDs(stateRoot)
 	if err != nil {
 		return nil
 	}
 	records := []model.IssueOpsRecord{}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		id := strings.TrimSuffix(entry.Name(), ".json")
+	for _, id := range ids {
 		record, err := store.Read(stateRoot, id)
 		if err != nil {
 			continue

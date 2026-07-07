@@ -2,8 +2,8 @@ package issueops
 
 import (
 	"agent-harness/internal/core/preflight"
+	"agent-harness/internal/core/sqlstore"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -241,9 +241,13 @@ func TestIssueOpsIntentAndDesignRedactSecretLikeFreeform(t *testing.T) {
 	if strings.Contains(string(returnedRecord), "secret-value") {
 		t.Fatalf("returned record should redact secret-like values: %s", returnedRecord)
 	}
-	stateFile, err := os.ReadFile(filepath.Join(stateRoot, record.ID+".json"))
+	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
 		t.Fatal(err)
+	}
+	stateFile, ok, err := db.Get("issueops", record.ID)
+	if err != nil || !ok {
+		t.Fatalf("read persisted record: ok=%v err=%v", ok, err)
 	}
 	stateText := string(stateFile)
 	if strings.Contains(stateText, "secret-value") || (!strings.Contains(stateText, "<redacted>") && !strings.Contains(stateText, `\u003credacted\u003e`)) {

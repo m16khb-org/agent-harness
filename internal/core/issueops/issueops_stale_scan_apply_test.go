@@ -1,34 +1,29 @@
 package issueops
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
 
-// TestWithIssueOpsLockPreservesLockFile verifies that withIssueOpsLock does NOT
-// remove the .lock file after the critical section. The lock file must persist
-// because flock locks are inode-based — deleting and recreating the file creates
-// a new inode, breaking mutual exclusion across contenders. Orphaned lock files
-// (with no matching .json) are cleaned by the off-hot-path stale scan instead.
-func TestWithIssueOpsLockPreservesLockFile(t *testing.T) {
+// TestWithIssueOpsLockSpanDBPersists verifies that withIssueOpsLock creates the
+// state root's span-lock database and does NOT remove it after the critical
+// section, so later contenders keep locking the same database.
+func TestWithIssueOpsLockSpanDBPersists(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	stateRoot := IssueOpsStateRoot()
 	repo := t.TempDir()
 	id := NewIssueOpsID(repo, "lock-test")
 
-	lockPath := filepath.Join(stateRoot, id+".lock")
-
-	// Lock file must not exist before.
-	if _, err := os.Stat(lockPath); err == nil {
-		t.Fatalf("lock file should not exist before lock: %s", lockPath)
-	}
+	lockDB := filepath.Join(stateRoot, "harness.lock.db")
 
 	err := withIssueOpsLock(stateRoot, id, func() error {
-		// While locked, the lock file must exist.
-		if _, err := os.Stat(lockPath); err != nil {
-			t.Errorf("lock file should exist while locked: %v", err)
+		// While locked, the span lock database must exist.
+		if _, err := os.Stat(lockDB); err != nil {
+			t.Errorf("span lock db should exist while locked: %v", err)
 		}
 		return nil
 	})
@@ -36,85 +31,45 @@ func TestWithIssueOpsLockPreservesLockFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// After unlock, the lock file must still exist (inode must not be deleted).
-	if _, err := os.Stat(lockPath); err != nil {
-		t.Fatalf("lock file must persist after unlock to preserve inode-based mutual exclusion, got stat err=%v", err)
+	// After unlock, the span lock database must still exist.
+	if _, err := os.Stat(lockDB); err != nil {
+		t.Fatalf("span lock db must persist after unlock, got stat err=%v", err)
 	}
 }
 
-// TestWithIssueOpsLockPreservesLockFileOnError verifies that the lock file
-// persists even when the critical section returns an error.
-func TestWithIssueOpsLockPreservesLockFileOnError(t *testing.T) {
+// TestWithIssueOpsLockSpanDBPersistsOnError verifies that the span lock
+// database persists even when the critical section returns an error.
+func TestWithIssueOpsLockSpanDBPersistsOnError(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	stateRoot := IssueOpsStateRoot()
 	repo := t.TempDir()
 	id := NewIssueOpsID(repo, "lock-err-test")
 
-	lockPath := filepath.Join(stateRoot, id+".lock")
-
 	_ = withIssueOpsLock(stateRoot, id, func() error {
 		return os.ErrNotExist // any non-nil error
 	})
 
-	// After unlock (even with error), the lock file must still exist.
-	if _, err := os.Stat(lockPath); err != nil {
-		t.Fatalf("lock file must persist after unlock on error to preserve inode-based mutual exclusion, got stat err=%v", err)
+	if _, err := os.Stat(filepath.Join(stateRoot, "harness.lock.db")); err != nil {
+		t.Fatalf("span lock db must persist after unlock on error, got stat err=%v", err)
 	}
 }
 
-// TestIssueOpsGitWorktreeCleanupRemovesOrphanLockFiles verifies that orphaned
-// .lock files (with no matching .json cycle file) are cleaned up during the
-// worktree cleanup pass.
-func TestIssueOpsGitWorktreeCleanupRemovesOrphanLockFiles(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	stateRoot := IssueOpsStateRoot()
-	if err := os.MkdirAll(stateRoot, 0o700); err != nil {
-		t.Fatal(err)
+// issueOpsRecordExists reports whether a cycle record exists in the store.
+func issueOpsRecordExists(t *testing.T, stateRoot, id string) bool {
+	t.Helper()
+	_, err := ReadIssueOps(stateRoot, id)
+	if err == nil {
+		return true
 	}
-	repo := t.TempDir()
-
-	// Create an orphaned .lock file with no matching .json
-	orphanLockID := "io-000000000001"
-	orphanLockPath := filepath.Join(stateRoot, orphanLockID+".lock")
-	if err := os.WriteFile(orphanLockPath, []byte{}, 0o600); err != nil {
-		t.Fatal(err)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false
 	}
-
-	// Also create a legitimate .lock + .json pair (should not be touched).
-	pairedID := "io-000000000002"
-	pairedJSON := filepath.Join(stateRoot, pairedID+".json")
-	pairedLock := filepath.Join(stateRoot, pairedID+".lock")
-	if err := os.WriteFile(pairedJSON, []byte("{}"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(pairedLock, []byte{}, 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	// Also create a non-cycle .json that is not an issueops record (wrong prefix).
-	// Just to be sure the lock cleanup doesn't crash on random files.
-
-	result := &IssueOpsStaleScanResult{OK: true, Repo: repo, Applied: true}
-	issueOpsGitWorktreeCleanup(repo, result)
-
-	// Orphan lock must be gone.
-	if _, err := os.Stat(orphanLockPath); !os.IsNotExist(err) {
-		t.Fatalf("orphan lock file should be removed, got stat err=%v", err)
-	}
-
-	// Paired lock must still exist (it has a matching .json).
-	if _, err := os.Stat(pairedLock); err != nil {
-		t.Fatalf("paired lock file should still exist, got stat err=%v", err)
-	}
-
-	// Paired JSON must still exist.
-	if _, err := os.Stat(pairedJSON); err != nil {
-		t.Fatalf("paired JSON file should still exist, got stat err=%v", err)
-	}
+	t.Fatalf("read %s: %v", id, err)
+	return false
 }
 
 // TestScanStalePruneDoneCycles verifies that done cycles older than PruneDoneAge
-// are pruned (JSON + lock files deleted) when --apply is set.
+// are pruned (records deleted) when --apply is set.
 func TestScanStalePruneDoneCycles(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -166,15 +121,6 @@ func TestScanStalePruneDoneCycles(t *testing.T) {
 
 	stateRoot := IssueOpsStateRoot()
 
-	// Pre-create a lock file for the old done cycle so we can verify prune does
-	// NOT delete it (flock locks are inode-based; deleting a live lock between
-	// lock/unlock cycles splits the inode). The lock is reclaimed by the
-	// orphan-lock sweep on a later run once the .json is gone.
-	oldLockPath := filepath.Join(stateRoot, oldID+".lock")
-	if err := os.WriteFile(oldLockPath, []byte{}, 0o600); err != nil {
-		t.Fatal(err)
-	}
-
 	res := ScanStaleIssueOpsCycles(IssueOpsStaleScanRequest{
 		Repo:         repo,
 		Apply:        true,
@@ -185,30 +131,19 @@ func TestScanStalePruneDoneCycles(t *testing.T) {
 		t.Fatalf("expected 1 pruned done cycle, got %d (errors=%v)", res.PrunedDone, res.Errors)
 	}
 
-	// Old done cycle JSON must be gone.
-	oldJSON := filepath.Join(stateRoot, oldID+".json")
-	if _, err := os.Stat(oldJSON); !os.IsNotExist(err) {
-		t.Fatalf("old done cycle JSON should be removed, got stat err=%v", err)
-	}
-
-	// Old lock file must still exist: prune-done removes only the .json. Deleting
-	// the live .lock here would reintroduce the flock inode-split bug. The orphan
-	// sweep that runs before prune saw the .json still present this pass, so the
-	// lock survives and is reclaimed on a subsequent scan.
-	if _, err := os.Stat(oldLockPath); err != nil {
-		t.Fatalf("old lock file must persist (only .json is pruned), got stat err=%v", err)
+	// Old done cycle record must be gone.
+	if issueOpsRecordExists(t, stateRoot, oldID) {
+		t.Fatalf("old done cycle record should be removed")
 	}
 
 	// Recent done cycle must still exist.
-	recentJSON := filepath.Join(stateRoot, recentID+".json")
-	if _, err := os.Stat(recentJSON); err != nil {
-		t.Fatalf("recent done cycle must still exist, got stat err=%v", err)
+	if !issueOpsRecordExists(t, stateRoot, recentID) {
+		t.Fatalf("recent done cycle must still exist")
 	}
 
 	// Live non-done cycle must still exist.
-	liveJSON := filepath.Join(stateRoot, liveID+".json")
-	if _, err := os.Stat(liveJSON); err != nil {
-		t.Fatalf("live cycle must still exist, got stat err=%v", err)
+	if !issueOpsRecordExists(t, stateRoot, liveID) {
+		t.Fatalf("live cycle must still exist")
 	}
 }
 
@@ -243,10 +178,8 @@ func TestScanStalePruneDoneRequiresApply(t *testing.T) {
 	}
 
 	// Old done cycle must still exist.
-	stateRoot := IssueOpsStateRoot()
-	oldJSON := filepath.Join(stateRoot, oldID+".json")
-	if _, err := os.Stat(oldJSON); err != nil {
-		t.Fatalf("dry-run must not delete done cycle, got stat err=%v", err)
+	if !issueOpsRecordExists(t, IssueOpsStateRoot(), oldID) {
+		t.Fatalf("dry-run must not delete done cycle")
 	}
 }
 

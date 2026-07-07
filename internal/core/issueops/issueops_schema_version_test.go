@@ -1,15 +1,29 @@
 package issueops
 
 import (
-	"os"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/sqlstore"
 )
+
+// writeRawIssueOpsRecord inserts record bytes directly into the state store,
+// bypassing WriteIssueOps normalization, to simulate legacy or foreign rows.
+func writeRawIssueOpsRecord(t *testing.T, stateRoot, id, raw string) {
+	t.Helper()
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("issueops", id, []byte(raw)); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestIssueOpsReadNormalizesLegacySchemaVersion(t *testing.T) {
 	stateRoot := t.TempDir()
 	id := "io-legacy-schema"
-	if err := os.WriteFile(issueopsPath(stateRoot, id), []byte(`{
+	writeRawIssueOpsRecord(t, stateRoot, id, `{
   "ok": true,
   "id": "io-legacy-schema",
   "repo": "/repo/example",
@@ -18,9 +32,7 @@ func TestIssueOpsReadNormalizesLegacySchemaVersion(t *testing.T) {
   "created_at": "2026-07-02T00:00:00Z",
   "updated_at": "2026-07-02T00:00:00Z"
 }
-`), 0o600); err != nil {
-		t.Fatal(err)
-	}
+`)
 
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
@@ -34,7 +46,7 @@ func TestIssueOpsReadNormalizesLegacySchemaVersion(t *testing.T) {
 func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 	stateRoot := t.TempDir()
 	id := "io-future-schema"
-	if err := os.WriteFile(issueopsPath(stateRoot, id), []byte(`{
+	writeRawIssueOpsRecord(t, stateRoot, id, `{
   "ok": true,
   "schema_version": 2,
   "id": "io-future-schema",
@@ -44,9 +56,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
   "created_at": "2026-07-02T00:00:00Z",
   "updated_at": "2026-07-02T00:00:00Z"
 }
-`), 0o600); err != nil {
-		t.Fatal(err)
-	}
+`)
 
 	_, err := ReadIssueOps(stateRoot, id)
 	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 2") {

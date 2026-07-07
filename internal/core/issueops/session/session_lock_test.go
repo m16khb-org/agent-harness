@@ -74,29 +74,27 @@ func TestUnbindForCycleMatchingRoundTrip(t *testing.T) {
 	}
 }
 
-// TestSessionLockFilePersists asserts the per-repo lock file is created and is
-// NOT deleted after the locked operation completes (flock inode invariant).
-func TestSessionLockFilePersists(t *testing.T) {
+// TestSessionSpanLockDBPersists asserts the state root's span-lock database is
+// created by the locked operation and is NOT deleted after it completes, so
+// later contenders keep locking the same database.
+func TestSessionSpanLockDBPersists(t *testing.T) {
 	dir := t.TempDir()
 	store := Store{StateRoot: func() string { return dir }}
 
 	if err := Bind(store, "/repo/lk", "io-lk", "1-lk", "/wt/lk"); err != nil {
 		t.Fatal(err)
 	}
-	want := lockPath(dir, bindingKey("/repo/lk"))
+	want := filepath.Join(dir, "harness.lock.db")
 	if _, err := os.Stat(want); err != nil {
-		t.Fatalf("expected lock file to exist after bind: %v", err)
-	}
-	if filepath.Ext(want) != ".lock" {
-		t.Fatalf("expected .lock extension, got %q", want)
+		t.Fatalf("expected span lock db to exist after bind: %v", err)
 	}
 
-	// Unbind (also locked) must not remove the lock file.
+	// Unbind (also locked) must not remove the lock db.
 	if err := Unbind(store, "/repo/lk"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(want); err != nil {
-		t.Fatalf("lock file must persist across unlock cycles: %v", err)
+		t.Fatalf("span lock db must persist across unlock cycles: %v", err)
 	}
 }
 

@@ -7,8 +7,9 @@
 //   - The resume command (restores expected worktree context)
 //   - Parallel cycle edit guard (identifies which specific worktree to enforce)
 //
-// Bindings are persisted under the IssueOps state root as
-// <stateRoot>/issueops-session-<sha256(repo)>.json.
+// Bindings are persisted in the state root's sqlstore database under the
+// "session" bucket, keyed by issueops-session-<sha256(repo)> (plus a
+// -<cycleID> suffix for scoped per-cycle bindings).
 package session
 
 import (
@@ -16,12 +17,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/sqlstore"
 )
+
+// sessionBucket is the sqlstore bucket holding one row per binding key.
+const sessionBucket = "session"
 
 // Binding associates the current agent session with a specific IssueOps cycle.
 type Binding struct {
@@ -32,15 +36,19 @@ type Binding struct {
 	BoundAt          string `json:"bound_at"`
 }
 
-// Store abstracts the filesystem for testing.
+// Store abstracts the state root for testing.
 type Store struct {
 	StateRoot func() string
 }
 
+func openDB(store Store) (*sqlstore.DB, error) {
+	return sqlstore.Open(store.StateRoot())
+}
+
 // Bind records a session-to-cycle binding. It overwrites any existing binding
 // for the same repo. Pass an empty cycleID to unbind. The write runs under the
-// per-repo session lock so concurrent cycles racing on the shared per-repo
-// binding file cannot interleave their read-modify-write spans.
+// state root's span lock so concurrent cycles racing on the shared per-repo
+// binding cannot interleave their read-modify-write spans.
 func Bind(store Store, repo, cycleID, branch, expectedWorktree string) error {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
@@ -51,25 +59,21 @@ func Bind(store Store, repo, cycleID, branch, expectedWorktree string) error {
 	})
 }
 
-// writeBinding performs the actual binding-file mutation. Callers must hold the
-// per-repo session lock and pass an already-trimmed, non-empty repo.
+// writeBinding performs the actual binding mutation. Callers must hold the
+// session span lock and pass an already-trimmed, non-empty repo.
 func writeBinding(store Store, repo, cycleID, branch, expectedWorktree string) error {
 	return writeBindingForKey(store, repo, bindingKey(repo), cycleID, branch, expectedWorktree)
 }
 
 func writeBindingForKey(store Store, repo, key, cycleID, branch, expectedWorktree string) error {
-	dir := store.StateRoot()
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	db, err := openDB(store)
+	if err != nil {
 		return err
 	}
-	path := bindingPath(dir, key)
 
 	if cycleID == "" {
-		// Unbind: remove the file.
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		return nil
+		// Unbind: remove the record.
+		return db.Delete(sessionBucket, key)
 	}
 
 	b := Binding{
@@ -84,28 +88,7 @@ func writeBindingForKey(store Store, repo, key, cycleID, branch, expectedWorktre
 	if err != nil {
 		return err
 	}
-	data = append(data, '\n')
-
-	tmp, err := os.CreateTemp(dir, ".issueops-session-*.tmp")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
-		return err
-	}
-	if err := tmp.Chmod(0o600); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
-		return err
-	}
-	return os.Rename(tmpName, path)
+	return db.Put(sessionBucket, key, data)
 }
 
 // Read returns the current session-to-cycle binding for a repo, or an empty
@@ -119,13 +102,16 @@ func Read(store Store, repo string) (Binding, error) {
 }
 
 func readBindingForKey(store Store, repo, key string) (Binding, error) {
-	path := bindingPath(store.StateRoot(), key)
-	data, err := os.ReadFile(path)
+	db, err := openDB(store)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return Binding{}, nil
-		}
 		return Binding{}, err
+	}
+	data, ok, err := db.Get(sessionBucket, key)
+	if err != nil {
+		return Binding{}, err
+	}
+	if !ok {
+		return Binding{}, nil
 	}
 	var b Binding
 	if err := json.Unmarshal(data, &b); err != nil {
@@ -163,8 +149,8 @@ func Unbind(store Store, repo string) error {
 }
 
 // UnbindForCycle removes the session binding for a repo only when it still
-// points at cycleID. The read-compare-delete runs atomically under the per-repo
-// session lock so closing one cycle never drops a binding that a concurrent
+// points at cycleID. The read-compare-delete runs atomically under the session
+// span lock so closing one cycle never drops a binding that a concurrent
 // cycle wrote between the read and the delete (TOCTOU).
 func UnbindForCycle(store Store, repo, cycleID string) error {
 	repo = strings.TrimSpace(repo)
@@ -215,9 +201,9 @@ func ReadScoped(store Store, repo, cycleID string) (Binding, error) {
 	return readBindingForKey(store, repo, scopedBindingKey(repo, cycleID))
 }
 
-// UnbindScopedForCycle removes the scoped binding for cycleID only when the file
-// still points at that same cycle. The compare-and-delete runs under the shared
-// per-repo session lock.
+// UnbindScopedForCycle removes the scoped binding for cycleID only when the
+// record still points at that same cycle. The compare-and-delete runs under the
+// shared session span lock.
 func UnbindScopedForCycle(store Store, repo, cycleID string) error {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
@@ -254,22 +240,20 @@ func ListBindings(store Store, repo string) ([]Binding, error) {
 		bindings = append(bindings, primary)
 	}
 
-	dir := store.StateRoot()
-	entries, err := os.ReadDir(dir)
+	db, err := openDB(store)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return bindings, nil
-		}
+		return nil, err
+	}
+	keys, err := db.List(sessionBucket)
+	if err != nil {
 		return nil, err
 	}
 	prefix := bindingKey(repo) + "-"
-	names := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, ".json") {
-			continue
+	names := make([]string, 0, len(keys))
+	for _, key := range keys {
+		if strings.HasPrefix(key, prefix) {
+			names = append(names, key)
 		}
-		names = append(names, strings.TrimSuffix(name, ".json"))
 	}
 	sort.Strings(names)
 	for _, key := range names {
@@ -284,20 +268,21 @@ func ListBindings(store Store, repo string) ([]Binding, error) {
 	return bindings, nil
 }
 
-// withSessionLock serializes all binding-file mutations for a repo under a
-// per-repo advisory lock held on <stateRoot>/<bindingKey>.lock. The per-cycle
-// IssueOps lock cannot serialize two different cycles racing on the shared
-// per-repo binding file, so this lock guards bind vs cross-cycle unbind.
+// withSessionLock serializes all binding mutations for a repo under the state
+// root's span lock. The per-cycle IssueOps lock cannot serialize two different
+// cycles racing on the shared per-repo binding, so this lock guards bind vs
+// cross-cycle unbind. It must never be entered while already inside another
+// span on the same state root (spans do not nest).
 func withSessionLock(store Store, repo string, fn func() error) error {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
 		return fmt.Errorf("repo is required")
 	}
-	dir := store.StateRoot()
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	db, err := openDB(store)
+	if err != nil {
 		return err
 	}
-	return withFileLock(lockPath(dir, bindingKey(repo)), fn)
+	return db.WithSpan(fn)
 }
 
 func bindingKey(repo string) string {
@@ -319,12 +304,4 @@ func validateScopedCycleID(cycleID string) error {
 		}
 	}
 	return nil
-}
-
-func bindingPath(dir, key string) string {
-	return filepath.Join(dir, key+".json")
-}
-
-func lockPath(dir, key string) string {
-	return filepath.Join(dir, key+".lock")
 }

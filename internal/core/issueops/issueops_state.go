@@ -1,39 +1,73 @@
 package issueops
 
 import (
+	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/core/state"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"time"
 )
+
+// issueOpsBucket is the sqlstore bucket holding one row per cycle record.
+const issueOpsBucket = "issueops"
 
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	id, err := normalizeIssueOpsID(id)
 	if err != nil {
 		return IssueOpsRecord{OK: false}, err
 	}
-	path := issueopsPath(stateRoot, id)
-	b, err := os.ReadFile(path)
+	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
 		return IssueOpsRecord{OK: false, ID: id}, err
+	}
+	b, ok, err := db.Get(issueOpsBucket, id)
+	if err != nil {
+		return IssueOpsRecord{OK: false, ID: id}, err
+	}
+	if !ok {
+		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops record %s: %w", id, fs.ErrNotExist)
 	}
 	var record IssueOpsRecord
 	if err := json.Unmarshal(b, &record); err != nil {
 		return IssueOpsRecord{OK: false, ID: id}, err
 	}
 	if record.ID != id {
-		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: file has %q", record.ID)
+		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", record.ID)
 	}
 	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
 		return IssueOpsRecord{OK: false, ID: id}, err
 	}
 	record.OK = true
 	return record, nil
+}
+
+// ListIssueOpsIDs returns every cycle id stored under stateRoot in ascending
+// order.
+func ListIssueOpsIDs(stateRoot string) ([]string, error) {
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		return nil, err
+	}
+	return db.List(issueOpsBucket)
+}
+
+// deleteIssueOps removes the cycle record for id; deleting an absent record is
+// not an error.
+func deleteIssueOps(stateRoot, id string) error {
+	id, err := normalizeIssueOpsID(id)
+	if err != nil {
+		return err
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		return err
+	}
+	return db.Delete(issueOpsBucket, id)
 }
 
 func IssueOpsStateRoot() string {
@@ -63,7 +97,8 @@ func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, err
 		record.OK = false
 		return record, err
 	}
-	if err := os.MkdirAll(stateRoot, 0o700); err != nil {
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
 		record.OK = false
 		return record, err
 	}
@@ -73,33 +108,7 @@ func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, err
 		record.OK = false
 		return record, err
 	}
-	path := issueopsPath(stateRoot, record.ID)
-	tmp, err := os.CreateTemp(stateRoot, "."+record.ID+"-*.tmp")
-	if err != nil {
-		record.OK = false
-		return record, err
-	}
-	tmpName := tmp.Name()
-	writeErr := func() error {
-		if _, err := tmp.Write(b); err != nil {
-			return err
-		}
-		if _, err := tmp.Write([]byte{'\n'}); err != nil {
-			return err
-		}
-		if err := tmp.Chmod(0o600); err != nil {
-			return err
-		}
-		return tmp.Close()
-	}()
-	if writeErr != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmpName)
-		record.OK = false
-		return record, writeErr
-	}
-	if err := os.Rename(tmpName, path); err != nil {
-		_ = os.Remove(tmpName)
+	if err := db.Put(issueOpsBucket, record.ID, b); err != nil {
 		record.OK = false
 		return record, err
 	}
@@ -108,10 +117,6 @@ func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, err
 
 func WriteIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
 	return writeIssueOps(stateRoot, record)
-}
-
-func issueopsPath(stateRoot, id string) string {
-	return filepath.Join(stateRoot, id+".json")
 }
 
 func normalizeIssueOpsID(id string) (string, error) {
