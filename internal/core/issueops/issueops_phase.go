@@ -29,7 +29,7 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 		return e
 	})
 	if err == nil && rec.Phase == IssueOpsPhaseDone {
-		unbindIssueOpsSessionForCycle(rec.Repo, id)
+		unbindIssueOpsSessionForCycle(rec)
 	}
 	return rec, err
 }

@@ -454,12 +454,28 @@ func BindIssueOpsSession(repo, cycleID, branch, expectedWorktree string) error {
 	return issueops.BindIssueOpsSession(repo, cycleID, branch, expectedWorktree)
 }
 
+func BindScopedIssueOpsSession(repo, cycleID, branch, expectedWorktree string) error {
+	return issueops.BindScopedIssueOpsSession(repo, cycleID, branch, expectedWorktree)
+}
+
 func ReadIssueOpsSession(repo string) (SessionBinding, error) {
 	return issueops.ReadIssueOpsSession(repo)
 }
 
+func ReadScopedIssueOpsSession(repo, cycleID string) (SessionBinding, error) {
+	return issueops.ReadScopedIssueOpsSession(repo, cycleID)
+}
+
 func UnbindIssueOpsSession(repo string) error {
 	return issueops.UnbindIssueOpsSession(repo)
+}
+
+func UnbindScopedIssueOpsSessionForCycle(repo, cycleID string) error {
+	return issueops.UnbindScopedIssueOpsSessionForCycle(repo, cycleID)
+}
+
+func ListIssueOpsSessionBindings(repo string) ([]SessionBinding, error) {
+	return issueops.ListIssueOpsSessionBindings(repo)
 }
 
 func ActiveSessionCycleID(repo string) string {

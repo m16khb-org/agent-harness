@@ -14,7 +14,7 @@ func ForceReleaseIssueOps(stateRoot, id, reason string) (IssueOpsRecord, error) 
 		return e
 	})
 	if err == nil {
-		unbindIssueOpsSessionForCycle(rec.Repo, id)
+		unbindIssueOpsSessionForCycle(rec)
 	}
 	return rec, err
 }

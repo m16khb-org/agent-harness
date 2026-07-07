@@ -314,8 +314,14 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 	if err == nil {
 		// Persist the session-to-cycle binding so hook guards can resolve the
 		// expected worktree after session restarts (the read-side fallback
-		// existed but nothing wrote the binding — ISSUEOPS_AUDIT 2.1/2.2).
-		if bindErr := BindIssueOpsSession(rec.Repo, rec.ID, rec.Branch, worktreePath); bindErr != nil {
+		// existed but nothing wrote the binding - ISSUEOPS_AUDIT 2.1/2.2).
+		var bindErr error
+		if rec.Delegation != nil {
+			bindErr = BindScopedIssueOpsSession(rec.Repo, rec.ID, rec.Branch, worktreePath)
+		} else {
+			bindErr = BindIssueOpsSession(rec.Repo, rec.ID, rec.Branch, worktreePath)
+		}
+		if bindErr != nil {
 			return rec, bindErr
 		}
 	}
@@ -401,13 +407,15 @@ func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevils
 	return rec, err
 }
 
-// unbindIssueOpsSessionForCycle clears the repo's session binding only when
-// it still points at the given cycle, so closing one cycle never drops a
-// binding that another active cycle owns. The read-compare-delete runs
-// atomically under the per-repo session lock to close the TOCTOU where a
-// concurrent cycle's bind is dropped between the read and the delete.
-func unbindIssueOpsSessionForCycle(repo, id string) {
-	_ = session.UnbindForCycle(issueOpsSessionStore(), repo, id)
+// unbindIssueOpsSessionForCycle clears the matching session binding scope only
+// when it still points at the given cycle. Delegated children own scoped
+// bindings; non-delegated cycles own the primary repo binding.
+func unbindIssueOpsSessionForCycle(record IssueOpsRecord) {
+	if record.Delegation != nil {
+		_ = session.UnbindScopedForCycle(issueOpsSessionStore(), record.Repo, record.ID)
+		return
+	}
+	_ = session.UnbindForCycle(issueOpsSessionStore(), record.Repo, record.ID)
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
@@ -453,12 +461,28 @@ func BindIssueOpsSession(repo, cycleID, branch, expectedWorktree string) error {
 	return session.Bind(issueOpsSessionStore(), repo, cycleID, branch, expectedWorktree)
 }
 
+func BindScopedIssueOpsSession(repo, cycleID, branch, expectedWorktree string) error {
+	return session.BindScoped(issueOpsSessionStore(), repo, cycleID, branch, expectedWorktree)
+}
+
 func ReadIssueOpsSession(repo string) (SessionBinding, error) {
 	return session.Read(issueOpsSessionStore(), repo)
 }
 
+func ReadScopedIssueOpsSession(repo, cycleID string) (SessionBinding, error) {
+	return session.ReadScoped(issueOpsSessionStore(), repo, cycleID)
+}
+
 func UnbindIssueOpsSession(repo string) error {
 	return session.Unbind(issueOpsSessionStore(), repo)
+}
+
+func UnbindScopedIssueOpsSessionForCycle(repo, cycleID string) error {
+	return session.UnbindScopedForCycle(issueOpsSessionStore(), repo, cycleID)
+}
+
+func ListIssueOpsSessionBindings(repo string) ([]SessionBinding, error) {
+	return session.ListBindings(issueOpsSessionStore(), repo)
 }
 
 // ExpectedWorktreeFromSession returns the expected worktree for the current
@@ -532,15 +556,12 @@ func IssueOpsResume(repo string) IssueOpsResumeResult {
 
 	// Second: add any linked-worktree cycles for the repo.
 	for _, rec := range ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo) {
-		found := false
-		for _, id := range suggested {
-			if id == rec.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			suggested = append(suggested, rec.ID)
+		suggested = appendUniqueIssueOpsCycleID(suggested, rec.ID)
+	}
+
+	if bindings, err := ListIssueOpsSessionBindings(repo); err == nil {
+		for _, binding := range bindings {
+			suggested = appendUniqueIssueOpsCycleID(suggested, binding.CycleID)
 		}
 	}
 
@@ -549,6 +570,19 @@ func IssueOpsResume(repo string) IssueOpsResumeResult {
 		Bound:           false,
 		SuggestedCycles: suggested,
 	}
+}
+
+func appendUniqueIssueOpsCycleID(ids []string, id string) []string {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return ids
+	}
+	for _, existing := range ids {
+		if existing == id {
+			return ids
+		}
+	}
+	return append(ids, id)
 }
 
 // LastActiveAt returns the best liveness timestamp: LastHeartbeatAt or UpdatedAt.

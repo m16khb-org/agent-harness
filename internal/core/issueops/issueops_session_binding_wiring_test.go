@@ -61,3 +61,73 @@ func TestLinkWorktreeBindsSessionAndDoneUnbinds(t *testing.T) {
 		t.Fatalf("cycle release must unbind the session binding, still got %+v", after)
 	}
 }
+
+func TestDelegatedLinkWorktreeBindsScopedSessionWithoutClobberingPrimary(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	parent := createDelegationReadyParentForTest(t, stateRoot)
+	primary, err := ReadIssueOpsSession(parent.Repo)
+	if err != nil {
+		t.Fatalf("parent link-worktree must bind primary session: %v", err)
+	}
+	if primary.CycleID != parent.ID {
+		t.Fatalf("expected parent primary binding, got %+v", primary)
+	}
+
+	started, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+		ParentID:           parent.ID,
+		Branch:             "124-child-session",
+		Title:              "child session binding",
+		TaskScope:          "scoped session binding",
+		AcceptanceCriteria: []string{"child worktree link binds scoped session"},
+		ParentPlanPath:     parent.PlanPath,
+		ChildIssueURL:      "https://github.com/example/repo/issues/124",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := LinkIssueOpsIssue(stateRoot, started.Child.ID, "https://github.com/example/repo/issues/124")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err = PrepareIssueOpsBranch(stateRoot, child.ID, IssueOpsBranchPrepareRequest{
+		Provider: "github", IssueURL: child.IssueURL, Branch: child.Branch, BaseBranch: parent.Branch, LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	childWorktree := makeIssueOpsWorktreeDirForTest(t, parent.Repo, started.Child.Branch)
+	child, err = LinkIssueOpsWorktree(stateRoot, child.ID, childWorktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	afterPrimary, err := ReadIssueOpsSession(parent.Repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterPrimary.CycleID != parent.ID || afterPrimary.ExpectedWorktree != primary.ExpectedWorktree {
+		t.Fatalf("delegated link-worktree clobbered primary binding: got %+v want %+v", afterPrimary, primary)
+	}
+	scoped, err := ReadScopedIssueOpsSession(parent.Repo, child.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scoped.CycleID != child.ID || scoped.ExpectedWorktree != childWorktree {
+		t.Fatalf("expected child scoped binding, got %+v", scoped)
+	}
+
+	if _, err := ForceReleaseIssueOps(stateRoot, child.ID, "test child scoped cleanup"); err != nil {
+		t.Fatal(err)
+	}
+	if scoped, err := ReadScopedIssueOpsSession(parent.Repo, child.ID); err != nil {
+		t.Fatal(err)
+	} else if scoped.CycleID != "" {
+		t.Fatalf("child force release must unbind child scoped session, got %+v", scoped)
+	}
+	if afterRelease, err := ReadIssueOpsSession(parent.Repo); err != nil {
+		t.Fatal(err)
+	} else if afterRelease.CycleID != parent.ID {
+		t.Fatalf("child force release must not unbind parent primary session, got %+v", afterRelease)
+	}
+}

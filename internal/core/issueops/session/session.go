@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -46,14 +47,17 @@ func Bind(store Store, repo, cycleID, branch, expectedWorktree string) error {
 		return fmt.Errorf("repo is required")
 	}
 	return withSessionLock(store, repo, func() error {
-		return writeBinding(store, repo, cycleID, branch, expectedWorktree)
+		return writeBindingForKey(store, repo, bindingKey(repo), cycleID, branch, expectedWorktree)
 	})
 }
 
 // writeBinding performs the actual binding-file mutation. Callers must hold the
 // per-repo session lock and pass an already-trimmed, non-empty repo.
 func writeBinding(store Store, repo, cycleID, branch, expectedWorktree string) error {
-	key := bindingKey(repo)
+	return writeBindingForKey(store, repo, bindingKey(repo), cycleID, branch, expectedWorktree)
+}
+
+func writeBindingForKey(store Store, repo, key, cycleID, branch, expectedWorktree string) error {
 	dir := store.StateRoot()
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
@@ -111,7 +115,11 @@ func Read(store Store, repo string) (Binding, error) {
 	if repo == "" {
 		return Binding{}, fmt.Errorf("repo is required")
 	}
-	path := bindingPath(store.StateRoot(), bindingKey(repo))
+	return readBindingForKey(store, repo, bindingKey(repo))
+}
+
+func readBindingForKey(store Store, repo, key string) (Binding, error) {
+	path := bindingPath(store.StateRoot(), key)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -176,6 +184,106 @@ func UnbindForCycle(store Store, repo, cycleID string) error {
 	})
 }
 
+// BindScoped records a per-cycle binding without overwriting the repo's primary
+// binding. Scoped bindings share the primary repo lock so primary/scoped
+// mutations stay linearized.
+func BindScoped(store Store, repo, cycleID, branch, expectedWorktree string) error {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return fmt.Errorf("repo is required")
+	}
+	cycleID = strings.TrimSpace(cycleID)
+	if err := validateScopedCycleID(cycleID); err != nil {
+		return err
+	}
+	return withSessionLock(store, repo, func() error {
+		return writeBindingForKey(store, repo, scopedBindingKey(repo, cycleID), cycleID, branch, expectedWorktree)
+	})
+}
+
+// ReadScoped returns the per-cycle binding for repo/cycleID, or an empty Binding
+// when none exists.
+func ReadScoped(store Store, repo, cycleID string) (Binding, error) {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return Binding{}, fmt.Errorf("repo is required")
+	}
+	cycleID = strings.TrimSpace(cycleID)
+	if err := validateScopedCycleID(cycleID); err != nil {
+		return Binding{}, err
+	}
+	return readBindingForKey(store, repo, scopedBindingKey(repo, cycleID))
+}
+
+// UnbindScopedForCycle removes the scoped binding for cycleID only when the file
+// still points at that same cycle. The compare-and-delete runs under the shared
+// per-repo session lock.
+func UnbindScopedForCycle(store Store, repo, cycleID string) error {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return fmt.Errorf("repo is required")
+	}
+	cycleID = strings.TrimSpace(cycleID)
+	if err := validateScopedCycleID(cycleID); err != nil {
+		return err
+	}
+	return withSessionLock(store, repo, func() error {
+		key := scopedBindingKey(repo, cycleID)
+		b, err := readBindingForKey(store, repo, key)
+		if err != nil {
+			return err
+		}
+		if b.CycleID != cycleID {
+			return nil
+		}
+		return writeBindingForKey(store, repo, key, "", "", "")
+	})
+}
+
+// ListBindings returns the primary repo binding, if present, followed by scoped
+// per-cycle bindings for the same repo.
+func ListBindings(store Store, repo string) ([]Binding, error) {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return nil, fmt.Errorf("repo is required")
+	}
+	var bindings []Binding
+	if primary, err := Read(store, repo); err != nil {
+		return nil, err
+	} else if primary.CycleID != "" {
+		bindings = append(bindings, primary)
+	}
+
+	dir := store.StateRoot()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return bindings, nil
+		}
+		return nil, err
+	}
+	prefix := bindingKey(repo) + "-"
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, ".json") {
+			continue
+		}
+		names = append(names, strings.TrimSuffix(name, ".json"))
+	}
+	sort.Strings(names)
+	for _, key := range names {
+		b, err := readBindingForKey(store, repo, key)
+		if err != nil {
+			return nil, err
+		}
+		if b.CycleID != "" {
+			bindings = append(bindings, b)
+		}
+	}
+	return bindings, nil
+}
+
 // withSessionLock serializes all binding-file mutations for a repo under a
 // per-repo advisory lock held on <stateRoot>/<bindingKey>.lock. The per-cycle
 // IssueOps lock cannot serialize two different cycles racing on the shared
@@ -195,6 +303,22 @@ func withSessionLock(store Store, repo string, fn func() error) error {
 func bindingKey(repo string) string {
 	sum := sha256.Sum256([]byte(repo))
 	return "issueops-session-" + hex.EncodeToString(sum[:])[:16]
+}
+
+func scopedBindingKey(repo, cycleID string) string {
+	return bindingKey(repo) + "-" + cycleID
+}
+
+func validateScopedCycleID(cycleID string) error {
+	if len(cycleID) != len("io-000000000000") || !strings.HasPrefix(cycleID, "io-") {
+		return fmt.Errorf("cycle_id must match io-[0-9a-f]{12}")
+	}
+	for _, r := range cycleID[3:] {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return fmt.Errorf("cycle_id must match io-[0-9a-f]{12}")
+		}
+	}
+	return nil
 }
 
 func bindingPath(dir, key string) string {
