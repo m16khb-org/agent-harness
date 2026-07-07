@@ -31,6 +31,10 @@ type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
 type IssueOpsWorktreeToolPreparation = issueops.IssueOpsWorktreeToolPreparation
 type IssueOpsRecord = issueops.IssueOpsRecord
+type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
+type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
+type IssueOpsChildStartRequest = issueops.IssueOpsChildStartRequest
+type IssueOpsChildStartResult = issueops.IssueOpsChildStartResult
 type IssueOpsReadiness = issueops.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = issueops.IssueOpsCleanupStatusRequest
 type IssueOpsCleanupStatus = issueops.IssueOpsCleanupStatus
@@ -120,6 +124,10 @@ func ParseIssueOpsTemplateFields(values []string) (map[string]string, error) {
 
 func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
 	return issueops.StartIssueOps(stateRoot, req)
+}
+
+func StartIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest) (IssueOpsChildStartResult, error) {
+	return issueops.StartIssueOpsChild(stateRoot, req)
 }
 
 func IssueOpsStatus(stateRoot, id string) (IssueOpsRecord, error) {

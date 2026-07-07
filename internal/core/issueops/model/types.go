@@ -319,6 +319,25 @@ type IssueOpsChildCycleRef struct {
 	ValidatedAt        string   `json:"validated_at,omitempty"`
 }
 
+type IssueOpsChildStartRequest struct {
+	ParentID           string
+	Branch             string
+	Title              string
+	TaskScope          string
+	AcceptanceCriteria []string
+	ParentPlanPath     string
+	ChildIssueURL      string
+}
+
+type IssueOpsChildStartResult struct {
+	OK               bool                  `json:"ok"`
+	ParentID         string                `json:"parent_id"`
+	Child            IssueOpsRecord        `json:"child"`
+	ParentRef        IssueOpsChildCycleRef `json:"parent_ref"`
+	Guidance         string                `json:"guidance,omitempty"`
+	ChildLinkWarning string                `json:"child_link_warning,omitempty"`
+}
+
 const IssueOpsCurrentSchemaVersion = 1
 
 type IssueOpsRecord struct {

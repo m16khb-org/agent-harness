@@ -105,6 +105,8 @@ func resumeOrReset(store Store, stateRoot string, existing model.IssueOpsRecord)
 		ExecutionDecision:   existing.ExecutionDecision,
 		CompatibilityReview: existing.CompatibilityReview,
 		Feedback:            []model.IssueOpsFeedbackItem{},
+		Delegation:          existing.Delegation,
+		ChildCycles:         existing.ChildCycles,
 		RoutingTrace:        existing.RoutingTrace,
 		// Audit breadcrumbs for the abandoned worktree.
 		StaleResetAt:         now,
