@@ -260,5 +260,7 @@ func normalizeTaskSchemaVersion(task *WorkTask) error {
 }
 
 func timestampNow() string {
-	return time.Now().UTC().Format(time.RFC3339Nano)
+	return workPoolNow().UTC().Format(time.RFC3339Nano)
 }
+
+var workPoolNow = time.Now
