@@ -570,7 +570,7 @@
       "warnings": []
     },
     "docs_index": {
-      "docs_count": 73,
+      "docs_count": 74,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -608,6 +608,7 @@
         "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
         "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
         "$HARNESS_ROOT/.agent-harness/karpathy/prompts/codex-next-action-choice-fixes-v1.md",
+        "$HARNESS_ROOT/.agent-harness/karpathy/prompts/codex-orchestration-implementation-v1.md",
         "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
         "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
         "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
@@ -5045,7 +5046,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 73,
+        "docs_indexed": 74,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6835,7 +6836,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 73,
+            "docs_count": 74,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -6880,6 +6881,7 @@
               "$HARNESS_ROOT/.agent-harness/archive/adr-history.md",
               "$HARNESS_ROOT/.agent-harness/archive/cautions-incidents.md",
               "$HARNESS_ROOT/.agent-harness/karpathy/prompts/codex-next-action-choice-fixes-v1.md",
+              "$HARNESS_ROOT/.agent-harness/karpathy/prompts/codex-orchestration-implementation-v1.md",
               "$HARNESS_ROOT/.agent-harness/operations/cli-and-mcp.md",
               "$HARNESS_ROOT/.agent-harness/operations/harness-skill-quality-scorecard.md",
               "$HARNESS_ROOT/.agent-harness/operations/hosts.md",
@@ -9991,7 +9993,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 73,
+              "docs_indexed": 74,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

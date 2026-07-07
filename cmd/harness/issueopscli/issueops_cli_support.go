@@ -19,6 +19,12 @@ func issueOpsUsage() {
   agent-harness issueops link-issue --id ID --issue-url URL [--json]
   agent-harness issueops link-child --id ID --child-url URL [--title TEXT] [--json]
   agent-harness issueops link-related --id ID --type depends-on|blocks|supersedes|follows-up|duplicates|splits-from|implements --related-url URL [--title TEXT] [--json]
+  agent-harness issueops child start --parent ID --branch BRANCH --title TEXT --scope TEXT --acceptance TEXT [--acceptance TEXT...] [--child-issue-url URL] [--json]
+  agent-harness issueops child status --parent ID [--repair] [--json]
+  agent-harness issueops child list --parent ID [--json]
+  agent-harness issueops child accept --parent ID --child ID --evidence TEXT [--evidence TEXT...] [--json]
+  agent-harness issueops child reject --parent ID --child ID --reason REASON [--json]
+  agent-harness issueops child drop --parent ID --child ID --reason REASON [--json]
   agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--remote-branch-url URL] [--link-verified] [--json]
   agent-harness issueops link-worktree --id ID --worktree-path PATH [--json]
   agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] [--json]
@@ -53,6 +59,14 @@ func issueOpsUsage() {
 }
 
 const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--remote-branch-url URL] [--link-verified] [--json]"
+
+const issueOpsChildUsage = `Usage:
+  agent-harness issueops child start --parent ID --branch BRANCH --title TEXT --scope TEXT --acceptance TEXT [--acceptance TEXT...] [--child-issue-url URL] [--json]
+  agent-harness issueops child status --parent ID [--repair] [--json]
+  agent-harness issueops child list --parent ID [--json]
+  agent-harness issueops child accept --parent ID --child ID --evidence TEXT [--evidence TEXT...] [--json]
+  agent-harness issueops child reject --parent ID --child ID --reason REASON [--json]
+  agent-harness issueops child drop --parent ID --child ID --reason REASON [--json]`
 
 func runIssueOpsBranch(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {

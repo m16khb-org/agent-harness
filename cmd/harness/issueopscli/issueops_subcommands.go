@@ -102,6 +102,130 @@ func runIssueOpsLinkRelated(args []string) error {
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
+func runIssueOpsChild(args []string) error {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println(issueOpsChildUsage)
+		return nil
+	}
+	switch args[0] {
+	case "start":
+		return runIssueOpsChildStart(args[1:])
+	case "status":
+		return runIssueOpsChildStatus(args[1:], false)
+	case "list":
+		return runIssueOpsChildStatus(args[1:], false)
+	case "accept":
+		return runIssueOpsChildAccept(args[1:])
+	case "reject":
+		return runIssueOpsChildReject(args[1:])
+	case "drop":
+		return runIssueOpsChildDrop(args[1:])
+	default:
+		return fmt.Errorf("unknown issueops child subcommand %q", args[0])
+	}
+}
+
+func runIssueOpsChildStart(args []string) error {
+	fs := flag.NewFlagSet("issueops child start", flag.ContinueOnError)
+	parentID := fs.String("parent", "", "parent issueops id")
+	branch := fs.String("branch", "", "child branch")
+	title := fs.String("title", "", "child task title")
+	scope := fs.String("scope", "", "delegated task scope")
+	childIssueURL := fs.String("child-issue-url", "", "optional child issue URL")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	var acceptance repeatedFlag
+	fs.Var(&acceptance, "acceptance", "acceptance criterion; repeatable")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	result, err := core.StartIssueOpsChild(core.IssueOpsStateRoot(), core.IssueOpsChildStartRequest{
+		ParentID:           *parentID,
+		Branch:             *branch,
+		Title:              *title,
+		TaskScope:          *scope,
+		AcceptanceCriteria: []string(acceptance),
+		ChildIssueURL:      *childIssueURL,
+	})
+	return printIssueOpsChildValue(result, *jsonOut, err)
+}
+
+func runIssueOpsChildStatus(args []string, repairDefault bool) error {
+	fs := flag.NewFlagSet("issueops child status", flag.ContinueOnError)
+	parentID := fs.String("parent", "", "parent issueops id")
+	repair := fs.Bool("repair", repairDefault, "append scanned children missing from the parent index")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	result, err := core.IssueOpsChildStatus(core.IssueOpsStateRoot(), *parentID, *repair)
+	if *jsonOut {
+		return printIssueOpsChildValue(result, true, err)
+	}
+	if err != nil {
+		return err
+	}
+	for _, child := range result.Children {
+		fmt.Printf("%s %s %s verdict=%s\n", child.CycleID, child.Phase, child.Branch, child.ValidationVerdict)
+	}
+	return nil
+}
+
+func runIssueOpsChildAccept(args []string) error {
+	fs := flag.NewFlagSet("issueops child accept", flag.ContinueOnError)
+	parentID := fs.String("parent", "", "parent issueops id")
+	childID := fs.String("child", "", "child issueops id")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	var evidence repeatedFlag
+	fs.Var(&evidence, "evidence", "validation evidence; repeatable")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	result, err := core.AcceptIssueOpsChild(core.IssueOpsStateRoot(), *parentID, *childID, []string(evidence))
+	return printIssueOpsChildValue(result, *jsonOut, err)
+}
+
+func runIssueOpsChildReject(args []string) error {
+	fs := flag.NewFlagSet("issueops child reject", flag.ContinueOnError)
+	parentID := fs.String("parent", "", "parent issueops id")
+	childID := fs.String("child", "", "child issueops id")
+	reason := fs.String("reason", "", "rejection reason")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	result, err := core.RejectIssueOpsChild(core.IssueOpsStateRoot(), *parentID, *childID, *reason, nil)
+	return printIssueOpsChildValue(result, *jsonOut, err)
+}
+
+func runIssueOpsChildDrop(args []string) error {
+	fs := flag.NewFlagSet("issueops child drop", flag.ContinueOnError)
+	parentID := fs.String("parent", "", "parent issueops id")
+	childID := fs.String("child", "", "child issueops id")
+	reason := fs.String("reason", "", "drop reason")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	result, err := core.DropIssueOpsChild(core.IssueOpsStateRoot(), *parentID, *childID, *reason)
+	return printIssueOpsChildValue(result, *jsonOut, err)
+}
+
+func printIssueOpsChildValue(value any, jsonOut bool, err error) error {
+	if err != nil {
+		if jsonOut {
+			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	if jsonOut {
+		return printJSON(value)
+	}
+	fmt.Printf("%+v\n", value)
+	return nil
+}
+
 func runIssueOpsRoutingScore(args []string) error {
 	fs := flag.NewFlagSet("issueops routing-score", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")

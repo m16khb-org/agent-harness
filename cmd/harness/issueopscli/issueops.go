@@ -33,6 +33,7 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"link-worktree":   runIssueOpsLinkWorktree,
 	"link-child":      runIssueOpsLinkChild,
 	"link-related":    runIssueOpsLinkRelated,
+	"child":           runIssueOpsChild,
 	"branch":          runIssueOpsBranch,
 	"worktree":        runIssueOpsWorktree,
 	"phase":           runIssueOpsPhase,
