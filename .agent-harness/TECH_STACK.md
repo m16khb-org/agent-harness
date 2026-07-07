@@ -31,18 +31,18 @@ description: Chosen languages, runtimes, tools, and rationale.
 | 실행 모드 | CLI one-shot, MCP stdio proxy, user-level daemon, future local job worker |
 | 설정 prefix | `HARNESS_` |
 
-## 2.1 Upstream companion dependencies
+## 2.1 External tools are not dependencies
 
-하네스의 철학은 **바퀴를 재발명하지 않는다**이다. 아래 도구들은 agent-harness core dependency가 아니라 선택 설치되는 user-level companion tools다. 기능을 하네스에 복제하지 않고 각 upstream의 installer/plugin/MCP를 사용한다.
+아래 도구들은 agent-harness core dependency가 아니다. 하네스 설치, 업데이트, self-verify, readiness gate는 이 도구들이 없어도 재현 가능해야 한다. 기능을 하네스에 복제하지 않고, 필요한 경우 사용자가 각 도구의 공식 설치/설정 경로를 별도로 따른다.
 
-| 도구 | Upstream/package | 역할 | 설치 경로 |
+| 도구 | Package/source | 역할 | 하네스 경계 |
 |------|------------------|------|-----------|
-| LLM Wiki | `m16khb/llm-wiki` | OKF-native local wiki validation, linting, indexing, graphing, and bounded query-pack MCP tools | 필요할 때 upstream CLI/MCP 설치 문서를 직접 따른다. agent-harness 설치 경로가 대신 배선하지 않는다. |
-| CodeGraph | `@colbymchenry/codegraph` | AST 기반 symbol graph와 MCP code intelligence | `npm install -g @colbymchenry/codegraph`, `codegraph install`, `codegraph init -i` |
-| claude-mem | `thedotmack/claude-mem` | session memory capture/compression | `npx claude-mem@latest install`로 Codex/Claude hooks, MCP, worker 설치/갱신 |
-| LazyCodex | `code-yeongyu/oh-my-openagent` / `lazycodex-ai` | Codex Light LazyCodex/OMO skills, hooks, LSP/AST tooling | `npx lazycodex-ai@latest install --no-tui`로 Codex integration 설치/갱신 |
+| LLM Wiki | `m16khb/llm-wiki` | OKF-native local wiki validation, linting, indexing, graphing, and bounded query-pack MCP tools | 하네스는 외부 wiki ingest/lint/index/query-pack을 실행하지 않는다. |
+| CodeGraph | `@colbymchenry/codegraph` | AST 기반 symbol graph와 MCP code intelligence | 하네스 readiness는 CodeGraph 설치를 요구하지 않는다. 사용 가능하면 명시 evidence로만 기록한다. |
+| claude-mem | `thedotmack/claude-mem` | session memory capture/compression | 하네스는 memory capture/compression/store logic이나 hook 설치를 대행하지 않는다. |
+| LazyCodex | `code-yeongyu/oh-my-openagent` / `lazycodex-ai` | Codex Light LazyCodex/OMO skills, hooks, LSP/AST tooling | 하네스는 해당 skill/hook/tool 동작을 core나 설치 경로에 복제하지 않는다. |
 
-Companion tools are not installed by `agent-harness install`, `bootstrap`, `update`, or `scripts/install-native.sh`; use each upstream installer explicitly when those tools are needed.
+These tools are not installed by `agent-harness install`, `bootstrap`, `update`, or `scripts/install-native.sh`.
 
 ## 2.2 Project skills
 

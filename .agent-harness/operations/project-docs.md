@@ -1,6 +1,6 @@
 ---
 name: project-docs.md
-description: Project bootstrap, project-doc routing, MCP document updates, and LLM Wiki policy.
+description: Project bootstrap, project-doc routing, MCP document updates, and standalone docs policy.
 ---
 
 # Project Docs Operations
@@ -66,8 +66,8 @@ Dry-run/default-write rules:
 - `project_docs_record` is append-only and narrow.
 - `state_prune`, `state_migrate`, and `self_verify_promote` are dry-run unless confirmed.
 
-## LLM Wiki Policy
+## Standalone Docs Policy
 
-LLM Wiki functionality is not implemented by `agent-harness`. Use the upstream `m16khb/llm-wiki` CLI/MCP server or portable `AGENTS.md` workflows. Do not add llm-wiki-specific harness CLI commands, MCP tools, resources, or SessionStart hooks.
+Project docs, docs routing, and draft-wiki staging must not require an external wiki, memory provider, graph index, or companion MCP server. Do not add external-tool-specific harness CLI commands, MCP tools, resources, or SessionStart hooks as a prerequisite for project documentation workflows.
 
-Repo-local draft wiki staging remains separate from source-of-truth `.agent-harness/*.md`: draft candidates live under `.agent-harness/draft-wiki/`, and `agent-harness docs`/MCP `docs_index` must not index draft candidates as canonical project docs. Hooks do not decide whether material is worth remembering and do not auto-queue draft-wiki work; the main agent must judge reuse value and explicitly queue material with `agent-harness project draft-wiki queue --stdin` or `--input`.
+Repo-local draft wiki staging remains separate from source-of-truth `.agent-harness/*.md`: draft candidates live under `.agent-harness/draft-wiki/`, and `agent-harness docs`/MCP `docs_index` must not index draft candidates as canonical project docs. Hooks do not decide whether material is worth remembering and do not auto-queue draft-wiki work; the main agent must judge reuse value and explicitly queue material with `agent-harness project draft-wiki queue --stdin` or `--input`. Promotion exports approved drafts to the repo-local `exported/` area and does not perform external ingest, lint, index, or query-pack work.

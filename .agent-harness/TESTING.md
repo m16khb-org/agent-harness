@@ -198,11 +198,11 @@ Golden file은 사람이 읽을 수 있게 작게 유지하고, schema 변경 �
 
 The default web-fetch battery is deterministic and must not require network access. Opt-in live parity uses `HARNESS_WEBFETCH_LIVE=1` and the fixture file at `testdata/webfetch/live/public-fixtures.json`; follow `.agent-harness/operations/web-fetch-live-parity.md` before interpreting live results or comparing against a generic baseline executable.
 
-## LLM Wiki 정책
+## Standalone Verification Policy
 
-LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `m16khb/llm-wiki` CLI/MCP 서버 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
+Agent-harness tests must verify harness core and native integration contracts without requiring external toolchains, external accounts, or companion MCP servers. LLM Wiki, CodeGraph, claude-mem, LazyCodex, Ponytail, and Headroom are not prerequisites for install/update/self-verify readiness.
 
-같은 원칙으로 CodeGraph와 claude-mem도 하네스 내부에 재구현하지 않는다. 해당 도구가 필요하면 각 upstream installer/MCP/plugin 문서를 직접 검증하고, agent-harness 테스트는 하네스 core와 native integration 계약만 검증한다.
+If a test fixture models data produced by an external tool, keep it as plain local input and verify only the harness boundary that consumes that input. Do not add tests that clone, install, patch, or register external tools as part of normal verification.
 
 ## API documentation checks
 

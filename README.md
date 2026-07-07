@@ -109,7 +109,7 @@ Rules that matter:
 3. Default installs write user-level host configuration only; target repos get files only through explicit project bootstrap or project-local opt-in.
 4. Shared skills live in `skills/<name>/`; user-level Codex and Claude skill paths point back to that source.
 5. Worker execution stays read-only and policy-gated until writable/background execution has explicit audit, timeout, cancellation, and redaction coverage.
-6. agent-harness does not reimplement upstream tools such as LLM Wiki, CodeGraph, claude-mem, LazyCodex, or Headroom. It can install or wire them through opt-in paths.
+6. Native install, update, and verification are standalone. External tools such as LLM Wiki, CodeGraph, claude-mem, LazyCodex, or Headroom are not installed or required by agent-harness.
 
 ### Repository Map
 
@@ -433,7 +433,7 @@ flowchart LR
 3. 기본 설치는 user-level host 설정만 씁니다. 대상 repo 파일은 명시적 project bootstrap 또는 project-local opt-in에서만 생성합니다.
 4. shared skill 원본은 `skills/<name>/`이고, user-level Codex/Claude skill 경로는 이 원본을 가리킵니다.
 5. worker 실행은 writable/background execution에 필요한 audit, timeout, cancellation, redaction 경계가 생기기 전까지 read-only 및 policy-gated로 유지합니다.
-6. agent-harness는 LLM Wiki, CodeGraph, claude-mem, LazyCodex, Headroom 같은 upstream 도구를 재구현하지 않습니다. 필요한 경우 opt-in 경로로 설치하거나 연결합니다.
+6. native install, update, verification은 독립 실행 가능합니다. LLM Wiki, CodeGraph, claude-mem, LazyCodex, Headroom 같은 외부 도구는 agent-harness가 설치하거나 요구하지 않습니다.
 
 ### 저장소 구조
 

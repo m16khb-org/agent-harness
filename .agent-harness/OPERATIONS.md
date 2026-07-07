@@ -52,7 +52,7 @@ Use `.agent-harness/operations/release-reproducibility.md` before deciding Homeb
 - Host adapters are thin wrappers around the same CLI/core behavior. They must not duplicate policy, schema, or state semantics.
 - Hooks provide routing, lifecycle state, and bounded reminders only. They must not create issues/PRs, run tests, edit shared docs, or perform long network/file reads.
 - IssueOps implementation must pass durable `compatibility_review` and `execution_decision` gates. Hooks do not decide backward compatibility, side effects, auto-proceed, human gates, or sub-agent usage; `issueops compatibility review` / MCP `issueops_record_compatibility_review` records the compatibility and side-effect judgement, then `issueops execution decide` / MCP `issueops_record_execution_decision` records the main-agent execution judgement before `implement`.
-- LLM Wiki, CodeGraph, claude-mem, LazyCodex, and Headroom are upstream companion tools. `agent-harness` does not reimplement their core behavior or install them through native install/update paths.
+- Native install/update paths are standalone. External tools such as LLM Wiki, CodeGraph, claude-mem, LazyCodex, and Headroom are neither installed nor required by `agent-harness`; use their own setup paths when a separate workflow needs them.
 - Worker functionality remains policy-gated and state-first until write/network/background execution has explicit audit, timeout, cancellation, and redaction coverage.
 
 ## Quick Smoke
