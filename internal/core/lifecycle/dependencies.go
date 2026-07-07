@@ -146,6 +146,10 @@ func readIssueOpsSession(repo string) (issueops.SessionBinding, error) {
 	return issueops.ReadIssueOpsSession(repo)
 }
 
+func listIssueOpsSessionBindings(repo string) ([]issueops.SessionBinding, error) {
+	return issueops.ListIssueOpsSessionBindings(repo)
+}
+
 func activeSessionCycleID(repo string) string {
 	return issueops.ActiveSessionCycleID(repo)
 }

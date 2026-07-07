@@ -132,6 +132,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_child_reject",
 		"issueops_child_drop",
 		"issueops_resume",
+		"issueops_heartbeat",
 	}
 	if len(tools) != len(wantNames) {
 		t.Fatalf("expected %d issueops lifecycle tools, got %d", len(wantNames), len(tools))
@@ -234,10 +235,12 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 			}
 		}
 	}
-	if !schemaRequires(byName["issueops_resume"].InputSchema, "repo") {
-		t.Fatalf("issueops_resume must require repo: %#v", byName["issueops_resume"].InputSchema)
+	for _, property := range []string{"repo", "id", "bind"} {
+		if !schemaHasProperty(byName["issueops_resume"].InputSchema, property) {
+			t.Fatalf("issueops_resume schema missing %q: %#v", property, byName["issueops_resume"].InputSchema)
+		}
 	}
-	if !schemaHasProperty(byName["issueops_resume"].InputSchema, "bind") {
-		t.Fatalf("issueops_resume schema missing bind: %#v", byName["issueops_resume"].InputSchema)
+	if !schemaRequires(byName["issueops_heartbeat"].InputSchema, "id") {
+		t.Fatalf("issueops_heartbeat must require id: %#v", byName["issueops_heartbeat"].InputSchema)
 	}
 }

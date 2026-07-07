@@ -458,6 +458,10 @@ func BindScopedIssueOpsSession(repo, cycleID, branch, expectedWorktree string) e
 	return issueops.BindScopedIssueOpsSession(repo, cycleID, branch, expectedWorktree)
 }
 
+func BindIssueOpsSessionForCycle(repo, cycleID string) error {
+	return issueops.BindIssueOpsSessionForCycle(repo, cycleID)
+}
+
 func ReadIssueOpsSession(repo string) (SessionBinding, error) {
 	return issueops.ReadIssueOpsSession(repo)
 }
@@ -494,8 +498,8 @@ func ExpectedWorktreeEnvGuidance(worktree string) string {
 // resume result with cycle details, readiness, or suggested cycles.
 type IssueOpsResumeResult = issueops.IssueOpsResumeResult
 
-func IssueOpsResume(repo string) IssueOpsResumeResult {
-	return issueops.IssueOpsResume(repo)
+func IssueOpsResume(repo string, ids ...string) IssueOpsResumeResult {
+	return issueops.IssueOpsResume(repo, ids...)
 }
 
 func RecordIssueOpsHeartbeat(stateRoot, id string) (IssueOpsRecord, error) {

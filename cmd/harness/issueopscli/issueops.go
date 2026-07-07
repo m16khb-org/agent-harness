@@ -49,6 +49,7 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"pr-readiness":  runIssueOpsPRReadiness,
 	"force-release": runIssueOpsForceRelease,
 	"resume":        runIssueOpsResume,
+	"heartbeat":     runIssueOpsHeartbeat,
 	"decision":      runIssueOpsDecision,
 	"execution":     runIssueOpsExecution,
 }

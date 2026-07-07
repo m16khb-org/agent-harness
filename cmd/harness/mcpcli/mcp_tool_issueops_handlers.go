@@ -351,11 +351,19 @@ func handleMCPIssueOpsCleanupStale(args map[string]any) MCPToolOutcome {
 }
 
 func handleMCPIssueOpsResume(args map[string]any) MCPToolOutcome {
-	result := core.IssueOpsResume(argmap.String(args, "repo"))
-	if argmap.Bool(args, "bind") && result.OK && result.Bound {
-		if err := core.BindIssueOpsSession(result.Repo, result.CycleID, result.Branch, result.WorktreePath); err != nil {
+	result := core.IssueOpsResume(argmap.String(args, "repo"), argmap.String(args, "id"))
+	if argmap.Bool(args, "bind") && result.OK && result.CycleID != "" {
+		if err := core.BindIssueOpsSessionForCycle(result.Repo, result.CycleID); err != nil {
 			return issueOpsMCPOutcome(nil, fmt.Errorf("resume bind: %w", err), "IssueOps resume bind failed")
 		}
 	}
 	return mcpToolPayload(result)
+}
+
+func handleMCPIssueOpsHeartbeat(args map[string]any) MCPToolOutcome {
+	record, err := core.RecordIssueOpsHeartbeat(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	if err != nil {
+		return issueOpsMCPOutcome(nil, err, "IssueOps heartbeat failed")
+	}
+	return mcpToolPayload(record)
 }

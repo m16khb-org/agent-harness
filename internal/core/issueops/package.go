@@ -465,6 +465,28 @@ func BindScopedIssueOpsSession(repo, cycleID, branch, expectedWorktree string) e
 	return session.BindScoped(issueOpsSessionStore(), repo, cycleID, branch, expectedWorktree)
 }
 
+func BindIssueOpsSessionForCycle(repo, cycleID string) error {
+	rec, err := ReadIssueOps(IssueOpsStateRoot(), strings.TrimSpace(cycleID))
+	if err != nil || !rec.OK {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("issueops cycle not found: %s", strings.TrimSpace(cycleID))
+	}
+	bindRepo := strings.TrimSpace(repo)
+	if bindRepo == "" {
+		bindRepo = rec.Repo
+	}
+	expectedWorktree := strings.TrimSpace(rec.WorktreePath)
+	if rec.Delegation != nil {
+		if binding, err := ReadScopedIssueOpsSession(bindRepo, rec.ID); err == nil && strings.TrimSpace(binding.ExpectedWorktree) != "" {
+			expectedWorktree = binding.ExpectedWorktree
+		}
+		return BindScopedIssueOpsSession(bindRepo, rec.ID, rec.Branch, expectedWorktree)
+	}
+	return BindIssueOpsSession(bindRepo, rec.ID, rec.Branch, expectedWorktree)
+}
+
 func ReadIssueOpsSession(repo string) (SessionBinding, error) {
 	return session.Read(issueOpsSessionStore(), repo)
 }
@@ -515,8 +537,11 @@ func issueOpsSessionStore() session.Store {
 // resume result. When a session is bound, it reads the cycle record and returns
 // its details plus readiness. When unbound, it suggests active cycles for the
 // repo (current branch first, then linked-worktree cycles).
-func IssueOpsResume(repo string) IssueOpsResumeResult {
+func IssueOpsResume(repo string, ids ...string) IssueOpsResumeResult {
 	repo = strings.TrimSpace(repo)
+	if id := firstIssueOpsResumeID(ids); id != "" {
+		return issueOpsResumeByID(repo, id)
+	}
 	b, err := ReadIssueOpsSession(repo)
 	if err != nil {
 		return IssueOpsResumeResult{OK: false}
@@ -569,6 +594,46 @@ func IssueOpsResume(repo string) IssueOpsResumeResult {
 		OK:              len(suggested) > 0,
 		Bound:           false,
 		SuggestedCycles: suggested,
+	}
+}
+
+func firstIssueOpsResumeID(ids []string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(ids[0])
+}
+
+func issueOpsResumeByID(repo, id string) IssueOpsResumeResult {
+	rec, err := ReadIssueOps(IssueOpsStateRoot(), id)
+	if err != nil || !rec.OK {
+		return IssueOpsResumeResult{OK: false}
+	}
+	resumeRepo := strings.TrimSpace(repo)
+	if resumeRepo == "" {
+		resumeRepo = rec.Repo
+	}
+	readiness := IssueOpsImplementationReadiness(rec)
+	expectedWorktree := strings.TrimSpace(rec.WorktreePath)
+	if rec.Delegation != nil {
+		if binding, err := ReadScopedIssueOpsSession(resumeRepo, rec.ID); err == nil && strings.TrimSpace(binding.ExpectedWorktree) != "" {
+			expectedWorktree = binding.ExpectedWorktree
+		}
+	} else {
+		expectedWorktree = ExpectedWorktreeFromSession(resumeRepo, func() string { return rec.WorktreePath })
+	}
+	return IssueOpsResumeResult{
+		OK:           true,
+		CycleID:      rec.ID,
+		Phase:        rec.Phase,
+		Repo:         rec.Repo,
+		Branch:       rec.Branch,
+		WorktreePath: rec.WorktreePath,
+		IssueURL:     rec.IssueURL,
+		PlanPath:     rec.PlanPath,
+		Bound:        true,
+		Readiness:    &readiness,
+		Guidance:     ExpectedWorktreeEnvGuidance(expectedWorktree),
 	}
 }
 

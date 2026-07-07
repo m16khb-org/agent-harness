@@ -30,8 +30,8 @@ func sourceCheckoutMirrorEditAskReason(req HookToolUseLifecycleRequest) (string,
 	if repo == "" {
 		return "", ""
 	}
-	binding, err := readIssueOpsSession(repo)
-	if err != nil || binding.CycleID == "" {
+	binding, ok := issueOpsSessionBindingForMirrorGuard(repo)
+	if !ok {
 		return "", ""
 	}
 	record, err := ReadIssueOps(IssueOpsStateRoot(), binding.CycleID)

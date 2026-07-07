@@ -227,7 +227,7 @@
           "name": "version"
         }
       ],
-      "hash": "e880632255c76cb6d0c07f17b21a063ba7d2b5f34c6d53b816d6b937804244a3",
+      "hash": "e506d53f3e1f52ff7611c573cbff949f101083d2b7c2d10dfaccc6dcca063da6",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -253,6 +253,7 @@
         "issueops_cleanup_stale",
         "issueops_cleanup_status",
         "issueops_force_release",
+        "issueops_heartbeat",
         "issueops_link_child",
         "issueops_link_issue",
         "issueops_link_plan",
@@ -6491,7 +6492,7 @@
                 "name": "version"
               }
             ],
-            "hash": "e880632255c76cb6d0c07f17b21a063ba7d2b5f34c6d53b816d6b937804244a3",
+            "hash": "e506d53f3e1f52ff7611c573cbff949f101083d2b7c2d10dfaccc6dcca063da6",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6517,6 +6518,7 @@
               "issueops_cleanup_stale",
               "issueops_cleanup_status",
               "issueops_force_release",
+              "issueops_heartbeat",
               "issueops_link_child",
               "issueops_link_issue",
               "issueops_link_plan",

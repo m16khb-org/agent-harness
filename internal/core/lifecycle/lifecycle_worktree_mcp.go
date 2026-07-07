@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"strings"
 
+	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/searchrouting"
 )
 
@@ -58,18 +59,74 @@ func expectedIssueOpsWorktreesForMCPGuard(req HookToolUseLifecycleRequest) []str
 // repo and returns the expected worktree path, or empty when unbound or the
 // worktree field is not set.
 func expectedWorktreeFromSessionBinding(repo string) string {
-	b, err := readIssueOpsSession(repo)
-	if err != nil || b.CycleID == "" {
-		return ""
-	}
-	// The binding is repo-scoped, not session-scoped: apply it only when the
-	// session is actually on the bound branch, so a binding written by one
-	// cycle never blocks unrelated work (e.g. main-branch source edits) in
-	// another session of the same repo.
-	if b.Branch != "" && b.Branch != gitBranchFromHead(repo) {
+	b, ok := branchMatchedIssueOpsSessionBinding(repo)
+	if !ok {
 		return ""
 	}
 	return cleanAbsPath(b.ExpectedWorktree)
+}
+
+func branchMatchedIssueOpsSessionBinding(repo string) (issueops.SessionBinding, bool) {
+	repo = cleanAbsPath(repo)
+	if repo == "" {
+		return issueops.SessionBinding{}, false
+	}
+	branch := gitBranchFromHead(repo)
+	primary, primaryErr := readIssueOpsSession(repo)
+	bindings, err := listIssueOpsSessionBindings(repo)
+	if err == nil {
+		for _, binding := range bindings {
+			if primaryErr == nil && primary.CycleID != "" && binding.CycleID == primary.CycleID {
+				continue
+			}
+			if sessionBindingMatchesBranch(binding, branch) {
+				return binding, true
+			}
+		}
+		if primaryErr == nil && sessionBindingMatchesBranch(primary, branch) {
+			return primary, true
+		}
+	}
+	binding, err := readIssueOpsSession(repo)
+	if err != nil || binding.CycleID == "" {
+		return issueops.SessionBinding{}, false
+	}
+	if !sessionBindingMatchesBranch(binding, branch) {
+		return issueops.SessionBinding{}, false
+	}
+	return binding, true
+}
+
+func issueOpsSessionBindingForMirrorGuard(repo string) (issueops.SessionBinding, bool) {
+	repo = cleanAbsPath(repo)
+	if repo == "" {
+		return issueops.SessionBinding{}, false
+	}
+	branch := gitBranchFromHead(repo)
+	primary, primaryErr := readIssueOpsSession(repo)
+	bindings, err := listIssueOpsSessionBindings(repo)
+	if err == nil {
+		for _, binding := range bindings {
+			if primaryErr == nil && primary.CycleID != "" && binding.CycleID == primary.CycleID {
+				continue
+			}
+			if sessionBindingMatchesBranch(binding, branch) {
+				return binding, true
+			}
+		}
+	}
+	if primaryErr == nil && strings.TrimSpace(primary.CycleID) != "" {
+		return primary, true
+	}
+	return issueops.SessionBinding{}, false
+}
+
+func sessionBindingMatchesBranch(binding issueops.SessionBinding, branch string) bool {
+	if strings.TrimSpace(binding.CycleID) == "" {
+		return false
+	}
+	bindingBranch := strings.TrimSpace(binding.Branch)
+	return bindingBranch == "" || bindingBranch == strings.TrimSpace(branch)
 }
 
 func pathEqualsAny(path string, candidates []string) bool {

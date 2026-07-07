@@ -358,14 +358,15 @@ func runIssueOpsForceRelease(args []string) error {
 func runIssueOpsResume(args []string) error {
 	fs := flag.NewFlagSet("issueops resume", flag.ContinueOnError)
 	repo := fs.String("repo", "", "repository path")
+	id := fs.String("id", "", "issueops id")
 	bind := fs.Bool("bind", false, "bind the session to the resumed cycle")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result := core.IssueOpsResume(*repo)
-	if *bind && result.OK && result.Bound {
-		if err := core.BindIssueOpsSession(*repo, result.CycleID, result.Branch, result.WorktreePath); err != nil {
+	result := core.IssueOpsResume(*repo, *id)
+	if *bind && result.OK && result.CycleID != "" {
+		if err := core.BindIssueOpsSessionForCycle(result.Repo, result.CycleID); err != nil {
 			return printIssueOpsResult(core.IssueOpsRecord{OK: false}, *jsonOut, fmt.Errorf("resume bind: %w", err))
 		}
 	}
@@ -390,4 +391,15 @@ func runIssueOpsResume(args []string) error {
 		fmt.Printf("not bound. suggested cycles: %s\n", strings.Join(result.SuggestedCycles, ", "))
 	}
 	return nil
+}
+
+func runIssueOpsHeartbeat(args []string) error {
+	fs := flag.NewFlagSet("issueops heartbeat", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.RecordIssueOpsHeartbeat(core.IssueOpsStateRoot(), *id)
+	return printIssueOpsResult(record, *jsonOut, err)
 }

@@ -50,6 +50,7 @@ var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
 	"issueops_cleanup_close_children":         handleMCPIssueOpsCleanupCloseChildren,
 	"issueops_force_release":                  handleMCPIssueOpsForceRelease,
 	"issueops_cleanup_stale":                  handleMCPIssueOpsCleanupStale,
+	"issueops_heartbeat":                      handleMCPIssueOpsHeartbeat,
 	"issueops_remote_render_template":         handleMCPRemoteRenderTemplate,
 	"issueops_remote_create_issue":            handleMCPRemoteCreateIssue,
 	"issueops_remote_reflect_devils_advocate": handleMCPRemoteReflectDevilsAdvocate,

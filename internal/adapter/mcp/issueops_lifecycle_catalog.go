@@ -267,10 +267,18 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_resume",
-			Description: "Read the session-to-cycle binding for a repo and return the current IssueOps cycle state, worktree path, branch, readiness, and suggested next actions. When unbound, suggests active cycles for the repo. Optionally bind the session with --bind.",
-			InputSchema: map[string]any{"type": "object", "required": []string{"repo"}, "properties": map[string]any{
+			Description: "Read an IssueOps cycle by id or read the session-to-cycle binding for a repo, returning cycle state, worktree path, branch, readiness, and HARNESS_EXPECTED_WORKTREE guidance. When repo is unbound and id is omitted, suggests active cycles for the repo. Optionally bind the session with bind=true.",
+			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 				"repo": map[string]any{"type": "string", "description": "Repository path."},
+				"id":   map[string]any{"type": "string", "description": "Optional IssueOps id to resume directly."},
 				"bind": map[string]any{"type": "boolean", "description": "When true and a cycle is found, bind the session to it."},
+			}},
+		},
+		{
+			Name:        "issueops_heartbeat",
+			Description: "Update the liveness heartbeat for an active IssueOps cycle without otherwise mutating phase, links, or work artifacts.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
+				"id": map[string]any{"type": "string", "description": "IssueOps id."},
 			}},
 		},
 	}
