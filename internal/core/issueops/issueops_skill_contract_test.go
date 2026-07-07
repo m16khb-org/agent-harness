@@ -151,6 +151,59 @@ func TestIssueOpsSkillDocumentsReadinessGateKeys(t *testing.T) {
 	}
 }
 
+func TestIssueOpsSkillDocumentsOrchestrationContracts(t *testing.T) {
+	skill := readIssueOpsSkillForTest(t)
+	reference := readIssueOpsReferenceForTest(t, "orchestration.md")
+	body := skill + "\n" + reference
+
+	for _, want := range []string{
+		"Delegated Child Cycles",
+		"Worker Pool",
+		"issueops child start",
+		"issueops child status",
+		"issueops child accept",
+		"issueops child reject",
+		"issueops child drop",
+		"workpool claim",
+		"workpool submit",
+		"workpool accept",
+		"child_incomplete",
+		"child_unvalidated",
+		"child_rejected_unresolved",
+		"pool_incomplete",
+		"children_active",
+		"implement phase",
+		"approved reviews",
+		"recorded sub-agent plan",
+		"accepted",
+		"rejected",
+		"dropped",
+		"child contract",
+		"pool worker loop",
+		"scope-drift stop rule",
+		"validation rubric",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("IssueOps orchestration skill/reference contract missing phrase %q", want)
+		}
+	}
+}
+
+func TestIssueOpsSkillDocumentsOrchestrationOwnerCommands(t *testing.T) {
+	skill := readIssueOpsSkillForTest(t)
+	for _, want := range []string{
+		"`child_incomplete` | `issueops child status`",
+		"`child_unvalidated` | `issueops child accept`",
+		"`child_rejected_unresolved` | `issueops child accept` or `issueops child drop`",
+		"`pool_incomplete` | `workpool status`",
+		"`children_active` | `issueops child status`",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Fatalf("IssueOps skill must map orchestration missing key to owner command %q", want)
+		}
+	}
+}
+
 // Asserts the SKILL.md documents the subagent judge protocol. NOTE: text
 // presence only — the no-self-approval constraint is a documented protocol,
 // not enforceable at the Go layer (the file backend only sees bytes).

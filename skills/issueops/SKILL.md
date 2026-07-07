@@ -70,6 +70,48 @@ Required phases:
 11. Feedback loop: collect user, review, QA, and CI feedback; classify each item; update the issue/plan when the contract changes; then continue implementation.
 12. PR/MR: draft only after the issue URL, provider-linked branch, plan path, and isolated worktree are linked, AI slop cleanup is complete in that worktree, strict PR readiness is green, and relevant verification has run.
 
+### Delegated Child Cycles
+
+Delegated child cycles let a parent IssueOps cycle coordinate bounded sub-agent work without asking hooks or the harness to spawn agents. The main agent owns dispatch; `agent-harness` owns durable state, gates, and owner commands.
+
+Delegation preconditions:
+
+- The parent is in `implement phase`.
+- Required reviews are approved reviews: design review, compatibility review, and devil's-advocate review are pass or explicitly waived according to the normal implement-entry gate.
+- The parent has a recorded sub-agent plan in `execution_decision` using the documented sub-agent patterns, including scope, verification, fallback, and net-positive rationale. This is the recorded sub-agent plan.
+
+Owner commands:
+
+- Start a child: `issueops child start --parent "$ISSUEOPS_ID" --branch "$CHILD_BRANCH" --title "$TITLE" --scope "$SCOPE" --acceptance "$CRITERION" --json`
+- Inspect children: `issueops child status --parent "$ISSUEOPS_ID" --json`
+- Validate a done child: `issueops child accept --parent "$ISSUEOPS_ID" --child "$CHILD_ID" --evidence "$EVIDENCE" --json`
+- Send a child back for redo: `issueops child reject --parent "$ISSUEOPS_ID" --child "$CHILD_ID" --reason "$REASON" --json`
+- Remove a child from the parent gate: `issueops child drop --parent "$ISSUEOPS_ID" --child "$CHILD_ID" --reason "$REASON" --json`
+
+Verdict table:
+
+| Verdict | Meaning | Gate effect |
+|---|---|---|
+| `accepted` | The main agent reviewed the child evidence and accepts it as satisfying the delegated contract. | Child no longer blocks parent PR readiness. |
+| `rejected` | The child result is not acceptable yet; dispatch a revised prompt or continue the child cycle. | Parent remains blocked as `child_rejected_unresolved` until accept or drop. |
+| `dropped` | The main agent intentionally removes the child from the parent contract with an auditable reason. | Child no longer blocks the parent gate, but the reason remains in state. |
+
+Do not mutate child records from the parent to "fix" them. The child owns its own cycle; the parent owns only the child index and validation verdict. Use `references/orchestration.md` for the child contract prompt, scope-drift stop rule, and validation rubric.
+
+### Worker Pool
+
+Worker pools coordinate repeated, same-shape work units where one parent owns a bounded set of tasks. The harness provides lease bookkeeping; the host agent still creates workers and validates results.
+
+Pool owner loop:
+
+1. Create a pool with `workpool create --repo "$PWD" --name "$POOL" --parent-cycle "$ISSUEOPS_ID" --json`.
+2. Add task contracts with `workpool add-task --pool "$POOL_ID" --title "$TITLE" --instructions "$INSTRUCTIONS" --acceptance "$CRITERION" --json`.
+3. Workers claim and heartbeat: `workpool claim --pool "$POOL_ID" --worker "$WORKER_ID" --json`, then `workpool heartbeat --pool "$POOL_ID" --task "$TASK_ID" --worker "$WORKER_ID" --json`.
+4. Workers submit evidence: `workpool submit --pool "$POOL_ID" --task "$TASK_ID" --worker "$WORKER_ID" --evidence "$EVIDENCE" --branch "$BRANCH" --worktree "$WORKTREE" --json`.
+5. The main agent validates with `workpool accept --pool "$POOL_ID" --task "$TASK_ID" --evidence "$EVIDENCE" --json` or `workpool reject --pool "$POOL_ID" --task "$TASK_ID" --reason "$REASON" --json`.
+
+Pool tasks must include a small contract, expected evidence, and a stop rule for scope drift. Workers must heartbeat with `workpool heartbeat`; parent IssueOps sessions heartbeat with `issueops heartbeat --id`.
+
 ### Large Issue Breakdown Gate
 
 Run this gate after the remote Issue Contract exists and before entering the IssueOps `plan` phase.
@@ -248,6 +290,7 @@ Load these files only when the phase applies:
 - `references/issue-preflight.md`: deep-interview ambiguity reduction and `PROMPT.md`-based ideal issue prompt rewrite before remote issue creation.
 - `references/evidence-contract.md`: portable domain contract, API documentation, live evidence, review accountability, and completion hygiene rules.
 - `references/worktree-context.md`: branch/worktree contract, local config symlink rules, context routing.
+- `references/orchestration.md`: delegated child cycle and workpool prompt templates, S1/S2 walkthroughs, scope-drift stop rule, validation rubric.
 - `references/ai-slop-clean.md`: PR/MR-prep cleanup prompt for removing lazy agent residue while preserving behavior. Run **`shannon`** SNR measurement before and after.
 - `references/review-feedback.md`: worker prompt requirements, bounded subagent review rules, remote review feedback replies and thread resolution.
 - `references/cleanup-state.md`: post-merge cleanup, state commands, benchmark commands, stop conditions.
@@ -316,6 +359,11 @@ When an IssueOps command reports a missing gate, do not guess a new hidden flag.
 - `plan_path` / `plan_exists` / `plan_in_worktree`: create the plan file inside the linked worktree, then run `issueops link-plan`.
 - `ai_slop_clean`: record AI slop cleanup after implementation changes exist in the linked worktree.
 - `contract_feedback_issue_update`: update the remote issue body for contract-changing feedback, then run `issueops feedback mark-issue-updated`.
+- `child_incomplete` | `issueops child status`: inspect child phase, heartbeat age, worktree, and latest evidence; continue or recover the child before parent PR readiness.
+- `child_unvalidated` | `issueops child accept`: validate the done child with evidence, or reject/drop it with a reason when the result is not acceptable.
+- `child_rejected_unresolved` | `issueops child accept` or `issueops child drop`: resolve a rejected child by accepting corrected evidence or dropping it from the parent gate with an auditable reason.
+- `pool_incomplete` | `workpool status`: inspect pool task counts and submitted evidence; accept/reject/close tasks before parent PR readiness.
+- `children_active` | `issueops child status`: active children prevent parent regression/cleanup shortcuts; inspect children and stop at the owner decision boundary.
 
 Approved design reviews require `--refactor-plan`, at least one `--alternative`, at least one `--risk`, no `--open-question`, and at least one design-review evidence verification item. `design_review_evidence` is not a separate CLI flag, MCP field, or decision record. Put it in `--verification`, for example:
 
@@ -347,6 +395,10 @@ The IssueOps skill prose uses vivid domain nouns — phase names, decision verbs
 | `design` (review) | **plan-phase ledger artifact** | `issueops design review` |
 | `intent` (contract) | **problem-phase ledger artifact** | `issueops intent record` |
 | `regress` (for replan) | **feedback action** | `issueops regress` |
+| `delegated child` | **parent-owned sub-agent cycle reference** | `issueops child start/status/accept/reject/drop` |
+| `worker pool` | **leased fan-out task queue** | `workpool create/add-task/claim/submit/accept/status/close` |
+| `child validation` | **parent verdict over child evidence** | `issueops child accept` or `issueops child reject` |
+| `pool validation` | **main-agent verdict over submitted task evidence** | `workpool accept` or `workpool reject` |
 
 ## Quality Upgrade Gates
 
