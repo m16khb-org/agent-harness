@@ -223,7 +223,7 @@ func issueOpsPhaseArtifactKeys(phase IssueOpsPhase) []string {
 	case IssueOpsPhaseFeedback:
 		return []string{"feedback_classification", "contract_feedback_issue_update", "feedback_resolution"}
 	case IssueOpsPhasePR:
-		return []string{"strict_pr_readiness", "remote_artifact", "target_branch_match"}
+		return []string{"strict_pr_readiness", "children_complete", "remote_artifact", "target_branch_match"}
 	case IssueOpsPhaseDone:
 		return []string{"prior_phase_pr", "verified_remote_artifact"}
 	default:

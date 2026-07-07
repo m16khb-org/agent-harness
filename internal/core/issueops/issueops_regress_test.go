@@ -84,6 +84,59 @@ func TestRegressIssueOpsForReplanRejectedOutsidePlanCompat(t *testing.T) {
 	}
 }
 
+func TestRegressRefusedForImplementPhaseParentWithChildren(t *testing.T) {
+	stateRoot := t.TempDir()
+	parent := createDelegationReadyParentForTest(t, stateRoot)
+	if _, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+		ParentID:           parent.ID,
+		Branch:             "123-child-regress-implement",
+		Title:              "regress implement child",
+		TaskScope:          "prove implement parent still cannot regress",
+		AcceptanceCriteria: []string{"existing phase precondition wins"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RegressIssueOpsForReplan(stateRoot, parent.ID, "should still be refused from implement"); err == nil || !strings.Contains(err.Error(), "only applies from plan or compatibility-review") {
+		t.Fatalf("implement parent should be refused by existing phase precondition, got %v", err)
+	}
+}
+
+func TestRegressIssueOpsForReplanBlockedByActiveChildren(t *testing.T) {
+	stateRoot := t.TempDir()
+	parent := createDelegationReadyParentForTest(t, stateRoot)
+	started, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+		ParentID:           parent.ID,
+		Branch:             "123-child-regress-active",
+		Title:              "regress active child",
+		TaskScope:          "prove active child blocks parent regress",
+		AcceptanceCriteria: []string{"parent resolves child before replan"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec, err := ReadIssueOps(stateRoot, parent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec.Phase = IssueOpsPhasePlan
+	rec.DevilsAdvocateReview = &model.IssueOpsDevilsAdvocateReview{Verdict: "stop", Findings: []string{"scope drift"}, RecordedAt: "2026-07-07T00:00:00Z", IssueReflectedAt: "2026-07-07T00:01:00Z"}
+	writeIssueOpsRecordForDelegationTest(t, stateRoot, rec)
+
+	if _, err := RegressIssueOpsForReplan(stateRoot, parent.ID, "active child still owns delegated work"); err == nil || !strings.Contains(err.Error(), "children_active") {
+		t.Fatalf("active children should block parent regress, got %v", err)
+	}
+	if _, err := DropIssueOpsChild(stateRoot, parent.ID, started.Child.ID, "delegated work abandoned before replan"); err != nil {
+		t.Fatal(err)
+	}
+	out, err := RegressIssueOpsForReplan(stateRoot, parent.ID, "active children resolved before replan")
+	if err != nil {
+		t.Fatalf("regress should pass after child is dropped: %v", err)
+	}
+	if out.Phase != IssueOpsPhaseGrill {
+		t.Fatalf("regress should still rewind to grill after child resolution, got %s", out.Phase)
+	}
+}
+
 func TestRegressIssueOpsForReplanRequiresReflectedStop(t *testing.T) {
 	// No devil's-advocate stop verdict → rejected.
 	stateRoot, id := recordAtPhaseForRegressTest(t, IssueOpsPhasePlan)

@@ -34,6 +34,10 @@ func forceDoneIssueOpsLocked(stateRoot, id string) (IssueOpsRecord, error) {
 	if record.Phase != IssueOpsPhasePR {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot force-done from phase %s; must be in pr phase", record.Phase)
 	}
+	activeChildren, err := issueOpsActiveChildIDs(stateRoot, record)
+	if err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
 	missing := issueOpsRemoteArtifactMissing(record)
 	if len(missing) > 0 {
 		// Record the skip reason as a force-release; this is a narrower form
@@ -42,6 +46,13 @@ func forceDoneIssueOpsLocked(stateRoot, id string) (IssueOpsRecord, error) {
 		// bypass is auditable rather than leaving only a reason string.
 		record.ForceReleaseReason = "force-done: skipped remote artifact verification (missing " + strings.Join(missing, ", ") + ")"
 		record.ForceReleasedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	}
+	if len(activeChildren) > 0 {
+		if strings.TrimSpace(record.ForceReleaseReason) == "" {
+			record.ForceReleaseReason = "force-done: parent closed with active children"
+			record.ForceReleasedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		}
+		record.ForceReleaseReason = issueOpsAppendActiveChildrenAudit(record.ForceReleaseReason, activeChildren)
 	}
 	record.Phase = IssueOpsPhaseDone
 	return touchAndWriteIssueOps(stateRoot, record)

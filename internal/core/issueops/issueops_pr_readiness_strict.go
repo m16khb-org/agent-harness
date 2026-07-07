@@ -84,3 +84,15 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	ready.Ready = len(ready.Missing) == 0
 	return ready
 }
+
+func issueOpsStrictPRReadinessWithState(stateRoot string, record IssueOpsRecord) IssueOpsReadiness {
+	ready := IssueOpsStrictPRReadiness(record)
+	childMissing, childWarnings := issueOpsChildPRGateMissing(stateRoot, record)
+	if len(childMissing) == 0 && len(childWarnings) == 0 {
+		return ready
+	}
+	ready.Missing = stringlist.UniqueSorted(append(append([]string{}, ready.Missing...), childMissing...))
+	ready.Warnings = append(ready.Warnings, childWarnings...)
+	ready.Ready = len(ready.Missing) == 0
+	return ready
+}

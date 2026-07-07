@@ -242,6 +242,13 @@ func buildIssueOpsChildStatus(parent IssueOpsRecord, scanned map[string]IssueOps
 	sort.Slice(result.Children, func(i, j int) bool {
 		return result.Children[i].CycleID < result.Children[j].CycleID
 	})
+	if parent.Phase == IssueOpsPhaseDone {
+		for i := range result.Children {
+			if issueOpsChildPRGateKey(result.Children[i], scanned[result.Children[i].CycleID]) != "" {
+				result.Children[i].ParentClosedState = "parent_closed"
+			}
+		}
+	}
 	sort.Strings(result.Orphaned)
 	return result
 }

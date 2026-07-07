@@ -116,6 +116,16 @@ func TestDeriveIssueOpsPhaseLedgerIsDeterministicAndSentinel(t *testing.T) {
 	}
 }
 
+func TestIssueOpsPhaseLedgerIndexesChildrenComplete(t *testing.T) {
+	keys := issueOpsPhaseArtifactKeys(IssueOpsPhasePR)
+	if !containsLedgerKey(keys, "children_complete") {
+		t.Fatalf("pr artifact set should include children_complete, got %#v", keys)
+	}
+	if containsLedgerKey(issueOpsPhaseArtifactKeys(IssueOpsPhaseImplement), "children_complete") {
+		t.Fatalf("implement artifact set must not include children_complete")
+	}
+}
+
 func containsLedgerKey(keys []string, want string) bool {
 	for _, k := range keys {
 		if k == want {

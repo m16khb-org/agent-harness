@@ -52,14 +52,14 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 	if shouldRefreshIssueOpsAISlopClean(record, phase) {
 		return refreshIssueOpsAISlopClean(stateRoot, record)
 	}
-	if err := validateIssueOpsPhaseTransition(record, phase); err != nil {
+	if err := validateIssueOpsPhaseTransition(stateRoot, record, phase); err != nil {
 		return IssueOpsRecord{OK: false}, err
 	}
 	record = applyIssueOpsPhaseTransition(record, phase)
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
-func validateIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase) error {
+func validateIssueOpsPhaseTransition(stateRoot string, record IssueOpsRecord, phase IssueOpsPhase) error {
 	if record.Phase == IssueOpsPhaseDone {
 		return fmt.Errorf("cannot leave done phase")
 	}
@@ -106,7 +106,7 @@ func validateIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase)
 		return fmt.Errorf("cannot enter feedback phase before ai-slop-clean phase")
 	}
 	if phase == IssueOpsPhasePR {
-		if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
+		if ready := issueOpsStrictPRReadinessWithState(stateRoot, record); !ready.Ready {
 			return fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
 		}
 	}

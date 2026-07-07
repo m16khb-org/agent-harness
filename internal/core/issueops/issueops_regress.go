@@ -59,6 +59,13 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (IssueOpsRecor
 			"regress cap reached: cycle %s already went through %d stop→re-plan rounds, so the plan is thrashing rather than converging; a human decision is required before any further automatic re-plan",
 			id, len(record.RegressEvents))
 	}
+	activeChildren, err := issueOpsActiveChildIDs(stateRoot, record)
+	if err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
+	if len(activeChildren) > 0 {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("children_active: %s", strings.Join(activeChildren, ", "))
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	priorPhase := record.Phase
 

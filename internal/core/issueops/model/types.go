@@ -351,6 +351,7 @@ type IssueOpsChildStatusEntry struct {
 	ValidationReason   string        `json:"validation_reason,omitempty"`
 	ValidationEvidence []string      `json:"validation_evidence,omitempty"`
 	ValidatedAt        string        `json:"validated_at,omitempty"`
+	ParentClosedState  string        `json:"parent_closed_state,omitempty"`
 	Indexed            bool          `json:"indexed"`
 	Scanned            bool          `json:"scanned"`
 	Orphaned           bool          `json:"orphaned,omitempty"`
