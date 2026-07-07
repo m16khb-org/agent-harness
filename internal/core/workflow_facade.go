@@ -33,6 +33,10 @@ func BuildProjectDocCatalogContext(repo string) ProjectDocCatalogContext {
 	return hookprompt.BuildProjectDocCatalogContext(repo)
 }
 
+func StopOrchestrationRelayFacts(repo string) string {
+	return hookprompt.StopOrchestrationRelayFacts(repo)
+}
+
 func RenderUserPromptUserView(result HookUserPromptResult) string {
 	return hookprompt.RenderUserPromptUserView(result)
 }

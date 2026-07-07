@@ -7,7 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/lifecycle"
+	"agent-harness/internal/core/workpool"
 )
 
 const hookChoiceQualityEvidenceEscaped = `\n\n## 선택지 품질 증거\n- context 확인: git status, 테스트 결과, 사용자 요청 범위를 확인했습니다.\n- 추천 근거: safe=상태 변경 없음, reversible=되돌릴 작업 없음, aligned=사용자 요청 범위와 일치합니다.\n- 사용자 승인 경계: 원격 push/delete/destructive 작업은 추천하지 않았습니다.`
@@ -207,6 +209,30 @@ func TestRunHookStopRelaysOncePerTurnAndRefreshesRecord(t *testing.T) {
 	}
 }
 
+func TestRunHookStopRelayNamesOrchestrationMissingKeys(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo, parent := seedStopRelayOrchestrationFixture(t)
+	choices := `선택지:\n1. 검증 후 PR 단계로 진행합니다. (추천)\n2. child 상태만 확인합니다.\n3. workpool 상태만 확인합니다.` + hookChoiceQualityEvidenceEscaped
+
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+choices+`"}`, func() error {
+		return runHookStop([]string{"--relay-next-action-judgement"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected Stop hook to relay the judgement, got %+v", obj)
+	}
+	reason, _ := obj["reason"].(string)
+	for _, want := range []string{
+		"child_incomplete:" + issueops.NewIssueOpsID(repo, "relay-child-active"),
+		"child_unvalidated:" + issueops.NewIssueOpsID(repo, "relay-child-done"),
+		"pool_incomplete:wp-relay001",
+		parent.ID,
+	} {
+		if !strings.Contains(reason, want) {
+			t.Fatalf("expected Stop relay reason to name %q, got %q", want, reason)
+		}
+	}
+}
+
 func TestRunHookUserPromptConsumesRelayAfterExpansion(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -224,6 +250,85 @@ func TestRunHookUserPromptConsumesRelayAfterExpansion(t *testing.T) {
 	}
 	if _, found := lifecycle.ReadStopNextActionRelay(repo); found {
 		t.Fatalf("a real user prompt must consume the relay record after expansion")
+	}
+}
+
+func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsRecord) {
+	t.Helper()
+	repo := t.TempDir()
+	now := "2026-07-07T00:00:00Z"
+	parentID := issueops.NewIssueOpsID(repo, "relay-parent")
+	childDoneID := issueops.NewIssueOpsID(repo, "relay-child-done")
+	childActiveID := issueops.NewIssueOpsID(repo, "relay-child-active")
+	parent := issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            parentID,
+		Repo:          repo,
+		Branch:        "relay-parent",
+		Phase:         issueops.IssueOpsPhaseImplement,
+		WorktreePath:  repo,
+		ChildCycles: []issueops.IssueOpsChildCycleRef{
+			{CycleID: childDoneID, Branch: "relay-child-done", CreatedAt: now},
+			{CycleID: childActiveID, Branch: "relay-child-active", CreatedAt: now},
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	writeStopRelayIssueOpsRecord(t, parent)
+	writeStopRelayIssueOpsRecord(t, issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            childDoneID,
+		Repo:          repo,
+		Branch:        "relay-child-done",
+		Phase:         issueops.IssueOpsPhaseDone,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	writeStopRelayIssueOpsRecord(t, issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            childActiveID,
+		Repo:          repo,
+		Branch:        "relay-child-active",
+		Phase:         issueops.IssueOpsPhaseImplement,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	if err := issueops.BindIssueOpsSessionForCycle(repo, parent.ID); err != nil {
+		t.Fatalf("bind issueops session: %v", err)
+	}
+	pool := workpool.WorkPool{
+		SchemaVersion: workpool.WorkPoolCurrentSchemaVersion,
+		ID:            "wp-relay001",
+		Repo:          repo,
+		Name:          "relay",
+		ParentCycleID: parent.ID,
+		Size:          2,
+		LeaseTTL:      "30m",
+		MaxAttempts:   2,
+		Status:        "active",
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if err := os.MkdirAll(filepath.Join(workpool.StateRoot(), pool.ID), 0o700); err != nil {
+		t.Fatalf("mkdir workpool fixture: %v", err)
+	}
+	b, err := json.MarshalIndent(pool, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workpool.StateRoot(), pool.ID+".json"), append(b, '\n'), 0o600); err != nil {
+		t.Fatalf("write workpool fixture: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(workpool.StateRoot(), pool.ID, "task-corrupt.json"), []byte("{not-json\n"), 0o600); err != nil {
+		t.Fatalf("write corrupt task fixture: %v", err)
+	}
+	return repo, parent
+}
+
+func writeStopRelayIssueOpsRecord(t *testing.T, record issueops.IssueOpsRecord) {
+	t.Helper()
+	if _, err := issueops.WriteIssueOps(issueops.IssueOpsStateRoot(), record); err != nil {
+		t.Fatalf("write issueops record %s: %v", record.ID, err)
 	}
 }
 

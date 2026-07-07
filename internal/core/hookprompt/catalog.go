@@ -12,7 +12,8 @@ type ProjectDocCatalogContext struct {
 func BuildProjectDocCatalogContext(repo string) ProjectDocCatalogContext {
 	docs := DiscoverProjectDocs(repo)
 	worktreeReminder := activeWorktreeReminderValue(repo)
-	if len(docs) == 0 && worktreeReminder == "" {
+	orchestrationReminder := orchestrationReminderValue(repo)
+	if len(docs) == 0 && worktreeReminder == "" && orchestrationReminder == "" {
 		return ProjectDocCatalogContext{}
 	}
 	compact := FormatProjectDocCatalog(docs)
@@ -20,6 +21,14 @@ func BuildProjectDocCatalogContext(repo string) ProjectDocCatalogContext {
 	if worktreeReminder != "" {
 		compact = appendCatalogContextLine(compact, "worktree: "+worktreeReminder)
 		userView = appendCatalogContextLine(userView, "• worktree: "+worktreeReminder)
+	}
+	for _, line := range strings.Split(orchestrationReminder, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		compact = appendCatalogContextLine(compact, "orchestration: "+line)
+		userView = appendCatalogContextLine(userView, "• orchestration: "+line)
 	}
 	return ProjectDocCatalogContext{
 		ShouldInject: true,

@@ -76,7 +76,11 @@ func runHookStop(args []string) error {
 		if !relayRecord.ShouldRelay {
 			return printJSON(ho.FormatNoop())
 		}
-		return printJSON(ho.FormatStopBlock(core.BuildNextActionJudgementRelayReason(nextActionTrigger)))
+		reason := core.BuildNextActionJudgementRelayReason(nextActionTrigger)
+		if facts := core.StopOrchestrationRelayFacts(parsedRepo); facts != "" {
+			reason += " 관찰된 orchestration 상태: " + facts + "."
+		}
+		return printJSON(ho.FormatStopBlock(reason))
 	}
 	// Guard the Engelbart canvas block with stop_hook_active, mirroring the
 	// missing-choice gate below: hosts set it true when this Stop is itself a
