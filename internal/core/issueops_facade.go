@@ -3,6 +3,7 @@ package core
 import (
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/artifacttemplate"
+	"agent-harness/internal/core/workpool"
 )
 
 type IssueOpsStartRequest = issueops.IssueOpsStartRequest
@@ -274,7 +275,15 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 }
 
 func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
-	return issueops.IssueOpsStrictPRReadiness(record)
+	ready := issueops.IssueOpsStrictPRReadiness(record)
+	missing, warnings := workpool.ParentGateMissing(record.ID)
+	if len(missing) == 0 && len(warnings) == 0 {
+		return ready
+	}
+	ready.Missing = uniqSorted(append(append([]string{}, ready.Missing...), missing...))
+	ready.Warnings = append(ready.Warnings, warnings...)
+	ready.Ready = len(ready.Missing) == 0
+	return ready
 }
 
 func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
