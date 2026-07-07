@@ -35,8 +35,8 @@ func Start(store Store, stateRoot string, req model.IssueOpsStartRequest) (model
 	}
 	id := store.NewID(repo, branch)
 	// Locking: package.go StartIssueOps wraps this call in withIssueOpsLock,
-	// serializing concurrent Start/set-phase/link calls on the same id across
-	// processes (advisory flock on unix, in-process mutex fallback on !unix).
+	// serializing concurrent Start/set-phase/link calls on the same state root
+	// across processes (sqlstore span: in-process mutex + sqlite write lock).
 	if existing, err := store.Read(stateRoot, id); err == nil {
 		return resumeOrReset(store, stateRoot, existing)
 	}

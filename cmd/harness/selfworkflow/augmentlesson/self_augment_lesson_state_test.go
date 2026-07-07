@@ -2,7 +2,6 @@ package augmentlesson
 
 import (
 	"encoding/json"
-	"os"
 	"strings"
 	"testing"
 
@@ -50,11 +49,7 @@ func TestSaveSelfAugmentLessonPrunesOldLessonRecords(t *testing.T) {
 		t.Fatalf("read old lesson: %v", err)
 	}
 	old.Record.UpdatedAt = "2000-01-01T00:00:00Z"
-	b, err := json.MarshalIndent(old.Record, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal old lesson: %v", err)
-	}
-	if err := os.WriteFile(old.Path, append(b, '\n'), 0o600); err != nil {
+	if _, err := core.WriteStateRecord(core.StateDir(), "self-augment-lesson-old", old.Record); err != nil {
 		t.Fatalf("rewrite old lesson: %v", err)
 	}
 

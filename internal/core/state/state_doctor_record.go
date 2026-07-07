@@ -3,7 +3,6 @@ package state
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"agent-harness/internal/core/state/statepath"
 )
@@ -14,28 +13,21 @@ type stateDoctorRecordInspection struct {
 	Issues []StateDoctorIssue
 }
 
-func inspectStateDoctorRecord(path, key string) stateDoctorRecordInspection {
+// inspectStateDoctorRecord validates one stored record row. path is the
+// record's stable identifier path used in issue reports; data is the raw row
+// payload.
+func inspectStateDoctorRecord(path, key string, data []byte) stateDoctorRecordInspection {
 	if _, err := NormalizeStateKey(key); err != nil {
 		return stateDoctorRecordInspection{Issues: []StateDoctorIssue{{
 			Path:     path,
 			Key:      key,
 			Severity: "error",
-			Code:     "invalid_filename",
-			Message:  err.Error(),
-		}}}
-	}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return stateDoctorRecordInspection{Issues: []StateDoctorIssue{{
-			Path:     path,
-			Key:      key,
-			Severity: "error",
-			Code:     "read_error",
+			Code:     "invalid_key",
 			Message:  err.Error(),
 		}}}
 	}
 	var record StateRecord
-	if err := json.Unmarshal(b, &record); err != nil {
+	if err := json.Unmarshal(data, &record); err != nil {
 		return stateDoctorRecordInspection{Issues: []StateDoctorIssue{{
 			Path:     path,
 			Key:      key,
@@ -56,7 +48,7 @@ func validateStateDoctorRecord(path, key string, record StateRecord) stateDoctor
 			Key:      key,
 			Severity: "error",
 			Code:     "key_mismatch",
-			Message:  fmt.Sprintf("record key %q does not match filename key %q", record.Key, key),
+			Message:  fmt.Sprintf("record key %q does not match stored key %q", record.Key, key),
 		})
 	}
 	if record.Bytes != len([]byte(record.Content)) {

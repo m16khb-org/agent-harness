@@ -5,15 +5,25 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/sqlstore"
 )
 
 var workerIDRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
+
+// workerBucket is the sqlstore bucket holding one row per worker job.
+const workerBucket = "worker"
+
+func openWorkerDB(dir string) (*sqlstore.DB, error) {
+	return sqlstore.Open(dir)
+}
 
 func ReadWorkerJob(id string) (WorkerJob, error) {
 	if !workerIDRe.MatchString(id) || strings.Contains(id, "..") {
@@ -23,9 +33,16 @@ func ReadWorkerJob(id string) (WorkerJob, error) {
 	if err != nil {
 		return WorkerJob{OK: false, ID: id}, err
 	}
-	b, err := os.ReadFile(filepath.Join(dir, id+".json"))
+	db, err := openWorkerDB(dir)
 	if err != nil {
 		return WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
+	}
+	b, ok, err := db.Get(workerBucket, id)
+	if err != nil {
+		return WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
+	}
+	if !ok {
+		return WorkerJob{OK: false, ID: id, WorkerDir: dir}, fmt.Errorf("worker job %s: %w", id, fs.ErrNotExist)
 	}
 	var job WorkerJob
 	if err := json.Unmarshal(b, &job); err != nil {
@@ -41,18 +58,15 @@ func ListWorkerJobs() (WorkerListResult, error) {
 		return WorkerListResult{OK: false}, err
 	}
 	result := WorkerListResult{OK: true, WorkerDir: dir, Jobs: []WorkerJob{}}
-	entries, err := os.ReadDir(dir)
-	if os.IsNotExist(err) {
-		return result, nil
-	}
+	db, err := openWorkerDB(dir)
 	if err != nil {
 		return result, err
 	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		id := strings.TrimSuffix(entry.Name(), ".json")
+	ids, err := db.List(workerBucket)
+	if err != nil {
+		return result, err
+	}
+	for _, id := range ids {
 		job, err := ReadWorkerJob(id)
 		if err == nil {
 			result.Jobs = append(result.Jobs, job)
@@ -92,7 +106,8 @@ func writeWorkerJob(job WorkerJob) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	db, err := openWorkerDB(dir)
+	if err != nil {
 		return err
 	}
 	job.WorkerDir = dir
@@ -100,35 +115,10 @@ func writeWorkerJob(job WorkerJob) error {
 	if err != nil {
 		return err
 	}
-	// W3: atomic temp+rename (mirror state_io.writeStateRecord). A crash mid-write
-	// must not leave a truncated job JSON that ReadWorkerJob fails to decode and
-	// ListWorkerJobs silently drops. The lock is the CALLER's responsibility
-	// (withWorkerJobLock) — adding it here would deadlock callers that already hold it.
-	target := filepath.Join(dir, job.ID+".json")
-	tmp, err := os.CreateTemp(dir, "."+job.ID+"-*.tmp")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	writeErr := func() error {
-		if _, err := tmp.Write(append(b, '\n')); err != nil {
-			return err
-		}
-		if err := tmp.Chmod(0o600); err != nil {
-			return err
-		}
-		return tmp.Close()
-	}()
-	if writeErr != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmpName)
-		return writeErr
-	}
-	if err := os.Rename(tmpName, target); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
-	return nil
+	// The span lock is the CALLER's responsibility (withWorkerJobLock); the row
+	// upsert itself is atomic, so a crash mid-write can never leave a truncated
+	// job record that ListWorkerJobs silently drops.
+	return db.Put(workerBucket, job.ID, append(b, '\n'))
 }
 
 func workerDir() (string, error) {
@@ -156,18 +146,15 @@ func DetectStuckWorkerJobs() (WorkerListResult, error) {
 		return WorkerListResult{OK: false}, err
 	}
 	result := WorkerListResult{OK: true, WorkerDir: dir, Jobs: []WorkerJob{}}
-	entries, err := os.ReadDir(dir)
-	if os.IsNotExist(err) {
-		return result, nil
-	}
+	db, err := openWorkerDB(dir)
 	if err != nil {
 		return result, err
 	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		id := strings.TrimSuffix(entry.Name(), ".json")
+	ids, err := db.List(workerBucket)
+	if err != nil {
+		return result, err
+	}
+	for _, id := range ids {
 		job, err := ReadWorkerJob(id)
 		if err != nil {
 			continue
@@ -213,12 +200,12 @@ const stuckScanSentinel = ".last-stuck-scan"
 
 // MaybeDetectStuckWorkerJobs runs DetectStuckWorkerJobs at most once per
 // minInterval, gated by a stat-only sentinel file's mtime (A2/W1). The detector
-// is an unbounded full-directory scan (ReadDir + per-job ReadFile) and the
-// worker dir has no TTL/GC, so calling it unconditionally on every session start
-// would grow the session-start hot path without bound; amortizing keeps it
-// cheap. Returns ran=false when the scan was skipped this interval. Best-effort:
-// the sentinel is touched even on detector error so a transient failure cannot
-// make every session re-run the scan.
+// is an unbounded full scan (row list + per-job read) and the worker store has
+// no TTL/GC, so calling it unconditionally on every session start would grow
+// the session-start hot path without bound; amortizing keeps it cheap. Returns
+// ran=false when the scan was skipped this interval. Best-effort: the sentinel
+// is touched even on detector error so a transient failure cannot make every
+// session re-run the scan.
 func MaybeDetectStuckWorkerJobs(minInterval time.Duration) (WorkerListResult, bool, error) {
 	dir, err := workerDir()
 	if err != nil {

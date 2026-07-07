@@ -2,9 +2,7 @@ package state
 
 import (
 	"os"
-	"path/filepath"
 	"sort"
-	"strings"
 )
 
 func StateDoctor() (StateDoctorResult, error) {
@@ -17,26 +15,27 @@ func StateDoctor() (StateDoctorResult, error) {
 		Valid:     []StateListEntry{},
 		Issues:    []StateDoctorIssue{},
 	}
+	// Inspect directory entries first: the state dir may carry foreign files
+	// that do not belong to the harness. Records themselves are database rows.
 	entries, err := os.ReadDir(dir)
-	if os.IsNotExist(err) {
-		result.OK = true
-		result.Healthy = true
-		return result, nil
-	}
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return result, err
 	}
 	for _, entry := range entries {
-		name := entry.Name()
-		path := filepath.Join(dir, name)
-		inspected, checked := inspectStateDoctorEntry(path, entry)
+		inspected := inspectStateDoctorEntry(dir, entry)
 		result.Issues = append(result.Issues, inspected.Issues...)
-		if !checked {
-			continue
-		}
+	}
+	db, err := openStateDB(dir)
+	if err != nil {
+		return result, err
+	}
+	rows, err := db.GetAll(stateBucket)
+	if err != nil {
+		return result, err
+	}
+	for _, row := range rows {
 		result.Checked++
-		key := strings.TrimSuffix(name, ".json")
-		recordResult := inspectStateDoctorRecord(path, key)
+		recordResult := inspectStateDoctorRecord(statePath(dir, row.ID), row.ID, row.Data)
 		result.Issues = append(result.Issues, recordResult.Issues...)
 		if !recordResult.Valid {
 			continue

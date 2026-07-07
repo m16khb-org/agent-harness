@@ -66,8 +66,8 @@ func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, er
 	}
 	// H2: serialize concurrent appends across processes. A marshalled failure line
 	// can exceed PIPE_BUF (uncapped Argv/CWD plus two 500B snippet fields), so
-	// O_APPEND alone does not guarantee atomic, non-interleaved writes; the flock
-	// (via WithKeyLock) does. O_APPEND is kept so the OS still positions at EOF.
+	// O_APPEND alone does not guarantee atomic, non-interleaved writes; the state
+	// span lock (via WithKeyLock) does. O_APPEND keeps the OS positioned at EOF.
 	writeErr := corestate.WithKeyLock(filepath.Dir(path), "hook-failures", func() error {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		if err != nil {

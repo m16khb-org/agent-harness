@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"agent-harness/cmd/harness/harnessapp/responsecontract"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/sqlstore"
 )
 
 func runCLIJSONContract(t *testing.T, replacements map[string]string, fn func() error) any {
@@ -91,7 +91,11 @@ func mustWriteStateRecordForContract(t *testing.T, stateDir, key string, record 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(stateDir, key+".json"), append(b, '\n'), 0o600); err != nil {
+	db, err := sqlstore.Open(stateDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("state", key, append(b, '\n')); err != nil {
 		t.Fatal(err)
 	}
 }

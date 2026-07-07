@@ -3,7 +3,6 @@ package state
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -220,9 +219,7 @@ func TestStatePruneDryRunAndConfirm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(old.Path, append(b, '\n'), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeRawStateRow(t, dir, "old", string(b)+"\n")
 
 	dry, err := StatePrune(time.Hour, false)
 	if err != nil {
@@ -268,9 +265,7 @@ func TestStatePrunePrefixAppliesAgeAndCountOnlyToMatchingKeys(t *testing.T) {
 		if err != nil {
 			t.Fatalf("marshal %s: %v", key, err)
 		}
-		if err := os.WriteFile(read.Path, append(b, '\n'), 0o600); err != nil {
-			t.Fatalf("rewrite %s: %v", key, err)
-		}
+		writeRawStateRow(t, dir, key, string(b)+"\n")
 	}
 
 	write("external-llm-usage-old", "2000-01-01T00:00:00Z")

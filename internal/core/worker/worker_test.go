@@ -19,28 +19,28 @@ func TestWriteWorkerJobAtomicAndNoTempLeak(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	// W3: the atomic temp+rename leaves the record but NO leftover temp file.
+	// W3: the write leaves a readable record (row upserts are atomic; there is
+	// no temp file to leak).
+	if _, err := ReadWorkerJob(job.ID); err != nil {
+		t.Fatalf("job record %s missing: %v", job.ID, err)
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("readdir: %v", err)
 	}
-	sawRecord := false
 	for _, e := range entries {
-		name := e.Name()
-		if name == job.ID+".json" {
-			sawRecord = true
+		if strings.HasSuffix(e.Name(), ".tmp") {
+			t.Fatalf("leftover temp file after write: %s", e.Name())
 		}
-		if strings.HasSuffix(name, ".tmp") {
-			t.Fatalf("leftover temp file after atomic write: %s", name)
-		}
-	}
-	if !sawRecord {
-		t.Fatalf("job record %s.json missing", job.ID)
 	}
 
 	// W3 symptom the atomic write prevents: a partially-written (truncated) record
 	// fails to decode and is silently dropped by ListWorkerJobs.
-	if err := os.WriteFile(filepath.Join(dir, job.ID+".json"), []byte("{ truncated"), 0o600); err != nil {
+	db, err := openWorkerDB(dir)
+	if err != nil {
+		t.Fatalf("open worker db: %v", err)
+	}
+	if err := db.Put(workerBucket, job.ID, []byte("{ truncated")); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	if _, err := ReadWorkerJob(job.ID); err == nil {

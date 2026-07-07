@@ -2,6 +2,7 @@ package state
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -11,36 +12,39 @@ type stateDoctorEntryInspection struct {
 	Issues []StateDoctorIssue
 }
 
-func inspectStateDoctorEntry(path string, entry os.DirEntry) (stateDoctorEntryInspection, bool) {
+// inspectStateDoctorEntry flags foreign files in the state directory. State
+// records live as database rows, so the only files the harness owns here are
+// the sqlite databases (and their sidecars), the hook failure log, and legacy
+// leftovers from the pre-sqlite layout (*.json records and lock files), which
+// are ignored rather than flagged.
+func inspectStateDoctorEntry(dir string, entry os.DirEntry) stateDoctorEntryInspection {
 	name := entry.Name()
+	path := filepath.Join(dir, name)
 	if entry.IsDir() {
 		if isHarnessOwnedStateDirectory(name) {
-			return stateDoctorEntryInspection{}, false
+			return stateDoctorEntryInspection{}
 		}
 		return stateDoctorEntryInspection{Issues: []StateDoctorIssue{{
 			Path:     path,
 			Severity: "warning",
 			Code:     "unexpected_directory",
 			Message:  "state directory contains an unexpected subdirectory",
-		}}}, false
+		}}}
 	}
-	if !strings.HasSuffix(name, ".json") {
-		if isHarnessOwnedStateFile(name) {
-			return stateDoctorEntryInspection{}, false
-		}
-		return stateDoctorEntryInspection{Issues: []StateDoctorIssue{{
-			Path:     path,
-			Severity: "warning",
-			Code:     "unexpected_file",
-			Message:  "state directory contains a non-json file",
-		}}}, false
+	if isHarnessOwnedStateFile(name) {
+		return stateDoctorEntryInspection{}
 	}
-	return stateDoctorEntryInspection{}, true
+	return stateDoctorEntryInspection{Issues: []StateDoctorIssue{{
+		Path:     path,
+		Severity: "warning",
+		Code:     "unexpected_file",
+		Message:  "state directory contains an unexpected file",
+	}}}
 }
 
 func isHarnessOwnedStateDirectory(name string) bool {
 	switch name {
-	case "projects", "daemon", "worker", "issueops", "issueops-benchmarks", "audit":
+	case "projects", "daemon", "worker", "workpool", "issueops", "issueops-benchmarks", "audit":
 		return true
 	default:
 		return false
@@ -48,7 +52,16 @@ func isHarnessOwnedStateDirectory(name string) bool {
 }
 
 func isHarnessOwnedStateFile(name string) bool {
-	if strings.HasSuffix(name, ".state-lock") {
+	// The sqlite store and its WAL/SHM/journal sidecars.
+	for _, base := range []string{"harness.db", "harness.lock.db"} {
+		if name == base || strings.HasPrefix(name, base+"-") {
+			return true
+		}
+	}
+	// Legacy pre-sqlite layout leftovers: JSON record files and advisory lock
+	// files. They are inert after the fresh-start migration and not worth a
+	// warning per file.
+	if strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".state-lock") || strings.HasSuffix(name, ".lock") {
 		return true
 	}
 	switch name {

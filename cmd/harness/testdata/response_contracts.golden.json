@@ -10945,12 +10945,6 @@
                 "message": "invalid character 'n' looking for beginning of object key string",
                 "path": "$STATE_DIR/corrupt.json",
                 "severity": "error"
-              },
-              {
-                "code": "unexpected_directory",
-                "message": "state directory contains an unexpected subdirectory",
-                "path": "$STATE_DIR/workpool",
-                "severity": "warning"
               }
             ],
             "ok": true,
@@ -11022,12 +11016,6 @@
                 "message": "invalid character 'n' looking for beginning of object key string",
                 "path": "$STATE_DIR/corrupt.json",
                 "severity": "error"
-              },
-              {
-                "code": "unexpected_directory",
-                "message": "state directory contains an unexpected subdirectory",
-                "path": "$STATE_DIR/workpool",
-                "severity": "warning"
               }
             ],
             "migrated_keys": [],

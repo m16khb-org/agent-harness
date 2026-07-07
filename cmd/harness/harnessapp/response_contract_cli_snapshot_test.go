@@ -8,6 +8,7 @@ import (
 
 	"agent-harness/cmd/harness/harnessapp/responsecontract"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/sqlstore"
 )
 
 func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]string, stateDir, workspaceDir, gitRepoDir string) map[string]any {
@@ -184,7 +185,9 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		return runState([]string{"doctor", "--json"})
 	})
 
-	if err := os.WriteFile(filepath.Join(stateDir, "corrupt.json"), []byte("{not json\n"), 0o600); err != nil {
+	if db, err := sqlstore.Open(stateDir); err != nil {
+		t.Fatal(err)
+	} else if err := db.Put("state", "corrupt", []byte("{not json\n")); err != nil {
 		t.Fatal(err)
 	}
 	cliSnapshot["state_doctor_corrupt"] = runCLIJSONContract(t, replacements, func() error {

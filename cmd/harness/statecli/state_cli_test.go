@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/sqlstore"
 )
 
 func TestRunStateRoutesUsageAndTextRoundtrip(t *testing.T) {
@@ -85,7 +86,7 @@ func TestRunStatePruneDoctorAndMigrateTextBranches(t *testing.T) {
 		t.Fatalf("read old state: %v", err)
 	}
 	old.Record.UpdatedAt = "2000-01-01T00:00:00Z"
-	writeStateCLIRecord(t, old.Path, old.Record)
+	writeStateCLIRecord(t, stateDir, "old", old.Record)
 
 	dryPrune := captureStatusVerifyStdout(t, func() error {
 		return runState([]string{"prune", "--max-age", "1h"})
@@ -100,9 +101,7 @@ func TestRunStatePruneDoctorAndMigrateTextBranches(t *testing.T) {
 		t.Fatalf("unexpected confirmed prune text:\n%s", confirmedPrune)
 	}
 
-	if err := os.WriteFile(filepath.Join(stateDir, "corrupt.json"), []byte("{bad json\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeRawStateCLIRow(t, stateDir, "corrupt", "{bad json\n")
 	doctorOut := captureStatusVerifyStdout(t, func() error {
 		return runState([]string{"doctor"})
 	})
@@ -120,7 +119,7 @@ func TestRunStatePruneDoctorAndMigrateTextBranches(t *testing.T) {
 	migrateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", migrateDir)
 	legacy := core.StateRecord{Key: "legacy", Content: "legacy content", UpdatedAt: "2000-01-01T00:00:00Z", Bytes: len([]byte("legacy content"))}
-	writeStateCLIRecord(t, filepath.Join(migrateDir, "legacy.json"), legacy)
+	writeStateCLIRecord(t, migrateDir, "legacy", legacy)
 	dryMigrate := captureStatusVerifyStdout(t, func() error {
 		return runState([]string{"migrate"})
 	})
@@ -135,13 +134,22 @@ func TestRunStatePruneDoctorAndMigrateTextBranches(t *testing.T) {
 	}
 }
 
-func writeStateCLIRecord(t *testing.T, path string, record core.StateRecord) {
+func writeStateCLIRecord(t *testing.T, dir, key string, record core.StateRecord) {
 	t.Helper()
 	b, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, append(b, '\n'), 0o600); err != nil {
+	writeRawStateCLIRow(t, dir, key, string(b)+"\n")
+}
+
+func writeRawStateCLIRow(t *testing.T, dir, key, raw string) {
+	t.Helper()
+	db, err := sqlstore.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("state", key, []byte(raw)); err != nil {
 		t.Fatal(err)
 	}
 }

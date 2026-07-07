@@ -7,12 +7,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/sqlstore"
 )
 
 func TestRunWorkerRoutesUsageAndUnknownSubcommands(t *testing.T) {
@@ -37,9 +37,9 @@ func TestExportWrappersDelegateToWorkerCommands(t *testing.T) {
 		{name: "RunEnqueue", run: RunEnqueue, wantErr: "worker job kind is required"},
 		{name: "RunDraftWiki", run: RunDraftWiki, args: []string{"--bad"}, wantErr: "flag provided but not defined"},
 		{name: "RunReadOnly", run: RunReadOnly, wantErr: "requires --read-only"},
-		{name: "RunStatus", run: RunStatus, args: []string{"--id", "missing"}, wantErr: "no such file"},
+		{name: "RunStatus", run: RunStatus, args: []string{"--id", "missing"}, wantErr: "file does not exist"},
 		{name: "RunList", run: RunList, args: []string{"--bad"}, wantErr: "flag provided but not defined"},
-		{name: "RunCancel", run: RunCancel, args: []string{"--id", "missing"}, wantErr: "no such file"},
+		{name: "RunCancel", run: RunCancel, args: []string{"--id", "missing"}, wantErr: "file does not exist"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -195,7 +195,11 @@ func TestRunWorkerCleanupStuckMarksDeadPIDJobsFailed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, job.ID+".json"), append(body, '\n'), 0o600); err != nil {
+	db, err := sqlstore.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("worker", job.ID, append(body, '\n')); err != nil {
 		t.Fatal(err)
 	}
 

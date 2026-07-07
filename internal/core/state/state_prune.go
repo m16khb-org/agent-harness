@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -42,7 +41,7 @@ func StatePrune(maxAge time.Duration, confirm bool) (StatePruneResult, error) {
 		result.Pruned = append(result.Pruned, record)
 		result.DeletedKeys = append(result.DeletedKeys, record.Key)
 		if confirm {
-			if err := os.Remove(statePath(dir, record.Key)); err != nil && !os.IsNotExist(err) {
+			if err := deleteStateRecord(dir, record.Key); err != nil {
 				return result, err
 			}
 		}
@@ -125,7 +124,7 @@ func StatePrunePrefix(prefix string, maxAge time.Duration, maxRecords int, confi
 			result.Pruned = append(result.Pruned, record)
 			result.DeletedKeys = append(result.DeletedKeys, record.Key)
 			if confirm {
-				if err := os.Remove(statePath(dir, record.Key)); err != nil && !os.IsNotExist(err) {
+				if err := deleteStateRecord(dir, record.Key); err != nil {
 					return result, err
 				}
 			}

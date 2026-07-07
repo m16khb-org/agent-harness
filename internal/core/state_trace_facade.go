@@ -59,6 +59,10 @@ func StateMigrate(confirm bool) (StateMigrateResult, error) {
 	return corestate.StateMigrate(confirm)
 }
 
+func StateDelete(key string) error {
+	return corestate.StateDelete(key)
+}
+
 const TraceAnalysisKind = coretrace.TraceAnalysisKind
 
 type TraceAnalyzeRequest = coretrace.TraceAnalyzeRequest

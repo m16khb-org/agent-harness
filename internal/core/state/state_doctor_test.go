@@ -13,15 +13,9 @@ func TestStateDoctorDetectsCorruptRecords(t *testing.T) {
 	if _, err := StateWrite("good", "good content"); err != nil {
 		t.Fatalf("StateWrite good: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "corrupt.json"), []byte("{not json\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "badbytes.json"), []byte(`{"key":"badbytes","content":"abc","updated_at":"2000-01-01T00:00:00Z","bytes":999}`+"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "badtime.json"), []byte(`{"key":"badtime","content":"abc","updated_at":"not-a-time","bytes":3}`+"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeRawStateRow(t, dir, "corrupt", "{not json\n")
+	writeRawStateRow(t, dir, "badbytes", `{"key":"badbytes","content":"abc","updated_at":"2000-01-01T00:00:00Z","bytes":999}`+"\n")
+	writeRawStateRow(t, dir, "badtime", `{"key":"badtime","content":"abc","updated_at":"not-a-time","bytes":3}`+"\n")
 
 	result, err := StateDoctor()
 	if err != nil {

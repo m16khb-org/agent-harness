@@ -2,7 +2,6 @@ package historycompare
 
 import (
 	"fmt"
-	"os"
 
 	"agent-harness/internal/core"
 )
@@ -33,11 +32,10 @@ func ApplySelfAugmentHistoryRetention(result *SelfAugmentHistoryResult, options 
 	}
 	if options.PruneRequested && options.Confirm {
 		for _, key := range retention.CandidateKeys {
-			state, err := core.StateRead(key)
-			if err != nil {
+			if _, err := core.StateRead(key); err != nil {
 				return fmt.Errorf("read retention candidate %q: %w", key, err)
 			}
-			if err := os.Remove(state.Path); err != nil && !os.IsNotExist(err) {
+			if err := core.StateDelete(key); err != nil {
 				return fmt.Errorf("delete retention candidate %q: %w", key, err)
 			}
 			retention.DeletedKeys = append(retention.DeletedKeys, key)

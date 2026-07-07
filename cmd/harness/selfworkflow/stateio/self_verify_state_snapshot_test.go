@@ -30,29 +30,23 @@ func TestWriteSelfAugmentSnapshotRecordIsLockedAndAtomic(t *testing.T) {
 		t.Fatalf("round-trip mismatch: %+v", got)
 	}
 
-	// The atomic writer leaves the advisory lock sidecar but NO leftover temp file,
-	// and the lock file is not mistaken for the record.
+	// The locked writer leaves the span-lock database but NO leftover temp file.
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("readdir: %v", err)
 	}
-	var sawRecord, sawLock bool
+	var sawLockDB bool
 	for _, e := range entries {
 		name := e.Name()
 		switch {
-		case name == "snap.json":
-			sawRecord = true
-		case name == "snap.state-lock":
-			sawLock = true
+		case name == "harness.lock.db":
+			sawLockDB = true
 		case strings.HasSuffix(name, ".tmp"):
-			t.Fatalf("leftover temp file after atomic write: %s", name)
+			t.Fatalf("leftover temp file after write: %s", name)
 		}
 	}
-	if !sawRecord {
-		t.Fatalf("record file snap.json missing")
-	}
-	if !sawLock {
-		t.Fatalf("advisory lock sidecar snap.state-lock missing (write not serialized)")
+	if !sawLockDB {
+		t.Fatalf("span lock database missing (write not serialized)")
 	}
 }
 

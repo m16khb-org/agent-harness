@@ -41,7 +41,9 @@ func TestValidationDependencyHelpers(t *testing.T) {
 	if err := writeSelfAugmentSnapshotRecord(dir, "snapshot", snapshot); err != nil {
 		t.Fatalf("writeSelfAugmentSnapshotRecord: %v", err)
 	}
-	if !exists(filepath.Join(dir, "snapshot.json")) || exists(filepath.Join(dir, "missing.json")) {
+	// The snapshot lands in the directory's state database; the exists helper
+	// itself is exercised against a real file.
+	if !exists(filepath.Join(dir, "harness.db")) || exists(filepath.Join(dir, "missing.json")) {
 		t.Fatal("exists helper mismatch")
 	}
 	if out, truncated, bytes := tailWithBudget("abcdef", 3); !truncated || bytes != 6 || out == "" {

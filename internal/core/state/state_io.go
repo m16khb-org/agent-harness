@@ -3,13 +3,16 @@ package state
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/fs"
 	"sort"
-	"strings"
 	"time"
 
+	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/core/state/statepath"
 )
+
+// stateBucket is the sqlstore bucket holding one row per state key.
+const stateBucket = "state"
 
 func StateDir() string {
 	return statepath.Dir()
@@ -19,8 +22,16 @@ func NormalizeStateKey(key string) (string, error) {
 	return statepath.NormalizeKey(key)
 }
 
+// statePath returns the record's stable identifier path. Records live as rows
+// in the state directory's sqlite database; the legacy <dir>/<key>.json shape
+// is kept as the Path field's identifier so CLI/MCP output stays addressable
+// per key rather than pointing every record at the same database file.
 func statePath(dir, key string) string {
 	return statepath.Path(dir, key)
+}
+
+func openStateDB(dir string) (*sqlstore.DB, error) {
+	return sqlstore.Open(dir)
 }
 
 func StateWrite(key, content string) (StateResult, error) {
@@ -60,16 +71,25 @@ func StateRead(key string) (StateResult, error) {
 	}
 	dir := StateDir()
 	path := statePath(dir, key)
-	b, err := os.ReadFile(path)
+	db, err := openStateDB(dir)
 	if err != nil {
 		return StateResult{OK: false, StateDir: dir, Path: path}, err
+	}
+	b, ok, err := db.Get(stateBucket, key)
+	if err != nil {
+		return StateResult{OK: false, StateDir: dir, Path: path}, err
+	}
+	if !ok {
+		// A *PathError keeps os.IsNotExist working for callers (StateUpdate's
+		// missing-key tolerance) alongside errors.Is(err, fs.ErrNotExist).
+		return StateResult{OK: false, StateDir: dir, Path: path}, &fs.PathError{Op: "read", Path: path, Err: fs.ErrNotExist}
 	}
 	var record StateRecord
 	if err := json.Unmarshal(b, &record); err != nil {
 		return StateResult{OK: false, StateDir: dir, Path: path}, err
 	}
 	if record.Key != key {
-		return StateResult{OK: false, StateDir: dir, Path: path}, fmt.Errorf("state key mismatch: file has %q", record.Key)
+		return StateResult{OK: false, StateDir: dir, Path: path}, fmt.Errorf("state key mismatch: record has %q", record.Key)
 	}
 	if record.Bytes != len([]byte(record.Content)) {
 		return StateResult{OK: false, StateDir: dir, Path: path}, fmt.Errorf("state byte count mismatch for %q", key)
@@ -82,19 +102,16 @@ func StateRead(key string) (StateResult, error) {
 
 func StateList() (StateListResult, error) {
 	dir := StateDir()
-	entries, err := os.ReadDir(dir)
-	if os.IsNotExist(err) {
-		return StateListResult{OK: true, StateDir: dir, Keys: []string{}, Records: []StateListEntry{}}, nil
+	db, err := openStateDB(dir)
+	if err != nil {
+		return StateListResult{OK: false, StateDir: dir}, err
 	}
+	keys, err := db.List(stateBucket)
 	if err != nil {
 		return StateListResult{OK: false, StateDir: dir}, err
 	}
 	records := []StateListEntry{}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		key := strings.TrimSuffix(entry.Name(), ".json")
+	for _, key := range keys {
 		if _, err := NormalizeStateKey(key); err != nil {
 			continue
 		}
@@ -110,17 +127,17 @@ func StateList() (StateListResult, error) {
 		})
 	}
 	sort.Slice(records, func(i, j int) bool { return records[i].Key < records[j].Key })
-	keys := make([]string, 0, len(records))
+	listKeys := make([]string, 0, len(records))
 	for _, record := range records {
-		keys = append(keys, record.Key)
+		listKeys = append(listKeys, record.Key)
 	}
-	return StateListResult{OK: true, StateDir: dir, Keys: keys, Records: records}, nil
+	return StateListResult{OK: true, StateDir: dir, Keys: listKeys, Records: records}, nil
 }
 
-// WriteStateRecord persists record to <dir>/<key>.json atomically (temp+rename)
-// under the per-key advisory lock, for callers that must write a StateRecord to a
+// WriteStateRecord persists record under key in dir's state database, under
+// the per-directory span lock, for callers that must write a StateRecord to a
 // dir other than StateDir() (e.g. the self-augment snapshot writer). It is the
-// locked+atomic equivalent of a raw os.WriteFile to the record path.
+// locked equivalent of a raw writeStateRecord to that directory.
 func WriteStateRecord(dir, key string, record StateRecord) (string, error) {
 	key, err := NormalizeStateKey(key)
 	if err != nil {
@@ -143,38 +160,36 @@ func WriteStateRecord(dir, key string, record StateRecord) (string, error) {
 
 func writeStateRecord(dir, key string, record StateRecord) (string, error) {
 	path := statePath(dir, key)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	db, err := openStateDB(dir)
+	if err != nil {
 		return path, err
 	}
 	b, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
 		return path, err
 	}
-	tmp, err := os.CreateTemp(dir, "."+key+"-*.tmp")
-	if err != nil {
-		return path, err
-	}
-	tmpName := tmp.Name()
-	writeErr := func() error {
-		if _, err := tmp.Write(b); err != nil {
-			return err
-		}
-		if _, err := tmp.Write([]byte{'\n'}); err != nil {
-			return err
-		}
-		if err := tmp.Chmod(0o600); err != nil {
-			return err
-		}
-		return tmp.Close()
-	}()
-	if writeErr != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmpName)
-		return path, writeErr
-	}
-	if err := os.Rename(tmpName, path); err != nil {
-		_ = os.Remove(tmpName)
+	if err := db.Put(stateBucket, key, append(b, '\n')); err != nil {
 		return path, err
 	}
 	return path, nil
+}
+
+// deleteStateRecord removes the record for key from dir's state database.
+// Deleting an absent record is not an error.
+func deleteStateRecord(dir, key string) error {
+	db, err := openStateDB(dir)
+	if err != nil {
+		return err
+	}
+	return db.Delete(stateBucket, key)
+}
+
+// StateDelete removes the record for key from the default state directory.
+// Deleting an absent record is not an error.
+func StateDelete(key string) error {
+	key, err := NormalizeStateKey(key)
+	if err != nil {
+		return err
+	}
+	return deleteStateRecord(StateDir(), key)
 }

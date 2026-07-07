@@ -2,8 +2,6 @@ package state
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -20,9 +18,7 @@ func TestStateMigrateDryRunAndConfirm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "legacy.json"), append(b, '\n'), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeRawStateRow(t, dir, "legacy", string(b)+"\n")
 	if _, err := StateWrite("current", "current content"); err != nil {
 		t.Fatalf("StateWrite current: %v", err)
 	}
@@ -87,9 +83,7 @@ func TestStateReadRejectsUnsupportedSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "future.json"), append(b, '\n'), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeRawStateRow(t, dir, "future", string(b)+"\n")
 	if _, err := StateRead("future"); err == nil {
 		t.Fatalf("StateRead accepted unsupported schema")
 	}
