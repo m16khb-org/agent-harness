@@ -156,7 +156,6 @@ find .agent-harness -maxdepth 1 -type f -name '*.md' | sort
 python3 scripts/validate-skill.py skills/atomic-commit-push
 ./scripts/install-native.sh
 ./bin/agent-harness bootstrap --dry-run
-./bin/agent-harness bootstrap --sync --dry-run
 ./bin/agent-harness install-native --dry-run --json
 go test ./... -count=1
 go test ./cmd/harness -run Golden -count=1
@@ -190,7 +189,7 @@ go build -o bin/agent-harness ./cmd/harness
 - Codex, Claude Code, GJC에서 관찰되는 하네스 결과가 같아야 한다. GJC는 plugin bundle(`mcps`) + first-party lifecycle hook(`~/.gjc/agent/hooks/`) + filesystem skill discovery(`skills.customDirectories`)로 통합되며, `agent-harness update`가 세 호스트를 모두 갱신한다.
 - 같은 스킬을 두 host에 복사해 중복 관리하지 않는다. `skills/`의 단일 원본을 사용자 홈 skill 경로에서 참조한다. 적용 대상 repo에는 기본 설치가 파일을 남기지 않는다.
 - LLM Wiki 기능은 이 하네스가 재구현하지 않는다. 필요하면 upstream `m16khb/llm-wiki` CLI/MCP 서버 또는 portable AGENTS.md를 사용한다.
-- 하네스 철학은 **바퀴를 재발명하지 않는다**이다. llm-wiki, CodeGraph, claude-mem, LazyCodex 같은 전문 도구는 `scripts/install-native.sh --with-upstream-tools`로 upstream installer/MCP/plugin 배선을 연결하고, core 동작을 agent-harness에 복제하지 않는다.
+- 하네스 철학은 **바퀴를 재발명하지 않는다**이다. llm-wiki, CodeGraph, claude-mem, LazyCodex 같은 전문 도구는 각 upstream installer/MCP/plugin 문서를 직접 따르고, core 동작을 agent-harness에 복제하지 않는다.
 - host adapter는 인증·권한·명령 실행 정책을 우회할 수 없다.
 - response-contract golden은 CLI command list, MCP tool list, 필수 response fields를 고정한다. docs-index는 문서 본문/목록 churn에 과민하지 않도록 required-doc projection과 count/schema만 검증한다.
 - worker/CLI/MCP는 workspace root를 명시적으로 식별하고, root 밖 파일 접근은 정책으로 통제한다.

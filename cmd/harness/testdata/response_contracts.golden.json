@@ -191,11 +191,11 @@
           "name": "install-native"
         },
         {
-          "description": "rebuild and refresh user-level integrations and upstream companion tools",
+          "description": "rebuild and refresh user-level integrations",
           "name": "update"
         },
         {
-          "description": "set up user-level integrations; use --sync for upstream companion versions",
+          "description": "set up user-level integrations",
           "name": "bootstrap"
         },
         {
@@ -231,7 +231,7 @@
           "name": "version"
         }
       ],
-      "hash": "3ca1c520b99232c44a7215f62b6d1ee0894fe4c0d967301ed568eafd697f85c6",
+      "hash": "662c9b6115128a4da6ac515d9e6318d9cd566176d07af6fde272ca664ed84736",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -6588,11 +6588,11 @@
                 "name": "install-native"
               },
               {
-                "description": "rebuild and refresh user-level integrations and upstream companion tools",
+                "description": "rebuild and refresh user-level integrations",
                 "name": "update"
               },
               {
-                "description": "set up user-level integrations; use --sync for upstream companion versions",
+                "description": "set up user-level integrations",
                 "name": "bootstrap"
               },
               {
@@ -6628,7 +6628,7 @@
                 "name": "version"
               }
             ],
-            "hash": "3ca1c520b99232c44a7215f62b6d1ee0894fe4c0d967301ed568eafd697f85c6",
+            "hash": "662c9b6115128a4da6ac515d9e6318d9cd566176d07af6fde272ca664ed84736",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",

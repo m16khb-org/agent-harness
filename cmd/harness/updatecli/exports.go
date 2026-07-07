@@ -21,10 +21,6 @@ func RunInstallScriptExec(script string, args ...string) error {
 	return runInstallScriptExec(script, args...)
 }
 
-func HasInstallFlag(args []string, name string) bool {
-	return hasInstallFlag(args, name)
-}
-
 func RefreshRunningDaemonAfterInstall() (bool, error) {
 	return refreshRunningDaemonAfterInstall()
 }

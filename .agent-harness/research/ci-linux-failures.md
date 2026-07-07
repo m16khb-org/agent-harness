@@ -29,7 +29,7 @@
 - Run: GitHub Actions `CI` push run `28561931246` on `quality-optimization-2026-07-02` at `cc67970`.
 - Failure: `go test ./... -count=1` passed, then `./bin/agent-harness self-verify --seed=100 --target-score=95 --json` failed at the `native_integration` goal.
 - Cause: the self-verify native integration step checks actual user-home Codex/Claude skill, MCP, and hook wiring. A fresh GitHub runner has no agent-harness native install unless the workflow performs one first.
-- Fix: run the self-verify gate inside a temporary CI HOME, install only agent-harness native integrations there with `./scripts/install-native.sh --skip-upstream-tools --skip-build --path-mode=skip`, then run `self-verify` with the same `HOME`/`CODEX_HOME`. This verifies native integration without adding runner-global home state to later contract tests.
+- Fix: run the self-verify gate inside a temporary CI HOME, install only agent-harness native integrations there with `./scripts/install-native.sh --skip-build --path-mode=skip`, then run `self-verify` with the same `HOME`/`CODEX_HOME`. This verifies native integration without adding runner-global home state to later contract tests.
 - Verification: temp-HOME reproduction of `install-native` followed by `self-verify`; rerun GitHub Actions CI on the updated branch.
 
 ## 2026-07-02: self-verify after runner-global install

@@ -42,7 +42,6 @@ If the script reports `ok: false`, inspect `failures`, patch the root cause, and
    - Build: `go build -o bin/agent-harness ./cmd/harness`.
    - Dry-run both high-level paths with JSON when available:
      - `./bin/agent-harness bootstrap --dry-run --json`
-     - `./bin/agent-harness bootstrap --sync --dry-run --json`
    - Verify native install surfaces:
      - `./bin/agent-harness install-native --dry-run --json` (`install-native` is a compatibility alias for `bootstrap` in the current CLI)
      - `./bin/agent-harness install-native --json` only for full install tasks.

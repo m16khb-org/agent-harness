@@ -265,9 +265,9 @@ LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현
 - CodeGraph: `colbymchenry/codegraph` CLI/MCP를 설치/설정한다. symbol graph, AST parser, impact analysis를 하네스에 재구현하지 않는다.
 - claude-mem: `thedotmack/claude-mem` upstream installer를 통해 Codex/Claude hooks, MCP, worker 배선을 설치/갱신한다. memory capture/compression/store logic을 하네스 core에 넣지 않는다.
 - LazyCodex: `code-yeongyu/oh-my-openagent` / `lazycodex-ai` installer를 통해 Codex Light LazyCodex/OMO skills, hooks, LSP/AST tooling을 설치/갱신한다. 해당 skill/hook/tool 동작을 하네스 core에 복제하지 않는다.
-- Ponytail: `DietrichGebert/ponytail` Codex/Claude plugin(최소구현 decision-ladder skill + SessionStart/UserPromptSubmit lifecycle hook)을 `--with-upstream-tools` 묶음의 일부로 설치/갱신한다. `agent-harness update`가 `--with-upstream-tools`를 기본 적용하므로 일반 `update`로 cc·codex 양쪽에 Ponytail이 설치/갱신되며, `--skip-upstream-tools`로 제외한다. behavior-changing(lifecycle hook이 전역 행동을 바꿈)이라는 점을 문서로 명시하되, ladder/skill/hook 동작을 하네스 core·hooks·skills에 복제하지 않고, 전원에게 symlink되는 이 repo의 `skills/`에 ponytail skill을 두지 않는다(upstream marketplace plugin만 배선).
+- Ponytail: `DietrichGebert/ponytail` Codex/Claude plugin(최소구현 decision-ladder skill + SessionStart/UserPromptSubmit lifecycle hook)은 behavior-changing(lifecycle hook이 전역 행동을 바꿈)이므로 agent-harness 설치/업데이트 경로에서 배선하지 않는다. ladder/skill/hook 동작을 하네스 core·hooks·skills에 복제하지 않고, 필요할 때 upstream marketplace plugin을 명시적으로 설치한다.
 
-`scripts/install-native.sh --with-upstream-tools`는 이 upstream 도구들을 user-level dependency로 연결하는 convenience path다. 이 묶음에는 lifecycle hook을 설치해 에이전트 행동을 전역으로 바꾸는 Ponytail도 포함되므로, 그 전역 행동 변화를 원치 않으면 `--skip-upstream-tools`로 제외한다. 기본 설치(`install`/`bootstrap`)는 여전히 하네스 자체의 user/global Codex/Claude integration만 수행하지만, `agent-harness update`는 `--with-upstream-tools`를 기본 적용하므로 update 시 위 companion 도구들이 함께 설치/갱신된다.
+`agent-harness install`, `bootstrap`, `update`, and `scripts/install-native.sh` install only agent-harness native integrations. Upstream companion tools are external dependencies to install through their own upstream paths when needed.
 
 ## MCP tool design guidance
 

@@ -7,26 +7,6 @@ import (
 	"testing"
 )
 
-func TestHasInstallFlagRecognizesLongAndEqualsForms(t *testing.T) {
-	tests := []struct {
-		name string
-		args []string
-		want bool
-	}{
-		{name: "exact long flag", args: []string{"--with-upstream-tools"}, want: true},
-		{name: "equals form", args: []string{"--with-upstream-tools=false"}, want: true},
-		{name: "similar prefix is not a match", args: []string{"--with-upstream-tooling"}, want: false},
-		{name: "missing flag", args: []string{"--skip-upstream-tools"}, want: false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := hasInstallFlag(tt.args, "with-upstream-tools"); got != tt.want {
-				t.Fatalf("hasInstallFlag(%v)=%v, want %v", tt.args, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestRunInstallScriptCommandRejectsUnexpectedArgsAndMissingScript(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HARNESS_ROOT", root)
@@ -72,7 +52,7 @@ func TestRunInstallScriptCommandForwardsProjectLocalAndInteractiveFlags(t *testi
 	if err := runInstallScriptCommand("bootstrap", []string{"--dry-run", "--project-local", "--interactive"}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{filepath.Join(root, "scripts", "install-native.sh"), "--skip-upstream-tools", "--project-local", "--dry-run", "--interactive"}
+	want := []string{filepath.Join(root, "scripts", "install-native.sh"), "--project-local", "--dry-run", "--interactive"}
 	if !equalStringSlices(got, want) {
 		t.Fatalf("unexpected install args: got %#v want %#v", got, want)
 	}

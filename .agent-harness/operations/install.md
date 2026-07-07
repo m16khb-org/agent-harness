@@ -1,9 +1,9 @@
 ---
 name: install.md
-description: First-run install, sync, compatibility install-native, and upstream companion tool operations.
+description: First-run install, refresh, and compatibility install-native operations.
 ---
 
-# Install And Sync
+# Install And Refresh
 
 Public setup UX has two primary commands:
 
@@ -17,9 +17,6 @@ agent-harness install
 
 # Ongoing refresh from the current checkout.
 agent-harness update
-
-# Also refresh opt-in upstream companion tools.
-agent-harness bootstrap --sync
 
 # Initialize project docs/profile for a target repository.
 agent-harness project bootstrap --repo /path/to/repo
@@ -69,28 +66,8 @@ scripts/release-build-matrix.sh
 
 The default release matrix cross-builds `darwin/arm64`, `darwin/amd64`, `linux/amd64`, and `linux/arm64` with `CGO_ENABLED=0`.
 
-## `--sync`
+## Project `--sync`
 
-`--sync` means "refresh from current evidence."
-
-- `agent-harness bootstrap --sync` refreshes user-level host integration and opt-in upstream companion tools.
-- `agent-harness project bootstrap --sync` refreshes target repo `AGENTS.md` routing block, `.agent-harness/*.md`, and user-state repo profile metadata.
+`agent-harness project bootstrap --sync` refreshes target repo `AGENTS.md` routing block, `.agent-harness/*.md`, and user-state repo profile metadata from current evidence.
 
 Use low-level `scripts/install-native.sh` and `install-native` directly only for automation or focused installer debugging.
-
-## Upstream Companion Tools
-
-| Tool | Upstream | Operation |
-|------|----------|-----------|
-| LLM Wiki | `m16khb/llm-wiki` | Installs or updates `~/.local/bin/llm-wiki` with `go install`, removes legacy `wiki@llm-wiki` marketplace/plugin wiring after the CLI is available, and registers Codex/Claude user-scope MCP server `llm-wiki` running `llm-wiki mcp` with `LLM_WIKI_VAULT` set to `${LLM_WIKI_VAULT:-$HOME/workspace/knowledge-base/llm-wiki}`. |
-| CodeGraph | `colbymchenry/codegraph` | Installs `@colbymchenry/codegraph`, registers Codex/Claude MCP, and initializes this repo's `.codegraph/` index when enabled. |
-| claude-mem | `thedotmack/claude-mem` | Runs `npx claude-mem@latest install` for Codex/Claude hooks, MCP, and worker wiring. |
-| Headroom | `chopratejas/headroom` / `headroom-ai` | Optional context optimization companion. Do not auto-proxy Codex/Claude traffic without explicit operator action. |
-
-CodeGraph index creation can be skipped:
-
-```bash
-HARNESS_INIT_CODEGRAPH=0 agent-harness bootstrap --sync
-```
-
-Companion tool failures must not weaken the `agent-harness` core contract. Fix the upstream installation path or document the external requirement.

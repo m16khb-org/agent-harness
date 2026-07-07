@@ -20,11 +20,6 @@ func runBootstrap(args []string) error {
 
 func runInstallScriptCommand(commandName string, args []string) error {
 	fs := flag.NewFlagSet(commandName, flag.ContinueOnError)
-	sync := fs.Bool("sync", false, "sync optional upstream companion tool versions")
-	explicitWithUpstream := hasInstallFlag(args, "with-upstream-tools")
-	withUpstream := fs.Bool("with-upstream-tools", true, "install/update upstream llm-wiki, codegraph, and claude-mem integrations")
-	skipUpstream := fs.Bool("skip-upstream-tools", false, "skip upstream companion tool setup")
-	withoutUpstream := fs.Bool("without-upstream-tools", false, "skip upstream companion tool setup")
 	projectLocal := fs.Bool("project-local", false, "also write explicit project-local files")
 	dryRun := fs.Bool("dry-run", false, "show install plan without writing")
 	pathMode := fs.String("path-mode", "", "manage ~/.local/bin PATH setup: auto, manual, or skip")
@@ -48,11 +43,6 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	}
 
 	scriptArgs := make([]string, 0, 5)
-	if *sync || explicitWithUpstream || (!*skipUpstream && !*withoutUpstream && *withUpstream && commandName == "update") {
-		scriptArgs = append(scriptArgs, "--with-upstream-tools")
-	} else {
-		scriptArgs = append(scriptArgs, "--skip-upstream-tools")
-	}
 	if *projectLocal {
 		scriptArgs = append(scriptArgs, "--project-local")
 	}
@@ -83,16 +73,6 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	}
 	_, err := postInstallMCPProxyRefresh()
 	return err
-}
-
-func hasInstallFlag(args []string, name string) bool {
-	long := "--" + name
-	for _, arg := range args {
-		if arg == long || len(arg) > len(long) && arg[:len(long)+1] == long+"=" {
-			return true
-		}
-	}
-	return false
 }
 
 func runInstallScriptExec(script string, args ...string) error {

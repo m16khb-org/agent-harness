@@ -57,7 +57,6 @@ For ongoing refreshes from the current checkout:
 
 ```bash
 agent-harness update
-agent-harness bootstrap --sync
 ```
 
 `update` and `bootstrap` rebuild from the current checkout and refresh user-level integrations. They do not run `git pull`.
@@ -187,7 +186,6 @@ Use this one-screen flow when installing or refreshing a release from a checked-
    ```bash
    git pull --ff-only
    agent-harness update
-   agent-harness bootstrap --sync
    agent-harness inspect --json
    ```
 
@@ -383,7 +381,6 @@ go build -o bin/agent-harness ./cmd/harness
 
 ```bash
 agent-harness update
-agent-harness bootstrap --sync
 ```
 
 `update`와 `bootstrap`은 현재 checkout에서 다시 build하고 user-level integration을 갱신합니다. `git pull`은 실행하지 않습니다.

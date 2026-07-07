@@ -11,7 +11,7 @@ Use this file as the quick map. Read the focused operation file that matches the
 
 | Task | Read |
 |------|------|
-| Install, bootstrap, sync, upstream companion tools | `.agent-harness/operations/install.md` |
+| Install, bootstrap, and refresh | `.agent-harness/operations/install.md` |
 | Release checklist and clean-machine install reproducibility | `.agent-harness/operations/release-reproducibility.md` |
 | Release dogfood transcripts and observed release UX gaps | `.agent-harness/operations/release-dogfood-notes.md` |
 | Codex/Claude native skills, MCP registration, lifecycle hooks | `.agent-harness/operations/hosts.md` |
@@ -31,7 +31,6 @@ Use this file as the quick map. Read the focused operation file that matches the
 ```bash
 agent-harness bootstrap --dry-run --json
 agent-harness bootstrap
-agent-harness bootstrap --sync
 agent-harness project bootstrap --repo /path/to/repo --dry-run --json
 agent-harness project bootstrap --repo /path/to/repo --sync --json
 agent-harness doctor --repo . --json
@@ -53,7 +52,7 @@ Use `.agent-harness/operations/release-reproducibility.md` before deciding Homeb
 - Host adapters are thin wrappers around the same CLI/core behavior. They must not duplicate policy, schema, or state semantics.
 - Hooks provide routing, lifecycle state, and bounded reminders only. They must not create issues/PRs, run tests, edit shared docs, or perform long network/file reads.
 - IssueOps implementation must pass durable `compatibility_review` and `execution_decision` gates. Hooks do not decide backward compatibility, side effects, auto-proceed, human gates, or sub-agent usage; `issueops compatibility review` / MCP `issueops_record_compatibility_review` records the compatibility and side-effect judgement, then `issueops execution decide` / MCP `issueops_record_execution_decision` records the main-agent execution judgement before `implement`.
-- LLM Wiki, CodeGraph, claude-mem, LazyCodex, and Headroom are upstream companion tools. `agent-harness` may install or configure them only through opt-in paths; it does not reimplement their core behavior.
+- LLM Wiki, CodeGraph, claude-mem, LazyCodex, and Headroom are upstream companion tools. `agent-harness` does not reimplement their core behavior or install them through native install/update paths.
 - Worker functionality remains policy-gated and state-first until write/network/background execution has explicit audit, timeout, cancellation, and redaction coverage.
 
 ## Quick Smoke

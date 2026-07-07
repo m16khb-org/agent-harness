@@ -23,8 +23,6 @@ go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count
 go build -o bin/agent-harness ./cmd/harness
 ./scripts/install-native.sh
 ./bin/agent-harness bootstrap --dry-run
-./bin/agent-harness bootstrap --sync --dry-run
-./scripts/install-native.sh --with-upstream-tools --dry-run
 ./bin/agent-harness install-native --json
 ./bin/agent-harness install-native --dry-run --json
 ./bin/agent-harness inspect --json
@@ -75,22 +73,6 @@ test -f ~/.claude/skills/atomic-commit-push/SKILL.md
 codex mcp get agent_harness
 claude mcp list | grep agent_harness
 ```
-
-Optional upstream companion smoke:
-
-```bash
-./scripts/install-native.sh --with-upstream-tools --dry-run
-llm-wiki --version
-codex mcp get llm-wiki
-claude mcp list | grep llm-wiki
-codex plugin list | grep -E 'claude-mem@claude-mem-local'
-claude plugin list | grep -E 'claude-mem'
-npx -y claude-mem@latest status
-npx -y claude-mem@latest doctor
-command -v codegraph
-codegraph status --json .  # after a real --with-upstream-tools run with HARNESS_INIT_CODEGRAPH enabled
-```
-
 
 - `AGENTS.md`와 `CLAUDE.md`가 같은 source of truth를 가리키는가
 - `.agent-harness/`의 링크가 실제 파일과 맞는가
@@ -220,7 +202,7 @@ The default web-fetch battery is deterministic and must not require network acce
 
 LLM Wiki 기능은 agent-harness가 직접 제공하지 않는다. 중복 구현을 피하기 위해 upstream `m16khb/llm-wiki` CLI/MCP 서버 또는 portable AGENTS.md를 사용한다. 하네스 CLI/MCP에 llm-wiki 전용 명령, tool, resource, SessionStart hook을 추가하지 않는다.
 
-같은 원칙으로 CodeGraph와 claude-mem도 하네스 내부에 재구현하지 않는다. `scripts/install-native.sh --with-upstream-tools`는 upstream installer/MCP/plugin 배선을 연결하는 convenience path이며, 테스트는 하네스 core 기능이 아니라 설치 배선과 opt-in/dry-run 동작을 검증한다.
+같은 원칙으로 CodeGraph와 claude-mem도 하네스 내부에 재구현하지 않는다. 해당 도구가 필요하면 각 upstream installer/MCP/plugin 문서를 직접 검증하고, agent-harness 테스트는 하네스 core와 native integration 계약만 검증한다.
 
 ## API documentation checks
 

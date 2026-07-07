@@ -37,12 +37,12 @@ description: Chosen languages, runtimes, tools, and rationale.
 
 | 도구 | Upstream/package | 역할 | 설치 경로 |
 |------|------------------|------|-----------|
-| LLM Wiki | `m16khb/llm-wiki` | OKF-native local wiki validation, linting, indexing, graphing, and bounded query-pack MCP tools | `scripts/install-native.sh --with-upstream-tools`가 Go CLI를 `~/.local/bin/llm-wiki`로 설치/갱신하고 Codex/Claude user-scope MCP 서버 `llm-wiki`를 등록 |
+| LLM Wiki | `m16khb/llm-wiki` | OKF-native local wiki validation, linting, indexing, graphing, and bounded query-pack MCP tools | 필요할 때 upstream CLI/MCP 설치 문서를 직접 따른다. agent-harness 설치 경로가 대신 배선하지 않는다. |
 | CodeGraph | `@colbymchenry/codegraph` | AST 기반 symbol graph와 MCP code intelligence | `npm install -g @colbymchenry/codegraph`, `codegraph install`, `codegraph init -i` |
 | claude-mem | `thedotmack/claude-mem` | session memory capture/compression | `npx claude-mem@latest install`로 Codex/Claude hooks, MCP, worker 설치/갱신 |
 | LazyCodex | `code-yeongyu/oh-my-openagent` / `lazycodex-ai` | Codex Light LazyCodex/OMO skills, hooks, LSP/AST tooling | `npx lazycodex-ai@latest install --no-tui`로 Codex integration 설치/갱신 |
 
-이 optional path는 네트워크와 user-level host 설정 변경을 수반하므로 기본 install-native에는 포함하지 않고 `--with-upstream-tools` 또는 `HARNESS_INSTALL_UPSTREAM_TOOLS=1`일 때만 실행한다.
+Companion tools are not installed by `agent-harness install`, `bootstrap`, `update`, or `scripts/install-native.sh`; use each upstream installer explicitly when those tools are needed.
 
 ## 2.2 Project skills
 
@@ -127,9 +127,7 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ./scripts/install-native.sh
 ./bin/agent-harness bootstrap --dry-run
-./bin/agent-harness bootstrap --sync --dry-run
 ./scripts/install-native.sh --skip-build
-./scripts/install-native.sh --with-upstream-tools --dry-run
 ./bin/agent-harness install-native --json
 ./bin/agent-harness install-native --dry-run --json
 ```

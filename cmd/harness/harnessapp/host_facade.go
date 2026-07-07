@@ -161,10 +161,6 @@ func runInstallScriptExec(script string, args ...string) error {
 	return updatecli.RunInstallScriptExec(script, args...)
 }
 
-func hasInstallFlag(args []string, name string) bool {
-	return updatecli.HasInstallFlag(args, name)
-}
-
 func refreshRunningDaemonAfterInstall() (bool, error) {
 	resetUpdateFacadeDeps()
 	return updatecli.RefreshRunningDaemonAfterInstall()

@@ -170,7 +170,7 @@ func TestUpdateAndAPIDocFacadeWrappers(t *testing.T) {
 	mcpProxyProcessLister = func() ([]mcpProxyProcess, error) { return []mcpProxyProcess{{PID: 22, Command: "mcp"}}, nil }
 	mcpProxyTerminator = func(pid int) error { return nil }
 
-	if err := runUpdate([]string{"--dry-run", "--skip-upstream-tools"}); err != nil {
+	if err := runUpdate([]string{"--dry-run"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := runBootstrap([]string{"--dry-run"}); err != nil {
@@ -178,9 +178,6 @@ func TestUpdateAndAPIDocFacadeWrappers(t *testing.T) {
 	}
 	if err := runInstallScriptCommand("update", []string{"--dry-run"}); err != nil {
 		t.Fatal(err)
-	}
-	if !hasInstallFlag([]string{"--with-upstream-tools=false"}, "with-upstream-tools") {
-		t.Fatal("hasInstallFlag failed")
 	}
 	if terminated, err := terminateStaleDaemonProcesses(); err != nil || terminated != 1 {
 		t.Fatalf("terminateStaleDaemonProcesses = %d err=%v", terminated, err)

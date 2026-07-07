@@ -85,10 +85,10 @@ func TestRunInstallScriptCommandRefreshesRuntimeProcessesAfterUpdate(t *testing.
 	})
 	defer restoreMCPProxy()
 
-	if err := runInstallScriptCommand("update", []string{"--skip-upstream-tools"}); err != nil {
+	if err := runInstallScriptCommand("update", nil); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{filepath.Join(root, "scripts", "install-native.sh"), "--skip-upstream-tools", "daemon-refresh", "mcp-proxy-refresh"}
+	want := []string{filepath.Join(root, "scripts", "install-native.sh"), "daemon-refresh", "mcp-proxy-refresh"}
 	if !reflect.DeepEqual(commands, want) {
 		t.Fatalf("unexpected command sequence:\n got: %#v\nwant: %#v", commands, want)
 	}
@@ -121,7 +121,7 @@ func TestRunUpdateAndBootstrapForwardToInstallScript(t *testing.T) {
 	})
 	defer restoreMCPProxy()
 
-	if err := runUpdate([]string{"--dry-run", "--without-upstream-tools", "--json"}); err != nil {
+	if err := runUpdate([]string{"--dry-run", "--json"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := runBootstrap([]string{"--dry-run", "--path-mode=skip", "--skip-build"}); err != nil {
@@ -129,11 +129,39 @@ func TestRunUpdateAndBootstrapForwardToInstallScript(t *testing.T) {
 	}
 
 	want := [][]string{
-		{filepath.Join(root, "scripts", "install-native.sh"), "--skip-upstream-tools", "--dry-run", "--json"},
-		{filepath.Join(root, "scripts", "install-native.sh"), "--skip-upstream-tools", "--dry-run", "--path-mode=skip", "--skip-build"},
+		{filepath.Join(root, "scripts", "install-native.sh"), "--dry-run", "--json"},
+		{filepath.Join(root, "scripts", "install-native.sh"), "--dry-run", "--path-mode=skip", "--skip-build"},
 	}
 	if !reflect.DeepEqual(commands, want) {
 		t.Fatalf("unexpected wrapper command sequence:\n got: %#v\nwant: %#v", commands, want)
+	}
+}
+
+func TestRunInstallScriptCommandRejectsRemovedUpstreamFlags(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HARNESS_ROOT", root)
+	if err := os.MkdirAll(filepath.Join(root, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "scripts", "install-native.sh"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	restore := stubInstallScriptCommandRunner(t, func(name string, args ...string) error {
+		t.Fatalf("removed upstream flags must fail before invoking install script: %s %#v", name, args)
+		return nil
+	})
+	defer restore()
+
+	for _, args := range [][]string{
+		{"--with-upstream-tools"},
+		{"--skip-upstream-tools"},
+		{"--without-upstream-tools"},
+		{"--sync"},
+	} {
+		if err := runInstallScriptCommand("update", args); err == nil {
+			t.Fatalf("runInstallScriptCommand(%v) succeeded, want removed-flag error", args)
+		}
 	}
 }
 
@@ -202,17 +230,14 @@ func TestExportedUpdateFacadesForwardToConfiguredDependencies(t *testing.T) {
 	SetPostInstallDaemonRefresh(func() (bool, error) { return true, nil })
 	SetPostInstallMCPProxyRefresh(func() (int, error) { return 2, nil })
 
-	if err := RunUpdate([]string{"--dry-run", "--without-upstream-tools"}); err != nil {
+	if err := RunUpdate([]string{"--dry-run"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := RunBootstrap([]string{"--dry-run", "--path-mode=skip"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := RunInstallScriptCommand("update", []string{"--dry-run", "--skip-upstream-tools"}); err != nil {
+	if err := RunInstallScriptCommand("update", []string{"--dry-run"}); err != nil {
 		t.Fatal(err)
-	}
-	if !HasInstallFlag([]string{"--with-upstream-tools=false"}, "with-upstream-tools") {
-		t.Fatal("expected exported HasInstallFlag to detect assignment form")
 	}
 	if got := len(commands); got != 3 {
 		t.Fatalf("expected three exported install wrapper calls, got %d: %#v", got, commands)

@@ -132,9 +132,9 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 	}
 }
 
-func TestInstallNativeUpstreamToolsUseClaudeMem(t *testing.T) {
+func TestInstallNativeScriptDoesNotWireCompanionTools(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
-	for _, want := range []string{
+	for _, gone := range []string{
 		"npx -y claude-mem@latest install --ide \"$ide\" --provider claude --runtime worker --no-auto-start",
 		"install_claude_mem_for_ide \"codex-cli\"",
 		"install_claude_mem_for_ide \"claude-code\"",
@@ -144,12 +144,6 @@ func TestInstallNativeUpstreamToolsUseClaudeMem(t *testing.T) {
 		"remove_codex_marketplace \"agentmemory\"",
 		"remove_claude_plugin \"agentmemory@agentmemory\"",
 		"remove_claude_marketplace \"agentmemory\"",
-	} {
-		if !strings.Contains(script, want) {
-			t.Fatalf("install-native.sh missing %q", want)
-		}
-	}
-	for _, gone := range []string{
 		"ensure_agentmemory_cli",
 		"refresh_agentmemory_host_wiring",
 		"ensure_codex_marketplace \"agentmemory\"",
@@ -157,16 +151,6 @@ func TestInstallNativeUpstreamToolsUseClaudeMem(t *testing.T) {
 		"ensure_claude_marketplace \"agentmemory\"",
 		"ensure_claude_plugin \"agentmemory@agentmemory\"",
 		"npm install -g @agentmemory/agentmemory",
-	} {
-		if strings.Contains(script, gone) {
-			t.Fatalf("install-native.sh must not retain agentmemory installer path %q", gone)
-		}
-	}
-}
-
-func TestInstallNativeUpstreamToolsUseLLMWikiMCP(t *testing.T) {
-	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
-	for _, want := range []string{
 		`LLM_WIKI_SOURCE="github.com/m16khb/llm-wiki/cmd/llm-wiki@latest"`,
 		`GOBIN="$(dirname "$LLM_WIKI_BIN")" go install "$LLM_WIKI_SOURCE"`,
 		`[mcp_servers.llm-wiki]`,
@@ -178,54 +162,29 @@ func TestInstallNativeUpstreamToolsUseLLMWikiMCP(t *testing.T) {
 		`remove_codex_marketplace "llm-wiki"`,
 		`remove_claude_plugin "wiki@llm-wiki"`,
 		`remove_claude_marketplace "llm-wiki"`,
-	} {
-		if !strings.Contains(script, want) {
-			t.Fatalf("install-native.sh missing llm-wiki MCP installer path %q", want)
-		}
-	}
-	for _, gone := range []string{
 		`ensure_codex_marketplace "llm-wiki" "nvk/llm-wiki"`,
 		`ensure_codex_plugin "wiki@llm-wiki"`,
 		`ensure_claude_marketplace "llm-wiki" "nvk/llm-wiki"`,
 		`ensure_claude_plugin "wiki@llm-wiki"`,
 		`llm-wiki Codex source is nvk/llm-wiki`,
 		`llm-wiki Claude source is nvk/llm-wiki`,
+		"lazycodex-ai",
+		"LazyCodex",
+		"install_lazycodex",
+		"install_upstream_tools",
+		"dry-run: would install/update upstream tools",
+		"HARNESS_INSTALL_UPSTREAM_TOOLS",
+		"HARNESS_INIT_CODEGRAPH",
+		"codegraph install --target=codex,claude",
+		"npm install -g @colbymchenry/codegraph",
 	} {
 		if strings.Contains(script, gone) {
-			t.Fatalf("install-native.sh retained legacy llm-wiki marketplace/plugin path %q", gone)
+			t.Fatalf("install-native.sh must not retain companion tool installer path %q", gone)
 		}
 	}
 }
 
-func TestInstallNativeUpstreamToolsNoLazyCodex(t *testing.T) {
-	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
-	if strings.Contains(script, "lazycodex-ai") || strings.Contains(script, "LazyCodex") || strings.Contains(script, "install_lazycodex") {
-		t.Fatalf("install-native.sh must not reference LazyCodex; it was removed from upstream tools")
-	}
-	want := "dry-run: would install/update upstream tools: llm-wiki CLI/MCP, codegraph, claude-mem"
-	if !strings.Contains(script, want) {
-		t.Fatalf("install-native.sh missing expected upstream tools dry-run log %q", want)
-	}
-}
-
-func TestInstallNativeAppliesHarnessCompatibilityAfterUpstreamTools(t *testing.T) {
-	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
-	upstreamCall := `install_upstream_tools "$DRY_RUN"`
-	harnessInstallCall := `"$BIN" install-native`
-	upstreamIndex := strings.Index(script, upstreamCall)
-	if upstreamIndex < 0 {
-		t.Fatalf("install-native.sh missing upstream tool install call %q", upstreamCall)
-	}
-	harnessInstallIndex := strings.Index(script, harnessInstallCall)
-	if harnessInstallIndex < 0 {
-		t.Fatalf("install-native.sh missing harness install call %q", harnessInstallCall)
-	}
-	if upstreamIndex > harnessInstallIndex {
-		t.Fatalf("upstream tools must be installed before harness install-native so compatibility patches run after plugin updates")
-	}
-}
-
-func TestInstallNativeUpstreamToolsExcludeRemovedProxyCompanion(t *testing.T) {
+func TestInstallNativeScriptExcludesRemovedProxyCompanion(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
 	removed := strings.Join([]string{"head", "room"}, "")
 	removedTitle := strings.Join([]string{"Head", "room"}, "")
