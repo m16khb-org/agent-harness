@@ -13,13 +13,16 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 	bin := t.TempDir()
 	logPath := filepath.Join(t.TempDir(), "codegraph.log")
 	codegraph := filepath.Join(bin, "codegraph")
-	if err := os.WriteFile(codegraph, []byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+logPath+"'\ncase \"$1\" in\nstatus) exit 1 ;;\ninit) exit 0 ;;\n*) exit 0 ;;\nesac\n"), 0o755); err != nil {
+	if err := os.WriteFile(codegraph, []byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+logPath+"'\ncase \"$1\" in\nstatus) exit 0 ;;\n*) exit 0 ;;\nesac\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	repo := makeIssueOpsCLIRepoForTest(t, "example")
 	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
+	if err := os.Mkdir(filepath.Join(worktree, ".codegraph"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	start := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"start", "--repo", repo, "--branch", "1-demo", "--json"})
 	})
@@ -69,8 +72,50 @@ func TestRunIssueOpsWorktreePrepareToolsRunsCodeGraphAgainstWorktree(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(log), "status "+worktree) || !strings.Contains(string(log), "init -i "+worktree) {
-		t.Fatalf("codegraph should be checked and initialized against worktree, got:\n%s", log)
+	if !strings.Contains(string(log), "status "+worktree) || strings.Contains(string(log), "init -i "+worktree) {
+		t.Fatalf("codegraph should be checked but not initialized against worktree, got:\n%s", log)
+	}
+}
+
+func TestPrepareToolsWithoutCodeGraphSucceeds(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIRepoForTest(t, "without-codegraph")
+	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
+	t.Setenv("PATH", t.TempDir())
+
+	start := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"start", "--repo", repo, "--branch", "1-demo", "--json"})
+	})
+	var record map[string]any
+	if err := json.Unmarshal([]byte(start), &record); err != nil {
+		t.Fatal(err)
+	}
+	id := record["id"].(string)
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-issue", "--id", id, "--issue-url", "https://github.com/example/repo/issues/1", "--json"})
+	})
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "1-demo", "--base-branch", "main", "--link-verified", "--json"})
+	})
+	_ = captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktree, "--json"})
+	})
+
+	out := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"worktree", "prepare-tools", "--id", id, "--json"})
+	})
+	var prepared map[string]any
+	if err := json.Unmarshal([]byte(out), &prepared); err != nil {
+		t.Fatalf("prepare-tools should return JSON: %v\n%s", err, out)
+	}
+	if prepared["ok"] != true {
+		t.Fatalf("prepare-tools should succeed without CodeGraph: %#v", prepared)
+	}
+	if prepared["codegraph_ready"] == true {
+		t.Fatalf("CodeGraph should remain informational when unavailable: %#v", prepared)
+	}
+	if want := "export HARNESS_EXPECTED_WORKTREE=" + worktree; prepared["guidance"] != want {
+		t.Fatalf("expected prepare-tools guidance %q, got %#v", want, prepared["guidance"])
 	}
 }
 
@@ -121,6 +166,9 @@ func TestRunIssueOpsWorktreePrepareToolsInstallsPnpmDependencies(t *testing.T) {
 
 	repo := makeIssueOpsCLIRepoForTest(t, "example")
 	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
+	if err := os.Mkdir(filepath.Join(worktree, ".codegraph"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(worktree, "package.json"), []byte(`{"name":"demo"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}

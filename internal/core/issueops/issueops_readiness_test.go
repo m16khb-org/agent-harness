@@ -45,6 +45,72 @@ func TestIssueOpsImplementationReadinessRejectsPersistedWeakDesignReview(t *test
 	}
 }
 
+func TestImplementGateDoesNotRequireCodeGraph(t *testing.T) {
+	stateRoot := t.TempDir()
+	repo := t.TempDir()
+	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
+	planPath := filepath.Join(worktree, "plans/demo.md")
+	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
+
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordIssueOpsIntentForTest(t, stateRoot, record.ID)
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       record.Branch,
+		BaseBranch:   "main",
+		LinkVerified: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsWorktree(stateRoot, record.ID, worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordIssueOpsApprovedDesignForTest(t, stateRoot, record.ID)
+	record, err = LinkIssueOpsPlan(stateRoot, record.ID, planPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordIssueOpsCompatibilityReviewForTest(t, stateRoot, record.ID)
+	recordIssueOpsExecutionDecisionForTest(t, stateRoot, record.ID)
+	record, err = RecordIssueOpsWorktreeTools(stateRoot, record.ID, IssueOpsWorktreeToolPreparation{
+		OK:                  true,
+		WorktreePath:        worktree,
+		DependenciesChecked: true,
+		DependenciesReady:   true,
+		CodeGraphChecked:    false,
+		CodeGraphReady:      false,
+		Messages:            []string{"dependencies ready; CodeGraph unavailable"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ready := IssueOpsImplementationReadiness(record)
+	if containsString(ready.Missing, "codegraph_ready") {
+		t.Fatalf("CodeGraph should be optional evidence, got missing keys: %#v", ready.Missing)
+	}
+	if !ready.Ready {
+		t.Fatalf("implementation should be ready without CodeGraph when other gates pass: %+v", ready)
+	}
+	advanced, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement))
+	if err != nil {
+		t.Fatalf("AdvanceIssueOpsPhase to implement should not require CodeGraph: %v", err)
+	}
+	if advanced.Phase != IssueOpsPhaseImplement {
+		t.Fatalf("expected implement phase, got %s", advanced.Phase)
+	}
+}
+
 func TestIssueOpsStrictPRReadinessRequiresCleanSyncedRepo(t *testing.T) {
 	repo := initIssueOpsRepo(t)
 	record := IssueOpsRecord{

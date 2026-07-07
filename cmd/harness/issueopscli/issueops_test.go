@@ -61,6 +61,9 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 
 	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "1-provider-linked-branch")
+	if err := os.Mkdir(filepath.Join(worktreePath, ".codegraph"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	worktree := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", id, "--worktree-path", worktreePath, "--json"})
 	})

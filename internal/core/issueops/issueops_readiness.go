@@ -190,9 +190,6 @@ func issueOpsWorktreeToolsMissing(record IssueOpsRecord) []string {
 	if prep.DependenciesChecked && !prep.DependenciesReady {
 		missing = append(missing, "worktree_dependencies_ready")
 	}
-	if !prep.CodeGraphChecked || !prep.CodeGraphReady {
-		missing = append(missing, "codegraph_ready")
-	}
 	return missing
 }
 

@@ -75,6 +75,9 @@ func TestPrepareWorktreeToolsSuccessAndErrors(t *testing.T) {
 	if err := os.Mkdir(worktree, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Mkdir(filepath.Join(worktree, ".codegraph"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	result, err := PrepareWorktreeTools(core.IssueOpsRecord{ID: "io-1", WorktreePath: worktree})
 	if err != nil {
 		t.Fatalf("PrepareWorktreeTools returned error: %v", err)

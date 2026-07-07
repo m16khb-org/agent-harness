@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"agent-harness/cmd/harness/issueopscli/worktreetools"
@@ -122,17 +123,16 @@ func PrepareWorktreeTools(record core.IssueOpsRecord) (PrepareResult, error) {
 		result.OK = false
 		return result, err
 	}
+	if _, err := exec.LookPath("codegraph"); err != nil {
+		return result, nil
+	}
+	if info, err := os.Stat(filepath.Join(worktree, ".codegraph")); err != nil || !info.IsDir() {
+		return result, nil
+	}
 	result.CodeGraphChecked = true
 	if err := exec.Command("codegraph", "status", worktree).Run(); err == nil {
 		result.CodeGraphReady = true
 		result.Messages = append(result.Messages, "CodeGraph index already ready for IssueOps worktree")
-	} else if out, err := exec.Command("codegraph", "init", "-i", worktree).CombinedOutput(); err != nil {
-		result.OK = false
-		return result, fmt.Errorf("initialize CodeGraph for IssueOps worktree: %w: %s", err, strings.TrimSpace(string(out)))
-	} else {
-		result.CodeGraphInitialized = true
-		result.CodeGraphReady = true
-		result.Messages = append(result.Messages, "initialized CodeGraph index for IssueOps worktree")
 	}
 	return result, nil
 }
