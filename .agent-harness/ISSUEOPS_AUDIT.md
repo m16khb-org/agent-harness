@@ -488,3 +488,19 @@ skills/issueops/
 ├── CAUTIONS.md                    # Section 21: Worktree guard lessons
 ├── ISSUEOPS_AUDIT.md             # This document
 ```
+
+### Reconciliation (2026-07-07, sqlite state store)
+
+The JSON-file + flock state layout audited in sections 1 and 3 has been
+replaced by the SQLite store (`internal/core/sqlstore`; see the ADR "State
+storage moves from JSON files + flock to SQLite"). Matrix items affected:
+
+| ID | Status after migration |
+|----|------------------------|
+| 1.2 Non-Unix lock is in-process only | Resolved — the sqlstore span holds a `BEGIN IMMEDIATE` transaction on `harness.lock.db`; SQLite file locking is cross-process on every platform, and the `!unix` in-process fallback files are deleted. |
+| 1.3 Orphaned .lock files | Obsolete — no per-entity lock files exist; the two SQLite files per state root are persistent by design. Legacy `.lock`/`.state-lock` files are ignored (fresh start). |
+| 1.1 / 1.4 / 6.4 lock-based mitigations | Carried over — the same span discipline (no nesting, full read-modify-write span, sequential multi-entity steps with read-repair) now runs on sqlstore spans instead of flock. |
+| 5.1 / 5.2 state growth | Unchanged in policy; records are rows, `state prune` / `cleanup stale --prune-done` delete rows instead of files. |
+
+Fresh-start note: pre-migration `*.json` records are not read or migrated. The
+state doctor treats legacy record/lock files as inert harness-owned leftovers.
