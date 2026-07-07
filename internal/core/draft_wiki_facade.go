@@ -92,14 +92,6 @@ func failDraftWikiQueueEvent(event DraftWikiQueueEvent, err error) DraftWikiQueu
 	return draftwiki.FailDraftWikiQueueEvent(event, err)
 }
 
-func llmWikiRawNoteContent(draft DraftWikiDraft, targetType, today, draftContent string) string {
-	return draftwiki.LLMWikiRawNoteContent(draft, targetType, today, draftContent)
-}
-
-func draftWikiRawFileName(today, draftPath string) string {
-	return draftwiki.DraftWikiRawFileName(today, draftPath)
-}
-
 func draftWikiSeedFiles() map[string]string {
 	return draftwiki.DraftWikiSeedFiles()
 }

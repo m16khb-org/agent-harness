@@ -44,7 +44,7 @@ func projectDraftWikiUsage() {
   agent-harness project draft-wiki queue [--repo PATH] (--input PATH|--material TEXT|--stdin) [--target-wiki NAME] [--target-type notes] [--json]
   agent-harness project draft-wiki approve [--repo PATH] [--json] PATH
   agent-harness project draft-wiki reject [--repo PATH] [--json] PATH
-  agent-harness project draft-wiki promote [--repo PATH] [--target-wiki NAME] [--target-type notes] [--confirm] [--json] PATH
+  agent-harness project draft-wiki promote [--repo PATH] [--confirm] [--json] PATH
   agent-harness project draft-wiki prune [--repo PATH] [--all] [--keep N] [--json]
 `)
 }

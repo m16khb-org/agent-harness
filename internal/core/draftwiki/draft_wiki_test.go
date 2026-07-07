@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestInitDraftWikiCreatesReviewStaging(t *testing.T) {
@@ -114,9 +113,8 @@ func TestRejectDraftWikiMovesCandidateToRejected(t *testing.T) {
 	}
 }
 
-func TestPromoteDraftWikiWritesLLMWikiRawNoteOnConfirm(t *testing.T) {
+func TestPromoteDraftWikiExportsApprovedDraftOnConfirm(t *testing.T) {
 	root := t.TempDir()
-	configPath, hub := writeTestLLMWikiHub(t)
 	approved := filepath.Join(root, DraftWikiDir, "approved", "candidate.md")
 	mustWrite(t, approved, `---
 title: "Candidate"
@@ -134,18 +132,17 @@ target_type: "notes"
 	if !dry.OK || !dry.DryRun || dry.Confirm || dry.Executed {
 		t.Fatalf("unexpected dry-run promote result: %+v", dry)
 	}
-	if !strings.Contains(dry.HandoffCommand, "@wiki ingest") || !strings.Contains(dry.HandoffCommand, "--wiki agent-harness") {
-		t.Fatalf("unexpected handoff command: %q", dry.HandoffCommand)
+	if dry.ExportRel != filepath.ToSlash(filepath.Join(DraftWikiDir, "exported", "candidate.md")) {
+		t.Fatalf("unexpected dry-run export target: %+v", dry)
 	}
 	if _, err := os.Stat(approved); err != nil {
 		t.Fatalf("dry-run moved approved file: %v", err)
 	}
 
 	confirmed, err := PromoteDraftWiki(DraftWikiPromoteRequest{
-		RepoRoot:          root,
-		Path:              approved,
-		Confirm:           true,
-		LLMWikiConfigPath: configPath,
+		RepoRoot: root,
+		Path:     approved,
+		Confirm:  true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -153,33 +150,25 @@ target_type: "notes"
 	if !confirmed.OK || confirmed.DryRun || !confirmed.Confirm || !confirmed.Executed {
 		t.Fatalf("unexpected confirmed promote result: %+v", confirmed)
 	}
-	if confirmed.LLMWikiRoot != filepath.Join(hub, "topics", "agent-harness") {
-		t.Fatalf("LLMWikiRoot=%q", confirmed.LLMWikiRoot)
+	if confirmed.To == nil || confirmed.To.Status != "exported" || confirmed.ExportRel != filepath.ToSlash(filepath.Join(DraftWikiDir, "exported", "candidate.md")) {
+		t.Fatalf("unexpected local export result: %+v", confirmed)
 	}
-	wantRawSuffix := filepath.ToSlash(filepath.Join("raw", "notes", time.Now().Format(time.DateOnly)+"-candidate.md"))
-	if confirmed.LLMWikiRawPath == "" || !strings.HasSuffix(filepath.ToSlash(confirmed.LLMWikiRawPath), wantRawSuffix) {
-		t.Fatalf("unexpected raw path: %+v", confirmed)
-	}
-	raw, err := os.ReadFile(confirmed.LLMWikiRawPath)
+	exported, err := os.ReadFile(confirmed.ExportPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	rawText := string(raw)
-	if !strings.Contains(rawText, "type: notes") || !strings.Contains(rawText, "source: \"agent-harness draft-wiki:.agent-harness/draft-wiki/approved/candidate.md\"") {
-		t.Fatalf("raw note missing llm-wiki frontmatter: %s", rawText)
+	if !strings.Contains(string(exported), "# Candidate") {
+		t.Fatalf("exported draft missing body: %s", string(exported))
 	}
-	if !strings.Contains(rawText, "# Candidate") {
-		t.Fatalf("raw note missing draft body: %s", rawText)
+	if _, err := os.Stat(approved); !os.IsNotExist(err) {
+		t.Fatalf("approved file should move to exported, got %v", err)
 	}
-	if _, err := os.Stat(approved); err != nil {
-		t.Fatalf("approved file should remain reviewable: %v", err)
-	}
-	logText, err := os.ReadFile(filepath.Join(hub, "topics", "agent-harness", "log.md"))
+	logText, err := os.ReadFile(confirmed.ExportLogPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(logText), "ingest | Candidate") {
-		t.Fatalf("log missing ingest entry: %s", string(logText))
+	if !strings.Contains(string(logText), "export | Candidate") {
+		t.Fatalf("log missing export entry: %s", string(logText))
 	}
 }
 

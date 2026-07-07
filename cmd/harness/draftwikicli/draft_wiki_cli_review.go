@@ -42,10 +42,7 @@ func runProjectDraftWikiReject(args []string) error {
 func runProjectDraftWikiPromote(args []string) error {
 	fs := flag.NewFlagSet("project draft-wiki promote", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
-	targetWiki := fs.String("target-wiki", "", "target upstream LLM Wiki topic; overrides draft frontmatter target_wiki")
-	targetType := fs.String("target-type", "", "target upstream LLM Wiki raw type; defaults to draft target_type or notes")
-	llmWikiConfig := fs.String("llm-wiki-config", "", "llm-wiki config path; defaults to ~/.config/llm-wiki/config.json")
-	confirm := fs.Bool("confirm", false, "write the approved draft into the configured llm-wiki raw directory")
+	confirm := fs.Bool("confirm", false, "move the approved draft into the repo-local exported directory")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -54,12 +51,9 @@ func runProjectDraftWikiPromote(args []string) error {
 		return fmt.Errorf("exactly one draft path is required")
 	}
 	result, err := core.PromoteDraftWiki(core.DraftWikiPromoteRequest{
-		RepoRoot:          *repo,
-		Path:              fs.Arg(0),
-		TargetWiki:        *targetWiki,
-		TargetType:        *targetType,
-		Confirm:           *confirm,
-		LLMWikiConfigPath: *llmWikiConfig,
+		RepoRoot: *repo,
+		Path:     fs.Arg(0),
+		Confirm:  *confirm,
 	})
 	if err != nil {
 		return err
@@ -68,11 +62,10 @@ func runProjectDraftWikiPromote(args []string) error {
 		return printJSON(result)
 	}
 	if result.DryRun {
-		fmt.Println("draft-wiki promote dry-run; rerun with --confirm to write an llm-wiki raw note.")
+		fmt.Printf("draft-wiki promote dry-run; rerun with --confirm to export locally: %s\n", result.ExportRel)
 	} else {
-		fmt.Printf("promoted draft to llm-wiki raw note: %s\n", result.LLMWikiRawPath)
+		fmt.Printf("exported draft: %s -> %s\n", result.From.RelPath, result.ExportRel)
 	}
-	fmt.Printf("handoff: %s\n", result.HandoffCommand)
 	return nil
 }
 

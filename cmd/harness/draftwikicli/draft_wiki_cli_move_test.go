@@ -74,7 +74,7 @@ func TestRunProjectDraftWikiApproveRejectAndPromoteDryRun(t *testing.T) {
 	promoteText := captureStdoutForContract(t, func() error {
 		return runProjectDraftWiki([]string{"promote", "--repo", root, approvedPath})
 	})
-	if !strings.Contains(promoteText, "draft-wiki promote dry-run") || !strings.Contains(promoteText, "@wiki ingest") {
+	if !strings.Contains(promoteText, "draft-wiki promote dry-run") || !strings.Contains(promoteText, "exported/approve.md") {
 		t.Fatalf("unexpected promote dry-run text:\n%s", promoteText)
 	}
 

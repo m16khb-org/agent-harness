@@ -2,7 +2,7 @@ package draftwiki
 
 const DraftWikiDir = ProjectDocsDir + "/draft-wiki"
 
-var draftWikiStatusDirs = []string{"draft", "approved", "rejected"}
+var draftWikiStatusDirs = []string{"draft", "approved", "rejected", "exported"}
 
 type DraftWikiInitRequest struct {
 	RepoRoot string `json:"repo_root"`
@@ -59,28 +59,22 @@ type DraftWikiMoveResult struct {
 }
 
 type DraftWikiPromoteRequest struct {
-	RepoRoot          string `json:"repo_root"`
-	Path              string `json:"path"`
-	TargetWiki        string `json:"target_wiki"`
-	TargetType        string `json:"target_type"`
-	Confirm           bool   `json:"confirm"`
-	LLMWikiConfigPath string `json:"-"`
+	RepoRoot string `json:"repo_root"`
+	Path     string `json:"path"`
+	Confirm  bool   `json:"confirm"`
 }
 
 type DraftWikiPromoteResult struct {
-	OK             bool           `json:"ok"`
-	Kind           string         `json:"kind"`
-	RepoRoot       string         `json:"repo_root"`
-	DraftDir       string         `json:"draft_dir"`
-	DryRun         bool           `json:"dry_run"`
-	Confirm        bool           `json:"confirm"`
-	Executed       bool           `json:"executed"`
-	UpstreamTool   string         `json:"upstream_tool"`
-	HandoffCommand string         `json:"handoff_command"`
-	HandoffArgs    []string       `json:"handoff_args"`
-	LLMWikiRoot    string         `json:"llm_wiki_root,omitempty"`
-	LLMWikiRawPath string         `json:"llm_wiki_raw_path,omitempty"`
-	LLMWikiRawRel  string         `json:"llm_wiki_raw_rel,omitempty"`
-	LLMWikiLogPath string         `json:"llm_wiki_log_path,omitempty"`
-	From           DraftWikiDraft `json:"from"`
+	OK            bool            `json:"ok"`
+	Kind          string          `json:"kind"`
+	RepoRoot      string          `json:"repo_root"`
+	DraftDir      string          `json:"draft_dir"`
+	DryRun        bool            `json:"dry_run"`
+	Confirm       bool            `json:"confirm"`
+	Executed      bool            `json:"executed"`
+	From          DraftWikiDraft  `json:"from"`
+	To            *DraftWikiDraft `json:"to,omitempty"`
+	ExportPath    string          `json:"export_path"`
+	ExportRel     string          `json:"export_rel"`
+	ExportLogPath string          `json:"export_log_path"`
 }

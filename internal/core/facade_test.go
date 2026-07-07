@@ -199,7 +199,7 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	if _, err := ListDraftWiki(DraftWikiListRequest{RepoRoot: repo}); err != nil {
 		t.Fatalf("ListDraftWiki: %v", err)
 	}
-	if len(draftWikiSeedFiles()) == 0 || draftWikiRawFileName("2026-06-13", "Draft.md") == "" {
+	if len(draftWikiSeedFiles()) == 0 {
 		t.Fatal("draft wiki helpers should return data")
 	}
 	if !strings.Contains(generatedDraftFrontmatter("Title", "wiki", "notes"), "Title") {
