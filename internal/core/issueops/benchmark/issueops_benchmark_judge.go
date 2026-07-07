@@ -1,50 +1,29 @@
 package benchmark
 
 import (
-	"agent-harness/internal/core/externalllm"
 	"fmt"
-	"strings"
-	"time"
+
+	"agent-harness/internal/core/judgement"
 )
 
 type IssueOpsLLMJudgeRequest struct {
-	RepoRoot string
-	Model    string
-	Timeout  time.Duration
-	Attempts int
 	Fixture  IssueOpsBenchmarkFixture
 	Artifact IssueOpsBenchmarkArtifact
 }
 
 func RunIssueOpsLLMJudge(req IssueOpsLLMJudgeRequest) (IssueOpsBenchmarkScore, error) {
-	model := strings.TrimSpace(req.Model)
-	timeout := req.Timeout
-	if timeout == 0 {
-		timeout = 2 * time.Minute
-	}
-	attempts := req.Attempts
-	if attempts <= 0 {
-		attempts = 3
-	}
-
-	prompt, err := buildIssueOpsLLMJudgePrompt(req.Fixture, req.Artifact)
-	if err != nil {
+	if _, err := buildIssueOpsLLMJudgePrompt(req.Fixture, req.Artifact); err != nil {
 		return IssueOpsBenchmarkScore{}, err
 	}
-	var lastErr error
-	for attempt := 1; attempt <= attempts; attempt++ {
-		llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Model: model, WorkDir: req.RepoRoot, Prompt: prompt, Timeout: timeout})
-		if err != nil {
-			lastErr = fmt.Errorf("issueops benchmark LLM judge failed: %s: %w", boundedIssueOpsText(string(llm.Output)), err)
-			continue
-		}
-		score, err := decodeStrictIssueOpsBenchmarkScore(llm.Output)
-		if err == nil {
-			return score, nil
-		}
-		lastErr = err
+	return IssueOpsBenchmarkScore{}, fmt.Errorf("issueops benchmark judge no longer calls external LLM services; render the prompt with BuildIssueOpsLLMJudgePrompt and pass the host-agent result through --judge file --judge-file")
+}
+
+func RenderIssueOpsLLMJudgePrompt(req IssueOpsLLMJudgeRequest) (string, error) {
+	prompt, err := buildIssueOpsLLMJudgePrompt(req.Fixture, req.Artifact)
+	if err != nil {
+		return "", err
 	}
-	return IssueOpsBenchmarkScore{}, fmt.Errorf("issueops benchmark LLM judge failed after %d strict-output attempts: %w", attempts, lastErr)
+	return prompt, nil
 }
 
 // DecodeIssueOpsBenchmarkJudgeJSON strictly decodes ONE judge score object
@@ -58,19 +37,11 @@ func DecodeIssueOpsBenchmarkJudgeJSON(out []byte) (IssueOpsBenchmarkScore, error
 
 func decodeStrictIssueOpsBenchmarkScore(out []byte) (IssueOpsBenchmarkScore, error) {
 	var score IssueOpsBenchmarkScore
-	if err := externalllm.DecodeExternalLLMStructuredJSONObject("issueops benchmark LLM judge", out, &score); err != nil {
+	if err := judgement.DecodeStructuredJSONObject("issueops benchmark host-agent judge", out, &score); err != nil {
 		return IssueOpsBenchmarkScore{}, err
 	}
 	if len(score.DimensionScores) == 0 {
-		return IssueOpsBenchmarkScore{}, fmt.Errorf("issueops benchmark LLM judge output missing dimension_scores")
+		return IssueOpsBenchmarkScore{}, fmt.Errorf("issueops benchmark host-agent judge output missing dimension_scores")
 	}
 	return score, nil
-}
-
-func boundedIssueOpsText(s string) string {
-	s = strings.TrimSpace(s)
-	if len(s) > 400 {
-		return s[:400] + "...[truncated]"
-	}
-	return s
 }

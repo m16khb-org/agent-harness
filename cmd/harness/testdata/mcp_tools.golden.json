@@ -2857,13 +2857,9 @@
     "name": "command_policy_audit"
   },
   {
-    "description": "Generate a Conventional + Lore Hybrid commit message suggestion based on git diff using Z.AI Coding Plan.",
+    "description": "Render a host-agent prompt for a Conventional + Lore Hybrid commit message based on git diff.",
     "inputSchema": {
       "properties": {
-        "model": {
-          "description": "Z.AI Coding Plan model. Defaults to glm-5-turbo.",
-          "type": "string"
-        },
         "repo": {
           "description": "Target repository path. Defaults to current directory.",
           "type": "string"
@@ -2878,7 +2874,7 @@
     "name": "commit_suggest"
   },
   {
-    "description": "Run a command, capture failure outputs, and provide a diagnosis using Z.AI Coding Plan.",
+    "description": "Run a command, capture failure outputs, and render a host-agent diagnosis prompt.",
     "inputSchema": {
       "properties": {
         "command_argv": {
@@ -2887,10 +2883,6 @@
             "type": "string"
           },
           "type": "array"
-        },
-        "model": {
-          "description": "Z.AI Coding Plan model. Defaults to glm-5-turbo.",
-          "type": "string"
         },
         "repo": {
           "description": "Target repository path. Defaults to current directory.",

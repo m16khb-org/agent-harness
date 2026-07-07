@@ -31,6 +31,7 @@ type SelfVerifyLLMEvalResult struct {
 	Risks                  []string `json:"risks,omitempty"`
 	RecommendedNextActions []string `json:"recommended_next_actions,omitempty"`
 	EvidencePacketBytes    int      `json:"evidence_packet_bytes"`
+	Prompt                 string   `json:"prompt,omitempty"`
 	Error                  string   `json:"error,omitempty"`
 }
 

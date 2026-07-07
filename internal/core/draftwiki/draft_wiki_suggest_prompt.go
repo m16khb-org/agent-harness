@@ -10,7 +10,7 @@ type draftWikiSuggestLLMResponse struct {
 	BodyMarkdown string `json:"body_markdown"`
 }
 
-func buildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, model, targetType string) string {
+func buildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, targetType string) string {
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
 		title = "Draft wiki candidate"
@@ -47,9 +47,8 @@ source: "claude-mem"
 target_wiki: %q
 target_type: %q
 summary: "<one sentence>"
-suggester: "zai:%s"
-model: %q
----`, title, targetWiki, targetType, model, model),
+suggester: "host-agent"
+---`, title, targetWiki, targetType),
 		},
 		VerificationChecklist: []string{
 			"body_markdown has valid YAML frontmatter.",
@@ -58,7 +57,7 @@ model: %q
 			"The document is reviewable as a repo-local draft.",
 		},
 		Data: []PromptDataSection{
-			BuildExternalLLMJSONSchemaSection(draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType, model), []string{
+			BuildHostJudgementJSONSchemaSection(draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType), []string{
 				"body_markdown: string, required, the complete Markdown draft including YAML frontmatter.",
 			}),
 			{Title: "Source Material", Content: input},
@@ -68,7 +67,7 @@ model: %q
 
 func decodeDraftWikiSuggestLLMOutput(out []byte) (string, error) {
 	var response draftWikiSuggestLLMResponse
-	if err := DecodeExternalLLMStructuredJSONObject("draft wiki suggest", out, &response); err != nil {
+	if err := DecodeHostJudgementStructuredJSONObject("draft wiki suggest", out, &response); err != nil {
 		return "", fmt.Errorf("decode draft wiki LLM output: %w", err)
 	}
 	body := strings.TrimSpace(response.BodyMarkdown)
@@ -78,20 +77,19 @@ func decodeDraftWikiSuggestLLMOutput(out []byte) (string, error) {
 	return body, nil
 }
 
-func draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType, model string) string {
+func draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType string) string {
 	body := fmt.Sprintf(`---
 title: %q
 source: "claude-mem"
 target_wiki: %q
 target_type: %q
 summary: "One sentence summary."
-suggester: "zai:%s"
-model: %q
+suggester: "host-agent"
 ---
 
 # %s
 
-Durable reusable knowledge goes here.`, title, targetWiki, targetType, model, model, title)
+Durable reusable knowledge goes here.`, title, targetWiki, targetType, title)
 	b, err := json.MarshalIndent(draftWikiSuggestLLMResponse{BodyMarkdown: body}, "", "  ")
 	if err != nil {
 		return `{"body_markdown":"---\ntitle: \"Draft wiki candidate\"\n---\n\n# Draft wiki candidate\n"}`

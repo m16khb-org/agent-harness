@@ -87,6 +87,10 @@ func DecodeIssueOpsBenchmarkJudgeJSON(out []byte) (IssueOpsBenchmarkScore, error
 	return benchmark.DecodeIssueOpsBenchmarkJudgeJSON(out)
 }
 
+func RenderIssueOpsLLMJudgePrompt(req IssueOpsLLMJudgeRequest) (string, error) {
+	return benchmark.RenderIssueOpsLLMJudgePrompt(req)
+}
+
 func BuildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
 	return benchmark.BuildIssueOpsLLMJudgePrompt(fixture, artifact)
 }

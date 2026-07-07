@@ -1,16 +1,11 @@
 package commitsuggest
 
 import (
-	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	"agent-harness/internal/core/externalllm"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -19,7 +14,6 @@ func TestSuggestCommitReturnsNoopWhenDiffIsEmpty(t *testing.T) {
 	result, err := SuggestCommit(CommitSuggestRequest{
 		RepoRoot: repo,
 		Staged:   false,
-		Timeout:  2 * time.Second,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -29,29 +23,14 @@ func TestSuggestCommitReturnsNoopWhenDiffIsEmpty(t *testing.T) {
 	}
 }
 
-func TestSuggestCommitUsesZAIAPIForWorkingTreeDiff(t *testing.T) {
+func TestSuggestCommitRendersPromptForWorkingTreeDiff(t *testing.T) {
 	repo := initCommitSuggestRepo(t)
 	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("changed\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	// Mock Z.AI API
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"choices":[{"message":{"content":"{\"commit_message\":\"test(core): cover commit suggest\\n\\nLore:\\n- Intent: Cover commit suggest.\\n- Why: Characterization.\\n- Changes:\\n  - Use fake Z.AI.\\n- Verify: go test.\\n- Risk: Low.\"}"}}]}`)
-	}))
-	defer ts.Close()
-
-	// Override the externalllm package baseURL
-	origBaseURL := externalllm.SetBaseURL(ts.URL)
-	defer externalllm.SetBaseURL(origBaseURL)
-
-	t.Setenv("Z_AI_API_KEY", "test-key")
-
 	result, err := SuggestCommit(CommitSuggestRequest{
 		RepoRoot: repo,
-		Model:    "glm-5-turbo",
-		Timeout:  10 * time.Second,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -59,11 +38,10 @@ func TestSuggestCommitUsesZAIAPIForWorkingTreeDiff(t *testing.T) {
 	if !result.OK || !result.Executed {
 		t.Fatalf("suggest result = %+v", result)
 	}
-	if !strings.HasPrefix(result.CommitMessage, "test(core): cover commit suggest") {
-		t.Fatalf("commit message = %q", result.CommitMessage)
-	}
-	if result.Model != "glm-5-turbo" {
-		t.Fatalf("model = %q", result.Model)
+	for _, want := range []string{"Git Diff", "commit_message", "changed"} {
+		if !strings.Contains(result.Prompt, want) {
+			t.Fatalf("prompt missing %q:\n%s", want, result.Prompt)
+		}
 	}
 }
 

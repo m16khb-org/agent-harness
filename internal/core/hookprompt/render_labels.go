@@ -6,7 +6,7 @@ func fallbackHintPriority(h Hint) string {
 	switch {
 	case strings.HasSuffix(h.Tool, ".md"):
 		return PriorityConsider
-	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "claude-mem" || h.Tool == "Z.AI Coding Plan":
+	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "claude-mem" || h.Tool == "host-agent judgement":
 		return PrioritySecondary
 	case h.Tool == "project_docs_route":
 		return PriorityRoute
@@ -49,8 +49,8 @@ func compactHintLabel(h Hint) string {
 		return "LLM Wiki for explicit wiki/research work"
 	case "claude-mem":
 		return "claude-mem only for previous-session/repeated-work recall"
-	case "Z.AI Coding Plan":
-		return "Z.AI glm-5-turbo for LLM second-pass review"
+	case "host-agent judgement":
+		return "host-agent prompt for second-pass review"
 	default:
 		return h.Tool
 	}

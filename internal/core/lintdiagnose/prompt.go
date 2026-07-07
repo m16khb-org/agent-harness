@@ -3,7 +3,7 @@ package lintdiagnose
 import (
 	"fmt"
 
-	"agent-harness/internal/core/externalllm"
+	"agent-harness/internal/core/judgement"
 	"agent-harness/internal/core/prompt"
 )
 
@@ -33,7 +33,7 @@ func BuildPrompt(exitCode int, logTail string) string {
 			"The response avoids log repetition.",
 		},
 		Data: []prompt.PromptDataSection{
-			externalllm.BuildExternalLLMJSONSchemaSection(lintDiagnoseResponseSchemaExample(), []string{
+			judgement.BuildJSONSchemaSection(lintDiagnoseResponseSchemaExample(), []string{
 				"diagnosis: string, required, concise root cause and fix guidance.",
 			}),
 			{Title: "Execution Failure Output", Content: logTail},

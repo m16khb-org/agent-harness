@@ -90,7 +90,7 @@ type SelfAugmentRepoSignals struct {
 	HasQualityInspectCLI               bool     `json:"has_quality_inspect_cli"`
 	HasQualityInspectSignals           bool     `json:"has_quality_inspect_signals"`
 	HasMCPResourceCoverage             bool     `json:"has_mcp_resource_coverage"`
-	HasExternalLLMCoverage             bool     `json:"has_external_llm_coverage"`
+	HasHostJudgementCoverage           bool     `json:"has_host_judgement_coverage"`
 	HasIssueOpsLinkingBoundaryCoverage bool     `json:"has_issueops_linking_boundary_coverage"`
 	HasStateWriteLocking               bool     `json:"has_state_write_locking"`
 	HasCommandguardBoundaryCoverage    bool     `json:"has_commandguard_boundary_coverage"`

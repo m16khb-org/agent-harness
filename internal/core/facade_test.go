@@ -74,14 +74,11 @@ func TestPolicyStateUtilityAndProjectDocFacades(t *testing.T) {
 	if len(ListDocs(repo)) == 0 || len(DocsIndex(repo, "v").Docs) == 0 {
 		t.Fatal("docs wrappers should find README")
 	}
-	if !strings.Contains(ExternalLLMPrintCommandPreview(), "zai") {
-		t.Fatal("ExternalLLMPrintCommandPreview should mention zai")
-	}
 	var decoded map[string]any
-	if err := DecodeExternalLLMStructuredJSONObject("test", []byte(`{"ok":true}`), &decoded); err != nil || decoded["ok"] != true {
-		t.Fatalf("DecodeExternalLLMStructuredJSONObject = %#v %v", decoded, err)
+	if err := DecodeHostJudgementStructuredJSONObject("test", []byte(`{"ok":true}`), &decoded); err != nil || decoded["ok"] != true {
+		t.Fatalf("DecodeHostJudgementStructuredJSONObject = %#v %v", decoded, err)
 	}
-	if BuildExternalLLMJSONSchemaSection(`{"ok":true}`, []string{"ok boolean"}).Title == "" {
+	if BuildHostJudgementJSONSchemaSection(`{"ok":true}`, []string{"ok boolean"}).Title == "" {
 		t.Fatal("schema section should have title")
 	}
 	writeCoreTestFile(t, repo, ".env", "SECRET=value\n")
@@ -205,10 +202,10 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	if len(draftWikiSeedFiles()) == 0 || draftWikiRawFileName("2026-06-13", "Draft.md") == "" {
 		t.Fatal("draft wiki helpers should return data")
 	}
-	if !strings.Contains(generatedDraftFrontmatter("Title", "wiki", "notes", "glm-5-turbo"), "Title") {
+	if !strings.Contains(generatedDraftFrontmatter("Title", "wiki", "notes"), "Title") {
 		t.Fatal("generated frontmatter should include title")
 	}
-	if !strings.Contains(buildDraftWikiSuggestPrompt(DraftWikiSuggestRequest{RepoRoot: repo}, "input", "glm-5-turbo", "notes"), "input") {
+	if !strings.Contains(buildDraftWikiSuggestPrompt(DraftWikiSuggestRequest{RepoRoot: repo}, "input", "notes"), "input") {
 		t.Fatal("suggest prompt should include input")
 	}
 	event := DraftWikiQueueEvent{ID: "id", Kind: "draft", SourceMaterial: "material", Status: "pending"}

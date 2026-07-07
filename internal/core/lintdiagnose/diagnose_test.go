@@ -1,26 +1,11 @@
 package lintdiagnose
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/core/externalllm"
 )
 
-func TestDiagnoseCommandRejectsEmptyDiagnosis(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"choices":[{"message":{"content":"{\"diagnosis\":\"\"}"}}]}`))
-	}))
-	defer ts.Close()
-
-	origBaseURL := externalllm.SetBaseURL(ts.URL)
-	defer externalllm.SetBaseURL(origBaseURL)
-
-	t.Setenv("Z_AI_API_KEY", "test-key")
-
+func TestDiagnoseCommandRendersPromptForFailedCommand(t *testing.T) {
 	root := t.TempDir()
 
 	result, err := DiagnoseCommand(LintDiagnoseRequest{
@@ -33,7 +18,9 @@ func TestDiagnoseCommandRejectsEmptyDiagnosis(t *testing.T) {
 	if !result.Failed {
 		t.Fatalf("expected failed command result: %+v", result)
 	}
-	if !strings.Contains(result.Diagnosis, "missing diagnosis") {
-		t.Fatalf("expected parsing diagnostic for empty diagnosis, got %q", result.Diagnosis)
+	for _, want := range []string{"Execution Failure Output", "lint failed", "diagnosis"} {
+		if !strings.Contains(result.Prompt, want) {
+			t.Fatalf("prompt missing %q:\n%s", want, result.Prompt)
+		}
 	}
 }

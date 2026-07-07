@@ -84,12 +84,12 @@ func TestSelfVerifyLLMEvalPromptForcesPlainJSONOutput(t *testing.T) {
 		"recommended_next_actions",
 	}
 	for _, want := range []string{
-		"Field Types",
+		"Return exactly one JSON object",
 		"ok: boolean",
 		"score: number",
 		"summary: string",
 		"recommended_next_actions: array of strings",
-		"```json",
+		"Example:",
 	} {
 		if !strings.Contains(responseSchema, want) {
 			t.Fatalf("response_schema should contain %q:\n%s", want, responseSchema)

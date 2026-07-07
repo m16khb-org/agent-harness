@@ -1,9 +1,5 @@
 package queue
 
-import (
-	"time"
-)
-
 const File = "draft-wiki-queue.jsonl"
 
 const LockFile = "draft-wiki-queue.lock"
@@ -36,6 +32,7 @@ type Event struct {
 	CreatedAt      string   `json:"created_at"`
 	UpdatedAt      string   `json:"updated_at"`
 	DraftRelPath   string   `json:"draft_rel_path,omitempty"`
+	Prompt         string   `json:"prompt,omitempty"`
 	Error          string   `json:"error,omitempty"`
 }
 
@@ -49,12 +46,10 @@ type AppendResult struct {
 }
 
 type ProcessRequest struct {
-	RepoRoot   string        `json:"repo_root"`
-	Model      string        `json:"model,omitempty"`
-	TargetWiki string        `json:"target_wiki,omitempty"`
-	TargetType string        `json:"target_type,omitempty"`
-	Limit      int           `json:"limit,omitempty"`
-	Timeout    time.Duration `json:"-"`
+	RepoRoot   string `json:"repo_root"`
+	TargetWiki string `json:"target_wiki,omitempty"`
+	TargetType string `json:"target_type,omitempty"`
+	Limit      int    `json:"limit,omitempty"`
 }
 
 type ProcessResult struct {

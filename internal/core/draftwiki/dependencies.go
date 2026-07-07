@@ -9,7 +9,7 @@ import (
 
 	"agent-harness/internal/core/docs"
 	"agent-harness/internal/core/draftwiki/queue"
-	"agent-harness/internal/core/externalllm"
+	"agent-harness/internal/core/judgement"
 	"agent-harness/internal/core/lifecycle"
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/projectdoc"
@@ -37,8 +37,6 @@ const maxDraftWikiQueueEvents = MaxQueueEvents
 
 type ProjectDocsPlannedFile = projectdoc.ProjectDocsPlannedFile
 type ProjectLifecycleStatePlan = lifecycle.ProjectLifecycleStatePlan
-type ExternalLLMPrintRequest = externalllm.ExternalLLMPrintRequest
-type ExternalLLMPrintResult = externalllm.ExternalLLMPrintResult
 type StructuredPromptSpec = prompt.StructuredPromptSpec
 type PromptDataSection = prompt.PromptDataSection
 type DraftWikiQueueAppendRequest = queue.AppendRequest
@@ -179,24 +177,16 @@ func sha256Hex(content string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func RunExternalLLMPrint(req ExternalLLMPrintRequest) (ExternalLLMPrintResult, error) {
-	return externalllm.RunExternalLLMPrint(req)
-}
-
 func BuildStructuredPrompt(spec StructuredPromptSpec) string {
 	return prompt.BuildStructuredPrompt(spec)
 }
 
-func BuildExternalLLMJSONSchemaSection(example string, fields []string) PromptDataSection {
-	return externalllm.BuildExternalLLMJSONSchemaSection(example, fields)
+func BuildHostJudgementJSONSchemaSection(example string, fields []string) PromptDataSection {
+	return judgement.BuildJSONSchemaSection(example, fields)
 }
 
-func DecodeExternalLLMStructuredJSONObject(label string, out []byte, target any) error {
-	return externalllm.DecodeExternalLLMStructuredJSONObject(label, out, target)
-}
-
-func ExternalLLMPrintCommandPreview() string {
-	return externalllm.ExternalLLMPrintCommandPreview()
+func DecodeHostJudgementStructuredJSONObject(label string, out []byte, target any) error {
+	return judgement.DecodeStructuredJSONObject(label, out, target)
 }
 
 func StateDir() string {

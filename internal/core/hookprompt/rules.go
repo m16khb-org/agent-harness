@@ -95,8 +95,8 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords: []string{"전에", "지난번", "이미 해결"},
 	},
 	{
-		Tool:            "Z.AI Coding Plan",
-		Reason:          "Secondary hint: consider Z.AI glm-5-turbo for foreground second-pass LLM review or background synthesis when extra model judgment is useful.",
+		Tool:            "host-agent judgement",
+		Reason:          "Secondary hint: render a prompt for foreground second-pass review or background synthesis when extra host-agent judgment is useful.",
 		Priority:        PrioritySecondary,
 		LowerKeywords:   []string{"review", "analyze", "analysis", "critique", "second opinion", "plan", "research"},
 		PromptKeywords:  []string{"검토", "리뷰", "분석", "비평", "계획", "리서치", "조사"},

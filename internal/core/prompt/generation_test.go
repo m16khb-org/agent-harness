@@ -12,13 +12,13 @@ import (
 	"testing"
 )
 
-func TestCoreLLMPromptsUseStructuredContract(t *testing.T) {
+func TestCoreHostJudgementPromptsUseStructuredContract(t *testing.T) {
 	prompts := map[string]string{
 		"commit": commitsuggest.BuildPrompt("diff --git a/file b/file\n"),
 		"draft_wiki": draftwiki.BuildDraftWikiSuggestPrompt(draftwiki.DraftWikiSuggestRequest{
 			Title:      "Prompt contract",
 			TargetWiki: "dev-fundamentals",
-		}, "source material", "gemini-3.5-flash", "notes"),
+		}, "source material", "notes"),
 		"issueops_judge": mustIssueOpsJudgePromptForTest(t),
 		"lint_diagnose":  lintdiagnose.BuildPrompt(1, "failure output"),
 	}
@@ -28,7 +28,7 @@ func TestCoreLLMPromptsUseStructuredContract(t *testing.T) {
 				t.Fatalf("%s prompt missing %q:\n%s", name, heading, promptText)
 			}
 		}
-		for _, want := range []string{"## Response Schema", "Field Types", "```json"} {
+		for _, want := range []string{"## Host-Agent Judgement Response Schema", "Example:", "Return exactly one JSON object"} {
 			if !strings.Contains(promptText, want) {
 				t.Fatalf("%s prompt missing schema contract %q:\n%s", name, want, promptText)
 			}

@@ -184,24 +184,22 @@ target_type: "notes"
 }
 
 func TestGeneratedDraftFrontmatterUsesDefaultsAndProvidedValues(t *testing.T) {
-	defaults := generatedDraftFrontmatter("", "", "", "Gemini 3.5 Flash")
+	defaults := generatedDraftFrontmatter("", "", "")
 	for _, want := range []string{
 		`title: "Draft wiki candidate"`,
 		`target_wiki: "dev-fundamentals"`,
 		`target_type: "notes"`,
-		`model: "Gemini 3.5 Flash"`,
 	} {
 		if !strings.Contains(defaults, want) {
 			t.Fatalf("default frontmatter missing %q:\n%s", want, defaults)
 		}
 	}
 
-	custom := generatedDraftFrontmatter("Hook policy", "agent-harness", "runbook", "Gemini 3.5 Pro")
+	custom := generatedDraftFrontmatter("Hook policy", "agent-harness", "runbook")
 	for _, want := range []string{
 		`title: "Hook policy"`,
 		`target_wiki: "agent-harness"`,
 		`target_type: "runbook"`,
-		`model: "Gemini 3.5 Pro"`,
 	} {
 		if !strings.Contains(custom, want) {
 			t.Fatalf("custom frontmatter missing %q:\n%s", want, custom)

@@ -39,7 +39,7 @@ func TestRunCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 		},
 		ApplyLLMEval: func(result model.SelfAugmentResult, opts llmeval.SelfVerifyLLMEvalOptions) (model.SelfAugmentResult, error) {
 			evalCalled = true
-			if !opts.Enabled || opts.Mode != "gate" || opts.Model != "glm-5-turbo" || opts.TargetScore != 95 {
+			if !opts.Enabled || opts.Mode != "gate" || opts.TargetScore != 95 {
 				t.Fatalf("unexpected LLM eval options: %+v", opts)
 			}
 			result.LLMEval = &model.SelfVerifyLLMEvalResult{OK: true, Mode: opts.Mode, Score: 99, Summary: "pass"}
@@ -60,7 +60,6 @@ func TestRunCoversLLMEvalSaveStateAndJSON(t *testing.T) {
 		return Run([]string{
 			"--llm-eval",
 			"--llm-eval-mode", "gate",
-			"--model", "glm-5-turbo",
 			"--save-state",
 			"--state-key", "verify-latest",
 			"--seed", "42",

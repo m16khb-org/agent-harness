@@ -21,7 +21,7 @@ type Deps struct {
 func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage:")
-		fmt.Println("  agent-harness issueops remote score --input PATH [--judge none|llm] [--model MODEL] [--json]")
+		fmt.Println("  agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]")
 		fmt.Println("  agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]")
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
@@ -40,8 +40,8 @@ func Run(args []string, deps Deps) error {
 	case "score":
 		fs := flag.NewFlagSet("issueops remote score", flag.ContinueOnError)
 		input := fs.String("input", "", "IssueOps remote scoring request JSON file")
-		judge := fs.String("judge", "llm", "judge backend: llm or none")
-		model := fs.String("model", "", "Z.AI model; defaults to glm-5-turbo")
+		judge := fs.String("judge", "none", "judge backend: none or file")
+		judgeFile := fs.String("judge-file", "", "host-agent remote score result JSON path for --judge file")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if help, err := parseFlags(fs, args[1:]); help || err != nil {
 			return err
@@ -57,12 +57,8 @@ func Run(args []string, deps Deps) error {
 		}
 		var result core.IssueOpsRemoteScoringResult
 		switch *judge {
-		case "llm":
-			result, err = core.RunIssueOpsRemoteLLMJudge(core.IssueOpsRemoteLLMJudgeRequest{
-				RepoRoot: ".",
-				Model:    *model,
-				Request:  req,
-			})
+		case "file":
+			result, err = readIssueOpsRemoteJudgeFile(*judgeFile)
 		case "none":
 			result, err = core.ScoreIssueOpsRemoteCandidates(req)
 		default:
@@ -263,6 +259,22 @@ func readIssueOpsRemoteScoringRequestFile(path string) (core.IssueOpsRemoteScori
 		return core.IssueOpsRemoteScoringRequest{}, fmt.Errorf("parse input file %s: %w", path, err)
 	}
 	return req, nil
+}
+
+func readIssueOpsRemoteJudgeFile(path string) (core.IssueOpsRemoteScoringResult, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return core.IssueOpsRemoteScoringResult{}, fmt.Errorf("judge-file is required for --judge file")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return core.IssueOpsRemoteScoringResult{}, err
+	}
+	result, err := core.DecodeIssueOpsRemoteJudgeJSON(b)
+	if err != nil {
+		return core.IssueOpsRemoteScoringResult{}, fmt.Errorf("parse judge file %s: %w", path, err)
+	}
+	return result, nil
 }
 
 func runRemoteRenderTemplate(args []string, deps Deps) error {

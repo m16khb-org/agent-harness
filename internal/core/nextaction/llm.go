@@ -2,10 +2,7 @@ package nextaction
 
 import (
 	"fmt"
-	"strings"
 	"time"
-
-	"agent-harness/internal/core/externalllm"
 )
 
 // DEPRECATED / CURRENTLY UNUSED: as of 2026-06-04 the Stop hook no longer calls
@@ -68,37 +65,6 @@ func EvaluateNextActionAutoProceedLLM(req NextActionAutoProceedLLMRequest, thres
 		return result, nil
 	}
 
-	timeout := req.Timeout
-	if timeout <= 0 {
-		timeout = 25 * time.Second
-	}
-
-	prompt := BuildLLMPrompt(*recommended, candidates)
-
-	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Model: req.Model, WorkDir: req.WorkDir, Prompt: prompt, Timeout: timeout})
-	if err != nil {
-		return NextActionAutoProceedResult{}, fmt.Errorf("next-action auto-proceed LLM call failed: %w", err)
-	}
-
-	var response nextActionAutoProceedLLMResponse
-	if err := externalllm.DecodeExternalLLMStructuredJSONObject("next-action auto-proceed", llm.Output, &response); err != nil {
-		return NextActionAutoProceedResult{}, fmt.Errorf("next-action auto-proceed LLM decode failed: %w", err)
-	}
-
-	result.AutoProceed = response.AutoProceed
-	if response.AutoProceed {
-		result.TopScore = 1.0
-	} else {
-		result.TopScore = 0.0
-	}
-	reason := strings.TrimSpace(response.Reason)
-	if reason == "" {
-		if response.AutoProceed {
-			reason = "LLM judged the recommended action safe to auto-execute"
-		} else {
-			reason = "LLM judged the recommended action requires user confirmation"
-		}
-	}
-	result.Reason = reason
-	return result, nil
+	_ = BuildLLMPrompt(*recommended, candidates)
+	return NextActionAutoProceedResult{}, fmt.Errorf("next-action auto-proceed external LLM gate was removed; use EvaluateNextActionAutoProceed or host-agent prompt review")
 }

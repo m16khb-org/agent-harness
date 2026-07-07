@@ -317,28 +317,23 @@ func TestResourcesContextIsByteDeterministic() {}
 	}
 }
 
-func TestExternalLLMCoverageIsSatisfiedByMalformedTimeoutAndFailureTests(t *testing.T) {
+func TestHostJudgementCoverageIsSatisfiedByMalformedResultTests(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "externalllm", "print_test.go"), `package externalllm
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "judgement", "structured_test.go"), `package judgement
 
-func TestRunExternalLLMPrintReturnsCommandErrorWithOutput() {}
-func TestRunExternalLLMPrintTimeoutKillsProcessGroup() {}
-`)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "externalllm", "structured_test.go"), `package externalllm
-
-func TestDecodeExternalLLMStructuredJSONObjectRejectsMalformedOutputs() {}
-func TestDecodeExternalLLMStructuredJSONObjectBoundsLargeErrorOutput() {}
+func TestDecodeStructuredJSONObjectRejectsMalformedOutputs() {}
+func TestDecodeStructuredJSONObjectBoundsLargeErrorOutput() {}
 `)
 
 	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
-	if !signals.HasExternalLLMCoverage {
-		t.Fatalf("external LLM coverage signal was not detected: %+v", signals)
+	if !signals.HasHostJudgementCoverage {
+		t.Fatalf("host judgement coverage signal was not detected: %+v", signals)
 	}
 
-	candidate := SelfAugmentCandidate{ID: "coverage-externalllm", Status: SelfAugmentCandidateStatusOpen, Score: 76}
+	candidate := SelfAugmentCandidate{ID: "coverage-host-judgement", Status: SelfAugmentCandidateStatusOpen, Score: 76}
 	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
 	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
-		t.Fatalf("external LLM coverage candidate was not marked satisfied: %+v", candidate)
+		t.Fatalf("host judgement coverage candidate was not marked satisfied: %+v", candidate)
 	}
 }
 

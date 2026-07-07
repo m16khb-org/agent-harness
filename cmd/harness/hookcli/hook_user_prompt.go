@@ -18,7 +18,7 @@ func runHookUserPrompt(args []string) error {
 	promptFlag := fs.String("prompt", "", "user prompt text; defaults to hook stdin JSON prompt")
 	hostFlag := fs.String("host", "", "hook host (codex or claude); controls user-visible compatibility fields")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
-	enableLLMHints := fs.Bool("enable-llm-hints", false, "suggest Z.AI glm-5-turbo for LLM second-pass review when the prompt fits")
+	enableLLMHints := fs.Bool("enable-llm-hints", false, "suggest host-agent second-pass review when the prompt fits")
 	disableKarpathyFirst := fs.Bool("disable-karpathy-first", false, "disable the karpathy-first prompt augmentation directive for this hook invocation")
 	if err := fs.Parse(args); err != nil {
 		return err

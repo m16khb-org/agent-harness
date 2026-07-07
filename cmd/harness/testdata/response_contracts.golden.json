@@ -4077,15 +4077,15 @@
             "go test -cover low package signal"
           ],
           "feasibility": 78,
-          "id": "coverage-externalllm",
+          "id": "coverage-host-judgement",
           "impact": 82,
           "risk": 18,
           "score": 75.6,
           "status": "open",
-          "title": "Cover external LLM malformed output and timeout paths",
+          "title": "Cover host-agent judgement malformed output paths",
           "verify_with": [
-            "go test ./internal/core/externalllm -count=1",
-            "go test -cover ./internal/core/externalllm"
+            "go test ./internal/core/judgement -count=1",
+            "go test -cover ./internal/core/judgement"
           ]
         },
         {
@@ -4347,25 +4347,25 @@
         {
           "category": "coverage",
           "expected_gain": [
-            "malformed JSON, timeout, and command failure paths stay deterministic"
+            "malformed JSON and bounded error output paths stay deterministic"
           ],
           "feasibility": 78,
-          "id": "coverage-externalllm",
+          "id": "coverage-host-judgement",
           "impact": 82,
           "novelty": 56,
           "risk": 18,
           "satisfaction_evidence": [
-            "external LLM core covers malformed structured output, bounded error output, command failure output, and timeout cancellation"
+            "host-agent judgement decoder covers malformed structured output and bounded error output"
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "Cover external LLM malformed output and timeout paths",
+          "title": "Cover host-agent judgement malformed output paths",
           "verify_with": [
-            "go test ./internal/core/externalllm -count=1",
-            "go test -cover ./internal/core/externalllm"
+            "go test ./internal/core/judgement -count=1",
+            "go test -cover ./internal/core/judgement"
           ],
           "why_now": [
-            "IssueOps and quality gates depend on fail-closed external LLM wrappers",
+            "IssueOps and quality gates depend on strict host-agent result file decoding",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
@@ -5112,10 +5112,10 @@
         "has_daemon_connection_limit": true,
         "has_distribution_decision": true,
         "has_draftwiki_stale_lock_detection": true,
-        "has_external_llm_coverage": true,
         "has_genius_mermaid_lint": true,
         "has_genius_think": true,
         "has_goal_score_summary": true,
+        "has_host_judgement_coverage": true,
         "has_install_dry_run_mode": true,
         "has_issueops_linking_boundary_coverage": true,
         "has_mcp_adapter_catalog": true,
@@ -9432,25 +9432,25 @@
               {
                 "category": "coverage",
                 "expected_gain": [
-                  "malformed JSON, timeout, and command failure paths stay deterministic"
+                  "malformed JSON and bounded error output paths stay deterministic"
                 ],
                 "feasibility": 78,
-                "id": "coverage-externalllm",
+                "id": "coverage-host-judgement",
                 "impact": 82,
                 "novelty": 56,
                 "risk": 18,
                 "satisfaction_evidence": [
-                  "external LLM core covers malformed structured output, bounded error output, command failure output, and timeout cancellation"
+                  "host-agent judgement decoder covers malformed structured output and bounded error output"
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "Cover external LLM malformed output and timeout paths",
+                "title": "Cover host-agent judgement malformed output paths",
                 "verify_with": [
-                  "go test ./internal/core/externalllm -count=1",
-                  "go test -cover ./internal/core/externalllm"
+                  "go test ./internal/core/judgement -count=1",
+                  "go test -cover ./internal/core/judgement"
                 ],
                 "why_now": [
-                  "IssueOps and quality gates depend on fail-closed external LLM wrappers",
+                  "IssueOps and quality gates depend on strict host-agent result file decoding",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
@@ -10197,10 +10197,10 @@
               "has_daemon_connection_limit": true,
               "has_distribution_decision": true,
               "has_draftwiki_stale_lock_detection": true,
-              "has_external_llm_coverage": true,
               "has_genius_mermaid_lint": true,
               "has_genius_think": true,
               "has_goal_score_summary": true,
+              "has_host_judgement_coverage": true,
               "has_install_dry_run_mode": true,
               "has_issueops_linking_boundary_coverage": true,
               "has_mcp_adapter_catalog": true,

@@ -1,9 +1,10 @@
 package benchmark
 
 import (
-	"agent-harness/internal/core/externalllm"
-	"agent-harness/internal/core/prompt"
 	"encoding/json"
+
+	"agent-harness/internal/core/judgement"
+	"agent-harness/internal/core/prompt"
 )
 
 func buildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
@@ -57,7 +58,7 @@ func buildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact Issu
 			"Output is raw JSON or one fenced json block, with no prose.",
 		},
 		Data: []prompt.PromptDataSection{
-			externalllm.BuildExternalLLMJSONSchemaSection(issueOpsBenchmarkScoreResponseSchemaExample(), issueOpsBenchmarkScoreFieldTypes()),
+			judgement.BuildJSONSchemaSection(issueOpsBenchmarkScoreResponseSchemaExample(), issueOpsBenchmarkScoreFieldTypes()),
 			{Title: "Evidence JSON", Content: string(payload)},
 		},
 	}), nil

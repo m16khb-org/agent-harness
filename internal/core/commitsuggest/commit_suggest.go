@@ -4,22 +4,16 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"time"
 
-	"agent-harness/internal/core/externalllm"
+	"agent-harness/internal/core/judgement"
 	"agent-harness/internal/core/prompt"
 	"agent-harness/internal/core/repopath"
 )
 
 // CommitSuggestRequest configures the commit message suggestion.
-//
-// Model selects the external LLM model for Z.AI.
-// Set to empty to use the default ("glm-5-turbo").
 type CommitSuggestRequest struct {
-	RepoRoot string        `json:"repo_root"`
-	Staged   bool          `json:"staged"`
-	Model    string        `json:"model,omitempty"`
-	Timeout  time.Duration `json:"-"`
+	RepoRoot string `json:"repo_root"`
+	Staged   bool   `json:"staged"`
 }
 
 type CommitSuggestResult struct {
@@ -28,7 +22,7 @@ type CommitSuggestResult struct {
 	RepoRoot      string `json:"repo_root"`
 	Staged        bool   `json:"staged"`
 	CommitMessage string `json:"commit_message,omitempty"`
-	Model         string `json:"model,omitempty"`
+	Prompt        string `json:"prompt,omitempty"`
 }
 
 type commitSuggestResponse struct {
@@ -64,48 +58,12 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 		}, nil
 	}
 
-	// 2. Resolve model
-	model := strings.TrimSpace(req.Model)
-	// If neither is set model stays empty → default "glm-5-turbo"
-
-	// 4. Compose prompt
-	llmPrompt := BuildPrompt(diffContent)
-
-	// 5. Run external LLM
-	timeout := req.Timeout
-	if timeout <= 0 {
-		timeout = 2 * time.Minute
-	}
-
-	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{
-		Model:   model,
-		WorkDir: root,
-		Prompt:  llmPrompt,
-		Timeout: timeout,
-	})
-	if err != nil {
-		return CommitSuggestResult{}, fmt.Errorf("commit suggest LLM call failed: %w: %s", err, strings.TrimSpace(string(llm.Output)))
-	}
-	var response commitSuggestResponse
-	if err := externalllm.DecodeExternalLLMStructuredJSONObject("commit suggest", llm.Output, &response); err != nil {
-		return CommitSuggestResult{}, fmt.Errorf("decode commit suggest output: %w", err)
-	}
-	commitMessage := strings.TrimSpace(response.CommitMessage)
-	if commitMessage == "" {
-		return CommitSuggestResult{}, fmt.Errorf("commit suggest output missing commit_message")
-	}
-
-	if model == "" {
-		model = externalllm.DefaultModel()
-	}
-
 	return CommitSuggestResult{
-		OK:            true,
-		Executed:      true,
-		RepoRoot:      root,
-		Staged:        req.Staged,
-		CommitMessage: commitMessage,
-		Model:         model,
+		OK:       true,
+		Executed: true,
+		RepoRoot: root,
+		Staged:   req.Staged,
+		Prompt:   BuildPrompt(diffContent),
 	}, nil
 }
 
@@ -139,7 +97,7 @@ func BuildPrompt(diff string) string {
 			"The message does not mention files or tests not supported by the diff.",
 		},
 		Data: []prompt.PromptDataSection{
-			externalllm.BuildExternalLLMJSONSchemaSection(commitSuggestResponseSchemaExample(), []string{
+			judgement.BuildJSONSchemaSection(commitSuggestResponseSchemaExample(), []string{
 				"commit_message: string, required, the complete Conventional Commit subject and Lore body.",
 			}),
 			{Title: "Git Diff", Content: diff},

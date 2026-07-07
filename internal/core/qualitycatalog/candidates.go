@@ -160,11 +160,11 @@ func CandidateSpecs() []CandidateSpec {
 			Evidence:     []string{"go test -cover low package signal"},
 		},
 		{
-			ID: "coverage-externalllm", Title: "Cover external LLM malformed output and timeout paths", Category: "coverage",
+			ID: "coverage-host-judgement", Title: "Cover host-agent judgement malformed output paths", Category: "coverage",
 			Impact: 82, Feasibility: 78, Novelty: 56, Risk: 18,
-			WhyNow:       []string{"IssueOps and quality gates depend on fail-closed external LLM wrappers"},
-			ExpectedGain: []string{"malformed JSON, timeout, and command failure paths stay deterministic"},
-			VerifyWith:   []string{"go test ./internal/core/externalllm -count=1", "go test -cover ./internal/core/externalllm"},
+			WhyNow:       []string{"IssueOps and quality gates depend on strict host-agent result file decoding"},
+			ExpectedGain: []string{"malformed JSON and bounded error output paths stay deterministic"},
+			VerifyWith:   []string{"go test ./internal/core/judgement -count=1", "go test -cover ./internal/core/judgement"},
 			Evidence:     []string{"go test -cover low package signal"},
 		},
 		{

@@ -207,11 +207,11 @@ func TestBuildUserPromptMCPHintsRequiresGitLabUsecaseFromRepoProfile(t *testing.
 
 func TestBuildUserPromptMCPHintsRoutesLLMReviewWhenEnabled(t *testing.T) {
 	disabled := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이 계획을 검토하고 개선점을 분석해줘"})
-	if strings.Contains(disabled.AdditionalContext, "Z.AI glm-5-turbo") {
+	if strings.Contains(disabled.AdditionalContext, "host-agent prompt for second-pass review") {
 		t.Fatalf("LLM hint should be opt-in:\n%s", disabled.AdditionalContext)
 	}
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이 계획을 검토하고 개선점을 분석해줘", EnableLLMHints: true})
-	if !strings.Contains(got.AdditionalContext, "Z.AI glm-5-turbo for LLM second-pass review") {
+	if !strings.Contains(got.AdditionalContext, "host-agent prompt for second-pass review") {
 		t.Fatalf("expected LLM secondary hint:\n%s", got.AdditionalContext)
 	}
 }

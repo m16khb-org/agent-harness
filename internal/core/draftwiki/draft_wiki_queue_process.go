@@ -1,11 +1,8 @@
 package draftwiki
 
 import (
-	"fmt"
 	"strings"
 	"time"
-
-	"agent-harness/internal/core/externalllm"
 )
 
 func ProcessDraftWikiQueue(req DraftWikiQueueProcessRequest) (DraftWikiQueueProcessResult, error) {
@@ -80,37 +77,13 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 	if targetWiki == "" {
 		targetWiki = strings.TrimSpace(event.TargetWiki)
 	}
-	model := strings.TrimSpace(req.Model)
-	if model == "" {
-		model = externalllm.DefaultModel()
-	}
-	timeout := req.Timeout
-	if timeout <= 0 {
-		timeout = 5 * time.Minute
-	}
 	prompt := buildDraftWikiSuggestPrompt(DraftWikiSuggestRequest{
 		Title:      "Draft wiki queued memory",
 		TargetWiki: targetWiki,
 		TargetType: targetType,
-	}, event.SourceMaterial, model, targetType)
-	llm, err := RunExternalLLMPrint(ExternalLLMPrintRequest{Model: model, WorkDir: event.RepoRoot, Prompt: prompt, Timeout: timeout})
-	if err != nil {
-		return failDraftWikiQueueEvent(event, fmt.Errorf("draft-wiki LLM call failed: %w: %s", err, strings.TrimSpace(string(llm.Output))))
-	}
-	draftBody, err := decodeDraftWikiSuggestLLMOutput(llm.Output)
-	if err != nil {
-		return failDraftWikiQueueEvent(event, err)
-	}
-	draftPath, err := writeSuggestedDraft(event.RepoRoot, "Draft wiki queued memory", targetWiki, targetType, model, draftBody)
-	if err != nil {
-		return failDraftWikiQueueEvent(event, err)
-	}
-	draft, err := readDraftWikiDraft(event.RepoRoot, draftPath, "draft")
-	if err != nil {
-		return failDraftWikiQueueEvent(event, err)
-	}
+	}, event.SourceMaterial, targetType)
 	event.Status = WorkerStatusSucceeded
-	event.DraftRelPath = draft.RelPath
+	event.Prompt = prompt
 	event.Error = ""
 	event.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	return event

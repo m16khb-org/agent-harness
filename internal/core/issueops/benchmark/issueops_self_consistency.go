@@ -7,9 +7,9 @@ import (
 )
 
 // B6 — self-consistency (Wang 2022) over N OFFLINE-recorded judge verdicts of the
-// SAME artifact. This file has NO externalllm dependency: it NEVER runs the judge
-// (running it N times in CI would violate the deterministic-eval non-goal). It
-// only aggregates samples recorded elsewhere.
+// SAME artifact. This file never invokes a judge; running judgement N times in
+// CI would violate the deterministic-eval non-goal. It only aggregates samples
+// recorded elsewhere.
 //
 // HONEST SCOPE: self-consistency reduces VERDICT VARIANCE across same-model
 // samples; it does NOT reduce or detect the judge's systematic BIAS — a consensus

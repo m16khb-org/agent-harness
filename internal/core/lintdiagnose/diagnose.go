@@ -4,17 +4,13 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"time"
 
-	"agent-harness/internal/core/externalllm"
 	"agent-harness/internal/core/repopath"
 )
 
 type LintDiagnoseRequest struct {
-	RepoRoot    string        `json:"repo_root"`
-	CommandArgv []string      `json:"command_argv"`
-	Model       string        `json:"model,omitempty"`
-	Timeout     time.Duration `json:"-"`
+	RepoRoot    string   `json:"repo_root"`
+	CommandArgv []string `json:"command_argv"`
 }
 
 type LintDiagnoseResult struct {
@@ -23,7 +19,7 @@ type LintDiagnoseResult struct {
 	ExitCode    int      `json:"exit_code"`
 	Failed      bool     `json:"failed"`
 	Diagnosis   string   `json:"diagnosis,omitempty"`
-	Model       string   `json:"model,omitempty"`
+	Prompt      string   `json:"prompt,omitempty"`
 }
 
 type lintDiagnoseResponse struct {
@@ -72,49 +68,13 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 		return result, nil
 	}
 
-	// 2. Resolve model
-	model := strings.TrimSpace(req.Model)
-	if model == "" {
-		model = externalllm.DefaultModel()
-	}
-	result.Model = model
-
-	// 4. Compose prompt
 	lines := strings.Split(outputStr, "\n")
 	if len(lines) > 150 {
 		lines = lines[len(lines)-150:]
 	}
 	logTail := strings.Join(lines, "\n")
 
-	llmPrompt := BuildPrompt(exitCode, logTail)
-
-	// 5. Run external LLM
-	timeout := req.Timeout
-	if timeout <= 0 {
-		timeout = 2 * time.Minute
-	}
-
-	llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{
-		Model:   model,
-		WorkDir: root,
-		Prompt:  llmPrompt,
-		Timeout: timeout,
-	})
-	if err != nil {
-		result.Diagnosis = fmt.Sprintf("[Error running external LLM: %v]\nOriginal Output:\n%s", err, outputStr)
-		return result, nil
-	}
-	var response lintDiagnoseResponse
-	if err := externalllm.DecodeExternalLLMStructuredJSONObject("lint diagnose", llm.Output, &response); err != nil {
-		result.Diagnosis = fmt.Sprintf("[Error parsing LLM JSON: %v]\nOriginal Output:\n%s", err, outputStr)
-		return result, nil
-	}
-
-	diagnosis := strings.TrimSpace(response.Diagnosis)
-	if diagnosis == "" {
-		result.Diagnosis = fmt.Sprintf("[Error parsing LLM JSON: missing diagnosis]\nOriginal Output:\n%s", outputStr)
-		return result, nil
-	}
-	result.Diagnosis = diagnosis
+	result.Prompt = BuildPrompt(exitCode, logTail)
+	result.Diagnosis = "command failed; prompt contains the host-agent judgement request"
 	return result, nil
 }

@@ -33,9 +33,8 @@ func Run(args []string, deps Deps) error {
 	saveState := fs.Bool("save-state", false, "save compact self-verification summary to harness state")
 	stateKey := fs.String("state-key", "self-verify-latest", "state key for --save-state")
 	progressMode := fs.String("progress", "none", "progress output mode: none or jsonl; jsonl writes JSON Lines events to stderr")
-	llmEval := fs.Bool("llm-eval", false, "run opt-in Z.AI LLM evaluation after deterministic self-verification")
+	llmEval := fs.Bool("llm-eval", false, "run opt-in host-agent judgement prompt after deterministic self-verification")
 	llmEvalMode := fs.String("llm-eval-mode", "advisory", "LLM evaluation mode: advisory or gate")
-	modelName := fs.String("model", "", "Z.AI model for --llm-eval; defaults to glm-5-turbo")
 	jsonOut := fs.Bool("json", false, "print JSON summary")
 	collectAll := fs.Bool("collect-all-steps", false, "run every gate in each iteration and surface ALL failures (concurrent regression diagnosis); default fail-fast. Never weakens the gate — any failure still fails self-verify")
 	if err := fs.Parse(args); err != nil {
@@ -64,7 +63,6 @@ func Run(args []string, deps Deps) error {
 		result, err = deps.ApplyLLMEval(result, llmeval.SelfVerifyLLMEvalOptions{
 			Enabled:     true,
 			Mode:        llmEvalConfig.Mode,
-			Model:       *modelName,
 			TargetScore: *targetScore,
 		})
 	}

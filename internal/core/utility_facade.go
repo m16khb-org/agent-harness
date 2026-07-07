@@ -6,12 +6,12 @@ import (
 	"agent-harness/internal/core/contextregion"
 	coredocs "agent-harness/internal/core/docs"
 	"agent-harness/internal/core/doctor"
-	"agent-harness/internal/core/externalllm"
 	coreguard "agent-harness/internal/core/guard"
 	"agent-harness/internal/core/hookfailure"
 	"agent-harness/internal/core/hookmetrics"
 	coreinspect "agent-harness/internal/core/inspect"
 	coreinstall "agent-harness/internal/core/install"
+	"agent-harness/internal/core/judgement"
 	"agent-harness/internal/core/lintdiagnose"
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/prompt"
@@ -73,23 +73,12 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 	return doctor.HarnessDoctor(req)
 }
 
-type ExternalLLMPrintRequest = externalllm.ExternalLLMPrintRequest
-type ExternalLLMPrintResult = externalllm.ExternalLLMPrintResult
-
-func RunExternalLLMPrint(req ExternalLLMPrintRequest) (ExternalLLMPrintResult, error) {
-	return externalllm.RunExternalLLMPrint(req)
+func BuildHostJudgementJSONSchemaSection(example string, fieldTypes []string) prompt.PromptDataSection {
+	return judgement.BuildJSONSchemaSection(example, fieldTypes)
 }
 
-func ExternalLLMPrintCommandPreview() string {
-	return externalllm.ExternalLLMPrintCommandPreview()
-}
-
-func BuildExternalLLMJSONSchemaSection(example string, fieldTypes []string) prompt.PromptDataSection {
-	return externalllm.BuildExternalLLMJSONSchemaSection(example, fieldTypes)
-}
-
-func DecodeExternalLLMStructuredJSONObject(label string, out []byte, target any) error {
-	return externalllm.DecodeExternalLLMStructuredJSONObject(label, out, target)
+func DecodeHostJudgementStructuredJSONObject(label string, out []byte, target any) error {
+	return judgement.DecodeStructuredJSONObject(label, out, target)
 }
 
 type GuardCheckRequest = coreguard.GuardCheckRequest

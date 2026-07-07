@@ -11,7 +11,6 @@ func runProjectCommitSuggest(args []string) error {
 	fs := flag.NewFlagSet("project commit-suggest", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
 	staged := fs.Bool("staged", false, "suggest commit based on staged changes (git diff --cached)")
-	model := fs.String("model", "", "Z.AI model; defaults to glm-5-turbo")
 	jsonOut := fs.Bool("json", false, "print JSON")
 
 	if err := fs.Parse(args); err != nil {
@@ -21,7 +20,6 @@ func runProjectCommitSuggest(args []string) error {
 	result, err := core.SuggestCommit(core.CommitSuggestRequest{
 		RepoRoot: *repo,
 		Staged:   *staged,
-		Model:    *model,
 	})
 	if err != nil {
 		return err
@@ -36,6 +34,6 @@ func runProjectCommitSuggest(args []string) error {
 		return nil
 	}
 
-	fmt.Println(result.CommitMessage)
+	fmt.Println(result.Prompt)
 	return nil
 }

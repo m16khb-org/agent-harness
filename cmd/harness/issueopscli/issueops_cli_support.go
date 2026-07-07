@@ -49,10 +49,10 @@ func issueOpsUsage() {
   agent-harness issueops cleanup stale --repo PATH [--max-age DAYS] [--apply] [--json]
   agent-harness issueops force-release --id ID --reason REASON [--json]
   agent-harness issueops resume --repo PATH [--bind] [--json]
-  agent-harness issueops remote score --input PATH [--judge none|llm] [--model MODEL] [--json]
-  agent-harness issueops remote-score --input PATH [--judge none|llm] [--model MODEL] [--json]
+  agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]
+  agent-harness issueops remote-score --input PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]
-  agent-harness issueops benchmark run --fixtures PATH [--judge none|file|llm] [--judge-file PATH] [--model MODEL] [--json]
+  agent-harness issueops benchmark run --fixtures PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
   agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]
 `)

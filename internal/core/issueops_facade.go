@@ -454,6 +454,10 @@ func DecodeIssueOpsBenchmarkJudgeJSON(out []byte) (IssueOpsBenchmarkScore, error
 	return issueops.DecodeIssueOpsBenchmarkJudgeJSON(out)
 }
 
+func RenderIssueOpsLLMJudgePrompt(req IssueOpsLLMJudgeRequest) (string, error) {
+	return issueops.RenderIssueOpsLLMJudgePrompt(req)
+}
+
 func buildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
 	return issueops.BuildIssueOpsLLMJudgePrompt(fixture, artifact)
 }
@@ -468,6 +472,14 @@ func ScoreIssueOpsRemoteCandidates(req IssueOpsRemoteScoringRequest) (IssueOpsRe
 
 func RunIssueOpsRemoteLLMJudge(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteScoringResult, error) {
 	return issueops.RunIssueOpsRemoteLLMJudge(req)
+}
+
+func RenderIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (string, error) {
+	return issueops.RenderIssueOpsRemoteLLMJudgePrompt(req)
+}
+
+func DecodeIssueOpsRemoteJudgeJSON(out []byte) (IssueOpsRemoteScoringResult, error) {
+	return issueops.DecodeIssueOpsRemoteJudgeJSON(out)
 }
 
 // Session binding for multi-session continuity.

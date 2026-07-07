@@ -10,7 +10,6 @@ import (
 func runProjectLintDiagnose(args []string) error {
 	fs := flag.NewFlagSet("project lint-diagnose", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
-	model := fs.String("model", "", "Z.AI model; defaults to glm-5-turbo")
 	jsonOut := fs.Bool("json", false, "print JSON")
 
 	if err := fs.Parse(args); err != nil {
@@ -25,7 +24,6 @@ func runProjectLintDiagnose(args []string) error {
 	result, err := core.DiagnoseCommand(core.LintDiagnoseRequest{
 		RepoRoot:    *repo,
 		CommandArgv: commandArgv,
-		Model:       *model,
 	})
 	if err != nil {
 		return err
@@ -36,7 +34,7 @@ func runProjectLintDiagnose(args []string) error {
 	}
 
 	if result.Failed {
-		fmt.Fprintf(os.Stderr, "\n--- Gemini 3.5 Flash Diagnostic Output ---\n%s\n------------------------------------------\n", result.Diagnosis)
+		fmt.Fprintf(os.Stderr, "\n--- Host-Agent Diagnostic Prompt ---\n%s\n------------------------------------\n", result.Prompt)
 		// Exit with the original exit code
 		os.Exit(result.ExitCode)
 	} else {

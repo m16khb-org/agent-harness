@@ -1,9 +1,10 @@
 package remote
 
 import (
-	"agent-harness/internal/core/externalllm"
-	"agent-harness/internal/core/prompt"
 	"encoding/json"
+
+	"agent-harness/internal/core/judgement"
+	"agent-harness/internal/core/prompt"
 )
 
 func buildIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteScoringRequest) (string, error) {
@@ -52,7 +53,7 @@ func buildIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteScoringRequest) (string
 			"Output is raw JSON or one fenced json block, with no prose.",
 		},
 		Data: []prompt.PromptDataSection{
-			externalllm.BuildExternalLLMJSONSchemaSection(issueOpsRemoteScoringResponseSchemaExample(), issueOpsRemoteScoringFieldTypes()),
+			judgement.BuildJSONSchemaSection(issueOpsRemoteScoringResponseSchemaExample(), issueOpsRemoteScoringFieldTypes()),
 			{Title: "Request JSON", Content: string(payload)},
 		},
 	}), nil

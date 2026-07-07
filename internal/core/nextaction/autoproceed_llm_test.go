@@ -1,14 +1,8 @@
 package nextaction
 
 import (
-	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"strings"
-	"sync/atomic"
 	"testing"
-
-	"agent-harness/internal/core/externalllm"
 )
 
 func safeRecommendedMessage() string {
@@ -20,43 +14,16 @@ func safeRecommendedMessage() string {
 	}, "\n")
 }
 
-func TestEvaluateNextActionAutoProceedLLMAutoProceedsWhenLLMApproves(t *testing.T) {
-	withFakeNextActionZAI(t, nextActionFakeZAIResponse{Content: `{"auto_proceed":true,"reason":"safe forward step"}`})
-	result, err := EvaluateNextActionAutoProceedLLM(NextActionAutoProceedLLMRequest{
+func TestEvaluateNextActionAutoProceedLLMReturnsRemovedGateError(t *testing.T) {
+	_, err := EvaluateNextActionAutoProceedLLM(NextActionAutoProceedLLMRequest{
 		Message: safeRecommendedMessage(),
 	}, 0)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !result.AutoProceed {
-		t.Fatalf("LLM approval should auto-proceed, got %+v", result)
-	}
-	if result.TopScore != 1.0 {
-		t.Fatalf("expected top score 1.0 on approval, got %.2f", result.TopScore)
-	}
-	if result.SelectedIndex != 1 {
-		t.Fatalf("expected selected index 1, got %d", result.SelectedIndex)
-	}
-}
-
-func TestEvaluateNextActionAutoProceedLLMDoesNotProceedWhenLLMDeclines(t *testing.T) {
-	withFakeNextActionZAI(t, nextActionFakeZAIResponse{Content: `{"auto_proceed":false,"reason":"needs user confirmation"}`})
-	result, err := EvaluateNextActionAutoProceedLLM(NextActionAutoProceedLLMRequest{
-		Message: safeRecommendedMessage(),
-	}, 0)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if result.AutoProceed {
-		t.Fatalf("LLM decline must not auto-proceed, got %+v", result)
-	}
-	if result.TopScore != 0.0 {
-		t.Fatalf("expected top score 0.0 on decline, got %.2f", result.TopScore)
+	if err == nil || !strings.Contains(err.Error(), "external LLM gate was removed") {
+		t.Fatalf("expected removed-gate error, got %v", err)
 	}
 }
 
 func TestEvaluateNextActionAutoProceedLLMHardVetoesDestructiveWithoutCallingModel(t *testing.T) {
-	requests := withFakeNextActionZAI(t, nextActionFakeZAIResponse{Content: `{"auto_proceed":true,"reason":"must not be called"}`})
 	message := strings.Join([]string{
 		"선택지:",
 		"1. 정리 진행: merged worktree와 branch를 삭제합니다. (추천)",
@@ -67,10 +34,7 @@ func TestEvaluateNextActionAutoProceedLLMHardVetoesDestructiveWithoutCallingMode
 		Message: message,
 	}, 0)
 	if err != nil {
-		t.Fatalf("destructive hard-veto must not invoke LLM or error, got %v", err)
-	}
-	if got := atomic.LoadInt32(requests); got != 0 {
-		t.Fatalf("destructive hard-veto invoked LLM %d times", got)
+		t.Fatalf("destructive hard-veto must not invoke external judgement or error, got %v", err)
 	}
 	if result.AutoProceed {
 		t.Fatalf("destructive recommendation must never auto-proceed, got %+v", result)
@@ -80,18 +44,7 @@ func TestEvaluateNextActionAutoProceedLLMHardVetoesDestructiveWithoutCallingMode
 	}
 }
 
-func TestEvaluateNextActionAutoProceedLLMReturnsErrorWhenZAIRequestFails(t *testing.T) {
-	withFakeNextActionZAI(t, nextActionFakeZAIResponse{Status: http.StatusInternalServerError, Body: `{"error":{"message":"model unavailable"}}`})
-	_, err := EvaluateNextActionAutoProceedLLM(NextActionAutoProceedLLMRequest{
-		Message: safeRecommendedMessage(),
-	}, 0)
-	if err == nil {
-		t.Fatal("expected error when Z.AI request fails so caller can fall back to heuristic")
-	}
-}
-
 func TestEvaluateNextActionAutoProceedLLMNoRecommendationDoesNotCallModel(t *testing.T) {
-	requests := withFakeNextActionZAI(t, nextActionFakeZAIResponse{Content: `{"auto_proceed":true,"reason":"must not be called"}`})
 	message := strings.Join([]string{
 		"선택지:",
 		"1. 해석 A로 구현합니다.",
@@ -105,9 +58,6 @@ func TestEvaluateNextActionAutoProceedLLMNoRecommendationDoesNotCallModel(t *tes
 	}
 	if result.AutoProceed {
 		t.Fatalf("no explicit recommendation must not auto-proceed, got %+v", result)
-	}
-	if got := atomic.LoadInt32(requests); got != 0 {
-		t.Fatalf("no-recommendation path invoked LLM %d times", got)
 	}
 }
 
@@ -131,39 +81,4 @@ func TestBuildNextActionAutoProceedLLMPromptRendersSchemaAndChoices(t *testing.T
 			t.Fatalf("LLM prompt missing %q:\n%s", want, prompt)
 		}
 	}
-}
-
-type nextActionFakeZAIResponse struct {
-	Status  int
-	Body    string
-	Content string
-}
-
-func withFakeNextActionZAI(t *testing.T, responses ...nextActionFakeZAIResponse) *int32 {
-	t.Helper()
-	if len(responses) == 0 {
-		t.Fatal("missing fake Z.AI responses")
-	}
-	t.Setenv("Z_AI_API_KEY", "test-key")
-	var requests int32
-	index := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&requests, 1)
-		response := responses[index]
-		if index < len(responses)-1 {
-			index++
-		}
-		if response.Status != 0 {
-			w.WriteHeader(response.Status)
-		}
-		if response.Body != "" {
-			_, _ = w.Write([]byte(response.Body))
-			return
-		}
-		_, _ = fmt.Fprintf(w, `{"choices":[{"message":{"content":%q}}]}`, response.Content)
-	}))
-	t.Cleanup(server.Close)
-	previous := externalllm.SetBaseURL(server.URL)
-	t.Cleanup(func() { externalllm.SetBaseURL(previous) })
-	return &requests
 }

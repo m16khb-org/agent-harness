@@ -75,12 +75,12 @@ func TestSlugify(t *testing.T) {
 }
 
 func TestFrontmatter(t *testing.T) {
-	fm := Frontmatter("Test", "wiki", "notes", "gpt-4")
+	fm := Frontmatter("Test", "wiki", "notes")
 	if fm == "" {
 		t.Error("expected non-empty frontmatter")
 	}
 	// Verify defaults
-	fm2 := Frontmatter("", "", "", "")
+	fm2 := Frontmatter("", "", "")
 	if fm2 == "" {
 		t.Error("expected non-empty frontmatter with defaults")
 	}
@@ -91,7 +91,7 @@ func TestWrite(t *testing.T) {
 		dir := t.TempDir()
 		draftWikiDir := filepath.Join(dir, ".agent-harness", "draft-wiki")
 		output := "---\ntitle: Test Draft\n---\n\n# Body\n"
-		path, err := Write(dir, draftWikiDir, "Test Draft", "dev-fundamentals", "notes", "gpt-4", output)
+		path, err := Write(dir, draftWikiDir, "Test Draft", "dev-fundamentals", "notes", output)
 		if err != nil {
 			t.Fatalf("Write error: %v", err)
 		}
@@ -107,7 +107,7 @@ func TestWrite(t *testing.T) {
 	t.Run("empty output returns error", func(t *testing.T) {
 		dir := t.TempDir()
 		draftWikiDir := filepath.Join(dir, ".agent-harness", "draft-wiki")
-		_, err := Write(dir, draftWikiDir, "Test", "wiki", "notes", "gpt-4", "")
+		_, err := Write(dir, draftWikiDir, "Test", "wiki", "notes", "")
 		if err == nil {
 			t.Error("expected error for empty output")
 		}
@@ -117,7 +117,7 @@ func TestWrite(t *testing.T) {
 		dir := t.TempDir()
 		draftWikiDir := filepath.Join(dir, ".agent-harness", "draft-wiki")
 		output := "# Just a heading\ncontent"
-		path, err := Write(dir, draftWikiDir, "Test", "wiki", "notes", "gpt-4", output)
+		path, err := Write(dir, draftWikiDir, "Test", "wiki", "notes", output)
 		if err != nil {
 			t.Fatalf("Write error: %v", err)
 		}

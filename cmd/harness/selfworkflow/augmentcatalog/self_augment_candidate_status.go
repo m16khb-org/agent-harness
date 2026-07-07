@@ -60,8 +60,8 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 		{"coverage-mcp-resources", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasMCPResourceCoverage, "MCP resources cover stable descriptors, deterministic context, read errors, and catalog skill fallback")
 		}},
-		{"coverage-externalllm", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasExternalLLMCoverage, "external LLM core covers malformed structured output, bounded error output, command failure output, and timeout cancellation")
+		{"coverage-host-judgement", func(signals SelfAugmentRepoSignals) []string {
+			return evidenceWhen(signals.HasHostJudgementCoverage, "host-agent judgement decoder covers malformed structured output and bounded error output")
 		}},
 		{"coverage-issueops-linking", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasIssueOpsLinkingBoundaryCoverage, "issueops linking covers invalid issue URLs, missing plan files, and plan/worktree boundary violations")

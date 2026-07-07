@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/core/externalllm"
+	"agent-harness/internal/core/judgement"
 	"agent-harness/internal/core/prompt"
 )
 
@@ -41,7 +41,7 @@ func BuildLLMPrompt(recommended NextActionCandidate, candidates []NextActionCand
 			"reason is grounded in the recommended action text.",
 		},
 		Data: []prompt.PromptDataSection{
-			externalllm.BuildExternalLLMJSONSchemaSection(nextActionAutoProceedLLMResponseSchemaExample(), []string{
+			judgement.BuildJSONSchemaSection(nextActionAutoProceedLLMResponseSchemaExample(), []string{
 				"auto_proceed: boolean, required, true only when safe to auto-execute unattended.",
 				"reason: string, required, concise justification.",
 			}),

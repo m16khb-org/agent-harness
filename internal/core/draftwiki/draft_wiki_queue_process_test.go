@@ -4,24 +4,12 @@ import (
 	"encoding/json"
 	"os"
 	"strings"
-	"sync/atomic"
 	"testing"
 )
 
 func TestDraftWikiQueueReportsMalformedLinesAndContinues(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	withFakeDraftWikiZAI(t, draftWikiLLMJSONForTest(t, `---
-title: "Malformed queue still processes"
-source: "claude-mem"
-target_wiki: "agent-harness"
-target_type: "notes"
-summary: "Valid queued events continue after malformed lines."
----
-
-# Malformed queue still processes
-
-Valid queued events continue after malformed lines.`))
 
 	queued, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{
 		RepoRoot:       root,
@@ -73,17 +61,6 @@ Valid queued events continue after malformed lines.`))
 func TestDraftWikiQueueRunningRewriteFailureDoesNotInvokeLLM(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	requests := withFakeDraftWikiZAI(t, draftWikiLLMJSONForTest(t, `---
-title: "Should not invoke"
-source: "test"
-target_wiki: "agent-harness"
-target_type: "notes"
-summary: "Should not invoke."
----
-
-# Should not invoke
-
-Should not invoke.`))
 	if _, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{RepoRoot: root, SourceMaterial: "must persist running before LLM call"}); err != nil {
 		t.Fatal(err)
 	}
@@ -100,25 +77,11 @@ Should not invoke.`))
 	if err == nil {
 		t.Fatalf("expected running-state rewrite error, got result %+v", processed)
 	}
-	if got := atomic.LoadInt32(requests); got != 0 {
-		t.Fatalf("LLM was invoked despite rewrite failure: %d requests", got)
-	}
 }
 
 func TestDraftWikiQueueConcurrentWorkersProcessOneEventOnce(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	requests := withFakeDraftWikiZAI(t, draftWikiLLMJSONForTest(t, `---
-title: "Concurrent queue event"
-source: "claude-mem"
-target_wiki: "agent-harness"
-target_type: "notes"
-summary: "One concurrent worker should process the queued event."
----
-
-# Concurrent queue event
-
-Only one worker should process this event.`))
 	if _, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{RepoRoot: root, SourceMaterial: "race one event"}); err != nil {
 		t.Fatal(err)
 	}
@@ -148,15 +111,5 @@ Only one worker should process this event.`))
 	}
 	if processedTotal != 1 {
 		t.Fatalf("expected exactly one processed event, got %d", processedTotal)
-	}
-	if got := atomic.LoadInt32(requests); got != 1 {
-		t.Fatalf("expected one Z.AI invocation, got %d", got)
-	}
-	drafts, err := ListDraftWiki(DraftWikiListRequest{RepoRoot: root})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(drafts.Drafts) != 1 {
-		t.Fatalf("expected one draft, got %+v", drafts.Drafts)
 	}
 }

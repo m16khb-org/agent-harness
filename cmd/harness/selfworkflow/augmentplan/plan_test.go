@@ -83,7 +83,7 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 	if candidateByID(result.Candidates, "coverage-mcp-resources").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
 		t.Fatalf("MCP resource coverage should be satisfied after catalog/read edge coverage is implemented: %+v", result.Candidates)
 	}
-	if candidateByID(result.Candidates, "coverage-externalllm").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
+	if candidateByID(result.Candidates, "coverage-host-judgement").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
 		t.Fatalf("external LLM coverage should be satisfied after malformed output, timeout, and command failure coverage is implemented: %+v", result.Candidates)
 	}
 	if candidateByID(result.Candidates, "coverage-issueops-linking").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {

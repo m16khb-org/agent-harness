@@ -38,7 +38,7 @@ func runWorker(args []string) error {
 func workerUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   agent-harness worker enqueue --kind KIND [--payload TEXT] [--json]
-  agent-harness worker draft-wiki [--repo PATH] [--model glm-5-turbo] [--target-wiki NAME] [--target-type notes] [--limit 1] [--json]
+  agent-harness worker draft-wiki [--repo PATH] [--target-wiki NAME] [--target-type notes] [--limit 1] [--json]
   agent-harness worker run --read-only --kind KIND [--payload TEXT] [--workspace-root PATH] [--cwd PATH] [--timeout=30s] [--env=NAME,NAME] [--json] -- ARGV...
   agent-harness worker status --id ID [--json]
   agent-harness worker list [--json]
@@ -50,9 +50,8 @@ func workerUsage() {
 func runWorkerDraftWiki(args []string) error {
 	fs := flag.NewFlagSet("worker draft-wiki", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path")
-	model := fs.String("model", "", "Z.AI model; defaults to glm-5-turbo")
-	targetWiki := fs.String("target-wiki", "", "target upstream LLM Wiki topic; overrides queue event target_wiki")
-	targetType := fs.String("target-type", "", "target upstream LLM Wiki raw type; defaults to queue event target_type or notes")
+	targetWiki := fs.String("target-wiki", "", "target wiki topic; overrides queue event target_wiki")
+	targetType := fs.String("target-type", "", "target raw type; defaults to queue event target_type or notes")
 	limit := fs.Int("limit", 1, "maximum queued draft-wiki items to process")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
@@ -64,7 +63,6 @@ func runWorkerDraftWiki(args []string) error {
 	}
 	result, err := core.ProcessDraftWikiQueue(core.DraftWikiQueueProcessRequest{
 		RepoRoot:   root,
-		Model:      *model,
 		TargetWiki: *targetWiki,
 		TargetType: *targetType,
 		Limit:      *limit,
@@ -77,6 +75,8 @@ func runWorkerDraftWiki(args []string) error {
 		for _, event := range result.Events {
 			if event.DraftRelPath != "" {
 				fmt.Printf("- %s %s %s\n", event.ID, event.Status, event.DraftRelPath)
+			} else if event.Prompt != "" {
+				fmt.Printf("- %s %s prompt_bytes=%d\n", event.ID, event.Status, len([]byte(event.Prompt)))
 			} else {
 				fmt.Printf("- %s %s %s\n", event.ID, event.Status, event.Error)
 			}

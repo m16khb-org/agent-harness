@@ -21,3 +21,11 @@ func ScoreIssueOpsRemoteCandidates(req IssueOpsRemoteScoringRequest) (IssueOpsRe
 func RunIssueOpsRemoteLLMJudge(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteScoringResult, error) {
 	return remote.RunIssueOpsRemoteLLMJudge(req)
 }
+
+func RenderIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (string, error) {
+	return remote.RenderIssueOpsRemoteLLMJudgePrompt(req)
+}
+
+func DecodeIssueOpsRemoteJudgeJSON(out []byte) (IssueOpsRemoteScoringResult, error) {
+	return remote.DecodeIssueOpsRemoteJudgeJSON(out)
+}

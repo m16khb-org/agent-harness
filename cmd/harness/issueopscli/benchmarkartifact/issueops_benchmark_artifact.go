@@ -72,7 +72,7 @@ func FromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkAr
 			"",
 			"## Verification",
 			"",
-			"- `./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --model glm-5-turbo --json`",
+			"- `./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge file --judge-file judge-map.json --json`",
 			"- `go test ./... -count=1`",
 			"- worktree cleanup 전 `git status --short --branch` 확인",
 			"",
@@ -102,7 +102,7 @@ func FromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkAr
 			"Fixture-specific plan requirements:",
 			expectedPlan,
 			"",
-			"Verify: ./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge llm --model glm-5-turbo --json",
+			"Verify: ./bin/agent-harness issueops benchmark run --fixtures testdata/issueops/fixtures --judge file --judge-file judge-map.json --json",
 		}, "\n"),
 		TDDPlan: strings.Join([]string{
 			"Write failing tests first before implementation.",

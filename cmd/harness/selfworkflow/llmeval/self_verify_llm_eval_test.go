@@ -2,14 +2,10 @@ package llmeval
 
 import (
 	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/core/externalllm"
 )
 
 func TestSelfVerifyLLMEvalDefaultOmittedFromJSON(t *testing.T) {
@@ -90,79 +86,57 @@ func TestDecodeSelfVerifyLLMEvalStrictRejectsExtraJSONValue(t *testing.T) {
 	}
 }
 
-func TestSelfVerifyLLMEvalAdvisorySuccess(t *testing.T) {
-	withFakeSelfVerifyZAI(t, selfVerifyFakeZAIResponse{Content: `{"ok":true,"score":99,"summary":"looks safe","risks":["watch flakes"],"recommended_next_actions":["ship"]}`})
-	result := model.SelfAugmentResult{OK: true, TerminationEligible: true, Summary: model.SelfAugmentSummary{MinimumGoalScore: 100}}
-	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", TargetScore: 95})
+func TestDecodeSelfVerifyLLMEvalReadsHostJudgementJSON(t *testing.T) {
+	var eval model.SelfVerifyLLMEvalResult
+	err := DecodeSelfVerifyLLMEval([]byte(`{"ok":true,"score":99,"summary":"looks safe","risks":["watch flakes"],"recommended_next_actions":["ship"]}`), &eval)
 	if err != nil {
-		t.Fatalf("advisory llm eval should not fail self-verify: %v", err)
+		t.Fatalf("decode host judgement result: %v", err)
 	}
-	if !updated.OK || updated.LLMEval == nil || !updated.LLMEval.OK || updated.LLMEval.Score != 99 {
-		t.Fatalf("unexpected advisory llm eval result: %+v", updated)
+	if !eval.OK || eval.Score != 99 || eval.Summary != "looks safe" {
+		t.Fatalf("unexpected host judgement result: %+v", eval)
 	}
-	if len(updated.LLMEval.Risks) != 1 || len(updated.LLMEval.RecommendedNextActions) != 1 || updated.LLMEval.EvidencePacketBytes == 0 {
-		t.Fatalf("llm eval should keep structured review fields and packet size: %+v", updated.LLMEval)
+	if len(eval.Risks) != 1 || len(eval.RecommendedNextActions) != 1 {
+		t.Fatalf("host judgement should keep structured review fields: %+v", eval)
 	}
 }
 
-func TestSelfVerifyLLMEvalExtractsNoisyLLMJSON(t *testing.T) {
-	withFakeSelfVerifyZAI(t, selfVerifyFakeZAIResponse{Content: "ULTRAWORK MODE ENABLED!\n" + `{"ok":true,"score":99,"summary":"looks safe","blockers":[],"risks":[],"recommended_next_actions":[]}`})
-	result := model.SelfAugmentResult{OK: true, TerminationEligible: true, Summary: model.SelfAugmentSummary{MinimumGoalScore: 100}}
-	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", TargetScore: 95})
+func TestDecodeSelfVerifyLLMEvalExtractsNoisyHostJudgementJSON(t *testing.T) {
+	var eval model.SelfVerifyLLMEvalResult
+	err := DecodeSelfVerifyLLMEval([]byte("review note\n"+`{"ok":true,"score":99,"summary":"looks safe","blockers":[],"risks":[],"recommended_next_actions":[]}`), &eval)
 	if err != nil {
-		t.Fatalf("advisory noisy llm eval should not fail self-verify: %v", err)
+		t.Fatalf("decode noisy host judgement result: %v", err)
 	}
-	if !updated.OK || updated.LLMEval == nil || !updated.LLMEval.OK || updated.LLMEval.Score != 99 || updated.LLMEval.Error != "" {
-		t.Fatalf("noisy LLM output should extract strict JSON object: %+v", updated)
+	if !eval.OK || eval.Score != 99 || eval.Error != "" {
+		t.Fatalf("noisy host judgement output should extract strict JSON object: %+v", eval)
 	}
 }
 
-func TestSelfVerifyLLMEvalMalformedOutputIsStructured(t *testing.T) {
-	withFakeSelfVerifyZAI(t, selfVerifyFakeZAIResponse{Content: `not-json`})
+func TestDecodeSelfVerifyLLMEvalRejectsMalformedOutput(t *testing.T) {
+	var eval model.SelfVerifyLLMEvalResult
+	err := DecodeSelfVerifyLLMEval([]byte(`not-json`), &eval)
+	if err == nil {
+		t.Fatal("expected malformed host judgement output error")
+	}
+	bounded := BoundedLLMEvalError("parse host judgement JSON", err, strings.Repeat("x", 2048))
+	if len(bounded) > 512 {
+		t.Fatalf("host judgement error should be bounded, got %d bytes", len(bounded))
+	}
+}
+
+func TestSelfVerifyLLMEvalRendersPromptOnlyResult(t *testing.T) {
 	result := model.SelfAugmentResult{OK: true, TerminationEligible: true}
 	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", TargetScore: 95})
 	if err != nil {
-		t.Fatalf("advisory malformed llm eval should be recorded, not returned as gate error: %v", err)
+		t.Fatalf("advisory prompt-only eval should be recorded, not returned as gate error: %v", err)
 	}
-	if !updated.OK || updated.LLMEval == nil || updated.LLMEval.OK || !strings.Contains(updated.LLMEval.Error, "parse LLM JSON") {
-		t.Fatalf("malformed LLM output should produce structured llm_eval error: %+v", updated)
-	}
-	if len(updated.LLMEval.Error) > 512 {
-		t.Fatalf("llm eval error should be bounded, got %d bytes", len(updated.LLMEval.Error))
-	}
-}
-
-func TestSelfVerifyLLMEvalUnknownFieldIsStructured(t *testing.T) {
-	withFakeSelfVerifyZAI(t, selfVerifyFakeZAIResponse{Content: `{"ok":true,"score":99,"unexpected":true}`})
-	result := model.SelfAugmentResult{OK: true, TerminationEligible: true}
-	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", TargetScore: 95})
-	if err != nil {
-		t.Fatalf("advisory unknown field should be recorded, not returned as gate error: %v", err)
-	}
-	if !updated.OK || updated.LLMEval == nil || updated.LLMEval.OK || !strings.Contains(updated.LLMEval.Error, "unknown field") {
-		t.Fatalf("unknown LLM field should produce structured llm_eval error: %+v", updated)
-	}
-}
-
-func TestSelfVerifyLLMEvalRequestFailureIsStructured(t *testing.T) {
-	withFakeSelfVerifyZAI(t, selfVerifyFakeZAIResponse{Status: http.StatusInternalServerError, Body: `{"error":{"message":"model unavailable"}}`})
-	result := model.SelfAugmentResult{OK: true, TerminationEligible: true}
-	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", TargetScore: 95})
-	if err != nil {
-		t.Fatalf("advisory command failure should be recorded, not returned as gate error: %v", err)
-	}
-	if !updated.OK || updated.LLMEval == nil || updated.LLMEval.OK || !strings.Contains(updated.LLMEval.Error, "Z.AI LLM call failed") {
-		t.Fatalf("request failure should produce structured llm_eval error: %+v", updated)
+	if !updated.OK || updated.LLMEval == nil || updated.LLMEval.OK || updated.LLMEval.Prompt == "" || !strings.Contains(updated.LLMEval.Error, "external LLM evaluation was removed") {
+		t.Fatalf("prompt-only eval should produce structured llm_eval result: %+v", updated)
 	}
 }
 
 func TestSelfVerifyLLMEvalResultClassifiesForegroundReadOnlyGate(t *testing.T) {
-	withFakeSelfVerifyZAI(t, selfVerifyFakeZAIResponse{Content: `{"ok":true,"score":100,"summary":"pass","blockers":[],"risks":[],"recommended_next_actions":[]}`})
 	result := model.SelfAugmentResult{OK: true, TerminationEligible: true, Summary: model.SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true}}
-	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "gate", TargetScore: 95})
-	if err != nil {
-		t.Fatal(err)
-	}
+	updated, _ := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "advisory", TargetScore: 95})
 	if updated.LLMEval == nil {
 		t.Fatal("expected llm_eval result")
 	}
@@ -172,7 +146,6 @@ func TestSelfVerifyLLMEvalResultClassifiesForegroundReadOnlyGate(t *testing.T) {
 }
 
 func TestSelfVerifyLLMEvalGateFailsOnBlocker(t *testing.T) {
-	withFakeSelfVerifyZAI(t, selfVerifyFakeZAIResponse{Content: `{"ok":false,"score":40,"summary":"blocked","blockers":["missing QA"]}`})
 	result := model.SelfAugmentResult{OK: true, TerminationEligible: true, Summary: model.SelfAugmentSummary{MinimumGoalScore: 100, TerminationEligible: true}}
 	updated, err := ApplySelfVerifyLLMEval(result, SelfVerifyLLMEvalOptions{Enabled: true, Mode: "gate", TargetScore: 95})
 	if err == nil || !strings.Contains(err.Error(), "LLM evaluation gate failed") {
@@ -188,39 +161,4 @@ func envLookupForSelfVerifyTest(values map[string]string) func(string) (string, 
 		value, ok := values[key]
 		return value, ok
 	}
-}
-
-type selfVerifyFakeZAIResponse struct {
-	Status  int
-	Body    string
-	Content string
-}
-
-func withFakeSelfVerifyZAI(t *testing.T, responses ...selfVerifyFakeZAIResponse) {
-	t.Helper()
-	if len(responses) == 0 {
-		t.Fatal("missing fake Z.AI responses")
-	}
-	t.Setenv("Z_AI_API_KEY", "test-key")
-	// Isolate the state dir: the usage recorder writes an observation record
-	// per LLM call and must not touch the developer's real state.
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	index := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := responses[index]
-		if index < len(responses)-1 {
-			index++
-		}
-		if response.Status != 0 {
-			w.WriteHeader(response.Status)
-		}
-		if response.Body != "" {
-			_, _ = w.Write([]byte(response.Body))
-			return
-		}
-		_, _ = fmt.Fprintf(w, `{"choices":[{"message":{"content":%q}}]}`, response.Content)
-	}))
-	t.Cleanup(server.Close)
-	previous := externalllm.SetBaseURL(server.URL)
-	t.Cleanup(func() { externalllm.SetBaseURL(previous) })
 }

@@ -1,58 +1,50 @@
 package remote
 
 import (
-	"agent-harness/internal/core/externalllm"
 	"fmt"
-	"strings"
-	"time"
+
+	"agent-harness/internal/core/judgement"
 )
 
 func RunIssueOpsRemoteLLMJudge(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteScoringResult, error) {
-	model := strings.TrimSpace(req.Model)
-	timeout := req.Timeout
-	if timeout == 0 {
-		timeout = 2 * time.Minute
+	if _, err := buildIssueOpsRemoteLLMJudgePrompt(req.Request); err != nil {
+		return IssueOpsRemoteScoringResult{}, err
 	}
-	attempts := req.Attempts
-	if attempts <= 0 {
-		attempts = 3
-	}
+	return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote score no longer calls external LLM services; render the prompt with BuildIssueOpsRemoteLLMJudgePrompt and pass the host-agent result through --judge file --judge-file")
+}
+
+func RenderIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (string, error) {
 	prompt, err := buildIssueOpsRemoteLLMJudgePrompt(req.Request)
+	if err != nil {
+		return "", err
+	}
+	return prompt, nil
+}
+
+func DecodeIssueOpsRemoteJudgeJSON(out []byte) (IssueOpsRemoteScoringResult, error) {
+	result, err := decodeStrictIssueOpsRemoteScoringResult(out)
 	if err != nil {
 		return IssueOpsRemoteScoringResult{}, err
 	}
-	var lastErr error
-	for attempt := 1; attempt <= attempts; attempt++ {
-		llm, err := externalllm.RunExternalLLMPrint(externalllm.ExternalLLMPrintRequest{Model: model, WorkDir: req.RepoRoot, Prompt: prompt, Timeout: timeout})
-		if err != nil {
-			lastErr = fmt.Errorf("issueops remote LLM judge failed: %s: %w", boundedIssueOpsText(string(llm.Output)), err)
-			continue
-		}
-		result, err := decodeStrictIssueOpsRemoteScoringResult(llm.Output)
-		if err == nil {
-			return normalizeIssueOpsRemoteScoringResult(result), nil
-		}
-		lastErr = err
-	}
-	return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote LLM judge failed after %d strict-output attempts: %w", attempts, lastErr)
+	return normalizeIssueOpsRemoteScoringResult(result), nil
 }
 
 func decodeStrictIssueOpsRemoteScoringResult(out []byte) (IssueOpsRemoteScoringResult, error) {
 	var result IssueOpsRemoteScoringResult
-	if err := externalllm.DecodeExternalLLMStructuredJSONObject("issueops remote LLM scoring", out, &result); err != nil {
+	if err := judgement.DecodeStructuredJSONObject("issueops remote host-agent scoring", out, &result); err != nil {
 		return IssueOpsRemoteScoringResult{}, err
 	}
 	if !result.OK {
-		return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote LLM scoring output not ok")
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote host-agent scoring output not ok")
 	}
 	if result.ExecutionClass != "background_join" {
-		return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote LLM scoring execution_class must be background_join")
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote host-agent scoring execution_class must be background_join")
 	}
 	if !result.ReadOnly {
-		return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote LLM scoring read_only must be true")
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote host-agent scoring read_only must be true")
 	}
 	if result.JoinBefore != "remote_artifact_write" {
-		return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote LLM scoring join_before must be remote_artifact_write")
+		return IssueOpsRemoteScoringResult{}, fmt.Errorf("issueops remote host-agent scoring join_before must be remote_artifact_write")
 	}
 	return result, nil
 }

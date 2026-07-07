@@ -3,7 +3,6 @@ package remote
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 )
 
 const defaultIssueOpsRemoteThreshold = 0.70
@@ -98,9 +97,5 @@ type IssueOpsRemoteScoringResult struct {
 }
 
 type IssueOpsRemoteLLMJudgeRequest struct {
-	RepoRoot string
-	Model    string
-	Timeout  time.Duration
-	Attempts int
-	Request  IssueOpsRemoteScoringRequest
+	Request IssueOpsRemoteScoringRequest
 }

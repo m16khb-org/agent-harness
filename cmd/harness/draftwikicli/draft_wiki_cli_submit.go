@@ -7,10 +7,10 @@ import (
 	"agent-harness/internal/core"
 )
 
-func runProjectDraftWikiSuggest(args []string) error {
-	fs := flag.NewFlagSet("project draft-wiki suggest", flag.ContinueOnError)
+func runProjectDraftWikiSubmit(args []string) error {
+	fs := flag.NewFlagSet("project draft-wiki submit", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
-	input := fs.String("input", "", "source text/markdown file to summarize into a draft")
+	draftPath := fs.String("draft", "", "host-agent-authored Markdown draft file")
 	title := fs.String("title", "", "draft title hint")
 	targetWiki := fs.String("target-wiki", "", "target wiki topic")
 	targetType := fs.String("target-type", "notes", "target raw type")
@@ -18,12 +18,12 @@ func runProjectDraftWikiSuggest(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *input == "" && fs.NArg() == 1 {
-		*input = fs.Arg(0)
+	if *draftPath == "" && fs.NArg() == 1 {
+		*draftPath = fs.Arg(0)
 	}
-	result, err := core.SuggestDraftWiki(core.DraftWikiSuggestRequest{
+	result, err := core.SubmitDraftWiki(core.DraftWikiSubmitRequest{
 		RepoRoot:   *repo,
-		InputPath:  *input,
+		DraftPath:  *draftPath,
 		Title:      *title,
 		TargetWiki: *targetWiki,
 		TargetType: *targetType,
@@ -34,6 +34,6 @@ func runProjectDraftWikiSuggest(args []string) error {
 	if *jsonOut {
 		return printJSON(result)
 	}
-	fmt.Println(result.Prompt)
+	fmt.Printf("submitted draft: %s\n", result.Draft.RelPath)
 	return nil
 }

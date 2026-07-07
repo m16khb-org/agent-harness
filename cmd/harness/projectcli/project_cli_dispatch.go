@@ -40,7 +40,7 @@ func projectUsage() {
   agent-harness project route-docs [--repo PATH] [--task TEXT] [--json]
   agent-harness project record --kind caution|adr --title TEXT --summary TEXT [--repo PATH] [--json]
   agent-harness project draft-wiki init|list|suggest|approve|reject|promote|prune ...
-  agent-harness project commit-suggest [--repo PATH] [--staged] [--model MODEL] [--json]
-  agent-harness project lint-diagnose [--repo PATH] [--model MODEL] [--json] -- <command_to_run...>
+  agent-harness project commit-suggest [--repo PATH] [--staged] [--json]
+  agent-harness project lint-diagnose [--repo PATH] [--json] -- <command_to_run...>
 `)
 }

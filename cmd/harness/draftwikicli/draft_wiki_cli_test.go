@@ -2,18 +2,13 @@ package draftwikicli
 
 import (
 	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"agent-harness/cmd/harness/workercli"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/externalllm"
 )
 
 func TestRunProjectDraftWikiPruneJSON(t *testing.T) {
@@ -46,15 +41,13 @@ func TestRunProjectDraftWikiPruneJSON(t *testing.T) {
 	}
 }
 
-func TestRunProjectDraftWikiQueueAndWorkerWritesDraft(t *testing.T) {
+func TestRunProjectDraftWikiQueueAndWorkerRendersPrompt(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	materialPath := filepath.Join(root, "material.md")
 	if err := os.WriteFile(materialPath, []byte("The main agent judged this hook policy reusable enough for draft wiki."), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	withFakeDraftWikiCLIZAI(t, `{"body_markdown":"---\ntitle: \"Explicit queued draft\"\nsource: \"main-agent\"\ntarget_wiki: \"agent-harness\"\ntarget_type: \"notes\"\nsummary: \"The main agent explicitly queues reusable draft-wiki material.\"\n---\n\n# Explicit queued draft\n\nThe main agent, not a heuristic hook, decides whether material is worth queueing."}`)
-
 	queuedOut := captureStdoutForContract(t, func() error {
 		return runProjectDraftWiki([]string{"queue", "--repo", root, "--input", materialPath, "--target-wiki", "agent-harness", "--json"})
 	})
@@ -67,7 +60,7 @@ func TestRunProjectDraftWikiQueueAndWorkerWritesDraft(t *testing.T) {
 	}
 
 	out := captureStdoutForContract(t, func() error {
-		return workercli.Run([]string{"draft-wiki", "--repo", root, "--model", "glm-5-turbo", "--json"})
+		return workercli.Run([]string{"draft-wiki", "--repo", root, "--json"})
 	})
 	var processed map[string]any
 	if err := json.Unmarshal([]byte(out), &processed); err != nil {
@@ -76,24 +69,15 @@ func TestRunProjectDraftWikiQueueAndWorkerWritesDraft(t *testing.T) {
 	if processed["processed"] != float64(1) || processed["succeeded"] != float64(1) {
 		t.Fatalf("worker did not process explicitly queued draft-wiki item: %+v", processed)
 	}
-	wantDraftName := time.Now().Format(time.DateOnly) + "-explicit-queued-draft.md"
-	if _, err := os.Stat(filepath.Join(root, ".agent-harness", "draft-wiki", "draft", wantDraftName)); err != nil {
-		t.Fatalf("draft-wiki draft file missing after explicit queue+worker: %v", err)
+	events, _ := processed["events"].([]any)
+	if len(events) != 1 {
+		t.Fatalf("expected one processed event: %+v", processed)
 	}
-}
-
-func withFakeDraftWikiCLIZAI(t *testing.T, content string) {
-	t.Helper()
-	t.Setenv("Z_AI_API_KEY", "test-key")
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("expected POST, got %s", r.Method)
-		}
-		_, _ = fmt.Fprintf(w, `{"choices":[{"message":{"content":%q}}]}`, content)
-	}))
-	t.Cleanup(server.Close)
-	previous := externalllm.SetBaseURL(server.URL)
-	t.Cleanup(func() { externalllm.SetBaseURL(previous) })
+	event, _ := events[0].(map[string]any)
+	prompt, _ := event["prompt"].(string)
+	if !strings.Contains(prompt, "Host-Agent Judgement Response Schema") {
+		t.Fatalf("worker did not render prompt: %+v", event)
+	}
 }
 
 func TestRunProjectDraftWikiQueueReadsStdin(t *testing.T) {

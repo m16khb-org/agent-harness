@@ -8,7 +8,7 @@ func TestQualityRefillCandidatesStayOpenWithScoresAndVerification(t *testing.T) 
 		"self-augment-signal-table",
 		"coverage-commandguard",
 		"coverage-mcp-resources",
-		"coverage-externalllm",
+		"coverage-host-judgement",
 		"coverage-issueops-linking",
 		"daemon-connection-limit",
 		"worker-stuck-running-detection",
