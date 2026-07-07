@@ -128,6 +128,53 @@ func IssueOpsLifecycleTools() []Tool {
 			}},
 		},
 		{
+			Name:        "issueops_child_start",
+			Description: "Start a delegated child IssueOps cycle from an implement-ready parent when the parent recorded a net-positive sub-agent plan. Writes the child record plus the parent child_cycles index; args mirror `issueops child start`; result is the same IssueOpsChildStartResult JSON shape as the CLI.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"parent", "branch", "title", "scope", "acceptance"}, "properties": map[string]any{
+				"parent":          map[string]any{"type": "string", "description": "Parent IssueOps cycle id."},
+				"branch":          map[string]any{"type": "string", "description": "Delegated child branch name."},
+				"title":           map[string]any{"type": "string", "description": "Delegated child task title recorded on the parent reference."},
+				"scope":           map[string]any{"type": "string", "description": "Delegated task scope for the child intent contract."},
+				"acceptance":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Acceptance criteria for the delegated child cycle."},
+				"child_issue_url": map[string]any{"type": "string", "description": "Optional provider child issue/work-item URL to associate with the delegated child."},
+			}},
+		},
+		{
+			Name:        "issueops_child_status",
+			Description: "List delegated child cycles for a parent and reconcile child phase/verdict state. Read-only unless repair=true appends missing child refs found by scan; args mirror `issueops child status`; result is the same IssueOpsChildStatusResult JSON shape as the CLI.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"parent"}, "properties": map[string]any{
+				"parent": map[string]any{"type": "string", "description": "Parent IssueOps cycle id."},
+				"repair": map[string]any{"type": "boolean", "description": "When true, append scanned child records missing from the parent index."},
+			}},
+		},
+		{
+			Name:        "issueops_child_accept",
+			Description: "Accept a done delegated child after parent-side validation. Writes the parent-owned accepted verdict and evidence; args mirror `issueops child accept`; result is the same IssueOpsChildValidationResult JSON shape as the CLI.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"parent", "child", "evidence"}, "properties": map[string]any{
+				"parent":   map[string]any{"type": "string", "description": "Parent IssueOps cycle id."},
+				"child":    map[string]any{"type": "string", "description": "Delegated child IssueOps cycle id."},
+				"evidence": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Parent validation evidence. At least one entry is required."},
+			}},
+		},
+		{
+			Name:        "issueops_child_reject",
+			Description: "Reject a delegated child result when parent validation finds redo work. Writes the parent-owned rejected verdict and reason; args mirror `issueops child reject`; result is the same IssueOpsChildValidationResult JSON shape as the CLI.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"parent", "child", "reason"}, "properties": map[string]any{
+				"parent": map[string]any{"type": "string", "description": "Parent IssueOps cycle id."},
+				"child":  map[string]any{"type": "string", "description": "Delegated child IssueOps cycle id."},
+				"reason": map[string]any{"type": "string", "description": "Rejection reason. Must be at least 10 characters."},
+			}},
+		},
+		{
+			Name:        "issueops_child_drop",
+			Description: "Drop a delegated child from the parent gate when the work is deliberately abandoned. Writes the parent-owned dropped verdict and reason; args mirror `issueops child drop`; result is the same IssueOpsChildValidationResult JSON shape as the CLI.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"parent", "child", "reason"}, "properties": map[string]any{
+				"parent": map[string]any{"type": "string", "description": "Parent IssueOps cycle id."},
+				"child":  map[string]any{"type": "string", "description": "Delegated child IssueOps cycle id."},
+				"reason": map[string]any{"type": "string", "description": "Drop reason. Must be at least 10 characters."},
+			}},
+		},
+		{
 			Name:        "issueops_force_release",
 			Description: "Force-release a stuck IssueOps cycle to done, bypassing phase gate requirements. Use only when a cycle is deadlocked and cannot complete normally (e.g. missing remote_artifact verification). Requires an explicit reason recorded in the cycle state.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "reason"}, "properties": map[string]any{

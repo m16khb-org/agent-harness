@@ -1668,6 +1668,150 @@
     "name": "issueops_remote_score"
   },
   {
+    "description": "Start a delegated child IssueOps cycle from an implement-ready parent when the parent recorded a net-positive sub-agent plan. Writes the child record plus the parent child_cycles index; args mirror `issueops child start`; result is the same IssueOpsChildStartResult JSON shape as the CLI.",
+    "inputSchema": {
+      "properties": {
+        "acceptance": {
+          "description": "Acceptance criteria for the delegated child cycle.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "branch": {
+          "description": "Delegated child branch name.",
+          "type": "string"
+        },
+        "child_issue_url": {
+          "description": "Optional provider child issue/work-item URL to associate with the delegated child.",
+          "type": "string"
+        },
+        "parent": {
+          "description": "Parent IssueOps cycle id.",
+          "type": "string"
+        },
+        "scope": {
+          "description": "Delegated task scope for the child intent contract.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Delegated child task title recorded on the parent reference.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "parent",
+        "branch",
+        "title",
+        "scope",
+        "acceptance"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_child_start"
+  },
+  {
+    "description": "List delegated child cycles for a parent and reconcile child phase/verdict state. Read-only unless repair=true appends missing child refs found by scan; args mirror `issueops child status`; result is the same IssueOpsChildStatusResult JSON shape as the CLI.",
+    "inputSchema": {
+      "properties": {
+        "parent": {
+          "description": "Parent IssueOps cycle id.",
+          "type": "string"
+        },
+        "repair": {
+          "description": "When true, append scanned child records missing from the parent index.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "parent"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_child_status"
+  },
+  {
+    "description": "Accept a done delegated child after parent-side validation. Writes the parent-owned accepted verdict and evidence; args mirror `issueops child accept`; result is the same IssueOpsChildValidationResult JSON shape as the CLI.",
+    "inputSchema": {
+      "properties": {
+        "child": {
+          "description": "Delegated child IssueOps cycle id.",
+          "type": "string"
+        },
+        "evidence": {
+          "description": "Parent validation evidence. At least one entry is required.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "parent": {
+          "description": "Parent IssueOps cycle id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "parent",
+        "child",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_child_accept"
+  },
+  {
+    "description": "Reject a delegated child result when parent validation finds redo work. Writes the parent-owned rejected verdict and reason; args mirror `issueops child reject`; result is the same IssueOpsChildValidationResult JSON shape as the CLI.",
+    "inputSchema": {
+      "properties": {
+        "child": {
+          "description": "Delegated child IssueOps cycle id.",
+          "type": "string"
+        },
+        "parent": {
+          "description": "Parent IssueOps cycle id.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Rejection reason. Must be at least 10 characters.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "parent",
+        "child",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_child_reject"
+  },
+  {
+    "description": "Drop a delegated child from the parent gate when the work is deliberately abandoned. Writes the parent-owned dropped verdict and reason; args mirror `issueops child drop`; result is the same IssueOpsChildValidationResult JSON shape as the CLI.",
+    "inputSchema": {
+      "properties": {
+        "child": {
+          "description": "Delegated child IssueOps cycle id.",
+          "type": "string"
+        },
+        "parent": {
+          "description": "Parent IssueOps cycle id.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Drop reason. Must be at least 10 characters.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "parent",
+        "child",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_child_drop"
+  },
+  {
     "description": "Force-release a stuck IssueOps cycle to done, bypassing phase gate requirements. Use only when a cycle is deadlocked and cannot complete normally (e.g. missing remote_artifact verification). Requires an explicit reason recorded in the cycle state.",
     "inputSchema": {
       "properties": {

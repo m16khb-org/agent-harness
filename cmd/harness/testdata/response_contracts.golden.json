@@ -227,7 +227,7 @@
           "name": "version"
         }
       ],
-      "hash": "0e715d13f40bfcaeb0b4effd37046da09f9aaa3d0653251d154e54b674b91ffe",
+      "hash": "e880632255c76cb6d0c07f17b21a063ba7d2b5f34c6d53b816d6b937804244a3",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -244,6 +244,11 @@
         "harness_inspect",
         "issueops_add_decision",
         "issueops_add_feedback",
+        "issueops_child_accept",
+        "issueops_child_drop",
+        "issueops_child_reject",
+        "issueops_child_start",
+        "issueops_child_status",
         "issueops_cleanup_close_children",
         "issueops_cleanup_stale",
         "issueops_cleanup_status",
@@ -6486,7 +6491,7 @@
                 "name": "version"
               }
             ],
-            "hash": "0e715d13f40bfcaeb0b4effd37046da09f9aaa3d0653251d154e54b674b91ffe",
+            "hash": "e880632255c76cb6d0c07f17b21a063ba7d2b5f34c6d53b816d6b937804244a3",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6503,6 +6508,11 @@
               "harness_inspect",
               "issueops_add_decision",
               "issueops_add_feedback",
+              "issueops_child_accept",
+              "issueops_child_drop",
+              "issueops_child_reject",
+              "issueops_child_start",
+              "issueops_child_status",
               "issueops_cleanup_close_children",
               "issueops_cleanup_stale",
               "issueops_cleanup_status",

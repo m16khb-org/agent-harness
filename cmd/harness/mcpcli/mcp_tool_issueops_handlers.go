@@ -195,6 +195,38 @@ func handleMCPIssueOpsLinkRelated(args map[string]any) MCPToolOutcome {
 	return issueOpsMCPOutcome(result, err, "IssueOps related link failed")
 }
 
+func handleMCPIssueOpsChildStart(args map[string]any) MCPToolOutcome {
+	result, err := core.StartIssueOpsChild(core.IssueOpsStateRoot(), core.IssueOpsChildStartRequest{
+		ParentID:           argmap.String(args, "parent"),
+		Branch:             argmap.String(args, "branch"),
+		Title:              argmap.String(args, "title"),
+		TaskScope:          argmap.String(args, "scope"),
+		AcceptanceCriteria: argmap.StringSlice(args, "acceptance"),
+		ChildIssueURL:      argmap.String(args, "child_issue_url"),
+	})
+	return issueOpsMCPOutcome(result, err, "IssueOps child start failed")
+}
+
+func handleMCPIssueOpsChildStatus(args map[string]any) MCPToolOutcome {
+	result, err := core.IssueOpsChildStatus(core.IssueOpsStateRoot(), argmap.String(args, "parent"), argmap.Bool(args, "repair"))
+	return issueOpsMCPOutcome(result, err, "IssueOps child status failed")
+}
+
+func handleMCPIssueOpsChildAccept(args map[string]any) MCPToolOutcome {
+	result, err := core.AcceptIssueOpsChild(core.IssueOpsStateRoot(), argmap.String(args, "parent"), argmap.String(args, "child"), argmap.StringSlice(args, "evidence"))
+	return issueOpsMCPOutcome(result, err, "IssueOps child accept failed")
+}
+
+func handleMCPIssueOpsChildReject(args map[string]any) MCPToolOutcome {
+	result, err := core.RejectIssueOpsChild(core.IssueOpsStateRoot(), argmap.String(args, "parent"), argmap.String(args, "child"), argmap.String(args, "reason"), nil)
+	return issueOpsMCPOutcome(result, err, "IssueOps child reject failed")
+}
+
+func handleMCPIssueOpsChildDrop(args map[string]any) MCPToolOutcome {
+	result, err := core.DropIssueOpsChild(core.IssueOpsStateRoot(), argmap.String(args, "parent"), argmap.String(args, "child"), argmap.String(args, "reason"))
+	return issueOpsMCPOutcome(result, err, "IssueOps child drop failed")
+}
+
 func handleMCPIssueOpsPrepareBranch(args map[string]any) MCPToolOutcome {
 	result, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), argmap.String(args, "id"), core.IssueOpsBranchPrepareRequest{
 		Provider:        argmap.String(args, "provider"),

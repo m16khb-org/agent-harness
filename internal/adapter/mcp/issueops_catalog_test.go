@@ -126,6 +126,11 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_cleanup_close_children",
 		"issueops_cleanup_stale",
 		"issueops_remote_score",
+		"issueops_child_start",
+		"issueops_child_status",
+		"issueops_child_accept",
+		"issueops_child_reject",
+		"issueops_child_drop",
 		"issueops_resume",
 	}
 	if len(tools) != len(wantNames) {
@@ -198,6 +203,36 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaHasProperty(createChild.InputSchema, "confirm") {
 		t.Fatalf("issueops_remote_create_child schema missing confirm: %#v", createChild.InputSchema)
+	}
+	childStart := byName["issueops_child_start"]
+	for _, required := range []string{"parent", "branch", "title", "scope", "acceptance"} {
+		if !schemaRequires(childStart.InputSchema, required) {
+			t.Fatalf("issueops_child_start must require %q: %#v", required, childStart.InputSchema)
+		}
+	}
+	if !schemaHasProperty(childStart.InputSchema, "child_issue_url") {
+		t.Fatalf("issueops_child_start schema missing child_issue_url: %#v", childStart.InputSchema)
+	}
+	childStartDescription := strings.ToLower(childStart.Description)
+	if !strings.Contains(childStartDescription, "write") || !strings.Contains(childStartDescription, "result") {
+		t.Fatalf("issueops_child_start description must state write/result contract: %s", childStart.Description)
+	}
+	childStatus := byName["issueops_child_status"]
+	if !schemaRequires(childStatus.InputSchema, "parent") || !schemaHasProperty(childStatus.InputSchema, "repair") {
+		t.Fatalf("issueops_child_status must require parent and expose repair: %#v", childStatus.InputSchema)
+	}
+	childAccept := byName["issueops_child_accept"]
+	for _, required := range []string{"parent", "child", "evidence"} {
+		if !schemaRequires(childAccept.InputSchema, required) {
+			t.Fatalf("issueops_child_accept must require %q: %#v", required, childAccept.InputSchema)
+		}
+	}
+	for _, toolName := range []string{"issueops_child_reject", "issueops_child_drop"} {
+		for _, required := range []string{"parent", "child", "reason"} {
+			if !schemaRequires(byName[toolName].InputSchema, required) {
+				t.Fatalf("%s must require %q: %#v", toolName, required, byName[toolName].InputSchema)
+			}
+		}
 	}
 	if !schemaRequires(byName["issueops_resume"].InputSchema, "repo") {
 		t.Fatalf("issueops_resume must require repo: %#v", byName["issueops_resume"].InputSchema)
