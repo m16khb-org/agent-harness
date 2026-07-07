@@ -97,7 +97,7 @@ operational 8개는 agent-harness 운영에 특화되어 있다. 스킬 mesh는 
 | Logging | 표준 `log/slog` | secret redaction은 host 어댑터 계층에서 처리 |
 | MCP | `github.com/modelcontextprotocol/go-sdk` v1.6.1 | daemon socket transport의 기본 SDK. 분리 reader/writer stdio smoke를 위한 legacy JSON-RPC 경로를 병행 유지(ADR "MCP go-sdk 채택" 참조) |
 | IPC | Unix socket | MCP proxy daemon은 Unix socket 사용. localhost HTTP는 future worker 필요 시 검토 |
-| State 저장 | 표준 library JSON 파일 + `flock` | `HARNESS_STATE_DIR` 또는 `~/.local/state/agent-harness/`; 동시성은 `golang.org/x/sys` flock으로 직렬화 |
+| State 저장 | SQLite (`modernc.org/sqlite`, pure Go) | `HARNESS_STATE_DIR` 또는 `~/.local/state/agent-harness/`; state root마다 `harness.db`(WAL, records(bucket,id,data) JSON blob) + `harness.lock.db`(BEGIN IMMEDIATE span lock). 동시성은 per-root sqlstore span으로 직렬화 |
 | Testing | 표준 `testing`, golden file, `net/http/httptest` | 외부 agent host 없이 core contract 검증; `httptest`는 13개 파일에서 사용 중(대부분 `*_test.go`) |
 
 직접 의존성(`go.mod`): `golang.org/x/term`, `golang.org/x/sys`, `github.com/modelcontextprotocol/go-sdk` v1.6.1.

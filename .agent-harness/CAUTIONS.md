@@ -412,3 +412,18 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
   - Nested parent/child/pool locks — rejected because lock ordering is hard to prove and same-entity re-entry can self-deadlock.
   - Schema-version bump for additive fields — rejected until destructive migration or incompatible read semantics are required.
   - PID-based worker ownership — rejected because agents may run across host sessions and compaction; timestamp leases are portable and recoverable.
+
+## 2026-07-07 — SQLite sqlstore span 규율: 중첩 금지, per-root 직렬화, fresh start
+
+- Kind: `caution`
+- Source: JSON+flock → sqlite 전면 전환 세션 (사용자 결정: 전체 일괄 전환 + fresh start)
+- Summary: 모든 상태 저장/락은 `internal/core/sqlstore`를 통해야 하며, span은 state root 단위로 직렬화되고 절대 중첩할 수 없다. 레거시 JSON/lock 파일은 무시된다(마이그레이션 없음).
+- Context: 5개 with*Lock 계열(issueops, session, state, workpool, worker)이 전부 sqlstore span으로 이동했다. flock 시절엔 per-entity 락이라 서로 다른 entity 락 중첩이 기술적으로 가능했지만, sqlite span은 per-root라 같은 root의 어떤 span 안에서든 다른 span 진입은 in-process mutex self-deadlock이다.
+- Resolution: with*Lock 콜백 안에서 같은 state root의 다른 with*Lock/WithKeyLock/withSessionLock 계열 호출 금지 — multi-entity 작업은 순차 single-span 단계 + read-repair로 유지한다. 새 저장 표면은 파일 I/O가 아니라 sqlstore bucket(Get/Put/List/Delete)으로 추가한다. `harness.db`/`harness.lock.db`와 그 sidecar(-wal/-shm/-journal)는 삭제하지 않는다(락 db는 flock inode 규칙의 후계자). 테스트 픽스처는 raw 파일 쓰기 대신 `sqlstore.Open(dir).Put(bucket, id, raw)`로 심는다. 레거시 `<key>.json`/`.lock`/`.state-lock` 파일은 fresh start 정책상 읽지도 지우지도 않는다(doctor는 무시).
+- Evidence:
+  - internal/core/sqlstore/sqlstore.go WithSpan 주석과 cross-handle 직렬화 테스트
+  - internal/core/issueops/issueops_lock.go, internal/core/state/state_lock.go의 span 계약 주석
+  - .agent-harness/ADR.md "State storage moves from JSON files + flock to SQLite"
+- Alternatives / rejected options:
+  - per-entity sqlite 락 db — 거부: 파일 수가 flock 시절로 회귀하고 span 규율 단순성이 사라진다.
+  - 레거시 JSON 자동 마이그레이션 — 거부(사용자 결정): fresh start; 필요 시 수동 재생성이 더 단순하다.
