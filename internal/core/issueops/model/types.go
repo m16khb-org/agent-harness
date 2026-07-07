@@ -299,6 +299,26 @@ type IssueOpsRegressEvent struct {
 	At        string        `json:"at"`
 }
 
+type IssueOpsDelegationContract struct {
+	ParentCycleID      string   `json:"parent_cycle_id"`
+	TaskScope          string   `json:"task_scope"`
+	AcceptanceCriteria []string `json:"acceptance_criteria"`
+	ParentPlanPath     string   `json:"parent_plan_path,omitempty"`
+	ChildIssueURL      string   `json:"child_issue_url,omitempty"`
+	DelegatedAt        string   `json:"delegated_at"`
+}
+
+type IssueOpsChildCycleRef struct {
+	CycleID            string   `json:"cycle_id"`
+	Branch             string   `json:"branch"`
+	Title              string   `json:"title,omitempty"`
+	ChildIssueURL      string   `json:"child_issue_url,omitempty"`
+	CreatedAt          string   `json:"created_at"`
+	ValidationVerdict  string   `json:"validation_verdict,omitempty"`
+	ValidationEvidence []string `json:"validation_evidence,omitempty"`
+	ValidatedAt        string   `json:"validated_at,omitempty"`
+}
+
 const IssueOpsCurrentSchemaVersion = 1
 
 type IssueOpsRecord struct {
@@ -325,6 +345,8 @@ type IssueOpsRecord struct {
 	DevilsAdvocateReview    *IssueOpsDevilsAdvocateReview       `json:"devils_advocate_review,omitempty"`
 	Feedback                []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
 	RegressEvents           []IssueOpsRegressEvent              `json:"regress_events,omitempty"`
+	Delegation              *IssueOpsDelegationContract         `json:"delegation,omitempty"`
+	ChildCycles             []IssueOpsChildCycleRef             `json:"child_cycles,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`
