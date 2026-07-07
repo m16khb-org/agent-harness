@@ -21,7 +21,7 @@ func runIssueOpsDevilsAdvocate(args []string) error {
 	waive := fs.Bool("waive", false, "explicitly waive a stop/revise verdict")
 	rationale := fs.String("waiver-rationale", "", "rationale required when --waive is set")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	var findings sliceFlag
+	var findings repeatedFlag
 	fs.Var(&findings, "finding", "surfaced problem (repeatable)")
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err

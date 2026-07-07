@@ -20,10 +20,10 @@ func runIssueOpsCompatibility(args []string) error {
 	rollbackPlan := fs.String("rollback-plan", "", "rollback plan if compatibility or side effects break")
 	approved := fs.Bool("approved", false, "approve compatibility and side-effect review")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	var backwardCompatibility sliceFlag
-	var sideEffects sliceFlag
-	var verification sliceFlag
-	var blockers sliceFlag
+	var backwardCompatibility repeatedFlag
+	var sideEffects repeatedFlag
+	var verification repeatedFlag
+	var blockers repeatedFlag
 	fs.Var(&backwardCompatibility, "backward-compatibility", "backward compatibility finding (repeatable)")
 	fs.Var(&sideEffects, "side-effect", "side-effect finding (repeatable)")
 	fs.Var(&verification, "verification", "verification evidence (repeatable)")

@@ -19,9 +19,9 @@ func runIssueOpsDomainReview(args []string) error {
 	id := fs.String("id", "", "issueops id")
 	modelFit := fs.String("model-fit", "", "how the change fits the current domain model")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	var terminology sliceFlag
-	var risks sliceFlag
-	var uncertainties sliceFlag
+	var terminology repeatedFlag
+	var risks repeatedFlag
+	var uncertainties repeatedFlag
 	fs.Var(&terminology, "terminology", "domain terminology note (repeatable)")
 	fs.Var(&risks, "risk", "domain risk (repeatable)")
 	fs.Var(&uncertainties, "uncertainty", "unresolved uncertainty (repeatable)")
@@ -48,8 +48,8 @@ func runIssueOpsAISlopClean(args []string) error {
 	fs := flag.NewFlagSet("issueops ai-slop-clean record", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	var categories sliceFlag
-	var verification sliceFlag
+	var categories repeatedFlag
+	var verification repeatedFlag
 	fs.Var(&categories, "category", "cleanup category checked or cleaned (repeatable)")
 	fs.Var(&verification, "verification", "verification rerun after cleanup (repeatable)")
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {

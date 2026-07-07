@@ -24,28 +24,6 @@ func TestRepeatedFlagRoundTripsRepeatedValues(t *testing.T) {
 	}
 }
 
-// TestSliceFlagIsRepeatedFlagAlias proves the duplicate flag type collapsed to a
-// single canonical type: sliceFlag is an alias of repeatedFlag, so it shares the
-// same Set/String behavior and the same "," separator.
-func TestSliceFlagIsRepeatedFlagAlias(t *testing.T) {
-	var alias sliceFlag
-	if err := alias.Set("x"); err != nil {
-		t.Fatalf("alias.Set: %v", err)
-	}
-	if err := alias.Set("y"); err != nil {
-		t.Fatalf("alias.Set: %v", err)
-	}
-	if got, want := alias.String(), "x,y"; got != want {
-		t.Fatalf("alias String() = %q, want %q", got, want)
-	}
-	// A repeatedFlag value is assignable to a sliceFlag variable (and vice
-	// versa) only because they are the same type, not merely convertible.
-	var canonical repeatedFlag = alias
-	if got, want := canonical.String(), "x,y"; got != want {
-		t.Fatalf("canonical String() = %q, want %q", got, want)
-	}
-}
-
 // TestIssueOpsUsageListsNewlyAddedSubcommands guards the usage text against the
 // docs-drift regression: every subcommand registered in issueOpsSubcommands that
 // the audit found missing must appear in issueOpsUsage().

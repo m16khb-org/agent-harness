@@ -24,9 +24,9 @@ func runIssueOpsExecution(args []string) error {
 	subagentRationale := fs.String("subagent-rationale", "", "why sub-agents are not used, or the top-level planned-use rationale")
 	subagentPlanFile := fs.String("subagent-plan-file", "", "strict JSON file containing an array of sub-agent plans")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	var autoProceed sliceFlag
-	var hookBlocked sliceFlag
-	var humanGates sliceFlag
+	var autoProceed repeatedFlag
+	var hookBlocked repeatedFlag
+	var humanGates repeatedFlag
 	fs.Var(&autoProceed, "auto", "auto-proceed condition (repeatable)")
 	fs.Var(&hookBlocked, "hook-block", "work hooks must not perform (repeatable)")
 	fs.Var(&humanGates, "human-gate", "human-in-the-loop condition (repeatable)")

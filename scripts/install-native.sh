@@ -48,10 +48,6 @@ for arg in "$@"; do
       usage
       exit 0
       ;;
-    --with-upstream-tools|--skip-upstream-tools|--without-upstream-tools|--sync)
-      log "removed option: ${arg}"
-      exit 2
-      ;;
     --skip-build)
       SKIP_BUILD=1
       ;;

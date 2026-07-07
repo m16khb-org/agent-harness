@@ -426,6 +426,30 @@ These scenarios should be manually verified after Phase 1+2 fixes:
 2. Force-release with minimal reason → verify rejected (after Phase 3 fix)
 3. Force-release with proper reason → verify `done` phase, `ForceReleasedAt`, `ForceReleaseReason`, `OrphanWorktreePath`
 
+### Reconciliation (2026-07-07)
+
+Last reconciled against the local Task 16 working tree on 2026-07-07. Two
+dogfood paths found real strict-readiness gaps and were fixed before the final
+verification battery.
+
+| ID | Finding | Resolution and evidence |
+|----|---------|-------------------------|
+| B1 | CLI/MCP `issueops pr-readiness --strict` used the record-only strict readiness path, so parent cycles did not report incomplete linked children. | Added `IssueOpsStrictPRReadinessWithState` and switched CLI/MCP strict handlers to use it. Regression: `TestCLIIssueOpsStrictPRReadinessReportsIncompleteChildren`. Dogfood transcript: `/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.MRaiV8w3i4/b1-s1.txt`; parent `io-0fe5ef5d6859`, children `io-bf0c579fad54` and `io-4e6b583e1029`; after one child completed, strict readiness returned `child_incomplete:io-4e6b583e1029`; after both completed, it returned ready. |
+| B2 | `workpool close --force` still blocked parent strict readiness because `poolIncomplete` inspected unfinished tasks after a pool was closed. | Closed pools now clear the parent pool gate regardless of unfinished task status; open pools still block. Regression: `TestIssueOpsStrictPRReadinessClearsAfterForceClosedPool`. Dogfood transcript: `/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.5GoAXy59sc/b2-s2.txt`; parent `io-3cac24a57923`, pool `wp-fa1810391b61`; before close missing included `pool_incomplete:wp-fa1810391b61`, after force close it did not. |
+| B3 | Standalone install/update still had old third-party compatibility cleanup surfaces: Codex plugin cache patching for companion tools, removed upstream flag handling in `install-native.sh`, a Stop-hook auto-proceed alias, and an unused external-LLM Stop gate. | Removed those surfaces rather than retaining deprecated/no-op paths. Verification included targeted adapter/update/hook tests and a runtime `agent-harness update --path-mode=skip --json` readback checked for old upstream/compatibility terms. |
+
+Verification run:
+
+```text
+go test ./cmd/harness/issueopscli -run TestCLIIssueOpsStrictPRReadinessReportsIncompleteChildren -count=1
+go test ./internal/core -run TestIssueOpsStrictPRReadinessClearsAfterForceClosedPool -count=1
+go test ./cmd/harness/hookcli ./internal/core/nextaction ./internal/core/lifecycle ./cmd/harness/issueopscli ./internal/adapter/codex ./internal/adapter ./cmd/harness/updatecli ./cmd/harness/installcli -count=1
+Z_AI_API_KEY= go test ./... -count=1
+go test -p 1 -timeout 20m ./... -count=1
+go test -race -p 1 -timeout 20m ./... -count=1
+go build -o bin/agent-harness ./cmd/harness
+```
+
 ---
 
 ## Appendix B: Files Touched by This Audit

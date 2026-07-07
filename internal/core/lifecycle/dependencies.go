@@ -38,7 +38,6 @@ type NextActionJudgementTriggerResult = nextaction.NextActionJudgementTriggerRes
 type NumberedNextActionsDecisionResult = nextaction.NumberedNextActionsDecisionResult
 type NextActionCandidate = nextaction.NextActionCandidate
 type NextActionAutoProceedResult = nextaction.NextActionAutoProceedResult
-type NextActionAutoProceedLLMRequest = nextaction.NextActionAutoProceedLLMRequest
 
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsStartRequest = issueops.IssueOpsStartRequest
@@ -80,10 +79,6 @@ func IsNoAutoProceedJudgement(message string) bool {
 
 func EvaluateNextActionAutoProceed(message string, threshold float64) NextActionAutoProceedResult {
 	return nextaction.EvaluateNextActionAutoProceed(message, threshold)
-}
-
-func EvaluateNextActionAutoProceedLLM(req NextActionAutoProceedLLMRequest, threshold float64) (NextActionAutoProceedResult, error) {
-	return nextaction.EvaluateNextActionAutoProceedLLM(req, threshold)
 }
 
 func IssueOpsStateRoot() string {

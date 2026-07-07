@@ -137,34 +137,6 @@ func TestRunUpdateAndBootstrapForwardToInstallScript(t *testing.T) {
 	}
 }
 
-func TestRunInstallScriptCommandRejectsRemovedUpstreamFlags(t *testing.T) {
-	root := t.TempDir()
-	t.Setenv("HARNESS_ROOT", root)
-	if err := os.MkdirAll(filepath.Join(root, "scripts"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "scripts", "install-native.sh"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	restore := stubInstallScriptCommandRunner(t, func(name string, args ...string) error {
-		t.Fatalf("removed upstream flags must fail before invoking install script: %s %#v", name, args)
-		return nil
-	})
-	defer restore()
-
-	for _, args := range [][]string{
-		{"--with-upstream-tools"},
-		{"--skip-upstream-tools"},
-		{"--without-upstream-tools"},
-		{"--sync"},
-	} {
-		if err := runInstallScriptCommand("update", args); err == nil {
-			t.Fatalf("runInstallScriptCommand(%v) succeeded, want removed-flag error", args)
-		}
-	}
-}
-
 func TestRunInstallScriptCommandSkipsRuntimeProcessRefreshOnDryRun(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HARNESS_ROOT", root)

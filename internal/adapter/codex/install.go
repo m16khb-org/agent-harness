@@ -31,11 +31,6 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	hooksTemplatePath := filepath.Join(req.Root, "configs", "codex", "hooks.json")
 	plan.File(installutil.WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/agent-harness"), 0o644, req.DryRun))
 
-	patchedFiles, patchMessages, err := patchCodexPluginHookCompatibility(req)
-	plan.Files(patchedFiles)
-	plan.Messages(patchMessages)
-	plan.Err(err)
-
 	if req.DryRun {
 		plan.Message("dry-run: planned Codex user skill links, MCP config, and lifecycle hooks without writing")
 	}

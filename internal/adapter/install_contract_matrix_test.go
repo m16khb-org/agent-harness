@@ -135,7 +135,6 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 func TestInstallNativeScriptDoesNotWireCompanionTools(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
 	for _, gone := range []string{
-		"npx -y claude-mem@latest install --ide \"$ide\" --provider claude --runtime worker --no-auto-start",
 		"install_claude_mem_for_ide \"codex-cli\"",
 		"install_claude_mem_for_ide \"claude-code\"",
 		"ensure_codex_plugin \"claude-mem@claude-mem-local\"",
@@ -151,8 +150,6 @@ func TestInstallNativeScriptDoesNotWireCompanionTools(t *testing.T) {
 		"ensure_claude_marketplace \"agentmemory\"",
 		"ensure_claude_plugin \"agentmemory@agentmemory\"",
 		"npm install -g @agentmemory/agentmemory",
-		`LLM_WIKI_SOURCE="github.com/m16khb/llm-wiki/cmd/llm-wiki@latest"`,
-		`GOBIN="$(dirname "$LLM_WIKI_BIN")" go install "$LLM_WIKI_SOURCE"`,
 		`[mcp_servers.llm-wiki]`,
 		`[mcp_servers.llm-wiki.env]`,
 		`LLM_WIKI_VAULT = {vault}`,
@@ -169,10 +166,6 @@ func TestInstallNativeScriptDoesNotWireCompanionTools(t *testing.T) {
 		`llm-wiki Codex source is nvk/llm-wiki`,
 		`llm-wiki Claude source is nvk/llm-wiki`,
 		"lazycodex-ai",
-		"LazyCodex",
-		"install_lazycodex",
-		"install_upstream_tools",
-		"dry-run: would install/update upstream tools",
 		"HARNESS_INSTALL_UPSTREAM_TOOLS",
 		"HARNESS_INIT_CODEGRAPH",
 		"codegraph install --target=codex,claude",

@@ -19,7 +19,6 @@ func runHookStop(args []string) error {
 	enforceNumberedNextActions := fs.Bool("enforce-numbered-next-actions", false, "block Stop when the final response lacks 1/2/3 next-action choices")
 	enforceEngelbartCanvasSections := fs.Bool("enforce-engelbart-canvas-sections", false, "block Stop when Engelbart meeting Canvas output lacks required appendix/transcript sections")
 	relayNextActionJudgement := fs.Bool("relay-next-action-judgement", false, "re-enter the main agent when the final response contains inspectable next-action facts")
-	autoProceedNextActions := fs.Bool("auto-proceed-next-actions", false, "deprecated alias for --relay-next-action-judgement")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -43,11 +42,8 @@ func runHookStop(args []string) error {
 		*enforceNumberedNextActions,
 		"stop",
 	)
-	// --auto-proceed-next-actions is retained only as a compatibility alias. This
-	// hook no longer auto-proceeds or judges choices; it detects that an explicit
-	// next-action review point exists and relays observed facts back to the main agent.
 	stopHookActive := hookinput.Bool(stdin, "stop_hook_active")
-	nextActionTriggerEnabled := *relayNextActionJudgement || *autoProceedNextActions
+	nextActionTriggerEnabled := *relayNextActionJudgement
 	nextActionTrigger := core.BuildNextActionJudgementTrigger(message)
 	noAutoProceedJudgement := core.IsNoAutoProceedJudgement(message)
 	engelbartCanvasBlock, engelbartCanvasReason := buildEngelbartCanvasSectionsBlock(message, transcriptPath, *enforceEngelbartCanvasSections)
@@ -65,12 +61,6 @@ func runHookStop(args []string) error {
 		})
 	}
 	ho := hookadapter.Resolve(strings.TrimSpace(*host))
-	// The external-LLM gate (core.EvaluateNextActionAutoProceedLLM) is intentionally
-	// not called here: synchronous external LLM calls measured ~13-25s, which is
-	// unusable inside a Stop hook's latency budget. The hook also does not replace
-	// that LLM with a local scorer. It reports only that the response reached an
-	// explicit next-action judgement point and sends the observed facts to the main
-	// agent, which owns safety, reversibility, alignment, and proceed/ask judgement.
 	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent {
 		relayRecord := core.RecordStopNextActionRelay(parsedRepo, nextActionTrigger)
 		if !relayRecord.ShouldRelay {

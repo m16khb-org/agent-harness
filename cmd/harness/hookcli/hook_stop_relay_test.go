@@ -86,21 +86,6 @@ func TestRunHookPostToolUseDoesNotClearSuppressedNextActionRelay(t *testing.T) {
 	}
 }
 
-func TestRunHookStopKeepsAutoProceedFlagAsRelayAlias(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := t.TempDir()
-	msg := "선택지:\\n1. 진행: 구현을 계속합니다. (추천)\\n2. 축소 진행: 일부만 합니다.\\n3. 보류: 멈춥니다."
-	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
-		return runHookStop([]string{"--auto-proceed-next-actions"})
-	})
-	if obj["continue"] != true || obj["decision"] != "block" {
-		t.Fatalf("deprecated auto-proceed flag should remain a relay alias, got %+v", obj)
-	}
-	if reason, _ := obj["reason"].(string); !strings.Contains(reason, "판단 지점") || strings.Contains(reason, "점수") {
-		t.Fatalf("expected alias to use factual relay wording, got %q", reason)
-	}
-}
-
 func TestRunHookStopRelaysNextActionJudgementWhenStopHookActiveHasValidChoices(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

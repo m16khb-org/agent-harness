@@ -15,9 +15,3 @@ func (f *repeatedFlag) Set(value string) error {
 	*f = append(*f, value)
 	return nil
 }
-
-// sliceFlag is a deprecated alias for repeatedFlag, retained so the existing
-// callers in this package (domain-review, ai-slop-clean, compatibility, and
-// execution) keep compiling without churn. It is the same type with the same
-// "," String() format; new code should use repeatedFlag directly.
-type sliceFlag = repeatedFlag

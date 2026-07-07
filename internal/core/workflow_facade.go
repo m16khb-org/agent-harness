@@ -125,7 +125,6 @@ type NumberedNextActionsDecisionResult = nextaction.NumberedNextActionsDecisionR
 type NextActionCandidate = nextaction.NextActionCandidate
 type NextActionJudgementTriggerResult = nextaction.NextActionJudgementTriggerResult
 type NextActionAutoProceedResult = nextaction.NextActionAutoProceedResult
-type NextActionAutoProceedLLMRequest = nextaction.NextActionAutoProceedLLMRequest
 
 func BuildNumberedNextActionsDecision(message string, enforce bool, source string) NumberedNextActionsDecisionResult {
 	return nextaction.BuildNumberedNextActionsDecision(message, enforce, source)
@@ -145,10 +144,6 @@ func IsNoAutoProceedJudgement(message string) bool {
 
 func EvaluateNextActionAutoProceed(message string, threshold float64) NextActionAutoProceedResult {
 	return nextaction.EvaluateNextActionAutoProceed(message, threshold)
-}
-
-func EvaluateNextActionAutoProceedLLM(req NextActionAutoProceedLLMRequest, threshold float64) (NextActionAutoProceedResult, error) {
-	return nextaction.EvaluateNextActionAutoProceedLLM(req, threshold)
 }
 
 const (
