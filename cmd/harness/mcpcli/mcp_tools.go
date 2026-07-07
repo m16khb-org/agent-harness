@@ -46,6 +46,7 @@ func HandleToolCall(params json.RawMessage) (any, *RPCError) {
 		handleProjectMCPToolCall,
 		handlePolicyStateMCPToolCall,
 		handleIssueOpsMCPToolCall,
+		handleWorkpoolMCPToolCall,
 		handleAssistantWorkerMCPToolCall,
 		handleSelfLoopMCPToolCall,
 	} {

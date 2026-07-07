@@ -226,6 +226,36 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["worker_enqueue"] = runCLIJSONContract(t, replacements, func() error {
 		return runWorker([]string{"enqueue", "--kind", "contract", "--payload", "TOKEN=secret-value", "--json"})
 	})
+	workpoolCreateStdout := captureStdoutForContract(t, func() error {
+		return runWorkpool([]string{"create", "--repo", workspaceDir, "--name", "contract cli pool", "--size", "2", "--lease-ttl", "1h", "--json"})
+	})
+	var workpoolCreateRaw map[string]any
+	if err := json.Unmarshal([]byte(workpoolCreateStdout), &workpoolCreateRaw); err != nil {
+		t.Fatalf("unmarshal workpool create JSON %q: %v", workpoolCreateStdout, err)
+	}
+	workpoolID, ok := workpoolCreateRaw["id"].(string)
+	if !ok || workpoolID == "" {
+		t.Fatalf("workpool create missing id: %#v", workpoolCreateRaw)
+	}
+	replacements[workpoolID] = "$WORKPOOL_ID"
+	cliSnapshot["workpool_create"] = responsecontract.NormalizeContractValue(workpoolCreateRaw, replacements)
+	workpoolTaskStdout := captureStdoutForContract(t, func() error {
+		return runWorkpool([]string{"add-task", "--pool", workpoolID, "--title", "contract task", "--instructions", "check response contract", "--scope", "contract fixture", "--acceptance", "JSON is stable", "--json"})
+	})
+	var workpoolTaskRaw map[string]any
+	if err := json.Unmarshal([]byte(workpoolTaskStdout), &workpoolTaskRaw); err != nil {
+		t.Fatalf("unmarshal workpool add-task JSON %q: %v", workpoolTaskStdout, err)
+	}
+	if workpoolTaskID, ok := workpoolTaskRaw["id"].(string); ok && workpoolTaskID != "" {
+		replacements[workpoolTaskID] = "$WORKTASK_ID"
+	}
+	cliSnapshot["workpool_add_task"] = responsecontract.NormalizeContractValue(workpoolTaskRaw, replacements)
+	cliSnapshot["workpool_status"] = runCLIJSONContract(t, replacements, func() error {
+		return runWorkpool([]string{"status", "--pool", workpoolID, "--json"})
+	})
+	cliSnapshot["workpool_close"] = runCLIJSONContract(t, replacements, func() error {
+		return runWorkpool([]string{"close", "--pool", workpoolID, "--force", "--reason", "contract fixture closes pending task", "--json"})
+	})
 	return cliSnapshot
 }
 

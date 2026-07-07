@@ -55,3 +55,11 @@ type AddTaskRequest struct {
 	Scope              []string
 	AcceptanceCriteria []string
 }
+
+type StatusResult struct {
+	OK     bool           `json:"ok"`
+	Pool   WorkPool       `json:"pool"`
+	Tasks  []WorkTask     `json:"tasks"`
+	Counts map[string]int `json:"counts"`
+	Reaped []WorkTask     `json:"reaped,omitempty"`
+}

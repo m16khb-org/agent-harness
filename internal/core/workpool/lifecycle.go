@@ -176,6 +176,44 @@ func Reap(poolID string) ([]WorkTask, error) {
 	return reaped, err
 }
 
+func Status(poolID string) (StatusResult, error) {
+	poolID, err := normalizePoolID(poolID)
+	if err != nil {
+		return StatusResult{OK: false}, err
+	}
+	result := StatusResult{OK: true, Counts: map[string]int{}}
+	err = withPoolLock(poolID, func() error {
+		pool, err := ReadPool(poolID)
+		if err != nil {
+			return err
+		}
+		reaped, err := reapExpiredLeasesLocked(pool)
+		if err != nil {
+			return err
+		}
+		tasks, err := ListTasks(poolID)
+		if err != nil {
+			return err
+		}
+		counts := map[string]int{}
+		for _, task := range tasks {
+			counts[task.Status]++
+		}
+		result = StatusResult{
+			OK:     true,
+			Pool:   pool,
+			Tasks:  tasks,
+			Counts: counts,
+			Reaped: reaped,
+		}
+		return nil
+	})
+	if err != nil {
+		result.OK = false
+	}
+	return result, err
+}
+
 func Close(poolID string, force bool, reason string) (WorkPool, error) {
 	poolID, err := normalizePoolID(poolID)
 	if err != nil {

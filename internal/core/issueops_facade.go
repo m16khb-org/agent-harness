@@ -1,6 +1,9 @@
 package core
 
 import (
+	"fmt"
+	"strings"
+
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/artifacttemplate"
 	"agent-harness/internal/core/workpool"
@@ -259,6 +262,17 @@ func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRec
 }
 
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
+	if IssueOpsPhase(strings.TrimSpace(to)) == IssueOpsPhasePR {
+		record, err := issueops.ReadIssueOps(stateRoot, id)
+		if err != nil {
+			return record, err
+		}
+		if record.Phase != IssueOpsPhasePR {
+			if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
+				return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
+			}
+		}
+	}
 	return issueops.AdvanceIssueOpsPhase(stateRoot, id, to)
 }
 
