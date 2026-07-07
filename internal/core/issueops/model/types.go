@@ -315,6 +315,7 @@ type IssueOpsChildCycleRef struct {
 	ChildIssueURL      string   `json:"child_issue_url,omitempty"`
 	CreatedAt          string   `json:"created_at"`
 	ValidationVerdict  string   `json:"validation_verdict,omitempty"`
+	ValidationReason   string   `json:"validation_reason,omitempty"`
 	ValidationEvidence []string `json:"validation_evidence,omitempty"`
 	ValidatedAt        string   `json:"validated_at,omitempty"`
 }
@@ -336,6 +337,39 @@ type IssueOpsChildStartResult struct {
 	ParentRef        IssueOpsChildCycleRef `json:"parent_ref"`
 	Guidance         string                `json:"guidance,omitempty"`
 	ChildLinkWarning string                `json:"child_link_warning,omitempty"`
+}
+
+type IssueOpsChildStatusEntry struct {
+	CycleID            string        `json:"cycle_id"`
+	Branch             string        `json:"branch,omitempty"`
+	Title              string        `json:"title,omitempty"`
+	ChildIssueURL      string        `json:"child_issue_url,omitempty"`
+	Phase              IssueOpsPhase `json:"phase,omitempty"`
+	LastActiveAt       string        `json:"last_active_at,omitempty"`
+	WorktreePath       string        `json:"worktree_path,omitempty"`
+	ValidationVerdict  string        `json:"validation_verdict,omitempty"`
+	ValidationReason   string        `json:"validation_reason,omitempty"`
+	ValidationEvidence []string      `json:"validation_evidence,omitempty"`
+	ValidatedAt        string        `json:"validated_at,omitempty"`
+	Indexed            bool          `json:"indexed"`
+	Scanned            bool          `json:"scanned"`
+	Orphaned           bool          `json:"orphaned,omitempty"`
+}
+
+type IssueOpsChildStatusResult struct {
+	OK             bool                       `json:"ok"`
+	ParentID       string                     `json:"parent_id"`
+	Children       []IssueOpsChildStatusEntry `json:"children"`
+	Repaired       bool                       `json:"repaired,omitempty"`
+	RepairAppended []string                   `json:"repair_appended,omitempty"`
+	Orphaned       []string                   `json:"orphaned,omitempty"`
+}
+
+type IssueOpsChildValidationResult struct {
+	OK        bool                  `json:"ok"`
+	ParentID  string                `json:"parent_id"`
+	ChildID   string                `json:"child_id"`
+	ParentRef IssueOpsChildCycleRef `json:"parent_ref"`
 }
 
 const IssueOpsCurrentSchemaVersion = 1

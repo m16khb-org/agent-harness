@@ -35,6 +35,9 @@ type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
 type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
 type IssueOpsChildStartRequest = issueops.IssueOpsChildStartRequest
 type IssueOpsChildStartResult = issueops.IssueOpsChildStartResult
+type IssueOpsChildStatusEntry = issueops.IssueOpsChildStatusEntry
+type IssueOpsChildStatusResult = issueops.IssueOpsChildStatusResult
+type IssueOpsChildValidationResult = issueops.IssueOpsChildValidationResult
 type IssueOpsReadiness = issueops.IssueOpsReadiness
 type IssueOpsCleanupStatusRequest = issueops.IssueOpsCleanupStatusRequest
 type IssueOpsCleanupStatus = issueops.IssueOpsCleanupStatus
@@ -128,6 +131,22 @@ func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, 
 
 func StartIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest) (IssueOpsChildStartResult, error) {
 	return issueops.StartIssueOpsChild(stateRoot, req)
+}
+
+func IssueOpsChildStatus(stateRoot, parentID string, repair bool) (IssueOpsChildStatusResult, error) {
+	return issueops.IssueOpsChildStatus(stateRoot, parentID, repair)
+}
+
+func AcceptIssueOpsChild(stateRoot, parentID, childID string, evidence []string) (IssueOpsChildValidationResult, error) {
+	return issueops.AcceptIssueOpsChild(stateRoot, parentID, childID, evidence)
+}
+
+func RejectIssueOpsChild(stateRoot, parentID, childID, reason string, evidence []string) (IssueOpsChildValidationResult, error) {
+	return issueops.RejectIssueOpsChild(stateRoot, parentID, childID, reason, evidence)
+}
+
+func DropIssueOpsChild(stateRoot, parentID, childID, reason string) (IssueOpsChildValidationResult, error) {
+	return issueops.DropIssueOpsChild(stateRoot, parentID, childID, reason)
 }
 
 func IssueOpsStatus(stateRoot, id string) (IssueOpsRecord, error) {
