@@ -96,3 +96,7 @@ func issueOpsStrictPRReadinessWithState(stateRoot string, record IssueOpsRecord)
 	ready.Ready = len(ready.Missing) == 0
 	return ready
 }
+
+func IssueOpsStrictPRReadinessWithState(stateRoot string, record IssueOpsRecord) IssueOpsReadiness {
+	return issueOpsStrictPRReadinessWithState(stateRoot, record)
+}

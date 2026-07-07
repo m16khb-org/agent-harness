@@ -331,7 +331,7 @@ func runIssueOpsPRReadiness(args []string) error {
 	}
 	readiness := core.IssueOpsPRReadiness(record)
 	if *strict {
-		readiness = core.IssueOpsStrictPRReadiness(record)
+		readiness = core.IssueOpsStrictPRReadinessWithState(core.IssueOpsStateRoot(), record)
 	}
 	if *jsonOut {
 		return printJSON(readiness)

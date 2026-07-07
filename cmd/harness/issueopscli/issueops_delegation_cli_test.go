@@ -135,6 +135,42 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 	}
 }
 
+func TestCLIIssueOpsStrictPRReadinessReportsIncompleteChildren(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIGitRepoForRemoteVerifyTest(t)
+	parent := startIssueOpsCLIReadyPRParentWithChild(t, repo, "123-parent-pr-readiness-child-gate")
+
+	startOut := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{
+			"child", "start",
+			"--parent", parent.ID,
+			"--branch", "123-child-pr-readiness-gate",
+			"--title", "child readiness gate task",
+			"--scope", "prove parent strict pr-readiness reports incomplete child",
+			"--acceptance", "parent pr-readiness sees child status",
+			"--json",
+		})
+	})
+	var started core.IssueOpsChildStartResult
+	if err := json.Unmarshal([]byte(startOut), &started); err != nil {
+		t.Fatalf("child start should return JSON: %v\n%s", err, startOut)
+	}
+	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseAISlopClean)); err != nil {
+		t.Fatal(err)
+	}
+
+	readinessOut := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"pr-readiness", "--id", parent.ID, "--strict", "--json"})
+	})
+	var readiness core.IssueOpsReadiness
+	if err := json.Unmarshal([]byte(readinessOut), &readiness); err != nil {
+		t.Fatalf("strict pr-readiness should return JSON: %v\n%s", err, readinessOut)
+	}
+	if !containsString(readiness.Missing, "child_incomplete:"+started.Child.ID) {
+		t.Fatalf("strict pr-readiness should include incomplete child gate, got %#v", readiness.Missing)
+	}
+}
+
 func startIssueOpsCLIReadyDelegationParent(t *testing.T, repo, branch string) core.IssueOpsRecord {
 	t.Helper()
 	out := captureStdoutForContract(t, func() error {

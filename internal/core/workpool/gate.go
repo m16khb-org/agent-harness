@@ -69,14 +69,5 @@ func poolIncomplete(pool WorkPool) (bool, error) {
 	if strings.TrimSpace(pool.Status) != "closed" {
 		return true, nil
 	}
-	tasks, err := ListTasks(pool.ID)
-	if err != nil {
-		return true, err
-	}
-	for _, task := range tasks {
-		if task.Status != "accepted" && task.Status != "dropped" {
-			return true, nil
-		}
-	}
 	return false, nil
 }

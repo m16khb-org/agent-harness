@@ -302,7 +302,7 @@ func handleMCPIssueOpsPRReadiness(args map[string]any) MCPToolOutcome {
 		return issueOpsMCPOutcome(nil, err, "IssueOps PR readiness failed")
 	}
 	if argmap.Bool(args, "strict") {
-		return mcpToolPayload(core.IssueOpsStrictPRReadiness(record))
+		return mcpToolPayload(core.IssueOpsStrictPRReadinessWithState(core.IssueOpsStateRoot(), record))
 	}
 	return mcpToolPayload(core.IssueOpsPRReadiness(record))
 }

@@ -67,6 +67,31 @@ func TestIssueOpsStrictPRReadinessClearsAfterPoolClose(t *testing.T) {
 	}
 }
 
+func TestIssueOpsStrictPRReadinessClearsAfterForceClosedPool(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := readyIssueOpsRecordForPoolGateTest(t)
+	pool := writeCorePoolGatePool(t, record, "force-closed-pool", "active")
+	if _, err := workpool.AddTask(pool.ID, workpool.AddTaskRequest{
+		Title:        "remaining scoped update",
+		Instructions: "left incomplete by explicit force close",
+	}); err != nil {
+		t.Fatalf("AddTask: %v", err)
+	}
+
+	ready := IssueOpsStrictPRReadiness(record)
+	if ready.Ready || !containsCorePoolGateString(ready.Missing, "pool_incomplete:"+pool.ID) {
+		t.Fatalf("open linked pool should block strict readiness, got %+v", ready)
+	}
+	if _, err := workpool.Close(pool.ID, true, "force close documents abandoned pool work"); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	ready = IssueOpsStrictPRReadiness(record)
+	if !ready.Ready || containsCorePoolGateString(ready.Missing, "pool_incomplete:"+pool.ID) {
+		t.Fatalf("force-closed pool should clear strict readiness, got %+v", ready)
+	}
+}
+
 func readyIssueOpsRecordForPoolGateTest(t *testing.T) IssueOpsRecord {
 	t.Helper()
 	repo := initCorePoolGateRepo(t)

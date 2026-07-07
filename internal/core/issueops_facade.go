@@ -289,8 +289,15 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 }
 
 func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
-	ready := issueops.IssueOpsStrictPRReadiness(record)
-	missing, warnings := workpool.ParentGateMissing(record.ID)
+	return issueOpsStrictPRReadinessWithPoolGate(issueops.IssueOpsStrictPRReadiness(record), record.ID)
+}
+
+func IssueOpsStrictPRReadinessWithState(stateRoot string, record IssueOpsRecord) IssueOpsReadiness {
+	return issueOpsStrictPRReadinessWithPoolGate(issueops.IssueOpsStrictPRReadinessWithState(stateRoot, record), record.ID)
+}
+
+func issueOpsStrictPRReadinessWithPoolGate(ready IssueOpsReadiness, parentID string) IssueOpsReadiness {
+	missing, warnings := workpool.ParentGateMissing(parentID)
 	if len(missing) == 0 && len(warnings) == 0 {
 		return ready
 	}
