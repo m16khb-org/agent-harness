@@ -2,10 +2,10 @@ package workpool
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/sqlstore"
 )
 
 func TestWorkPoolRoundTripAndOmitempty(t *testing.T) {
@@ -82,8 +82,11 @@ func TestReadPoolRefusesFutureSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(StateRoot(), pool.ID+".json")
-	if err := os.WriteFile(path, []byte(`{"ok":true,"schema_version":99,"id":"`+pool.ID+`"}`+"\n"), 0o600); err != nil {
+	db, err := sqlstore.Open(StateRoot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("pool", pool.ID, []byte(`{"ok":true,"schema_version":99,"id":"`+pool.ID+`"}`+"\n")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ReadPool(pool.ID); err == nil || !strings.Contains(err.Error(), "unsupported workpool schema_version") {
@@ -101,8 +104,11 @@ func TestReadTaskRefusesFutureSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(StateRoot(), pool.ID, task.ID+".json")
-	if err := os.WriteFile(path, []byte(`{"ok":true,"schema_version":99,"id":"`+task.ID+`","pool_id":"`+pool.ID+`"}`+"\n"), 0o600); err != nil {
+	db, err := sqlstore.Open(StateRoot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("task:"+pool.ID, task.ID, []byte(`{"ok":true,"schema_version":99,"id":"`+task.ID+`","pool_id":"`+pool.ID+`"}`+"\n")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ReadTask(pool.ID, task.ID); err == nil || !strings.Contains(err.Error(), "unsupported workpool schema_version") {

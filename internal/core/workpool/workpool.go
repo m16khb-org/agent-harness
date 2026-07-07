@@ -2,7 +2,6 @@ package workpool
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -125,16 +124,22 @@ func AddTask(poolID string, req AddTaskRequest) (WorkTask, error) {
 	return task, err
 }
 
+// withPoolLock serializes a pool-level read-modify-write span via the workpool
+// state root's sqlstore span lock. Spans must not nest (see sqlstore.WithSpan).
 func withPoolLock(poolID string, fn func() error) error {
 	if _, err := normalizePoolID(poolID); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(StateRoot(), 0o700); err != nil {
+	db, err := openStore()
+	if err != nil {
 		return err
 	}
-	return withFileLock(filepath.Join(StateRoot(), poolID+".lock"), fn)
+	return db.WithSpan(fn)
 }
 
+// withTaskLock serializes a task-level read-modify-write span. It shares the
+// same per-state-root span as withPoolLock, so it must never be entered from
+// inside a pool span (the codebase keeps pool and task spans sequential).
 func withTaskLock(poolID, taskID string, fn func() error) error {
 	if _, err := normalizePoolID(poolID); err != nil {
 		return err
@@ -142,11 +147,11 @@ func withTaskLock(poolID, taskID string, fn func() error) error {
 	if _, err := normalizeTaskID(taskID); err != nil {
 		return err
 	}
-	dir := filepath.Join(StateRoot(), poolID)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	db, err := openStore()
+	if err != nil {
 		return err
 	}
-	return withFileLock(filepath.Join(dir, taskID+".lock"), fn)
+	return db.WithSpan(fn)
 }
 
 func validateParentCycle(parentCycleID, poolName string) error {

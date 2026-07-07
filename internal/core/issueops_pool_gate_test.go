@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/core/workpool"
 )
 
@@ -152,20 +153,21 @@ func writeCorePoolGatePool(t *testing.T, record IssueOpsRecord, name, status str
 		CreatedAt:     "2026-07-07T00:00:00Z",
 		UpdatedAt:     "2026-07-07T00:00:00Z",
 	}
-	if err := os.MkdirAll(workpool.StateRoot(), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	writeCorePoolGateJSON(t, filepath.Join(workpool.StateRoot(), pool.ID+".json"), pool)
+	writeCorePoolGateRow(t, pool)
 	return pool
 }
 
-func writeCorePoolGateJSON(t *testing.T, path string, value any) {
+func writeCorePoolGateRow(t *testing.T, pool workpool.WorkPool) {
 	t.Helper()
-	data, err := json.MarshalIndent(value, "", "  ")
+	data, err := json.MarshalIndent(pool, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, append(data, '\n'), 0o600); err != nil {
+	db, err := sqlstore.Open(workpool.StateRoot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("pool", pool.ID, append(data, '\n')); err != nil {
 		t.Fatal(err)
 	}
 }

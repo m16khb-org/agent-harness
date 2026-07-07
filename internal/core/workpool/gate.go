@@ -2,7 +2,6 @@ package workpool
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 )
@@ -34,23 +33,12 @@ func ParentGateMissing(parentCycleID string) ([]string, []string) {
 }
 
 func linkedPoolsForParent(parentCycleID string) ([]WorkPool, error) {
-	entries, err := os.ReadDir(StateRoot())
+	ids, err := ListPoolIDs()
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	pools := []WorkPool{}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if !strings.HasPrefix(name, "wp-") || !strings.HasSuffix(name, ".json") {
-			continue
-		}
-		poolID := strings.TrimSuffix(name, ".json")
+	for _, poolID := range ids {
 		pool, err := ReadPool(poolID)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", poolID, err)
