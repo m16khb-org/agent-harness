@@ -149,13 +149,16 @@ func TestMCPIssueOpsPrepareWorktreeToolsRunsCodeGraphAgainstWorktree(t *testing.
 	bin := t.TempDir()
 	logPath := filepath.Join(t.TempDir(), "codegraph.log")
 	codegraph := filepath.Join(bin, "codegraph")
-	if err := os.WriteFile(codegraph, []byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+logPath+"'\ncase \"$1\" in\nstatus) exit 1 ;;\ninit) exit 0 ;;\n*) exit 0 ;;\nesac\n"), 0o755); err != nil {
+	if err := os.WriteFile(codegraph, []byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+logPath+"'\ncase \"$1\" in\nstatus) exit 0 ;;\n*) exit 0 ;;\nesac\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	repo := makeIssueOpsCLIRepoForTest(t, "mcp-prepare")
 	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
+	if err := os.Mkdir(filepath.Join(worktree, ".codegraph"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": repo, "branch": "1-demo"})
 	id, ok := start["id"].(string)
 	if !ok || id == "" {
@@ -186,8 +189,8 @@ func TestMCPIssueOpsPrepareWorktreeToolsRunsCodeGraphAgainstWorktree(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(log), "status "+worktree) || !strings.Contains(string(log), "init -i "+worktree) {
-		t.Fatalf("codegraph should be checked and initialized against worktree, got:\n%s", log)
+	if !strings.Contains(string(log), "status "+worktree) || strings.Contains(string(log), "init -i "+worktree) {
+		t.Fatalf("codegraph should be checked but not initialized against worktree, got:\n%s", log)
 	}
 }
 
