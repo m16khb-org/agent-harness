@@ -209,7 +209,7 @@
     "name": "project_docs_record"
   },
   {
-    "description": "Run the API documentation review gate on staged or explicit controller/DTO/handler/OpenAPI files. By default it reviews only git staged API candidate files and does not fail unrelated legacy Swagger/OpenAPI debt. Use for endpoint, controller, DTO, schema, or OpenAPI changes.",
+    "description": "Render the API documentation host-agent review prompt/schema, or record a supplied JSON review result for staged or explicit controller/DTO/handler/OpenAPI files. By default it scopes to git staged API candidate files and does not fail unrelated legacy Swagger/OpenAPI debt.",
     "inputSchema": {
       "properties": {
         "all": {
@@ -227,24 +227,16 @@
           },
           "type": "array"
         },
-        "model": {
-          "description": "Codex model. Defaults to gpt-5.5.",
-          "type": "string"
-        },
         "prompt_file": {
           "description": "Optional project-specific Swagger/OpenAPI rules.",
-          "type": "string"
-        },
-        "reasoning": {
-          "description": "Codex reasoning effort. Defaults to medium.",
           "type": "string"
         },
         "repo": {
           "description": "Target git repository path. Defaults to current directory.",
           "type": "string"
         },
-        "timeout": {
-          "description": "Timeout such as 3m. Defaults to 3m.",
+        "result_file": {
+          "description": "Optional host-agent JSON review result to record as evidence. Omit to render prompt/schema for the host agent.",
           "type": "string"
         }
       },

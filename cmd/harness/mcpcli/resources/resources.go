@@ -27,7 +27,7 @@ func MCPResources() []map[string]any {
 func apiDocGuidanceText() string {
 	return `# API Documentation Guidance
 
-Use deterministic ` + "`agent-harness api-doc static-check`" + `/MCP ` + "`api_doc_static_check`" + ` first, then agent-backed ` + "`agent-harness api-doc review`" + `/MCP ` + "`api_doc_review`" + ` whenever endpoint, controller, handler, DTO, schema, or OpenAPI files change.
+Use deterministic ` + "`agent-harness api-doc static-check`" + `/MCP ` + "`api_doc_static_check`" + ` first, then ` + "`agent-harness api-doc review`" + `/MCP ` + "`api_doc_review`" + ` to render the host-agent prompt/schema or record a supplied result file whenever endpoint, controller, handler, DTO, schema, or OpenAPI files change.
 
 Default scope is staged API candidate files. Do not fail unrelated legacy Swagger/OpenAPI debt.
 Use ` + "`--all`" + ` or MCP ` + "`all: true`" + ` only for an explicit full tracked-file review.

@@ -245,7 +245,7 @@ Swagger/OpenAPI 검사는 decorator/comment 존재 여부만 보지 않는다. �
 
 ### Agent-backed verification boundary
 
-비즈니스 로직의 실제 404/403/409 가능성과 OpenAPI 누락 여부는 정적 테스트만으로 신뢰 있게 판정하지 않는다. 정적 테스트는 후보 파일 선택, `--all` wiring, prompt contract, MCP schema 같은 배선을 검증하고, 실제 API 문서 품질 판정은 `agent-harness api-doc review`/MCP `api_doc_static_check` 후 `api_doc_review`가 Codex 에이전트를 호출해 수행한다.
+비즈니스 로직의 실제 404/403/409 가능성과 OpenAPI 누락 여부는 정적 테스트만으로 신뢰 있게 판정하지 않는다. 정적 테스트는 후보 파일 선택, `--all` wiring, prompt contract, MCP schema 같은 배선을 검증하고, 실제 API 문서 품질 판정은 `agent-harness api-doc review`/MCP `api_doc_review`가 렌더한 prompt/schema를 host agent가 수행한 뒤 결과 JSON을 `--result`/`result_file`로 기록해 수행한다.
 
 ## Prompt contract tests
 

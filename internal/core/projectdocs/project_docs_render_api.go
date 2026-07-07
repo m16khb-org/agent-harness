@@ -10,8 +10,9 @@ This project-specific API documentation prompt is for agents and MCP routing whe
 ## Gate order
 
 1. Static gate: ` + "`agent-harness api-doc static-check --json`" + `
-2. Agent gate: ` + "`agent-harness api-doc review --json`" + `
-3. Combined gate: ` + "`agent-harness api-doc check --json`" + `
+2. Agent gate prompt/schema: ` + "`agent-harness api-doc review --json`" + `
+3. Agent gate evidence: ` + "`agent-harness api-doc review --result FILE --json`" + `
+4. Combined gate with evidence: ` + "`agent-harness api-doc check --result FILE --json`" + `
 
 Default scope is staged API candidate files. Scan all legacy debt only when ` + "`--all`" + ` is explicitly supplied.
 

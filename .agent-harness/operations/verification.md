@@ -46,16 +46,17 @@ agent-harness self-augment lesson --candidate reflexion-state-memory --lesson ".
 
 ## API Documentation Gate
 
-`agent-harness api-doc review` is a framework-agnostic AI gate for endpoint/DTO/OpenAPI documentation drift. By default it reviews staged API candidate files only.
+`agent-harness api-doc review` is a framework-agnostic host-agent review gate for endpoint/DTO/OpenAPI documentation drift. By default it scopes to staged API candidate files only. Without `--result`, it renders the prompt/schema the host agent must run. With `--result`, it records the host agent's JSON verdict as evidence.
 
 ```bash
-agent-harness api-doc review
-agent-harness api-doc check --json
+agent-harness api-doc review --json
+agent-harness api-doc review --result review.json --json
+agent-harness api-doc check --result review.json --json
 agent-harness api-doc review -- src/users/users.controller.ts internal/api/user_handler.go openapi.yaml
 agent-harness api-doc review --prompt-file docs/api-doc-rules.md
 ```
 
-The reviewer runs Codex non-interactively with `gpt-5.5` and `model_reasoning_effort=medium` by default, in read-only/no-approval mode. Project-specific strictness belongs in `--prompt-file`, not in harness core.
+Project-specific strictness belongs in `--prompt-file`, not in harness core.
 
 Target Node/Nest repos may use:
 

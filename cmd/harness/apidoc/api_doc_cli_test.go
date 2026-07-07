@@ -91,8 +91,10 @@ func TestRunAPIDocCheckJSONSkipsReviewWhenStaticFails(t *testing.T) {
 	}
 }
 
-func TestRunAPIDocReviewRejectsInvalidTimeout(t *testing.T) {
-	if err := runAPIDocReview([]string{"--timeout", "not-a-duration"}); err == nil || !strings.Contains(err.Error(), "invalid duration") {
-		t.Fatalf("expected invalid duration error, got %v", err)
+func TestRunAPIDocReviewRejectsRemovedCodexFlags(t *testing.T) {
+	for _, flag := range []string{"--model", "--reasoning", "--timeout"} {
+		if err := runAPIDocReview([]string{flag, "unused"}); err == nil || !strings.Contains(err.Error(), "flag provided but not defined") {
+			t.Fatalf("expected removed flag error for %s, got %v", flag, err)
+		}
 	}
 }

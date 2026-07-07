@@ -206,7 +206,7 @@ go build -o bin/agent-harness ./cmd/harness
 
 ## 12. API Documentation Gate
 
-- Endpoint/controller/DTO/schema/OpenAPI 변경 시 `agent-harness api-doc check --json` 또는 MCP `api_doc_static_check` 후 `api_doc_review`를 실행한다.
+- Endpoint/controller/DTO/schema/OpenAPI 변경 시 `agent-harness api-doc static-check --json` 또는 MCP `api_doc_static_check` 후 `api_doc_review`로 host-agent prompt/schema를 렌더하고, 리뷰 결과 JSON을 `--result`/`result_file`로 기록한다.
 - 대상 Node/Nest repo에 `npm run swagger:check`가 있으면 그 wrapper를 우선 사용한다.
 - 기본 검사는 git 변경분의 API candidate files로 제한하고, 기존 레거시 전체 Swagger 부채를 이번 변경의 실패 원인으로 삼지 않는다.
 

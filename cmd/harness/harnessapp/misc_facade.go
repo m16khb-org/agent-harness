@@ -13,12 +13,6 @@ import (
 	"agent-harness/internal/core"
 )
 
-const (
-	defaultAPIDocReviewModel     = apidoc.DefaultReviewModel
-	defaultAPIDocReviewReasoning = apidoc.DefaultReviewReasoning
-	defaultAPIDocReviewTimeout   = apidoc.DefaultReviewTimeout
-)
-
 type CompatibilityContract = contractcli.CompatibilityContract
 
 type (
@@ -131,10 +125,6 @@ func runAPIDocStaticCheck(args []string) error {
 
 func runAPIDocStaticCheckWithOptions(options apiDocStaticOptions) (apiDocStaticResult, error) {
 	return apidoc.RunStaticCheckWithOptions(options)
-}
-
-func runCodexAPIDocReview(options apiDocReviewOptions, files []string, diff, extraPrompt string) (apiDocReviewResult, error) {
-	return apidoc.RunCodexReview(options, files, diff, extraPrompt)
 }
 
 func printAPIDocReview(result apiDocReviewResult) {

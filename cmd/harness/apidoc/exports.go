@@ -11,12 +11,6 @@ type (
 	StaticResult  = apiDocStaticResult
 )
 
-const (
-	DefaultReviewModel     = defaultAPIDocReviewModel
-	DefaultReviewReasoning = defaultAPIDocReviewReasoning
-	DefaultReviewTimeout   = defaultAPIDocReviewTimeout
-)
-
 func Run(args []string) error {
 	return runAPIDoc(args)
 }
@@ -45,10 +39,6 @@ func RunStaticCheckWithOptions(options StaticOptions) (StaticResult, error) {
 	return runAPIDocStaticCheckWithOptions(options)
 }
 
-func RunCodexReview(options ReviewOptions, files []string, diff, extraPrompt string) (ReviewResult, error) {
-	return runCodexAPIDocReview(options, files, diff, extraPrompt)
-}
-
 func PrintReview(result ReviewResult) {
 	printAPIDocReview(result)
 }
@@ -58,7 +48,7 @@ func PrintStaticCheck(result StaticResult) {
 }
 
 func IsReviewGateError(err error) bool {
-	return errors.Is(err, ErrReviewGateFailed)
+	return errors.Is(err, ErrReviewGateFailed) || errors.Is(err, ErrReviewResultRequired)
 }
 
 func IsStaticGateError(err error) bool {

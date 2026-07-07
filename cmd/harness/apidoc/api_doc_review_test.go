@@ -1,6 +1,7 @@
 package apidoc
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,12 +43,62 @@ func TestRunAPIDocReviewSkipsWhenNoCandidateFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	runGitForContract(t, root, "add", "README.md")
-	result, err := runAPIDocReviewWithOptions(apiDocReviewOptions{Repo: root, Model: "gpt-5.5", Effort: "medium"})
+	result, err := runAPIDocReviewWithOptions(apiDocReviewOptions{Repo: root})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !result.OK || !result.Skipped || result.Reason != "no_api_doc_candidate_files" {
 		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+func TestAPIDocReviewRendersPromptWithoutSpawning(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".agent-harness"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".agent-harness", "OPEN_API_SPEC.md"), []byte("repo-specific api contract rules\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	diffFile := filepath.Join(root, "api.diff")
+	if err := os.WriteFile(diffFile, []byte("diff --git a/api/openapi.yaml b/api/openapi.yaml\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", "")
+
+	result, err := runAPIDocReviewWithOptions(apiDocReviewOptions{Repo: root, Files: []string{"api/openapi.yaml"}, DiffFile: diffFile})
+	if !errors.Is(err, ErrReviewResultRequired) {
+		t.Fatalf("expected host-agent result requirement, result=%+v err=%v", result, err)
+	}
+	if result.OK || result.Verdict != "pending" || result.Reason != "host_agent_result_required" {
+		t.Fatalf("unexpected pending review result: %+v", result)
+	}
+	if !strings.Contains(result.Prompt, "repo-specific api contract rules") || !strings.Contains(result.Prompt, "api/openapi.yaml") || !strings.Contains(result.Prompt, "diff --git") {
+		t.Fatalf("rendered prompt missing review inputs:\n%s", result.Prompt)
+	}
+	if result.Schema == nil || result.Schema["type"] != "object" {
+		t.Fatalf("rendered schema missing: %+v", result.Schema)
+	}
+}
+
+func TestAPIDocReviewRecordsSuppliedResult(t *testing.T) {
+	root := t.TempDir()
+	diffFile := filepath.Join(root, "api.diff")
+	if err := os.WriteFile(diffFile, []byte("diff --git a/api/openapi.yaml b/api/openapi.yaml\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resultFile := filepath.Join(root, "review.json")
+	if err := os.WriteFile(resultFile, []byte(`{"verdict":"pass","summary":"documented","findings":[]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", "")
+
+	result, err := runAPIDocReviewWithOptions(apiDocReviewOptions{Repo: root, Files: []string{"api/openapi.yaml"}, DiffFile: diffFile, ResultFile: resultFile})
+	if err != nil {
+		t.Fatalf("expected supplied result to pass, result=%+v err=%v", result, err)
+	}
+	if !result.OK || result.Verdict != "pass" || result.ResultFile != resultFile || !containsString(result.Files, "api/openapi.yaml") {
+		t.Fatalf("supplied result not recorded: %+v", result)
 	}
 }
 

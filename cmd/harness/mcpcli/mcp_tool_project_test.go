@@ -72,12 +72,6 @@ func TestHandleProjectMCPToolCallCoversProjectErrorBranches(t *testing.T) {
 			wantMessage: "Project docs record failed",
 			wantData:    "unsupported record kind",
 		},
-		{
-			name:        "api doc review invalid timeout",
-			call:        MCPToolCall{Name: "api_doc_review", Arguments: map[string]any{"repo": repo, "timeout": "not-a-duration"}},
-			wantMessage: "API doc review failed",
-			wantData:    "invalid timeout",
-		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

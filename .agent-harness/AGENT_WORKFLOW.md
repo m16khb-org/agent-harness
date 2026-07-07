@@ -86,7 +86,7 @@ phase 진입은 fail-closed다: `grill` 진입은 problem 완료(`intent_contrac
 ## API documentation gate
 
 - Endpoint/controller/DTO/schema/OpenAPI changes require the API documentation gate before completion.
-- Prefer `agent-harness api-doc check` or MCP `api_doc_static_check` 후 `api_doc_review`; both default to staged API candidate files so legacy Swagger/OpenAPI debt is not failed all at once.
+- Prefer `agent-harness api-doc static-check` or MCP `api_doc_static_check`, then `api_doc_review` to render the host-agent prompt/schema and record the supplied review result; both default to staged API candidate files so legacy Swagger/OpenAPI debt is not failed all at once.
 - For NestJS Swagger projects, the gate must catch missing `@ApiOperation`, missing/invalid operation descriptions, missing `@ApiParam`/`@ApiHeader`, missing 400/401 responses, and DTO `@ApiProperty`/`@ApiPropertyOptional`/`@IsOptional` mismatches.
 
 

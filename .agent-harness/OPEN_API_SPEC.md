@@ -13,9 +13,10 @@ Endpoint/controller/handler/DTO/schema/OpenAPI 변경 시 에이전트와 MCP가
 
 ```bash
 harness api-doc static-check --json
-harness api-doc review --json
+harness api-doc review --json          # renders prompt/schema for the host agent
+harness api-doc review --result FILE --json
 # 또는 통합 실행
-harness api-doc check --json
+harness api-doc check --result FILE --json
 ```
 
 기본 범위는 staged API candidate files다. 기존 레거시 전체 부채는 `--all`을 명시한 경우에만 본다.

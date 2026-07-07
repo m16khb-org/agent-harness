@@ -1,8 +1,6 @@
 package mcpcli
 
 import (
-	"time"
-
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/mcpcli/argmap"
 	"agent-harness/internal/core"
@@ -75,19 +73,13 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "api_doc_review":
-		timeout, err := time.ParseDuration(argmap.StringDefault(call.Arguments, "timeout", apidoc.DefaultReviewTimeout.String()))
-		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "API doc review failed", Data: "invalid timeout: " + err.Error()})
-		}
 		result, err := apidoc.RunReviewWithOptions(apidoc.ReviewOptions{
 			Repo:       ResolveTarget(argmap.String(call.Arguments, "repo")),
-			Model:      argmap.StringDefault(call.Arguments, "model", apidoc.DefaultReviewModel),
-			Effort:     argmap.StringDefault(call.Arguments, "reasoning", apidoc.DefaultReviewReasoning),
-			Timeout:    timeout,
 			Files:      argmap.StringSlice(call.Arguments, "files"),
 			All:        argmap.Bool(call.Arguments, "all"),
 			DiffFile:   argmap.String(call.Arguments, "diff_file"),
 			PromptFile: argmap.String(call.Arguments, "prompt_file"),
+			ResultFile: argmap.String(call.Arguments, "result_file"),
 			JSON:       true,
 		})
 		if err != nil && !apidoc.IsReviewGateError(err) {

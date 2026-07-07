@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	ErrReviewGateFailed = errors.New("api documentation AI review gate failed")
-	ErrStaticGateFailed = errors.New("api documentation static check gate failed")
+	ErrReviewGateFailed     = errors.New("api documentation review gate failed")
+	ErrReviewResultRequired = errors.New("api documentation host-agent review result required")
+	ErrStaticGateFailed     = errors.New("api documentation static check gate failed")
 )
 
 var ResolveTarget = func(target string) string {

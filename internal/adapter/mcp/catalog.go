@@ -185,16 +185,14 @@ func coreProjectTools() []Tool {
 		},
 		{
 			Name:        "api_doc_review",
-			Description: "Run the API documentation review gate on staged or explicit controller/DTO/handler/OpenAPI files. By default it reviews only git staged API candidate files and does not fail unrelated legacy Swagger/OpenAPI debt. Use for endpoint, controller, DTO, schema, or OpenAPI changes.",
+			Description: "Render the API documentation host-agent review prompt/schema, or record a supplied JSON review result for staged or explicit controller/DTO/handler/OpenAPI files. By default it scopes to git staged API candidate files and does not fail unrelated legacy Swagger/OpenAPI debt.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 				"repo":        map[string]any{"type": "string", "description": "Target git repository path. Defaults to current directory."},
 				"files":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Explicit API candidate files. Omit to use staged controller/DTO/handler/OpenAPI files."},
 				"all":         map[string]any{"type": "boolean", "description": "When true, review all tracked API candidate files. Default false keeps scope to staged changes."},
 				"diff_file":   map[string]any{"type": "string", "description": "Optional file containing a diff to review instead of git diff --cached."},
 				"prompt_file": map[string]any{"type": "string", "description": "Optional project-specific Swagger/OpenAPI rules."},
-				"model":       map[string]any{"type": "string", "description": "Codex model. Defaults to gpt-5.5."},
-				"reasoning":   map[string]any{"type": "string", "description": "Codex reasoning effort. Defaults to medium."},
-				"timeout":     map[string]any{"type": "string", "description": "Timeout such as 3m. Defaults to 3m."},
+				"result_file": map[string]any{"type": "string", "description": "Optional host-agent JSON review result to record as evidence. Omit to render prompt/schema for the host agent."},
 			}},
 		},
 		{
