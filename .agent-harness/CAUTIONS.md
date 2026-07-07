@@ -394,3 +394,19 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
 - Evidence:
   - git log --oneline -- cmd/harness/selfworkflow/stateio/self_verify_promote_core.go → 09fcb7c
   - cmd/harness/selfworkflow/stateio/self_verify_promote_core.go:35-44
+
+## 2026-07-07 — IssueOps orchestration locks, additive fields, and worker leases
+
+- Kind: `caution`
+- Source: codex Task 15 project docs update from codex-orchestration implementation plan
+- Summary: IssueOps child/workpool orchestration must preserve single-entity lock boundaries, additive mixed-binary compatibility, and timestamp lease heartbeat semantics.
+- Context: Delegated child cycles and workpool state add orchestration records that can be touched by multiple sessions. The existing store is per-key/per-entity atomic and host-neutral, not a cross-entity transaction manager or process supervisor.
+- Resolution: Use only one entity lock at a time and never call a same-entity with*Lock helper from inside another same-entity lock callback. Keep new orchestration fields additive with omitempty and schema_version=1 until an explicit migration is needed; verify the active binary, docs, CLI/MCP schema, and daemon readback before trusting mixed-version state. Treat pool liveness as LeaseExpiresAt plus heartbeat, not PID ownership: a worker whose lease is expired or lost must stop and let another claim proceed.
+- Evidence:
+  - .agent-harness/ARCHITECTURE.md actor model and workpool namespace
+  - .agent-harness/AGENT_WORKFLOW.md pool worker loop and heartbeat contract
+  - .agent-harness/CAUTIONS.md existing state and worktree lock cautions
+- Alternatives / rejected options:
+  - Nested parent/child/pool locks — rejected because lock ordering is hard to prove and same-entity re-entry can self-deadlock.
+  - Schema-version bump for additive fields — rejected until destructive migration or incompatible read semantics are required.
+  - PID-based worker ownership — rejected because agents may run across host sessions and compaction; timestamp leases are portable and recoverable.

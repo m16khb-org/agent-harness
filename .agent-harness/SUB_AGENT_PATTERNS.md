@@ -58,6 +58,7 @@
 - **설명:** Git worktree로 분리된 공간에서 독립적 편집. 메인 작업공간과 충돌 방지.
 - **근거:** Claude Code `isolation: worktree`. IssueOps의 worktree 격리 패턴.
 - **agent-harness 적용:** IssueOps implement phase의 worktree 기반 작업.
+- **D1 delegated child cycle 적용:** parent가 `issueops execution decide`에 `isolated-worktree-work` 또는 `task-fan-out-coordination`을 기록한 뒤, child별 isolated worktree와 scoped session binding을 만든다. Child는 `issueops resume --id <child-id>`로 자기 cycle만 재개하고, parent가 결과를 검증해 accept/reject한다.
 
 #### 3. Forked Context 탐색 (Forked Context Exploration)
 - **설명:** 메인 대화의 전체 컨텍스트를 복제한 뒤, 분기 탐색만 하고 메인을 오염시키지 않음.
@@ -87,11 +88,14 @@
 - **설명:** 의존성 있는 작업을 lead agent가 분해·할당·동기화. Agent Teams 패턴.
 - **근거:** Claude Code agent teams, Google ADK Parallel workflow templates.
 - **agent-harness 적용:** 규모가 크고 자연스럽게 분해되는 마이그레이션·audit 작업에만 제한적 사용.
+- **D1 delegated child cycle 적용:** parent issue가 child cycle들을 만든 뒤, main agent가 dependency order와 final acceptance를 소유한다. 각 child dispatch 전에는 `task-fan-out-coordination` 실행 결정을 durable record에 남긴다.
+- **D3 workpool 적용:** 독립 task가 여러 개이고 main agent가 결과를 합칠 수 있을 때만 pool로 fan-out한다. Pool 생성도 `task-fan-out-coordination` 실행 결정이 있어야 하며, worker 수/lease/acceptance boundary를 record에 남긴다.
 
 #### 8. 장시간 백그라운드 작업 (Background Long-Running Work)
 - **설명:** 메인 대화를 차단하지 않고 비동기 실행. 진행상황 체크·취소 가능.
 - **근거:** OpenAI Sandbox Agents, DeepAgents async subagents.
 - **agent-harness 적용:** agent-harness worker system (no-shell lifecycle MVP). draft-wiki worker.
+- **D3 workpool 적용:** long-running pool worker는 `background-long-running-work` 실행 결정을 기록하고 heartbeat/lease로 liveness를 증명한다. Harness는 agent process를 감시하거나 spawn하지 않으며, lease 만료와 submitted result를 durable state로 판단한다.
 
 ### Category D: 다른 권한·모델 필요
 

@@ -526,3 +526,21 @@ Archived entries:
   - Recording inside the core facade only — rejected: most production callers (benchmark judge, remote judge, lintdiagnose, draftwiki, commitsuggest, nextaction) call externalllm directly and would be unobserved
   - Recording unconditionally inside externalllm — rejected: externalllm would depend on state, and every leaf-package unit test would write into the developer's real ~/.local/state dir
   - token_usage compare regression rules now — deferred until real baselines accumulate (brooks trim)
+
+## 2026-07-07 — IssueOps orchestration state model
+
+- Kind: `adr`
+- Source: codex Task 15 project docs update from codex-orchestration implementation plan
+- Summary: IssueOps orchestration uses additive child-cycle fields, scoped session bindings, and workpool state while keeping the harness host-neutral and non-spawning.
+- Context: D5 documentation update for delegated child cycles and workpool orchestration. The existing architecture keeps hooks observe-only and IssueOps as a durable main-agent state machine.
+- Decision: Represent delegated child cycles as additive IssueOps record fields, represent parent/child session binding as scoped user-state bindings, and represent pool execution in a separate workpool namespace. Main agents dispatch and accept results; child/pool workers own their isolated worktree and heartbeat; hooks only relay or block deterministic violations. The harness records state, gates, leases, and results but does not spawn host agents.
+- Consequences: Future CLI/MCP work must preserve schema_version=1 additive compatibility for these fields, keep locks single-entity, and make worker liveness lease/heartbeat based. Any child or pool dispatch must reference a recorded execution_decision with an allowed sub-agent pattern slug and explicit verification/fallback.
+- Evidence:
+  - .agent-harness/ARCHITECTURE.md IssueOps and workpool state model update
+  - .agent-harness/AGENT_WORKFLOW.md resume, heartbeat, and pool-worker contract update
+  - .agent-harness/SUB_AGENT_PATTERNS.md D1/D3 mapping update
+- Alternatives / rejected options:
+  - Spawn agents directly from the harness CLI or daemon — rejected because host auth, context, and approval boundaries are host-specific and would hide user-visible costs/control.
+  - Store child and pool progress only in issue comments or docs — rejected because resume, lease expiry, and acceptance gates need durable local state that survives compaction and host changes.
+  - Let lifecycle hooks advance orchestration — rejected because hooks lack full safety/reversibility/user-intent context and must remain fast observe/relay/block surfaces.
+  - Use nested or multi-entity locks for parent/child/pool updates — rejected because the current store guarantees per-entity atomicity only and nested lock re-entry can self-deadlock.
