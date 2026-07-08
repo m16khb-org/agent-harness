@@ -79,6 +79,11 @@ func RunSessionStart(args []string, config Config) error {
 	// jobs failed. Amortized to at most once per 6h via a stat-only sentinel
 	// because the detector is an unbounded full-dir scan and the worker dir has
 	// no TTL — running it every session start would grow the hot path unbounded.
+	// Best-effort store maintenance: WAL checkpoint truncate + sidecar
+	// permission repair on known sqlite state roots. Amortized to at most
+	// once per 24h via a stat-only sentinel — maintenance is cheap (ms) but
+	// unnecessary on every session start.
+	_, _, _ = core.MaybeMaintainStateStores(24 * time.Hour)
 	_, _, _ = core.MaybeDetectStuckWorkerJobs(6 * time.Hour)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {

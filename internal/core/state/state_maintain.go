@@ -3,6 +3,7 @@ package state
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"agent-harness/internal/core/sqlstore"
 )
@@ -55,4 +56,30 @@ func StateMaintain() (StateMaintainResult, error) {
 	}
 	result.OK = true
 	return result, nil
+}
+
+const storeMaintainSentinel = ".last-store-maintain"
+
+// MaybeMaintainStateStores runs StateMaintain at most once per minInterval,
+// gated by a stat-only sentinel file's mtime in the state root. This mirrors
+// the MaybeDetectStuckWorkerJobs amortization pattern: maintenance is cheap
+// (checkpoint + chmod) but unnecessary on every session start, so a sentinel
+// keeps it to at most once per interval. Returns ran=false when skipped.
+// Best-effort: the sentinel is touched even on error so a transient failure
+// cannot make every session re-run maintenance.
+func MaybeMaintainStateStores(minInterval time.Duration) (StateMaintainResult, bool, error) {
+	dir := StateDir()
+	sentinel := filepath.Join(dir, storeMaintainSentinel)
+	if info, statErr := os.Stat(sentinel); statErr == nil && time.Since(info.ModTime()) < minInterval {
+		return StateMaintainResult{OK: true, Roots: []sqlstore.MaintainResult{}, Skipped: knownStoreRoots()}, false, nil
+	}
+	result, err := StateMaintain()
+	if mkErr := os.MkdirAll(dir, 0o700); mkErr == nil {
+		if f, oErr := os.OpenFile(sentinel, os.O_CREATE|os.O_WRONLY, 0o600); oErr == nil {
+			_ = f.Close()
+		}
+		now := time.Now()
+		_ = os.Chtimes(sentinel, now, now)
+	}
+	return result, true, err
 }

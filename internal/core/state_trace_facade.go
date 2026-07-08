@@ -69,6 +69,10 @@ func StateMaintain() (StateMaintainResult, error) {
 	return corestate.StateMaintain()
 }
 
+func MaybeMaintainStateStores(minInterval time.Duration) (StateMaintainResult, bool, error) {
+	return corestate.MaybeMaintainStateStores(minInterval)
+}
+
 const TraceAnalysisKind = coretrace.TraceAnalysisKind
 
 type TraceAnalyzeRequest = coretrace.TraceAnalyzeRequest
