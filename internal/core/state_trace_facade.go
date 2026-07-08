@@ -63,6 +63,12 @@ func StateDelete(key string) error {
 	return corestate.StateDelete(key)
 }
 
+type StateMaintainResult = corestate.StateMaintainResult
+
+func StateMaintain() (StateMaintainResult, error) {
+	return corestate.StateMaintain()
+}
+
 const TraceAnalysisKind = coretrace.TraceAnalysisKind
 
 type TraceAnalyzeRequest = coretrace.TraceAnalyzeRequest

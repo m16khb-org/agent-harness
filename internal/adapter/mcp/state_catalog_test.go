@@ -4,8 +4,8 @@ import "testing"
 
 func TestStateToolsExposeStableDescriptors(t *testing.T) {
 	tools := StateTools()
-	if len(tools) != 6 {
-		t.Fatalf("expected six state tools, got %d", len(tools))
+	if len(tools) != 7 {
+		t.Fatalf("expected seven state tools, got %d", len(tools))
 	}
 
 	byName := toolsByName(tools)

@@ -84,3 +84,23 @@ func runStateMigrate(args []string) error {
 	}
 	return nil
 }
+
+func runStateMaintain(args []string) error {
+	fs := flag.NewFlagSet("state maintain", flag.ContinueOnError)
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	result, err := core.StateMaintain()
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	fmt.Printf("maintained %d store roots (%d skipped)\n", len(result.Roots), len(result.Skipped))
+	for _, root := range result.Roots {
+		fmt.Printf("%s wal %d -> %d bytes\n", root.Dir, root.WALBytesBefore, root.WALBytesAfter)
+	}
+	return nil
+}

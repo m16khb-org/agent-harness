@@ -74,6 +74,12 @@ func handlePolicyStateMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			return mcpToolFailure(&RPCError{Code: -32000, Message: "State migrate failed", Data: err.Error()})
 		}
 		return mcpToolPayload(result)
+	case "state_maintain":
+		result, err := core.StateMaintain()
+		if err != nil {
+			return mcpToolFailure(&RPCError{Code: -32000, Message: "State maintain failed", Data: err.Error()})
+		}
+		return mcpToolPayload(result)
 	default:
 		return MCPToolOutcome{}
 	}

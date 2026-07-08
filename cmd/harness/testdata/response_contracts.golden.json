@@ -231,7 +231,7 @@
           "name": "version"
         }
       ],
-      "hash": "662c9b6115128a4da6ac515d9e6318d9cd566176d07af6fde272ca664ed84736",
+      "hash": "8793d865e44b137275a134943448d973fb33918106760de3bc99c7b06c230d8d",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -306,6 +306,7 @@
         "skill_manifest",
         "state_doctor",
         "state_list",
+        "state_maintain",
         "state_migrate",
         "state_prune",
         "state_read",
@@ -6628,7 +6629,7 @@
                 "name": "version"
               }
             ],
-            "hash": "662c9b6115128a4da6ac515d9e6318d9cd566176d07af6fde272ca664ed84736",
+            "hash": "8793d865e44b137275a134943448d973fb33918106760de3bc99c7b06c230d8d",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6703,6 +6704,7 @@
               "skill_manifest",
               "state_doctor",
               "state_list",
+              "state_maintain",
               "state_migrate",
               "state_prune",
               "state_read",
