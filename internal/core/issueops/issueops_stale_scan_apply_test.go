@@ -300,3 +300,100 @@ func TestScanStaleApplyDoesNotReleaseLiveCycle(t *testing.T) {
 		t.Fatalf("live cycle phase must be untouched, got %q", after.Phase)
 	}
 }
+
+// seedStaleBindingFixture creates three bindings for repo: a primary binding
+// on a live plan-phase cycle, a scoped binding on a done cycle, and a scoped
+// binding whose cycle record does not exist.
+func seedStaleBindingFixture(t *testing.T, repo string) (liveID, doneID, ghostID string) {
+	t.Helper()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	liveID = NewIssueOpsID(repo, "1-live")
+	if _, err := writeIssueOps(IssueOpsStateRoot(), IssueOpsRecord{
+		OK: true, ID: liveID, Repo: repo, Branch: "1-live",
+		Phase: IssueOpsPhasePlan, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	doneID = NewIssueOpsID(repo, "2-done")
+	if _, err := writeIssueOps(IssueOpsStateRoot(), IssueOpsRecord{
+		OK: true, ID: doneID, Repo: repo, Branch: "2-done",
+		Phase: IssueOpsPhaseDone, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ghostID = "io-eeeeeeeeeeee"
+	if err := BindIssueOpsSession(repo, liveID, "1-live", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := BindScopedIssueOpsSession(repo, doneID, "2-done", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := BindScopedIssueOpsSession(repo, ghostID, "3-ghost", ""); err != nil {
+		t.Fatal(err)
+	}
+	return liveID, doneID, ghostID
+}
+
+// TestScanStaleDryRunReportsBindingsWithoutDelete asserts the dry-run scan
+// reports stale session bindings but deletes nothing.
+func TestScanStaleDryRunReportsBindingsWithoutDelete(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	liveID, doneID, ghostID := seedStaleBindingFixture(t, repo)
+
+	res := ScanStaleIssueOpsCycles(IssueOpsStaleScanRequest{Repo: repo, Apply: false})
+	if len(res.StaleBindings) != 2 {
+		t.Fatalf("expected 2 stale bindings reported, got %+v", res.StaleBindings)
+	}
+	if res.PrunedBindings != 0 {
+		t.Fatalf("dry-run must not delete bindings, got %d", res.PrunedBindings)
+	}
+	if b, err := ReadScopedIssueOpsSession(repo, doneID); err != nil || b.CycleID != doneID {
+		t.Fatalf("dry-run must keep done-cycle binding, got %+v err=%v", b, err)
+	}
+	if b, err := ReadScopedIssueOpsSession(repo, ghostID); err != nil || b.CycleID != ghostID {
+		t.Fatalf("dry-run must keep ghost binding, got %+v err=%v", b, err)
+	}
+	if b, err := ReadIssueOpsSession(repo); err != nil || b.CycleID != liveID {
+		t.Fatalf("live binding must survive, got %+v err=%v", b, err)
+	}
+}
+
+// TestScanStaleApplyPrunesOrphanSessionBindings asserts --apply deletes
+// bindings whose cycle is done or absent while preserving live bindings.
+func TestScanStaleApplyPrunesOrphanSessionBindings(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	liveID, doneID, ghostID := seedStaleBindingFixture(t, repo)
+
+	res := ScanStaleIssueOpsCycles(IssueOpsStaleScanRequest{Repo: repo, Apply: true})
+	if res.PrunedBindings != 2 {
+		t.Fatalf("expected 2 pruned bindings, got %+v (stale=%v errors=%v)", res.PrunedBindings, res.StaleBindings, res.Errors)
+	}
+	if b, err := ReadScopedIssueOpsSession(repo, doneID); err != nil || b.CycleID != "" {
+		t.Fatalf("done-cycle binding must be pruned, got %+v err=%v", b, err)
+	}
+	if b, err := ReadScopedIssueOpsSession(repo, ghostID); err != nil || b.CycleID != "" {
+		t.Fatalf("ghost binding must be pruned, got %+v err=%v", b, err)
+	}
+	if b, err := ReadIssueOpsSession(repo); err != nil || b.CycleID != liveID {
+		t.Fatalf("live binding must survive apply, got %+v err=%v", b, err)
+	}
+	// Bindings for other repos must never be touched.
+	otherRepo := t.TempDir()
+	otherID := NewIssueOpsID(otherRepo, "9-other")
+	nowOther := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := writeIssueOps(IssueOpsStateRoot(), IssueOpsRecord{
+		OK: true, ID: otherID, Repo: otherRepo, Branch: "9-other",
+		Phase: IssueOpsPhasePlan, CreatedAt: nowOther, UpdatedAt: nowOther,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := BindIssueOpsSession(otherRepo, otherID, "9-other", ""); err != nil {
+		t.Fatal(err)
+	}
+	res = ScanStaleIssueOpsCycles(IssueOpsStaleScanRequest{Repo: repo, Apply: true})
+	if b, err := ReadIssueOpsSession(otherRepo); err != nil || b.CycleID != otherID {
+		t.Fatalf("other-repo binding must be untouched, got %+v err=%v", b, err)
+	}
+}

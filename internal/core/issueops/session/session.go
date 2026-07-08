@@ -285,6 +285,86 @@ func withSessionLock(store Store, repo string, fn func() error) error {
 	return db.WithSpan(fn)
 }
 
+// StaleBinding pairs a session binding's sqlstore key with its cycle ID for
+// stale cleanup.
+type StaleBinding struct {
+	Key     string `json:"key"`
+	CycleID string `json:"cycle_id"`
+}
+
+// FindStaleBindings lists every session binding for repo whose cycle is not
+// live (isCycleLive returns false). It scans both the primary binding key and
+// scoped per-cycle keys. Returns entries keyed by their sqlstore key so the
+// caller can pass them to PruneStaleBindings for deletion.
+func FindStaleBindings(store Store, repo string, isCycleLive func(cycleID string) bool) ([]StaleBinding, error) {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return nil, fmt.Errorf("repo is required")
+	}
+	db, err := openDB(store)
+	if err != nil {
+		return nil, err
+	}
+	primaryKey := bindingKey(repo)
+	prefix := primaryKey + "-"
+	keys, err := db.List(sessionBucket)
+	if err != nil {
+		return nil, err
+	}
+	var stale []StaleBinding
+	for _, key := range keys {
+		if key != primaryKey && !strings.HasPrefix(key, prefix) {
+			continue
+		}
+		b, err := readBindingForKey(store, repo, key)
+		if err != nil {
+			return nil, err
+		}
+		if b.CycleID == "" {
+			continue
+		}
+		if !isCycleLive(b.CycleID) {
+			stale = append(stale, StaleBinding{Key: key, CycleID: b.CycleID})
+		}
+	}
+	return stale, nil
+}
+
+// PruneStaleBindings deletes stale bindings after a TOCTOU re-check: if a
+// binding was re-bound to a live cycle between the scan and the delete, it is
+// left untouched. Returns the number of bindings actually deleted.
+func PruneStaleBindings(store Store, repo string, stale []StaleBinding, isCycleLive func(cycleID string) bool) (int, error) {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return 0, fmt.Errorf("repo is required")
+	}
+	pruned := 0
+	for _, entry := range stale {
+		deleted := false
+		err := withSessionLock(store, repo, func() error {
+			fresh, err := readBindingForKey(store, repo, entry.Key)
+			if err != nil {
+				return err
+			}
+			if fresh.CycleID != entry.CycleID {
+				return nil
+			}
+			if isCycleLive(fresh.CycleID) {
+				return nil
+			}
+			deleted = true
+			return writeBindingForKey(store, repo, entry.Key, "", "", "")
+		})
+		if err != nil {
+			return pruned, err
+		}
+		if deleted {
+			pruned++
+		}
+	}
+	return pruned, nil
+}
+
 func bindingKey(repo string) string {
 	sum := sha256.Sum256([]byte(repo))
 	return "issueops-session-" + hex.EncodeToString(sum[:])[:16]

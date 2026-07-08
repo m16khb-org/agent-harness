@@ -8,6 +8,7 @@ import (
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/issueops/readinesspaths"
+	"agent-harness/internal/core/issueops/session"
 	"agent-harness/internal/core/issueops/stalescan"
 	"agent-harness/internal/core/preflight"
 )
@@ -20,13 +21,15 @@ type IssueOpsStaleScanRequest struct {
 }
 
 type IssueOpsStaleScanResult struct {
-	OK         bool                `json:"ok"`
-	Repo       string              `json:"repo"`
-	Applied    bool                `json:"applied"`
-	Findings   []stalescan.Finding `json:"findings"`
-	Released   []string            `json:"released,omitempty"`
-	Errors     []string            `json:"errors,omitempty"`
-	PrunedDone int                 `json:"pruned_done,omitempty"`
+	OK             bool                `json:"ok"`
+	Repo           string              `json:"repo"`
+	Applied        bool                `json:"applied"`
+	Findings       []stalescan.Finding `json:"findings"`
+	Released       []string            `json:"released,omitempty"`
+	Errors         []string            `json:"errors,omitempty"`
+	PrunedDone     int                 `json:"pruned_done,omitempty"`
+	StaleBindings  []string            `json:"stale_bindings,omitempty"`
+	PrunedBindings int                 `json:"pruned_bindings,omitempty"`
 }
 
 // ScanStaleIssueOpsCycles classifies every non-done cycle for the repo with
@@ -86,6 +89,35 @@ func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResu
 	// off-hot-path git calls, per CAUTIONS 21).
 	if req.Apply {
 		issueOpsGitWorktreeCleanup(repo, &result)
+	}
+	// Scan session bindings for stale entries: a binding whose cycle record is
+	// absent or done is stale and should be reported (and, with --apply, pruned).
+	// Session bindings are never scanned by StatePrune or the cycle classifier,
+	// so without this pass orphan bindings accumulate indefinitely.
+	stateRoot := IssueOpsStateRoot()
+	isCycleLive := func(cycleID string) bool {
+		rec, err := ReadIssueOps(stateRoot, cycleID)
+		if err != nil || !rec.OK || rec.Phase == IssueOpsPhaseDone {
+			return false
+		}
+		return true
+	}
+	store := issueOpsSessionStore()
+	staleEntries, scanErr := session.FindStaleBindings(store, repo, isCycleLive)
+	if scanErr != nil {
+		result.Errors = append(result.Errors, "scan session bindings: "+scanErr.Error())
+	} else {
+		for _, e := range staleEntries {
+			result.StaleBindings = append(result.StaleBindings, e.CycleID)
+		}
+		if req.Apply && len(staleEntries) > 0 {
+			pruned, pruneErr := session.PruneStaleBindings(store, repo, staleEntries, isCycleLive)
+			if pruneErr != nil {
+				result.Errors = append(result.Errors, "prune session bindings: "+pruneErr.Error())
+			} else {
+				result.PrunedBindings = pruned
+			}
+		}
 	}
 	// Prune done cycles older than PruneDoneAge when --apply is set. This
 	// deletes the record for cycles that have already reached the done phase
