@@ -167,6 +167,7 @@ Codex and Claude Code accept similar UserPromptSubmit JSON, but they do not rend
 - Claude Code can use `systemMessage` as the user-visible channel while keeping `additionalContext` as model-facing context.
 - Do not assume a hook field is hidden just because another host hides it. Verify the installed host runtime/schema before changing hook output.
 - Codex 0.142.5 rejects PreToolUse `hookSpecificOutput.permissionDecision="ask"` with `unsupported permissionDecision:ask`. Codex ask-style gates must fall back to a normal `decision="block"` response; hosts with native ask support can keep `permissionDecision="ask"`.
+- Codex `hook returned invalid <event> JSON output` means hook stdout looked like JSON but failed strict serde parsing (`deny_unknown_fields`; unknown top-level field, unknown enum value, or truncated/multi-object stdout). It is NOT a generic failure label — 원인 후보를 그 세 가지로 좁히고, 용의 훅 stdout을 `... | cat | wc -c` 파이프 하류에서 재현해 확인한다. Node/Bun 기반 외부 훅은 stdout이 파이프일 때 큰 출력을 512B에서 자르고 종료할 수 있다(2026-07-08 incident 참조). agent-harness Go 훅은 동기 write라 이 문제가 없다.
 - For Codex, keep the project-doc catalog in `additionalContext` because the agent needs it, but avoid route/action/profile/pending-upkeep status prose there.
 - Keep project-doc frontmatter descriptions concise English metadata; `project bootstrap` and `project bootstrap --sync` use this canonical metadata, so verbose descriptions multiply across every target repo.
 
@@ -427,6 +428,21 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
 - Alternatives / rejected options:
   - per-entity sqlite 락 db — 거부: 파일 수가 flock 시절로 회귀하고 span 규율 단순성이 사라진다.
   - 레거시 JSON 자동 마이그레이션 — 거부(사용자 결정): fresh start; 필요 시 수동 재생성이 더 단순하다.
+
+## 2026-07-08 — Codex hook "invalid JSON output"의 원인은 동거 훅의 파이프 truncation이었다
+
+- Kind: `caution`
+- Source: Codex PreToolUse `hook returned invalid pre-tool-use JSON output` 실패 진단 세션
+- Summary: 사용자에게 반복 표시된 PreToolUse/SessionStart "invalid JSON output" 실패의 원인은 agent-harness가 아니라, 같은 이벤트에 등록된 claude-mem codex 훅이 stdout이 파이프일 때 JSON을 512바이트에서 잘라 내보낸 것(+ 별건으로 `status` unknown top-level field). agent-harness 훅은 전 경로에서 스키마 유효했다.
+- Context: Codex 0.142.5는 hook stdout을 `deny_unknown_fields` serde wire로 파싱하며, `{`로 시작하는 파싱 불가 stdout에만 정확히 이 오류를 낸다. claude-mem worker(node/bun)는 stdout이 파이프면 큰 출력(예: SessionStart context ~19KB, 관측 기록 많은 파일의 file-context)에서 flush 전에 종료해 정확히 512B만 전달했다. 파일 리다이렉트(동기)에서는 전체가 나오기 때문에 단독 실행 재현으로는 잡히지 않았고, `... | cat` 파이프 하류 비교로 확정했다. 계측 시에도 `node ... | tee`처럼 stdout을 다시 파이프로 만들면 잘림이 재유발되는 관찰자 효과가 있다.
+- Resolution: (1) 진단 시 "invalid JSON output"은 unknown field / unknown enum / truncated-or-multi-object stdout 세 갈래로 좁힌다. (2) 같은 이벤트에 등록된 모든 훅을 용의선상에 두고(`~/.codex/hooks.json` + `[hooks.state]`의 plugin hooks), 각 훅 stdout을 파이프 하류(`| cat | wc -c`)에서 검증한다. (3) node 기반 훅 명령은 `_O=$(mktemp); ... > "$_O" 2>/dev/null || true; cat "$_O"; rm -f "$_O"` 패턴으로 stdout을 동기 기록 후 전달한다(claude-mem codex-hooks.json 5개 명령에 적용, 백업 `.harness.bak-20260708`). (4) 훅 명령 문자열이 바뀌면 codex trust 해시가 무효화되어 훅이 조용히 스킵되므로, 검증 전 TUI에서 재신뢰가 필요하고 "실패 0"이 "안 돌아서 0"인지 구분해야 한다.
+- Evidence:
+  - 동일 명령: 파일 리다이렉트 19,489B vs 파이프 512B(`Unterminated string`) 재현
+  - openai/codex rust-v0.142.5 `hooks/src/engine/output_parser.rs` parse_json + `events/pre_tool_use.rs`의 오류 문자열 분기
+  - 패치 후 `codex exec` e2e: SessionStart 4/4, PreToolUse 2/2 등 전 훅 Failed 0
+- Alternatives / rejected options:
+  - claude-mem minified worker 코드 직접 수정 — 거부: 업데이트로 유실되고 검증 부담이 큼; 명령 레벨 버퍼링이 더 단순.
+  - 훅 stdout 무음화 — context 계열은 모델 컨텍스트 주입이 목적이라 무음화 불가(스키마 위반인 worker-start만 무음 처리).
 
 ## 26. SQLite WAL 고수위 및 사이드카 권한
 
