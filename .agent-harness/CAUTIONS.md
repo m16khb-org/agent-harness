@@ -427,3 +427,13 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
 - Alternatives / rejected options:
   - per-entity sqlite 락 db — 거부: 파일 수가 flock 시절로 회귀하고 span 규율 단순성이 사라진다.
   - 레거시 JSON 자동 마이그레이션 — 거부(사용자 결정): fresh start; 필요 시 수동 재생성이 더 단순하다.
+
+## 26. SQLite WAL 고수위 및 사이드카 권한
+
+sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고수위로 유지되는 현상(M1), 사이드카 파일이 0600이 아닌 권한으로 생성되는 현상(M2)이 관측되었다.
+
+주의:
+- `sqlstore.Maintain`이 `PRAGMA wal_checkpoint(TRUNCATE)` + 사이드카 0600 재보증을 수행한다. `state maintain` CLI 또는 session-start hook의 `MaybeMaintainStateStores(24h)`가 자동 호출한다.
+- 세션 바인딩은 done/absent 사이클에도 잔존한다. `issueops cleanup stale --apply`로만 정리되며, dry-run(`--apply` 없음)은 보고만 한다.
+- VACUUM은 DB가 수십 MB로 성장하기 전에는 비용만 있고 이득이 없어 비범위다(ADR 참조).
+- `.last-store-maintain` sentinel은 state root에 생성되며 state doctor가 인식한다. sentinel은 에러 시에도 touch되어 폭주를 방지한다.

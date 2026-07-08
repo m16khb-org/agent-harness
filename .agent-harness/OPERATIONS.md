@@ -38,6 +38,23 @@ agent-harness status --json
 agent-harness docs --json
 ```
 
+## State Store Maintenance
+
+The sqlite-backed state stores accumulate WAL frames and sidecar files that need periodic checkpointing. Two surfaces handle this:
+
+**Automatic (session-start hook):** `MaybeMaintainStateStores` runs WAL truncate + permission repair at most once per 24h via a `.last-store-maintain` sentinel in the state root. No user action needed.
+
+**Manual CLI:**
+```bash
+# Checkpoint WAL and repair sidecar permissions on all known store roots
+agent-harness state maintain --json
+
+# Clean up orphan session bindings (cycle done or absent) and stale cycles
+agent-harness issueops cleanup stale --repo /path/to/repo --apply --prune-done 720h
+```
+
+`state maintain` is read-only (checkpoint + chmod); it does not delete rows. Stale binding cleanup is destructive and gated behind `--apply`; without it, stale bindings are reported but not deleted.
+
 ## Release Smoke
 
 ```bash

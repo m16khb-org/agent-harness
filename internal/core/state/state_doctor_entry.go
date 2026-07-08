@@ -65,7 +65,7 @@ func isHarnessOwnedStateFile(name string) bool {
 		return true
 	}
 	switch name {
-	case HookFailureLogFile, "hook-metrics.jsonl":
+	case HookFailureLogFile, "hook-metrics.jsonl", storeMaintainSentinel:
 		return true
 	default:
 		return false

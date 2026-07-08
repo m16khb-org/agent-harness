@@ -581,3 +581,28 @@ Archived entries:
   - Keep JSON files and replace only the lock mechanism with sqlite — rejected: two storage layers, none of sqlite's transactional benefits.
   - Windows LockFileEx implementation of the flock layer — rejected: solves one platform gap while keeping lock-inode lifecycle complexity.
   - One long-lived data transaction per span — rejected: routing all inner reads/writes through the span transaction requires goroutine-identity plumbing; the two-database design preserves existing visibility semantics with none of that.
+
+## ADR: SQLite store maintenance policy (2026-07-08)
+
+- Kind: `adr`
+- Source: sqlite store maintenance cycle (plan `docs/superpowers/plans/2026-07-08-sqlite-store-maintenance.md`)
+- Summary: Store maintenance (WAL checkpoint truncate + sidecar permission repair) runs automatically on the session-start hook at most once per 24h via a sentinel-mtime gate, with a manual `state maintain` CLI fallback. Orphan session bindings (cycle done or absent) are swept by `issueops cleanup stale --apply`. VACUUM is explicitly not adopted.
+- Context: After the sqlite migration, three operational defects were measured: WAL files held high-water (issueops WAL 4.1MB vs DB 200KB), sidecar files could be created with 0644 under umask 022, and stale session bindings accumulated without any prune surface.
+- Decision:
+  - `sqlstore.Maintain` runs `PRAGMA wal_checkpoint(TRUNCATE)` and re-asserts 0600 on every store file/sidecar. It is safe concurrent with readers/writers; busy checkpoints are skipped (Checkpointed=false), not errors.
+  - `state maintain` CLI/MCP exposes maintenance across the 4 known store roots. Roots without a database are skipped.
+  - `MaybeMaintainStateStores(24h)` amortizes maintenance on the session-start hook via `.last-store-maintain` sentinel, mirroring `MaybeDetectStuckWorkerJobs(6h)`.
+  - Session binding cleanup (`FindStaleBindings`/`PruneStaleBindings`) runs in `ScanStaleIssueOpsCycles` with TOCTOU re-checks.
+- Rationale: WAL checkpoint is ms-scale and safe concurrent; a 24h amortization interval keeps the hot path predictable without needing a timer-based scheduler. VACUUM requires an exclusive lock and rewrites every page — unjustified at 200KB DB size. The sentinel pattern is already proven for stuck-worker detection.
+- Consequences: WAL files stay near header size; sidecars are always 0600; orphan bindings are prunable. The `.last-store-maintain` sentinel is recognized by the state doctor.
+- Evidence:
+  - internal/core/sqlstore/maintain.go, maintain_test.go
+  - internal/core/state/state_maintain.go, state_maintain_test.go
+  - internal/core/issueops/issueops_stale_scan.go (session binding scan integration)
+  - internal/core/issueops/session/session.go (FindStaleBindings, PruneStaleBindings)
+  - cmd/harness/hookcli/hookcatalog/catalog.go (MaybeMaintainStateStores wiring)
+  - Dogfood: `state maintain --json` truncated issueops WAL from 1.2MB to 0; doctor healthy
+- Alternatives / rejected options:
+  - VACUUM / auto_vacuum — rejected: 200KB DB, exclusive lock cost >> space recovery. Revisit at multi-MB scale.
+  - sqlstore handle eviction — rejected: ~10 store roots, fd cost negligible. Revisit when project spans reach hundreds.
+  - Timer-based scheduler in daemon — rejected: sentinel pattern is simpler and needs no daemon-side timer.
