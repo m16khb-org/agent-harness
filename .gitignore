@@ -26,3 +26,5 @@ GOOD_PROMPT_EXAMPLE.md
 
 # Local, non-portable skill background
 skills/*/background.local.md
+# Local, non-portable external skill links (e.g. host-specific MCP workflow skills)
+skills/kody-review-feedback

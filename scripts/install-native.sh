@@ -131,3 +131,15 @@ if command -v gjc >/dev/null 2>&1 && [[ "$DRY_RUN" != "1" ]]; then
 elif [[ "$DRY_RUN" == "1" ]]; then
   log "dry-run: would refresh GJC plugin, lifecycle hook, and skill discovery"
 fi
+
+# --- Optional glab MCP sync across hosts (no-op when glab-mcp-wrapper absent).
+# Keeps glab-api-servers / glab-cloud-platform consistent on Codex, Claude Code,
+# and GJC for users who already have a glab-mcp-wrapper + GitLab token set up.
+if [[ -x "${HOME}/.local/bin/glab-mcp-wrapper" || -n "${GLAB_MCP_WRAPPER:-}" ]]; then
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "dry-run: would sync glab MCP servers across hosts (scripts/sync-glab-mcp.sh)"
+  else
+    log "syncing glab MCP servers across hosts (best-effort)"
+    bash "$ROOT/scripts/sync-glab-mcp.sh" || true
+  fi
+fi
