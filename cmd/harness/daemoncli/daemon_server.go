@@ -13,6 +13,19 @@ import (
 
 const maxConnections = 64
 
+// mcpIdleTimeout bounds how long a daemon MCP connection may stay idle (no
+// reads) before being closed. Without it, server.Run blocks forever on a
+// read with no deadline, so abandoned client connections permanently occupy
+// a connSlot and exhaust the pool. Refreshed on every Read by idleConn.
+var mcpIdleTimeout = func() time.Duration {
+	if v := os.Getenv("HARNESS_MCP_IDLE_TIMEOUT"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			return d
+		}
+	}
+	return 30 * time.Minute
+}()
+
 func runDaemonServer() error {
 	return runDaemonServerWithDeps(daemonServerDefaultDeps())
 }
@@ -91,8 +104,11 @@ func runDaemonServerWithDeps(deps daemonServerDeps) error {
 	acceptErr := runDaemonAcceptLoop(listener, logFile, daemonServerLoopDeps{
 		now:            deps.now,
 		serveMCPStream: deps.serveMCPStream,
-		connSlots:      connSlots,
-		activeWG:       &activeWG,
+		wrapConn: func(c net.Conn) net.Conn {
+			return &idleConn{Conn: c, timeout: mcpIdleTimeout}
+		},
+		connSlots: connSlots,
+		activeWG:  &activeWG,
 	})
 	fmt.Fprintf(logFile, "%s daemon stopping, waiting for active connections\n", deps.now().Format(time.RFC3339))
 	shutdownDone := make(chan struct{})
@@ -112,6 +128,7 @@ func runDaemonServerWithDeps(deps daemonServerDeps) error {
 type daemonServerLoopDeps struct {
 	now            func() time.Time
 	serveMCPStream func(net.Conn, daemonServerLogFile) error
+	wrapConn       func(net.Conn) net.Conn
 	connSlots      chan struct{}
 	activeWG       *sync.WaitGroup
 }
@@ -141,9 +158,29 @@ func runDaemonAcceptLoop(listener net.Listener, logFile daemonServerLogFile, dep
 				deps.activeWG.Done()
 			}()
 			defer conn.Close()
+			if deps.wrapConn != nil {
+				conn = deps.wrapConn(conn)
+			}
 			if err := deps.serveMCPStream(conn, logFile); err != nil {
 				fmt.Fprintf(logFile, "%s mcp stream error: %v\n", deps.now().Format(time.RFC3339), err)
 			}
 		}(conn)
 	}
+}
+
+// idleConn wraps a net.Conn and refreshes the read deadline on every Read so
+// that abandoned MCP connections (no traffic) hit the idle timeout, cause
+// server.Run to return, and release their connSlot instead of blocking on a
+// read forever. Active connections refresh the deadline on each Read and are
+// unaffected.
+type idleConn struct {
+	net.Conn
+	timeout time.Duration
+}
+
+func (c *idleConn) Read(p []byte) (int, error) {
+	if err := c.Conn.SetReadDeadline(time.Now().Add(c.timeout)); err != nil {
+		return 0, err
+	}
+	return c.Conn.Read(p)
 }
