@@ -1,14 +1,20 @@
 package doctor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"agent-harness/internal/core/looprun"
 )
+
+const pipeCapacityWarningThreshold = 8192
+
+var measurePipeCapacity = measureSystemPipeCapacity
 
 func (r *HarnessDoctorResult) checkProjectDocs(root string) {
 	missing := []string{}
@@ -55,6 +61,82 @@ func (r *HarnessDoctorResult) checkLoopContracts(root string) {
 	if incomplete > 0 {
 		r.addIssue("loop_contracts_incomplete", "warning", fmt.Sprintf("repo has incomplete loop contracts: active=%d exhausted=%d", summary.Active, summary.Exhausted), looprun.StateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Stop or complete same-repo loop runs before PR readiness."})
 	}
+}
+
+func (r *HarnessDoctorResult) checkPipeCapacity() {
+	capacity, err := measurePipeCapacity()
+	if err != nil {
+		r.addCheck("pipe_capacity", true, "pipe capacity unavailable: "+err.Error())
+		r.addIssue("pipe_capacity_unavailable", "warning", "system pipe buffer capacity could not be measured", "", &HarnessDoctorFix{Description: "Retry doctor; if this persists, inspect process file descriptors and OS pipe limits."})
+		return
+	}
+	r.PipeCapacityBytes = capacity
+	summary := fmt.Sprintf("capacity=%d bytes", capacity)
+	if capacity < pipeCapacityWarningThreshold {
+		r.addCheck("pipe_capacity", false, summary)
+		r.addIssue("pipe_capacity_degraded", "warning", "system pipe buffer degraded; long-lived host process may be leaking pipes; see CAUTIONS 2026-07-09", "", &HarnessDoctorFix{Description: "Restart the leaking long-lived host process, then rerun lsof pipe counts and agent-harness doctor."})
+		return
+	}
+	r.addCheck("pipe_capacity", true, summary)
+}
+
+func measureSystemPipeCapacity() (int, error) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		return 0, err
+	}
+	defer r.Close()
+	defer w.Close()
+
+	progress := make(chan int, 64)
+	done := make(chan error, 1)
+	total := 0
+	go func() {
+		chunk := make([]byte, 512)
+		for {
+			n, err := w.Write(chunk)
+			if n > 0 {
+				progress <- n
+			}
+			if err != nil {
+				done <- err
+				return
+			}
+		}
+	}()
+
+	idle := time.NewTimer(100 * time.Millisecond)
+	defer idle.Stop()
+	for total < 1<<20 {
+		select {
+		case n := <-progress:
+			total += n
+			if !idle.Stop() {
+				select {
+				case <-idle.C:
+				default:
+				}
+			}
+			idle.Reset(100 * time.Millisecond)
+		case err := <-done:
+			if errors.Is(err, os.ErrClosed) || errors.Is(err, syscall.EPIPE) {
+				return total, nil
+			}
+			return total, err
+		case <-idle.C:
+			_ = r.Close()
+			_ = w.Close()
+			select {
+			case err := <-done:
+				if err != nil && !errors.Is(err, os.ErrClosed) && !errors.Is(err, syscall.EPIPE) {
+					return total, err
+				}
+			case <-time.After(time.Second):
+			}
+			return total, nil
+		}
+	}
+	return total, nil
 }
 
 func (r *HarnessDoctorResult) checkNativeIntegrations(home string) {

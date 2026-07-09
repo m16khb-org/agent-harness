@@ -15,17 +15,18 @@ type HarnessDoctorRequest struct {
 }
 
 type HarnessDoctorResult struct {
-	OK             bool                      `json:"ok"`
-	Healthy        bool                      `json:"healthy"`
-	Kind           string                    `json:"kind"`
-	Version        string                    `json:"version,omitempty"`
-	HarnessRoot    string                    `json:"harness_root,omitempty"`
-	RepoRoot       string                    `json:"repo_root"`
-	StateDir       string                    `json:"state_dir"`
-	LifecycleState ProjectLifecycleStatePlan `json:"lifecycle_state"`
-	Checks         []HarnessDoctorCheck      `json:"checks"`
-	Issues         []HarnessDoctorIssue      `json:"issues"`
-	GeneratedAt    string                    `json:"generated_at"`
+	OK                bool                      `json:"ok"`
+	Healthy           bool                      `json:"healthy"`
+	Kind              string                    `json:"kind"`
+	Version           string                    `json:"version,omitempty"`
+	HarnessRoot       string                    `json:"harness_root,omitempty"`
+	RepoRoot          string                    `json:"repo_root"`
+	StateDir          string                    `json:"state_dir"`
+	LifecycleState    ProjectLifecycleStatePlan `json:"lifecycle_state"`
+	PipeCapacityBytes int                       `json:"pipe_capacity_bytes"`
+	Checks            []HarnessDoctorCheck      `json:"checks"`
+	Issues            []HarnessDoctorIssue      `json:"issues"`
+	GeneratedAt       string                    `json:"generated_at"`
 }
 
 type HarnessDoctorCheck struct {
@@ -93,6 +94,7 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 	result.checkProjectDocs(root)
 	result.checkRepoLocalRuntimeState(root)
 	result.checkLoopContracts(root)
+	result.checkPipeCapacity()
 	result.checkNativeIntegrations(req.Home)
 	result.checkBinaryDrift(req.HarnessRoot)
 
