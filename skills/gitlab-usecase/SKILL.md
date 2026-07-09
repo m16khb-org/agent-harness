@@ -15,8 +15,18 @@ Use this skill before GitLab work starts. It is a guardrail for repeated mistake
    - MR: `/merge_requests/:iid`
    - Native linked item: non-hierarchical relation such as `relates_to`, `blocks`, `is_blocked_by`
    - Child item: parent-child hierarchy, not a link relation
-2. Use authenticated `glab`/GitLab API first. If local `glab` returns auth, permission, or project errors, use the configured GitLab MCP/API fallback and verify the same fields there.
+2. Pick the authenticated surface whose credentials and scope match the target GitLab host and project before the first call: local `glab` CLI, or a configured GitLab MCP server. If one surface returns auth, permission, or project errors, switch to the other configured surface and verify the same fields there.
 3. Do not report completion from local state alone. Re-read the remote issue/MR/work item after mutation.
+
+## Profile-Scoped glab MCP Servers (when configured)
+
+Some environments expose `glab` through profile-scoped MCP servers, where each server pins one GitLab host, one token, and one default project workdir (server selection = target project + credential declaration). In that setup:
+
+- Before any call, confirm the server profile matches the task's target project. A wrong-profile call is not always an error — it can silently succeed against the wrong project or fail with a misleading 404.
+- Do not rely on repo autodetection. Without an explicit `-R <group/project>` or explicit API endpoint, `glab` resolves the repo from the current session's working directory, not the profile workdir — in a non-GitLab checkout it errors ("none of the git remotes correspond"), and in a different GitLab checkout it silently targets that repo. Verified 2026-07-09 against profile-scoped servers.
+- Profile tokens are often project-scoped bot tokens. A 404 on another project usually means token scope, not a missing project; switch to the matching profile instead of forcing `-R`.
+- Do not switch profiles mid-task without re-verifying the target object (issue/MR/work item) on the new profile.
+- These MCP tools run the same `glab` CLI under the profile's credentials; CLI-vs-MCP is a credential/scope choice, not a capability fallback order.
 
 ## Non-Negotiable Distinctions
 
@@ -57,7 +67,8 @@ If a Task is already a linked item and must become a child item, remove the link
 
 Stop and ask or switch to GitLab MCP/API when:
 
-- local `glab` returns `401`, `404`, missing scope, or permission errors;
+- local `glab` or a glab MCP profile returns `401`, `404`, missing scope, or permission errors;
+- the resolved project of the auth surface does not match the task's target project (wrong profile/workdir/token);
 - linked item and child item state disagree;
 - target/base branch does not match the recorded parent branch;
 - issue body update would overwrite unknown current content;

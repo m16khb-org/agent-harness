@@ -21,7 +21,7 @@ var hookRoutingRules = []HookRoutingRule{
 	},
 	{
 		Tool:           "vcs_remote_auth",
-		Reason:         "For VCS remote work, use an authenticated CLI token first; if the token is unavailable or the CLI returns auth/permission errors, use the configured MCP fallback. Do not print tokens.",
+		Reason:         "For VCS remote work, pick the authenticated surface (CLI token or configured MCP server) whose credentials match the target host/project; on missing token or auth/permission errors switch to the other configured surface. Do not print tokens.",
 		Priority:       PriorityAction,
 		LowerKeywords:  []string{"github", "gitlab", "gh ", "glab", "pull request", "merge request", " pr", " mr", "issue"},
 		PromptKeywords: []string{"PR", "MR", "이슈", "깃허브", "깃랩", "머지리퀘스트", "풀리퀘스트"},

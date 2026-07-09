@@ -133,8 +133,8 @@ elif [[ "$DRY_RUN" == "1" ]]; then
 fi
 
 # --- Optional glab MCP sync across hosts (no-op when glab-mcp-wrapper absent).
-# Keeps glab-api-servers / glab-cloud-platform consistent on Codex, Claude Code,
-# and GJC for users who already have a glab-mcp-wrapper + GitLab token set up.
+# Keeps the user's profile-scoped glab MCP servers consistent on Codex, Claude
+# Code, and GJC. Profiles come from GLAB_MCP_PROFILES or ~/.config/glab-mcp/profiles.
 if [[ -x "${HOME}/.local/bin/glab-mcp-wrapper" || -n "${GLAB_MCP_WRAPPER:-}" ]]; then
   if [[ "$DRY_RUN" == "1" ]]; then
     log "dry-run: would sync glab MCP servers across hosts (scripts/sync-glab-mcp.sh)"

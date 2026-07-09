@@ -40,7 +40,7 @@ func compactHintLabel(h Hint) string {
 	case "issueops":
 		return "issueops issue-driven workflow; hooks must not create issues or PRs"
 	case "vcs_remote_auth":
-		return "VCS remote work: use authenticated CLI first; on missing token or auth/permission error use MCP fallback; do not print tokens"
+		return "VCS remote work: pick the authenticated surface matching the target host/project; on auth error switch to the other configured surface; do not print tokens"
 	case "gitlab-usecase":
 		return "use gitlab-usecase before GitLab work; distinguish linked items from child items and verify remote state"
 	case "host-agent judgement":

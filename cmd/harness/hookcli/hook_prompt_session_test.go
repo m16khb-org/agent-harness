@@ -116,17 +116,17 @@ func TestRunHookUserPromptLLMHintsAreOptIn(t *testing.T) {
 	}
 }
 
-func TestRunHookUserPromptRoutesVCSRemoteWorkToCLIFirstWithMCPFallback(t *testing.T) {
+func TestRunHookUserPromptRoutesVCSRemoteWorkToScopeMatchedAuthSurface(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := hookTempRepoWithDoc(t)
 	input := `{"prompt":"GitLab MR 코멘트를 확인하고 이슈를 업데이트해줘","cwd":"` + repo + `"}`
 	obj := runHookCapture(t, input, func() error { return runHookUserPrompt(nil) })
 	ctx := hookAdditionalContext(obj)
-	if !strings.Contains(ctx, "VCS remote work: use authenticated CLI first") {
-		t.Fatalf("VCS prompt should include CLI-first guidance, got %q", ctx)
+	if !strings.Contains(ctx, "VCS remote work: pick the authenticated surface matching the target host/project") {
+		t.Fatalf("VCS prompt should include scope-matched auth surface guidance, got %q", ctx)
 	}
-	if !strings.Contains(ctx, "MCP fallback") || !strings.Contains(ctx, "do not print tokens") {
-		t.Fatalf("VCS prompt should include MCP fallback and token hygiene guidance, got %q", ctx)
+	if !strings.Contains(ctx, "switch to the other configured surface") || !strings.Contains(ctx, "do not print tokens") {
+		t.Fatalf("VCS prompt should include surface-switch and token hygiene guidance, got %q", ctx)
 	}
 }
 
