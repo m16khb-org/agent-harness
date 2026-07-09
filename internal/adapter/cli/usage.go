@@ -40,7 +40,7 @@ func Commands() []Command {
 		{Name: "web-fetch", Description: "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks"},
 		{Name: "self-verify", Description: "run harness verification gates"},
 		{Name: "self-augment", Description: "plan self-augmentation candidates and lessons"},
-		{Name: "mcp", Description: "serve the MCP stdio proxy"},
+		{Name: "mcp", Description: "serve the MCP stdio proxy and clean up proxy processes"},
 		{Name: "version", Description: "print agent-harness version"},
 	}
 }
@@ -143,7 +143,7 @@ Usage:
   agent-harness self-verify candidates [--save-state] [--state-key KEY] [--json]
   agent-harness self-augment [--cycles=1] [--target-score=95] [--save-state] [--state-key KEY] [--json]
   agent-harness self-augment lesson [--candidate ID] --lesson TEXT --next-action TEXT [--source TEXT] [--severity info|warning|error] [--state-key KEY] [--json]
-  agent-harness mcp
+  agent-harness mcp [cleanup [--dry-run|--apply] [--json]]
   agent-harness version
 `, version)
 }

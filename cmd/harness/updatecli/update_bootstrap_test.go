@@ -256,3 +256,61 @@ func TestExportedUpdateFacadesForwardToConfiguredDependencies(t *testing.T) {
 		t.Fatalf("ParseMCPProxyProcess = %#v ok=%v", parsed, ok)
 	}
 }
+
+func TestCleanupMCPProxiesDryRunAndApply(t *testing.T) {
+	restoreList := stubMCPProxyProcessLister(t, func() ([]mcpProxyProcess, error) {
+		return []mcpProxyProcess{
+			{PID: os.Getpid(), Command: "agent-harness mcp"},
+			{PID: 22, Command: "agent-harness mcp"},
+			{PID: 33, Command: "agent-harness mcp"},
+		}, nil
+	})
+	defer restoreList()
+
+	var terminated []int
+	restoreTerm := stubMCPProxyTerminator(t, func(pid int) error {
+		terminated = append(terminated, pid)
+		return nil
+	})
+	defer restoreTerm()
+
+	dryRun, err := CleanupMCPProxies(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !dryRun.OK || !dryRun.DryRun || dryRun.Matched != 3 || dryRun.Terminated != 0 || len(terminated) != 0 {
+		t.Fatalf("dry-run cleanup = %#v terminated=%#v", dryRun, terminated)
+	}
+	if len(dryRun.Processes) != 3 || dryRun.Processes[0].Action != "skip-current" || dryRun.Processes[1].Action != "would-terminate" {
+		t.Fatalf("dry-run cleanup actions = %#v", dryRun.Processes)
+	}
+
+	applied, err := CleanupMCPProxies(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !applied.OK || applied.DryRun || applied.Matched != 3 || applied.Terminated != 2 {
+		t.Fatalf("apply cleanup = %#v", applied)
+	}
+	if !reflect.DeepEqual(terminated, []int{22, 33}) {
+		t.Fatalf("terminated = %#v", terminated)
+	}
+	if applied.Processes[0].Action != "skip-current" || applied.Processes[1].Action != "terminated" {
+		t.Fatalf("apply cleanup actions = %#v", applied.Processes)
+	}
+}
+
+func TestCleanupMCPProxiesReturnsEmptyProcessListWhenNoMatches(t *testing.T) {
+	restoreList := stubMCPProxyProcessLister(t, func() ([]mcpProxyProcess, error) {
+		return nil, nil
+	})
+	defer restoreList()
+
+	result, err := CleanupMCPProxies(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.Matched != 0 || result.Processes == nil || len(result.Processes) != 0 {
+		t.Fatalf("cleanup no matches = %#v", result)
+	}
+}

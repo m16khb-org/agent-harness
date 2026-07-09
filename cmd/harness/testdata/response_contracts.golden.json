@@ -227,7 +227,7 @@
           "name": "self-augment"
         },
         {
-          "description": "serve the MCP stdio proxy",
+          "description": "serve the MCP stdio proxy and clean up proxy processes",
           "name": "mcp"
         },
         {
@@ -235,7 +235,7 @@
           "name": "version"
         }
       ],
-      "hash": "8903561225c0d36578e84dc359f0c0b20d078e4dcb2eae5c04fc322de7c071af",
+      "hash": "a9116b5ffaf911784c1be9e9d5f1c5399071be00cda3ef357731b77265e8f27d",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -6634,7 +6634,7 @@
                 "name": "self-augment"
               },
               {
-                "description": "serve the MCP stdio proxy",
+                "description": "serve the MCP stdio proxy and clean up proxy processes",
                 "name": "mcp"
               },
               {
@@ -6642,7 +6642,7 @@
                 "name": "version"
               }
             ],
-            "hash": "8903561225c0d36578e84dc359f0c0b20d078e4dcb2eae5c04fc322de7c071af",
+            "hash": "a9116b5ffaf911784c1be9e9d5f1c5399071be00cda3ef357731b77265e8f27d",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",

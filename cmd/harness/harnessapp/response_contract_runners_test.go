@@ -59,21 +59,30 @@ func captureStdoutForContract(t *testing.T, fn func() error) string {
 	if err != nil {
 		t.Fatal(err)
 	}
+	type readResult struct {
+		out []byte
+		err error
+	}
+	readDone := make(chan readResult, 1)
+	go func() {
+		out, err := io.ReadAll(r)
+		readDone <- readResult{out: out, err: err}
+	}()
 	os.Stdout = w
 	runErr := fn()
 	closeErr := w.Close()
 	os.Stdout = oldStdout
-	out, readErr := io.ReadAll(r)
-	if readErr != nil {
-		t.Fatal(readErr)
+	read := <-readDone
+	if read.err != nil {
+		t.Fatal(read.err)
 	}
 	if closeErr != nil {
 		t.Fatal(closeErr)
 	}
 	if runErr != nil {
-		t.Fatalf("captured command failed: %v\nstdout:\n%s", runErr, string(out))
+		t.Fatalf("captured command failed: %v\nstdout:\n%s", runErr, string(read.out))
 	}
-	return string(out)
+	return string(read.out)
 }
 
 func mustStateReadForContract(t *testing.T, key string) core.StateResult {

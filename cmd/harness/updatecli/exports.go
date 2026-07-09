@@ -45,6 +45,10 @@ func RefreshRunningMCPProxiesAfterInstall() (int, error) {
 	return refreshRunningMCPProxiesAfterInstall()
 }
 
+func CleanupMCPProxies(dryRun bool) (MCPCleanupResult, error) {
+	return cleanupMCPProxies(dryRun)
+}
+
 func ParseMCPProxyProcess(line, binary string) (MCPProxyProcess, bool) {
 	return parseMCPProxyProcess(line, binary)
 }

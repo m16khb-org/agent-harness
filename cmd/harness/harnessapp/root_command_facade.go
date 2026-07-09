@@ -56,7 +56,7 @@ func rootCommand() rootcmd.Command {
 			"loop":           runLoop,
 			"web-fetch":      runWebFetch,
 			"daemon":         runDaemon,
-			"mcp":            runMCPNoArgs,
+			"mcp":            runMCPCommand,
 		},
 		ErrorExitCode: rootSubcommandErrorExitCode,
 	}

@@ -18,6 +18,21 @@ type mcpProxyProcess struct {
 	Command string
 }
 
+type MCPCleanupProcess struct {
+	PID     int    `json:"pid"`
+	Command string `json:"command"`
+	Action  string `json:"action"`
+}
+
+type MCPCleanupResult struct {
+	OK         bool                `json:"ok"`
+	DryRun     bool                `json:"dry_run"`
+	Matched    int                 `json:"matched"`
+	Terminated int                 `json:"terminated"`
+	Processes  []MCPCleanupProcess `json:"processes"`
+	Message    string              `json:"message,omitempty"`
+}
+
 func refreshRunningMCPProxiesAfterInstall() (int, error) {
 	processes, err := mcpProxyProcessLister()
 	if err != nil {
@@ -35,6 +50,48 @@ func refreshRunningMCPProxiesAfterInstall() (int, error) {
 		terminated++
 	}
 	return terminated, nil
+}
+
+func cleanupMCPProxies(dryRun bool) (MCPCleanupResult, error) {
+	processes, err := mcpProxyProcessLister()
+	if err != nil {
+		return MCPCleanupResult{OK: false, DryRun: dryRun}, err
+	}
+	currentPID := os.Getpid()
+	result := MCPCleanupResult{
+		OK:        true,
+		DryRun:    dryRun,
+		Matched:   len(processes),
+		Processes: []MCPCleanupProcess{},
+	}
+	for _, process := range processes {
+		cleanupProcess := MCPCleanupProcess{
+			PID:     process.PID,
+			Command: process.Command,
+		}
+		switch {
+		case process.PID == currentPID:
+			cleanupProcess.Action = "skip-current"
+		case dryRun:
+			cleanupProcess.Action = "would-terminate"
+		default:
+			if err := mcpProxyTerminator(process.PID); err != nil {
+				cleanupProcess.Action = "terminate-error"
+				result.OK = false
+				result.Processes = append(result.Processes, cleanupProcess)
+				return result, err
+			}
+			cleanupProcess.Action = "terminated"
+			result.Terminated++
+		}
+		result.Processes = append(result.Processes, cleanupProcess)
+	}
+	if dryRun {
+		result.Message = "dry-run: no MCP proxy processes terminated"
+	} else {
+		result.Message = "MCP proxy cleanup complete"
+	}
+	return result, nil
 }
 
 func listMCPProxyProcesses() ([]mcpProxyProcess, error) {

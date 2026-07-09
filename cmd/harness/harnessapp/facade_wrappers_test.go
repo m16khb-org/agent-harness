@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -76,6 +77,38 @@ func TestAppAndRootCommandFacadeWrappers(t *testing.T) {
 	}
 	if code := RunRootCommand([]string{"--version"}); code != 0 {
 		t.Fatalf("RunRootCommand --version = %d", code)
+	}
+}
+
+func TestRunMCPCommandCleanupJSONUsesDryRunByDefaultAndApplyWhenRequested(t *testing.T) {
+	previousLister := mcpProxyProcessLister
+	previousTerminator := mcpProxyTerminator
+	t.Cleanup(func() {
+		mcpProxyProcessLister = previousLister
+		mcpProxyTerminator = previousTerminator
+		resetUpdateFacadeDeps()
+	})
+	mcpProxyProcessLister = func() ([]mcpProxyProcess, error) {
+		return []mcpProxyProcess{{PID: 44, Command: "agent-harness mcp"}}, nil
+	}
+	var terminated []int
+	mcpProxyTerminator = func(pid int) error {
+		terminated = append(terminated, pid)
+		return nil
+	}
+
+	if err := runMCPCommand([]string{"cleanup", "--json"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(terminated) != 0 {
+		t.Fatalf("dry-run cleanup terminated processes: %#v", terminated)
+	}
+
+	if err := runMCPCommand([]string{"cleanup", "--apply", "--json"}); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(terminated, []int{44}) {
+		t.Fatalf("apply cleanup terminated = %#v", terminated)
 	}
 }
 
