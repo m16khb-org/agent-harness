@@ -120,6 +120,7 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - deterministic하며 test order, wall-clock sleep, real network, local machine state에 의존하지 않는다.
 - regression test는 재발했던 입력, false case, 기대 결과를 명확히 담는다.
 - 기존 helper와 style을 재사용하고, golden/snapshot 변경은 의도와 범위를 설명한다.
+- stdout/stderr를 `os.Pipe`로 캡처하는 테스트는 직접 write-then-read 헬퍼를 만들지 말고 `internal/testsupport`의 동시-reader 캡처 헬퍼를 사용한다.
 
 ### Poorly-structured tests
 
