@@ -17,11 +17,7 @@ func (s *stateRoundtripStateSession) validatePrune() StepResult {
 		return s.fail(err.Error())
 	}
 	oldWriteResult.Record.UpdatedAt = "2000-01-01T00:00:00Z"
-	b, err := json.MarshalIndent(oldWriteResult.Record, "", "  ")
-	if err != nil {
-		return s.fail(err.Error())
-	}
-	if err := s.input.deps.writeFile(oldWriteResult.Path, append(b, '\n'), 0o600); err != nil {
+	if _, err := core.WriteStateRecord(s.input.tempState, oldKey, oldWriteResult.Record); err != nil {
 		return s.fail(err.Error())
 	}
 

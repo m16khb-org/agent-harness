@@ -11,6 +11,8 @@ import (
 const (
 	selfVerifyCommandOutputBudgetBytes   = 32 * 1024
 	selfVerifyAggregateOutputBudgetBytes = 8 * 1024
+	riskQARaceTimeout                    = 10 * time.Minute
+	riskQAVetTimeout                     = 120 * time.Second
 )
 
 type RiskQATierPlan struct {
@@ -28,9 +30,9 @@ func Validate(root string) StepResult {
 		Run: func(root string, command string) StepResult {
 			switch command {
 			case "go test -race ./... -count=1":
-				return commandstep.Run(root, "risk QA race test", 180*time.Second, "", selfVerifyCommandOutputBudgetBytes, "go", "test", "-race", "./...", "-count=1")
+				return commandstep.Run(root, "risk QA race test", riskQARaceTimeout, "", selfVerifyCommandOutputBudgetBytes, "go", "test", "-race", "./...", "-count=1")
 			case "go vet ./...":
-				return commandstep.Run(root, "risk QA static vet", 120*time.Second, "", selfVerifyCommandOutputBudgetBytes, "go", "vet", "./...")
+				return commandstep.Run(root, "risk QA static vet", riskQAVetTimeout, "", selfVerifyCommandOutputBudgetBytes, "go", "vet", "./...")
 			default:
 				return commandstep.FailedStep("risk QA tier", fmt.Errorf("unknown risk QA command %q", command))
 			}

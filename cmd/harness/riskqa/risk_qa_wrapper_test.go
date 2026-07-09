@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidateRiskQATierWrapperRunsElevatedDefaultCommands(t *testing.T) {
@@ -143,6 +144,12 @@ func TestValidateRiskQATierWithDepsCoversCommandSuccessAndFailure(t *testing.T) 
 	})
 	if failure.OK || failure.Label != "risk QA tier" || !strings.Contains(failure.Command, "stub race") || !strings.Contains(failure.Error, "race failed") {
 		t.Fatalf("unexpected failing risk QA result: %+v", failure)
+	}
+}
+
+func TestRiskQARaceTimeoutCoversFullRepoRaceGate(t *testing.T) {
+	if riskQARaceTimeout < 10*time.Minute {
+		t.Fatalf("risk QA race timeout = %s, want at least 10m for full repo race gate", riskQARaceTimeout)
 	}
 }
 

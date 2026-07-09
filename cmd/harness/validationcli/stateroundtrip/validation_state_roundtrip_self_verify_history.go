@@ -2,9 +2,9 @@ package stateroundtrip
 
 import (
 	"encoding/json"
-	"path/filepath"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/sqlstore"
 )
 
 func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCompareKey, candidateCompareKey, promotedBaselineKey string) StepResult {
@@ -62,8 +62,11 @@ func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCo
 		return s.fail("self-verify history retention confirm left too many matching summaries")
 	}
 
-	corruptPath := filepath.Join(input.tempState, "corrupt.json")
-	if err := input.deps.writeFile(corruptPath, []byte("{not json\n"), 0o600); err != nil {
+	db, err := sqlstore.Open(input.tempState)
+	if err != nil {
+		return s.fail(err.Error())
+	}
+	if err := db.Put("state", key+"-corrupt", []byte("{not json\n")); err != nil {
 		return s.fail(err.Error())
 	}
 	doctor := s.run("state doctor", input.binary, "state", "doctor", "--json")

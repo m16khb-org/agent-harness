@@ -44,8 +44,8 @@ func TestValidateStateRoundtripWithDepsCoversSuccessAndSetupFailure(t *testing.T
 	if !strings.Contains(step.Command, "self-verify promote --from-key self-verify-123-compare-candidate --baseline-key self-verify-123-promoted-baseline --allow-failed-source --confirm --json") {
 		t.Fatalf("confirmed promote of failed fixture must pass explicit override, command=%q", step.Command)
 	}
-	if len(writes) != 3 || !strings.Contains(strings.Join(writes, "\n"), "corrupt.json") {
-		t.Fatalf("expected old/corrupt fixture writes, got %v", writes)
+	if len(writes) != 0 {
+		t.Fatalf("expected no raw state fixture writes, got %v", writes)
 	}
 
 	deps.mkdirTemp = func(_, _ string) (string, error) { return "", errors.New("no temp") }

@@ -2,7 +2,6 @@ package stateroundtrip
 
 import (
 	"encoding/json"
-	"path/filepath"
 
 	"agent-harness/internal/core"
 )
@@ -10,11 +9,7 @@ import (
 func (s *stateRoundtripStateSession) validateMigrateAndDoctor() StepResult {
 	legacyKey := s.input.key + "-legacy"
 	legacyRecord := core.StateRecord{Key: legacyKey, Content: "legacy state", UpdatedAt: "2000-01-01T00:00:00Z", Bytes: len([]byte("legacy state"))}
-	legacyBytes, err := json.MarshalIndent(legacyRecord, "", "  ")
-	if err != nil {
-		return s.fail(err.Error())
-	}
-	if err := s.input.deps.writeFile(filepath.Join(s.input.tempState, legacyKey+".json"), append(legacyBytes, '\n'), 0o600); err != nil {
+	if _, err := core.WriteStateRecord(s.input.tempState, legacyKey, legacyRecord); err != nil {
 		return s.fail(err.Error())
 	}
 
