@@ -95,8 +95,8 @@ func TestPlannedSelfVerifyStepsGivesGoTestFullGateTimeout(t *testing.T) {
 	if !got.OK || got.Label != "go test" {
 		t.Fatalf("go test step returned unexpected result: %#v", got)
 	}
-	if gotTimeout != 180*time.Second {
-		t.Fatalf("go test timeout = %s, want 3m0s", gotTimeout)
+	if gotTimeout != 10*time.Minute {
+		t.Fatalf("go test timeout = %s, want 10m0s", gotTimeout)
 	}
 }
 

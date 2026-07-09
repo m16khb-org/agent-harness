@@ -13,7 +13,7 @@ type SelfVerifyPlannedStep struct {
 	Run   func() StepResult
 }
 
-const selfVerifyGoTestTimeout = 180 * time.Second
+const selfVerifyGoTestTimeout = 10 * time.Minute
 
 type SelfVerifyStepDeps struct {
 	HarnessRoot                     func() string
