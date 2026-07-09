@@ -46,7 +46,7 @@ func TestListDraftWikiReadsRepoLocalDrafts(t *testing.T) {
 	draft := filepath.Join(root, DraftWikiDir, "draft", "2026-05-31-hook-policy.md")
 	mustWrite(t, draft, `---
 title: "Hook policy"
-source: "claude-mem"
+source: "agent-notes"
 target_wiki: "agent-harness"
 target_type: "notes"
 summary: "Reusable hook policy note."

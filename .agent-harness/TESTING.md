@@ -200,7 +200,7 @@ The default web-fetch battery is deterministic and must not require network acce
 
 ## Standalone Verification Policy
 
-Agent-harness tests must verify harness core and native integration contracts without requiring external toolchains, external accounts, or companion MCP servers. LLM Wiki, CodeGraph, claude-mem, LazyCodex, Ponytail, and Headroom are not prerequisites for install/update/self-verify readiness.
+Agent-harness tests must verify harness core and native integration contracts without requiring external toolchains, external accounts, or companion MCP servers. External companion tools are not prerequisites for install/update/self-verify readiness.
 
 If a test fixture models data produced by an external tool, keep it as plain local input and verify only the harness boundary that consumes that input. Do not add tests that clone, install, patch, or register external tools as part of normal verification.
 

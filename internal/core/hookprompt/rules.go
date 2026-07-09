@@ -76,25 +76,6 @@ var hookRoutingRules = []HookRoutingRule{
 		PromptKeywords: []string{"문서", "컨벤션", "최신화", "프로젝트 규칙"},
 	},
 	{
-		Tool:          "CodeGraph",
-		Reason:        "Secondary hint: use CodeGraph for repo-local symbol, call graph, impact, or trace questions; keep rg for exact strings, env keys, errors, and filenames.",
-		Priority:      PrioritySecondary,
-		LowerKeywords: []string{"codegraph", "symbol", "call graph", "impact", "trace", "caller", "callee"},
-	},
-	{
-		Tool:          "LLM Wiki",
-		Reason:        "Secondary hint: consider upstream LLM Wiki for explicit wiki, research, knowledge-base, query, or compile workflows.",
-		Priority:      PrioritySecondary,
-		LowerKeywords: []string{"llm-wiki", "wiki", "knowledge base", "research", "compile"},
-	},
-	{
-		Tool:           "claude-mem",
-		Reason:         "Secondary hint: consider claude-mem for previous-session memory or repeated-work questions.",
-		Priority:       PrioritySecondary,
-		LowerKeywords:  []string{"claude-mem", "agentmemory", "agent-memory", "memory", "previous session", "last time", "already solve", "already solved"},
-		PromptKeywords: []string{"전에", "지난번", "이미 해결"},
-	},
-	{
 		Tool:            "host-agent judgement",
 		Reason:          "Secondary hint: render a prompt for foreground second-pass review or background synthesis when extra host-agent judgment is useful.",
 		Priority:        PrioritySecondary,

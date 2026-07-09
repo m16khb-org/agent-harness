@@ -116,7 +116,7 @@ func TestRunHookPostToolUseDoesNotAutoQueueDraftWiki(t *testing.T) {
 	raw := runHookCapture(t, `{
   "cwd": "`+repo+`",
   "tool_name": "Bash",
-  "tool_input": {"command": "claude-mem export observations"},
+  "tool_input": {"command": "agent notes export"},
   "tool_response": "A durable observation says this might be reusable draft wiki material."
 }`, func() error {
 		return runHookPostToolUse([]string{"--json"})

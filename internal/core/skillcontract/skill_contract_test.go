@@ -47,7 +47,9 @@ func TestDraftWikiPromoterSkillPinsHookAndPromotionContract(t *testing.T) {
 		"only approved drafts may be promoted",
 		// Operational-measurement fixes (DWP-O findings).
 		"`queue` and `prune` subcommands",
-		"Failure boundary when upstream is absent",
+		// Repo-local promotion boundary: promote never writes outside the repo.
+		"it never writes outside the repo",
+		"Never write into external wikis or companion tools",
 	})
 }
 

@@ -55,7 +55,7 @@ func ListDocs(root string) []string {
 
 // hermeticTrackedDocs keeps only git-TRACKED candidates so the docs index — and
 // the response-contract golden that snapshots it — is hermetic: untracked files
-// (e.g. llm-wiki research artifacts written into .agent-harness/research during a
+// (e.g. research artifacts written into .agent-harness/research during a
 // session) must not drift the index. It compares ROOT-RELATIVE paths and never
 // reconstructs absolute paths, so a symlinked root (macOS /var -> /private/var,
 // where git resolves the symlink but filepath.WalkDir does not) cannot cause a

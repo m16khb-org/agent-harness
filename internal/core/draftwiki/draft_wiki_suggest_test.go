@@ -74,7 +74,7 @@ func TestDraftWikiQueueWorkerRendersPrompt(t *testing.T) {
 	queued, err := AppendDraftWikiQueueEvent(DraftWikiQueueAppendRequest{
 		RepoRoot:       root,
 		Tool:           "Bash",
-		Command:        "claude-mem export observations",
+		Command:        "agent notes export",
 		SourceMaterial: "Main agents should enqueue judged work and a host agent should write drafts.",
 		TargetWiki:     "agent-harness",
 		TargetType:     "notes",

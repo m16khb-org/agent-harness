@@ -6,7 +6,7 @@ func fallbackHintPriority(h Hint) string {
 	switch {
 	case strings.HasSuffix(h.Tool, ".md"):
 		return PriorityConsider
-	case h.Tool == "CodeGraph" || h.Tool == "LLM Wiki" || h.Tool == "claude-mem" || h.Tool == "host-agent judgement":
+	case h.Tool == "host-agent judgement":
 		return PrioritySecondary
 	case h.Tool == "project_docs_route":
 		return PriorityRoute
@@ -43,12 +43,6 @@ func compactHintLabel(h Hint) string {
 		return "VCS remote work: use authenticated CLI first; on missing token or auth/permission error use MCP fallback; do not print tokens"
 	case "gitlab-usecase":
 		return "use gitlab-usecase before GitLab work; distinguish linked items from child items and verify remote state"
-	case "CodeGraph":
-		return "CodeGraph for structural lookup; rg for exact strings"
-	case "LLM Wiki":
-		return "LLM Wiki for explicit wiki/research work"
-	case "claude-mem":
-		return "claude-mem only for previous-session/repeated-work recall"
 	case "host-agent judgement":
 		return "host-agent prompt for second-pass review"
 	default:

@@ -60,10 +60,6 @@ func appendCompactHintGroup(parts *[]string, title string, hints []HookUserPromp
 }
 
 func appendSecondaryHints(parts *[]string, hints []HookUserPromptHint) {
-	if len(hints) == 1 && hints[0].Tool == "claude-mem" {
-		appendContextLine(parts, "memory", "use claude-mem only for previous-session/repeated-work recall")
-		return
-	}
 	appendCompactHintGroup(parts, "secondary", hints)
 }
 

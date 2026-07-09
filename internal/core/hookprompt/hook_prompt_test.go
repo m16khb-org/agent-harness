@@ -122,19 +122,19 @@ func TestRenderHookMCPHintContextNormalizesFallbackLabels(t *testing.T) {
 		{Tool: "project_docs_record", Reason: "kind=adr"},
 		{Tool: "project_docs_record", Reason: "kind=caution"},
 		{Tool: "api_doc_static_check"},
-		{Tool: "CodeGraph"},
-		{Tool: "CodeGraph"},
+		{Tool: "host-agent judgement"},
+		{Tool: "host-agent judgement"},
 	}, nil, nil, "")
 	for _, want := range []string{
 		"- docs: use project docs only when repo-specific context matters",
 		"- actions: record ADR decision, record reusable caution, check OpenAPI gaps",
-		"- secondary: CodeGraph for structural lookup; rg for exact strings",
+		"- secondary: host-agent prompt for second-pass review",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("compact render missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Count(got, "CodeGraph for structural lookup") != 1 {
+	if strings.Count(got, "host-agent prompt for second-pass review") != 1 {
 		t.Fatalf("expected duplicate fallback labels to collapse:\n%s", got)
 	}
 }
@@ -154,25 +154,21 @@ func TestBuildUserPromptMCPHintsDropsKeywordDocPrescription(t *testing.T) {
 	}
 }
 
-func TestBuildUserPromptMCPHintsCompanionToolsStaySecondary(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이 symbol의 call graph와 impact를 codegraph로 확인해줘"})
-	projectIndex := strings.Index(got.AdditionalContext, "[agent-harness]")
-	companionIndex := strings.Index(got.AdditionalContext, "secondary")
-	if projectIndex < 0 || companionIndex < 0 || projectIndex > companionIndex {
-		t.Fatalf("expected project banner before companion hints:\n%s", got.AdditionalContext)
+func TestBuildUserPromptMCPHintsOmitExternalCompanionTools(t *testing.T) {
+	// External companion tools (CodeGraph, LLM Wiki, claude-mem) are the
+	// user's own installs; the harness no longer steers prompts toward them.
+	prompts := []string{
+		"이 symbol의 call graph와 impact를 codegraph로 확인해줘",
+		"지난번에 이미 해결한 memory 찾아줘",
+		"llm-wiki knowledge base에서 research 자료를 compile해줘",
 	}
-	if !strings.Contains(got.AdditionalContext, "CodeGraph for structural lookup; rg for exact strings") {
-		t.Fatalf("expected CodeGraph secondary hint:\n%s", got.AdditionalContext)
-	}
-}
-
-func TestBuildUserPromptMCPHintsRoutesMemoryToClaudeMem(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "지난번에 이미 해결한 memory 찾아줘"})
-	if !strings.Contains(got.AdditionalContext, "memory: use claude-mem only for previous-session/repeated-work recall") {
-		t.Fatalf("expected claude-mem secondary hint:\n%s", got.AdditionalContext)
-	}
-	if strings.Contains(got.AdditionalContext, "agentmemory") {
-		t.Fatalf("memory routing must not mention agentmemory:\n%s", got.AdditionalContext)
+	for _, prompt := range prompts {
+		got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: prompt})
+		for _, gone := range []string{"CodeGraph", "LLM Wiki", "claude-mem", "agentmemory"} {
+			if strings.Contains(got.AdditionalContext, gone) {
+				t.Fatalf("external companion tool hint %q should be gone for prompt %q:\n%s", gone, prompt, got.AdditionalContext)
+			}
+		}
 	}
 }
 

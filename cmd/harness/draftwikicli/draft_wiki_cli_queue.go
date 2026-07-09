@@ -13,8 +13,8 @@ func runProjectDraftWikiQueue(args []string) error {
 	input := fs.String("input", "", "source text/markdown file to queue after main-agent judgement")
 	material := fs.String("material", "", "source material to queue after main-agent judgement")
 	stdinFlag := fs.Bool("stdin", false, "read source material from stdin")
-	targetWiki := fs.String("target-wiki", "", "target upstream LLM Wiki topic")
-	targetType := fs.String("target-type", "notes", "target upstream LLM Wiki raw type")
+	targetWiki := fs.String("target-wiki", "", "target wiki topic")
+	targetType := fs.String("target-type", "notes", "target wiki entry type")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err

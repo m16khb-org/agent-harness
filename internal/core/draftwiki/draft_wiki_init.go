@@ -66,7 +66,7 @@ func draftWikiREADME() string {
 
 이 디렉토리는 agent-harness가 제안한 wiki 후보를 사용자가 검토하는 repo-local staging area다.
 
-- ` + "`draft/`" + `: claude-mem 등에서 선별된 후보. 아직 승인되지 않았다.
+- ` + "`draft/`" + `: 에이전트 노트 등에서 선별된 후보. 아직 승인되지 않았다.
 - ` + "`approved/`" + `: 사용자가 로컬 export를 승인한 후보.
 - ` + "`rejected/`" + `: 사용자가 거절한 후보.
 - ` + "`exported/`" + `: 승인 후 promote된 Markdown 산출물. 사용자가 원하는 저장소나 지식베이스로 직접 옮긴다.

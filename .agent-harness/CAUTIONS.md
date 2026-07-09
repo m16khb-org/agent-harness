@@ -136,7 +136,7 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 ## 12. 외부 도구 의존 재도입 금지
 
-`agent-harness` 설치, 업데이트, self-verify, IssueOps readiness gate는 외부 도구 없이 재현 가능해야 한다. LLM Wiki, CodeGraph, claude-mem, LazyCodex, Ponytail, Headroom 같은 도구는 사용자가 별도로 설치한 경우에만 일반 파일/명령/MCP 경계에서 참고한다.
+`agent-harness` 설치, 업데이트, self-verify, IssueOps readiness gate는 외부 도구 없이 재현 가능해야 한다. 외부 도구는 사용자가 별도로 설치한 경우에만 일반 파일/명령/MCP 경계에서 참고한다.
 
 주의:
 - 하네스 설치 경로에서 외부 도구를 clone/install/register/patch 하지 않는다.

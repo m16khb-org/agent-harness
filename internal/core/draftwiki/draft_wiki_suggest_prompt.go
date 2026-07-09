@@ -43,7 +43,7 @@ func buildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, targetType 
 			fmt.Sprintf(`body_markdown should use this YAML frontmatter:
 ---
 title: %q
-source: "claude-mem"
+source: "agent-notes"
 target_wiki: %q
 target_type: %q
 summary: "<one sentence>"
@@ -80,7 +80,7 @@ func decodeDraftWikiSuggestLLMOutput(out []byte) (string, error) {
 func draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType string) string {
 	body := fmt.Sprintf(`---
 title: %q
-source: "claude-mem"
+source: "agent-notes"
 target_wiki: %q
 target_type: %q
 summary: "One sentence summary."

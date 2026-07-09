@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// In a real git repo, an UNTRACKED .md (e.g. an llm-wiki research artifact) must
+// In a real git repo, an UNTRACKED .md (e.g. a session research artifact) must
 // be excluded from the hermetic docs index while TRACKED docs — including ones
 // under .agent-harness/research — stay. t.TempDir() sits under macOS
 // /var -> /private/var, so this also guards the symlink-divergence case where
@@ -30,7 +30,7 @@ func TestListDocsExcludesUntrackedInGitRepo(t *testing.T) {
 	mustWrite(t, filepath.Join(root, ".agent-harness", "research", "tracked-note.md"), "# Tracked research\n")
 	gitRun("add", "AGENTS.md", ".agent-harness/CONVENTIONS.md", ".agent-harness/research/tracked-note.md")
 	gitRun("commit", "-m", "seed")
-	mustWrite(t, filepath.Join(root, ".agent-harness", "research", "untracked-llm-wiki.md"), "# Untracked\n")
+	mustWrite(t, filepath.Join(root, ".agent-harness", "research", "untracked-research.md"), "# Untracked\n")
 
 	index := DocsIndex(root, "test")
 	for _, want := range []string{"AGENTS.md", ".agent-harness/CONVENTIONS.md", ".agent-harness/research/tracked-note.md"} {
@@ -38,7 +38,7 @@ func TestListDocsExcludesUntrackedInGitRepo(t *testing.T) {
 			t.Fatalf("tracked doc %s must stay in the hermetic index: %+v", want, index.Docs)
 		}
 	}
-	if docIndexContains(index.Docs, ".agent-harness/research/untracked-llm-wiki.md") {
+	if docIndexContains(index.Docs, ".agent-harness/research/untracked-research.md") {
 		t.Fatalf("untracked research artifact must be excluded from the hermetic index: %+v", index.Docs)
 	}
 }

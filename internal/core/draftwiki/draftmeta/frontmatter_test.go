@@ -23,13 +23,13 @@ func TestParseFrontmatter(t *testing.T) {
 		},
 		{
 			name:    "valid frontmatter",
-			content: "---\ntitle: My Draft\nsource: claude-mem\ntarget_wiki: dev-fundamentals\nsummary: A test draft\n---\n# Body text\n",
-			want:    map[string]string{"title": "My Draft", "source": "claude-mem", "target_wiki": "dev-fundamentals", "summary": "A test draft"},
+			content: "---\ntitle: My Draft\nsource: agent-notes\ntarget_wiki: dev-fundamentals\nsummary: A test draft\n---\n# Body text\n",
+			want:    map[string]string{"title": "My Draft", "source": "agent-notes", "target_wiki": "dev-fundamentals", "summary": "A test draft"},
 		},
 		{
 			name:    "quoted values",
-			content: "---\ntitle: \"My Draft\"\nsource: \"claude-mem\"\n---\n",
-			want:    map[string]string{"title": "My Draft", "source": "claude-mem"},
+			content: "---\ntitle: \"My Draft\"\nsource: \"agent-notes\"\n---\n",
+			want:    map[string]string{"title": "My Draft", "source": "agent-notes"},
 		},
 		{
 			name:    "with target_type",

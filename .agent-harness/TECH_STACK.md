@@ -33,16 +33,9 @@ description: Chosen languages, runtimes, tools, and rationale.
 
 ## 2.1 External tools are not dependencies
 
-아래 도구들은 agent-harness core dependency가 아니다. 하네스 설치, 업데이트, self-verify, readiness gate는 이 도구들이 없어도 재현 가능해야 한다. 기능을 하네스에 복제하지 않고, 필요한 경우 사용자가 각 도구의 공식 설치/설정 경로를 별도로 따른다.
+외부 companion 도구는 agent-harness core dependency가 아니다. 하네스 설치, 업데이트, self-verify, readiness gate는 이 도구들이 없어도 재현 가능해야 한다. 기능을 하네스에 복제하지 않고, 필요한 경우 사용자가 각 도구의 공식 설치/설정 경로를 별도로 따른다.
 
-| 도구 | Package/source | 역할 | 하네스 경계 |
-|------|------------------|------|-----------|
-| LLM Wiki | `m16khb/llm-wiki` | OKF-native local wiki validation, linting, indexing, graphing, and bounded query-pack MCP tools | 하네스는 외부 wiki ingest/lint/index/query-pack을 실행하지 않는다. |
-| CodeGraph | `@colbymchenry/codegraph` | AST 기반 symbol graph와 MCP code intelligence | 하네스 readiness는 CodeGraph 설치를 요구하지 않는다. 사용 가능하면 명시 evidence로만 기록한다. |
-| claude-mem | `thedotmack/claude-mem` | session memory capture/compression | 하네스는 memory capture/compression/store logic이나 hook 설치를 대행하지 않는다. |
-| LazyCodex | `code-yeongyu/oh-my-openagent` / `lazycodex-ai` | Codex Light LazyCodex/OMO skills, hooks, LSP/AST tooling | 하네스는 해당 skill/hook/tool 동작을 core나 설치 경로에 복제하지 않는다. |
-
-These tools are not installed by `agent-harness install`, `bootstrap`, `update`, or `scripts/install-native.sh`.
+위키, 코드 인텔리전스, 세션 메모리, 서드파티 skill/hook 툴킷 같은 companion 도구가 여기에 해당한다. These tools are not installed by `agent-harness install`, `bootstrap`, `update`, or `scripts/install-native.sh`.
 
 ## 2.2 Project skills
 

@@ -188,7 +188,7 @@ go build -o bin/agent-harness ./cmd/harness
 
 - Codex, Claude Code, GJC에서 관찰되는 하네스 결과가 같아야 한다. GJC는 plugin bundle(`mcps`) + first-party lifecycle hook(`~/.gjc/agent/hooks/`) + filesystem skill discovery(`skills.customDirectories`)로 통합되며, `agent-harness update`가 세 호스트를 모두 갱신한다.
 - 같은 스킬을 두 host에 복사해 중복 관리하지 않는다. `skills/`의 단일 원본을 사용자 홈 skill 경로에서 참조한다. 적용 대상 repo에는 기본 설치가 파일을 남기지 않는다.
-- 하네스 설치·업데이트·검증 경로는 독립 실행 가능해야 한다. llm-wiki, CodeGraph, claude-mem, LazyCodex 같은 외부 도구가 필요하면 사용자가 해당 도구의 공식 경로로 별도 설치하고, agent-harness는 그 설치를 대행하거나 readiness gate로 요구하지 않는다.
+- 하네스 설치·업데이트·검증 경로는 독립 실행 가능해야 한다. 외부 도구가 필요하면 사용자가 해당 도구의 공식 경로로 별도 설치하고, agent-harness는 그 설치를 대행하거나 readiness gate로 요구하지 않는다.
 - 외부 도구의 전문 기능은 agent-harness core에 복제하지 않는다. 필요한 통합은 파일/프로세스/문서처럼 검증 가능한 일반 경계로만 다룬다.
 - host adapter는 인증·권한·명령 실행 정책을 우회할 수 없다.
 - response-contract golden은 CLI command list, MCP tool list, 필수 response fields를 고정한다. docs-index는 문서 본문/목록 churn에 과민하지 않도록 required-doc projection과 count/schema만 검증한다.
