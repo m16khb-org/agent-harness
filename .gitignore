@@ -15,6 +15,7 @@ cache/
 .antigravitycli/
 .omo/
 evidence
+.agent-harness/state/
 .gjc/
 
 # Language/tool caches
