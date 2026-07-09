@@ -347,7 +347,6 @@ func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeTool
 		}
 		prep.ID = record.ID
 		prep.WorktreePath = strings.TrimSpace(prep.WorktreePath)
-		prep.CodeGraphProjectPath = strings.TrimSpace(prep.CodeGraphProjectPath)
 		if prep.PreparedAt == "" {
 			prep.PreparedAt = time.Now().UTC().Format(time.RFC3339Nano)
 		}

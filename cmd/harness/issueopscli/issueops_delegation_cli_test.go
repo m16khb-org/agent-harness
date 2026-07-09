@@ -231,12 +231,9 @@ func startIssueOpsCLIReadyPRParentWithChild(t *testing.T, repo, branch string) c
 	prepareIssueOpsCLIParentImplementationSurface(t, parent.ID, branch, worktree)
 	recordIssueOpsCLIParentDelegationPrereqs(t, parent.ID, filepath.Join(worktree, "plans", "parent-pr.md"))
 	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), parent.ID, core.IssueOpsWorktreeToolPreparation{
-		OK:                   true,
-		WorktreePath:         worktree,
-		CodeGraphProjectPath: worktree,
-		CodeGraphChecked:     true,
-		CodeGraphReady:       true,
-		Messages:             []string{"test prepared parent worktree tools"},
+		OK:           true,
+		WorktreePath: worktree,
+		Messages:     []string{"test prepared parent worktree tools"},
 	}); err != nil {
 		t.Fatal(err)
 	}

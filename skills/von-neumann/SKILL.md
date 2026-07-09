@@ -95,7 +95,7 @@ Recommend a category per task in the plan template. The executor uses this to se
 - Reading/searching files, configs, schemas, types, manifests, docs
 - Static analysis, inspection, repo exploration
 - Spawning read-only subagents for research only when the current host explicitly exposes and permits them
-- Current-host read/search tools for immediate context; prefer CodeGraph for structural analysis when available and `rg` for exact string search
+- Current-host read/search tools for immediate context; use `rg` for exact string search and any separately installed code-intelligence tool for structural analysis
 
 ### Allowed (plan artifacts only)
 - Writing/editing files in `.agent-harness/plans/<slug>.md`

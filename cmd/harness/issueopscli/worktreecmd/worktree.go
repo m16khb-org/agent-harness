@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"agent-harness/cmd/harness/issueopscli/worktreetools"
@@ -91,8 +89,6 @@ func runWorktreePrepareTools(args []string, deps Deps) error {
 			fmt.Printf("dependencies_action: %s\n", result.DependenciesAction)
 		}
 	}
-	fmt.Printf("codegraph_project_path: %s\n", result.CodeGraphProjectPath)
-	fmt.Printf("codegraph_ready: %v\n", result.CodeGraphReady)
 	if result.Guidance != "" {
 		fmt.Printf("guidance: %s\n", result.Guidance)
 	}
@@ -105,11 +101,10 @@ func runWorktreePrepareTools(args []string, deps Deps) error {
 func PrepareWorktreeTools(record core.IssueOpsRecord) (PrepareResult, error) {
 	worktree := strings.TrimSpace(record.WorktreePath)
 	result := PrepareResult{
-		OK:                   true,
-		ID:                   record.ID,
-		WorktreePath:         worktree,
-		CodeGraphProjectPath: worktree,
-		Guidance:             core.ExpectedWorktreeEnvGuidance(worktree),
+		OK:           true,
+		ID:           record.ID,
+		WorktreePath: worktree,
+		Guidance:     core.ExpectedWorktreeEnvGuidance(worktree),
 	}
 	if worktree == "" {
 		result.OK = false
@@ -122,17 +117,6 @@ func PrepareWorktreeTools(record core.IssueOpsRecord) (PrepareResult, error) {
 	if err := worktreetools.PrepareDependencies(worktree, &result); err != nil {
 		result.OK = false
 		return result, err
-	}
-	if _, err := exec.LookPath("codegraph"); err != nil {
-		return result, nil
-	}
-	if info, err := os.Stat(filepath.Join(worktree, ".codegraph")); err != nil || !info.IsDir() {
-		return result, nil
-	}
-	result.CodeGraphChecked = true
-	if err := exec.Command("codegraph", "status", worktree).Run(); err == nil {
-		result.CodeGraphReady = true
-		result.Messages = append(result.Messages, "CodeGraph index already ready for IssueOps worktree")
 	}
 	return result, nil
 }

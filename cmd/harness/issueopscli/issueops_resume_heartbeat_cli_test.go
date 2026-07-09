@@ -200,7 +200,7 @@ func prepareIssueOpsCLIChildForPRFlow(t *testing.T, parent core.IssueOpsRecord, 
 		t.Fatal(err)
 	}
 	child.PlanPath = filepath.Join(worktree, "plans", "child.md")
-	child.WorktreeTools = &core.IssueOpsWorktreeToolPreparation{OK: true, WorktreePath: worktree, CodeGraphProjectPath: worktree, CodeGraphChecked: true, CodeGraphReady: true}
+	child.WorktreeTools = &core.IssueOpsWorktreeToolPreparation{OK: true, WorktreePath: worktree}
 	child.CompatibilityReview = &core.IssueOpsCompatibilityReview{BackwardCompatibility: []string{"child resume fixture"}, SideEffects: []string{"scoped binding"}, RollbackPlan: "reset fixture", Verification: []string{"go test ./cmd/harness/issueopscli"}, Approved: true}
 	child.ExecutionDecision = &core.IssueOpsExecutionDecision{AutoProceed: []string{"complete child fixture"}, HookBlocked: []string{"hooks do not resume child"}, HumanGates: []string{"parent validates"}, SubagentUse: "none", SubagentRationale: "test fixture", RecordedAt: "2026-07-07T00:00:00Z"}
 	child.Phase = core.IssueOpsPhaseImplement

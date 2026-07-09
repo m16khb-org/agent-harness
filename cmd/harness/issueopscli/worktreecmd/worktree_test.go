@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -58,31 +57,16 @@ func TestRunWorktreeCommandsWithInjectedDeps(t *testing.T) {
 }
 
 func TestPrepareWorktreeToolsSuccessAndErrors(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("fake codegraph shell script is POSIX-specific")
-	}
 	tmp := t.TempDir()
-	fakeBin := filepath.Join(tmp, "bin")
-	if err := os.Mkdir(fakeBin, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	codegraph := filepath.Join(fakeBin, "codegraph")
-	if err := os.WriteFile(codegraph, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	worktree := filepath.Join(tmp, "worktree")
 	if err := os.Mkdir(worktree, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(filepath.Join(worktree, ".codegraph"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	result, err := PrepareWorktreeTools(core.IssueOpsRecord{ID: "io-1", WorktreePath: worktree})
 	if err != nil {
 		t.Fatalf("PrepareWorktreeTools returned error: %v", err)
 	}
-	if !result.OK || !result.CodeGraphChecked || !result.CodeGraphReady || result.WorktreePath != worktree {
+	if !result.OK || result.WorktreePath != worktree {
 		t.Fatalf("unexpected prepare tools result: %#v", result)
 	}
 	if want := "export HARNESS_EXPECTED_WORKTREE=" + worktree; result.Guidance != want {
@@ -97,19 +81,7 @@ func TestPrepareWorktreeToolsSuccessAndErrors(t *testing.T) {
 }
 
 func TestRunPrepareToolsAndBoundaries(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("fake codegraph shell script is POSIX-specific")
-	}
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	tmp := t.TempDir()
-	fakeBin := filepath.Join(tmp, "bin")
-	if err := os.Mkdir(fakeBin, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(fakeBin, "codegraph"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	record := worktreeIssueOpsRecord(t)
 	worktree := filepath.Join(record.Repo+".worktrees", record.Branch)
 	initWorktreeGitRepo(t, record.Repo)

@@ -6,7 +6,6 @@ import (
 	"agent-harness/internal/core/commandguard"
 	"agent-harness/internal/core/lifecycle/nextactionrelay"
 	"agent-harness/internal/core/remoteartifact"
-	"agent-harness/internal/core/searchrouting"
 )
 
 func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreToolUseDecisionResult {
@@ -22,13 +21,7 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
-	if req.EnforceSearchRouting {
-		if reason := searchrouting.SearchRoutingBlockReason(result.Tool, result.Command, req.Repo); reason != "" {
-			result.Decision = "block"
-			result.Reason = reason
-		}
-	}
-	if result.Decision != "block" && req.EnforceWorktree {
+	if req.EnforceWorktree {
 		if reason := mcpWorktreeRootBlockReason(req); reason != "" {
 			result.Decision = "block"
 			result.Reason = reason

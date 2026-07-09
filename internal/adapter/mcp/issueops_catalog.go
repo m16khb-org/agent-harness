@@ -91,7 +91,7 @@ func IssueOpsBasicTools() []Tool {
 		},
 		{
 			Name:        "issueops_link_plan",
-			Description: "Attach the issue-driven plan path to an IssueOps loop. Requires linked issue, verified provider branch evidence, linked worktree, and approved design review. This does not enter implementation by itself; run issueops_prepare_worktree_tools to prepare dependencies and CodeGraph for the linked worktree before implementation.",
+			Description: "Attach the issue-driven plan path to an IssueOps loop. Requires linked issue, verified provider branch evidence, linked worktree, and approved design review. This does not enter implementation by itself; run issueops_prepare_worktree_tools to prepare dependencies for the linked worktree before implementation.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "plan_path"}, "properties": map[string]any{
 				"id":        map[string]any{"type": "string", "description": "IssueOps id."},
 				"plan_path": map[string]any{"type": "string", "description": "Plan file path."},
@@ -99,7 +99,7 @@ func IssueOpsBasicTools() []Tool {
 		},
 		{
 			Name:        "issueops_prepare_worktree_tools",
-			Description: "Prepare the linked IssueOps worktree before implementation by checking dependencies, installing supported missing dependencies, and initializing CodeGraph against the exact worktree path. The result is persisted on the IssueOps record and gates implementation readiness.",
+			Description: "Prepare the linked IssueOps worktree before implementation by checking dependencies and installing supported missing dependencies. The result is persisted on the IssueOps record and gates implementation readiness.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
 				"id": map[string]any{"type": "string", "description": "IssueOps id."},
 			}},

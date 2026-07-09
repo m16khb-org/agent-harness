@@ -139,12 +139,9 @@ func recordIssueOpsPreparedWorktreeToolsForTest(t *testing.T, stateRoot, id, wor
 	recordIssueOpsCompatibilityReviewForTest(t, stateRoot, id)
 	recordIssueOpsExecutionDecisionForTest(t, stateRoot, id)
 	record, err := RecordIssueOpsWorktreeTools(stateRoot, id, IssueOpsWorktreeToolPreparation{
-		OK:                   true,
-		WorktreePath:         worktree,
-		CodeGraphProjectPath: worktree,
-		CodeGraphChecked:     true,
-		CodeGraphReady:       true,
-		Messages:             []string{"test prepared IssueOps worktree tools"},
+		OK:           true,
+		WorktreePath: worktree,
+		Messages:     []string{"test prepared IssueOps worktree tools"},
 	})
 	if err != nil {
 		t.Fatal(err)

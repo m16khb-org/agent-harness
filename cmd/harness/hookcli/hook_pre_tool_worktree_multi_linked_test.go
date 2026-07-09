@@ -63,6 +63,25 @@ func TestRunHookPreToolUseAllowsAnyLinkedIssueOpsWorktreeForRepo(t *testing.T) {
 
 	payload, err = json.Marshal(map[string]any{
 		"cwd":       target.path,
+		"tool_name": "mcp__filesystem__read_file",
+		"tool_input": map[string]any{
+			"path": filepath.Join(source, "internal", "core", "issueops.go"),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj = runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected source-root-bound MCP tool to block from linked worktree cwd, got %+v", obj)
+	}
+
+	// External code-intelligence MCP tools are no longer special-cased by the
+	// worktree guard; they pass through regardless of projectPath.
+	payload, err = json.Marshal(map[string]any{
+		"cwd":       target.path,
 		"tool_name": "mcp__codegraph__codegraph_search",
 		"tool_input": map[string]any{
 			"projectPath": source,
@@ -75,25 +94,7 @@ func TestRunHookPreToolUseAllowsAnyLinkedIssueOpsWorktreeForRepo(t *testing.T) {
 	obj = runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
-	if obj["decision"] != "block" {
-		t.Fatalf("expected source checkout CodeGraph projectPath to block from linked worktree cwd, got %+v", obj)
-	}
-
-	payload, err = json.Marshal(map[string]any{
-		"cwd":       target.path,
-		"tool_name": "mcp__codegraph__codegraph_search",
-		"tool_input": map[string]any{
-			"projectPath": target.path,
-			"query":       "BuildLifecyclePreToolUseDecision",
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	obj = runHookCapture(t, string(payload), func() error {
-		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
-	})
 	if obj["decision"] != "allow" {
-		t.Fatalf("expected linked worktree CodeGraph projectPath to be allowed from linked worktree cwd, got %+v", obj)
+		t.Fatalf("expected external search MCP tool to pass through the worktree guard, got %+v", obj)
 	}
 }

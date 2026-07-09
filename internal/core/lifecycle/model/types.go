@@ -66,7 +66,6 @@ type HookToolUseLifecycleRequest struct {
 	Paths                []string `json:"paths,omitempty"`
 	Command              string   `json:"command,omitempty"`
 	Source               string   `json:"source,omitempty"`
-	EnforceSearchRouting bool     `json:"enforce_search_routing,omitempty"`
 	EnforceWorktree      bool     `json:"enforce_worktree,omitempty"`
 	EnforceKoreanRemote  bool     `json:"enforce_korean_remote,omitempty"`
 	EnforceVCSLinking    bool     `json:"enforce_vcs_linking,omitempty"`

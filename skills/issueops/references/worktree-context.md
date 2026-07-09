@@ -100,7 +100,7 @@ Use this shape:
 
 `worktree prepare` and `worktree prepare-tools` are different commands: `worktree prepare` only reports the isolated worktree path and the next command — it does NOT satisfy any readiness gate. Only `worktree prepare-tools` records the `worktree_tools` evidence that gates implementation. "worktree exists" is not "worktree tools are prepared".
 
-Run `agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json` after linking the plan and before implementation. For pnpm repositories it installs missing `node_modules` in the worktree with `pnpm install --frozen-lockfile --prefer-offline`, checks an existing CodeGraph index when one is available, and persists the result as `worktree_tools` on the IssueOps record. The `implement` phase remains blocked until durable dependency/worktree evidence, an approved compatibility review, and an execution decision are ready for the linked worktree; CodeGraph readiness is optional informational evidence.
+Run `agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json` after linking the plan and before implementation. For pnpm repositories it installs missing `node_modules` in the worktree with `pnpm install --frozen-lockfile --prefer-offline` and persists the result as `worktree_tools` on the IssueOps record. The `implement` phase remains blocked until durable dependency/worktree evidence, an approved compatibility review, and an execution decision are ready for the linked worktree.
 
 When the worktree needs large generated dependency directories such as `node_modules` and `prepare-tools` cannot install them automatically, prefer reusing an existing dependency directory by symlink only after verifying the package manager, lockfile, platform, and dependency state match the source checkout.
 
@@ -118,12 +118,8 @@ Do not symlink secret-bearing config into a worktree for review, PR/MR drafting,
 
 ## Context Routing
 
-Use CodeGraph as the default context layer for structural work, with `rg` as the fallback and exact-search tool.
+Use `rg` and native file tools rooted at the linked worktree as the default context layer.
 
-- Start with CodeGraph for functions, classes, call relationships, dependency paths, impact analysis, module boundaries, and route/controller/service relationships.
-- In an IssueOps worktree implementation phase, every CodeGraph call must set `projectPath` to the linked worktree path. Missing `projectPath` or a source-checkout `projectPath` is stale by construction and is blocked.
 - Start with `rg` for exact strings: error messages, env keys, config values, filenames, TODOs, comments, logs, and literal function names.
-- For natural-language feature location, use CodeGraph first, then run at least one targeted `rg` check before editing or claiming there are no usages.
+- If a separately installed code-intelligence tool is available, make sure every call is rooted at the linked worktree path, not the source checkout; a source-checkout root is stale by construction.
 - After edits, use `rg` plus relevant tests to catch missed references or regressions.
-- Treat CodeGraph as advisory when its index may be stale or when the target uses dynamic wiring such as runtime DI, reflection, dynamic imports, or framework provider registration.
-- Keep graph results small and targeted; oversized call/dependency graphs waste context.

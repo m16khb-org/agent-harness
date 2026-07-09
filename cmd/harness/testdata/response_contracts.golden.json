@@ -786,7 +786,7 @@
           "path": "$HARNESS_ROOT/skills/dijkstra"
         },
         {
-          "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into m16khb/llm-wiki.",
+          "description": "Use when judging .agent-harness/draft-wiki candidates, turning agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into the repo-local exported directory.",
           "has_openai_yaml": true,
           "has_skill_md": true,
           "name": "draft-wiki-promoter",
@@ -7198,7 +7198,7 @@
                 "path": "$HARNESS_ROOT/skills/dijkstra"
               },
               {
-                "description": "Use when judging .agent-harness/draft-wiki candidates, turning claude-mem or agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into m16khb/llm-wiki.",
+                "description": "Use when judging .agent-harness/draft-wiki candidates, turning agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into the repo-local exported directory.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
                 "name": "draft-wiki-promoter",

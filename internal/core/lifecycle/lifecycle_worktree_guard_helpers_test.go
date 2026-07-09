@@ -175,12 +175,9 @@ func recordIssueOpsWorktreeToolsForGuardTest(t *testing.T, id, worktree string) 
 		t.Fatal(err)
 	}
 	record.WorktreeTools = &issueops.IssueOpsWorktreeToolPreparation{
-		OK:                   true,
-		WorktreePath:         worktree,
-		CodeGraphProjectPath: worktree,
-		CodeGraphChecked:     true,
-		CodeGraphReady:       true,
-		PreparedAt:           "2026-06-05T00:00:00Z",
+		OK:           true,
+		WorktreePath: worktree,
+		PreparedAt:   "2026-06-05T00:00:00Z",
 	}
 	record.CompatibilityReview = &issueops.IssueOpsCompatibilityReview{
 		BackwardCompatibility: []string{"guard fixture preserves existing worktree edit boundaries"},

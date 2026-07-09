@@ -87,8 +87,6 @@ func TestImplementGateDoesNotRequireCodeGraph(t *testing.T) {
 		WorktreePath:        worktree,
 		DependenciesChecked: true,
 		DependenciesReady:   true,
-		CodeGraphChecked:    false,
-		CodeGraphReady:      false,
 		Messages:            []string{"dependencies ready; CodeGraph unavailable"},
 	})
 	if err != nil {

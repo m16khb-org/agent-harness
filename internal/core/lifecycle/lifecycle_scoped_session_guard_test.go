@@ -30,7 +30,7 @@ func TestLifecycleGuardPrefersScopedBindingOnBranchMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	childBlocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: repo, Tool: "codegraph_explore", ProjectPath: parentWorktree, EnforceWorktree: true,
+		Repo: repo, Tool: "mcp__filesystem__read_file", EnforceWorktree: true,
 	})
 	if childBlocked.Decision != "block" || !strings.Contains(childBlocked.Reason, childWorktree) {
 		t.Fatalf("child branch should prefer scoped binding worktree, got %+v", childBlocked)
@@ -40,7 +40,7 @@ func TestLifecycleGuardPrefersScopedBindingOnBranchMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	parentBlocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: repo, Tool: "codegraph_explore", ProjectPath: childWorktree, EnforceWorktree: true,
+		Repo: repo, Tool: "mcp__filesystem__read_file", EnforceWorktree: true,
 	})
 	if parentBlocked.Decision != "block" || !strings.Contains(parentBlocked.Reason, parentWorktree) {
 		t.Fatalf("parent branch should use primary binding worktree, got %+v", parentBlocked)
@@ -62,7 +62,7 @@ func TestLifecycleGuardEnvBeatsScopedBinding(t *testing.T) {
 	}
 
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: repo, Tool: "codegraph_explore", ExpectedWorktree: envWorktree, ProjectPath: childWorktree, EnforceWorktree: true,
+		Repo: repo, Tool: "mcp__filesystem__read_file", ExpectedWorktree: envWorktree, EnforceWorktree: true,
 	})
 	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, envWorktree) {
 		t.Fatalf("ExpectedWorktree env should beat scoped binding, got %+v", blocked)

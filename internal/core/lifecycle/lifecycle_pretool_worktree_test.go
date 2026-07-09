@@ -102,7 +102,9 @@ func TestPreToolUseWorktreeGuardBlocksShellRedirectAfterCdIntoSourceCheckout(t *
 	}
 }
 
-func TestPreToolUseWorktreeGuardRequiresCodeGraphProjectPath(t *testing.T) {
+func TestPreToolUseWorktreeGuardDoesNotSpecialCaseExternalSearchMCPTools(t *testing.T) {
+	// External code-intelligence MCP tools are the user's own installs; the
+	// harness no longer validates or blocks their projectPath.
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
 	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
@@ -112,26 +114,9 @@ func TestPreToolUseWorktreeGuardRequiresCodeGraphProjectPath(t *testing.T) {
 		EnforceWorktree:  true,
 		ExpectedWorktree: worktree,
 		SourceCheckout:   source,
-	})
-	if got.Decision != "block" || !strings.Contains(got.Reason, "projectPath") {
-		t.Fatalf("expected CodeGraph without projectPath to be blocked: %+v", got)
-	}
-}
-
-func TestPreToolUseWorktreeGuardAllowsCodeGraphExpectedProjectPath(t *testing.T) {
-	source := filepath.Join(t.TempDir(), "agent-harness")
-	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo:             source,
-		Tool:             "mcp__codegraph__codegraph_search",
-		Command:          "BuildLifecyclePreToolUseDecision",
-		EnforceWorktree:  true,
-		ExpectedWorktree: worktree,
-		SourceCheckout:   source,
-		ProjectPath:      worktree,
 	})
 	if got.Decision != "allow" {
-		t.Fatalf("expected CodeGraph with worktree projectPath to be allowed: %+v", got)
+		t.Fatalf("external search MCP tool should pass through the worktree guard: %+v", got)
 	}
 }
 
@@ -153,7 +138,7 @@ func TestPreToolUseWorktreeGuardBlocksSourceBoundMCPTools(t *testing.T) {
 	}
 }
 
-func TestPreToolUseWorktreeGuardInfersCodeGraphProjectPathFromLinkedCycle(t *testing.T) {
+func TestPreToolUseWorktreeGuardInfersExpectedWorktreeFromLinkedCycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := guardRepoWithCycle(t, "1-current", IssueOpsPhaseProblem)
 	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: source, Branch: "1-x"})
@@ -167,46 +152,11 @@ func TestPreToolUseWorktreeGuardInfersCodeGraphProjectPathFromLinkedCycle(t *tes
 		t.Fatal(err)
 	}
 
-	missingProjectPath := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: source, Tool: "mcp__codegraph__codegraph_search", Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true,
+	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: source, Tool: "mcp__filesystem__read_file", Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true,
 	})
-	if missingProjectPath.Decision != "block" || !strings.Contains(missingProjectPath.Reason, "projectPath") || !strings.Contains(missingProjectPath.Reason, worktree) {
-		t.Fatalf("linked IssueOps cycle should require CodeGraph projectPath to the worktree: %+v", missingProjectPath)
-	}
-
-	sourceProjectPath := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: source, Tool: "mcp__codegraph__codegraph_search", Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true, ProjectPath: source,
-	})
-	if sourceProjectPath.Decision != "block" || !strings.Contains(sourceProjectPath.Reason, "projectPath") || !strings.Contains(sourceProjectPath.Reason, worktree) {
-		t.Fatalf("source checkout CodeGraph projectPath should block when a linked worktree cycle exists: %+v", sourceProjectPath)
-	}
-
-	worktreeProjectPath := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: source, Tool: "mcp__codegraph__codegraph_search", Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true, ProjectPath: worktree,
-	})
-	if worktreeProjectPath.Decision != "allow" {
-		t.Fatalf("worktree CodeGraph projectPath should pass for linked IssueOps cycle: %+v", worktreeProjectPath)
-	}
-}
-
-func TestPreToolUseWorktreeGuardAllowsCodeGraphProjectPathForAnyLinkedCycle(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	source := guardRepoWithCycle(t, "1-current", IssueOpsPhaseProblem)
-	first := linkIssueOpsWorktreeForGuardTest(t, source, "95-tier-matrix-scan-allowance-policy")
-	second := linkIssueOpsWorktreeForGuardTest(t, source, "96-integrate-public-seo-rendering")
-
-	sourceProjectPath := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: source, Tool: "mcp__codegraph__codegraph_search", Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true, ProjectPath: source,
-	})
-	if sourceProjectPath.Decision != "block" || !strings.Contains(sourceProjectPath.Reason, "projectPath") {
-		t.Fatalf("source checkout CodeGraph projectPath should block when linked worktree cycles exist: %+v", sourceProjectPath)
-	}
-
-	secondProjectPath := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-		Repo: source, Tool: "mcp__codegraph__codegraph_search", Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true, ProjectPath: second.path,
-	})
-	if secondProjectPath.Decision != "allow" {
-		t.Fatalf("CodeGraph projectPath inside any linked worktree should pass; first=%s second=%s got %+v", first.path, second.path, secondProjectPath)
+	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, worktree) {
+		t.Fatalf("linked IssueOps cycle should infer the expected worktree for the MCP guard: %+v", blocked)
 	}
 }
 

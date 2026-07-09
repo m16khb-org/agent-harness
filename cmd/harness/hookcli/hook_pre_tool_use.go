@@ -15,7 +15,6 @@ func runHookPreToolUse(args []string) error {
 	fs := flag.NewFlagSet("hook pre-tool-use", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
 	host := fs.String("host", "", "hook host (codex or claude); controls host-specific block schema")
-	enforceSearchRouting := fs.Bool("enforce-search-routing", false, "block obvious CodeGraph/rg search routing mismatches")
 	enforceWorktree := fs.Bool("enforce-worktree", false, "block mutating tool targets outside HARNESS_EXPECTED_WORKTREE or --expected-worktree")
 	enforceKoreanRemote := fs.Bool("enforce-korean-remote-artifacts", false, "block gh issue/pr create/edit when title/body fail the IssueOps Korean remote artifact gate")
 	enforceVCSLinking := fs.Bool("enforce-vcs-issue-linking", false, "block gh/glab remote create without labels and issue create/edit bodies that violate provider-specific IssueOps linking rules")
@@ -42,7 +41,6 @@ func runHookPreToolUse(args []string) error {
 		Command:              hookinput.CommandFromHookInput(stdin),
 		ProjectPath:          hookinput.ProjectPathFromHookInput(stdin),
 		Source:               "pre-tool-use",
-		EnforceSearchRouting: *enforceSearchRouting,
 		EnforceWorktree:      *enforceWorktree,
 		EnforceKoreanRemote:  *enforceKoreanRemote,
 		EnforceVCSLinking:    *enforceVCSLinking,

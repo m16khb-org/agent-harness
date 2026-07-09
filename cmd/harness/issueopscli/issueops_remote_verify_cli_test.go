@@ -116,12 +116,9 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.Iss
 		t.Fatal(err)
 	}
 	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), id, core.IssueOpsWorktreeToolPreparation{
-		OK:                   true,
-		WorktreePath:         worktree,
-		CodeGraphProjectPath: worktree,
-		CodeGraphChecked:     true,
-		CodeGraphReady:       true,
-		Messages:             []string{"test prepared IssueOps worktree tools"},
+		OK:           true,
+		WorktreePath: worktree,
+		Messages:     []string{"test prepared IssueOps worktree tools"},
 	}); err != nil {
 		t.Fatal(err)
 	}

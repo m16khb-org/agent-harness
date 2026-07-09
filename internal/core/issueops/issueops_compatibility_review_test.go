@@ -21,12 +21,9 @@ func TestIssueOpsImplementationReadinessRequiresCompatibilityReview(t *testing.T
 		ExecutionDecision: issueOpsExecutionDecisionForTest(),
 		BranchPrepare:     &IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/1", Branch: "1-demo", BaseBranch: "main", LinkVerified: true},
 		WorktreeTools: &IssueOpsWorktreeToolPreparation{
-			OK:                   true,
-			WorktreePath:         worktree,
-			CodeGraphProjectPath: worktree,
-			CodeGraphChecked:     true,
-			CodeGraphReady:       true,
-			PreparedAt:           "2026-06-26T00:00:00Z",
+			OK:           true,
+			WorktreePath: worktree,
+			PreparedAt:   "2026-06-26T00:00:00Z",
 		},
 	}
 	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
@@ -77,11 +74,8 @@ func TestIssueOpsPhaseImplementRequiresCompatibilityReviewPhase(t *testing.T) {
 		t.Fatal(err)
 	}
 	record, err = RecordIssueOpsWorktreeTools(stateRoot, record.ID, IssueOpsWorktreeToolPreparation{
-		OK:                   true,
-		WorktreePath:         worktree,
-		CodeGraphProjectPath: worktree,
-		CodeGraphChecked:     true,
-		CodeGraphReady:       true,
+		OK:           true,
+		WorktreePath: worktree,
 	})
 	if err != nil {
 		t.Fatal(err)

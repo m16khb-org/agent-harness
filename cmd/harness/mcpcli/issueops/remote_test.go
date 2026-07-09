@@ -143,22 +143,12 @@ func TestMCPIssueOpsCleanupCloseChildrenRecordsState(t *testing.T) {
 	}
 }
 
-func TestMCPIssueOpsPrepareWorktreeToolsRunsCodeGraphAgainstWorktree(t *testing.T) {
+func TestMCPIssueOpsPrepareWorktreeToolsPersistsEvidence(t *testing.T) {
 	configureIssueOpsMCPForTest(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	bin := t.TempDir()
-	logPath := filepath.Join(t.TempDir(), "codegraph.log")
-	codegraph := filepath.Join(bin, "codegraph")
-	if err := os.WriteFile(codegraph, []byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+logPath+"'\ncase \"$1\" in\nstatus) exit 0 ;;\n*) exit 0 ;;\nesac\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	repo := makeIssueOpsCLIRepoForTest(t, "mcp-prepare")
 	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "1-demo")
-	if err := os.Mkdir(filepath.Join(worktree, ".codegraph"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	start := callMCPToolForIssueOpsTest(t, "issueops_start", map[string]any{"repo": repo, "branch": "1-demo"})
 	id, ok := start["id"].(string)
 	if !ok || id == "" {
@@ -182,15 +172,8 @@ func TestMCPIssueOpsPrepareWorktreeToolsRunsCodeGraphAgainstWorktree(t *testing.
 	})
 
 	prepared := callMCPToolForIssueOpsTest(t, "issueops_prepare_worktree_tools", map[string]any{"id": id})
-	if prepared["codegraph_ready"] != true || prepared["codegraph_project_path"] != worktree {
+	if prepared["ok"] != true || prepared["worktree_path"] != worktree {
 		t.Fatalf("unexpected MCP prepare-tools result: %#v", prepared)
-	}
-	log, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(log), "status "+worktree) || strings.Contains(string(log), "init -i "+worktree) {
-		t.Fatalf("codegraph should be checked but not initialized against worktree, got:\n%s", log)
 	}
 }
 

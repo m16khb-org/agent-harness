@@ -134,7 +134,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if err := json.Unmarshal([]byte(preparedTools), &tools); err != nil {
 		t.Fatalf("worktree prepare-tools should return JSON: %v\n%s", err, preparedTools)
 	}
-	if tools["codegraph_ready"] != true || tools["worktree_path"] != worktreePath {
+	if tools["ok"] != true || tools["worktree_path"] != worktreePath {
 		t.Fatalf("worktree prepare-tools should prepare the linked worktree: %#v", tools)
 	}
 	afterPrepare := captureStdoutForContract(t, func() error {
