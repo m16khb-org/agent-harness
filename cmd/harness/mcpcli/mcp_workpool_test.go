@@ -80,3 +80,34 @@ func TestMCPWorkpoolLifecycle(t *testing.T) {
 		t.Fatalf("unexpected reap payload: %#v", reap.Payload)
 	}
 }
+
+func TestMCPWorkpoolPilotArguments(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := filepath.Join(t.TempDir(), "repo")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	create := handleWorkpoolMCPToolCall(MCPToolCall{Name: "workpool_create", Arguments: map[string]any{
+		"repo": repo, "name": "mcp pilot", "pilot_required": true,
+	}})
+	pool, ok := create.Payload.(workpool.WorkPool)
+	if !ok || !pool.PilotRequired {
+		t.Fatalf("unexpected pilot create payload: %#v", create.Payload)
+	}
+
+	add := handleWorkpoolMCPToolCall(MCPToolCall{Name: "workpool_add_task", Arguments: map[string]any{
+		"pool": pool.ID, "title": "pilot task", "instructions": "prove first", "pilot": true,
+	}})
+	pilot, ok := add.Payload.(workpool.WorkTask)
+	if !ok || !pilot.OK {
+		t.Fatalf("unexpected pilot add payload: %#v", add.Payload)
+	}
+	readPool, err := workpool.ReadPool(pool.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readPool.PilotTaskID != pilot.ID {
+		t.Fatalf("MCP pilot task id = %q, want %q", readPool.PilotTaskID, pilot.ID)
+	}
+}

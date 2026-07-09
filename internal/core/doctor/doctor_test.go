@@ -8,6 +8,7 @@ import (
 
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/doctor"
+	"agent-harness/internal/core/looprun"
 )
 
 func TestHarnessDoctorHealthyBaseline(t *testing.T) {
@@ -72,6 +73,59 @@ func TestHarnessDoctorReportsLifecycleNamespaceMismatch(t *testing.T) {
 	if !hasHarnessDoctorIssue(result.Issues, "lifecycle_namespace_mismatch") {
 		t.Fatalf("expected namespace mismatch issue: %+v", result.Issues)
 	}
+}
+
+func TestHarnessDoctorReportsLoopContracts(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
+		t.Fatal(err)
+	}
+	loop, err := looprun.Start(looprun.StartLoopRequest{
+		Repo:        repo,
+		Name:        "doctor-loop",
+		Goal:        "verify doctor loop contract reporting",
+		MaxAttempts: 3,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check, ok := harnessDoctorCheck(result.Checks, "loop_contracts")
+	if !ok || check.Healthy || check.Summary != "active=1 exhausted=0" {
+		t.Fatalf("expected active loop contract check, got check=%+v ok=%v result=%+v", check, ok, result)
+	}
+	if !hasHarnessDoctorIssue(result.Issues, "loop_contracts_incomplete") {
+		t.Fatalf("expected loop contract issue for %s: %+v", loop.ID, result.Issues)
+	}
+}
+
+func TestHarnessDoctorLoopContractsHealthyWhenNoIncompleteLoops(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check, ok := harnessDoctorCheck(result.Checks, "loop_contracts")
+	if !ok || !check.Healthy || check.Summary != "active=0 exhausted=0" {
+		t.Fatalf("expected healthy loop contract check, got check=%+v ok=%v result=%+v", check, ok, result)
+	}
+}
+
+func harnessDoctorCheck(checks []doctor.HarnessDoctorCheck, name string) (doctor.HarnessDoctorCheck, bool) {
+	for _, check := range checks {
+		if check.Name == name {
+			return check, true
+		}
+	}
+	return doctor.HarnessDoctorCheck{}, false
 }
 
 func hasHarnessDoctorIssue(issues []doctor.HarnessDoctorIssue, code string) bool {

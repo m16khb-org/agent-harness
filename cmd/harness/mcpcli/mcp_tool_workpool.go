@@ -43,6 +43,7 @@ func handleMCPWorkpoolCreate(args map[string]any) MCPToolOutcome {
 		Repo:          argmap.String(args, "repo"),
 		Name:          argmap.String(args, "name"),
 		ParentCycleID: argmap.String(args, "parent_cycle"),
+		PilotRequired: argmap.Bool(args, "pilot_required"),
 		Size:          argmap.Int(args, "size", 0),
 		LeaseTTL:      argmap.String(args, "lease_ttl"),
 		MaxAttempts:   argmap.Int(args, "max_attempts", 0),
@@ -56,6 +57,7 @@ func handleMCPWorkpoolAddTask(args map[string]any) MCPToolOutcome {
 		Instructions:       argmap.String(args, "instructions"),
 		Scope:              argmap.StringSlice(args, "scope"),
 		AcceptanceCriteria: argmap.StringSlice(args, "acceptance"),
+		Pilot:              argmap.Bool(args, "pilot"),
 	})
 	return workpoolMCPOutcome(result, err, "Workpool add-task failed")
 }

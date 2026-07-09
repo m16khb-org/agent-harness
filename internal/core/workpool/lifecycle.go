@@ -52,6 +52,24 @@ func Claim(poolID, workerID string) (ClaimResult, error) {
 				}
 			}
 		}
+		if pool.PilotRequired {
+			if pool.PilotTaskID == "" {
+				return fmt.Errorf("pool_pilot_unassigned")
+			}
+			pilot := findTaskByID(tasks, pool.PilotTaskID)
+			if pilot == nil {
+				return fmt.Errorf("pool_pilot_pending")
+			}
+			if pilot.Status == "dropped" {
+				return fmt.Errorf("pool_pilot_dropped")
+			}
+			if pilot.Status != "accepted" {
+				if pilot.Status != "pending" {
+					return fmt.Errorf("pool_pilot_pending")
+				}
+				pending = pilot
+			}
+		}
 		if leased >= pool.Size {
 			return fmt.Errorf("pool_saturated")
 		}
@@ -83,6 +101,15 @@ func Claim(poolID, workerID string) (ClaimResult, error) {
 		return nil
 	})
 	return result, err
+}
+
+func findTaskByID(tasks []WorkTask, taskID string) *WorkTask {
+	for i := range tasks {
+		if tasks[i].ID == taskID {
+			return &tasks[i]
+		}
+	}
+	return nil
 }
 
 func Heartbeat(poolID, taskID, workerID string) (WorkTask, error) {

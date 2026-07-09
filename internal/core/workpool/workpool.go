@@ -64,6 +64,7 @@ func CreatePool(req CreatePoolRequest) (WorkPool, error) {
 			Repo:          repo,
 			Name:          name,
 			ParentCycleID: parentCycleID,
+			PilotRequired: req.PilotRequired,
 			Size:          size,
 			LeaseTTL:      leaseTTL,
 			MaxAttempts:   maxAttempts,
@@ -96,6 +97,14 @@ func AddTask(poolID string, req AddTaskRequest) (WorkTask, error) {
 		if pool.Status == "closed" {
 			return fmt.Errorf("pool_closed")
 		}
+		if req.Pilot {
+			if !pool.PilotRequired {
+				return fmt.Errorf("pool_pilot_not_required")
+			}
+			if pool.PilotTaskID != "" {
+				return fmt.Errorf("pool_pilot_already_set")
+			}
+		}
 		taskIDs, err := taskFileIDs(poolID)
 		if err != nil {
 			return err
@@ -119,6 +128,14 @@ func AddTask(poolID string, req AddTaskRequest) (WorkTask, error) {
 		}
 		var writeErr error
 		task, writeErr = writeTask(task)
+		if writeErr != nil {
+			return writeErr
+		}
+		if req.Pilot {
+			pool.PilotTaskID = task.ID
+			pool.UpdatedAt = now
+			_, writeErr = writePool(pool)
+		}
 		return writeErr
 	})
 	return task, err

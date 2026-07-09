@@ -130,7 +130,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 | 경로 | 목적 |
 |------|------|
-| `cmd/harness/` | 단일 Go 바이너리 진입점. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `self-verify`, `self-augment`, `mcp` 제공 |
+| `cmd/harness/` | 단일 Go 바이너리 진입점. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `workpool`, `loop`, `self-verify`, `self-augment`, `mcp` 제공 |
 | `internal/core/` | host와 무관한 하네스 usecase. 현재 inspect, preflight, docs index, state store, command policy/fake runner 구현 위치 |
 | `internal/port/` | core가 의존하는 interface, 요청/응답 DTO |
 | `internal/adapter/cli/` | Cobra/flag 기반 CLI adapter 예정 |
@@ -166,6 +166,7 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness daemon status --json
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
 tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state migrate --json && rm -rf "$tmp_state"
+tmp_state="$(mktemp -d)" && HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness loop start --repo "$PWD" --name smoke --goal "smoke loop contract" --json && rm -rf "$tmp_state"
 ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
 ./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
 codex mcp get agent_harness

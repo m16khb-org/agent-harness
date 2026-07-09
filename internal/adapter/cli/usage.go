@@ -36,6 +36,7 @@ func Commands() []Command {
 		{Name: "daemon", Description: "manage the MCP backend daemon"},
 		{Name: "worker", Description: "manage safe local worker jobs and read-only command evidence"},
 		{Name: "workpool", Description: "manage bounded lease-based work pools"},
+		{Name: "loop", Description: "track durable verify-until-done loop contracts"},
 		{Name: "web-fetch", Description: "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks"},
 		{Name: "self-verify", Description: "run harness verification gates"},
 		{Name: "self-augment", Description: "plan self-augmentation candidates and lessons"},
@@ -115,8 +116,8 @@ Usage:
   agent-harness worker list [--json]
   agent-harness worker cleanup-stuck [--json]
   agent-harness worker cancel --id ID [--json]
-  agent-harness workpool create --repo PATH --name NAME [--parent-cycle ID] [--size N] [--lease-ttl DURATION] [--max-attempts N] [--json]
-  agent-harness workpool add-task --pool ID --title TEXT [--instructions TEXT] [--scope TEXT] [--acceptance TEXT] [--json]
+  agent-harness workpool create --repo PATH --name NAME [--parent-cycle ID] [--pilot] [--size N] [--lease-ttl DURATION] [--max-attempts N] [--json]
+  agent-harness workpool add-task --pool ID --title TEXT [--instructions TEXT] [--scope TEXT] [--acceptance TEXT] [--pilot] [--json]
   agent-harness workpool claim --pool ID --worker ID [--json]
   agent-harness workpool heartbeat --pool ID --task ID --worker ID [--json]
   agent-harness workpool submit --pool ID --task ID --worker ID --evidence TEXT [--branch BRANCH] [--worktree PATH] [--json]
@@ -125,6 +126,10 @@ Usage:
   agent-harness workpool reap --pool ID [--json]
   agent-harness workpool status --pool ID [--json]
   agent-harness workpool close --pool ID [--force] [--reason TEXT] [--json]
+  agent-harness loop start --repo PATH --name NAME --goal TEXT [--max-attempts N] [--json] -- [VERIFY_ARGV...]
+  agent-harness loop record-attempt --id ID --verdict pass|fail --evidence TEXT [--evidence TEXT...] [--json]
+  agent-harness loop status (--id ID | --repo PATH --name NAME) [--json]
+  agent-harness loop stop --id ID (--success | --reason TEXT) [--json]
   agent-harness web-fetch fetch --url URL [--timeout 30s] [--max-chars N] [--json]
   agent-harness web-fetch benchmark --fixtures PATH [--live] [--compare-baseline PATH] [--json]
   agent-harness install [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]

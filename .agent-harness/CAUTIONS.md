@@ -414,6 +414,13 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
   - Schema-version bump for additive fields — rejected until destructive migration or incompatible read semantics are required.
   - PID-based worker ownership — rejected because agents may run across host sessions and compaction; timestamp leases are portable and recoverable.
 
+## 2026-07-09 — Workpool pilot gates require updated binaries
+
+- Kind: `caution`
+- Source: loop/article gaps 1-2-3 implementation
+- Summary: `pilot_required` is an additive field, so a stale binary can ignore it and claim non-pilot work.
+- Resolution: Update the shared daemon and local CLI together before trusting pilot-first fan-out. Verify with `agent-harness workpool status --pool ID --json` and `agent-harness contract check --json` when mixed sessions may be active.
+
 ## 2026-07-07 — SQLite sqlstore span 규율: 중첩 금지, per-root 직렬화, fresh start
 
 - Kind: `caution`

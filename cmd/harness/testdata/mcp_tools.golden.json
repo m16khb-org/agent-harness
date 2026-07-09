@@ -2200,7 +2200,7 @@
     "name": "issueops_heartbeat"
   },
   {
-    "description": "Create a bounded lease-based work pool, optionally linked to a parent IssueOps cycle.",
+    "description": "Create a bounded lease-based work pool, optionally linked to a parent IssueOps cycle. When pilot_required is true, the pilot task must be accepted before other tasks can be claimed.",
     "inputSchema": {
       "properties": {
         "lease_ttl": {
@@ -2218,6 +2218,10 @@
         "parent_cycle": {
           "description": "Optional parent IssueOps cycle id.",
           "type": "string"
+        },
+        "pilot_required": {
+          "description": "Require an accepted pilot task before other tasks can be claimed.",
+          "type": "boolean"
         },
         "repo": {
           "description": "Repository path.",
@@ -2237,7 +2241,7 @@
     "name": "workpool_create"
   },
   {
-    "description": "Add a task to an active work pool.",
+    "description": "Add a task to an active work pool. When pilot is true, this task must be accepted before other tasks can be claimed.",
     "inputSchema": {
       "properties": {
         "acceptance": {
@@ -2250,6 +2254,10 @@
         "instructions": {
           "description": "Task instructions.",
           "type": "string"
+        },
+        "pilot": {
+          "description": "Mark this task as the required pilot task.",
+          "type": "boolean"
         },
         "pool": {
           "description": "Work pool id.",
@@ -2478,6 +2486,112 @@
       "type": "object"
     },
     "name": "workpool_close"
+  },
+  {
+    "description": "Create or resume a durable verify-until-done loop contract. This writes state only; it records verify_argv but never executes shell commands.",
+    "inputSchema": {
+      "properties": {
+        "goal": {
+          "description": "Loop goal text.",
+          "type": "string"
+        },
+        "max_attempts": {
+          "description": "Maximum fail attempts before auto-exhaustion.",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Stable loop name. Same repo+name resumes an active loop.",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Repository path.",
+          "type": "string"
+        },
+        "verify_argv": {
+          "description": "Command argv to record as intended verification; harness never executes it.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "repo",
+        "name",
+        "goal"
+      ],
+      "type": "object"
+    },
+    "name": "loop_start"
+  },
+  {
+    "description": "Append a pass/fail attempt with evidence to an active loop contract. This writes state and auto-exhausts after max failed attempts.",
+    "inputSchema": {
+      "properties": {
+        "evidence": {
+          "description": "Observable evidence for this attempt.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "Loop id.",
+          "type": "string"
+        },
+        "verdict": {
+          "description": "Attempt verdict: pass or fail.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "verdict",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "name": "loop_record_attempt"
+  },
+  {
+    "description": "Read a durable loop contract status and summary. This does not write state.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Loop id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "loop_status"
+  },
+  {
+    "description": "Stop a loop contract. success=true requires the latest attempt verdict to be pass; non-success stops require a reason.",
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Loop id.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Reason for non-success stop.",
+          "type": "string"
+        },
+        "success": {
+          "description": "Mark the loop succeeded. Requires latest attempt verdict pass.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "loop_stop"
   },
   {
     "description": "Report whether the shared agent-harness daemon backing this MCP proxy is reachable, including socket and pid metadata.",

@@ -34,6 +34,8 @@ Completion requires every concrete goal score to exceed the target score. The de
 
 If any self-verification candidate test, compilation, or general check fails during the loop, you can execute the `lint_diagnose` MCP tool (or run `agent-harness project lint-diagnose -- <failed_command>`) to quickly diagnose the root cause and receive a targeted fix proposal via Gemini 3.5 Flash. This enables fast auto-healing during the self-verify cycle.
 
+다단계 검증에서 한 단계라도 실패하면 1단계부터 재실행하며 부분 통과 evidence를 재사용하지 않는다 (규범 출처: `.agent-harness/TESTING.md` 부분 검증 상태 금지 절).
+
 ## Candidate catalog
 
 The self-verification improvement catalog in this skill's `CANDIDATES.md` is the source of truth.

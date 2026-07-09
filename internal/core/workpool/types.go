@@ -9,6 +9,8 @@ type WorkPool struct {
 	Repo          string `json:"repo"`
 	Name          string `json:"name"`
 	ParentCycleID string `json:"parent_cycle_id,omitempty"`
+	PilotRequired bool   `json:"pilot_required,omitempty"`
+	PilotTaskID   string `json:"pilot_task_id,omitempty"`
 	Size          int    `json:"size"`
 	LeaseTTL      string `json:"lease_ttl"`
 	MaxAttempts   int    `json:"max_attempts"`
@@ -44,6 +46,7 @@ type CreatePoolRequest struct {
 	Repo          string
 	Name          string
 	ParentCycleID string
+	PilotRequired bool
 	Size          int
 	LeaseTTL      string
 	MaxAttempts   int
@@ -54,6 +57,7 @@ type AddTaskRequest struct {
 	Instructions       string
 	Scope              []string
 	AcceptanceCriteria []string
+	Pilot              bool
 }
 
 type StatusResult struct {

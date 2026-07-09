@@ -57,8 +57,8 @@ func Run(args []string) error {
 
 func workpoolUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  agent-harness workpool create --repo PATH --name NAME [--parent-cycle ID] [--size N] [--lease-ttl DURATION] [--max-attempts N] [--json]
-  agent-harness workpool add-task --pool ID --title TEXT [--instructions TEXT] [--scope TEXT] [--acceptance TEXT] [--json]
+  agent-harness workpool create --repo PATH --name NAME [--parent-cycle ID] [--pilot] [--size N] [--lease-ttl DURATION] [--max-attempts N] [--json]
+  agent-harness workpool add-task --pool ID --title TEXT [--instructions TEXT] [--scope TEXT] [--acceptance TEXT] [--pilot] [--json]
   agent-harness workpool claim --pool ID --worker ID [--json]
   agent-harness workpool heartbeat --pool ID --task ID --worker ID [--json]
   agent-harness workpool submit --pool ID --task ID --worker ID --evidence TEXT [--branch BRANCH] [--worktree PATH] [--json]
@@ -75,6 +75,7 @@ func runCreate(args []string) error {
 	repo := fs.String("repo", "", "repository path")
 	name := fs.String("name", "", "pool name")
 	parentCycle := fs.String("parent-cycle", "", "linked parent IssueOps cycle id")
+	pilot := fs.Bool("pilot", false, "require an accepted pilot task before other claims")
 	size := fs.Int("size", 0, "maximum concurrent leases")
 	leaseTTL := fs.String("lease-ttl", "", "lease duration")
 	maxAttempts := fs.Int("max-attempts", 0, "maximum reject/requeue attempts")
@@ -86,6 +87,7 @@ func runCreate(args []string) error {
 		Repo:          *repo,
 		Name:          *name,
 		ParentCycleID: *parentCycle,
+		PilotRequired: *pilot,
 		Size:          *size,
 		LeaseTTL:      *leaseTTL,
 		MaxAttempts:   *maxAttempts,
@@ -102,6 +104,7 @@ func runAddTask(args []string) error {
 	var acceptance repeatedFlag
 	fs.Var(&scope, "scope", "task scope")
 	fs.Var(&acceptance, "acceptance", "acceptance criterion")
+	pilot := fs.Bool("pilot", false, "mark this task as the required pilot")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -111,6 +114,7 @@ func runAddTask(args []string) error {
 		Instructions:       *instructions,
 		Scope:              []string(scope),
 		AcceptanceCriteria: []string(acceptance),
+		Pilot:              *pilot,
 	})
 	return printWorkpoolResult(result, err, *jsonOut)
 }

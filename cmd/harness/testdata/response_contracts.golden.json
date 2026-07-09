@@ -211,6 +211,10 @@
           "name": "workpool"
         },
         {
+          "description": "track durable verify-until-done loop contracts",
+          "name": "loop"
+        },
+        {
           "description": "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks",
           "name": "web-fetch"
         },
@@ -231,7 +235,7 @@
           "name": "version"
         }
       ],
-      "hash": "8793d865e44b137275a134943448d973fb33918106760de3bc99c7b06c230d8d",
+      "hash": "8903561225c0d36578e84dc359f0c0b20d078e4dcb2eae5c04fc322de7c071af",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -291,6 +295,10 @@
         "issueops_status",
         "issueops_verify_remote_artifact",
         "lint_diagnose",
+        "loop_record_attempt",
+        "loop_start",
+        "loop_status",
+        "loop_stop",
         "project_docs_bootstrap_plan",
         "project_docs_read",
         "project_docs_record",
@@ -626,7 +634,7 @@
       "warnings": []
     },
     "docs_index": {
-      "docs_count": 74,
+      "docs_count": 75,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -697,6 +705,7 @@
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
+        "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
         "$HARNESS_ROOT/.agent-harness/plans/p3-doc-upkeep-pending-retention-policy.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
@@ -5102,7 +5111,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 74,
+        "docs_indexed": 75,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6609,6 +6618,10 @@
                 "name": "workpool"
               },
               {
+                "description": "track durable verify-until-done loop contracts",
+                "name": "loop"
+              },
+              {
                 "description": "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks",
                 "name": "web-fetch"
               },
@@ -6629,7 +6642,7 @@
                 "name": "version"
               }
             ],
-            "hash": "8793d865e44b137275a134943448d973fb33918106760de3bc99c7b06c230d8d",
+            "hash": "8903561225c0d36578e84dc359f0c0b20d078e4dcb2eae5c04fc322de7c071af",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6689,6 +6702,10 @@
               "issueops_status",
               "issueops_verify_remote_artifact",
               "lint_diagnose",
+              "loop_record_attempt",
+              "loop_start",
+              "loop_status",
+              "loop_stop",
               "project_docs_bootstrap_plan",
               "project_docs_read",
               "project_docs_record",
@@ -7031,7 +7048,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 74,
+            "docs_count": 75,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7109,6 +7126,7 @@
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
+              "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
               "$HARNESS_ROOT/.agent-harness/plans/p3-doc-upkeep-pending-retention-policy.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
@@ -10188,7 +10206,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 74,
+              "docs_indexed": 75,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

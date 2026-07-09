@@ -153,6 +153,8 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - `cmd/harness/testdata/mcp_tools.golden.json`
 - `cmd/harness/testdata/mcp_resources.golden.json`
 - `cmd/harness/testdata/response_contracts.golden.json`
+- `agent-harness loop start/record-attempt/status/stop` CLI/MCP schema and response-contract entries
+- workpool `--pilot` / `pilot_required` CLI/MCP schema entries and pilot field response compatibility
 - `internal/adapter/testdata/native_install_contract_matrix.golden.json` — Codex/Claude user-global 기본 설치와 project-local opt-in 계약
 - `agent-harness self-verify` 10회 반복 결과
 - `agent-harness self-verify`의 `risk QA tier` step과 `risk_qa` goal score
@@ -178,6 +180,16 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - redaction 결과
 
 Golden file은 사람이 읽을 수 있게 작게 유지하고, schema 변경 시 의도와 migration을 문서화한다. 실제 CLI/MCP JSON response golden은 timestamp, temp path, audit id, git sha, home/harness path를 `$TIMESTAMP`, `$STATE_DIR`, `$WORKSPACE`, `$GIT_REPO`, `$GIT_SHA`, `$HOME`, `$HARNESS_ROOT`, `$AUDIT_ID` 같은 placeholder로 normalize한 뒤 비교한다.
+
+---
+
+## 부분 검증 상태 금지 (all-or-nothing verification)
+
+다단계 검증 시나리오에서 한 단계라도 실패하면 이전 단계의 통과를 재사용하지 않고 1단계부터 전체 재실행한다.
+
+완료 보고의 evidence는 마지막 "전 단계 통과" 단일 run에서 나온 것이어야 하며, 서로 다른 run의 부분 통과를 조합하지 않는다.
+
+재실행 비용이 큰 경우에도 부분 통과 상태를 "검증됨"으로 승격하지 않는다. 비용이 문제면 검증 시나리오를 더 작은 독립 시나리오로 분리한다.
 
 ---
 

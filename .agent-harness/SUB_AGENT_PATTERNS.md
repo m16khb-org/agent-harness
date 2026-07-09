@@ -90,6 +90,7 @@
 - **agent-harness 적용:** 규모가 크고 자연스럽게 분해되는 마이그레이션·audit 작업에만 제한적 사용.
 - **D1 delegated child cycle 적용:** parent issue가 child cycle들을 만든 뒤, main agent가 dependency order와 final acceptance를 소유한다. 각 child dispatch 전에는 `task-fan-out-coordination` 실행 결정을 durable record에 남긴다.
 - **D3 workpool 적용:** 독립 task가 여러 개이고 main agent가 결과를 합칠 수 있을 때만 pool로 fan-out한다. Pool 생성도 `task-fan-out-coordination` 실행 결정이 있어야 하며, worker 수/lease/acceptance boundary를 record에 남긴다.
+- **Pilot-first 원칙:** 예상 task 3개 이상 pool은 `--pilot`로 생성해 대표 task 1건의 submit→accept로 접근법·비용을 검증한 뒤 mass claim을 연다. pilot dropped 시 자동 재지정은 없으며 `workpool close --force --reason`이 탈출구다. pilot accept evidence에는 관측된 소요(시도 횟수, 소요 시간)를 기록한다.
 
 #### 8. 장시간 백그라운드 작업 (Background Long-Running Work)
 - **설명:** 메인 대화를 차단하지 않고 비동기 실행. 진행상황 체크·취소 가능.

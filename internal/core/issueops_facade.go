@@ -6,6 +6,7 @@ import (
 
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/artifacttemplate"
+	"agent-harness/internal/core/looprun"
 	"agent-harness/internal/core/workpool"
 )
 
@@ -289,15 +290,26 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 }
 
 func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
-	return issueOpsStrictPRReadinessWithPoolGate(issueops.IssueOpsStrictPRReadiness(record), record.ID)
+	return issueOpsStrictPRReadinessWithLoopGate(issueOpsStrictPRReadinessWithPoolGate(issueops.IssueOpsStrictPRReadiness(record), record.ID), record.Repo)
 }
 
 func IssueOpsStrictPRReadinessWithState(stateRoot string, record IssueOpsRecord) IssueOpsReadiness {
-	return issueOpsStrictPRReadinessWithPoolGate(issueops.IssueOpsStrictPRReadinessWithState(stateRoot, record), record.ID)
+	return issueOpsStrictPRReadinessWithLoopGate(issueOpsStrictPRReadinessWithPoolGate(issueops.IssueOpsStrictPRReadinessWithState(stateRoot, record), record.ID), record.Repo)
 }
 
 func issueOpsStrictPRReadinessWithPoolGate(ready IssueOpsReadiness, parentID string) IssueOpsReadiness {
 	missing, warnings := workpool.ParentGateMissing(parentID)
+	if len(missing) == 0 && len(warnings) == 0 {
+		return ready
+	}
+	ready.Missing = uniqSorted(append(append([]string{}, ready.Missing...), missing...))
+	ready.Warnings = append(ready.Warnings, warnings...)
+	ready.Ready = len(ready.Missing) == 0
+	return ready
+}
+
+func issueOpsStrictPRReadinessWithLoopGate(ready IssueOpsReadiness, repo string) IssueOpsReadiness {
+	missing, warnings := looprun.RepoGateMissing(repo)
 	if len(missing) == 0 && len(warnings) == 0 {
 		return ready
 	}

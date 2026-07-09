@@ -97,6 +97,36 @@ func TestRunWorkpoolLifecycle(t *testing.T) {
 	}
 }
 
+func TestRunWorkpoolPilotFlags(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := filepath.Join(t.TempDir(), "repo")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	createOut := captureWorkpoolStdout(t, func() error {
+		return Run([]string{"create", "--repo", repo, "--name", "pilot cli", "--pilot", "--json"})
+	})
+	var pool workpool.WorkPool
+	unmarshalWorkpoolJSON(t, createOut, &pool)
+	if !pool.PilotRequired {
+		t.Fatalf("create --pilot should set pilot_required, got %+v", pool)
+	}
+
+	addOut := captureWorkpoolStdout(t, func() error {
+		return Run([]string{"add-task", "--pool", pool.ID, "--title", "pilot task", "--instructions", "prove first", "--pilot", "--json"})
+	})
+	var pilot workpool.WorkTask
+	unmarshalWorkpoolJSON(t, addOut, &pilot)
+	readPool, err := workpool.ReadPool(pool.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readPool.PilotTaskID != pilot.ID {
+		t.Fatalf("add-task --pilot should persist pilot task id, got %q want %q", readPool.PilotTaskID, pilot.ID)
+	}
+}
+
 func captureWorkpoolStdout(t *testing.T, fn func() error) string {
 	t.Helper()
 	oldStdout := os.Stdout

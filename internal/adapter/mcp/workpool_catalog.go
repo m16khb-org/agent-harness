@@ -7,28 +7,33 @@ func WorkPoolTools() []Tool {
 	stringArrayProp := func(description string) map[string]any {
 		return map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": description}
 	}
+	boolProp := func(description string) map[string]any {
+		return map[string]any{"type": "boolean", "description": description}
+	}
 	return []Tool{
 		{
 			Name:        "workpool_create",
-			Description: "Create a bounded lease-based work pool, optionally linked to a parent IssueOps cycle.",
+			Description: "Create a bounded lease-based work pool, optionally linked to a parent IssueOps cycle. When pilot_required is true, the pilot task must be accepted before other tasks can be claimed.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"repo", "name"}, "properties": map[string]any{
-				"repo":         stringProp("Repository path."),
-				"name":         stringProp("Pool name."),
-				"parent_cycle": stringProp("Optional parent IssueOps cycle id."),
-				"size":         map[string]any{"type": "integer", "description": "Maximum concurrent leases."},
-				"lease_ttl":    stringProp("Lease duration such as 15m."),
-				"max_attempts": map[string]any{"type": "integer", "description": "Maximum reject/requeue attempts."},
+				"repo":           stringProp("Repository path."),
+				"name":           stringProp("Pool name."),
+				"parent_cycle":   stringProp("Optional parent IssueOps cycle id."),
+				"pilot_required": boolProp("Require an accepted pilot task before other tasks can be claimed."),
+				"size":           map[string]any{"type": "integer", "description": "Maximum concurrent leases."},
+				"lease_ttl":      stringProp("Lease duration such as 15m."),
+				"max_attempts":   map[string]any{"type": "integer", "description": "Maximum reject/requeue attempts."},
 			}},
 		},
 		{
 			Name:        "workpool_add_task",
-			Description: "Add a task to an active work pool.",
+			Description: "Add a task to an active work pool. When pilot is true, this task must be accepted before other tasks can be claimed.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"pool", "title"}, "properties": map[string]any{
 				"pool":         stringProp("Work pool id."),
 				"title":        stringProp("Task title."),
 				"instructions": stringProp("Task instructions."),
 				"scope":        stringArrayProp("Task scope entries."),
 				"acceptance":   stringArrayProp("Acceptance criteria."),
+				"pilot":        boolProp("Mark this task as the required pilot task."),
 			}},
 		},
 		{Name: "workpool_claim", Description: "Claim the next pending task from a work pool.", InputSchema: map[string]any{"type": "object", "required": []string{"pool", "worker"}, "properties": map[string]any{"pool": stringProp("Work pool id."), "worker": stringProp("Worker id.")}}},

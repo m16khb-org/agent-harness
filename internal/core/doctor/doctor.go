@@ -92,6 +92,7 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 
 	result.checkProjectDocs(root)
 	result.checkRepoLocalRuntimeState(root)
+	result.checkLoopContracts(root)
 	result.checkNativeIntegrations(req.Home)
 	result.checkBinaryDrift(req.HarnessRoot)
 

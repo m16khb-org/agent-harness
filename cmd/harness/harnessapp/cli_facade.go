@@ -6,6 +6,7 @@ import (
 	"agent-harness/cmd/harness/basiccli"
 	"agent-harness/cmd/harness/draftwikicli"
 	"agent-harness/cmd/harness/installcli"
+	"agent-harness/cmd/harness/loopcli"
 	"agent-harness/cmd/harness/projectcli"
 	"agent-harness/cmd/harness/qualitycli"
 	"agent-harness/cmd/harness/statecli"
@@ -219,6 +220,10 @@ func runWorker(args []string) error {
 
 func runWorkpool(args []string) error {
 	return workpoolcli.Run(args)
+}
+
+func runLoop(args []string) error {
+	return loopcli.Run(args)
 }
 
 func runWebFetch(args []string) error {

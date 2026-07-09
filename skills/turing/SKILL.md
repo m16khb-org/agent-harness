@@ -337,6 +337,8 @@ Trigger when one goal remains and all its criteria are passing.
    }
    ```
 
+다단계 검증에서 한 단계라도 실패하면 1단계부터 재실행하며 부분 통과 evidence를 재사용하지 않는다 (규범 출처: `.agent-harness/TESTING.md` 부분 검증 상태 금지 절).
+
 ---
 
 ## Dynamic Steering
