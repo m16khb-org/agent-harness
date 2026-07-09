@@ -235,7 +235,7 @@
           "name": "version"
         }
       ],
-      "hash": "a9116b5ffaf911784c1be9e9d5f1c5399071be00cda3ef357731b77265e8f27d",
+      "hash": "b9d00c4ec1750ef3d2e18a6925bd6ab129b673c4b7a9d9d855066baa9f88c6e2",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -382,6 +382,7 @@
           "repo_root",
           "state_dir",
           "lifecycle_state",
+          "pipe_capacity_bytes",
           "checks",
           "issues"
         ],
@@ -634,7 +635,7 @@
       "warnings": []
     },
     "docs_index": {
-      "docs_count": 75,
+      "docs_count": 77,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -707,8 +708,10 @@
         "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
         "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
         "$HARNESS_ROOT/.agent-harness/plans/p3-doc-upkeep-pending-retention-policy.md",
+        "$HARNESS_ROOT/.agent-harness/plans/phase-aware-pioneer-hints.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
         "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
+        "$HARNESS_ROOT/.agent-harness/plans/pipe-pressure-and-session-conflict.md",
         "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
         "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
         "$HARNESS_ROOT/.agent-harness/research/ci-linux-failures.md",
@@ -5111,7 +5114,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 75,
+        "docs_indexed": 77,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6642,7 +6645,7 @@
                 "name": "version"
               }
             ],
-            "hash": "a9116b5ffaf911784c1be9e9d5f1c5399071be00cda3ef357731b77265e8f27d",
+            "hash": "b9d00c4ec1750ef3d2e18a6925bd6ab129b673c4b7a9d9d855066baa9f88c6e2",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6789,6 +6792,7 @@
                 "repo_root",
                 "state_dir",
                 "lifecycle_state",
+                "pipe_capacity_bytes",
                 "checks",
                 "issues"
               ],
@@ -7048,7 +7052,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 75,
+            "docs_count": 77,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7128,8 +7132,10 @@
               "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
               "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
               "$HARNESS_ROOT/.agent-harness/plans/p3-doc-upkeep-pending-retention-policy.md",
+              "$HARNESS_ROOT/.agent-harness/plans/phase-aware-pioneer-hints.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skill-issueops-benchmark-integration.md",
               "$HARNESS_ROOT/.agent-harness/plans/pioneer-skills-quality-improvement.md",
+              "$HARNESS_ROOT/.agent-harness/plans/pipe-pressure-and-session-conflict.md",
               "$HARNESS_ROOT/.agent-harness/plans/shannon-skill.md",
               "$HARNESS_ROOT/.agent-harness/plans/von-neumann-quality-upgrade.md",
               "$HARNESS_ROOT/.agent-harness/research/ci-linux-failures.md",
@@ -10206,7 +10212,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 75,
+              "docs_indexed": 77,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
