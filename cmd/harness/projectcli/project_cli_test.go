@@ -1,15 +1,14 @@
 package projectcli
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/testsupport"
 )
 
 func TestRunProject_dispatchesBootstrapText_whenRepoIsPositional(t *testing.T) {
@@ -119,7 +118,7 @@ func TestRunProject_rejectsMissingAndUnknownSubcommands(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// When
-			stderr, err := captureProjectCLIStderr(func() error {
+			stderr, err := captureProjectCLIStderr(t, func() error {
 				return Run(tt.args)
 			})
 
@@ -156,22 +155,7 @@ func projectRouteHasRel(result core.ProjectDocsRouteResult, rel string) bool {
 	return false
 }
 
-func captureProjectCLIStderr(fn func() error) (string, error) {
-	oldStderr := os.Stderr
-	defer func() { os.Stderr = oldStderr }()
-	r, w, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-	defer r.Close()
-	os.Stderr = w
-	callErr := fn()
-	if closeErr := w.Close(); closeErr != nil {
-		return "", closeErr
-	}
-	var out bytes.Buffer
-	if _, err := io.Copy(&out, r); err != nil {
-		return "", err
-	}
-	return out.String(), callErr
+func captureProjectCLIStderr(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	return testsupport.CaptureStderrAndError(t, fn)
 }

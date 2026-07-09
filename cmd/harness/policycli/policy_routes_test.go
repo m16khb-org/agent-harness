@@ -1,16 +1,15 @@
 package policycli
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/testsupport"
 )
 
 func TestRunPolicyRoutesFakeRunAndReadOnlyRun(t *testing.T) {
@@ -117,25 +116,7 @@ func captureStatusVerifyStdout(t *testing.T, fn func() error) string {
 
 func captureTraceGuardPolicyStdout(t *testing.T, fn func() error) (string, error) {
 	t.Helper()
-	oldStdout := os.Stdout
-	defer func() {
-		os.Stdout = oldStdout
-	}()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe stdout: %v", err)
-	}
-	defer r.Close()
-	os.Stdout = w
-	callErr := fn()
-	if closeErr := w.Close(); closeErr != nil {
-		t.Fatalf("close stdout pipe: %v", closeErr)
-	}
-	var out bytes.Buffer
-	if _, err := io.Copy(&out, r); err != nil {
-		t.Fatalf("read stdout pipe: %v", err)
-	}
-	return out.String(), callErr
+	return testsupport.CaptureStdoutAndError(t, fn)
 }
 
 func writeFileForCLITest(t *testing.T, path string, content string) {

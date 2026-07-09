@@ -2,12 +2,12 @@ package workpoolcli
 
 import (
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"agent-harness/internal/core/workpool"
+	"agent-harness/internal/testsupport"
 )
 
 func TestRunWorkpoolLifecycle(t *testing.T) {
@@ -129,26 +129,7 @@ func TestRunWorkpoolPilotFlags(t *testing.T) {
 
 func captureWorkpoolStdout(t *testing.T, fn func() error) string {
 	t.Helper()
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.Stdout = w
-	runErr := fn()
-	closeErr := w.Close()
-	os.Stdout = oldStdout
-	out, readErr := io.ReadAll(r)
-	if readErr != nil {
-		t.Fatal(readErr)
-	}
-	if closeErr != nil {
-		t.Fatal(closeErr)
-	}
-	if runErr != nil {
-		t.Fatalf("captured command failed: %v\nstdout:\n%s", runErr, string(out))
-	}
-	return string(out)
+	return testsupport.CaptureStdout(t, fn)
 }
 
 func unmarshalWorkpoolJSON(t *testing.T, out string, target any) {

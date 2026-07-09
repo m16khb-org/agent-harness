@@ -1,17 +1,17 @@
 package apidoc
 
 import (
-	"bytes"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"agent-harness/internal/testsupport"
 )
 
 func captureStatusVerifyStdout(t *testing.T, fn func() error) string {
 	t.Helper()
-	out, err := captureAPIDocStdout(fn)
+	out, err := captureAPIDocStdout(t, fn)
 	if err != nil {
 		t.Fatalf("call failed: %v", err)
 	}
@@ -20,29 +20,12 @@ func captureStatusVerifyStdout(t *testing.T, fn func() error) string {
 
 func captureTraceGuardPolicyStdout(t *testing.T, fn func() error) (string, error) {
 	t.Helper()
-	return captureAPIDocStdout(fn)
+	return captureAPIDocStdout(t, fn)
 }
 
-func captureAPIDocStdout(fn func() error) (string, error) {
-	oldStdout := os.Stdout
-	defer func() {
-		os.Stdout = oldStdout
-	}()
-	r, w, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-	defer r.Close()
-	os.Stdout = w
-	callErr := fn()
-	if closeErr := w.Close(); closeErr != nil {
-		return "", closeErr
-	}
-	var out bytes.Buffer
-	if _, err := io.Copy(&out, r); err != nil {
-		return "", err
-	}
-	return out.String(), callErr
+func captureAPIDocStdout(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	return testsupport.CaptureStdoutAndError(t, fn)
 }
 
 func runGitForContract(t *testing.T, dir string, args ...string) {

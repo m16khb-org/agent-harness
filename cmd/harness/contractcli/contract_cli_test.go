@@ -1,12 +1,11 @@
 package contractcli
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
-	"os"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/testsupport"
 )
 
 func TestRunContractRejectsMissingAndUnknownSubcommands(t *testing.T) {
@@ -20,7 +19,7 @@ func TestRunContractRejectsMissingAndUnknownSubcommands(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stderr, err := captureProjectCLIStderr(func() error {
+			stderr, err := captureProjectCLIStderr(t, func() error {
 				return Run(tt.args)
 			})
 
@@ -84,7 +83,7 @@ func TestRunContractSchemaAndCheckRejectInvalidFlags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := captureProjectCLIStderr(func() error {
+			_, err := captureProjectCLIStderr(t, func() error {
 				return Run(tt.args)
 			})
 			if err == nil || !strings.Contains(err.Error(), "flag provided but not defined") {
@@ -94,45 +93,12 @@ func TestRunContractSchemaAndCheckRejectInvalidFlags(t *testing.T) {
 	}
 }
 
-func captureProjectCLIStderr(fn func() error) (string, error) {
-	oldStderr := os.Stderr
-	defer func() { os.Stderr = oldStderr }()
-	r, w, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-	defer r.Close()
-	os.Stderr = w
-	callErr := fn()
-	if closeErr := w.Close(); closeErr != nil {
-		return "", closeErr
-	}
-	var out bytes.Buffer
-	if _, err := io.Copy(&out, r); err != nil {
-		return "", err
-	}
-	return out.String(), callErr
+func captureProjectCLIStderr(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	return testsupport.CaptureStderrAndError(t, fn)
 }
 
 func captureStdoutForContract(t *testing.T, fn func() error) string {
 	t.Helper()
-	oldStdout := os.Stdout
-	defer func() { os.Stdout = oldStdout }()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer r.Close()
-	os.Stdout = w
-	if err := fn(); err != nil {
-		t.Fatal(err)
-	}
-	if err := w.Close(); err != nil {
-		t.Fatal(err)
-	}
-	var out bytes.Buffer
-	if _, err := io.Copy(&out, r); err != nil {
-		t.Fatal(err)
-	}
-	return out.String()
+	return testsupport.CaptureStdout(t, fn)
 }

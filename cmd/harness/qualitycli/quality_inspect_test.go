@@ -2,11 +2,12 @@ package qualitycli
 
 import (
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/testsupport"
 )
 
 func TestParseCoverageFindsPackagesBelowThreshold(t *testing.T) {
@@ -125,27 +126,7 @@ func qualityDepsForTest(now string) InspectDeps {
 
 func captureQualityStdout(t *testing.T, fn func() error) string {
 	t.Helper()
-	oldStdout := os.Stdout
-	defer func() {
-		os.Stdout = oldStdout
-	}()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.Stdout = w
-	callErr := fn()
-	if closeErr := w.Close(); closeErr != nil {
-		t.Fatal(closeErr)
-	}
-	if callErr != nil {
-		t.Fatalf("call failed: %v", callErr)
-	}
-	out, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(out)
+	return testsupport.CaptureStdout(t, fn)
 }
 
 func TestInspectQualityUsesInjectedSignals(t *testing.T) {

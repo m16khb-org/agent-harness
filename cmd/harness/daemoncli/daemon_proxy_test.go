@@ -144,6 +144,15 @@ func TestRunMCPProxyUsesExistingDaemonSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	type readResult struct {
+		out []byte
+		err error
+	}
+	outDone := make(chan readResult, 1)
+	go func() {
+		out, err := io.ReadAll(outR)
+		outDone <- readResult{out: out, err: err}
+	}()
 	os.Stdin = inR
 	os.Stdout = outW
 	if _, err := inW.WriteString("client request\n"); err != nil {
@@ -165,12 +174,12 @@ func TestRunMCPProxyUsesExistingDaemonSocket(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("runMCPProxy did not return")
 	}
-	out, err := io.ReadAll(outR)
-	if err != nil {
-		t.Fatal(err)
+	read := <-outDone
+	if read.err != nil {
+		t.Fatal(read.err)
 	}
-	if string(out) != "daemon response\n" {
-		t.Fatalf("unexpected proxy stdout: %q", string(out))
+	if string(read.out) != "daemon response\n" {
+		t.Fatalf("unexpected proxy stdout: %q", string(read.out))
 	}
 	select {
 	case got := <-serverDone:

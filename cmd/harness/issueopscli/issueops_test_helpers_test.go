@@ -2,11 +2,12 @@ package issueopscli
 
 import (
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/testsupport"
 )
 
 func makeIssueOpsCLIRepoForTest(t *testing.T, name string) string {
@@ -20,23 +21,7 @@ func makeIssueOpsCLIRepoForTest(t *testing.T, name string) string {
 
 func captureStdoutAndErrorForIssueOps(t *testing.T, fn func() error) (string, error) {
 	t.Helper()
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.Stdout = w
-	runErr := fn()
-	closeErr := w.Close()
-	os.Stdout = oldStdout
-	out, readErr := io.ReadAll(r)
-	if readErr != nil {
-		t.Fatal(readErr)
-	}
-	if closeErr != nil {
-		t.Fatal(closeErr)
-	}
-	return string(out), runErr
+	return testsupport.CaptureStdoutAndError(t, fn)
 }
 
 func assertIssueOpsStructuredFailure(t *testing.T, out, want string) {

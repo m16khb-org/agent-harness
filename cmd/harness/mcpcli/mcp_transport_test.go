@@ -59,7 +59,7 @@ func TestMCPTransportStdoutAndStderrWrappers(t *testing.T) {
 		t.Fatalf("unexpected error wrapper payload: %#v", errorPayload)
 	}
 
-	stderr, err := captureProjectCLIStderr(func() error {
+	stderr, err := captureProjectCLIStderr(t, func() error {
 		handleNotification(RPCRequest{Method: "notifications/initialized"})
 		return nil
 	})
@@ -70,7 +70,7 @@ func TestMCPTransportStdoutAndStderrWrappers(t *testing.T) {
 		t.Fatalf("notifications/initialized should be suppressed from diagnostics:\n%s", stderr)
 	}
 
-	stderr2, err2 := captureProjectCLIStderr(func() error {
+	stderr2, err2 := captureProjectCLIStderr(t, func() error {
 		handleNotification(RPCRequest{Method: "notifications/something-else"})
 		return nil
 	})
@@ -143,6 +143,20 @@ func captureMCPStdio(t *testing.T, stdin string, fn func() error) (string, strin
 	if err != nil {
 		t.Fatal(err)
 	}
+	type readResult struct {
+		out []byte
+		err error
+	}
+	outDone := make(chan readResult, 1)
+	errDone := make(chan readResult, 1)
+	go func() {
+		out, err := io.ReadAll(outR)
+		outDone <- readResult{out: out, err: err}
+	}()
+	go func() {
+		out, err := io.ReadAll(errR)
+		errDone <- readResult{out: out, err: err}
+	}()
 	if _, err := inW.WriteString(stdin); err != nil {
 		t.Fatal(err)
 	}
@@ -154,8 +168,8 @@ func captureMCPStdio(t *testing.T, stdin string, fn func() error) (string, strin
 	callErr := fn()
 	closeOutErr := outW.Close()
 	closeErrErr := errW.Close()
-	outBytes, readOutErr := io.ReadAll(outR)
-	errBytes, readErrErr := io.ReadAll(errR)
+	outRead := <-outDone
+	errRead := <-errDone
 	_ = inR.Close()
 	_ = outR.Close()
 	_ = errR.Close()
@@ -165,11 +179,11 @@ func captureMCPStdio(t *testing.T, stdin string, fn func() error) (string, strin
 	if closeErrErr != nil {
 		t.Fatal(closeErrErr)
 	}
-	if readOutErr != nil {
-		t.Fatal(readOutErr)
+	if outRead.err != nil {
+		t.Fatal(outRead.err)
 	}
-	if readErrErr != nil {
-		t.Fatal(readErrErr)
+	if errRead.err != nil {
+		t.Fatal(errRead.err)
 	}
-	return string(outBytes), string(errBytes), callErr
+	return string(outRead.out), string(errRead.out), callErr
 }

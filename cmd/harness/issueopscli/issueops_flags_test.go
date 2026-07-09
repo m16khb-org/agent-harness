@@ -28,7 +28,7 @@ func TestRepeatedFlagRoundTripsRepeatedValues(t *testing.T) {
 // docs-drift regression: every subcommand registered in issueOpsSubcommands that
 // the audit found missing must appear in issueOpsUsage().
 func TestIssueOpsUsageListsNewlyAddedSubcommands(t *testing.T) {
-	usage, err := captureProjectCLIStderr(func() error {
+	usage, err := captureProjectCLIStderr(t, func() error {
 		issueOpsUsage()
 		return nil
 	})

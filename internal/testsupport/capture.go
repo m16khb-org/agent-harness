@@ -19,7 +19,28 @@ func CaptureStdout(t *testing.T, fn func() error) string {
 // CaptureStdoutAndError captures os.Stdout and returns the function error to the caller.
 func CaptureStdoutAndError(t *testing.T, fn func() error) (string, error) {
 	t.Helper()
-	oldStdout := os.Stdout
+	return captureFile(t, &os.Stdout, fn)
+}
+
+// CaptureStderr captures os.Stderr for test helpers without depending on pipe buffer capacity.
+func CaptureStderr(t *testing.T, fn func() error) string {
+	t.Helper()
+	out, err := CaptureStderrAndError(t, fn)
+	if err != nil {
+		t.Fatalf("captured command failed: %v\nstderr:\n%s", err, out)
+	}
+	return out
+}
+
+// CaptureStderrAndError captures os.Stderr and returns the function error to the caller.
+func CaptureStderrAndError(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	return captureFile(t, &os.Stderr, fn)
+}
+
+func captureFile(t *testing.T, target **os.File, fn func() error) (string, error) {
+	t.Helper()
+	oldFile := *target
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
@@ -33,10 +54,10 @@ func CaptureStdoutAndError(t *testing.T, fn func() error) (string, error) {
 		out, err := io.ReadAll(r)
 		readDone <- readResult{out: out, err: err}
 	}()
-	os.Stdout = w
+	*target = w
 	runErr := fn()
 	closeErr := w.Close()
-	os.Stdout = oldStdout
+	*target = oldFile
 	read := <-readDone
 	if read.err != nil {
 		t.Fatal(read.err)

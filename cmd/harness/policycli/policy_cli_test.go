@@ -1,10 +1,8 @@
 package policycli
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +10,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/testsupport"
 )
 
 func TestParseCommandPolicyFlagsUsesDefaultRootCWDAndEnvAllowlist(t *testing.T) {
@@ -126,26 +125,7 @@ func runStatusVerifyTestCommand(t *testing.T, dir string, name string, args ...s
 
 func capturePolicyCLIStdout(t *testing.T, fn func() error) string {
 	t.Helper()
-	oldStdout := os.Stdout
-	defer func() { os.Stdout = oldStdout }()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer r.Close()
-	os.Stdout = w
-	callErr := fn()
-	if closeErr := w.Close(); closeErr != nil {
-		t.Fatal(closeErr)
-	}
-	if callErr != nil {
-		t.Fatalf("policy CLI call failed: %v", callErr)
-	}
-	var out bytes.Buffer
-	if _, err := io.Copy(&out, r); err != nil {
-		t.Fatal(err)
-	}
-	return out.String()
+	return testsupport.CaptureStdout(t, fn)
 }
 
 func containsString(items []string, want string) bool {

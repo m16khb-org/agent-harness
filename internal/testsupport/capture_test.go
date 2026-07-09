@@ -52,3 +52,35 @@ func TestCaptureStdoutRestoresStdout(t *testing.T) {
 		t.Fatal("CaptureStdout did not restore os.Stdout")
 	}
 }
+
+func TestCaptureStderrAndErrorReturnsFunctionErrorWithOutput(t *testing.T) {
+	wantErr := errors.New("boom")
+
+	out, err := CaptureStderrAndError(t, func() error {
+		fmt.Fprint(os.Stderr, "partial error")
+		return wantErr
+	})
+
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected function error, got %v", err)
+	}
+	if out != "partial error" {
+		t.Fatalf("captured stderr = %q, want partial error", out)
+	}
+}
+
+func TestCaptureStderrRestoresStderr(t *testing.T) {
+	oldStderr := os.Stderr
+
+	out := CaptureStderr(t, func() error {
+		fmt.Fprint(os.Stderr, "captured")
+		return nil
+	})
+
+	if out != "captured" {
+		t.Fatalf("captured stderr = %q, want captured", out)
+	}
+	if os.Stderr != oldStderr {
+		t.Fatal("CaptureStderr did not restore os.Stderr")
+	}
+}

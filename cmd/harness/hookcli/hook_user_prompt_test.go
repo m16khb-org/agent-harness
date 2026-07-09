@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/testsupport"
 )
 
 func hookTempRepoWithDoc(t *testing.T) string {
@@ -56,22 +57,10 @@ func hookAdditionalContext(obj map[string]any) string {
 
 func captureStdoutForTest(t *testing.T, fn func()) string {
 	t.Helper()
-	old := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.Stdout = w
-	defer func() { os.Stdout = old }()
-	fn()
-	if err := w.Close(); err != nil {
-		t.Fatal(err)
-	}
-	b, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(b)
+	return testsupport.CaptureStdout(t, func() error {
+		fn()
+		return nil
+	})
 }
 
 func writeHookFixtureFile(t *testing.T, root, rel, content string) {

@@ -1,18 +1,16 @@
 package verifycmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/llmeval"
 	"agent-harness/cmd/harness/selfworkflow/model"
 	"agent-harness/cmd/harness/selfworkflow/progress"
+	"agent-harness/internal/testsupport"
 )
 
 func TestRunCoversLLMEvalSaveStateAndJSON(t *testing.T) {
@@ -106,25 +104,7 @@ func TestRunReturnsSaveErrorAfterSuccessfulVerification(t *testing.T) {
 
 func captureStdoutAllowError(t *testing.T, fn func() error) (string, error) {
 	t.Helper()
-	oldStdout := os.Stdout
-	defer func() {
-		os.Stdout = oldStdout
-	}()
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe stdout: %v", err)
-	}
-	defer reader.Close()
-	os.Stdout = writer
-	callErr := fn()
-	if closeErr := writer.Close(); closeErr != nil {
-		t.Fatalf("close stdout pipe: %v", closeErr)
-	}
-	var out bytes.Buffer
-	if _, err := io.Copy(&out, reader); err != nil {
-		t.Fatalf("read stdout pipe: %v", err)
-	}
-	return out.String(), callErr
+	return testsupport.CaptureStdoutAndError(t, fn)
 }
 
 func printJSONForTest(value any) error {

@@ -14,7 +14,7 @@ func TestRunProjectCommitSuggest_printsNoChangesMessage_whenDiffIsEmpty(t *testi
 	repo := newProjectAssistantGitRepo(t)
 
 	// When
-	stderr, err := captureProjectCLIStderr(func() error {
+	stderr, err := captureProjectCLIStderr(t, func() error {
 		return RunCommitSuggest([]string{"--repo", repo})
 	})
 

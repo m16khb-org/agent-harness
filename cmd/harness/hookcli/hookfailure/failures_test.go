@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"agent-harness/internal/testsupport"
 )
 
 func TestRunFailuresJSON(t *testing.T) {
@@ -37,20 +38,10 @@ func TestRunFailuresJSON(t *testing.T) {
 
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
-	old := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.Stdout = w
-	fn()
-	_ = w.Close()
-	os.Stdout = old
-	out, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(out)
+	return testsupport.CaptureStdout(t, func() error {
+		fn()
+		return nil
+	})
 }
 
 func TestRunFailuresStatsJSON(t *testing.T) {

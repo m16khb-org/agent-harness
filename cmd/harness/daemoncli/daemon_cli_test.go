@@ -21,7 +21,7 @@ func TestRunDaemonRejectsMissingAndUnknownSubcommands(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stderr, err := captureProjectCLIStderr(func() error {
+			stderr, err := captureProjectCLIStderr(t, func() error {
 				return runDaemon(tt.args)
 			})
 

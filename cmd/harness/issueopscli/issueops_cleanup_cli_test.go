@@ -12,7 +12,7 @@ import (
 )
 
 func TestRunIssueOpsUsageAndCleanupBranches(t *testing.T) {
-	stderr, err := captureProjectCLIStderr(func() error {
+	stderr, err := captureProjectCLIStderr(t, func() error {
 		return runIssueOps(nil)
 	})
 	if err != nil {
