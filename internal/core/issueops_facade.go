@@ -44,6 +44,12 @@ type IssueOpsHandoffStartRequest = issueops.IssueOpsHandoffStartRequest
 type IssueOpsHandoffStartResult = issueops.IssueOpsHandoffStartResult
 type IssueOpsHandoffStartClock = issueops.IssueOpsHandoffStartClock
 type IssueOpsOrcaDispatchClient = issueops.IssueOpsOrcaDispatchClient
+type IssueOpsHandoffClaimRequest = issueops.IssueOpsHandoffClaimRequest
+type IssueOpsHeartbeatRequest = issueops.IssueOpsHeartbeatRequest
+type IssueOpsHandoffFinishRequest = issueops.IssueOpsHandoffFinishRequest
+type IssueOpsHandoffAcceptRequest = issueops.IssueOpsHandoffAcceptRequest
+type IssueOpsHandoffRecoverRequest = issueops.IssueOpsHandoffRecoverRequest
+type IssueOpsHandoffRecoverResult = issueops.IssueOpsHandoffRecoverResult
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
 type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
@@ -253,6 +259,22 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 
 func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHandoffStartRequest, client IssueOpsOrcaDispatchClient, clock IssueOpsHandoffStartClock) (IssueOpsHandoffStartResult, error) {
 	return issueops.StartIssueOpsHandoff(ctx, stateRoot, req, client, clock)
+}
+
+func ClaimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest) (IssueOpsRecord, error) {
+	return issueops.ClaimIssueOpsHandoff(stateRoot, req)
+}
+
+func FinishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest) (IssueOpsRecord, error) {
+	return issueops.FinishIssueOpsHandoff(stateRoot, req)
+}
+
+func AcceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest) (IssueOpsRecord, error) {
+	return issueops.AcceptIssueOpsHandoff(stateRoot, req)
+}
+
+func RecoverIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHandoffRecoverRequest, client any, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffRecoverResult, error) {
+	return issueops.RecoverIssueOpsHandoff(ctx, stateRoot, req, client, clock)
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
@@ -575,6 +597,10 @@ func IssueOpsResume(repo string, ids ...string) IssueOpsResumeResult {
 
 func RecordIssueOpsHeartbeat(stateRoot, id string) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsHeartbeat(stateRoot, id)
+}
+
+func RecordIssueOpsHeartbeatWithRequest(stateRoot string, req IssueOpsHeartbeatRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsHeartbeatWithRequest(stateRoot, req)
 }
 
 func IssueOpsLastActiveAt(record IssueOpsRecord) string {

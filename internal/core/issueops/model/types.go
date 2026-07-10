@@ -559,16 +559,17 @@ type IssueOpsCloseChildrenResult struct {
 }
 
 type IssueOpsResumeResult struct {
-	OK              bool               `json:"ok"`
-	CycleID         string             `json:"cycle_id,omitempty"`
-	Phase           IssueOpsPhase      `json:"phase,omitempty"`
-	Repo            string             `json:"repo,omitempty"`
-	Branch          string             `json:"branch,omitempty"`
-	WorktreePath    string             `json:"worktree_path,omitempty"`
-	IssueURL        string             `json:"issue_url,omitempty"`
-	PlanPath        string             `json:"plan_path,omitempty"`
-	Bound           bool               `json:"bound"`
-	SuggestedCycles []string           `json:"suggested_cycles,omitempty"`
-	Readiness       *IssueOpsReadiness `json:"readiness,omitempty"`
-	Guidance        string             `json:"guidance,omitempty"`
+	OK               bool                      `json:"ok"`
+	CycleID          string                    `json:"cycle_id,omitempty"`
+	Phase            IssueOpsPhase             `json:"phase,omitempty"`
+	Repo             string                    `json:"repo,omitempty"`
+	Branch           string                    `json:"branch,omitempty"`
+	WorktreePath     string                    `json:"worktree_path,omitempty"`
+	IssueURL         string                    `json:"issue_url,omitempty"`
+	PlanPath         string                    `json:"plan_path,omitempty"`
+	Bound            bool                      `json:"bound"`
+	SuggestedCycles  []string                  `json:"suggested_cycles,omitempty"`
+	Readiness        *IssueOpsReadiness        `json:"readiness,omitempty"`
+	Guidance         string                    `json:"guidance,omitempty"`
+	ExecutionHandoff *IssueOpsExecutionHandoff `json:"execution_handoff,omitempty"`
 }

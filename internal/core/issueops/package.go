@@ -560,17 +560,18 @@ func IssueOpsResume(repo string, ids ...string) IssueOpsResumeResult {
 		readiness := IssueOpsImplementationReadiness(rec)
 		expectedWorktree := ExpectedWorktreeFromSession(repo, func() string { return rec.WorktreePath })
 		return IssueOpsResumeResult{
-			OK:           true,
-			CycleID:      rec.ID,
-			Phase:        rec.Phase,
-			Repo:         rec.Repo,
-			Branch:       rec.Branch,
-			WorktreePath: rec.WorktreePath,
-			IssueURL:     rec.IssueURL,
-			PlanPath:     rec.PlanPath,
-			Bound:        true,
-			Readiness:    &readiness,
-			Guidance:     ExpectedWorktreeEnvGuidance(expectedWorktree),
+			OK:               true,
+			CycleID:          rec.ID,
+			Phase:            rec.Phase,
+			Repo:             rec.Repo,
+			Branch:           rec.Branch,
+			WorktreePath:     rec.WorktreePath,
+			IssueURL:         rec.IssueURL,
+			PlanPath:         rec.PlanPath,
+			Bound:            true,
+			Readiness:        &readiness,
+			Guidance:         ExpectedWorktreeEnvGuidance(expectedWorktree),
+			ExecutionHandoff: rec.ExecutionHandoff,
 		}
 	}
 
@@ -629,17 +630,18 @@ func issueOpsResumeByID(repo, id string) IssueOpsResumeResult {
 		expectedWorktree = ExpectedWorktreeFromSession(resumeRepo, func() string { return rec.WorktreePath })
 	}
 	return IssueOpsResumeResult{
-		OK:           true,
-		CycleID:      rec.ID,
-		Phase:        rec.Phase,
-		Repo:         rec.Repo,
-		Branch:       rec.Branch,
-		WorktreePath: rec.WorktreePath,
-		IssueURL:     rec.IssueURL,
-		PlanPath:     rec.PlanPath,
-		Bound:        true,
-		Readiness:    &readiness,
-		Guidance:     ExpectedWorktreeEnvGuidance(expectedWorktree),
+		OK:               true,
+		CycleID:          rec.ID,
+		Phase:            rec.Phase,
+		Repo:             rec.Repo,
+		Branch:           rec.Branch,
+		WorktreePath:     rec.WorktreePath,
+		IssueURL:         rec.IssueURL,
+		PlanPath:         rec.PlanPath,
+		Bound:            true,
+		Readiness:        &readiness,
+		Guidance:         ExpectedWorktreeEnvGuidance(expectedWorktree),
+		ExecutionHandoff: rec.ExecutionHandoff,
 	}
 }
 
