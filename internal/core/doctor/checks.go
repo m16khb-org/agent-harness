@@ -1,10 +1,16 @@
 package doctor
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -14,7 +20,16 @@ import (
 
 const pipeCapacityWarningThreshold = 8192
 
+// Loopback MCP gateways serve ~24 fds idle; hundreds signal session/socket
+// accumulation (2026-07-10 EMFILE incident hit a 256-fd launchd limit at 240).
+const mcpGatewayFDWarningThreshold = 512
+
 var measurePipeCapacity = measureSystemPipeCapacity
+
+var (
+	probeMCPGateway    = probeMCPGatewayHTTP
+	countMCPGatewayFDs = countMCPGatewayFDsViaLsof
+)
 
 func (r *HarnessDoctorResult) checkProjectDocs(root string) {
 	missing := []string{}
@@ -137,6 +152,149 @@ func measureSystemPipeCapacity() (int, error) {
 		}
 	}
 	return total, nil
+}
+
+type mcpGatewayEndpoint struct {
+	Name string
+	URL  *url.URL
+}
+
+func (r *HarnessDoctorResult) checkMCPGateways(home string) {
+	if home == "" {
+		r.addCheck("mcp_gateway", true, "home directory unavailable; skipped loopback MCP gateway checks")
+		return
+	}
+	endpoints, err := loopbackMCPEndpoints(filepath.Join(home, ".claude.json"))
+	if err != nil {
+		r.addCheck("mcp_gateway", true, "claude MCP config unreadable: "+err.Error())
+		return
+	}
+	if len(endpoints) == 0 {
+		r.addCheck("mcp_gateway", true, "no loopback HTTP MCP servers configured; skipped")
+		return
+	}
+	unreachable := 0
+	for _, ep := range endpoints {
+		if err := probeMCPGateway(ep.URL.String()); err != nil {
+			unreachable++
+			r.addIssue("mcp_gateway_unreachable", "warning", fmt.Sprintf("loopback MCP server %q did not answer an initialize probe: %v", ep.Name, err), ep.URL.String(), &HarnessDoctorFix{Description: "Restart the local MCP gateway process serving this URL, then rerun doctor; see CAUTIONS 2026-07-10."})
+		}
+	}
+	fdPressure := false
+	fdSummaries := []string{}
+	for _, port := range uniqueMCPGatewayPorts(endpoints) {
+		count, err := countMCPGatewayFDs(port)
+		if err != nil {
+			fdSummaries = append(fdSummaries, fmt.Sprintf("fd[:%d]=unavailable", port))
+			continue
+		}
+		fdSummaries = append(fdSummaries, fmt.Sprintf("fd[:%d]=%d", port, count))
+		if count >= mcpGatewayFDWarningThreshold {
+			fdPressure = true
+			r.addIssue("mcp_gateway_fd_pressure", "warning", fmt.Sprintf("loopback MCP gateway on port %d holds %d open file descriptors; sessions or sockets may be accumulating toward fd exhaustion", port, count), fmt.Sprintf("127.0.0.1:%d", port), &HarnessDoctorFix{Description: "Restart the gateway before it hits its fd limit and check that its HTTP transport runs stateless; see CAUTIONS 2026-07-10."})
+		}
+	}
+	summary := fmt.Sprintf("endpoints=%d unreachable=%d %s", len(endpoints), unreachable, strings.Join(fdSummaries, " "))
+	r.addCheck("mcp_gateway", unreachable == 0 && !fdPressure, summary)
+}
+
+func loopbackMCPEndpoints(configPath string) ([]mcpGatewayEndpoint, error) {
+	raw, err := os.ReadFile(configPath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var config struct {
+		MCPServers map[string]struct {
+			Type string `json:"type"`
+			URL  string `json:"url"`
+		} `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(raw, &config); err != nil {
+		return nil, err
+	}
+	endpoints := []mcpGatewayEndpoint{}
+	for name, server := range config.MCPServers {
+		if server.Type != "http" && server.Type != "sse" {
+			continue
+		}
+		parsed, err := url.Parse(server.URL)
+		if err != nil {
+			continue
+		}
+		host := parsed.Hostname()
+		if host != "127.0.0.1" && host != "localhost" && host != "::1" {
+			continue
+		}
+		endpoints = append(endpoints, mcpGatewayEndpoint{Name: name, URL: parsed})
+	}
+	sort.Slice(endpoints, func(i, j int) bool { return endpoints[i].Name < endpoints[j].Name })
+	return endpoints, nil
+}
+
+func uniqueMCPGatewayPorts(endpoints []mcpGatewayEndpoint) []int {
+	seen := map[int]bool{}
+	ports := []int{}
+	for _, ep := range endpoints {
+		port := 80
+		if ep.URL.Scheme == "https" {
+			port = 443
+		}
+		if p := ep.URL.Port(); p != "" {
+			if parsed, err := strconv.Atoi(p); err == nil {
+				port = parsed
+			}
+		}
+		if !seen[port] {
+			seen[port] = true
+			ports = append(ports, port)
+		}
+	}
+	sort.Ints(ports)
+	return ports
+}
+
+func probeMCPGatewayHTTP(target string) error {
+	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"agent-harness-doctor","version":"0"}}}`
+	req, err := http.NewRequest(http.MethodPost, target, strings.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	// Any HTTP status proves the listener accepts and answers; a wedged
+	// gateway fails at the transport layer (reset/refused/timeout) instead.
+	return resp.Body.Close()
+}
+
+func countMCPGatewayFDsViaLsof(port int) (int, error) {
+	pidOut, err := exec.Command("lsof", "-nP", fmt.Sprintf("-iTCP:%d", port), "-sTCP:LISTEN", "-t").Output()
+	if err != nil {
+		return 0, fmt.Errorf("listener pid lookup failed: %w", err)
+	}
+	pid := strings.TrimSpace(string(pidOut))
+	if pid == "" {
+		return 0, errors.New("no listener process found")
+	}
+	if i := strings.IndexByte(pid, '\n'); i >= 0 {
+		pid = pid[:i]
+	}
+	fdOut, err := exec.Command("lsof", "-p", pid).Output()
+	if err != nil {
+		return 0, fmt.Errorf("fd listing failed for pid %s: %w", pid, err)
+	}
+	lines := strings.Count(string(fdOut), "\n")
+	if lines > 0 {
+		lines-- // drop the lsof header row
+	}
+	return lines, nil
 }
 
 func (r *HarnessDoctorResult) checkNativeIntegrations(home string) {

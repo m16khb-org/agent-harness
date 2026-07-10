@@ -95,6 +95,7 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 	result.checkRepoLocalRuntimeState(root)
 	result.checkLoopContracts(root)
 	result.checkPipeCapacity()
+	result.checkMCPGateways(req.Home)
 	result.checkNativeIntegrations(req.Home)
 	result.checkBinaryDrift(req.HarnessRoot)
 
