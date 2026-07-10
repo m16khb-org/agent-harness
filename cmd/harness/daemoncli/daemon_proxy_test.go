@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -124,12 +123,10 @@ func TestRunMCPProxyUsesExistingDaemonSocket(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer listener.Close()
-	if err := os.WriteFile(paths.PID, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	instance := writeVerifiedDaemonTestInstance(t, paths)
 	proxyDone := make(chan string, 1)
 	serverDone := make(chan string, 1)
-	go serveDaemonProxyTestSocket(t, listener, serverDone)
+	go serveDaemonProxyTestSocket(t, listener, instance, serverDone)
 
 	oldStdin, oldStdout := os.Stdin, os.Stdout
 	defer func() {

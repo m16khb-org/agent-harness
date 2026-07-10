@@ -21,7 +21,8 @@ func TestRunDaemonServerWithDepsInitializesStateAndExitsOnClosedListener(t *test
 	}
 	var log daemonServerFakeLog
 	removed := []string{}
-	writes := map[string]string{}
+	var wroteInstance daemonInstance
+	tokenCalls := 0
 
 	err := runDaemonServerWithDeps(daemonServerDeps{
 		paths: func() (daemonPaths, error) {
@@ -55,15 +56,34 @@ func TestRunDaemonServerWithDepsInitializesStateAndExitsOnClosedListener(t *test
 			}
 			return nil
 		},
-		writeFile: func(path string, content []byte, perm os.FileMode) error {
-			if perm != 0o600 {
-				t.Fatalf("unexpected write perm: %o", perm)
+		writeInstance: func(path string, instance daemonInstance) error {
+			if path != paths.PID {
+				t.Fatalf("unexpected instance path: %s", path)
 			}
-			writes[path] = string(content)
+			wroteInstance = instance
 			return nil
 		},
 		getpid: func() int {
 			return 12345
+		},
+		inspectProcess: func(pid int) (daemonProcessIdentity, error) {
+			if pid != 12345 {
+				t.Fatalf("unexpected inspected pid: %d", pid)
+			}
+			return daemonProcessIdentity{StartTime: "start-a", Executable: "/tmp/agent-harness"}, nil
+		},
+		buildSHA: func(executable string) (string, error) {
+			if executable != "/tmp/agent-harness" {
+				t.Fatalf("unexpected executable hash target: %s", executable)
+			}
+			return "build-a", nil
+		},
+		newToken: func() (string, error) {
+			tokenCalls++
+			if tokenCalls == 1 {
+				return "nonce-a", nil
+			}
+			return "generation-a", nil
 		},
 		now: func() time.Time {
 			return time.Unix(100, 0).UTC()
@@ -77,8 +97,17 @@ func TestRunDaemonServerWithDepsInitializesStateAndExitsOnClosedListener(t *test
 	if err != nil {
 		t.Fatalf("expected closed listener to stop cleanly, got %v", err)
 	}
-	if writes[paths.PID] != "12345\n" {
-		t.Fatalf("unexpected pid write: %q", writes[paths.PID])
+	wantInstance := daemonInstance{
+		PID:              12345,
+		ProcessStartTime: "start-a",
+		Executable:       "/tmp/agent-harness",
+		InstanceNonce:    "nonce-a",
+		BuildSHA:         "build-a",
+		ProtocolVersion:  daemonProtocolVersion,
+		Generation:       "generation-a",
+	}
+	if wroteInstance != wantInstance {
+		t.Fatalf("unexpected instance write: %#v", wroteInstance)
 	}
 	if !strings.Contains(log.String(), "daemon started pid=12345 socket="+paths.Socket) {
 		t.Fatalf("missing start log: %q", log.String())
@@ -138,9 +167,16 @@ func TestRunDaemonServerUsesDefaultDepsFactory(t *testing.T) {
 			listen: func(string, string) (net.Listener, error) {
 				return daemonServerClosedListener{}, nil
 			},
-			chmod:     func(string, os.FileMode) error { return nil },
-			writeFile: func(string, []byte, os.FileMode) error { return nil },
-			getpid:    func() int { return 12345 },
+			chmod:         func(string, os.FileMode) error { return nil },
+			writeInstance: func(string, daemonInstance) error { return nil },
+			getpid:        func() int { return 12345 },
+			inspectProcess: func(int) (daemonProcessIdentity, error) {
+				return daemonProcessIdentity{StartTime: "start-a", Executable: "/tmp/agent-harness"}, nil
+			},
+			buildSHA: func(string) (string, error) { return "build-a", nil },
+			newToken: func() (string, error) {
+				return "token-a", nil
+			},
 			now: func() time.Time {
 				return time.Unix(100, 0).UTC()
 			},

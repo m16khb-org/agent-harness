@@ -5,10 +5,11 @@ import (
 	"io"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"agent-harness/cmd/harness/daemoncli/daemonpaths"
 )
 
 const maxConnections = 64
@@ -37,11 +38,14 @@ var daemonServerDefaultDeps = func() daemonServerDeps {
 		openLog: func(path string) (daemonServerLogFile, error) {
 			return os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		},
-		remove:    os.Remove,
-		listen:    net.Listen,
-		chmod:     os.Chmod,
-		writeFile: os.WriteFile,
-		getpid:    os.Getpid,
+		remove:         os.Remove,
+		listen:         net.Listen,
+		chmod:          os.Chmod,
+		writeInstance:  daemonpaths.WriteInstance,
+		getpid:         os.Getpid,
+		inspectProcess: daemonpaths.InspectProcess,
+		buildSHA:       daemonExecutableSHA,
+		newToken:       newDaemonIdentityToken,
 		now: func() time.Time {
 			return time.Now().UTC()
 		},
@@ -63,8 +67,11 @@ type daemonServerDeps struct {
 	remove         func(string) error
 	listen         func(network, address string) (net.Listener, error)
 	chmod          func(string, os.FileMode) error
-	writeFile      func(string, []byte, os.FileMode) error
+	writeInstance  func(string, daemonInstance) error
 	getpid         func() int
+	inspectProcess func(int) (daemonProcessIdentity, error)
+	buildSHA       func(string) (string, error)
+	newToken       func() (string, error)
 	now            func() time.Time
 	serveMCPStream func(net.Conn, daemonServerLogFile) error
 }
@@ -88,22 +95,49 @@ func runDaemonServerWithDeps(deps daemonServerDeps) error {
 		return err
 	}
 	defer listener.Close()
+	defer func() { _ = deps.remove(paths.Socket) }()
 	_ = deps.chmod(paths.Socket, 0o600)
 	pid := deps.getpid()
-	if err := deps.writeFile(paths.PID, []byte(strconv.Itoa(pid)+"\n"), 0o600); err != nil {
+	processIdentity, err := deps.inspectProcess(pid)
+	if err != nil {
+		return fmt.Errorf("inspect daemon process identity: %w", err)
+	}
+	nonce, err := deps.newToken()
+	if err != nil {
+		return fmt.Errorf("create daemon instance nonce: %w", err)
+	}
+	generation, err := deps.newToken()
+	if err != nil {
+		return fmt.Errorf("create daemon generation: %w", err)
+	}
+	buildSHA, err := deps.buildSHA(processIdentity.Executable)
+	if err != nil {
+		return fmt.Errorf("hash daemon executable: %w", err)
+	}
+	instance := daemonInstance{
+		PID:              pid,
+		ProcessStartTime: processIdentity.StartTime,
+		Executable:       processIdentity.Executable,
+		InstanceNonce:    nonce,
+		BuildSHA:         buildSHA,
+		ProtocolVersion:  daemonProtocolVersion,
+		Generation:       generation,
+	}
+	if err := deps.writeInstance(paths.PID, instance); err != nil {
 		return err
 	}
 	_ = deps.remove(paths.Lock)
 	defer func() {
-		_ = deps.remove(paths.Socket)
 		_ = deps.remove(paths.PID)
 	}()
 	connSlots := make(chan struct{}, maxConnections)
 	var activeWG sync.WaitGroup
 	fmt.Fprintf(logFile, "%s daemon started pid=%d socket=%s max_connections=%d\n", deps.now().Format(time.RFC3339), pid, paths.Socket, maxConnections)
 	acceptErr := runDaemonAcceptLoop(listener, logFile, daemonServerLoopDeps{
-		now:            deps.now,
-		serveMCPStream: deps.serveMCPStream,
+		now: deps.now,
+		serveMCPStream: func(conn net.Conn, logFile daemonServerLogFile) error {
+			return serveDaemonConnection(conn, logFile, instance, deps.serveMCPStream)
+		},
 		wrapConn: func(c net.Conn) net.Conn {
 			return &idleConn{Conn: c, timeout: mcpIdleTimeout}
 		},

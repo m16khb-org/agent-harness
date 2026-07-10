@@ -634,6 +634,21 @@
       "version": 1,
       "warnings": []
     },
+    "daemon_status": {
+      "code": "stopped",
+      "identity_verified": false,
+      "message": "daemon is not running",
+      "ok": true,
+      "paths": {
+        "dir": "$STATE_DIR/daemon",
+        "lock_file": "$STATE_DIR/daemon/agent-harness.lock",
+        "log_file": "$STATE_DIR/daemon/agent-harness.log",
+        "pid_file": "$STATE_DIR/daemon/agent-harness.pid",
+        "socket": "$STATE_DIR/daemon/agent-harness.sock"
+      },
+      "reachable": false,
+      "running": false
+    },
     "docs_index": {
       "docs_count": 78,
       "harness_root": "$HARNESS_ROOT",
@@ -7044,6 +7059,28 @@
             ],
             "version": 1,
             "warnings": []
+          },
+          "type": "text"
+        }
+      ]
+    },
+    "daemon_status": {
+      "content": [
+        {
+          "json": {
+            "code": "stopped",
+            "identity_verified": false,
+            "message": "daemon is not running",
+            "ok": true,
+            "paths": {
+              "dir": "$STATE_DIR/daemon",
+              "lock_file": "$STATE_DIR/daemon/agent-harness.lock",
+              "log_file": "$STATE_DIR/daemon/agent-harness.log",
+              "pid_file": "$STATE_DIR/daemon/agent-harness.pid",
+              "socket": "$STATE_DIR/daemon/agent-harness.sock"
+            },
+            "reachable": false,
+            "running": false
           },
           "type": "text"
         }

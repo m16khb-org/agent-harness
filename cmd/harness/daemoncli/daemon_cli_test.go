@@ -2,7 +2,6 @@ package daemoncli
 
 import (
 	"encoding/json"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -71,14 +70,7 @@ func TestRunDaemonStartReportsExistingDaemonTextAndJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	listener, err := net.Listen("unix", paths.Socket)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer listener.Close()
-	if err := os.WriteFile(paths.PID, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	instance := startVerifiedDaemonTestSocket(t, paths)
 
 	text := captureStatusVerifyStdout(t, func() error {
 		return runDaemon([]string{"start"})
@@ -94,22 +86,14 @@ func TestRunDaemonStartReportsExistingDaemonTextAndJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonOut), &status); err != nil {
 		t.Fatalf("decode daemon start JSON: %v\n%s", err, jsonOut)
 	}
-	if !status.OK || !status.Running || status.PID != os.Getpid() || status.Paths.Socket != paths.Socket {
+	if !status.OK || !status.Running || !status.Reachable || !status.IdentityVerified || status.PID != os.Getpid() || status.Paths.Socket != paths.Socket || status.Instance == nil || *status.Instance != instance {
 		t.Fatalf("unexpected daemon start JSON: %#v", status)
 	}
 }
 
-func TestRunDaemonStopAlreadyStoppedCleansState(t *testing.T) {
+func TestRunDaemonStopReportsAlreadyStopped(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HARNESS_DAEMON_DIR", root)
-	socketPath := filepath.Join(root, "agent-harness.sock")
-	pidPath := filepath.Join(root, "agent-harness.pid")
-	if err := os.WriteFile(socketPath, []byte("stale socket marker"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(pidPath, []byte("999999\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
 
 	text := captureStatusVerifyStdout(t, func() error {
 		return runDaemon([]string{"stop"})
@@ -117,13 +101,6 @@ func TestRunDaemonStopAlreadyStoppedCleansState(t *testing.T) {
 	if !strings.Contains(text, "agent-harness daemon already stopped") {
 		t.Fatalf("unexpected daemon stop text:\n%s", text)
 	}
-	if _, err := os.Stat(socketPath); !os.IsNotExist(err) {
-		t.Fatalf("stale socket was not removed: %v", err)
-	}
-	if _, err := os.Stat(pidPath); !os.IsNotExist(err) {
-		t.Fatalf("stale pid was not removed: %v", err)
-	}
-
 	jsonOut := captureStatusVerifyStdout(t, func() error {
 		return runDaemon([]string{"stop", "--json"})
 	})
@@ -131,7 +108,7 @@ func TestRunDaemonStopAlreadyStoppedCleansState(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonOut), &status); err != nil {
 		t.Fatalf("decode daemon stop JSON: %v\n%s", err, jsonOut)
 	}
-	if !status.OK || status.Running || status.Message != "agent-harness daemon already stopped" {
+	if !status.OK || status.Running || status.Code != daemonStatusStopped || status.Message != "agent-harness daemon already stopped" {
 		t.Fatalf("unexpected daemon stop JSON: %#v", status)
 	}
 }

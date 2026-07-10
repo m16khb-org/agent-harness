@@ -2,6 +2,7 @@ package daemoncli
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -16,11 +17,18 @@ func runMCPProxyErrorString() string {
 	return ""
 }
 
-func serveDaemonProxyTestSocket(t *testing.T, listener net.Listener, serverDone chan<- string) {
+func serveDaemonProxyTestSocket(t *testing.T, listener net.Listener, instance daemonInstance, serverDone chan<- string) {
 	t.Helper()
 	statusConn, err := listener.Accept()
 	if err != nil {
 		serverDone <- "accept status: " + err.Error()
+		return
+	}
+	if err := serveDaemonConnection(statusConn, &daemonServerFakeLog{}, instance, func(net.Conn, daemonServerLogFile) error {
+		return errors.New("status connection must use identity probe")
+	}); err != nil {
+		_ = statusConn.Close()
+		serverDone <- "serve status: " + err.Error()
 		return
 	}
 	_ = statusConn.Close()

@@ -9,7 +9,7 @@ import (
 )
 
 func TestEnsureDaemonRunningWithDepsReturnsExistingStatus(t *testing.T) {
-	want := daemonStatus{OK: true, Running: true, PID: 42, Message: "daemon is reachable"}
+	want := daemonStatus{OK: true, Running: true, Reachable: true, IdentityVerified: true, PID: 42, Code: daemonStatusReady, Instance: &daemonInstance{PID: 42}, Message: "daemon is reachable and identity verified"}
 
 	status, err := ensureDaemonRunningWithDeps(daemonStartDeps{
 		checkStatus: func() daemonStatus {
@@ -28,11 +28,11 @@ func TestEnsureDaemonRunningWithDepsReturnsExistingStatus(t *testing.T) {
 func TestEnsureDaemonRunningWithDepsWaitsWhenLockIsBusy(t *testing.T) {
 	paths := daemonPaths{Dir: t.TempDir()}
 	lockErr := errors.New("lock busy")
-	waitStatus := daemonStatus{OK: true, Running: true, PID: 77, Paths: paths}
+	waitStatus := daemonStatus{OK: true, Running: true, Reachable: true, IdentityVerified: true, PID: 77, Code: daemonStatusReady, Paths: paths, Instance: &daemonInstance{PID: 77}}
 
 	status, err := ensureDaemonRunningWithDeps(daemonStartDeps{
 		checkStatus: func() daemonStatus {
-			return daemonStatus{OK: true, Running: false}
+			return daemonStatus{OK: true, Code: daemonStatusStopped}
 		},
 		paths: func() (daemonPaths, error) {
 			return paths, nil
@@ -65,12 +65,12 @@ func TestEnsureDaemonRunningWithDepsStartsDaemonAndCleansLock(t *testing.T) {
 	checks := 0
 	started := false
 	removedLock := false
-	waitStatus := daemonStatus{OK: true, Running: true, PID: 88, Paths: paths}
+	waitStatus := daemonStatus{OK: true, Running: true, Reachable: true, IdentityVerified: true, PID: 88, Code: daemonStatusReady, Paths: paths, Instance: &daemonInstance{PID: 88}}
 
 	status, err := ensureDaemonRunningWithDeps(daemonStartDeps{
 		checkStatus: func() daemonStatus {
 			checks++
-			return daemonStatus{OK: true, Running: false}
+			return daemonStatus{OK: true, PID: 999999, Code: daemonStatusStopped, Instance: &daemonInstance{PID: 999999}}
 		},
 		paths: func() (daemonPaths, error) {
 			return paths, nil
@@ -117,7 +117,7 @@ func TestEnsureDaemonRunningWithDepsReturnsStartErrorWithPaths(t *testing.T) {
 
 	status, err := ensureDaemonRunningWithDeps(daemonStartDeps{
 		checkStatus: func() daemonStatus {
-			return daemonStatus{OK: true, Running: false}
+			return daemonStatus{OK: true, Code: daemonStatusStopped}
 		},
 		paths: func() (daemonPaths, error) {
 			return paths, nil
