@@ -369,6 +369,78 @@ type IssueOpsChildValidationResult struct {
 	ParentRef IssueOpsChildCycleRef `json:"parent_ref"`
 }
 
+type IssueOpsHostSessionIdentity struct {
+	Host      string `json:"host"`
+	SessionID string `json:"session_id"`
+	AgentID   string `json:"agent_id,omitempty"`
+}
+
+type IssueOpsOrcaIdentity struct {
+	RuntimeID              string   `json:"runtime_id,omitempty"`
+	WorktreeID             string   `json:"worktree_id,omitempty"`
+	WorktreeInstanceID     string   `json:"worktree_instance_id,omitempty"`
+	WorktreePath           string   `json:"worktree_path,omitempty"`
+	TerminalBaselinePTYIDs []string `json:"terminal_baseline_pty_ids,omitempty"`
+	WorkerPTYID            string   `json:"worker_pty_id,omitempty"`
+	WorkerMailboxHandle    string   `json:"worker_mailbox_handle,omitempty"`
+	TaskID                 string   `json:"task_id,omitempty"`
+	DispatchID             string   `json:"dispatch_id,omitempty"`
+}
+
+type IssueOpsExecutionHandoffPendingOperation struct {
+	Kind                string   `json:"kind"`
+	StartedAt           string   `json:"started_at"`
+	BaselineWorktreeIDs []string `json:"baseline_worktree_ids,omitempty"`
+	BaselineTaskIDs     []string `json:"baseline_task_ids,omitempty"`
+	BaselinePTYIDs      []string `json:"baseline_pty_ids,omitempty"`
+}
+
+type IssueOpsExecutionHandoffResult struct {
+	Outcome          string   `json:"outcome"`
+	FinalHead        string   `json:"final_head,omitempty"`
+	ChangedFiles     []string `json:"changed_files,omitempty"`
+	TuringReportPath string   `json:"turing_report_path,omitempty"`
+	Verification     []string `json:"verification,omitempty"`
+	CleanupReceipts  []string `json:"cleanup_receipts,omitempty"`
+	EvidenceDigest   string   `json:"evidence_digest,omitempty"`
+	TaskID           string   `json:"task_id,omitempty"`
+	DispatchID       string   `json:"dispatch_id,omitempty"`
+}
+
+type IssueOpsExecutionHandoffFailure struct {
+	Code    string `json:"code"`
+	Message string `json:"message,omitempty"`
+	At      string `json:"at,omitempty"`
+}
+
+type IssueOpsExecutionHandoff struct {
+	ProtocolVersion   int                                       `json:"protocol_version"`
+	State             string                                    `json:"state"`
+	ClosedDisposition string                                    `json:"closed_disposition,omitempty"`
+	Attempt           int                                       `json:"attempt"`
+	OwnershipEpoch    string                                    `json:"ownership_epoch"`
+	ContextSHA256     string                                    `json:"context_sha256,omitempty"`
+	ContextVersion    int                                       `json:"context_version,omitempty"`
+	Driver            string                                    `json:"driver,omitempty"`
+	Agent             string                                    `json:"agent,omitempty"`
+	DeliveryMode      string                                    `json:"delivery_mode,omitempty"`
+	CoordinatorRoot   string                                    `json:"coordinator_root,omitempty"`
+	WorkerRoot        string                                    `json:"worker_root,omitempty"`
+	WorkerSession     *IssueOpsHostSessionIdentity              `json:"worker_session,omitempty"`
+	Orca              *IssueOpsOrcaIdentity                     `json:"orca,omitempty"`
+	PendingOperation  *IssueOpsExecutionHandoffPendingOperation `json:"pending_operation,omitempty"`
+	Result            *IssueOpsExecutionHandoffResult           `json:"result,omitempty"`
+	Failure           *IssueOpsExecutionHandoffFailure          `json:"failure,omitempty"`
+	PreparedAt        string                                    `json:"prepared_at,omitempty"`
+	ProvisionedAt     string                                    `json:"provisioned_at,omitempty"`
+	DispatchedAt      string                                    `json:"dispatched_at,omitempty"`
+	ClaimedAt         string                                    `json:"claimed_at,omitempty"`
+	LastHeartbeatAt   string                                    `json:"last_heartbeat_at,omitempty"`
+	CompletedAt       string                                    `json:"completed_at,omitempty"`
+	AcceptedAt        string                                    `json:"accepted_at,omitempty"`
+	UpdatedAt         string                                    `json:"updated_at,omitempty"`
+}
+
 const IssueOpsCurrentSchemaVersion = 1
 
 type IssueOpsRecord struct {
@@ -397,6 +469,7 @@ type IssueOpsRecord struct {
 	RegressEvents           []IssueOpsRegressEvent              `json:"regress_events,omitempty"`
 	Delegation              *IssueOpsDelegationContract         `json:"delegation,omitempty"`
 	ChildCycles             []IssueOpsChildCycleRef             `json:"child_cycles,omitempty"`
+	ExecutionHandoff        *IssueOpsExecutionHandoff           `json:"execution_handoff,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`

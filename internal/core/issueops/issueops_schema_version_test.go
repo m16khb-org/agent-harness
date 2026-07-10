@@ -1,11 +1,62 @@
 package issueops
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core/sqlstore"
 )
+
+func TestLegacyIssueOpsRecordWithoutExecutionHandoffRemainsInline(t *testing.T) {
+	stateRoot := t.TempDir()
+	id := "io-legacy-inline"
+	writeRawIssueOpsRecord(t, stateRoot, id, `{
+  "ok": true,
+  "id": "io-legacy-inline",
+  "repo": "/repo/example",
+  "branch": "16-demo",
+  "phase": "implement",
+  "created_at": "2026-07-11T00:00:00Z",
+  "updated_at": "2026-07-11T00:00:00Z"
+}`)
+
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.ExecutionHandoff != nil {
+		t.Fatalf("legacy record unexpectedly gained execution handoff: %#v", record.ExecutionHandoff)
+	}
+	readiness := IssueOpsImplementationReadiness(record)
+	if containsString(readiness.Missing, "handoff_worker_claim") {
+		t.Fatalf("legacy inline readiness must not require worker claim: %#v", readiness.Missing)
+	}
+	encoded, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "execution_handoff") {
+		t.Fatalf("legacy inline JSON contains execution_handoff: %s", encoded)
+	}
+}
+
+func TestIssueOpsImplementationReadinessRequiresClaimOnlyForHandoff(t *testing.T) {
+	record := IssueOpsRecord{ExecutionHandoff: &IssueOpsExecutionHandoff{
+		State:          "dispatched",
+		Attempt:        1,
+		OwnershipEpoch: "epoch-1",
+	}}
+	readiness := IssueOpsImplementationReadiness(record)
+	if !containsString(readiness.Missing, "handoff_worker_claim") {
+		t.Fatalf("unclaimed handoff missing keys = %#v, want handoff_worker_claim", readiness.Missing)
+	}
+	record.ExecutionHandoff.State = "claimed"
+	readiness = IssueOpsImplementationReadiness(record)
+	if containsString(readiness.Missing, "handoff_worker_claim") {
+		t.Fatalf("claimed handoff still requires worker claim: %#v", readiness.Missing)
+	}
+}
 
 // writeRawIssueOpsRecord inserts record bytes directly into the state store,
 // bypassing WriteIssueOps normalization, to simulate legacy or foreign rows.

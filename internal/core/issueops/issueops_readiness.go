@@ -123,6 +123,9 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	}
 	missing = append(missing, issueOpsCompatibilityReviewMissing(record)...)
 	missing = append(missing, issueOpsDevilsAdvocateReviewMissing(record)...)
+	if record.ExecutionHandoff != nil && record.ExecutionHandoff.State != "claimed" {
+		missing = append(missing, "handoff_worker_claim")
+	}
 	return IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
