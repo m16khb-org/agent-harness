@@ -1,0 +1,14 @@
+{
+  "id": "rpc-repo",
+  "ok": true,
+  "result": {
+    "repo": {
+      "id": "repo-1",
+      "path": "/repo",
+      "displayName": "repo"
+    }
+  },
+  "_meta": {
+    "runtimeId": "runtime-1"
+  }
+}

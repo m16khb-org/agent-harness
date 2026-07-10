@@ -1,0 +1,27 @@
+{
+  "id": "rpc-terminal",
+  "ok": true,
+  "result": {
+    "terminals": [
+      {
+        "handle": "term-old",
+        "ptyId": "pty-1",
+        "worktreeId": "worktree-1",
+        "worktreePath": "/repo.worktrees/16-demo",
+        "connected": true,
+        "writable": true
+      },
+      {
+        "handle": "term-live",
+        "ptyId": "pty-2",
+        "worktreeId": "worktree-1",
+        "worktreePath": "/repo.worktrees/16-demo",
+        "connected": true,
+        "writable": true
+      }
+    ]
+  },
+  "_meta": {
+    "runtimeId": "runtime-1"
+  }
+}

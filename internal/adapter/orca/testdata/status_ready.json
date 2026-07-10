@@ -1,0 +1,17 @@
+{
+  "id": "rpc-status",
+  "ok": true,
+  "result": {
+    "runtime": {
+      "state": "ready",
+      "reachable": true,
+      "runtimeId": "runtime-1"
+    },
+    "graph": {
+      "state": "ready"
+    }
+  },
+  "_meta": {
+    "runtimeId": "runtime-1"
+  }
+}

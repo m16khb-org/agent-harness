@@ -1,0 +1,21 @@
+{
+  "id": "rpc-worktree",
+  "ok": true,
+  "result": {
+    "worktree": {
+      "id": "worktree-1",
+      "instanceId": "instance-1",
+      "repoId": "repo-1",
+      "path": "/repo.worktrees/16-demo",
+      "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "branch": "refs/heads/16-demo",
+      "displayName": "16-demo",
+      "comment": "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
+      "baseRef": "refs/remotes/origin/16-demo",
+      "linkedIssue": 16
+    }
+  },
+  "_meta": {
+    "runtimeId": "runtime-1"
+  }
+}
