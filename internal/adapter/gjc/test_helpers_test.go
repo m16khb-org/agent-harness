@@ -35,7 +35,11 @@ func writeAdapterTestSkill(t *testing.T) (root, home string, cleanup func()) {
 	if err := os.MkdirAll(filepath.Join(root, "gjc-plugin"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "gjc-plugin", "hook.ts"), []byte("// agent-harness GJC hook shim\n"), 0o644); err != nil {
+	hookSource, err := os.ReadFile(filepath.Join("..", "..", "..", "gjc-plugin", "hook.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "gjc-plugin", "hook.ts"), hookSource, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// GJC plugin bundle manifest at the repo root so the adapter plans

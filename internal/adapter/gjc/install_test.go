@@ -1,7 +1,9 @@
 package gjc
 
 import (
+	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -55,6 +57,18 @@ func TestGJCInstallerPlansSkillLinksHookShimAndPluginBundle(t *testing.T) {
 	if !hasHookShim {
 		t.Error("expected gjc_hook_shim file plan")
 	}
+	hookSource, err := os.ReadFile(filepath.Join(root, "gjc-plugin", "hook.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{"before_agent_start", "session_id", "tool_name", "tool_input", "return { block: true", "ctx.sessionManager.getSessionId()", "ctx.cwd"} {
+		if !strings.Contains(string(hookSource), required) {
+			t.Errorf("GJC hook shim missing %q", required)
+		}
+	}
+	if strings.Contains(string(hookSource), `pi.on("context"`) {
+		t.Error("GJC hook shim must not map every context event as a user prompt")
+	}
 
 	// Host-filtered skill skipped, plugin bundle install planned.
 	hasPluginPlan := false
@@ -89,6 +103,48 @@ func TestGJCInstallerFailsWhenHookShimSourceMissing(t *testing.T) {
 	// so the host result reports ok=false.
 	if err == nil && result.OK {
 		t.Fatal("expected failure when hook shim source is missing")
+	}
+}
+
+func TestGJCHookShimForwardsNativeIdentityAndEnforcesBlock(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	hookPath := filepath.Join(root, "gjc-plugin", "hook.ts")
+	quotedPath, _ := json.Marshal("file://" + hookPath)
+	script := `
+const mod = await import(` + string(quotedPath) + `);
+const handlers = new Map();
+const messages = [];
+const calls = [];
+const pi = {
+  on: (event, handler) => handlers.set(event, handler),
+  sendMessage: (message) => messages.push(message),
+};
+mod.registerAgentHarnessHooks(pi, async (subcommand, payload, enforce) => {
+  calls.push({ subcommand, payload, enforce });
+  if (subcommand === "session-start") return { hookSpecificOutput: { additionalContext: "claim-guidance" } };
+  if (subcommand === "pre-tool-use") return { decision: "block", reason: "owned-by-other-session" };
+  return {};
+});
+const ctx = { cwd: "/repo.worktrees/16-demo", sessionManager: { getSessionId: () => "gjc-session-1" } };
+await handlers.get("session_start")({ type: "session_start" }, ctx);
+const blocked = await handlers.get("tool_call")({ type: "tool_call", toolName: "edit", toolCallId: "call-1", input: { path: "x.go" } }, ctx);
+await handlers.get("before_agent_start")({ type: "before_agent_start", prompt: "do work" }, ctx);
+if (!blocked?.block || blocked.reason !== "owned-by-other-session") throw new Error("wrong block shape: " + JSON.stringify(blocked));
+if (!messages.some((m) => String(m.content).includes("claim-guidance"))) throw new Error("session guidance not relayed");
+if (handlers.has("context")) throw new Error("context must not be mapped as every user prompt");
+const tool = calls.find((c) => c.subcommand === "pre-tool-use");
+if (tool.payload.host !== "gjc" || tool.payload.session_id !== "gjc-session-1" || tool.payload.cwd !== ctx.cwd || tool.payload.tool_name !== "edit" || tool.payload.tool_input.path !== "x.go") throw new Error("native payload missing: " + JSON.stringify(tool));
+`
+	scriptPath := filepath.Join(t.TempDir(), "hook-smoke.ts")
+	if err := os.WriteFile(scriptPath, []byte(script), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command("bun", scriptPath).CombinedOutput()
+	if err != nil {
+		t.Fatalf("GJC hook mock failed: %v\n%s", err, out)
 	}
 }
 

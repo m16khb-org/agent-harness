@@ -16,9 +16,9 @@ const hookShimRelPath = "gjc-plugin/hook.ts"
 
 // writeGJCHookShim copies the TS hook shim from the repo into GJC's first-party
 // hooks directory so GJC's discoverAndLoadHooks loads it via native Bun import.
-// GJC's HookAPI supports the full lifecycle event set (context, session_start,
-// turn_end, auto_compaction_*, tool_call, tool_result); the shim subscribes to
-// each and spawns the matching `agent-harness hook <event>` subcommand.
+// GJC's HookAPI supports the lifecycle events used here (before_agent_start,
+// session_start, turn_end, auto_compaction_*, tool_call, tool_result). The shim
+// forwards native context through stdin and translates PreToolUse blocks.
 //
 // This replaces an earlier pre/post-tool shell-script approach: GJC's
 // shell-script discovery surface is limited to tool pre/post, while the TS
