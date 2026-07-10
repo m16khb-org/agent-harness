@@ -40,6 +40,10 @@ type IssueOpsHandoffPrepareRequest = issueops.IssueOpsHandoffPrepareRequest
 type IssueOpsHandoffPrepareResult = issueops.IssueOpsHandoffPrepareResult
 type IssueOpsHandoffPrepareClock = issueops.IssueOpsHandoffPrepareClock
 type IssueOpsOrcaWorktreeClient = issueops.IssueOpsOrcaWorktreeClient
+type IssueOpsHandoffStartRequest = issueops.IssueOpsHandoffStartRequest
+type IssueOpsHandoffStartResult = issueops.IssueOpsHandoffStartResult
+type IssueOpsHandoffStartClock = issueops.IssueOpsHandoffStartClock
+type IssueOpsOrcaDispatchClient = issueops.IssueOpsOrcaDispatchClient
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
 type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
@@ -245,6 +249,10 @@ func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeTool
 
 func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req IssueOpsHandoffPrepareRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffPrepareResult, error) {
 	return issueops.PrepareIssueOpsHandoffWorktree(ctx, stateRoot, req, client, clock)
+}
+
+func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHandoffStartRequest, client IssueOpsOrcaDispatchClient, clock IssueOpsHandoffStartClock) (IssueOpsHandoffStartResult, error) {
+	return issueops.StartIssueOpsHandoff(ctx, stateRoot, req, client, clock)
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
