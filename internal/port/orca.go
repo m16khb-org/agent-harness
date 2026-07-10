@@ -65,6 +65,7 @@ type OrcaCreateWorktreeRequest struct {
 	Repo       string `json:"repo"`
 	Name       string `json:"name"`
 	BaseBranch string `json:"base_branch"`
+	Issue      int    `json:"issue,omitempty"`
 	Comment    string `json:"comment"`
 }
 

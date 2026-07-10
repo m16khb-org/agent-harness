@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -143,6 +144,9 @@ func (c *Client) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWor
 
 func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktreeRequest) (port.OrcaWorktree, error) {
 	argv := []string{"orca", "worktree", "create", "--repo", pathSelector(req.Repo), "--name", strings.TrimSpace(req.Name), "--base-branch", strings.TrimSpace(req.BaseBranch), "--no-parent", "--setup", "skip", "--comment", strings.TrimSpace(req.Comment), "--json"}
+	if req.Issue > 0 {
+		argv = append(argv[:len(argv)-1], "--issue", strconv.Itoa(req.Issue), "--json")
+	}
 	var payload struct {
 		Worktree worktreePayload `json:"worktree"`
 	}

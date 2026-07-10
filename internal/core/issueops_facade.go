@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -35,6 +36,10 @@ type IssueOpsDomainReviewRequest = issueops.IssueOpsDomainReviewRequest
 type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
 type IssueOpsWorktreeToolPreparation = issueops.IssueOpsWorktreeToolPreparation
+type IssueOpsHandoffPrepareRequest = issueops.IssueOpsHandoffPrepareRequest
+type IssueOpsHandoffPrepareResult = issueops.IssueOpsHandoffPrepareResult
+type IssueOpsHandoffPrepareClock = issueops.IssueOpsHandoffPrepareClock
+type IssueOpsOrcaWorktreeClient = issueops.IssueOpsOrcaWorktreeClient
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
 type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
@@ -236,6 +241,10 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 
 func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsWorktreeTools(stateRoot, id, prep)
+}
+
+func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req IssueOpsHandoffPrepareRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffPrepareResult, error) {
+	return issueops.PrepareIssueOpsHandoffWorktree(ctx, stateRoot, req, client, clock)
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {

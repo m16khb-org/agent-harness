@@ -103,10 +103,10 @@ func TestClientRejectsMalformedOrOversizedEnvelope(t *testing.T) {
 
 func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --no-parent --setup skip --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --json"] = fixtureOutput(t, "worktree_create.json")
+	runner.responses["orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --no-parent --setup skip --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"] = fixtureOutput(t, "worktree_create.json")
 	client := NewClient(runner)
 	result, err := client.CreateWorktree(context.Background(), port.OrcaCreateWorktreeRequest{
-		Repo: "/repo", Name: "16-demo", BaseBranch: "refs/remotes/origin/16-demo", Comment: "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
+		Repo: "/repo", Name: "16-demo", BaseBranch: "refs/remotes/origin/16-demo", Issue: 16, Comment: "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +114,7 @@ func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 	if result.ID != "worktree-1" || result.InstanceID != "instance-1" {
 		t.Fatalf("created worktree = %#v", result)
 	}
-	want := []string{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "16-demo", "--base-branch", "refs/remotes/origin/16-demo", "--no-parent", "--setup", "skip", "--comment", "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1", "--json"}
+	want := []string{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "16-demo", "--base-branch", "refs/remotes/origin/16-demo", "--no-parent", "--setup", "skip", "--comment", "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1", "--issue", "16", "--json"}
 	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0], want) {
 		t.Fatalf("argv = %#v, want %#v", runner.calls, want)
 	}

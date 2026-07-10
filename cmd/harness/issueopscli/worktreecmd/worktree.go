@@ -1,6 +1,7 @@
 package worktreecmd
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -11,9 +12,10 @@ import (
 )
 
 type Deps struct {
-	ParseFlags func(*flag.FlagSet, []string) (bool, error)
-	PrintJSON  func(any) error
-	PrintError func(error) error
+	ParseFlags     func(*flag.FlagSet, []string) (bool, error)
+	PrintJSON      func(any) error
+	PrintError     func(error) error
+	PrepareHandoff func(context.Context, string, core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error)
 }
 
 type PrepareResult = worktreetools.PrepareResult
@@ -21,7 +23,7 @@ type PrepareResult = worktreetools.PrepareResult
 func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage:")
-		fmt.Println("  agent-harness issueops worktree prepare --id ID [--json]")
+		fmt.Println("  agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--agent NAME] [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops worktree prepare-tools --id ID [--json]")
 		fmt.Println("  agent-harness issueops worktree verify --id ID [--json]")
 		fmt.Println("  agent-harness issueops worktree cleanup-readiness --id ID [--merged] [--json]")
@@ -124,56 +126,37 @@ func PrepareWorktreeTools(record core.IssueOpsRecord) (PrepareResult, error) {
 func runWorktreePrepare(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops worktree prepare", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	orchestrator := fs.String("orchestrator", "auto", "orchestrator: auto, orca, or inline")
+	agent := fs.String("agent", "codex", "built-in Orca agent host")
+	confirm := fs.Bool("confirm", false, "confirm Orca worktree creation")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := deps.ParseFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if deps.PrepareHandoff == nil {
+		return fmt.Errorf("IssueOps handoff worktree dependency is unavailable")
+	}
+	result, err := deps.PrepareHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffPrepareRequest{
+		ID: *id, Orchestrator: *orchestrator, Agent: *agent, Confirm: *confirm,
+	})
 	if err != nil {
 		if *jsonOut {
 			_ = deps.PrintError(err)
 		}
 		return err
 	}
-	repo := strings.TrimSpace(record.Repo)
-	branch := strings.TrimSpace(record.Branch)
-	if repo == "" || branch == "" {
-		err := fmt.Errorf("repo and branch must be set on the IssueOps record")
-		if *jsonOut {
-			_ = deps.PrintError(err)
-		}
-		return err
-	}
-	branchSlug := strings.ReplaceAll(branch, "/", "-")
-	worktreePath := repo + ".worktrees/" + branchSlug
-	baseBranch := "main"
-	if record.BranchPrepare != nil && record.BranchPrepare.BaseBranch != "" {
-		baseBranch = record.BranchPrepare.BaseBranch
-	}
-	result := map[string]any{
-		"ok":            true,
-		"id":            record.ID,
-		"repo":          repo,
-		"branch":        branch,
-		"base_branch":   baseBranch,
-		"worktree_path": worktreePath,
-		"exists":        false,
-		"command":       []string{"git", "worktree", "add", worktreePath, branch},
-		"next_step":     "execute the command above, then run issueops link-worktree --id " + record.ID + " --worktree-path " + worktreePath,
-	}
-	if info, err := os.Stat(worktreePath); err == nil && info.IsDir() {
-		result["exists"] = true
-		result["next_step"] = "worktree exists; run issueops link-worktree --id " + record.ID + " --worktree-path " + worktreePath
-	}
 	if *jsonOut {
 		return deps.PrintJSON(result)
 	}
-	fmt.Printf("worktree_path: %s\n", worktreePath)
-	fmt.Printf("branch: %s (base: %s)\n", branch, baseBranch)
-	if result["exists"].(bool) {
+	fmt.Printf("worktree_path: %s\n", result.WorktreePath)
+	fmt.Printf("branch: %s (base: %s)\n", result.Branch, result.BaseBranch)
+	if result.State != "" {
+		fmt.Printf("orchestrator: %s (state: %s)\n", result.ResolvedMode, result.State)
+	}
+	if result.Exists {
 		fmt.Println("worktree already exists; link it with issueops link-worktree")
-	} else {
-		fmt.Printf("create with: git worktree add %s %s\n", worktreePath, branch)
+	} else if result.ResolvedMode == "inline" || result.ResolvedMode == "" {
+		fmt.Printf("create with: git worktree add %s %s\n", result.WorktreePath, result.Branch)
 	}
 	return nil
 }

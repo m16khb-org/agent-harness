@@ -1,6 +1,7 @@
 package worktreecmd
 
 import (
+	"context"
 	"flag"
 	"os"
 	"os/exec"
@@ -25,6 +26,9 @@ func TestRunWorktreeCommandsWithInjectedDeps(t *testing.T) {
 		PrintError: func(err error) error {
 			errorsPrinted = append(errorsPrinted, err)
 			return nil
+		},
+		PrepareHandoff: func(_ context.Context, _ string, req core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error) {
+			return core.IssueOpsHandoffPrepareResult{OK: true, ID: req.ID, Repo: record.Repo, Branch: record.Branch, BaseBranch: "main", WorktreePath: record.Repo + ".worktrees/" + record.Branch, Command: []string{"git", "worktree", "add"}}, nil
 		},
 	}
 	if err := Run([]string{"prepare", "--id", record.ID, "--json"}, deps); err != nil {
@@ -53,6 +57,31 @@ func TestRunWorktreeCommandsWithInjectedDeps(t *testing.T) {
 	}
 	if len(errorsPrinted) != 1 {
 		t.Fatalf("expected printed error, got %d", len(errorsPrinted))
+	}
+}
+
+func TestWorktreePrepareCLIForwardsOrchestratorAgentAndConfirmation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := worktreeIssueOpsRecord(t)
+	var captured core.IssueOpsHandoffPrepareRequest
+	var printed any
+	deps := Deps{
+		ParseFlags: parseWorktreeFlags,
+		PrintJSON:  func(value any) error { printed = value; return nil },
+		PrintError: func(error) error { return nil },
+		PrepareHandoff: func(_ context.Context, _ string, req core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error) {
+			captured = req
+			return core.IssueOpsHandoffPrepareResult{OK: true, ID: req.ID, RequestedMode: req.Orchestrator, ResolvedMode: "orca", Preview: !req.Confirm}, nil
+		},
+	}
+	if err := Run([]string{"prepare", "--id", record.ID, "--orchestrator", "orca", "--agent", "claude", "--confirm", "--json"}, deps); err != nil {
+		t.Fatal(err)
+	}
+	if captured.ID != record.ID || captured.Orchestrator != "orca" || captured.Agent != "claude" || !captured.Confirm {
+		t.Fatalf("flags not forwarded: %#v", captured)
+	}
+	if _, ok := printed.(core.IssueOpsHandoffPrepareResult); !ok {
+		t.Fatalf("expected typed result, got %T", printed)
 	}
 }
 
@@ -105,7 +134,9 @@ func TestRunPrepareToolsAndBoundaries(t *testing.T) {
 	deps := Deps{ParseFlags: parseWorktreeFlags, PrintJSON: func(value any) error {
 		printed = append(printed, value)
 		return nil
-	}, PrintError: func(error) error { return nil }}
+	}, PrintError: func(error) error { return nil }, PrepareHandoff: func(_ context.Context, _ string, req core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error) {
+		return core.IssueOpsHandoffPrepareResult{OK: true, ID: req.ID, Repo: record.Repo, Branch: record.Branch, BaseBranch: "main", WorktreePath: worktree}, nil
+	}}
 	if err := Run([]string{"prepare-tools", "--id", record.ID, "--json"}, deps); err != nil {
 		t.Fatalf("prepare-tools returned error: %v", err)
 	}

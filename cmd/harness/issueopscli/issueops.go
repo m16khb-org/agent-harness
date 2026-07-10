@@ -118,9 +118,10 @@ func prepareIssueOpsWorktreeTools(record core.IssueOpsRecord) (worktreecmd.Prepa
 
 func issueOpsWorktreeDeps() worktreecmd.Deps {
 	return worktreecmd.Deps{
-		ParseFlags: parseIssueOpsFlags,
-		PrintJSON:  printJSON,
-		PrintError: printIssueOpsErrorJSON,
+		ParseFlags:     parseIssueOpsFlags,
+		PrintJSON:      printJSON,
+		PrintError:     printIssueOpsErrorJSON,
+		PrepareHandoff: prepareIssueOpsHandoffWorktree,
 	}
 }
 
