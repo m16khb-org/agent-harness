@@ -21,19 +21,24 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
-	if req.EnforceWorktree {
+	handoffHandled, handoffReason := handoffOwnershipBlockReason(req)
+	if handoffReason != "" {
+		result.Decision = "block"
+		result.Reason = handoffReason
+	}
+	if !handoffHandled && req.EnforceWorktree {
 		if reason := mcpWorktreeRootBlockReason(req); reason != "" {
 			result.Decision = "block"
 			result.Reason = reason
 		}
 	}
-	if result.Decision != "block" && req.EnforceWorktree {
+	if !handoffHandled && result.Decision != "block" && req.EnforceWorktree {
 		if reason := worktreeGuardBlockReason(req); reason != "" {
 			result.Decision = "block"
 			result.Reason = reason
 		}
 	}
-	if result.Decision != "block" && req.EnforceWorktree {
+	if !handoffHandled && result.Decision != "block" && req.EnforceWorktree {
 		if decision, reason := sourceCheckoutMirrorEditAskReason(req); decision != "" {
 			result.Decision = decision
 			result.Reason = reason

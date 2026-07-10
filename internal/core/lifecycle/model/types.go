@@ -62,6 +62,10 @@ type DocUpkeepAppendResult struct {
 
 type HookToolUseLifecycleRequest struct {
 	Repo                 string   `json:"repo,omitempty"`
+	CWD                  string   `json:"cwd,omitempty"`
+	Host                 string   `json:"host,omitempty"`
+	SessionID            string   `json:"session_id,omitempty"`
+	AgentID              string   `json:"agent_id,omitempty"`
 	Tool                 string   `json:"tool,omitempty"`
 	Paths                []string `json:"paths,omitempty"`
 	Command              string   `json:"command,omitempty"`

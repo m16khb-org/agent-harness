@@ -65,6 +65,10 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 	return lifecycle.BuildLifecyclePreToolUseDecision(req)
 }
 
+func BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID string) string {
+	return lifecycle.BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID)
+}
+
 func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecycleResult, error) {
 	return lifecycle.RecordLifecycleToolUse(req)
 }

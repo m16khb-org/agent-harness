@@ -36,6 +36,10 @@ func runHookPreToolUse(args []string) error {
 	}
 	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
 		Repo:                 parsedRepo,
+		CWD:                  hookinput.CWDFromHookInput(stdin),
+		Host:                 firstNonEmptyHookValue(hookinput.HostFromHookInput(stdin), *host),
+		SessionID:            hookinput.SessionIDFromHookInput(stdin),
+		AgentID:              hookinput.AgentIDFromHookInput(stdin),
 		Tool:                 hookinput.ToolNameFromHookInput(stdin),
 		Paths:                hookinput.PathsFromHookInput(stdin),
 		Command:              hookinput.CommandFromHookInput(stdin),
@@ -67,6 +71,15 @@ func runHookPreToolUse(args []string) error {
 	// PreToolUse is on the critical path before every tool call. Keep the shared
 	// harness hook cheap and non-blocking by default.
 	return printJSON(ho.FormatNoop())
+}
+
+func firstNonEmptyHookValue(values ...string) string {
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 // resolveExpectedWorktree returns the explicitly provided expected worktree

@@ -36,6 +36,32 @@ func SourceFromHookInput(input []byte) string {
 	return ""
 }
 
+func CWDFromHookInput(input []byte) string {
+	return hookString(input, "cwd")
+}
+
+func SessionIDFromHookInput(input []byte) string {
+	return hookString(input, "session_id", "sessionId")
+}
+
+func AgentIDFromHookInput(input []byte) string {
+	return hookString(input, "agent_id", "agentId", "agent_type", "agentType")
+}
+
+func HostFromHookInput(input []byte) string {
+	return strings.ToLower(hookString(input, "host"))
+}
+
+func hookString(input []byte, keys ...string) string {
+	obj := hookInputObject(input)
+	for _, key := range keys {
+		if value, ok := obj[key].(string); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
 func Bool(input []byte, key string) bool {
 	if v, ok := hookInputObject(input)[key].(bool); ok {
 		return v

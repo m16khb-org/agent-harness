@@ -98,10 +98,24 @@ func RunSessionStart(args []string, config Config) error {
 	}
 	// Default host for catalog hooks is Claude (not Codex).
 	ho := resolveCatalogHost(hostFlag)
-	if !cat.ShouldInject || hookinput.SourceFromHookInput(stdin) == "compact" {
+	if hookinput.SourceFromHookInput(stdin) == "compact" {
 		return config.PrintJSON(ho.FormatContext("SessionStart", "", ""))
 	}
-	return config.PrintJSON(ho.FormatContext("SessionStart", cat.Compact, cat.UserView))
+	host := firstNonEmptyCatalogValue(hookinput.HostFromHookInput(stdin), hostOf(hostFlag))
+	guidance := core.BuildIssueOpsHandoffSessionGuidance(parsedRepo, host, hookinput.SessionIDFromHookInput(stdin), hookinput.AgentIDFromHookInput(stdin))
+	if !cat.ShouldInject && guidance == "" {
+		return config.PrintJSON(ho.FormatContext("SessionStart", "", ""))
+	}
+	return config.PrintJSON(ho.FormatContext("SessionStart", joinContext(guidance, cat.Compact), joinContext(guidance, cat.UserView)))
+}
+
+func firstNonEmptyCatalogValue(values ...string) string {
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 // resolveCatalogHost returns the hook output adapter for catalog hooks.

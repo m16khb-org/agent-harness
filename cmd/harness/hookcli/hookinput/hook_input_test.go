@@ -28,6 +28,33 @@ func TestBasicHookInputFieldsUseTopLevelAndNestedValues(t *testing.T) {
 	}
 }
 
+func TestHookInputParsesCodexClaudeNativeSessionIdentity(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{name: "codex", input: `{"cwd":" /repo.worktrees/16-demo ","session_id":" codex-session ","agent_id":" worker-1 ","host":" CODEX "}`},
+		{name: "claude nested", input: `{"hook_input":{"cwd":" /repo.worktrees/16-demo ","sessionId":" claude-session ","agent_type":" subagent ","host":" CLAUDE "}}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := []byte(tt.input)
+			if got := CWDFromHookInput(input); got != "/repo.worktrees/16-demo" {
+				t.Fatalf("cwd=%q", got)
+			}
+			if got := SessionIDFromHookInput(input); !strings.HasSuffix(got, "-session") {
+				t.Fatalf("session=%q", got)
+			}
+			if got := AgentIDFromHookInput(input); got == "" {
+				t.Fatal("agent identity missing")
+			}
+			if got := HostFromHookInput(input); got != strings.Split(tt.name, " ")[0] {
+				t.Fatalf("host=%q", got)
+			}
+		})
+	}
+}
+
 func TestPathsFromHookInputCollectsExplicitPatchAndInlinePaths(t *testing.T) {
 	input := []byte(`{
 	  "path":"a.go",
