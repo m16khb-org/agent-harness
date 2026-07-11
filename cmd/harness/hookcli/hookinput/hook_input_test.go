@@ -80,6 +80,38 @@ func TestPathsFromHookInputCollectsExplicitPatchAndInlinePaths(t *testing.T) {
 	}
 }
 
+func TestPathsFromHookInputIgnoresHookTranscriptMetadata(t *testing.T) {
+	input := []byte(`{
+	  "transcript_path":"/outside/codex-session.jsonl",
+	  "agent_transcript_path":"/outside/subagent-session.jsonl",
+	  "hook_input":{"transcript_path":"/outside/nested-session.jsonl"},
+	  "tool_input":{
+	    "file_path":"/repo/internal/core/owned.go",
+	    "transcript_path":"/repo/tool-owned.jsonl",
+	    "patch":"*** Begin Patch\n*** Add File: /repo/.agent-harness/research/evidence.md\n+evidence\n*** End Patch"
+	  }
+	}`)
+	got := PathsFromHookInput(input)
+	for _, unwanted := range []string{
+		"/outside/codex-session.jsonl",
+		"/outside/subagent-session.jsonl",
+		"/outside/nested-session.jsonl",
+	} {
+		if containsString(got, unwanted) {
+			t.Fatalf("hook metadata path %q must not be a mutation target: %#v", unwanted, got)
+		}
+	}
+	for _, want := range []string{
+		"/repo/internal/core/owned.go",
+		"/repo/tool-owned.jsonl",
+		"/repo/.agent-harness/research/evidence.md",
+	} {
+		if !containsString(got, want) {
+			t.Fatalf("tool input path %q missing from mutation targets: %#v", want, got)
+		}
+	}
+}
+
 func TestToolCommandAndProjectPathExtraction(t *testing.T) {
 	input := []byte(`{"tool_name":"gitlab_create_mr","tool_input":{"flags":{"title":" Add feature ","description":"Body","labels":["bug",2],"assignee_id":[7],"copy_issue_labels":true},"issue_iid":"12","projectPath":"/repo"}}`)
 	if got := ToolNameFromHookInput(input); got != "gitlab_create_mr" {

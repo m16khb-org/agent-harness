@@ -8,22 +8,26 @@ func PathsFromHookInput(input []byte) []string {
 	obj := hookInputObject(input)
 	seen := map[string]bool{}
 	out := []string{}
-	var walk func(any)
-	walk = func(v any) {
+	var walk func(any, bool)
+	walk = func(v any, insideToolInput bool) {
 		switch x := v.(type) {
 		case map[string]any:
 			for k, v := range x {
 				lk := strings.ToLower(k)
+				childInsideToolInput := insideToolInput || lk == "tool_input"
+				if !childInsideToolInput && (lk == "transcript_path" || lk == "agent_transcript_path") {
+					continue
+				}
 				if lk == "path" || strings.HasSuffix(lk, "_path") || lk == "file" || lk == "filename" {
 					if s, ok := v.(string); ok {
 						addHookPath(&out, seen, s)
 					}
 				}
-				walk(v)
+				walk(v, childInsideToolInput)
 			}
 		case []any:
 			for _, item := range x {
-				walk(item)
+				walk(item, insideToolInput)
 			}
 		case string:
 			if addPatchPathsFromHookString(&out, seen, x) {
@@ -34,7 +38,7 @@ func PathsFromHookInput(input []byte) []string {
 			}
 		}
 	}
-	walk(obj)
+	walk(obj, false)
 	return out
 }
 

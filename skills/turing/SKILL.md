@@ -41,6 +41,8 @@ For supervised evidence, self-verify requires binary/source contract parity. If 
 
 Codex 0.144.1 initializes hooks during session setup and can rebuild them through `refresh_runtime_config`. Native reinstall did not refresh the observed live worker, so an active Codex session may retain its previously loaded hook command until runtime config refresh or a new session. Installed-file readback alone is insufficient; the live current-session probe is authoritative. The compatibility default treats the worker as Codex only when both the payload host and `--host` are empty; it still requires an exact nonempty session, canonical cwd/repo, persisted fence, and in-tree target, and an explicit host is never replaced. A coordinator may authorize exactly one same-worker retry after installing the repaired binary. Do not bypass the guard or create a fresh session unless that bounded compatibility repair is unsafe.
 
+For Codex, top-level `transcript_path` and `agent_transcript_path` are hook metadata outside `tool_input`, not mutation targets; they commonly point outside the repository. Ignore only those metadata fields. The tool_input paths and patch targets remain enforced. Any live repair requires a full-payload probe that includes external transcript metadata plus the exact session, cwd, and proposed tool input before another worker mutation is authorized.
+
 When a supervised worker is blocked, send one escalation to its concrete coordinator handle, keep heartbeat, remain mutation-free, and wait for coordinator repair, retry, or cancel. It must not invoke `orca orchestration ask` or create a second decision gate after escalation.
 
 ## Quantitative Quality Metrics (vs ulw-loop baseline)

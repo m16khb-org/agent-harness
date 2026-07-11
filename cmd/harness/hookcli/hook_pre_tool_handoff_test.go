@@ -43,6 +43,7 @@ func TestRunHookPreToolUseDefaultsHostlessClaimedSessionToCodex(t *testing.T) {
 	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
+	transcriptPath := filepath.Join(t.TempDir(), "codex-session.jsonl")
 
 	for _, tt := range []struct {
 		name, session, payloadHost, flagHost, want string
@@ -57,9 +58,10 @@ func TestRunHookPreToolUseDefaultsHostlessClaimedSessionToCodex(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			input := map[string]any{
-				"cwd":        cycle.path,
-				"session_id": tt.session,
-				"tool_name":  "apply_patch",
+				"cwd":             cycle.path,
+				"session_id":      tt.session,
+				"transcript_path": transcriptPath,
+				"tool_name":       "apply_patch",
 				"tool_input": map[string]any{
 					"patch": "*** Begin Patch\n*** Add File: " + filepath.Join(cycle.path, "evidence.md") + "\n+evidence\n*** End Patch\n",
 				},

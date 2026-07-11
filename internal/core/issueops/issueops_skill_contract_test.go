@@ -244,6 +244,9 @@ func TestIssueOpsSkillDocumentsOptionalOrcaHandoffContract(t *testing.T) {
 		"live current-session probe is authoritative",
 		"both the payload host and `--host` are empty",
 		"exact nonempty session",
+		"top-level `transcript_path` and `agent_transcript_path` are hook metadata",
+		"tool_input paths and patch targets remain enforced",
+		"full-payload probe",
 		"worker stops",
 		"coordinator owns PR, acceptance, and cleanup",
 	} {
@@ -275,6 +278,9 @@ func TestTuringSkillDocumentsSupervisedHandoffEvidenceContract(t *testing.T) {
 		"live current-session probe is authoritative",
 		"both the payload host and `--host` are empty",
 		"exact nonempty session",
+		"top-level `transcript_path` and `agent_transcript_path` are hook metadata",
+		"tool_input paths and patch targets remain enforced",
+		"full-payload probe",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Fatalf("Turing supervised handoff contract missing phrase %q", want)
