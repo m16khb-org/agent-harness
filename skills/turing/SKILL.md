@@ -43,6 +43,8 @@ Codex 0.144.1 initializes hooks during session setup and can rebuild them throug
 
 For Codex, top-level `transcript_path` and `agent_transcript_path` are hook metadata outside `tool_input`, not mutation targets; they commonly point outside the repository. Ignore only those metadata fields. The tool_input paths and patch targets remain enforced. Any live repair requires a full-payload probe that includes external transcript metadata plus the exact session, cwd, and proposed tool input before another worker mutation is authorized.
 
+Quoted semicolons, ampersands, and pipes in evidence values are argument data when they remain shell-quoted; unquoted shell control operators and newlines remain blocked. Preserve evidence punctuation instead of rewriting prose to satisfy the guard. Omit `--agent-id` when the native agent id is empty, and include it only when the hook payload supplies a nonempty identity.
+
 When a supervised worker is blocked, send one escalation to its concrete coordinator handle, keep heartbeat, remain mutation-free, and wait for coordinator repair, retry, or cancel. It must not invoke `orca orchestration ask` or create a second decision gate after escalation.
 
 ## Quantitative Quality Metrics (vs ulw-loop baseline)

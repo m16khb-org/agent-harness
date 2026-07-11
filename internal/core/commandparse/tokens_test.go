@@ -38,6 +38,28 @@ func TestSplitCommandTokens(t *testing.T) {
 	}
 }
 
+func TestHasUnquotedControlOperator(t *testing.T) {
+	for _, command := range []string{
+		`agent-harness finish --verification 'exact; clean & verified | complete'`,
+		`agent-harness finish --verification "exact; clean & verified | complete"`,
+	} {
+		if HasUnquotedControlOperator(command) {
+			t.Fatalf("quoted evidence punctuation must be data: %q", command)
+		}
+	}
+	for _, command := range []string{
+		"agent-harness finish; touch x",
+		"agent-harness finish & touch x",
+		"agent-harness finish | touch x",
+		"agent-harness finish\ntouch x",
+		"agent-harness finish\rtouch x",
+	} {
+		if !HasUnquotedControlOperator(command) {
+			t.Fatalf("unquoted control operator must be rejected: %q", command)
+		}
+	}
+}
+
 func stringSlicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

@@ -80,6 +80,8 @@ Codex 0.144.1 initializes hooks during session setup, while its `refresh_runtime
 
 In Codex PreToolUse input, top-level `transcript_path` and `agent_transcript_path` are hook metadata, not mutation targets, and may point outside the repository. Ignore those keys only outside `tool_input`; tool_input paths and patch targets remain enforced. Before authorizing a repaired live retry, require a full-payload probe containing the external transcript metadata as well as the exact session, cwd, and proposed tool input. A synthetic payload that omits host metadata is not sufficient evidence.
 
+Quoted semicolons, ampersands, and pipes in evidence values are argument data, not compound-command operators. The lifecycle guard parses quote boundaries so legitimate `--verification` and `--cleanup-receipt` prose remains allowed; unquoted shell control operators and newlines remain blocked. Omit `--agent-id` when the native agent id is empty because a quoted empty argument may be lost by host tokenization. The examples below therefore omit the optional flag; add `--agent-id "$AGENT_ID"` only when the native payload supplies a nonempty value.
+
 ```bash
 agent-harness issueops handoff claim \
   --id "$ISSUEOPS_ID" \
@@ -88,7 +90,6 @@ agent-harness issueops handoff claim \
   --context-sha256 "$CONTEXT_SHA256" \
   --host "$HOST" \
   --session-id "$SESSION_ID" \
-  --agent-id "$AGENT_ID" \
   --cwd "$WORKTREE_PATH" \
   --orca-worktree-id "$ORCA_WORKTREE_ID" \
   --json
@@ -104,7 +105,6 @@ agent-harness issueops heartbeat \
   --context-sha256 "$CONTEXT_SHA256" \
   --host "$HOST" \
   --session-id "$SESSION_ID" \
-  --agent-id "$AGENT_ID" \
   --json
 ```
 
@@ -120,7 +120,6 @@ agent-harness issueops handoff finish \
   --context-sha256 "$CONTEXT_SHA256" \
   --host "$HOST" \
   --session-id "$SESSION_ID" \
-  --agent-id "$AGENT_ID" \
   --outcome completed \
   --final-head "$FINAL_HEAD" \
   --changed-file "$CHANGED_FILE" \

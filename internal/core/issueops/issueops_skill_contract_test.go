@@ -247,6 +247,9 @@ func TestIssueOpsSkillDocumentsOptionalOrcaHandoffContract(t *testing.T) {
 		"top-level `transcript_path` and `agent_transcript_path` are hook metadata",
 		"tool_input paths and patch targets remain enforced",
 		"full-payload probe",
+		"Quoted semicolons, ampersands, and pipes in evidence values are argument data",
+		"unquoted shell control operators and newlines remain blocked",
+		"Omit `--agent-id` when the native agent id is empty",
 		"worker stops",
 		"coordinator owns PR, acceptance, and cleanup",
 	} {
@@ -281,6 +284,9 @@ func TestTuringSkillDocumentsSupervisedHandoffEvidenceContract(t *testing.T) {
 		"top-level `transcript_path` and `agent_transcript_path` are hook metadata",
 		"tool_input paths and patch targets remain enforced",
 		"full-payload probe",
+		"Quoted semicolons, ampersands, and pipes in evidence values are argument data",
+		"unquoted shell control operators and newlines remain blocked",
+		"Omit `--agent-id` when the native agent id is empty",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Fatalf("Turing supervised handoff contract missing phrase %q", want)

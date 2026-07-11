@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"encoding/json"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -63,6 +64,34 @@ func TestHandoffGuardAllowsExactLifecycleCommandsOnly(t *testing.T) {
 	claim.Command += " && touch internal/x.go"
 	if got := BuildLifecyclePreToolUseDecision(claim); got.Decision != "block" {
 		t.Fatalf("compound lifecycle command should block: %#v", got)
+	}
+}
+
+func TestHandoffGuardAllowsQuotedFinishEvidenceAndBlocksUnquotedControlOperators(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	base := handoffEditRequest(record, worktree, "codex", "session-1", "")
+	base.Tool = "Bash"
+	base.Command = "agent-harness issueops handoff finish --id " + record.ID +
+		" --verification 'commit parent is exact; tree clean & verified | complete'" +
+		` --cleanup-receipt "no temp; coordinator owns task & worktree | branch"`
+	if got := BuildLifecyclePreToolUseDecision(base); got.Decision != "allow" {
+		t.Fatalf("quoted evidence punctuation must remain argument data: %#v", got)
+	}
+
+	for _, suffix := range []string{
+		"; touch escaped.go",
+		" & touch escaped.go",
+		" | touch escaped.go",
+		"\ntouch escaped.go",
+		"\rtouch escaped.go",
+	} {
+		t.Run(strconv.Quote(suffix), func(t *testing.T) {
+			req := base
+			req.Command += suffix
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("unquoted shell control %q must fail closed: %#v", suffix, got)
+			}
+		})
 	}
 }
 

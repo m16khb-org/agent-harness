@@ -124,7 +124,7 @@ func supervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRecord, b
 
 func allowedHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	command := strings.TrimSpace(req.Command)
-	if command == "" || strings.ContainsAny(command, ";&|\n\r") {
+	if command == "" || commandparse.HasUnquotedControlOperator(command) {
 		return false
 	}
 	tokens := commandparse.SplitCommandTokens(command)
