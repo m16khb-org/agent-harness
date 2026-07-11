@@ -19,7 +19,9 @@
         "connected": true,
         "writable": true
       }
-    ]
+    ],
+    "totalCount": 2,
+    "truncated": false
   },
   "_meta": {
     "runtimeId": "runtime-1"

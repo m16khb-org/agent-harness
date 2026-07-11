@@ -11,12 +11,26 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"agent-harness/internal/core/issueops/handoff"
 )
 
 // issueOpsBucket is the sqlstore bucket holding one row per cycle record.
 const issueOpsBucket = "issueops"
 
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
+	record, err := readIssueOpsUnchecked(stateRoot, id)
+	if err != nil {
+		return record, err
+	}
+	if err := handoff.ValidateEnvelope(record); err != nil {
+		record.OK = false
+		return record, err
+	}
+	return record, nil
+}
+
+func readIssueOpsUnchecked(stateRoot, id string) (IssueOpsRecord, error) {
 	id, err := normalizeIssueOpsID(id)
 	if err != nil {
 		return IssueOpsRecord{OK: false}, err
@@ -94,6 +108,10 @@ func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, err
 		return record, err
 	}
 	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
+		record.OK = false
+		return record, err
+	}
+	if err := handoff.ValidateEnvelope(record); err != nil {
 		record.OK = false
 		return record, err
 	}

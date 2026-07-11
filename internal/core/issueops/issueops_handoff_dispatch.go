@@ -3,7 +3,10 @@ package issueops
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,7 +76,7 @@ func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if record.ExecutionHandoff == nil {
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("execution handoff is required")
 	}
-	if record.ExecutionHandoff.State == handoff.StateDispatched || record.ExecutionHandoff.State == handoff.StateRecoveryRequired {
+	if record.ExecutionHandoff.State != handoff.StateCoordinatorPreparing {
 		return projectHandoffStart(record, false, ""), nil
 	}
 	if record.ExecutionHandoff.PendingOperation != nil {
@@ -89,7 +92,11 @@ func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if !readiness.Ready {
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("handoff pre-dispatch readiness missing: %s", strings.Join(readiness.Missing, ", "))
 	}
-	packet, err := handoff.BuildContext(record, req.Context)
+	contextOptions, err := resolveHandoffContextOptions(record, req.Context)
+	if err != nil {
+		return IssueOpsHandoffStartResult{}, err
+	}
+	packet, err := handoff.BuildContext(record, contextOptions)
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
@@ -102,7 +109,7 @@ func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("Orca dispatch dependency is unavailable")
 	}
 	now := issueOpsHandoffStartNow(clock)
-	record, err = persistHandoffContext(stateRoot, record.ID, packet, now)
+	record, err = persistHandoffContext(stateRoot, record.ID, packet, handoff.CanonicalContextOptions(contextOptions), now)
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
@@ -136,7 +143,7 @@ func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 	if err != nil {
 		return record, "", fmt.Errorf("refresh persisted Orca terminal: %w", err)
 	}
-	if terminal.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || terminal.PTYID != workerPTYID || strings.TrimSpace(terminal.Handle) == "" || !terminal.Connected || !terminal.Writable {
+	if terminal.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || terminal.PTYID != workerPTYID || strings.TrimSpace(terminal.Handle) == "" || !terminal.Connected || !terminal.Writable || !terminalWorktreePathMatches(terminal, record.ExecutionHandoff.WorkerRoot) {
 		return record, "", fmt.Errorf("refreshed Orca terminal identity does not match the persisted checkpoint")
 	}
 	return record, strings.TrimSpace(terminal.Handle), nil
@@ -147,8 +154,15 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 	if err != nil {
 		return record, "", fmt.Errorf("list terminals before create: %w", err)
 	}
+	baseline, err := handoff.CanonicalBaselineIDs("terminal", terminalPTYIDs(terminals))
+	if err != nil {
+		return record, "", fmt.Errorf("Orca terminal baseline is unsafe: %w", err)
+	}
+	if err := handoff.RequireBaselineDeltaHeadroom("terminal", baseline); err != nil {
+		return record, "", fmt.Errorf("Orca terminal baseline is unsafe: %w", err)
+	}
 	record, err = beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{
-		Kind: handoff.OperationTerminalCreate, StartedAt: now, BaselinePTYIDs: terminalPTYIDs(terminals),
+		Kind: handoff.OperationTerminalCreate, StartedAt: now, BaselinePTYIDs: baseline,
 	})
 	if err != nil {
 		return record, "", err
@@ -158,6 +172,13 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 		Title: issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
 	})
 	if err != nil {
+		if externalMutationNotInvoked(err) {
+			cleared, clearErr := completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationTerminalCreate, now, nil)
+			if clearErr != nil {
+				return record, "", fmt.Errorf("clear non-invoked terminal create journal: %w", clearErr)
+			}
+			return cleared, "", fmt.Errorf("Orca terminal create was not invoked and is safe to retry: %w", err)
+		}
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_create_ambiguous", err.Error(), now)
 		return record, "", fmt.Errorf("Orca terminal create requires recovery: %w", err)
 	}
@@ -172,7 +193,7 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
 		return record, "", err
 	}
-	terminal, err := ReconcileIssueOpsHandoffTerminal(terminalPTYIDs(terminals), record.ExecutionHandoff.Orca.WorktreeID, currentTerminals)
+	terminal, err := ReconcileIssueOpsHandoffTerminal(baseline, record.ExecutionHandoff.Orca.WorktreeID, record.ExecutionHandoff.WorkerRoot, currentTerminals)
 	if err != nil {
 		err = fmt.Errorf("reconcile created terminal: %w", err)
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
@@ -184,7 +205,7 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 		return record, "", err
 	}
 	record, err = completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationTerminalCreate, now, func(h *IssueOpsExecutionHandoff) error {
-		h.Orca.TerminalBaselinePTYIDs = terminalPTYIDs(terminals)
+		h.Orca.TerminalBaselinePTYIDs = baseline
 		h.Orca.WorkerPTYID = terminal.PTYID
 		h.Orca.WorkerMailboxHandle = terminal.Handle
 		return nil
@@ -204,20 +225,37 @@ func ensureHandoffTask(ctx context.Context, stateRoot string, record IssueOpsRec
 	if err != nil {
 		return record, fmt.Errorf("list tasks before create: %w", err)
 	}
+	baseline, err := handoff.CanonicalBaselineIDs("task", taskIDs(tasks))
+	if err != nil {
+		return record, fmt.Errorf("Orca task baseline is unsafe: %w", err)
+	}
+	if err := handoff.RequireBaselineDeltaHeadroom("task", baseline); err != nil {
+		return record, fmt.Errorf("Orca task baseline is unsafe: %w", err)
+	}
 	record, err = beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{
-		Kind: handoff.OperationTaskCreate, StartedAt: now, BaselineTaskIDs: taskIDs(tasks),
+		Kind: handoff.OperationTaskCreate, StartedAt: now, BaselineTaskIDs: baseline,
 	})
 	if err != nil {
 		return record, err
 	}
-	marker := issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
-	task, err := client.CreateTask(ctx, port.OrcaCreateTaskRequest{Spec: contextMarkdown, Title: marker, DisplayName: record.Branch})
+	title, displayName, err := issueOpsHandoffTaskIdentity(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
 	if err != nil {
+		return record, err
+	}
+	task, err := client.CreateTask(ctx, port.OrcaCreateTaskRequest{Spec: contextMarkdown, Title: title, DisplayName: displayName})
+	if err != nil {
+		if externalMutationNotInvoked(err) {
+			cleared, clearErr := completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationTaskCreate, now, nil)
+			if clearErr != nil {
+				return record, fmt.Errorf("clear non-invoked task create journal: %w", clearErr)
+			}
+			return cleared, fmt.Errorf("Orca task create was not invoked and is safe to retry: %w", err)
+		}
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "task_create_ambiguous", err.Error(), now)
 		return record, fmt.Errorf("Orca task create requires recovery: %w", err)
 	}
-	if strings.TrimSpace(task.ID) == "" {
-		err = fmt.Errorf("Orca task identity is empty")
+	if strings.TrimSpace(task.ID) == "" || task.Title != title || task.DisplayName != displayName || !validInitialOrcaTaskStatus(task.Status) {
+		err = fmt.Errorf("Orca task identity, marker, display name, or initial status does not match the prepared task")
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "task_identity_mismatch", err.Error(), now)
 		return record, err
 	}
@@ -240,6 +278,13 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		TaskID: record.ExecutionHandoff.Orca.TaskID, ToHandle: liveHandle, Inject: true, ReturnPreamble: true,
 	})
 	if err != nil {
+		if externalMutationNotInvoked(err) {
+			cleared, clearErr := completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationDispatch, now, nil)
+			if clearErr != nil {
+				return record, fmt.Errorf("clear non-invoked dispatch journal: %w", clearErr)
+			}
+			return cleared, fmt.Errorf("Orca dispatch was not invoked and is safe to retry: %w", err)
+		}
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_ambiguous", err.Error(), now)
 		return record, fmt.Errorf("Orca dispatch requires recovery: %w", err)
 	}
@@ -255,7 +300,7 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 	return record, err
 }
 
-func persistHandoffContext(stateRoot, id string, packet handoff.ContextPacket, now string) (IssueOpsRecord, error) {
+func persistHandoffContext(stateRoot, id string, packet handoff.ContextPacket, options model.IssueOpsExecutionHandoffContextOptions, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
 	err := withIssueOpsLock(stateRoot, id, func() error {
 		record, err := ReadIssueOps(stateRoot, id)
@@ -263,13 +308,24 @@ func persistHandoffContext(stateRoot, id string, packet handoff.ContextPacket, n
 			return err
 		}
 		if record.ExecutionHandoff.ContextSHA256 != "" {
-			if record.ExecutionHandoff.ContextSHA256 != packet.SHA256 || record.ExecutionHandoff.ContextVersion != packet.Version {
+			persistedOptions := model.IssueOpsExecutionHandoffContextOptions{}
+			if record.ExecutionHandoff.ContextOptions != nil {
+				persistedOptions = handoff.CanonicalContextOptions(handoff.ContextOptionsFromModel(*record.ExecutionHandoff.ContextOptions))
+			}
+			if record.ExecutionHandoff.ContextSHA256 != packet.SHA256 || record.ExecutionHandoff.ContextSourceSHA256 != packet.SourceSHA256 || record.ExecutionHandoff.ContextVersion != packet.Version || record.ExecutionHandoff.ContextOptions == nil || !reflect.DeepEqual(persistedOptions, handoff.CanonicalContextOptions(handoff.ContextOptionsFromModel(options))) {
 				return fmt.Errorf("persisted handoff context differs from current context")
 			}
 			persisted = record
 			return nil
 		}
-		record, err = handoff.SetContext(record, handoffFence(record), packet.Version, packet.SHA256, now)
+		currentSourceSHA, err := handoff.ContextSourceSHA256(record)
+		if err != nil {
+			return fmt.Errorf("re-render handoff context source before persist: %w", err)
+		}
+		if currentSourceSHA != packet.SourceSHA256 {
+			return fmt.Errorf("stale handoff context source changed before persist")
+		}
+		record, err = handoff.SetContext(record, handoffFence(record), packet.Version, packet.SHA256, packet.SourceSHA256, options, now)
 		if err != nil {
 			return err
 		}
@@ -278,6 +334,20 @@ func persistHandoffContext(stateRoot, id string, packet handoff.ContextPacket, n
 		return err
 	})
 	return persisted, err
+}
+
+func resolveHandoffContextOptions(record IssueOpsRecord, supplied handoff.ContextOptions) (handoff.ContextOptions, error) {
+	if record.ExecutionHandoff == nil || record.ExecutionHandoff.ContextOptions == nil {
+		return supplied, nil
+	}
+	persisted := *record.ExecutionHandoff.ContextOptions
+	if handoff.ContextOptionsEmpty(supplied) {
+		return handoff.ContextOptionsFromModel(persisted), nil
+	}
+	if !reflect.DeepEqual(handoff.CanonicalContextOptions(supplied), handoff.CanonicalContextOptions(handoff.ContextOptionsFromModel(persisted))) {
+		return handoff.ContextOptions{}, fmt.Errorf("supplied handoff context options do not match the sealed delivery contract")
+	}
+	return handoff.ContextOptionsFromModel(persisted), nil
 }
 
 func beginHandoffOperation(stateRoot, id string, fence handoff.Fence, pending model.IssueOpsExecutionHandoffPendingOperation) (IssueOpsRecord, error) {
@@ -372,7 +442,7 @@ func projectHandoffStart(record IssueOpsRecord, preview bool, planSHA string) Is
 	return result
 }
 
-func ReconcileIssueOpsHandoffTerminal(baseline []string, worktreeID string, rows []port.OrcaTerminal) (port.OrcaTerminal, error) {
+func ReconcileIssueOpsHandoffTerminal(baseline []string, worktreeID, workerRoot string, rows []port.OrcaTerminal) (port.OrcaTerminal, error) {
 	before := make(map[string]struct{}, len(baseline))
 	for _, id := range baseline {
 		before[id] = struct{}{}
@@ -382,7 +452,7 @@ func ReconcileIssueOpsHandoffTerminal(baseline []string, worktreeID string, rows
 		if _, existed := before[row.PTYID]; existed || row.PTYID == "" {
 			continue
 		}
-		if row.WorktreeID == strings.TrimSpace(worktreeID) && strings.TrimSpace(row.Handle) != "" && row.Connected && row.Writable {
+		if row.WorktreeID == strings.TrimSpace(worktreeID) && strings.TrimSpace(row.Handle) != "" && row.Connected && row.Writable && terminalWorktreePathMatches(row, workerRoot) {
 			candidates = append(candidates, row)
 		}
 	}
@@ -392,7 +462,12 @@ func ReconcileIssueOpsHandoffTerminal(baseline []string, worktreeID string, rows
 	return candidates[0], nil
 }
 
-func ReconcileIssueOpsHandoffTask(baseline []string, marker string, rows []port.OrcaTask) (port.OrcaTask, error) {
+func terminalWorktreePathMatches(terminal port.OrcaTerminal, workerRoot string) bool {
+	path := strings.TrimSpace(terminal.WorktreePath)
+	return path != "" && filepath.Clean(path) == filepath.Clean(strings.TrimSpace(workerRoot))
+}
+
+func ReconcileIssueOpsHandoffTask(baseline []string, marker, displayName string, rows []port.OrcaTask) (port.OrcaTask, error) {
 	before := make(map[string]struct{}, len(baseline))
 	for _, id := range baseline {
 		before[id] = struct{}{}
@@ -402,7 +477,7 @@ func ReconcileIssueOpsHandoffTask(baseline []string, marker string, rows []port.
 		if _, existed := before[row.ID]; existed || row.ID == "" {
 			continue
 		}
-		if strings.Contains(row.Title, marker) || strings.Contains(row.DisplayName, marker) {
+		if row.Title == marker && row.DisplayName == displayName && validInitialOrcaTaskStatus(row.Status) {
 			candidates = append(candidates, row)
 		}
 	}
@@ -412,19 +487,38 @@ func ReconcileIssueOpsHandoffTask(baseline []string, marker string, rows []port.
 	return candidates[0], nil
 }
 
-func ReconcileIssueOpsHandoffDispatch(ctx context.Context, taskID string, client interface {
+func validInitialOrcaTaskStatus(status string) bool {
+	return status == "ready"
+}
+
+const (
+	orcaTaskTitleMaxLength   = 80
+	orcaDisplayNameMaxLength = 160
+)
+
+func issueOpsHandoffTaskIdentity(id, epoch string, attempt int) (string, string, error) {
+	title := "ah id=" + strings.TrimSpace(id) + " a=" + strconv.Itoa(attempt) + " e=" + strings.TrimSpace(epoch)
+	display := "ah " + strings.TrimSpace(id) + " attempt=" + strconv.Itoa(attempt)
+	if len(title) == 0 || len(title) > orcaTaskTitleMaxLength || len(display) == 0 || len(display) > orcaDisplayNameMaxLength {
+		return "", "", fmt.Errorf("Orca task identity exceeds title/display limits %d/%d", orcaTaskTitleMaxLength, orcaDisplayNameMaxLength)
+	}
+	return title, display, nil
+}
+
+func ReconcileIssueOpsHandoffDispatch(ctx context.Context, taskID, assigneeHandle string, client interface {
 	ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
 }) (port.OrcaDispatch, error) {
 	taskID = strings.TrimSpace(taskID)
-	if taskID == "" {
-		return port.OrcaDispatch{}, fmt.Errorf("persisted task id is required for dispatch recovery")
+	assigneeHandle = strings.TrimSpace(assigneeHandle)
+	if taskID == "" || assigneeHandle == "" {
+		return port.OrcaDispatch{}, fmt.Errorf("persisted task id and worker mailbox are required for dispatch recovery")
 	}
 	dispatch, err := client.ShowDispatch(ctx, taskID)
 	if err != nil {
 		return port.OrcaDispatch{}, err
 	}
-	if dispatch.ID == "" || dispatch.TaskID != taskID {
-		return port.OrcaDispatch{}, fmt.Errorf("dispatch recovery result does not match persisted task")
+	if dispatch.ID == "" || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != assigneeHandle || !dispatch.Injected {
+		return port.OrcaDispatch{}, fmt.Errorf("dispatch recovery result does not match persisted task, assignee, and injected delivery")
 	}
 	return dispatch, nil
 }

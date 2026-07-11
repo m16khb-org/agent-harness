@@ -198,6 +198,38 @@ func TestShellCommandGuardPaths(t *testing.T) {
 	}
 }
 
+func TestShellCommandGuardPathsExtractsGitRepositoryOverrides(t *testing.T) {
+	repo := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "source")
+	wantGitDir := filepath.Join(outside, ".git")
+	tests := []struct {
+		name    string
+		command string
+	}{
+		{name: "global equals flags", command: "git --git-dir=" + wantGitDir + " --work-tree=" + outside + " add ."},
+		{name: "global split flags", command: "git --git-dir " + wantGitDir + " --work-tree " + outside + " add ."},
+		{name: "direct environment", command: "GIT_DIR=" + wantGitDir + " GIT_WORK_TREE=" + outside + " git add ."},
+		{name: "env wrapper", command: "env GIT_DIR=" + wantGitDir + " GIT_WORK_TREE=" + outside + " git add ."},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ShellCommandGuardPaths(repo, tt.command)
+			if !containsGuardPath(got, wantGitDir) || !containsGuardPath(got, outside) {
+				t.Fatalf("Git repository overrides were not extracted: command=%q paths=%v", tt.command, got)
+			}
+		})
+	}
+}
+
+func containsGuardPath(paths []string, want string) bool {
+	for _, path := range paths {
+		if CleanAbs(path) == CleanAbs(want) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestIssueOpsPreparationCommand(t *testing.T) {
 	tests := []struct {
 		name     string

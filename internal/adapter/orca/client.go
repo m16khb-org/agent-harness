@@ -69,6 +69,10 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		return result, nil
 	}
 	result.RuntimeID = status.RuntimeID
+	if strings.TrimSpace(status.RuntimeID) == "" {
+		result.Code = "runtime_id_unresolved"
+		return result, nil
+	}
 	if !status.RuntimeReachable {
 		result.Code = "runtime_unreachable"
 		return result, nil
@@ -77,7 +81,7 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		result.Code = "runtime_not_ready"
 		return result, nil
 	}
-	if status.GraphState != "" && status.GraphState != "ready" {
+	if status.GraphState != "ready" {
 		result.Code = "graph_not_ready"
 		return result, nil
 	}
@@ -90,6 +94,11 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 	result.RepoID = repo.ID
 	result.RepoPath = repo.Path
 	result.RepoRemoteName = repo.RemoteName
+	result.WorktreeBasePath = repo.WorktreeBasePath
+	if strings.TrimSpace(repo.ID) == "" || strings.TrimSpace(repo.Path) == "" {
+		result.Code = "repo_identity_unresolved"
+		return result, nil
+	}
 	if !samePath(repo.Path, req.Repo) {
 		result.Code = "repo_path_mismatch"
 		return result, nil
@@ -98,22 +107,46 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		result.Code = "repo_remote_unresolved"
 		return result, nil
 	}
+	if strings.TrimSpace(repo.WorktreeBasePath) == "" {
+		result.Code = "worktree_base_unresolved"
+		return result, nil
+	}
+	basePath := repo.WorktreeBasePath
+	if !filepath.IsAbs(basePath) {
+		basePath = filepath.Join(repo.Path, basePath)
+	}
+	if !samePath(basePath, filepath.Clean(req.Repo)+".worktrees") {
+		result.Code = "worktree_base_mismatch"
+		return result, nil
+	}
 	for _, capability := range []struct {
 		argv []string
 		want []string
 	}{
-		{argv: []string{"orca", "worktree", "--help"}, want: []string{"list", "create", "rm"}},
-		{argv: []string{"orca", "terminal", "--help"}, want: []string{"list", "create", "send"}},
-		{argv: []string{"orca", "orchestration", "--help"}, want: []string{"task-list", "task-create", "task-update", "dispatch", "dispatch-show", "send", "check"}},
+		{argv: []string{"orca", "worktree", "create", "--help"}, want: []string{"--repo", "--name", "--base-branch", "--no-parent", "--setup", "--comment", "--issue", "--json"}},
+		{argv: []string{"orca", "worktree", "list", "--help"}, want: []string{"--repo", "--limit", "--json"}},
+		{argv: []string{"orca", "terminal", "create", "--help"}, want: []string{"--worktree", "--command", "--title", "--json"}},
+		{argv: []string{"orca", "terminal", "list", "--help"}, want: []string{"--worktree", "--limit", "--json"}},
+		{argv: []string{"orca", "orchestration", "task-create", "--help"}, want: []string{"--spec", "--task-title", "--display-name", "--json"}},
+		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--json"}},
+		{argv: []string{"orca", "orchestration", "task-update", "--help"}, want: []string{"--id", "--status", "--result", "--json"}},
+		{argv: []string{"orca", "orchestration", "dispatch", "--help"}, want: []string{"--task", "--to", "--from", "--inject", "--return-preamble", "--json"}},
+		{argv: []string{"orca", "orchestration", "dispatch-show", "--help"}, want: []string{"--task", "--json"}},
+		{argv: []string{"orca", "worktree", "rm", "--help"}, want: []string{"--worktree", "--force", "--json"}},
 	} {
 		text, err := c.runText(ctx, "", readTimeout, capability.argv)
-		if err != nil || !containsAll(text, capability.want) {
+		if err != nil || !containsAllHelpFlags(text, capability.want) {
 			result.Code = "capability_missing"
 			return result, nil
 		}
 	}
 	if _, err := c.runner.LookPath(command); err != nil {
 		result.Code = "agent_not_found"
+		return result, nil
+	}
+	if _, err := c.ListTasks(ctx); err != nil {
+		result.Code = "orchestration_unready"
+		result.Detail = boundedDiagnostic(err.Error())
 		return result, nil
 	}
 	result.Ready = true
@@ -126,21 +159,27 @@ func (c *Client) showRepo(ctx context.Context, repo string) (port.OrcaRepo, erro
 			ID                string `json:"id"`
 			Path              string `json:"path"`
 			DisplayName       string `json:"displayName"`
+			WorktreeBasePath  string `json:"worktreeBasePath"`
 			GitRemoteIdentity struct {
 				RemoteName string `json:"remoteName"`
 			} `json:"gitRemoteIdentity"`
 		} `json:"repo"`
 	}
 	_, err := c.runJSON(ctx, repo, readTimeout, []string{"orca", "repo", "show", "--repo", pathSelector(repo), "--json"}, &payload)
-	return port.OrcaRepo{ID: payload.Repo.ID, Path: payload.Repo.Path, Name: payload.Repo.DisplayName, RemoteName: payload.Repo.GitRemoteIdentity.RemoteName}, err
+	return port.OrcaRepo{ID: payload.Repo.ID, Path: payload.Repo.Path, Name: payload.Repo.DisplayName, RemoteName: payload.Repo.GitRemoteIdentity.RemoteName, WorktreeBasePath: payload.Repo.WorktreeBasePath}, err
 }
 
 func (c *Client) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWorktree, error) {
 	var payload struct {
-		Worktrees []worktreePayload `json:"worktrees"`
+		Worktrees  []worktreePayload `json:"worktrees"`
+		TotalCount *int              `json:"totalCount"`
+		Truncated  bool              `json:"truncated"`
 	}
-	_, err := c.runJSON(ctx, repo, readTimeout, []string{"orca", "worktree", "list", "--repo", pathSelector(repo), "--json"}, &payload)
+	_, err := c.runJSON(ctx, repo, readTimeout, []string{"orca", "worktree", "list", "--repo", pathSelector(repo), "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json"}, &payload)
 	if err != nil {
+		return nil, err
+	}
+	if err := requireCompleteList("worktree", len(payload.Worktrees), payload.TotalCount, payload.Truncated); err != nil {
 		return nil, err
 	}
 	result := make([]port.OrcaWorktree, 0, len(payload.Worktrees))
@@ -174,10 +213,15 @@ func (c *Client) RemoveWorktree(ctx context.Context, id string, force bool) erro
 
 func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.OrcaTerminal, error) {
 	var payload struct {
-		Terminals []terminalPayload `json:"terminals"`
+		Terminals  []terminalPayload `json:"terminals"`
+		TotalCount *int              `json:"totalCount"`
+		Truncated  bool              `json:"truncated"`
 	}
-	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "terminal", "list", "--worktree", idSelector(worktreeID), "--json"}, &payload)
+	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "terminal", "list", "--worktree", idSelector(worktreeID), "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json"}, &payload)
 	if err != nil {
+		return nil, err
+	}
+	if err := requireCompleteList("terminal", len(payload.Terminals), payload.TotalCount, payload.Truncated); err != nil {
 		return nil, err
 	}
 	result := make([]port.OrcaTerminal, 0, len(payload.Terminals))
@@ -231,20 +275,23 @@ func (c *Client) SendTerminal(ctx context.Context, handle, text string) error {
 
 func (c *Client) ListTasks(ctx context.Context) ([]port.OrcaTask, error) {
 	var payload struct {
-		Tasks []struct {
-			ID          string `json:"id"`
-			TaskTitle   string `json:"task_title"`
-			DisplayName string `json:"display_name"`
-			Status      string `json:"status"`
-		} `json:"tasks"`
+		Tasks []taskPayload `json:"tasks"`
+		Count *int          `json:"count"`
 	}
 	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "task-list", "--json"}, &payload)
 	if err != nil {
 		return nil, err
 	}
+	if payload.Count == nil || *payload.Count != len(payload.Tasks) {
+		count := -1
+		if payload.Count != nil {
+			count = *payload.Count
+		}
+		return nil, fmt.Errorf("Orca task list is incomplete: count=%d returned=%d", count, len(payload.Tasks))
+	}
 	result := make([]port.OrcaTask, 0, len(payload.Tasks))
 	for _, task := range payload.Tasks {
-		result = append(result, port.OrcaTask{ID: task.ID, Title: task.TaskTitle, DisplayName: task.DisplayName, Status: task.Status})
+		result = append(result, task.portValue())
 	}
 	return result, nil
 }
@@ -252,10 +299,10 @@ func (c *Client) ListTasks(ctx context.Context) ([]port.OrcaTask, error) {
 func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
 	argv := []string{"orca", "orchestration", "task-create", "--spec", req.Spec, "--task-title", req.Title, "--display-name", req.DisplayName, "--json"}
 	var payload struct {
-		Task port.OrcaTask `json:"task"`
+		Task taskPayload `json:"task"`
 	}
 	_, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
-	return payload.Task, err
+	return payload.Task.portValue(), err
 }
 
 func (c *Client) UpdateTask(ctx context.Context, id, status, result string) error {
@@ -347,6 +394,27 @@ type terminalPayload struct {
 	Writable     bool   `json:"writable"`
 }
 
+type taskPayload struct {
+	ID          string `json:"id"`
+	TaskTitle   string `json:"task_title"`
+	DisplayName string `json:"display_name"`
+	Status      string `json:"status"`
+}
+
+func (t taskPayload) portValue() port.OrcaTask {
+	return port.OrcaTask{ID: t.ID, Title: t.TaskTitle, DisplayName: t.DisplayName, Status: t.Status}
+}
+
+func requireCompleteList(kind string, length int, total *int, truncated bool) error {
+	if total == nil {
+		return &port.OrcaError{Code: "incomplete_list", Detail: fmt.Sprintf("Orca %s list completeness metadata is missing", kind), Invoked: true}
+	}
+	if truncated || *total != length {
+		return &port.OrcaError{Code: "incomplete_list", Detail: fmt.Sprintf("Orca %s list is incomplete: totalCount=%d returned=%d truncated=%t", kind, *total, length, truncated), Invoked: true}
+	}
+	return nil
+}
+
 func (t terminalPayload) portValue() port.OrcaTerminal {
 	return port.OrcaTerminal{Handle: t.Handle, PTYID: t.PTYID, WorktreeID: t.WorktreeID, WorktreePath: t.WorktreePath, Connected: t.Connected, Writable: t.Writable}
 }
@@ -373,9 +441,19 @@ func samePath(left, right string) bool {
 	return leftErr == nil && rightErr == nil && filepath.Clean(leftAbs) == filepath.Clean(rightAbs)
 }
 
-func containsAll(value string, items []string) bool {
+func containsAllHelpFlags(value string, items []string) bool {
+	present := map[string]struct{}{}
+	for _, field := range strings.Fields(value) {
+		field = strings.Trim(field, "[](),;:")
+		if index := strings.IndexByte(field, '='); index >= 0 {
+			field = field[:index]
+		}
+		if strings.HasPrefix(field, "--") {
+			present[field] = struct{}{}
+		}
+	}
 	for _, item := range items {
-		if !strings.Contains(value, item) {
+		if _, ok := present[item]; !ok {
 			return false
 		}
 	}

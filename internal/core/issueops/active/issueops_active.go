@@ -142,6 +142,56 @@ func NonDoneCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
 	return records
 }
 
+// SupervisedHandoffCyclesForRepo keeps nonterminal durable handoff authority
+// even when the linked worktree or its .git metadata has disappeared. Legacy
+// cycles continue to use LinkedWorktreeCyclesForRepo's stale-release behavior.
+func SupervisedHandoffCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
+	repo = pathutil.CleanAbsPath(repo)
+	if repo == "" {
+		return nil
+	}
+	stateRoot := store.StateRoot()
+	ids, err := store.ListIDs(stateRoot)
+	if err != nil {
+		return nil
+	}
+	records := []model.IssueOpsRecord{}
+	for _, id := range ids {
+		record, err := store.Read(stateRoot, id)
+		if record.ExecutionHandoff == nil || record.ExecutionHandoff.State == "closed" {
+			continue
+		}
+		if err != nil && !safelyIdentifiableSupervisedHandoff(record) {
+			continue
+		}
+		recordRepo := pathutil.CleanAbsPath(record.Repo)
+		workerRoot := pathutil.CleanAbsPath(record.ExecutionHandoff.WorkerRoot)
+		if recordRepo != repo && workerRoot != repo && !pathutil.PathWithin(repo, workerRoot) {
+			continue
+		}
+		records = append(records, record)
+	}
+	sort.Slice(records, func(i, j int) bool {
+		if records[i].Branch != records[j].Branch {
+			return records[i].Branch < records[j].Branch
+		}
+		return records[i].ID < records[j].ID
+	})
+	return records
+}
+
+func safelyIdentifiableSupervisedHandoff(record model.IssueOpsRecord) bool {
+	if record.ExecutionHandoff == nil {
+		return false
+	}
+	repo := strings.TrimSpace(record.Repo)
+	worker := strings.TrimSpace(record.ExecutionHandoff.WorkerRoot)
+	if repo == "" || worker == "" || len(repo) > 4096 || len(worker) > 4096 || strings.ContainsRune(repo, 0) || strings.ContainsRune(worker, 0) {
+		return false
+	}
+	return filepath.IsAbs(repo) && filepath.IsAbs(worker)
+}
+
 func planBranchMismatchesRecord(record model.IssueOpsRecord) bool {
 	planPath := pathutil.CleanAbsPath(record.PlanPath)
 	repo := pathutil.CleanAbsPath(record.Repo)

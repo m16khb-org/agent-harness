@@ -7,6 +7,13 @@ import (
 )
 
 func GitCmd(dir string, args ...string) (int, string, string) {
+	code, stdout, stderr := GitCmdRaw(dir, args...)
+	return code, strings.TrimSpace(stdout), strings.TrimSpace(stderr)
+}
+
+// GitCmdRaw preserves stdout byte-for-byte for machine-delimited Git output
+// such as -z path lists. Human-facing callers should continue using GitCmd.
+func GitCmdRaw(dir string, args ...string) (int, string, string) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	var stdout, stderr bytes.Buffer
@@ -14,12 +21,12 @@ func GitCmd(dir string, args ...string) (int, string, string) {
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err == nil {
-		return 0, strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String())
+		return 0, stdout.String(), stderr.String()
 	}
 	if exitErr, ok := err.(*exec.ExitError); ok {
-		return exitErr.ExitCode(), strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String())
+		return exitErr.ExitCode(), stdout.String(), stderr.String()
 	}
-	return 1, strings.TrimSpace(stdout.String()), err.Error()
+	return 1, stdout.String(), err.Error()
 }
 
 func GitOut(dir string, args ...string) string {

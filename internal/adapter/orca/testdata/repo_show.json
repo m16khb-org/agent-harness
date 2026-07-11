@@ -6,6 +6,7 @@
       "id": "repo-1",
       "path": "/repo",
       "displayName": "repo",
+      "worktreeBasePath": "../repo.worktrees",
       "gitRemoteIdentity": {
         "remoteName": "origin"
       }

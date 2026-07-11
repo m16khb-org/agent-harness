@@ -10,6 +10,7 @@ import (
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops/handoff"
 	issueopsmodel "agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/preflight"
 )
 
 func TestRunIssueOpsHandoffLifecycle(t *testing.T) {
@@ -21,13 +22,14 @@ func TestRunIssueOpsHandoffLifecycle(t *testing.T) {
 	if out := captureStdoutForContract(t, func() error { return runIssueOps(claim) }); !strings.Contains(out, `"state": "claimed"`) {
 		t.Fatalf("claim output: %s", out)
 	}
+	finalHead := commitCLIHandoffResult(t, record.WorktreePath)
 	finish := append([]string{"handoff", "finish"}, common...)
-	finish = append(finish, "--host", "codex", "--session-id", "session-1", "--agent-id", "worker-1", "--outcome", "completed", "--final-head", "head-1", "--changed-file", "internal/x.go", "--turing-report", ".agent-harness/research/report.md", "--verification", "go test: pass", "--cleanup-receipt", "temp removed", "--task-id", "task-1", "--dispatch-id", "dispatch-1", "--json")
+	finish = append(finish, "--host", "codex", "--session-id", "session-1", "--agent-id", "worker-1", "--outcome", "completed", "--final-head", finalHead, "--changed-file", "internal/x.go", "--changed-file", ".agent-harness/research/report.md", "--turing-report", ".agent-harness/research/report.md", "--verification", "go test: pass", "--cleanup-receipt", "temp removed", "--task-id", "task-1", "--dispatch-id", "dispatch-1", "--json")
 	if out := captureStdoutForContract(t, func() error { return runIssueOps(finish) }); !strings.Contains(out, `"state": "submitted"`) {
 		t.Fatalf("finish output: %s", out)
 	}
 	accept := append([]string{"handoff", "accept"}, common...)
-	accept = append(accept, "--final-head", "head-1", "--json")
+	accept = append(accept, "--final-head", finalHead, "--json")
 	if out := captureStdoutForContract(t, func() error { return runIssueOps(accept) }); !strings.Contains(out, `"closed_disposition": "accepted"`) {
 		t.Fatalf("accept output: %s", out)
 	}
@@ -63,25 +65,67 @@ func handoffCLIRecord(t *testing.T, state string) core.IssueOpsRecord {
 	t.Helper()
 	repo := makeIssueOpsCLIRepoForTest(t, "handoff")
 	worktree := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", "1-handoff")
-	if err := os.MkdirAll(filepath.Join(worktree, ".git"), 0o755); err != nil {
+	if err := os.MkdirAll(worktree, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/1-handoff\n"), 0o644); err != nil {
-		t.Fatal(err)
+	for _, args := range [][]string{{"init", "-q", "-b", "1-handoff"}, {"config", "user.name", "CLI Test"}, {"config", "user.email", "cli@example.test"}} {
+		if code, _, stderr := preflight.GitCmd(worktree, args...); code != 0 {
+			t.Fatalf("git %v failed: %s", args, stderr)
+		}
+	}
+	writeCLIFile(t, worktree, "plans/handoff.md", "# plan\n")
+	for _, args := range [][]string{{"add", "-A"}, {"commit", "-q", "-m", "test: prepare handoff"}} {
+		if code, _, stderr := preflight.GitCmd(worktree, args...); code != 0 {
+			t.Fatalf("git %v failed: %s", args, stderr)
+		}
 	}
 	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: repo, Branch: "1-handoff"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.WorktreePath = worktree
+	record.PlanPath = filepath.Join(worktree, "plans", "handoff.md")
+	record.Phase = core.IssueOpsPhaseImplement
+	baseHead := strings.TrimSpace(preflight.GitOut(worktree, "rev-parse", "HEAD"))
 	record.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{
-		ProtocolVersion: handoff.ProtocolVersion, State: state, Attempt: 1, OwnershipEpoch: "epoch-1", ContextSHA256: strings.Repeat("a", 64),
+		ProtocolVersion: handoff.ProtocolVersion, State: state, Attempt: 1, OwnershipEpoch: "epoch-1", AttemptBaseHead: baseHead, ContextSHA256: strings.Repeat("a", 64),
+		ContextVersion: handoff.ContextVersion, ContextOptions: &issueopsmodel.IssueOpsExecutionHandoffContextOptions{}, Driver: "orca", Agent: "codex", DeliveryMode: "inject",
 		CoordinatorRoot: repo, WorkerRoot: worktree,
-		Orca: &issueopsmodel.IssueOpsOrcaIdentity{WorktreeID: "wt-1", WorktreePath: worktree, TaskID: "task-1", DispatchID: "dispatch-1"},
+		Orca: &issueopsmodel.IssueOpsOrcaIdentity{
+			RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/1-handoff", WorktreeID: "wt-1", WorktreeInstanceID: "instance-1", WorktreePath: worktree,
+			WorkerPTYID: "pty-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
+		},
+	}
+	record.ExecutionHandoff.ContextSourceSHA256, err = handoff.ContextSourceSHA256(record)
+	if err != nil {
+		t.Fatal(err)
 	}
 	record, err = core.WriteIssueOps(core.IssueOpsStateRoot(), record)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return record
+}
+
+func commitCLIHandoffResult(t *testing.T, worktree string) string {
+	t.Helper()
+	writeCLIFile(t, worktree, "internal/x.go", "package internal\n")
+	writeCLIFile(t, worktree, ".agent-harness/research/report.md", "# evidence\n")
+	for _, args := range [][]string{{"add", "-A"}, {"commit", "-q", "-m", "test: finish handoff"}} {
+		if code, _, stderr := preflight.GitCmd(worktree, args...); code != 0 {
+			t.Fatalf("git %v failed: %s", args, stderr)
+		}
+	}
+	return strings.TrimSpace(preflight.GitOut(worktree, "rev-parse", "HEAD"))
+}
+
+func writeCLIFile(t *testing.T, root, rel, content string) {
+	t.Helper()
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }

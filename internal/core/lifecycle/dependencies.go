@@ -129,6 +129,10 @@ func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 	return issueops.ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
 }
 
+func ActiveIssueOpsSupervisedHandoffCyclesForRepo(repo string) []IssueOpsRecord {
+	return issueops.ActiveIssueOpsSupervisedHandoffCyclesForRepo(repo)
+}
+
 func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
 	return issueops.IssueOpsPhaseExpectsWorktree(phase)
 }

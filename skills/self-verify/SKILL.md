@@ -7,7 +7,7 @@ description: Run or interpret the agent-harness self-verification loop. Use when
 
 ## Goal
 
-Verify that the harness behaves consistently across Codex and Claude Code, and that CLI, MCP, native integration, state, policy, docs, and skills work as intended. This skill is a QA gate; it does not choose improvements by itself.
+Verify that the harness behaves consistently across Codex, Claude Code, and GJC, and that CLI, MCP, native integration, state, policy, docs, and skills work as intended. This skill is a QA gate; it does not choose improvements by itself.
 
 ## Commands
 
@@ -29,8 +29,6 @@ Default `self-verify` is quick mode: one deterministic evidence pass. Use `--ful
 `HARNESS_SELF_VERIFY_LLM_EVAL` defaults to off. In the current implementation, setting it to `advisory` or `gate` only renders the read-only evaluator prompt after deterministic self-verification. No Z.AI request is sent. The `advisory` result exposes that prompt without changing deterministic success, while `gate` therefore returns a non-passing `llm_eval` result because no external verdict is ingested.
 
 For the repository's deterministic completion gate, pass explicit `--llm-eval=false` when the environment intentionally exports `HARNESS_SELF_VERIFY_LLM_EVAL=gate`; explicit CLI flags override the environment. Record that override and restart the verification sequence from its first gate after any interrupted or prompt-only run. Do not report a prompt-only result as an external LLM judgment.
-
-For Orca handoff changes, the focused hook package is `./cmd/harness/hookcli/hookinput`, not the nonexistent `./internal/core/hookinput`. After installation, run `bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"` and require its JSON identity/block assertions. Do not use a literal `--host gjc` grep; the shim represents argv as separate TypeScript array elements, and text layout is not hook behavior.
 
 ## Gate
 

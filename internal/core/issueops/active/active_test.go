@@ -2,6 +2,7 @@ package active
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,6 +35,32 @@ func TestLinkedWorktreeCycleForRepoReturnsFirstActiveRecord(t *testing.T) {
 	}
 	if got.ID != record.ID || got.WorktreePath != worktree {
 		t.Fatalf("LinkedWorktreeCycleForRepo() = %+v, want id %s worktree %s", got, record.ID, worktree)
+	}
+}
+
+func TestSupervisedHandoffCyclesKeepsIdentifiableRecordOnEnvelopeReadError(t *testing.T) {
+	repo := t.TempDir()
+	worker := filepath.Join(repo+".worktrees", "future")
+	record := model.IssueOpsRecord{
+		ID: "io-future", Repo: repo, Branch: "future", Phase: model.IssueOpsPhaseImplement,
+		ExecutionHandoff: &model.IssueOpsExecutionHandoff{ProtocolVersion: 99, State: "claimed", WorkerRoot: worker},
+	}
+	store := Store{
+		StateRoot: func() string { return t.TempDir() },
+		ListIDs:   func(string) ([]string, error) { return []string{record.ID, "io-unreadable"}, nil },
+		Read: func(_ string, id string) (model.IssueOpsRecord, error) {
+			if id == record.ID {
+				return record, errors.New("invalid execution handoff envelope")
+			}
+			return model.IssueOpsRecord{}, errors.New("unreadable JSON")
+		},
+	}
+	got := SupervisedHandoffCyclesForRepo(store, repo)
+	if len(got) != 1 || got[0].ID != record.ID {
+		t.Fatalf("identifiable version-skew handoff must retain guard authority: %#v", got)
+	}
+	if unrelated := SupervisedHandoffCyclesForRepo(store, t.TempDir()); len(unrelated) != 0 {
+		t.Fatalf("invalid record for another repo must not cause a global block: %#v", unrelated)
 	}
 }
 
@@ -233,5 +260,24 @@ func TestLinkedWorktreeCyclesIncludesGitFileWorktree(t *testing.T) {
 	got := LinkedWorktreeCyclesForRepo(store.issueOpsStore(), repo)
 	if len(got) != 1 || got[0].ID != "io-gitfile" {
 		t.Fatalf("linked worktree with .git file should be included, got %+v", got)
+	}
+}
+
+func TestSupervisedHandoffCyclesRetainsOnlyNonterminalMissingWorktreeAuthority(t *testing.T) {
+	store := newActiveTestStore(t)
+	repo := t.TempDir()
+	missing := filepath.Join(t.TempDir(), "missing-worker")
+	store.writeRecord(t, model.IssueOpsRecord{
+		ID: "io-supervised", Repo: repo, Branch: "42-supervised", Phase: model.IssueOpsPhaseImplement, WorktreePath: missing,
+		ExecutionHandoff: &model.IssueOpsExecutionHandoff{State: "claimed", WorkerRoot: missing},
+	})
+	store.writeRecord(t, model.IssueOpsRecord{ID: "io-legacy", Repo: repo, Branch: "43-legacy", Phase: model.IssueOpsPhaseImplement, WorktreePath: filepath.Join(t.TempDir(), "legacy-missing")})
+	store.writeRecord(t, model.IssueOpsRecord{
+		ID: "io-closed", Repo: repo, Branch: "44-closed", Phase: model.IssueOpsPhaseImplement, WorktreePath: filepath.Join(t.TempDir(), "closed-missing"),
+		ExecutionHandoff: &model.IssueOpsExecutionHandoff{State: "closed", WorkerRoot: filepath.Join(t.TempDir(), "closed-worker")},
+	})
+	got := SupervisedHandoffCyclesForRepo(store.issueOpsStore(), repo)
+	if len(got) != 1 || got[0].ID != "io-supervised" {
+		t.Fatalf("durable supervised lookup = %#v", got)
 	}
 }

@@ -34,7 +34,9 @@ func runHookPreToolUse(args []string) error {
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
 	}
-	nativeHost := firstNonEmptyHookValue(hookinput.HostFromHookInput(stdin), *host)
+	payloadHost := strings.TrimSpace(hookinput.HostFromHookInput(stdin))
+	flagHost := strings.TrimSpace(*host)
+	nativeHost := firstNonEmptyHookValue(payloadHost, flagHost)
 	if nativeHost == "" {
 		nativeHost = string(hookadapter.HostCodex)
 	}
@@ -45,6 +47,7 @@ func runHookPreToolUse(args []string) error {
 		SessionID:            hookinput.SessionIDFromHookInput(stdin),
 		AgentID:              hookinput.AgentIDFromHookInput(stdin),
 		Tool:                 hookinput.ToolNameFromHookInput(stdin),
+		ToolInput:            hookinput.ToolInputFromHookInput(stdin),
 		Paths:                hookinput.PathsFromHookInput(stdin),
 		Command:              hookinput.CommandFromHookInput(stdin),
 		ProjectPath:          hookinput.ProjectPathFromHookInput(stdin),
@@ -57,6 +60,10 @@ func runHookPreToolUse(args []string) error {
 		ExpectedWorktree:     resolveExpectedWorktree(*expectedWorktree, parsedRepo),
 		SourceCheckout:       *sourceCheckout,
 	})
+	if payloadHost != "" && flagHost != "" && !strings.EqualFold(payloadHost, flagHost) {
+		result.Decision = "block"
+		result.Reason = "explicit payload and CLI hosts conflict"
+	}
 	if *jsonOut {
 		return printJSON(result)
 	}

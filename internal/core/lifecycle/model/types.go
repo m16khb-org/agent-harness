@@ -61,23 +61,24 @@ type DocUpkeepAppendResult struct {
 }
 
 type HookToolUseLifecycleRequest struct {
-	Repo                 string   `json:"repo,omitempty"`
-	CWD                  string   `json:"cwd,omitempty"`
-	Host                 string   `json:"host,omitempty"`
-	SessionID            string   `json:"session_id,omitempty"`
-	AgentID              string   `json:"agent_id,omitempty"`
-	Tool                 string   `json:"tool,omitempty"`
-	Paths                []string `json:"paths,omitempty"`
-	Command              string   `json:"command,omitempty"`
-	Source               string   `json:"source,omitempty"`
-	EnforceWorktree      bool     `json:"enforce_worktree,omitempty"`
-	EnforceKoreanRemote  bool     `json:"enforce_korean_remote,omitempty"`
-	EnforceVCSLinking    bool     `json:"enforce_vcs_linking,omitempty"`
-	EnforceGitOpsKubectl bool     `json:"enforce_gitops_kubectl,omitempty"`
-	EnforceStagedChecks  bool     `json:"enforce_staged_checks,omitempty"`
-	ExpectedWorktree     string   `json:"expected_worktree,omitempty"`
-	SourceCheckout       string   `json:"source_checkout,omitempty"`
-	ProjectPath          string   `json:"project_path,omitempty"`
+	Repo                 string         `json:"repo,omitempty"`
+	CWD                  string         `json:"cwd,omitempty"`
+	Host                 string         `json:"host,omitempty"`
+	SessionID            string         `json:"session_id,omitempty"`
+	AgentID              string         `json:"agent_id,omitempty"`
+	Tool                 string         `json:"tool,omitempty"`
+	ToolInput            map[string]any `json:"tool_input,omitempty"`
+	Paths                []string       `json:"paths,omitempty"`
+	Command              string         `json:"command,omitempty"`
+	Source               string         `json:"source,omitempty"`
+	EnforceWorktree      bool           `json:"enforce_worktree,omitempty"`
+	EnforceKoreanRemote  bool           `json:"enforce_korean_remote,omitempty"`
+	EnforceVCSLinking    bool           `json:"enforce_vcs_linking,omitempty"`
+	EnforceGitOpsKubectl bool           `json:"enforce_gitops_kubectl,omitempty"`
+	EnforceStagedChecks  bool           `json:"enforce_staged_checks,omitempty"`
+	ExpectedWorktree     string         `json:"expected_worktree,omitempty"`
+	SourceCheckout       string         `json:"source_checkout,omitempty"`
+	ProjectPath          string         `json:"project_path,omitempty"`
 }
 
 type HookToolUseLifecycleResult struct {

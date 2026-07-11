@@ -3,6 +3,7 @@ package orca
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -19,22 +20,154 @@ func TestProbeDoesNotUseVersionOrMutate(t *testing.T) {
 	runner.lookPaths["codex"] = "/usr/local/bin/codex"
 	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
 	runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
-	runner.responses["orca worktree --help"] = CommandOutput{Stdout: []byte("list create rm")}
-	runner.responses["orca terminal --help"] = CommandOutput{Stdout: []byte("list create send")}
-	runner.responses["orca orchestration --help"] = CommandOutput{Stdout: []byte("task-list task-create task-update dispatch dispatch-show send check")}
+	addCompleteProbeLeafHelp(runner)
 
 	result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Ready || result.RuntimeID != "runtime-1" || result.RepoID != "repo-1" || result.RepoRemoteName != "origin" {
+	if !result.Ready || result.RuntimeID != "runtime-1" || result.RepoID != "repo-1" || result.RepoRemoteName != "origin" || result.WorktreeBasePath != "../repo.worktrees" {
 		t.Fatalf("probe result = %#v", result)
 	}
 	for _, call := range runner.calls {
 		joined := strings.Join(call, " ")
-		if strings.Contains(joined, "version") || strings.Contains(joined, " create") || strings.Contains(joined, " dispatch ") {
+		if strings.Contains(joined, "version") || (strings.Contains(joined, " create") && !strings.HasSuffix(joined, " --help")) || (strings.Contains(joined, " dispatch ") && !strings.HasSuffix(joined, " --help")) {
 			t.Fatalf("probe used forbidden command: %s", joined)
 		}
+	}
+}
+
+func TestProbeRequiresCanonicalWorktreeBaseBeforeMutation(t *testing.T) {
+	for _, tt := range []struct {
+		name, base, code string
+	}{
+		{name: "missing", code: "worktree_base_unresolved"},
+		{name: "mismatch", base: "../nested-workspaces", code: "worktree_base_mismatch"},
+		{name: "matching", base: "../repo.worktrees"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.lookPaths["orca"] = "/usr/local/bin/orca"
+			runner.lookPaths["codex"] = "/usr/local/bin/codex"
+			runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+			runner.responses["orca repo show --repo path:/repo --json"] = CommandOutput{Stdout: []byte(fmt.Sprintf(`{"ok":true,"result":{"repo":{"id":"repo-1","path":"/repo","displayName":"repo","worktreeBasePath":%q,"gitRemoteIdentity":{"remoteName":"origin"}}}}`, tt.base))}
+			addCompleteProbeLeafHelp(runner)
+			result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tt.code == "" {
+				if !result.Ready {
+					t.Fatalf("matching base probe = %#v", result)
+				}
+			} else if result.Ready || result.Code != tt.code || len(runner.calls) != 2 {
+				t.Fatalf("base probe = %#v calls=%#v", result, runner.calls)
+			}
+		})
+	}
+}
+
+func TestProbeRequiresEveryInvokedLeafFlagBeforeMutation(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.lookPaths["orca"] = "/usr/local/bin/orca"
+	runner.lookPaths["codex"] = "/usr/local/bin/codex"
+	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+	runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+	addCompleteProbeLeafHelp(runner)
+	runner.responses["orca worktree create --help"] = CommandOutput{Stdout: []byte("--repo --name --base-branch --no-parent --setup --comment --json")}
+
+	result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Ready || result.Code != "capability_missing" {
+		t.Fatalf("missing leaf flag probe = %#v", result)
+	}
+	for _, call := range runner.calls {
+		joined := strings.Join(call, " ")
+		if strings.Contains(joined, " create ") && !strings.HasSuffix(joined, " --help") {
+			t.Fatalf("probe mutated external state: %s", joined)
+		}
+	}
+}
+
+func TestProbeRequiresTaskUpdateLeafFlagsForCleanup(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.lookPaths["orca"] = "/usr/local/bin/orca"
+	runner.lookPaths["codex"] = "/usr/local/bin/codex"
+	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+	runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+	addCompleteProbeLeafHelp(runner)
+	runner.responses["orca orchestration task-update --help"] = CommandOutput{Stdout: []byte("--id --status --json")}
+	result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Ready || result.Code != "capability_missing" {
+		t.Fatalf("task-update missing --result must fail pre-mutation probe: %#v", result)
+	}
+}
+
+func TestProbeRequiresLiveCompleteOrchestrationReadinessBeforeMutation(t *testing.T) {
+	tests := []struct {
+		name   string
+		output CommandOutput
+	}{
+		{name: "rejected", output: CommandOutput{Stdout: []byte(`{"ok":false,"error":{"code":"experimental_disabled","message":"enable orchestration"}}`)}},
+		{name: "invalid", output: CommandOutput{Stdout: []byte(`{"ok":`)}},
+		{name: "missing count", output: CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[]}}`)}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.lookPaths["orca"] = "/usr/local/bin/orca"
+			runner.lookPaths["codex"] = "/usr/local/bin/codex"
+			runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+			runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+			addCompleteProbeLeafHelp(runner)
+			runner.responses["orca orchestration task-list --json"] = tt.output
+			result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Ready || result.Code != "orchestration_unready" || result.Detail == "" {
+				t.Fatalf("orchestration readiness = %#v", result)
+			}
+			for _, call := range runner.calls {
+				joined := strings.Join(call, " ")
+				if strings.Contains(joined, " create ") && !strings.HasSuffix(joined, " --help") {
+					t.Fatalf("readiness probe mutated state: %s", joined)
+				}
+			}
+		})
+	}
+}
+
+func TestProbeRequiresCompleteRuntimeAndRepoIdentity(t *testing.T) {
+	tests := []struct {
+		name, status, repo, code string
+	}{
+		{name: "runtime id", status: `{"ok":true,"result":{"runtime":{"reachable":true,"state":"ready"},"graph":{"state":"ready"}}}`, repo: `{"ok":true,"result":{"repo":{"id":"repo-1","path":"/repo","worktreeBasePath":"../repo.worktrees","gitRemoteIdentity":{"remoteName":"origin"}}}}`, code: "runtime_id_unresolved"},
+		{name: "graph state", status: `{"ok":true,"result":{"runtime":{"runtimeId":"runtime-1","reachable":true,"state":"ready"},"graph":{}}}`, repo: `{"ok":true,"result":{"repo":{"id":"repo-1","path":"/repo","worktreeBasePath":"../repo.worktrees","gitRemoteIdentity":{"remoteName":"origin"}}}}`, code: "graph_not_ready"},
+		{name: "repo id", status: `{"ok":true,"result":{"runtime":{"runtimeId":"runtime-1","reachable":true,"state":"ready"},"graph":{"state":"ready"}}}`, repo: `{"ok":true,"result":{"repo":{"path":"/repo","worktreeBasePath":"../repo.worktrees","gitRemoteIdentity":{"remoteName":"origin"}}}}`, code: "repo_identity_unresolved"},
+		{name: "repo path", status: `{"ok":true,"result":{"runtime":{"runtimeId":"runtime-1","reachable":true,"state":"ready"},"graph":{"state":"ready"}}}`, repo: `{"ok":true,"result":{"repo":{"id":"repo-1","worktreeBasePath":"../repo.worktrees","gitRemoteIdentity":{"remoteName":"origin"}}}}`, code: "repo_identity_unresolved"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.lookPaths["orca"] = "/usr/local/bin/orca"
+			runner.lookPaths["codex"] = "/usr/local/bin/codex"
+			runner.responses["orca status --json"] = CommandOutput{Stdout: []byte(tt.status)}
+			runner.responses["orca repo show --repo path:/repo --json"] = CommandOutput{Stdout: []byte(tt.repo)}
+			addCompleteProbeLeafHelp(runner)
+			result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Ready || result.Code != tt.code {
+				t.Fatalf("identity probe = %#v, want %s", result, tt.code)
+			}
+		})
 	}
 }
 
@@ -63,9 +196,9 @@ func TestProbeRequiresReachableReadyRuntimeAndGraph(t *testing.T) {
 		status string
 		code   string
 	}{
-		{name: "unreachable", status: `{"ok":true,"result":{"runtime":{"reachable":false,"state":"ready"},"graph":{"state":"ready"}}}`, code: "runtime_unreachable"},
-		{name: "runtime", status: `{"ok":true,"result":{"runtime":{"reachable":true,"state":"starting"},"graph":{"state":"ready"}}}`, code: "runtime_not_ready"},
-		{name: "graph", status: `{"ok":true,"result":{"runtime":{"reachable":true,"state":"ready"},"graph":{"state":"loading"}}}`, code: "graph_not_ready"},
+		{name: "unreachable", status: `{"ok":true,"result":{"runtime":{"runtimeId":"runtime-1","reachable":false,"state":"ready"},"graph":{"state":"ready"}}}`, code: "runtime_unreachable"},
+		{name: "runtime", status: `{"ok":true,"result":{"runtime":{"runtimeId":"runtime-1","reachable":true,"state":"starting"},"graph":{"state":"ready"}}}`, code: "runtime_not_ready"},
+		{name: "graph", status: `{"ok":true,"result":{"runtime":{"runtimeId":"runtime-1","reachable":true,"state":"ready"},"graph":{"state":"loading"}}}`, code: "graph_not_ready"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -141,7 +274,7 @@ func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 
 func TestClientRefreshesTerminalHandleByWorktreeAndPTY(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca terminal list --worktree id:worktree-1 --json"] = fixtureOutput(t, "terminal_list.json")
+	runner.responses["orca terminal list --worktree id:worktree-1 --limit 512 --json"] = fixtureOutput(t, "terminal_list.json")
 	terminal, err := NewClient(runner).RefreshTerminal(context.Background(), "worktree-1", "pty-2")
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +297,7 @@ func TestClientCreateTerminalAcceptsRuntimeIdentityWithoutPTY(t *testing.T) {
 			}
 		}
 	}`)}
-	runner.responses["orca terminal list --worktree id:worktree-1 --json"] = fixtureOutput(t, "terminal_list.json")
+	runner.responses["orca terminal list --worktree id:worktree-1 --limit 512 --json"] = fixtureOutput(t, "terminal_list.json")
 
 	terminal, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{
 		WorktreeID: "worktree-1", Agent: "codex", Title: "marker",
@@ -196,6 +329,55 @@ func TestClientCreateTerminalRejectsIncompleteRuntimeIdentity(t *testing.T) {
 	}
 	if len(runner.calls) != 1 {
 		t.Fatalf("incomplete create identity made an extra call: %#v", runner.calls)
+	}
+}
+
+func TestClientCreateTaskDecodesOfficialSnakeCaseShape(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca orchestration task-create --spec spec --task-title agent-harness marker --display-name 16-demo --json"] = fixtureOutput(t, "task_create.json")
+	got, err := NewClient(runner).CreateTask(context.Background(), port.OrcaCreateTaskRequest{Spec: "spec", Title: "agent-harness marker", DisplayName: "16-demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "task-1" || got.Title != "agent-harness marker" || got.DisplayName != "16-demo" || got.Status != "ready" {
+		t.Fatalf("official task projection = %#v", got)
+	}
+}
+
+func TestClientListTasksUsesInstalledCountContract(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca orchestration task-list --json"] = fixtureOutput(t, "task_list.json")
+	got, err := NewClient(runner).ListTasks(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != "task-1" || got[0].Title != "agent-harness marker" || got[0].Status != "ready" {
+		t.Fatalf("task list projection = %#v", got)
+	}
+}
+
+func TestClientRejectsIncompleteExternalLists(t *testing.T) {
+	for _, tt := range []struct {
+		name, command, field string
+		call                 func(*Client) error
+	}{
+		{name: "worktree truncated", command: "orca worktree list --repo path:/repo --limit 512 --json", field: "worktrees", call: func(c *Client) error { _, err := c.ListWorktrees(context.Background(), "/repo"); return err }},
+		{name: "terminal total mismatch", command: "orca terminal list --worktree id:wt-1 --limit 512 --json", field: "terminals", call: func(c *Client) error { _, err := c.ListTerminals(context.Background(), "wt-1"); return err }},
+		{name: "task missing metadata", command: "orca orchestration task-list --json", field: "tasks", call: func(c *Client) error { _, err := c.ListTasks(context.Background()); return err }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			body := `{"ok":true,"result":{"` + tt.field + `":[]}}`
+			if strings.Contains(tt.name, "truncated") {
+				body = `{"ok":true,"result":{"` + tt.field + `":[],"totalCount":0,"truncated":true}}`
+			} else if strings.Contains(tt.name, "mismatch") {
+				body = `{"ok":true,"result":{"` + tt.field + `":[],"totalCount":1,"truncated":false}}`
+			}
+			runner.responses[tt.command] = CommandOutput{Stdout: []byte(body)}
+			if err := tt.call(NewClient(runner)); err == nil || (!strings.Contains(err.Error(), "incomplete") && !strings.Contains(err.Error(), "metadata")) {
+				t.Fatalf("incomplete list error = %v", err)
+			}
+		})
 	}
 }
 
@@ -239,4 +421,22 @@ func fixtureOutput(t *testing.T, name string) CommandOutput {
 		t.Fatal(err)
 	}
 	return CommandOutput{Stdout: raw}
+}
+
+func addCompleteProbeLeafHelp(runner *fakeRunner) {
+	for command, flags := range map[string]string{
+		"orca worktree create --help":             "--repo --name --base-branch --no-parent --setup --comment --issue --json",
+		"orca worktree list --help":               "--repo --limit --json",
+		"orca terminal create --help":             "--worktree --command --title --json",
+		"orca terminal list --help":               "--worktree --limit --json",
+		"orca orchestration task-create --help":   "--spec --task-title --display-name --json",
+		"orca orchestration task-list --help":     "--json",
+		"orca orchestration task-update --help":   "--id --status --result --json",
+		"orca orchestration dispatch --help":      "--task --to --from --inject --return-preamble --json",
+		"orca orchestration dispatch-show --help": "--task --json",
+		"orca worktree rm --help":                 "--worktree --force --json",
+	} {
+		runner.responses[command] = CommandOutput{Stdout: []byte(flags)}
+	}
+	runner.responses["orca orchestration task-list --json"] = fixtureOutput(runner.t, "task_list.json")
 }

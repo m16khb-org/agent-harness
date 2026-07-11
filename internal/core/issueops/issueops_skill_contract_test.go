@@ -260,6 +260,19 @@ func TestIssueOpsSkillDocumentsOptionalOrcaHandoffContract(t *testing.T) {
 		"coordinator owns PR, acceptance, and cleanup",
 		"`closed/accepted` is terminal and cannot be retried",
 		"Only `closed/worker_failed` and `closed/cancelled` may start a new attempt",
+		"claimed cancel is fail-closed without explicit stale or force evidence",
+		"unresolved pending operation journal survives cancel",
+		"context source fingerprint",
+		"Turing report must exist inside the canonical worker root",
+		"worker worktree must be clean",
+		"attempt_base_head",
+		"clean exact branch and HEAD checkpoint",
+		"worktree removal is not terminal cleanup evidence",
+		"exact spawned handle and PTY",
+		"connected=false or absent from terminal list",
+		"nested shells",
+		"representative mutation family",
+		"explicit payload and CLI hosts conflict",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("IssueOps Orca handoff contract missing phrase %q", want)
@@ -303,9 +316,89 @@ func TestTuringSkillDocumentsSupervisedHandoffEvidenceContract(t *testing.T) {
 		"Omit `--agent-id` when the native agent id is empty",
 		"`closed/accepted` is terminal and cannot be retried",
 		"Only `closed/worker_failed` and `closed/cancelled` may start a new attempt",
+		"context source fingerprint",
+		"Turing report must exist inside the canonical worker root",
+		"worker worktree must be clean",
+		"attempt_base_head",
+		"clean exact branch and HEAD checkpoint",
+		"worktree removal is not terminal cleanup evidence",
+		"exact spawned handle and PTY",
+		"connected=false or absent from terminal list",
+		"nested shells",
+		"representative mutation family",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Fatalf("Turing supervised handoff contract missing phrase %q", want)
+		}
+	}
+}
+
+func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	turing := readTuringSkillForTest(t)
+	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
+		for _, want := range []string{
+			"source checkout is observation-only",
+			"Tests, builds, formatting, installation, and generation run only in the claimed worker root",
+			"orca terminal send --terminal <handle> --text <payload> --enter --json",
+			"POSIX single-quote",
+			"JS template interpolation",
+			"accepted FinalHead",
+			"refs/heads/<branch>",
+			"explicit head/source and base/target flags",
+			"draft PR/MR",
+			"eval and source",
+			"zsh equals expansion",
+			"unquoted process substitution",
+			"pathname expansion",
+			"Turing report path is a safe relative path",
+			"leaf symlink",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s supervised handoff recipe missing %q", name, want)
+			}
+		}
+	}
+	if strings.Contains(turing, "Reasonix") || !strings.Contains(turing, "Codex, Claude, and GJC") {
+		t.Fatal("Turing host portability contract must use Codex, Claude, and GJC only")
+	}
+}
+
+func TestIssueOpsPublishRecipeAvoidsShellCommandSubstitution(t *testing.T) {
+	body := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	sectionStart := strings.Index(body, "## Coordinator Publish")
+	if sectionStart < 0 {
+		t.Fatal("IssueOps Orca reference must have a Coordinator Publish section")
+	}
+	section := body[sectionStart:]
+	fenceStart := strings.Index(section, "```bash\n")
+	if fenceStart < 0 {
+		t.Fatal("Coordinator Publish section must contain an executable bash recipe")
+	}
+	recipe := section[fenceStart+len("```bash\n"):]
+	if fenceEnd := strings.Index(recipe, "```"); fenceEnd >= 0 {
+		recipe = recipe[:fenceEnd]
+	}
+	if strings.Contains(recipe, "$(") || strings.ContainsRune(recipe, '`') {
+		t.Fatalf("publish recipe must not use shell command substitution: %s", recipe)
+	}
+	for _, want := range []string{"git rev-parse --verify refs/heads/<branch>", "git push <remote> <branch>"} {
+		if !strings.Contains(recipe, want) {
+			t.Fatalf("publish recipe missing %q", want)
+		}
+	}
+}
+
+func TestSelfVerifySkillKeepsGenericLLMEvalContractWithoutOrcaRecipes(t *testing.T) {
+	body := readSelfVerifySkillForTest(t)
+	for _, want := range []string{"read-only evaluator prompt", "No Z.AI request is sent", "explicit `--llm-eval=false`"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("self-verify generic llm-eval contract missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{"For Orca handoff changes", "smoke-gjc-native-hook.ts", "--host gjc"} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("self-verify skill must not carry IssueOps/Turing-only recipe %q", forbidden)
 		}
 	}
 }
@@ -400,6 +493,15 @@ func readIssueOpsReferenceForTest(t *testing.T, name string) string {
 func readTuringSkillForTest(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "skills", "turing", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func readSelfVerifySkillForTest(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", "skills", "self-verify", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

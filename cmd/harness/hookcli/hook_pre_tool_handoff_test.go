@@ -29,12 +29,24 @@ func TestRunHookPreToolUseDefaultsHostlessClaimedSessionToCodex(t *testing.T) {
 		t.Fatal(err)
 	}
 	record.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{
-		ProtocolVersion: handoff.ProtocolVersion,
-		State:           handoff.StateClaimed,
-		Attempt:         1,
-		OwnershipEpoch:  "epoch-1",
-		CoordinatorRoot: source,
-		WorkerRoot:      cycle.path,
+		ProtocolVersion:     handoff.ProtocolVersion,
+		Driver:              "orca",
+		State:               handoff.StateClaimed,
+		Attempt:             1,
+		OwnershipEpoch:      "epoch-1",
+		CoordinatorRoot:     source,
+		WorkerRoot:          cycle.path,
+		AttemptBaseHead:     "0000000000000000000000000000000000000000",
+		ContextVersion:      handoff.ContextVersion,
+		ContextSHA256:       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		ContextSourceSHA256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		ContextOptions:      &issueopsmodel.IssueOpsExecutionHandoffContextOptions{},
+		DeliveryMode:        "inject",
+		Orca: &issueopsmodel.IssueOpsOrcaIdentity{
+			RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-hostless-codex",
+			WorktreeID: "worktree-1", WorktreeInstanceID: "instance-1", WorktreePath: cycle.path,
+			WorkerPTYID: "pty-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
+		},
 		WorkerSession: &issueopsmodel.IssueOpsHostSessionIdentity{
 			Host:      "codex",
 			SessionID: "session-1",
@@ -51,6 +63,9 @@ func TestRunHookPreToolUseDefaultsHostlessClaimedSessionToCodex(t *testing.T) {
 		{name: "exact session", session: "session-1", want: "allow"},
 		{name: "explicit payload codex", session: "session-1", payloadHost: "codex", want: "allow"},
 		{name: "explicit cli codex", session: "session-1", flagHost: "codex", want: "allow"},
+		{name: "matching explicit codex", session: "session-1", payloadHost: "codex", flagHost: "codex", want: "allow"},
+		{name: "payload codex cli claude conflict", session: "session-1", payloadHost: "codex", flagHost: "claude", want: "block"},
+		{name: "payload claude cli codex conflict", session: "session-1", payloadHost: "claude", flagHost: "codex", want: "block"},
 		{name: "explicit payload claude", session: "session-1", payloadHost: "claude", want: "block"},
 		{name: "explicit cli claude", session: "session-1", flagHost: "claude", want: "block"},
 		{name: "empty session", session: "", want: "block"},
@@ -89,5 +104,30 @@ func TestRunHookPreToolUseDefaultsHostlessClaimedSessionToCodex(t *testing.T) {
 				t.Fatalf("session %q: got %+v, want decision %q", tt.session, got, tt.want)
 			}
 		})
+	}
+
+	for _, tool := range []string{"Bash", "shell_command", "exec_command", "unified_exec"} {
+		for _, tt := range []struct {
+			name, command, want string
+		}{
+			{name: "mutation", command: "git add .", want: "block"},
+			{name: "read only", command: "git status --short", want: "allow"},
+		} {
+			t.Run(tool+" "+tt.name, func(t *testing.T) {
+				payload, err := json.Marshal(map[string]any{
+					"cwd": cycle.path, "session_id": "wrong-session", "tool_name": tool,
+					"tool_input": map[string]any{"command": tt.command},
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				got := runHookCapture(t, string(payload), func() error {
+					return runHookPreToolUse([]string{"--enforce-worktree", "--expected-worktree", cycle.path, "--source-checkout", source, "--json"})
+				})
+				if got["decision"] != tt.want {
+					t.Fatalf("tool=%s command=%q got=%+v want=%s", tool, tt.command, got, tt.want)
+				}
+			})
+		}
 	}
 }

@@ -14,6 +14,19 @@ func ToolNameFromHookInput(input []byte) string {
 	return ""
 }
 
+func ToolInputFromHookInput(input []byte) map[string]any {
+	obj := hookInputObject(input)
+	toolInput, ok := obj["tool_input"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	cloned := make(map[string]any, len(toolInput))
+	for key, value := range toolInput {
+		cloned[key] = value
+	}
+	return cloned
+}
+
 // SkillFromHookInput returns the skill name from a Skill-tool invocation's
 // tool_input (the "skill" or "name" argument), or "" when absent.
 func SkillFromHookInput(input []byte) string {

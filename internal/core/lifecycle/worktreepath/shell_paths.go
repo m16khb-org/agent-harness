@@ -14,6 +14,60 @@ func ShellCommandGuardPaths(repo, command string) []string {
 	seen := map[string]bool{}
 	currentDir := CleanAbs(repo)
 	for i, token := range tokens {
+		addGitRepositoryOverridePath(&out, seen, currentDir, token)
+		name := searchrouting.SearchTokenName(token)
+		if (name == "git" || name == "go") && i+1 < len(tokens) {
+			for j := i + 1; j < len(tokens); j++ {
+				switch {
+				case tokens[j] == "-C" && j+1 < len(tokens):
+					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, tokens[j+1]))
+					j++
+				case strings.HasPrefix(tokens[j], "-C="):
+					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, strings.TrimPrefix(tokens[j], "-C=")))
+				case name == "git" && (tokens[j] == "--git-dir" || tokens[j] == "--work-tree") && j+1 < len(tokens):
+					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, tokens[j+1]))
+					j++
+				case name == "git" && strings.HasPrefix(tokens[j], "--git-dir="):
+					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, strings.TrimPrefix(tokens[j], "--git-dir=")))
+				case name == "git" && strings.HasPrefix(tokens[j], "--work-tree="):
+					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, strings.TrimPrefix(tokens[j], "--work-tree=")))
+				case !strings.HasPrefix(tokens[j], "-"):
+					j = len(tokens)
+				}
+			}
+		}
+		switch name {
+		case "gofmt":
+			if containsToken(tokens[i+1:], "-w") {
+				addNonFlagOperands(&out, seen, currentDir, tokens[i+1:])
+			}
+		case "go":
+			for j := i + 1; j < len(tokens); j++ {
+				if tokens[j] == "-o" && j+1 < len(tokens) {
+					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, tokens[j+1]))
+					j++
+				} else if strings.HasPrefix(tokens[j], "-o=") {
+					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, strings.TrimPrefix(tokens[j], "-o=")))
+				}
+			}
+		case "cp", "mv", "touch", "rm", "mkdir", "install", "truncate", "rsync":
+			addNonFlagOperands(&out, seen, currentDir, tokens[i+1:])
+		case "dd":
+			for _, value := range tokens[i+1:] {
+				if strings.HasPrefix(value, "of=") {
+					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, strings.TrimPrefix(value, "of=")))
+				}
+			}
+		case "bash", "sh", "zsh":
+			for j := i + 1; j+1 < len(tokens); j++ {
+				if shellEvalFlag(tokens[j]) {
+					for _, nested := range ShellCommandGuardPaths(currentDir, tokens[j+1]) {
+						addGuardPath(&out, seen, nested)
+					}
+					break
+				}
+			}
+		}
 		switch token {
 		case "cd":
 			if i+1 < len(tokens) {
@@ -44,8 +98,82 @@ func ShellCommandGuardPaths(repo, command string) []string {
 				}
 			}
 		}
+		addConservativePathOperand(&out, seen, currentDir, token)
 	}
 	return out
+}
+
+func addGitRepositoryOverridePath(out *[]string, seen map[string]bool, currentDir, token string) {
+	for _, prefix := range []string{"GIT_DIR=", "GIT_WORK_TREE=", "--git-dir=", "--work-tree="} {
+		if strings.HasPrefix(token, prefix) {
+			addGuardPath(out, seen, resolveShellGuardPath(currentDir, strings.TrimPrefix(token, prefix)))
+			return
+		}
+	}
+}
+
+func addConservativePathOperand(out *[]string, seen map[string]bool, currentDir, token string) {
+	value := strings.TrimSpace(token)
+	if value == "" {
+		return
+	}
+	for _, prefix := range []string{"GIT_DIR=", "GIT_WORK_TREE="} {
+		if strings.HasPrefix(value, prefix) {
+			return
+		}
+	}
+	for _, prefix := range []string{">>", ">", "1>>", "1>", "2>>", "2>"} {
+		if strings.HasPrefix(value, prefix) {
+			return
+		}
+	}
+	for _, prefix := range []string{"--prefix=", "--directory=", "--chdir=", "--output=", "-C=", "-o="} {
+		if strings.HasPrefix(value, prefix) {
+			addGuardPath(out, seen, resolveShellGuardPath(currentDir, strings.TrimPrefix(value, prefix)))
+			return
+		}
+	}
+	if strings.HasPrefix(value, "-") || strings.Contains(value, "://") {
+		return
+	}
+	if filepath.IsAbs(value) || value == "." || value == ".." || value == ".git" || strings.HasPrefix(value, "."+string(filepath.Separator)) || strings.HasPrefix(value, ".."+string(filepath.Separator)) || strings.Contains(value, string(filepath.Separator)) {
+		addGuardPath(out, seen, resolveShellGuardPath(currentDir, value))
+	}
+}
+
+func addNonFlagOperands(out *[]string, seen map[string]bool, currentDir string, tokens []string) {
+	for i := 0; i < len(tokens); i++ {
+		value := tokens[i]
+		if value == "--" {
+			for _, operand := range tokens[i+1:] {
+				addGuardPath(out, seen, resolveShellGuardPath(currentDir, operand))
+			}
+			return
+		}
+		if strings.HasPrefix(value, "-") {
+			if value == "-o" || value == "-C" || value == "-m" || value == "-t" || value == "-s" {
+				i++
+			}
+			continue
+		}
+		addGuardPath(out, seen, resolveShellGuardPath(currentDir, value))
+	}
+}
+
+func containsToken(tokens []string, want string) bool {
+	for _, token := range tokens {
+		if token == want {
+			return true
+		}
+	}
+	return false
+}
+
+func shellEvalFlag(value string) bool {
+	if !strings.HasPrefix(value, "-") || strings.HasPrefix(value, "--") {
+		return false
+	}
+	return strings.Contains(strings.TrimPrefix(value, "-"), "c")
 }
 
 func IssueOpsPreparationCommand(command string) bool {

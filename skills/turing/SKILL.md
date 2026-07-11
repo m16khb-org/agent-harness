@@ -35,7 +35,13 @@ For a supervised execution lease, render the named ORCA criteria (for the curren
 
 Do not cite stale tools such as positional `state write <key> <content>` forms as executable commands. `agent-harness issueops heartbeat` is current: an inline cycle supplies `--id`, while a supervised worker also supplies its attempt, ownership epoch, context hash, and native host/session identity.
 
-In a supervised handoff, the source implementation checkout is read-only to the worker. Read-only probes and tests may inspect it, but formatting, patching, build output, installation, and golden mutation remain coordinator-only; a PreToolUse block must never be bypassed. The fresh worker uses the installed `agent-harness` command unless its bounded context proves `./bin/agent-harness` exists in the exact worker checkout.
+In a supervised handoff, the source implementation checkout is read-only and the source checkout is observation-only. From it, use only non-executing observations such as `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git ls-files`, and `rg`. Tests, builds, formatting, installation, and generation run only in the claimed worker root; test initialization, fixtures, caches, binaries, and goldens may mutate state. A PreToolUse block must never be bypassed. The fresh worker uses the installed `agent-harness` command unless its bounded context proves `./bin/agent-harness` exists in the exact worker checkout.
+
+The Turing report path is a safe relative path from the canonical worker root. The Turing report must exist inside the canonical worker root as committed regular-file content; an absolute path, parent escape, or leaf symlink fails. The worker worktree must be clean before coordinator acceptance, and claim/finish both re-render the context source fingerprint.
+
+Supervised shell red flags include the eval and source primitives, active command substitution, unquoted process substitution, zsh equals expansion (`=git` or `=(...)`), parameter/tilde expansion, and unquoted brace/glob pathname expansion. Use explicit canonical argv paths. For verified steering, the exact contract is `orca terminal send --terminal <handle> --text <payload> --enter --json`; pass payload as one argv value, or apply a POSIX single-quote encoder exactly once when only shell text is available. Never use JSON double-quoting, backticks, shell substitution, or JS template interpolation such as `${...}` for freeform text.
+
+After accept, the coordinator queries `git rev-parse --verify refs/heads/<branch>` as a standalone observation and checks its stdout exactly equals the accepted FinalHead. Only then use exact branch push and explicit head/source and base/target flags for a draft PR/MR. Do not use `HEAD`, implicit branch defaults, command substitution, force/delete push, merge, or close.
 
 For supervised evidence, self-verify requires binary/source contract parity. If an evidence worker is intentionally on a base checkout while the installed binary is feature HEAD, record a response-contract mismatch as a version-skew observation, do not mutate the base, and leave the final self-verify score to the coordinator running matching feature HEAD. The opt-in LLM path currently renders a read-only prompt only. No Z.AI request is sent, so `gate` is expected to remain non-passing without an ingested verdict. When the coordinator environment intentionally exports `HARNESS_SELF_VERIFY_LLM_EVAL=gate`, use explicit `--llm-eval=false` for the required deterministic completion sequence, record the override, and restart from its first gate after an interrupted or prompt-only run.
 
@@ -53,6 +59,10 @@ The accepted `orca orchestration send --type` values are exactly `status`, `disp
 
 `closed/accepted` is terminal and cannot be retried. Only `closed/worker_failed` and `closed/cancelled` may start a new attempt. New work after acceptance belongs in a new bounded cycle, not a reopened ownership epoch for an already accepted result.
 
+A claimed cancel is fail-closed without explicit stale or force evidence; an unresolved pending journal survives cancel. Before retry, require a clean exact branch and HEAD checkpoint and persist it as the new `attempt_base_head`. An invoked/timeout create stays ambiguous and is never called again automatically; only `Invoked=false` is a definitive pre-invocation failure. Promote every observed representative mutation family into a retained hook test.
+
+Coordinator cleanup is exact task terminal update, exact `orca worktree rm --worktree id:<persisted-worktree-id> --force --json`, then terminal inventory verification. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list, including nested shells. `WorkerMailboxHandle` is historical mailbox identity, not a current terminal control handle.
+
 ## Quantitative Quality Metrics (vs ulw-loop baseline)
 
 Turing tracks these metrics automatically. Target: **20%+ improvement over ulw-loop** on every dimension.
@@ -65,7 +75,7 @@ Turing tracks these metrics automatically. Target: **20%+ improvement over ulw-l
 | **Parallelization Ratio** | ~2x (manual wave grouping) | ≥4x (dependency-matrix-driven waves) | `total_tasks / wave_count` |
 | **Cleanup Compliance** | ~50% (cleanup receipts often missing) | 100% (no pass without receipt) | `cleanup_receipts / qa_scenarios` |
 | **Cross-Session Survival** | None (filesystem-only, no state checkpoints) | 100% (agent-harness state survives compaction) | `resumed_sessions / total_sessions` |
-| **Host Portability** | Codex-only host assumptions | 3 hosts (Codex, Claude, Reasonix unified skill) | Host-specific section translates available tools |
+| **Host Portability** | Codex-only host assumptions | 3 hosts (Codex, Claude, and GJC unified skill) | Host-specific section translates available tools |
 
 ---
 
@@ -153,9 +163,9 @@ For every criterion, build a real-usage scenario through ONE of these four chann
 
 ### Host Translation (sub-agent dispatch only)
 
-| Task shape | Codex | Claude Code | Reasonix |
+| Task shape | Codex | Claude Code | GJC |
 |------------|-------|-------------|----------|
-| Read-only exploration | Use the current Codex sub-agent tool only when the session policy allows it | Use the current Task tool when available | Use the current Reasonix exploration tool when available |
+| Read-only exploration | Use the current Codex sub-agent tool only when the session policy allows it | Use the current Task tool when available | Use the current GJC exploration tool when available |
 | Adversarial review | Use a fresh reviewer only when sub-agent dispatch is allowed | Use a reviewer task when available | Use a review task when available |
 | External docs research | Use current web/docs tools or `berners-lee`; label unavailable tools as blocked | Use current web/docs tools or `berners-lee` | Use current research tools or `berners-lee` |
 | Background work | Use current async agent/job tools only when allowed | Use current background task support when available | Use current background task support when available |
@@ -401,7 +411,7 @@ When an IssueOps cycle exists:
 
 ## Cross-Host Translation Table
 
-| Action | Codex | Claude Code | Reasonix |
+| Action | Codex | Claude Code | GJC |
 |--------|-------|-------------|----------|
 | Run shell command | Use the current shell/terminal tool with explicit cwd | Same principle | Same principle |
 | Read file | Use the current file-read or shell read tool | Same principle | Same principle |
@@ -409,8 +419,8 @@ When an IssueOps cycle exists:
 | Write/edit files | Use the current patch/edit tool | Same principle | Same principle |
 | Write evidence file | Use the current patch/edit tool or CLI that owns the state | Same principle | Same principle |
 | State checkpoint | `agent-harness state write --key KEY (--value TEXT|--input FILE|--stdin) --json` | Same | Same |
-| Spawn explorer (pattern #1) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available | Only when Reasonix exposes an exploration task |
-| Spawn reviewer (pattern #2) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available | Only when Reasonix exposes a review task |
+| Spawn explorer (pattern #1) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available | Only when GJC exposes an exploration task |
+| Spawn reviewer (pattern #2) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available | Only when GJC exposes a review task |
 | External docs research (pattern #3) | Use current web/docs tools or `berners-lee`; do not name unavailable tools as executable | Same principle | Same principle |
 | Background + poll (pattern #8) | Use current async/job tools only when available | Same principle | Same principle |
 

@@ -36,8 +36,15 @@ func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 	if len(first.Markdown) > MaxRenderedContextBytes {
 		t.Fatalf("rendered context bytes = %d, limit = %d", len(first.Markdown), MaxRenderedContextBytes)
 	}
-	if first.PlanSHA256 == "" || first.SHA256 == "" {
+	if first.PlanSHA256 == "" || first.SHA256 == "" || first.SourceSHA256 == "" {
 		t.Fatalf("missing context hashes: %#v", first)
+	}
+	withDifferentOptions, err := BuildContext(record, ContextOptions{WorkerScope: "different runtime delivery option"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withDifferentOptions.SHA256 == first.SHA256 || withDifferentOptions.SourceSHA256 != first.SourceSHA256 {
+		t.Fatalf("runtime options must change full context but not source fingerprint: first=%#v other=%#v", first, withDifferentOptions)
 	}
 }
 
@@ -76,6 +83,7 @@ func TestIssueOpsHandoffContextHashChangesForPlanBranchIntentAndWorktree(t *test
 		{name: "branch", mutate: func(r *model.IssueOpsRecord) { r.Branch = "16-other" }},
 		{name: "intent", mutate: func(r *model.IssueOpsRecord) { r.Intent.InterpretedIntent = "changed intent" }},
 		{name: "worktree", mutate: func(r *model.IssueOpsRecord) { r.WorktreePath = filepath.Join(filepath.Dir(r.WorktreePath), "other") }},
+		{name: "attempt base", mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.AttemptBaseHead = strings.Repeat("c", 40) }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -87,6 +95,9 @@ func TestIssueOpsHandoffContextHashChangesForPlanBranchIntentAndWorktree(t *test
 			}
 			if packet.SHA256 == first.SHA256 {
 				t.Fatalf("context hash did not change for %s", tt.name)
+			}
+			if packet.SourceSHA256 == first.SourceSHA256 {
+				t.Fatalf("context source fingerprint did not change for %s", tt.name)
 			}
 		})
 	}
@@ -137,6 +148,7 @@ func contextRecordForTest(t *testing.T) model.IssueOpsRecord {
 			ProtocolVersion: 1,
 			State:           StateCoordinatorPreparing,
 			Attempt:         1,
+			AttemptBaseHead: strings.Repeat("b", 40),
 			OwnershipEpoch:  "epoch-1",
 		},
 	}

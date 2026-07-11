@@ -12,6 +12,7 @@ import (
 	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/issueops/handoff"
 )
 
 // This file holds one handler per IssueOps MCP tool. handleIssueOpsMCPToolCall
@@ -380,7 +381,13 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 	id := argmap.String(args, "id")
 	switch argmap.String(args, "action") {
 	case "start":
-		result, err := core.StartIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffStartRequest{ID: id, Confirm: argmap.Bool(args, "confirm")}, orca.New(), core.IssueOpsHandoffStartClock{})
+		result, err := core.StartIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffStartRequest{
+			ID: id, Confirm: argmap.Bool(args, "confirm"), Context: handoff.ContextOptions{
+				CriteriaIDs: argmap.StringSlice(args, "criteria_ids"), RequiredDocs: argmap.StringSlice(args, "required_docs"), RequiredSkills: argmap.StringSlice(args, "required_skills"),
+				WorkerScope: argmap.String(args, "worker_scope"), VerificationCommands: argmap.StringSlice(args, "verification_commands"), HeartbeatCadence: argmap.String(args, "heartbeat_cadence"),
+				StopConditions: argmap.StringSlice(args, "stop_conditions"), ResultFormat: argmap.String(args, "result_format"),
+			},
+		}, orca.New(), core.IssueOpsHandoffStartClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff start failed")
 	case "claim":
 		result, err := core.ClaimIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffClaimRequest{
@@ -403,7 +410,10 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 		})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff accept failed")
 	case "recover":
-		result, err := core.RecoverIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffRecoverRequest{ID: id, Action: argmap.String(args, "recovery_action"), Confirm: argmap.Bool(args, "confirm")}, orca.New(), core.IssueOpsHandoffPrepareClock{})
+		result, err := core.RecoverIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffRecoverRequest{
+			ID: id, Action: argmap.String(args, "recovery_action"), Confirm: argmap.Bool(args, "confirm"),
+			Force: argmap.Bool(args, "force"), Reason: argmap.String(args, "reason"),
+		}, orca.New(), core.IssueOpsHandoffPrepareClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff recover failed")
 	default:
 		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, finish, accept, or recover"), "IssueOps handoff failed")

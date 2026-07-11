@@ -72,7 +72,7 @@ The returned `attempt`, `ownership_epoch`, `context_sha256`, Orca worktree id, t
 
 The fresh worker starts in the exact Orca worktree and claims before any mutation:
 
-The source implementation checkout is read-only to the worker. Read probes and tests may target it, but formatting, `apply_patch`, `go build -o`, native install, golden update, and every other source mutation are coordinator-only. If PreToolUse blocks one of those operations, do not bypass the hook through a shell wrapper or a different tool.
+The source implementation checkout is read-only; the source checkout is observation-only. From it, use only explicit non-executing observations such as `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git ls-files`, and `rg`. Tests, builds, formatting, installation, and generation run only in the claimed worker root; test initialization, fixtures, caches, binaries, and goldens can mutate state. This includes `go build -o`, every test runner, native install, formatting, golden updates, and generators. If PreToolUse blocks an operation, do not bypass the hook through a different tool. The eval and source primitives are shell reinterpretation and are forbidden wrappers.
 
 Use the installed `agent-harness` command in a fresh worker unless the bounded context proves `./bin/agent-harness` exists in that exact worker checkout. For workers, self-verify requires binary/source contract parity: when a base-checkout evidence worker is running against an installed feature-HEAD binary, record any response-contract mismatch without changing the base checkout and leave final self-verify to the coordinator on matching feature HEAD. The current opt-in LLM evaluation path only renders a read-only prompt. No Z.AI request is sent, and `gate` cannot pass without an ingested verdict. If the coordinator environment intentionally exports `HARNESS_SELF_VERIFY_LLM_EVAL=gate`, run the required deterministic completion sequence with explicit `--llm-eval=false`, record the override, and restart from its first gate after an interrupted or prompt-only run. Native hook lookup uses the default IssueOps state root in V1; safe custom `HARNESS_STATE_DIR` propagation remains issue #17.
 
@@ -80,9 +80,15 @@ The focused hook-input package is `./cmd/harness/hookcli/hookinput`; `./internal
 
 Codex 0.144.1 initializes hooks during session setup, while its `refresh_runtime_config` path can rebuild and publish them later. Replacing `~/.codex/hooks.json` through native install did not refresh the observed live worker, so an active Codex session may retain its previously loaded hook command until runtime config refresh or a new session. Installed-file readback alone is insufficient; the live current-session probe is authoritative. Keep the installer `--host codex` flag for fresh or refreshed sessions; for a retained older PreToolUse command, hookcli defaults the native host to `codex` only when both the payload host and `--host` are empty. This compatibility path still requires an exact nonempty session, canonical cwd/repo, persisted fence, and in-tree target. It never overwrites an explicit host. After installing a compatible binary, authorize at most one same-worker retry; do not bypass the guard or start a fresh session unless the compatibility repair cannot be made safe.
 
+When both host sources are explicit, an explicit payload and CLI hosts conflict is an identity error; neither value may override the other. Canonical Codex/Claude/GJC host, exact session, and optional agent identity form one authority tuple.
+
 In Codex PreToolUse input, top-level `transcript_path` and `agent_transcript_path` are hook metadata, not mutation targets, and may point outside the repository. Ignore those keys only outside `tool_input`; tool_input paths and patch targets remain enforced. Before authorizing a repaired live retry, require a full-payload probe containing the external transcript metadata as well as the exact session, cwd, and proposed tool input. A synthetic payload that omits host metadata is not sufficient evidence.
 
 Quoted semicolons, ampersands, and pipes in evidence values are argument data, not compound-command operators. The lifecycle guard parses quote boundaries so legitimate `--verification` and `--cleanup-receipt` prose remains allowed; unquoted shell control operators and newlines remain blocked. Omit `--agent-id` when the native agent id is empty because a quoted empty argument may be lost by host tokenization. The examples below therefore omit the optional flag; add `--agent-id "$AGENT_ID"` only when the native payload supplies a nonempty value.
+
+Supervised shell red flags include active command substitution, unquoted process substitution, zsh equals expansion (`=git` and `=(...)`), parameter/tilde expansion, and unquoted brace/glob pathname expansion. Single-quoted or escaped literal evidence remains data; double-quoted process-substitution spelling is also literal in the verified Bash/zsh contract. Use explicit canonical paths and an explicit argv instead of `eval`, `source`, wrappers, globs, or expansion-generated controller names.
+
+When steering a verified live terminal, use the installed argv contract exactly: `orca terminal send --terminal <handle> --text <payload> --enter --json`. Prefer a direct argv call with payload as one argument. If a relay accepts only shell text, apply a POSIX single-quote encoder exactly once (`'` becomes `'\''`) to each dynamic value before composing the command. Never pass freeform text through JSON double-quoting, shell command substitution, backticks, or JS template interpolation such as `${...}`; build a plain literal string first and encode it once.
 
 ```bash
 agent-harness issueops handoff claim \
@@ -115,6 +121,8 @@ If a worker is blocked, send one escalation to the concrete coordinator handle, 
 The current `orca orchestration send --type` enum is exactly `status`, `dispatch`, `worker_done`, `merge_ready`, `escalation`, `handoff`, `decision_gate`, and `heartbeat`. Use `status` for non-terminal progress, `heartbeat` for liveness, one `escalation` for a blocker, and `worker_done` exactly once at completion. Do not invent message types such as `progress`, `blocked`, or `completed`.
 
 On completion, submit bounded evidence. A completed result requires the final head, Turing report, at least one verification entry, and at least one cleanup receipt:
+
+The Turing report path is a safe relative path from the canonical worker root. The Turing report must exist inside the canonical worker root as committed regular-file content; an absolute path, `..` escape, or leaf symlink is rejected. The worker worktree must be clean before acceptance. The context source fingerprint is re-rendered at claim and finish so plan or intent drift cannot be joined later.
 
 ```bash
 agent-harness issueops handoff finish \
@@ -153,6 +161,21 @@ agent-harness issueops handoff accept \
 
 `issueops resume --bind` is intentionally read-only for supervised handoffs. It cannot transfer the lease; use the explicit claim/recovery commands.
 
+## Coordinator Publish
+
+After acceptance, verify the accepted FinalHead before any publish action. Run the ref query as a standalone read-only command, inspect its stdout, and continue only when that full SHA exactly equals the accepted FinalHead. Do not turn the comparison into shell reinterpretation, command substitution, or a wrapper.
+
+```bash
+git rev-parse --verify refs/heads/<branch>
+# Stop unless the stdout above exactly equals <accepted-final-head>.
+git push <remote> <branch>
+gh pr create --head <branch> --base <base-branch> --draft --title <title> --body <body>
+# GitLab equivalent:
+glab mr create --source-branch <branch> --target-branch <base-branch> --draft --title <title> --description <body>
+```
+
+The order is accepted FinalHead versus `refs/heads/<branch>`, exact branch push, then explicit head/source and base/target flags for a draft PR/MR. `HEAD`, force/delete push, implicit current-branch PR creation, merge, close, reopen, fill, web, and wrapper-side push are outside this authority.
+
 ## Failure And Recovery
 
 IssueOps persists `pending_operation` before every external Orca create or dispatch. Once a mutation has been invoked, never retry a create operation automatically, even when the adapter reports a timeout or ambiguous error. The record moves to `recovery_required`, inline fallback is forbidden, and the coordinator inspects status before choosing an explicit action.
@@ -183,5 +206,21 @@ agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action retry --conf
 ```
 
 `closed/accepted` is terminal and cannot be retried. Only `closed/worker_failed` and `closed/cancelled` may start a new attempt; an accepted handoff has already transferred the verified result back to the coordinator and must remain closed.
+
+A claimed cancel is fail-closed without explicit stale or force evidence. Use confirmed coordinator recovery with a nonempty reason only after proving the worker lease is no longer live. An unresolved pending operation journal survives cancel and must be reconciled first; `Invoked=false` is the only definitive pre-invocation failure that may safely release the journal, while invoked/timeout failures remain ambiguous and are never auto-retried.
+
+Before retry, require a clean exact branch and HEAD checkpoint. Persist the current clean commit as the new `attempt_base_head`; dirty, detached, mismatched, or unreadable Git evidence stops before any external mutation. Classifier gaps are handled by promoting each observed representative mutation family into a retained hook test rather than relying on prose-only denial.
+
+## Coordinator Cleanup
+
+For `execution_handoff.driver=orca`, Git worktree removal is not the cleanup route. The coordinator performs and verifies this order after explicit user cleanup approval:
+
+```bash
+orca orchestration task-update --id <persisted-task-id> --status <completed-or-failed> --result <bounded-result> --json
+orca worktree rm --worktree id:<persisted-worktree-id> --force --json
+orca terminal list --worktree <persisted-worktree-id> --json
+```
+
+`WorkerMailboxHandle` is historical dispatch/mailbox identity, not live terminal-control authority. Do not send `exit` to that persisted handle. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list; nested shells require repeated inspection until fully gone. Also verify the exact worktree selector and path are absent before handling provider refs. Inline records retain the legacy Git cleanup recipe; never substitute `git worktree remove` for Orca-owned removal.
 
 `auto` fallback is allowed only after a pre-mutation probe failure. It is never a recovery strategy for `coordinator_preparing`, `dispatched`, `claimed`, `submitted`, or `recovery_required` state.

@@ -65,6 +65,7 @@ type IssueOpsOrcaIdentity = model.IssueOpsOrcaIdentity
 type IssueOpsExecutionHandoffPendingOperation = model.IssueOpsExecutionHandoffPendingOperation
 type IssueOpsExecutionHandoffResult = model.IssueOpsExecutionHandoffResult
 type IssueOpsExecutionHandoffFailure = model.IssueOpsExecutionHandoffFailure
+type IssueOpsOrcaCleanupArtifact = model.IssueOpsOrcaCleanupArtifact
 type IssueOpsExecutionHandoff = model.IssueOpsExecutionHandoff
 type IssueOpsReadiness = model.IssueOpsReadiness
 type IssueOpsDomainReview = model.IssueOpsDomainReview
@@ -135,6 +136,10 @@ func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 	return active.LinkedWorktreeCyclesForRepo(issueOpsActiveStore(), repo)
 }
 
+func ActiveIssueOpsSupervisedHandoffCyclesForRepo(repo string) []IssueOpsRecord {
+	return active.SupervisedHandoffCyclesForRepo(issueOpsActiveStore(), repo)
+}
+
 // IssueOpsCycleWorktreeMissing reports whether a record is a worktree-phase
 // cycle whose linked worktree directory has been deleted (a stale cycle that
 // must not retain guard authority over the source checkout).
@@ -145,9 +150,12 @@ func IssueOpsCycleWorktreeMissing(record IssueOpsRecord) bool {
 func issueOpsActiveStore() active.Store {
 	return active.Store{
 		StateRoot: IssueOpsStateRoot,
-		Read:      ReadIssueOps,
-		NewID:     newIssueOpsID,
-		ListIDs:   ListIssueOpsIDs,
+		// Hooks must still see a corrupt handoff so they fail closed instead of
+		// silently dropping the ownership guard. Command paths use ReadIssueOps,
+		// which validates the envelope before operating on it.
+		Read:    readIssueOpsUnchecked,
+		NewID:   newIssueOpsID,
+		ListIDs: ListIssueOpsIDs,
 	}
 }
 

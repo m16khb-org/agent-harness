@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "result": {
+    "task": {
+      "id": "task-1",
+      "task_title": "agent-harness marker",
+      "display_name": "16-demo",
+      "status": "ready"
+    }
+  }
+}

@@ -41,6 +41,7 @@ type ContextProjection struct {
 	PlanSHA256            string   `json:"plan_sha256"`
 	Attempt               int      `json:"attempt"`
 	OwnershipEpoch        string   `json:"ownership_epoch"`
+	AttemptBaseHead       string   `json:"attempt_base_head"`
 	Problem               string   `json:"problem,omitempty"`
 	Intent                string   `json:"intent,omitempty"`
 	SuccessCriteria       []string `json:"success_criteria,omitempty"`
@@ -64,11 +65,12 @@ type ContextProjection struct {
 }
 
 type ContextPacket struct {
-	Version    int               `json:"version"`
-	SHA256     string            `json:"sha256"`
-	PlanSHA256 string            `json:"plan_sha256"`
-	Projection ContextProjection `json:"projection"`
-	Markdown   string            `json:"markdown"`
+	Version      int               `json:"version"`
+	SHA256       string            `json:"sha256"`
+	SourceSHA256 string            `json:"source_sha256"`
+	PlanSHA256   string            `json:"plan_sha256"`
+	Projection   ContextProjection `json:"projection"`
+	Markdown     string            `json:"markdown"`
 }
 
 func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextPacket, error) {
@@ -91,6 +93,7 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		PlanSHA256:           hex.EncodeToString(planHash[:]),
 		Attempt:              record.ExecutionHandoff.Attempt,
 		OwnershipEpoch:       strings.TrimSpace(record.ExecutionHandoff.OwnershipEpoch),
+		AttemptBaseHead:      strings.TrimSpace(record.ExecutionHandoff.AttemptBaseHead),
 		CriteriaIDs:          cleanList(options.CriteriaIDs),
 		RequiredDocs:         cleanList(options.RequiredDocs),
 		RequiredSkills:       cleanList(options.RequiredSkills),
@@ -129,6 +132,11 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		return ContextPacket{}, err
 	}
 	sum := sha256.Sum256(canonical)
+	sourceCanonical, err := json.Marshal(contextSourceProjection(projection))
+	if err != nil {
+		return ContextPacket{}, err
+	}
+	sourceSum := sha256.Sum256(sourceCanonical)
 	pretty, err := json.MarshalIndent(projection, "", "  ")
 	if err != nil {
 		return ContextPacket{}, err
@@ -138,12 +146,56 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		return ContextPacket{}, fmt.Errorf("handoff context exceeds %d bytes", MaxRenderedContextBytes)
 	}
 	return ContextPacket{
-		Version:    ContextVersion,
-		SHA256:     hex.EncodeToString(sum[:]),
-		PlanSHA256: projection.PlanSHA256,
-		Projection: projection,
-		Markdown:   markdown,
+		Version:      ContextVersion,
+		SHA256:       hex.EncodeToString(sum[:]),
+		SourceSHA256: hex.EncodeToString(sourceSum[:]),
+		PlanSHA256:   projection.PlanSHA256,
+		Projection:   projection,
+		Markdown:     markdown,
 	}, nil
+}
+
+func ContextSourceSHA256(record model.IssueOpsRecord) (string, error) {
+	packet, err := BuildContext(record, ContextOptions{})
+	if err != nil {
+		return "", err
+	}
+	return packet.SourceSHA256, nil
+}
+
+func CanonicalContextOptions(options ContextOptions) model.IssueOpsExecutionHandoffContextOptions {
+	return model.IssueOpsExecutionHandoffContextOptions{
+		CriteriaIDs: cleanList(options.CriteriaIDs), RequiredDocs: cleanList(options.RequiredDocs), RequiredSkills: cleanList(options.RequiredSkills),
+		WorkerScope: redact(options.WorkerScope), VerificationCommands: cleanList(options.VerificationCommands), HeartbeatCadence: redact(options.HeartbeatCadence),
+		StopConditions: cleanList(options.StopConditions), ResultFormat: redact(options.ResultFormat),
+	}
+}
+
+func ContextOptionsFromModel(options model.IssueOpsExecutionHandoffContextOptions) ContextOptions {
+	return ContextOptions{
+		CriteriaIDs: append([]string(nil), options.CriteriaIDs...), RequiredDocs: append([]string(nil), options.RequiredDocs...), RequiredSkills: append([]string(nil), options.RequiredSkills...),
+		WorkerScope: options.WorkerScope, VerificationCommands: append([]string(nil), options.VerificationCommands...), HeartbeatCadence: options.HeartbeatCadence,
+		StopConditions: append([]string(nil), options.StopConditions...), ResultFormat: options.ResultFormat,
+	}
+}
+
+func ContextOptionsEmpty(options ContextOptions) bool {
+	canonical := CanonicalContextOptions(options)
+	return len(canonical.CriteriaIDs) == 0 && len(canonical.RequiredDocs) == 0 && len(canonical.RequiredSkills) == 0 &&
+		canonical.WorkerScope == "" && len(canonical.VerificationCommands) == 0 && canonical.HeartbeatCadence == "" &&
+		len(canonical.StopConditions) == 0 && canonical.ResultFormat == ""
+}
+
+func contextSourceProjection(projection ContextProjection) ContextProjection {
+	projection.CriteriaIDs = nil
+	projection.RequiredDocs = nil
+	projection.RequiredSkills = nil
+	projection.WorkerScope = ""
+	projection.VerificationCommands = nil
+	projection.HeartbeatCadence = ""
+	projection.StopConditions = nil
+	projection.ResultFormat = ""
+	return projection
 }
 
 func cleanList(values []string) []string {

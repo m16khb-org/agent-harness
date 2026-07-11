@@ -15,7 +15,7 @@ const issueOpsHandoffUsage = `Usage:
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA [--json]
-  agent-harness issueops handoff recover --id ID --action reconcile|cancel|retry [--confirm] [--json]`
+  agent-harness issueops handoff recover --id ID --action reconcile|cancel|retry [--confirm] [--force --reason TEXT] [--json]`
 
 func runIssueOpsHandoff(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
@@ -132,11 +132,13 @@ func runIssueOpsHandoffRecover(args []string) error {
 	id := fs.String("id", "", "issueops id")
 	action := fs.String("action", "", "reconcile, cancel, or retry")
 	confirm := fs.Bool("confirm", false, "confirm cancellation or retry")
+	force := fs.Bool("force", false, "force a claimed-worker cancellation")
+	reason := fs.String("reason", "", "durable reason for forced claimed-worker cancellation")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := core.RecoverIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffRecoverRequest{ID: *id, Action: *action, Confirm: *confirm}, orca.New(), core.IssueOpsHandoffPrepareClock{})
+	result, err := core.RecoverIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffRecoverRequest{ID: *id, Action: *action, Confirm: *confirm, Force: *force, Reason: *reason}, orca.New(), core.IssueOpsHandoffPrepareClock{})
 	return printIssueOpsHandoffValue(result, *jsonOut, err)
 }
 

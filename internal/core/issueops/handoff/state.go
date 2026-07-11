@@ -40,6 +40,7 @@ type Fence struct {
 type PrepareRequest struct {
 	Attempt         int
 	OwnershipEpoch  string
+	AttemptBaseHead string
 	CoordinatorRoot string
 	WorkerRoot      string
 	Agent           string
@@ -76,14 +77,22 @@ func Prepare(record model.IssueOpsRecord, req PrepareRequest) (model.IssueOpsRec
 	if strings.TrimSpace(req.OwnershipEpoch) == "" {
 		return record, fmt.Errorf("ownership epoch is required")
 	}
+	if strings.TrimSpace(req.AttemptBaseHead) == "" {
+		return record, fmt.Errorf("attempt base head is required")
+	}
+	agent, err := NormalizeAgent(req.Agent)
+	if err != nil {
+		return record, err
+	}
 	prepared := record
 	prepared.ExecutionHandoff = &model.IssueOpsExecutionHandoff{
 		ProtocolVersion: ProtocolVersion,
 		State:           StateCoordinatorPreparing,
 		Attempt:         req.Attempt,
 		OwnershipEpoch:  strings.TrimSpace(req.OwnershipEpoch),
+		AttemptBaseHead: strings.TrimSpace(req.AttemptBaseHead),
 		Driver:          "orca",
-		Agent:           strings.TrimSpace(req.Agent),
+		Agent:           agent,
 		CoordinatorRoot: strings.TrimSpace(req.CoordinatorRoot),
 		WorkerRoot:      strings.TrimSpace(req.WorkerRoot),
 		PreparedAt:      req.Now,
@@ -92,7 +101,7 @@ func Prepare(record model.IssueOpsRecord, req PrepareRequest) (model.IssueOpsRec
 	return prepared, nil
 }
 
-func SetContext(record model.IssueOpsRecord, fence Fence, version int, sha, now string) (model.IssueOpsRecord, error) {
+func SetContext(record model.IssueOpsRecord, fence Fence, version int, sha, sourceSHA string, options model.IssueOpsExecutionHandoffContextOptions, now string) (model.IssueOpsRecord, error) {
 	updated, handoff, err := fencedCopy(record, fence, false)
 	if err != nil {
 		return record, err
@@ -101,11 +110,15 @@ func SetContext(record model.IssueOpsRecord, fence Fence, version int, sha, now 
 		return record, fmt.Errorf("set context requires %s state", StateCoordinatorPreparing)
 	}
 	sha = strings.TrimSpace(sha)
-	if version < 1 || len(sha) != 64 {
-		return record, fmt.Errorf("valid context version and sha256 are required")
+	sourceSHA = strings.TrimSpace(sourceSHA)
+	if version < 1 || len(sha) != 64 || len(sourceSHA) != 64 {
+		return record, fmt.Errorf("valid context version, sha256, and source sha256 are required")
 	}
 	handoff.ContextVersion = version
 	handoff.ContextSHA256 = sha
+	handoff.ContextSourceSHA256 = sourceSHA
+	canonicalOptions := CanonicalContextOptions(ContextOptionsFromModel(options))
+	handoff.ContextOptions = cloneContextOptions(&canonicalOptions)
 	handoff.UpdatedAt = now
 	return updated, nil
 }
@@ -123,10 +136,7 @@ func BeginOperation(record model.IssueOpsRecord, fence Fence, pending model.Issu
 	}
 	cleanPending := clonePending(pending)
 	if handoff.PendingOperation != nil {
-		if reflect.DeepEqual(handoff.PendingOperation, &cleanPending) {
-			return updated, nil
-		}
-		return record, fmt.Errorf("pending operation %s requires recovery", handoff.PendingOperation.Kind)
+		return record, fmt.Errorf("pending operation %s is already in progress or requires recovery", handoff.PendingOperation.Kind)
 	}
 	handoff.PendingOperation = &cleanPending
 	handoff.UpdatedAt = pending.StartedAt
@@ -156,6 +166,7 @@ func Dispatch(record model.IssueOpsRecord, fence Fence, identity model.IssueOpsO
 	}
 	cleanIdentity := cloneOrca(identity)
 	handoff.Orca = &cleanIdentity
+	handoff.DeliveryMode = "inject"
 	handoff.State = StateDispatched
 	handoff.DispatchedAt = now
 	handoff.UpdatedAt = now
@@ -211,19 +222,29 @@ func Finish(record model.IssueOpsRecord, req FinishRequest) (model.IssueOpsRecor
 		return record, err
 	}
 	cleanResult := cloneResult(req.Result)
+	if handoff.WorkerSession == nil || *handoff.WorkerSession != cleanSession(req.Worker) {
+		return record, fmt.Errorf("finish requires the claimed worker")
+	}
 	if handoff.Result != nil && reflect.DeepEqual(handoff.Result, &cleanResult) {
 		return updated, nil
 	}
-	if handoff.State != StateClaimed || handoff.WorkerSession == nil || *handoff.WorkerSession != cleanSession(req.Worker) {
+	if handoff.State != StateClaimed {
 		return record, fmt.Errorf("finish requires the claimed worker")
 	}
 	switch cleanResult.Outcome {
 	case OutcomeCompleted:
-		if strings.TrimSpace(cleanResult.FinalHead) == "" || len(cleanResult.Verification) == 0 || len(cleanResult.CleanupReceipts) == 0 {
-			return record, fmt.Errorf("completed finish requires head, verification, and cleanup receipts")
+		candidate := *handoff
+		candidate.Result = &cleanResult
+		if !validCompletedResult(&candidate) {
+			return record, fmt.Errorf("completed finish requires head, Turing report, verification, and cleanup receipts")
 		}
 		handoff.State = StateSubmitted
 	case OutcomeFailed:
+		candidate := *handoff
+		candidate.Result = &cleanResult
+		if !validFailedResult(&candidate) {
+			return record, fmt.Errorf("failed finish requires exact Orca task and dispatch identity")
+		}
 		handoff.State = StateClosed
 		handoff.ClosedDisposition = DispositionWorkerFailed
 	default:
@@ -261,9 +282,12 @@ func MarkRecoveryRequired(record model.IssueOpsRecord, fence Fence, failure mode
 	if err != nil {
 		return record, err
 	}
+	if handoff.State != StateCoordinatorPreparing || handoff.PendingOperation == nil {
+		return record, fmt.Errorf("recovery requires coordinator_preparing with a pending operation")
+	}
 	cleanFailure := failure
 	cleanFailure.Code = strings.TrimSpace(cleanFailure.Code)
-	cleanFailure.Message = strings.TrimSpace(cleanFailure.Message)
+	cleanFailure.Message = redact(cleanFailure.Message)
 	if cleanFailure.Code == "" {
 		return record, fmt.Errorf("recovery failure code is required")
 	}
@@ -273,7 +297,39 @@ func MarkRecoveryRequired(record model.IssueOpsRecord, fence Fence, failure mode
 	return updated, nil
 }
 
+func MarkCleanupOnlyWorktree(record model.IssueOpsRecord, fence Fence, artifact model.IssueOpsOrcaCleanupArtifact, failure model.IssueOpsExecutionHandoffFailure) (model.IssueOpsRecord, error) {
+	updated, current, err := fencedCopy(record, fence, false)
+	if err != nil {
+		return record, err
+	}
+	if (current.State != StateCoordinatorPreparing && current.State != StateRecoveryRequired) || current.PendingOperation == nil || current.PendingOperation.Kind != OperationWorktreeCreate {
+		return record, fmt.Errorf("cleanup-only worktree recovery requires a pending worktree_create operation")
+	}
+	artifact.Kind = strings.TrimSpace(artifact.Kind)
+	artifact.ID = strings.TrimSpace(artifact.ID)
+	artifact.InstanceID = strings.TrimSpace(artifact.InstanceID)
+	artifact.Path = strings.TrimSpace(artifact.Path)
+	artifact.Reason = redact(artifact.Reason)
+	if artifact.Kind != "worktree" || artifact.ID == "" || artifact.Reason == "" {
+		return record, fmt.Errorf("cleanup-only worktree evidence requires exact kind, id, and reason")
+	}
+	failure.Code = strings.TrimSpace(failure.Code)
+	failure.Message = redact(failure.Message)
+	if failure.Code != "worktree_cleanup_only" {
+		return record, fmt.Errorf("cleanup-only worktree recovery requires worktree_cleanup_only failure code")
+	}
+	current.PendingOperation = nil
+	current.State = StateRecoveryRequired
+	current.CleanupOnly = &artifact
+	current.Failure = &failure
+	current.UpdatedAt = failure.At
+	return updated, nil
+}
+
 func fencedCopy(record model.IssueOpsRecord, fence Fence, requireContext bool) (model.IssueOpsRecord, *model.IssueOpsExecutionHandoff, error) {
+	if err := ValidateEnvelope(record); err != nil {
+		return record, nil, err
+	}
 	if record.ExecutionHandoff == nil {
 		return record, nil, fmt.Errorf("execution handoff is required")
 	}
@@ -311,7 +367,27 @@ func cloneHandoff(value model.IssueOpsExecutionHandoff) model.IssueOpsExecutionH
 		v := *value.Failure
 		cloned.Failure = &v
 	}
+	if value.CleanupOnly != nil {
+		v := *value.CleanupOnly
+		cloned.CleanupOnly = &v
+	}
+	if value.ContextOptions != nil {
+		cloned.ContextOptions = cloneContextOptions(value.ContextOptions)
+	}
 	return cloned
+}
+
+func cloneContextOptions(value *model.IssueOpsExecutionHandoffContextOptions) *model.IssueOpsExecutionHandoffContextOptions {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	cloned.CriteriaIDs = append([]string(nil), value.CriteriaIDs...)
+	cloned.RequiredDocs = append([]string(nil), value.RequiredDocs...)
+	cloned.RequiredSkills = append([]string(nil), value.RequiredSkills...)
+	cloned.VerificationCommands = append([]string(nil), value.VerificationCommands...)
+	cloned.StopConditions = append([]string(nil), value.StopConditions...)
+	return &cloned
 }
 
 func clonePending(value model.IssueOpsExecutionHandoffPendingOperation) model.IssueOpsExecutionHandoffPendingOperation {
@@ -327,10 +403,49 @@ func cloneOrca(value model.IssueOpsOrcaIdentity) model.IssueOpsOrcaIdentity {
 }
 
 func cloneResult(value model.IssueOpsExecutionHandoffResult) model.IssueOpsExecutionHandoffResult {
-	value.ChangedFiles = append([]string(nil), value.ChangedFiles...)
-	value.Verification = append([]string(nil), value.Verification...)
-	value.CleanupReceipts = append([]string(nil), value.CleanupReceipts...)
+	value.Outcome = strings.TrimSpace(value.Outcome)
+	value.FinalHead = strings.TrimSpace(value.FinalHead)
+	value.TuringReportPath = strings.TrimSpace(value.TuringReportPath)
+	value.EvidenceDigest = redact(value.EvidenceDigest)
+	value.TaskID = strings.TrimSpace(value.TaskID)
+	value.DispatchID = strings.TrimSpace(value.DispatchID)
+	value.ChangedFiles = cleanChangedFileList(value.ChangedFiles)
+	value.Verification = cleanResultList(value.Verification)
+	value.CleanupReceipts = cleanResultList(value.CleanupReceipts)
 	return value
+}
+
+func cleanChangedFileList(values []string) []string {
+	clean := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		clean = append(clean, value)
+	}
+	return clean
+}
+
+func cleanResultList(values []string) []string {
+	clean := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		value = redact(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		clean = append(clean, value)
+	}
+	return clean
 }
 
 func cleanSession(value model.IssueOpsHostSessionIdentity) model.IssueOpsHostSessionIdentity {

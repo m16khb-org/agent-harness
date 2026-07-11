@@ -22,6 +22,16 @@ func TestCommandPolicyRedactsAndDeniesSecretLikeArgs(t *testing.T) {
 	}
 }
 
+func TestRedactFreeformRecognizesAuthorizationBearerHeaderWithOpaqueValue(t *testing.T) {
+	const opaque = "opaque-bearer-value-7F3A"
+	if got := RedactFreeform("Authorization: Bearer " + opaque); got != "<redacted>" {
+		t.Fatalf("Authorization Bearer header was not redacted: %q", got)
+	}
+	if got := RedactFreeform("api_key=" + opaque); got != "<redacted>" {
+		t.Fatalf("api_key assignment was not redacted independently: %q", got)
+	}
+}
+
 func TestCommandPolicyCatalogDrivesAllowAndDenyDecisions(t *testing.T) {
 	root := t.TempDir()
 	cases := []struct {

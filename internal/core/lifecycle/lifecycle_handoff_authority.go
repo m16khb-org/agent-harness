@@ -1,0 +1,1061 @@
+package lifecycle
+
+import (
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/core/issueops/handoff"
+	issueopsmodel "agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/searchrouting"
+)
+
+type exactIssueOpsCommand struct {
+	path   string
+	tokens []string
+	start  int
+}
+
+func parseExactIssueOpsCommand(command string) (exactIssueOpsCommand, bool) {
+	command = strings.TrimSpace(command)
+	if command == "" || commandparse.HasUnquotedControlOperator(command) || commandparse.HasActiveCommandSubstitution(command) || commandparse.HasActiveOutputRedirect(command) || commandparse.HasActiveParameterOrTildeExpansion(command) || commandparse.HasActivePathnameExpansion(command) || commandparse.HasActiveShellSpecialQuoting(command) || commandparse.HasActiveZshEqualsExpansion(command) {
+		return exactIssueOpsCommand{}, false
+	}
+	tokens := commandparse.SplitCommandTokens(command)
+	if len(tokens) < 3 || (tokens[0] != "agent-harness" && tokens[0] != "./bin/agent-harness") || tokens[1] != "issueops" {
+		return exactIssueOpsCommand{}, false
+	}
+	parts := []string{tokens[2]}
+	start := 3
+	if len(tokens) > 3 {
+		switch tokens[2] {
+		case "handoff", "worktree", "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean":
+			if strings.HasPrefix(tokens[3], "--") {
+				return exactIssueOpsCommand{}, false
+			}
+			parts = append(parts, tokens[3])
+			start = 4
+		}
+	}
+	return exactIssueOpsCommand{path: strings.Join(parts, " "), tokens: tokens, start: start}, true
+}
+
+func exactFlags(command exactIssueOpsCommand, values, booleans, repeatable map[string]bool) (map[string][]string, bool) {
+	parsed := map[string][]string{}
+	for i := command.start; i < len(command.tokens); i++ {
+		token := command.tokens[i]
+		if !strings.HasPrefix(token, "--") {
+			return nil, false
+		}
+		name, value, hasValue := token, "", false
+		if at := strings.Index(token, "="); at >= 0 {
+			name, value, hasValue = token[:at], token[at+1:], true
+		}
+		switch {
+		case booleans[name]:
+			if hasValue || len(parsed[name]) > 0 {
+				return nil, false
+			}
+			parsed[name] = []string{"true"}
+		case values[name]:
+			if !hasValue {
+				if i+1 >= len(command.tokens) || strings.HasPrefix(command.tokens[i+1], "--") {
+					return nil, false
+				}
+				i++
+				value = command.tokens[i]
+			}
+			if !repeatable[name] && len(parsed[name]) > 0 {
+				return nil, false
+			}
+			parsed[name] = append(parsed[name], value)
+		default:
+			return nil, false
+		}
+	}
+	return parsed, true
+}
+
+func commandSpec(path string) (map[string]bool, map[string]bool, map[string]bool, bool) {
+	v := func(names ...string) map[string]bool {
+		out := map[string]bool{}
+		for _, name := range names {
+			out[name] = true
+		}
+		return out
+	}
+	b := func(names ...string) map[string]bool { return v(names...) }
+	r := map[string]bool{}
+	switch path {
+	case "status":
+		return v("--id"), b("--json"), r, true
+	case "resume":
+		return v("--repo", "--id"), b("--bind", "--json"), r, true
+	case "link-plan":
+		return v("--id", "--plan-path"), b("--json"), r, true
+	case "compatibility review":
+		values := v("--id", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker")
+		for _, name := range []string{"--backward-compatibility", "--side-effect", "--verification", "--blocker"} {
+			r[name] = true
+		}
+		return values, b("--approved", "--json"), r, true
+	case "execution decide":
+		values := v("--id", "--auto", "--hook-block", "--human-gate", "--subagent-use", "--subagent-rationale", "--subagent-plan-file")
+		for _, name := range []string{"--auto", "--hook-block", "--human-gate"} {
+			r[name] = true
+		}
+		return values, b("--json"), r, true
+	case "devils-advocate review":
+		values := v("--id", "--verdict", "--finding", "--waiver-rationale")
+		r["--finding"] = true
+		return values, b("--waive", "--json"), r, true
+	case "phase":
+		return v("--id", "--to"), b("--force", "--json"), r, true
+	case "worktree prepare":
+		return v("--id", "--orchestrator", "--agent"), b("--confirm", "--json"), r, true
+	case "worktree prepare-tools":
+		return v("--id"), b("--json"), r, true
+	case "handoff start":
+		values := v("--id", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
+		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition"} {
+			r[name] = true
+		}
+		return values, b("--confirm", "--json"), r, true
+	case "handoff recover":
+		return v("--id", "--action", "--reason"), b("--confirm", "--force", "--json"), r, true
+	case "handoff accept":
+		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--final-head"), b("--json"), r, true
+	case "handoff claim":
+		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--orca-worktree-id"), b("--json"), r, true
+	case "handoff finish":
+		values := v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--outcome", "--final-head", "--changed-file", "--turing-report", "--verification", "--cleanup-receipt", "--evidence-digest", "--task-id", "--dispatch-id")
+		for _, name := range []string{"--changed-file", "--verification", "--cleanup-receipt"} {
+			r[name] = true
+		}
+		return values, b("--json"), r, true
+	case "heartbeat":
+		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id"), b("--json"), r, true
+	default:
+		return nil, nil, nil, false
+	}
+}
+
+func parsedExactIssueOps(command string) (exactIssueOpsCommand, map[string][]string, bool) {
+	parsed, ok := parseExactIssueOpsCommand(command)
+	if !ok {
+		return exactIssueOpsCommand{}, nil, false
+	}
+	values, booleans, repeatable, ok := commandSpec(parsed.path)
+	if !ok {
+		return exactIssueOpsCommand{}, nil, false
+	}
+	flags, ok := exactFlags(parsed, values, booleans, repeatable)
+	return parsed, flags, ok
+}
+
+func oneFlag(flags map[string][]string, name string) (string, bool) {
+	values := flags[name]
+	return func() (string, bool) {
+		if len(values) != 1 {
+			return "", false
+		}
+		return values[0], true
+	}()
+}
+
+func exactLifecycleID(command string) (string, bool) {
+	_, flags, ok := parsedExactIssueOps(command)
+	if !ok {
+		return "", false
+	}
+	return oneFlag(flags, "--id")
+}
+
+func nativeSessionMatches(req HookToolUseLifecycleRequest, session *issueopsmodel.IssueOpsHostSessionIdentity) bool {
+	if session == nil || !strings.EqualFold(strings.TrimSpace(req.Host), strings.TrimSpace(session.Host)) || strings.TrimSpace(req.SessionID) == "" || strings.TrimSpace(req.SessionID) != strings.TrimSpace(session.SessionID) {
+		return false
+	}
+	nativeAgent, persistedAgent := strings.TrimSpace(req.AgentID), strings.TrimSpace(session.AgentID)
+	if persistedAgent == "" {
+		return nativeAgent == ""
+	}
+	return nativeAgent == persistedAgent
+}
+
+func exactFenceFlags(flags map[string][]string, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	attempt, aok := oneFlag(flags, "--attempt")
+	epoch, eok := oneFlag(flags, "--ownership-epoch")
+	contextSHA, cok := oneFlag(flags, "--context-sha256")
+	return h != nil && aok && attempt == strconv.Itoa(h.Attempt) && eok && epoch == h.OwnershipEpoch && cok && contextSHA == h.ContextSHA256
+}
+
+func eventIdentityFlagsMatch(req HookToolUseLifecycleRequest, flags map[string][]string) bool {
+	host, hok := oneFlag(flags, "--host")
+	session, sok := oneFlag(flags, "--session-id")
+	if !hok || !sok || !strings.EqualFold(host, strings.TrimSpace(req.Host)) || session != strings.TrimSpace(req.SessionID) {
+		return false
+	}
+	agent, aok := oneFlag(flags, "--agent-id")
+	if strings.TrimSpace(req.AgentID) == "" {
+		return !aok
+	}
+	return aok && agent == strings.TrimSpace(req.AgentID)
+}
+
+func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	command, flags, ok := parsedExactIssueOps(req.Command)
+	if !ok {
+		return false
+	}
+	id, ok := oneFlag(flags, "--id")
+	if !ok || id != record.ID || record.ExecutionHandoff == nil {
+		return false
+	}
+	h := record.ExecutionHandoff
+	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
+	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
+	switch command.path {
+	case "status", "resume":
+		return true
+	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare", "worktree prepare-tools", "handoff start", "handoff recover", "handoff accept":
+		return source && coordinatorLifecycleStateAllows(command.path, record)
+	case "phase":
+		return source && h.State == handoff.StateCoordinatorPreparing
+	case "handoff claim":
+		cwd, cwdOK := oneFlag(flags, "--cwd")
+		worktreeID, wtOK := oneFlag(flags, "--orca-worktree-id")
+		return worker && currentWorkerBranchMatches(record) && h.State == handoff.StateDispatched && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && worktreeID == h.Orca.WorktreeID
+	case "heartbeat", "handoff finish":
+		return worker && currentWorkerBranchMatches(record) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.WorkerSession) && eventIdentityFlagsMatch(req, flags)
+	default:
+		return false
+	}
+}
+
+func coordinatorLifecycleStateAllows(path string, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil {
+		return false
+	}
+	switch path {
+	case "phase":
+		return h.State == handoff.StateCoordinatorPreparing
+	case "handoff accept":
+		return h.State == handoff.StateSubmitted || h.State == handoff.StateClosed
+	case "handoff recover":
+		return h.State == handoff.StateRecoveryRequired || h.State == handoff.StateSubmitted || h.State == handoff.StateClosed || h.State == handoff.StateClaimed
+	case "handoff start":
+		return true // active-attempt repeats are read-only projections
+	default:
+		return h.State == handoff.StateCoordinatorPreparing
+	}
+}
+
+func exactReadOnlyShellCommand(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	command, flags, ok := parsedExactIssueOps(req.Command)
+	if ok && (command.path == "status" || command.path == "resume") {
+		id, idOK := oneFlag(flags, "--id")
+		if idOK && id != record.ID {
+			return false
+		}
+		return true
+	}
+	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) == 0 {
+		return false
+	}
+	switch tokens[0] {
+	case "pwd":
+		return len(tokens) == 1
+	case "rg":
+		return safeRipgrepArgs(tokens[1:])
+	case "git":
+		i := commandAfterDirectoryOption(tokens, 1)
+		if i < 0 || i >= len(tokens) {
+			return false
+		}
+		switch tokens[i] {
+		case "status", "diff", "log", "show", "rev-parse":
+			for _, token := range tokens[i+1:] {
+				if token == "-o" || strings.HasPrefix(token, "--output") || token == "--ext-diff" || token == "--textconv" || strings.HasPrefix(token, "--exec") {
+					return false
+				}
+			}
+			return true
+		}
+	case "orca":
+		return (len(tokens) == 4 && tokens[1] == "terminal" && tokens[2] == "list" && tokens[3] == "--json") ||
+			(len(tokens) == 4 && tokens[1] == "orchestration" && tokens[2] == "task-list" && tokens[3] == "--json")
+	}
+	return false
+}
+
+func safeRipgrepArgs(tokens []string) bool {
+	valueOptions := map[string]bool{
+		"-g": true, "--glob": true, "-t": true, "--type": true, "-T": true, "--type-not": true,
+		"-m": true, "--max-count": true, "-A": true, "--after-context": true, "-B": true, "--before-context": true,
+		"-C": true, "--context": true, "--color": true, "--sort": true, "--sortr": true,
+	}
+	boolOptions := map[string]bool{
+		"-n": true, "--line-number": true, "--files": true, "--hidden": true, "--no-ignore": true,
+		"-F": true, "--fixed-strings": true, "--json": true, "-l": true, "--files-with-matches": true,
+		"--stats": true, "--pcre2": true, "-U": true, "--multiline": true, "--no-heading": true,
+		"--column": true, "--count": true, "--count-matches": true, "--no-messages": true,
+	}
+	for i := 0; i < len(tokens); i++ {
+		token := tokens[i]
+		if !strings.HasPrefix(token, "-") || token == "-" {
+			continue
+		}
+		name := token
+		if at := strings.Index(token, "="); at >= 0 {
+			name = token[:at]
+			if !valueOptions[name] {
+				return false
+			}
+			continue
+		}
+		if boolOptions[name] {
+			continue
+		}
+		if valueOptions[name] {
+			if i+1 >= len(tokens) || strings.HasPrefix(tokens[i+1], "-") {
+				return false
+			}
+			i++
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func unresolvedNestedShellMutation(command string) bool {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
+	if len(tokens) > 0 {
+		switch tokens[0] {
+		case "eval", "source", ".":
+			return true
+		case "builtin":
+			if len(tokens) > 1 && tokens[1] == "eval" {
+				return true
+			}
+		}
+	}
+	for i, token := range tokens {
+		name := searchrouting.SearchTokenName(token)
+		switch name {
+		case "python", "python3":
+			for _, arg := range tokens[i+1:] {
+				if arg == "-c" {
+					return true
+				}
+			}
+		case "node":
+			for _, arg := range tokens[i+1:] {
+				if arg == "-e" || arg == "--eval" || strings.HasPrefix(arg, "--eval=") {
+					return true
+				}
+			}
+		case "perl":
+			for j := i + 1; j < len(tokens); j++ {
+				arg := tokens[j]
+				if arg != "-e" && !strings.HasPrefix(arg, "-e=") {
+					continue
+				}
+				scriptEnd := j
+				if arg == "-e" {
+					if j+1 >= len(tokens) {
+						return true
+					}
+					scriptEnd = j + 1
+				}
+				for _, operand := range tokens[scriptEnd+1:] {
+					if operand != "" && !strings.HasPrefix(operand, "-") {
+						return false
+					}
+				}
+				return true
+			}
+		case "awk", "gawk", "mawk":
+			for _, arg := range tokens[i+1:] {
+				if strings.Contains(strings.ToLower(arg), "system(") {
+					return true
+				}
+			}
+		case "bash", "sh", "zsh":
+			for j := i + 1; j < len(tokens); j++ {
+				arg := tokens[j]
+				if strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") && strings.Contains(strings.TrimPrefix(arg, "-"), "c") {
+					return j+1 >= len(tokens) || len(worktreepathShellPaths(".", tokens[j+1])) == 0
+				}
+			}
+		}
+	}
+	return false
+}
+
+func worktreepathShellPaths(repo, command string) []string {
+	return shellCommandWorktreeGuardPaths(repo, command)
+}
+
+func commandAfterDirectoryOption(tokens []string, start int) int {
+	for start < len(tokens) {
+		token := tokens[start]
+		if token == "-C" {
+			if start+1 >= len(tokens) || strings.HasPrefix(tokens[start+1], "-") {
+				return -1
+			}
+			start += 2
+			continue
+		}
+		if strings.HasPrefix(token, "-C=") {
+			if strings.TrimPrefix(token, "-C=") == "" {
+				return -1
+			}
+			start++
+			continue
+		}
+		return start
+	}
+	return -1
+}
+
+func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateClosed || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) {
+		return false
+	}
+	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) < 2 || tokens[0] != "orca" {
+		return false
+	}
+	if len(tokens) >= 3 && tokens[1] == "orchestration" && tokens[2] == "task-update" {
+		if h.Orca == nil || h.Orca.TaskID == "" {
+			return false
+		}
+		id, idOK := uniqueTokenFlag(tokens[3:], "--id")
+		status, statusOK := uniqueTokenFlag(tokens[3:], "--status")
+		result, resultOK := uniqueTokenFlag(tokens[3:], "--result")
+		wantStatus := "failed"
+		if h.ClosedDisposition == handoff.DispositionAccepted {
+			wantStatus = "completed"
+		}
+		return idOK && id == h.Orca.TaskID && statusOK && status == wantStatus && (!resultOK || len(result) <= 4096) && onlyTokenFlags(tokens[3:], map[string]bool{"--id": true, "--status": true, "--result": true}, map[string]bool{"--json": true})
+	}
+	if len(tokens) >= 3 && tokens[1] == "worktree" && tokens[2] == "rm" {
+		selector, ok := uniqueTokenFlag(tokens[3:], "--worktree")
+		worktreeID := ""
+		if h.CleanupOnly != nil && h.CleanupOnly.Kind == "worktree" {
+			worktreeID = h.CleanupOnly.ID
+		} else if h.Orca != nil {
+			worktreeID = h.Orca.WorktreeID
+		}
+		return worktreeID != "" && ok && selector == "id:"+worktreeID && onlyTokenFlags(tokens[3:], map[string]bool{"--worktree": true}, map[string]bool{"--force": true, "--json": true})
+	}
+	return false
+}
+
+func acceptedCoordinatorDownstreamCommand(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateClosed || h.ClosedDisposition != handoff.DispositionAccepted || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+		return false
+	}
+	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) == 0 {
+		return false
+	}
+	switch tokens[0] {
+	case "git":
+		return acceptedGitPush(tokens, record)
+	case "gh":
+		if len(tokens) <= 2 || tokens[1] != "pr" {
+			return false
+		}
+		if tokens[2] == "create" {
+			return acceptedGitHubPRCreate(tokens[3:], record)
+		}
+		return allowedAcceptedReviewSubcommand(tokens[2], map[string]bool{"view": true, "list": true, "status": true, "checks": true, "diff": true})
+	case "glab":
+		if len(tokens) <= 2 || tokens[1] != "mr" {
+			return false
+		}
+		if tokens[2] == "create" {
+			return acceptedGitLabMRCreate(tokens[3:], record)
+		}
+		return allowedAcceptedReviewSubcommand(tokens[2], map[string]bool{"view": true, "list": true, "status": true, "diff": true})
+	case "agent-harness", "./bin/agent-harness":
+		return acceptedIssueOpsDownstreamCommand(req.Command, record)
+	}
+	return false
+}
+
+func acceptedIssueOpsDownstreamCommand(commandText string, record IssueOpsRecord) bool {
+	command, ok := parseExactIssueOpsCommand(commandText)
+	if !ok {
+		return false
+	}
+	values := map[string]bool{}
+	booleans := map[string]bool{"--json": true}
+	repeatable := map[string]bool{}
+	required := []string{"--id"}
+	switch command.path {
+	case "phase":
+		values["--id"], values["--to"] = true, true
+		required = append(required, "--to")
+	case "feedback add":
+		for _, name := range []string{"--id", "--source", "--body", "--classification"} {
+			values[name] = true
+		}
+		required = append(required, "--source", "--body")
+	case "feedback resolve":
+		for _, name := range []string{"--id", "--index", "--resolution"} {
+			values[name] = true
+		}
+		required = append(required, "--index", "--resolution")
+	case "feedback mark-issue-updated":
+		values["--id"] = true
+	case "pr-readiness":
+		values["--id"] = true
+		booleans["--strict"] = true
+	case "ai-slop-clean record":
+		for _, name := range []string{"--id", "--category", "--verification"} {
+			values[name] = true
+		}
+		repeatable["--category"], repeatable["--verification"] = true, true
+		required = append(required, "--category", "--verification")
+	case "cleanup status":
+		values["--id"] = true
+		booleans["--merged"] = true
+	case "remote verify-artifact":
+		for _, name := range []string{"--id", "--provider", "--kind", "--url", "--label", "--labels", "--assignee", "--assignees"} {
+			values[name] = true
+		}
+		for _, name := range []string{"--label", "--labels", "--assignee", "--assignees"} {
+			repeatable[name] = true
+		}
+		required = append(required, "--provider", "--kind", "--url")
+	default:
+		return false
+	}
+	flags, ok := exactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return false
+	}
+	for _, name := range required {
+		if repeatable[name] {
+			if len(flags[name]) == 0 {
+				return false
+			}
+			for _, value := range flags[name] {
+				if value == "" {
+					return false
+				}
+			}
+			continue
+		}
+		value, present := oneFlag(flags, name)
+		if !present || value == "" {
+			return false
+		}
+	}
+	id, _ := oneFlag(flags, "--id")
+	if id != record.ID {
+		return false
+	}
+	switch command.path {
+	case "phase":
+		to, _ := oneFlag(flags, "--to")
+		return to == "ai-slop-clean" || to == "feedback" || to == "pr"
+	case "remote verify-artifact":
+		provider, _ := oneFlag(flags, "--provider")
+		kind, _ := oneFlag(flags, "--kind")
+		labels := append(append([]string(nil), flags["--label"]...), flags["--labels"]...)
+		assignees := append(append([]string(nil), flags["--assignee"]...), flags["--assignees"]...)
+		return (provider == "github" && kind == "pr" || provider == "gitlab" && kind == "mr") && len(labels) > 0 && len(assignees) > 0
+	default:
+		return true
+	}
+}
+
+func acceptedGitPush(tokens []string, record IssueOpsRecord) bool {
+	if len(tokens) < 4 || tokens[0] != "git" || tokens[1] != "push" || record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil {
+		return false
+	}
+	branch := strings.TrimSpace(record.Branch)
+	baseRef := strings.TrimSpace(record.ExecutionHandoff.Orca.BaseRef)
+	prefix, suffix := "refs/remotes/", "/"+branch
+	if branch == "" || !strings.HasPrefix(baseRef, prefix) || !strings.HasSuffix(baseRef, suffix) {
+		return false
+	}
+	remote := strings.TrimSuffix(strings.TrimPrefix(baseRef, prefix), suffix)
+	if remote == "" || strings.ContainsAny(remote, " \t\r\n") {
+		return false
+	}
+	args := tokens[2:]
+	if args[0] == "--set-upstream" || args[0] == "-u" {
+		args = args[1:]
+	}
+	if len(args) != 2 || args[0] != remote {
+		return false
+	}
+	exactRefspec := "refs/heads/" + branch + ":refs/heads/" + branch
+	return args[1] == branch || args[1] == exactRefspec
+}
+
+func allowedAcceptedReviewSubcommand(value string, allowed map[string]bool) bool {
+	return allowed[value]
+}
+
+func acceptedGitHubPRCreate(tokens []string, record IssueOpsRecord) bool {
+	if record.BranchPrepare == nil {
+		return false
+	}
+	head, headOK := uniqueAliasedTokenFlag(tokens, "--head", "-H")
+	base, baseOK := uniqueAliasedTokenFlag(tokens, "--base", "-B")
+	if !headOK || !baseOK || head != strings.TrimSpace(record.Branch) || base != strings.TrimSpace(record.BranchPrepare.BaseBranch) || aliasedBoolCount(tokens, "--draft", "-d") != 1 {
+		return false
+	}
+	return onlyAcceptedCreateFlags(tokens,
+		map[string]bool{"--head": true, "-H": true, "--base": true, "-B": true, "--title": true, "--body": true, "--body-file": true, "--label": true, "--assignee": true, "--reviewer": true, "--milestone": true, "--project": true},
+		map[string]bool{"--draft": true, "-d": true})
+}
+
+func acceptedGitLabMRCreate(tokens []string, record IssueOpsRecord) bool {
+	if record.BranchPrepare == nil {
+		return false
+	}
+	source, sourceOK := uniqueAliasedTokenFlag(tokens, "--source-branch", "-s")
+	target, targetOK := uniqueAliasedTokenFlag(tokens, "--target-branch", "-b")
+	if !sourceOK || !targetOK || source != strings.TrimSpace(record.Branch) || target != strings.TrimSpace(record.BranchPrepare.BaseBranch) || aliasedBoolCount(tokens, "--draft") != 1 {
+		return false
+	}
+	return onlyAcceptedCreateFlags(tokens,
+		map[string]bool{"--source-branch": true, "-s": true, "--target-branch": true, "-b": true, "--title": true, "--description": true, "--label": true, "--assignee": true, "--reviewer": true, "--milestone": true},
+		map[string]bool{"--draft": true})
+}
+
+func uniqueAliasedTokenFlag(tokens []string, names ...string) (string, bool) {
+	value, found := "", false
+	for i := 0; i < len(tokens); i++ {
+		for _, name := range names {
+			if tokens[i] == name {
+				if found || i+1 >= len(tokens) || strings.HasPrefix(tokens[i+1], "-") {
+					return "", false
+				}
+				value, found = tokens[i+1], true
+				i++
+				break
+			}
+			if strings.HasPrefix(tokens[i], name+"=") {
+				if found || strings.TrimPrefix(tokens[i], name+"=") == "" {
+					return "", false
+				}
+				value, found = strings.TrimPrefix(tokens[i], name+"="), true
+				break
+			}
+		}
+	}
+	return value, found
+}
+
+func aliasedBoolCount(tokens []string, names ...string) int {
+	count := 0
+	for _, token := range tokens {
+		for _, name := range names {
+			if token == name {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func onlyAcceptedCreateFlags(tokens []string, valueFlags, boolFlags map[string]bool) bool {
+	for i := 0; i < len(tokens); i++ {
+		name := tokens[i]
+		if at := strings.Index(name, "="); at >= 0 {
+			if !valueFlags[name[:at]] || at == len(name)-1 {
+				return false
+			}
+			continue
+		}
+		if boolFlags[name] {
+			continue
+		}
+		if !valueFlags[name] || i+1 >= len(tokens) {
+			return false
+		}
+		i++
+	}
+	return true
+}
+
+func currentWorkerBranchMatches(record IssueOpsRecord) bool {
+	return record.ExecutionHandoff != nil && strings.TrimSpace(record.Branch) != "" && gitBranchFromHead(record.ExecutionHandoff.WorkerRoot) == strings.TrimSpace(record.Branch)
+}
+
+func claimedWorkerRoleViolation(command string) string {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
+	if len(tokens) == 0 {
+		return "empty worker shell command"
+	}
+	if gitTokens, ok := claimedWorkerGitTokens(tokens); ok {
+		i := commandAfterGitRepositoryOptions(gitTokens, 1)
+		if i < 0 || i >= len(gitTokens) {
+			return "unresolved git command is not allowed for the worker"
+		}
+		switch gitTokens[i] {
+		case "add", "commit", "status", "diff", "log", "show", "rev-parse":
+			return ""
+		case "branch":
+			if len(gitTokens) == i+2 && gitTokens[i+1] == "--show-current" {
+				return ""
+			}
+		}
+		return "push, remote, branch switching, history rewrite, worktree, and cleanup operations are coordinator-owned"
+	}
+	protected := map[string]bool{"git": true, "gh": true, "glab": true, "orca": true, "agent-harness": true}
+	first := tokens[0]
+	base := filepath.Base(first)
+	if protected[base] && first != base && first != "./bin/agent-harness" {
+		return "executable aliases and path-shadowed controller commands are not allowed"
+	}
+	for i := 1; i < len(tokens); i++ {
+		if protected[filepath.Base(tokens[i])] {
+			return "wrapped controller commands are coordinator-owned"
+		}
+	}
+	switch first {
+	case "gh", "glab", "orca":
+		return "remote, Orca, and cleanup controllers are coordinator-owned"
+	case "agent-harness", "./bin/agent-harness":
+		if len(tokens) > 1 && tokens[1] == "issueops" {
+			return "IssueOps coordinator lifecycle commands are not worker implementation commands"
+		}
+	case "git":
+		i := commandAfterDirectoryOption(tokens, 1)
+		if i < 0 || i >= len(tokens) {
+			return "unresolved git command is not allowed for the worker"
+		}
+		switch tokens[i] {
+		case "add", "commit":
+			return ""
+		case "status", "diff", "log", "show", "rev-parse":
+			return ""
+		case "branch":
+			if len(tokens) == i+2 && tokens[i+1] == "--show-current" {
+				return ""
+			}
+		}
+		return "push, remote, branch switching, history rewrite, worktree, and cleanup operations are coordinator-owned"
+	}
+	return ""
+}
+
+func claimedWorkerGitTokens(tokens []string) ([]string, bool) {
+	i := 0
+	if len(tokens) > 0 && tokens[0] == "env" {
+		i++
+	}
+	for i < len(tokens) && (strings.HasPrefix(tokens[i], "GIT_DIR=") || strings.HasPrefix(tokens[i], "GIT_WORK_TREE=")) {
+		if strings.TrimSpace(strings.SplitN(tokens[i], "=", 2)[1]) == "" {
+			return nil, false
+		}
+		i++
+	}
+	if i >= len(tokens) || tokens[i] != "git" {
+		return nil, false
+	}
+	return tokens[i:], true
+}
+
+func commandAfterGitRepositoryOptions(tokens []string, start int) int {
+	for start < len(tokens) {
+		token := tokens[start]
+		switch {
+		case token == "-C" || token == "--git-dir" || token == "--work-tree":
+			if start+1 >= len(tokens) || strings.HasPrefix(tokens[start+1], "-") {
+				return -1
+			}
+			start += 2
+		case strings.HasPrefix(token, "-C=") || strings.HasPrefix(token, "--git-dir=") || strings.HasPrefix(token, "--work-tree="):
+			if strings.TrimSpace(strings.SplitN(token, "=", 2)[1]) == "" {
+				return -1
+			}
+			start++
+		default:
+			return start
+		}
+	}
+	return -1
+}
+
+func uniqueTokenFlag(tokens []string, name string) (string, bool) {
+	value, found := "", false
+	for i := 0; i < len(tokens); i++ {
+		if tokens[i] == name {
+			if found || i+1 >= len(tokens) || strings.HasPrefix(tokens[i+1], "--") {
+				return "", false
+			}
+			value, found = tokens[i+1], true
+			i++
+		} else if strings.HasPrefix(tokens[i], name+"=") {
+			if found {
+				return "", false
+			}
+			value, found = strings.TrimPrefix(tokens[i], name+"="), true
+		}
+	}
+	return value, found
+}
+
+func onlyTokenFlags(tokens []string, values, bools map[string]bool) bool {
+	for i := 0; i < len(tokens); i++ {
+		name := tokens[i]
+		if at := strings.Index(name, "="); at >= 0 {
+			name = name[:at]
+		}
+		if values[name] {
+			if !strings.Contains(tokens[i], "=") {
+				i++
+			}
+			continue
+		}
+		if bools[name] {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func buildExactClaimCommand(record IssueOpsRecord, req HookToolUseLifecycleRequest) string {
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil {
+		return ""
+	}
+	parts := []string{"agent-harness issueops handoff claim", "--id " + shellGuidanceQuote(record.ID), "--attempt " + strconv.Itoa(h.Attempt), "--ownership-epoch " + shellGuidanceQuote(h.OwnershipEpoch), "--context-sha256 " + shellGuidanceQuote(h.ContextSHA256), "--host " + shellGuidanceQuote(req.Host), "--session-id " + shellGuidanceQuote(req.SessionID)}
+	if strings.TrimSpace(req.AgentID) != "" {
+		parts = append(parts, "--agent-id "+shellGuidanceQuote(req.AgentID))
+	}
+	parts = append(parts, "--cwd "+shellGuidanceQuote(h.WorkerRoot), "--orca-worktree-id "+shellGuidanceQuote(h.Orca.WorktreeID))
+	return strings.Join(parts, " ")
+}
+
+func lifecycleRecordID(req HookToolUseLifecycleRequest) (string, bool) {
+	if id, ok := exactLifecycleID(req.Command); ok {
+		return id, true
+	}
+	if isHandoffMCPTool(req.Tool) {
+		input, ok := flatMCPInput(req.ToolInput)
+		if !ok {
+			return "", false
+		}
+		id, ok := mcpString(input, "id")
+		return id, ok && id != ""
+	}
+	return "", false
+}
+
+func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRecord, bool, string) {
+	records := supervisedHandoffGuardRecords(req.Repo)
+	if strings.TrimSpace(req.SourceCheckout) != "" {
+		records = append(records, supervisedHandoffGuardRecords(req.SourceCheckout)...)
+	}
+	byID := map[string]IssueOpsRecord{}
+	for _, record := range records {
+		if record.ExecutionHandoff != nil {
+			byID[record.ID] = record
+		}
+	}
+	records = records[:0]
+	for _, record := range byID {
+		records = append(records, record)
+	}
+	if len(records) == 0 {
+		return IssueOpsRecord{}, false, ""
+	}
+	cwd := cleanAbsPath(req.CWD)
+	if matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool { return cwd == cleanAbsPath(record.ExecutionHandoff.WorkerRoot) }); len(matches) == 1 {
+		return matches[0], true, ""
+	} else if len(matches) > 1 {
+		return IssueOpsRecord{}, false, "ambiguous supervised IssueOps worker-root ownership"
+	}
+	if id, ok := lifecycleRecordID(req); ok {
+		if record, exists := byID[id]; exists {
+			return record, true, ""
+		}
+	}
+	targets := worktreeGuardEditTargets(req)
+	if matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool {
+		workerRoot := cleanAbsPath(record.ExecutionHandoff.WorkerRoot)
+		for _, target := range targets {
+			if pathWithin(target, workerRoot) {
+				return true
+			}
+		}
+		return false
+	}); len(matches) == 1 {
+		return matches[0], true, ""
+	} else if len(matches) > 1 {
+		return IssueOpsRecord{}, false, "ambiguous supervised IssueOps mutation target"
+	}
+	sourceMatches := filterHandoffRecords(records, func(record IssueOpsRecord) bool { return cwd == cleanAbsPath(record.Repo) })
+	if len(sourceMatches) == 1 {
+		return sourceMatches[0], true, ""
+	}
+	if len(sourceMatches) > 1 {
+		return IssueOpsRecord{}, false, "multiple active supervised IssueOps cycles share this source checkout; use an exact lifecycle --id or worker target"
+	}
+	return IssueOpsRecord{}, false, ""
+}
+
+func supervisedHandoffGuardRecords(repo string) []IssueOpsRecord {
+	records := append([]IssueOpsRecord(nil), ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)...)
+	records = append(records, ActiveIssueOpsSupervisedHandoffCyclesForRepo(repo)...)
+	return records
+}
+
+func filterHandoffRecords(records []IssueOpsRecord, predicate func(IssueOpsRecord) bool) []IssueOpsRecord {
+	result := make([]IssueOpsRecord, 0, len(records))
+	for _, record := range records {
+		if predicate(record) {
+			result = append(result, record)
+		}
+	}
+	return result
+}
+
+func isHandoffMCPTool(tool string) bool {
+	tool = strings.ToLower(strings.TrimSpace(tool))
+	return strings.HasSuffix(tool, "issueops_handoff") || strings.HasSuffix(tool, "issueops_heartbeat")
+}
+
+func explicitHandoffReadOnlyTool(tool string) bool {
+	tool = strings.ToLower(strings.TrimSpace(tool))
+	switch tool {
+	case "read", "glob", "grep", "search", "list", "ls":
+		return true
+	}
+	for _, suffix := range []string{
+		"__read_file", "__read_text_file", "__list_directory", "__list_files", "__search_files",
+		"__codegraph_explore", "__get_library_docs", "__resolve_library_id",
+	} {
+		if strings.HasSuffix(tool, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+func flatMCPInput(input map[string]any) (map[string]any, bool) {
+	if input == nil {
+		return nil, false
+	}
+	flat := make(map[string]any, len(input))
+	for key, value := range input {
+		if key == "flags" {
+			continue
+		}
+		flat[key] = value
+	}
+	if flags, ok := input["flags"].(map[string]any); ok {
+		for key, value := range flags {
+			if _, duplicate := flat[key]; duplicate {
+				return nil, false
+			}
+			flat[key] = value
+		}
+	} else if _, exists := input["flags"]; exists {
+		return nil, false
+	}
+	return flat, true
+}
+
+func mcpString(input map[string]any, key string) (string, bool) {
+	value, ok := input[key].(string)
+	return value, ok
+}
+
+func mcpInt(input map[string]any, key string) (int, bool) {
+	switch value := input[key].(type) {
+	case int:
+		return value, true
+	case float64:
+		return int(value), value == float64(int(value))
+	default:
+		return 0, false
+	}
+}
+
+func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	input, ok := flatMCPInput(req.ToolInput)
+	if !ok || record.ExecutionHandoff == nil {
+		return false
+	}
+	id, ok := mcpString(input, "id")
+	if !ok || id != record.ID {
+		return false
+	}
+	h := record.ExecutionHandoff
+	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
+	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
+	tool := strings.ToLower(strings.TrimSpace(req.Tool))
+	if strings.HasSuffix(tool, "issueops_heartbeat") {
+		return worker && currentWorkerBranchMatches(record) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.WorkerSession)
+	}
+	action, ok := mcpString(input, "action")
+	if !ok {
+		return false
+	}
+	switch action {
+	case "start":
+		return source && coordinatorLifecycleStateAllows("handoff start", record)
+	case "accept":
+		return source && coordinatorLifecycleStateAllows("handoff accept", record) && mcpFenceMatches(input, record)
+	case "recover":
+		return source && coordinatorLifecycleStateAllows("handoff recover", record)
+	case "claim":
+		cwd, cwdOK := mcpString(input, "cwd")
+		wt, wtOK := mcpString(input, "orca_worktree_id")
+		return worker && currentWorkerBranchMatches(record) && h.State == handoff.StateDispatched && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && wt == h.Orca.WorktreeID
+	case "finish":
+		return worker && currentWorkerBranchMatches(record) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.WorkerSession)
+	default:
+		return false
+	}
+}
+
+func mcpFenceMatches(input map[string]any, record IssueOpsRecord) bool {
+	attempt, aok := mcpInt(input, "attempt")
+	epoch, eok := mcpString(input, "ownership_epoch")
+	contextSHA, cok := mcpString(input, "context_sha256")
+	h := record.ExecutionHandoff
+	return h != nil && aok && attempt == h.Attempt && eok && epoch == h.OwnershipEpoch && cok && contextSHA == h.ContextSHA256
+}
+
+func mcpEventIdentityMatches(input map[string]any, req HookToolUseLifecycleRequest) bool {
+	host, hok := mcpString(input, "host")
+	session, sok := mcpString(input, "session_id")
+	if !hok || !sok || !strings.EqualFold(host, strings.TrimSpace(req.Host)) || session != strings.TrimSpace(req.SessionID) {
+		return false
+	}
+	agent, exists := input["agent_id"]
+	if strings.TrimSpace(req.AgentID) == "" {
+		return !exists
+	}
+	value, ok := agent.(string)
+	return ok && value == strings.TrimSpace(req.AgentID)
+}

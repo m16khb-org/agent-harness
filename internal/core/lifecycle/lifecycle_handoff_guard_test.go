@@ -2,14 +2,160 @@ package lifecycle
 
 import (
 	"encoding/json"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
+	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops/handoff"
 	issueopsmodel "agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/sqlstore"
 )
+
+func TestShellGuidanceQuoteAlwaysProducesOneLiteralArgvValue(t *testing.T) {
+	sentinel := filepath.Join(t.TempDir(), "pwned")
+	values := []string{
+		"", "plain", "a;touch " + sentinel, "$(touch " + sentinel + ")", "`touch " + sentinel + "`", "*.go", "line1\nline2", "single'quote", "$HOME",
+	}
+	for _, value := range values {
+		quoted := shellGuidanceQuote(value)
+		if !strings.HasPrefix(quoted, "'") || !strings.HasSuffix(quoted, "'") {
+			t.Fatalf("dynamic argv is not unconditionally single-quoted: %q", quoted)
+		}
+		output, err := exec.Command("sh", "-c", "printf '%s' "+quoted).Output()
+		if err != nil {
+			t.Fatalf("quoted argv did not parse: value=%q quote=%q err=%v", value, quoted, err)
+		}
+		if string(output) != value {
+			t.Fatalf("quoted argv round trip = %q, want %q", output, value)
+		}
+	}
+	if _, err := os.Stat(sentinel); !os.IsNotExist(err) {
+		t.Fatalf("guidance quoting executed injected shell content: %v", err)
+	}
+}
+
+func TestHandoffGuardBlocksIdentifiableFutureAndInvalidRawEnvelope(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		mutate func(*issueopsmodel.IssueOpsExecutionHandoff)
+	}{
+		{name: "future protocol", mutate: func(h *issueopsmodel.IssueOpsExecutionHandoff) { h.ProtocolVersion = handoff.ProtocolVersion + 1 }},
+		{name: "invalid state", mutate: func(h *issueopsmodel.IssueOpsExecutionHandoff) { h.State = "future_state" }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+			tt.mutate(record.ExecutionHandoff)
+			putRawLifecycleIssueOpsRecord(t, record)
+			req := handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "x.go"))
+			got := BuildLifecyclePreToolUseDecision(req)
+			if got.Decision != "block" || !strings.Contains(got.Reason, "invalid supervised IssueOps handoff envelope") {
+				t.Fatalf("identifiable invalid envelope must fail closed: %#v", got)
+			}
+		})
+	}
+}
+
+func TestHandoffGuardInvalidEnvelopeDiagnosticIsBoundedAndRedacted(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	secret := "super-secret-token"
+	apiSecret := "super-secret-value"
+	record.ExecutionHandoff.State = "Authorization: Bearer " + secret + strings.Repeat("x", 16*1024)
+	record.ExecutionHandoff.PendingOperation = &issueopsmodel.IssueOpsExecutionHandoffPendingOperation{Kind: "api_key=" + apiSecret + strings.Repeat("y", 16*1024)}
+	putRawLifecycleIssueOpsRecord(t, record)
+	req := handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "x.go"))
+	got := BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "block" || strings.Contains(got.Reason, secret) || strings.Contains(got.Reason, apiSecret) || len(got.Reason) > 768 {
+		t.Fatalf("invalid envelope reason must be bounded and redacted: decision=%s len=%d", got.Decision, len(got.Reason))
+	}
+}
+
+func TestSessionStartInvalidEnvelopeNeverRendersWorkerLifecycleCommand(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateDispatched)
+	record.ExecutionHandoff.ProtocolVersion = handoff.ProtocolVersion + 1
+	putRawLifecycleIssueOpsRecord(t, record)
+	guidance := BuildIssueOpsHandoffSessionGuidance(worktree, "codex", "session-1", "worker-1")
+	if guidance == "" || !strings.Contains(strings.ToLower(guidance), "remain read-only") || !strings.Contains(strings.ToLower(guidance), "coordinator recovery") {
+		t.Fatalf("invalid SessionStart guidance is not fail-closed: %q", guidance)
+	}
+	for _, forbidden := range []string{"handoff claim", "handoff heartbeat", "handoff finish"} {
+		if strings.Contains(guidance, forbidden) {
+			t.Fatalf("invalid envelope guidance rendered %q command: %s", forbidden, guidance)
+		}
+	}
+	if len(guidance) > 768 {
+		t.Fatalf("invalid envelope guidance exceeded bound: %d", len(guidance))
+	}
+}
+
+func TestSessionStartGuidanceSelectsExactWorkerAndFailsClosedOnSourceAmbiguity(t *testing.T) {
+	repo, first, _ := lifecycleHandoffRecord(t, handoff.StateDispatched)
+	second := first
+	second.ID = "io-second-cycle"
+	second.Branch = "2-demo"
+	second.WorktreePath = makeIssueOpsGuardWorktreeForTest(t, repo, second.Branch)
+	second.ExecutionHandoff = cloneLifecycleHandoffForTest(t, first.ExecutionHandoff)
+	second.ExecutionHandoff.WorkerRoot = second.WorktreePath
+	second.ExecutionHandoff.OwnershipEpoch = "epoch-2"
+	second.ExecutionHandoff.Orca.WorktreeID = "wt-2"
+	second.ExecutionHandoff.Orca.WorktreePath = second.WorktreePath
+	second.ExecutionHandoff.Orca.TaskID = "task-2"
+	second.ExecutionHandoff.Orca.DispatchID = "dispatch-2"
+	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
+		t.Fatal(err)
+	}
+
+	workerGuidance := BuildIssueOpsHandoffSessionGuidance(second.WorktreePath, "codex", "session-2", "worker-2")
+	if !strings.Contains(workerGuidance, "handoff claim") || !strings.Contains(workerGuidance, second.ID) || strings.Contains(workerGuidance, first.ID) {
+		t.Fatalf("exact second worker root did not select its cycle: %s", workerGuidance)
+	}
+
+	sourceGuidance := BuildIssueOpsHandoffSessionGuidance(repo, "codex", "coordinator", "")
+	for _, want := range []string{"multiple", first.ID, second.ID, "status", "resume", "--id"} {
+		if !strings.Contains(strings.ToLower(sourceGuidance), strings.ToLower(want)) {
+			t.Fatalf("ambiguous source guidance missing %q: %s", want, sourceGuidance)
+		}
+	}
+	for _, forbidden := range []string{"handoff claim", "handoff start"} {
+		if strings.Contains(sourceGuidance, forbidden) {
+			t.Fatalf("ambiguous source guidance rendered %q: %s", forbidden, sourceGuidance)
+		}
+	}
+	if len(sourceGuidance) > 1024 {
+		t.Fatalf("ambiguous source guidance exceeded bound: %d", len(sourceGuidance))
+	}
+}
+
+func cloneLifecycleHandoffForTest(t *testing.T, source *issueopsmodel.IssueOpsExecutionHandoff) *issueopsmodel.IssueOpsExecutionHandoff {
+	t.Helper()
+	b, err := json.Marshal(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cloned issueopsmodel.IssueOpsExecutionHandoff
+	if err := json.Unmarshal(b, &cloned); err != nil {
+		t.Fatal(err)
+	}
+	return &cloned
+}
+
+func putRawLifecycleIssueOpsRecord(t *testing.T, record IssueOpsRecord) {
+	t.Helper()
+	b, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlstore.Open(IssueOpsStateRoot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("issueops", record.ID, b); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestHandoffGuardBlocksBeforeClaim(t *testing.T) {
 	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateDispatched)
@@ -32,6 +178,739 @@ func TestHandoffGuardBlocksCoordinatorAbsolutePathIntoWorkerTree(t *testing.T) {
 	got := BuildLifecyclePreToolUseDecision(handoffEditRequest(record, repo, "codex", "coordinator", filepath.Join(worktree, "internal", "x.go")))
 	if got.Decision != "block" {
 		t.Fatalf("coordinator absolute-path edit should block: %#v", got)
+	}
+}
+
+func TestHandoffGuardAllowsOnlyCoordinatorPlanEditsBeforeDispatch(t *testing.T) {
+	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	plan := filepath.Join(worktree, "docs", "superpowers", "plans", "2026-07-11-demo.md")
+	req := handoffEditRequest(record, repo, "codex", "coordinator", plan)
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("coordinator plan edit from source checkout should pass: %#v", got)
+	}
+
+	workerReq := handoffEditRequest(record, worktree, "codex", "unclaimed-worker", plan)
+	if got := BuildLifecyclePreToolUseDecision(workerReq); got.Decision != "block" {
+		t.Fatalf("unclaimed worker must not use the coordinator plan exception: %#v", got)
+	}
+	codeReq := handoffEditRequest(record, repo, "codex", "coordinator", filepath.Join(worktree, "internal", "x.go"))
+	if got := BuildLifecyclePreToolUseDecision(codeReq); got.Decision != "block" {
+		t.Fatalf("coordinator exception must not allow implementation edits: %#v", got)
+	}
+	mixedReq := req
+	mixedReq.Paths = append(mixedReq.Paths, filepath.Join(worktree, "internal", "x.go"))
+	if got := BuildLifecyclePreToolUseDecision(mixedReq); got.Decision != "block" {
+		t.Fatalf("every target must be a planning path: %#v", got)
+	}
+	for _, target := range []string{
+		filepath.Join(worktree, "internal", "plans", "rogue.md"),
+		filepath.Join(worktree, "foo", "plans", "rogue.md"),
+		filepath.Join(worktree, "docs", "superpowers", "plans", "rogue.txt"),
+	} {
+		invalid := handoffEditRequest(record, repo, "codex", "coordinator", target)
+		if got := BuildLifecyclePreToolUseDecision(invalid); got.Decision != "block" {
+			t.Fatalf("non-convention plan target %q must block: %#v", target, got)
+		}
+	}
+
+	exact := filepath.Join(worktree, "custom", "linked-plan.md")
+	record.PlanPath = exact
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	exactReq := handoffEditRequest(record, repo, "codex", "coordinator", exact)
+	if got := BuildLifecyclePreToolUseDecision(exactReq); got.Decision != "allow" {
+		t.Fatalf("exact linked plan path should pass: %#v", got)
+	}
+	otherPlan := handoffEditRequest(record, repo, "codex", "coordinator", plan)
+	if got := BuildLifecyclePreToolUseDecision(otherPlan); got.Decision != "block" {
+		t.Fatalf("linked plan must narrow the exception to the exact path: %#v", got)
+	}
+}
+
+func TestHandoffGuardBlocksCoordinatorPlanSymlinkEscape(t *testing.T) {
+	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	outside := t.TempDir()
+	planRoot := filepath.Join(worktree, "docs", "superpowers", "plans")
+	if err := os.MkdirAll(filepath.Dir(planRoot), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, planRoot); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(planRoot, "escape.md")
+	req := handoffEditRequest(record, repo, "codex", "coordinator", target)
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("nonexistent plan leaf below an escaping symlink must block: %#v", got)
+	}
+	record.PlanPath = target
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("exact linked plan path must still block when a component escapes: %#v", got)
+	}
+}
+
+func TestHandoffGuardRestrictsPrepareToolsToCoordinatorSourceCheckout(t *testing.T) {
+	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	command := "agent-harness issueops worktree prepare-tools --id " + record.ID + " --json"
+	coordinator := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	coordinator.Tool = "Bash"
+	coordinator.Command = command
+	if got := BuildLifecyclePreToolUseDecision(coordinator); got.Decision != "allow" {
+		t.Fatalf("coordinator prepare-tools from source checkout should pass: %#v", got)
+	}
+	worker := handoffEditRequest(record, worktree, "codex", "unclaimed-worker", "")
+	worker.Tool = "Bash"
+	worker.Command = command
+	if got := BuildLifecyclePreToolUseDecision(worker); got.Decision != "block" {
+		t.Fatalf("unclaimed worker prepare-tools must be blocked: %#v", got)
+	}
+}
+
+func TestHandoffGuardBlocksCommonMutationFamiliesBeforeOrOutsideClaim(t *testing.T) {
+	mutating := []string{
+		"git add .", "git commit -m test", "git reset --hard HEAD", "git restore internal/x.go",
+		"git checkout -- internal/x.go", "git switch feature", "go mod tidy", "go generate ./...",
+		"git -C /tmp/repo add .", "git -C=/tmp/repo commit -m test", "go -C /tmp/repo mod tidy", "go -C=/tmp/repo generate ./...",
+		"npm install", "pnpm add example", "yarn remove example", "bun install", "cargo fmt",
+		"bash -c 'touch internal/x.go'", "bash -lc 'touch internal/x.go'", "sh -ec 'touch internal/x.go'", "zsh -lc 'touch internal/x.go'", `python -c 'open("internal/x.go", "w").write("x")'`,
+		`node -e 'require("fs").writeFileSync("internal/x.go", "x")'`,
+		"rsync source.txt destination.txt", "install source.txt destination.txt", "truncate -s 0 internal/x.go",
+		"dd if=/dev/null of=internal/x.go", "./scripts/custom-write.sh",
+	}
+	for _, state := range []string{handoff.StateDispatched, handoff.StateClaimed} {
+		t.Run(state, func(t *testing.T) {
+			_, record, worktree := lifecycleHandoffRecord(t, state)
+			for _, tool := range []string{"Bash", "shell_command", "exec_command", "unified_exec"} {
+				t.Run(tool, func(t *testing.T) {
+					for _, command := range mutating {
+						t.Run(command, func(t *testing.T) {
+							req := handoffEditRequest(record, worktree, "codex", "wrong-session", "")
+							req.Tool = tool
+							req.Command = command
+							if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+								t.Fatalf("unowned mutation command must block: %#v", got)
+							}
+						})
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestHandoffGuardKeepsRepresentativeReadOnlyCommandsAllowed(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateDispatched)
+	readOnly := []string{
+		"git status --short", "git diff --stat", "git log -1", "git show --stat HEAD", "git rev-parse HEAD",
+		"rg -n handoff internal", "pwd",
+		"agent-harness issueops status --id " + record.ID + " --json",
+		"agent-harness issueops resume --repo " + record.Repo + " --id " + record.ID + " --json",
+		"orca terminal list --json", "orca orchestration task-list --json",
+	}
+	for _, tool := range []string{"Bash", "shell_command", "exec_command", "unified_exec"} {
+		t.Run(tool, func(t *testing.T) {
+			for _, command := range readOnly {
+				t.Run(command, func(t *testing.T) {
+					req := handoffEditRequest(record, worktree, "codex", "unclaimed-worker", "")
+					req.Tool = tool
+					req.Command = command
+					if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+						t.Fatalf("representative read-only command should pass: %#v", got)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestHandoffGuardRunsGoTestsOnlyAfterExactWorkerClaim(t *testing.T) {
+	for _, state := range []string{handoff.StateCoordinatorPreparing, handoff.StateDispatched} {
+		_, record, worktree := lifecycleHandoffRecord(t, state)
+		for _, command := range []string{"go test ./...", "go test ./... -run TestMainSentinel"} {
+			req := handoffEditRequest(record, worktree, "codex", "unclaimed-worker", "")
+			req.Tool, req.Command = "exec_command", command
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("%s may execute TestMain/init and must block before claim: %#v", command, got)
+			}
+		}
+	}
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+	req.Tool, req.Command = "exec_command", "go test ./... -run TestFocused"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("claimed matching worker should run verification: %#v", got)
+	}
+}
+
+func TestHandoffGuardRejectsActiveOutputRedirectsAcrossShellAliases(t *testing.T) {
+	commands := []string{
+		"rg handoff > target.txt",
+		"git status >>target.txt",
+		"go test ./... 1> target.txt",
+		"pwd 2>target.txt",
+		"orca orchestration task-list --json 2>>target.txt",
+		"rg --files &> target.txt",
+	}
+	for _, state := range []string{handoff.StateDispatched, handoff.StateClaimed} {
+		_, record, worktree := lifecycleHandoffRecord(t, state)
+		for _, tool := range []string{"Bash", "shell_command", "exec_command", "unified_exec"} {
+			for _, command := range commands {
+				t.Run(state+"/"+tool+"/"+command, func(t *testing.T) {
+					req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+					req.Tool, req.Command = tool, command
+					if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+						t.Fatalf("active output redirect must block: %#v", got)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestHandoffGuardRejectsActiveParameterAndTildeExpansionInEveryRole(t *testing.T) {
+	commands := []string{`rm "$HOME/out"`, `rm "$TMPDIR/x"`, `touch ${TMPDIR}/x`, `touch ~/x`, `cd ~`}
+	for _, state := range []string{handoff.StateCoordinatorPreparing, handoff.StateDispatched, handoff.StateClaimed} {
+		repo, record, worktree := lifecycleHandoffRecord(t, state)
+		cwd, session := worktree, "session-1"
+		if state == handoff.StateCoordinatorPreparing {
+			cwd, session = repo, "coordinator"
+		}
+		for _, command := range commands {
+			req := handoffEditRequest(record, cwd, "codex", session, "")
+			req.Tool, req.Command = "exec_command", command
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("%s active expansion %q must block: %#v", state, command, got)
+			}
+		}
+	}
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	for _, command := range []string{
+		"touch " + filepath.Join(worktree, "internal", "explicit.txt"),
+		`touch '$HOME-literal'`, `touch \$HOME-literal`,
+	} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("explicit/literal worker path %q should pass: %#v", command, got)
+		}
+	}
+}
+
+func TestHandoffGuardRejectsActiveProcessSubstitution(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	for _, tool := range []string{"Bash", "shell_command", "exec_command", "unified_exec"} {
+		for _, command := range []string{`diff <(git status) <(gh pr create --title x)`, `tool --input >(outside-command)`} {
+			req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+			req.Tool, req.Command = tool, command
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("active process substitution must block: tool=%s command=%q got=%#v", tool, command, got)
+			}
+		}
+		for _, command := range []string{`tool --input '<(literal)'`, `tool --input "<(literal)"`, `tool --input ">(literal)"`, `tool --input \<(literal)`} {
+			req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+			req.Tool, req.Command = tool, command
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("literal process-substitution syntax should pass: tool=%s command=%q got=%#v", tool, command, got)
+			}
+		}
+	}
+}
+
+func TestHandoffReadOnlyRequiresBareTrustedExecutable(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateDispatched)
+	binDir := t.TempDir()
+	sentinel := filepath.Join(t.TempDir(), "executed")
+	for _, name := range []string{"git", "rg", "go", "orca"} {
+		path := filepath.Join(binDir, name)
+		if err := os.WriteFile(path, []byte("#!/bin/sh\ntouch '"+sentinel+"'\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	commands := []string{
+		"./rg --files",
+		filepath.Join(binDir, "git") + " status --short",
+		"./go test ./...",
+		filepath.Join(binDir, "orca") + " orchestration task-list --json",
+	}
+	for _, command := range commands {
+		req := handoffEditRequest(record, worktree, "codex", "unclaimed-worker", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("shadow executable %q must not inherit read-only trust: %#v", command, got)
+		}
+	}
+	if _, err := os.Stat(sentinel); !os.IsNotExist(err) {
+		t.Fatalf("hook evaluation executed a shadow binary: %v", err)
+	}
+}
+
+func TestClaimedWorkerRoleBlocksCoordinatorOwnedCommandsAndChecksBranch(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	blocked := []string{
+		"git push origin HEAD", "git remote set-url origin https://example.invalid/repo.git",
+		"git switch other", "git checkout other", "git branch -D other", "git reset --hard HEAD", "git worktree remove ../other",
+		"gh pr create --title x --body y", "gh pr merge 1", "gh pr close 1",
+		"glab mr create --title x", "glab mr merge 1", "glab mr close 1",
+		"agent-harness issueops phase --id " + record.ID + " --to feedback",
+		"agent-harness issueops handoff start --id " + record.ID + " --confirm",
+		"agent-harness issueops handoff accept --id " + record.ID + " --attempt 1 --ownership-epoch epoch-1 --context-sha256 " + strings.Repeat("a", 64) + " --final-head deadbeef",
+		"agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm",
+		"agent-harness issueops worktree prepare-tools --id " + record.ID,
+		"agent-harness issueops unknown-side-effect --id " + record.ID,
+		"orca worktree create --repo path:/tmp --name rogue --json",
+		"orca orchestration task-create --spec rogue --task-title rogue --display-name rogue --json",
+		"orca orchestration dispatch --task task-1 --to term-1 --inject --json",
+		"orca terminal create --worktree id:wt-1 --command codex --json",
+		"env git push origin HEAD", "./git push origin HEAD", "/tmp/gh pr create --title x",
+	}
+	for _, command := range blocked {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "shell_command", command
+		got := BuildLifecyclePreToolUseDecision(req)
+		if got.Decision != "block" || !strings.Contains(got.Reason, "worker") {
+			t.Fatalf("coordinator-owned command %q must block with role guidance: %#v", command, got)
+		}
+	}
+	for _, command := range []string{"git add .", "git commit -m local", "git status --short", "git diff --stat", "go test ./...", "go build ./..."} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "shell_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("worker implementation command %q should remain allowed: %#v", command, got)
+		}
+	}
+
+	headPath := filepath.Join(worktree, ".git", "HEAD")
+	for name, head := range map[string]string{
+		"mismatch": "ref: refs/heads/other\n",
+		"detached": "0123456789012345678901234567890123456789\n",
+		"unknown":  "",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if head == "" {
+				if err := os.Remove(headPath); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := os.WriteFile(headPath, []byte(head), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			got := BuildLifecyclePreToolUseDecision(handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "x.go")))
+			if got.Decision != "block" || !strings.Contains(got.Reason, "branch") {
+				t.Fatalf("%s branch evidence must fail closed: %#v", name, got)
+			}
+			if err := os.WriteFile(headPath, []byte("ref: refs/heads/1-demo\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestClaimedWorkerMutationOperandsAndSymlinksStayWithinRoot(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	outside := t.TempDir()
+	outsideFile := filepath.Join(outside, "outside.txt")
+	if err := os.WriteFile(outsideFile, []byte("outside\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	blocked := []string{
+		"sed -i '' " + outsideFile,
+		"perl -pi -e s/x/y/ " + outsideFile,
+		"find " + outside + " -delete",
+		"chmod 600 " + outsideFile,
+		"chown nobody " + outsideFile,
+		"ln -s internal/x.go " + filepath.Join(outside, "link"),
+		"make -C " + outside + " build",
+		"npm --prefix " + outside + " install",
+		"tar -C " + outside + " -xf archive.tar",
+		`awk 'BEGIN { system("touch ` + outsideFile + `") }'`,
+		`perl -e 'open(F, ">` + outsideFile + `")'`,
+	}
+	for _, command := range blocked {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("outside/eval mutation %q must block: %#v", command, got)
+		}
+	}
+	for _, command := range []string{
+		"sed -i '' internal/x.go", "perl -pi -e s/x/y/ internal/x.go", "find internal -delete",
+		"chmod 600 internal/x.go", "ln -s x.go internal/link", "make -C . build", "npm --prefix . install", "tar -C . -xf archive.tar",
+	} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("in-worktree implementation mutation %q should pass: %#v", command, got)
+		}
+	}
+	link := filepath.Join(worktree, "escape")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatal(err)
+	}
+	req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+	req.Tool, req.Command = "exec_command", "touch escape/sentinel"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("pre-existing symlink parent escape must block: %#v", got)
+	}
+}
+
+func TestHandoffGuardStateRoleMatrixReturnsAuthorityAfterAccept(t *testing.T) {
+	t.Run("submitted", func(t *testing.T) {
+		repo, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
+		workerEdit := handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "late.go"))
+		if got := BuildLifecyclePreToolUseDecision(workerEdit); got.Decision != "block" {
+			t.Fatalf("submitted worker mutation must block: %#v", got)
+		}
+		for _, command := range []string{
+			"agent-harness issueops handoff accept --id " + record.ID + " --attempt 1 --ownership-epoch epoch-1 --context-sha256 " + strings.Repeat("a", 64) + " --final-head " + strings.Repeat("b", 40),
+			"agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm",
+		} {
+			req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+			req.Tool, req.Command = "exec_command", command
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("submitted coordinator command %q should pass: %#v", command, got)
+			}
+		}
+		push := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		push.Tool, push.Command = "exec_command", "git push origin HEAD"
+		if got := BuildLifecyclePreToolUseDecision(push); got.Decision != "block" {
+			t.Fatalf("submitted handoff must not publish before accept: %#v", got)
+		}
+	})
+
+	t.Run("closed accepted", func(t *testing.T) {
+		repo, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
+		for _, command := range []string{
+			"agent-harness issueops phase --id " + record.ID + " --to ai-slop-clean --json",
+			"agent-harness issueops feedback add --id " + record.ID + " --source review --body accepted --classification defect --json",
+			"git push origin 1-demo", "gh pr create --head 1-demo --base main --draft --title '제목' --body '본문'",
+			"orca orchestration task-update --id task-1 --status completed --result accepted --json",
+			"orca worktree rm --worktree id:wt-1 --force --json",
+		} {
+			req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+			req.Tool, req.Command = "exec_command", command
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("accepted coordinator command %q should pass: %#v", command, got)
+			}
+		}
+		for _, command := range []string{
+			"orca orchestration task-update --id task-other --status completed --json",
+			"orca orchestration task-update --id task-1 --status failed --json",
+			"orca terminal send --terminal term-1 --text exit --enter --json",
+			"git -C " + worktree + " commit -m late",
+		} {
+			req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+			req.Tool, req.Command = "exec_command", command
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("accepted command %q must remain blocked: %#v", command, got)
+			}
+		}
+		if got := BuildLifecyclePreToolUseDecision(handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "late.go"))); got.Decision != "block" {
+			t.Fatalf("worker cannot edit after accepted authority return: %#v", got)
+		}
+	})
+
+	for _, disposition := range []string{handoff.DispositionWorkerFailed, handoff.DispositionCancelled} {
+		t.Run("closed "+disposition, func(t *testing.T) {
+			repo, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, disposition)
+			for _, command := range []string{
+				"agent-harness issueops handoff recover --id " + record.ID + " --action retry --confirm",
+				"orca orchestration task-update --id task-1 --status failed --json",
+				"orca worktree rm --worktree id:wt-1 --force --json",
+			} {
+				req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+				req.Tool, req.Command = "exec_command", command
+				if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+					t.Fatalf("%s recovery cleanup command %q should pass: %#v", disposition, command, got)
+				}
+			}
+			for _, command := range []string{"git push origin HEAD", "gh pr create --title x --body y", "go build ./..."} {
+				req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+				req.Tool, req.Command = "exec_command", command
+				if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+					t.Fatalf("%s must not publish/implement via %q: %#v", disposition, command, got)
+				}
+			}
+			if got := BuildLifecyclePreToolUseDecision(handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "late.go"))); got.Decision != "block" {
+				t.Fatalf("%s worker mutation must block: %#v", disposition, got)
+			}
+		})
+	}
+}
+
+func TestAcceptedCoordinatorPublishAuthorityExcludesDestructiveRemoteActions(t *testing.T) {
+	repo, record, _ := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
+	allowed := []string{
+		"git push origin 1-demo", "git push --set-upstream origin 1-demo", "git push -u origin refs/heads/1-demo:refs/heads/1-demo",
+		"gh pr create --head 1-demo --base main --draft --title draft --body body", "gh pr create -H 1-demo -B main -d --title draft --body body", "gh pr view 16", "gh pr list", "gh pr status", "gh pr checks 16", "gh pr diff 16",
+		"glab mr create --source-branch 1-demo --target-branch main --draft --title draft --description body", "glab mr create -s 1-demo -b main --draft --title draft --description body", "glab mr view 16", "glab mr list", "glab mr diff 16",
+	}
+	for _, command := range allowed {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("non-destructive accepted publish command %q should pass: %#v", command, got)
+		}
+	}
+	blocked := []string{
+		"git push origin HEAD", "git push origin other", "git push origin refs/heads/other:refs/heads/1-demo",
+		"git push --all origin", "git push --mirror origin", "git push --prune origin", "git push --tags origin",
+		"git push --force origin " + record.Branch, "git push --force-with-lease origin " + record.Branch, "git push --delete origin " + record.Branch, "git push origin :" + record.Branch,
+		"gh pr merge 16", "gh pr close 16", "gh pr reopen 16",
+		"gh pr review 16 --approve", "glab mr approve 16", "glab mr merge 16", "glab mr close 16", "glab mr reopen 16",
+		"gh pr create --base main --draft --title missing-head", "gh pr create --head 1-demo --draft --title missing-base",
+		"gh pr create --head 1-demo --head other --base main --draft", "gh pr create --head owner:1-demo --base main --draft", "gh pr create --head 1-demo --base other --draft",
+		"gh pr create --head 1-demo --base main --title missing-draft", "gh pr create --head 1-demo --base main --draft --web", "gh pr create --head 1-demo --base main --draft --fill", "gh pr create --head 1-demo --base main --draft --fill-first", "gh pr create --head 1-demo --base main --draft --recover key",
+		"glab mr create --target-branch main --draft", "glab mr create --source-branch 1-demo --draft", "glab mr create --source-branch 1-demo --source-branch other --target-branch main --draft",
+		"glab mr create --source-branch owner:1-demo --target-branch main --draft", "glab mr create --source-branch 1-demo --target-branch other --draft", "glab mr create --source-branch 1-demo --target-branch main",
+		"glab mr create --source-branch 1-demo --target-branch main --draft --push", "glab mr create --source-branch 1-demo --target-branch main --draft --fill", "glab mr create --source-branch 1-demo --target-branch main --draft --create-source-branch", "glab mr create --source-branch 1-demo --target-branch main --draft --web", "glab mr create --source-branch 1-demo --target-branch main --draft --recover key",
+	}
+	for _, command := range blocked {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("destructive/unapproved remote command %q must block: %#v", command, got)
+		}
+	}
+}
+
+func TestAcceptedCoordinatorIssueOpsAuthorityUsesExactSubcommandsAndFlags(t *testing.T) {
+	repo, record, _ := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
+	allowed := []string{
+		"agent-harness issueops phase --id " + record.ID + " --to ai-slop-clean --json",
+		"agent-harness issueops feedback add --id " + record.ID + " --source review --body accepted --classification defect --json",
+		"agent-harness issueops feedback resolve --id " + record.ID + " --index 0 --resolution valid-defect --json",
+		"agent-harness issueops feedback mark-issue-updated --id " + record.ID + " --json",
+		"agent-harness issueops pr-readiness --id " + record.ID + " --strict --json",
+		"agent-harness issueops ai-slop-clean record --id " + record.ID + " --category comments --category duplication --verification go-test --json",
+		"agent-harness issueops cleanup status --id " + record.ID + " --merged --json",
+		"agent-harness issueops remote verify-artifact --id " + record.ID + " --provider github --kind pr --url https://github.com/acme/repo/pull/16 --label bug --assignee octocat --json",
+	}
+	for _, command := range allowed {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact accepted IssueOps command %q should pass: %#v", command, got)
+		}
+	}
+	blocked := []string{
+		"agent-harness issueops remote create-issue --id " + record.ID + " --confirm",
+		"agent-harness issueops remote create-child --id " + record.ID + " --confirm",
+		"agent-harness issueops remote create-pr --id " + record.ID + " --confirm",
+		"agent-harness issueops remote sync-graph --id " + record.ID,
+		"agent-harness issueops remote reflect-devils-advocate --id " + record.ID,
+		"agent-harness issueops cleanup close-children --id " + record.ID + " --merged --confirm",
+		"agent-harness issueops force-release --id " + record.ID + " --reason bypass",
+		"agent-harness issueops regress --id " + record.ID + " --reason bypass",
+		"agent-harness issueops phase --id " + record.ID + " --to done --force",
+		"agent-harness issueops unknown --id " + record.ID,
+		"agent-harness issueops feedback unknown --id " + record.ID,
+		"agent-harness issueops feedback add --id " + record.ID + " --id other --source review --body accepted",
+		"agent-harness issueops pr-readiness --id " + record.ID + " --mystery",
+	}
+	for _, command := range blocked {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("unapproved accepted IssueOps command %q must block: %#v", command, got)
+		}
+	}
+}
+
+func TestClaimedWorkerCannotEscapeControllerRoleWithShellQuoting(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	commands := []string{
+		`\g\i\t push origin HEAD`, `\g\h pr merge 16`, `\o\r\c\a worktree rm --worktree id:wt-1 --force --json`,
+		`$'git' push origin HEAD`, `$"gh" pr merge 16`, `$'orca' worktree rm --worktree id:wt-1 --force --json`,
+	}
+	for _, command := range commands {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("quoted/escaped controller executable %q must block: %#v", command, got)
+		}
+	}
+	if got := commandparse.SplitCommandTokens(`finish --verification evidence\ value`); len(got) != 3 || got[2] != "evidence value" {
+		t.Fatalf("escaped literal evidence did not remain one argv value: %#v", got)
+	}
+}
+
+func TestClaimedWorkerCannotReinterpretControllerThroughEvalOrSource(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	for _, command := range []string{
+		`eval 'git push origin 1-demo'`, `builtin eval 'gh pr merge 16'`, `source scripts/controller.sh`, `. scripts/controller.sh`,
+	} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("shell reinterpretation primitive %q must block: %#v", command, got)
+		}
+	}
+	req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+	req.Tool, req.Command = "exec_command", "./scripts/test.sh"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("ordinary in-worktree executable must remain allowed: %#v", got)
+	}
+}
+
+func TestClaimedWorkerCannotUseZshEqualsExpansion(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	for _, command := range []string{`=git push origin 1-demo`, `tool --input =(print -r -- marker)`} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("active zsh equals expansion %q must block: %#v", command, got)
+		}
+	}
+	for _, command := range []string{`tool '=git'`, `tool "=(literal)"`, `NAME=value ./scripts/test.sh`} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("literal equals data or ordinary assignment %q should pass: %#v", command, got)
+		}
+	}
+}
+
+func TestHandoffGuardRetainsNonterminalLeaseAfterWorkerWorktreeDisappears(t *testing.T) {
+	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	if err := os.RemoveAll(worktree); err != nil {
+		t.Fatal(err)
+	}
+	sourceEdit := handoffEditRequest(record, repo, "codex", "coordinator", filepath.Join(repo, "internal", "x.go"))
+	if got := BuildLifecyclePreToolUseDecision(sourceEdit); got.Decision != "block" {
+		t.Fatalf("missing worker tree must not silently release source guard authority: %#v", got)
+	}
+	staleWorker := handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "x.go"))
+	if got := BuildLifecyclePreToolUseDecision(staleWorker); got.Decision != "block" {
+		t.Fatalf("stale worker mutation must fail closed after worktree loss: %#v", got)
+	}
+	for _, command := range []string{
+		"agent-harness issueops status --id " + record.ID + " --json",
+		"agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm --force --reason 'worker tree disappeared'",
+	} {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("missing-worktree coordinator recovery command %q should pass: %#v", command, got)
+		}
+	}
+}
+
+func TestClaimedWorkerCannotDestroyCanonicalRootOrGitMetadata(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	outside := t.TempDir()
+	for _, command := range []string{
+		"rm -rf .", "rm -rf " + worktree, "rm -rf .git", "mv .git .git-old",
+		"mv " + worktree + " " + filepath.Join(outside, "moved"), "chmod 000 .", "chown nobody " + worktree, "find . -delete",
+	} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" || !strings.Contains(got.Reason, "root") {
+			t.Fatalf("protected-root command %q must block: %#v", command, got)
+		}
+	}
+	req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+	req.Tool, req.Command = "exec_command", "rm -f internal/scoped.tmp"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("scoped in-worktree file removal should remain allowed: %#v", got)
+	}
+}
+
+func TestClaimedWorkerGitRepositoryOverridesMustStayInsideWorkerRoot(t *testing.T) {
+	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	outsideGit := filepath.Join(repo, ".git")
+	outsideCommands := []string{
+		"git --git-dir=" + outsideGit + " --work-tree=" + repo + " add .",
+		"git --git-dir " + outsideGit + " --work-tree " + repo + " add .",
+		"GIT_DIR=" + outsideGit + " GIT_WORK_TREE=" + repo + " git add .",
+		"env GIT_DIR=" + outsideGit + " GIT_WORK_TREE=" + repo + " git add .",
+		"GIT_DIR=~/.git GIT_WORK_TREE=:~/source git add .",
+		"env GIT_DIR=~/.git GIT_WORK_TREE=~/source git add .",
+	}
+	for _, command := range outsideCommands {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" || !strings.Contains(command, "~") && !strings.Contains(got.Reason, "outside") {
+			t.Fatalf("outside Git repository override %q must block: %#v", command, got)
+		}
+	}
+
+	workerGit := filepath.Join(worktree, ".git")
+	insideCommands := []string{
+		"git --git-dir=" + workerGit + " --work-tree=" + worktree + " add .",
+		"GIT_DIR=" + workerGit + " GIT_WORK_TREE=" + worktree + " git add .",
+		"env GIT_DIR=" + workerGit + " GIT_WORK_TREE=" + worktree + " git add .",
+	}
+	for _, command := range insideCommands {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact worker-root Git override %q should pass: %#v", command, got)
+		}
+	}
+}
+
+func TestHandoffGuardRejectsActiveBraceAndGlobExpansion(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	for _, command := range []string{
+		`touch {..,inside}/outside.txt`, `chmod {..,inside}/target`,
+		`touch {..,"inside"}/outside.txt`, `touch {"..",inside}/outside.txt`,
+		`touch {1"."."3"}/outside.txt`, `touch ["a"]/outside.txt`,
+		`touch o*/pwned`, `rm file?.tmp`, `cp [ab].txt internal/`,
+	} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("active brace/glob expansion %q must block: %#v", command, got)
+		}
+	}
+	for _, command := range []string{
+		`touch '{..,inside}/literal'`, `touch "o*/literal"`, `touch \{one,two\}`, `touch o\*/literal`,
+		`touch {one","two}`, `touch {one\,two}`,
+	} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("literal brace/glob data %q should pass: %#v", command, got)
+		}
+	}
+}
+
+func TestHandoffGlobSymlinkEscapeReproducesOutsideMutationBeforeGuard(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	outside := t.TempDir()
+	tests := []struct {
+		name, link, shell, command, sentinel string
+	}{
+		{name: "star glob", link: "out", shell: "bash", command: "touch o*/pwned-star", sentinel: "pwned-star"},
+		{name: "zsh mixed range", link: "2", shell: "zsh", command: `touch {1"."."3"}/pwned-range`, sentinel: "pwned-range"},
+		{name: "mixed bracket", link: "a", shell: "bash", command: `touch ["a"]/pwned-bracket`, sentinel: "pwned-bracket"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := os.Symlink(outside, filepath.Join(worktree, tt.link)); err != nil {
+				t.Fatal(err)
+			}
+			sentinel := filepath.Join(outside, tt.sentinel)
+			req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+			req.Tool, req.Command = "exec_command", tt.command
+			got := BuildLifecyclePreToolUseDecision(req)
+			if got.Decision != "block" {
+				cmd := exec.Command(tt.shell, "-c", req.Command)
+				cmd.Dir = worktree
+				if err := cmd.Run(); err != nil {
+					t.Fatalf("reproduce pathname escape: %v", err)
+				}
+				if _, err := os.Stat(sentinel); err != nil {
+					t.Fatalf("hook allowed pathname command but fixture did not reproduce escape: %v", err)
+				}
+				t.Fatalf("hook allowed pathname expansion through worker symlink and wrote outside sentinel %s", sentinel)
+			}
+			if _, err := os.Stat(sentinel); !os.IsNotExist(err) {
+				t.Fatalf("blocked hook must leave outside sentinel absent: %v", err)
+			}
+		})
 	}
 }
 
@@ -67,13 +946,41 @@ func TestHandoffGuardAllowsExactLifecycleCommandsOnly(t *testing.T) {
 	}
 }
 
+func TestHandoffGuardRejectsWrappedDuplicateAndTrailingLifecycleCommands(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	base := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	base.Tool = "Bash"
+	valid := "agent-harness issueops handoff start --id " + record.ID + " --confirm --json"
+	for _, command := range []string{valid, "./bin/agent-harness issueops handoff start --id " + record.ID + " --confirm --json"} {
+		req := base
+		req.Command = command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact lifecycle command should pass: command=%q got=%#v", command, got)
+		}
+	}
+	for _, command := range []string{
+		"bash -lc 'touch internal/x.go' agent-harness issueops handoff start --id " + record.ID + " --confirm",
+		valid + " --id other",
+		valid + " touch internal/x.go",
+		"env agent-harness issueops handoff start --id " + record.ID + " --confirm",
+	} {
+		req := base
+		req.Command = command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("non-exact lifecycle command must block: command=%q got=%#v", command, got)
+		}
+	}
+}
+
 func TestHandoffGuardAllowsQuotedFinishEvidenceAndBlocksUnquotedControlOperators(t *testing.T) {
 	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
 	base := handoffEditRequest(record, worktree, "codex", "session-1", "")
 	base.Tool = "Bash"
 	base.Command = "agent-harness issueops handoff finish --id " + record.ID +
+		" --attempt 1 --ownership-epoch epoch-1 --context-sha256 " + strings.Repeat("a", 64) +
+		" --host codex --session-id session-1 --agent-id worker-1" +
 		" --verification 'commit parent is exact; tree clean & verified | complete'" +
-		` --cleanup-receipt "no temp; coordinator owns task & worktree | branch"`
+		` --cleanup-receipt "no temp; coordinator owns task & worktree | branch" --verification 'literal > evidence data'`
 	if got := BuildLifecyclePreToolUseDecision(base); got.Decision != "allow" {
 		t.Fatalf("quoted evidence punctuation must remain argument data: %#v", got)
 	}
@@ -135,9 +1042,17 @@ func TestHandoffGuardAllowsClaimWithoutAgentFlagWhenNativeAgentIsEmpty(t *testin
 	}
 }
 
-func TestUniqueFlagValueRejectsFollowingFlagAsValue(t *testing.T) {
-	if value, ok := uniqueFlagValue([]string{"--agent-id", "--cwd", "/worker"}, "--agent-id"); ok {
-		t.Fatalf("flag token must not become another flag's value: %q", value)
+func TestExactFlagsRejectsFollowingFlagAsValue(t *testing.T) {
+	command, ok := parseExactIssueOpsCommand("agent-harness issueops handoff claim --agent-id --cwd /worker")
+	if !ok {
+		t.Fatal("exact command shape should parse before flag validation")
+	}
+	values, booleans, repeatable, ok := commandSpec(command.path)
+	if !ok {
+		t.Fatal("claim command spec missing")
+	}
+	if flags, ok := exactFlags(command, values, booleans, repeatable); ok {
+		t.Fatalf("flag token must not become another flag's value: %#v", flags)
 	}
 }
 
@@ -145,7 +1060,7 @@ func TestSessionStartRendersClaimWithoutMutation(t *testing.T) {
 	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateDispatched)
 	before, _ := json.Marshal(record)
 	guidance := BuildIssueOpsHandoffSessionGuidance(worktree, "codex", "session-1", "worker-1")
-	for _, want := range []string{"role=worker", "handoff claim", "--id " + record.ID, "--attempt 1", "--ownership-epoch epoch-1", "--context-sha256 " + strings.Repeat("a", 64), "--session-id session-1"} {
+	for _, want := range []string{"role=worker", "handoff claim", "--id '" + record.ID + "'", "--attempt 1", "--ownership-epoch 'epoch-1'", "--context-sha256 '" + strings.Repeat("a", 64) + "'", "--session-id 'session-1'"} {
 		if !strings.Contains(guidance, want) {
 			t.Fatalf("guidance missing %q: %s", want, guidance)
 		}
@@ -166,7 +1081,7 @@ func TestSessionStartOmitsEmptyAgentIDFromClaim(t *testing.T) {
 	if strings.Contains(guidance, "--agent-id") {
 		t.Fatalf("empty native agent id must be omitted so the next flag cannot be consumed: %s", guidance)
 	}
-	for _, want := range []string{"--session-id session-1", "--cwd " + worktree, "--orca-worktree-id wt-1"} {
+	for _, want := range []string{"--session-id 'session-1'", "--cwd '" + worktree + "'", "--orca-worktree-id 'wt-1'"} {
 		if !strings.Contains(guidance, want) {
 			t.Fatalf("guidance missing %q: %s", want, guidance)
 		}
@@ -190,13 +1105,62 @@ func lifecycleHandoffRecord(t *testing.T, state string) (string, IssueOpsRecord,
 	if err != nil {
 		t.Fatal(err)
 	}
+	contextSHA := strings.Repeat("a", 64)
+	if state == handoff.StateCoordinatorPreparing {
+		contextSHA = ""
+	}
 	record.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{
-		ProtocolVersion: handoff.ProtocolVersion, State: state, Attempt: 1, OwnershipEpoch: "epoch-1", ContextSHA256: strings.Repeat("a", 64),
-		CoordinatorRoot: repo, WorkerRoot: worktree, Orca: &issueopsmodel.IssueOpsOrcaIdentity{WorktreeID: "wt-1", WorktreePath: worktree},
+		ProtocolVersion: handoff.ProtocolVersion, State: state, Attempt: 1, OwnershipEpoch: "epoch-1", ContextSHA256: contextSHA,
+		AttemptBaseHead: strings.Repeat("b", 40), Driver: "orca", Agent: "codex", CoordinatorRoot: repo, WorkerRoot: worktree, Orca: &issueopsmodel.IssueOpsOrcaIdentity{
+			RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/1-demo", WorktreeID: "wt-1", WorktreeInstanceID: "inst-1", WorktreePath: worktree,
+		},
+	}
+	if state != handoff.StateCoordinatorPreparing {
+		record.ExecutionHandoff.ContextVersion = handoff.ContextVersion
+		record.ExecutionHandoff.ContextSourceSHA256 = strings.Repeat("d", 64)
+		record.ExecutionHandoff.ContextOptions = &issueopsmodel.IssueOpsExecutionHandoffContextOptions{}
+		record.ExecutionHandoff.DeliveryMode = "inject"
+		record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
+		record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-1"
+		record.ExecutionHandoff.Orca.TaskID = "task-1"
+		record.ExecutionHandoff.Orca.DispatchID = "dispatch-1"
 	}
 	if state == handoff.StateClaimed {
 		record.ExecutionHandoff.WorkerSession = &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-1", AgentID: "worker-1"}
 	}
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return repo, record, worktree
+}
+
+func lifecycleTerminalHandoffRecord(t *testing.T, state, disposition string) (string, IssueOpsRecord, string) {
+	t.Helper()
+	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	report := filepath.Join(worktree, ".agent-harness", "research", "report.md")
+	if err := os.MkdirAll(filepath.Dir(report), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(report, []byte("# evidence\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	record.ExecutionHandoff.State = state
+	record.ExecutionHandoff.ClosedDisposition = disposition
+	if state == handoff.StateSubmitted || disposition == handoff.DispositionAccepted {
+		record.ExecutionHandoff.Result = &issueopsmodel.IssueOpsExecutionHandoffResult{
+			Outcome: handoff.OutcomeCompleted, FinalHead: strings.Repeat("b", 40), ChangedFiles: []string{"internal/x.go", ".agent-harness/research/report.md"},
+			TuringReportPath: ".agent-harness/research/report.md", Verification: []string{"go test: pass"}, CleanupReceipts: []string{"worker resources handed off"}, TaskID: "task-1", DispatchID: "dispatch-1",
+		}
+	} else if disposition == handoff.DispositionWorkerFailed {
+		record.ExecutionHandoff.Result = &issueopsmodel.IssueOpsExecutionHandoffResult{
+			Outcome: handoff.OutcomeFailed, Verification: []string{"failure reproduced"}, CleanupReceipts: []string{"worker stopped"}, TaskID: "task-1", DispatchID: "dispatch-1",
+		}
+	}
+	if state == handoff.StateClosed && disposition == handoff.DispositionAccepted {
+		record.ExecutionHandoff.AcceptedAt = "2026-07-11T02:00:00Z"
+	}
+	var err error
 	record, err = writeIssueOps(IssueOpsStateRoot(), record)
 	if err != nil {
 		t.Fatal(err)

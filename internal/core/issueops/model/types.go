@@ -377,6 +377,8 @@ type IssueOpsHostSessionIdentity struct {
 
 type IssueOpsOrcaIdentity struct {
 	RuntimeID              string   `json:"runtime_id,omitempty"`
+	RepoID                 string   `json:"repo_id,omitempty"`
+	BaseRef                string   `json:"base_ref,omitempty"`
 	WorktreeID             string   `json:"worktree_id,omitempty"`
 	WorktreeInstanceID     string   `json:"worktree_instance_id,omitempty"`
 	WorktreePath           string   `json:"worktree_path,omitempty"`
@@ -413,32 +415,55 @@ type IssueOpsExecutionHandoffFailure struct {
 	At      string `json:"at,omitempty"`
 }
 
+type IssueOpsOrcaCleanupArtifact struct {
+	Kind       string `json:"kind"`
+	ID         string `json:"id"`
+	InstanceID string `json:"instance_id,omitempty"`
+	Path       string `json:"path,omitempty"`
+	Reason     string `json:"reason"`
+}
+
+type IssueOpsExecutionHandoffContextOptions struct {
+	CriteriaIDs          []string `json:"criteria_ids,omitempty"`
+	RequiredDocs         []string `json:"required_docs,omitempty"`
+	RequiredSkills       []string `json:"required_skills,omitempty"`
+	WorkerScope          string   `json:"worker_scope,omitempty"`
+	VerificationCommands []string `json:"verification_commands,omitempty"`
+	HeartbeatCadence     string   `json:"heartbeat_cadence,omitempty"`
+	StopConditions       []string `json:"stop_conditions,omitempty"`
+	ResultFormat         string   `json:"result_format,omitempty"`
+}
+
 type IssueOpsExecutionHandoff struct {
-	ProtocolVersion   int                                       `json:"protocol_version"`
-	State             string                                    `json:"state"`
-	ClosedDisposition string                                    `json:"closed_disposition,omitempty"`
-	Attempt           int                                       `json:"attempt"`
-	OwnershipEpoch    string                                    `json:"ownership_epoch"`
-	ContextSHA256     string                                    `json:"context_sha256,omitempty"`
-	ContextVersion    int                                       `json:"context_version,omitempty"`
-	Driver            string                                    `json:"driver,omitempty"`
-	Agent             string                                    `json:"agent,omitempty"`
-	DeliveryMode      string                                    `json:"delivery_mode,omitempty"`
-	CoordinatorRoot   string                                    `json:"coordinator_root,omitempty"`
-	WorkerRoot        string                                    `json:"worker_root,omitempty"`
-	WorkerSession     *IssueOpsHostSessionIdentity              `json:"worker_session,omitempty"`
-	Orca              *IssueOpsOrcaIdentity                     `json:"orca,omitempty"`
-	PendingOperation  *IssueOpsExecutionHandoffPendingOperation `json:"pending_operation,omitempty"`
-	Result            *IssueOpsExecutionHandoffResult           `json:"result,omitempty"`
-	Failure           *IssueOpsExecutionHandoffFailure          `json:"failure,omitempty"`
-	PreparedAt        string                                    `json:"prepared_at,omitempty"`
-	ProvisionedAt     string                                    `json:"provisioned_at,omitempty"`
-	DispatchedAt      string                                    `json:"dispatched_at,omitempty"`
-	ClaimedAt         string                                    `json:"claimed_at,omitempty"`
-	LastHeartbeatAt   string                                    `json:"last_heartbeat_at,omitempty"`
-	CompletedAt       string                                    `json:"completed_at,omitempty"`
-	AcceptedAt        string                                    `json:"accepted_at,omitempty"`
-	UpdatedAt         string                                    `json:"updated_at,omitempty"`
+	ProtocolVersion     int                                       `json:"protocol_version"`
+	State               string                                    `json:"state"`
+	ClosedDisposition   string                                    `json:"closed_disposition,omitempty"`
+	Attempt             int                                       `json:"attempt"`
+	OwnershipEpoch      string                                    `json:"ownership_epoch"`
+	AttemptBaseHead     string                                    `json:"attempt_base_head"`
+	ContextSHA256       string                                    `json:"context_sha256,omitempty"`
+	ContextSourceSHA256 string                                    `json:"context_source_sha256,omitempty"`
+	ContextVersion      int                                       `json:"context_version,omitempty"`
+	ContextOptions      *IssueOpsExecutionHandoffContextOptions   `json:"context_options,omitempty"`
+	Driver              string                                    `json:"driver,omitempty"`
+	Agent               string                                    `json:"agent,omitempty"`
+	DeliveryMode        string                                    `json:"delivery_mode,omitempty"`
+	CoordinatorRoot     string                                    `json:"coordinator_root,omitempty"`
+	WorkerRoot          string                                    `json:"worker_root,omitempty"`
+	WorkerSession       *IssueOpsHostSessionIdentity              `json:"worker_session,omitempty"`
+	Orca                *IssueOpsOrcaIdentity                     `json:"orca,omitempty"`
+	PendingOperation    *IssueOpsExecutionHandoffPendingOperation `json:"pending_operation,omitempty"`
+	Result              *IssueOpsExecutionHandoffResult           `json:"result,omitempty"`
+	Failure             *IssueOpsExecutionHandoffFailure          `json:"failure,omitempty"`
+	CleanupOnly         *IssueOpsOrcaCleanupArtifact              `json:"cleanup_only,omitempty"`
+	PreparedAt          string                                    `json:"prepared_at,omitempty"`
+	ProvisionedAt       string                                    `json:"provisioned_at,omitempty"`
+	DispatchedAt        string                                    `json:"dispatched_at,omitempty"`
+	ClaimedAt           string                                    `json:"claimed_at,omitempty"`
+	LastHeartbeatAt     string                                    `json:"last_heartbeat_at,omitempty"`
+	CompletedAt         string                                    `json:"completed_at,omitempty"`
+	AcceptedAt          string                                    `json:"accepted_at,omitempty"`
+	UpdatedAt           string                                    `json:"updated_at,omitempty"`
 }
 
 const IssueOpsCurrentSchemaVersion = 1
