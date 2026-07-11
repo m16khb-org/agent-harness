@@ -174,6 +174,7 @@ func TestIssueOpsExecutionHandoffEnvelopeRejectsStateSpecificCorruption(t *testi
 		{name: "partial sealed context", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.ContextSourceSHA256 = "" }},
 		{name: "padded ownership epoch", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.OwnershipEpoch = " epoch-1 " }},
 		{name: "padded agent", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.Agent = " codex " }},
+		{name: "incomplete stable terminal identity", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.Orca.WorkerTabID = "tab-only" }},
 		{name: "dispatched stale worker session", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) {
 			r.ExecutionHandoff.WorkerSession = &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session"}
 		}},

@@ -55,6 +55,7 @@ type OrcaRepo struct {
 }
 
 type OrcaWorktree struct {
+	RuntimeID  string `json:"runtime_id,omitempty"`
 	ID         string `json:"id"`
 	InstanceID string `json:"instance_id,omitempty"`
 	RepoID     string `json:"repo_id,omitempty"`
@@ -76,13 +77,17 @@ type OrcaCreateWorktreeRequest struct {
 }
 
 type OrcaTerminal struct {
-	Handle       string `json:"handle"`
-	PTYID        string `json:"pty_id"`
-	WorktreeID   string `json:"worktree_id"`
-	WorktreePath string `json:"worktree_path,omitempty"`
-	Title        string `json:"title,omitempty"`
-	Connected    bool   `json:"connected"`
-	Writable     bool   `json:"writable"`
+	RuntimeID      string `json:"runtime_id,omitempty"`
+	Handle         string `json:"handle"`
+	PTYID          string `json:"pty_id"`
+	WorktreeID     string `json:"worktree_id"`
+	WorktreePath   string `json:"worktree_path,omitempty"`
+	TabID          string `json:"tab_id,omitempty"`
+	LeafID         string `json:"leaf_id,omitempty"`
+	StableTabTitle string `json:"stable_tab_title,omitempty"`
+	Title          string `json:"title,omitempty"`
+	Connected      bool   `json:"connected"`
+	Writable       bool   `json:"writable"`
 }
 
 type OrcaCreateTerminalRequest struct {

@@ -120,12 +120,13 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		return result, nil
 	}
 	for _, capability := range []struct {
-		argv []string
-		want []string
+		argv    []string
+		want    []string
+		wantAny [][]string
 	}{
 		{argv: []string{"orca", "worktree", "create", "--help"}, want: []string{"--repo", "--name", "--base-branch", "--no-parent", "--setup", "--comment", "--issue", "--json"}},
 		{argv: []string{"orca", "worktree", "list", "--help"}, want: []string{"--repo", "--limit", "--json"}},
-		{argv: []string{"orca", "terminal", "create", "--help"}, want: []string{"--worktree", "--command", "--title", "--json"}},
+		{argv: []string{"orca", "terminal", "create", "--help"}, wantAny: [][]string{{"--worktree", "--agent", "--title", "--json"}, {"--worktree", "--command", "--title", "--json"}}},
 		{argv: []string{"orca", "terminal", "list", "--help"}, want: []string{"--worktree", "--limit", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-create", "--help"}, want: []string{"--spec", "--task-title", "--display-name", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--ready", "--json"}},
@@ -135,7 +136,11 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		{argv: []string{"orca", "worktree", "rm", "--help"}, want: []string{"--worktree", "--force", "--json"}},
 	} {
 		text, err := c.runText(ctx, "", readTimeout, capability.argv)
-		if err != nil || !containsAllHelpFlags(text, capability.want) {
+		matched := len(capability.want) > 0 && containsAllHelpFlags(text, capability.want)
+		for _, alternative := range capability.wantAny {
+			matched = matched || containsAllHelpFlags(text, alternative)
+		}
+		if err != nil || !matched {
 			result.Code = "capability_missing"
 			return result, nil
 		}
@@ -182,7 +187,7 @@ func (c *Client) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWor
 		TotalCount *int              `json:"totalCount"`
 		Truncated  bool              `json:"truncated"`
 	}
-	_, err := c.runJSON(ctx, repo, readTimeout, []string{"orca", "worktree", "list", "--repo", pathSelector(repo), "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json"}, &payload)
+	runtimeID, err := c.runJSON(ctx, repo, readTimeout, []string{"orca", "worktree", "list", "--repo", pathSelector(repo), "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json"}, &payload)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +196,9 @@ func (c *Client) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWor
 	}
 	result := make([]port.OrcaWorktree, 0, len(payload.Worktrees))
 	for _, item := range payload.Worktrees {
-		result = append(result, item.portValue())
+		value := item.portValue()
+		value.RuntimeID = runtimeID
+		result = append(result, value)
 	}
 	return result, nil
 }
@@ -204,8 +211,10 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 	var payload struct {
 		Worktree worktreePayload `json:"worktree"`
 	}
-	_, err := c.runJSON(ctx, req.Repo, createTimeout, argv, &payload)
-	return payload.Worktree.portValue(), err
+	runtimeID, err := c.runJSON(ctx, req.Repo, createTimeout, argv, &payload)
+	created := payload.Worktree.portValue()
+	created.RuntimeID = runtimeID
+	return created, err
 }
 
 func (c *Client) RemoveWorktree(ctx context.Context, id string, force bool) error {
@@ -220,20 +229,28 @@ func (c *Client) RemoveWorktree(ctx context.Context, id string, force bool) erro
 
 func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.OrcaTerminal, error) {
 	var payload struct {
-		Terminals  []terminalPayload `json:"terminals"`
-		TotalCount *int              `json:"totalCount"`
-		Truncated  bool              `json:"truncated"`
+		Terminals     []terminalPayload     `json:"terminals"`
+		VisualLayouts []visualLayoutPayload `json:"visualLayouts"`
+		TotalCount    *int                  `json:"totalCount"`
+		Truncated     bool                  `json:"truncated"`
 	}
-	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "terminal", "list", "--worktree", idSelector(worktreeID), "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json"}, &payload)
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "terminal", "list", "--worktree", idSelector(worktreeID), "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json"}, &payload)
 	if err != nil {
 		return nil, err
 	}
 	if err := requireCompleteList("terminal", len(payload.Terminals), payload.TotalCount, payload.Truncated); err != nil {
 		return nil, err
 	}
+	stableTitles, err := stableVisualTabTitles(payload.VisualLayouts)
+	if err != nil {
+		return nil, err
+	}
 	result := make([]port.OrcaTerminal, 0, len(payload.Terminals))
 	for _, item := range payload.Terminals {
-		result = append(result, item.portValue())
+		value := item.portValue()
+		value.RuntimeID = runtimeID
+		value.StableTabTitle = stableTitles[visualTabKey(value.TabID, value.LeafID)]
+		result = append(result, value)
 	}
 	return result, nil
 }
@@ -243,10 +260,22 @@ func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminal
 	if !ok {
 		return port.OrcaTerminal{}, &port.OrcaError{Code: "unsupported_agent", Detail: req.Agent}
 	}
-	if strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && req.AllowCodexHookTrustBypass {
-		command = "codex --dangerously-bypass-hook-trust"
+	help, err := c.runText(ctx, "", readTimeout, []string{"orca", "terminal", "create", "--help"})
+	if err != nil {
+		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_create_capability_unavailable", Detail: boundedDiagnostic(err.Error())}
 	}
-	argv := []string{"orca", "terminal", "create", "--worktree", idSelector(req.WorktreeID), "--command", command}
+	argv := []string{"orca", "terminal", "create", "--worktree", idSelector(req.WorktreeID)}
+	switch {
+	case containsAllHelpFlags(help, []string{"--worktree", "--agent", "--title", "--json"}):
+		argv = append(argv, "--agent", command)
+	case containsAllHelpFlags(help, []string{"--worktree", "--command", "--title", "--json"}):
+		if strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && req.AllowCodexHookTrustBypass {
+			command = "codex --dangerously-bypass-hook-trust"
+		}
+		argv = append(argv, "--command", command)
+	default:
+		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_create_capability_missing", Detail: "installed Orca exposes neither the fixed --agent nor fixed --command launch shape"}
+	}
 	if title := strings.TrimSpace(req.Title); title != "" {
 		argv = append(argv, "--title", title)
 	}
@@ -254,11 +283,12 @@ func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminal
 	var payload struct {
 		Terminal terminalPayload `json:"terminal"`
 	}
-	_, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
+	runtimeID, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
 	if err != nil {
 		return port.OrcaTerminal{}, err
 	}
 	created := payload.Terminal.portValue()
+	created.RuntimeID = runtimeID
 	if strings.TrimSpace(created.Handle) == "" || strings.TrimSpace(created.WorktreeID) != strings.TrimSpace(req.WorktreeID) {
 		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_identity_mismatch", Detail: "terminal identity returned by create is incomplete", Invoked: true}
 	}
@@ -395,9 +425,21 @@ type terminalPayload struct {
 	PTYID        string `json:"ptyId"`
 	WorktreeID   string `json:"worktreeId"`
 	WorktreePath string `json:"worktreePath"`
+	TabID        string `json:"tabId"`
+	LeafID       string `json:"leafId"`
 	Title        string `json:"title"`
 	Connected    bool   `json:"connected"`
 	Writable     bool   `json:"writable"`
+}
+
+type visualLayoutPayload struct {
+	Root struct {
+		Tabs []struct {
+			TabID        string `json:"tabId"`
+			Title        string `json:"title"`
+			ActiveLeafID string `json:"activeLeafId"`
+		} `json:"tabs"`
+	} `json:"root"`
 }
 
 type taskPayload struct {
@@ -422,7 +464,48 @@ func requireCompleteList(kind string, length int, total *int, truncated bool) er
 }
 
 func (t terminalPayload) portValue() port.OrcaTerminal {
-	return port.OrcaTerminal{Handle: t.Handle, PTYID: t.PTYID, WorktreeID: t.WorktreeID, WorktreePath: t.WorktreePath, Title: t.Title, Connected: t.Connected, Writable: t.Writable}
+	return port.OrcaTerminal{Handle: t.Handle, PTYID: t.PTYID, WorktreeID: t.WorktreeID, WorktreePath: t.WorktreePath, TabID: t.TabID, LeafID: t.LeafID, Title: t.Title, Connected: t.Connected, Writable: t.Writable}
+}
+
+func stableVisualTabTitles(layouts []visualLayoutPayload) (map[string]string, error) {
+	if len(layouts) > port.OrcaMaxBaselineIDs {
+		return nil, fmt.Errorf("Orca visual layout inventory exceeds %d entries", port.OrcaMaxBaselineIDs)
+	}
+	result := make(map[string]string)
+	totalTabs := 0
+	for _, layout := range layouts {
+		if len(layout.Root.Tabs) > port.OrcaMaxBaselineIDs {
+			return nil, fmt.Errorf("Orca visual tab inventory exceeds %d entries", port.OrcaMaxBaselineIDs)
+		}
+		totalTabs += len(layout.Root.Tabs)
+		if totalTabs > port.OrcaMaxBaselineIDs {
+			return nil, fmt.Errorf("Orca visual tab inventory exceeds %d entries", port.OrcaMaxBaselineIDs)
+		}
+		for _, tab := range layout.Root.Tabs {
+			tabID := strings.TrimSpace(tab.TabID)
+			leafID := strings.TrimSpace(tab.ActiveLeafID)
+			title := strings.TrimSpace(tab.Title)
+			if tabID == "" || leafID == "" || title == "" {
+				continue
+			}
+			if tabID != tab.TabID || leafID != tab.ActiveLeafID || title != tab.Title || len(tabID) > 1024 || len(leafID) > 1024 || len(title) > 4096 {
+				return nil, fmt.Errorf("Orca visual tab identity is not canonical and bounded")
+			}
+			key := visualTabKey(tabID, leafID)
+			if previous, ok := result[key]; ok && previous != title {
+				return nil, fmt.Errorf("Orca visual tab identity has conflicting titles")
+			}
+			result[key] = title
+		}
+	}
+	return result, nil
+}
+
+func visualTabKey(tabID, leafID string) string {
+	if strings.TrimSpace(tabID) == "" || strings.TrimSpace(leafID) == "" {
+		return ""
+	}
+	return strings.TrimSpace(tabID) + "\x00" + strings.TrimSpace(leafID)
 }
 
 func hostCommand(agent string) (string, bool) {

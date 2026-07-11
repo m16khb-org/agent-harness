@@ -29,6 +29,7 @@ const (
 	OperationTerminalCreate = "terminal_create"
 	OperationTaskCreate     = "task_create"
 	OperationDispatch       = "dispatch"
+	OperationRuntimeRefresh = "runtime_refresh"
 )
 
 type Fence struct {

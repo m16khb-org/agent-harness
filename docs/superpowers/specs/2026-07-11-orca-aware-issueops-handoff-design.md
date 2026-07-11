@@ -105,7 +105,7 @@ For resolved inline mode:
 
 ## 6. Durable model
 
-Add one optional nested field to `IssueOpsRecord` and bump the root IssueOps schema to version 2. Missing/zero and v1 records remain readable and upgrade on the next write, including locally created v1 handoff rows. A v1 binary sees v2 as a future schema and must reject before write, preventing it from silently stripping the unknown ownership lease; versions greater than 2 remain fail-safe.
+Add one optional nested field to `IssueOpsRecord` and use root IssueOps schema version 3. Missing/zero, v1, and v2 records remain readable and upgrade on the next write, including locally created older handoff rows. A v1 binary sees v2+ as future and cannot strip the ownership lease; a v2 binary sees v3 as future and cannot strip the stable terminal tab/leaf locator. Versions greater than 3 remain fail-safe.
 
 ```go
 type IssueOpsExecutionHandoff struct {
@@ -223,6 +223,8 @@ type IssueOpsOrcaIdentity struct {
     TerminalBaselinePTYIDs []string
     WorkerPTYID           string
     WorkerMailboxHandle   string
+    WorkerTabID           string
+    WorkerLeafID          string
     TaskID                string
     DispatchID            string
 }
@@ -231,10 +233,14 @@ type IssueOpsOrcaIdentity struct {
 Rules:
 
 - top-level Orca RPC correlation IDs are never stored as domain IDs;
-- the live terminal handle is not persisted as authority; it is refreshed by matching the worker PTY ID inside the exact worktree;
+- the live terminal handle is not persisted as mutation authority; it remains the dispatch mailbox identity and is refreshed only through exact runtime recovery evidence;
 - the worker handle captured by dispatch is retained only as its mailbox/assignee identity for historical message recovery;
-- create-time tab IDs, pane keys, custom titles, and list-time tab/leaf IDs are excluded because the live spike showed they do not form one stable tuple;
+- current Orca terminal-list `tabId`/`leafId` are persisted as a pair. The observed runtime rollover reissued handle/PTY and worktree instance while retaining tab/leaf, so a v3 attempt prefers that exact stable pair;
+- v2 attempts that never observed tab/leaf may fall back only to the bounded custom tab title joined from `visualLayouts[].root.tabs[]` by the current exact tab/leaf. The dynamic terminal `title` is never a fallback marker;
 - worktree ID, instance ID, canonical path, and branch are cross-checked to prevent stale path reuse;
+- a nonempty current-runtime worktree instance may equal the persisted instance. Missing instance, terminal/worktree mismatch, or conflicting duplicate evidence fails closed;
+- runtime-refresh completion exact-compares the journaled record and re-renders context source plus clean exact branch/attempt-base HEAD inside the cycle lock immediately before the one-write identity replacement. Generic post-mutation operation completion remains unchanged;
+- a connected/writable recovered terminal or uncommitted worker checkout forbids replacement. Stale relay environment pins may prove only a transport handshake; caller cancellation bounds observation without sending control input to the target PTY;
 - the pre-terminal PTY baseline is bounded and used only to reconcile an ambiguous terminal-create response by exact one-item set difference;
 - raw Orca envelopes are not persisted; only bounded redacted projections and error codes are stored.
 
@@ -296,12 +302,12 @@ Every operation journal receives a fresh start timestamp immediately before its 
 
 V1 path:
 
-- use `terminal create --worktree id:<worktree-id> --command <built-in-host-command>` to start a fresh agent in the already prepared checkout;
+- capability-negotiate `terminal create --worktree id:<worktree-id> --agent <built-in-host>` when the installed help exposes the fixed agent surface, otherwise use the verified current `--command <built-in-host-command>` surface;
 - after the explicit attestation above, use the installed Codex-only `--dangerously-bypass-hook-trust` launch flag; Claude and GJC commands are unchanged;
 - reacquire that terminal with `terminal list`;
 - use `dispatch --inject` after the task exists.
 
-Only built-in host command mappings are allowed. Arbitrary command input is out of scope. Host launch/delivery support is checked by the pre-worktree capability probe. If it disappears after provisioning, the handoff becomes `recovery_required`; it cannot fall back inline.
+Only built-in host mappings are allowed. Arbitrary command input is out of scope. Host launch/delivery support is checked by the pre-worktree capability probe and again immediately before terminal create. If it disappears after provisioning, the terminal journal remains `recovery_required` even though no terminal mutation was invoked; it cannot clear to ordinary retry or fall back inline.
 
 V1 has no `terminal send` compatibility delivery. The durable dispatch journal seals delivery mode `inject` and the refreshed exact assignee before invocation; recovery validates that tuple against `dispatch-show` without inventing an `injected` response field that the installed show command does not expose.
 
@@ -410,7 +416,7 @@ Recovery is explicit and idempotent. It never runs in hooks. `issueops resume` r
 
 `recover --action reconcile` may:
 
-- refresh runtime and terminal identity;
+- refresh a changed runtime only after complete bounded worktree and terminal inventories agree. The unique current-runtime worktree row must match exact worktree ID, nonempty instance, repo, base ref, path, branch, attempt-base HEAD, and comment marker; the terminal must match persisted tab/leaf or the legacy stable visual-tab marker. Runtime, instance, handle, PTY, tab, and leaf update in one CAS;
 - locate the unique ownership-epoch marker on a worktree or task;
 - compute the one-item PTY delta from the pre-terminal baseline;
 - inspect `dispatch-show`;
@@ -422,6 +428,7 @@ Recovery may not:
 
 - assume absence after a transport timeout without listing/reconciling;
 - choose among zero or multiple candidates;
+- retain a stale worktree instance while adopting a current-runtime terminal, or require the current nonempty instance to differ from the old one;
 - reuse an external artifact from another attempt;
 - import worker completion from Orca as an IssueOps result;
 - switch to inline after partial mutation;

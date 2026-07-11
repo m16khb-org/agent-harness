@@ -29,9 +29,11 @@ IMMUTABLE CONSTRAINTS (these override anything else you infer):
 5. Independence invariant: do not add any dependency on CodeGraph, llm-wiki, claude-mem, an
    external LLM API (no api.z.ai, no API keys), or a spawned agent CLI. External intelligence
    is always render-prompt → record-result performed by the host agent.
-6. Compatibility: all new IssueOps fields are additive omitempty; schema_version stays 1;
-   never rename or remove existing JSON fields; lock files are persistent inodes — never
-   delete them between lock/unlock.
+6. Compatibility: the historical orchestration fields remain additive omitempty, but the
+   repository's current IssueOps root is schema_version 3 per issue #16. Never downgrade it:
+   missing/zero/v1/v2 rows upgrade with known fields preserved, v1 rejects v2+, and v2 rejects
+   v3 before rewrite. Never rename or remove existing JSON fields; lock files are persistent
+   inodes — never delete them between lock/unlock.
 7. Git discipline: stage exact paths only (never `git add .`, never `git commit -a`).
    Exactly one commit for this task, using the commit subject the task's final step specifies,
    with a body in the repo's Conventional Commit + Lore format (see .agent-harness/COMMIT_POLICY.md).

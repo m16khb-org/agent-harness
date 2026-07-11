@@ -385,6 +385,8 @@ type IssueOpsOrcaIdentity struct {
 	TerminalBaselinePTYIDs []string `json:"terminal_baseline_pty_ids,omitempty"`
 	WorkerPTYID            string   `json:"worker_pty_id,omitempty"`
 	WorkerMailboxHandle    string   `json:"worker_mailbox_handle,omitempty"`
+	WorkerTabID            string   `json:"worker_tab_id,omitempty"`
+	WorkerLeafID           string   `json:"worker_leaf_id,omitempty"`
 	TaskID                 string   `json:"task_id,omitempty"`
 	DispatchID             string   `json:"dispatch_id,omitempty"`
 }
@@ -507,7 +509,7 @@ type IssueOpsExecutionHandoff struct {
 	UpdatedAt           string                                    `json:"updated_at,omitempty"`
 }
 
-const IssueOpsCurrentSchemaVersion = 2
+const IssueOpsCurrentSchemaVersion = 3
 
 type IssueOpsRecord struct {
 	OK                      bool                                `json:"ok"`

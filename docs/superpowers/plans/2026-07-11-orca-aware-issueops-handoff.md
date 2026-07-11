@@ -9,7 +9,7 @@
 
 **Goal:** When the complete read-only Orca probe succeeds, let the coordinator prepare the issue, provider-linked branch, worktree, plan, and bounded context, then transfer one fenced implementation lease to a fresh Orca-hosted agent session. If Orca is absent or unready before mutation, preserve the existing inline IssueOps behavior and JSON contract.
 
-**Architecture:** IssueOps remains the single durable authority. Add one optional handoff record and a small operation journal under root schema v2; missing/zero and v1 rows migrate in memory and stamp v2 on write, while older v1 binaries reject v2 before mutation. A concrete `internal/adapter/orca` implements only spike-verified CLI projections. Core state transitions and compare-and-set fencing are host-neutral. Orca/network calls and mutating subprocesses never run while the IssueOps span lock is held; a fixed read-only local Git checkpoint is the narrow exception for filesystem CAS immediately before a write. Hooks only parse identity, render claim guidance, and block unauthorized mutations. CLI and MCP are thin adapters over the same request/result DTOs.
+**Architecture:** IssueOps remains the single durable authority. Add one optional handoff record and a small operation journal under root schema v3; missing/zero, v1, and v2 rows migrate in memory and stamp v3 on write. V1 binaries reject the v2 ownership lease, while v2 binaries reject v3 stable terminal identity before mutation. A concrete `internal/adapter/orca` implements only spike-verified CLI projections. Core state transitions and compare-and-set fencing are host-neutral. Orca/network calls and mutating subprocesses never run while the IssueOps span lock is held; a fixed read-only local Git checkpoint is the narrow exception for filesystem CAS immediately before a write. Hooks only parse identity, render claim guidance, and block unauthorized mutations. CLI and MCP are thin adapters over the same request/result DTOs.
 
 **Design source:** `docs/superpowers/specs/2026-07-11-orca-aware-issueops-handoff-design.md` wins if this plan omits detail. Any implementation-driven deviation must update both files and receive a new Brooks review before proceeding.
 
@@ -41,7 +41,7 @@
 | ORCA-07 | Coordinator/wrong-session/out-of-tree mutations block; claimed in-tree worker mutations pass. | lifecycle and hook adapter tests |
 | ORCA-08 | Finish, submit, accept, failure, cancel, and retry obey the actor/state/idempotency table. | table-driven transition tests |
 | ORCA-09 | Resume causes no state or external mutation; only explicit recover persists one unique identity. | before/after record hash + fake trace |
-| ORCA-10 | Missing/zero/v1 records remain readable and upgrade to v2 without losing handoff fields; v1 binaries reject v2 without modifying bytes; future schemas retain bounded ownership identity and fail safe. | schema fixtures and legacy-decoder probe |
+| ORCA-10 | Missing/zero/v1/v2 records remain readable and upgrade to v3 without losing handoff fields; v1 rejects v2 and v2 rejects v3 byte-equivalently; future schemas retain bounded ownership identity and fail safe. | schema fixtures and legacy-decoder probes |
 | ORCA-11 | Context is deterministic, <=64 KiB, redacted, and changes hash when stable source inputs change. | context golden/hash fixtures |
 | ORCA-12 | Codex, Claude, and GJC forward native session identity and each produces a real ownership block result. | installed-host smoke receipts |
 | ORCA-13 | The installed Orca completed path launches a fresh agent, joins a submitted result, and removes disposable worktree/branch/terminal resources. | live E2E transcript + cleanup receipt |
@@ -74,7 +74,7 @@ Do not regenerate goldens until Task 8 registers the final CLI/MCP shape. Do not
 
 **Interfaces:**
 
-- Add the optional `ExecutionHandoff *IssueOpsExecutionHandoff \`json:"execution_handoff,omitempty"\`` to `IssueOpsRecord`; keep `IssueOpsCurrentSchemaVersion = 1`.
+- Add the optional `ExecutionHandoff *IssueOpsExecutionHandoff \`json:"execution_handoff,omitempty"\`` to `IssueOpsRecord` and set `IssueOpsCurrentSchemaVersion = 3`. Missing/zero/v1/v2 rows upgrade without field loss; v1 rejects the v2 ownership lease and v2 rejects v3 stable terminal identity before any rewrite.
 - Model the protocol/state/disposition, monotonic attempt, random ownership epoch, context version/hash, coordinator/worker roots, native host session, Orca identity, pending operation, bounded result/failure, and timestamps from the design.
 - `pending_operation` holds only the current attempt's operation kind and the pre-mutation worktree/task/PTY ID baseline; it is not a seventh lease state.
 - Pure handoff functions validate the actor/source state and return a copied record; package-level wrappers own locks and persistence.
@@ -190,6 +190,10 @@ go test ./internal/core/issueops ./cmd/harness/issueopscli/worktreecmd -run 'Tes
 - Obtain the clock independently for each journal write and again for every post-call completion, failure, and dispatched transition; never stamp a completion with the pre-call start time.
 - Terminal recovery accepts exactly one new PTY relative to the persisted baseline. Task recovery accepts exactly one new task carrying the attempt/epoch marker. Dispatch recovery uses only the persisted task ID and `dispatch-show`.
 - V1 delivery is a recognized built-in host terminal plus `dispatch --inject --return-preamble`. Persist delivery mode `inject` and the refreshed exact assignee before dispatch; `dispatch-show` recovery validates its exact identity and `dispatched` status without relying on an absent `injected` field. There is no V1 `terminal send` fallback and no arbitrary shell command.
+- Capability-negotiate only the installed fixed built-in `terminal create --agent <host>` or current `--command <generated-host-command>` shape. Recheck help before mutation; capability loss after worktree provisioning retains the terminal journal as `recovery_required` even when the mutation was not invoked.
+- Persist public tab/leaf as a pair. On runtime rollover, journal `runtime_refresh`, prove a unique complete current-runtime worktree row (exact ID, nonempty instance, repo/base/path/branch/HEAD/comment) and a unique terminal with the stable pair, then use a runtime-only locked completion that exact-compares the journal snapshot and revalidates the sealed context source plus clean exact branch/HEAD immediately before updating runtime/worktree-instance/terminal identity in one CAS. Equal old/new nonempty instance is valid. Legacy rows without a stable pair may use only the visual-layout tab title joined by current tab/leaf, never dynamic terminal title.
+- Never launch a replacement while a recovered terminal remains connected/writable or the worker checkout contains uncommitted WIP. A stale `ORCA_RELAY_DIR`/`ORCA_RELAY_SOCKET_PATH` handshake is transport-only, not identity evidence. Bound handshake-only observations with caller cancellation; do not send control input into the target PTY.
+- Keep executable rollover, mailbox projection, monitoring, and cleanup commands only in `skills/issueops/references/orca-handoff.md`. Turing links that canonical reference and records evidence/report/receipt integration without duplicating the low-level recipe.
 - Return after `dispatched`; no wait loop, automatic claim, or automatic next operation.
 
 **RED tests:**
@@ -202,6 +206,10 @@ go test ./internal/core/issueops ./cmd/harness/issueopscli/worktreecmd -run 'Tes
 - `TestHandoffStartStopsBeforeLaterOrcaStageAfterCheckpointDrift`
 - `TestHandoffOperationJournalRevalidatesCheckpointAfterInventory`
 - `TestHandoffStartUsesFreshTimestampForEachOperationJournal`
+- `TestHandoffStartRecoversRuntimeReissuedTerminalWithoutDuplicateCreate`
+- `TestHandoffStartRuntimeRestartRequiresUniqueExactWorktree`
+- `TestHandoffRuntimeRestartReconcileResumesToDispatchWithoutDuplicateCreate`
+- `TestHandoffStartTerminalCapabilityLossPreservesProvisionedLease`
 - `TestHandoffStartTerminalDeltaRequiresExactlyOne`
 - `TestHandoffStartTaskMarkerRequiresExactlyOne`
 - `TestHandoffStartDispatchRecoveryRequiresPersistedTask`

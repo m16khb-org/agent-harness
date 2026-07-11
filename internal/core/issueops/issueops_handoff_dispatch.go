@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -46,6 +47,7 @@ type issueOpsHandoffStartHooks struct {
 }
 
 type IssueOpsOrcaDispatchClient interface {
+	ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error)
 	ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
 	CreateTerminal(context.Context, port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error)
 	RefreshTerminal(context.Context, string, string) (port.OrcaTerminal, error)
@@ -176,12 +178,191 @@ func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 	}
 	terminal, err := client.RefreshTerminal(ctx, record.ExecutionHandoff.Orca.WorktreeID, workerPTYID)
 	if err != nil {
+		if isOrcaTerminalNotFound(err) {
+			return recoverRuntimeReissuedHandoffTerminal(ctx, stateRoot, record, fence, client, now)
+		}
 		return record, "", fmt.Errorf("refresh persisted Orca terminal: %w", err)
+	}
+	if strings.TrimSpace(terminal.RuntimeID) != "" && terminal.RuntimeID != record.ExecutionHandoff.Orca.RuntimeID {
+		return recoverRuntimeReissuedHandoffTerminal(ctx, stateRoot, record, fence, client, now)
 	}
 	if terminal.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || terminal.PTYID != workerPTYID || strings.TrimSpace(terminal.Handle) == "" || !terminal.Connected || !terminal.Writable || !terminalWorktreePathMatches(terminal, record.ExecutionHandoff.WorkerRoot) {
 		return record, "", fmt.Errorf("refreshed Orca terminal identity does not match the persisted checkpoint")
 	}
 	return record, strings.TrimSpace(terminal.Handle), nil
+}
+
+func recoverRuntimeReissuedHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now func() string) (IssueOpsRecord, string, error) {
+	startedAt := now()
+	journaled, err := beginHandoffOperation(stateRoot, record, fence, model.IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationRuntimeRefresh, StartedAt: startedAt,
+	})
+	if err != nil {
+		return record, "", err
+	}
+	worktree, terminal, err := reconcileRuntimeReissuedHandoffIdentity(ctx, journaled, client)
+	if err != nil {
+		transitionAt := now()
+		if markErr := markHandoffPrepareRecovery(stateRoot, journaled.ID, fence, "runtime_restart_ambiguous", err.Error(), transitionAt); markErr != nil {
+			return journaled, "", fmt.Errorf("runtime restart reconciliation failed: %v; persist recovery: %w", err, markErr)
+		}
+		return journaled, "", fmt.Errorf("runtime restart requires explicit recovery: %w", err)
+	}
+	updated, err := completeRuntimeRefreshOperation(stateRoot, journaled, fence, worktree, terminal, now())
+	if err != nil {
+		_ = markHandoffPrepareRecovery(stateRoot, journaled.ID, fence, "runtime_restart_persist_failed", err.Error(), now())
+		return journaled, "", err
+	}
+	return updated, strings.TrimSpace(terminal.Handle), nil
+}
+
+func completeRuntimeRefreshOperation(stateRoot string, expected IssueOpsRecord, fence handoff.Fence, worktree port.OrcaWorktree, terminal port.OrcaTerminal, now string) (IssueOpsRecord, error) {
+	var persisted IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, expected.ID, func() error {
+		current, err := ReadIssueOps(stateRoot, expected.ID)
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(current, expected) {
+			return fmt.Errorf("handoff changed during runtime-refresh inventory")
+		}
+		if err := validateHandoffContextSource(current); err != nil {
+			return err
+		}
+		if err := validateHandoffCleanExactCheckpoint(current); err != nil {
+			return err
+		}
+		current, err = handoff.CompleteOperation(current, fence, handoff.OperationRuntimeRefresh, now)
+		if err != nil {
+			return err
+		}
+		if current.ExecutionHandoff == nil || current.ExecutionHandoff.Orca == nil {
+			return fmt.Errorf("runtime-refresh identity checkpoint is unavailable")
+		}
+		identity := *current.ExecutionHandoff.Orca
+		identity.RuntimeID = worktree.RuntimeID
+		identity.WorktreeInstanceID = worktree.InstanceID
+		identity.WorkerPTYID = terminal.PTYID
+		identity.WorkerMailboxHandle = terminal.Handle
+		identity.WorkerTabID = terminal.TabID
+		identity.WorkerLeafID = terminal.LeafID
+		current.ExecutionHandoff.Orca = &identity
+		current.UpdatedAt = now
+		persisted, err = writeIssueOps(stateRoot, current)
+		return err
+	})
+	return persisted, err
+}
+
+func reconcileRuntimeReissuedHandoffIdentity(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient) (port.OrcaWorktree, port.OrcaTerminal, error) {
+	worktrees, err := client.ListWorktrees(ctx, record.Repo)
+	if err != nil {
+		return port.OrcaWorktree{}, port.OrcaTerminal{}, fmt.Errorf("list current-runtime worktrees: %w", err)
+	}
+	worktree, err := reconcileRuntimeReissuedHandoffWorktree(record, worktrees)
+	if err != nil {
+		return port.OrcaWorktree{}, port.OrcaTerminal{}, err
+	}
+	terminals, err := client.ListTerminals(ctx, worktree.ID)
+	if err != nil {
+		return port.OrcaWorktree{}, port.OrcaTerminal{}, fmt.Errorf("list current-runtime terminals: %w", err)
+	}
+	terminal, err := reconcileRuntimeReissuedHandoffTerminal(record, worktree, terminals)
+	if err != nil {
+		return port.OrcaWorktree{}, port.OrcaTerminal{}, err
+	}
+	return worktree, terminal, nil
+}
+
+func reconcileRuntimeReissuedHandoffWorktree(record IssueOpsRecord, rows []port.OrcaWorktree) (port.OrcaWorktree, error) {
+	if len(rows) > handoff.MaxBaselineIDs {
+		return port.OrcaWorktree{}, fmt.Errorf("runtime restart worktree inventory exceeds %d entries", handoff.MaxBaselineIDs)
+	}
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].ID
+	}
+	if err := requireStableInventoryIdentities("worktree", ids); err != nil {
+		return port.OrcaWorktree{}, err
+	}
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil {
+		return port.OrcaWorktree{}, fmt.Errorf("runtime restart worktree identity is unavailable")
+	}
+	candidates := make([]port.OrcaWorktree, 0, 1)
+	for _, row := range rows {
+		if row.ID == h.Orca.WorktreeID {
+			candidates = append(candidates, row)
+		}
+	}
+	if len(candidates) != 1 {
+		return port.OrcaWorktree{}, fmt.Errorf("runtime restart requires exactly one persisted worktree row; found %d", len(candidates))
+	}
+	row := candidates[0]
+	marker := issueOpsHandoffMarker(record.ID, h.OwnershipEpoch, h.Attempt)
+	if strings.TrimSpace(row.RuntimeID) == "" || row.RuntimeID == h.Orca.RuntimeID || strings.TrimSpace(row.InstanceID) == "" || row.RepoID != h.Orca.RepoID || row.BaseRef != h.Orca.BaseRef || filepath.Clean(strings.TrimSpace(row.Path)) != filepath.Clean(h.WorkerRoot) || strings.TrimPrefix(strings.TrimSpace(row.Branch), "refs/heads/") != record.Branch || row.Head != h.AttemptBaseHead || row.Comment != marker {
+		return port.OrcaWorktree{}, fmt.Errorf("current-runtime worktree does not match exact repo/base/path/branch/head/comment identity")
+	}
+	return row, nil
+}
+
+func reconcileRuntimeReissuedHandoffTerminal(record IssueOpsRecord, worktree port.OrcaWorktree, rows []port.OrcaTerminal) (port.OrcaTerminal, error) {
+	if len(rows) > handoff.MaxBaselineIDs {
+		return port.OrcaTerminal{}, fmt.Errorf("runtime restart terminal inventory exceeds %d entries", handoff.MaxBaselineIDs)
+	}
+	ptys := make([]string, len(rows))
+	handles := make([]string, len(rows))
+	for i := range rows {
+		ptys[i], handles[i] = rows[i].PTYID, rows[i].Handle
+	}
+	if err := requireStableInventoryIdentities("terminal", ptys); err != nil {
+		return port.OrcaTerminal{}, err
+	}
+	if err := requireStableInventoryIdentities("terminal", handles); err != nil {
+		return port.OrcaTerminal{}, err
+	}
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil {
+		return port.OrcaTerminal{}, fmt.Errorf("runtime restart terminal identity is unavailable")
+	}
+	stableObserved := h.Orca.WorkerTabID != "" || h.Orca.WorkerLeafID != ""
+	marker := issueOpsHandoffMarker(record.ID, h.OwnershipEpoch, h.Attempt)
+	candidates := make([]port.OrcaTerminal, 0, 1)
+	for _, row := range rows {
+		if stableObserved {
+			if row.TabID == h.Orca.WorkerTabID && row.LeafID == h.Orca.WorkerLeafID {
+				candidates = append(candidates, row)
+			}
+		} else if row.StableTabTitle == marker {
+			candidates = append(candidates, row)
+		}
+	}
+	if len(candidates) != 1 {
+		return port.OrcaTerminal{}, fmt.Errorf("runtime restart requires exactly one stable terminal candidate; found %d", len(candidates))
+	}
+	row := candidates[0]
+	if (row.TabID == "") != (row.LeafID == "") || row.RuntimeID != worktree.RuntimeID || row.WorktreeID != worktree.ID || !terminalWorktreePathMatches(row, h.WorkerRoot) || !row.Connected || !row.Writable {
+		return port.OrcaTerminal{}, fmt.Errorf("current-runtime terminal does not match exact stable tab/leaf and worktree identity")
+	}
+	return row, nil
+}
+
+func isOrcaTerminalNotFound(err error) bool {
+	var orcaErr *port.OrcaError
+	return errors.As(err, &orcaErr) && strings.TrimSpace(orcaErr.Code) == "terminal_not_found"
+}
+
+func terminalCreateCapabilityLost(err error) bool {
+	var orcaErr *port.OrcaError
+	if !errors.As(err, &orcaErr) {
+		return false
+	}
+	switch strings.TrimSpace(orcaErr.Code) {
+	case "terminal_create_capability_missing", "terminal_create_capability_unavailable":
+		return true
+	default:
+		return false
+	}
 }
 
 func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now func() string, beforeJournal func()) (IssueOpsRecord, string, error) {
@@ -215,12 +396,17 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 	})
 	if err != nil {
 		transitionAt := now()
-		if externalMutationNotInvoked(err) {
+		capabilityLost := terminalCreateCapabilityLost(err)
+		if externalMutationNotInvoked(err) && !capabilityLost {
 			cleared, clearErr := completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationTerminalCreate, transitionAt, nil)
 			if clearErr != nil {
 				return record, "", fmt.Errorf("clear non-invoked terminal create journal: %w", clearErr)
 			}
 			return cleared, "", fmt.Errorf("Orca terminal create was not invoked and is safe to retry: %w", err)
+		}
+		if capabilityLost {
+			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_create_capability_lost", err.Error(), transitionAt)
+			return record, "", fmt.Errorf("Orca terminal create capability changed after provisioning and requires recovery: %w", err)
 		}
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_create_ambiguous", err.Error(), transitionAt)
 		return record, "", fmt.Errorf("Orca terminal create requires recovery: %w", err)
@@ -249,8 +435,13 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 	}
 	record, err = completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationTerminalCreate, now(), func(h *IssueOpsExecutionHandoff) error {
 		h.Orca.TerminalBaselinePTYIDs = baseline
+		if terminal.RuntimeID != "" {
+			h.Orca.RuntimeID = terminal.RuntimeID
+		}
 		h.Orca.WorkerPTYID = terminal.PTYID
 		h.Orca.WorkerMailboxHandle = terminal.Handle
+		h.Orca.WorkerTabID = terminal.TabID
+		h.Orca.WorkerLeafID = terminal.LeafID
 		return nil
 	})
 	if err != nil {

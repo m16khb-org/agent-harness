@@ -545,6 +545,25 @@ func TestHandoffStartDefinitivePreInvocationFailuresClearOnlyTheirJournal(t *tes
 	}
 }
 
+func TestHandoffStartTerminalCapabilityLossPreservesProvisionedLease(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.terminalErr = &port.OrcaError{Code: "terminal_create_capability_missing", Detail: "installed help changed", Invoked: false}
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil {
+		t.Fatal("terminal capability loss must require recovery")
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.PendingOperation == nil || persisted.ExecutionHandoff.PendingOperation.Kind != handoff.OperationTerminalCreate || persisted.ExecutionHandoff.Failure == nil || persisted.ExecutionHandoff.Failure.Code != "terminal_create_capability_lost" {
+		t.Fatalf("terminal capability loss cleared the provisioned lease: %#v", persisted.ExecutionHandoff)
+	}
+	if client.taskCreates != 0 || client.dispatchCalls != 0 {
+		t.Fatalf("terminal capability loss continued to later mutations: trace=%v", client.trace)
+	}
+}
+
 func TestHandoffStartRejectsFullTerminalAndTaskBaselinesBeforeCreate(t *testing.T) {
 	t.Run("terminal", func(t *testing.T) {
 		stateRoot, record := handoffDispatchRecord(t)
@@ -632,6 +651,398 @@ func TestHandoffStartContinuesAfterTerminalCreateReconcileWithoutDuplicate(t *te
 	}
 	if len(client.dispatchRequests) != 1 || client.dispatchRequests[0].ToHandle != "term-live" || got.Orca == nil || got.Orca.WorkerMailboxHandle != "term-live" {
 		t.Fatalf("dispatch did not use the refreshed mailbox: result=%#v requests=%#v", got, client.dispatchRequests)
+	}
+}
+
+func TestHandoffStartRecoversRuntimeReissuedTerminalWithoutDuplicateCreate(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.TerminalBaselinePTYIDs = []string{"pty-baseline"}
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+	record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+	record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+	client.terminals = []port.OrcaTerminal{{
+		RuntimeID: "runtime-2", Handle: "term-recovered", PTYID: "pty-recovered",
+		WorktreeID: "wt-1", WorktreePath: record.WorktreePath, TabID: "tab-stable", LeafID: "leaf-stable",
+		Title:     "⣴ 16-orca-supervised-ha...",
+		Connected: true, Writable: true,
+	}}
+	client.worktrees = []port.OrcaWorktree{runtimeRestartWorktree(record, "runtime-2", "inst-2")}
+	client.dispatch.AssigneeHandle = "term-recovered"
+
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || got.Orca == nil || got.Orca.RuntimeID != "runtime-2" || got.Orca.WorktreeInstanceID != "inst-2" || got.Orca.WorkerPTYID != "pty-recovered" || got.Orca.WorkerMailboxHandle != "term-recovered" || got.Orca.WorkerTabID != "tab-stable" || got.Orca.WorkerLeafID != "leaf-stable" {
+		t.Fatalf("runtime-reissued terminal was not sealed before dispatch: %#v", got)
+	}
+	if client.terminalCreates != 0 || client.terminalRefreshes != 1 || client.taskCreates != 1 || client.dispatchCalls != 1 {
+		t.Fatalf("runtime recovery duplicated terminal or skipped dispatch: create/refresh/task/dispatch=%d/%d/%d/%d trace=%v", client.terminalCreates, client.terminalRefreshes, client.taskCreates, client.dispatchCalls, client.trace)
+	}
+	if len(client.dispatchRequests) != 1 || client.dispatchRequests[0].ToHandle != "term-recovered" {
+		t.Fatalf("dispatch did not use recovered exact handle: %#v", client.dispatchRequests)
+	}
+}
+
+func TestHandoffStartRuntimeRestartWithDirtyWorkerNeverLaunchesReplacement(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+	record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+	record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	writeIssueOpsFile(t, record.WorktreePath, "recovered-wip.txt", "uncommitted worker progress\n")
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	client := handoffDispatchFake(record)
+	client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+	client.terminals = []port.OrcaTerminal{{
+		RuntimeID: "runtime-2", Handle: "term-recovered", PTYID: "pty-recovered",
+		WorktreeID: "wt-1", WorktreePath: record.WorktreePath, TabID: "tab-stable", LeafID: "leaf-stable",
+		Title:     "dynamic Codex title",
+		Connected: true, Writable: true,
+	}}
+	client.worktrees = []port.OrcaWorktree{runtimeRestartWorktree(record, "runtime-2", "inst-2")}
+
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil || !strings.Contains(err.Error(), "clean worker worktree") {
+		t.Fatalf("dirty runtime-recovered worker error = %v", err)
+	}
+	if len(client.trace) != 0 || client.terminalCreates != 0 {
+		t.Fatalf("dirty recovered worker launched or inspected a replacement terminal: trace=%v creates=%d", client.trace, client.terminalCreates)
+	}
+	after := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	if string(after) != string(before) {
+		t.Fatal("dirty runtime-recovered worker mutated the durable lease")
+	}
+}
+
+func TestHandoffStartRuntimeRestartRequiresUniqueExactWorktree(t *testing.T) {
+	tests := []struct {
+		name               string
+		terminalWorktreeID string
+		mutate             func(IssueOpsRecord, []port.OrcaWorktree) []port.OrcaWorktree
+	}{
+		{name: "missing instance", mutate: func(_ IssueOpsRecord, rows []port.OrcaWorktree) []port.OrcaWorktree {
+			rows[0].InstanceID = ""
+			return rows
+		}},
+		{name: "wrong marker", mutate: func(_ IssueOpsRecord, rows []port.OrcaWorktree) []port.OrcaWorktree {
+			rows[0].Comment = "unrelated"
+			return rows
+		}},
+		{name: "wrong head", mutate: func(_ IssueOpsRecord, rows []port.OrcaWorktree) []port.OrcaWorktree {
+			rows[0].Head = strings.Repeat("f", 40)
+			return rows
+		}},
+		{name: "wrong branch", mutate: func(_ IssueOpsRecord, rows []port.OrcaWorktree) []port.OrcaWorktree {
+			rows[0].Branch = "refs/heads/unrelated"
+			return rows
+		}},
+		{name: "missing", mutate: func(_ IssueOpsRecord, _ []port.OrcaWorktree) []port.OrcaWorktree { return nil }},
+		{name: "terminal worktree mismatch", terminalWorktreeID: "wt-other", mutate: func(_ IssueOpsRecord, rows []port.OrcaWorktree) []port.OrcaWorktree { return rows }},
+		{name: "conflicting duplicate instance", mutate: func(_ IssueOpsRecord, rows []port.OrcaWorktree) []port.OrcaWorktree {
+			conflict := rows[0]
+			conflict.InstanceID = "inst-conflict"
+			return append(rows, conflict)
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+			record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+			record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+			record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+			if _, err := WriteIssueOps(stateRoot, record); err != nil {
+				t.Fatal(err)
+			}
+			client := handoffDispatchFake(record)
+			client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+			terminalWorktreeID := tt.terminalWorktreeID
+			if terminalWorktreeID == "" {
+				terminalWorktreeID = "wt-1"
+			}
+			client.terminals = []port.OrcaTerminal{{
+				RuntimeID: "runtime-2", Handle: "term-recovered", PTYID: "pty-recovered",
+				WorktreeID: terminalWorktreeID, WorktreePath: record.WorktreePath, TabID: "tab-stable", LeafID: "leaf-stable",
+				Title: "dynamic Codex title", Connected: true, Writable: true,
+			}}
+			client.worktrees = tt.mutate(record, []port.OrcaWorktree{runtimeRestartWorktree(record, "runtime-2", "inst-2")})
+
+			if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil {
+				t.Fatal("ambiguous runtime restart must fail closed")
+			}
+			persisted, err := ReadIssueOps(stateRoot, record.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.Failure == nil || persisted.ExecutionHandoff.Failure.Code != "runtime_restart_ambiguous" || persisted.ExecutionHandoff.Orca.RuntimeID != "runtime-1" || persisted.ExecutionHandoff.Orca.WorktreeInstanceID != "inst-1" {
+				t.Fatalf("ambiguous runtime restart adopted partial identity: %#v", persisted.ExecutionHandoff)
+			}
+			if client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 {
+				t.Fatalf("ambiguous runtime restart invoked a mutation: trace=%v", client.trace)
+			}
+		})
+	}
+}
+
+func TestHandoffStartRuntimeRestartAcceptsEqualCurrentWorktreeInstance(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+	record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+	record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+	client.terminals = []port.OrcaTerminal{{
+		RuntimeID: "runtime-2", Handle: "term-recovered", PTYID: "pty-recovered",
+		WorktreeID: "wt-1", WorktreePath: record.WorktreePath, TabID: "tab-stable", LeafID: "leaf-stable",
+		Title: "dynamic Codex title", Connected: true, Writable: true,
+	}}
+	client.worktrees = []port.OrcaWorktree{runtimeRestartWorktree(record, "runtime-2", record.ExecutionHandoff.Orca.WorktreeInstanceID)}
+	client.dispatch.AssigneeHandle = "term-recovered"
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || got.Orca == nil || got.Orca.RuntimeID != "runtime-2" || got.Orca.WorktreeInstanceID != "inst-1" || client.terminalCreates != 0 {
+		t.Fatalf("equal current worktree instance was rejected or duplicated: result=%#v trace=%v", got, client.trace)
+	}
+}
+
+func TestHandoffRuntimeRefreshCompletionRevalidatesJournalAndFilesystem(t *testing.T) {
+	tests := []struct {
+		name    string
+		mutate  func(*testing.T, string, IssueOpsRecord)
+		wantErr string
+	}{
+		{
+			name: "durable journal drift",
+			mutate: func(t *testing.T, stateRoot string, record IssueOpsRecord) {
+				current, err := ReadIssueOps(stateRoot, record.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				current.Feedback = append(current.Feedback, IssueOpsFeedbackItem{Source: "review", Body: "inventory completed under an older snapshot", CreatedAt: "2026-07-11T02:03:05Z"})
+				if _, err := WriteIssueOps(stateRoot, current); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantErr: "handoff changed during runtime-refresh inventory",
+		},
+		{
+			name: "context source drift",
+			mutate: func(t *testing.T, _ string, record IssueOpsRecord) {
+				writeIssueOpsFile(t, record.WorktreePath, "plans/plan.md", "# changed after runtime inventory\n")
+			},
+			wantErr: "stale handoff context source fingerprint",
+		},
+		{
+			name: "dirty exact checkpoint",
+			mutate: func(t *testing.T, _ string, record IssueOpsRecord) {
+				writeIssueOpsFile(t, record.WorktreePath, "runtime-refresh-drift.txt", "uncommitted drift\n")
+			},
+			wantErr: "clean worker worktree",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+			record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+			record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+			record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+			if _, err := WriteIssueOps(stateRoot, record); err != nil {
+				t.Fatal(err)
+			}
+			client := handoffDispatchFake(record)
+			client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+			client.worktrees = []port.OrcaWorktree{runtimeRestartWorktree(record, "runtime-2", "inst-2")}
+			client.terminals = []port.OrcaTerminal{{
+				RuntimeID: "runtime-2", Handle: "term-recovered", PTYID: "pty-recovered",
+				WorktreeID: "wt-1", WorktreePath: record.WorktreePath, TabID: "tab-stable", LeafID: "leaf-stable",
+				Connected: true, Writable: true,
+			}}
+			client.beforeTerminalList = func() { tt.mutate(t, stateRoot, record) }
+
+			_, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("runtime refresh drift error = %v, want %q", err, tt.wantErr)
+			}
+			persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			h := persisted.ExecutionHandoff
+			if h == nil || h.State != handoff.StateRecoveryRequired || h.PendingOperation == nil || h.PendingOperation.Kind != handoff.OperationRuntimeRefresh || h.Orca == nil {
+				t.Fatalf("runtime refresh drift did not preserve recovery journal: %#v", h)
+			}
+			if h.Orca.RuntimeID != "runtime-1" || h.Orca.WorktreeInstanceID != "inst-1" || h.Orca.WorkerMailboxHandle != "term-stale" || h.Orca.WorkerPTYID != "pty-stale" || h.Orca.WorkerTabID != "tab-stable" || h.Orca.WorkerLeafID != "leaf-stable" {
+				t.Fatalf("runtime refresh drift partially adopted inventory identity: %#v", h.Orca)
+			}
+			if client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 {
+				t.Fatalf("runtime refresh drift reached a later mutation: trace=%v", client.trace)
+			}
+		})
+	}
+}
+
+func TestHandoffStartRuntimeRestartLegacyUsesStableVisualTabMarker(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+	client.terminals = []port.OrcaTerminal{{
+		RuntimeID: "runtime-2", Handle: "term-recovered", PTYID: "pty-recovered",
+		WorktreeID: "wt-1", WorktreePath: record.WorktreePath, TabID: "tab-now-observed", LeafID: "leaf-now-observed",
+		Title: "dynamic Codex title", StableTabTitle: issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
+		Connected: true, Writable: true,
+	}}
+	client.worktrees = []port.OrcaWorktree{runtimeRestartWorktree(record, "runtime-2", "inst-2")}
+	client.dispatch.AssigneeHandle = "term-recovered"
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || got.Orca == nil || got.Orca.WorkerTabID != "tab-now-observed" || got.Orca.WorkerLeafID != "leaf-now-observed" {
+		t.Fatalf("legacy stable visual marker did not seal newly observed tab/leaf: %#v", got)
+	}
+}
+
+func TestHandoffStartRuntimeRestartLegacyRejectsDynamicTitleMarkerAlone(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+	marker := issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
+	client.terminals = []port.OrcaTerminal{{
+		RuntimeID: "runtime-2", Handle: "term-untrusted", PTYID: "pty-untrusted",
+		WorktreeID: "wt-1", WorktreePath: record.WorktreePath, TabID: "tab-untrusted", LeafID: "leaf-untrusted",
+		Title: marker, StableTabTitle: "unrelated stable tab", Connected: true, Writable: true,
+	}}
+	client.worktrees = []port.OrcaWorktree{runtimeRestartWorktree(record, "runtime-2", "inst-2")}
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil {
+		t.Fatal("dynamic terminal title alone must not authorize legacy runtime recovery")
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.Orca.WorkerMailboxHandle != "term-stale" || persisted.ExecutionHandoff.Orca.WorkerTabID != "" {
+		t.Fatalf("dynamic title fallback adopted untrusted terminal: %#v", persisted.ExecutionHandoff)
+	}
+}
+
+func TestHandoffRuntimeRestartReconcileResumesToDispatchWithoutDuplicateCreate(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+	record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+	record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+	client.terminals = []port.OrcaTerminal{{
+		RuntimeID: "runtime-2", Handle: "term-recovered", PTYID: "pty-recovered",
+		WorktreeID: "wt-1", WorktreePath: record.WorktreePath, TabID: "tab-stable", LeafID: "leaf-stable",
+		Title: "dynamic Codex title", Connected: true, Writable: true,
+	}}
+	worktree := runtimeRestartWorktree(record, "runtime-2", "inst-2")
+	worktree.Comment = "temporarily incomplete"
+	client.worktrees = []port.OrcaWorktree{worktree}
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil {
+		t.Fatal("first ambiguous runtime inventory must require recovery")
+	}
+	client.worktrees[0].Comment = issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
+	reconciled, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "reconcile"}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reconciled.State != handoff.StateCoordinatorPreparing || reconciled.Orca == nil || reconciled.Orca.RuntimeID != "runtime-2" || reconciled.Orca.WorktreeInstanceID != "inst-2" || reconciled.Orca.WorkerMailboxHandle != "term-recovered" {
+		t.Fatalf("runtime reconciliation did not atomically adopt current identities: %#v", reconciled)
+	}
+	client.terminalRefreshErr = nil
+	client.refreshedTerminal = client.terminals[0]
+	client.dispatch.AssigneeHandle = "term-recovered"
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || client.terminalCreates != 0 || client.taskCreates != 1 || client.dispatchCalls != 1 {
+		t.Fatalf("reconciled runtime did not resume exactly once: result=%#v trace=%v", got, client.trace)
+	}
+}
+
+func TestHandoffExplicitRuntimeRefreshReconcileRevalidatesFilesystem(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+	record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+	record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+	client.terminals = []port.OrcaTerminal{{
+		RuntimeID: "runtime-2", Handle: "term-recovered", PTYID: "pty-recovered",
+		WorktreeID: "wt-1", WorktreePath: record.WorktreePath, TabID: "tab-stable", LeafID: "leaf-stable",
+		Connected: true, Writable: true,
+	}}
+	worktree := runtimeRestartWorktree(record, "runtime-2", "inst-2")
+	worktree.Comment = "temporarily incomplete"
+	client.worktrees = []port.OrcaWorktree{worktree}
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil {
+		t.Fatal("incomplete inventory must first enter runtime recovery")
+	}
+	client.worktrees[0].Comment = issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
+	client.beforeTerminalList = func() {
+		writeIssueOpsFile(t, record.WorktreePath, "explicit-runtime-reconcile-drift.txt", "uncommitted drift\n")
+	}
+	_, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "reconcile"}, client, handoffPrepareTestClock())
+	if err == nil || !strings.Contains(err.Error(), "clean worker worktree") {
+		t.Fatalf("explicit runtime reconcile drift error = %v", err)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	h := persisted.ExecutionHandoff
+	if h == nil || h.State != handoff.StateRecoveryRequired || h.PendingOperation == nil || h.PendingOperation.Kind != handoff.OperationRuntimeRefresh || h.Orca == nil || h.Orca.RuntimeID != "runtime-1" || h.Orca.WorktreeInstanceID != "inst-1" || h.Orca.WorkerMailboxHandle != "term-stale" || h.Orca.WorkerPTYID != "pty-stale" {
+		t.Fatalf("explicit runtime reconcile adopted identity after filesystem drift: %#v", h)
+	}
+	if client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 {
+		t.Fatalf("explicit runtime reconcile drift reached a later mutation: trace=%v", client.trace)
+	}
+}
+
+func runtimeRestartWorktree(record IssueOpsRecord, runtimeID, instanceID string) port.OrcaWorktree {
+	return port.OrcaWorktree{
+		RuntimeID: runtimeID, ID: record.ExecutionHandoff.Orca.WorktreeID, InstanceID: instanceID,
+		RepoID: record.ExecutionHandoff.Orca.RepoID, Path: record.WorktreePath,
+		Head: record.ExecutionHandoff.AttemptBaseHead, Branch: "refs/heads/" + record.Branch,
+		Comment: issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
+		BaseRef: record.ExecutionHandoff.Orca.BaseRef,
 	}
 }
 
@@ -727,12 +1138,14 @@ type dispatchOrcaFake struct {
 	terminalListErr      error
 	taskListErr          error
 	beforeWorktreeList   func()
+	beforeTerminalList   func()
 	beforeTerminalCreate func()
 	beforeTaskCreate     func()
 	beforeDispatch       func()
 	terminalCreates      int
 	terminalListCalls    int
 	terminalRefreshes    int
+	terminalRefreshErr   error
 	taskCreates          int
 	dispatchCalls        int
 	dispatchRequests     []port.OrcaDispatchRequest
@@ -789,6 +1202,9 @@ func mustHandoffTaskDisplay(t *testing.T, record IssueOpsRecord) string {
 func (f *dispatchOrcaFake) ListTerminals(context.Context, string) ([]port.OrcaTerminal, error) {
 	f.trace = append(f.trace, "terminal-list")
 	f.terminalListCalls++
+	if f.beforeTerminalList != nil {
+		f.beforeTerminalList()
+	}
 	return append([]port.OrcaTerminal(nil), f.terminals...), f.terminalListErr
 }
 
@@ -808,6 +1224,9 @@ func (f *dispatchOrcaFake) CreateTerminal(_ context.Context, req port.OrcaCreate
 func (f *dispatchOrcaFake) RefreshTerminal(context.Context, string, string) (port.OrcaTerminal, error) {
 	f.trace = append(f.trace, "terminal-refresh")
 	f.terminalRefreshes++
+	if f.terminalRefreshErr != nil {
+		return port.OrcaTerminal{}, f.terminalRefreshErr
+	}
 	if f.refreshedTerminal.PTYID != "" {
 		return f.refreshedTerminal, nil
 	}

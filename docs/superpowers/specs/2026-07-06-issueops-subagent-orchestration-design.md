@@ -66,7 +66,7 @@ Three additive state features, one binding extension, hook/skill surfacing, and 
 
 ### State shape
 
-Additive fields on `IssueOpsRecord` (all `omitempty`; `IssueOpsCurrentSchemaVersion` stays 1 — same additive precedent as `phase_ledger`):
+At this design's July 6 baseline, these non-ownership fields were additive `omitempty` under IssueOps schema v1, following the `phase_ledger` precedent. Issue #16 later supersedes that compatibility decision with root schema v3 for `execution_handoff` and stable terminal identity:
 
 ```go
 // Child-side: identifies the parent and carries the delegated work contract.
@@ -319,9 +319,9 @@ Interaction with D1: the delegated child's `worktree_tools` gate (spec above) no
 
 ## Backward Compatibility
 
-- All IssueOps additions are `omitempty` additive fields; `schema_version` stays 1 (same precedent as `phase_ledger`). Records without delegation fields behave exactly as today; parents without children have vacuously-satisfied gates.
-- Mixed-binary caution (recorded in CAUTIONS): an *older* binary doing a read-modify-write on a record with delegation fields would drop them. The deployment model is a single central `bin/agent-harness` per machine (update flow replaces it atomically), so this is accepted and documented, not engineered around.
-- The workpool namespace is new; its `schema_version=1` records fail closed on future versions (same rule as IssueOps/state).
+- At this design's July 6 baseline, the delegation additions were `omitempty` fields under IssueOps schema v1. Issue #16 supersedes the root version with schema v3 for supervised ownership and stable terminal identity; records without delegation fields and parents without children still preserve the same behavior.
+- The historical mixed-binary risk was that an older writer could drop unknown delegation fields. Current schema-v3 writers instead require v1 to reject v2+ and v2 to reject v3 before rewrite; the single central binary update model remains operationally required.
+- The workpool namespace is separate and remains at `schema_version=1`; its records apply the same fail-closed-on-future-version principle, not the IssueOps root version number.
 - Legacy per-repo session binding keeps working unchanged for the single-cycle workflow.
 
 ## CLI and MCP Surface

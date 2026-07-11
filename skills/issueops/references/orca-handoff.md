@@ -161,7 +161,13 @@ If a worker is blocked, send one escalation to the concrete coordinator handle, 
 
 The current `orca orchestration send --type` enum is exactly `status`, `dispatch`, `worker_done`, `merge_ready`, `escalation`, `handoff`, `decision_gate`, and `heartbeat`. Use `status` for non-terminal progress, `heartbeat` for liveness, one `escalation` for a blocker, and `worker_done` exactly once at completion. Do not invent message types such as `progress`, `blocked`, or `completed`.
 
-PreToolUse blocks every other explicit message type, including malformed duplicate `--type` flags, before supervised-record selection; a valid or omitted type still passes through the existing authority checks. The mailbox repeat-prevention guard blocks any explicit `--inject` on direct `orca orchestration check`, including implicit-default unread, `--unread`, `--all`, reordered, and equals forms; in particular, never use `--unread --inject`. First run the read-only inventory `orca orchestration check --all --json`, then select the exact current task, dispatch, and sequence before acting. A live terminal handle is not historical mailbox identity. For an urgent current-worker correction, use only the existing exact literal-safe source-coordinator terminal guidance bound to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
+PreToolUse blocks every other explicit message type, including malformed duplicate `--type` flags, before supervised-record selection; a valid or omitted type still passes through the existing authority checks. The mailbox repeat-prevention guard blocks any explicit `--inject` on direct `orca orchestration check`, including implicit-default unread, `--unread`, `--all`, reordered, and equals forms; in particular, never use `--unread --inject`. Read and project the bounded mailbox with the installed envelope shape:
+
+```bash
+orca orchestration check --all --json | jq '.result.messages[]'
+```
+
+The array is nested under `.result.messages`; querying top-level `.messages` silently yields no rows and is not authoritative absence. Select the exact current task, dispatch, and sequence before acting. A live terminal handle is not historical mailbox identity. For an urgent current-worker correction, use only the existing exact literal-safe source-coordinator terminal guidance bound to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
 
 PreToolUse blocks direct `orca orchestration ask` and `orca orchestration gate-create` from a linked worker checkout even when `execution_handoff` is absent. The source coordinator owns decision gates; `gate-list` remains read-only for workers. After one escalation, heartbeat and wait rather than opening a duplicate gate.
 
@@ -245,6 +251,25 @@ orca worktree show --worktree id:<id> --json
 
 Recovery accepts exactly one candidate relative to the persisted baseline and marker. Zero or multiple matching worktrees, terminals, tasks, or dispatches fail closed and preserve the pending journal. Never guess an identity and never issue another create to discover whether the first one worked.
 
+### Runtime rollover recovery
+
+An Orca runtime restart may reissue the runtime ID, terminal handle and PTY, and worktree instance while the same logical terminal keeps its public `tabId and leafId`. The dynamic terminal title is presentation state and is never the sole durable locator. Persist `runtime_refresh` before adopting replacement identities, then collect complete bounded inventories:
+
+```bash
+orca worktree list --repo path:<exact-repo> --limit 512 --json
+orca terminal list --worktree id:<persisted-worktree-id> --limit 512 --json
+```
+
+Require exactly one worktree row matching the sealed repo, base, path, branch, clean exact HEAD, and comment marker. Its instance ID must be nonempty but may equal the previously persisted instance. Require the adopted terminal to name that worktree and current runtime. When stable terminal IDs were recorded, match the exact `tabId and leafId`; for a legacy row that never recorded them, join the terminal by exact tab/leaf to `visualLayouts[].root.tabs[].title` and require the exact bounded marker title. Missing fields, mismatches, duplicate candidates, or conflicting instance evidence leave the lease in `recovery_required`. The runtime-only locked completion exact-compares the journal snapshot and revalidates the sealed context source and clean exact branch/HEAD immediately before refreshing runtime, worktree instance, handle, PTY, tab ID, and leaf ID in one compare-and-set write.
+
+Never launch a replacement while an exact recovered terminal is connected and writable or the worker root contains uncommitted WIP. Monitor only with bounded reads, carrying the previous response's `nextCursor` forward:
+
+```bash
+orca terminal read --terminal <recovered-current-handle> --cursor <nextCursor> --limit 1000 --json
+```
+
+A handshake-only local Orca observation is bounded by caller-side Ctrl-C or host tool cancellation. Do not send control input into the target PTY to stop an observation; terminal mutation remains authority-gated.
+
 If reconciliation proves no safe continuation, close the attempt explicitly. A later retry is a new attempt and ownership epoch, and is allowed only after the prior attempt is safely closed with no ambiguous pending operation:
 
 ```bash
@@ -276,10 +301,11 @@ For `execution_handoff.driver=orca`, Git worktree removal is not the cleanup rou
 ```bash
 orca orchestration task-update --id <persisted-task-id> --status <completed-or-failed> --result <bounded-result> --json
 orca terminal close --terminal <persisted-worker-mailbox-handle> --json
+orca terminal stop --worktree id:<persisted-worktree-id> --json
 orca worktree rm --worktree id:<persisted-worktree-id> --force --json
-orca terminal list --worktree <persisted-worktree-id> --json
+orca terminal list --worktree id:<persisted-worktree-id> --limit 512 --json
 ```
 
-The exact `orca terminal close --terminal <persisted-worker-mailbox-handle> --json` form is an optional bounded cleanup attempt for source-root coordinators only after `closed/worker_failed` or `closed/cancelled`; it is blocked for accepted or active attempts, worker/non-source sessions, wrong handles, and extra flags. `WorkerMailboxHandle` remains historical dispatch/mailbox identity rather than general live terminal-control authority: never use it for `send`, `stop`, or injected `exit`, and do not treat a successful close as complete cleanup evidence. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list; nested shells require repeated inspection until fully gone. Also verify the exact worktree selector and path are absent before handling provider refs. Inline records retain the legacy Git cleanup recipe; never substitute `git worktree remove` for Orca-owned removal.
+The exact `orca terminal close --terminal <persisted-worker-mailbox-handle> --json` form closes one pane; `orca terminal stop --worktree id:<persisted-worktree-id> --json` stops the worktree terminal set. Never use `terminal rm`: no such public cleanup command exists. Each is an optional bounded cleanup attempt for source-root coordinators only after `closed/worker_failed` or `closed/cancelled`; it is blocked for accepted or active attempts, worker/non-source sessions, wrong identities, and extra flags. `WorkerMailboxHandle` remains historical dispatch/mailbox identity rather than general live terminal-control authority: never use it for `send` or injected `exit`, and do not treat a successful close or stop as complete cleanup evidence. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list; nested shells require repeated inspection until fully gone. Also verify the exact worktree selector and path are absent before handling provider refs. Inline records retain the legacy Git cleanup recipe; never substitute `git worktree remove` for Orca-owned removal.
 
 `auto` fallback is allowed only after a pre-mutation probe failure. It is never a recovery strategy for `coordinator_preparing`, `dispatched`, `claimed`, `submitted`, or `recovery_required` state.

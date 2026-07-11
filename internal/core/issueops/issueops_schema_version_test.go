@@ -102,7 +102,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 	id := "io-future-schema"
 	writeRawIssueOpsRecord(t, stateRoot, id, `{
   "ok": true,
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "io-future-schema",
   "repo": "/repo/example",
   "branch": "1-demo",
@@ -113,7 +113,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 `)
 
 	_, err := ReadIssueOps(stateRoot, id)
-	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 3") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 4") {
 		t.Fatalf("expected future schema rejection, got %v", err)
 	}
 }
@@ -138,7 +138,7 @@ func TestIssueOpsReadUpgradesV1HandoffWithoutDataLoss(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if upgraded.SchemaVersion != 2 || upgraded.ExecutionHandoff == nil || !reflect.DeepEqual(*upgraded.ExecutionHandoff, wantHandoff) {
+	if upgraded.SchemaVersion != IssueOpsCurrentSchemaVersion || upgraded.ExecutionHandoff == nil || !reflect.DeepEqual(*upgraded.ExecutionHandoff, wantHandoff) {
 		t.Fatalf("v1 handoff was not preserved during read migration: %#v", upgraded)
 	}
 	if _, err := WriteIssueOps(stateRoot, upgraded); err != nil {
@@ -152,14 +152,38 @@ func TestIssueOpsReadUpgradesV1HandoffWithoutDataLoss(t *testing.T) {
 	if err := json.Unmarshal(rewritten, &stored); err != nil {
 		t.Fatal(err)
 	}
-	if stored["schema_version"] != float64(2) || stored["execution_handoff"] == nil {
-		t.Fatalf("v1 handoff write did not upgrade to schema v2 without data loss: %s", rewritten)
+	if stored["schema_version"] != float64(IssueOpsCurrentSchemaVersion) || stored["execution_handoff"] == nil {
+		t.Fatalf("v1 handoff write did not upgrade to current schema without data loss: %s", rewritten)
+	}
+}
+
+func TestIssueOpsReadUpgradesV2HandoffWithoutDataLoss(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.SchemaVersion = 2
+	wantHandoff := *record.ExecutionHandoff
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put(issueOpsBucket, record.ID, raw); err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upgraded.SchemaVersion != IssueOpsCurrentSchemaVersion || upgraded.ExecutionHandoff == nil || !reflect.DeepEqual(*upgraded.ExecutionHandoff, wantHandoff) {
+		t.Fatalf("v2 handoff was not preserved during read migration: %#v", upgraded)
 	}
 }
 
 func TestFutureSchemaReadPreservesBoundedHandoffIdentityAndInvalidMarker(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
-	record.SchemaVersion = 3
+	record.SchemaVersion = IssueOpsCurrentSchemaVersion + 1
 	raw, err := json.Marshal(record)
 	if err != nil {
 		t.Fatal(err)
@@ -182,6 +206,18 @@ func TestFutureSchemaReadPreservesBoundedHandoffIdentityAndInvalidMarker(t *test
 
 func TestLegacyV1DecoderRejectsV2HandoffWithoutModifyingBytes(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
+	record.SchemaVersion = 2
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put(issueOpsBucket, record.ID, raw); err != nil {
+		t.Fatal(err)
+	}
 	before, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -195,6 +231,29 @@ func TestLegacyV1DecoderRejectsV2HandoffWithoutModifyingBytes(t *testing.T) {
 	}
 	if !bytes.Equal(after, before) {
 		t.Fatalf("legacy v1 rejection modified durable bytes\nbefore=%s\n after=%s", before, after)
+	}
+}
+
+func TestLegacyV2DecoderRejectsV3StableTerminalIdentityWithoutModifyingBytes(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+	record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	before, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := legacyV2ReadModifyWriteFixture(stateRoot, record.ID); err == nil || !strings.Contains(err.Error(), "schema_version 3") {
+		t.Fatalf("legacy v2 decoder did not reject v3 stable terminal identity: %v", err)
+	}
+	after, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(after, before) {
+		t.Fatalf("legacy v2 rejection modified durable bytes\nbefore=%s\n after=%s", before, after)
 	}
 }
 
@@ -236,6 +295,34 @@ func legacyV1ReadModifyWriteFixture(stateRoot, id string) error {
 		return fmt.Errorf("unsupported issueops schema_version %d; current is 1", legacy.SchemaVersion)
 	}
 	legacy.UpdatedAt = "legacy-v1-touch"
+	rewritten, err := json.MarshalIndent(legacy, "", "  ")
+	if err != nil {
+		return err
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		return err
+	}
+	return db.Put(issueOpsBucket, id, rewritten)
+}
+
+func legacyV2ReadModifyWriteFixture(stateRoot, id string) error {
+	raw, err := rawIssueOpsRecordBytes(stateRoot, id)
+	if err != nil {
+		return err
+	}
+	var legacy struct {
+		SchemaVersion int    `json:"schema_version"`
+		ID            string `json:"id"`
+		UpdatedAt     string `json:"updated_at"`
+	}
+	if err := json.Unmarshal(raw, &legacy); err != nil {
+		return err
+	}
+	if legacy.SchemaVersion > 2 {
+		return fmt.Errorf("unsupported issueops schema_version %d; current is 2", legacy.SchemaVersion)
+	}
+	legacy.UpdatedAt = "legacy-v2-touch"
 	rewritten, err := json.MarshalIndent(legacy, "", "  ")
 	if err != nil {
 		return err

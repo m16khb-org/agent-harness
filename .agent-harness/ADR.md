@@ -534,7 +534,7 @@ Archived entries:
 - Summary: IssueOps orchestration uses additive child-cycle fields, scoped session bindings, and workpool state while keeping the harness host-neutral and non-spawning.
 - Context: D5 documentation update for delegated child cycles and workpool orchestration. The existing architecture keeps hooks observe-only and IssueOps as a durable main-agent state machine.
 - Decision: Represent delegated child cycles as additive IssueOps record fields, represent parent/child session binding as scoped user-state bindings, and represent pool execution in a separate workpool namespace. Main agents dispatch and accept results; child/pool workers own their isolated worktree and heartbeat; hooks only relay or block deterministic violations. The harness records state, gates, leases, and results but does not spawn host agents.
-- Consequences: Future CLI/MCP work must preserve schema_version=1 additive compatibility for these fields, keep locks single-entity, and make worker liveness lease/heartbeat based. Any child or pool dispatch must reference a recorded execution_decision with an allowed sub-agent pattern slug and explicit verification/fallback.
+- Consequences: At this ADR's July 7 baseline, CLI/MCP preserved schema-v1 additive compatibility for these non-ownership fields; issue #16 later supersedes the root version with schema v3 for supervised ownership and stable terminal identity. Locks remain single-entity and worker liveness lease/heartbeat based. Any child or pool dispatch must reference a recorded execution_decision with an allowed sub-agent pattern slug and explicit verification/fallback.
 - Evidence:
   - .agent-harness/ARCHITECTURE.md IssueOps and workpool state model update
   - .agent-harness/AGENT_WORKFLOW.md resume, heartbeat, and pool-worker contract update
@@ -676,16 +676,16 @@ Archived entries:
 - Consequences: CLI and MCP share one core lifecycle and one MCP action tool. The fresh worker finishes with bounded Turing evidence and stops; the coordinator verifies, accepts, owns PR/merge, and later performs cleanup. V1 native hooks resolve the default IssueOps state root only; propagating a custom `HARNESS_STATE_DIR` into a fresh Orca terminal is deferred to issue #17 rather than injected implicitly across the host boundary.
 - Rejected alternatives: Orca as the durable authority; a generic orchestration plugin registry; blind create retry after timeout; lease transfer through `resume --bind`; expanding V1 recipes beyond IssueOps and Turing.
 
-## 2026-07-11 — IssueOps root schema v2 protects supervised ownership leases
+## 2026-07-11 — IssueOps root schema v3 protects supervised ownership and stable terminal identity
 
 - Kind: `adr`
 - Source: GitHub issue #16 schema compatibility review
-- Summary: Stamp every IssueOps write as schema v2 so an older v1 binary rejects a supervised lease instead of decoding and rewriting it without `execution_handoff`.
-- Context: `execution_handoff` is not optional display metadata; it owns mutation authority across host sessions. Leaving the root version at 1 allowed an old struct to ignore that unknown field and erase the guard during an unrelated read-modify-write.
+- Summary: Stamp every IssueOps write as schema v3 so v1 cannot erase `execution_handoff` and v2 cannot erase the stable terminal tab/leaf locator needed after an Orca runtime rollover.
+- Context: `execution_handoff` and stable terminal identity are not optional display metadata; they own mutation authority across host sessions. Leaving either addition under a schema already understood by an older writer lets that writer ignore the unknown field and weaken the guard during an unrelated read-modify-write.
 - Decision:
-  - Read missing, zero, and v1 rows with the current model and preserve every recognized field; stamp v2 on the next write.
-  - Reject versions greater than v2. For hook scans, retain only a bounded repo/worker identity projection and an in-memory invalid marker so unsupported rows remain fail-closed without being interpreted or rewritten.
-  - Keep v2 visible at the root. Do not use a private migration table or infer compatibility from nested protocol_version.
-- Consequences: CLI, MCP, daemon, and all native hosts must be updated together before mutating supervised rows. A v1 compatibility fixture must reject a v2 handoff byte-equivalently, and install smoke must verify v1 migration plus v2 readback.
+  - Read missing, zero, v1, and v2 rows with the current model and preserve every recognized field; stamp v3 on the next write.
+  - Reject versions greater than v3. For hook scans, retain only a bounded repo/worker identity projection and an in-memory invalid marker so unsupported rows remain fail-closed without being interpreted or rewritten.
+  - Keep v3 visible at the root. Do not use a private migration table or infer compatibility from nested protocol_version.
+- Consequences: CLI, MCP, daemon, and all native hosts must be updated together before mutating supervised rows. Compatibility fixtures must prove v1 rejects v2 and v2 rejects v3 byte-equivalently; install smoke must verify v1/v2 migration plus v3 readback.
 - Evidence: `internal/core/issueops/issueops_schema_version_test.go`, the real sqlstore future-schema lifecycle guard test, and three-host install migration verification recorded in the issue evidence ledger.
 - Rejected alternatives: keeping schema v1 because the field is `omitempty`; silently downgrading v2 for old binaries; discarding future-schema rows from hook ownership scans.

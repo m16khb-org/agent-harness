@@ -92,6 +92,9 @@ func forceAbandonIssueOpsHandoff(ctx context.Context, stateRoot, id, reason stri
 	if record.ExecutionHandoff == nil || record.ExecutionHandoff.State != handoff.StateRecoveryRequired || record.ExecutionHandoff.PendingOperation == nil {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("abandon requires recovery_required with a pending operation")
 	}
+	if record.ExecutionHandoff.PendingOperation.Kind == handoff.OperationRuntimeRefresh {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("runtime_refresh is a read-only identity reconciliation and cannot be force-abandoned")
+	}
 	startedAt, err := time.Parse(time.RFC3339Nano, record.ExecutionHandoff.PendingOperation.StartedAt)
 	if err != nil {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("parse pending operation age: %w", err)
@@ -185,6 +188,8 @@ func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, c
 		if !errors.As(err, &orcaErr) || strings.TrimSpace(orcaErr.Code) != "not_found" {
 			return fmt.Errorf("inspect dispatch absence: %w", err)
 		}
+		return nil
+	case handoff.OperationRuntimeRefresh:
 		return nil
 	default:
 		return fmt.Errorf("unsupported pending operation %q", pending.Kind)
@@ -463,10 +468,15 @@ func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, c
 			return err
 		}
 		ids := make([]string, len(rows))
+		handles := make([]string, len(rows))
 		for i := range rows {
 			ids[i] = rows[i].PTYID
+			handles[i] = rows[i].Handle
 		}
 		if err := requireStableInventoryIdentities("terminal", ids); err != nil {
+			return err
+		}
+		if err := requireStableInventoryIdentities("terminal", handles); err != nil {
 			return err
 		}
 		for _, row := range rows {
@@ -477,6 +487,31 @@ func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, c
 			}
 			if ptyMatch && handleMatch && row.Connected {
 				return fmt.Errorf("exact worker terminal is still connected")
+			}
+		}
+		stableObserved := strings.TrimSpace(identity.WorkerTabID) != "" || strings.TrimSpace(identity.WorkerLeafID) != ""
+		marker := issueOpsHandoffMarker(record.ID, h.OwnershipEpoch, h.Attempt)
+		reissued := make([]port.OrcaTerminal, 0, 1)
+		for _, row := range rows {
+			matches := row.StableTabTitle == marker
+			if stableObserved {
+				matches = row.TabID == identity.WorkerTabID && row.LeafID == identity.WorkerLeafID
+			}
+			if !matches || row.PTYID == identity.WorkerPTYID && row.Handle == identity.WorkerMailboxHandle {
+				continue
+			}
+			reissued = append(reissued, row)
+		}
+		if len(reissued) > 1 {
+			return fmt.Errorf("runtime-reissued worker terminal identity is ambiguous")
+		}
+		if len(reissued) == 1 {
+			row := reissued[0]
+			if strings.TrimSpace(row.RuntimeID) == "" || row.RuntimeID == identity.RuntimeID || row.WorktreeID != identity.WorktreeID || !terminalWorktreePathMatches(row, h.WorkerRoot) || (row.TabID == "") != (row.LeafID == "") {
+				return fmt.Errorf("runtime-reissued worker terminal identity is inconsistent")
+			}
+			if row.Connected {
+				return fmt.Errorf("runtime-reissued worker terminal is still connected")
 			}
 		}
 	}
@@ -706,7 +741,11 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 			return IssueOpsHandoffRecoverResult{}, matchErr
 		}
 		identity.TerminalBaselinePTYIDs = append([]string(nil), pending.BaselinePTYIDs...)
+		if candidate.RuntimeID != "" {
+			identity.RuntimeID = candidate.RuntimeID
+		}
 		identity.WorkerPTYID, identity.WorkerMailboxHandle = candidate.PTYID, candidate.Handle
+		identity.WorkerTabID, identity.WorkerLeafID = candidate.TabID, candidate.LeafID
 	case handoff.OperationTaskCreate:
 		reader, ok := client.(interface {
 			ListTasks(context.Context) ([]port.OrcaTask, error)
@@ -741,6 +780,21 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		identity.DispatchID, identity.WorkerMailboxHandle = candidate.ID, candidate.AssigneeHandle
 		newState = handoff.StateDispatched
 		next = "agent-harness issueops handoff claim --id " + id
+	case handoff.OperationRuntimeRefresh:
+		reader, ok := client.(IssueOpsOrcaDispatchClient)
+		if !ok {
+			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("Orca runtime restart recovery dependency is unavailable")
+		}
+		worktree, terminal, matchErr := reconcileRuntimeReissuedHandoffIdentity(ctx, record, reader)
+		if matchErr != nil {
+			return IssueOpsHandoffRecoverResult{}, matchErr
+		}
+		identity.RuntimeID = worktree.RuntimeID
+		identity.WorktreeInstanceID = worktree.InstanceID
+		identity.WorkerPTYID = terminal.PTYID
+		identity.WorkerMailboxHandle = terminal.Handle
+		identity.WorkerTabID = terminal.TabID
+		identity.WorkerLeafID = terminal.LeafID
 	default:
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("unsupported pending operation %q", pending.Kind)
 	}
@@ -753,6 +807,14 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		}
 		if !reflect.DeepEqual(current, validated) {
 			return fmt.Errorf("stale reconciliation result")
+		}
+		if pending.Kind == handoff.OperationRuntimeRefresh {
+			if err := validateHandoffContextSource(current); err != nil {
+				return err
+			}
+			if err := validateHandoffCleanExactCheckpoint(current); err != nil {
+				return err
+			}
 		}
 		current.ExecutionHandoff.Orca = identity
 		current.ExecutionHandoff.PendingOperation = nil

@@ -324,13 +324,101 @@ func TestClientRefreshesTerminalHandleByWorktreeAndPTY(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if terminal.Handle != "term-live" || terminal.PTYID != "pty-2" || terminal.Title != "agent-harness issueops=io-demo ownership=epoch-1 attempt=1" {
+	if terminal.RuntimeID != "runtime-1" || terminal.Handle != "term-live" || terminal.PTYID != "pty-2" || terminal.TabID != "tab-live" || terminal.LeafID != "leaf-live" || terminal.Title != "agent-harness issueops=io-demo ownership=epoch-1 attempt=1" {
 		t.Fatalf("refreshed terminal = %#v", terminal)
+	}
+}
+
+func TestClientDecodesRuntimeRolloverStableTerminalAndWorktreeIdentity(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal list --worktree id:worktree-1 --limit 512 --json"] = fixtureOutput(t, "terminal_list_runtime_rollover.json")
+	runner.responses["orca worktree list --repo path:/repo --limit 512 --json"] = fixtureOutput(t, "worktree_list_runtime_rollover.json")
+	client := NewClient(runner)
+	terminals, err := client.ListTerminals(context.Background(), "worktree-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktrees, err := client.ListWorktrees(context.Background(), "/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(terminals) != 1 || terminals[0].RuntimeID != "runtime-2" || terminals[0].TabID != "tab-stable" || terminals[0].LeafID != "leaf-stable" || terminals[0].StableTabTitle != "agent-harness issueops=io-demo ownership=epoch-1 attempt=1" || terminals[0].Title == terminals[0].StableTabTitle {
+		t.Fatalf("runtime rollover terminal = %#v", terminals)
+	}
+	if len(worktrees) != 1 || worktrees[0].RuntimeID != "runtime-2" || worktrees[0].InstanceID != "instance-2" || worktrees[0].Comment != "agent-harness issueops=io-demo ownership=epoch-1 attempt=1" {
+		t.Fatalf("runtime rollover worktree = %#v", worktrees)
+	}
+}
+
+func TestStableVisualTabTitlesBoundsTotalInventoryAcrossLayouts(t *testing.T) {
+	layouts := make([]visualLayoutPayload, 2)
+	for i := 0; i < port.OrcaMaxBaselineIDs+1; i++ {
+		layout := i % len(layouts)
+		layouts[layout].Root.Tabs = append(layouts[layout].Root.Tabs, struct {
+			TabID        string `json:"tabId"`
+			Title        string `json:"title"`
+			ActiveLeafID string `json:"activeLeafId"`
+		}{TabID: fmt.Sprintf("tab-%d", i), Title: "marker", ActiveLeafID: fmt.Sprintf("leaf-%d", i)})
+	}
+	if _, err := stableVisualTabTitles(layouts); err == nil || !strings.Contains(err.Error(), "visual tab inventory exceeds") {
+		t.Fatalf("unbounded visual tab inventory error = %v", err)
+	}
+}
+
+func TestClientCreateTerminalNegotiatesOnlyFixedBuiltInLaunchShape(t *testing.T) {
+	for _, tt := range []struct {
+		name, help, create string
+	}{
+		{name: "fixed agent", help: "--worktree --agent --title --json", create: "orca terminal create --worktree id:worktree-1 --agent codex --title marker --json"},
+		{name: "fixed command", help: "--worktree --command --title --json", create: "orca terminal create --worktree id:worktree-1 --command codex --dangerously-bypass-hook-trust --title marker --json"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte(tt.help)}
+			runner.responses[tt.create] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"terminal":{"handle":"term-1","worktreeId":"worktree-1"}},"_meta":{"runtimeId":"runtime-1"}}`)}
+			terminal, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{
+				WorktreeID: "worktree-1", Agent: "codex", Title: "marker", AllowCodexHookTrustBypass: true,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if terminal.RuntimeID != "runtime-1" || len(runner.calls) != 2 || strings.Join(runner.calls[1], " ") != tt.create {
+				t.Fatalf("fixed launch negotiation terminal=%#v calls=%#v", terminal, runner.calls)
+			}
+		})
+	}
+}
+
+func TestClientCreateTerminalCapabilityLossIsPreInvocation(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --title --json")}
+	_, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{WorktreeID: "worktree-1", Agent: "codex"})
+	var orcaErr *port.OrcaError
+	if !errors.As(err, &orcaErr) || orcaErr.Code != "terminal_create_capability_missing" || orcaErr.Invoked {
+		t.Fatalf("terminal capability loss error = %#v", err)
+	}
+	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != "orca terminal create --help" {
+		t.Fatalf("terminal capability loss invoked mutation: %#v", runner.calls)
+	}
+}
+
+func TestProbeAcceptsFixedAgentTerminalCreateCapability(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.lookPaths["orca"] = "/usr/local/bin/orca"
+	runner.lookPaths["codex"] = "/usr/local/bin/codex"
+	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+	runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+	addCompleteProbeLeafHelp(runner)
+	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --agent --title --json")}
+	result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
+	if err != nil || !result.Ready {
+		t.Fatalf("fixed --agent capability probe = %#v err=%v", result, err)
 	}
 }
 
 func TestClientCreateTerminalAcceptsRuntimeIdentityWithoutPTY(t *testing.T) {
 	runner := newFakeRunner(t)
+	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --command --title --json")}
 	runner.responses["orca terminal create --worktree id:worktree-1 --command codex --title marker --json"] = CommandOutput{Stdout: []byte(`{
 		"ok": true,
 		"result": {
@@ -354,6 +442,7 @@ func TestClientCreateTerminalAcceptsRuntimeIdentityWithoutPTY(t *testing.T) {
 		t.Fatalf("created terminal identity = %#v", terminal)
 	}
 	want := [][]string{
+		{"orca", "terminal", "create", "--help"},
 		{"orca", "terminal", "create", "--worktree", "id:worktree-1", "--command", "codex", "--title", "marker", "--json"},
 	}
 	if !reflect.DeepEqual(runner.calls, want) {
@@ -374,6 +463,7 @@ func TestClientCreateTerminalUsesCodexBypassOnlyWhenAttested(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := newFakeRunner(t)
+			runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --command --title --json")}
 			key := "orca terminal create --worktree id:worktree-1 --command " + tt.command + " --json"
 			runner.responses[key] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"terminal":{"handle":"term-create","worktreeId":"worktree-1"}}}`)}
 			_, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{
@@ -383,7 +473,7 @@ func TestClientCreateTerminalUsesCodexBypassOnlyWhenAttested(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := []string{"orca", "terminal", "create", "--worktree", "id:worktree-1", "--command", tt.command, "--json"}
-			if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0], want) {
+			if len(runner.calls) != 2 || !reflect.DeepEqual(runner.calls[1], want) {
 				t.Fatalf("terminal launch = %#v, want %#v", runner.calls, want)
 			}
 		})
@@ -392,6 +482,7 @@ func TestClientCreateTerminalUsesCodexBypassOnlyWhenAttested(t *testing.T) {
 
 func TestClientCreateTerminalRejectsIncompleteRuntimeIdentity(t *testing.T) {
 	runner := newFakeRunner(t)
+	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --command --title --json")}
 	runner.responses["orca terminal create --worktree id:worktree-1 --command codex --json"] = CommandOutput{Stdout: []byte(`{
 		"ok": true,
 		"result": {"terminal": {"ptyId": "pty-2", "worktreeId": "worktree-1"}}
@@ -401,7 +492,7 @@ func TestClientCreateTerminalRejectsIncompleteRuntimeIdentity(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "terminal identity") {
 		t.Fatalf("CreateTerminal() error = %v, want terminal identity error", err)
 	}
-	if len(runner.calls) != 1 {
+	if len(runner.calls) != 2 {
 		t.Fatalf("incomplete create identity made an extra call: %#v", runner.calls)
 	}
 }

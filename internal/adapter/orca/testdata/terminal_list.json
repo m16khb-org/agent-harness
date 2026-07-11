@@ -8,6 +8,8 @@
         "ptyId": "pty-1",
         "worktreeId": "worktree-1",
         "worktreePath": "/repo.worktrees/16-demo",
+        "tabId": "tab-old",
+        "leafId": "leaf-old",
         "title": "old terminal",
         "connected": true,
         "writable": true
@@ -17,6 +19,8 @@
         "ptyId": "pty-2",
         "worktreeId": "worktree-1",
         "worktreePath": "/repo.worktrees/16-demo",
+        "tabId": "tab-live",
+        "leafId": "leaf-live",
         "title": "agent-harness issueops=io-demo ownership=epoch-1 attempt=1",
         "connected": true,
         "writable": true

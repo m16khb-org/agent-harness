@@ -228,7 +228,7 @@ Once a cycle reaches `done`, its JSON file persists forever. `NonDoneCyclesForRe
 
 ### 5.3 IssueOps Schema Versioning Is Minimal (P2)
 
-IssueOps records now carry `schema_version=2` because `execution_handoff` is an ownership lease that a v1 writer must never silently discard. Missing/zero and v1 records are read as v2 and stamped on their next write, while records claiming a version greater than 2 fail closed before phase logic runs.
+IssueOps records now carry `schema_version=3` because `execution_handoff` and its stable terminal tab/leaf locator are ownership data that older writers must never silently discard. Missing/zero, v1, and v2 records are read as v3 and stamped on their next write; v1 rejects v2+, v2 rejects v3, and versions greater than 3 fail closed before phase logic runs.
 
 **Compatibility:** The v1 boundary rejects v2 before any write, preserving bytes. Future-schema reads retain only a bounded identifiable handoff projection plus an in-memory invalid marker so hooks keep ownership guards fail-closed without interpreting unsupported state.
 

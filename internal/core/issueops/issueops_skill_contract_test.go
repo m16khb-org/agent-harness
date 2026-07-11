@@ -326,7 +326,6 @@ func TestTuringSkillDocumentsSupervisedHandoffEvidenceContract(t *testing.T) {
 		"worktree removal is not terminal cleanup evidence",
 		"exact spawned handle and PTY",
 		"connected=false or absent from terminal list",
-		"orca terminal close --terminal <persisted-worker-mailbox-handle> --json",
 		"optional bounded cleanup attempt",
 		"nested shells",
 		"representative mutation family",
@@ -357,7 +356,6 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 			"pathname expansion",
 			"Turing report path is a safe relative path",
 			"leaf symlink",
-			"orca orchestration check --all --json",
 			"never use `--unread --inject`",
 			"exact current task, dispatch, and sequence",
 			"live terminal handle is not historical mailbox identity",
@@ -383,6 +381,61 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 			if !strings.Contains(body, want) {
 				t.Fatalf("%s supervised handoff recipe missing %q", name, want)
 			}
+		}
+		for _, forbidden := range []string{"--lines", "--interrupt", "orca terminal rm"} {
+			if strings.Contains(body, forbidden) {
+				t.Fatalf("%s supervised handoff recipe contains forbidden terminal form %q", name, forbidden)
+			}
+		}
+	}
+	for _, want := range []string{
+		"runtime_refresh",
+		"tabId and leafId",
+		"visualLayouts[].root.tabs[].title",
+		"dynamic terminal title",
+		"exact-compares the journal snapshot",
+		"revalidates the sealed context source and clean exact branch/HEAD",
+		"Never launch a replacement",
+		"uncommitted WIP",
+		"orca worktree list --repo path:<exact-repo> --limit 512 --json",
+		"orca terminal list --worktree id:<persisted-worktree-id> --limit 512 --json",
+		"orca terminal read --terminal <recovered-current-handle> --cursor <nextCursor> --limit 1000 --json",
+		"orca orchestration check --all --json | jq '.result.messages[]'",
+		"top-level `.messages`",
+		"caller-side Ctrl-C or host tool cancellation",
+		"orca terminal stop --worktree id:<persisted-worktree-id> --json",
+		"Never use `terminal rm`",
+	} {
+		if !strings.Contains(issueOps, want) {
+			t.Fatalf("IssueOps runtime recovery recipe missing %q", want)
+		}
+	}
+	for _, want := range []string{
+		"skills/issueops/references/orca-handoff.md",
+		"runtime-rollover evidence",
+		"mailbox-observation receipt",
+		"cleanup receipts",
+	} {
+		if !strings.Contains(turing, want) {
+			t.Fatalf("Turing recovery evidence integration missing %q", want)
+		}
+	}
+	for _, duplicated := range []string{
+		"runtime_refresh",
+		"tabId and leafId",
+		"visualLayouts[].root.tabs[].title",
+		"orca worktree list --repo path:<exact-repo>",
+		"orca terminal list --worktree id:<persisted-worktree-id> --limit 512",
+		"orca terminal read --terminal <recovered-current-handle>",
+		"orca orchestration check --all --json",
+		".result.messages",
+		"orca terminal close --terminal <persisted-worker-mailbox-handle> --json",
+		"orca terminal stop --worktree id:<persisted-worktree-id>",
+		"orca worktree rm --worktree id:<persisted-worktree-id>",
+		"orca terminal list --worktree id:<persisted-worktree-id>",
+	} {
+		if strings.Contains(turing, duplicated) {
+			t.Fatalf("Turing duplicates canonical IssueOps runtime recovery recipe %q", duplicated)
 		}
 	}
 	if strings.Contains(turing, "Reasonix") || !strings.Contains(turing, "Codex, Claude, and GJC") {

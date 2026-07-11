@@ -77,6 +77,9 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 	if h.Orca != nil && !canonicalOrcaIdentity(h.Orca) {
 		return fmt.Errorf("execution handoff Orca identity is not canonical")
 	}
+	if h.Orca != nil && (h.Orca.WorkerTabID == "") != (h.Orca.WorkerLeafID == "") {
+		return fmt.Errorf("execution handoff stable terminal tab/leaf identity is incomplete")
+	}
 	if err := validatePriorAttempts(record, h); err != nil {
 		return err
 	}
@@ -415,6 +418,14 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 			struct {
 				name, value string
 				max         int
+			}{"worker tab id", o.WorkerTabID, 1024},
+			struct {
+				name, value string
+				max         int
+			}{"worker leaf id", o.WorkerLeafID, 1024},
+			struct {
+				name, value string
+				max         int
 			}{"task id", o.TaskID, 1024},
 			struct {
 				name, value string
@@ -467,7 +478,7 @@ func validCancellation(cancellation *model.IssueOpsExecutionHandoffCancellation)
 
 func knownOperation(kind string) bool {
 	switch kind {
-	case OperationWorktreeCreate, OperationTerminalCreate, OperationTaskCreate, OperationDispatch:
+	case OperationWorktreeCreate, OperationTerminalCreate, OperationTaskCreate, OperationDispatch, OperationRuntimeRefresh:
 		return true
 	default:
 		return false
@@ -618,7 +629,7 @@ func canonicalOrcaIdentity(identity *model.IssueOpsOrcaIdentity) bool {
 	if identity == nil {
 		return true
 	}
-	for _, value := range []string{identity.RuntimeID, identity.RepoID, identity.BaseRef, identity.WorktreeID, identity.WorktreeInstanceID, identity.WorktreePath, identity.WorkerPTYID, identity.WorkerMailboxHandle, identity.TaskID, identity.DispatchID} {
+	for _, value := range []string{identity.RuntimeID, identity.RepoID, identity.BaseRef, identity.WorktreeID, identity.WorktreeInstanceID, identity.WorktreePath, identity.WorkerPTYID, identity.WorkerMailboxHandle, identity.WorkerTabID, identity.WorkerLeafID, identity.TaskID, identity.DispatchID} {
 		if value != strings.TrimSpace(value) {
 			return false
 		}

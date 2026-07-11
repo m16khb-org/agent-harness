@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -249,6 +250,52 @@ func TestHandoffFinalizeCancelRequiresExactQuiescence(t *testing.T) {
 	}
 }
 
+func TestHandoffFinalizeCancelRejectsConnectedRuntimeReissuedWorker(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+	record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	claim := handoffClaimRequest(record)
+	if _, err := ClaimIssueOpsHandoff(stateRoot, claim); err != nil {
+		t.Fatal(err)
+	}
+	claimed, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	claimed.ExecutionHandoff.LastHeartbeatAt = "2026-07-11T00:50:00Z"
+	if _, err := WriteIssueOps(stateRoot, claimed); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "cancel", Confirm: true, Force: true, Reason: "runtime restarted while worker was active",
+	}, nil, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{{
+		RuntimeID: "runtime-2", Handle: "term-reissued", PTYID: "pty-reissued",
+		WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, WorktreePath: record.WorktreePath, TabID: "tab-stable", LeafID: "leaf-stable",
+		Title:     "dynamic Codex title",
+		Connected: true, Writable: true,
+	}}
+	client.dispatch.Status = "failed"
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "finalize-cancel", Confirm: true,
+	}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "runtime-reissued worker terminal is still connected") {
+		t.Fatalf("runtime-reissued connected worker must keep cancellation tombstone: %v", err)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.Cancellation == nil {
+		t.Fatalf("runtime restart released cancellation guard: %#v", persisted.ExecutionHandoff)
+	}
+}
+
 func TestHandoffFinalizeCancelClosesAfterStaleDisconnectedFailedEvidence(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
 	claim := handoffClaimRequest(record)
@@ -436,6 +483,8 @@ func TestHandoffRetryPreservesBoundedPriorAttemptAudit(t *testing.T) {
 		record.ExecutionHandoff.Orca.TerminalBaselinePTYIDs = []string{"pty-baseline"}
 		record.ExecutionHandoff.Orca.WorkerPTYID = "pty-old"
 		record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-old"
+		record.ExecutionHandoff.Orca.WorkerTabID = "tab-old"
+		record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-old"
 		record.ExecutionHandoff.Orca.TaskID = "task-old"
 		record.ExecutionHandoff.Orca.DispatchID = "dispatch-old"
 		record.ExecutionHandoff.Result = validFailedHandoffResultForTest(record)
@@ -453,6 +502,11 @@ func TestHandoffRetryPreservesBoundedPriorAttemptAudit(t *testing.T) {
 
 	t.Run("forced cancel failure", func(t *testing.T) {
 		stateRoot, record, _ := dispatchedHandoffRecord(t)
+		record.ExecutionHandoff.Orca.WorkerTabID = "tab-1"
+		record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-1"
+		if _, err := WriteIssueOps(stateRoot, record); err != nil {
+			t.Fatal(err)
+		}
 		if _, err := ClaimIssueOpsHandoff(stateRoot, handoffClaimRequest(record)); err != nil {
 			t.Fatal(err)
 		}
@@ -526,6 +580,8 @@ func assertPriorAttemptJSON(t *testing.T, stateRoot, id, disposition string, old
 					WorktreePath        string `json:"worktree_path"`
 					WorkerPTYID         string `json:"worker_pty_id"`
 					WorkerMailboxHandle string `json:"worker_mailbox_handle"`
+					WorkerTabID         string `json:"worker_tab_id"`
+					WorkerLeafID        string `json:"worker_leaf_id"`
 					TaskID              string `json:"task_id"`
 					DispatchID          string `json:"dispatch_id"`
 				} `json:"orca"`
@@ -545,7 +601,7 @@ func assertPriorAttemptJSON(t *testing.T, stateRoot, id, disposition string, old
 		t.Fatalf("retry must retain one bounded prior attempt: %#v", raw.ExecutionHandoff)
 	}
 	prior := raw.ExecutionHandoff.PriorAttempts[0]
-	if prior.Attempt != 1 || prior.ClosedDisposition != disposition || prior.Orca.WorktreeID != oldOrca.WorktreeID || prior.Orca.WorktreeInstanceID != oldOrca.WorktreeInstanceID || prior.Orca.WorktreePath != oldOrca.WorktreePath || prior.Orca.WorkerPTYID != pty || prior.Orca.WorkerMailboxHandle != mailbox || prior.Orca.TaskID != task || prior.Orca.DispatchID != dispatch {
+	if prior.Attempt != 1 || prior.ClosedDisposition != disposition || prior.Orca.WorktreeID != oldOrca.WorktreeID || prior.Orca.WorktreeInstanceID != oldOrca.WorktreeInstanceID || prior.Orca.WorktreePath != oldOrca.WorktreePath || prior.Orca.WorkerPTYID != pty || prior.Orca.WorkerMailboxHandle != mailbox || prior.Orca.WorkerTabID != oldOrca.WorkerTabID || prior.Orca.WorkerLeafID != oldOrca.WorkerLeafID || prior.Orca.TaskID != task || prior.Orca.DispatchID != dispatch {
 		t.Fatalf("prior attempt lost external identity: %#v", prior)
 	}
 	if cleanup != "" && (prior.Result == nil || len(prior.Result.CleanupReceipts) != 1 || prior.Result.CleanupReceipts[0] != cleanup) {
@@ -636,6 +692,30 @@ func TestHandoffForceAbandonRequiresConfirmedCompleteAbsentInventoryAndNeverRetr
 				t.Fatalf("abandoned operation was retried: trace before=%v after=%v creates=%d dispatch=%d", before, client.trace, client.terminalCreates, client.dispatchCalls)
 			}
 		})
+	}
+}
+
+func TestHandoffForceAbandonRejectsReadOnlyRuntimeRefreshByteEquivalently(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationRuntimeRefresh, StartedAt: "2026-07-11T00:50:00Z",
+	})
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	client := handoffDispatchFake(record)
+	_, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "abandon", Confirm: true, Force: true, Reason: "runtime identity requires exact reconciliation",
+	}, client, handoffPrepareTestClock())
+	if err == nil || !strings.Contains(err.Error(), "runtime_refresh is a read-only identity reconciliation and cannot be force-abandoned") {
+		t.Fatalf("runtime refresh abandon error = %v", err)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("runtime refresh abandon inspected Orca: %v", client.trace)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !bytes.Equal(before, after) {
+		t.Fatal("runtime refresh abandon changed the durable lease")
 	}
 }
 
