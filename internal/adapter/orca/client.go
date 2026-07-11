@@ -89,8 +89,13 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 	}
 	result.RepoID = repo.ID
 	result.RepoPath = repo.Path
+	result.RepoRemoteName = repo.RemoteName
 	if !samePath(repo.Path, req.Repo) {
 		result.Code = "repo_path_mismatch"
+		return result, nil
+	}
+	if strings.TrimSpace(repo.RemoteName) == "" {
+		result.Code = "repo_remote_unresolved"
 		return result, nil
 	}
 	for _, capability := range []struct {
@@ -118,13 +123,16 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 func (c *Client) showRepo(ctx context.Context, repo string) (port.OrcaRepo, error) {
 	var payload struct {
 		Repo struct {
-			ID          string `json:"id"`
-			Path        string `json:"path"`
-			DisplayName string `json:"displayName"`
+			ID                string `json:"id"`
+			Path              string `json:"path"`
+			DisplayName       string `json:"displayName"`
+			GitRemoteIdentity struct {
+				RemoteName string `json:"remoteName"`
+			} `json:"gitRemoteIdentity"`
 		} `json:"repo"`
 	}
 	_, err := c.runJSON(ctx, repo, readTimeout, []string{"orca", "repo", "show", "--repo", pathSelector(repo), "--json"}, &payload)
-	return port.OrcaRepo{ID: payload.Repo.ID, Path: payload.Repo.Path, Name: payload.Repo.DisplayName}, err
+	return port.OrcaRepo{ID: payload.Repo.ID, Path: payload.Repo.Path, Name: payload.Repo.DisplayName, RemoteName: payload.Repo.GitRemoteIdentity.RemoteName}, err
 }
 
 func (c *Client) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWorktree, error) {

@@ -18,6 +18,8 @@ The three modes are intentionally small:
 
 Before confirming Orca mode, turn **Settings > General > Workspace > Nest Workspaces** off. IssueOps requires the flat canonical path `<repo>.worktrees/<branch>` and does not read private Orca settings, toggle global layout preferences, or accept the nested `<repo>.worktrees/<repo-name>/<branch>` form. The returned worktree path is validated after the exactly-once create call. A mismatch moves the handoff to `recovery_required` with an actionable diagnostic; it never adopts the mismatched path or falls back inline. Cancel the handoff, remove the mismatched resources, and start a fresh IssueOps cycle after correcting the setting.
 
+The Orca repo projection must expose `gitRemoteIdentity.remoteName`. The confirmed create uses `refs/remotes/<remote>/<branch>` as its base so an already-linked provider branch keeps the exact branch and directory name without pre-creating or checking out a local branch. A missing remote name is a pre-mutation probe failure.
+
 Do not infer Orca readiness from `orca version`; the adapter uses structured `orca status --json`. Run the confirmed command only after reviewing the preview:
 
 ```bash

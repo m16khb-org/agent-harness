@@ -5,7 +5,10 @@
     "repo": {
       "id": "repo-1",
       "path": "/repo",
-      "displayName": "repo"
+      "displayName": "repo",
+      "gitRemoteIdentity": {
+        "remoteName": "origin"
+      }
     }
   },
   "_meta": {

@@ -87,7 +87,7 @@ func TestWorktreePrepareReadyOrcaCreatesExactlyOnce(t *testing.T) {
 	worktree := handoffPrepareWorktreePath(record)
 	makeGitWorktreeMarker(t, worktree)
 	client := &prepareOrcaFake{
-		probe:  port.OrcaProbeResult{Available: true, Ready: true, RepoID: "repo-1"},
+		probe:  port.OrcaProbeResult{Available: true, Ready: true, RepoID: "repo-1", RepoRemoteName: "origin"},
 		create: port.OrcaWorktree{ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", Path: worktree, Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16},
 	}
 	req := IssueOpsHandoffPrepareRequest{ID: record.ID, Orchestrator: "orca", Agent: "codex", Confirm: true}
@@ -112,10 +112,32 @@ func TestWorktreePrepareReadyOrcaCreatesExactlyOnce(t *testing.T) {
 	}
 }
 
+func TestWorktreePrepareUsesVerifiedProviderTrackingRef(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	makeGitWorktreeMarker(t, worktree)
+	client := &prepareOrcaFake{
+		probe: port.OrcaProbeResult{Available: true, Ready: true, RepoRemoteName: "upstream"},
+		create: port.OrcaWorktree{
+			ID: "wt-1", InstanceID: "inst-1", Path: worktree,
+			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16,
+		},
+	}
+
+	if _, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: "orca", Agent: "codex", Confirm: true,
+	}, client, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	if len(client.createRequests) != 1 || client.createRequests[0].BaseBranch != "refs/remotes/upstream/16-demo" {
+		t.Fatalf("create requests = %#v", client.createRequests)
+	}
+}
+
 func TestWorktreePrepareCrashAfterInvocationNeverCreatesTwice(t *testing.T) {
 	stateRoot, record := handoffPrepareRecord(t)
 	client := &prepareOrcaFake{
-		probe:     port.OrcaProbeResult{Available: true, Ready: true},
+		probe:     port.OrcaProbeResult{Available: true, Ready: true, RepoRemoteName: "origin"},
 		createErr: &port.OrcaError{Code: "timeout", Invoked: true, Timeout: true},
 	}
 	req := IssueOpsHandoffPrepareRequest{ID: record.ID, Orchestrator: "orca", Agent: "codex", Confirm: true}
@@ -150,7 +172,7 @@ func TestWorktreePrepareRejectsReturnedBranchPathOrInstanceMismatch(t *testing.T
 			makeGitWorktreeMarker(t, worktree)
 			created := port.OrcaWorktree{ID: "wt-1", InstanceID: "inst-1", Path: worktree, Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16}
 			tt.mutate(&created)
-			client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true}, create: created}
+			client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true, RepoRemoteName: "origin"}, create: created}
 
 			_, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
 				ID: record.ID, Orchestrator: "orca", Agent: "codex", Confirm: true,
@@ -171,7 +193,7 @@ func TestWorktreePreparePathMismatchExplainsFlatLayoutRecovery(t *testing.T) {
 	expected := handoffPrepareWorktreePath(record)
 	nested := filepath.Join(filepath.Dir(expected), filepath.Base(record.Repo), filepath.Base(expected))
 	client := &prepareOrcaFake{
-		probe: port.OrcaProbeResult{Available: true, Ready: true},
+		probe: port.OrcaProbeResult{Available: true, Ready: true, RepoRemoteName: "origin"},
 		create: port.OrcaWorktree{
 			ID: "wt-nested", InstanceID: "inst-nested", Path: nested,
 			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16,
@@ -184,7 +206,7 @@ func TestWorktreePreparePathMismatchExplainsFlatLayoutRecovery(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected canonical path validation error")
 	}
-	for _, want := range []string{"Nest Workspaces", "OFF", "cancel", "fresh IssueOps cycle"} {
+	for _, want := range []string{"Nest Workspaces", "OFF", "provider tracking ref", "cancel", "fresh IssueOps cycle"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("path mismatch diagnostic does not contain %q: %v", want, err)
 		}
@@ -226,13 +248,14 @@ func TestWorktreePrepareExactOneMarkerRecovery(t *testing.T) {
 }
 
 type prepareOrcaFake struct {
-	probe       port.OrcaProbeResult
-	probeErr    error
-	worktrees   []port.OrcaWorktree
-	create      port.OrcaWorktree
-	createErr   error
-	createCalls int
-	trace       []string
+	probe          port.OrcaProbeResult
+	probeErr       error
+	worktrees      []port.OrcaWorktree
+	create         port.OrcaWorktree
+	createErr      error
+	createCalls    int
+	createRequests []port.OrcaCreateWorktreeRequest
+	trace          []string
 }
 
 func (f *prepareOrcaFake) Probe(context.Context, port.OrcaProbeRequest) (port.OrcaProbeResult, error) {
@@ -245,9 +268,10 @@ func (f *prepareOrcaFake) ListWorktrees(context.Context, string) ([]port.OrcaWor
 	return append([]port.OrcaWorktree(nil), f.worktrees...), nil
 }
 
-func (f *prepareOrcaFake) CreateWorktree(context.Context, port.OrcaCreateWorktreeRequest) (port.OrcaWorktree, error) {
+func (f *prepareOrcaFake) CreateWorktree(_ context.Context, req port.OrcaCreateWorktreeRequest) (port.OrcaWorktree, error) {
 	f.trace = append(f.trace, "worktree-create")
 	f.createCalls++
+	f.createRequests = append(f.createRequests, req)
 	return f.create, f.createErr
 }
 

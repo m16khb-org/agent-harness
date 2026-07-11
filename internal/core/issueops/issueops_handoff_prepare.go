@@ -119,6 +119,10 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 	if record.ExecutionHandoff != nil {
 		return existingHandoffPrepareResult(stateRoot, record, result, issueOpsHandoffNow(clock))
 	}
+	providerTrackingRef, err := issueOpsOrcaProviderTrackingRef(probe.RepoRemoteName, record.Branch)
+	if err != nil {
+		return result, err
+	}
 	worktrees, err := client.ListWorktrees(ctx, record.Repo)
 	if err != nil {
 		return result, fmt.Errorf("list Orca worktrees before create: %w", err)
@@ -171,7 +175,7 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 	marker := issueOpsHandoffMarker(record.ID, epoch, 1)
 	linkedIssue, _ := issueNumber(record.IssueURL)
 	created, createErr := client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
-		Repo: record.Repo, Name: record.Branch, BaseBranch: record.BranchPrepare.BaseBranch, Issue: linkedIssue, Comment: marker,
+		Repo: record.Repo, Name: record.Branch, BaseBranch: providerTrackingRef, Issue: linkedIssue, Comment: marker,
 	})
 	if createErr != nil {
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_create_ambiguous", createErr.Error(), now)
@@ -212,6 +216,15 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 		return result, err
 	}
 	return projectHandoffPrepareResult(result, persisted), nil
+}
+
+func issueOpsOrcaProviderTrackingRef(remoteName, branch string) (string, error) {
+	remoteName = strings.TrimSpace(remoteName)
+	branch = strings.TrimSpace(branch)
+	if remoteName == "" || branch == "" {
+		return "", fmt.Errorf("Orca repo remote name and verified provider branch are required")
+	}
+	return "refs/remotes/" + remoteName + "/" + branch, nil
 }
 
 func issueOpsLegacyWorktreePrepareResult(record IssueOpsRecord) (IssueOpsHandoffPrepareResult, error) {
@@ -259,7 +272,7 @@ func validateCreatedHandoffWorktree(record IssueOpsRecord, expectedPath string, 
 		return fmt.Errorf("Orca worktree id and instance id are required")
 	}
 	if filepath.Clean(created.Path) != filepath.Clean(expectedPath) {
-		return fmt.Errorf("Orca worktree path %q does not match canonical IssueOps path %q; set Orca Settings > General > Workspace > Nest Workspaces to OFF, cancel and remove the mismatched handoff resources, then start a fresh IssueOps cycle", created.Path, expectedPath)
+		return fmt.Errorf("Orca worktree path %q does not match canonical IssueOps path %q; set Orca Settings > General > Workspace > Nest Workspaces to OFF and verify the provider tracking ref is selected as the Orca base branch, then cancel and remove the mismatched handoff resources and start a fresh IssueOps cycle", created.Path, expectedPath)
 	}
 	if strings.TrimPrefix(strings.TrimSpace(created.Branch), "refs/heads/") != strings.TrimSpace(record.Branch) {
 		return fmt.Errorf("Orca worktree branch %q does not match %q", created.Branch, record.Branch)

@@ -25,14 +25,15 @@ type OrcaProbeRequest struct {
 }
 
 type OrcaProbeResult struct {
-	Available bool   `json:"available"`
-	Ready     bool   `json:"ready"`
-	Code      string `json:"code,omitempty"`
-	Detail    string `json:"detail,omitempty"`
-	RuntimeID string `json:"runtime_id,omitempty"`
-	RepoID    string `json:"repo_id,omitempty"`
-	RepoPath  string `json:"repo_path,omitempty"`
-	Agent     string `json:"agent,omitempty"`
+	Available      bool   `json:"available"`
+	Ready          bool   `json:"ready"`
+	Code           string `json:"code,omitempty"`
+	Detail         string `json:"detail,omitempty"`
+	RuntimeID      string `json:"runtime_id,omitempty"`
+	RepoID         string `json:"repo_id,omitempty"`
+	RepoPath       string `json:"repo_path,omitempty"`
+	RepoRemoteName string `json:"repo_remote_name,omitempty"`
+	Agent          string `json:"agent,omitempty"`
 }
 
 type OrcaStatus struct {
@@ -43,9 +44,10 @@ type OrcaStatus struct {
 }
 
 type OrcaRepo struct {
-	ID   string `json:"id"`
-	Path string `json:"path"`
-	Name string `json:"name,omitempty"`
+	ID         string `json:"id"`
+	Path       string `json:"path"`
+	Name       string `json:"name,omitempty"`
+	RemoteName string `json:"remote_name,omitempty"`
 }
 
 type OrcaWorktree struct {

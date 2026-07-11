@@ -27,7 +27,7 @@ func TestProbeDoesNotUseVersionOrMutate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Ready || result.RuntimeID != "runtime-1" || result.RepoID != "repo-1" {
+	if !result.Ready || result.RuntimeID != "runtime-1" || result.RepoID != "repo-1" || result.RepoRemoteName != "origin" {
 		t.Fatalf("probe result = %#v", result)
 	}
 	for _, call := range runner.calls {
@@ -35,6 +35,25 @@ func TestProbeDoesNotUseVersionOrMutate(t *testing.T) {
 		if strings.Contains(joined, "version") || strings.Contains(joined, " create") || strings.Contains(joined, " dispatch ") {
 			t.Fatalf("probe used forbidden command: %s", joined)
 		}
+	}
+}
+
+func TestProbeRequiresRepoRemoteNameBeforeMutation(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.lookPaths["orca"] = "/usr/local/bin/orca"
+	runner.lookPaths["codex"] = "/usr/local/bin/codex"
+	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+	runner.responses["orca repo show --repo path:/repo --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"repo":{"id":"repo-1","path":"/repo","displayName":"repo"}}}`)}
+
+	result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Ready || result.Code != "repo_remote_unresolved" {
+		t.Fatalf("probe result = %#v", result)
+	}
+	if len(runner.calls) != 2 {
+		t.Fatalf("remote-name failure continued probing: %#v", runner.calls)
 	}
 }
 
