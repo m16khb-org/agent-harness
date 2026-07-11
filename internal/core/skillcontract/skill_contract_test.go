@@ -92,12 +92,26 @@ func TestGitlabUsecaseSkillPinsAssigneeContract(t *testing.T) {
 }
 
 func TestSelfVerifySkillPinsGateContract(t *testing.T) {
-	assertSkillContains(t, "self-verify", []string{
+	body := readSkillForTest(t, "self-verify")
+	for _, want := range []string{
 		// QA-gate boundary: this loop does not pick improvements itself.
 		"This skill is a QA gate; it does not choose improvements by itself.",
 		// Promote safety: confirmed promote refuses a failed source snapshot.
 		"Confirmed promote refuses a source snapshot that did not pass the gate",
-	})
+		// Runtime contract: the opt-in mode renders evidence but cannot complete
+		// an external judgement in the current implementation.
+		"only renders the read-only evaluator prompt",
+		"No Z.AI request is sent",
+		"`gate` therefore returns a non-passing `llm_eval` result",
+		"pass explicit `--llm-eval=false`",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("self-verify SKILL.md missing contract phrase %q", want)
+		}
+	}
+	if strings.Contains(body, "to run the Z.AI Coding Plan") {
+		t.Fatal("self-verify SKILL.md must not claim that prompt-only evaluation invokes Z.AI")
+	}
 }
 
 func TestSelfAugmentSkillPinsImplementationContract(t *testing.T) {

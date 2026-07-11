@@ -12,9 +12,9 @@ Verify that the harness behaves consistently across Codex and Claude Code, and t
 ## Commands
 
 ```bash
-./bin/agent-harness self-verify --seed=100 --target-score=95 --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
+./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --json
+./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --seed=100 --target-score=95 --json
 ./bin/agent-harness self-verify candidates --json
 ./bin/agent-harness self-verify history --prefix self-verify --json
@@ -24,9 +24,11 @@ HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --seed=100 --t
 # explicit, deliberate override for accepted deviations only — never a pressure/demo shortcut.
 ```
 
-Default `self-verify` is quick mode: one deterministic evidence pass followed by the final LLM evaluator when LLM eval is enabled. Use `--full` for the full ten-plus-iteration gate. Passing `--iterations` without `--full` is invalid.
+Default `self-verify` is quick mode: one deterministic evidence pass. Use `--full` for the full ten-plus-iteration gate. Passing `--iterations` without `--full` is invalid.
 
-`HARNESS_SELF_VERIFY_LLM_EVAL` defaults to off. Set it to `advisory` or `gate` to run the Z.AI Coding Plan (`glm-5-turbo`) LLM evaluator after deterministic self-verification; explicit CLI flags (`--llm-eval`, `--llm-eval=false`, `--llm-eval-mode`) override the environment.
+`HARNESS_SELF_VERIFY_LLM_EVAL` defaults to off. In the current implementation, setting it to `advisory` or `gate` only renders the read-only evaluator prompt after deterministic self-verification. No Z.AI request is sent. The `advisory` result exposes that prompt without changing deterministic success, while `gate` therefore returns a non-passing `llm_eval` result because no external verdict is ingested.
+
+For the repository's deterministic completion gate, pass explicit `--llm-eval=false` when the environment intentionally exports `HARNESS_SELF_VERIFY_LLM_EVAL=gate`; explicit CLI flags override the environment. Record that override and restart the verification sequence from its first gate after any interrupted or prompt-only run. Do not report a prompt-only result as an external LLM judgment.
 
 ## Gate
 

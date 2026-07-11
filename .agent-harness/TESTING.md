@@ -46,13 +46,13 @@ HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness state migrate --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon status --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon start --json
 HARNESS_DAEMON_DIR="$tmp_state/daemon" ./bin/agent-harness daemon stop --json
-HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify --seed=100 --target-score=95 --save-state --state-key self-verify-smoke --json
+HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --save-state --state-key self-verify-smoke --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify history --prefix self-verify --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify history --prefix self-verify --retention-limit 1 --prune-retention --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify compare --baseline-key self-verify-smoke --candidate-key self-verify-smoke --json
 HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness self-verify promote --from-key self-verify-smoke --baseline-key self-verify-baseline --json
-./bin/agent-harness self-verify --seed=100 --target-score=95 --json
-./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
+./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --json
 ./bin/agent-harness self-augment --cycles=1 --target-score=95 --save-state --state-key self-augment-latest --json
 ./bin/agent-harness self-augment lesson --candidate reflexion-state-memory --lesson "test lesson" --next-action "test next action" --state-key self-augment-lesson-test --json
@@ -214,6 +214,8 @@ The default web-fetch battery is deterministic and must not require network acce
 ## Standalone Verification Policy
 
 Agent-harness tests must verify harness core and native integration contracts without requiring external toolchains, external accounts, or companion MCP servers. External companion tools are not prerequisites for install/update/self-verify readiness.
+
+The standard deterministic self-verify commands pin `--llm-eval=false` so an intentional ambient `HARNESS_SELF_VERIFY_LLM_EVAL=gate` cannot turn the project gate into the prompt-only diagnostic path. Enabling `advisory` or `gate` currently renders a read-only evaluator prompt and sends no Z.AI request; `gate` is therefore expected to remain non-passing without an ingested external verdict. Record the explicit override and rerun the verification sequence from its first gate after any interrupted or prompt-only attempt.
 
 If a test fixture models data produced by an external tool, keep it as plain local input and verify only the harness boundary that consumes that input. Do not add tests that clone, install, patch, or register external tools as part of normal verification.
 

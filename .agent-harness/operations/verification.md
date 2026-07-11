@@ -10,17 +10,19 @@ description: self-verify, self-augment, API documentation gates, and operational
 Quick mode is the default:
 
 ```bash
-agent-harness self-verify --seed=100 --target-score=95 --json
-agent-harness self-verify --seed=100 --target-score=95 --save-state --state-key self-verify-latest --json
+agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
+agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --save-state --state-key self-verify-latest --json
 ```
 
 Full mode is explicit:
 
 ```bash
-agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json
+agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json
 ```
 
 `--progress=jsonl` keeps final JSON on stdout and writes iteration/step heartbeat lines to stderr so long runs are not mistaken for hangs.
+
+The deterministic project gate pins `--llm-eval=false`. An ambient `HARNESS_SELF_VERIFY_LLM_EVAL=gate` is valid, but the current opt-in path only renders a read-only evaluator prompt, sends no Z.AI request, and cannot pass gate mode without an ingested external verdict. Record the explicit override and restart from the first gate after an interrupted or prompt-only attempt.
 
 Checkpoint commands:
 

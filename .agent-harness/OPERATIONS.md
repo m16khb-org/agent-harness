@@ -88,7 +88,7 @@ agent-harness inspect --json
 agent-harness docs --json
 agent-harness daemon status --json
 agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
-agent-harness self-verify --seed=100 --target-score=95 --json
+agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 ```
 
 For deeper verification, use `.agent-harness/operations/verification.md` and `.agent-harness/TESTING.md`.
