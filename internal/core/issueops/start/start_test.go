@@ -1,8 +1,10 @@
 package start
 
 import (
+	"encoding/json"
 	"testing"
 
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/model"
 )
 
@@ -105,5 +107,56 @@ func TestStartResetStampsOrphanWorktreePath(t *testing.T) {
 	}
 	if got.StaleResetPriorPhase != string(model.IssueOpsPhaseImplement) {
 		t.Fatalf("StaleResetPriorPhase should be implement, got %q", got.StaleResetPriorPhase)
+	}
+}
+
+func TestStartNeverStaleResetsExecutionHandoffLease(t *testing.T) {
+	tests := []struct {
+		name        string
+		state       string
+		disposition string
+	}{
+		{name: "coordinator preparing", state: handoff.StateCoordinatorPreparing},
+		{name: "recovery required", state: handoff.StateRecoveryRequired},
+		{name: "dispatched", state: handoff.StateDispatched},
+		{name: "claimed", state: handoff.StateClaimed},
+		{name: "submitted", state: handoff.StateSubmitted},
+		{name: "closed accepted", state: handoff.StateClosed, disposition: handoff.DispositionAccepted},
+		{name: "closed worker failed", state: handoff.StateClosed, disposition: handoff.DispositionWorkerFailed},
+		{name: "closed cancelled", state: handoff.StateClosed, disposition: handoff.DispositionCancelled},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newFakeStartStore()
+			s.valid = func(string) bool { return false }
+			record := model.IssueOpsRecord{
+				OK: true, ID: "io-fixed", Repo: "/repo", Branch: "1-x",
+				Phase: model.IssueOpsPhaseImplement, WorktreePath: "/gone/worktree",
+				CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:01:00Z",
+				ExecutionHandoff: &model.IssueOpsExecutionHandoff{
+					ProtocolVersion: handoff.ProtocolVersion, State: tt.state, ClosedDisposition: tt.disposition,
+					Attempt: 7, OwnershipEpoch: "epoch-preserved", AttemptBaseHead: "0123456789012345678901234567890123456789",
+					Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo", WorkerRoot: "/gone/worktree",
+					Orca: &model.IssueOpsOrcaIdentity{WorktreeID: "wt-preserved", TaskID: "task-preserved", DispatchID: "dispatch-preserved"},
+				},
+			}
+			s.records[record.ID] = record
+			before, err := json.Marshal(record)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := Start(s.store(), "/state", model.IssueOpsStartRequest{Repo: record.Repo, Branch: record.Branch})
+			if err != nil {
+				t.Fatal(err)
+			}
+			after, err := json.Marshal(got)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(after) != string(before) || len(s.writes) != 0 {
+				t.Fatalf("execution handoff lease changed during legacy stale reset: before=%s after=%s writes=%d", before, after, len(s.writes))
+			}
+		})
 	}
 }

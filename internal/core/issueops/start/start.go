@@ -140,6 +140,9 @@ func resumeOrReset(store Store, stateRoot string, existing model.IssueOpsRecord)
 // Store is only built by tests that do not exercise worktree-phase resumption;
 // production wiring always injects the validator (see package.go).
 func staleResettableWorktreeCycle(store Store, record model.IssueOpsRecord) bool {
+	if record.ExecutionHandoff != nil {
+		return false
+	}
 	if store.WorktreeValid == nil {
 		return false
 	}
