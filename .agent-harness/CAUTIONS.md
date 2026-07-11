@@ -118,6 +118,9 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 주의:
 - 새 CLI/MCP/native skill 기능은 `agent-harness self-verify`의 테스트 또는 QA 단계에 smoke/fuzz evidence label로 승격한다.
+- 반복 횟수 10회 하한을 임의로 낮추지 않는다.
+- temp git repo 외 실제 사용자 repo에서 commit/push를 수행하지 않는다.
+- 교정 후보의 `VerifyWith`는 모델 자기비판이 아니라 외부 검증 메커니즘을 명시해야 한다(`VerificationKind`로 분류, `qualitycatalog.VerifyWithGrounded`가 강제). 불변식 전문은 `CONVENTIONS.md` §9 "self-augment/self-verify 교정 가드레일". intrinsic self-correction은 외부 신호 없이 추론을 악화시킨다(Huang/Kamoi).
 
 ---
 

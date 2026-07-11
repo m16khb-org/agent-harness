@@ -69,7 +69,7 @@ Codex supervised startup uses an explicit per-attempt attestation; Claude and GJ
 
 Do not call `config/batchWrite` or trust hooks from this recipe. Attest only when the response has exactly the requested cwd, warnings and errors are both empty, required SessionStart and PreToolUse command hooks are enabled, and every untrusted or modified entry is the exact generated agent-harness hook command for the current installed binary. Any unrelated untrusted/modified entry, missing ownership hook, cwd mismatch, or malformed response fails closed. Record the reviewed keys, `currentHash` values, source paths, and binary target in evidence without copying secrets.
 
-Preview `handoff start` without confirmation first. For Codex it must report `codex_hook_trust_bypass_required=true` and `codex_hook_trust_bypass_attested=false`. After the review above, run a second no-confirm preview with every delivery option plus `--allow-codex-hook-trust-bypass`; require `codex_hook_trust_bypass_attested=true` and record the reviewed context hash. The final mutation must be an otherwise identical confirm command: add only `--confirm`, and require the returned context hash to equal the reviewed context hash. Confirm must never introduce an option absent from that final preview. The adapter then launches only that Codex worker with `codex --dangerously-bypass-hook-trust`. Omit the flag for Claude, GJC, inline mode, and any unreviewed Codex attempt. This optional additive field remains ContextVersion 1 for legacy retry compatibility. Retry preserves the sealed delivery options but clears the per-attempt attestation, so the coordinator must perform and attest the review again. General automatic trust probing remains issue #17.
+Preview `handoff start` without confirmation first. For Codex it must report `codex_hook_trust_bypass_required=true` and `codex_hook_trust_bypass_attested=false`. After the review above, run a second no-confirm preview with every delivery option plus `--allow-codex-hook-trust-bypass`; require `codex_hook_trust_bypass_attested=true` and record the reviewed context hash from that final attested preview. Preview returns `context_sha256`; the final mutation must be an otherwise identical confirm command. That confirm must pass the exact value as `--expected-context-sha256` with otherwise identical options. The confirmed start recomputes the sealed context and fails closed before any terminal, task, dispatch, or journal mutation when the submitted hash is missing, malformed, or differs from the freshly recomputed sealed context — including post-preview source drift and delivery-option drift. Confirm must never introduce a delivery option absent from that final preview. The adapter then launches only that Codex worker with `codex --dangerously-bypass-hook-trust`. Omit the flag for Claude, GJC, inline mode, and any unreviewed Codex attempt. This optional additive field remains ContextVersion 1 for legacy retry compatibility. Retry preserves the sealed delivery options but clears the per-attempt attestation, so the coordinator must perform and attest the review again. General automatic trust probing remains issue #17.
 
 ```bash
 agent-harness issueops handoff start \
@@ -97,11 +97,12 @@ agent-harness issueops handoff start \
   --stop-condition "do not push, open or merge a PR, or accept the handoff" \
   --result-format "final head, changed files, Turing report, verification, and cleanup receipts" \
   --allow-codex-hook-trust-bypass \
+  --expected-context-sha256 "$REVIEWED_CONTEXT_SHA256" \
   --confirm \
   --json
 ```
 
-The returned `attempt`, `ownership_epoch`, `context_sha256`, Orca worktree id, task id, and dispatch id are a single fence. That is the exact current task, dispatch, and sequence fence for the live worker. The coordinator passes that tuple to the fresh worker without copying credentials, conversation transcripts, or unbounded environment data.
+The returned `attempt`, `ownership_epoch`, `context_sha256`, Orca worktree id, task id, and dispatch id are a single fence. That is the exact current task, dispatch, and sequence fence for the live worker. The mailbox numeric `sequence` is message selection evidence, not part of the lease fence. The coordinator passes that tuple to the fresh worker without copying credentials, conversation transcripts, or unbounded environment data.
 
 ## Worker Lease
 
@@ -163,7 +164,15 @@ agent-harness issueops heartbeat \
 
 If a worker is blocked, send one escalation to the concrete coordinator handle, keep heartbeat at the required cadence, remain mutation-free, and wait for coordinator repair, retry, or cancel. After escalating, the worker must not invoke `orca orchestration ask`, create a duplicate ask or decision gate, or start a separate human-choice workflow.
 
-The current `orca orchestration send --type` enum is exactly `status`, `dispatch`, `worker_done`, `merge_ready`, `escalation`, `handoff`, `decision_gate`, and `heartbeat`. Use `status` for non-terminal progress, `heartbeat` for liveness, one `escalation` for a blocker, and `worker_done` exactly once at completion. Do not invent message types such as `progress`, `blocked`, or `completed`.
+The current `orca orchestration send --type` enum is exactly `status`, `dispatch`, `worker_done`, `merge_ready`, `escalation`, `handoff`, `decision_gate`, and `heartbeat`. Use `status` for non-terminal progress, `heartbeat` for liveness, one `escalation` for a blocker, and `worker_done` exactly once at completion. Do not invent message types such as `progress`, `blocked`, `completed`, or `task_bounded`; `task_bounded` is not a message type and may appear only as a subject label. Report non-terminal progress with the exact persisted identifiers:
+
+```bash
+orca orchestration send --to "$COORDINATOR_HANDLE" \
+  --type status --subject "<short label>" \
+  --body "<bounded progress>" \
+  --task-id "$ORCA_TASK_ID" \
+  --dispatch-id "$ORCA_DISPATCH_ID"
+```
 
 PreToolUse blocks every other explicit message type, including malformed duplicate `--type` flags, before supervised-record selection; a valid or omitted type still passes through the existing authority checks. The mailbox repeat-prevention guard blocks any explicit `--inject` on direct `orca orchestration check`, including implicit-default unread, `--unread`, `--all`, reordered, and equals forms; in particular, never use `--unread --inject`. Read and project the bounded mailbox with the installed envelope shape:
 

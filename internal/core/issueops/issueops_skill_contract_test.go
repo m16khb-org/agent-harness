@@ -472,6 +472,36 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 	}
 }
 
+func TestIssueOpsSkillDocumentsExpectedContextSHA256PreviewConfirmFlow(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	for _, want := range []string{
+		"Preview returns `context_sha256`",
+		"--expected-context-sha256",
+		"otherwise identical options",
+		"missing, malformed, or differs",
+		"before any terminal, task, dispatch, or journal mutation",
+	} {
+		if !strings.Contains(issueOps, want) {
+			t.Fatalf("IssueOps supervised handoff recipe missing %q", want)
+		}
+	}
+}
+
+func TestTuringSkillRequiresCodeGraphForIndexedLocalReposAndSeparateCalls(t *testing.T) {
+	turing := readTuringSkillForTest(t)
+	for _, want := range []string{
+		"CodeGraph first when `.codegraph/` exists",
+		"local `rg` and direct reads only",
+		"Never use web search for local repository symbols",
+		"separate calls",
+		"never chain them with `echo` or `printf` banner markers",
+	} {
+		if !strings.Contains(turing, want) {
+			t.Fatalf("Turing local-symbol discovery contract missing %q", want)
+		}
+	}
+}
+
 func TestIssueOpsSkillPinsGitLabSupervisedHandoffContract(t *testing.T) {
 	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
 	for _, want := range []string{
@@ -603,6 +633,25 @@ func TestIssueOpsCancellationRecoveryKeepsLeaseUntilExactQuiescence(t *testing.T
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("IssueOps cancellation recovery contract missing %q", want)
+		}
+	}
+}
+
+func TestIssueOpsSupervisedStartDocumentsReviewedContextCASAndProgressReporting(t *testing.T) {
+	body := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	for _, want := range []string{
+		"--expected-context-sha256",
+		"final attested preview",
+		"fails closed before any terminal, task, dispatch, or journal mutation",
+		"--type status",
+		"--task-id",
+		"--dispatch-id",
+		"`task_bounded` is not a message type",
+		"subject label",
+		"selection evidence, not part of the lease fence",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("IssueOps supervised start CAS/progress contract missing %q", want)
 		}
 	}
 }

@@ -254,3 +254,9 @@ Final fresh commands and exact outcomes: PENDING.
 ## Remaining coordinator-only actions
 
 No push, PR, merge, implementation-handoff acceptance, or implementation worktree/branch cleanup is performed by this worker. The disposable live E2E was accepted and cleaned as recorded above; the parent coordinator still owns the issue branch handoff, push, PR, merge, and final implementation worktree cleanup after receiving worker_done.
+
+## CAS and observed-mistake corrective receipts
+
+- CAS receipt: commit `233dffa6858091cde2a20a4c14a76dd5be60d945` added the preview-to-confirm `expected_context_sha256` fence for supervised handoff start, and the focused IssueOps/contract/golden checks passed after that change.
+- Local web-search receipt: during the corrective pass, local repository symbol discovery was briefly routed through web search even though the repository-local path was already known; the corrected rule is CodeGraph first when indexed, otherwise local `rg` and direct reads only, never web search.
+- Command-separation receipt: verification and inspection commands were again chained with `printf` banner markers during the same pass; the corrected rule is separate calls only, with no `echo`/`printf` banners around inspection or validation commands.
