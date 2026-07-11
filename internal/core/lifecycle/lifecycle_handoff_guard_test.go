@@ -910,6 +910,7 @@ func TestHandoffGuardStateRoleMatrixReturnsAuthorityAfterAccept(t *testing.T) {
 			for _, command := range []string{
 				"agent-harness issueops handoff recover --id " + record.ID + " --action retry --confirm",
 				"orca orchestration task-update --id task-1 --status failed --json",
+				"orca terminal close --terminal term-1 --json",
 				"orca worktree rm --worktree id:wt-1 --force --json",
 			} {
 				req := handoffEditRequest(record, repo, "codex", "coordinator", "")
@@ -927,6 +928,67 @@ func TestHandoffGuardStateRoleMatrixReturnsAuthorityAfterAccept(t *testing.T) {
 			}
 			if got := BuildLifecyclePreToolUseDecision(handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "late.go"))); got.Decision != "block" {
 				t.Fatalf("%s worker mutation must block: %#v", disposition, got)
+			}
+		})
+	}
+}
+
+func TestHandoffGuardAllowsOnlyExactClosedFailedTerminalCleanup(t *testing.T) {
+	for _, disposition := range []string{handoff.DispositionWorkerFailed, handoff.DispositionCancelled} {
+		t.Run(disposition, func(t *testing.T) {
+			repo, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, disposition)
+			allowed := handoffEditRequest(record, repo, "codex", "coordinator", "")
+			allowed.Tool = "exec_command"
+			allowed.Command = "orca terminal close --terminal term-1 --json"
+			if got := BuildLifecyclePreToolUseDecision(allowed); got.Decision != "allow" {
+				t.Fatalf("source coordinator exact persisted terminal cleanup should pass: %#v", got)
+			}
+
+			for name, mutate := range map[string]func(*HookToolUseLifecycleRequest){
+				"wrong handle": func(req *HookToolUseLifecycleRequest) {
+					req.Command = "orca terminal close --terminal term-other --json"
+				},
+				"extra flag": func(req *HookToolUseLifecycleRequest) { req.Command += " --force" },
+				"stop":       func(req *HookToolUseLifecycleRequest) { req.Command = "orca terminal stop --terminal term-1 --json" },
+				"create": func(req *HookToolUseLifecycleRequest) {
+					req.Command = "orca terminal create --worktree id:wt-1 --command codex --json"
+				},
+				"worker cwd":  func(req *HookToolUseLifecycleRequest) { req.CWD = worktree },
+				"worker repo": func(req *HookToolUseLifecycleRequest) { req.Repo = worktree },
+			} {
+				t.Run(name, func(t *testing.T) {
+					req := allowed
+					mutate(&req)
+					if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+						t.Fatalf("%s must not authorize terminal cleanup: %#v", name, got)
+					}
+				})
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name        string
+		state       string
+		disposition string
+	}{
+		{name: "claimed", state: handoff.StateClaimed},
+		{name: "dispatched", state: handoff.StateDispatched},
+		{name: "accepted", state: handoff.StateClosed, disposition: handoff.DispositionAccepted},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var repo string
+			var record IssueOpsRecord
+			if tc.state == handoff.StateClosed {
+				repo, record, _ = lifecycleTerminalHandoffRecord(t, tc.state, tc.disposition)
+			} else {
+				repo, record, _ = lifecycleHandoffRecord(t, tc.state)
+			}
+			req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+			req.Tool = "exec_command"
+			req.Command = "orca terminal close --terminal term-1 --json"
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("%s terminal close must remain blocked: %#v", tc.name, got)
 			}
 		})
 	}

@@ -134,6 +134,9 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		return true, "invalid supervised IssueOps handoff envelope: " + err.Error()
 	}
 	if terminalControlWriteRequest(req) {
+		if allowedClosedOrcaCleanup(req, record) {
+			return true, ""
+		}
 		if sourceCoordinatorTerminalSteeringAllowed(req, record) {
 			return true, ""
 		}

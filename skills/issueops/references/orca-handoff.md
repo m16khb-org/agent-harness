@@ -237,10 +237,11 @@ For `execution_handoff.driver=orca`, Git worktree removal is not the cleanup rou
 
 ```bash
 orca orchestration task-update --id <persisted-task-id> --status <completed-or-failed> --result <bounded-result> --json
+orca terminal close --terminal <persisted-worker-mailbox-handle> --json
 orca worktree rm --worktree id:<persisted-worktree-id> --force --json
 orca terminal list --worktree <persisted-worktree-id> --json
 ```
 
-`WorkerMailboxHandle` is historical dispatch/mailbox identity, not live terminal-control authority. Do not send `exit` to that persisted handle. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list; nested shells require repeated inspection until fully gone. Also verify the exact worktree selector and path are absent before handling provider refs. Inline records retain the legacy Git cleanup recipe; never substitute `git worktree remove` for Orca-owned removal.
+The exact `orca terminal close --terminal <persisted-worker-mailbox-handle> --json` form is an optional bounded cleanup attempt for source-root coordinators only after `closed/worker_failed` or `closed/cancelled`; it is blocked for accepted or active attempts, worker/non-source sessions, wrong handles, and extra flags. `WorkerMailboxHandle` remains historical dispatch/mailbox identity rather than general live terminal-control authority: never use it for `send`, `stop`, or injected `exit`, and do not treat a successful close as complete cleanup evidence. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list; nested shells require repeated inspection until fully gone. Also verify the exact worktree selector and path are absent before handling provider refs. Inline records retain the legacy Git cleanup recipe; never substitute `git worktree remove` for Orca-owned removal.
 
 `auto` fallback is allowed only after a pre-mutation probe failure. It is never a recovery strategy for `coordinator_preparing`, `dispatched`, `claimed`, `submitted`, or `recovery_required` state.

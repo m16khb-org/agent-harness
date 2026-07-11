@@ -472,7 +472,7 @@ func commandAfterDirectoryOption(tokens []string, start int) int {
 
 func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateClosed || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) {
+	if h == nil || h.State != handoff.StateClosed || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
 		return false
 	}
 	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
@@ -481,6 +481,12 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
 	if len(tokens) < 2 || tokens[0] != "orca" {
 		return false
+	}
+	if len(tokens) == 6 && tokens[1] == "terminal" && tokens[2] == "close" {
+		if h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
+			return false
+		}
+		return h.Orca != nil && h.Orca.WorkerMailboxHandle != "" && tokens[3] == "--terminal" && tokens[4] == h.Orca.WorkerMailboxHandle && tokens[5] == "--json"
 	}
 	if len(tokens) >= 3 && tokens[1] == "orchestration" && tokens[2] == "task-update" {
 		if h.Orca == nil || h.Orca.TaskID == "" {

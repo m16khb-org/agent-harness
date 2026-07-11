@@ -270,6 +270,8 @@ func TestIssueOpsSkillDocumentsOptionalOrcaHandoffContract(t *testing.T) {
 		"worktree removal is not terminal cleanup evidence",
 		"exact spawned handle and PTY",
 		"connected=false or absent from terminal list",
+		"orca terminal close --terminal <persisted-worker-mailbox-handle> --json",
+		"optional bounded cleanup attempt",
 		"nested shells",
 		"representative mutation family",
 		"explicit payload and CLI hosts conflict",
@@ -324,6 +326,8 @@ func TestTuringSkillDocumentsSupervisedHandoffEvidenceContract(t *testing.T) {
 		"worktree removal is not terminal cleanup evidence",
 		"exact spawned handle and PTY",
 		"connected=false or absent from terminal list",
+		"orca terminal close --terminal <persisted-worker-mailbox-handle> --json",
+		"optional bounded cleanup attempt",
 		"nested shells",
 		"representative mutation family",
 	} {
