@@ -2200,6 +2200,12 @@
         "context_sha256": {
           "type": "string"
         },
+        "criteria_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "cwd": {
           "type": "string"
         },
@@ -2210,6 +2216,12 @@
           "type": "string"
         },
         "final_head": {
+          "type": "string"
+        },
+        "force": {
+          "type": "boolean"
+        },
+        "heartbeat_cadence": {
           "type": "string"
         },
         "host": {
@@ -2231,6 +2243,9 @@
         "ownership_epoch": {
           "type": "string"
         },
+        "reason": {
+          "type": "string"
+        },
         "recovery_action": {
           "enum": [
             "reconcile",
@@ -2239,8 +2254,29 @@
           ],
           "type": "string"
         },
+        "required_docs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "required_skills": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "result_format": {
+          "type": "string"
+        },
         "session_id": {
           "type": "string"
+        },
+        "stop_conditions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "task_id": {
           "type": "string"
@@ -2253,6 +2289,15 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "verification_commands": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "worker_scope": {
+          "type": "string"
         }
       },
       "required": [
