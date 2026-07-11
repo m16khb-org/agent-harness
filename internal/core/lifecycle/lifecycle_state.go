@@ -21,6 +21,11 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
+	if reason := linkedWorktreeDecisionGateReason(req); reason != "" {
+		result.Decision = "block"
+		result.Reason = reason
+		return result
+	}
 	if reason := unsafeOrcaMailboxInjectReason(req); reason != "" {
 		result.Decision = "block"
 		result.Reason = reason

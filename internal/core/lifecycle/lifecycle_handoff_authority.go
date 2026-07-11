@@ -1070,6 +1070,24 @@ func unsafeOrcaMailboxInjectReason(req HookToolUseLifecycleRequest) string {
 	return ""
 }
 
+func linkedWorktreeDecisionGateReason(req HookToolUseLifecycleRequest) string {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return ""
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) < 3 || tokens[0] != "orca" || tokens[1] != "orchestration" || (tokens[2] != "ask" && tokens[2] != "gate-create") {
+		return ""
+	}
+	for _, candidate := range []string{req.CWD, req.Repo} {
+		root := cleanAbsPath(candidate)
+		source := sourceCheckoutFromWorktree(root)
+		if root != "" && source != "" && source != root {
+			return "linked worktree workers must not create Orca decision gates; send one escalation, heartbeat, and wait for the source coordinator"
+		}
+	}
+	return ""
+}
+
 func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
 	if h == nil || h.State != handoff.StateClaimed || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {

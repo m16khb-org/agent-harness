@@ -816,6 +816,45 @@ func TestHandoffGuardBlocksExplicitHistoricalMailboxInjection(t *testing.T) {
 	}
 }
 
+func TestHandoffGuardBlocksWorkerDecisionGatesWithoutExecutionHandoff(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := t.TempDir()
+	gitDir := filepath.Join(source, ".git", "worktrees", "legacy-worker")
+	if err := os.MkdirAll(gitDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	worker := t.TempDir()
+	if err := os.WriteFile(filepath.Join(worker, ".git"), []byte("gitdir: "+gitDir+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, command := range []string{
+		"orca orchestration ask --to term-coordinator --question blocked --json",
+		"orca orchestration gate-create --task task-1 --question blocked --json",
+	} {
+		req := HookToolUseLifecycleRequest{Repo: worker, CWD: worker, Tool: "exec_command", Command: command}
+		got := BuildLifecyclePreToolUseDecision(req)
+		if got.Decision != "block" || !strings.Contains(got.Reason, "linked worktree") {
+			t.Fatalf("legacy linked worker decision command %q must block without a handoff record: %#v", command, got)
+		}
+	}
+
+	workerList := HookToolUseLifecycleRequest{Repo: worker, CWD: worker, Tool: "exec_command", Command: "orca orchestration gate-list --json"}
+	if got := BuildLifecyclePreToolUseDecision(workerList); got.Decision != "allow" {
+		t.Fatalf("linked worker read-only gate-list must remain allowed: %#v", got)
+	}
+	for _, command := range []string{
+		"orca orchestration ask --to term-worker --question allowed --json",
+		"orca orchestration gate-create --task task-1 --question allowed --json",
+		"orca orchestration gate-list --json",
+	} {
+		req := HookToolUseLifecycleRequest{Repo: source, CWD: source, Tool: "exec_command", Command: command}
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("source coordinator command %q must remain allowed: %#v", command, got)
+		}
+	}
+}
+
 func TestHandoffGuardDeduplicatesSourceDiscoveryBeforeTerminalSteeringAmbiguity(t *testing.T) {
 	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
 	info, err := os.Stat(filepath.Join(repo, ".git"))

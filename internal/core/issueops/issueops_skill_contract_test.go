@@ -377,6 +377,8 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 			"any explicit `--inject`",
 			"repeat-prevention guard",
 			"`[no tests to run]` is not GREEN",
+			"even when `execution_handoff` is absent",
+			"`gate-list` remains read-only",
 		} {
 			if !strings.Contains(body, want) {
 				t.Fatalf("%s supervised handoff recipe missing %q", name, want)
