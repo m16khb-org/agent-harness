@@ -37,6 +37,69 @@ func TestHandoffRetryUsesNewAttemptAndEpoch(t *testing.T) {
 	}
 }
 
+func TestHandoffRetryAllowsWorkerFailedDisposition(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	record.ExecutionHandoff.State = handoff.StateClosed
+	record.ExecutionHandoff.ClosedDisposition = handoff.DispositionWorkerFailed
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "retry", Confirm: true,
+	}, nil, IssueOpsHandoffPrepareClock{
+		Now: handoffPrepareTestClock().Now,
+		NewEpoch: func() (string, error) {
+			return "epoch-worker-failed", nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Attempt != 2 || got.State != handoff.StateCoordinatorPreparing {
+		t.Fatalf("worker_failed retry did not create a new fenced attempt: %#v", got)
+	}
+}
+
+func TestHandoffRetryRejectsAcceptedDisposition(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	claim := handoffClaimRequest(record)
+	claimed, err := ClaimIssueOpsHandoff(stateRoot, claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finish := handoffFinishRequest(claim, claimed)
+	if _, err := FinishIssueOpsHandoff(stateRoot, finish); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AcceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
+		ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch,
+		ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "retry", Confirm: true,
+	}, nil, IssueOpsHandoffPrepareClock{
+		Now: handoffPrepareTestClock().Now,
+		NewEpoch: func() (string, error) {
+			return "must-not-be-used", nil
+		},
+	}); err == nil {
+		t.Fatal("accepted handoff must remain terminal and reject retry")
+	}
+
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := persisted.ExecutionHandoff
+	if got.State != handoff.StateClosed || got.ClosedDisposition != handoff.DispositionAccepted || got.Attempt != 1 || got.OwnershipEpoch != record.ExecutionHandoff.OwnershipEpoch {
+		t.Fatalf("rejected accepted retry mutated terminal handoff: %#v", got)
+	}
+}
+
 func TestHandoffRecoverExactOneOnlyAndNeverAdvances(t *testing.T) {
 	tests := []struct {
 		name string

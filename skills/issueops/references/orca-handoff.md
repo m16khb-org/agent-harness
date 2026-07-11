@@ -182,4 +182,6 @@ agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action cancel --con
 agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action retry --confirm --json
 ```
 
+`closed/accepted` is terminal and cannot be retried. Only `closed/worker_failed` and `closed/cancelled` may start a new attempt; an accepted handoff has already transferred the verified result back to the coordinator and must remain closed.
+
 `auto` fallback is allowed only after a pre-mutation probe failure. It is never a recovery strategy for `coordinator_preparing`, `dispatched`, `claimed`, `submitted`, or `recovery_required` state.

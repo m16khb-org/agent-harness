@@ -292,7 +292,7 @@ CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden 
 
 ## Optional Orca handoff verification
 
-Normal tests and self-verification must remain green without Orca. Use an injected fake runner to prove probe-only `auto` fallback, explicit-mode failure, pending-operation ordering, at-most-once external calls, post-invocation `recovery_required`, exact-one reconciliation, stale ownership rejection, and CLI/MCP parity. Schema fixtures must keep missing/zero legacy records inline-compatible and reject future versions.
+Normal tests and self-verification must remain green without Orca. Use an injected fake runner to prove probe-only `auto` fallback, explicit-mode failure, pending-operation ordering, at-most-once external calls, post-invocation `recovery_required`, exact-one reconciliation, stale ownership rejection, accepted-terminal retry rejection, and CLI/MCP parity. Retry tests must allow only `closed/worker_failed` and `closed/cancelled`; `closed/accepted` remains unchanged and fails closed. Schema fixtures must keep missing/zero legacy records inline-compatible and reject future versions.
 
 When Orca is installed in the verification environment, add one disposable live E2E; this is release evidence, not a default unit-test dependency. Create a uniquely named repo/branch/worktree/terminal/task, let a fresh worker claim and submit, accept from the coordinator, then remove every disposable repo/branch/worktree/terminal resource and record completed task ids. Never use a global Orca reset.
 

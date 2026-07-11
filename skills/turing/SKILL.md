@@ -51,6 +51,8 @@ When a supervised worker is blocked, send one escalation to its concrete coordin
 
 The accepted `orca orchestration send --type` values are exactly `status`, `dispatch`, `worker_done`, `merge_ready`, `escalation`, `handoff`, `decision_gate`, and `heartbeat`. Use the semantic type rather than inventing `progress`, `blocked`, or `completed`; completion still sends `worker_done` exactly once.
 
+`closed/accepted` is terminal and cannot be retried. Only `closed/worker_failed` and `closed/cancelled` may start a new attempt. New work after acceptance belongs in a new bounded cycle, not a reopened ownership epoch for an already accepted result.
+
 ## Quantitative Quality Metrics (vs ulw-loop baseline)
 
 Turing tracks these metrics automatically. Target: **20%+ improvement over ulw-loop** on every dimension.

@@ -226,6 +226,7 @@ A stability-audit failure is not automatically a harness defect; the audit frame
 - Handoff focused tests must use `./cmd/harness/hookcli/hookinput`; the plausible-looking `./internal/core/hookinput` path does not exist and causes a command-spec failure after other packages have already started. Pin the full focused command in `.agent-harness/TESTING.md` and restart the sequence rather than reusing partial results.
 - Do not validate the GJC TypeScript hook with a literal `--host gjc` grep. The shim constructs argv as adjacent array elements, so that shell string is absent even when host forwarding is correct. Run `bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"` and require behavior-level host/session/cwd/block JSON instead.
 - `orca orchestration send --type` rejects values outside `status|dispatch|worker_done|merge_ready|escalation|handoff|decision_gate|heartbeat`. Verify the installed CLI when this enum changes; do not improvise `progress`, `blocked`, or `completed` message types.
+- A handoff being `closed` is not sufficient for retry. `closed/accepted` is terminal; only `closed/worker_failed` and `closed/cancelled` may mint a new attempt/epoch. Checking only `StateClosed` reopens an already accepted result and violates the actor transition table.
 
 ## 19. Verify git identity before contributor-sensitive pushes
 

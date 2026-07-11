@@ -258,6 +258,8 @@ func TestIssueOpsSkillDocumentsOptionalOrcaHandoffContract(t *testing.T) {
 		"Omit `--agent-id` when the native agent id is empty",
 		"worker stops",
 		"coordinator owns PR, acceptance, and cleanup",
+		"`closed/accepted` is terminal and cannot be retried",
+		"Only `closed/worker_failed` and `closed/cancelled` may start a new attempt",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("IssueOps Orca handoff contract missing phrase %q", want)
@@ -299,6 +301,8 @@ func TestTuringSkillDocumentsSupervisedHandoffEvidenceContract(t *testing.T) {
 		"Quoted semicolons, ampersands, and pipes in evidence values are argument data",
 		"unquoted shell control operators and newlines remain blocked",
 		"Omit `--agent-id` when the native agent id is empty",
+		"`closed/accepted` is terminal and cannot be retried",
+		"Only `closed/worker_failed` and `closed/cancelled` may start a new attempt",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Fatalf("Turing supervised handoff contract missing phrase %q", want)

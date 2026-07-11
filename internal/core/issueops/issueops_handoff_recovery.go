@@ -92,6 +92,9 @@ func retryIssueOpsHandoff(stateRoot, id string, clock IssueOpsHandoffPrepareCloc
 		if old == nil || old.State != handoff.StateClosed {
 			return fmt.Errorf("retry requires a safely closed prior attempt")
 		}
+		if old.ClosedDisposition != handoff.DispositionWorkerFailed && old.ClosedDisposition != handoff.DispositionCancelled {
+			return fmt.Errorf("retry requires a closed worker_failed or cancelled prior attempt")
+		}
 		if old.PendingOperation != nil {
 			return fmt.Errorf("retry requires every ambiguous operation to be reconciled")
 		}
