@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"agent-harness/internal/core/issueops/handoff"
+	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 
@@ -148,6 +150,216 @@ func TestHandoffStartPersistsStableContextBeforeMutation(t *testing.T) {
 	}
 	if len(got.ContextSHA256) != 64 {
 		t.Fatalf("missing stable context hash: %#v", got)
+	}
+}
+
+func TestHandoffStartRejectsDirtyOrMovedHeadBeforeAnyOrcaCall(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*testing.T, string)
+		want   string
+	}{
+		{
+			name: "dirty worktree",
+			mutate: func(t *testing.T, worktree string) {
+				writeIssueOpsFile(t, worktree, "dirty.txt", "uncommitted\n")
+			},
+			want: "clean",
+		},
+		{
+			name: "moved head",
+			mutate: func(t *testing.T, worktree string) {
+				writeIssueOpsFile(t, worktree, "moved.txt", "committed drift\n")
+				for _, args := range [][]string{{"add", "moved.txt"}, {"commit", "-q", "-m", "test: move handoff head"}} {
+					if code, _, stderr := preflight.GitCmd(worktree, args...); code != 0 {
+						t.Fatalf("git %v failed: %s", args, stderr)
+					}
+				}
+			},
+			want: "head",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			tt.mutate(t, record.WorktreePath)
+			before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+			client := handoffDispatchFake(record)
+			if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil || !strings.Contains(strings.ToLower(err.Error()), tt.want) {
+				t.Fatalf("unsafe initial checkpoint error = %v, want %q", err, tt.want)
+			}
+			if len(client.trace) != 0 {
+				t.Fatalf("unsafe initial checkpoint invoked Orca: %v", client.trace)
+			}
+			after := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+			if string(after) != string(before) {
+				t.Fatal("unsafe initial checkpoint mutated the durable lease")
+			}
+		})
+	}
+}
+
+func TestHandoffStartUsesFreshTimestampForEachOperationJournal(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	startedAt := map[string]string{}
+	completedAt := map[string]string{}
+	recordPending := func(kind string) {
+		persisted, err := ReadIssueOps(stateRoot, record.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if persisted.ExecutionHandoff.PendingOperation == nil || persisted.ExecutionHandoff.PendingOperation.Kind != kind {
+			t.Fatalf("%s journal missing before mutation: %#v", kind, persisted.ExecutionHandoff.PendingOperation)
+		}
+		startedAt[kind] = persisted.ExecutionHandoff.PendingOperation.StartedAt
+	}
+	client.beforeTerminalCreate = func() { recordPending(handoff.OperationTerminalCreate) }
+	client.beforeTaskCreate = func() { recordPending(handoff.OperationTaskCreate) }
+	client.beforeDispatch = func() { recordPending(handoff.OperationDispatch) }
+	step := 0
+	clock := IssueOpsHandoffStartClock{Now: func() time.Time {
+		at := time.Date(2026, 7, 11, 2, 0, step, 0, time.UTC)
+		step++
+		return at
+	}}
+	hooks := issueOpsHandoffStartHooks{BeforeStage: func(stage string) {
+		previous := ""
+		switch stage {
+		case handoff.OperationTaskCreate:
+			previous = handoff.OperationTerminalCreate
+		case handoff.OperationDispatch:
+			previous = handoff.OperationTaskCreate
+		}
+		if previous == "" {
+			return
+		}
+		persisted, err := ReadIssueOps(stateRoot, record.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		completedAt[previous] = persisted.ExecutionHandoff.UpdatedAt
+	}}
+	if _, err := startIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, clock, hooks); err != nil {
+		t.Fatal(err)
+	}
+	for i, kind := range []string{handoff.OperationTerminalCreate, handoff.OperationTaskCreate, handoff.OperationDispatch} {
+		want := time.Date(2026, 7, 11, 2, 0, i*2+1, 0, time.UTC).Format(time.RFC3339Nano)
+		if got := startedAt[kind]; got != want {
+			t.Fatalf("%s started_at = %q, want fresh stage timestamp %q (all=%#v)", kind, got, want, startedAt)
+		}
+	}
+	for i, kind := range []string{handoff.OperationTerminalCreate, handoff.OperationTaskCreate} {
+		want := time.Date(2026, 7, 11, 2, 0, i*2+2, 0, time.UTC).Format(time.RFC3339Nano)
+		if got := completedAt[kind]; got != want {
+			t.Fatalf("%s completion UpdatedAt = %q, want fresh post-call timestamp %q (all=%#v)", kind, got, want, completedAt)
+		}
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantDispatchedAt := time.Date(2026, 7, 11, 2, 0, 6, 0, time.UTC).Format(time.RFC3339Nano)
+	if persisted.ExecutionHandoff.DispatchedAt != wantDispatchedAt || persisted.ExecutionHandoff.UpdatedAt != wantDispatchedAt || persisted.UpdatedAt != wantDispatchedAt {
+		t.Fatalf("dispatch completion timestamps reused journal time: handoff=%#v record.updated_at=%q want=%q", persisted.ExecutionHandoff, persisted.UpdatedAt, wantDispatchedAt)
+	}
+}
+
+func TestHandoffStartStopsBeforeLaterOrcaStageAfterCheckpointDrift(t *testing.T) {
+	tests := []struct {
+		stage      string
+		forbidden  []string
+		wantPTY    string
+		wantHandle string
+		wantTask   string
+	}{
+		{stage: handoff.OperationTerminalCreate, forbidden: []string{"terminal-list", "terminal-create", "task-list", "task-create", "dispatch"}},
+		{stage: handoff.OperationTaskCreate, forbidden: []string{"task-list", "task-create", "dispatch"}, wantPTY: "pty-1", wantHandle: "term-1"},
+		{stage: handoff.OperationDispatch, forbidden: []string{"dispatch"}, wantPTY: "pty-1", wantHandle: "term-1", wantTask: "task-1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.stage, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			client := handoffDispatchFake(record)
+			hooks := issueOpsHandoffStartHooks{BeforeStage: func(stage string) {
+				if stage == tt.stage {
+					writeIssueOpsFile(t, record.WorktreePath, "stage-drift.txt", stage+"\n")
+				}
+			}}
+			if _, err := startIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock(), hooks); err == nil || !strings.Contains(err.Error(), "clean worker worktree") {
+				t.Fatalf("stage drift error = %v", err)
+			}
+			for _, forbidden := range tt.forbidden {
+				if slices.Contains(client.trace, forbidden) {
+					t.Fatalf("%s drift allowed later Orca call %q: %v", tt.stage, forbidden, client.trace)
+				}
+			}
+			persisted, err := ReadIssueOps(stateRoot, record.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if persisted.ExecutionHandoff.State != handoff.StateCoordinatorPreparing || persisted.ExecutionHandoff.PendingOperation != nil || len(persisted.ExecutionHandoff.ContextSHA256) != 64 {
+				t.Fatalf("stage drift wrote a later journal or released the lease: %#v", persisted.ExecutionHandoff)
+			}
+			if got := persisted.ExecutionHandoff.Orca.WorkerPTYID; got != tt.wantPTY {
+				t.Fatalf("%s drift lost completed worker PTY: got %q want %q", tt.stage, got, tt.wantPTY)
+			}
+			if got := persisted.ExecutionHandoff.Orca.WorkerMailboxHandle; got != tt.wantHandle {
+				t.Fatalf("%s drift lost completed worker handle: got %q want %q", tt.stage, got, tt.wantHandle)
+			}
+			if got := persisted.ExecutionHandoff.Orca.TaskID; got != tt.wantTask {
+				t.Fatalf("%s drift lost completed task identity: got %q want %q", tt.stage, got, tt.wantTask)
+			}
+		})
+	}
+}
+
+func TestHandoffOperationJournalRevalidatesCheckpointAfterInventory(t *testing.T) {
+	tests := []struct {
+		stage      string
+		forbidden  []string
+		wantPTY    string
+		wantHandle string
+		wantTask   string
+	}{
+		{stage: handoff.OperationTerminalCreate, forbidden: []string{"terminal-create", "task-list", "task-create", "dispatch"}},
+		{stage: handoff.OperationTaskCreate, forbidden: []string{"task-create", "dispatch"}, wantPTY: "pty-1", wantHandle: "term-1"},
+		{stage: handoff.OperationDispatch, forbidden: []string{"dispatch"}, wantPTY: "pty-1", wantHandle: "term-1", wantTask: "task-1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.stage, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			client := handoffDispatchFake(record)
+			hooks := issueOpsHandoffStartHooks{BeforeJournal: func(stage string) {
+				if stage == tt.stage {
+					writeIssueOpsFile(t, record.WorktreePath, "journal-drift.txt", stage+"\n")
+				}
+			}}
+			if _, err := startIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock(), hooks); err == nil || !strings.Contains(err.Error(), "clean worker worktree") {
+				t.Fatalf("journal drift error = %v", err)
+			}
+			for _, forbidden := range tt.forbidden {
+				if slices.Contains(client.trace, forbidden) {
+					t.Fatalf("%s journal drift allowed mutation %q: %v", tt.stage, forbidden, client.trace)
+				}
+			}
+			persisted, err := ReadIssueOps(stateRoot, record.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if persisted.ExecutionHandoff.State != handoff.StateCoordinatorPreparing || persisted.ExecutionHandoff.PendingOperation != nil {
+				t.Fatalf("rejected journal drift mutated the operation fence: %#v", persisted.ExecutionHandoff)
+			}
+			if got := persisted.ExecutionHandoff.Orca.WorkerPTYID; got != tt.wantPTY {
+				t.Fatalf("%s journal drift lost completed worker PTY: got %q want %q", tt.stage, got, tt.wantPTY)
+			}
+			if got := persisted.ExecutionHandoff.Orca.WorkerMailboxHandle; got != tt.wantHandle {
+				t.Fatalf("%s journal drift lost completed worker handle: got %q want %q", tt.stage, got, tt.wantHandle)
+			}
+			if got := persisted.ExecutionHandoff.Orca.TaskID; got != tt.wantTask {
+				t.Fatalf("%s journal drift lost completed task identity: got %q want %q", tt.stage, got, tt.wantTask)
+			}
+		})
 	}
 }
 
@@ -516,6 +728,8 @@ type dispatchOrcaFake struct {
 	taskListErr          error
 	beforeWorktreeList   func()
 	beforeTerminalCreate func()
+	beforeTaskCreate     func()
+	beforeDispatch       func()
 	terminalCreates      int
 	terminalListCalls    int
 	terminalRefreshes    int
@@ -608,6 +822,9 @@ func (f *dispatchOrcaFake) ListTasks(context.Context) ([]port.OrcaTask, error) {
 func (f *dispatchOrcaFake) CreateTask(_ context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
 	f.trace = append(f.trace, "task-create")
 	f.taskCreates++
+	if f.beforeTaskCreate != nil {
+		f.beforeTaskCreate()
+	}
 	task := f.task
 	if task.Title == "" {
 		task.Title = req.Title
@@ -622,6 +839,9 @@ func (f *dispatchOrcaFake) Dispatch(_ context.Context, req port.OrcaDispatchRequ
 	f.trace = append(f.trace, "dispatch")
 	f.dispatchCalls++
 	f.dispatchRequests = append(f.dispatchRequests, req)
+	if f.beforeDispatch != nil {
+		f.beforeDispatch()
+	}
 	return f.dispatch, f.dispatchErr
 }
 
@@ -663,6 +883,7 @@ func handoffDispatchRecord(t *testing.T) (string, IssueOpsRecord) {
 		},
 		CreatedAt: "2026-07-11T00:00:00Z", UpdatedAt: "2026-07-11T00:00:00Z",
 	}
+	materializeHandoffGit(t, &record)
 	got, err := WriteIssueOps(stateRoot, record)
 	if err != nil {
 		t.Fatal(err)

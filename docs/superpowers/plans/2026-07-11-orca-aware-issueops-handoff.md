@@ -9,7 +9,7 @@
 
 **Goal:** When the complete read-only Orca probe succeeds, let the coordinator prepare the issue, provider-linked branch, worktree, plan, and bounded context, then transfer one fenced implementation lease to a fresh Orca-hosted agent session. If Orca is absent or unready before mutation, preserve the existing inline IssueOps behavior and JSON contract.
 
-**Architecture:** IssueOps remains the single durable authority. Add one optional handoff record and a small operation journal under root schema v2; missing/zero and v1 rows migrate in memory and stamp v2 on write, while older v1 binaries reject v2 before mutation. A concrete `internal/adapter/orca` implements only spike-verified CLI projections. Core state transitions and compare-and-set fencing are host-neutral. External commands never run while the IssueOps span lock is held. Hooks only parse identity, render claim guidance, and block unauthorized mutations. CLI and MCP are thin adapters over the same request/result DTOs.
+**Architecture:** IssueOps remains the single durable authority. Add one optional handoff record and a small operation journal under root schema v2; missing/zero and v1 rows migrate in memory and stamp v2 on write, while older v1 binaries reject v2 before mutation. A concrete `internal/adapter/orca` implements only spike-verified CLI projections. Core state transitions and compare-and-set fencing are host-neutral. Orca/network calls and mutating subprocesses never run while the IssueOps span lock is held; a fixed read-only local Git checkpoint is the narrow exception for filesystem CAS immediately before a write. Hooks only parse identity, render claim guidance, and block unauthorized mutations. CLI and MCP are thin adapters over the same request/result DTOs.
 
 **Design source:** `docs/superpowers/specs/2026-07-11-orca-aware-issueops-handoff-design.md` wins if this plan omits detail. Any implementation-driven deviation must update both files and receive a new Brooks review before proceeding.
 
@@ -186,6 +186,8 @@ go test ./internal/core/issueops ./cmd/harness/issueopscli/worktreecmd -run 'Tes
 - For Codex only, probe installed support for `--dangerously-bypass-hook-trust` and require an explicit per-attempt context attestation before confirmed dispatch. The skill owns the read-only `hooks/list` review; do not embed Codex app-server/fingerprint logic in core.
 - Expose required/attested state in preview. After review, a second attested no-confirm preview supplies the reviewed context hash; the final request adds only confirm and must render the same hash. Keep ContextVersion 1 and reset only the attestation on retry.
 - Before each call, persist `pending_operation` plus the relevant bounded ID baseline. After each success, CAS-persist its domain identity and clear the pending operation before starting the next one.
+- Initial context persistence and every terminal/task/dispatch first-time journal must, inside the per-cycle lock after exact record equality, revalidate the sealed source fingerprint and canonical clean exact branch/attempt-base HEAD. Drift between stages or after inventory stops before the next mutation, preserves prior terminal/task identities, and leaves no later pending journal.
+- Obtain the clock independently for each journal write and again for every post-call completion, failure, and dispatched transition; never stamp a completion with the pre-call start time.
 - Terminal recovery accepts exactly one new PTY relative to the persisted baseline. Task recovery accepts exactly one new task carrying the attempt/epoch marker. Dispatch recovery uses only the persisted task ID and `dispatch-show`.
 - V1 delivery is a recognized built-in host terminal plus `dispatch --inject --return-preamble`. Persist delivery mode `inject` and the refreshed exact assignee before dispatch; `dispatch-show` recovery validates its exact identity and `dispatched` status without relying on an absent `injected` field. There is no V1 `terminal send` fallback and no arbitrary shell command.
 - Return after `dispatched`; no wait loop, automatic claim, or automatic next operation.
@@ -196,6 +198,10 @@ go test ./internal/core/issueops ./cmd/harness/issueopscli/worktreecmd -run 'Tes
 - `TestHandoffStartPersistsStableContextBeforeMutation`
 - `TestHandoffStartCreatesTerminalTaskDispatchExactlyOnce`
 - `TestHandoffStartCrashMatrixNeverRepeatsCreate` with before-invoke / after-side-effect / before-persist / after-persist rows for all three operations
+- `TestHandoffStartRejectsDirtyOrMovedHeadBeforeAnyOrcaCall`
+- `TestHandoffStartStopsBeforeLaterOrcaStageAfterCheckpointDrift`
+- `TestHandoffOperationJournalRevalidatesCheckpointAfterInventory`
+- `TestHandoffStartUsesFreshTimestampForEachOperationJournal`
 - `TestHandoffStartTerminalDeltaRequiresExactlyOne`
 - `TestHandoffStartTaskMarkerRequiresExactlyOne`
 - `TestHandoffStartDispatchRecoveryRequiresPersistedTask`
@@ -223,10 +229,10 @@ go test ./internal/core/issueops -run 'TestHandoffStart' -count=1
 **Interfaces:**
 
 - Add request DTOs carrying cycle ID, attempt, epoch, context hash, native host/session/agent identity, canonical cwd/root, and outcome evidence.
-- Claim re-renders the stable context, verifies branch/root/Orca locator, and transitions `dispatched -> claimed`; identical owner repeats succeed, different owners fail.
+- Claim re-renders the stable context, verifies branch/root/Orca locator plus clean exact attempt-base HEAD, repeats those filesystem checks under the cycle lock immediately before the first claim write, and transitions `dispatched -> claimed`; identical owner repeats succeed without requiring the post-claim worker checkout to remain at its original base, while different owners fail.
 - Extend heartbeat arguments additively. Inline callers can still send only `id`; handoff callers must match the full claimed worker tuple.
-- Completed finish validates bounded HEAD/files/Turing report/command evidence/cleanup receipts, writes IssueOps first, and transitions `claimed -> submitted`. Failed finish closes with `worker_failed`. Identical finish repeats are idempotent; conflicting repeats fail.
-- Accept revalidates HEAD/evidence/context and transitions `submitted -> closed/accepted`.
+- Completed finish validates bounded HEAD/files/Turing report/command evidence/cleanup receipts, repeats the sealed context-source check under the lock immediately before the first write, writes IssueOps first, and transitions `claimed -> submitted`. Failed finish closes with `worker_failed`. Identical finish repeats are idempotent; conflicting repeats fail.
+- Accept revalidates context plus the full current HEAD/clean/report/diff evidence under the lock immediately before the first write and transitions `submitted -> closed/accepted`.
 - Recover supports `reconcile`, confirmed force-`abandon`, confirmed `cancel`, confirmed `finalize-cancel`, and confirmed `retry`. Reconcile persists one identity only and returns the next explicit command. Abandon ignores only uniquely identifiable and fully classifiable unrelated rows; malformed or duplicate inventory remains ambiguous. Cancel writes a `recovery_required` tombstone for every provisioned attempt, while finalize-cancel closes only after authoritative exact quiescence and stale-liveness checks. Retry increments attempt and changes epoch only after the prior attempt is safely closed and never after force-abandoning an ambiguous operation.
 - Orca handoff resume is read-only; a before/after serialized record and fake trace must be byte-equivalent. Legacy inline `--bind` remains available.
 
@@ -391,7 +397,7 @@ go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count
 - Keep detailed commands/recovery in one reference so the already-large SKILL stays concise.
 - Turing renders ORCA criterion IDs, requires the worker report and cleanup receipts at finish, and replaces the incorrect statement that `issueops heartbeat` is stale with the current command contract.
 - Do not add Orca recipes to any other skill in V1.
-- Document the optional adapter boundary, operation journal, host identity, lock/no-external-call invariant, fallback behavior, native smoke contract, and the deferred workpool defect in the appropriate project docs only.
+- Document the optional adapter boundary, operation journal, host identity, lock/no-Orca-or-mutating-subprocess invariant plus the narrow local read-only Git checkpoint, fallback behavior, native smoke contract, and the deferred workpool defect in the appropriate project docs only.
 
 **RED tests:**
 

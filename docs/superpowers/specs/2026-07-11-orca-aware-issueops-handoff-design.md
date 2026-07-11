@@ -172,7 +172,7 @@ No separate `provisioned`, `running`, `completed`, `accepted`, `failed`, or `can
 - `ownership_epoch` is a random, non-secret nonce generated before mutation.
 - Every mutating handoff operation carries cycle ID, attempt, and epoch. Once dispatch preparation assigns the context hash, claim and all later mutations carry it as well.
 - State writes run under the existing per-cycle IssueOps lock.
-- External commands never run while the lock is held.
+- Orca/network calls and mutating subprocesses never run while the lock is held. The only subprocess exception is the fixed read-only local Git checkpoint (`branch --show-current`, `rev-parse --verify HEAD^{commit}`, `status --porcelain=v1`) needed to seal filesystem evidence immediately before a write.
 - After every external command, the result is persisted only if attempt, epoch, hash, and prior state still match.
 - The epoch is embedded in worktree comments and task specifications as a reconciliation marker, not treated as an Orca idempotency key.
 - No create mutation is automatically retried. The live spike proved that repeated worktree names and task titles create duplicates.
@@ -283,12 +283,14 @@ This sequence preserves the current `plan_in_worktree` invariant and keeps all p
 1. Re-read the `coordinator_preparing` handoff and a pre-dispatch readiness projection containing every implementation-entry prerequisite except the not-yet-possible worker claim.
 2. For Codex, verify installed bypass-flag support and perform the documented read-only `hooks/list` review for the exact worker cwd. This human attestation is not implemented as an automatic app-server/fingerprint verifier in V1.
 3. Render an unattested preview, then an attested no-confirm preview. Record the latter context hash and require the final confirm request to differ only by `confirm=true`.
-4. Render and persist that stable context version/hash under the same attempt/epoch. Missing Codex attestation fails before any terminal/task/dispatch call.
-5. Persist the worktree's current PTY IDs, then start a fresh agent terminal in the existing worktree exactly once.
+4. Under the per-cycle lock, re-read the same record, re-render its source fingerprint, and require the canonical worker checkout to remain on the exact branch and attempt-base HEAD with a clean status before persisting that stable context version/hash. Missing Codex attestation or a changed checkout fails before any terminal/task/dispatch call.
+5. Before each first-time terminal, task, and dispatch journal write, repeat the locked record/source/branch/HEAD/clean checkpoint. Persist the worktree's current PTY IDs, then start a fresh agent terminal in the existing worktree exactly once.
 6. Reacquire and verify the live terminal handle through `terminal list`.
 7. Create one Orca task whose title/display name contains the cycle ID and attempt marker.
-8. Dispatch/deliver the task and persist the task/dispatch tuple while transitioning to `dispatched`.
+8. Dispatch/deliver the task and persist the task/dispatch tuple while transitioning to `dispatched`. A rejected later-stage checkpoint preserves all identities completed by prior stages and leaves no new pending journal.
 9. Return immediately with worker status and recovery commands; do not run a background wait loop.
+
+Every operation journal receives a fresh start timestamp immediately before its write. Every post-call completion, failure, or dispatch transition obtains another fresh timestamp after the external call; it never reuses the pre-call journal time.
 
 ### 8.3 Host launch and delivery
 

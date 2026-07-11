@@ -102,6 +102,21 @@ func TestHandoffClaimRejectsRerenderedContextSourceDrift(t *testing.T) {
 	}
 }
 
+func TestHandoffClaimRevalidatesCleanExactCheckpointInsideLock(t *testing.T) {
+	stateRoot, record := gitBackedDispatchedHandoff(t)
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	hooks := issueOpsHandoffLifecycleHooks{BeforeLockedRevalidation: func() {
+		writeIssueOpsFile(t, record.WorktreePath, "claim-lock-drift.txt", "dirty after outer validation\n")
+	}}
+	if _, err := claimIssueOpsHandoff(stateRoot, handoffClaimRequest(record), hooks); err == nil || !strings.Contains(err.Error(), "clean worker worktree") {
+		t.Fatalf("claim lock revalidation error = %v", err)
+	}
+	after := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	if string(after) != string(before) {
+		t.Fatal("failed claim lock revalidation mutated the lease")
+	}
+}
+
 func TestHandoffFinishRejectsRerenderedContextSourceDrift(t *testing.T) {
 	for _, source := range []string{"plan", "intent"} {
 		t.Run(source, func(t *testing.T) {
@@ -131,6 +146,33 @@ func TestHandoffFinishRejectsRerenderedContextSourceDrift(t *testing.T) {
 				t.Fatalf("finish must reject %s drift, got %v", source, err)
 			}
 		})
+	}
+}
+
+func TestHandoffFinishRevalidatesContextSourceInsideLock(t *testing.T) {
+	stateRoot, record := gitBackedDispatchedHandoff(t)
+	claim := handoffClaimRequest(record)
+	claimed, err := ClaimIssueOpsHandoff(stateRoot, claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := handoffFinishRequest(claim, claimed)
+	req.Outcome = handoff.OutcomeFailed
+	req.FinalHead = ""
+	req.ChangedFiles = nil
+	req.TuringReportPath = ""
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	hooks := issueOpsHandoffLifecycleHooks{BeforeLockedRevalidation: func() {
+		if err := os.WriteFile(record.PlanPath, []byte("changed after outer finish validation\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}}
+	if _, err := finishIssueOpsHandoff(stateRoot, req, hooks); err == nil || !strings.Contains(err.Error(), "stale handoff context source fingerprint") {
+		t.Fatalf("finish lock revalidation error = %v", err)
+	}
+	after := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	if string(after) != string(before) {
+		t.Fatal("failed finish lock revalidation mutated the lease")
 	}
 }
 
@@ -223,6 +265,61 @@ func TestHandoffAcceptRejectsRerenderedContextSourceDrift(t *testing.T) {
 			})
 			if err == nil || !strings.Contains(err.Error(), "context source") {
 				t.Fatalf("accept must reject %s drift, got %v", source, err)
+			}
+		})
+	}
+}
+
+func TestHandoffAcceptRevalidatesFilesystemEvidenceInsideLock(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*testing.T, IssueOpsRecord, IssueOpsHandoffFinishRequest)
+		want   string
+	}{
+		{
+			name: "dirty worktree",
+			mutate: func(t *testing.T, record IssueOpsRecord, _ IssueOpsHandoffFinishRequest) {
+				writeIssueOpsFile(t, record.WorktreePath, "accept-lock-drift.txt", "dirty after outer validation\n")
+			},
+			want: "clean before accept",
+		},
+		{
+			name: "moved head",
+			mutate: func(t *testing.T, record IssueOpsRecord, _ IssueOpsHandoffFinishRequest) {
+				writeIssueOpsFile(t, record.WorktreePath, "accept-head-drift.txt", "committed after outer validation\n")
+				for _, args := range [][]string{{"add", "accept-head-drift.txt"}, {"commit", "-q", "-m", "test: move accepted head"}} {
+					if code, _, stderr := preflight.GitCmd(record.WorktreePath, args...); code != 0 {
+						t.Fatalf("git %v failed: %s", args, stderr)
+					}
+				}
+			},
+			want: "current worktree head",
+		},
+		{
+			name: "removed report",
+			mutate: func(t *testing.T, record IssueOpsRecord, finish IssueOpsHandoffFinishRequest) {
+				if err := os.Remove(filepath.Join(record.WorktreePath, finish.TuringReportPath)); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "Turing report does not exist",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+			before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+			hooks := issueOpsHandoffLifecycleHooks{BeforeLockedRevalidation: func() { tt.mutate(t, record, finish) }}
+			_, err := acceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
+				ID: record.ID, Attempt: submitted.ExecutionHandoff.Attempt, OwnershipEpoch: submitted.ExecutionHandoff.OwnershipEpoch,
+				ContextSHA256: submitted.ExecutionHandoff.ContextSHA256, FinalHead: finish.FinalHead,
+			}, hooks)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("accept lock revalidation error = %v, want %q", err, tt.want)
+			}
+			after := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+			if string(after) != string(before) {
+				t.Fatal("failed accept lock revalidation mutated the lease")
 			}
 		})
 	}
@@ -465,7 +562,6 @@ func dispatchedHandoffRecord(t *testing.T) (string, IssueOpsRecord, *dispatchOrc
 func dispatchedHandoffRecordAt(t *testing.T, stateRoot string) (string, IssueOpsRecord, *dispatchOrcaFake) {
 	t.Helper()
 	_, record := handoffDispatchRecord(t)
-	materializeHandoffGit(t, &record)
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}

@@ -269,7 +269,7 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 ## Optional external orchestration adapter convention
 
 - External orchestrators use one concrete adapter per verified boundary. The Orca V1 adapter owns safe argv, bounded timeout/output, envelope decoding, and narrow DTO projection; it does not own IssueOps transitions and does not justify a registry/factory.
-- Every external mutation follows `lock + persist pending -> unlock -> external call -> lock + compare-and-set result`. Never hold the cycle lock during a subprocess/network call and never persist an observed identity against a stale attempt/epoch/context fence.
+- Every external mutation follows `lock + persist pending -> unlock -> external call -> lock + compare-and-set result`. Never hold the cycle lock during an Orca/network call or mutating subprocess and never persist an observed identity against a stale attempt/epoch/context fence. A fixed read-only local Git checkpoint may run under the lock only when branch/HEAD/clean filesystem evidence must be sealed immediately before the same write.
 - Timeout or transport error after invocation is ambiguous. Persist `recovery_required`; do not automatically repeat create/dispatch or switch to inline execution.
 - Native worker identity is `(host, session_id, agent_id)` plus exact canonical worktree root. Host adapters forward that identity; common core decides ownership.
 - CLI and MCP must use the same request/result DTOs. Keep the handoff MCP surface as one action-discriminated tool instead of multiplying near-identical lifecycle tools.

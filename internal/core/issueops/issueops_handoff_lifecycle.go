@@ -63,7 +63,15 @@ type IssueOpsHandoffAcceptRequest struct {
 	FinalHead      string `json:"final_head"`
 }
 
+type issueOpsHandoffLifecycleHooks struct {
+	BeforeLockedRevalidation func()
+}
+
 func ClaimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest) (IssueOpsRecord, error) {
+	return claimIssueOpsHandoff(stateRoot, req, issueOpsHandoffLifecycleHooks{})
+}
+
+func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hooks issueOpsHandoffLifecycleHooks) (IssueOpsRecord, error) {
 	validated, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return IssueOpsRecord{}, err
@@ -76,6 +84,7 @@ func ClaimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest) (Is
 			return IssueOpsRecord{}, err
 		}
 	}
+	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
 	var persisted IssueOpsRecord
 	err = withIssueOpsLock(stateRoot, req.ID, func() error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
@@ -86,6 +95,11 @@ func ClaimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest) (Is
 			return fmt.Errorf("handoff changed after claim validation; retry with the current fence")
 		}
 		alreadyClaimed := record.ExecutionHandoff.State == handoff.StateClaimed
+		if !alreadyClaimed {
+			if err := validateHandoffClaim(record, req); err != nil {
+				return err
+			}
+		}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		record, err = handoff.Claim(record, handoff.ClaimRequest{
 			Fence:      handoff.Fence{Attempt: req.Attempt, OwnershipEpoch: req.OwnershipEpoch, ContextSHA256: req.ContextSHA256},
@@ -136,15 +150,8 @@ func validateHandoffClaim(record IssueOpsRecord, req IssueOpsHandoffClaimRequest
 	if err := validateHandoffContextSource(record); err != nil {
 		return err
 	}
-	if branch := pathutil.GitBranchFromHead(req.CWD); branch == "" || branch != record.Branch {
-		return fmt.Errorf("worker branch does not match handoff branch")
-	}
-	attemptBaseHead := strings.TrimSpace(record.ExecutionHandoff.AttemptBaseHead)
-	if attemptBaseHead == "" {
-		return fmt.Errorf("persisted attempt base head is required")
-	}
-	if head := issueOpsCurrentHead(record); head == "" || head != attemptBaseHead {
-		return fmt.Errorf("worker head does not match the attempt base lineage")
+	if err := validateHandoffCleanExactCheckpoint(record); err != nil {
+		return err
 	}
 	return nil
 }
@@ -176,6 +183,10 @@ func RecordIssueOpsHeartbeatWithRequest(stateRoot string, req IssueOpsHeartbeatR
 }
 
 func FinishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest) (IssueOpsRecord, error) {
+	return finishIssueOpsHandoff(stateRoot, req, issueOpsHandoffLifecycleHooks{})
+}
+
+func finishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest, hooks issueOpsHandoffLifecycleHooks) (IssueOpsRecord, error) {
 	req = normalizeHandoffFinishRequest(req)
 	if err := validateHandoffFinishRequest(req); err != nil {
 		return IssueOpsRecord{}, err
@@ -192,6 +203,7 @@ func FinishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest) (
 			return IssueOpsRecord{}, err
 		}
 	}
+	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
 	var persisted IssueOpsRecord
 	err = withIssueOpsLock(stateRoot, req.ID, func() error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
@@ -200,6 +212,11 @@ func FinishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest) (
 		}
 		if !reflect.DeepEqual(record, validated) {
 			return fmt.Errorf("handoff changed after finish validation; retry with the current fence")
+		}
+		if record.ExecutionHandoff.State == handoff.StateClaimed {
+			if err := validateHandoffContextSource(record); err != nil {
+				return err
+			}
 		}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		record, err = handoff.Finish(record, handoff.FinishRequest{
@@ -307,6 +324,10 @@ func validateHandoffFinishRequest(req IssueOpsHandoffFinishRequest) error {
 }
 
 func AcceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest) (IssueOpsRecord, error) {
+	return acceptIssueOpsHandoff(stateRoot, req, issueOpsHandoffLifecycleHooks{})
+}
+
+func acceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest, hooks issueOpsHandoffLifecycleHooks) (IssueOpsRecord, error) {
 	validated, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return IssueOpsRecord{}, err
@@ -325,6 +346,7 @@ func AcceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest) (
 			return IssueOpsRecord{}, err
 		}
 	}
+	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
 	var persisted IssueOpsRecord
 	err = withIssueOpsLock(stateRoot, req.ID, func() error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
@@ -333,6 +355,17 @@ func AcceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest) (
 		}
 		if !reflect.DeepEqual(record, validated) {
 			return fmt.Errorf("handoff changed after accept validation; retry with the current fence")
+		}
+		if record.ExecutionHandoff.State != handoff.StateClosed {
+			if strings.TrimSpace(req.ContextSHA256) == "" || req.ContextSHA256 != record.ExecutionHandoff.ContextSHA256 {
+				return fmt.Errorf("stale handoff context")
+			}
+			if err := validateHandoffContextSource(record); err != nil {
+				return err
+			}
+			if err := validateHandoffAcceptEvidence(record, req); err != nil {
+				return err
+			}
 		}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		record, err = handoff.Accept(record, handoff.AcceptRequest{Fence: handoff.Fence{Attempt: req.Attempt, OwnershipEpoch: req.OwnershipEpoch, ContextSHA256: req.ContextSHA256}, FinalHead: req.FinalHead, Now: now})
@@ -344,6 +377,12 @@ func AcceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest) (
 		return err
 	})
 	return persisted, err
+}
+
+func runHandoffLifecycleHook(hook func()) {
+	if hook != nil {
+		hook()
+	}
 }
 
 func validateHandoffContextSource(record IssueOpsRecord) error {
