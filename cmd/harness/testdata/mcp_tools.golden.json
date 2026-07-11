@@ -2163,6 +2163,107 @@
     "name": "issueops_remote_sync_graph"
   },
   {
+    "description": "Run one supervised IssueOps handoff action (start, claim, finish, accept, or recover) through the same durable DTO contract as the CLI. External mutations remain preview-only unless confirm=true; recovery never advances to the next operation.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "enum": [
+            "start",
+            "claim",
+            "finish",
+            "accept",
+            "recover"
+          ],
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer"
+        },
+        "changed_files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cleanup_receipts": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "confirm": {
+          "type": "boolean"
+        },
+        "context_sha256": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "dispatch_id": {
+          "type": "string"
+        },
+        "evidence_digest": {
+          "type": "string"
+        },
+        "final_head": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "orca_worktree_id": {
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "ownership_epoch": {
+          "type": "string"
+        },
+        "recovery_action": {
+          "enum": [
+            "reconcile",
+            "cancel",
+            "retry"
+          ],
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "task_id": {
+          "type": "string"
+        },
+        "turing_report_path": {
+          "type": "string"
+        },
+        "verification": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "action",
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_handoff"
+  },
+  {
     "description": "Read an IssueOps cycle by id or read the session-to-cycle binding for a repo, returning cycle state, worktree path, branch, readiness, and HARNESS_EXPECTED_WORKTREE guidance. When repo is unbound and id is omitted, suggests active cycles for the repo. Optionally bind the session with bind=true.",
     "inputSchema": {
       "properties": {
@@ -2187,8 +2288,26 @@
     "description": "Update the liveness heartbeat for an active IssueOps cycle without otherwise mutating phase, links, or work artifacts.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer"
+        },
+        "context_sha256": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
+          "type": "string"
+        },
+        "ownership_epoch": {
+          "type": "string"
+        },
+        "session_id": {
           "type": "string"
         }
       },

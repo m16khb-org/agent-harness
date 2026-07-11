@@ -366,6 +366,13 @@ func runIssueOpsResume(args []string) error {
 	}
 	result := core.IssueOpsResume(*repo, *id)
 	if *bind && result.OK && result.CycleID != "" {
+		if result.ExecutionHandoff != nil {
+			err := fmt.Errorf("resume bind is read-only and refused for a supervised handoff; use the exact handoff claim command")
+			if *jsonOut {
+				_ = printIssueOpsErrorJSON(err)
+			}
+			return err
+		}
 		if err := core.BindIssueOpsSessionForCycle(result.Repo, result.CycleID); err != nil {
 			return printIssueOpsResult(core.IssueOpsRecord{OK: false}, *jsonOut, fmt.Errorf("resume bind: %w", err))
 		}
@@ -396,10 +403,18 @@ func runIssueOpsResume(args []string) error {
 func runIssueOpsHeartbeat(args []string) error {
 	fs := flag.NewFlagSet("issueops heartbeat", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	attempt := fs.Int("attempt", 0, "handoff attempt")
+	epoch := fs.String("ownership-epoch", "", "handoff ownership epoch")
+	contextSHA := fs.String("context-sha256", "", "handoff context sha256")
+	host := fs.String("host", "", "claimed worker host")
+	sessionID := fs.String("session-id", "", "claimed worker session id")
+	agentID := fs.String("agent-id", "", "claimed worker agent id")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsHeartbeat(core.IssueOpsStateRoot(), *id)
+	record, err := core.RecordIssueOpsHeartbeatWithRequest(core.IssueOpsStateRoot(), core.IssueOpsHeartbeatRequest{
+		ID: *id, Attempt: *attempt, OwnershipEpoch: *epoch, ContextSHA256: *contextSHA, Host: *host, SessionID: *sessionID, AgentID: *agentID,
+	})
 	return printIssueOpsResult(record, *jsonOut, err)
 }

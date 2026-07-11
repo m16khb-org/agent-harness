@@ -50,6 +50,7 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"force-release": runIssueOpsForceRelease,
 	"resume":        runIssueOpsResume,
 	"heartbeat":     runIssueOpsHeartbeat,
+	"handoff":       runIssueOpsHandoff,
 	"decision":      runIssueOpsDecision,
 	"execution":     runIssueOpsExecution,
 }

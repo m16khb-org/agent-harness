@@ -2,12 +2,14 @@ package mcpcli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
+	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
 )
@@ -353,6 +355,9 @@ func handleMCPIssueOpsCleanupStale(args map[string]any) MCPToolOutcome {
 func handleMCPIssueOpsResume(args map[string]any) MCPToolOutcome {
 	result := core.IssueOpsResume(argmap.String(args, "repo"), argmap.String(args, "id"))
 	if argmap.Bool(args, "bind") && result.OK && result.CycleID != "" {
+		if result.ExecutionHandoff != nil {
+			return issueOpsMCPOutcome(nil, fmt.Errorf("resume bind is read-only and refused for a supervised handoff; use issueops_handoff action=claim"), "IssueOps resume bind failed")
+		}
 		if err := core.BindIssueOpsSessionForCycle(result.Repo, result.CycleID); err != nil {
 			return issueOpsMCPOutcome(nil, fmt.Errorf("resume bind: %w", err), "IssueOps resume bind failed")
 		}
@@ -361,9 +366,46 @@ func handleMCPIssueOpsResume(args map[string]any) MCPToolOutcome {
 }
 
 func handleMCPIssueOpsHeartbeat(args map[string]any) MCPToolOutcome {
-	record, err := core.RecordIssueOpsHeartbeat(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	record, err := core.RecordIssueOpsHeartbeatWithRequest(core.IssueOpsStateRoot(), core.IssueOpsHeartbeatRequest{
+		ID: argmap.String(args, "id"), Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"),
+		ContextSHA256: argmap.String(args, "context_sha256"), Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"),
+	})
 	if err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps heartbeat failed")
 	}
 	return mcpToolPayload(record)
+}
+
+func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
+	id := argmap.String(args, "id")
+	switch argmap.String(args, "action") {
+	case "start":
+		result, err := core.StartIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffStartRequest{ID: id, Confirm: argmap.Bool(args, "confirm")}, orca.New(), core.IssueOpsHandoffStartClock{})
+		return issueOpsMCPOutcome(result, err, "IssueOps handoff start failed")
+	case "claim":
+		result, err := core.ClaimIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffClaimRequest{
+			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"),
+			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "cwd"), OrcaWorktreeID: argmap.String(args, "orca_worktree_id"),
+		})
+		return issueOpsMCPOutcome(result, err, "IssueOps handoff claim failed")
+	case "finish":
+		result, err := core.FinishIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
+			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"),
+			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), Outcome: argmap.String(args, "outcome"),
+			FinalHead: argmap.String(args, "final_head"), ChangedFiles: argmap.StringSlice(args, "changed_files"), TuringReportPath: argmap.String(args, "turing_report_path"),
+			Verification: argmap.StringSlice(args, "verification"), CleanupReceipts: argmap.StringSlice(args, "cleanup_receipts"), EvidenceDigest: argmap.String(args, "evidence_digest"),
+			TaskID: argmap.String(args, "task_id"), DispatchID: argmap.String(args, "dispatch_id"),
+		})
+		return issueOpsMCPOutcome(result, err, "IssueOps handoff finish failed")
+	case "accept":
+		result, err := core.AcceptIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffAcceptRequest{
+			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"), FinalHead: argmap.String(args, "final_head"),
+		})
+		return issueOpsMCPOutcome(result, err, "IssueOps handoff accept failed")
+	case "recover":
+		result, err := core.RecoverIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffRecoverRequest{ID: id, Action: argmap.String(args, "recovery_action"), Confirm: argmap.Bool(args, "confirm")}, orca.New(), core.IssueOpsHandoffPrepareClock{})
+		return issueOpsMCPOutcome(result, err, "IssueOps handoff recover failed")
+	default:
+		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, finish, accept, or recover"), "IssueOps handoff failed")
+	}
 }

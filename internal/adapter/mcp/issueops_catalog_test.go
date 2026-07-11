@@ -133,6 +133,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_child_drop",
 		"issueops_resume",
 		"issueops_heartbeat",
+		"issueops_handoff",
 	}
 	if len(tools) != len(wantNames) {
 		t.Fatalf("expected %d issueops lifecycle tools, got %d", len(wantNames), len(tools))
@@ -242,5 +243,8 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaRequires(byName["issueops_heartbeat"].InputSchema, "id") {
 		t.Fatalf("issueops_heartbeat must require id: %#v", byName["issueops_heartbeat"].InputSchema)
+	}
+	if !schemaRequires(byName["issueops_handoff"].InputSchema, "action") || !schemaRequires(byName["issueops_handoff"].InputSchema, "id") {
+		t.Fatalf("issueops_handoff must be one action-discriminated tool: %#v", byName["issueops_handoff"].InputSchema)
 	}
 }
