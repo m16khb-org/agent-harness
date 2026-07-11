@@ -20,6 +20,10 @@ Before confirming Orca mode, turn **Settings > General > Workspace > Nest Worksp
 
 The Orca repo projection must expose `gitRemoteIdentity.remoteName`. The confirmed create uses `refs/remotes/<remote>/<branch>` as its base so an already-linked provider branch keeps the exact branch and directory name without pre-creating or checking out a local branch. A missing remote name is a pre-mutation probe failure.
 
+GitHub and GitLab both use that exact verified provider ref. GitHub worktree creation additionally uses Orca's public GitHub-only `--issue` flag. GitLab omits `--issue` and never invents a GitLab flag or creates a remote provider object. A returned nonzero GitHub link or mismatched nonzero GitLab link is an identity failure. Null/zero `linkedGitLabIssue` is accepted only with `orca_gitlab_native_metadata_unavailable`; JSON includes it in `warnings` and human output prints `warning: orca_gitlab_native_metadata_unavailable`. Exact native metadata clears it. The observation is durable, so a restart or repeated prepare reports the same truth.
+
+Do not attach that warning to an inline fallback. In GitLab `auto`, missing/unready/capability-failed Orca and every later definitive pre-mutation fallback preserve the legacy inline response with no Orca warning or handoff state. Only a successfully resolved Orca preview or confirmation may carry the warning. The sealed context must show the exact verified provider and Issue URL before confirmation.
+
 Do not infer Orca readiness from `orca version`; the adapter uses structured `orca status --json`. Run the confirmed command only after reviewing the preview:
 
 ```bash

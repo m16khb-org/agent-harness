@@ -20,6 +20,9 @@ var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 const (
 	MaxPriorAttempts      = 16
 	MaxPriorAttemptsBytes = 256 * 1024
+
+	ProviderIssueLinkGitLabUnavailable = "gitlab_native_unavailable"
+	ProviderIssueLinkGitLabExact       = "gitlab_native_exact"
 )
 
 // ValidateEnvelope rejects corrupted or future supervised-handoff state. An
@@ -76,6 +79,16 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 	}
 	if h.Orca != nil && !canonicalOrcaIdentity(h.Orca) {
 		return fmt.Errorf("execution handoff Orca identity is not canonical")
+	}
+	if h.Orca != nil && h.Orca.ProviderIssueLinkStatus != "" && h.Orca.ProviderIssueLinkStatus != ProviderIssueLinkGitLabUnavailable && h.Orca.ProviderIssueLinkStatus != ProviderIssueLinkGitLabExact {
+		return fmt.Errorf("execution handoff provider issue link status is unknown")
+	}
+	gitLabProvider := record.BranchPrepare != nil && strings.EqualFold(strings.TrimSpace(record.BranchPrepare.Provider), "gitlab")
+	if h.Orca != nil && h.Orca.ProviderIssueLinkStatus != "" && !gitLabProvider {
+		return fmt.Errorf("execution handoff GitLab provider issue link status requires GitLab authority")
+	}
+	if h.Orca != nil && h.Orca.WorktreeID != "" && gitLabProvider && h.Orca.ProviderIssueLinkStatus == "" {
+		return fmt.Errorf("provisioned GitLab handoff requires a provider issue link status")
 	}
 	if h.Orca != nil && (h.Orca.WorkerTabID == "") != (h.Orca.WorkerLeafID == "") {
 		return fmt.Errorf("execution handoff stable terminal tab/leaf identity is incomplete")
@@ -398,6 +411,10 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 			struct {
 				name, value string
 				max         int
+			}{"provider issue link status", o.ProviderIssueLinkStatus, 64},
+			struct {
+				name, value string
+				max         int
 			}{"worktree id", o.WorktreeID, 4096},
 			struct {
 				name, value string
@@ -629,7 +646,7 @@ func canonicalOrcaIdentity(identity *model.IssueOpsOrcaIdentity) bool {
 	if identity == nil {
 		return true
 	}
-	for _, value := range []string{identity.RuntimeID, identity.RepoID, identity.BaseRef, identity.WorktreeID, identity.WorktreeInstanceID, identity.WorktreePath, identity.WorkerPTYID, identity.WorkerMailboxHandle, identity.WorkerTabID, identity.WorkerLeafID, identity.TaskID, identity.DispatchID} {
+	for _, value := range []string{identity.RuntimeID, identity.RepoID, identity.BaseRef, identity.ProviderIssueLinkStatus, identity.WorktreeID, identity.WorktreeInstanceID, identity.WorktreePath, identity.WorkerPTYID, identity.WorkerMailboxHandle, identity.WorkerTabID, identity.WorkerLeafID, identity.TaskID, identity.DispatchID} {
 		if value != strings.TrimSpace(value) {
 			return false
 		}

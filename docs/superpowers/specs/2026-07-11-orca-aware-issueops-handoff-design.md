@@ -315,6 +315,10 @@ V1 has no `terminal send` compatibility delivery. The durable dispatch journal s
 
 The returned checkout must use the exact IssueOps branch prepared through GitHub/GitLab. The adapter may base creation on the verified provider ref, but it must not accept an unrelated Orca-generated branch merely because the worktree exists.
 
+GitHub worktree creation passes the verified numeric issue through Orca's public `--issue` flag. The installed Orca contract labels that flag as GitHub-only and exposes no GitLab issue flag, so GitLab supervised creation uses the exact provider tracking ref and omits `--issue` and every invented metadata flag. A nonzero GitHub link or a mismatched nonzero `linkedGitLabIssue` rejects the returned GitLab worktree. A null or zero GitLab link is accepted with the stable `orca_gitlab_native_metadata_unavailable` warning; an exact native link removes that warning. The bounded observation is durable in the Orca identity so restart/status projection cannot change the warning accidentally.
+
+The sealed context includes both the verified provider and exact IssueOps issue URL. GitLab `auto` retains the legacy inline response without an Orca warning when Orca is absent, unready, or capability-incomplete; only a successfully resolved Orca preview or confirmation can report native GitLab metadata unavailability. No handoff step creates or mutates a remote GitLab issue, branch, work item, or merge request.
+
 An isolated disposable-repository test must verify the installed Orca name/base/collision behavior before production wiring relies on it.
 
 ## 9. Worker claim and ownership

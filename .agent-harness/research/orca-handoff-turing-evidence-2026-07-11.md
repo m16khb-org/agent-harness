@@ -236,6 +236,13 @@ Final fresh commands and exact outcomes: PENDING.
 - Runtime-refresh CAS RED→GREEN: before the fix, a durable row mutation during inventory was ignored until a later dispatch mismatch, while context-source and dirty-checkout drift allowed the new tuple to be adopted. The runtime-only locked completion now exact-compares the journal snapshot, revalidates context source and clean exact branch/HEAD, and leaves all three injected drift rows in `recovery_required` with the old runtime/instance/handle/PTY/tab/leaf, pending `runtime_refresh`, and zero later mutation.
 - Focused receipts: adapter rollover/capability/total-layout-bound fixtures, core runtime-refresh/CAS/cancellation/no-duplicate tests, schema v1→v2 and v2→v3 compatibility probes, prior-attempt stable terminal identity, force-abandon rejection of read-only runtime refresh, and IssueOps/Turing ownership contract tests all report named PASS results in this bundle's verification transcript.
 
+## GitLab supervised handoff checkpoint
+
+- Installed contract observation: runtime `0.1.0+540e30aed735` exposes worktree-create `--issue` as a linked GitHub issue number and exposes no GitLab issue option in public CLI help. Installed worktree rows expose nullable `linkedGitLabIssue`; the fixture now retains explicit `null` rather than relying on a missing field. This help receipt does not claim exhaustive public RPC-schema absence.
+- RED→GREEN: GitLab `auto` and explicit Orca use the exact verified provider tracking ref while omitting GitHub `--issue`; null/zero native metadata yields `orca_gitlab_native_metadata_unavailable` in JSON and human warning output, exact metadata clears it, and conflicting GitHub/mismatched GitLab identities fail closed. The bounded observation persists in the Orca identity and remains exact after disk read/reprojection and runtime refresh.
+- Compatibility correction: GitLab `auto` with missing, unready, capability-failed, or errored Orca returns the unchanged inline contract without a warning or `execution_handoff`. A later post-probe inline fallback also removes the warning. A nil legacy `BranchPrepare` remains panic-free and preserves its original inline command/base projection.
+- Context/provider boundary: provider and exact Issue URL participate in the sealed source fingerprint. No test or production path creates or mutates a GitLab remote object.
+
 ## Remaining coordinator-only actions
 
 No push, PR, merge, implementation-handoff acceptance, or implementation worktree/branch cleanup is performed by this worker. The disposable live E2E was accepted and cleaned as recorded above; the parent coordinator still owns the issue branch handoff, push, PR, merge, and final implementation worktree cleanup after receiving worker_done.

@@ -12,7 +12,8 @@
       "displayName": "16-demo",
       "comment": "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
       "baseRef": "refs/remotes/origin/16-demo",
-      "linkedIssue": 16
+      "linkedIssue": 16,
+      "linkedGitLabIssue": null
     }
   },
   "_meta": {

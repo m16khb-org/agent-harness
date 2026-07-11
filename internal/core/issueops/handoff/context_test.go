@@ -40,6 +40,9 @@ func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 	if first.PlanSHA256 == "" || first.SHA256 == "" || first.SourceSHA256 == "" {
 		t.Fatalf("missing context hashes: %#v", first)
 	}
+	if first.Projection.Provider != "github" || first.Projection.IssueURL != record.IssueURL {
+		t.Fatalf("provider-linked issue authority missing from context: %#v", first.Projection)
+	}
 	if !first.Projection.AllowCodexHookTrustBypass || !CanonicalContextOptions(options).AllowCodexHookTrustBypass || !ContextOptionsFromModel(CanonicalContextOptions(options)).AllowCodexHookTrustBypass {
 		t.Fatal("Codex hook-trust attestation was not preserved in the delivery projection and model")
 	}
@@ -85,6 +88,7 @@ func TestIssueOpsHandoffContextHashChangesForPlanBranchIntentAndWorktree(t *test
 	}{
 		{name: "plan", mutate: func(r *model.IssueOpsRecord) { _ = os.WriteFile(r.PlanPath, []byte("changed plan\n"), 0o644) }},
 		{name: "branch", mutate: func(r *model.IssueOpsRecord) { r.Branch = "16-other" }},
+		{name: "provider", mutate: func(r *model.IssueOpsRecord) { r.BranchPrepare.Provider = "gitlab" }},
 		{name: "intent", mutate: func(r *model.IssueOpsRecord) { r.Intent.InterpretedIntent = "changed intent" }},
 		{name: "worktree", mutate: func(r *model.IssueOpsRecord) { r.WorktreePath = filepath.Join(filepath.Dir(r.WorktreePath), "other") }},
 		{name: "attempt base", mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.AttemptBaseHead = strings.Repeat("c", 40) }},
@@ -147,7 +151,7 @@ func contextRecordForTest(t *testing.T) model.IssueOpsRecord {
 			Verdict:  "pass",
 			Findings: []string{"prove create-at-most-once"},
 		},
-		BranchPrepare: &model.IssueOpsBranchPrepare{BaseBranch: "main", BaseSHA: strings.Repeat("b", 40)},
+		BranchPrepare: &model.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/16", BaseBranch: "main", BaseSHA: strings.Repeat("b", 40)},
 		ExecutionHandoff: &model.IssueOpsExecutionHandoff{
 			ProtocolVersion: 1,
 			State:           StateCoordinatorPreparing,

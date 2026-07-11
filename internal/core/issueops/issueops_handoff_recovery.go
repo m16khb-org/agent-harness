@@ -649,7 +649,7 @@ func retryIssueOpsHandoff(stateRoot, id string, clock IssueOpsHandoffPrepareCloc
 		var worktreeIdentity *model.IssueOpsOrcaIdentity
 		if old.Orca != nil && old.Orca.WorktreeID != "" {
 			worktreeIdentity = &model.IssueOpsOrcaIdentity{
-				RuntimeID: old.Orca.RuntimeID, RepoID: old.Orca.RepoID, BaseRef: old.Orca.BaseRef,
+				RuntimeID: old.Orca.RuntimeID, RepoID: old.Orca.RepoID, BaseRef: old.Orca.BaseRef, ProviderIssueLinkStatus: old.Orca.ProviderIssueLinkStatus,
 				WorktreeID: old.Orca.WorktreeID, WorktreeInstanceID: old.Orca.WorktreeInstanceID, WorktreePath: old.Orca.WorktreePath,
 			}
 		}
@@ -724,6 +724,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 			return projectHandoffRecovery(persisted, "reconcile", "cancel this handoff, then remove exact Orca worktree id:"+candidate.ID+" and start a fresh IssueOps cycle"), validateErr
 		}
 		identity.WorktreeID, identity.WorktreeInstanceID, identity.WorktreePath = candidate.ID, candidate.InstanceID, candidate.Path
+		identity.ProviderIssueLinkStatus = providerIssueLinkStatus(record, candidate)
 		desiredWorktreePath = candidate.Path
 	case handoff.OperationTerminalCreate:
 		reader, ok := client.(interface {
@@ -791,6 +792,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		}
 		identity.RuntimeID = worktree.RuntimeID
 		identity.WorktreeInstanceID = worktree.InstanceID
+		identity.ProviderIssueLinkStatus = providerIssueLinkStatus(record, worktree)
 		identity.WorkerPTYID = terminal.PTYID
 		identity.WorkerMailboxHandle = terminal.Handle
 		identity.WorkerTabID = terminal.TabID

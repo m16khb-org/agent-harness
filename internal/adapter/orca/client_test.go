@@ -136,6 +136,36 @@ func TestProbeRequiresEveryInvokedLeafFlagBeforeMutation(t *testing.T) {
 	}
 }
 
+func TestProbeRequiresGitHubIssueFlagOnlyForGitHubProvider(t *testing.T) {
+	for _, tt := range []struct {
+		provider string
+		ready    bool
+	}{
+		{provider: "github", ready: false},
+		{provider: "gitlab", ready: true},
+	} {
+		t.Run(tt.provider, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.lookPaths["orca"] = "/usr/local/bin/orca"
+			runner.lookPaths["codex"] = "/usr/local/bin/codex"
+			runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+			runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+			addCompleteProbeLeafHelp(runner)
+			runner.responses["orca worktree create --help"] = CommandOutput{Stdout: []byte("--repo --name --base-branch --no-parent --setup --comment --json")}
+			result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex", Provider: tt.provider})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Ready != tt.ready || result.Provider != tt.provider {
+				t.Fatalf("%s provider-aware probe = %#v", tt.provider, result)
+			}
+			if !tt.ready && result.Code != "capability_missing" {
+				t.Fatalf("GitHub probe without --issue code = %q", result.Code)
+			}
+		})
+	}
+}
+
 func TestProbeRequiresTaskUpdateLeafFlagsForCleanup(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.lookPaths["orca"] = "/usr/local/bin/orca"
@@ -314,6 +344,48 @@ func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 	want := []string{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "16-demo", "--base-branch", "refs/remotes/origin/16-demo", "--no-parent", "--setup", "skip", "--comment", "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1", "--issue", "16", "--json"}
 	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0], want) {
 		t.Fatalf("argv = %#v, want %#v", runner.calls, want)
+	}
+}
+
+func TestClientCreateWorktreeUsesProviderSpecificIssueMetadata(t *testing.T) {
+	for _, tt := range []struct {
+		name, provider, command, output string
+		wantGitLabIssue                 int
+		wantGitLabPresent               bool
+	}{
+		{
+			name: "github", provider: "github",
+			command: "orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --no-parent --setup skip --comment marker --issue 16 --json",
+			output:  `{"ok":true,"result":{"worktree":{"id":"wt-1","instanceId":"inst-1","repoId":"repo-1","path":"/repo.worktrees/16-demo","linkedIssue":16,"linkedGitLabIssue":null}},"_meta":{"runtimeId":"runtime-1"}}`,
+		},
+		{
+			name: "gitlab null native metadata", provider: "gitlab",
+			command: "orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --no-parent --setup skip --comment marker --json",
+			output:  `{"ok":true,"result":{"worktree":{"id":"wt-1","instanceId":"inst-1","repoId":"repo-1","path":"/repo.worktrees/16-demo","linkedIssue":null,"linkedGitLabIssue":null}},"_meta":{"runtimeId":"runtime-1"}}`,
+		},
+		{
+			name: "gitlab exact native metadata", provider: "gitlab",
+			command:         "orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --no-parent --setup skip --comment marker --json",
+			output:          `{"ok":true,"result":{"worktree":{"id":"wt-1","instanceId":"inst-1","repoId":"repo-1","path":"/repo.worktrees/16-demo","linkedIssue":null,"linkedGitLabIssue":16}},"_meta":{"runtimeId":"runtime-1"}}`,
+			wantGitLabIssue: 16, wantGitLabPresent: true,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.responses[tt.command] = CommandOutput{Stdout: []byte(tt.output)}
+			got, err := NewClient(runner).CreateWorktree(context.Background(), port.OrcaCreateWorktreeRequest{
+				Repo: "/repo", Name: "16-demo", BaseBranch: "refs/remotes/origin/16-demo", Provider: tt.provider, Issue: 16, Comment: "marker",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != tt.command {
+				t.Fatalf("%s create argv = %#v", tt.provider, runner.calls)
+			}
+			if (got.GitLabIssue != nil) != tt.wantGitLabPresent || got.GitLabIssue != nil && *got.GitLabIssue != tt.wantGitLabIssue {
+				t.Fatalf("%s linked GitLab metadata = %#v", tt.provider, got.GitLabIssue)
+			}
+		})
 	}
 }
 

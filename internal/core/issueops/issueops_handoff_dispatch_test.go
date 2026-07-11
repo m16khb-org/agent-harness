@@ -690,6 +690,81 @@ func TestHandoffStartRecoversRuntimeReissuedTerminalWithoutDuplicateCreate(t *te
 	}
 }
 
+func TestHandoffRuntimeRestartPreservesGitLabNativeMetadataObservation(t *testing.T) {
+	zero, exact, mismatch := 0, 16, 17
+	for _, tt := range []struct {
+		name            string
+		linkedIssue     int
+		linkedGitLab    *int
+		wantStatus      string
+		wantUnavailable bool
+		wantErr         bool
+	}{
+		{name: "null unavailable", wantStatus: handoff.ProviderIssueLinkGitLabUnavailable, wantUnavailable: true},
+		{name: "zero unavailable", linkedGitLab: &zero, wantStatus: handoff.ProviderIssueLinkGitLabUnavailable, wantUnavailable: true},
+		{name: "exact", linkedGitLab: &exact, wantStatus: handoff.ProviderIssueLinkGitLabExact},
+		{name: "conflicting GitHub metadata", linkedIssue: 16, wantErr: true},
+		{name: "mismatched GitLab metadata", linkedGitLab: &mismatch, wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			issueURL := "https://gitlab.example/acme/repo/-/issues/16"
+			record.IssueURL = issueURL
+			record.BranchPrepare.Provider = "gitlab"
+			record.BranchPrepare.IssueURL = issueURL
+			record.ExecutionHandoff.Orca.ProviderIssueLinkStatus = handoff.ProviderIssueLinkGitLabUnavailable
+			record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
+			record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+			record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
+			record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
+			if _, err := WriteIssueOps(stateRoot, record); err != nil {
+				t.Fatal(err)
+			}
+			client := handoffDispatchFake(record)
+			client.terminalRefreshErr = &port.OrcaError{Code: "terminal_not_found"}
+			client.terminals = []port.OrcaTerminal{{
+				RuntimeID: "runtime-2", Handle: "term-recovered", PTYID: "pty-recovered",
+				WorktreeID: "wt-1", WorktreePath: record.WorktreePath, TabID: "tab-stable", LeafID: "leaf-stable",
+				Connected: true, Writable: true,
+			}}
+			row := runtimeRestartWorktree(record, "runtime-2", "inst-2")
+			row.Issue = tt.linkedIssue
+			row.GitLabIssue = tt.linkedGitLab
+			client.worktrees = []port.OrcaWorktree{row}
+			client.dispatch.AssigneeHandle = "term-recovered"
+
+			got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
+			if tt.wantErr {
+				if err == nil || client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 {
+					t.Fatalf("mismatched GitLab runtime metadata: result=%#v err=%v trace=%v", got, err, client.trace)
+				}
+				persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+				if readErr != nil {
+					t.Fatal(readErr)
+				}
+				h := persisted.ExecutionHandoff
+				if h == nil || h.State != handoff.StateRecoveryRequired || h.PendingOperation == nil || h.PendingOperation.Kind != handoff.OperationRuntimeRefresh || h.Orca == nil || h.Orca.RuntimeID != "runtime-1" || h.Orca.WorktreeInstanceID != "inst-1" || h.Orca.WorkerMailboxHandle != "term-stale" || h.Orca.WorkerPTYID != "pty-stale" || h.Orca.WorkerTabID != "tab-stable" || h.Orca.WorkerLeafID != "leaf-stable" || h.Orca.ProviderIssueLinkStatus != handoff.ProviderIssueLinkGitLabUnavailable {
+					t.Fatalf("conflicting GitLab runtime metadata changed the old identity/status: %#v", h)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Orca == nil || got.Orca.ProviderIssueLinkStatus != tt.wantStatus {
+				t.Fatalf("runtime GitLab observation = %#v, want %q", got.Orca, tt.wantStatus)
+			}
+			projected, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{ID: record.ID}, nil, handoffPrepareTestClock())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tt.wantUnavailable != containsString(projected.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning) {
+				t.Fatalf("runtime-reprojected GitLab warnings = %#v", projected.Warnings)
+			}
+		})
+	}
+}
+
 func TestHandoffStartRuntimeRestartWithDirtyWorkerNeverLaunchesReplacement(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-stale"
@@ -1042,7 +1117,7 @@ func runtimeRestartWorktree(record IssueOpsRecord, runtimeID, instanceID string)
 		RepoID: record.ExecutionHandoff.Orca.RepoID, Path: record.WorktreePath,
 		Head: record.ExecutionHandoff.AttemptBaseHead, Branch: "refs/heads/" + record.Branch,
 		Comment: issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
-		BaseRef: record.ExecutionHandoff.Orca.BaseRef,
+		BaseRef: record.ExecutionHandoff.Orca.BaseRef, Issue: 16,
 	}
 }
 

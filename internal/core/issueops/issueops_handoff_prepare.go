@@ -17,6 +17,7 @@ import (
 
 	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
@@ -25,6 +26,8 @@ const (
 	IssueOpsOrchestratorAuto   = "auto"
 	IssueOpsOrchestratorOrca   = "orca"
 	IssueOpsOrchestratorInline = "inline"
+
+	IssueOpsGitLabNativeMetadataUnavailableWarning = "orca_gitlab_native_metadata_unavailable"
 )
 
 type IssueOpsHandoffPrepareRequest struct {
@@ -52,6 +55,7 @@ type IssueOpsHandoffPrepareResult struct {
 	ContextSHA256 string                `json:"context_sha256,omitempty"`
 	FallbackCode  string                `json:"fallback_code,omitempty"`
 	RecoveryCode  string                `json:"recovery_code,omitempty"`
+	Warnings      []string              `json:"warnings,omitempty"`
 	Orca          *IssueOpsOrcaIdentity `json:"orca,omitempty"`
 }
 
@@ -105,9 +109,7 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 	worktrees, err := client.ListWorktrees(ctx, record.Repo)
 	if err != nil {
 		if requested == IssueOpsOrchestratorAuto {
-			result.ResolvedMode = IssueOpsOrchestratorInline
-			result.FallbackCode = handoffInventoryFallbackCode(err)
-			return result, nil
+			return inlineHandoffPrepareFallback(result, handoffInventoryFallbackCode(err)), nil
 		}
 		return result, fmt.Errorf("list Orca worktrees before create: %w", err)
 	}
@@ -124,9 +126,7 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 	}
 	if collisionCode != "" {
 		if requested == IssueOpsOrchestratorAuto {
-			result.ResolvedMode = IssueOpsOrchestratorInline
-			result.FallbackCode = collisionCode
-			return result, nil
+			return inlineHandoffPrepareFallback(result, collisionCode), nil
 		}
 		return result, fmt.Errorf("Orca worktree create collision: %s", collisionCode)
 	}
@@ -151,13 +151,12 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 	created, err := createHandoffWorktree(ctx, stateRoot, record, result.WorktreePath, probe.RepoID, providerTrackingRef, baseline, fence, begin, client, now)
 	if err != nil {
 		if requested == IssueOpsOrchestratorAuto && externalMutationNotInvoked(err) {
-			result.ResolvedMode = IssueOpsOrchestratorInline
-			result.FallbackCode = "orca_worktree_create_not_invoked"
-			return result, nil
+			return inlineHandoffPrepareFallback(result, "orca_worktree_create_not_invoked"), nil
 		}
 		return result, err
 	}
-	persisted, err := persistHandoffWorktreeCreate(stateRoot, record.ID, created, fence, begin, now)
+	linkStatus := providerIssueLinkStatus(record, created)
+	persisted, err := persistHandoffWorktreeCreate(stateRoot, record.ID, created, linkStatus, fence, begin, now)
 	if err != nil {
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_persist_failed", err.Error(), now)
 		return result, err
@@ -243,44 +242,47 @@ func resolveHandoffPrepareMode(ctx context.Context, record IssueOpsRecord, req I
 		result.Preview = !req.Confirm
 		return result, port.OrcaProbeResult{}, false, nil
 	}
+	providerHint := ""
+	if record.BranchPrepare != nil {
+		providerHint = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
+	}
+	if providerHint == "github" || providerHint == "gitlab" {
+		if _, err := issueOpsHandoffProvider(record); err != nil {
+			return result, port.OrcaProbeResult{}, false, err
+		}
+	}
 	if client == nil {
 		if requested == IssueOpsOrchestratorAuto {
-			result.ResolvedMode = IssueOpsOrchestratorInline
-			result.FallbackCode = "orca_adapter_unavailable"
-			return result, port.OrcaProbeResult{}, false, nil
+			return inlineHandoffPrepareFallback(result, "orca_adapter_unavailable"), port.OrcaProbeResult{}, false, nil
 		}
 		return result, port.OrcaProbeResult{}, false, fmt.Errorf("orca probe failed: adapter unavailable")
 	}
-	probe, err := client.Probe(ctx, port.OrcaProbeRequest{Repo: record.Repo, Agent: req.Agent})
+	probe, err := client.Probe(ctx, port.OrcaProbeRequest{Repo: record.Repo, Agent: req.Agent, Provider: providerHint})
 	if err != nil || !probe.Available || !probe.Ready {
 		code := strings.TrimSpace(probe.Code)
 		if code == "" {
 			code = "orca_probe_failed"
 		}
 		if requested == IssueOpsOrchestratorAuto {
-			result.ResolvedMode = IssueOpsOrchestratorInline
-			result.FallbackCode = code
-			return result, probe, false, nil
+			return inlineHandoffPrepareFallback(result, code), probe, false, nil
 		}
 		if err != nil {
 			return result, probe, false, fmt.Errorf("orca probe failed: %w", err)
 		}
 		return result, probe, false, fmt.Errorf("orca probe failed: %s", code)
 	}
-	provider := ""
-	if record.BranchPrepare != nil {
-		provider = strings.TrimSpace(record.BranchPrepare.Provider)
-	}
-	if !strings.EqualFold(provider, "github") {
+	provider, providerErr := issueOpsHandoffProvider(record)
+	if providerErr != nil {
 		if requested == IssueOpsOrchestratorAuto {
-			result.ResolvedMode = IssueOpsOrchestratorInline
-			result.FallbackCode = "orca_provider_unsupported"
-			return result, probe, false, nil
+			return inlineHandoffPrepareFallback(result, "orca_provider_unsupported"), probe, false, nil
 		}
-		return result, probe, false, fmt.Errorf("Orca supervised handoff supports GitHub issue linkage only; provider %q must use inline execution", provider)
+		return result, probe, false, providerErr
 	}
 	result.ResolvedMode = IssueOpsOrchestratorOrca
 	result.Preview = !req.Confirm
+	if provider == "gitlab" {
+		result.Warnings = uniqueStrings(append(result.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning))
+	}
 	if !req.Confirm {
 		return result, probe, false, nil
 	}
@@ -288,6 +290,23 @@ func resolveHandoffPrepareMode(ctx context.Context, record IssueOpsRecord, req I
 		return result, probe, false, err
 	}
 	return result, probe, true, nil
+}
+
+func inlineHandoffPrepareFallback(result IssueOpsHandoffPrepareResult, code string) IssueOpsHandoffPrepareResult {
+	result.ResolvedMode = IssueOpsOrchestratorInline
+	result.FallbackCode = code
+	result.Warnings = removeString(result.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning)
+	return result
+}
+
+func removeString(values []string, remove string) []string {
+	filtered := values[:0]
+	for _, value := range values {
+		if value != remove {
+			filtered = append(filtered, value)
+		}
+	}
+	return filtered
 }
 
 type handoffWorktreeBeginSnapshot struct {
@@ -334,8 +353,9 @@ func beginHandoffWorktreeCreate(stateRoot, id, workerRoot, agent, runtimeID, rep
 
 func createHandoffWorktree(ctx context.Context, stateRoot string, record IssueOpsRecord, expectedPath, expectedRepoID, providerTrackingRef string, baseline []string, fence handoff.Fence, begin handoffWorktreeBeginSnapshot, client IssueOpsOrcaWorktreeClient, now string) (port.OrcaWorktree, error) {
 	linkedIssue, _ := issueNumber(record.IssueURL)
+	provider, _ := issueOpsHandoffProvider(record)
 	created, err := client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
-		Repo: record.Repo, Name: record.Branch, BaseBranch: providerTrackingRef, Issue: linkedIssue,
+		Repo: record.Repo, Name: record.Branch, BaseBranch: providerTrackingRef, Provider: provider, Issue: linkedIssue,
 		Comment: issueOpsHandoffMarker(record.ID, fence.OwnershipEpoch, fence.Attempt),
 	})
 	if err != nil {
@@ -417,7 +437,7 @@ func markHandoffCleanupOnlyWorktree(stateRoot, id string, fence handoff.Fence, c
 	})
 }
 
-func persistHandoffWorktreeCreate(stateRoot, id string, created port.OrcaWorktree, fence handoff.Fence, begin handoffWorktreeBeginSnapshot, now string) (IssueOpsRecord, error) {
+func persistHandoffWorktreeCreate(stateRoot, id string, created port.OrcaWorktree, linkStatus string, fence handoff.Fence, begin handoffWorktreeBeginSnapshot, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
 	err := withIssueOpsLock(stateRoot, id, func() error {
 		current, err := ReadIssueOps(stateRoot, id)
@@ -434,7 +454,7 @@ func persistHandoffWorktreeCreate(stateRoot, id string, created port.OrcaWorktre
 			return fmt.Errorf("stale worktree create result")
 		}
 		current.ExecutionHandoff.Orca = &model.IssueOpsOrcaIdentity{
-			RuntimeID: current.ExecutionHandoff.Orca.RuntimeID, RepoID: current.ExecutionHandoff.Orca.RepoID, BaseRef: current.ExecutionHandoff.Orca.BaseRef,
+			RuntimeID: current.ExecutionHandoff.Orca.RuntimeID, RepoID: current.ExecutionHandoff.Orca.RepoID, BaseRef: current.ExecutionHandoff.Orca.BaseRef, ProviderIssueLinkStatus: linkStatus,
 			WorktreeID: created.ID, WorktreeInstanceID: created.InstanceID, WorktreePath: filepath.Clean(created.Path),
 		}
 		current.ExecutionHandoff.ProvisionedAt = now
@@ -466,8 +486,10 @@ func issueOpsLegacyWorktreePrepareResult(record IssueOpsRecord) (IssueOpsHandoff
 		return IssueOpsHandoffPrepareResult{}, fmt.Errorf("repo and branch must be set on the IssueOps record")
 	}
 	baseBranch := "main"
-	if record.BranchPrepare != nil && strings.TrimSpace(record.BranchPrepare.BaseBranch) != "" {
-		baseBranch = strings.TrimSpace(record.BranchPrepare.BaseBranch)
+	if record.BranchPrepare != nil {
+		if strings.TrimSpace(record.BranchPrepare.BaseBranch) != "" {
+			baseBranch = strings.TrimSpace(record.BranchPrepare.BaseBranch)
+		}
 	}
 	path := repo + ".worktrees/" + strings.ReplaceAll(branch, "/", "-")
 	result := IssueOpsHandoffPrepareResult{
@@ -480,6 +502,18 @@ func issueOpsLegacyWorktreePrepareResult(record IssueOpsRecord) (IssueOpsHandoff
 		result.NextStep = "worktree exists; run issueops link-worktree --id " + record.ID + " --worktree-path " + result.WorktreePath
 	}
 	return result, nil
+}
+
+func providerIssueLinkStatus(record IssueOpsRecord, created port.OrcaWorktree) string {
+	provider, err := issueOpsHandoffProvider(record)
+	if err != nil || provider != "gitlab" {
+		return ""
+	}
+	issue, err := issueNumber(record.IssueURL)
+	if err == nil && created.GitLabIssue != nil && *created.GitLabIssue == issue {
+		return handoff.ProviderIssueLinkGitLabExact
+	}
+	return handoff.ProviderIssueLinkGitLabUnavailable
 }
 
 func validateHandoffPreparePrerequisites(record IssueOpsRecord) error {
@@ -499,6 +533,23 @@ func validateHandoffPreparePrerequisites(record IssueOpsRecord) error {
 		return fmt.Errorf("Orca worktree preparation prerequisites missing: %s", strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+func issueOpsHandoffProvider(record IssueOpsRecord) (string, error) {
+	provider := ""
+	branchIssueURL := ""
+	if record.BranchPrepare != nil {
+		provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
+		branchIssueURL = strings.TrimSpace(record.BranchPrepare.IssueURL)
+	}
+	if provider != "github" && provider != "gitlab" {
+		return "", fmt.Errorf("Orca supervised handoff requires provider github or gitlab; got %q", provider)
+	}
+	issueURL := strings.TrimSpace(record.IssueURL)
+	if issueProvider := remote.ProviderFromURL(issueURL); issueProvider == "" || issueProvider != provider || branchIssueURL != issueURL {
+		return "", fmt.Errorf("verified provider does not match IssueOps issue URL")
+	}
+	return provider, nil
 }
 
 func validFullCommitSHA(value string) bool {
@@ -558,9 +609,8 @@ func validateCreatedHandoffWorktree(record IssueOpsRecord, expectedPath, expecte
 	if base := strings.TrimSpace(record.BranchPrepare.BaseSHA); base != "" && strings.TrimSpace(created.Head) != base {
 		return fmt.Errorf("Orca worktree head does not match prepared base sha")
 	}
-	issue, err := issueNumber(record.IssueURL)
-	if err != nil || created.Issue != issue {
-		return fmt.Errorf("Orca linked issue %d does not match IssueOps issue", created.Issue)
+	if err := validateHandoffWorktreeIssueMetadata(record, created); err != nil {
+		return err
 	}
 	code, localRoot, _ := preflight.GitCmd(created.Path, "rev-parse", "--show-toplevel")
 	if code != 0 || filepath.Clean(localRoot) != filepath.Clean(resolvedExpected) {
@@ -572,6 +622,34 @@ func validateCreatedHandoffWorktree(record IssueOpsRecord, expectedPath, expecte
 	}
 	if branch := strings.TrimSpace(preflight.GitOut(created.Path, "branch", "--show-current")); branch == "" || branch != strings.TrimSpace(record.Branch) {
 		return fmt.Errorf("Orca worktree local branch does not match the provider branch")
+	}
+	return nil
+}
+
+func validateHandoffWorktreeIssueMetadata(record IssueOpsRecord, created port.OrcaWorktree) error {
+	issue, err := issueNumber(record.IssueURL)
+	if err != nil {
+		return fmt.Errorf("IssueOps issue URL does not contain a numeric issue identity")
+	}
+	provider, err := issueOpsHandoffProvider(record)
+	if err != nil {
+		return err
+	}
+	switch provider {
+	case "github":
+		if created.Issue != issue {
+			return fmt.Errorf("Orca linked issue %d does not match IssueOps issue", created.Issue)
+		}
+		if created.GitLabIssue != nil && *created.GitLabIssue != 0 {
+			return fmt.Errorf("Orca linked GitLab issue metadata conflicts with the GitHub provider")
+		}
+	case "gitlab":
+		if created.Issue != 0 {
+			return fmt.Errorf("Orca GitHub linked issue metadata must be absent for GitLab handoff")
+		}
+		if created.GitLabIssue != nil && (*created.GitLabIssue < 0 || *created.GitLabIssue > 0 && *created.GitLabIssue != issue) {
+			return fmt.Errorf("Orca linked GitLab issue does not match IssueOps issue")
+		}
 	}
 	return nil
 }
@@ -603,6 +681,13 @@ func projectHandoffPrepareResult(result IssueOpsHandoffPrepareResult, record Iss
 	result.Attempt = record.ExecutionHandoff.Attempt
 	result.ContextSHA256 = record.ExecutionHandoff.ContextSHA256
 	result.Orca = record.ExecutionHandoff.Orca
+	if provider, err := issueOpsHandoffProvider(record); err == nil && provider == "gitlab" && record.ExecutionHandoff.Orca != nil {
+		if record.ExecutionHandoff.Orca.ProviderIssueLinkStatus == handoff.ProviderIssueLinkGitLabExact {
+			result.Warnings = removeString(result.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning)
+		} else {
+			result.Warnings = uniqueStrings(append(result.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning))
+		}
+	}
 	if record.ExecutionHandoff.State == handoff.StateRecoveryRequired {
 		result.RecoveryCode = "explicit_reconcile_required"
 		if record.ExecutionHandoff.Failure != nil && record.ExecutionHandoff.Failure.Code != "" {

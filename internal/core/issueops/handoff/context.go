@@ -33,6 +33,7 @@ type ContextOptions struct {
 type ContextProjection struct {
 	Version                   int      `json:"version"`
 	CycleID                   string   `json:"cycle_id"`
+	Provider                  string   `json:"provider,omitempty"`
 	IssueURL                  string   `json:"issue_url,omitempty"`
 	Branch                    string   `json:"branch"`
 	BaseBranch                string   `json:"base_branch,omitempty"`
@@ -107,6 +108,7 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		AllowCodexHookTrustBypass: options.AllowCodexHookTrustBypass,
 	}
 	if record.BranchPrepare != nil {
+		projection.Provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
 		projection.BaseBranch = strings.TrimSpace(record.BranchPrepare.BaseBranch)
 		projection.BaseSHA = strings.TrimSpace(record.BranchPrepare.BaseSHA)
 	}

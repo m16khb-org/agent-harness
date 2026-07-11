@@ -376,19 +376,20 @@ type IssueOpsHostSessionIdentity struct {
 }
 
 type IssueOpsOrcaIdentity struct {
-	RuntimeID              string   `json:"runtime_id,omitempty"`
-	RepoID                 string   `json:"repo_id,omitempty"`
-	BaseRef                string   `json:"base_ref,omitempty"`
-	WorktreeID             string   `json:"worktree_id,omitempty"`
-	WorktreeInstanceID     string   `json:"worktree_instance_id,omitempty"`
-	WorktreePath           string   `json:"worktree_path,omitempty"`
-	TerminalBaselinePTYIDs []string `json:"terminal_baseline_pty_ids,omitempty"`
-	WorkerPTYID            string   `json:"worker_pty_id,omitempty"`
-	WorkerMailboxHandle    string   `json:"worker_mailbox_handle,omitempty"`
-	WorkerTabID            string   `json:"worker_tab_id,omitempty"`
-	WorkerLeafID           string   `json:"worker_leaf_id,omitempty"`
-	TaskID                 string   `json:"task_id,omitempty"`
-	DispatchID             string   `json:"dispatch_id,omitempty"`
+	RuntimeID               string   `json:"runtime_id,omitempty"`
+	RepoID                  string   `json:"repo_id,omitempty"`
+	BaseRef                 string   `json:"base_ref,omitempty"`
+	ProviderIssueLinkStatus string   `json:"provider_issue_link_status,omitempty"`
+	WorktreeID              string   `json:"worktree_id,omitempty"`
+	WorktreeInstanceID      string   `json:"worktree_instance_id,omitempty"`
+	WorktreePath            string   `json:"worktree_path,omitempty"`
+	TerminalBaselinePTYIDs  []string `json:"terminal_baseline_pty_ids,omitempty"`
+	WorkerPTYID             string   `json:"worker_pty_id,omitempty"`
+	WorkerMailboxHandle     string   `json:"worker_mailbox_handle,omitempty"`
+	WorkerTabID             string   `json:"worker_tab_id,omitempty"`
+	WorkerLeafID            string   `json:"worker_leaf_id,omitempty"`
+	TaskID                  string   `json:"task_id,omitempty"`
+	DispatchID              string   `json:"dispatch_id,omitempty"`
 }
 
 type IssueOpsExecutionHandoffPendingOperation struct {

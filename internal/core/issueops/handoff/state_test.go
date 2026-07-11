@@ -175,6 +175,14 @@ func TestIssueOpsExecutionHandoffEnvelopeRejectsStateSpecificCorruption(t *testi
 		{name: "padded ownership epoch", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.OwnershipEpoch = " epoch-1 " }},
 		{name: "padded agent", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.Agent = " codex " }},
 		{name: "incomplete stable terminal identity", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.Orca.WorkerTabID = "tab-only" }},
+		{name: "unknown provider issue link status", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.Orca.ProviderIssueLinkStatus = "unknown" }},
+		{name: "GitLab provider status without GitLab authority", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) {
+			r.ExecutionHandoff.Orca.ProviderIssueLinkStatus = ProviderIssueLinkGitLabExact
+		}},
+		{name: "provisioned GitLab identity missing provider status", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) {
+			r.IssueURL = "https://gitlab.example/acme/repo/-/issues/16"
+			r.BranchPrepare = &model.IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: r.IssueURL}
+		}},
 		{name: "dispatched stale worker session", valid: dispatchedRecordForTest, mutate: func(r *model.IssueOpsRecord) {
 			r.ExecutionHandoff.WorkerSession = &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session"}
 		}},

@@ -22,8 +22,9 @@ func (e *OrcaError) Error() string {
 }
 
 type OrcaProbeRequest struct {
-	Repo  string `json:"repo"`
-	Agent string `json:"agent"`
+	Repo     string `json:"repo"`
+	Agent    string `json:"agent"`
+	Provider string `json:"provider,omitempty"`
 }
 
 type OrcaProbeResult struct {
@@ -37,6 +38,7 @@ type OrcaProbeResult struct {
 	RepoRemoteName   string `json:"repo_remote_name,omitempty"`
 	WorktreeBasePath string `json:"worktree_base_path,omitempty"`
 	Agent            string `json:"agent,omitempty"`
+	Provider         string `json:"provider,omitempty"`
 }
 
 type OrcaStatus struct {
@@ -55,23 +57,25 @@ type OrcaRepo struct {
 }
 
 type OrcaWorktree struct {
-	RuntimeID  string `json:"runtime_id,omitempty"`
-	ID         string `json:"id"`
-	InstanceID string `json:"instance_id,omitempty"`
-	RepoID     string `json:"repo_id,omitempty"`
-	Path       string `json:"path"`
-	Head       string `json:"head,omitempty"`
-	Branch     string `json:"branch,omitempty"`
-	Name       string `json:"name,omitempty"`
-	Comment    string `json:"comment,omitempty"`
-	BaseRef    string `json:"base_ref,omitempty"`
-	Issue      int    `json:"issue,omitempty"`
+	RuntimeID   string `json:"runtime_id,omitempty"`
+	ID          string `json:"id"`
+	InstanceID  string `json:"instance_id,omitempty"`
+	RepoID      string `json:"repo_id,omitempty"`
+	Path        string `json:"path"`
+	Head        string `json:"head,omitempty"`
+	Branch      string `json:"branch,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Comment     string `json:"comment,omitempty"`
+	BaseRef     string `json:"base_ref,omitempty"`
+	Issue       int    `json:"issue,omitempty"`
+	GitLabIssue *int   `json:"gitlab_issue,omitempty"`
 }
 
 type OrcaCreateWorktreeRequest struct {
 	Repo       string `json:"repo"`
 	Name       string `json:"name"`
 	BaseBranch string `json:"base_branch"`
+	Provider   string `json:"provider,omitempty"`
 	Issue      int    `json:"issue,omitempty"`
 	Comment    string `json:"comment"`
 }

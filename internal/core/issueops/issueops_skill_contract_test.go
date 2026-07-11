@@ -443,6 +443,37 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 	}
 }
 
+func TestIssueOpsSkillPinsGitLabSupervisedHandoffContract(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	for _, want := range []string{
+		"GitHub-only `--issue` flag",
+		"GitLab omits `--issue`",
+		"never invents a GitLab flag",
+		"linkedGitLabIssue",
+		"orca_gitlab_native_metadata_unavailable",
+		"The observation is durable",
+		"no Orca warning or handoff state",
+		"sealed context must show the exact verified provider and Issue URL",
+	} {
+		if !strings.Contains(issueOps, want) {
+			t.Fatalf("IssueOps GitLab supervised handoff contract missing %q", want)
+		}
+	}
+
+	turing := readTuringSkillForTest(t)
+	for _, duplicated := range []string{
+		"GitHub-only `--issue` flag",
+		"GitLab omits `--issue`",
+		"linkedGitLabIssue",
+		"orca_gitlab_native_metadata_unavailable",
+		"no Orca warning or handoff state",
+	} {
+		if strings.Contains(turing, duplicated) {
+			t.Fatalf("Turing duplicates canonical IssueOps GitLab handoff rule %q", duplicated)
+		}
+	}
+}
+
 func TestRootAgentGuidanceRunsRealGoldenPackage(t *testing.T) {
 	body, err := os.ReadFile(filepath.Join("..", "..", "..", "AGENTS.md"))
 	if err != nil {

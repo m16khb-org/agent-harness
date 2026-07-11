@@ -54,14 +54,18 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 	if agent == "" {
 		agent = "codex"
 	}
+	provider, providerOK := orcaIssueProvider(req.Provider)
+	if !providerOK {
+		return port.OrcaProbeResult{Code: "unsupported_provider", Agent: agent, Provider: strings.ToLower(strings.TrimSpace(req.Provider))}, nil
+	}
 	command, ok := hostCommand(agent)
 	if !ok {
-		return port.OrcaProbeResult{Code: "unsupported_agent", Agent: agent}, nil
+		return port.OrcaProbeResult{Code: "unsupported_agent", Agent: agent, Provider: provider}, nil
 	}
 	if _, err := c.runner.LookPath("orca"); err != nil {
-		return port.OrcaProbeResult{Code: "orca_not_found", Agent: agent}, nil
+		return port.OrcaProbeResult{Code: "orca_not_found", Agent: agent, Provider: provider}, nil
 	}
-	result := port.OrcaProbeResult{Available: true, Agent: agent}
+	result := port.OrcaProbeResult{Available: true, Agent: agent, Provider: provider}
 	status, err := c.Status(ctx)
 	if err != nil {
 		result.Code = "status_failed"
@@ -119,12 +123,16 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		result.Code = "worktree_base_mismatch"
 		return result, nil
 	}
+	worktreeCreateFlags := []string{"--repo", "--name", "--base-branch", "--no-parent", "--setup", "--comment", "--json"}
+	if provider == "github" {
+		worktreeCreateFlags = append(worktreeCreateFlags, "--issue")
+	}
 	for _, capability := range []struct {
 		argv    []string
 		want    []string
 		wantAny [][]string
 	}{
-		{argv: []string{"orca", "worktree", "create", "--help"}, want: []string{"--repo", "--name", "--base-branch", "--no-parent", "--setup", "--comment", "--issue", "--json"}},
+		{argv: []string{"orca", "worktree", "create", "--help"}, want: worktreeCreateFlags},
 		{argv: []string{"orca", "worktree", "list", "--help"}, want: []string{"--repo", "--limit", "--json"}},
 		{argv: []string{"orca", "terminal", "create", "--help"}, wantAny: [][]string{{"--worktree", "--agent", "--title", "--json"}, {"--worktree", "--command", "--title", "--json"}}},
 		{argv: []string{"orca", "terminal", "list", "--help"}, want: []string{"--worktree", "--limit", "--json"}},
@@ -204,8 +212,15 @@ func (c *Client) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWor
 }
 
 func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktreeRequest) (port.OrcaWorktree, error) {
+	provider, ok := orcaIssueProvider(req.Provider)
+	if !ok {
+		return port.OrcaWorktree{}, &port.OrcaError{Code: "unsupported_provider", Detail: strings.ToLower(strings.TrimSpace(req.Provider))}
+	}
 	argv := []string{"orca", "worktree", "create", "--repo", pathSelector(req.Repo), "--name", strings.TrimSpace(req.Name), "--base-branch", strings.TrimSpace(req.BaseBranch), "--no-parent", "--setup", "skip", "--comment", strings.TrimSpace(req.Comment), "--json"}
-	if req.Issue > 0 {
+	if provider == "github" {
+		if req.Issue <= 0 {
+			return port.OrcaWorktree{}, &port.OrcaError{Code: "github_issue_required", Detail: "a positive linked GitHub issue number is required"}
+		}
 		argv = append(argv[:len(argv)-1], "--issue", strconv.Itoa(req.Issue), "--json")
 	}
 	var payload struct {
@@ -404,20 +419,21 @@ func (c *Client) runText(ctx context.Context, cwd string, timeout time.Duration,
 }
 
 type worktreePayload struct {
-	ID          string `json:"id"`
-	InstanceID  string `json:"instanceId"`
-	RepoID      string `json:"repoId"`
-	Path        string `json:"path"`
-	Head        string `json:"head"`
-	Branch      string `json:"branch"`
-	DisplayName string `json:"displayName"`
-	Comment     string `json:"comment"`
-	BaseRef     string `json:"baseRef"`
-	LinkedIssue int    `json:"linkedIssue"`
+	ID                string `json:"id"`
+	InstanceID        string `json:"instanceId"`
+	RepoID            string `json:"repoId"`
+	Path              string `json:"path"`
+	Head              string `json:"head"`
+	Branch            string `json:"branch"`
+	DisplayName       string `json:"displayName"`
+	Comment           string `json:"comment"`
+	BaseRef           string `json:"baseRef"`
+	LinkedIssue       int    `json:"linkedIssue"`
+	LinkedGitLabIssue *int   `json:"linkedGitLabIssue"`
 }
 
 func (w worktreePayload) portValue() port.OrcaWorktree {
-	return port.OrcaWorktree{ID: w.ID, InstanceID: w.InstanceID, RepoID: w.RepoID, Path: w.Path, Head: w.Head, Branch: w.Branch, Name: w.DisplayName, Comment: w.Comment, BaseRef: w.BaseRef, Issue: w.LinkedIssue}
+	return port.OrcaWorktree{ID: w.ID, InstanceID: w.InstanceID, RepoID: w.RepoID, Path: w.Path, Head: w.Head, Branch: w.Branch, Name: w.DisplayName, Comment: w.Comment, BaseRef: w.BaseRef, Issue: w.LinkedIssue, GitLabIssue: w.LinkedGitLabIssue}
 }
 
 type terminalPayload struct {
@@ -519,6 +535,14 @@ func hostCommand(agent string) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func orcaIssueProvider(value string) (string, bool) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		value = "github"
+	}
+	return value, value == "github" || value == "gitlab"
 }
 
 func pathSelector(path string) string { return "path:" + strings.TrimSpace(path) }

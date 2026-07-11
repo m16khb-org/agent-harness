@@ -150,6 +150,10 @@ go test ./internal/adapter/orca ./internal/port -count=1
 - Extend `issueops worktree prepare` with `--orchestrator auto|orca|inline`, `--agent`, and `--confirm`; default is `auto`, and no `--confirm` remains a preview.
 - Inline/auto-fallback output keeps the existing `ok,id,repo,branch,base_branch,worktree_path,exists,command,next_step` fields. Optional orchestration fields use `omitempty`.
 - Confirmed Orca preparation verifies IssueOps design/issue/provider-branch prerequisites, writes `coordinator_preparing`, attempt, epoch, and `pending_operation=worktree_create` under the cycle lock, releases the lock, invokes Orca once, verifies exact branch/path/lineage/linked issue, then CAS-persists the Orca worktree identity and links the worktree.
+- Provider-aware preparation supports both verified GitHub and GitLab branches. GitHub requires Orca's public `--issue`; GitLab omits that GitHub-only flag, passes no invented GitLab flag, and validates nullable `linkedGitLabIssue` plus conflicting `linkedIssue` from the installed response shape.
+- Persist a bounded `gitlab_native_unavailable|gitlab_native_exact` provider-link observation in the Orca identity. Reprojection/restart derives the stable warning from that observation; a pre-probe or post-probe `auto` fallback to inline clears the warning and preserves the legacy JSON shape.
+- Expose the warning in both JSON `warnings` and human `warning: <code>` output.
+- Seal the exact provider and Issue URL in the context/source hash. GitLab handoff creates no remote provider object; it only consumes the already-verified provider tracking ref.
 - A repeated call with an active handoff returns status/recovery guidance and makes zero create calls.
 - A restart that sees `pending_operation=worktree_create` records/returns `recovery_required`; it never assumes the call did not happen.
 
@@ -162,6 +166,10 @@ go test ./internal/adapter/orca ./internal/port -count=1
 - `TestWorktreePrepareCrashAfterInvocationNeverCreatesTwice`
 - `TestWorktreePrepareRejectsReturnedBranchPathOrInstanceMismatch`
 - `TestWorktreePrepareExactOneMarkerRecovery` with zero/one/multiple rows
+- `TestWorktreePrepareGitLabAutoAndExplicitUseVerifiedBranchWithoutGitHubIssueMetadata`
+- `TestWorktreePrepareGitLabAutoProbeFailurePreservesInlineContract`
+- `TestWorktreePrepareGitLabValidatesProviderSpecificReturnedMetadata`, including durable restart reprojection
+- `TestWorktreePrepareAutoUnavailablePreservesNilBranchPrepareLegacyResult`
 
 **Commands:**
 

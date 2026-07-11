@@ -44,6 +44,41 @@ func TestWorktreePrepareAutoProbeFailurePreservesLegacyInlineResult(t *testing.T
 	}
 }
 
+func TestWorktreePrepareAutoUnavailablePreservesNilBranchPrepareLegacyResult(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		client IssueOpsOrcaWorktreeClient
+		trace  []string
+	}{
+		{name: "adapter unavailable"},
+		{name: "probe unavailable", client: &prepareOrcaFake{probeErr: errors.New("orca unavailable")}, trace: []string{"probe"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffPrepareRecord(t)
+			record.BranchPrepare = nil
+			if _, err := WriteIssueOps(stateRoot, record); err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: record.ID, Orchestrator: IssueOpsOrchestratorAuto, Agent: "codex", Confirm: true,
+			}, tt.client, handoffPrepareTestClock())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode == "" || len(got.Warnings) != 0 {
+				t.Fatalf("nil BranchPrepare legacy fallback = %#v", got)
+			}
+			if got.BaseBranch != "main" || len(got.Command) == 0 || got.Command[0] != "git" {
+				t.Fatalf("nil BranchPrepare changed legacy projection: %#v", got)
+			}
+			if fake, ok := tt.client.(*prepareOrcaFake); ok && !reflect.DeepEqual(fake.trace, tt.trace) {
+				t.Fatalf("probe trace = %v, want %v", fake.trace, tt.trace)
+			}
+		})
+	}
+}
+
 func TestWorktreePrepareExplicitOrcaProbeFailureHasProbeOnlyTrace(t *testing.T) {
 	stateRoot, record := handoffPrepareRecord(t)
 	client := &prepareOrcaFake{probeErr: errors.New("not ready")}
@@ -309,6 +344,198 @@ func TestWorktreePrepareReadyOrcaCreatesExactlyOnce(t *testing.T) {
 	}
 	if persisted.ExecutionHandoff.AttemptBaseHead != record.BranchPrepare.BaseSHA {
 		t.Fatalf("initial attempt base = %q, want provider base %q", persisted.ExecutionHandoff.AttemptBaseHead, record.BranchPrepare.BaseSHA)
+	}
+}
+
+func TestWorktreePrepareGitLabAutoAndExplicitUseVerifiedBranchWithoutGitHubIssueMetadata(t *testing.T) {
+	for _, mode := range []string{IssueOpsOrchestratorAuto, IssueOpsOrchestratorOrca} {
+		for _, confirm := range []bool{false, true} {
+			name := mode + "/preview"
+			if confirm {
+				name = mode + "/confirm"
+			}
+			t.Run(name, func(t *testing.T) {
+				stateRoot, record := gitLabHandoffPrepareRecord(t)
+				worktree := handoffPrepareWorktreePath(record)
+				client := &prepareOrcaFake{
+					probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin", Provider: "gitlab"},
+					create: port.OrcaWorktree{
+						ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree,
+						Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1),
+					},
+				}
+				if confirm {
+					materializePrepareWorktreeOnCreate(t, client, worktree)
+				}
+				got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+					ID: record.ID, Orchestrator: mode, Agent: "codex", Confirm: confirm,
+				}, client, handoffPrepareTestClock())
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got.ResolvedMode != IssueOpsOrchestratorOrca || !containsString(got.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning) {
+					t.Fatalf("GitLab supervised result = %#v", got)
+				}
+				if len(client.probeRequests) != 1 || client.probeRequests[0].Provider != "gitlab" {
+					t.Fatalf("GitLab provider was not passed to probe: %#v", client.probeRequests)
+				}
+				if !confirm {
+					if !got.Preview || client.createCalls != 0 || !reflect.DeepEqual(client.trace, []string{"probe"}) {
+						t.Fatalf("GitLab preview mutated: result=%#v trace=%v", got, client.trace)
+					}
+					return
+				}
+				if got.Preview || client.createCalls != 1 || len(client.createRequests) != 1 {
+					t.Fatalf("GitLab confirm did not create exactly once: result=%#v calls=%#v", got, client.createRequests)
+				}
+				created := client.createRequests[0]
+				if created.Provider != "gitlab" || created.Issue != 16 || created.BaseBranch != "refs/remotes/origin/16-demo" {
+					t.Fatalf("GitLab create request lost provider branch authority: %#v", created)
+				}
+			})
+		}
+	}
+}
+
+func TestWorktreePrepareGitLabAutoProbeFailurePreservesInlineContract(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		probe port.OrcaProbeResult
+		err   error
+	}{
+		{name: "Orca missing", probe: port.OrcaProbeResult{Code: "orca_not_found"}},
+		{name: "Orca unready", probe: port.OrcaProbeResult{Available: true, Code: "runtime_unready"}},
+		{name: "capability failed", probe: port.OrcaProbeResult{Available: true, Code: "capability_missing"}},
+		{name: "probe error", err: errors.New("orca unavailable")},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := gitLabHandoffPrepareRecord(t)
+			client := &prepareOrcaFake{probe: tt.probe, probeErr: tt.err}
+			got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: record.ID, Orchestrator: IssueOpsOrchestratorAuto, Agent: "codex", Confirm: true,
+			}, client, handoffPrepareTestClock())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode == "" || len(got.Warnings) != 0 {
+				t.Fatalf("GitLab pre-mutation fallback changed the inline contract: %#v", got)
+			}
+			if !reflect.DeepEqual(client.trace, []string{"probe"}) {
+				t.Fatalf("GitLab fallback crossed the probe boundary: %v", client.trace)
+			}
+			persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+			if readErr != nil || persisted.ExecutionHandoff != nil {
+				t.Fatalf("GitLab fallback persisted supervised state: %#v err=%v", persisted.ExecutionHandoff, readErr)
+			}
+		})
+	}
+}
+
+func TestWorktreePrepareGitLabAutoPostProbeFallbackClearsNativeMetadataWarning(t *testing.T) {
+	stateRoot, record := gitLabHandoffPrepareRecord(t)
+	client := &prepareOrcaFake{
+		probe:       port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin", Provider: "gitlab"},
+		worktreeErr: errors.New("inventory unavailable"),
+	}
+	got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorAuto, Agent: "codex", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode != "orca_worktree_inventory_failed" || len(got.Warnings) != 0 {
+		t.Fatalf("post-probe GitLab inline fallback = %#v", got)
+	}
+	if !reflect.DeepEqual(client.trace, []string{"probe", "worktree-list"}) {
+		t.Fatalf("post-probe fallback trace = %v", client.trace)
+	}
+}
+
+func TestWorktreePrepareGitLabValidatesProviderSpecificReturnedMetadata(t *testing.T) {
+	zero, exact, mismatch := 0, 16, 17
+	for _, tt := range []struct {
+		name            string
+		linkedIssue     int
+		linkedGitLab    *int
+		wantErr         string
+		wantUnavailable bool
+		wantLinkStatus  string
+	}{
+		{name: "null unavailable", wantUnavailable: true, wantLinkStatus: handoff.ProviderIssueLinkGitLabUnavailable},
+		{name: "zero unavailable", linkedGitLab: &zero, wantUnavailable: true, wantLinkStatus: handoff.ProviderIssueLinkGitLabUnavailable},
+		{name: "exact native metadata", linkedGitLab: &exact, wantLinkStatus: handoff.ProviderIssueLinkGitLabExact},
+		{name: "conflicting GitHub metadata", linkedIssue: 16, wantErr: "GitHub linked issue metadata"},
+		{name: "mismatched GitLab metadata", linkedGitLab: &mismatch, wantErr: "linked GitLab issue"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := gitLabHandoffPrepareRecord(t)
+			worktree := handoffPrepareWorktreePath(record)
+			client := &prepareOrcaFake{
+				probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin", Provider: "gitlab"},
+				create: port.OrcaWorktree{
+					ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree,
+					Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: tt.linkedIssue, GitLabIssue: tt.linkedGitLab,
+					Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1),
+				},
+			}
+			materializePrepareWorktreeOnCreate(t, client, worktree)
+			got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
+			}, client, handoffPrepareTestClock())
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("GitLab metadata error = %v, want %q", err, tt.wantErr)
+				}
+				persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+				if readErr != nil {
+					t.Fatal(readErr)
+				}
+				if persisted.ExecutionHandoff == nil || persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.Orca.WorktreeID != "" {
+					t.Fatalf("conflicting GitLab metadata became an owned worktree: %#v", persisted.ExecutionHandoff)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tt.wantUnavailable != containsString(got.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning) {
+				t.Fatalf("GitLab metadata warning = %#v", got.Warnings)
+			}
+			persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if persisted.ExecutionHandoff == nil || persisted.ExecutionHandoff.Orca == nil || persisted.ExecutionHandoff.Orca.ProviderIssueLinkStatus != tt.wantLinkStatus {
+				t.Fatalf("durable GitLab metadata observation = %#v, want %q", persisted.ExecutionHandoff, tt.wantLinkStatus)
+			}
+			reprojected, projectErr := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: record.ID, Orchestrator: IssueOpsOrchestratorAuto, Agent: "codex", Confirm: true,
+			}, nil, handoffPrepareTestClock())
+			if projectErr != nil {
+				t.Fatal(projectErr)
+			}
+			if tt.wantUnavailable != containsString(reprojected.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning) {
+				t.Fatalf("reprojected GitLab metadata warning = %#v", reprojected.Warnings)
+			}
+		})
+	}
+}
+
+func TestWorktreePrepareRejectsProviderIssueURLMismatchBeforeOrca(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	record.BranchPrepare.Provider = "gitlab"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true}}
+	_, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err == nil || !strings.Contains(err.Error(), "provider does not match IssueOps issue URL") {
+		t.Fatalf("provider/URL mismatch error = %v", err)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("provider/URL mismatch called Orca: %v", client.trace)
 	}
 }
 
@@ -990,6 +1217,19 @@ func handoffPrepareRecord(t *testing.T) (string, IssueOpsRecord) {
 		t.Fatal(err)
 	}
 	return stateRoot, got
+}
+
+func gitLabHandoffPrepareRecord(t *testing.T) (string, IssueOpsRecord) {
+	t.Helper()
+	stateRoot, record := handoffPrepareRecord(t)
+	record.IssueURL = "https://gitlab.example/acme/repo/-/issues/16"
+	record.BranchPrepare.Provider = "gitlab"
+	record.BranchPrepare.IssueURL = record.IssueURL
+	updated, err := WriteIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return stateRoot, updated
 }
 
 func handoffPrepareWorktreePath(record IssueOpsRecord) string {

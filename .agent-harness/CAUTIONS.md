@@ -528,3 +528,11 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 - 새 ownership/security 필드는 root schema compatibility를 명시적으로 검토하고 legacy decoder-writer rejection fixture를 둔다.
 - future schema hook scan은 row 전체를 해석하지 않고 bounded repo/worker identity와 invalid marker만 유지해 mutation을 fail-closed한다.
 - CLI, daemon, Codex, Claude, GJC installed binary가 같은 schema를 읽는지 migration smoke로 확인하기 전에는 mixed-version handoff를 시작하지 않는다.
+
+## Orca GitLab handoff에서 GitHub issue flag나 조기 warning을 합성하지 말 것
+
+설치된 Orca의 worktree-create `--issue`는 GitHub issue 전용이고 public help에는 GitLab issue CLI option이 노출되지 않는다. GitLab supervised handoff는 이미 검증된 provider tracking ref를 쓰되 `--issue`와 사설·가상 GitLab flag를 모두 생략한다. `linkedGitLabIssue`는 nullable이므로 null/zero를 native metadata unavailable로 영속화하고 exact 값과 구분한다. nonzero `linkedIssue` 또는 mismatched nonzero GitLab 값은 identity mismatch다.
+
+- `auto`의 Orca missing/unready/capability failure나 이후 definitive pre-mutation inline fallback에는 GitLab native-metadata warning을 붙이지 않는다. probe가 성공해 `resolved_mode=orca`가 된 preview/confirm만 warning을 가질 수 있다.
+- warning 여부를 즉시 응답에만 저장하면 반복 prepare/runtime restart에서 사실이 바뀐다. bounded provider-link observation을 durable Orca identity에 저장하고 재투영한다.
+- 이 경로는 GitLab remote issue/branch/work item/MR을 생성·수정하지 않는다. verified provider ref와 sealed provider/IssueURL만 소비한다.

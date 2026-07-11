@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/testsupport"
 )
 
 func TestRunWorktreeCommandsWithInjectedDeps(t *testing.T) {
@@ -82,6 +83,28 @@ func TestWorktreePrepareCLIForwardsOrchestratorAgentAndConfirmation(t *testing.T
 	}
 	if _, ok := printed.(core.IssueOpsHandoffPrepareResult); !ok {
 		t.Fatalf("expected typed result, got %T", printed)
+	}
+}
+
+func TestWorktreePrepareHumanOutputPrintsWarnings(t *testing.T) {
+	const warning = "orca_gitlab_native_metadata_unavailable"
+	deps := Deps{
+		ParseFlags: parseWorktreeFlags,
+		PrintJSON:  func(any) error { return nil },
+		PrintError: func(error) error { return nil },
+		PrepareHandoff: func(context.Context, string, core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error) {
+			return core.IssueOpsHandoffPrepareResult{
+				OK: true, Branch: "16-demo", BaseBranch: "main", WorktreePath: "/repo.worktrees/16-demo",
+				ResolvedMode: "orca", State: "coordinator_preparing",
+				Warnings: []string{warning},
+			}, nil
+		},
+	}
+	out := testsupport.CaptureStdout(t, func() error {
+		return Run([]string{"prepare", "--id", "io-demo"}, deps)
+	})
+	if !strings.Contains(out, "warning: "+warning+"\n") {
+		t.Fatalf("human prepare output omitted warning:\n%s", out)
 	}
 }
 

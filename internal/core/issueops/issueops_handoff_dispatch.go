@@ -242,6 +242,7 @@ func completeRuntimeRefreshOperation(stateRoot string, expected IssueOpsRecord, 
 		identity := *current.ExecutionHandoff.Orca
 		identity.RuntimeID = worktree.RuntimeID
 		identity.WorktreeInstanceID = worktree.InstanceID
+		identity.ProviderIssueLinkStatus = providerIssueLinkStatus(current, worktree)
 		identity.WorkerPTYID = terminal.PTYID
 		identity.WorkerMailboxHandle = terminal.Handle
 		identity.WorkerTabID = terminal.TabID
@@ -302,6 +303,9 @@ func reconcileRuntimeReissuedHandoffWorktree(record IssueOpsRecord, rows []port.
 	marker := issueOpsHandoffMarker(record.ID, h.OwnershipEpoch, h.Attempt)
 	if strings.TrimSpace(row.RuntimeID) == "" || row.RuntimeID == h.Orca.RuntimeID || strings.TrimSpace(row.InstanceID) == "" || row.RepoID != h.Orca.RepoID || row.BaseRef != h.Orca.BaseRef || filepath.Clean(strings.TrimSpace(row.Path)) != filepath.Clean(h.WorkerRoot) || strings.TrimPrefix(strings.TrimSpace(row.Branch), "refs/heads/") != record.Branch || row.Head != h.AttemptBaseHead || row.Comment != marker {
 		return port.OrcaWorktree{}, fmt.Errorf("current-runtime worktree does not match exact repo/base/path/branch/head/comment identity")
+	}
+	if err := validateHandoffWorktreeIssueMetadata(record, row); err != nil {
+		return port.OrcaWorktree{}, fmt.Errorf("current-runtime worktree provider issue metadata is invalid: %w", err)
 	}
 	return row, nil
 }

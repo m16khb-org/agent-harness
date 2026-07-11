@@ -153,6 +153,9 @@ func runWorktreePrepare(args []string, deps Deps) error {
 	if result.State != "" {
 		fmt.Printf("orchestrator: %s (state: %s)\n", result.ResolvedMode, result.State)
 	}
+	for _, warning := range result.Warnings {
+		fmt.Printf("warning: %s\n", warning)
+	}
 	if result.Exists {
 		fmt.Println("worktree already exists; link it with issueops link-worktree")
 	} else if result.ResolvedMode == "inline" || result.ResolvedMode == "" {
