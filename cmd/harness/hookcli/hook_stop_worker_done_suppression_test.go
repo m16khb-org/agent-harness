@@ -54,11 +54,17 @@ func seedCompletedStopWorker(t *testing.T, agentID string) (string, string) {
 		t.Fatal(err)
 	}
 
-	record.Phase = core.IssueOpsPhaseImplement
+	record.Phase = core.IssueOpsPhasePR
+	record.RemoteArtifact = &issueopsmodel.IssueOpsRemoteArtifactVerification{
+		Provider: "github", Kind: "pr", URL: "https://github.com/example/repo/pull/1",
+		Labels: []string{"issueops"}, Assignees: []string{"habin"}, VerifiedAt: "2026-07-11T02:00:00Z",
+	}
 	record.WorktreePath = worktree
 	record.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{
 		ProtocolVersion:          handoff.ProtocolVersion,
-		State:                    handoff.StateSubmitted,
+		State:                    handoff.StateClosed,
+		ClosedDisposition:        handoff.DispositionAccepted,
+		AcceptedAt:               "2026-07-11T02:00:00Z",
 		Attempt:                  1,
 		OwnershipEpoch:           "epoch-stop-1",
 		ContextVersion:           handoff.ContextVersion,
@@ -125,6 +131,13 @@ func seedCompletedStopWorker(t *testing.T, agentID string) (string, string) {
 	if err := issueops.BindIssueOpsSession(repo, record.ID, record.Branch, worktree); err != nil {
 		t.Fatal(err)
 	}
+	record, err = core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), record.ID, string(core.IssueOpsPhaseDone))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if binding, err := issueops.ReadIssueOpsSession(repo); err != nil || binding.CycleID != "" {
+		t.Fatalf("done transition must remove the normal session binding: binding=%+v err=%v", binding, err)
+	}
 	return repo, worktree
 }
 
@@ -158,7 +171,7 @@ func hostlessCodexStopInput(t *testing.T, cwd, session, message string) string {
 	return string(b)
 }
 
-func TestRunHookStopDefaultsHostlessCodexCompletedWorker(t *testing.T) {
+func TestRunHookStopDefaultsHostlessCodexDoneUnboundWorker(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
 	hookMetricDecision = ""
@@ -167,12 +180,46 @@ func TestRunHookStopDefaultsHostlessCodexCompletedWorker(t *testing.T) {
 	t.Setenv("PWD", worktree)
 	choices := "선택지:\n1. 검증을 계속합니다. (추천)\n2. 일부만 검증합니다.\n3. 보류합니다." + strings.ReplaceAll(hookChoiceQualityEvidenceEscaped, `\n`, "\n")
 
-	out := runHookStopRaw(t, hostlessCodexStopInput(t, worktree, "session-stop-1", choices), "--relay-next-action-judgement")
+	out := runHookStopRaw(t, hostlessCodexStopInput(t, worktree, "session-stop-1", choices), "--enforce-numbered-next-actions", "--enforce-engelbart-canvas-sections", "--relay-next-action-judgement")
 	if out != "{}\n" {
 		t.Fatalf("hostless Codex Stop must suppress exact completed worker re-entry, got %q", out)
 	}
 	if _, found := lifecycle.ReadStopNextActionRelay(repo); found {
 		t.Fatalf("hostless completed Codex worker must not mutate numbered-next-action relay state")
+	}
+}
+
+func TestRunHookStopHostlessNoOrcaPreservesLegacyBytesWithoutCreatingState(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	hookMetricDecision = ""
+	t.Cleanup(func() { hookMetricDecision = "" })
+	cwd := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cwd, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cwd, ".git", "HEAD"), []byte("ref: refs/heads/16-no-orca\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	message := "작업을 완료했습니다."
+	decision := core.BuildNumberedNextActionsDecision(message, true, "stop")
+	expected := indentedJSONLine(t, hookadapter.Resolve("").FormatStopBlock(decision.Reason))
+
+	got := runHookStopRaw(t, hostlessCodexStopInput(t, cwd, "session-no-orca", message), "--enforce-numbered-next-actions", "--enforce-engelbart-canvas-sections", "--relay-next-action-judgement")
+	if got != expected {
+		t.Fatalf("hostless no-Orca Stop changed legacy bytes\nwant: %q\n got: %q", expected, got)
+	}
+	entries, err := os.ReadDir(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		names := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			names = append(names, entry.Name())
+		}
+		t.Fatalf("hostless no-Orca Stop created state in an initially empty root: %v", names)
 	}
 }
 

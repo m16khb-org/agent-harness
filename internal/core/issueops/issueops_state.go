@@ -30,6 +30,31 @@ func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	return record, nil
 }
 
+// ReadIssueOpsForStopSuppression reads exactly one existing record through the
+// bounded, non-creating sqlstore path used by the Stop-hook hot path.
+func ReadIssueOpsForStopSuppression(stateRoot, id string) (IssueOpsRecord, error) {
+	id, err := normalizeIssueOpsID(id)
+	if err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
+	b, ok, err := sqlstore.GetExisting(stateRoot, issueOpsBucket, id)
+	if err != nil {
+		return IssueOpsRecord{OK: false, ID: id}, err
+	}
+	if !ok {
+		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops record %s: %w", id, fs.ErrNotExist)
+	}
+	record, err := decodeIssueOpsRecord(id, b)
+	if err != nil {
+		return record, err
+	}
+	if err := handoff.ValidateEnvelope(record); err != nil {
+		record.OK = false
+		return record, err
+	}
+	return record, nil
+}
+
 func readIssueOpsUnchecked(stateRoot, id string) (IssueOpsRecord, error) {
 	id, err := normalizeIssueOpsID(id)
 	if err != nil {
@@ -46,6 +71,10 @@ func readIssueOpsUnchecked(stateRoot, id string) (IssueOpsRecord, error) {
 	if !ok {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops record %s: %w", id, fs.ErrNotExist)
 	}
+	return decodeIssueOpsRecord(id, b)
+}
+
+func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 	var header struct {
 		SchemaVersion int    `json:"schema_version"`
 		ID            string `json:"id"`

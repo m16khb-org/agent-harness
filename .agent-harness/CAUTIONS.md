@@ -480,7 +480,7 @@ sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고�
 
 주의:
 - `sqlstore.Maintain`이 `PRAGMA wal_checkpoint(TRUNCATE)` + 사이드카 0600 재보증을 수행한다. `state maintain` CLI 또는 session-start hook의 `MaybeMaintainStateStores(24h)`가 자동 호출한다.
-- 세션 바인딩은 done/absent 사이클에도 잔존한다. `issueops cleanup stale --apply`로만 정리되며, dry-run(`--apply` 없음)은 보고만 한다.
+- 정상 `done` 전이는 해당 사이클의 세션 바인딩을 제거한다. Legacy/비정상 종료로 남은 done/absent 바인딩만 `issueops cleanup stale --apply`로 정리하며, dry-run(`--apply` 없음)은 보고만 한다.
 - VACUUM은 DB가 수십 MB로 성장하기 전에는 비용만 있고 이득이 없어 비범위다(ADR 참조).
 - `.last-store-maintain` sentinel은 state root에 생성되며 state doctor가 인식한다. sentinel은 에러 시에도 touch되어 폭주를 방지한다.
 
@@ -551,6 +551,8 @@ Orca completion reconciliation은 message `from_handle`이 원래 dispatch `assi
 - `CoordinatorMailboxHandle`과 `WorkerMailboxHandle`은 dispatch 시 봉인된 immutable mailbox authority다. `WorkerTerminalHandle`은 terminal read/send/steering 같은 live control 관측용이며 rollover만 갱신한다.
 - completed finish는 submitted result와 deterministic projection intent(또는 no-call diagnostic)를 같은 cycle lock에서 한 번에 쓴다. lock 밖에서 sealed worker mailbox → sealed coordinator mailbox로 외부 send를 최대 한 번만 호출한다.
 - intent 이후 crash, timeout, malformed response, ambiguous outcome은 자동 재시도하지 않는다. submitted가 authority이고 projection success/failure는 acceptance authority가 아니다.
+- 완료 worker의 Stop suppression은 session binding이나 active-cycle 조회에 의존하지 않는다. Native payload `cwd`에서 canonical source checkout과 현재 branch를 한 번 파생하고 deterministic `(repo, branch)` record ID 하나만 읽어 `done` 레코드까지 검증한다. Binding 목록이나 global IssueOps record set을 후보 선택에 쓰지 않는다.
+- Hostless Stop hot path는 IssueOps data DB가 없을 때 `sqlstore.Open`이나 session-bucket scan을 시작하지 않아야 한다. 설치된 numbered-next-action flags 경로에서도 처음 비어 있던 state root와 legacy Stop bytes를 그대로 보존하는 회귀 테스트를 둔다.
 - dispatch preamble은 공식 exact coordinator/task label line과 exact `--dispatch-id` token으로 검증한다. 단순 substring 포함은 spoofing 가능하므로 증거가 아니다.
 - dispatch recovery는 sealed coordinator가 concrete `term_*` handle이고 256 bytes 이하인지 외부 `dispatch-show` 전에 검증한다. group, shell-like, overlong recipient는 Orca observation 없이 거부한다.
 

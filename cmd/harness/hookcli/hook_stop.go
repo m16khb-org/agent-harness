@@ -41,13 +41,16 @@ func runHookStop(args []string) error {
 	if resolvedHost == "" {
 		resolvedHost = string(hookadapter.HostCodex)
 	}
-	suppressNextAction := !hostConflict && core.SuppressStopNextActionForCompletedWorker(core.HookToolUseLifecycleRequest{
-		Repo:      parsedRepo,
-		CWD:       hookinput.CWDFromHookInput(stdin),
-		Host:      resolvedHost,
-		SessionID: hookinput.SessionIDFromHookInput(stdin),
-		AgentID:   hookinput.AgentIDFromHookInput(stdin),
-	})
+	suppressNextAction := false
+	if !*jsonOut && !hostConflict && (*enforceNumberedNextActions || *relayNextActionJudgement) {
+		suppressNextAction = core.SuppressStopNextActionForCompletedWorker(core.HookToolUseLifecycleRequest{
+			Repo:      parsedRepo,
+			CWD:       hookinput.CWDFromHookInput(stdin),
+			Host:      resolvedHost,
+			SessionID: hookinput.SessionIDFromHookInput(stdin),
+			AgentID:   hookinput.AgentIDFromHookInput(stdin),
+		})
+	}
 	result := core.BuildLifecycleStopReminder(parsedRepo)
 	message := hookinput.LastAssistantMessageFromHookInput(stdin)
 	if message == "" {

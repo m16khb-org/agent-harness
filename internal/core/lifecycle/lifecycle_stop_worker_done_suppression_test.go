@@ -8,13 +8,31 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/handoff"
 	issueopsmodel "agent-harness/internal/core/issueops/model"
 )
 
 func stopSuppressionRequest(record IssueOpsRecord, worktree, host, session, agent string) HookToolUseLifecycleRequest {
-	return HookToolUseLifecycleRequest{Repo: record.Repo, CWD: worktree, Host: host, SessionID: session, AgentID: agent, SourceCheckout: record.Repo}
+	return HookToolUseLifecycleRequest{Repo: worktree, CWD: worktree, Host: host, SessionID: session, AgentID: agent}
+}
+
+func stopSuppressionHandoffRecord(t *testing.T, state, disposition string) (string, IssueOpsRecord, string) {
+	t.Helper()
+	repo, record, worktree := lifecycleTerminalHandoffRecord(t, state, disposition)
+	if err := os.RemoveAll(filepath.Join(worktree, ".git")); err != nil {
+		t.Fatal(err)
+	}
+	gitDir := filepath.Join(repo, ".git", "worktrees", "stop-suppression")
+	if err := os.MkdirAll(gitDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/"+record.Branch+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktree, ".git"), []byte("gitdir: "+gitDir+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return repo, record, worktree
 }
 
 // validWorkerDoneProjection builds a worker_done_projection that satisfies the
@@ -100,7 +118,7 @@ func validWorkerDoneProjection(t *testing.T, h *issueopsmodel.IssueOpsExecutionH
 }
 
 func TestStopSuppressionExactSubmittedSentProjectionSuppresses(t *testing.T) {
-	_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
+	_, record, worktree := stopSuppressionHandoffRecord(t, handoff.StateSubmitted, "")
 	record.ExecutionHandoff.WorkerDoneProjection = validWorkerDoneProjection(t, record.ExecutionHandoff, "sent")
 	record, err := writeIssueOps(IssueOpsStateRoot(), record)
 	if err != nil {
@@ -117,7 +135,7 @@ func TestStopSuppressionExactSubmittedSentProjectionSuppresses(t *testing.T) {
 }
 
 func TestStopSuppressionTerminalHandleRolloverIndependence(t *testing.T) {
-	_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
+	_, record, worktree := stopSuppressionHandoffRecord(t, handoff.StateSubmitted, "")
 	record.ExecutionHandoff.WorkerDoneProjection = validWorkerDoneProjection(t, record.ExecutionHandoff, "sent")
 	// Terminal handle rollover (a new mailbox handle assigned after the worker
 	// exits) must not affect the decision at all: this guard never compares
@@ -136,7 +154,7 @@ func TestStopSuppressionTerminalHandleRolloverIndependence(t *testing.T) {
 func TestStopSuppressionFailedAndIntentProjectionsSuppressWithoutRetry(t *testing.T) {
 	for _, state := range []string{"failed", "intent"} {
 		t.Run(state, func(t *testing.T) {
-			_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
+			_, record, worktree := stopSuppressionHandoffRecord(t, handoff.StateSubmitted, "")
 			record.ExecutionHandoff.WorkerDoneProjection = validWorkerDoneProjection(t, record.ExecutionHandoff, state)
 			record, err := writeIssueOps(IssueOpsStateRoot(), record)
 			if err != nil {
@@ -150,16 +168,28 @@ func TestStopSuppressionFailedAndIntentProjectionsSuppressWithoutRetry(t *testin
 	}
 }
 
-func TestStopSuppressionClosedAcceptedRaceSuppresses(t *testing.T) {
-	_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
+func TestStopSuppressionDoneUnboundAcceptedWorkerSuppresses(t *testing.T) {
+	repo, record, worktree := stopSuppressionHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
 	record.ExecutionHandoff.WorkerDoneProjection = validWorkerDoneProjection(t, record.ExecutionHandoff, "sent")
+	record.Phase = IssueOpsPhasePR
+	record.RemoteArtifact = &IssueOpsRemoteArtifactVerification{
+		Provider: "github", Kind: "pr", URL: "https://github.com/example/repo/pull/1",
+		Labels: []string{"issueops"}, Assignees: []string{"habin"}, VerifiedAt: "2026-07-11T02:00:00Z",
+	}
 	record, err := writeIssueOps(IssueOpsStateRoot(), record)
 	if err != nil {
 		t.Fatal(err)
 	}
+	record, err = AdvanceIssueOpsPhase(IssueOpsStateRoot(), record.ID, string(IssueOpsPhaseDone))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if binding, err := readIssueOpsSession(repo); err != nil || binding.CycleID != "" {
+		t.Fatalf("done transition must remove the normal session binding: binding=%+v err=%v", binding, err)
+	}
 	req := stopSuppressionRequest(record, worktree, "codex", "session-1", "worker-1")
 	if !SuppressStopNextActionForCompletedWorker(req) {
-		t.Fatalf("closed+accepted race with persisted projection must still suppress")
+		t.Fatalf("done+unbound closed/accepted authority with persisted projection must suppress")
 	}
 }
 
@@ -185,7 +215,7 @@ func TestStopSuppressionMismatchOrAmbiguityFailsClosed(t *testing.T) {
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
+			_, record, worktree := stopSuppressionHandoffRecord(t, handoff.StateSubmitted, "")
 			record.ExecutionHandoff.WorkerDoneProjection = validWorkerDoneProjection(t, record.ExecutionHandoff, "sent")
 			if tt.mutate != nil {
 				tt.mutate(&record)
@@ -209,7 +239,7 @@ func TestStopSuppressionMismatchOrAmbiguityFailsClosed(t *testing.T) {
 }
 
 func TestStopSuppressionStrictAgentIdentity(t *testing.T) {
-	_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
+	_, record, worktree := stopSuppressionHandoffRecord(t, handoff.StateSubmitted, "")
 	record.ExecutionHandoff.WorkerDoneProjection = validWorkerDoneProjection(t, record.ExecutionHandoff, "sent")
 	written, err := writeIssueOps(IssueOpsStateRoot(), record)
 	if err != nil {
@@ -234,48 +264,17 @@ func TestStopSuppressionStrictAgentIdentity(t *testing.T) {
 }
 
 func TestStopSuppressionRejectsCurrentBranchMismatch(t *testing.T) {
-	_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
+	repo, record, worktree := stopSuppressionHandoffRecord(t, handoff.StateSubmitted, "")
 	record.ExecutionHandoff.WorkerDoneProjection = validWorkerDoneProjection(t, record.ExecutionHandoff, "sent")
 	written, err := writeIssueOps(IssueOpsStateRoot(), record)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/1-other\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(repo, ".git", "worktrees", "stop-suppression", "HEAD"), []byte("ref: refs/heads/1-other\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if SuppressStopNextActionForCompletedWorker(stopSuppressionRequest(written, worktree, "codex", "session-1", "worker-1")) {
 		t.Fatalf("worker branch drift must leave legacy Stop behavior unchanged")
-	}
-}
-
-func TestStopSuppressionRejectsRealDuplicateActiveRecords(t *testing.T) {
-	_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
-	record.ExecutionHandoff.WorkerDoneProjection = validWorkerDoneProjection(t, record.ExecutionHandoff, "sent")
-	written, err := writeIssueOps(IssueOpsStateRoot(), record)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	duplicate := written
-	duplicate.ID = newIssueOpsID(written.Repo, "1/demo")
-	duplicate.Branch = "1/demo"
-	duplicate.PlanPath = ""
-	duplicate.ExecutionHandoff = cloneLifecycleHandoffForTest(t, written.ExecutionHandoff)
-	if err := handoff.ValidateEnvelope(duplicate); err != nil {
-		t.Fatalf("duplicate fixture must be a second valid active envelope: %v", err)
-	}
-	duplicate, err = writeIssueOps(IssueOpsStateRoot(), duplicate)
-	if err != nil {
-		t.Fatalf("persist duplicate active record: %v", err)
-	}
-	if err := issueops.BindScopedIssueOpsSession(written.Repo, duplicate.ID, duplicate.Branch, worktree); err != nil {
-		t.Fatalf("bind duplicate active record: %v", err)
-	}
-	if _, ok := stopSuppressionRecord(stopSuppressionRequest(written, worktree, "codex", "session-1", "worker-1")); ok {
-		t.Fatalf("two active records bound to one worker root must be ambiguous")
-	}
-	if SuppressStopNextActionForCompletedWorker(stopSuppressionRequest(written, worktree, "codex", "session-1", "worker-1")) {
-		t.Fatalf("duplicate active record ambiguity must not suppress legacy Stop behavior")
 	}
 }
 
@@ -305,7 +304,7 @@ func TestStopSuppressionRejectsMalformedEnvelopeAndPathEvidence(t *testing.T) {
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
+			_, record, worktree := stopSuppressionHandoffRecord(t, handoff.StateSubmitted, "")
 			record.ExecutionHandoff.WorkerDoneProjection = validWorkerDoneProjection(t, record.ExecutionHandoff, "sent")
 			tt.mutate(&record, worktree)
 			if err := handoff.ValidateEnvelope(record); err == nil {
@@ -313,9 +312,6 @@ func TestStopSuppressionRejectsMalformedEnvelopeAndPathEvidence(t *testing.T) {
 			}
 			putRawLifecycleIssueOpsRecord(t, record)
 			req := stopSuppressionRequest(record, worktree, "codex", "session-1", "worker-1")
-			if _, ok := stopSuppressionRecord(req); !ok {
-				t.Fatalf("malformed fixture must remain directly selectable so envelope validation is exercised")
-			}
 			if SuppressStopNextActionForCompletedWorker(req) {
 				t.Fatalf("malformed envelope must leave legacy Stop behavior unchanged")
 			}

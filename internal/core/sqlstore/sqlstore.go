@@ -13,6 +13,7 @@ package sqlstore
 import (
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -162,6 +163,37 @@ func (d *DB) Get(bucket, id string) ([]byte, bool, error) {
 		return nil, false, err
 	}
 	return data, true, nil
+}
+
+// GetExisting reads one primary-key row without creating a state root, data
+// database, span database, or schema. Its read-only connection never waits on
+// SQLite contention, which keeps lifecycle-hook lookups bounded.
+func GetExisting(dir, bucket, id string) ([]byte, bool, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, false, fmt.Errorf("sqlstore existing open %q: %w", dir, err)
+	}
+	dataPath := filepath.Join(abs, dataDBFile)
+	if _, err := os.Stat(dataPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, fmt.Errorf("sqlstore existing data db %s: %w", abs, fs.ErrNotExist)
+		}
+		return nil, false, err
+	}
+	data, err := openSQLite(dataPath, "mode=ro&_pragma=busy_timeout(0)&_pragma=query_only(1)")
+	if err != nil {
+		return nil, false, err
+	}
+	defer data.Close()
+	var raw []byte
+	err = data.QueryRow(`SELECT data FROM records WHERE bucket = ? AND id = ?`, bucket, id).Scan(&raw)
+	if err == sql.ErrNoRows {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return raw, true, nil
 }
 
 // Put upserts the record data for (bucket, id).

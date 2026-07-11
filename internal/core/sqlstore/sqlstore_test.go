@@ -1,13 +1,90 @@
 package sqlstore
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
+
+func TestGetExistingMissingDoesNotCreateStore(t *testing.T) {
+	parent := t.TempDir()
+	dir := filepath.Join(parent, "missing")
+	if _, ok, err := GetExisting(dir, "b", "x"); !errors.Is(err, fs.ErrNotExist) || ok {
+		t.Fatalf("missing existing-store read: ok=%v err=%v", ok, err)
+	}
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("existing-store read created files or directories: %v", entries)
+	}
+}
+
+func TestGetExistingReturnsBoundedErrorWhileDataStoreIsContended(t *testing.T) {
+	dir := t.TempDir()
+	dataPath := filepath.Join(dir, dataDBFile)
+	if err := touchPrivate(dataPath); err != nil {
+		t.Fatal(err)
+	}
+	dataDB, err := openSQLite(dataPath, "_pragma=busy_timeout(0)&_pragma=journal_mode(DELETE)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dataDB.Close()
+	if _, err := dataDB.Exec(`CREATE TABLE records (bucket TEXT NOT NULL, id TEXT NOT NULL, data BLOB NOT NULL, PRIMARY KEY (bucket, id)) WITHOUT ROWID`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := dataDB.Exec(`INSERT INTO records (bucket, id, data) VALUES ('b', 'x', '{"v":1}')`); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := dataDB.Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if _, err := conn.ExecContext(context.Background(), "BEGIN EXCLUSIVE"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.ExecContext(context.Background(), `UPDATE records SET data = '{"v":2}' WHERE bucket = 'b' AND id = 'x'`); err != nil {
+		t.Fatal(err)
+	}
+
+	type lookupResult struct {
+		data []byte
+		ok   bool
+		err  error
+	}
+	lookupDone := make(chan lookupResult, 1)
+	go func() {
+		data, ok, err := GetExisting(dir, "b", "x")
+		lookupDone <- lookupResult{data: data, ok: ok, err: err}
+	}()
+
+	select {
+	case result := <-lookupDone:
+		if _, err := conn.ExecContext(context.Background(), "ROLLBACK"); err != nil {
+			t.Fatal(err)
+		}
+		lower := strings.ToLower(fmt.Sprint(result.err))
+		if result.err == nil || (!strings.Contains(lower, "locked") && !strings.Contains(lower, "busy")) {
+			t.Fatalf("contended existing-store read must return a bounded lock error: data=%q ok=%v err=%v", result.data, result.ok, result.err)
+		}
+	case <-time.After(2 * time.Second):
+		if _, err := conn.ExecContext(context.Background(), "ROLLBACK"); err != nil {
+			t.Fatal(err)
+		}
+		result := <-lookupDone
+		t.Fatalf("existing-store read waited for contended data-store release: data=%q ok=%v err=%v", result.data, result.ok, result.err)
+	}
+}
 
 func TestOpenCreatesDBAndIsCachedPerDir(t *testing.T) {
 	dir := t.TempDir()
