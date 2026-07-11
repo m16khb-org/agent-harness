@@ -37,6 +37,10 @@ description: Chosen languages, runtimes, tools, and rationale.
 
 위키, 코드 인텔리전스, 세션 메모리, 서드파티 skill/hook 툴킷 같은 companion 도구가 여기에 해당한다. These tools are not installed by `agent-harness install`, `bootstrap`, `update`, or `scripts/install-native.sh`.
 
+### Optional Orca boundary
+
+Orca는 설치된 CLI를 `exec.CommandContext`로 호출하는 선택적 IssueOps adapter다. `internal/adapter/orca`는 JSON status/repo/worktree/terminal/task/dispatch projection, bounded timeout, separated stdout/stderr, redacted error만 소유한다. Go module dependency, native installer target, daemon plugin, generic driver registry로 추가하지 않는다. Orca가 없을 때 core/CLI/MCP/native install/self-verify는 독립적으로 동작하며, IssueOps `auto` 모드는 mutation 전 probe 실패에 한해 기존 inline worktree 계약을 반환한다.
+
 ## 2.2 Project skills
 
 agent-harness의 `skills/` 디렉토리에는 **19개** 스킬이 있다(`ls skills/` 기준). 두 부류로

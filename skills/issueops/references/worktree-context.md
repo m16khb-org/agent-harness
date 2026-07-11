@@ -12,6 +12,8 @@ Create the provider-linked branch before creating a local worktree. The IssueOps
 
 Create an isolated git worktree before implementation, TDD, subagent work, verification, commit, or PR/MR drafting:
 
+Choose the worktree driver with `agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto|orca|inline --json`. `auto` may fall back to the unchanged inline flow only when the Orca readiness probe fails before mutation; `orca` requires the optional driver; `inline` preserves the existing sibling-worktree flow. If the resolved mode is Orca, load `orca-handoff.md` and let the confirmed prepare command create and persist the supervised worktree identity. Do not also run `git worktree add` for that same cycle.
+
 ```bash
 branch_slug="3-webhook-delivery"
 base_branch="main"
@@ -23,21 +25,24 @@ agent-harness issueops intent record --id "$ISSUEOPS_ID" \
   --json
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
 agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider gitlab --issue-url "$ISSUE_URL" --branch "$branch_slug" --base-branch "$base_branch" --link-verified --json
-worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
-git fetch origin "$branch_slug"
-git worktree add --track -b "$branch_slug" "$worktree_path" "origin/$branch_slug"
-expected_worktree="$(cd "$worktree_path" && pwd)"
-agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$expected_worktree" --json
 agent-harness issueops design review --id "$ISSUEOPS_ID" \
   --problem-summary "$PROBLEM_SUMMARY" \
   --proposed-design "$PROPOSED_DESIGN" \
   --verification "$VERIFICATION_STEP" \
   --approved \
   --json
+agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator inline --json
+worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
+git fetch origin "$branch_slug"
+git worktree add --track -b "$branch_slug" "$worktree_path" "origin/$branch_slug"
+expected_worktree="$(cd "$worktree_path" && pwd)"
+agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$expected_worktree" --json
 agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$expected_worktree/$PLAN_REL_PATH" --json
 agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to implement --json
 ```
+
+The explicit `git worktree add` sequence above is the inline recipe. A supervised worker still uses the same fixed sibling path and exact branch, but its Orca worktree id and `execution_handoff` lease are authoritative for ownership checks.
 
 Keep IssueOps worktrees as siblings of the source checkout under the fixed pattern `../<repo>.worktrees/<branch-slug-with-slashes-replaced>`. Do not create ad hoc worktree paths inside the repo or under temporary directories unless the user explicitly asks for a different location.
 

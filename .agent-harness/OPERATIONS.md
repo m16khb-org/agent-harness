@@ -73,6 +73,14 @@ Use `.agent-harness/operations/release-reproducibility.md` before deciding Homeb
 - Native install/update paths are standalone. External tools are neither installed nor required by `agent-harness`; use their own setup paths when a separate workflow needs them.
 - Worker functionality remains policy-gated and state-first until write/network/background execution has explicit audit, timeout, cancellation, and redaction coverage.
 
+## Optional Orca supervised execution
+
+Orca is user-installed and optional. Preview with `agent-harness issueops worktree prepare --id ID --orchestrator auto --json`; add `--confirm` only after reviewing the resolved mode and path. `auto` preserves the existing inline flow when the read-only probe fails before mutation, while `--orchestrator orca` requires readiness and `--orchestrator inline` bypasses Orca.
+
+For a resolved Orca path, follow `skills/issueops/references/orca-handoff.md`: coordinator `worktree prepare`/`handoff start`, fresh worker `handoff claim`/`issueops heartbeat`/`handoff finish`, coordinator `handoff accept`. On `recovery_required`, inspect `issueops status --json` and reconcile explicitly; never repeat create or switch to inline after an external mutation may have run.
+
+Operational release evidence includes fake-runner recovery matrices, installed Codex/Claude/GJC ownership-block smokes, and one disposable live Orca cycle with per-resource cleanup receipts. Native installation and `self-verify` do not require Orca availability.
+
 ## Quick Smoke
 
 ```bash

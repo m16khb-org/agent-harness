@@ -66,7 +66,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 | `agent-harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/agent-harness inspect/preflight/doctor/docs/policy/state/self-verify/self-augment` 사용 |
 | `agent-harness mcp` stdio proxy | 구현됨 | Codex/Claude Code가 같은 MCP schema로 daemon에 연결 | `agent-harness` daemon을 자동 시작하고 stdio를 Unix socket으로 proxy한다. |
 | `agent-harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
-| `agent-harness issueops` | 구현됨 | issue-driven 루프의 issue, plan, feedback, PR/MR readiness 상태 추적 | native skill은 절차를 맡고 CLI/MCP는 durable 상태만 저장한다. |
+| `agent-harness issueops` | 구현됨 | issue-driven 루프의 durable 상태와 선택적 Orca supervised execution lease | IssueOps가 단일 authority다. Orca는 worktree/terminal/task/dispatch만 수행하며 inline fallback에는 `execution_handoff`를 만들지 않는다. |
 | `agent-harness loop` | 구현됨 | verify-until-done 루프 계약의 durable 상태와 PR readiness 게이트 | 하네스는 검증 명령을 실행하지 않고 `verify_argv`, 시도 evidence, stop 상태를 기록·게이트한다. |
 | `agent-harness worker` one-shot jobs | 부분 구현 | no-shell lifecycle job record와 draft-wiki queue 처리 | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. `worker draft-wiki`는 메인 에이전트가 명시 적재한 queue를 한 번 처리하고 `agy -p` argv만 호출한다. |
 | Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
@@ -82,6 +82,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 | `internal/port` | core interface, DTO, error contract | adapter concrete type 의존 금지 |
 | `internal/adapter/cli` | flag parsing, stdout/stderr, exit code mapping | core 정책 복제 금지 |
 | `internal/adapter/mcp` | MCP tool schema, stdio server, JSON-RPC mapping | CLI와 다른 의미의 schema 금지 |
+| `internal/adapter/orca` | 설치된 Orca CLI의 bounded argv/timeout/envelope projection | IssueOps 상태·복구 정책 복제, generic driver registry, 설치 대행 금지 |
 | `internal/adapter/codex` | Codex user skill symlink와 user MCP config 설치 | 대상 repo 파일 쓰기 금지 |
 | `internal/adapter/claude` | Claude user skill symlink와 user-scope MCP 설정 | 기본 설치에서 `.claude/skills`, `.claude/settings.json`, `.mcp.json` 같은 repo-local 파일 쓰기 금지 |
 | `internal/adapter/worker` | local IPC, job lifecycle, daemon state | shell policy 우회 금지 |
@@ -208,7 +209,7 @@ Draft wiki staging:
 |------|----------|----------|------|
 | Codex | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
 | Claude Code | `CLAUDE.md` + shell에서 `agent-harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server + `~/.claude/settings.json` UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.claude/settings.json`/`.mcp.json` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
-| GJC (gajae-code) | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.gjc/agent/skills/*` native skills + `gjc plugin install`로 등록된 always-on MCP bundle + `~/.gjc/agent/hooks/agent-harness.ts` TS HookAPI shim(context/session_start/turn_end/auto_compaction/tool_call/tool_result → user-prompt/session-start/stop/pre-compact/post-compact/pre-post-tool-use) | GJC의 shell-hook discovery는 pre/post-tool만 지원하므로 user-prompt/session-start/stop/compact는 TS HookAPI shim으로 연결한다. `.gjc/skills` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
+| GJC (gajae-code) | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.gjc/agent/skills/*` native skills + `gjc plugin install` MCP bundle + `~/.gjc/agent/hooks/agent-harness.ts` HookAPI shim(`before_agent_start`, `session_start`, `turn_end`, `auto_compaction_*`, `tool_call`, `tool_result`) | shim은 `(event, ctx)`의 `ctx.sessionManager.getSessionId()`와 `ctx.cwd`를 전달하고 PreToolUse block/reason을 await한다. `.gjc/skills` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
 
 ---
 
@@ -262,6 +263,12 @@ agent-harness는 10개의 pioneer skill을 `skills/` 디렉토리에 단일 진�
 External tools may be useful in a user's environment, but they are not agent-harness dependencies. If a workflow benefits from one of them, the user installs it through that tool's own documented path and the harness consumes only explicit, inspectable boundaries such as files, command output, or MCP data the user has already configured.
 
 Readiness gates, self-verification, install/update success, and core CLI/MCP contracts must remain reproducible without external accounts, API keys, companion hooks, or companion MCP servers. Do not add fallback shims that patch external plugin caches or weaken harness contracts when an external tool is missing or broken.
+
+## Optional Orca execution boundary
+
+Orca integration is an optional CLI adapter, not a native-install dependency or second scheduler. `issueops worktree prepare --orchestrator auto|orca|inline` probes with structured status before mutation. `auto` may return the legacy inline result only on a pre-mutation probe failure; after any Orca mutation is invoked, the durable `pending_operation` journal and explicit recovery path are authoritative.
+
+Every supervised attempt records attempt/epoch/context, native host session identity, coordinator/worker roots, and stable Orca domain ids in the IssueOps record. State compare-and-set runs under the existing cycle lock, but no Orca process call may run while that lock is held. Hooks are limited to SessionStart claim guidance and PreToolUse ownership enforcement; coordinator acceptance and cleanup remain explicit commands.
 
 ## MCP tool design guidance
 

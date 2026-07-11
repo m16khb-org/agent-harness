@@ -265,3 +265,11 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 - **비결정·side-effect는 전이 함수 밖 wrapper가 소유한다**: wall-clock(`time.Now()`, `issueops_phase.go:114`), git/FS read(`issueOpsCurrentHead`/`ChangeFingerprint`, `:120-121`), 디스크 write(`touchAndWriteIssueOps`, `:124`), session unbind(`unbindIssueOpsSessionForCycle`, `:31-32`). 이 값들은 wrapper가 계산해 record에 주입하거나 전이 후 적용한다.
 - ledger stamp(`stampIssueOpsForwardTransition(ledger, prev, new, now)`, `issueops_phase_ledger.go`)는 `now`를 **주입받으면 순수**하다. 같은 `(record, to, now)`는 항상 같은 record를 낳아 replay/derive가 결정적이며, 이는 `DeriveIssueOpsPhaseLedger`의 결정성 테스트로 보장된다(`issueops_phase_ledger_test.go`).
 - **신규 상태머신은 이 경계를 따른다**: 판정 로직에 clock/rand/uuid/IO를 섞지 않고, 비결정 입력은 값으로 주입한다(`nondeterministic-context-serialization` guard와 같은 정신). 결정성 검증이 필요해지고 두 번째 사용처가 생기면 그때 순수 함수를 *전체* 판정 블록 단위로 추출한다. 동작 무변화를 위해 `AdvanceIssueOpsPhase`를 선제적으로 리팩터하지 않는다(§28 게이트 파급이 큰 최고-민감 함수).
+
+## Optional external orchestration adapter convention
+
+- External orchestrators use one concrete adapter per verified boundary. The Orca V1 adapter owns safe argv, bounded timeout/output, envelope decoding, and narrow DTO projection; it does not own IssueOps transitions and does not justify a registry/factory.
+- Every external mutation follows `lock + persist pending -> unlock -> external call -> lock + compare-and-set result`. Never hold the cycle lock during a subprocess/network call and never persist an observed identity against a stale attempt/epoch/context fence.
+- Timeout or transport error after invocation is ambiguous. Persist `recovery_required`; do not automatically repeat create/dispatch or switch to inline execution.
+- Native worker identity is `(host, session_id, agent_id)` plus exact canonical worktree root. Host adapters forward that identity; common core decides ownership.
+- CLI and MCP must use the same request/result DTOs. Keep the handoff MCP surface as one action-discriminated tool instead of multiplying near-identical lifecycle tools.

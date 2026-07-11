@@ -204,6 +204,50 @@ func TestIssueOpsSkillDocumentsOrchestrationOwnerCommands(t *testing.T) {
 	}
 }
 
+func TestIssueOpsSkillDocumentsOptionalOrcaHandoffContract(t *testing.T) {
+	skill := readIssueOpsSkillForTest(t)
+	reference := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	body := skill + "\n" + reference
+
+	for _, want := range []string{
+		"references/orca-handoff.md",
+		"--orchestrator auto",
+		"--orchestrator orca",
+		"--orchestrator inline",
+		"issueops worktree prepare",
+		"issueops handoff start",
+		"issueops handoff claim",
+		"issueops heartbeat",
+		"issueops handoff finish",
+		"issueops handoff accept",
+		"issueops handoff recover",
+		"never retry a create operation",
+		"exactly one candidate",
+		"worker stops",
+		"coordinator owns PR, acceptance, and cleanup",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("IssueOps Orca handoff contract missing phrase %q", want)
+		}
+	}
+}
+
+func TestTuringSkillDocumentsSupervisedHandoffEvidenceContract(t *testing.T) {
+	skill := readTuringSkillForTest(t)
+	for _, want := range []string{
+		"issueops heartbeat",
+		"ORCA-01",
+		"ORCA-14",
+		"handoff result report",
+		"cleanup receipts",
+		"issueops handoff finish",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Fatalf("Turing supervised handoff contract missing phrase %q", want)
+		}
+	}
+}
+
 // Asserts the SKILL.md documents the subagent judge protocol. NOTE: text
 // presence only — the no-self-approval constraint is a documented protocol,
 // not enforceable at the Go layer (the file backend only sees bytes).
@@ -285,6 +329,15 @@ func readIssueOpsSkillForTest(t *testing.T) string {
 func readIssueOpsReferenceForTest(t *testing.T, name string) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "skills", "issueops", "references", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func readTuringSkillForTest(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", "skills", "turing", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

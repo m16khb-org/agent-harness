@@ -478,3 +478,12 @@ sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고�
 - 세션 바인딩은 done/absent 사이클에도 잔존한다. `issueops cleanup stale --apply`로만 정리되며, dry-run(`--apply` 없음)은 보고만 한다.
 - VACUUM은 DB가 수십 MB로 성장하기 전에는 비용만 있고 이득이 없어 비범위다(ADR 참조).
 - `.last-store-maintain` sentinel은 state root에 생성되며 state doctor가 인식한다. sentinel은 에러 시에도 touch되어 폭주를 방지한다.
+
+## Orca create 호출의 모호한 실패를 재시도하지 말 것
+
+Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error가 mutation 부재를 뜻하지 않는다. 호출 전 IssueOps `pending_operation`을 durable하게 기록하고, 호출 뒤 실패하면 `recovery_required`로 멈춘다. 같은 create를 자동 재시도하거나 inline fallback을 시작하면 중복 worker가 생길 수 있다.
+
+- `issueops handoff recover --action reconcile`은 persisted baseline/marker 대비 정확히 하나의 후보만 받아들인다. 후보가 0개거나 여러 개면 fail closed 상태를 유지한다.
+- `auto` fallback은 read-only readiness probe가 mutation 전에 실패한 경우에만 허용한다.
+- cycle lock 안에서는 record CAS만 수행하고 외부 Orca CLI를 호출하지 않는다.
+- 별도의 legacy-JSON workpool reminder defect는 이 handoff 변경과 무관한 follow-up이다. SQLite workpool 상태를 읽지 못하는 기존 reminder를 이 branch에서 함께 고치거나 handoff recovery와 결합하지 않는다.

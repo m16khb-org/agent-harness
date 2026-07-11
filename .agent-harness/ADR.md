@@ -658,3 +658,18 @@ Archived entries:
   - Simultaneous MCP proxy lifecycle/churn changes — rejected because the user-visible failure is test capture blocking; proxy lifecycle is a separate scope.
   - Auto-restarting Codex or other host processes from doctor — rejected because the leaking process belongs to the host/user session boundary.
   - Immediately folding the existing harnessapp helper into `internal/testsupport` — rejected because it already uses the safe concurrent-reader pattern and was explicitly out of the sweep scope.
+
+## 2026-07-11 — IssueOps remains authority for optional Orca supervised handoff
+
+- Kind: `adr`
+- Source: GitHub issue #16, IssueOps cycle `io-47c93d1ef742`, design `docs/superpowers/specs/2026-07-11-orca-aware-issueops-handoff-design.md`
+- Summary: IssueOps may delegate one implementation attempt to an installed Orca CLI, while retaining durable workflow, ownership, recovery, evidence acceptance, PR, and cleanup authority.
+- Context: Inline IssueOps worktrees survive compaction but cannot independently supervise a fresh host session or safely join a partially created external worktree/task/dispatch after coordinator failure.
+- Decision:
+  - Add a concrete bounded `internal/adapter/orca` process adapter and no generic driver registry. Orca is optional and is never installed or required by native install/self-verify.
+  - Persist `execution_handoff` only for the Orca path. `auto` probe failure before mutation preserves the legacy inline projection with the field absent; explicit `orca` fails before mutation.
+  - Journal `pending_operation` before every external create/dispatch. Never hold the IssueOps cycle lock across an external call; reacquire it and compare attempt/epoch/context before persisting the result.
+  - Treat ambiguous post-invocation errors as `recovery_required`. Automatic retry and inline fallback are forbidden; explicit reconciliation accepts exactly one marker/baseline candidate.
+  - Bind worker mutation to native host/session/agent plus exact worktree root. SessionStart only renders claim guidance and PreToolUse enforces ownership; no other hook takes workflow ownership.
+- Consequences: CLI and MCP share one core lifecycle and one MCP action tool. The fresh worker finishes with bounded Turing evidence and stops; the coordinator verifies, accepts, owns PR/merge, and later performs cleanup.
+- Rejected alternatives: Orca as the durable authority; a generic orchestration plugin registry; blind create retry after timeout; lease transfer through `resume --bind`; expanding V1 recipes beyond IssueOps and Turing.

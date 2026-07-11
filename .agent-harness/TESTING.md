@@ -287,3 +287,11 @@ CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden 
 - bootstrap tests should verify dry-run plans `projects/<repo-id>/project.json` without creating it, and normal `project bootstrap` writes lifecycle profile metadata in user-state.
 - hook tests should cover fallback behavior when lifecycle state is missing/corrupt so prompt routing remains useful.
 - doctor tests should cover repo-local `.agent-harness/state/` and namespace mismatch warnings.
+
+## Optional Orca handoff verification
+
+Normal tests and self-verification must remain green without Orca. Use an injected fake runner to prove probe-only `auto` fallback, explicit-mode failure, pending-operation ordering, at-most-once external calls, post-invocation `recovery_required`, exact-one reconciliation, stale ownership rejection, and CLI/MCP parity. Schema fixtures must keep missing/zero legacy records inline-compatible and reject future versions.
+
+When Orca is installed in the verification environment, add one disposable live E2E; this is release evidence, not a default unit-test dependency. Create a uniquely named repo/branch/worktree/terminal/task, let a fresh worker claim and submit, accept from the coordinator, then remove every disposable repo/branch/worktree/terminal resource and record completed task ids. Never use a global Orca reset.
+
+Native ownership smokes are required for Codex, Claude, and GJC. Feed each installed adapter a distinct native `session_id`, assert coordinator/wrong-session mutation produces that host's real block shape, and verify a matching claimed worker passes. GJC coverage must exercise the HookAPI `(event, ctx)` bridge so `ctx.sessionManager.getSessionId()` and `ctx.cwd` reach the common hook command.

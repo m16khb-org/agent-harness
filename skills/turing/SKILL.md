@@ -31,7 +31,9 @@ Verification mode: <full loop or proportionate lightweight mode, with rationale>
 Skipped checks: <checks skipped with explicit reason; "none" if all ran>
 ```
 
-Do not cite stale tools such as `spawn_agent`, `issueops heartbeat`, or positional `state write <key> <content>` forms as executable commands.
+For a supervised execution lease, render the named ORCA criteria (for the current contract, `ORCA-01` through `ORCA-14`) as binary observations. The handoff result report must contain the evidence artifact paths and cleanup receipts required by `issueops handoff finish`.
+
+Do not cite stale tools such as positional `state write <key> <content>` forms as executable commands. `agent-harness issueops heartbeat` is current: an inline cycle supplies `--id`, while a supervised worker also supplies its attempt, ownership epoch, context hash, and native host/session identity.
 
 ## Quantitative Quality Metrics (vs ulw-loop baseline)
 
@@ -366,11 +368,13 @@ When an IssueOps cycle exists:
    ```bash
    agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source turing --body "G1-C1 PASS: <evidence_path> | cleanup: <receipt>" --json
    ```
-3. **Progress record**: There is no heartbeat subcommand. When progress evidence should survive handoff, add a concise feedback entry:
+3. **Progress record**: Keep durable liveness with the current heartbeat command. Inline cycles use `agent-harness issueops heartbeat --id "$ISSUEOPS_ID" --json`; a supervised worker must also provide the exact attempt, ownership epoch, context hash, host, session id, and optional agent id from its claim. Criterion detail still belongs in a concise feedback entry:
    ```bash
+   agent-harness issueops heartbeat --id "$ISSUEOPS_ID" --json
    agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source turing --body "G1-C1 START: <scenario>" --json
    ```
-4. **Phase advancement**: After all criteria pass + quality gate clean:
+4. **Supervised finish**: When an active `execution_handoff` exists, the claimed worker writes the handoff result report, includes cleanup receipts, and submits it with `agent-harness issueops handoff finish`; the coordinator alone verifies and accepts that submitted head.
+5. **Phase advancement**: After all criteria pass + quality gate clean:
    ```bash
    agent-harness issueops phase --id "$ISSUEOPS_ID" --to pr --json
    ```
