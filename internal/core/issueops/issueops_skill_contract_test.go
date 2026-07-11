@@ -386,7 +386,7 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 			"Turing report path is a safe relative path",
 			"leaf symlink",
 			"never use `--unread --inject`",
-			"exact current task, dispatch, and sequence",
+			"Select the numeric `sequence` plus exact `taskId`, `dispatchId`",
 			"live terminal handle is not historical mailbox identity",
 			"PreToolUse blocks every other explicit message type",
 			"--allow-codex-hook-trust-bypass",
@@ -400,7 +400,7 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 			"automatic trust probing remains issue #17",
 			"second no-confirm preview",
 			"reviewed context hash",
-			"otherwise identical confirm command",
+			"Final confirmed start must add `--expected-context-sha256` with the exact final attested preview hash plus `--confirm`; all delivery options remain identical.",
 			"any explicit `--inject`",
 			"repeat-prevention guard",
 			"`[no tests to run]` is not GREEN",
@@ -472,12 +472,89 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 	}
 }
 
+func TestSupervisedHandoffSkillsPinObservedSoleWriterIncidents(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	turing := readTuringSkillForTest(t)
+	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
+		for _, want := range []string{
+			"completed dispatch is never a mutation lease",
+			"new ready task",
+			"fresh dispatch",
+			"exact sole-writer attestation",
+			"Never send edit instructions to a completed worker",
+			"exact-worktree terminals and active orchestration tasks",
+			"connected/writable possible writer or dispatched task blocks another writer",
+			"A stable diff is not ownership evidence",
+			"login shell",
+			"actual host banner",
+			"fresh `connected=true` and `writable=true` check",
+			"One `tui-idle` sample alone is insufficient",
+			"UserPromptSubmit or working state actually began",
+			"send exactly one Enter",
+			"Never resend the instruction body",
+			"sender and recipient direction",
+			"Sequence is evidence, not a lease fence",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s observed sole-writer contract missing %q", name, want)
+			}
+		}
+		if strings.Contains(body, "task, dispatch, and sequence fence") {
+			t.Fatalf("%s must not describe mailbox sequence as part of the lease fence", name)
+		}
+	}
+}
+
+func TestSupervisedHandoffSkillsRequireCompletionFence(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	turing := readTuringSkillForTest(t)
+	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
+		for _, want := range []string{
+			"After verification and immediately before `worker_done`",
+			"bounded current-task inbox check",
+			"numeric `sequence`",
+			"exact `taskId` and `dispatchId`",
+			"sender and recipient direction",
+			"newly arrived current-task `status` or `escalation`",
+			"through the observed maximum sequence",
+			"repeat any affected verification and commit before `worker_done`",
+			"fresh ready task, dispatch, host attestation, and sole-writer proof",
+			"Conventional Commit subject",
+			"literal `Lore:` block",
+			"`Intent`, `Why`, `Changes`, `Verify`, and `Risk`",
+			"Hooks may only observe, block, or relay",
+			"must never execute the workflow",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s completion fence contract missing %q", name, want)
+			}
+		}
+	}
+}
+
+func TestSupervisedHandoffSkillsRequireBoundedTaskAttestation(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	turing := readTuringSkillForTest(t)
+	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
+		for _, want := range []string{
+			"server-filtered task inventory",
+			"orca orchestration task-list --status dispatched",
+			"orca orchestration dispatch-show --task <current-task-id> --json",
+			"truncated or unparsable JSON is ambiguity, never absence",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s bounded task attestation contract missing %q", name, want)
+			}
+		}
+	}
+}
+
 func TestIssueOpsSkillDocumentsExpectedContextSHA256PreviewConfirmFlow(t *testing.T) {
 	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
 	for _, want := range []string{
 		"Preview returns `context_sha256`",
 		"--expected-context-sha256",
-		"otherwise identical options",
+		"all delivery options remain identical",
 		"missing, malformed, or differs",
 		"before any terminal, task, dispatch, or journal mutation",
 	} {
@@ -538,7 +615,8 @@ func TestIssueOpsSkillUsesNumericMailboxSequenceInsteadOfOpaqueMessageIDs(t *tes
 	for _, want := range []string{
 		"Never order or filter opaque `msg_*` IDs",
 		"numeric `sequence`",
-		"exact `taskId`, `dispatchId`, and handle direction",
+		"exact `taskId`, `dispatchId`, sender and recipient direction",
+		"Sequence is evidence, not a lease fence",
 		"`.result.messages`",
 	} {
 		if !strings.Contains(issueOps, want) {
@@ -652,6 +730,45 @@ func TestIssueOpsSupervisedStartDocumentsReviewedContextCASAndProgressReporting(
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("IssueOps supervised start CAS/progress contract missing %q", want)
+		}
+	}
+}
+
+func TestIssueOpsSupervisedStartDocumentsFinalizeConfirmedCASWording(t *testing.T) {
+	for name, body := range map[string]string{
+		"turing":   readTuringSkillForTest(t),
+		"cautions": readCautionsForTest(t),
+	} {
+		for _, want := range []string{
+			"Final confirmed start must add `--expected-context-sha256` with the exact final attested preview hash plus `--confirm`; all delivery options remain identical.",
+			"exact final attested preview hash",
+			"all delivery options remain identical",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s supervised handoff CAS wording missing %q", name, want)
+			}
+		}
+	}
+}
+
+func TestSupervisedHandoffSkillsPinOrcaEnvironmentKeyAllowlist(t *testing.T) {
+	for name, body := range map[string]string{
+		"IssueOps": readIssueOpsReferenceForTest(t, "orca-handoff.md"),
+		"Turing":   readTuringSkillForTest(t),
+		"CAUTIONS": readCautionsForTest(t),
+	} {
+		for _, want := range []string{
+			"Explicit nonsecret Orca environment-key allowlist",
+			"broad ORCA-prefixed env output",
+			"prefix filtering",
+			"ORCA_TERMINAL_HANDLE",
+			"ORCA_TAB_ID",
+			"ORCA_WORKTREE_ID",
+			"never record secret values",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s environment allowlist contract missing %q", name, want)
+			}
 		}
 	}
 }
@@ -810,6 +927,15 @@ func readIssueOpsReferenceForTest(t *testing.T, name string) string {
 func readTuringSkillForTest(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "skills", "turing", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func readCautionsForTest(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", ".agent-harness", "CAUTIONS.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

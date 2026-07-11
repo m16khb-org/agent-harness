@@ -59,6 +59,19 @@ git -C <worker-root> rev-parse --verify HEAD
 
 For `resolved_mode: orca`, the coordinator reviews readiness and creates the bounded context packet. Repeat flags are allowed where shown:
 
+Before any replacement or dispatch, inspect exact-worktree terminals and active orchestration tasks. Any connected/writable possible writer or dispatched task blocks another writer, even when preserved WIP or the diff appears stable. A stable diff is not ownership evidence. Do not adopt WIP until the original task is terminal and the original writer is exited or closed.
+
+Use server-filtered task inventory for sole-writer attestation, then inspect the exact current dispatch:
+
+```bash
+orca orchestration task-list --status dispatched
+orca orchestration dispatch-show --task <current-task-id> --json
+```
+
+Do not infer task absence from a local filter over broad output. For this fence, truncated or unparsable JSON is ambiguity, never absence; rerun the server-filtered observation and keep mutation blocked until the exact task and dispatch are proven.
+
+Start the fresh worker from a login shell and require the actual host banner. Immediately before dispatch, obtain a fresh `connected=true` and `writable=true` check for the exact terminal. One `tui-idle` sample alone is insufficient. After an authorized terminal send delivers interrupt text plus Enter, read the target and verify that UserPromptSubmit or working state actually began. If the full instruction remains at the idle prompt, send exactly one Enter and read again. Never resend the instruction body.
+
 Codex supervised startup uses an explicit per-attempt attestation; Claude and GJC do not. First run `codex --help` as a standalone observation and require `--dangerously-bypass-hook-trust`. Then open the supported read-only catalog with `codex app-server --stdio`, send these JSONL messages one at a time, and keep stdin open until response id 2 arrives:
 
 ```text
@@ -67,9 +80,9 @@ Codex supervised startup uses an explicit per-attempt attestation; Claude and GJ
 {"method":"hooks/list","id":2,"params":{"cwds":["<exact-worker-cwd>"]}}
 ```
 
-Do not call `config/batchWrite` or trust hooks from this recipe. Attest only when the response has exactly the requested cwd, warnings and errors are both empty, required SessionStart and PreToolUse command hooks are enabled, and every untrusted or modified entry is the exact generated agent-harness hook command for the current installed binary. Any unrelated untrusted/modified entry, missing ownership hook, cwd mismatch, or malformed response fails closed. Record the reviewed keys, `currentHash` values, source paths, and binary target in evidence without copying secrets.
+Do not call `config/batchWrite` or trust hooks from this recipe. Attest only when the response has exactly the requested cwd, warnings and errors are both empty, required SessionStart and PreToolUse command hooks are enabled, and every untrusted or modified entry is the exact generated agent-harness hook command for the current installed binary. Any unrelated untrusted/modified entry, missing ownership hook, cwd mismatch, or malformed response fails closed. Record the reviewed keys, `currentHash` values, source paths, and binary target in evidence without copying secrets. Explicit nonsecret Orca environment-key allowlist: never dump broad ORCA-prefixed env output or use prefix filtering for identity probes. Allow only explicitly named nonsecret keys such as `ORCA_TERMINAL_HANDLE`, `ORCA_TAB_ID`, and `ORCA_WORKTREE_ID`, and never record secret values in tests, docs, logs, or evidence.
 
-Preview `handoff start` without confirmation first. For Codex it must report `codex_hook_trust_bypass_required=true` and `codex_hook_trust_bypass_attested=false`. After the review above, run a second no-confirm preview with every delivery option plus `--allow-codex-hook-trust-bypass`; require `codex_hook_trust_bypass_attested=true` and record the reviewed context hash from that final attested preview. Preview returns `context_sha256`; the final mutation must be an otherwise identical confirm command. That confirm must pass the exact value as `--expected-context-sha256` with otherwise identical options. The confirmed start recomputes the sealed context and fails closed before any terminal, task, dispatch, or journal mutation when the submitted hash is missing, malformed, or differs from the freshly recomputed sealed context — including post-preview source drift and delivery-option drift. Confirm must never introduce a delivery option absent from that final preview. The adapter then launches only that Codex worker with `codex --dangerously-bypass-hook-trust`. Omit the flag for Claude, GJC, inline mode, and any unreviewed Codex attempt. This optional additive field remains ContextVersion 1 for legacy retry compatibility. Retry preserves the sealed delivery options but clears the per-attempt attestation, so the coordinator must perform and attest the review again. General automatic trust probing remains issue #17.
+Preview `handoff start` without confirmation first. For Codex it must report `codex_hook_trust_bypass_required=true` and `codex_hook_trust_bypass_attested=false`. After the review above, run a second no-confirm preview with every delivery option plus `--allow-codex-hook-trust-bypass`; require `codex_hook_trust_bypass_attested=true` and record the reviewed context hash from that final attested preview. Preview returns `context_sha256`. Final confirmed start must add `--expected-context-sha256` with the exact final attested preview hash plus `--confirm`; all delivery options remain identical. The confirmed start recomputes the sealed context and fails closed before any terminal, task, dispatch, or journal mutation when the submitted hash is missing, malformed, or differs from the freshly recomputed sealed context — including post-preview source drift and delivery-option drift. Confirm must never introduce a delivery option absent from that final preview. The adapter then launches only that Codex worker with `codex --dangerously-bypass-hook-trust`. Omit the flag for Claude, GJC, inline mode, and any unreviewed Codex attempt. This optional additive field remains ContextVersion 1 for legacy retry compatibility. Retry preserves the sealed delivery options but clears the per-attempt attestation, so the coordinator must perform and attest the review again. General automatic trust probing remains issue #17.
 
 ```bash
 agent-harness issueops handoff start \
@@ -102,7 +115,7 @@ agent-harness issueops handoff start \
   --json
 ```
 
-The returned `attempt`, `ownership_epoch`, `context_sha256`, Orca worktree id, task id, and dispatch id are a single fence. That is the exact current task, dispatch, and sequence fence for the live worker. The mailbox numeric `sequence` is message selection evidence, not part of the lease fence. The coordinator passes that tuple to the fresh worker without copying credentials, conversation transcripts, or unbounded environment data.
+The returned `attempt`, `ownership_epoch`, `context_sha256`, Orca worktree id, task id, and dispatch id are a single fence. The mailbox numeric `sequence` is message selection evidence, not part of the lease fence. The coordinator passes that tuple to the fresh worker without copying credentials, conversation transcripts, or unbounded environment data.
 
 ## Worker Lease
 
@@ -180,7 +193,7 @@ PreToolUse blocks every other explicit message type, including malformed duplica
 orca orchestration check --all --json | jq '.result.messages[]'
 ```
 
-The array is nested under `.result.messages`; querying top-level `.messages` silently yields no rows and is not authoritative absence. Never order or filter opaque `msg_*` IDs: they are not chronological. Select the numeric `sequence` plus exact `taskId`, `dispatchId`, and handle direction before acting. A live terminal handle is not historical mailbox identity. For an urgent current-worker correction, use only the existing exact literal-safe source-coordinator terminal guidance bound to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
+The array is nested under `.result.messages`; querying top-level `.messages` silently yields no rows and is not authoritative absence. Never order or filter opaque `msg_*` IDs: they are not chronological. Select the numeric `sequence` plus exact `taskId`, `dispatchId`, sender and recipient direction before acting. Sequence is evidence, not a lease fence. A live terminal handle is not historical mailbox identity. For an urgent current-worker correction, use only the existing exact literal-safe source-coordinator terminal guidance bound to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
 
 PreToolUse blocks direct `orca orchestration ask` and `orca orchestration gate-create` from a linked worker checkout even when `execution_handoff` is absent. The source coordinator owns decision gates; `gate-list` remains read-only for workers. After one escalation, heartbeat and wait rather than opening a duplicate gate.
 
@@ -209,7 +222,13 @@ agent-harness issueops handoff finish \
 
 After finish persists `submitted`, repository mutation remains blocked. Only the same submitted worker session may send one exact `worker_done` message: use a concrete coordinator `term_*` target, the exact persisted task and dispatch, a nonempty subject, a three-sentence body, `--files-modified` exactly equal to the persisted changed-file list, and the absolute in-worker report path corresponding to the persisted relative report. Group targets, extra files, external reports, duplicate flags, wrong host/session/agent, or wrong task/dispatch stay blocked. If an older hook blocked that send, the source coordinator may issue literal-safe guidance only to the exact submitted worker handle, after which the worker retries the exact command once.
 
+After verification and immediately before `worker_done`, the worker performs a bounded current-task inbox check. Select only messages with the numeric `sequence`, exact `taskId` and `dispatchId`, and sender and recipient direction; process every newly arrived current-task `status` or `escalation` through the observed maximum sequence. If a message changes the result, repeat any affected verification and commit before `worker_done`, then run the fence again. Hooks may only observe, block, or relay this boundary and must never execute the workflow.
+
+Before this fence, each worker commit must use a Conventional Commit subject and a literal `Lore:` block with `Intent`, `Why`, `Changes`, `Verify`, and `Risk` as required by `.agent-harness/COMMIT_POLICY.md`.
+
 After `worker_done` succeeds, the worker stops. The worker must not push, create or merge a PR/MR, accept its own result, delete the provider branch, or remove the coordinator-owned worktree. The coordinator owns PR, acceptance, and cleanup.
+
+A completed dispatch is never a mutation lease. After a valid `worker_done`, the coordinator closes the exact worker terminal. Review feedback that requires edits starts with a new ready task. That fresh ready task, dispatch, host attestation, and sole-writer proof are required before any edit, with a fresh dispatch bound to the new task and an exact sole-writer attestation. Never send edit instructions to a completed worker.
 
 ## Coordinator Acceptance
 
