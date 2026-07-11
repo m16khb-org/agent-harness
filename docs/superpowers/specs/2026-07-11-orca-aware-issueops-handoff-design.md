@@ -126,6 +126,9 @@ type IssueOpsExecutionHandoff struct {
     WorkerRoot      string
     WorkerSession   *IssueOpsHostSessionIdentity
     Orca            *IssueOpsOrcaIdentity
+    PendingOperation *IssueOpsExecutionHandoffPendingOperation
+    CleanupOnly     *IssueOpsOrcaCleanupArtifact
+    Cancellation    *IssueOpsExecutionHandoffCancellation
     Result          *IssueOpsExecutionHandoffResult
     Failure         *IssueOpsExecutionHandoffFailure
 
@@ -159,7 +162,7 @@ recovery_required
 - `claimed` is the only Orca state that satisfies implementation-entry ownership readiness.
 - `submitted` means the worker submitted a successful implementation result; it does not mean the coordinator accepted it.
 - `closed` returns lifecycle authority to the coordinator and carries exactly one disposition: `accepted`, `worker_failed`, or `cancelled`.
-- `recovery_required` means external state may differ from the record.
+- `recovery_required` means external state may differ from the record. A durable `cancellation` tombstone in this state keeps the lease and hook guard active until exact external quiescence is proven.
 
 No separate `provisioned`, `running`, `completed`, `accepted`, `failed`, or `cancelled` states are needed. External artifact fields, `claimed` plus heartbeat, `submitted`, and the closed disposition carry those facts without mixing transport progress with lease ownership.
 
@@ -175,6 +178,7 @@ No separate `provisioned`, `running`, `completed`, `accepted`, `failed`, or `can
 - No create mutation is automatically retried. The live spike proved that repeated worktree names and task titles create duplicates.
 - Repeating worktree preparation or `handoff start` for an active attempt returns resume/recovery guidance instead of invoking the corresponding Orca mutation again.
 - Ambiguous worktree/task creation is reconciled only when the epoch marker identifies exactly one artifact. Ambiguous terminal creation is reconciled only when the current PTY set minus the persisted baseline contains exactly one item. Zero or multiple candidates remain `recovery_required`.
+- Force-abandon ignores only post-baseline rows with a stable unique identity and every field needed to classify them as nonmatching. Missing or duplicate identities and incomplete classification rows remain ambiguous and block abandonment.
 - A stale worker cannot claim, heartbeat, finish, or fail a newer attempt.
 
 ### 6.3 Actor and transition table
@@ -189,8 +193,9 @@ No separate `provisioned`, `running`, `completed`, `accepted`, `failed`, or `can
 | worker `handoff finish --outcome failed` | `claimed` | `closed/worker_failed` | Same CAS and repeat rules as completed finish. |
 | coordinator `handoff accept` | `submitted` | `closed/accepted` | Reverify HEAD/evidence/context under the cycle lock. Identical repeat succeeds. |
 | coordinator `recover --action reconcile` | `recovery_required` | `coordinator_preparing` or `dispatched` | Persist only one uniquely matched external identity; never execute the next step or import a worker result. |
-| coordinator `recover --action cancel --confirm` | non-closed; claimed requires explicit stale/force evidence | `closed/cancelled` | Mark closed before cleanup. Repeating cleanup is safe and visible. |
-| coordinator `recover --action retry --confirm` | `closed/worker_failed`, `closed/cancelled`, or a fully reconciled abandoned attempt | `coordinator_preparing` with attempt+1 | Never reuses the prior epoch/task/dispatch or retries an ambiguous create. |
+| coordinator `recover --action cancel --confirm` | non-closed; claimed/submitted require `--force` and a bounded reason | `recovery_required` with cancellation tombstone | Preserve the pending journal, worker identity, and guard. Only a truly pre-mutation attempt closes directly. |
+| coordinator `recover --action finalize-cancel --confirm` | cancellation tombstone with authoritative absence or exact terminal/task/dispatch quiescence and stale worker liveness | `closed/cancelled` | Close only after the external lease is proven quiescent; a failed check leaves the tombstone byte-equivalent. |
+| coordinator `recover --action retry --confirm` | safely finalized `closed/worker_failed` or `closed/cancelled` | `coordinator_preparing` with attempt+1 | Never reuses the prior epoch/task/dispatch or retries an abandoned ambiguous create. |
 | any session `issueops resume` | any | unchanged | Read-only; may probe Orca for evidence but writes nothing. |
 
 ### 6.4 Host session identity
@@ -420,7 +425,7 @@ Recovery may not:
 - switch to inline after partial mutation;
 - delete a worktree or terminal without explicit confirmation.
 
-`recover --action retry` creates a new attempt only after the prior attempt is terminally closed or every ambiguous artifact is resolved. `recover --action cancel --confirm` transitions to `closed/cancelled` before cleanup. Orca-owned worktrees are removed through `orca worktree rm`; inline worktrees continue through existing Git cleanup. A failed cleanup remains visible and retryable.
+`recover --action retry` creates a new attempt only after the prior attempt is safely closed; a force-abandoned ambiguous operation is never retryable. `recover --action cancel --confirm` first writes a `recovery_required` tombstone for every provisioned attempt and therefore does not release the live-worker guard. `recover --action finalize-cancel --confirm` closes only after complete authoritative inventory proves an exact pending candidate absent, the persisted terminal disconnected or absent, the exact task/dispatch terminal or authoritatively absent, and any claimed heartbeat older than the minimum age. A failed check leaves the tombstone active. Orca-owned worktrees are removed through `orca worktree rm`; inline worktrees continue through existing Git cleanup.
 
 ## 13. CLI and MCP surface
 
@@ -432,7 +437,7 @@ issueops handoff start [--allow-codex-hook-trust-bypass] [--confirm]
 issueops handoff claim
 issueops handoff finish
 issueops handoff accept
-issueops handoff recover --action reconcile|retry|cancel [--confirm]
+issueops handoff recover --action reconcile|abandon|cancel|finalize-cancel|retry [--confirm]
 issueops resume
 ```
 

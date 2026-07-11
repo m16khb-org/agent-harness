@@ -173,6 +173,26 @@ func TestHandoffGuardAllowsMatchingClaimedWorkerInTree(t *testing.T) {
 	}
 }
 
+func TestHandoffCancellationTombstoneKeepsClaimedWorkerGuardClosed(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	record.ExecutionHandoff.State = handoff.StateRecoveryRequired
+	record.ExecutionHandoff.Cancellation = &issueopsmodel.IssueOpsExecutionHandoffCancellation{RequestedAt: "2026-07-11T02:00:00Z", Reason: "verified stale worker"}
+	record.ExecutionHandoff.Failure = &issueopsmodel.IssueOpsExecutionHandoffFailure{Code: "cancellation_requested", Message: "verified stale worker", At: "2026-07-11T02:00:00Z"}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	got := BuildLifecyclePreToolUseDecision(handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "x.go")))
+	if got.Decision != "block" || !strings.Contains(got.Reason, "remain read-only") {
+		t.Fatalf("cancellation tombstone released the claimed-worker mutation guard: %#v", got)
+	}
+	guidance := BuildIssueOpsHandoffSessionGuidance(worktree, "codex", "session-1", "worker-1")
+	for _, forbidden := range []string{"handoff claim", "handoff heartbeat", "handoff finish"} {
+		if strings.Contains(guidance, forbidden) {
+			t.Fatalf("cancellation tombstone rendered worker command %q: %s", forbidden, guidance)
+		}
+	}
+}
+
 func TestHandoffGuardBlocksCoordinatorAbsolutePathIntoWorkerTree(t *testing.T) {
 	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
 	got := BuildLifecyclePreToolUseDecision(handoffEditRequest(record, repo, "codex", "coordinator", filepath.Join(worktree, "internal", "x.go")))

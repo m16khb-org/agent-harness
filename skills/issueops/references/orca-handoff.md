@@ -249,12 +249,23 @@ If reconciliation proves no safe continuation, close the attempt explicitly. A l
 
 ```bash
 agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action cancel --confirm --json
+agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action finalize-cancel --confirm --json
 agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action retry --confirm --json
 ```
 
 `closed/accepted` is terminal and cannot be retried. Only `closed/worker_failed` and `closed/cancelled` may start a new attempt; an accepted handoff has already transferred the verified result back to the coordinator and must remain closed.
 
-A claimed cancel is fail-closed without explicit stale or force evidence. Use confirmed coordinator recovery with a nonempty reason only after proving the worker lease is no longer live. An unresolved pending operation journal survives cancel and must be reconciled first; `Invoked=false` is the only definitive pre-invocation failure that may safely release the journal, while invoked/timeout failures remain ambiguous and are never auto-retried.
+A claimed cancel is fail-closed without explicit stale or force evidence, and an unresolved pending operation journal survives cancel inside the tombstone. A provisioned cancel first writes a durable `recovery_required` cancellation tombstone and preserves the operation journal, worker identity, result, and lifecycle guard. Claimed and submitted attempts additionally require `--force` with a bounded nonempty reason; use that authority only after investigating the worker lease. Only a truly pre-mutation preparation closes directly.
+
+`finalize-cancel` releases the guard only after authoritative evidence proves every pending exact candidate absent, the exact terminal disconnected or absent, the exact task/dispatch terminal or authoritatively absent, and any claimed heartbeat older than the minimum age. An inventory row may be ignored as unrelated only when it has a unique stable identity and all fields needed to classify exact-vs-unrelated; missing, duplicate, or incomplete rows remain ambiguous. A failed finalization leaves the tombstone active and byte-equivalent.
+
+Force-abandon is a separate last-resort operation for an old ambiguous journal. It requires complete non-truncated inventory, the minimum operation age, explicit confirmation, `--force`, and a bounded reason:
+
+```bash
+agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action abandon --confirm --force --reason "<verified reason>" --json
+```
+
+It may ignore only fully identifiable and classifiable nonmatching rows. An exact candidate, malformed identity, duplicate stable identity, incomplete classification row, incomplete inventory, or non-authoritative dispatch error blocks abandonment; a successfully force-abandoned attempt is not retryable.
 
 Before retry, require a clean exact branch and HEAD checkpoint. Persist the current clean commit as the new `attempt_base_head`; dirty, detached, mismatched, or unreadable Git evidence stops before any external mutation. Classifier gaps are handled by promoting each observed representative mutation family into a retained hook test rather than relying on prose-only denial.
 

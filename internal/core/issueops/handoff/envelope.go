@@ -85,13 +85,20 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 	if h.PendingOperation != nil && h.CleanupOnly != nil {
 		return fmt.Errorf("execution handoff cannot have both a pending operation and cleanup-only evidence")
 	}
+	if h.State != StateRecoveryRequired && h.Cancellation != nil {
+		return fmt.Errorf("execution handoff cancellation tombstone requires recovery_required")
+	}
 	switch h.State {
 	case StateCoordinatorPreparing:
-		if h.ClosedDisposition != "" || h.CleanupOnly != nil || h.WorkerSession != nil || h.Result != nil || h.Failure != nil || h.DeliveryMode != "" || h.DispatchedAt != "" || h.ClaimedAt != "" || h.LastHeartbeatAt != "" || h.CompletedAt != "" || h.AcceptedAt != "" {
+		if h.ClosedDisposition != "" || h.CleanupOnly != nil || h.Cancellation != nil || h.WorkerSession != nil || h.Result != nil || h.Failure != nil || h.DeliveryMode != "" || h.DispatchedAt != "" || h.ClaimedAt != "" || h.LastHeartbeatAt != "" || h.CompletedAt != "" || h.AcceptedAt != "" {
 			return fmt.Errorf("coordinator_preparing handoff contains state-incompatible fields")
 		}
 	case StateRecoveryRequired:
-		if h.ClosedDisposition != "" || (h.PendingOperation == nil) == (h.CleanupOnly == nil) || !validFailure(h.Failure) || h.WorkerSession != nil || h.Result != nil || h.DeliveryMode != "" || h.DispatchedAt != "" || h.ClaimedAt != "" || h.LastHeartbeatAt != "" || h.CompletedAt != "" || h.AcceptedAt != "" {
+		if h.Cancellation != nil {
+			if h.ClosedDisposition != "" || !validFailure(h.Failure) || h.Failure.Code != "cancellation_requested" || !validCancellation(h.Cancellation) {
+				return fmt.Errorf("recovery_required cancellation tombstone is incomplete")
+			}
+		} else if h.ClosedDisposition != "" || (h.PendingOperation == nil) == (h.CleanupOnly == nil) || !validFailure(h.Failure) || h.WorkerSession != nil || h.Result != nil || h.DeliveryMode != "" || h.DispatchedAt != "" || h.ClaimedAt != "" || h.LastHeartbeatAt != "" || h.CompletedAt != "" || h.AcceptedAt != "" {
 			return fmt.Errorf("recovery_required handoff requires exactly one pending operation or cleanup-only artifact")
 		}
 	case StateDispatched:
@@ -176,7 +183,13 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 		if artifact.Kind != "worktree" || artifact.ID == "" || artifact.ID != strings.TrimSpace(artifact.ID) || artifact.InstanceID == "" || artifact.Path == "" || artifact.Reason == "" || artifact.Reason != redact(artifact.Reason) {
 			return fmt.Errorf("invalid cleanup-only worktree evidence")
 		}
-		if h.Failure == nil || h.Failure.Code != "worktree_cleanup_only" || h.Orca != nil && (h.Orca.WorktreeID != "" || h.Orca.WorktreePath != "") {
+		expectedFailureCode := "worktree_cleanup_only"
+		if h.Cancellation != nil {
+			expectedFailureCode = "cancellation_requested"
+		} else if h.State == StateClosed && h.ClosedDisposition == DispositionCancelled {
+			expectedFailureCode = "cancellation_finalized"
+		}
+		if h.Failure == nil || h.Failure.Code != expectedFailureCode || h.Orca != nil && (h.Orca.WorktreeID != "" || h.Orca.WorktreePath != "") {
 			return fmt.Errorf("cleanup-only worktree evidence requires an explicit cleanup-only failure")
 		}
 	}
@@ -358,6 +371,12 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 			boundedHandoffString{"failure timestamp", h.Failure.At, 128},
 		)
 	}
+	if h.Cancellation != nil {
+		checks = append(checks,
+			boundedHandoffString{"cancellation requested timestamp", h.Cancellation.RequestedAt, 128},
+			boundedHandoffString{"cancellation reason", h.Cancellation.Reason, 4096},
+		)
+	}
 	if h.Orca != nil {
 		o := h.Orca
 		checks = append(checks,
@@ -440,6 +459,10 @@ func validWorkerSession(session *model.IssueOpsHostSessionIdentity) bool {
 		return false
 	}
 	return session.AgentID == "" || canonicalNonSpace(session.AgentID)
+}
+
+func validCancellation(cancellation *model.IssueOpsExecutionHandoffCancellation) bool {
+	return cancellation != nil && canonicalTimestamp(cancellation.RequestedAt) && cancellation.Reason != "" && cancellation.Reason == strings.TrimSpace(cancellation.Reason) && cancellation.Reason == redact(cancellation.Reason)
 }
 
 func knownOperation(kind string) bool {

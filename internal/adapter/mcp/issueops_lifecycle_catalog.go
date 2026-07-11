@@ -298,7 +298,7 @@ func IssueOpsLifecycleTools() []Tool {
 				"evidence_digest":               map[string]any{"type": "string"},
 				"task_id":                       map[string]any{"type": "string"},
 				"dispatch_id":                   map[string]any{"type": "string"},
-				"recovery_action":               map[string]any{"type": "string", "enum": []string{"reconcile", "abandon", "cancel", "retry"}},
+				"recovery_action":               map[string]any{"type": "string", "enum": []string{"reconcile", "abandon", "cancel", "finalize-cancel", "retry"}},
 				"force":                         map[string]any{"type": "boolean"},
 				"reason":                        map[string]any{"type": "string"},
 			}},

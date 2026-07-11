@@ -164,15 +164,15 @@ func TestHandoffStartLateCreateErrorCannotReopenCancelledAttempt(t *testing.T) {
 	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil {
 		t.Fatal("late terminal create error must still be reported")
 	}
-	if cancelErr == nil {
-		t.Fatal("coordinator cancel must reject an unresolved terminal-create journal")
+	if cancelErr != nil {
+		t.Fatalf("coordinator cancel must durably tombstone an unresolved terminal-create journal: %v", cancelErr)
 	}
 	persisted, err := ReadIssueOps(stateRoot, record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.ClosedDisposition != "" || persisted.ExecutionHandoff.PendingOperation == nil {
-		t.Fatalf("late error must preserve the unresolved recovery journal: %#v", persisted.ExecutionHandoff)
+	if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.ClosedDisposition != "" || persisted.ExecutionHandoff.PendingOperation == nil || persisted.ExecutionHandoff.Cancellation == nil || persisted.ExecutionHandoff.Failure == nil || persisted.ExecutionHandoff.Failure.Code != "cancellation_requested" {
+		t.Fatalf("late error must preserve the cancellation tombstone and unresolved journal: %#v", persisted.ExecutionHandoff)
 	}
 }
 

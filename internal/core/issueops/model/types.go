@@ -417,6 +417,11 @@ type IssueOpsExecutionHandoffFailure struct {
 	At      string `json:"at,omitempty"`
 }
 
+type IssueOpsExecutionHandoffCancellation struct {
+	RequestedAt string `json:"requested_at"`
+	Reason      string `json:"reason"`
+}
+
 type IssueOpsOrcaCleanupArtifact struct {
 	Kind       string `json:"kind"`
 	ID         string `json:"id"`
@@ -489,6 +494,7 @@ type IssueOpsExecutionHandoff struct {
 	PendingOperation    *IssueOpsExecutionHandoffPendingOperation `json:"pending_operation,omitempty"`
 	Result              *IssueOpsExecutionHandoffResult           `json:"result,omitempty"`
 	Failure             *IssueOpsExecutionHandoffFailure          `json:"failure,omitempty"`
+	Cancellation        *IssueOpsExecutionHandoffCancellation     `json:"cancellation,omitempty"`
 	CleanupOnly         *IssueOpsOrcaCleanupArtifact              `json:"cleanup_only,omitempty"`
 	PriorAttempts       []IssueOpsExecutionHandoffPriorAttempt    `json:"prior_attempts,omitempty"`
 	PreparedAt          string                                    `json:"prepared_at,omitempty"`

@@ -395,6 +395,7 @@ type terminalPayload struct {
 	PTYID        string `json:"ptyId"`
 	WorktreeID   string `json:"worktreeId"`
 	WorktreePath string `json:"worktreePath"`
+	Title        string `json:"title"`
 	Connected    bool   `json:"connected"`
 	Writable     bool   `json:"writable"`
 }
@@ -421,7 +422,7 @@ func requireCompleteList(kind string, length int, total *int, truncated bool) er
 }
 
 func (t terminalPayload) portValue() port.OrcaTerminal {
-	return port.OrcaTerminal{Handle: t.Handle, PTYID: t.PTYID, WorktreeID: t.WorktreeID, WorktreePath: t.WorktreePath, Connected: t.Connected, Writable: t.Writable}
+	return port.OrcaTerminal{Handle: t.Handle, PTYID: t.PTYID, WorktreeID: t.WorktreeID, WorktreePath: t.WorktreePath, Title: t.Title, Connected: t.Connected, Writable: t.Writable}
 }
 
 func hostCommand(agent string) (string, bool) {

@@ -771,8 +771,14 @@ func TestWorktreePreparePathMismatchExplainsFlatLayoutRecovery(t *testing.T) {
 	cancelled, cancelErr := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 		ID: record.ID, Action: "cancel", Confirm: true,
 	}, nil, handoffPrepareTestClock())
-	if cancelErr != nil || cancelled.State != "closed" || cancelled.Disposition != "cancelled" {
-		t.Fatalf("cleanup-only recovery must be explicitly cancellable: %#v err=%v", cancelled, cancelErr)
+	if cancelErr != nil || cancelled.State != handoff.StateRecoveryRequired || cancelled.Disposition != "" {
+		t.Fatalf("cleanup-only recovery must persist a cancellation tombstone: %#v err=%v", cancelled, cancelErr)
+	}
+	cancelled, cancelErr = RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "finalize-cancel", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if cancelErr != nil || cancelled.State != handoff.StateClosed || cancelled.Disposition != handoff.DispositionCancelled {
+		t.Fatalf("absent cleanup-only artifact must finalize cancellation: %#v err=%v", cancelled, cancelErr)
 	}
 	if _, retryErr := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 		ID: record.ID, Action: "retry", Confirm: true,

@@ -462,6 +462,24 @@ func TestIssueOpsPublishRecipeAvoidsShellCommandSubstitution(t *testing.T) {
 	}
 }
 
+func TestIssueOpsCancellationRecoveryKeepsLeaseUntilExactQuiescence(t *testing.T) {
+	body := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	for _, want := range []string{
+		"--action finalize-cancel --confirm",
+		"cancellation tombstone",
+		"exact terminal disconnected or absent",
+		"exact task/dispatch terminal or authoritatively absent",
+		"unique stable identity",
+		"missing, duplicate, or incomplete rows remain ambiguous",
+		"--action abandon --confirm --force --reason",
+		"successfully force-abandoned attempt is not retryable",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("IssueOps cancellation recovery contract missing %q", want)
+		}
+	}
+}
+
 func TestIssueOpsSupervisedPlanMustDescribeCurrentCycle(t *testing.T) {
 	body := readIssueOpsReferenceForTest(t, "orca-handoff.md")
 	for _, want := range []string{

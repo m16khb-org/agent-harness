@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ import (
 const (
 	IssueOpsHandoffForceAbandonMinimumAge  = 5 * time.Minute
 	IssueOpsHandoffForceAbandonReasonBytes = 4096
+	IssueOpsHandoffCancellationMinimumAge  = 5 * time.Minute
 	forceAbandonedOperationCode            = "force_abandoned_absent_operation"
 )
 
@@ -52,6 +54,11 @@ func RecoverIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsH
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("cancel requires --confirm")
 		}
 		return cancelIssueOpsHandoff(stateRoot, req.ID, req.Force, req.Reason, issueOpsHandoffNow(clock))
+	case "finalize-cancel":
+		if !req.Confirm {
+			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("finalize-cancel requires --confirm")
+		}
+		return finalizeCancelledIssueOpsHandoff(ctx, stateRoot, req.ID, client, issueOpsHandoffNow(clock))
 	case "abandon":
 		if !req.Confirm {
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("abandon requires --confirm")
@@ -66,7 +73,7 @@ func RecoverIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsH
 		}
 		return retryIssueOpsHandoff(stateRoot, req.ID, clock)
 	default:
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("recovery action must be reconcile, abandon, cancel, or retry")
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("recovery action must be reconcile, abandon, cancel, finalize-cancel, or retry")
 	}
 }
 
@@ -138,7 +145,7 @@ func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, c
 		if err != nil {
 			return err
 		}
-		return requireNoPostBaselineIDs("worktree", pending.BaselineWorktreeIDs, worktreeInventoryIDs(rows))
+		return requireNoExactWorktreeCandidates(record, pending.BaselineWorktreeIDs, rows)
 	case handoff.OperationTerminalCreate:
 		reader, ok := client.(interface {
 			ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
@@ -150,7 +157,7 @@ func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, c
 		if err != nil {
 			return err
 		}
-		return requireNoPostBaselineIDs("terminal", pending.BaselinePTYIDs, terminalInventoryPTYIDs(rows))
+		return requireNoExactTerminalCandidates(record, pending.BaselinePTYIDs, rows)
 	case handoff.OperationTaskCreate:
 		reader, ok := client.(interface {
 			ListTasks(context.Context) ([]port.OrcaTask, error)
@@ -162,7 +169,7 @@ func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, c
 		if err != nil {
 			return err
 		}
-		return requireNoPostBaselineIDs("task", pending.BaselineTaskIDs, taskInventoryIDs(rows))
+		return requireNoExactTaskCandidates(record, pending.BaselineTaskIDs, rows)
 	case handoff.OperationDispatch:
 		reader, ok := client.(interface {
 			ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
@@ -184,52 +191,126 @@ func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, c
 	}
 }
 
-func worktreeInventoryIDs(rows []port.OrcaWorktree) []string {
+func requireNoExactWorktreeCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaWorktree) error {
+	if len(rows) > handoff.MaxBaselineIDs {
+		return fmt.Errorf("worktree inventory exceeds %d entries", handoff.MaxBaselineIDs)
+	}
 	ids := make([]string, len(rows))
 	for i := range rows {
 		ids[i] = rows[i].ID
 	}
-	return ids
+	if err := requireStableInventoryIdentities("worktree", ids); err != nil {
+		return err
+	}
+	before := baselineIdentitySet(baseline)
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil {
+		return fmt.Errorf("worktree recovery identity is unavailable")
+	}
+	marker := issueOpsHandoffMarker(record.ID, h.OwnershipEpoch, h.Attempt)
+	candidates := 0
+	for _, row := range rows {
+		if _, existed := before[strings.TrimSpace(row.ID)]; existed {
+			continue
+		}
+		if strings.TrimSpace(row.RepoID) == "" || strings.TrimSpace(row.BaseRef) == "" || strings.TrimSpace(row.Path) == "" || strings.TrimSpace(row.Comment) == "" {
+			return fmt.Errorf("worktree inventory row is missing classification fields")
+		}
+		if row.RepoID == h.Orca.RepoID && row.BaseRef == h.Orca.BaseRef && filepath.Clean(strings.TrimSpace(row.Path)) == filepath.Clean(h.WorkerRoot) && row.Comment == marker {
+			candidates++
+		}
+	}
+	return requireZeroExactCandidates("worktree", candidates)
 }
 
-func terminalInventoryPTYIDs(rows []port.OrcaTerminal) []string {
+func requireNoExactTerminalCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaTerminal) error {
+	if len(rows) > handoff.MaxBaselineIDs {
+		return fmt.Errorf("terminal inventory exceeds %d entries", handoff.MaxBaselineIDs)
+	}
 	ids := make([]string, len(rows))
 	for i := range rows {
 		ids[i] = rows[i].PTYID
 	}
-	return ids
-}
-
-func taskInventoryIDs(rows []port.OrcaTask) []string {
-	ids := make([]string, 0, len(rows))
-	for i := range rows {
-		if rows[i].Status == "ready" {
-			ids = append(ids, rows[i].ID)
+	if err := requireStableInventoryIdentities("terminal", ids); err != nil {
+		return err
+	}
+	before := baselineIdentitySet(baseline)
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil {
+		return fmt.Errorf("terminal recovery identity is unavailable")
+	}
+	marker := issueOpsHandoffMarker(record.ID, h.OwnershipEpoch, h.Attempt)
+	candidates := 0
+	for _, row := range rows {
+		if _, existed := before[strings.TrimSpace(row.PTYID)]; existed {
+			continue
+		}
+		if strings.TrimSpace(row.WorktreeID) == "" || strings.TrimSpace(row.Title) == "" {
+			return fmt.Errorf("terminal inventory row is missing classification fields")
+		}
+		if row.WorktreeID == h.Orca.WorktreeID && row.Title == marker {
+			candidates++
 		}
 	}
-	return ids
+	return requireZeroExactCandidates("terminal", candidates)
 }
 
-func requireNoPostBaselineIDs(kind string, baseline, observed []string) error {
-	canonical, err := handoff.CanonicalBaselineIDs(kind, observed)
+func requireNoExactTaskCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaTask) error {
+	if len(rows) > handoff.MaxBaselineIDs {
+		return fmt.Errorf("task inventory exceeds %d entries", handoff.MaxBaselineIDs)
+	}
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].ID
+	}
+	if err := requireStableInventoryIdentities("task", ids); err != nil {
+		return err
+	}
+	before := baselineIdentitySet(baseline)
+	if record.ExecutionHandoff == nil {
+		return fmt.Errorf("task recovery identity is unavailable")
+	}
+	title, display, err := issueOpsHandoffTaskIdentity(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
+	if err != nil {
+		return err
+	}
+	candidates := 0
+	for _, row := range rows {
+		if _, existed := before[strings.TrimSpace(row.ID)]; existed {
+			continue
+		}
+		if strings.TrimSpace(row.Title) == "" || strings.TrimSpace(row.DisplayName) == "" || strings.TrimSpace(row.Status) == "" {
+			return fmt.Errorf("task inventory row is missing classification fields")
+		}
+		if row.Title == title && row.DisplayName == display {
+			candidates++
+		}
+	}
+	return requireZeroExactCandidates("task", candidates)
+}
+
+func requireStableInventoryIdentities(kind string, values []string) error {
+	canonical, err := handoff.CanonicalBaselineIDs(kind, values)
 	if err != nil {
 		return fmt.Errorf("%s inventory is not bounded: %w", kind, err)
 	}
-	if len(canonical) != len(observed) {
-		return fmt.Errorf("%s inventory contains missing or duplicate identities", kind)
+	if len(canonical) != len(values) {
+		return fmt.Errorf("%s inventory contains missing or duplicate stable identity", kind)
 	}
-	before := make(map[string]struct{}, len(baseline))
-	for _, id := range baseline {
-		before[id] = struct{}{}
+	return nil
+}
+
+func baselineIdentitySet(values []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		set[strings.TrimSpace(value)] = struct{}{}
 	}
-	delta := 0
-	for _, id := range canonical {
-		if _, ok := before[id]; !ok {
-			delta++
-		}
-	}
-	if delta != 0 {
-		return fmt.Errorf("%s inventory contains %d post-baseline artifact", kind, delta)
+	return set
+}
+
+func requireZeroExactCandidates(kind string, candidates int) error {
+	if candidates != 0 {
+		return fmt.Errorf("%s inventory contains %d exact post-baseline candidate", kind, candidates)
 	}
 	return nil
 }
@@ -251,25 +332,237 @@ func cancelIssueOpsHandoff(stateRoot, id string, force bool, reason, now string)
 			persisted = record
 			return nil
 		}
-		if record.ExecutionHandoff.PendingOperation != nil {
-			return fmt.Errorf("cancel requires the pending operation to be reconciled or explicitly resolved first")
+		if record.ExecutionHandoff.Cancellation != nil {
+			persisted = record
+			return nil
 		}
-		if record.ExecutionHandoff.State == handoff.StateClaimed {
+		if record.ExecutionHandoff.State == handoff.StateClaimed || record.ExecutionHandoff.State == handoff.StateSubmitted {
 			if !force || strings.TrimSpace(reason) == "" {
-				return fmt.Errorf("claimed handoff cancel requires --force with a nonempty --reason")
-			}
-			record.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{
-				Code: "forced_claimed_cancel", Message: strings.TrimSpace(policy.RedactFreeform(strings.TrimSpace(reason))), At: now,
+				return fmt.Errorf("claimed or submitted handoff cancel requires --force with a nonempty --reason")
 			}
 		}
-		record.ExecutionHandoff.State = handoff.StateClosed
-		record.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+		if !handoffHasExternalMutation(record.ExecutionHandoff) {
+			record.ExecutionHandoff.State = handoff.StateClosed
+			record.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+			record.ExecutionHandoff.UpdatedAt = now
+			record.UpdatedAt = now
+			persisted, err = writeIssueOps(stateRoot, record)
+			return err
+		}
+		reason = strings.TrimSpace(policy.RedactFreeform(strings.TrimSpace(reason)))
+		if reason == "" {
+			reason = "coordinator requested cancellation"
+		}
+		record.ExecutionHandoff.State = handoff.StateRecoveryRequired
+		record.ExecutionHandoff.ClosedDisposition = ""
+		record.ExecutionHandoff.Cancellation = &model.IssueOpsExecutionHandoffCancellation{RequestedAt: now, Reason: reason}
+		record.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_requested", Message: reason, At: now}
 		record.ExecutionHandoff.UpdatedAt = now
 		record.UpdatedAt = now
 		persisted, err = writeIssueOps(stateRoot, record)
 		return err
 	})
 	return projectHandoffRecovery(persisted, "cancel", ""), err
+}
+
+func handoffHasExternalMutation(h *model.IssueOpsExecutionHandoff) bool {
+	if h == nil {
+		return false
+	}
+	if h.PendingOperation != nil || h.CleanupOnly != nil || h.WorkerSession != nil || h.Result != nil {
+		return true
+	}
+	if h.Orca == nil {
+		return false
+	}
+	return strings.TrimSpace(h.Orca.WorktreeID) != "" || strings.TrimSpace(h.Orca.WorktreeInstanceID) != "" || strings.TrimSpace(h.Orca.WorktreePath) != "" || strings.TrimSpace(h.Orca.WorkerPTYID) != "" || strings.TrimSpace(h.Orca.WorkerMailboxHandle) != "" || strings.TrimSpace(h.Orca.TaskID) != "" || strings.TrimSpace(h.Orca.DispatchID) != ""
+}
+
+func finalizeCancelledIssueOpsHandoff(ctx context.Context, stateRoot, id string, client any, now string) (IssueOpsHandoffRecoverResult, error) {
+	validated, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	h := validated.ExecutionHandoff
+	if h == nil || h.State != handoff.StateRecoveryRequired || h.Cancellation == nil {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("finalize-cancel requires a cancellation_requested tombstone")
+	}
+	if h.PendingOperation != nil {
+		if err := requireAbsentPendingOperation(ctx, validated, client); err != nil {
+			return IssueOpsHandoffRecoverResult{}, err
+		}
+	}
+	if err := requireCancellationQuiescence(ctx, validated, client, now); err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	var persisted IssueOpsRecord
+	err = withIssueOpsLock(stateRoot, id, func() error {
+		current, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if !reflect.DeepEqual(current, validated) {
+			return fmt.Errorf("cancellation tombstone changed during quiescence verification")
+		}
+		reason := current.ExecutionHandoff.Cancellation.Reason
+		current.ExecutionHandoff.Cancellation = nil
+		current.ExecutionHandoff.PendingOperation = nil
+		current.ExecutionHandoff.State = handoff.StateClosed
+		current.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+		current.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: reason, At: now}
+		current.ExecutionHandoff.UpdatedAt = now
+		current.UpdatedAt = now
+		persisted, readErr = writeIssueOps(stateRoot, current)
+		return readErr
+	})
+	return projectHandoffRecovery(persisted, "finalize-cancel", ""), err
+}
+
+func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, client any, now string) error {
+	h := record.ExecutionHandoff
+	if h == nil {
+		return nil
+	}
+	if h.CleanupOnly != nil {
+		reader, ok := client.(interface {
+			ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error)
+		})
+		if !ok {
+			return fmt.Errorf("cleanup-only worktree absence inventory is unavailable")
+		}
+		rows, err := reader.ListWorktrees(ctx, record.Repo)
+		if err != nil {
+			return err
+		}
+		ids := make([]string, len(rows))
+		for i := range rows {
+			ids[i] = rows[i].ID
+		}
+		if err := requireStableInventoryIdentities("worktree", ids); err != nil {
+			return err
+		}
+		for _, row := range rows {
+			if row.ID == h.CleanupOnly.ID {
+				return fmt.Errorf("cleanup-only worktree still exists")
+			}
+		}
+	}
+	if h.Orca == nil {
+		return nil
+	}
+	identity := h.Orca
+	if strings.TrimSpace(identity.WorkerPTYID) != "" || strings.TrimSpace(identity.WorkerMailboxHandle) != "" {
+		reader, ok := client.(interface {
+			ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
+		})
+		if !ok || strings.TrimSpace(identity.WorktreeID) == "" {
+			return fmt.Errorf("terminal quiescence inventory is unavailable")
+		}
+		rows, err := reader.ListTerminals(ctx, identity.WorktreeID)
+		if err != nil {
+			return err
+		}
+		ids := make([]string, len(rows))
+		for i := range rows {
+			ids[i] = rows[i].PTYID
+		}
+		if err := requireStableInventoryIdentities("terminal", ids); err != nil {
+			return err
+		}
+		for _, row := range rows {
+			ptyMatch := strings.TrimSpace(identity.WorkerPTYID) != "" && row.PTYID == identity.WorkerPTYID
+			handleMatch := strings.TrimSpace(identity.WorkerMailboxHandle) != "" && row.Handle == identity.WorkerMailboxHandle
+			if ptyMatch != handleMatch {
+				return fmt.Errorf("terminal quiescence identity is inconsistent")
+			}
+			if ptyMatch && handleMatch && row.Connected {
+				return fmt.Errorf("exact worker terminal is still connected")
+			}
+		}
+	}
+	taskID := strings.TrimSpace(identity.TaskID)
+	dispatchID := strings.TrimSpace(identity.DispatchID)
+	if taskID == "" && dispatchID != "" {
+		return fmt.Errorf("task and dispatch quiescence identity is incomplete")
+	}
+	if taskID != "" && dispatchID == "" {
+		if h.PendingOperation == nil || h.PendingOperation.Kind != handoff.OperationDispatch {
+			return fmt.Errorf("task and dispatch quiescence identity is incomplete")
+		}
+		if err := requireTaskNotReady(ctx, client, taskID); err != nil {
+			return err
+		}
+	}
+	if taskID != "" && dispatchID != "" {
+		reader, ok := client.(interface {
+			ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
+		})
+		if !ok {
+			return fmt.Errorf("task and dispatch quiescence identity is incomplete")
+		}
+		dispatch, err := reader.ShowDispatch(ctx, taskID)
+		if err != nil {
+			var orcaErr *port.OrcaError
+			if !errors.As(err, &orcaErr) || orcaErr.Code != "not_found" {
+				return err
+			}
+			if err := requireTaskNotReady(ctx, client, taskID); err != nil {
+				return err
+			}
+		} else if dispatch.ID != dispatchID || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(identity.WorkerMailboxHandle) || !terminalDispatchStatus(dispatch.Status) {
+			return fmt.Errorf("exact task and dispatch are not terminal")
+		}
+	}
+	if h.WorkerSession != nil || strings.TrimSpace(h.LastHeartbeatAt) != "" {
+		last := strings.TrimSpace(h.LastHeartbeatAt)
+		if last == "" {
+			last = strings.TrimSpace(h.ClaimedAt)
+		}
+		lastAt, err := time.Parse(time.RFC3339Nano, last)
+		if err != nil {
+			return fmt.Errorf("worker liveness timestamp is unavailable")
+		}
+		nowAt, err := time.Parse(time.RFC3339Nano, now)
+		if err != nil || nowAt.Sub(lastAt) < IssueOpsHandoffCancellationMinimumAge {
+			return fmt.Errorf("worker heartbeat is not stale enough to finalize cancellation")
+		}
+	}
+	return nil
+}
+
+func requireTaskNotReady(ctx context.Context, client any, taskID string) error {
+	reader, ok := client.(interface {
+		ListTasks(context.Context) ([]port.OrcaTask, error)
+	})
+	if !ok {
+		return fmt.Errorf("task readiness inventory is unavailable")
+	}
+	rows, err := reader.ListTasks(ctx)
+	if err != nil {
+		return err
+	}
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].ID
+	}
+	if err := requireStableInventoryIdentities("task", ids); err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if strings.TrimSpace(row.ID) == taskID {
+			return fmt.Errorf("exact worker task is still ready")
+		}
+	}
+	return nil
+}
+
+func terminalDispatchStatus(status string) bool {
+	switch strings.TrimSpace(status) {
+	case "failed", "completed", "cancelled", "canceled":
+		return true
+	default:
+		return false
+	}
 }
 
 func retryIssueOpsHandoff(stateRoot, id string, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffRecoverResult, error) {

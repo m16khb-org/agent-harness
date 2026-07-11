@@ -324,7 +324,7 @@ func TestClientRefreshesTerminalHandleByWorktreeAndPTY(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if terminal.Handle != "term-live" || terminal.PTYID != "pty-2" {
+	if terminal.Handle != "term-live" || terminal.PTYID != "pty-2" || terminal.Title != "agent-harness issueops=io-demo ownership=epoch-1 attempt=1" {
 		t.Fatalf("refreshed terminal = %#v", terminal)
 	}
 }

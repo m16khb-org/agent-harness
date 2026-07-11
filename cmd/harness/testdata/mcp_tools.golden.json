@@ -2255,6 +2255,7 @@
             "reconcile",
             "abandon",
             "cancel",
+            "finalize-cancel",
             "retry"
           ],
           "type": "string"

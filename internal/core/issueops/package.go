@@ -65,6 +65,7 @@ type IssueOpsOrcaIdentity = model.IssueOpsOrcaIdentity
 type IssueOpsExecutionHandoffPendingOperation = model.IssueOpsExecutionHandoffPendingOperation
 type IssueOpsExecutionHandoffResult = model.IssueOpsExecutionHandoffResult
 type IssueOpsExecutionHandoffFailure = model.IssueOpsExecutionHandoffFailure
+type IssueOpsExecutionHandoffCancellation = model.IssueOpsExecutionHandoffCancellation
 type IssueOpsOrcaCleanupArtifact = model.IssueOpsOrcaCleanupArtifact
 type IssueOpsExecutionHandoffPriorAttempt = model.IssueOpsExecutionHandoffPriorAttempt
 type IssueOpsExecutionHandoff = model.IssueOpsExecutionHandoff

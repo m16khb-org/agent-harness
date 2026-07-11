@@ -80,6 +80,7 @@ type OrcaTerminal struct {
 	PTYID        string `json:"pty_id"`
 	WorktreeID   string `json:"worktree_id"`
 	WorktreePath string `json:"worktree_path,omitempty"`
+	Title        string `json:"title,omitempty"`
 	Connected    bool   `json:"connected"`
 	Writable     bool   `json:"writable"`
 }

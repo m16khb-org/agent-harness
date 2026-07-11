@@ -489,6 +489,7 @@ sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고�
 Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error가 mutation 부재를 뜻하지 않는다. 호출 전 IssueOps `pending_operation`을 durable하게 기록하고, 호출 뒤 실패하면 `recovery_required`로 멈춘다. 같은 create를 자동 재시도하거나 inline fallback을 시작하면 중복 worker가 생길 수 있다.
 
 - `issueops handoff recover --action reconcile`은 persisted baseline/marker 대비 정확히 하나의 후보만 받아들인다. 후보가 0개거나 여러 개면 fail closed 상태를 유지한다.
+- force-abandon의 exact-candidate narrowing은 안정 ID가 있고 exact-vs-unrelated 분류 필드가 모두 채워진 post-baseline 비일치 행만 무시한다. ID 누락·중복이나 분류 필드 누락 행은 absence 증거가 아니라 ambiguity이므로 `{}` 같은 행을 unrelated로 취급하지 않는다.
 - Orca 1.4.134의 terminal create 응답에서 `ptyId`는 선택적이다. adapter가 이를 필수로 거부하지 말고, core가 create 전 baseline과 create 후 terminal list를 비교해 exact worktree의 connected/writable PTY delta가 정확히 하나인지 검증한다. create가 PTY ID를 돌려준 경우에는 그 delta와 일치해야 한다.
 - `auto` fallback은 read-only readiness probe가 mutation 전에 실패한 경우에만 허용한다.
 - cycle lock 안에서는 record CAS만 수행하고 외부 Orca CLI를 호출하지 않는다.

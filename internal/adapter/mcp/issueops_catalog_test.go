@@ -252,7 +252,9 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	}
 	properties := byName["issueops_handoff"].InputSchema["properties"].(map[string]any)
 	recoveryActions := properties["recovery_action"].(map[string]any)["enum"].([]string)
-	if !strings.Contains("|"+strings.Join(recoveryActions, "|")+"|", "|abandon|") {
-		t.Fatalf("issueops_handoff recovery_action must expose force abandon: %#v", recoveryActions)
+	for _, action := range []string{"abandon", "finalize-cancel"} {
+		if !strings.Contains("|"+strings.Join(recoveryActions, "|")+"|", "|"+action+"|") {
+			t.Fatalf("issueops_handoff recovery_action must expose %s: %#v", action, recoveryActions)
+		}
 	}
 }

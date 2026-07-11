@@ -227,7 +227,7 @@ go test ./internal/core/issueops -run 'TestHandoffStart' -count=1
 - Extend heartbeat arguments additively. Inline callers can still send only `id`; handoff callers must match the full claimed worker tuple.
 - Completed finish validates bounded HEAD/files/Turing report/command evidence/cleanup receipts, writes IssueOps first, and transitions `claimed -> submitted`. Failed finish closes with `worker_failed`. Identical finish repeats are idempotent; conflicting repeats fail.
 - Accept revalidates HEAD/evidence/context and transitions `submitted -> closed/accepted`.
-- Recover supports `reconcile`, confirmed `cancel`, and confirmed `retry`. Reconcile persists one identity only and returns the next explicit command. Cancel closes before cleanup. Retry increments attempt and changes epoch only after the prior attempt is safely terminal/reconciled.
+- Recover supports `reconcile`, confirmed force-`abandon`, confirmed `cancel`, confirmed `finalize-cancel`, and confirmed `retry`. Reconcile persists one identity only and returns the next explicit command. Abandon ignores only uniquely identifiable and fully classifiable unrelated rows; malformed or duplicate inventory remains ambiguous. Cancel writes a `recovery_required` tombstone for every provisioned attempt, while finalize-cancel closes only after authoritative exact quiescence and stale-liveness checks. Retry increments attempt and changes epoch only after the prior attempt is safely closed and never after force-abandoning an ambiguous operation.
 - Orca handoff resume is read-only; a before/after serialized record and fake trace must be byte-equivalent. Legacy inline `--bind` remains available.
 
 **RED tests:**

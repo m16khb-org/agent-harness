@@ -15,7 +15,7 @@ const issueOpsHandoffUsage = `Usage:
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA [--json]
-  agent-harness issueops handoff recover --id ID --action reconcile|abandon|cancel|retry [--confirm] [--force --reason TEXT] [--json]`
+  agent-harness issueops handoff recover --id ID --action reconcile|abandon|cancel|finalize-cancel|retry [--confirm] [--force --reason TEXT] [--json]`
 
 func runIssueOpsHandoff(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
@@ -132,8 +132,8 @@ func runIssueOpsHandoffAccept(args []string) error {
 func runIssueOpsHandoffRecover(args []string) error {
 	fs := flag.NewFlagSet("issueops handoff recover", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
-	action := fs.String("action", "", "reconcile, abandon, cancel, or retry")
-	confirm := fs.Bool("confirm", false, "confirm abandonment, cancellation, or retry")
+	action := fs.String("action", "", "reconcile, abandon, cancel, finalize-cancel, or retry")
+	confirm := fs.Bool("confirm", false, "confirm abandonment, cancellation finalization, or retry")
 	force := fs.Bool("force", false, "force an authoritative abandon or claimed-worker cancellation")
 	reason := fs.String("reason", "", "bounded durable reason for abandonment or forced cancellation")
 	jsonOut := fs.Bool("json", false, "print JSON")
