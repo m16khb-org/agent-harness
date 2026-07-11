@@ -423,6 +423,37 @@ type IssueOpsOrcaCleanupArtifact struct {
 	Reason     string `json:"reason"`
 }
 
+type IssueOpsExecutionHandoffPriorAttempt struct {
+	ProtocolVersion     int                                     `json:"protocol_version"`
+	State               string                                  `json:"state"`
+	ClosedDisposition   string                                  `json:"closed_disposition"`
+	Attempt             int                                     `json:"attempt"`
+	OwnershipEpoch      string                                  `json:"ownership_epoch"`
+	AttemptBaseHead     string                                  `json:"attempt_base_head"`
+	ContextSHA256       string                                  `json:"context_sha256,omitempty"`
+	ContextSourceSHA256 string                                  `json:"context_source_sha256,omitempty"`
+	ContextVersion      int                                     `json:"context_version,omitempty"`
+	ContextOptions      *IssueOpsExecutionHandoffContextOptions `json:"context_options,omitempty"`
+	Driver              string                                  `json:"driver"`
+	Agent               string                                  `json:"agent"`
+	DeliveryMode        string                                  `json:"delivery_mode,omitempty"`
+	CoordinatorRoot     string                                  `json:"coordinator_root"`
+	WorkerRoot          string                                  `json:"worker_root"`
+	WorkerSession       *IssueOpsHostSessionIdentity            `json:"worker_session,omitempty"`
+	Orca                *IssueOpsOrcaIdentity                   `json:"orca,omitempty"`
+	Result              *IssueOpsExecutionHandoffResult         `json:"result,omitempty"`
+	Failure             *IssueOpsExecutionHandoffFailure        `json:"failure,omitempty"`
+	CleanupOnly         *IssueOpsOrcaCleanupArtifact             `json:"cleanup_only,omitempty"`
+	PreparedAt          string                                  `json:"prepared_at,omitempty"`
+	ProvisionedAt       string                                  `json:"provisioned_at,omitempty"`
+	DispatchedAt        string                                  `json:"dispatched_at,omitempty"`
+	ClaimedAt           string                                  `json:"claimed_at,omitempty"`
+	LastHeartbeatAt     string                                  `json:"last_heartbeat_at,omitempty"`
+	CompletedAt         string                                  `json:"completed_at,omitempty"`
+	AcceptedAt          string                                  `json:"accepted_at,omitempty"`
+	UpdatedAt           string                                  `json:"updated_at,omitempty"`
+}
+
 type IssueOpsExecutionHandoffContextOptions struct {
 	CriteriaIDs               []string `json:"criteria_ids,omitempty"`
 	RequiredDocs              []string `json:"required_docs,omitempty"`
@@ -457,6 +488,7 @@ type IssueOpsExecutionHandoff struct {
 	Result              *IssueOpsExecutionHandoffResult           `json:"result,omitempty"`
 	Failure             *IssueOpsExecutionHandoffFailure          `json:"failure,omitempty"`
 	CleanupOnly         *IssueOpsOrcaCleanupArtifact              `json:"cleanup_only,omitempty"`
+	PriorAttempts       []IssueOpsExecutionHandoffPriorAttempt    `json:"prior_attempts,omitempty"`
 	PreparedAt          string                                    `json:"prepared_at,omitempty"`
 	ProvisionedAt       string                                    `json:"provisioned_at,omitempty"`
 	DispatchedAt        string                                    `json:"dispatched_at,omitempty"`

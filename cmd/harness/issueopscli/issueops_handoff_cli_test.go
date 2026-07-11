@@ -53,6 +53,14 @@ func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T
 	}
 }
 
+func TestIssueOpsHandoffUsageExposesForceAbandon(t *testing.T) {
+	for _, fragment := range []string{"reconcile|abandon|cancel|retry", "--confirm", "--force", "--reason"} {
+		if !strings.Contains(issueOpsHandoffUsage, fragment) {
+			t.Fatalf("handoff recover usage missing %q", fragment)
+		}
+	}
+}
+
 func TestOrcaHandoffResumeBindRefusedReadOnly(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := handoffCLIRecord(t, handoff.StateDispatched)

@@ -250,4 +250,9 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	if !schemaHasProperty(byName["issueops_handoff"].InputSchema, "allow_codex_hook_trust_bypass") {
 		t.Fatalf("issueops_handoff must expose the explicit Codex hook-trust bypass attestation: %#v", byName["issueops_handoff"].InputSchema)
 	}
+	properties := byName["issueops_handoff"].InputSchema["properties"].(map[string]any)
+	recoveryActions := properties["recovery_action"].(map[string]any)["enum"].([]string)
+	if !strings.Contains("|"+strings.Join(recoveryActions, "|")+"|", "|abandon|") {
+		t.Fatalf("issueops_handoff recovery_action must expose force abandon: %#v", recoveryActions)
+	}
 }

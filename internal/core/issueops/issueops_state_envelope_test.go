@@ -3,10 +3,12 @@ package issueops
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core/issueops/handoff"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/sqlstore"
 )
 
@@ -90,6 +92,78 @@ func TestWriteIssueOpsStillAllowsLegacyInlineRecordWithoutHandoff(t *testing.T) 
 	}
 	if got.ExecutionHandoff != nil || !strings.Contains(string(rawIssueOpsBytesForTest(t, stateRoot, record.ID)), "2026-07-11T02:00:00Z") {
 		t.Fatalf("legacy inline record was not stored: %#v", got)
+	}
+}
+
+func TestReadIssueOpsRejectsOversizedPriorAttemptHistory(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	valid, err := handoff.Prepare(record, handoff.PrepareRequest{
+		Attempt: 1, OwnershipEpoch: "epoch-prior-bounds", AttemptBaseHead: record.BranchPrepare.BaseSHA,
+		CoordinatorRoot: record.Repo, WorkerRoot: handoffPrepareWorktreePath(record), Agent: "codex", Now: "2026-07-11T01:00:00Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := WriteIssueOps(stateRoot, valid); err != nil {
+		t.Fatal(err)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(rawIssueOpsBytesForTest(t, stateRoot, record.ID), &raw); err != nil {
+		t.Fatal(err)
+	}
+	h := raw["execution_handoff"].(map[string]any)
+	h["prior_attempts"] = make([]any, 17)
+	encoded, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put(issueOpsBucket, record.ID, encoded); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadIssueOps(stateRoot, record.ID); err == nil {
+		t.Fatal("oversized prior-attempt history must fail closed")
+	}
+}
+
+func TestReadIssueOpsRejectsOversizedPriorAttemptBytes(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	current, err := handoff.Prepare(record, handoff.PrepareRequest{
+		Attempt: 17, OwnershipEpoch: "epoch-current", AttemptBaseHead: record.BranchPrepare.BaseSHA,
+		CoordinatorRoot: record.Repo, WorkerRoot: handoffPrepareWorktreePath(record), Agent: "codex", Now: "2026-07-11T01:00:00Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	large := strings.Repeat("x", 4096)
+	for attempt := 1; attempt <= 16; attempt++ {
+		current.ExecutionHandoff.PriorAttempts = append(current.ExecutionHandoff.PriorAttempts, IssueOpsExecutionHandoffPriorAttempt{
+			ProtocolVersion: handoff.ProtocolVersion,
+			State:           handoff.StateClosed, ClosedDisposition: handoff.DispositionCancelled,
+			Attempt: attempt, OwnershipEpoch: fmt.Sprintf("epoch-%d", attempt), AttemptBaseHead: record.BranchPrepare.BaseSHA,
+			ContextSHA256: strings.Repeat("a", 64), ContextSourceSHA256: strings.Repeat("b", 64), ContextVersion: handoff.ContextVersion,
+			ContextOptions: &model.IssueOpsExecutionHandoffContextOptions{WorkerScope: large, HeartbeatCadence: large, ResultFormat: large},
+			Driver:         "orca", Agent: "codex", CoordinatorRoot: record.Repo, WorkerRoot: handoffPrepareWorktreePath(record),
+			Failure:    &IssueOpsExecutionHandoffFailure{Code: "forced_claimed_cancel", Message: strings.Repeat("c", 8192), At: "2026-07-11T00:30:00Z"},
+			PreparedAt: "2026-07-11T00:00:00Z", UpdatedAt: "2026-07-11T00:30:00Z",
+		})
+	}
+	encoded, err := json.Marshal(current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put(issueOpsBucket, record.ID, encoded); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadIssueOps(stateRoot, record.ID); err == nil || !strings.Contains(err.Error(), "prior attempts exceed 262144 bytes") {
+		t.Fatalf("oversized prior-attempt bytes must fail closed at the aggregate bound, got %v", err)
 	}
 }
 

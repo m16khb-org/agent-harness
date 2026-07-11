@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -186,6 +187,342 @@ func TestHandoffRetryAllowsWorkerFailedDisposition(t *testing.T) {
 	}
 	if got.Attempt != 2 || got.State != handoff.StateCoordinatorPreparing {
 		t.Fatalf("worker_failed retry did not create a new fenced attempt: %#v", got)
+	}
+}
+
+func TestHandoffRetryPreservesBoundedPriorAttemptAudit(t *testing.T) {
+	t.Run("worker failed result and cleanup", func(t *testing.T) {
+		stateRoot, record, _ := dispatchedHandoffRecord(t)
+		record.ExecutionHandoff.State = handoff.StateClosed
+		record.ExecutionHandoff.ClosedDisposition = handoff.DispositionWorkerFailed
+		record.ExecutionHandoff.WorkerSession = &IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-old", AgentID: "agent-old"}
+		record.ExecutionHandoff.Orca.TerminalBaselinePTYIDs = []string{"pty-baseline"}
+		record.ExecutionHandoff.Orca.WorkerPTYID = "pty-old"
+		record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-old"
+		record.ExecutionHandoff.Orca.TaskID = "task-old"
+		record.ExecutionHandoff.Orca.DispatchID = "dispatch-old"
+		record.ExecutionHandoff.Result = validFailedHandoffResultForTest(record)
+		record.ExecutionHandoff.Result.CleanupReceipts = []string{"old worker resources stopped"}
+		if _, err := WriteIssueOps(stateRoot, record); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+			ID: record.ID, Action: "retry", Confirm: true,
+		}, nil, IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-new", nil }}); err != nil {
+			t.Fatal(err)
+		}
+		assertPriorAttemptJSON(t, stateRoot, record.ID, handoff.DispositionWorkerFailed, record.ExecutionHandoff.Orca, "pty-old", "term-old", "task-old", "dispatch-old", "old worker resources stopped", "")
+	})
+
+	t.Run("forced cancel failure", func(t *testing.T) {
+		stateRoot, record, _ := dispatchedHandoffRecord(t)
+		if _, err := ClaimIssueOpsHandoff(stateRoot, handoffClaimRequest(record)); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+			ID: record.ID, Action: "cancel", Confirm: true, Force: true, Reason: "worker lease proved stale",
+		}, nil, handoffPrepareTestClock()); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+			ID: record.ID, Action: "retry", Confirm: true,
+		}, nil, IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-new", nil }}); err != nil {
+			t.Fatal(err)
+		}
+		assertPriorAttemptJSON(t, stateRoot, record.ID, handoff.DispositionCancelled, record.ExecutionHandoff.Orca, "pty-1", "term-1", "task-1", "dispatch-1", "", "forced_claimed_cancel")
+	})
+}
+
+func assertPriorAttemptJSON(t *testing.T, stateRoot, id, disposition string, oldOrca *IssueOpsOrcaIdentity, pty, mailbox, task, dispatch, cleanup, failure string) {
+	t.Helper()
+	var raw struct {
+		ExecutionHandoff struct {
+			Attempt       int `json:"attempt"`
+			PriorAttempts []struct {
+				Attempt           int    `json:"attempt"`
+				ClosedDisposition string `json:"closed_disposition"`
+				Orca              struct {
+					WorktreeID          string `json:"worktree_id"`
+					WorktreeInstanceID  string `json:"worktree_instance_id"`
+					WorktreePath        string `json:"worktree_path"`
+					WorkerPTYID         string `json:"worker_pty_id"`
+					WorkerMailboxHandle string `json:"worker_mailbox_handle"`
+					TaskID              string `json:"task_id"`
+					DispatchID          string `json:"dispatch_id"`
+				} `json:"orca"`
+				Result *struct {
+					CleanupReceipts []string `json:"cleanup_receipts"`
+				} `json:"result"`
+				Failure *struct {
+					Code string `json:"code"`
+				} `json:"failure"`
+			} `json:"prior_attempts"`
+		} `json:"execution_handoff"`
+	}
+	if err := json.Unmarshal(rawIssueOpsBytesForTest(t, stateRoot, id), &raw); err != nil {
+		t.Fatal(err)
+	}
+	if raw.ExecutionHandoff.Attempt != 2 || len(raw.ExecutionHandoff.PriorAttempts) != 1 {
+		t.Fatalf("retry must retain one bounded prior attempt: %#v", raw.ExecutionHandoff)
+	}
+	prior := raw.ExecutionHandoff.PriorAttempts[0]
+	if prior.Attempt != 1 || prior.ClosedDisposition != disposition || prior.Orca.WorktreeID != oldOrca.WorktreeID || prior.Orca.WorktreeInstanceID != oldOrca.WorktreeInstanceID || prior.Orca.WorktreePath != oldOrca.WorktreePath || prior.Orca.WorkerPTYID != pty || prior.Orca.WorkerMailboxHandle != mailbox || prior.Orca.TaskID != task || prior.Orca.DispatchID != dispatch {
+		t.Fatalf("prior attempt lost external identity: %#v", prior)
+	}
+	if cleanup != "" && (prior.Result == nil || len(prior.Result.CleanupReceipts) != 1 || prior.Result.CleanupReceipts[0] != cleanup) {
+		t.Fatalf("prior attempt lost cleanup evidence: %#v", prior.Result)
+	}
+	if failure != "" && (prior.Failure == nil || prior.Failure.Code != failure) {
+		t.Fatalf("prior attempt lost failure evidence: %#v", prior.Failure)
+	}
+}
+
+func TestHandoffForceAbandonRequiresConfirmedCompleteAbsentInventoryAndNeverRetries(t *testing.T) {
+	tests := []struct {
+		name    string
+		pending IssueOpsExecutionHandoffPendingOperation
+		prepare func(IssueOpsRecord, *dispatchOrcaFake)
+	}{
+		{
+			name: "worktree create",
+			pending: IssueOpsExecutionHandoffPendingOperation{
+				Kind: handoff.OperationWorktreeCreate, StartedAt: "2026-07-11T00:50:00Z", BaselineWorktreeIDs: []string{"wt-old"},
+			},
+			prepare: func(_ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.worktrees = []port.OrcaWorktree{{ID: "wt-old"}}
+			},
+		},
+		{
+			name: "terminal create",
+			pending: IssueOpsExecutionHandoffPendingOperation{
+				Kind: handoff.OperationTerminalCreate, StartedAt: "2026-07-11T00:50:00Z", BaselinePTYIDs: []string{"pty-old"},
+			},
+			prepare: func(_ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.terminals = []port.OrcaTerminal{{PTYID: "pty-old"}}
+			},
+		},
+		{
+			name: "task create",
+			pending: IssueOpsExecutionHandoffPendingOperation{
+				Kind: handoff.OperationTaskCreate, StartedAt: "2026-07-11T00:50:00Z", BaselineTaskIDs: []string{"task-old"},
+			},
+			prepare: func(_ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.tasks = []port.OrcaTask{{ID: "task-old"}}
+			},
+		},
+		{
+			name: "dispatch",
+			pending: IssueOpsExecutionHandoffPendingOperation{
+				Kind: handoff.OperationDispatch, StartedAt: "2026-07-11T00:50:00Z",
+			},
+			prepare: func(record IssueOpsRecord, client *dispatchOrcaFake) {
+				record.ExecutionHandoff.Orca.TaskID = "task-1"
+				client.dispatchShowErr = &port.OrcaError{Code: "not_found", Invoked: true}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			if tt.pending.Kind == handoff.OperationDispatch {
+				record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
+				record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-1"
+				record.ExecutionHandoff.Orca.TaskID = "task-1"
+			}
+			setRecoveryRequiredForTest(&record, tt.pending)
+			if _, err := WriteIssueOps(stateRoot, record); err != nil {
+				t.Fatal(err)
+			}
+			client := handoffDispatchFake(record)
+			tt.prepare(record, client)
+			got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+				ID: record.ID, Action: "abandon", Confirm: true, Force: true, Reason: "complete inventory proves the invoked operation created no artifact",
+			}, client, handoffPrepareTestClock())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.State != handoff.StateClosed || got.Disposition != handoff.DispositionCancelled || got.RecoveryCode != "force_abandoned_absent_operation" {
+				t.Fatalf("force abandon did not close the absent operation: %#v", got)
+			}
+			before := append([]string(nil), client.trace...)
+			if started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err != nil || started.State != handoff.StateClosed {
+				t.Fatalf("abandoned attempt start must be an inert terminal projection: %#v err=%v", started, err)
+			}
+			if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+				ID: record.ID, Action: "retry", Confirm: true,
+			}, client, IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "must-not-be-used", nil }}); err == nil {
+				t.Fatal("force-abandoned ambiguous operation must require a fresh cycle")
+			}
+			if strings.Join(client.trace, "\n") != strings.Join(before, "\n") || client.terminalCreates != 0 || client.dispatchCalls != 0 {
+				t.Fatalf("abandoned operation was retried: trace before=%v after=%v creates=%d dispatch=%d", before, client.trace, client.terminalCreates, client.dispatchCalls)
+			}
+		})
+	}
+}
+
+func TestHandoffForceAbandonRejectsMissingAuthorityAndYoungJournal(t *testing.T) {
+	tests := []struct {
+		name    string
+		request IssueOpsHandoffRecoverRequest
+		started string
+		want    string
+	}{
+		{name: "confirmation", request: IssueOpsHandoffRecoverRequest{Action: "abandon", Force: true, Reason: "complete inventory proves absence"}, started: "2026-07-11T00:50:00Z", want: "abandon requires --confirm"},
+		{name: "force", request: IssueOpsHandoffRecoverRequest{Action: "abandon", Confirm: true, Reason: "complete inventory proves absence"}, started: "2026-07-11T00:50:00Z", want: "abandon requires --force"},
+		{name: "reason", request: IssueOpsHandoffRecoverRequest{Action: "abandon", Confirm: true, Force: true}, started: "2026-07-11T00:50:00Z", want: "abandon requires a nonempty --reason"},
+		{name: "reason bound", request: IssueOpsHandoffRecoverRequest{Action: "abandon", Confirm: true, Force: true, Reason: strings.Repeat("x", 4097)}, started: "2026-07-11T00:50:00Z", want: "abandon reason exceeds 4096 bytes"},
+		{name: "minimum age", request: IssueOpsHandoffRecoverRequest{Action: "abandon", Confirm: true, Force: true, Reason: "complete inventory proves absence"}, started: "2026-07-11T00:57:04Z", want: "pending operation must be at least 5m0s old"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{
+				Kind: handoff.OperationWorktreeCreate, StartedAt: tt.started, BaselineWorktreeIDs: []string{"wt-old"},
+			})
+			if _, err := WriteIssueOps(stateRoot, record); err != nil {
+				t.Fatal(err)
+			}
+			before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+			client := handoffDispatchFake(record)
+			client.worktrees = []port.OrcaWorktree{{ID: "wt-old"}}
+			tt.request.ID = record.ID
+			if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, tt.request, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("force abandon error = %v, want %q", err, tt.want)
+			}
+			after := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+			if string(after) != string(before) || len(client.trace) != 0 {
+				t.Fatalf("rejected force abandon changed state or inspected Orca: trace=%v", client.trace)
+			}
+		})
+	}
+}
+
+func TestHandoffForceAbandonRequiresAuthoritativeAbsenceAndExactFence(t *testing.T) {
+	tests := []struct {
+		name    string
+		pending IssueOpsExecutionHandoffPendingOperation
+		prepare func(string, IssueOpsRecord, *dispatchOrcaFake)
+		want    string
+	}{
+		{
+			name: "worktree delta", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationWorktreeCreate, BaselineWorktreeIDs: []string{"wt-old"}},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.worktrees = []port.OrcaWorktree{{ID: "wt-old"}, {ID: "wt-new"}}
+			},
+			want: "worktree inventory contains 1 post-baseline artifact",
+		},
+		{
+			name: "worktree truncated inventory", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationWorktreeCreate, BaselineWorktreeIDs: []string{"wt-old"}},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.worktreeListErr = fmt.Errorf("Orca worktree list is incomplete")
+			},
+			want: "Orca worktree list is incomplete",
+		},
+		{
+			name: "worktree unidentified row", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationWorktreeCreate, BaselineWorktreeIDs: []string{"wt-old"}},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.worktrees = []port.OrcaWorktree{{ID: "wt-old"}, {}}
+			},
+			want: "worktree inventory contains missing or duplicate identities",
+		},
+		{
+			name: "terminal delta", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationTerminalCreate, BaselinePTYIDs: []string{"pty-old"}},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.terminals = []port.OrcaTerminal{{PTYID: "pty-old"}, {PTYID: "pty-new"}}
+			},
+			want: "terminal inventory contains 1 post-baseline artifact",
+		},
+		{
+			name: "terminal truncated inventory", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationTerminalCreate, BaselinePTYIDs: []string{"pty-old"}},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.terminalListErr = fmt.Errorf("Orca terminal list is incomplete")
+			},
+			want: "Orca terminal list is incomplete",
+		},
+		{
+			name: "terminal unidentified row", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationTerminalCreate, BaselinePTYIDs: []string{"pty-old"}},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.terminals = []port.OrcaTerminal{{PTYID: "pty-old"}, {}}
+			},
+			want: "terminal inventory contains missing or duplicate identities",
+		},
+		{
+			name: "task delta", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationTaskCreate, BaselineTaskIDs: []string{"task-old"}},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.tasks = []port.OrcaTask{{ID: "task-old"}, {ID: "task-new"}}
+			},
+			want: "task inventory contains 1 post-baseline artifact",
+		},
+		{
+			name: "task truncated inventory", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationTaskCreate, BaselineTaskIDs: []string{"task-old"}},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.taskListErr = fmt.Errorf("Orca task list is incomplete")
+			},
+			want: "Orca task list is incomplete",
+		},
+		{
+			name: "task unidentified row", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationTaskCreate, BaselineTaskIDs: []string{"task-old"}},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.tasks = []port.OrcaTask{{ID: "task-old"}, {}}
+			},
+			want: "task inventory contains missing or duplicate identities",
+		},
+		{
+			name: "dispatch exists", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) { client.dispatchShowErr = nil },
+			want:    "dispatch still exists",
+		},
+		{
+			name: "dispatch unknown error", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch},
+			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
+				client.dispatchShowErr = fmt.Errorf("transport unavailable")
+			},
+			want: "inspect dispatch absence",
+		},
+		{
+			name: "record changed during inventory", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationWorktreeCreate, BaselineWorktreeIDs: []string{"wt-old"}},
+			prepare: func(stateRoot string, record IssueOpsRecord, client *dispatchOrcaFake) {
+				client.worktrees = []port.OrcaWorktree{{ID: "wt-old"}}
+				client.beforeWorktreeList = func() {
+					current, err := ReadIssueOps(stateRoot, record.ID)
+					if err != nil {
+						t.Fatal(err)
+					}
+					current.UpdatedAt = "2026-07-11T01:01:00Z"
+					if _, err := WriteIssueOps(stateRoot, current); err != nil {
+						t.Fatal(err)
+					}
+				}
+			},
+			want: "handoff changed during force-abandon inventory",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			tt.pending.StartedAt = "2026-07-11T00:50:00Z"
+			if tt.pending.Kind == handoff.OperationDispatch {
+				record.ExecutionHandoff.Orca.TaskID = "task-1"
+			}
+			setRecoveryRequiredForTest(&record, tt.pending)
+			if _, err := WriteIssueOps(stateRoot, record); err != nil {
+				t.Fatal(err)
+			}
+			client := handoffDispatchFake(record)
+			tt.prepare(stateRoot, record, client)
+			if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+				ID: record.ID, Action: "abandon", Confirm: true, Force: true, Reason: "inventory cannot authoritatively prove absence",
+			}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("force abandon error = %v, want %q", err, tt.want)
+			}
+			persisted, err := ReadIssueOps(stateRoot, record.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.PendingOperation == nil {
+				t.Fatalf("rejected force abandon changed the journal: %#v", persisted.ExecutionHandoff)
+			}
+		})
 	}
 }
 

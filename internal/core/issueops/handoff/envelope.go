@@ -1,6 +1,7 @@
 package handoff
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +16,11 @@ import (
 
 var fullCommitPattern = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+const (
+	MaxPriorAttempts      = 16
+	MaxPriorAttemptsBytes = 256 * 1024
+)
 
 // ValidateEnvelope rejects corrupted or future supervised-handoff state. An
 // absent execution_handoff is the only legacy/inline representation.
@@ -70,6 +76,9 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 	}
 	if h.Orca != nil && !canonicalOrcaIdentity(h.Orca) {
 		return fmt.Errorf("execution handoff Orca identity is not canonical")
+	}
+	if err := validatePriorAttempts(record, h); err != nil {
+		return err
 	}
 
 	knownDisposition := h.ClosedDisposition == DispositionAccepted || h.ClosedDisposition == DispositionWorkerFailed || h.ClosedDisposition == DispositionCancelled
@@ -168,6 +177,60 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 		return fmt.Errorf("execution handoff timestamps must be canonical RFC3339 values")
 	}
 	return nil
+}
+
+func validatePriorAttempts(record model.IssueOpsRecord, current *model.IssueOpsExecutionHandoff) error {
+	if len(current.PriorAttempts) > MaxPriorAttempts {
+		return fmt.Errorf("execution handoff prior attempts exceed %d entries", MaxPriorAttempts)
+	}
+	encodedHistory, err := json.Marshal(current.PriorAttempts)
+	if err != nil {
+		return fmt.Errorf("encode execution handoff prior attempts: %w", err)
+	}
+	if len(encodedHistory) > MaxPriorAttemptsBytes {
+		return fmt.Errorf("execution handoff prior attempts exceed %d bytes", MaxPriorAttemptsBytes)
+	}
+	previousAttempt := 0
+	for _, prior := range current.PriorAttempts {
+		if prior.Attempt <= previousAttempt || prior.Attempt >= current.Attempt {
+			return fmt.Errorf("execution handoff prior attempts are not strictly ordered before the current attempt")
+		}
+		if prior.State != StateClosed || prior.ClosedDisposition != DispositionWorkerFailed && prior.ClosedDisposition != DispositionCancelled {
+			return fmt.Errorf("execution handoff prior attempt is not a retryable terminal attempt")
+		}
+		encoded, err := json.Marshal(prior)
+		if err != nil {
+			return fmt.Errorf("encode execution handoff prior attempt: %w", err)
+		}
+		var attempt model.IssueOpsExecutionHandoff
+		if err := json.Unmarshal(encoded, &attempt); err != nil {
+			return fmt.Errorf("decode execution handoff prior attempt: %w", err)
+		}
+		priorRecord := record
+		priorRecord.ExecutionHandoff = &attempt
+		if err := ValidateEnvelope(priorRecord); err != nil {
+			return fmt.Errorf("invalid execution handoff prior attempt: %w", err)
+		}
+		previousAttempt = prior.Attempt
+	}
+	return nil
+}
+
+// SnapshotPriorAttempt copies one terminal attempt into the deliberately
+// nonrecursive audit DTO. PriorAttempts is absent from the destination type.
+func SnapshotPriorAttempt(current *model.IssueOpsExecutionHandoff) (model.IssueOpsExecutionHandoffPriorAttempt, error) {
+	if current == nil {
+		return model.IssueOpsExecutionHandoffPriorAttempt{}, fmt.Errorf("execution handoff is required")
+	}
+	encoded, err := json.Marshal(current)
+	if err != nil {
+		return model.IssueOpsExecutionHandoffPriorAttempt{}, fmt.Errorf("encode execution handoff prior attempt: %w", err)
+	}
+	var snapshot model.IssueOpsExecutionHandoffPriorAttempt
+	if err := json.Unmarshal(encoded, &snapshot); err != nil {
+		return model.IssueOpsExecutionHandoffPriorAttempt{}, fmt.Errorf("decode execution handoff prior attempt: %w", err)
+	}
+	return snapshot, nil
 }
 
 func contextOptionsEqual(left, right model.IssueOpsExecutionHandoffContextOptions) bool {

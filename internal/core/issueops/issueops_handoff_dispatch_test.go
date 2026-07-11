@@ -452,6 +452,7 @@ func TestHandoffStartDispatchRecoveryRequiresPersistedTask(t *testing.T) {
 }
 
 type dispatchOrcaFake struct {
+	worktrees            []port.OrcaWorktree
 	terminals            []port.OrcaTerminal
 	terminalsAfterCreate []port.OrcaTerminal
 	tasks                []port.OrcaTask
@@ -462,6 +463,11 @@ type dispatchOrcaFake struct {
 	terminalErr          error
 	taskErr              error
 	dispatchErr          error
+	dispatchShowErr      error
+	worktreeListErr      error
+	terminalListErr      error
+	taskListErr          error
+	beforeWorktreeList   func()
 	beforeTerminalCreate func()
 	terminalCreates      int
 	terminalListCalls    int
@@ -471,6 +477,14 @@ type dispatchOrcaFake struct {
 	dispatchRequests     []port.OrcaDispatchRequest
 	terminalRequests     []port.OrcaCreateTerminalRequest
 	trace                []string
+}
+
+func (f *dispatchOrcaFake) ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error) {
+	f.trace = append(f.trace, "worktree-list")
+	if f.beforeWorktreeList != nil {
+		f.beforeWorktreeList()
+	}
+	return append([]port.OrcaWorktree(nil), f.worktrees...), f.worktreeListErr
 }
 
 func handoffDispatchFake(records ...IssueOpsRecord) *dispatchOrcaFake {
@@ -514,7 +528,7 @@ func mustHandoffTaskDisplay(t *testing.T, record IssueOpsRecord) string {
 func (f *dispatchOrcaFake) ListTerminals(context.Context, string) ([]port.OrcaTerminal, error) {
 	f.trace = append(f.trace, "terminal-list")
 	f.terminalListCalls++
-	return append([]port.OrcaTerminal(nil), f.terminals...), nil
+	return append([]port.OrcaTerminal(nil), f.terminals...), f.terminalListErr
 }
 
 func (f *dispatchOrcaFake) CreateTerminal(_ context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
@@ -541,7 +555,7 @@ func (f *dispatchOrcaFake) RefreshTerminal(context.Context, string, string) (por
 
 func (f *dispatchOrcaFake) ListTasks(context.Context) ([]port.OrcaTask, error) {
 	f.trace = append(f.trace, "task-list")
-	return append([]port.OrcaTask(nil), f.tasks...), nil
+	return append([]port.OrcaTask(nil), f.tasks...), f.taskListErr
 }
 
 func (f *dispatchOrcaFake) CreateTask(_ context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
@@ -566,7 +580,7 @@ func (f *dispatchOrcaFake) Dispatch(_ context.Context, req port.OrcaDispatchRequ
 
 func (f *dispatchOrcaFake) ShowDispatch(context.Context, string) (port.OrcaDispatch, error) {
 	f.trace = append(f.trace, "dispatch-show")
-	return f.dispatch, nil
+	return f.dispatch, f.dispatchShowErr
 }
 
 func (f *dispatchOrcaFake) SendTerminal(context.Context, string, string) error {

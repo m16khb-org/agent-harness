@@ -2,9 +2,11 @@ package issueops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/model"
@@ -12,6 +14,12 @@ import (
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
+)
+
+const (
+	IssueOpsHandoffForceAbandonMinimumAge  = 5 * time.Minute
+	IssueOpsHandoffForceAbandonReasonBytes = 4096
+	forceAbandonedOperationCode            = "force_abandoned_absent_operation"
 )
 
 type IssueOpsHandoffRecoverRequest struct {
@@ -44,14 +52,184 @@ func RecoverIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsH
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("cancel requires --confirm")
 		}
 		return cancelIssueOpsHandoff(stateRoot, req.ID, req.Force, req.Reason, issueOpsHandoffNow(clock))
+	case "abandon":
+		if !req.Confirm {
+			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("abandon requires --confirm")
+		}
+		if !req.Force {
+			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("abandon requires --force")
+		}
+		return forceAbandonIssueOpsHandoff(ctx, stateRoot, req.ID, req.Reason, client, issueOpsHandoffNow(clock))
 	case "retry":
 		if !req.Confirm {
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry requires --confirm")
 		}
 		return retryIssueOpsHandoff(stateRoot, req.ID, clock)
 	default:
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("recovery action must be reconcile, cancel, or retry")
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("recovery action must be reconcile, abandon, cancel, or retry")
 	}
+}
+
+func forceAbandonIssueOpsHandoff(ctx context.Context, stateRoot, id, reason string, client any, now string) (IssueOpsHandoffRecoverResult, error) {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("abandon requires a nonempty --reason")
+	}
+	if len(reason) > IssueOpsHandoffForceAbandonReasonBytes {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("abandon reason exceeds %d bytes", IssueOpsHandoffForceAbandonReasonBytes)
+	}
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	if record.ExecutionHandoff == nil || record.ExecutionHandoff.State != handoff.StateRecoveryRequired || record.ExecutionHandoff.PendingOperation == nil {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("abandon requires recovery_required with a pending operation")
+	}
+	startedAt, err := time.Parse(time.RFC3339Nano, record.ExecutionHandoff.PendingOperation.StartedAt)
+	if err != nil {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("parse pending operation age: %w", err)
+	}
+	nowAt, err := time.Parse(time.RFC3339Nano, now)
+	if err != nil {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("parse abandon time: %w", err)
+	}
+	if nowAt.Sub(startedAt) < IssueOpsHandoffForceAbandonMinimumAge {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("pending operation must be at least %s old", IssueOpsHandoffForceAbandonMinimumAge)
+	}
+	validated := cloneHandoffReconcileSnapshot(record)
+	if err := requireAbsentPendingOperation(ctx, record, client); err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+
+	var persisted IssueOpsRecord
+	err = withIssueOpsLock(stateRoot, id, func() error {
+		current, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if !reflect.DeepEqual(current, validated) {
+			return fmt.Errorf("handoff changed during force-abandon inventory")
+		}
+		current.ExecutionHandoff.PendingOperation = nil
+		current.ExecutionHandoff.State = handoff.StateClosed
+		current.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+		current.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{
+			Code: forceAbandonedOperationCode, Message: strings.TrimSpace(policy.RedactFreeform(reason)), At: now,
+		}
+		current.ExecutionHandoff.UpdatedAt = now
+		current.UpdatedAt = now
+		persisted, readErr = writeIssueOps(stateRoot, current)
+		return readErr
+	})
+	return projectHandoffRecovery(persisted, "abandon", ""), err
+}
+
+func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, client any) error {
+	pending := record.ExecutionHandoff.PendingOperation
+	switch pending.Kind {
+	case handoff.OperationWorktreeCreate:
+		reader, ok := client.(interface {
+			ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error)
+		})
+		if !ok {
+			return fmt.Errorf("Orca worktree inventory dependency is unavailable")
+		}
+		rows, err := reader.ListWorktrees(ctx, record.Repo)
+		if err != nil {
+			return err
+		}
+		return requireNoPostBaselineIDs("worktree", pending.BaselineWorktreeIDs, worktreeInventoryIDs(rows))
+	case handoff.OperationTerminalCreate:
+		reader, ok := client.(interface {
+			ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
+		})
+		if !ok || record.ExecutionHandoff.Orca == nil || strings.TrimSpace(record.ExecutionHandoff.Orca.WorktreeID) == "" {
+			return fmt.Errorf("Orca terminal inventory dependency and worktree id are required")
+		}
+		rows, err := reader.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
+		if err != nil {
+			return err
+		}
+		return requireNoPostBaselineIDs("terminal", pending.BaselinePTYIDs, terminalInventoryPTYIDs(rows))
+	case handoff.OperationTaskCreate:
+		reader, ok := client.(interface {
+			ListTasks(context.Context) ([]port.OrcaTask, error)
+		})
+		if !ok {
+			return fmt.Errorf("Orca task inventory dependency is unavailable")
+		}
+		rows, err := reader.ListTasks(ctx)
+		if err != nil {
+			return err
+		}
+		return requireNoPostBaselineIDs("task", pending.BaselineTaskIDs, taskInventoryIDs(rows))
+	case handoff.OperationDispatch:
+		reader, ok := client.(interface {
+			ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
+		})
+		if !ok || record.ExecutionHandoff.Orca == nil || strings.TrimSpace(record.ExecutionHandoff.Orca.TaskID) == "" {
+			return fmt.Errorf("Orca dispatch inventory dependency and task id are required")
+		}
+		_, err := reader.ShowDispatch(ctx, record.ExecutionHandoff.Orca.TaskID)
+		if err == nil {
+			return fmt.Errorf("dispatch still exists")
+		}
+		var orcaErr *port.OrcaError
+		if !errors.As(err, &orcaErr) || strings.TrimSpace(orcaErr.Code) != "not_found" {
+			return fmt.Errorf("inspect dispatch absence: %w", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported pending operation %q", pending.Kind)
+	}
+}
+
+func worktreeInventoryIDs(rows []port.OrcaWorktree) []string {
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].ID
+	}
+	return ids
+}
+
+func terminalInventoryPTYIDs(rows []port.OrcaTerminal) []string {
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].PTYID
+	}
+	return ids
+}
+
+func taskInventoryIDs(rows []port.OrcaTask) []string {
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].ID
+	}
+	return ids
+}
+
+func requireNoPostBaselineIDs(kind string, baseline, observed []string) error {
+	canonical, err := handoff.CanonicalBaselineIDs(kind, observed)
+	if err != nil {
+		return fmt.Errorf("%s inventory is not bounded: %w", kind, err)
+	}
+	if len(canonical) != len(observed) {
+		return fmt.Errorf("%s inventory contains missing or duplicate identities", kind)
+	}
+	before := make(map[string]struct{}, len(baseline))
+	for _, id := range baseline {
+		before[id] = struct{}{}
+	}
+	delta := 0
+	for _, id := range canonical {
+		if _, ok := before[id]; !ok {
+			delta++
+		}
+	}
+	if delta != 0 {
+		return fmt.Errorf("%s inventory contains %d post-baseline artifact", kind, delta)
+	}
+	return nil
 }
 
 func cancelIssueOpsHandoff(stateRoot, id string, force bool, reason, now string) (IssueOpsHandoffRecoverResult, error) {
@@ -110,6 +288,9 @@ func retryIssueOpsHandoff(stateRoot, id string, clock IssueOpsHandoffPrepareCloc
 	if old.CleanupOnly != nil {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry is forbidden for a cleanup-only invalid Orca artifact; remove exact worktree id:%s and start a fresh IssueOps cycle", old.CleanupOnly.ID)
 	}
+	if old.Failure != nil && old.Failure.Code == forceAbandonedOperationCode {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry is forbidden after a force-abandoned ambiguous operation; start a fresh IssueOps cycle")
+	}
 	attemptBaseHead, err := retryIssueOpsHandoffCheckpoint(validated)
 	if err != nil {
 		return IssueOpsHandoffRecoverResult{}, err
@@ -129,6 +310,12 @@ func retryIssueOpsHandoff(stateRoot, id string, clock IssueOpsHandoffPrepareCloc
 			return fmt.Errorf("handoff changed after retry checkpoint validation")
 		}
 		old := record.ExecutionHandoff
+		priorAttempt, snapshotErr := handoff.SnapshotPriorAttempt(old)
+		if snapshotErr != nil {
+			return snapshotErr
+		}
+		priorAttempts := append([]model.IssueOpsExecutionHandoffPriorAttempt(nil), old.PriorAttempts...)
+		priorAttempts = append(priorAttempts, priorAttempt)
 		var worktreeIdentity *model.IssueOpsOrcaIdentity
 		if old.Orca != nil && old.Orca.WorktreeID != "" {
 			worktreeIdentity = &model.IssueOpsOrcaIdentity{
@@ -152,7 +339,8 @@ func retryIssueOpsHandoff(stateRoot, id string, clock IssueOpsHandoffPrepareCloc
 			Attempt: old.Attempt + 1, OwnershipEpoch: epoch, Driver: "orca", Agent: old.Agent,
 			AttemptBaseHead: attemptBaseHead,
 			CoordinatorRoot: old.CoordinatorRoot, WorkerRoot: old.WorkerRoot, Orca: worktreeIdentity, ContextOptions: contextOptions,
-			PreparedAt: now, ProvisionedAt: now, UpdatedAt: now,
+			PriorAttempts: priorAttempts,
+			PreparedAt:    now, ProvisionedAt: now, UpdatedAt: now,
 		}
 		record.UpdatedAt = now
 		persisted, readErr = writeIssueOps(stateRoot, record)

@@ -2253,6 +2253,7 @@
         "recovery_action": {
           "enum": [
             "reconcile",
+            "abandon",
             "cancel",
             "retry"
           ],
