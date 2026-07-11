@@ -1,7 +1,7 @@
 # Orca-Aware IssueOps Supervised Handoff Design
 
-**Date:** 2026-07-11  
-**Status:** Design approved for specification; implementation pending review  
+**Date:** 2026-07-11
+**Status:** Design approved for specification; implementation pending review
 **Scope:** Optional Orca-backed IssueOps execution handoff with legacy inline compatibility
 
 ## 1. Problem

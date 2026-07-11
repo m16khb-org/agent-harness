@@ -2,9 +2,9 @@
 
 > **For the fresh worktree worker:** REQUIRED SUB-SKILLS: use `superpowers:test-driven-development` for every behavior change and `superpowers:verification-before-completion` before any completion claim. Execute this plan in the linked worktree only. Do not ask the coordinator to edit implementation files.
 
-**Issue:** [#16](https://github.com/m16khb/agent-harness/issues/16)  
-**IssueOps cycle:** `io-47c93d1ef742`  
-**Branch:** `16-orca-supervised-handoff`  
+**Issue:** [#16](https://github.com/m16khb/agent-harness/issues/16)
+**IssueOps cycle:** `io-47c93d1ef742`
+**Branch:** `16-orca-supervised-handoff`
 **Worktree:** `/Users/m16khb/Workspace/agent-harness.worktrees/agent-harness/16-orca-supervised-handoff`
 
 **Goal:** When the complete read-only Orca probe succeeds, let the coordinator prepare the issue, provider-linked branch, worktree, plan, and bounded context, then transfer one fenced implementation lease to a fresh Orca-hosted agent session. If Orca is absent or unready before mutation, preserve the existing inline IssueOps behavior and JSON contract.
@@ -433,18 +433,20 @@ python3 scripts/validate-skill.py skills/turing
 gofmt -w <changed-go-files>
 git diff --check
 go mod tidy
+go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/core/skillcontract ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/issueopscli ./cmd/harness/harnessapp -count=1
 go test ./... -count=1
 go test -race ./... -count=1
 go test ./cmd/harness -run Golden -count=1
 go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
 go build -o bin/agent-harness ./cmd/harness
 ./scripts/install-native.sh
+bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"
 ./bin/agent-harness bootstrap --dry-run
 ./bin/agent-harness install-native --dry-run --json
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
 ./bin/agent-harness daemon status --json
-./bin/agent-harness self-verify --seed=100 --target-score=95 --json
+./bin/agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 codex mcp get agent_harness
 claude mcp list
 gjc plugin list

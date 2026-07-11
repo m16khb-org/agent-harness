@@ -47,8 +47,7 @@ func SplitCommandTokens(command string) []string {
 	return tokens
 }
 
-// HasUnquotedControlOperator reports shell control operators that could join a
-// second command. Quoted or escaped punctuation remains ordinary argument data.
+// HasUnquotedControlOperator reports unquoted shell operators that can join commands.
 func HasUnquotedControlOperator(command string) bool {
 	var quote rune
 	escaped := false

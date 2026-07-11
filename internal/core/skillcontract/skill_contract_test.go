@@ -104,6 +104,9 @@ func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 		"No Z.AI request is sent",
 		"`gate` therefore returns a non-passing `llm_eval` result",
 		"pass explicit `--llm-eval=false`",
+		"./cmd/harness/hookcli/hookinput",
+		"bun scripts/smoke-gjc-native-hook.ts",
+		"Do not use a literal `--host gjc` grep",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("self-verify SKILL.md missing contract phrase %q", want)
@@ -111,6 +114,31 @@ func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 	}
 	if strings.Contains(body, "to run the Z.AI Coding Plan") {
 		t.Fatal("self-verify SKILL.md must not claim that prompt-only evaluation invokes Z.AI")
+	}
+}
+
+func TestVerificationDocsPinHandoffProbeCommands(t *testing.T) {
+	for _, relPath := range []string{
+		filepath.Join(".agent-harness", "TESTING.md"),
+		filepath.Join(".agent-harness", "operations", "verification.md"),
+	} {
+		body, err := os.ReadFile(filepath.Join("..", "..", "..", relPath))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{
+			"./cmd/harness/hookcli/hookinput",
+			"bun scripts/smoke-gjc-native-hook.ts",
+		} {
+			if !strings.Contains(string(body), want) {
+				t.Fatalf("%s missing verification probe %q", relPath, want)
+			}
+		}
+		for _, line := range strings.Split(string(body), "\n") {
+			if strings.Contains(line, "go test ") && strings.Contains(line, "./internal/core/hookinput") {
+				t.Fatalf("%s must not execute nonexistent hookinput package: %s", relPath, line)
+			}
+		}
 	}
 }
 

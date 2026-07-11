@@ -112,39 +112,23 @@ func TestGJCHookShimForwardsNativeIdentityAndEnforcesBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	hookPath := filepath.Join(root, "gjc-plugin", "hook.ts")
-	quotedPath, _ := json.Marshal("file://" + hookPath)
-	script := `
-const mod = await import(` + string(quotedPath) + `);
-const handlers = new Map();
-const messages = [];
-const calls = [];
-const pi = {
-  on: (event, handler) => handlers.set(event, handler),
-  sendMessage: (message) => messages.push(message),
-};
-mod.registerAgentHarnessHooks(pi, async (subcommand, payload, enforce) => {
-  calls.push({ subcommand, payload, enforce });
-  if (subcommand === "session-start") return { hookSpecificOutput: { additionalContext: "claim-guidance" } };
-  if (subcommand === "pre-tool-use") return { decision: "block", reason: "owned-by-other-session" };
-  return {};
-});
-const ctx = { cwd: "/repo.worktrees/16-demo", sessionManager: { getSessionId: () => "gjc-session-1" } };
-await handlers.get("session_start")({ type: "session_start" }, ctx);
-const blocked = await handlers.get("tool_call")({ type: "tool_call", toolName: "edit", toolCallId: "call-1", input: { path: "x.go" } }, ctx);
-await handlers.get("before_agent_start")({ type: "before_agent_start", prompt: "do work" }, ctx);
-if (!blocked?.block || blocked.reason !== "owned-by-other-session") throw new Error("wrong block shape: " + JSON.stringify(blocked));
-if (!messages.some((m) => String(m.content).includes("claim-guidance"))) throw new Error("session guidance not relayed");
-if (handlers.has("context")) throw new Error("context must not be mapped as every user prompt");
-const tool = calls.find((c) => c.subcommand === "pre-tool-use");
-if (tool.payload.host !== "gjc" || tool.payload.session_id !== "gjc-session-1" || tool.payload.cwd !== ctx.cwd || tool.payload.tool_name !== "edit" || tool.payload.tool_input.path !== "x.go") throw new Error("native payload missing: " + JSON.stringify(tool));
-`
-	scriptPath := filepath.Join(t.TempDir(), "hook-smoke.ts")
-	if err := os.WriteFile(scriptPath, []byte(script), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	out, err := exec.Command("bun", scriptPath).CombinedOutput()
+	scriptPath := filepath.Join(root, "scripts", "smoke-gjc-native-hook.ts")
+	out, err := exec.Command("bun", scriptPath, hookPath).CombinedOutput()
 	if err != nil {
 		t.Fatalf("GJC hook mock failed: %v\n%s", err, out)
+	}
+	var result struct {
+		OK        bool   `json:"ok"`
+		Host      string `json:"host"`
+		SessionID string `json:"session_id"`
+		CWD       string `json:"cwd"`
+		Blocked   bool   `json:"blocked"`
+	}
+	if err := json.Unmarshal(out, &result); err != nil {
+		t.Fatalf("decode GJC hook smoke: %v\n%s", err, out)
+	}
+	if !result.OK || result.Host != "gjc" || result.SessionID != "gjc-session-1" || result.CWD != "/repo.worktrees/16-demo" || !result.Blocked {
+		t.Fatalf("unexpected GJC hook smoke result: %+v", result)
 	}
 }
 

@@ -24,6 +24,15 @@ agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --
 
 The deterministic project gate pins `--llm-eval=false`. An ambient `HARNESS_SELF_VERIFY_LLM_EVAL=gate` is valid, but the current opt-in path only renders a read-only evaluator prompt, sends no Z.AI request, and cannot pass gate mode without an ingested external verdict. Record the explicit override and restart from the first gate after an interrupted or prompt-only attempt.
 
+### Orca handoff focused and GJC native smokes
+
+```bash
+go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/core/skillcontract ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/issueopscli ./cmd/harness/harnessapp -count=1
+bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"
+```
+
+The hook-input package is `./cmd/harness/hookcli/hookinput`; there is no `./internal/core/hookinput`. The GJC smoke imports the installed shim and verifies HookAPI identity forwarding plus the returned block shape. Do not replace it with a literal `--host gjc` grep, because the TypeScript shim constructs argv as separate array elements.
+
 Checkpoint commands:
 
 ```bash

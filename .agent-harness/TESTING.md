@@ -296,4 +296,18 @@ Normal tests and self-verification must remain green without Orca. Use an inject
 
 When Orca is installed in the verification environment, add one disposable live E2E; this is release evidence, not a default unit-test dependency. Create a uniquely named repo/branch/worktree/terminal/task, let a fresh worker claim and submit, accept from the coordinator, then remove every disposable repo/branch/worktree/terminal resource and record completed task ids. Never use a global Orca reset.
 
+Use this exact focused package set for the handoff and hook contracts. Hook input is under the CLI adapter; `./internal/core/hookinput` does not exist.
+
+```bash
+go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/core/skillcontract ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/issueopscli ./cmd/harness/harnessapp -count=1
+```
+
 Native ownership smokes are required for Codex, Claude, and GJC. Feed each installed adapter a distinct native `session_id`, assert coordinator/wrong-session mutation produces that host's real block shape, and verify a matching claimed worker passes. GJC coverage must exercise the HookAPI `(event, ctx)` bridge so `ctx.sessionManager.getSessionId()` and `ctx.cwd` reach the common hook command.
+
+After native installation, exercise the installed GJC TypeScript shim through that behavior boundary:
+
+```bash
+bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"
+```
+
+Require JSON `ok=true`, `host=gjc`, the fixed smoke session/cwd, and `blocked=true`. Do not use a literal `--host gjc` grep: the shim stores argv as adjacent TypeScript array elements, so a shell-string grep is not behavior evidence.

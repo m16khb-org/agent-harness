@@ -30,6 +30,8 @@ Default `self-verify` is quick mode: one deterministic evidence pass. Use `--ful
 
 For the repository's deterministic completion gate, pass explicit `--llm-eval=false` when the environment intentionally exports `HARNESS_SELF_VERIFY_LLM_EVAL=gate`; explicit CLI flags override the environment. Record that override and restart the verification sequence from its first gate after any interrupted or prompt-only run. Do not report a prompt-only result as an external LLM judgment.
 
+For Orca handoff changes, the focused hook package is `./cmd/harness/hookcli/hookinput`, not the nonexistent `./internal/core/hookinput`. After installation, run `bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"` and require its JSON identity/block assertions. Do not use a literal `--host gjc` grep; the shim represents argv as separate TypeScript array elements, and text layout is not hook behavior.
+
 ## Gate
 
 Completion requires every concrete goal score to exceed the target score. The default target is 95. If any item scores 95 or below, the state is not complete; improve, retry, or report the blocker.
