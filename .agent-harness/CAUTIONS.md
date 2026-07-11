@@ -484,6 +484,9 @@ sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고�
 Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error가 mutation 부재를 뜻하지 않는다. 호출 전 IssueOps `pending_operation`을 durable하게 기록하고, 호출 뒤 실패하면 `recovery_required`로 멈춘다. 같은 create를 자동 재시도하거나 inline fallback을 시작하면 중복 worker가 생길 수 있다.
 
 - `issueops handoff recover --action reconcile`은 persisted baseline/marker 대비 정확히 하나의 후보만 받아들인다. 후보가 0개거나 여러 개면 fail closed 상태를 유지한다.
+- Orca 1.4.134의 terminal create 응답에서 `ptyId`는 선택적이다. adapter가 이를 필수로 거부하지 말고, core가 create 전 baseline과 create 후 terminal list를 비교해 exact worktree의 connected/writable PTY delta가 정확히 하나인지 검증한다. create가 PTY ID를 돌려준 경우에는 그 delta와 일치해야 한다.
 - `auto` fallback은 read-only readiness probe가 mutation 전에 실패한 경우에만 허용한다.
 - cycle lock 안에서는 record CAS만 수행하고 외부 Orca CLI를 호출하지 않는다.
+- fresh Orca terminal의 native hook은 기본 IssueOps state root를 조회한다. custom `HARNESS_STATE_DIR` cycle은 별도 전파 없이는 SessionStart/PreToolUse에서 보이지 않으므로 hook을 우회하거나 성공으로 간주하지 않는다. 안전한 custom state-root 전파는 issue #17 범위이며, V1 live hook 증거는 기본 state에서 수집한다.
+- Codex 0.144.1 공식 `rust-v0.144.1`(44918ea)은 session setup에서 hook을 초기화하지만 `refresh_runtime_config`가 hook을 다시 build/store하는 경로도 제공하고, `pre_tool_use.rs`는 현재 session id를 payload에 넣는다. 관측된 live worker에서는 install-native가 `~/.codex/hooks.json`을 교체해도 active session command가 갱신되지 않았다. 따라서 파일 readback만으로 runtime 적용을 주장하지 말고 current-session live probe를 권위로 삼는다. installer의 `--host codex`는 유지하고, retained command 호환은 payload host와 CLI `--host`가 모두 비었을 때만 Codex로 정규화한다. 이 경우에도 exact nonempty session, canonical cwd/repo, persisted fence, in-tree target 검사를 모두 유지하며 명시 host는 절대 덮어쓰지 않는다. binary 재설치 후 같은 worker에 허용하는 mutation 재시도는 정확히 한 번뿐이다.
 - 별도의 legacy-JSON workpool reminder defect는 이 handoff 변경과 무관한 follow-up이다. SQLite workpool 상태를 읽지 못하는 기존 reminder를 이 branch에서 함께 고치거나 handoff recovery와 결합하지 않는다.

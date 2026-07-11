@@ -239,6 +239,11 @@ func TestIssueOpsSkillDocumentsOptionalOrcaHandoffContract(t *testing.T) {
 		"remain mutation-free",
 		"must not invoke `orca orchestration ask`",
 		"duplicate ask or decision gate",
+		"active Codex session may retain its previously loaded hook command",
+		"Installed-file readback alone is insufficient",
+		"live current-session probe is authoritative",
+		"both the payload host and `--host` are empty",
+		"exact nonempty session",
 		"worker stops",
 		"coordinator owns PR, acceptance, and cleanup",
 	} {
@@ -265,6 +270,11 @@ func TestTuringSkillDocumentsSupervisedHandoffEvidenceContract(t *testing.T) {
 		"keep heartbeat",
 		"remain mutation-free",
 		"must not invoke `orca orchestration ask`",
+		"active Codex session may retain its previously loaded hook command",
+		"Installed-file readback alone is insufficient",
+		"live current-session probe is authoritative",
+		"both the payload host and `--host` are empty",
+		"exact nonempty session",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Fatalf("Turing supervised handoff contract missing phrase %q", want)

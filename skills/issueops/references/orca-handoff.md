@@ -76,6 +76,8 @@ The source implementation checkout is read-only to the worker. Read probes and t
 
 Use the installed `agent-harness` command in a fresh worker unless the bounded context proves `./bin/agent-harness` exists in that exact worker checkout. For workers, self-verify requires binary/source contract parity: when a base-checkout evidence worker is running against an installed feature-HEAD binary, record any response-contract mismatch without changing the base checkout and leave final self-verify to the coordinator on matching feature HEAD. Native hook lookup uses the default IssueOps state root in V1; safe custom `HARNESS_STATE_DIR` propagation remains issue #17.
 
+Codex 0.144.1 initializes hooks during session setup, while its `refresh_runtime_config` path can rebuild and publish them later. Replacing `~/.codex/hooks.json` through native install did not refresh the observed live worker, so an active Codex session may retain its previously loaded hook command until runtime config refresh or a new session. Installed-file readback alone is insufficient; the live current-session probe is authoritative. Keep the installer `--host codex` flag for fresh or refreshed sessions; for a retained older PreToolUse command, hookcli defaults the native host to `codex` only when both the payload host and `--host` are empty. This compatibility path still requires an exact nonempty session, canonical cwd/repo, persisted fence, and in-tree target. It never overwrites an explicit host. After installing a compatible binary, authorize at most one same-worker retry; do not bypass the guard or start a fresh session unless the compatibility repair cannot be made safe.
+
 ```bash
 agent-harness issueops handoff claim \
   --id "$ISSUEOPS_ID" \

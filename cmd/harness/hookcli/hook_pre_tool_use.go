@@ -34,10 +34,14 @@ func runHookPreToolUse(args []string) error {
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
 	}
+	nativeHost := firstNonEmptyHookValue(hookinput.HostFromHookInput(stdin), *host)
+	if nativeHost == "" {
+		nativeHost = string(hookadapter.HostCodex)
+	}
 	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
 		Repo:                 parsedRepo,
 		CWD:                  hookinput.CWDFromHookInput(stdin),
-		Host:                 firstNonEmptyHookValue(hookinput.HostFromHookInput(stdin), *host),
+		Host:                 nativeHost,
 		SessionID:            hookinput.SessionIDFromHookInput(stdin),
 		AgentID:              hookinput.AgentIDFromHookInput(stdin),
 		Tool:                 hookinput.ToolNameFromHookInput(stdin),
