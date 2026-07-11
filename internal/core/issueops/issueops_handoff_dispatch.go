@@ -125,7 +125,7 @@ func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 		if err != nil {
 			return IssueOpsHandoffStartResult{}, err
 		}
-		terminal, createErr := client.CreateTerminal(ctx, port.OrcaCreateTerminalRequest{
+		created, createErr := client.CreateTerminal(ctx, port.OrcaCreateTerminalRequest{
 			WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, Agent: record.ExecutionHandoff.Agent,
 			Title: issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
 		})
@@ -133,8 +133,25 @@ func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_create_ambiguous", createErr.Error(), now)
 			return IssueOpsHandoffStartResult{}, fmt.Errorf("Orca terminal create requires recovery: %w", createErr)
 		}
-		if terminal.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || terminal.PTYID == "" || terminal.Handle == "" || !terminal.Connected || !terminal.Writable {
+		if created.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || strings.TrimSpace(created.Handle) == "" {
 			err = fmt.Errorf("Orca terminal identity does not match the prepared worktree")
+			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
+			return IssueOpsHandoffStartResult{}, err
+		}
+		currentTerminals, listErr := client.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
+		if listErr != nil {
+			err = fmt.Errorf("list terminals after create: %w", listErr)
+			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
+			return IssueOpsHandoffStartResult{}, err
+		}
+		terminal, reconcileErr := ReconcileIssueOpsHandoffTerminal(terminalPTYIDs(terminals), record.ExecutionHandoff.Orca.WorktreeID, currentTerminals)
+		if reconcileErr != nil {
+			err = fmt.Errorf("reconcile created terminal: %w", reconcileErr)
+			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
+			return IssueOpsHandoffStartResult{}, err
+		}
+		if createdPTYID := strings.TrimSpace(created.PTYID); createdPTYID != "" && terminal.PTYID != createdPTYID {
+			err = fmt.Errorf("created terminal PTY does not match the exact terminal-list delta")
 			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
 			return IssueOpsHandoffStartResult{}, err
 		}

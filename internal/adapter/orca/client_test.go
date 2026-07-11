@@ -151,14 +151,13 @@ func TestClientRefreshesTerminalHandleByWorktreeAndPTY(t *testing.T) {
 	}
 }
 
-func TestClientCreateTerminalRefreshesRuntimeCreateIdentity(t *testing.T) {
+func TestClientCreateTerminalAcceptsRuntimeIdentityWithoutPTY(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal create --worktree id:worktree-1 --command codex --title marker --json"] = CommandOutput{Stdout: []byte(`{
 		"ok": true,
 		"result": {
 			"terminal": {
 				"handle": "term-create",
-				"ptyId": "pty-2",
 				"worktreeId": "worktree-1",
 				"title": "marker",
 				"surface": "terminal"
@@ -173,23 +172,22 @@ func TestClientCreateTerminalRefreshesRuntimeCreateIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if terminal.Handle != "term-live" || terminal.PTYID != "pty-2" || terminal.WorktreeID != "worktree-1" || !terminal.Connected || !terminal.Writable {
-		t.Fatalf("refreshed created terminal = %#v", terminal)
+	if terminal.Handle != "term-create" || terminal.PTYID != "" || terminal.WorktreeID != "worktree-1" {
+		t.Fatalf("created terminal identity = %#v", terminal)
 	}
 	want := [][]string{
 		{"orca", "terminal", "create", "--worktree", "id:worktree-1", "--command", "codex", "--title", "marker", "--json"},
-		{"orca", "terminal", "list", "--worktree", "id:worktree-1", "--json"},
 	}
 	if !reflect.DeepEqual(runner.calls, want) {
 		t.Fatalf("calls = %#v, want %#v", runner.calls, want)
 	}
 }
 
-func TestClientCreateTerminalRejectsIncompleteRuntimeIdentityBeforeRefresh(t *testing.T) {
+func TestClientCreateTerminalRejectsIncompleteRuntimeIdentity(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal create --worktree id:worktree-1 --command codex --json"] = CommandOutput{Stdout: []byte(`{
 		"ok": true,
-		"result": {"terminal": {"handle": "term-create", "worktreeId": "worktree-1"}}
+		"result": {"terminal": {"ptyId": "pty-2", "worktreeId": "worktree-1"}}
 	}`)}
 
 	_, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{WorktreeID: "worktree-1", Agent: "codex"})
@@ -197,7 +195,7 @@ func TestClientCreateTerminalRejectsIncompleteRuntimeIdentityBeforeRefresh(t *te
 		t.Fatalf("CreateTerminal() error = %v, want terminal identity error", err)
 	}
 	if len(runner.calls) != 1 {
-		t.Fatalf("incomplete create identity must not refresh: %#v", runner.calls)
+		t.Fatalf("incomplete create identity made an extra call: %#v", runner.calls)
 	}
 }
 

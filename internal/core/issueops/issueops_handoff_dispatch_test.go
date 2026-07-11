@@ -69,6 +69,52 @@ func TestHandoffStartCreatesTerminalTaskDispatchExactlyOnce(t *testing.T) {
 	}
 }
 
+func TestHandoffStartResolvesOptionalPTYFromExactTerminalDelta(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake()
+	client.terminals = []port.OrcaTerminal{
+		{Handle: "term-old", PTYID: "pty-old", WorktreeID: "wt-1", Connected: true, Writable: true},
+	}
+	client.terminal = port.OrcaTerminal{Handle: "term-create", WorktreeID: "wt-1"}
+	client.terminalsAfterCreate = []port.OrcaTerminal{
+		{Handle: "term-old", PTYID: "pty-old", WorktreeID: "wt-1", Connected: true, Writable: true},
+		{Handle: "term-live", PTYID: "pty-new", WorktreeID: "wt-1", Connected: true, Writable: true},
+	}
+	client.dispatch.AssigneeHandle = "term-live"
+
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || got.Orca == nil || got.Orca.WorkerPTYID != "pty-new" || got.Orca.WorkerMailboxHandle != "term-live" {
+		t.Fatalf("partial create identity did not resolve from PTY delta: %#v", got)
+	}
+	if client.terminalCreates != 1 || client.terminalListCalls != 2 {
+		t.Fatalf("terminal create/list calls = %d/%d, want 1/2; trace=%v", client.terminalCreates, client.terminalListCalls, client.trace)
+	}
+}
+
+func TestHandoffStartRejectsCreatePTYThatDiffersFromDelta(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake()
+	client.terminal = port.OrcaTerminal{Handle: "term-create", PTYID: "pty-returned", WorktreeID: "wt-1"}
+	client.terminalsAfterCreate = []port.OrcaTerminal{
+		{Handle: "term-live", PTYID: "pty-listed", WorktreeID: "wt-1", Connected: true, Writable: true},
+	}
+
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "created terminal PTY") {
+		t.Fatalf("StartIssueOpsHandoff() error = %v, want create/list PTY mismatch", err)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.PendingOperation == nil || client.terminalCreates != 1 || client.taskCreates != 0 {
+		t.Fatalf("PTY mismatch did not preserve recovery: handoff=%#v mutations=%d/%d", persisted.ExecutionHandoff, client.terminalCreates, client.taskCreates)
+	}
+}
+
 func TestHandoffStartCrashMatrixNeverRepeatsCreate(t *testing.T) {
 	tests := []struct {
 		name string
@@ -208,6 +254,7 @@ func TestHandoffStartDispatchRecoveryRequiresPersistedTask(t *testing.T) {
 
 type dispatchOrcaFake struct {
 	terminals            []port.OrcaTerminal
+	terminalsAfterCreate []port.OrcaTerminal
 	tasks                []port.OrcaTask
 	terminal             port.OrcaTerminal
 	refreshedTerminal    port.OrcaTerminal
@@ -218,6 +265,7 @@ type dispatchOrcaFake struct {
 	dispatchErr          error
 	beforeTerminalCreate func()
 	terminalCreates      int
+	terminalListCalls    int
 	terminalRefreshes    int
 	taskCreates          int
 	dispatchCalls        int
@@ -226,15 +274,18 @@ type dispatchOrcaFake struct {
 }
 
 func handoffDispatchFake() *dispatchOrcaFake {
-	return &dispatchOrcaFake{
+	fake := &dispatchOrcaFake{
 		terminal: port.OrcaTerminal{Handle: "term-1", PTYID: "pty-1", WorktreeID: "wt-1", Connected: true, Writable: true},
 		task:     port.OrcaTask{ID: "task-1", Status: "pending"},
 		dispatch: port.OrcaDispatch{ID: "dispatch-1", TaskID: "task-1", AssigneeHandle: "term-1", Status: "dispatched", Injected: true},
 	}
+	fake.terminalsAfterCreate = []port.OrcaTerminal{fake.terminal}
+	return fake
 }
 
 func (f *dispatchOrcaFake) ListTerminals(context.Context, string) ([]port.OrcaTerminal, error) {
 	f.trace = append(f.trace, "terminal-list")
+	f.terminalListCalls++
 	return append([]port.OrcaTerminal(nil), f.terminals...), nil
 }
 
@@ -243,6 +294,9 @@ func (f *dispatchOrcaFake) CreateTerminal(context.Context, port.OrcaCreateTermin
 	f.terminalCreates++
 	if f.beforeTerminalCreate != nil {
 		f.beforeTerminalCreate()
+	}
+	if f.terminalsAfterCreate != nil {
+		f.terminals = append([]port.OrcaTerminal(nil), f.terminalsAfterCreate...)
 	}
 	return f.terminal, f.terminalErr
 }
