@@ -292,11 +292,18 @@ func assertInstallContractSemantics(t *testing.T, req port.NativeInstallRequest,
 			t.Fatalf("Claude settings missing lifecycle hook %q:\n%s", needle, claudeSettings)
 		}
 	}
+	if !strings.Contains(claudeSettings, "hook pre-tool-use --host claude --enforce-worktree") {
+		t.Fatalf("Claude PreToolUse hook missing native host identity:\n%s", claudeSettings)
+	}
 	codexConfig := readFile(t, filepath.Join(req.CodexHome, "config.toml"))
 	for _, needle := range []string{"[mcp_servers.agent_harness]", req.BinPath, req.Root} {
 		if !strings.Contains(codexConfig, needle) {
 			t.Fatalf("Codex config missing %q:\n%s", needle, codexConfig)
 		}
+	}
+	codexHooks := readFile(t, filepath.Join(req.CodexHome, "hooks.json"))
+	if !strings.Contains(codexHooks, "hook pre-tool-use --host codex --enforce-worktree") {
+		t.Fatalf("Codex PreToolUse hook missing native host identity:\n%s", codexHooks)
 	}
 	for _, skill := range []string{"alpha", "beta"} {
 		assertRootSkillSymlink(t, filepath.Join(req.ReasonixHome, "skills", skill), filepath.Join(req.Root, "skills", skill))

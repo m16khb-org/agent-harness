@@ -77,6 +77,9 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 		return result, err
 	}
 	result.RequestedMode = requested
+	if record.ExecutionHandoff != nil {
+		return existingHandoffPrepareResult(stateRoot, record, result, issueOpsHandoffNow(clock))
+	}
 	if requested == IssueOpsOrchestratorInline {
 		result.ResolvedMode = IssueOpsOrchestratorInline
 		result.Preview = !req.Confirm
@@ -116,9 +119,6 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 		return result, err
 	}
 
-	if record.ExecutionHandoff != nil {
-		return existingHandoffPrepareResult(stateRoot, record, result, issueOpsHandoffNow(clock))
-	}
 	providerTrackingRef, err := issueOpsOrcaProviderTrackingRef(probe.RepoRemoteName, record.Branch)
 	if err != nil {
 		return result, err
@@ -308,6 +308,8 @@ func existingHandoffPrepareResult(stateRoot string, record IssueOpsRecord, resul
 func projectHandoffPrepareResult(result IssueOpsHandoffPrepareResult, record IssueOpsRecord) IssueOpsHandoffPrepareResult {
 	result.Preview = false
 	result.ResolvedMode = IssueOpsOrchestratorOrca
+	result.Command = nil
+	result.NextStep = "inspect the persisted Orca handoff with issueops resume --repo " + record.Repo + " --id " + record.ID
 	if record.ExecutionHandoff == nil {
 		return result
 	}

@@ -91,7 +91,7 @@ func codexHookCommand(binPath, subcommand string) string {
 	case "user-prompt", "session-start", "post-compact":
 		cmd += " --host codex"
 	case "pre-tool-use":
-		cmd += " " + installutil.PreToolUseEnforcementFlags()
+		cmd += " --host codex " + installutil.PreToolUseEnforcementFlags()
 	case "stop":
 		cmd += " " + installutil.StopEnforcementFlags()
 	}

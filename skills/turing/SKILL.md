@@ -35,6 +35,12 @@ For a supervised execution lease, render the named ORCA criteria (for the curren
 
 Do not cite stale tools such as positional `state write <key> <content>` forms as executable commands. `agent-harness issueops heartbeat` is current: an inline cycle supplies `--id`, while a supervised worker also supplies its attempt, ownership epoch, context hash, and native host/session identity.
 
+In a supervised handoff, the source implementation checkout is read-only to the worker. Read-only probes and tests may inspect it, but formatting, patching, build output, installation, and golden mutation remain coordinator-only; a PreToolUse block must never be bypassed. The fresh worker uses the installed `agent-harness` command unless its bounded context proves `./bin/agent-harness` exists in the exact worker checkout.
+
+For supervised evidence, self-verify requires binary/source contract parity. If an evidence worker is intentionally on a base checkout while the installed binary is feature HEAD, record a response-contract mismatch as a version-skew observation, do not mutate the base, and leave the final self-verify score to the coordinator running matching feature HEAD.
+
+When a supervised worker is blocked, send one escalation to its concrete coordinator handle, keep heartbeat, remain mutation-free, and wait for coordinator repair, retry, or cancel. It must not invoke `orca orchestration ask` or create a second decision gate after escalation.
+
 ## Quantitative Quality Metrics (vs ulw-loop baseline)
 
 Turing tracks these metrics automatically. Target: **20%+ improvement over ulw-loop** on every dimension.

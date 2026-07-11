@@ -61,7 +61,7 @@ func TestGJCInstallerPlansSkillLinksHookShimAndPluginBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"before_agent_start", "session_id", "tool_name", "tool_input", "return { block: true", "ctx.sessionManager.getSessionId()", "ctx.cwd"} {
+	for _, required := range []string{"before_agent_start", "session_id", "tool_name", "tool_input", "return { block: true", "ctx.sessionManager.getSessionId()", "ctx.cwd", "\"--host\",\n\t\t\t\t\"gjc\""} {
 		if !strings.Contains(string(hookSource), required) {
 			t.Errorf("GJC hook shim missing %q", required)
 		}

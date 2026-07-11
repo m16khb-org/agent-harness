@@ -72,6 +72,10 @@ The returned `attempt`, `ownership_epoch`, `context_sha256`, Orca worktree id, t
 
 The fresh worker starts in the exact Orca worktree and claims before any mutation:
 
+The source implementation checkout is read-only to the worker. Read probes and tests may target it, but formatting, `apply_patch`, `go build -o`, native install, golden update, and every other source mutation are coordinator-only. If PreToolUse blocks one of those operations, do not bypass the hook through a shell wrapper or a different tool.
+
+Use the installed `agent-harness` command in a fresh worker unless the bounded context proves `./bin/agent-harness` exists in that exact worker checkout. For workers, self-verify requires binary/source contract parity: when a base-checkout evidence worker is running against an installed feature-HEAD binary, record any response-contract mismatch without changing the base checkout and leave final self-verify to the coordinator on matching feature HEAD. Native hook lookup uses the default IssueOps state root in V1; safe custom `HARNESS_STATE_DIR` propagation remains issue #17.
+
 ```bash
 agent-harness issueops handoff claim \
   --id "$ISSUEOPS_ID" \
@@ -99,6 +103,8 @@ agent-harness issueops heartbeat \
   --agent-id "$AGENT_ID" \
   --json
 ```
+
+If a worker is blocked, send one escalation to the concrete coordinator handle, keep heartbeat at the required cadence, remain mutation-free, and wait for coordinator repair, retry, or cancel. After escalating, the worker must not invoke `orca orchestration ask`, create a duplicate ask or decision gate, or start a separate human-choice workflow.
 
 On completion, submit bounded evidence. A completed result requires the final head, Turing report, at least one verification entry, and at least one cleanup receipt:
 
@@ -149,6 +155,16 @@ Reconcile first:
 ```bash
 agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action reconcile --json
 ```
+
+Use the public Orca CLI with these exact copyable inspection forms:
+
+```bash
+orca orchestration task-list --json
+orca orchestration dispatch-show --task <id> --json
+orca worktree show --worktree id:<id> --json
+```
+
+`orca task show` is not a command in Orca 1.4.134, and dispatch-show accepts `--task`, not `--task-id`. A failed inspection syntax is not evidence that an external identity is absent.
 
 Recovery accepts exactly one candidate relative to the persisted baseline and marker. Zero or multiple matching worktrees, terminals, tasks, or dispatches fail closed and preserve the pending journal. Never guess an identity and never issue another create to discover whether the first one worked.
 

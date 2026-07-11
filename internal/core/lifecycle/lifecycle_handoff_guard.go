@@ -7,6 +7,7 @@ import (
 
 	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops/handoff"
+	issueopsmodel "agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/searchrouting"
 )
 
@@ -25,7 +26,7 @@ func BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID string) 
 			if h.Orca == nil || strings.TrimSpace(h.Orca.WorktreeID) == "" {
 				return fmt.Sprintf("IssueOps supervised handoff role=worker state=%s attempt=%d context=%s. External identity requires coordinator recovery before claim.", h.State, h.Attempt, h.ContextSHA256)
 			}
-			claim := strings.Join([]string{
+			claimParts := []string{
 				"agent-harness issueops handoff claim",
 				"--id " + shellGuidanceQuote(record.ID),
 				"--attempt " + strconv.Itoa(h.Attempt),
@@ -33,10 +34,15 @@ func BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID string) 
 				"--context-sha256 " + shellGuidanceQuote(h.ContextSHA256),
 				"--host " + shellGuidanceQuote(host),
 				"--session-id " + shellGuidanceQuote(sessionID),
-				"--agent-id " + shellGuidanceQuote(agentID),
-				"--cwd " + shellGuidanceQuote(h.WorkerRoot),
-				"--orca-worktree-id " + shellGuidanceQuote(h.Orca.WorktreeID),
-			}, " ")
+			}
+			if strings.TrimSpace(agentID) != "" {
+				claimParts = append(claimParts, "--agent-id "+shellGuidanceQuote(agentID))
+			}
+			claimParts = append(claimParts,
+				"--cwd "+shellGuidanceQuote(h.WorkerRoot),
+				"--orca-worktree-id "+shellGuidanceQuote(h.Orca.WorktreeID),
+			)
+			claim := strings.Join(claimParts, " ")
 			return fmt.Sprintf("IssueOps supervised handoff role=worker state=%s attempt=%d context=%s. Claim before editing: %s. Read-only resume: %s", h.State, h.Attempt, h.ContextSHA256, claim, resume)
 		}
 		if cleanAbsPath(repo) == cleanAbsPath(record.Repo) {
@@ -58,15 +64,21 @@ func shellGuidanceQuote(value string) string {
 }
 
 func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string) {
-	if !req.EnforceWorktree || !toolUseMayMutateLifecycleFiles(req.Tool, req.Command) {
+	if !req.EnforceWorktree {
 		return false, ""
 	}
 	record, ok := supervisedHandoffRecord(req)
 	if !ok {
 		return false, ""
 	}
-	if allowedHandoffLifecycleCommand(req, record) {
-		return true, ""
+	if isHandoffLifecycleCommand(req.Command) {
+		if allowedHandoffLifecycleCommand(req, record) {
+			return true, ""
+		}
+		return true, "supervised IssueOps handoff lifecycle command flags do not match the native session and persisted fence"
+	}
+	if !toolUseMayMutateLifecycleFiles(req.Tool, req.Command) {
+		return false, ""
 	}
 	h := record.ExecutionHandoff
 	if h.State != handoff.StateClaimed || h.WorkerSession == nil {
@@ -142,9 +154,38 @@ func allowedHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record Issu
 		case "start", "recover", "accept":
 			return source
 		case "claim":
-			return worker && h.State == handoff.StateDispatched && strings.TrimSpace(req.SessionID) != "" && flagMatches(tokens, "--attempt", strconv.Itoa(h.Attempt)) && flagMatches(tokens, "--ownership-epoch", h.OwnershipEpoch) && flagMatches(tokens, "--context-sha256", h.ContextSHA256)
+			return worker && h.State == handoff.StateDispatched && claimCommandMatchesNativeIdentity(req, h, record.ID, tokens)
 		case "finish":
 			return worker && matchingClaimedSession(req, record)
+		}
+	}
+	return false
+}
+
+func isHandoffLifecycleCommand(command string) bool {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
+	issueops := -1
+	for i, token := range tokens {
+		if searchrouting.SearchTokenName(token) == "issueops" {
+			issueops = i
+			break
+		}
+	}
+	if issueops < 0 || issueops+1 >= len(tokens) {
+		return false
+	}
+	switch searchrouting.SearchTokenName(tokens[issueops+1]) {
+	case "heartbeat":
+		return true
+	case "worktree":
+		return issueops+2 < len(tokens) && searchrouting.SearchTokenName(tokens[issueops+2]) == "prepare"
+	case "handoff":
+		if issueops+2 >= len(tokens) {
+			return false
+		}
+		switch searchrouting.SearchTokenName(tokens[issueops+2]) {
+		case "start", "recover", "accept", "claim", "finish":
+			return true
 		}
 	}
 	return false
@@ -154,6 +195,61 @@ func matchingClaimedSession(req HookToolUseLifecycleRequest, record IssueOpsReco
 	h := record.ExecutionHandoff
 	return h != nil && h.State == handoff.StateClaimed && h.WorkerSession != nil &&
 		strings.EqualFold(strings.TrimSpace(req.Host), h.WorkerSession.Host) && strings.TrimSpace(req.SessionID) == h.WorkerSession.SessionID
+}
+
+func claimCommandMatchesNativeIdentity(req HookToolUseLifecycleRequest, h *issueopsmodel.IssueOpsExecutionHandoff, recordID string, tokens []string) bool {
+	if h == nil || h.Orca == nil || strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.SessionID) == "" {
+		return false
+	}
+	id, idOK := uniqueFlagValue(tokens, "--id")
+	attempt, attemptOK := uniqueFlagValue(tokens, "--attempt")
+	epoch, epochOK := uniqueFlagValue(tokens, "--ownership-epoch")
+	contextSHA, contextOK := uniqueFlagValue(tokens, "--context-sha256")
+	host, hostOK := uniqueFlagValue(tokens, "--host")
+	sessionID, sessionOK := uniqueFlagValue(tokens, "--session-id")
+	cwd, cwdOK := uniqueFlagValue(tokens, "--cwd")
+	worktreeID, worktreeOK := uniqueFlagValue(tokens, "--orca-worktree-id")
+	if !idOK || id != recordID ||
+		!attemptOK || attempt != strconv.Itoa(h.Attempt) ||
+		!epochOK || epoch != h.OwnershipEpoch ||
+		!contextOK || contextSHA != h.ContextSHA256 ||
+		!hostOK || !strings.EqualFold(host, strings.TrimSpace(req.Host)) ||
+		!sessionOK || sessionID != strings.TrimSpace(req.SessionID) ||
+		!cwdOK || cleanAbsPath(cwd) != cleanAbsPath(h.WorkerRoot) ||
+		!worktreeOK || worktreeID != strings.TrimSpace(h.Orca.WorktreeID) {
+		return false
+	}
+	agentID, agentOK := uniqueFlagValue(tokens, "--agent-id")
+	if strings.TrimSpace(req.AgentID) == "" {
+		return !agentOK || strings.TrimSpace(agentID) == ""
+	}
+	return agentOK && agentID == strings.TrimSpace(req.AgentID)
+}
+
+func uniqueFlagValue(tokens []string, name string) (string, bool) {
+	value := ""
+	found := false
+	for i, token := range tokens {
+		candidate := ""
+		matched := false
+		switch {
+		case token == name && i+1 < len(tokens):
+			if strings.HasPrefix(tokens[i+1], "--") {
+				return "", false
+			}
+			candidate, matched = tokens[i+1], true
+		case strings.HasPrefix(token, name+"="):
+			candidate, matched = strings.TrimPrefix(token, name+"="), true
+		}
+		if !matched {
+			continue
+		}
+		if found {
+			return "", false
+		}
+		value, found = candidate, true
+	}
+	return value, found
 }
 
 func flagMatches(tokens []string, name, want string) bool {

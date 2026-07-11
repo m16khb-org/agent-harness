@@ -46,6 +46,16 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	if !strings.Contains(string(hooks), "hook user-prompt --host codex") || !strings.Contains(string(hooks), req.BinPath) {
 		t.Fatalf("codex hooks missing harness UserPromptSubmit hook:\n%s", string(hooks))
 	}
+	if !strings.Contains(string(hooks), "hook pre-tool-use --host codex --enforce-worktree") {
+		t.Fatalf("codex PreToolUse hook must supply native host identity:\n%s", string(hooks))
+	}
+	template, err := os.ReadFile(filepath.Join(root, "configs", "codex", "hooks.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(template), "hook pre-tool-use --host codex --enforce-worktree") {
+		t.Fatalf("codex hook template must supply native host identity:\n%s", string(template))
+	}
 	if exists(filepath.Join(root, ".claude", "skills", "alpha")) || exists(filepath.Join(root, ".mcp.json")) {
 		t.Fatalf("codex installer wrote project-local files")
 	}
@@ -67,7 +77,7 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, subcommand := range []string{"hook user-prompt --host codex", "hook pre-tool-use --enforce-worktree", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop --enforce-numbered-next-actions"} {
+	for _, subcommand := range []string{"hook user-prompt --host codex", "hook pre-tool-use --host codex --enforce-worktree", "hook post-tool-use", "hook pre-compact", "hook post-compact", "hook stop --enforce-numbered-next-actions"} {
 		if count := strings.Count(string(hooks), subcommand); count != 1 {
 			t.Fatalf("%s appears %d times, want 1:\n%s", subcommand, count, string(hooks))
 		}

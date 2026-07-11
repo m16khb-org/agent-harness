@@ -60,6 +60,46 @@ func TestWorktreePrepareExplicitOrcaProbeFailureHasProbeOnlyTrace(t *testing.T) 
 	}
 }
 
+func TestWorktreePrepareExistingHandoffNeverFallsBackInline(t *testing.T) {
+	for _, mode := range []string{"auto", "inline"} {
+		t.Run(mode, func(t *testing.T) {
+			stateRoot, record := handoffPrepareRecord(t)
+			worktree := handoffPrepareWorktreePath(record)
+			makeGitWorktreeMarker(t, worktree)
+			client := &prepareOrcaFake{
+				probe: port.OrcaProbeResult{Available: true, Ready: true, RepoRemoteName: "origin"},
+				create: port.OrcaWorktree{
+					ID: "wt-1", InstanceID: "inst-1", Path: worktree,
+					Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16,
+				},
+			}
+			if _, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: record.ID, Orchestrator: "orca", Agent: "codex", Confirm: true,
+			}, client, handoffPrepareTestClock()); err != nil {
+				t.Fatal(err)
+			}
+
+			client.trace = nil
+			client.probeErr = errors.New("orca unavailable after mutation")
+			got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: record.ID, Orchestrator: mode, Agent: "codex", Confirm: true,
+			}, client, handoffPrepareTestClock())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ResolvedMode != IssueOpsOrchestratorOrca || got.State != "coordinator_preparing" {
+				t.Fatalf("existing handoff must stay fenced in Orca mode: %#v", got)
+			}
+			if len(client.trace) != 0 || client.createCalls != 1 {
+				t.Fatalf("existing handoff must not probe or create again: trace=%v creates=%d", client.trace, client.createCalls)
+			}
+			if len(got.Command) != 0 || strings.Contains(got.NextStep, "git worktree add") {
+				t.Fatalf("existing handoff must not offer legacy inline mutation: %#v", got)
+			}
+		})
+	}
+}
+
 func TestWorktreePreparePreviewNeverMutates(t *testing.T) {
 	stateRoot, record := handoffPrepareRecord(t)
 	client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true}}
