@@ -16,7 +16,9 @@ The three modes are intentionally small:
 - `--orchestrator orca`: require a ready Orca installation and fail before mutation when the probe fails.
 - `--orchestrator inline`: use the legacy sibling-worktree flow and leave `execution_handoff` absent.
 
-Do not infer Orca readiness from `orca version`; the adapter uses structured `orca system status --json`. Run the confirmed command only after reviewing the preview:
+Before confirming Orca mode, turn **Settings > General > Workspace > Nest Workspaces** off. IssueOps requires the flat canonical path `<repo>.worktrees/<branch>` and does not read private Orca settings, toggle global layout preferences, or accept the nested `<repo>.worktrees/<repo-name>/<branch>` form. The returned worktree path is validated after the exactly-once create call. A mismatch moves the handoff to `recovery_required` with an actionable diagnostic; it never adopts the mismatched path or falls back inline. Cancel the handoff, remove the mismatched resources, and start a fresh IssueOps cycle after correcting the setting.
+
+Do not infer Orca readiness from `orca version`; the adapter uses structured `orca status --json`. Run the confirmed command only after reviewing the preview:
 
 ```bash
 agent-harness issueops worktree prepare \

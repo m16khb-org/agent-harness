@@ -259,7 +259,7 @@ func validateCreatedHandoffWorktree(record IssueOpsRecord, expectedPath string, 
 		return fmt.Errorf("Orca worktree id and instance id are required")
 	}
 	if filepath.Clean(created.Path) != filepath.Clean(expectedPath) {
-		return fmt.Errorf("Orca worktree path %q does not match %q", created.Path, expectedPath)
+		return fmt.Errorf("Orca worktree path %q does not match canonical IssueOps path %q; set Orca Settings > General > Workspace > Nest Workspaces to OFF, cancel and remove the mismatched handoff resources, then start a fresh IssueOps cycle", created.Path, expectedPath)
 	}
 	if strings.TrimPrefix(strings.TrimSpace(created.Branch), "refs/heads/") != strings.TrimSpace(record.Branch) {
 		return fmt.Errorf("Orca worktree branch %q does not match %q", created.Branch, record.Branch)

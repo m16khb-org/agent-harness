@@ -166,6 +166,41 @@ func TestWorktreePrepareRejectsReturnedBranchPathOrInstanceMismatch(t *testing.T
 	}
 }
 
+func TestWorktreePreparePathMismatchExplainsFlatLayoutRecovery(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	expected := handoffPrepareWorktreePath(record)
+	nested := filepath.Join(filepath.Dir(expected), filepath.Base(record.Repo), filepath.Base(expected))
+	client := &prepareOrcaFake{
+		probe: port.OrcaProbeResult{Available: true, Ready: true},
+		create: port.OrcaWorktree{
+			ID: "wt-nested", InstanceID: "inst-nested", Path: nested,
+			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16,
+		},
+	}
+
+	_, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: "orca", Agent: "codex", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err == nil {
+		t.Fatal("expected canonical path validation error")
+	}
+	for _, want := range []string{"Nest Workspaces", "OFF", "cancel", "fresh IssueOps cycle"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("path mismatch diagnostic does not contain %q: %v", want, err)
+		}
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if persisted.ExecutionHandoff == nil || persisted.ExecutionHandoff.State != "recovery_required" || persisted.ExecutionHandoff.Failure == nil {
+		t.Fatalf("path mismatch did not preserve recovery evidence: %#v", persisted.ExecutionHandoff)
+	}
+	if !strings.Contains(persisted.ExecutionHandoff.Failure.Message, "Nest Workspaces") {
+		t.Fatalf("persisted failure is not actionable: %#v", persisted.ExecutionHandoff.Failure)
+	}
+}
+
 func TestWorktreePrepareExactOneMarkerRecovery(t *testing.T) {
 	pending := IssueOpsExecutionHandoffPendingOperation{Kind: "worktree_create", BaselineWorktreeIDs: []string{"before"}}
 	tests := []struct {
