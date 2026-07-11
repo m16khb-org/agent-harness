@@ -201,7 +201,21 @@ func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminal
 		Terminal terminalPayload `json:"terminal"`
 	}
 	_, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
-	return payload.Terminal.portValue(), err
+	if err != nil {
+		return port.OrcaTerminal{}, err
+	}
+	created := payload.Terminal.portValue()
+	if strings.TrimSpace(created.Handle) == "" || strings.TrimSpace(created.PTYID) == "" || strings.TrimSpace(created.WorktreeID) != strings.TrimSpace(req.WorktreeID) {
+		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_identity_mismatch", Detail: "terminal identity returned by create is incomplete", Invoked: true}
+	}
+	refreshed, err := c.RefreshTerminal(ctx, req.WorktreeID, created.PTYID)
+	if err != nil {
+		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_refresh_failed", Detail: boundedDiagnostic(err.Error()), Invoked: true}
+	}
+	if strings.TrimSpace(refreshed.Handle) == "" || refreshed.WorktreeID != strings.TrimSpace(req.WorktreeID) || refreshed.PTYID != strings.TrimSpace(created.PTYID) || !refreshed.Connected || !refreshed.Writable {
+		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_identity_mismatch", Detail: "refreshed terminal identity is not connected and writable", Invoked: true}
+	}
+	return refreshed, nil
 }
 
 func (c *Client) RefreshTerminal(ctx context.Context, worktreeID, ptyID string) (port.OrcaTerminal, error) {

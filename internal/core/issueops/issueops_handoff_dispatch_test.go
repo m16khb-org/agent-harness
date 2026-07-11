@@ -99,6 +99,66 @@ func TestHandoffStartCrashMatrixNeverRepeatsCreate(t *testing.T) {
 	}
 }
 
+func TestHandoffStartContinuesAfterTerminalCreateReconcileWithoutDuplicate(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.State = handoff.StateRecoveryRequired
+	record.ExecutionHandoff.PendingOperation = &IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationTerminalCreate, BaselinePTYIDs: []string{"pty-old"},
+	}
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake()
+	client.terminals = []port.OrcaTerminal{
+		{Handle: "term-stale", PTYID: "pty-1", WorktreeID: "wt-1", Connected: true, Writable: true},
+	}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "reconcile"}, client, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	client.refreshedTerminal = port.OrcaTerminal{Handle: "term-live", PTYID: "pty-1", WorktreeID: "wt-1", Connected: true, Writable: true}
+	client.dispatch.AssigneeHandle = "term-live"
+
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || client.terminalCreates != 0 || client.terminalRefreshes != 1 || client.taskCreates != 1 || client.dispatchCalls != 1 {
+		t.Fatalf("reconciled terminal was replayed: result=%#v create/refresh/task/dispatch=%d/%d/%d/%d trace=%v", got, client.terminalCreates, client.terminalRefreshes, client.taskCreates, client.dispatchCalls, client.trace)
+	}
+	if len(client.dispatchRequests) != 1 || client.dispatchRequests[0].ToHandle != "term-live" || got.Orca == nil || got.Orca.WorkerMailboxHandle != "term-live" {
+		t.Fatalf("dispatch did not use the refreshed mailbox: result=%#v requests=%#v", got, client.dispatchRequests)
+	}
+}
+
+func TestHandoffStartContinuesAfterTaskCreateReconcileWithoutDuplicate(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.State = handoff.StateRecoveryRequired
+	record.ExecutionHandoff.Orca.TerminalBaselinePTYIDs = []string{"pty-old"}
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-1"
+	record.ExecutionHandoff.PendingOperation = &IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationTaskCreate, BaselineTaskIDs: []string{"task-old"},
+	}
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake()
+	client.tasks = []port.OrcaTask{
+		{ID: "task-1", Title: issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)},
+	}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "reconcile"}, client, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 1 {
+		t.Fatalf("reconciled terminal or task was replayed: result=%#v mutations=%d/%d/%d trace=%v", got, client.terminalCreates, client.taskCreates, client.dispatchCalls, client.trace)
+	}
+}
+
 func TestHandoffStartTerminalDeltaRequiresExactlyOne(t *testing.T) {
 	tests := []struct {
 		name string
@@ -106,7 +166,8 @@ func TestHandoffStartTerminalDeltaRequiresExactlyOne(t *testing.T) {
 		ok   bool
 	}{
 		{name: "zero", rows: []port.OrcaTerminal{{PTYID: "old"}}},
-		{name: "one", rows: []port.OrcaTerminal{{PTYID: "old"}, {PTYID: "new", Handle: "term-new", WorktreeID: "wt-1"}}, ok: true},
+		{name: "one", rows: []port.OrcaTerminal{{PTYID: "old"}, {PTYID: "new", Handle: "term-new", WorktreeID: "wt-1", Connected: true, Writable: true}}, ok: true},
+		{name: "disconnected", rows: []port.OrcaTerminal{{PTYID: "new", Handle: "term-new", WorktreeID: "wt-1"}}},
 		{name: "multiple", rows: []port.OrcaTerminal{{PTYID: "new-1"}, {PTYID: "new-2"}}},
 	}
 	for _, tt := range tests {
@@ -149,6 +210,7 @@ type dispatchOrcaFake struct {
 	terminals            []port.OrcaTerminal
 	tasks                []port.OrcaTask
 	terminal             port.OrcaTerminal
+	refreshedTerminal    port.OrcaTerminal
 	task                 port.OrcaTask
 	dispatch             port.OrcaDispatch
 	terminalErr          error
@@ -156,8 +218,10 @@ type dispatchOrcaFake struct {
 	dispatchErr          error
 	beforeTerminalCreate func()
 	terminalCreates      int
+	terminalRefreshes    int
 	taskCreates          int
 	dispatchCalls        int
+	dispatchRequests     []port.OrcaDispatchRequest
 	trace                []string
 }
 
@@ -183,6 +247,15 @@ func (f *dispatchOrcaFake) CreateTerminal(context.Context, port.OrcaCreateTermin
 	return f.terminal, f.terminalErr
 }
 
+func (f *dispatchOrcaFake) RefreshTerminal(context.Context, string, string) (port.OrcaTerminal, error) {
+	f.trace = append(f.trace, "terminal-refresh")
+	f.terminalRefreshes++
+	if f.refreshedTerminal.PTYID != "" {
+		return f.refreshedTerminal, nil
+	}
+	return f.terminal, nil
+}
+
 func (f *dispatchOrcaFake) ListTasks(context.Context) ([]port.OrcaTask, error) {
 	f.trace = append(f.trace, "task-list")
 	return append([]port.OrcaTask(nil), f.tasks...), nil
@@ -194,9 +267,10 @@ func (f *dispatchOrcaFake) CreateTask(context.Context, port.OrcaCreateTaskReques
 	return f.task, f.taskErr
 }
 
-func (f *dispatchOrcaFake) Dispatch(context.Context, port.OrcaDispatchRequest) (port.OrcaDispatch, error) {
+func (f *dispatchOrcaFake) Dispatch(_ context.Context, req port.OrcaDispatchRequest) (port.OrcaDispatch, error) {
 	f.trace = append(f.trace, "dispatch")
 	f.dispatchCalls++
+	f.dispatchRequests = append(f.dispatchRequests, req)
 	return f.dispatch, f.dispatchErr
 }
 

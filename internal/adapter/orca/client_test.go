@@ -151,6 +151,56 @@ func TestClientRefreshesTerminalHandleByWorktreeAndPTY(t *testing.T) {
 	}
 }
 
+func TestClientCreateTerminalRefreshesRuntimeCreateIdentity(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal create --worktree id:worktree-1 --command codex --title marker --json"] = CommandOutput{Stdout: []byte(`{
+		"ok": true,
+		"result": {
+			"terminal": {
+				"handle": "term-create",
+				"ptyId": "pty-2",
+				"worktreeId": "worktree-1",
+				"title": "marker",
+				"surface": "terminal"
+			}
+		}
+	}`)}
+	runner.responses["orca terminal list --worktree id:worktree-1 --json"] = fixtureOutput(t, "terminal_list.json")
+
+	terminal, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{
+		WorktreeID: "worktree-1", Agent: "codex", Title: "marker",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if terminal.Handle != "term-live" || terminal.PTYID != "pty-2" || terminal.WorktreeID != "worktree-1" || !terminal.Connected || !terminal.Writable {
+		t.Fatalf("refreshed created terminal = %#v", terminal)
+	}
+	want := [][]string{
+		{"orca", "terminal", "create", "--worktree", "id:worktree-1", "--command", "codex", "--title", "marker", "--json"},
+		{"orca", "terminal", "list", "--worktree", "id:worktree-1", "--json"},
+	}
+	if !reflect.DeepEqual(runner.calls, want) {
+		t.Fatalf("calls = %#v, want %#v", runner.calls, want)
+	}
+}
+
+func TestClientCreateTerminalRejectsIncompleteRuntimeIdentityBeforeRefresh(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal create --worktree id:worktree-1 --command codex --json"] = CommandOutput{Stdout: []byte(`{
+		"ok": true,
+		"result": {"terminal": {"handle": "term-create", "worktreeId": "worktree-1"}}
+	}`)}
+
+	_, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{WorktreeID: "worktree-1", Agent: "codex"})
+	if err == nil || !strings.Contains(err.Error(), "terminal identity") {
+		t.Fatalf("CreateTerminal() error = %v, want terminal identity error", err)
+	}
+	if len(runner.calls) != 1 {
+		t.Fatalf("incomplete create identity must not refresh: %#v", runner.calls)
+	}
+}
+
 type fakeRunner struct {
 	t         *testing.T
 	lookPaths map[string]string
