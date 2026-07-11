@@ -133,6 +133,12 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	if err := handoff.ValidateEnvelope(record); err != nil {
 		return true, "invalid supervised IssueOps handoff envelope: " + err.Error()
 	}
+	if terminalControlWriteRequest(req) {
+		if sourceCoordinatorTerminalSteeringAllowed(req, record) {
+			return true, ""
+		}
+		return true, "raw terminal steering is blocked outside literal-safe claimed-worker guidance from the exact source coordinator root; use issueops handoff start for prepare and dispatch"
+	}
 	if isHandoffMCPTool(req.Tool) {
 		if allowedHandoffMCPTool(req, record) {
 			return true, ""

@@ -268,7 +268,7 @@ Readiness gates, self-verification, install/update success, and core CLI/MCP con
 
 Orca integration is an optional CLI adapter, not a native-install dependency or second scheduler. `issueops worktree prepare --orchestrator auto|orca|inline` probes with structured status before mutation. `auto` may return the legacy inline result only on a pre-mutation probe failure; after any Orca mutation is invoked, the durable `pending_operation` journal and explicit recovery path are authoritative.
 
-Every supervised attempt records attempt/epoch/context, native host session identity, coordinator/worker roots, and stable Orca domain ids in the IssueOps record. State compare-and-set runs under the existing cycle lock, but no Orca process call may run while that lock is held. Hooks are limited to SessionStart claim guidance and PreToolUse ownership enforcement; coordinator acceptance and cleanup remain explicit commands.
+Every supervised attempt records attempt/epoch/context, native host session identity, coordinator/worker roots, and stable Orca domain ids in the IssueOps record. State compare-and-set runs under the existing cycle lock, but no Orca process call may run while that lock is held. Hooks are limited to SessionStart claim guidance and PreToolUse ownership enforcement; that ownership check includes exact source-root plan authority and blocks non-source terminal control before it can bypass a target terminal's hooks. Coordinator acceptance and cleanup remain explicit commands.
 
 ## MCP tool design guidance
 

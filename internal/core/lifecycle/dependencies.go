@@ -249,6 +249,10 @@ func gitBranchFromHead(repo string) string {
 	return worktreepath.GitBranchFromHead(repo)
 }
 
+func sourceCheckoutFromWorktree(repo string) string {
+	return worktreepath.SourceCheckout(repo)
+}
+
 func isInsideWorktreesPath(target string) bool {
 	return worktreepath.IsInsideWorktreesPath(target)
 }

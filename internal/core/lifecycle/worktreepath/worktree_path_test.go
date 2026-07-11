@@ -64,6 +64,24 @@ func TestGitBranchFromHead(t *testing.T) {
 	})
 }
 
+func TestSourceCheckoutFromLinkedWorktreeGitdir(t *testing.T) {
+	source := t.TempDir()
+	gitDir := filepath.Join(source, ".git", "worktrees", "feature")
+	if err := os.MkdirAll(gitDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	worktree := t.TempDir()
+	if err := os.WriteFile(filepath.Join(worktree, ".git"), []byte("gitdir: "+gitDir+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := SourceCheckout(worktree); got != source {
+		t.Fatalf("SourceCheckout=%q, want %q", got, source)
+	}
+	if got := SourceCheckout(source); got != source {
+		t.Fatalf("main checkout SourceCheckout=%q, want %q", got, source)
+	}
+}
+
 func TestCleanAbsAndWithin(t *testing.T) {
 	cwd, err := os.Getwd()
 	if err != nil {

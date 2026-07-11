@@ -39,6 +39,8 @@ Before dispatch, the supervised plan must state the current issue and cycle inte
 
 Create the plan under the linked worktree's approved plan convention while the handoff is still `coordinator_preparing`, the context is unsealed, and no external-operation journal is pending. Preserve it as one coordinator plan commit containing only that Markdown file:
 
+Plan file edits must originate from the source coordinator root: both the hook CWD and repo identity must exactly equal `record.Repo`. A feature-worktree session must not steer a child plan; hand the edit and commit to the main source coordinator instead of relaying a shell mutation into the child terminal.
+
 ```bash
 git -C <worker-root> add -- <absolute-current-cycle-plan-path>
 git -C <worker-root> commit --only -m 'docs: record current cycle handoff plan' -- <absolute-current-cycle-plan-path>
@@ -104,7 +106,9 @@ Quoted semicolons, ampersands, and pipes in evidence values are argument data, n
 
 Supervised shell red flags include active command substitution, unquoted process substitution, zsh equals expansion (`=git` and `=(...)`), parameter/tilde expansion, and unquoted brace/glob pathname expansion. Single-quoted or escaped literal evidence remains data; double-quoted process-substitution spelling is also literal in the verified Bash/zsh contract. Use explicit canonical paths and an explicit argv instead of `eval`, `source`, wrappers, globs, or expansion-generated controller names.
 
-When steering a verified live terminal, use the installed argv contract exactly: `orca terminal send --terminal <handle> --text <payload> --enter --json`. Prefer a direct argv call with payload as one argument. If a relay accepts only shell text, apply a POSIX single-quote encoder exactly once (`'` becomes `'\''`) to each dynamic value before composing the command. Never pass freeform text through JSON double-quoting, shell command substitution, backticks, or JS template interpolation such as `${...}`; build a plain literal string first and encode it once.
+The raw terminal steering surface is coordinator-only correction, not a worker escape hatch. A claimed worker, a feature-worktree session, and every non-source session must not call terminal `send`, `stop`, `create`, `switch`, `focus`, `close`, `rename`, or `split` (or write/input/type/paste aliases). The target hook is not a safety boundary for injected shell text. During preparation or dispatch, use `issueops handoff start`; arbitrary terminal mutation is forbidden. `list`, `show`, `read`, and `wait` remain read-only observations.
+
+The only steering exception is literal-safe claimed-worker guidance issued from the exact source coordinator root while the selected handoff is already `claimed`. The installed argv shape is `orca terminal send --terminal <handle> --text <payload> --enter --json`, but authorization narrows both values: request CWD and repo identity must equal `record.Repo`, and `--terminal` must be a uniquely matching persisted worker terminal handle across active handoffs; an unknown, duplicated, or arbitrary `term_*` is never sufficient. This lets concurrent cycles with distinct handles select the claimed worker without weakening ambiguity safety. The payload must be `# agent-harness guidance: <single-line-literal>`; decoded guidance must contain no ASCII C0 control rune (`0x00`–`0x1F`) or DEL (`0x7F`): backspace, tab, and ESC can alter a bare PTY even when the visible text begins with `#`; ordinary Korean and Unicode text remain valid. Prefer a direct argv call with payload as one argument. If a relay accepts only shell text, apply a POSIX single-quote encoder exactly once (`'` becomes `'\''`) to each dynamic value before composing the command. Never pass freeform text through JSON double-quoting, shell command substitution, backticks, or JS template interpolation such as `${...}`; build a plain literal string first and encode it once.
 
 ```bash
 agent-harness issueops handoff claim \

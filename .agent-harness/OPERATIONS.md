@@ -79,6 +79,8 @@ Orca is user-installed and optional. Preview with `agent-harness issueops worktr
 
 For a resolved Orca path, follow `skills/issueops/references/orca-handoff.md`: coordinator `worktree prepare`/`handoff start`, fresh worker `handoff claim`/`issueops heartbeat`/`handoff finish`, coordinator `handoff accept`. On `recovery_required`, inspect `issueops status --json` and reconcile explicitly; never repeat create or switch to inline after an external mutation may have run.
 
+Plan edits originate only from the exact source coordinator root; do not relay child-plan mutations through a feature or worker terminal. Preparation and dispatch use `issueops handoff start`. Raw terminal control is blocked for workers and non-source sessions. After claim, the source coordinator may send only single-line literal-safe `# agent-harness guidance:` to a uniquely matching persisted worker handle with exact `orca terminal send --terminal <handle> --text <payload> --enter --json`; ASCII C0 and DEL bytes are forbidden. The target hook is not a substitute for this source-side authorization.
+
 Operational release evidence includes fake-runner recovery matrices, installed Codex/Claude/GJC ownership-block smokes, and one disposable live Orca cycle with per-resource cleanup receipts. Native installation and `self-verify` do not require Orca availability.
 
 ## Quick Smoke

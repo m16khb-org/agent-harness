@@ -249,6 +249,30 @@ func TestHandoffGuardAllowsCycleNamedPlanCorrectionAndExactCoordinatorCommit(t *
 	if got := BuildLifecyclePreToolUseDecision(edit); got.Decision != "allow" {
 		t.Fatalf("cycle-named corrective plan edit should pass before context seal: %#v", got)
 	}
+	featureRoot := filepath.Join(filepath.Dir(worktree), "unrelated-feature-worktree")
+	if err := os.MkdirAll(featureRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, roots := range []struct {
+		name string
+		cwd  string
+		repo string
+	}{
+		{name: "feature cwd and repo", cwd: featureRoot, repo: featureRoot},
+		{name: "feature cwd", cwd: featureRoot, repo: repo},
+		{name: "feature repo", cwd: repo, repo: featureRoot},
+	} {
+		t.Run(roots.name, func(t *testing.T) {
+			wrongRoot := handoffEditRequest(record, roots.cwd, "codex", "feature-session", cyclePlan)
+			wrongRoot.Repo = roots.repo
+			if got := BuildLifecyclePreToolUseDecision(wrongRoot); got.Decision != "block" {
+				t.Fatalf("plan edit outside the source coordinator root must block: %#v", got)
+			}
+			if _, err := os.Lstat(cyclePlan); !os.IsNotExist(err) {
+				t.Fatalf("blocked plan edit must not create the target, lstat err=%v", err)
+			}
+		})
+	}
 
 	for _, command := range []string{
 		"git -C " + worktree + " add -- " + cyclePlan,
@@ -552,6 +576,227 @@ func TestClaimedWorkerRoleBlocksCoordinatorOwnedCommandsAndChecksBranch(t *testi
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestHandoffGuardBlocksRawTerminalSteeringOutsideSourceCoordinator(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	featureRoot := filepath.Join(filepath.Dir(repo), "unrelated-feature-session")
+	gitDir := filepath.Join(repo, ".git", "worktrees", "unrelated-feature-session")
+	if err := os.MkdirAll(gitDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/unrelated-feature\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(featureRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(featureRoot, ".git"), []byte("gitdir: "+gitDir+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := filepath.Join(featureRoot, "terminal-steering-sentinel")
+	commands := map[string]string{
+		"send":          "orca terminal send --terminal term-1 --text 'touch " + sentinel + "' --enter --json",
+		"stop":          "orca terminal stop --worktree id:wt-1 --json",
+		"create":        "orca terminal create --worktree id:wt-1 --command codex --json",
+		"switch":        "orca terminal switch --terminal term-1 --json",
+		"focus":         "orca terminal focus --terminal term-1 --json",
+		"close":         "orca terminal close --terminal term-1 --json",
+		"rename":        "orca terminal rename --terminal term-1 --title worker --json",
+		"split":         "orca terminal split --terminal term-1 --direction horizontal --json",
+		"write alias":   "orca terminal write --terminal term-1 --text 'touch " + sentinel + "' --json",
+		"input alias":   "orca terminal input --terminal term-1 --text 'touch " + sentinel + "' --json",
+		"type alias":    "orca terminal type --terminal term-1 --text 'touch " + sentinel + "' --json",
+		"paste alias":   "orca terminal paste --terminal term-1 --text 'touch " + sentinel + "' --json",
+		"shadowed orca": "/tmp/orca terminal send --terminal term-1 --text 'touch " + sentinel + "' --enter --json",
+	}
+	for name, command := range commands {
+		t.Run(name, func(t *testing.T) {
+			req := handoffEditRequest(record, featureRoot, "codex", "feature-session", "")
+			req.SourceCheckout = ""
+			req.Tool, req.Command = "exec_command", command
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" || !strings.Contains(got.Reason, "terminal steering") {
+				t.Fatalf("non-source terminal steering %q must block before execution: %#v", command, got)
+			}
+			if _, err := os.Stat(sentinel); !os.IsNotExist(err) {
+				t.Fatalf("blocked terminal steering must not create a sentinel: %v", err)
+			}
+		})
+	}
+
+	for _, tool := range []string{
+		"mcp__orca__terminal_send", "mcp__orca__terminal_stop", "mcp__orca__terminal_create", "mcp__orca__terminal_switch",
+		"mcp__orca__terminal_focus", "mcp__orca__terminal_close", "mcp__orca__terminal_rename", "mcp__orca__terminal_split",
+		"terminal_write", "terminal_input", "terminal_type", "terminal_paste",
+	} {
+		req := handoffEditRequest(record, featureRoot, "codex", "feature-session", "")
+		req.SourceCheckout = ""
+		req.Tool, req.Command = tool, ""
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" || !strings.Contains(got.Reason, "terminal steering") {
+			t.Fatalf("non-source terminal control tool %q must block before execution: %#v", tool, got)
+		}
+		if _, err := os.Stat(sentinel); !os.IsNotExist(err) {
+			t.Fatalf("blocked terminal control tool must not create a sentinel: %v", err)
+		}
+	}
+
+	for _, command := range []string{
+		"orca terminal list --worktree id:wt-1 --json",
+		"orca terminal show --terminal term-1 --json",
+		"orca terminal read --terminal term-1 --json",
+		"orca terminal wait --terminal term-1 --for tui-idle --timeout-ms 100 --json",
+	} {
+		req := handoffEditRequest(record, featureRoot, "codex", "feature-session", "")
+		req.SourceCheckout = ""
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("installed read-only terminal command %q should remain allowed: %#v", command, got)
+		}
+	}
+}
+
+func TestHandoffGuardAllowsOnlyLiteralSafeClaimedWorkerSteeringFromSourceCoordinator(t *testing.T) {
+	t.Run("claimed safe guidance", func(t *testing.T) {
+		repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
+		record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term_live"
+		var err error
+		record, err = writeIssueOps(IssueOpsStateRoot(), record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool = "exec_command"
+		req.Command = "orca terminal send --terminal term_live --text '# agent-harness guidance: retry the exact report patch once' --enter --json"
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("source coordinator literal-safe claimed-worker guidance should pass: %#v", got)
+		}
+
+		req.Command = "orca terminal send --terminal term_other --text '# agent-harness guidance: retry the exact report patch once' --enter --json"
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("source coordinator guidance must bind the persisted worker terminal handle: %#v", got)
+		}
+
+		for _, command := range []string{
+			"orca terminal list --worktree id:wt-1 --limit 32 --json",
+			"orca terminal show --terminal term_live --json",
+			"orca terminal read --terminal term_live --cursor 1 --limit 32 --json",
+			"orca terminal wait --terminal term_live --for tui-idle --timeout-ms 100 --json",
+		} {
+			req.Command = command
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("source coordinator read-only terminal command %q should pass: %#v", command, got)
+			}
+		}
+	})
+
+	t.Run("claimed guidance rejects terminal control bytes", func(t *testing.T) {
+		repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
+		record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term_live"
+		var err error
+		record, err = writeIssueOps(IssueOpsStateRoot(), record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		base := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		base.Tool = "exec_command"
+		for name, control := range map[string]string{
+			"backspace": "\b",
+			"tab":       "\t",
+			"escape":    "\x1b",
+			"delete":    "\x7f",
+		} {
+			t.Run(name, func(t *testing.T) {
+				req := base
+				req.Command = "orca terminal send --terminal term_live --text '# agent-harness guidance: keep" + control + "going' --enter --json"
+				if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+					t.Fatalf("decoded terminal control byte %q must block: %#v", control, got)
+				}
+			})
+		}
+		base.Command = "orca terminal send --terminal term_live --text '# agent-harness guidance: 정확한 보고서 패치를 한 번만 다시 시도하세요 ✅' --enter --json"
+		if got := BuildLifecyclePreToolUseDecision(base); got.Decision != "allow" {
+			t.Fatalf("ordinary Korean and Unicode guidance should pass: %#v", got)
+		}
+	})
+
+	for _, state := range []string{handoff.StateCoordinatorPreparing, handoff.StateDispatched} {
+		t.Run(state, func(t *testing.T) {
+			repo, record, _ := lifecycleHandoffRecord(t, state)
+			req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+			req.Tool = "exec_command"
+			req.Command = "orca terminal send --terminal term_live --text '# agent-harness guidance: create or dispatch now' --enter --json"
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("%s must use issueops handoff start rather than raw terminal steering: %#v", state, got)
+			}
+		})
+	}
+
+	t.Run("claimed shell payload", func(t *testing.T) {
+		repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool = "exec_command"
+		req.Command = "orca terminal send --terminal term_live --text 'apply_patch internal/x.go' --enter --json"
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("source coordinator must not inject an arbitrary terminal mutation: %#v", got)
+		}
+	})
+}
+
+func TestHandoffGuardDeduplicatesSourceDiscoveryBeforeTerminalSteeringAmbiguity(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	info, err := os.Stat(filepath.Join(repo, ".git"))
+	if err != nil || !info.IsDir() {
+		t.Fatalf("fixture must model a main checkout with a .git directory: info=%v err=%v", info, err)
+	}
+	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	req.Tool = "exec_command"
+	req.Command = "orca terminal send --terminal term-1 --text '# agent-harness guidance: retry the exact report patch once' --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("duplicate discovery of one stable cycle ID must not create false ambiguity: %#v", got)
+	}
+
+	b, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var second IssueOpsRecord
+	if err := json.Unmarshal(b, &second); err != nil {
+		t.Fatal(err)
+	}
+	second.ID = newIssueOpsID(repo, "2-demo")
+	second.Branch = "2-demo"
+	second.WorktreePath = makeIssueOpsGuardWorktreeForTest(t, repo, second.Branch)
+	second.BranchPrepare.Branch = second.Branch
+	second.ExecutionHandoff.WorkerRoot = second.WorktreePath
+	second.ExecutionHandoff.OwnershipEpoch = "epoch-2"
+	second.ExecutionHandoff.Orca.BaseRef = "refs/remotes/origin/2-demo"
+	second.ExecutionHandoff.Orca.WorktreeID = "wt-2"
+	second.ExecutionHandoff.Orca.WorktreeInstanceID = "inst-2"
+	second.ExecutionHandoff.Orca.WorktreePath = second.WorktreePath
+	second.ExecutionHandoff.Orca.WorkerPTYID = "pty-2"
+	second.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-2"
+	second.ExecutionHandoff.Orca.TaskID = "task-2"
+	second.ExecutionHandoff.Orca.DispatchID = "dispatch-2"
+	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
+		t.Fatal(err)
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("two active cycles with distinct handles must select the exact claimed handle: %#v", got)
+	}
+
+	unknown := req
+	unknown.Command = "orca terminal send --terminal term-unknown --text '# agent-harness guidance: retry once' --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(unknown); got.Decision != "block" {
+		t.Fatalf("an unknown terminal handle must fail closed: %#v", got)
+	}
+
+	second.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-1"
+	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
+		t.Fatal(err)
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" || !strings.Contains(got.Reason, "ambiguous") {
+		t.Fatalf("duplicate persisted terminal handles must be ambiguous: %#v", got)
 	}
 }
 

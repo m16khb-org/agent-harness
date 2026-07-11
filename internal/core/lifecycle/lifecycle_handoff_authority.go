@@ -289,10 +289,54 @@ func exactReadOnlyShellCommand(req HookToolUseLifecycleRequest, record IssueOpsR
 			return true
 		}
 	case "orca":
-		return (len(tokens) == 4 && tokens[1] == "terminal" && tokens[2] == "list" && tokens[3] == "--json") ||
+		return exactReadOnlyOrcaTerminalCommand(tokens) ||
 			(len(tokens) == 4 && tokens[1] == "orchestration" && tokens[2] == "task-list" && tokens[3] == "--json")
 	}
 	return false
+}
+
+func exactReadOnlyOrcaTerminalCommand(tokens []string) bool {
+	if len(tokens) < 4 || tokens[0] != "orca" || tokens[1] != "terminal" {
+		return false
+	}
+	values := map[string]bool{}
+	booleans := map[string]bool{"--json": true}
+	switch tokens[2] {
+	case "list":
+		values = map[string]bool{"--worktree": true, "--limit": true}
+	case "show":
+		values = map[string]bool{"--terminal": true}
+	case "read":
+		values = map[string]bool{"--terminal": true, "--cursor": true, "--limit": true}
+	case "wait":
+		values = map[string]bool{"--terminal": true, "--for": true, "--timeout-ms": true}
+	default:
+		return false
+	}
+	flags, ok := exactFlags(exactIssueOpsCommand{tokens: tokens, start: 3}, values, booleans, map[string]bool{})
+	if !ok || len(flags["--json"]) != 1 {
+		return false
+	}
+	for name, entries := range flags {
+		if name == "--json" {
+			continue
+		}
+		if len(entries) != 1 || strings.TrimSpace(entries[0]) == "" {
+			return false
+		}
+	}
+	if value, exists := flags["--for"]; exists && value[0] != "exit" && value[0] != "tui-idle" {
+		return false
+	}
+	for _, name := range []string{"--cursor", "--limit", "--timeout-ms"} {
+		if value, exists := flags[name]; exists {
+			n, err := strconv.Atoi(value[0])
+			if err != nil || n < 0 || (name == "--limit" && n == 0) {
+				return false
+			}
+		}
+	}
+	return tokens[2] != "wait" || len(flags["--for"]) == 1
 }
 
 func safeRipgrepArgs(tokens []string) bool {
@@ -870,9 +914,11 @@ func lifecycleRecordID(req HookToolUseLifecycleRequest) (string, bool) {
 }
 
 func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRecord, bool, string) {
-	records := supervisedHandoffGuardRecords(req.Repo)
-	if strings.TrimSpace(req.SourceCheckout) != "" {
-		records = append(records, supervisedHandoffGuardRecords(req.SourceCheckout)...)
+	records := []IssueOpsRecord{}
+	for _, repo := range []string{req.Repo, req.SourceCheckout, sourceCheckoutFromWorktree(req.Repo), sourceCheckoutFromWorktree(req.CWD)} {
+		if strings.TrimSpace(repo) != "" {
+			records = append(records, supervisedHandoffGuardRecords(repo)...)
+		}
 	}
 	byID := map[string]IssueOpsRecord{}
 	for _, record := range records {
@@ -886,6 +932,25 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 	}
 	if len(records) == 0 {
 		return IssueOpsRecord{}, false, ""
+	}
+	if terminalControlWriteRequest(req) {
+		if handle, ok := literalSafeTerminalSendHandle(req); ok {
+			matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool {
+				return record.ExecutionHandoff.Orca != nil && strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerMailboxHandle) == handle
+			})
+			switch len(matches) {
+			case 1:
+				return matches[0], true, ""
+			case 0:
+				return IssueOpsRecord{}, false, "raw terminal steering does not match a persisted worker terminal handle"
+			default:
+				return IssueOpsRecord{}, false, "raw terminal steering is ambiguous across duplicate persisted worker terminal handles"
+			}
+		}
+		if len(records) == 1 {
+			return records[0], true, ""
+		}
+		return IssueOpsRecord{}, false, "raw terminal steering is ambiguous across active supervised IssueOps cycles"
 	}
 	cwd := cleanAbsPath(req.CWD)
 	if matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool { return cwd == cleanAbsPath(record.ExecutionHandoff.WorkerRoot) }); len(matches) == 1 {
@@ -920,6 +985,78 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 		return IssueOpsRecord{}, false, "multiple active supervised IssueOps cycles share this source checkout; use an exact lifecycle --id or worker target"
 	}
 	return IssueOpsRecord{}, false, ""
+}
+
+func terminalControlWriteRequest(req HookToolUseLifecycleRequest) bool {
+	tool := strings.ToLower(strings.TrimSpace(req.Tool))
+	for _, suffix := range []string{
+		"terminal_send", "terminal_stop", "terminal_create", "terminal_switch", "terminal_focus", "terminal_close", "terminal_rename", "terminal_split",
+		"terminal_write", "terminal_input", "terminal_type", "terminal_paste",
+	} {
+		if strings.HasSuffix(tool, suffix) {
+			return true
+		}
+	}
+	if !searchrouting.IsShellTool(req.Tool) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	for i := 0; i+2 < len(tokens); i++ {
+		if filepath.Base(tokens[i]) != "orca" || tokens[i+1] != "terminal" {
+			continue
+		}
+		switch tokens[i+2] {
+		case "send", "stop", "create", "switch", "focus", "close", "rename", "split", "write", "input", "type", "paste":
+			return true
+		}
+	}
+	return false
+}
+
+func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateClaimed || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+		return false
+	}
+	handle, ok := literalSafeTerminalSendHandle(req)
+	if !ok {
+		return false
+	}
+	persistedHandle := ""
+	if h.Orca != nil {
+		persistedHandle = strings.TrimSpace(h.Orca.WorkerMailboxHandle)
+	}
+	return persistedHandle != "" && handle == persistedHandle
+}
+
+func literalSafeTerminalSendHandle(req HookToolUseLifecycleRequest) (string, bool) {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return "", false
+	}
+	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
+		return "", false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) != 9 || tokens[0] != "orca" || tokens[1] != "terminal" || tokens[2] != "send" || tokens[3] != "--terminal" || tokens[5] != "--text" || tokens[7] != "--enter" || tokens[8] != "--json" {
+		return "", false
+	}
+	handle, guidance := strings.TrimSpace(tokens[4]), tokens[6]
+	if handle == "" || len(handle) > 256 || !strings.HasPrefix(guidance, "# agent-harness guidance: ") || len(guidance) > 4096 || containsASCIITerminalControl(guidance) {
+		return "", false
+	}
+	if commandparse.HasUnquotedControlOperator(guidance) || commandparse.HasActiveCommandSubstitution(guidance) || commandparse.HasActiveOutputRedirect(guidance) || commandparse.HasActiveParameterOrTildeExpansion(guidance) || commandparse.HasActivePathnameExpansion(guidance) || commandparse.HasActiveShellSpecialQuoting(guidance) || commandparse.HasActiveZshEqualsExpansion(guidance) {
+		return "", false
+	}
+	return handle, true
+}
+
+func containsASCIITerminalControl(value string) bool {
+	for _, r := range value {
+		if r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
 }
 
 func supervisedHandoffGuardRecords(repo string) []IssueOpsRecord {

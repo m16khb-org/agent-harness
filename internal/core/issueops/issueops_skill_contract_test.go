@@ -398,6 +398,15 @@ func TestIssueOpsSupervisedPlanMustDescribeCurrentCycle(t *testing.T) {
 		"Never link an unrelated legacy plan",
 		"coordinator plan commit",
 		"attempt base head",
+		"source coordinator root",
+		"feature-worktree session must not steer a child plan",
+		"raw terminal steering",
+		"persisted worker terminal handle",
+		"uniquely matching persisted worker terminal handle",
+		"issueops handoff start",
+		"target hook",
+		"ASCII C0",
+		"DEL",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("IssueOps supervised plan contract missing %q", want)
@@ -414,6 +423,15 @@ func TestTuringSupervisedPlanMustDescribeCurrentCycle(t *testing.T) {
 		"Never link an unrelated legacy plan",
 		"coordinator plan commit",
 		"attempt base head",
+		"source coordinator root",
+		"feature-worktree session must not steer a child plan",
+		"raw terminal steering",
+		"persisted worker terminal handle",
+		"uniquely matching persisted worker terminal handle",
+		"issueops handoff start",
+		"target hook",
+		"ASCII C0",
+		"DEL",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("Turing supervised plan contract missing %q", want)
