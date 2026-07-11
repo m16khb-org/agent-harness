@@ -119,6 +119,10 @@ var IssueOpsHandoffOrcaClient = func() core.IssueOpsOrcaDispatchClient {
 	return orca.New()
 }
 
+var IssueOpsWorkerDoneProjectionClient = func() core.IssueOpsWorkerDoneProjectionClient {
+	return orca.New()
+}
+
 var VerifyIssueOpsChildIssueBeforeLink = func(string) error {
 	return fmt.Errorf("issueops child verification dependency is not configured")
 }

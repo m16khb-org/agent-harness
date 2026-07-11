@@ -1,6 +1,9 @@
 package handoff
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -9,6 +12,44 @@ import (
 
 	"agent-harness/internal/core/issueops/model"
 )
+
+func TestIssueOpsHandoffContextV1PreservesLegacyEmptyCoordinatorProjectionBytes(t *testing.T) {
+	projection := ContextProjection{
+		Version: 1, CycleID: "io-legacy-v3", Branch: "16-demo",
+		WorktreePath: "/repo.worktrees/16-demo", PlanPath: "/repo/plans/handoff.md", PlanSHA256: strings.Repeat("a", 64),
+		Attempt: 1, OwnershipEpoch: "epoch-1", AttemptBaseHead: strings.Repeat("b", 40),
+	}
+	encoded, err := json.Marshal(projection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []byte(`{"version":1,"cycle_id":"io-legacy-v3","branch":"16-demo","worktree_path":"/repo.worktrees/16-demo","plan_path":"/repo/plans/handoff.md","plan_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","attempt":1,"ownership_epoch":"epoch-1","attempt_base_head":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}`)
+	if !bytes.Equal(encoded, want) {
+		t.Fatalf("ContextVersion-1 legacy projection changed\n got=%s\nwant=%s", encoded, want)
+	}
+	sum := sha256.Sum256(encoded)
+	if got := hex.EncodeToString(sum[:]); got != "f8ac8bf957e53fbff75e6ee8e26ddd20270b24d6c05cf29a804f1a728251234a" {
+		t.Fatalf("ContextVersion-1 legacy projection hash = %s", got)
+	}
+
+	projection.CoordinatorRecipient = "term_coordinator"
+	withRecipient, err := json.Marshal(projection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceWithRecipient, err := json.Marshal(contextSourceProjection(projection))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, value := range map[string][]byte{"context": withRecipient, "source": sourceWithRecipient} {
+		if !bytes.Contains(value, []byte(`"coordinator_recipient":"term_coordinator"`)) {
+			t.Fatalf("nonempty sealed coordinator missing from %s projection: %s", name, value)
+		}
+		if bytes.Equal(value, want) {
+			t.Fatalf("nonempty sealed coordinator did not change %s hash input", name)
+		}
+	}
+}
 
 func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 	record := contextRecordForTest(t)

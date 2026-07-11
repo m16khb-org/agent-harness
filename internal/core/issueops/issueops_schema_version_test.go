@@ -2,12 +2,14 @@ package issueops
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/sqlstore"
 )
 
@@ -102,7 +104,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 	id := "io-future-schema"
 	writeRawIssueOpsRecord(t, stateRoot, id, `{
   "ok": true,
-  "schema_version": 4,
+  "schema_version": 5,
   "id": "io-future-schema",
   "repo": "/repo/example",
   "branch": "1-demo",
@@ -113,8 +115,45 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 `)
 
 	_, err := ReadIssueOps(stateRoot, id)
-	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 4") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 5") {
 		t.Fatalf("expected future schema rejection, got %v", err)
+	}
+}
+
+func TestIssueOpsSchemaV4PreservesSealedOrcaMailboxAuthorities(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	record.SchemaVersion = 4
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(raw, &document); err != nil {
+		t.Fatal(err)
+	}
+	handoffDocument := document["execution_handoff"].(map[string]any)
+	handoffDocument["coordinator_mailbox_handle"] = "term_coordinator"
+	orcaDocument := handoffDocument["orca"].(map[string]any)
+	orcaDocument["worker_terminal_handle"] = "term_live"
+	orcaDocument["worker_mailbox_handle"] = "term_dispatched"
+	raw, err = json.Marshal(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeRawIssueOpsRecord(t, stateRoot, record.ID, string(raw))
+
+	got, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reencoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"schema_version":4`, `"coordinator_mailbox_handle":"term_coordinator"`, `"worker_terminal_handle":"term_live"`, `"worker_mailbox_handle":"term_dispatched"`} {
+		if !bytes.Contains(reencoded, []byte(want)) {
+			t.Fatalf("schema-v4 authority %s was not preserved: %s", want, reencoded)
+		}
 	}
 }
 
@@ -181,6 +220,206 @@ func TestIssueOpsReadUpgradesV2HandoffWithoutDataLoss(t *testing.T) {
 	}
 }
 
+func TestIssueOpsReadUpgradesV3LiveTerminalIdentityWithoutInventingCoordinator(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.SchemaVersion = 3
+	record.ExecutionHandoff.CoordinatorMailboxHandle = ""
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-legacy"
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = ""
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-legacy"
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put(issueOpsBucket, record.ID, raw); err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upgraded.SchemaVersion != 4 || upgraded.ExecutionHandoff.CoordinatorMailboxHandle != "" || upgraded.ExecutionHandoff.Orca.WorkerMailboxHandle != "" || upgraded.ExecutionHandoff.Orca.WorkerTerminalHandle != "term-legacy" {
+		t.Fatalf("v3 authority migration invented or lost identity: %#v", upgraded.ExecutionHandoff)
+	}
+}
+
+func TestIssueOpsReadUpgradesV3ContextV1WithoutChangingLegacyHashes(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	options := handoff.ContextOptions{WorkerScope: "legacy v3 worker", VerificationCommands: []string{"go test ./... -count=1"}}
+	packet, err := handoff.BuildContext(record, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourcePacket, err := handoff.BuildContext(record, handoff.ContextOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyContextSHA := legacyV3ContextProjectionSHA256(t, packet.Projection)
+	legacySourceSHA := legacyV3ContextProjectionSHA256(t, sourcePacket.Projection)
+	record.SchemaVersion = 3
+	record.ExecutionHandoff.ContextVersion = handoff.ContextVersion
+	record.ExecutionHandoff.ContextSHA256 = legacyContextSHA
+	record.ExecutionHandoff.ContextSourceSHA256 = legacySourceSHA
+	canonicalOptions := handoff.CanonicalContextOptions(options)
+	record.ExecutionHandoff.ContextOptions = &canonicalOptions
+	putRawIssueOpsRecordForTest(t, stateRoot, record)
+
+	upgraded, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateHandoffContextSource(upgraded); err != nil {
+		t.Fatalf("migrated v3 context source became stale: %v", err)
+	}
+	rebuilt, err := handoff.BuildContext(upgraded, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rebuilt.SHA256 != legacyContextSHA || rebuilt.SourceSHA256 != legacySourceSHA {
+		t.Fatalf("migrated v3 ContextVersion-1 hashes changed: got=%s/%s want=%s/%s", rebuilt.SHA256, rebuilt.SourceSHA256, legacyContextSHA, legacySourceSHA)
+	}
+	if strings.Contains(rebuilt.Markdown, `"coordinator_recipient"`) {
+		t.Fatalf("legacy empty coordinator changed rendered context bytes: %s", rebuilt.Markdown)
+	}
+}
+
+func legacyV3ContextProjectionSHA256(t *testing.T, projection handoff.ContextProjection) string {
+	t.Helper()
+	encoded, err := json.Marshal(projection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy := bytes.Replace(encoded, []byte(`,"coordinator_recipient":""`), nil, 1)
+	sum := sha256.Sum256(legacy)
+	return fmt.Sprintf("%x", sum)
+}
+
+func TestIssueOpsReadUpgradesV3CurrentAndPriorTerminalAuthority(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	h := record.ExecutionHandoff
+	h.State = handoff.StateClosed
+	h.ClosedDisposition = handoff.DispositionWorkerFailed
+	h.WorkerSession = &IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-prior", AgentID: "agent-prior"}
+	h.Orca.WorkerTerminalHandle = ""
+	h.Orca.WorkerMailboxHandle = "term-prior-mailbox"
+	h.Result = validFailedHandoffResultForTest(record)
+	h.CompletedAt = "2026-07-11T00:30:00Z"
+	prior, err := handoff.SnapshotPriorAttempt(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h.State = handoff.StateCoordinatorPreparing
+	h.ClosedDisposition = ""
+	h.Attempt = 2
+	h.OwnershipEpoch = "epoch-current"
+	h.DeliveryMode = ""
+	h.WorkerSession = nil
+	h.Result = nil
+	h.Failure = nil
+	h.PendingOperation = nil
+	h.DispatchedAt = ""
+	h.ClaimedAt = ""
+	h.LastHeartbeatAt = ""
+	h.CompletedAt = ""
+	h.AcceptedAt = ""
+	h.Orca.WorkerTerminalHandle = ""
+	h.Orca.WorkerMailboxHandle = "term-current-legacy"
+	h.Orca.DispatchID = ""
+	h.PriorAttempts = []IssueOpsExecutionHandoffPriorAttempt{prior}
+	record.SchemaVersion = 3
+	putRawIssueOpsRecordForTest(t, stateRoot, record)
+
+	upgraded, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := upgraded.ExecutionHandoff
+	if current.Orca.WorkerTerminalHandle != "term-current-legacy" || current.Orca.WorkerMailboxHandle != "" {
+		t.Fatalf("v3 current attempt authority migration = %#v", current.Orca)
+	}
+	if len(current.PriorAttempts) != 1 || current.PriorAttempts[0].Orca == nil {
+		t.Fatalf("v3 prior attempt was not retained: %#v", current.PriorAttempts)
+	}
+	priorOrca := current.PriorAttempts[0].Orca
+	if priorOrca.WorkerTerminalHandle != "term-prior-mailbox" || priorOrca.WorkerMailboxHandle != "term-prior-mailbox" || priorOrca.DispatchID == "" {
+		t.Fatalf("v3 dispatched prior authority migration = %#v", priorOrca)
+	}
+}
+
+func TestIssueOpsReadUpgradesV3CancelledNoDispatchCurrentAndPrior(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	h := record.ExecutionHandoff
+	h.State = handoff.StateClosed
+	h.ClosedDisposition = handoff.DispositionCancelled
+	h.Orca.WorkerTerminalHandle = ""
+	h.Orca.WorkerMailboxHandle = "term-prior-legacy"
+	h.Orca.TaskID = ""
+	h.Orca.DispatchID = ""
+	prior, err := handoff.SnapshotPriorAttempt(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h.Attempt = 2
+	h.OwnershipEpoch = "epoch-current"
+	h.Orca.WorkerTerminalHandle = ""
+	h.Orca.WorkerMailboxHandle = "term-current-legacy"
+	h.PriorAttempts = []IssueOpsExecutionHandoffPriorAttempt{prior}
+	record.SchemaVersion = 3
+	putRawIssueOpsRecordForTest(t, stateRoot, record)
+
+	upgraded, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := upgraded.ExecutionHandoff
+	if current.Orca.WorkerTerminalHandle != "term-current-legacy" || current.Orca.WorkerMailboxHandle != "" {
+		t.Fatalf("v3 cancelled current authority migration = %#v", current.Orca)
+	}
+	if len(current.PriorAttempts) != 1 || current.PriorAttempts[0].Orca == nil {
+		t.Fatalf("v3 cancelled prior attempt was not retained: %#v", current.PriorAttempts)
+	}
+	priorOrca := current.PriorAttempts[0].Orca
+	if priorOrca.WorkerTerminalHandle != "term-prior-legacy" || priorOrca.WorkerMailboxHandle != "" || priorOrca.DispatchID != "" {
+		t.Fatalf("v3 cancelled prior authority migration = %#v", priorOrca)
+	}
+}
+
+func TestIssueOpsSchemaV4DoesNotApplyLegacyMailboxRewrites(t *testing.T) {
+	_, record := handoffDispatchRecord(t)
+	record.SchemaVersion = IssueOpsCurrentSchemaVersion
+	record.ExecutionHandoff.State = handoff.StateCoordinatorPreparing
+	record.ExecutionHandoff.Orca.DispatchID = ""
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = ""
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-sealed-v4"
+
+	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
+		t.Fatal(err)
+	}
+	if record.ExecutionHandoff.Orca.WorkerTerminalHandle != "" || record.ExecutionHandoff.Orca.WorkerMailboxHandle != "term-sealed-v4" {
+		t.Fatalf("schema-v4 authority was rewritten as legacy: %#v", record.ExecutionHandoff.Orca)
+	}
+}
+
+func TestIssueOpsSchemaV4MissingLiveTerminalFailsClosedWithoutBorrowingMailbox(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = ""
+	putRawIssueOpsRecordForTest(t, stateRoot, record)
+
+	got, err := ReadIssueOps(stateRoot, record.ID)
+	if err == nil || got.ExecutionHandoff == nil || got.ExecutionHandoff.Orca == nil {
+		t.Fatalf("schema-v4 missing live terminal did not fail closed: got=%#v err=%v", got, err)
+	}
+	if got.ExecutionHandoff.Orca.WorkerTerminalHandle != "" || got.ExecutionHandoff.Orca.WorkerMailboxHandle != record.ExecutionHandoff.Orca.WorkerMailboxHandle {
+		t.Fatalf("schema-v4 read borrowed or cleared sealed authority: %#v", got.ExecutionHandoff.Orca)
+	}
+}
+
 func TestFutureSchemaReadPreservesBoundedHandoffIdentityAndInvalidMarker(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	record.SchemaVersion = IssueOpsCurrentSchemaVersion + 1
@@ -236,11 +475,14 @@ func TestLegacyV1DecoderRejectsV2HandoffWithoutModifyingBytes(t *testing.T) {
 
 func TestLegacyV2DecoderRejectsV3StableTerminalIdentityWithoutModifyingBytes(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
+	record.SchemaVersion = 3
 	record.ExecutionHandoff.Orca.WorkerTabID = "tab-stable"
 	record.ExecutionHandoff.Orca.WorkerLeafID = "leaf-stable"
-	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+	raw, err := json.Marshal(record)
+	if err != nil {
 		t.Fatal(err)
 	}
+	writeRawIssueOpsRecord(t, stateRoot, record.ID, string(raw))
 	before, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -254,6 +496,29 @@ func TestLegacyV2DecoderRejectsV3StableTerminalIdentityWithoutModifyingBytes(t *
 	}
 	if !bytes.Equal(after, before) {
 		t.Fatalf("legacy v2 rejection modified durable bytes\nbefore=%s\n after=%s", before, after)
+	}
+}
+
+func TestLegacyV3DecoderRejectsV4MailboxAuthorityWithoutModifyingBytes(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.CoordinatorMailboxHandle = "term_coordinator"
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term_live"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	before, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := legacyV3ReadModifyWriteFixture(stateRoot, record.ID); err == nil || !strings.Contains(err.Error(), "schema_version 4") {
+		t.Fatalf("legacy v3 decoder did not reject v4 mailbox authority: %v", err)
+	}
+	after, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(after, before) {
+		t.Fatalf("legacy v3 rejection modified durable bytes\nbefore=%s\n after=%s", before, after)
 	}
 }
 
@@ -323,6 +588,34 @@ func legacyV2ReadModifyWriteFixture(stateRoot, id string) error {
 		return fmt.Errorf("unsupported issueops schema_version %d; current is 2", legacy.SchemaVersion)
 	}
 	legacy.UpdatedAt = "legacy-v2-touch"
+	rewritten, err := json.MarshalIndent(legacy, "", "  ")
+	if err != nil {
+		return err
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		return err
+	}
+	return db.Put(issueOpsBucket, id, rewritten)
+}
+
+func legacyV3ReadModifyWriteFixture(stateRoot, id string) error {
+	raw, err := rawIssueOpsRecordBytes(stateRoot, id)
+	if err != nil {
+		return err
+	}
+	var legacy struct {
+		SchemaVersion int    `json:"schema_version"`
+		ID            string `json:"id"`
+		UpdatedAt     string `json:"updated_at"`
+	}
+	if err := json.Unmarshal(raw, &legacy); err != nil {
+		return err
+	}
+	if legacy.SchemaVersion > 3 {
+		return fmt.Errorf("unsupported issueops schema_version %d; current is 3", legacy.SchemaVersion)
+	}
+	legacy.UpdatedAt = "legacy-v3-touch"
 	rewritten, err := json.MarshalIndent(legacy, "", "  ")
 	if err != nil {
 		return err

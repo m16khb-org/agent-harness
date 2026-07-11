@@ -3,15 +3,372 @@ package issueops
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/preflight"
+	"agent-harness/internal/port"
 )
+
+type workerDoneProjectionFake struct {
+	mu       sync.Mutex
+	calls    int
+	requests []port.OrcaWorkerDoneRequest
+	result   port.OrcaWorkerDoneResult
+	err      error
+}
+
+func (f *workerDoneProjectionFake) SendWorkerDone(_ context.Context, req port.OrcaWorkerDoneRequest) (port.OrcaWorkerDoneResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	f.requests = append(f.requests, req)
+	return f.result, f.err
+}
+
+func (f *workerDoneProjectionFake) snapshot() (int, []port.OrcaWorkerDoneRequest) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls, append([]port.OrcaWorkerDoneRequest(nil), f.requests...)
+}
+
+func TestHandoffFinishProjectsWorkerDoneOnceFromPersistedEvidence(t *testing.T) {
+	stateRoot, record, _, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	t.Setenv("ORCA_TASK_ID", "task-attacker")
+	t.Setenv("ORCA_DISPATCH_ID", "dispatch-attacker")
+	t.Setenv("ORCA_TERMINAL_HANDLE", "term_attacker")
+	client := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "msg-1", Sequence: 91}}
+
+	first, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls, requests := client.snapshot()
+	projection := first.ExecutionHandoff.WorkerDoneProjection
+	if calls != 1 || len(requests) != 1 || projection == nil || projection.State != "sent" || !projection.Invoked || projection.MessageID != "msg-1" || projection.MessageSequence != 91 {
+		t.Fatalf("worker_done projection = %#v calls=%d requests=%#v", projection, calls, requests)
+	}
+	request := requests[0]
+	wantReport := filepath.Join(record.WorktreePath, filepath.FromSlash(finish.TuringReportPath))
+	if request.FromHandle != first.ExecutionHandoff.Orca.WorkerMailboxHandle || request.ToHandle != first.ExecutionHandoff.CoordinatorMailboxHandle || request.TaskID != first.ExecutionHandoff.Result.TaskID || request.DispatchID != first.ExecutionHandoff.Result.DispatchID || request.ReportPath != wantReport || !reflect.DeepEqual(request.ChangedFiles, first.ExecutionHandoff.Result.ChangedFiles) || !strings.Contains(request.Body, finish.FinalHead) {
+		t.Fatalf("worker_done payload was not derived from persisted evidence: request=%#v handoff=%#v", request, first.ExecutionHandoff)
+	}
+
+	second, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls, _ := client.snapshot(); calls != 1 || !reflect.DeepEqual(first.ExecutionHandoff.WorkerDoneProjection, second.ExecutionHandoff.WorkerDoneProjection) {
+		t.Fatalf("duplicate finish replayed worker_done: calls=%d first=%#v second=%#v", calls, first.ExecutionHandoff.WorkerDoneProjection, second.ExecutionHandoff.WorkerDoneProjection)
+	}
+}
+
+func TestHandoffFinishProjectionFailureIsTerminalAndNeverRetries(t *testing.T) {
+	stateRoot, _, _, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	client := &workerDoneProjectionFake{err: &port.OrcaError{Code: "command_timeout", Invoked: true, Timeout: true}}
+	first, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection := first.ExecutionHandoff.WorkerDoneProjection
+	if projection == nil || projection.State != "failed" || !projection.Invoked || projection.DiagnosticCode != "command_timeout" || first.ExecutionHandoff.State != handoff.StateSubmitted {
+		t.Fatalf("ambiguous send did not remain submitted with terminal diagnostic: %#v", first.ExecutionHandoff)
+	}
+	if _, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client); err != nil {
+		t.Fatal(err)
+	}
+	if calls, _ := client.snapshot(); calls != 1 {
+		t.Fatalf("ambiguous send was retried: %d", calls)
+	}
+}
+
+func TestHandoffFinishProjectionPreconditionsNeverCallOrca(t *testing.T) {
+	stateRoot, record, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	submitted.ExecutionHandoff.CoordinatorMailboxHandle = ""
+	if _, err := WriteIssueOps(stateRoot, submitted); err != nil {
+		t.Fatal(err)
+	}
+	client := &workerDoneProjectionFake{}
+	got, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls, _ := client.snapshot(); calls != 0 || got.ExecutionHandoff.WorkerDoneProjection == nil || got.ExecutionHandoff.WorkerDoneProjection.State != "failed" || got.ExecutionHandoff.WorkerDoneProjection.Invoked {
+		t.Fatalf("failed precondition called Orca or lacked diagnostic: calls=%d projection=%#v", calls, got.ExecutionHandoff.WorkerDoneProjection)
+	}
+	if got.ExecutionHandoff.State != handoff.StateSubmitted || got.ExecutionHandoff.Result.FinalHead != finish.FinalHead || record.ID != got.ID {
+		t.Fatalf("projection precondition changed durable submit authority: %#v", got.ExecutionHandoff)
+	}
+}
+
+func TestHandoffFinishWrongCoordinatorRecipientNeverCallsProjection(t *testing.T) {
+	for name, recipient := range map[string]string{
+		"group target":       "@all",
+		"worker self target": "term_worker",
+	} {
+		t.Run(name, func(t *testing.T) {
+			stateRoot, _, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+			if name == "worker self target" {
+				recipient = submitted.ExecutionHandoff.Orca.WorkerMailboxHandle
+			}
+			submitted.ExecutionHandoff.CoordinatorMailboxHandle = recipient
+			if _, err := WriteIssueOps(stateRoot, submitted); err != nil {
+				t.Fatal(err)
+			}
+			client := &workerDoneProjectionFake{}
+			got, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if calls, _ := client.snapshot(); calls != 0 || got.ExecutionHandoff.WorkerDoneProjection == nil || got.ExecutionHandoff.WorkerDoneProjection.State != "failed" || got.ExecutionHandoff.WorkerDoneProjection.Invoked {
+				t.Fatalf("wrong coordinator recipient called Orca or lacked a terminal diagnostic: calls=%d projection=%#v", calls, got.ExecutionHandoff.WorkerDoneProjection)
+			}
+		})
+	}
+}
+
+func TestHandoffFinishConcurrentIdenticalCallsProjectOnce(t *testing.T) {
+	stateRoot, _, _, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	client := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "msg-1", Sequence: 92}}
+	const count = 8
+	results := make(chan IssueOpsRecord, count)
+	errs := make(chan error, count)
+	var wait sync.WaitGroup
+	for range count {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			got, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+			results <- got
+			errs <- err
+		}()
+	}
+	wait.Wait()
+	close(results)
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent identical finish failed: %v", err)
+		}
+	}
+	for got := range results {
+		if got.ExecutionHandoff == nil || got.ExecutionHandoff.WorkerDoneProjection == nil {
+			t.Fatalf("concurrent finish returned incomplete projection: %#v", got)
+		}
+	}
+	if calls, _ := client.snapshot(); calls != 1 {
+		t.Fatalf("concurrent identical finishes projected %d times", calls)
+	}
+}
+
+func TestHandoffFinishProjectionUsesSealedWorkerMailboxAfterLiveTerminalRollover(t *testing.T) {
+	stateRoot, _, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	submitted.ExecutionHandoff.Orca.WorkerMailboxHandle = "term_sealed_worker"
+	submitted.ExecutionHandoff.Orca.WorkerTerminalHandle = "term_live_worker"
+	if _, err := WriteIssueOps(stateRoot, submitted); err != nil {
+		t.Fatal(err)
+	}
+	client := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "msg-rollover", Sequence: 93}}
+	got, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, requests := client.snapshot()
+	if len(requests) != 1 || requests[0].FromHandle != "term_sealed_worker" || got.ExecutionHandoff.Orca.WorkerMailboxHandle != "term_sealed_worker" || got.ExecutionHandoff.Orca.WorkerTerminalHandle != "term_live_worker" {
+		t.Fatalf("runtime rollover changed or bypassed the sealed worker mailbox: request=%#v orca=%#v", requests, got.ExecutionHandoff.Orca)
+	}
+}
+
+func TestHandoffFinishPersistsSubmittedAndProjectionIntentAtCrashBoundary(t *testing.T) {
+	stateRoot, _, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	submitted.ExecutionHandoff.State = handoff.StateClaimed
+	submitted.ExecutionHandoff.Result = nil
+	submitted.ExecutionHandoff.CompletedAt = ""
+	submitted.ExecutionHandoff.WorkerDoneProjection = nil
+	if _, err := WriteIssueOps(stateRoot, submitted); err != nil {
+		t.Fatal(err)
+	}
+	crash := fmt.Errorf("simulated crash after durable submit")
+	client := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "must-not-send", Sequence: 95}}
+	_, err := finishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client, issueOpsHandoffProjectionHooks{
+		AfterDurableSubmitAndProjectionIntent: func(record IssueOpsRecord) error {
+			persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if persisted.ExecutionHandoff.State != handoff.StateSubmitted || persisted.ExecutionHandoff.Result == nil || persisted.ExecutionHandoff.WorkerDoneProjection == nil || persisted.ExecutionHandoff.WorkerDoneProjection.State != "intent" {
+				t.Fatalf("crash boundary exposed submitted authority without projection intent: %#v", persisted.ExecutionHandoff)
+			}
+			return crash
+		},
+	})
+	if !errors.Is(err, crash) {
+		t.Fatalf("crash hook error = %v", err)
+	}
+	if calls, _ := client.snapshot(); calls != 0 {
+		t.Fatalf("crash boundary invoked worker_done %d times", calls)
+	}
+	if _, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client); err != nil {
+		t.Fatal(err)
+	}
+	if calls, _ := client.snapshot(); calls != 0 {
+		t.Fatalf("persisted crash intent was retried %d times", calls)
+	}
+}
+
+func TestHandoffFinishProjectionRevalidatesExactWorkerEvidenceInsideSubmitLock(t *testing.T) {
+	stateRoot, record, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	submitted.ExecutionHandoff.State = handoff.StateClaimed
+	submitted.ExecutionHandoff.Result = nil
+	submitted.ExecutionHandoff.CompletedAt = ""
+	submitted.ExecutionHandoff.WorkerDoneProjection = nil
+	if _, err := WriteIssueOps(stateRoot, submitted); err != nil {
+		t.Fatal(err)
+	}
+	client := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "must-not-send", Sequence: 96}}
+	got, err := finishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client, issueOpsHandoffProjectionHooks{
+		BeforeLockedRevalidation: func() {
+			writeIssueOpsFile(t, record.WorktreePath, "late-uncommitted-drift.txt", "drift after optimistic validation\n")
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection := got.ExecutionHandoff.WorkerDoneProjection
+	if calls, _ := client.snapshot(); calls != 0 || got.ExecutionHandoff.State != handoff.StateSubmitted || projection == nil || projection.State != "failed" || projection.Invoked || projection.DiagnosticCode != "worker_evidence_invalid" {
+		t.Fatalf("locked evidence drift was not terminalized before send: calls=%d handoff=%#v", calls, got.ExecutionHandoff)
+	}
+}
+
+func TestHandoffFinishCrashIntentRecoveryNeverRetries(t *testing.T) {
+	stateRoot, _, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	_, projection, code, err := buildWorkerDoneProjection(submitted)
+	if err != nil || code != "" {
+		t.Fatalf("build projection intent: code=%q err=%v", code, err)
+	}
+	submitted.ExecutionHandoff.WorkerDoneProjection = &projection
+	if _, err := WriteIssueOps(stateRoot, submitted); err != nil {
+		t.Fatal(err)
+	}
+	client := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "msg-must-not-send", Sequence: 94}}
+	got, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls, _ := client.snapshot(); calls != 0 || got.ExecutionHandoff.WorkerDoneProjection.State != "intent" || got.ExecutionHandoff.WorkerDoneProjection.Invoked {
+		t.Fatalf("crash-intent recovery retried or rewrote ambiguous intent: calls=%d projection=%#v", calls, got.ExecutionHandoff.WorkerDoneProjection)
+	}
+}
+
+func TestHandoffEnvelopeRejectsWorkerDoneProjectionWithoutStartedAt(t *testing.T) {
+	stateRoot, _, _, _, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	_, projection, code, err := buildWorkerDoneProjection(submitted)
+	if err != nil || code != "" {
+		t.Fatalf("build projection intent: code=%q err=%v", code, err)
+	}
+	projection.StartedAt = ""
+	submitted.ExecutionHandoff.WorkerDoneProjection = &projection
+	if _, err := WriteIssueOps(stateRoot, submitted); err == nil || !strings.Contains(err.Error(), "worker_done projection") {
+		t.Fatalf("projection without started_at was accepted: %v", err)
+	}
+}
+
+func TestHandoffFinishProjectionPreservesGitLabProviderWithoutRemoteMutation(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	issueURL := "https://gitlab.example.com/acme/repo/-/issues/16"
+	record.IssueURL = issueURL
+	record.BranchPrepare.Provider = "gitlab"
+	record.BranchPrepare.IssueURL = issueURL
+	record.ExecutionHandoff.Orca.ProviderIssueLinkStatus = handoff.ProviderIssueLinkGitLabExact
+	var err error
+	record, err = WriteIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sentinel := filepath.Join(t.TempDir(), "glab-invoked")
+	fakeBin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(fakeBin, "glab"), []byte("#!/bin/sh\nprintf invoked > \"$HARNESS_GITLAB_SENTINEL\"\nexit 97\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HARNESS_GITLAB_SENTINEL", sentinel)
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	dispatchClient := handoffDispatchFake(record)
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), dispatchClient, handoffStartTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	dispatched, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforePrepare := *dispatched.BranchPrepare
+	beforeIssueURL := dispatched.IssueURL
+	beforeLinkStatus := dispatched.ExecutionHandoff.Orca.ProviderIssueLinkStatus
+	claim := handoffClaimRequest(dispatched)
+	claimed, err := ClaimIssueOpsHandoff(stateRoot, claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeIssueOpsFile(t, dispatched.WorktreePath, "internal/gitlab-demo.go", "package internal\n")
+	reportPath := filepath.Join(dispatched.WorktreePath, ".agent-harness", "research", "gitlab-report.md")
+	if err := os.MkdirAll(filepath.Dir(reportPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(reportPath, []byte("# GitLab projection evidence\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", "-A"}, {"commit", "-q", "-m", "test: GitLab worker result"}} {
+		if code, _, stderr := preflight.GitCmd(dispatched.WorktreePath, args...); code != 0 {
+			t.Fatalf("git %v failed: %s", args, stderr)
+		}
+	}
+	finish := handoffFinishRequest(claim, claimed)
+	finish.FinalHead = strings.TrimSpace(preflight.GitOut(dispatched.WorktreePath, "rev-parse", "HEAD"))
+	finish.ChangedFiles = []string{"internal/gitlab-demo.go", ".agent-harness/research/gitlab-report.md"}
+	finish.TuringReportPath = ".agent-harness/research/gitlab-report.md"
+	projectionClient := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "msg-gitlab", Sequence: 97}}
+	got, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, projectionClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls, _ := projectionClient.snapshot(); calls != 1 || got.ExecutionHandoff.State != handoff.StateSubmitted || got.ExecutionHandoff.WorkerDoneProjection == nil || got.ExecutionHandoff.WorkerDoneProjection.State != "sent" {
+		t.Fatalf("GitLab completed finish did not use sealed projection once: calls=%d handoff=%#v", calls, got.ExecutionHandoff)
+	}
+	if got.IssueURL != beforeIssueURL || !reflect.DeepEqual(*got.BranchPrepare, beforePrepare) || got.ExecutionHandoff.Orca.ProviderIssueLinkStatus != beforeLinkStatus {
+		t.Fatalf("GitLab provider authority changed during finish: before=%#v after=%#v", beforePrepare, got.BranchPrepare)
+	}
+	if _, err := os.Stat(sentinel); !os.IsNotExist(err) {
+		t.Fatalf("GitLab remote mutation command was invoked: %v", err)
+	}
+}
+
+func TestHandoffFinishWrongTaskOrDispatchNeverCallsProjection(t *testing.T) {
+	for _, field := range []string{"task", "dispatch"} {
+		t.Run(field, func(t *testing.T) {
+			stateRoot, _, _, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+			if field == "task" {
+				finish.TaskID = "task-other"
+			} else {
+				finish.DispatchID = "dispatch-other"
+			}
+			client := &workerDoneProjectionFake{}
+			if _, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client); err == nil {
+				t.Fatalf("wrong %s identity was accepted", field)
+			}
+			if calls, _ := client.snapshot(); calls != 0 {
+				t.Fatalf("wrong %s identity called projection %d times", field, calls)
+			}
+		})
+	}
+}
 
 func TestHandoffClaimRequiresMatchingWorkerTuple(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
@@ -136,7 +493,7 @@ func TestHandoffFinishRejectsRerenderedContextSourceDrift(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err := FinishIssueOpsHandoff(stateRoot, IssueOpsHandoffFinishRequest{
+			_, err := finishIssueOpsHandoffWithoutProjection(stateRoot, IssueOpsHandoffFinishRequest{
 				ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch, ContextSHA256: claim.ContextSHA256,
 				Host: claim.Host, SessionID: claim.SessionID, AgentID: claim.AgentID, Outcome: handoff.OutcomeFailed,
 				Verification: []string{"failure observed"}, CleanupReceipts: []string{"resources stopped"},
@@ -206,7 +563,7 @@ func TestHandoffFinishRequiresExactOrcaTaskDispatchTuple(t *testing.T) {
 			} else if _, err := WriteIssueOps(stateRoot, claimed); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := FinishIssueOpsHandoff(stateRoot, req); err == nil {
+			if _, err := finishIssueOpsHandoffWithoutProjection(stateRoot, req); err == nil {
 				t.Fatal("finish must require exact nonempty persisted and submitted Orca identities")
 			}
 		})
@@ -377,7 +734,7 @@ func TestHandoffFinishRequiresSafeRelativeTuringReportPath(t *testing.T) {
 	finish.FinalHead = strings.Repeat("b", 40)
 	finish.TuringReportPath = filepath.Join(t.TempDir(), "report.md")
 	finish.ChangedFiles = []string{".agent-harness/research/report.md"}
-	if _, err := FinishIssueOpsHandoff(stateRoot, finish); err == nil || !strings.Contains(strings.ToLower(err.Error()), "relative") {
+	if _, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish); err == nil || !strings.Contains(strings.ToLower(err.Error()), "relative") {
 		t.Fatalf("absolute Turing report must fail at finish with a relative-path diagnostic, got %v", err)
 	}
 }
@@ -409,7 +766,7 @@ func TestHandoffAcceptRejectsCommittedLeafSymlinkReport(t *testing.T) {
 	finish.FinalHead = strings.TrimSpace(preflight.GitOut(record.WorktreePath, "rev-parse", "HEAD"))
 	finish.TuringReportPath = ".agent-harness/research/report.md"
 	finish.ChangedFiles = []string{".agent-harness/research/actual.md", ".agent-harness/research/report.md", "internal/demo.go"}
-	if _, err := FinishIssueOpsHandoff(stateRoot, finish); err != nil {
+	if _, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish); err != nil {
 		t.Fatal(err)
 	}
 	_, err = AcceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
@@ -460,7 +817,7 @@ func TestHandoffFinishFailureClosesWorkerFailed(t *testing.T) {
 	if _, err := ClaimIssueOpsHandoff(stateRoot, claim); err != nil {
 		t.Fatal(err)
 	}
-	failed, err := FinishIssueOpsHandoff(stateRoot, IssueOpsHandoffFinishRequest{
+	failed, err := finishIssueOpsHandoffWithoutProjection(stateRoot, IssueOpsHandoffFinishRequest{
 		ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch, ContextSHA256: claim.ContextSHA256,
 		Host: claim.Host, SessionID: claim.SessionID, AgentID: claim.AgentID, Outcome: handoff.OutcomeFailed,
 		Verification: []string{"go test failed"}, CleanupReceipts: []string{"temp state removed"},
@@ -476,7 +833,7 @@ func TestHandoffFinishFailureClosesWorkerFailed(t *testing.T) {
 
 func TestHandoffFinishAndAcceptIdempotency(t *testing.T) {
 	stateRoot, record, claim, finish, first := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
-	second, err := FinishIssueOpsHandoff(stateRoot, finish)
+	second, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish)
 	if err != nil || !reflect.DeepEqual(first.ExecutionHandoff.Result, second.ExecutionHandoff.Result) {
 		t.Fatalf("finish not idempotent: err=%v", err)
 	}
@@ -501,7 +858,7 @@ func TestHandoffFinishAndAcceptIdempotency(t *testing.T) {
 		t.Fatal("conflicting accepted fence must fail")
 	}
 	finish.FinalHead = "conflict"
-	if _, err := FinishIssueOpsHandoff(stateRoot, finish); err == nil {
+	if _, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish); err == nil {
 		t.Fatal("conflicting finish must fail")
 	}
 }
@@ -511,11 +868,11 @@ func TestHandoffFinishIdempotencySurvivesEvidenceCleanup(t *testing.T) {
 	if err := os.RemoveAll(record.WorktreePath); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := FinishIssueOpsHandoff(stateRoot, finish); err != nil {
+	if _, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish); err != nil {
 		t.Fatalf("exact same-worker result retry after cleanup failed: %v", err)
 	}
 	finish.Verification = []string{"conflicting evidence"}
-	if _, err := FinishIssueOpsHandoff(stateRoot, finish); err == nil {
+	if _, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish); err == nil {
 		t.Fatalf("conflicting finish repeat succeeded: %#v", submitted.ExecutionHandoff.Result)
 	}
 }
@@ -663,7 +1020,7 @@ func submittedGitHandoff(t *testing.T, reportPath string, createReport bool) (st
 		}
 		finish.ChangedFiles = append(finish.ChangedFiles, filepath.ToSlash(filepath.Clean(reportRelative)))
 	}
-	submitted, err := FinishIssueOpsHandoff(stateRoot, finish)
+	submitted, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish)
 	if err != nil {
 		t.Fatal(err)
 	}

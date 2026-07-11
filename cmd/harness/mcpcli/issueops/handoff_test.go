@@ -23,10 +23,16 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 	fake := &handoffStartOrcaFake{workerRoot: record.WorktreePath}
 	previousClient := mcpcli.IssueOpsHandoffOrcaClient
 	mcpcli.IssueOpsHandoffOrcaClient = func() core.IssueOpsOrcaDispatchClient { return fake }
-	t.Cleanup(func() { mcpcli.IssueOpsHandoffOrcaClient = previousClient })
+	previousProjector := mcpcli.IssueOpsWorkerDoneProjectionClient
+	mcpcli.IssueOpsWorkerDoneProjectionClient = func() core.IssueOpsWorkerDoneProjectionClient { return fake }
+	t.Cleanup(func() {
+		mcpcli.IssueOpsHandoffOrcaClient = previousClient
+		mcpcli.IssueOpsWorkerDoneProjectionClient = previousProjector
+	})
 	unattestedPreview := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{
-		"action": "start",
-		"id":     record.ID,
+		"action":                "start",
+		"id":                    record.ID,
+		"coordinator_recipient": "term_coordinator",
 	})
 	if unattestedPreview["preview"] != true || len(unattestedPreview["context_sha256"].(string)) != 64 {
 		t.Fatalf("unattested start preview parity failed: %#v", unattestedPreview)
@@ -37,6 +43,7 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 	finalPreview := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{
 		"action":                        "start",
 		"id":                            record.ID,
+		"coordinator_recipient":         "term_coordinator",
 		"allow_codex_hook_trust_bypass": true,
 	})
 	if finalPreview["preview"] != true || finalPreview["codex_hook_trust_bypass_attested"] != true {
@@ -49,6 +56,7 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 	startConfirm := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{
 		"action":                        "start",
 		"id":                            record.ID,
+		"coordinator_recipient":         "term_coordinator",
 		"confirm":                       true,
 		"allow_codex_hook_trust_bypass": true,
 		"expected_context_sha256":       reviewedContextSHA256,
@@ -78,6 +86,9 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 	submitted := callMCPToolForIssueOpsTest(t, "issueops_handoff", finish)
 	if nestedMap(submitted, "execution_handoff")["state"] != handoff.StateSubmitted {
 		t.Fatalf("finish parity failed: %#v", submitted)
+	}
+	if nestedMap(nestedMap(submitted, "execution_handoff"), "worker_done_projection")["state"] != "sent" || fake.workerDoneCalls != 1 {
+		t.Fatalf("automatic worker_done projection parity failed: %#v calls=%d", submitted, fake.workerDoneCalls)
 	}
 	accept := cloneHandoffArgs(common)
 	accept["action"], accept["final_head"] = "accept", finalHead
@@ -233,8 +244,9 @@ func callMCPUnknownTool(t *testing.T, name string) string {
 }
 
 type handoffStartOrcaFake struct {
-	workerRoot string
-	terminals  []port.OrcaTerminal
+	workerRoot      string
+	terminals       []port.OrcaTerminal
+	workerDoneCalls int
 }
 
 func (f *handoffStartOrcaFake) ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error) {
@@ -246,7 +258,7 @@ func (f *handoffStartOrcaFake) ListTerminals(context.Context, string) ([]port.Or
 }
 
 func (f *handoffStartOrcaFake) CreateTerminal(_ context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
-	terminal := port.OrcaTerminal{Handle: "term-1", PTYID: "pty-1", WorktreeID: req.WorktreeID, WorktreePath: f.workerRoot, Connected: true, Writable: true}
+	terminal := port.OrcaTerminal{Handle: "term_worker", PTYID: "pty-1", WorktreeID: req.WorktreeID, WorktreePath: f.workerRoot, Connected: true, Writable: true}
 	f.terminals = []port.OrcaTerminal{terminal}
 	return terminal, nil
 }
@@ -264,9 +276,18 @@ func (f *handoffStartOrcaFake) CreateTask(_ context.Context, req port.OrcaCreate
 }
 
 func (f *handoffStartOrcaFake) Dispatch(_ context.Context, req port.OrcaDispatchRequest) (port.OrcaDispatch, error) {
-	return port.OrcaDispatch{ID: "dispatch-1", TaskID: req.TaskID, AssigneeHandle: req.ToHandle, Status: "dispatched", Injected: req.Inject}, nil
+	return port.OrcaDispatch{ID: "dispatch-1", TaskID: req.TaskID, AssigneeHandle: req.ToHandle, Status: "dispatched", Injected: req.Inject, Preamble: fmt.Sprintf("Your coordinator's terminal handle is: %s\nYour task ID is: %s\n  --task-id %s --dispatch-id dispatch-1", req.FromHandle, req.TaskID, req.TaskID)}, nil
 }
 
 func (f *handoffStartOrcaFake) ShowDispatch(context.Context, string) (port.OrcaDispatch, error) {
 	return port.OrcaDispatch{}, fmt.Errorf("unexpected dispatch show during supervised start")
+}
+
+func (f *handoffStartOrcaFake) ShowDispatchFrom(context.Context, string, string) (port.OrcaDispatch, error) {
+	return port.OrcaDispatch{}, fmt.Errorf("unexpected dispatch show during supervised start")
+}
+
+func (f *handoffStartOrcaFake) SendWorkerDone(context.Context, port.OrcaWorkerDoneRequest) (port.OrcaWorkerDoneResult, error) {
+	f.workerDoneCalls++
+	return port.OrcaWorkerDoneResult{MessageID: "msg-mcp", Sequence: 12}, nil
 }

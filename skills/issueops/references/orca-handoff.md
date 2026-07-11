@@ -61,14 +61,16 @@ For `resolved_mode: orca`, the coordinator reviews readiness and creates the bou
 
 Before any replacement or dispatch, inspect exact-worktree terminals and active orchestration tasks. Any connected/writable possible writer or dispatched task blocks another writer, even when preserved WIP or the diff appears stable. A stable diff is not ownership evidence. Do not adopt WIP until the original task is terminal and the original writer is exited or closed.
 
+After any targeted terminal close, reread the complete exact-worktree terminal inventory before dispatch and resolve the fresh connected/writable live handle again. Closing one pane may roll over or exit a sibling; a pre-close inventory is never post-close sole-writer evidence.
+
 Use server-filtered task inventory for sole-writer attestation, then inspect the exact current dispatch:
 
 ```bash
-orca orchestration task-list --status dispatched
+orca orchestration task-list --status dispatched --json
 orca orchestration dispatch-show --task <current-task-id> --json
 ```
 
-Do not infer task absence from a local filter over broad output. For this fence, truncated or unparsable JSON is ambiguity, never absence; rerun the server-filtered observation and keep mutation blocked until the exact task and dispatch are proven.
+`orca orchestration task show`, `orca orchestration dispatch show`, and status `in_progress` are invalid; use only the exact inventory forms above. Do not infer task absence from a local filter over broad output. For this fence, truncated or unparsable JSON is ambiguity, never absence; rerun the server-filtered observation and keep mutation blocked until the exact task and dispatch are proven.
 
 Start the fresh worker from a login shell and require the actual host banner. Immediately before dispatch, obtain a fresh `connected=true` and `writable=true` check for the exact terminal. One `tui-idle` sample alone is insufficient. After an authorized terminal send delivers interrupt text plus Enter, read the target and verify that UserPromptSubmit or working state actually began. If the full instruction remains at the idle prompt, send exactly one Enter and read again. Never resend the instruction body.
 
@@ -84,9 +86,12 @@ Do not call `config/batchWrite` or trust hooks from this recipe. Attest only whe
 
 Preview `handoff start` without confirmation first. For Codex it must report `codex_hook_trust_bypass_required=true` and `codex_hook_trust_bypass_attested=false`. After the review above, run a second no-confirm preview with every delivery option plus `--allow-codex-hook-trust-bypass`; require `codex_hook_trust_bypass_attested=true` and record the reviewed context hash from that final attested preview. Preview returns `context_sha256`. Final confirmed start must add `--expected-context-sha256` with the exact final attested preview hash plus `--confirm`; all delivery options remain identical. The confirmed start recomputes the sealed context and fails closed before any terminal, task, dispatch, or journal mutation when the submitted hash is missing, malformed, or differs from the freshly recomputed sealed context — including post-preview source drift and delivery-option drift. Confirm must never introduce a delivery option absent from that final preview. The adapter then launches only that Codex worker with `codex --dangerously-bypass-hook-trust`. Omit the flag for Claude, GJC, inline mode, and any unreviewed Codex attempt. This optional additive field remains ContextVersion 1 for legacy retry compatibility. Retry preserves the sealed delivery options but clears the per-attempt attestation, so the coordinator must perform and attest the review again. General automatic trust probing remains issue #17.
 
+Every preview and confirm supplies `--coordinator-recipient` with the same concrete historical coordinator mailbox handle. Confirmation persists that recipient with the sealed context before terminal/task/dispatch mutation and passes it as Orca dispatch `--from`; refreshable current coordinator control identity never replaces it. The returned preamble is accepted only when it contains the official exact coordinator and task label lines (`Your coordinator's terminal handle is:` and `Your task ID is:`) plus the exact `--dispatch-id` token; arbitrary substring matches fail closed.
+
 ```bash
 agent-harness issueops handoff start \
   --id "$ISSUEOPS_ID" \
+  --coordinator-recipient "$COORDINATOR_MAILBOX_HANDLE" \
   --criteria-id ORCA-01 \
   --criteria-id ORCA-02 \
   --criteria-id ORCA-03 \
@@ -115,7 +120,7 @@ agent-harness issueops handoff start \
   --json
 ```
 
-The returned `attempt`, `ownership_epoch`, `context_sha256`, Orca worktree id, task id, and dispatch id are a single fence. The mailbox numeric `sequence` is message selection evidence, not part of the lease fence. The coordinator passes that tuple to the fresh worker without copying credentials, conversation transcripts, or unbounded environment data.
+The returned `attempt`, `ownership_epoch`, `context_sha256`, sealed coordinator mailbox recipient, Orca worktree id, task id, and dispatch id are a single bounded worker context. The mailbox numeric `sequence` is message selection evidence, not part of the lease fence. The coordinator passes that tuple to the fresh worker without copying credentials, conversation transcripts, or unbounded environment data.
 
 ## Worker Lease
 
@@ -193,7 +198,7 @@ PreToolUse blocks every other explicit message type, including malformed duplica
 orca orchestration check --all --json | jq '.result.messages[]'
 ```
 
-The array is nested under `.result.messages`; querying top-level `.messages` silently yields no rows and is not authoritative absence. Never order or filter opaque `msg_*` IDs: they are not chronological. Select the numeric `sequence` plus exact `taskId`, `dispatchId`, sender and recipient direction before acting. Sequence is evidence, not a lease fence. A live terminal handle is not historical mailbox identity. For an urgent current-worker correction, use only the existing exact literal-safe source-coordinator terminal guidance bound to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
+The array is nested under `.result.messages`; querying top-level `.messages` silently yields no rows and is not authoritative absence. Never order or filter opaque `msg_*` IDs: they are not chronological. Select the numeric `sequence` plus exact `taskId`, `dispatchId`, sender and recipient direction before acting. Sequence is evidence, not a lease fence. Never prestate or predict a future mailbox sequence; only the returned send envelope or a subsequent bounded mailbox observation supplies the sequence. A live terminal handle is not historical mailbox identity. For an urgent current-worker correction, use only the existing exact literal-safe source-coordinator terminal guidance bound to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
 
 PreToolUse blocks direct `orca orchestration ask` and `orca orchestration gate-create` from a linked worker checkout even when `execution_handoff` is absent. The source coordinator owns decision gates; `gate-list` remains read-only for workers. After one escalation, heartbeat and wait rather than opening a duplicate gate.
 
@@ -220,9 +225,13 @@ agent-harness issueops handoff finish \
   --json
 ```
 
-After finish persists `submitted`, repository mutation remains blocked. Only the same submitted worker session may send one exact `worker_done` message: use a concrete coordinator `term_*` target, the exact persisted task and dispatch, a nonempty subject, a three-sentence body, `--files-modified` exactly equal to the persisted changed-file list, and the absolute in-worker report path corresponding to the persisted relative report. Group targets, extra files, external reports, duplicate flags, wrong host/session/agent, or wrong task/dispatch stay blocked. If an older hook blocked that send, the source coordinator may issue literal-safe guidance only to the exact submitted worker handle, after which the worker retries the exact command once.
+Completed `handoff finish` is the automatic best-effort projection boundary. It persists the submitted result and projection intent in the same cycle lock, so no claimed-to-submitted crash boundary can expose final authority without the no-retry intent. Only after that write is visible does the argv-only adapter attempt one external `worker_done` outside the lock. The projection derives its concrete coordinator recipient, exact persisted task and dispatch, changed files, absolute in-worker report path, final head, host/attempt identity, subject, and three-sentence body from the durable record and freshly verified committed worker evidence.
 
-After verification and immediately before `worker_done`, the worker performs a bounded current-task inbox check. Select only messages with the numeric `sequence`, exact `taskId` and `dispatchId`, and sender and recipient direction; process every newly arrived current-task `status` or `escalation` through the observed maximum sequence. If a message changes the result, repeat any affected verification and commit before `worker_done`, then run the fence again. Hooks may only observe, block, or relay this boundary and must never execute the workflow.
+The external message `--from` is the sealed historical worker mailbox recorded by the original dispatch, because Orca completion reconciliation requires the dispatch assignee identity. `WorkerTerminalHandle` is the refreshable live terminal control identity only; runtime rollover may update it but must never replace either sealed mailbox recipient or the projection sender. Success stores bounded message identity/sequence. Failure, timeout, malformed output, or a crash before/after the send leaves submitted authoritative with a terminal diagnostic or intent and is never automatically retried. An identical finish returns that stable evidence without another call. The manual shell `worker_done` is blocked, as is coordinator guidance asking a submitted worker to retry it.
+
+Orchestration reviews and task-scoped messages target the sealed `WorkerMailboxHandle`; the refreshed `WorkerTerminalHandle` is only terminal read/send/close control. Automatic `worker_done` uses the sealed `WorkerMailboxHandle` as `--from`.
+
+After verification and immediately before `handoff finish` triggers automatic projection, the worker performs a bounded current-task inbox check on its sealed historical mailbox. Select only messages with the numeric `sequence`, exact `taskId` and `dispatchId`, and sender and recipient direction; process every newly arrived current-task `status` or `escalation` through the observed maximum sequence. If a message changes the result, repeat any affected verification and commit before finish, then run the fence again. Hooks may only observe, block, or relay this boundary and must never execute the workflow, tests, commits, task creation, dispatch, finish, or `worker_done`.
 
 Before this fence, each worker commit must use a Conventional Commit subject and a literal `Lore:` block with `Intent`, `Why`, `Changes`, `Verify`, and `Risk` as required by `.agent-harness/COMMIT_POLICY.md`.
 
@@ -285,7 +294,7 @@ Recovery accepts exactly one candidate relative to the persisted baseline and ma
 
 ### Runtime rollover recovery
 
-An Orca runtime restart may reissue the runtime ID, terminal handle and PTY, and worktree instance while the same logical terminal keeps its public `tabId and leafId`. The dynamic terminal title is presentation state and is never the sole durable locator. Persist `runtime_refresh` before adopting replacement identities, then collect complete bounded inventories:
+An Orca runtime restart may reissue the runtime ID, live terminal handle and PTY, and worktree instance while the same logical terminal keeps its public `tabId and leafId`. The dynamic terminal title is presentation state and is never the sole durable locator. Persist `runtime_refresh` before adopting replacement identities, then collect complete bounded inventories. The locked refresh may update only runtime/worktree-instance/PTY/tab/leaf and the refreshable live terminal handle; sealed coordinator and worker mailbox recipients are immutable:
 
 ```bash
 orca worktree list --repo path:<exact-repo> --limit 512 --json
@@ -332,12 +341,12 @@ For `execution_handoff.driver=orca`, Git worktree removal is not the cleanup rou
 
 ```bash
 orca orchestration task-update --id <persisted-task-id> --status <completed-or-failed> --result <bounded-result> --json
-orca terminal close --terminal <persisted-worker-mailbox-handle> --json
+orca terminal close --terminal <resolved-worker-terminal-handle> --json
 orca terminal stop --worktree id:<persisted-worktree-id> --json
 orca worktree rm --worktree id:<persisted-worktree-id> --force --json
 orca terminal list --worktree id:<persisted-worktree-id> --limit 512 --json
 ```
 
-The exact `orca terminal close --terminal <persisted-worker-mailbox-handle> --json` form closes one pane; `orca terminal stop --worktree id:<persisted-worktree-id> --json` stops the worktree terminal set. Never use `terminal rm`: no such public cleanup command exists. Each is an optional bounded cleanup attempt for source-root coordinators only after `closed/worker_failed` or `closed/cancelled`; it is blocked for accepted or active attempts, worker/non-source sessions, wrong identities, and extra flags. `WorkerMailboxHandle` remains historical dispatch/mailbox identity rather than general live terminal-control authority: never use it for `send` or injected `exit`, and do not treat a successful close or stop as complete cleanup evidence. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list; nested shells require repeated inspection until fully gone. Also verify the exact worktree selector and path are absent before handling provider refs. Inline records retain the legacy Git cleanup recipe; never substitute `git worktree remove` for Orca-owned removal.
+The exact `orca terminal close --terminal <resolved-worker-terminal-handle> --json` form closes one pane using the currently resolved `WorkerTerminalHandle`; `orca terminal stop --worktree id:<persisted-worktree-id> --json` stops the exact persisted worktree terminal set. Never use `terminal rm`: no such public cleanup command exists. Each is an optional bounded cleanup attempt for source-root coordinators only after `closed/worker_failed` or `closed/cancelled`; it is blocked for accepted or active attempts, worker/non-source sessions, wrong identities, and extra flags. The sealed `WorkerMailboxHandle` is never terminal-control authority: never target it with `orca terminal send`, close, stop, or injected `exit`; it remains the sealed orchestration `worker_done` sender. A successful close or stop is not complete cleanup evidence. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list; nested shells require repeated inspection until fully gone. Also verify the exact worktree selector and path are absent before handling provider refs. Inline records retain the legacy Git cleanup recipe; never substitute `git worktree remove` for Orca-owned removal.
 
 `auto` fallback is allowed only after a pre-mutation probe failure. It is never a recovery strategy for `coordinator_preparing`, `dispatched`, `claimed`, `submitted`, or `recovery_required` state.

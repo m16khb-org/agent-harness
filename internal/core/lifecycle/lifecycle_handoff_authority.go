@@ -117,7 +117,7 @@ func commandSpec(path string) (map[string]bool, map[string]bool, map[string]bool
 	case "worktree prepare-tools":
 		return v("--id"), b("--json"), r, true
 	case "handoff start":
-		values := v("--id", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
+		values := v("--id", "--coordinator-recipient", "--expected-context-sha256", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
 		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition"} {
 			r[name] = true
 		}
@@ -486,7 +486,13 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		if h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
 			return false
 		}
-		return h.Orca != nil && h.Orca.WorkerMailboxHandle != "" && tokens[3] == "--terminal" && tokens[4] == h.Orca.WorkerMailboxHandle && tokens[5] == "--json"
+		return h.Orca != nil && h.Orca.WorkerTerminalHandle != "" && tokens[3] == "--terminal" && tokens[4] == h.Orca.WorkerTerminalHandle && tokens[5] == "--json"
+	}
+	if len(tokens) == 6 && tokens[1] == "terminal" && tokens[2] == "stop" {
+		if h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
+			return false
+		}
+		return h.Orca != nil && h.Orca.WorktreeID != "" && tokens[3] == "--worktree" && tokens[4] == "id:"+h.Orca.WorktreeID && tokens[5] == "--json"
 	}
 	if len(tokens) >= 3 && tokens[1] == "orchestration" && tokens[2] == "task-update" {
 		if h.Orca == nil || h.Orca.TaskID == "" {
@@ -942,7 +948,7 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 	if terminalControlWriteRequest(req) {
 		if handle, ok := literalSafeTerminalSendHandle(req); ok {
 			matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool {
-				return record.ExecutionHandoff.Orca != nil && strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerMailboxHandle) == handle
+				return record.ExecutionHandoff.Orca != nil && strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerTerminalHandle) == handle
 			})
 			switch len(matches) {
 			case 1:
@@ -1090,7 +1096,7 @@ func linkedWorktreeDecisionGateReason(req HookToolUseLifecycleRequest) string {
 
 func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	if h == nil || (h.State != handoff.StateClaimed && h.State != handoff.StateSubmitted) || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+	if h == nil || h.State != handoff.StateClaimed || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
 		return false
 	}
 	handle, ok := literalSafeTerminalSendHandle(req)
@@ -1099,14 +1105,14 @@ func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, r
 	}
 	persistedHandle := ""
 	if h.Orca != nil {
-		persistedHandle = strings.TrimSpace(h.Orca.WorkerMailboxHandle)
+		persistedHandle = strings.TrimSpace(h.Orca.WorkerTerminalHandle)
 	}
 	return persistedHandle != "" && handle == persistedHandle
 }
 
-func submittedWorkerDoneAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+func claimedWorkerProgressMessageAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateSubmitted || h.Orca == nil || h.Result == nil || !searchrouting.IsShellTool(req.Tool) ||
+	if h == nil || h.State != handoff.StateClaimed || h.Orca == nil || !searchrouting.IsShellTool(req.Tool) ||
 		cleanAbsPath(req.CWD) != cleanAbsPath(h.WorkerRoot) || cleanAbsPath(req.Repo) != cleanAbsPath(h.WorkerRoot) ||
 		!nativeSessionMatches(req, h.WorkerSession) || !currentWorkerBranchMatches(record) {
 		return false
@@ -1115,50 +1121,31 @@ func submittedWorkerDoneAllowed(req HookToolUseLifecycleRequest, record IssueOps
 	if len(tokens) < 3 || tokens[0] != "orca" || tokens[1] != "orchestration" || tokens[2] != "send" {
 		return false
 	}
-	values := map[string]bool{
-		"--to": true, "--type": true, "--subject": true, "--body": true, "--task-id": true, "--dispatch-id": true,
-		"--files-modified": true, "--report-path": true,
-	}
-	flags, ok := exactFlags(exactIssueOpsCommand{tokens: tokens, start: 3}, values, map[string]bool{"--json": true}, map[string]bool{})
+	flags, ok := exactFlags(exactIssueOpsCommand{tokens: tokens, start: 3}, map[string]bool{
+		"--to": true, "--type": true, "--subject": true, "--body": true, "--task-id": true, "--dispatch-id": true, "--phase": true,
+	}, map[string]bool{"--json": true}, map[string]bool{})
 	if !ok {
 		return false
 	}
 	to, toOK := oneFlag(flags, "--to")
 	messageType, typeOK := oneFlag(flags, "--type")
 	subject, subjectOK := oneFlag(flags, "--subject")
-	body, bodyOK := oneFlag(flags, "--body")
 	taskID, taskOK := oneFlag(flags, "--task-id")
 	dispatchID, dispatchOK := oneFlag(flags, "--dispatch-id")
-	files, filesOK := oneFlag(flags, "--files-modified")
-	reportPath, reportOK := oneFlag(flags, "--report-path")
-	if !toOK || !strings.HasPrefix(to, "term_") || to == h.Orca.WorkerMailboxHandle || len(to) > 256 || !typeOK || messageType != "worker_done" ||
-		!subjectOK || strings.TrimSpace(subject) == "" || len(subject) > 256 || containsASCIITerminalControl(subject) ||
-		!bodyOK || !threeSentenceWorkerDoneBody(body) || len(body) > 4096 ||
-		!taskOK || taskID == "" || taskID != h.Orca.TaskID || taskID != h.Result.TaskID ||
-		!dispatchOK || dispatchID == "" || dispatchID != h.Orca.DispatchID || dispatchID != h.Result.DispatchID ||
-		!filesOK || files != strings.Join(h.Result.ChangedFiles, ",") ||
-		!reportOK || strings.TrimSpace(h.Result.TuringReportPath) == "" {
+	body, bodyOK := oneFlag(flags, "--body")
+	phase, phaseOK := oneFlag(flags, "--phase")
+	if !toOK || to != h.CoordinatorMailboxHandle || !typeOK || !subjectOK || strings.TrimSpace(subject) == "" || len(subject) > 256 || containsASCIITerminalControl(subject) ||
+		!taskOK || taskID != h.Orca.TaskID || !dispatchOK || dispatchID != h.Orca.DispatchID {
 		return false
 	}
-	expectedReport := filepath.Clean(filepath.Join(h.WorkerRoot, filepath.FromSlash(h.Result.TuringReportPath)))
-	return filepath.IsAbs(reportPath) && filepath.Clean(reportPath) == reportPath && reportPath == expectedReport && pathWithin(reportPath, h.WorkerRoot) && resolvedPathWithin(reportPath, h.WorkerRoot)
-}
-
-func threeSentenceWorkerDoneBody(body string) bool {
-	body = strings.TrimSpace(body)
-	if body == "" || containsASCIITerminalControl(body) {
+	switch messageType {
+	case "heartbeat":
+		return phaseOK && !bodyOK && strings.TrimSpace(phase) != "" && len(phase) <= 256 && !containsASCIITerminalControl(phase)
+	case "status", "escalation":
+		return bodyOK && !phaseOK && strings.TrimSpace(body) != "" && len(body) <= 4096 && !containsASCIITerminalControl(body)
+	default:
 		return false
 	}
-	count := 0
-	for i := 0; i < len(body); i++ {
-		if !strings.ContainsRune(".!?", rune(body[i])) {
-			continue
-		}
-		if i+1 == len(body) || body[i+1] == ' ' {
-			count++
-		}
-	}
-	return count == 3
 }
 
 func literalSafeTerminalSendHandle(req HookToolUseLifecycleRequest) (string, bool) {

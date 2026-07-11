@@ -30,9 +30,9 @@ IMMUTABLE CONSTRAINTS (these override anything else you infer):
    external LLM API (no api.z.ai, no API keys), or a spawned agent CLI. External intelligence
    is always render-prompt → record-result performed by the host agent.
 6. Compatibility: the historical orchestration fields remain additive omitempty, but the
-   repository's current IssueOps root is schema_version 3 per issue #16. Never downgrade it:
-   missing/zero/v1/v2 rows upgrade with known fields preserved, v1 rejects v2+, and v2 rejects
-   v3 before rewrite. Never rename or remove existing JSON fields; lock files are persistent
+   repository's current IssueOps root is schema_version 4 per issue #16. Never downgrade it:
+   missing/zero/v1/v2/v3 rows upgrade with known fields preserved, v1 rejects v2+, v2 rejects
+   v3, and v3 rejects v4 before rewrite. Never rename or remove existing JSON fields; lock files are persistent
    inodes — never delete them between lock/unlock.
 7. Git discipline: stage exact paths only (never `git add .`, never `git commit -a`).
    Exactly one commit for this task, using the commit subject the task's final step specifies,

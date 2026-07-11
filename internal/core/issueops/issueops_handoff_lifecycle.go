@@ -182,7 +182,7 @@ func RecordIssueOpsHeartbeatWithRequest(stateRoot string, req IssueOpsHeartbeatR
 	return persisted, err
 }
 
-func FinishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest) (IssueOpsRecord, error) {
+func finishIssueOpsHandoffWithoutProjection(stateRoot string, req IssueOpsHandoffFinishRequest) (IssueOpsRecord, error) {
 	return finishIssueOpsHandoff(stateRoot, req, issueOpsHandoffLifecycleHooks{})
 }
 
@@ -203,6 +203,20 @@ func finishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest, h
 			return IssueOpsRecord{}, err
 		}
 	}
+	finishRequest := handoff.FinishRequest{
+		Fence:  handoff.Fence{Attempt: req.Attempt, OwnershipEpoch: req.OwnershipEpoch, ContextSHA256: req.ContextSHA256},
+		Worker: model.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID},
+		Result: model.IssueOpsExecutionHandoffResult{
+			Outcome: req.Outcome, FinalHead: req.FinalHead, ChangedFiles: req.ChangedFiles, TuringReportPath: req.TuringReportPath,
+			Verification: req.Verification, CleanupReceipts: req.CleanupReceipts, EvidenceDigest: req.EvidenceDigest, TaskID: req.TaskID, DispatchID: req.DispatchID,
+		}, Now: validated.UpdatedAt,
+	}
+	if _, err := handoff.Finish(validated, finishRequest); err != nil {
+		return IssueOpsRecord{}, err
+	}
+	if validated.ExecutionHandoff.State != handoff.StateClaimed {
+		return validated, nil
+	}
 	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
 	var persisted IssueOpsRecord
 	err = withIssueOpsLock(stateRoot, req.ID, func() error {
@@ -211,6 +225,10 @@ func finishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest, h
 			return err
 		}
 		if !reflect.DeepEqual(record, validated) {
+			if _, finishErr := handoff.Finish(record, finishRequest); finishErr == nil && record.ExecutionHandoff.State != handoff.StateClaimed {
+				persisted = record
+				return nil
+			}
 			return fmt.Errorf("handoff changed after finish validation; retry with the current fence")
 		}
 		if record.ExecutionHandoff.State == handoff.StateClaimed {

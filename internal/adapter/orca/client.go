@@ -2,8 +2,11 @@ package orca
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +18,8 @@ const (
 	readTimeout   = 10 * time.Second
 	createTimeout = 2 * time.Minute
 )
+
+var concreteTerminalHandlePattern = regexp.MustCompile(`^term_[A-Za-z0-9_-]+$`)
 
 type Client struct {
 	runner Runner
@@ -140,7 +145,8 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--ready", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-update", "--help"}, want: []string{"--id", "--status", "--result", "--json"}},
 		{argv: []string{"orca", "orchestration", "dispatch", "--help"}, want: []string{"--task", "--to", "--from", "--inject", "--return-preamble", "--json"}},
-		{argv: []string{"orca", "orchestration", "dispatch-show", "--help"}, want: []string{"--task", "--json"}},
+		{argv: []string{"orca", "orchestration", "dispatch-show", "--help"}, want: []string{"--task", "--preamble", "--from", "--json"}},
+		{argv: []string{"orca", "orchestration", "send", "--help"}, want: []string{"--to", "--from", "--type", "--subject", "--body", "--task-id", "--dispatch-id", "--files-modified", "--report-path", "--json"}},
 		{argv: []string{"orca", "worktree", "rm", "--help"}, want: []string{"--worktree", "--force", "--json"}},
 	} {
 		text, err := c.runText(ctx, "", readTimeout, capability.argv)
@@ -382,6 +388,90 @@ func (c *Client) Dispatch(ctx context.Context, req port.OrcaDispatchRequest) (po
 
 func (c *Client) ShowDispatch(ctx context.Context, taskID string) (port.OrcaDispatch, error) {
 	return c.dispatchResult(ctx, []string{"orca", "orchestration", "dispatch-show", "--task", taskID, "--json"})
+}
+
+func (c *Client) ShowDispatchFrom(ctx context.Context, taskID, fromHandle string) (port.OrcaDispatch, error) {
+	return c.dispatchResult(ctx, []string{"orca", "orchestration", "dispatch-show", "--task", taskID, "--preamble", "--from", fromHandle, "--json"})
+}
+
+func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequest) (port.OrcaWorkerDoneResult, error) {
+	if err := validateWorkerDoneRequest(req); err != nil {
+		return port.OrcaWorkerDoneResult{}, &port.OrcaError{Code: "worker_done_invalid", Detail: err.Error()}
+	}
+	argv := []string{
+		"orca", "orchestration", "send",
+		"--to", req.ToHandle,
+		"--from", req.FromHandle,
+		"--type", "worker_done",
+		"--subject", req.Subject,
+		"--body", req.Body,
+		"--task-id", req.TaskID,
+		"--dispatch-id", req.DispatchID,
+		"--files-modified", strings.Join(req.ChangedFiles, ","),
+		"--report-path", req.ReportPath,
+		"--json",
+	}
+	output, err := c.runner.Run(ctx, "", createTimeout, argv)
+	if err != nil {
+		return port.OrcaWorkerDoneResult{}, err
+	}
+	var payload struct {
+		Message struct {
+			ID         string `json:"id"`
+			FromHandle string `json:"from_handle"`
+			ToHandle   string `json:"to_handle"`
+			Type       string `json:"type"`
+			Subject    string `json:"subject"`
+			Body       string `json:"body"`
+			Payload    string `json:"payload"`
+			Sequence   int64  `json:"sequence"`
+		} `json:"message"`
+	}
+	if _, err := decodeResult(output, &payload); err != nil {
+		return port.OrcaWorkerDoneResult{}, &port.OrcaError{Code: "worker_done_response_malformed", Detail: boundedDiagnostic(err.Error()), Invoked: output.Invoked}
+	}
+	message := payload.Message
+	if message.ID == "" || len(message.ID) > 1024 || message.Sequence <= 0 || message.FromHandle != req.FromHandle || message.ToHandle != req.ToHandle || message.Type != "worker_done" || message.Subject != req.Subject || message.Body != req.Body {
+		return port.OrcaWorkerDoneResult{}, &port.OrcaError{Code: "worker_done_response_mismatch", Detail: "Orca message identity or evidence does not match the requested projection", Invoked: true}
+	}
+	var evidence struct {
+		TaskID        string   `json:"taskId"`
+		DispatchID    string   `json:"dispatchId"`
+		FilesModified []string `json:"filesModified"`
+		ReportPath    string   `json:"reportPath"`
+	}
+	if len(message.Payload) > 64*1024 || json.Unmarshal([]byte(message.Payload), &evidence) != nil || evidence.TaskID != req.TaskID || evidence.DispatchID != req.DispatchID || !reflect.DeepEqual(evidence.FilesModified, req.ChangedFiles) || evidence.ReportPath != req.ReportPath {
+		return port.OrcaWorkerDoneResult{}, &port.OrcaError{Code: "worker_done_response_mismatch", Detail: "Orca message payload does not match the requested projection", Invoked: true}
+	}
+	return port.OrcaWorkerDoneResult{MessageID: message.ID, Sequence: message.Sequence}, nil
+}
+
+func validateWorkerDoneRequest(req port.OrcaWorkerDoneRequest) error {
+	if !concreteTerminalHandlePattern.MatchString(req.FromHandle) || !concreteTerminalHandlePattern.MatchString(req.ToHandle) || req.FromHandle == req.ToHandle || len(req.FromHandle) > 256 || len(req.ToHandle) > 256 {
+		return fmt.Errorf("worker_done requires distinct concrete bounded Orca terminal handles")
+	}
+	for name, value := range map[string]struct {
+		value string
+		limit int
+	}{
+		"subject": {req.Subject, 256}, "body": {req.Body, 4096}, "task id": {req.TaskID, 1024}, "dispatch id": {req.DispatchID, 1024},
+	} {
+		if strings.TrimSpace(value.value) == "" || value.value != strings.TrimSpace(value.value) || len(value.value) > value.limit || strings.ContainsRune(value.value, 0) {
+			return fmt.Errorf("worker_done %s is missing, non-canonical, or unbounded", name)
+		}
+	}
+	if len(req.ChangedFiles) == 0 || len(req.ChangedFiles) > 512 {
+		return fmt.Errorf("worker_done changed files are missing or unbounded")
+	}
+	for _, path := range req.ChangedFiles {
+		if path == "" || strings.ContainsAny(path, ",\x00") {
+			return fmt.Errorf("worker_done changed files cannot be represented exactly")
+		}
+	}
+	if !filepath.IsAbs(req.ReportPath) || filepath.Clean(req.ReportPath) != req.ReportPath || len(req.ReportPath) > 4096 || strings.ContainsRune(req.ReportPath, 0) {
+		return fmt.Errorf("worker_done report path must be an exact bounded absolute path")
+	}
+	return nil
 }
 
 func (c *Client) dispatchResult(ctx context.Context, argv []string) (port.OrcaDispatch, error) {

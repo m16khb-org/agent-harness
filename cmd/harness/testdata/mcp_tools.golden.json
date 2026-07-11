@@ -2204,6 +2204,10 @@
         "context_sha256": {
           "type": "string"
         },
+        "coordinator_recipient": {
+          "description": "Concrete Orca coordinator mailbox recipient sealed before first dispatch.",
+          "type": "string"
+        },
         "criteria_ids": {
           "items": {
             "type": "string"

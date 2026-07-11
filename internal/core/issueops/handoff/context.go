@@ -44,6 +44,7 @@ type ContextProjection struct {
 	Attempt                   int      `json:"attempt"`
 	OwnershipEpoch            string   `json:"ownership_epoch"`
 	AttemptBaseHead           string   `json:"attempt_base_head"`
+	CoordinatorRecipient      string   `json:"coordinator_recipient,omitempty"`
 	Problem                   string   `json:"problem,omitempty"`
 	Intent                    string   `json:"intent,omitempty"`
 	SuccessCriteria           []string `json:"success_criteria,omitempty"`
@@ -97,6 +98,7 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		Attempt:                   record.ExecutionHandoff.Attempt,
 		OwnershipEpoch:            strings.TrimSpace(record.ExecutionHandoff.OwnershipEpoch),
 		AttemptBaseHead:           strings.TrimSpace(record.ExecutionHandoff.AttemptBaseHead),
+		CoordinatorRecipient:      strings.TrimSpace(record.ExecutionHandoff.CoordinatorMailboxHandle),
 		CriteriaIDs:               cleanList(options.CriteriaIDs),
 		RequiredDocs:              cleanList(options.RequiredDocs),
 		RequiredSkills:            cleanList(options.RequiredSkills),

@@ -1,6 +1,8 @@
 package handoff
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -80,6 +82,9 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 	if h.Orca != nil && !canonicalOrcaIdentity(h.Orca) {
 		return fmt.Errorf("execution handoff Orca identity is not canonical")
 	}
+	if h.Orca != nil && (h.Orca.DispatchID == "") != (h.Orca.WorkerMailboxHandle == "") {
+		return fmt.Errorf("execution handoff Orca dispatch id and worker mailbox must be paired")
+	}
 	if h.Orca != nil && h.Orca.ProviderIssueLinkStatus != "" && h.Orca.ProviderIssueLinkStatus != ProviderIssueLinkGitLabUnavailable && h.Orca.ProviderIssueLinkStatus != ProviderIssueLinkGitLabExact {
 		return fmt.Errorf("execution handoff provider issue link status is unknown")
 	}
@@ -92,6 +97,12 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 	}
 	if h.Orca != nil && (h.Orca.WorkerTabID == "") != (h.Orca.WorkerLeafID == "") {
 		return fmt.Errorf("execution handoff stable terminal tab/leaf identity is incomplete")
+	}
+	if err := validateWorkerDoneProjection(h); err != nil {
+		return err
+	}
+	if h.WorkerDoneProjection != nil && h.State != StateSubmitted && (h.State != StateClosed || h.ClosedDisposition != DispositionAccepted) {
+		return fmt.Errorf("worker_done projection requires submitted or accepted authority")
 	}
 	if err := validatePriorAttempts(record, h); err != nil {
 		return err
@@ -321,7 +332,7 @@ func completeDispatchedOrcaIdentity(h *model.IssueOpsExecutionHandoff) bool {
 		return false
 	}
 	o := h.Orca
-	for _, value := range []string{o.RuntimeID, o.RepoID, o.BaseRef, o.WorktreeID, o.WorktreeInstanceID, o.WorktreePath, o.WorkerPTYID, o.WorkerMailboxHandle, o.TaskID, o.DispatchID} {
+	for _, value := range []string{o.RuntimeID, o.RepoID, o.BaseRef, o.WorktreeID, o.WorktreeInstanceID, o.WorktreePath, o.WorkerPTYID, o.WorkerTerminalHandle, o.WorkerMailboxHandle, o.TaskID, o.DispatchID} {
 		if value == "" || value != strings.TrimSpace(value) {
 			return false
 		}
@@ -342,6 +353,7 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 		{name: "delivery mode", value: h.DeliveryMode, max: 32},
 		{name: "ownership epoch", value: h.OwnershipEpoch, max: 512},
 		{name: "coordinator root", value: h.CoordinatorRoot, max: 4096},
+		{name: "coordinator mailbox handle", value: h.CoordinatorMailboxHandle, max: 256},
 		{name: "worker root", value: h.WorkerRoot, max: 4096},
 		{name: "attempt base head", value: h.AttemptBaseHead, max: 128},
 		{name: "context sha256", value: h.ContextSHA256, max: 64},
@@ -379,6 +391,32 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 			boundedHandoffString{"result task id", h.Result.TaskID, MaxExternalIDBytes},
 			boundedHandoffString{"result dispatch id", h.Result.DispatchID, MaxExternalIDBytes},
 		)
+	}
+	if h.WorkerDoneProjection != nil {
+		p := h.WorkerDoneProjection
+		checks = append(checks,
+			boundedHandoffString{"worker_done projection state", p.State, 32},
+			boundedHandoffString{"worker_done diagnostic code", p.DiagnosticCode, 128},
+			boundedHandoffString{"worker_done payload sha256", p.PayloadSHA256, 64},
+			boundedHandoffString{"worker_done from handle", p.FromHandle, 256},
+			boundedHandoffString{"worker_done to handle", p.ToHandle, 256},
+			boundedHandoffString{"worker_done subject", p.Subject, 256},
+			boundedHandoffString{"worker_done body", p.Body, 4096},
+			boundedHandoffString{"worker_done task id", p.TaskID, MaxExternalIDBytes},
+			boundedHandoffString{"worker_done dispatch id", p.DispatchID, MaxExternalIDBytes},
+			boundedHandoffString{"worker_done final head", p.FinalHead, 128},
+			boundedHandoffString{"worker_done report path", p.ReportPath, 4096},
+			boundedHandoffString{"worker_done host identity", p.HostIdentity, 4096},
+			boundedHandoffString{"worker_done message id", p.MessageID, MaxExternalIDBytes},
+			boundedHandoffString{"worker_done started timestamp", p.StartedAt, 128},
+			boundedHandoffString{"worker_done completed timestamp", p.CompletedAt, 128},
+		)
+		if len(p.ChangedFiles) > 512 {
+			return fmt.Errorf("worker_done changed files exceed 512 entries")
+		}
+		for _, path := range p.ChangedFiles {
+			checks = append(checks, boundedHandoffString{"worker_done changed file", path, 4096})
+		}
 	}
 	if h.Failure != nil {
 		checks = append(checks,
@@ -428,6 +466,10 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 				name, value string
 				max         int
 			}{"worker pty id", o.WorkerPTYID, 1024},
+			struct {
+				name, value string
+				max         int
+			}{"worker terminal handle", o.WorkerTerminalHandle, 1024},
 			struct {
 				name, value string
 				max         int
@@ -639,14 +681,86 @@ func validOptionalTimestamps(h *model.IssueOpsExecutionHandoff) bool {
 			return false
 		}
 	}
-	return h.Failure == nil || canonicalTimestamp(h.Failure.At)
+	if h.Failure != nil && !canonicalTimestamp(h.Failure.At) {
+		return false
+	}
+	if h.WorkerDoneProjection != nil {
+		if !canonicalTimestamp(h.WorkerDoneProjection.StartedAt) || !canonicalTimestamp(h.WorkerDoneProjection.CompletedAt) {
+			return false
+		}
+	}
+	return true
+}
+
+func validateWorkerDoneProjection(h *model.IssueOpsExecutionHandoff) error {
+	p := h.WorkerDoneProjection
+	if p == nil {
+		return nil
+	}
+	if p.StartedAt == "" {
+		return fmt.Errorf("worker_done projection started_at is required")
+	}
+	if p.Attempt != h.Attempt || p.OwnershipEpoch == "" || p.OwnershipEpoch != h.OwnershipEpoch || p.DiagnosticCode == "" || p.DiagnosticCode != strings.TrimSpace(p.DiagnosticCode) {
+		return fmt.Errorf("worker_done projection attempt identity or diagnostic is invalid")
+	}
+	if p.PayloadSHA256 == "" {
+		if p.State != "failed" || p.Invoked || p.CompletedAt == "" || p.FromHandle != "" || p.ToHandle != "" || p.Subject != "" || p.Body != "" || p.TaskID != "" || p.DispatchID != "" || p.FinalHead != "" || len(p.ChangedFiles) != 0 || p.ReportPath != "" || p.HostIdentity != "" || p.MessageID != "" || p.MessageSequence != 0 {
+			return fmt.Errorf("worker_done precondition diagnostic contains mutation evidence")
+		}
+		return nil
+	}
+	if !sha256Pattern.MatchString(p.PayloadSHA256) || h.Result == nil || h.Orca == nil || h.WorkerSession == nil {
+		return fmt.Errorf("worker_done projection payload evidence is incomplete")
+	}
+	hostIdentity := h.WorkerSession.Host + "/" + h.WorkerSession.SessionID
+	if h.WorkerSession.AgentID != "" {
+		hostIdentity += "/" + h.WorkerSession.AgentID
+	}
+	expectedReport := filepath.Clean(filepath.Join(h.WorkerRoot, filepath.FromSlash(h.Result.TuringReportPath)))
+	if p.FromHandle != h.Orca.WorkerMailboxHandle || p.ToHandle != h.CoordinatorMailboxHandle || p.TaskID != h.Result.TaskID || p.TaskID != h.Orca.TaskID || p.DispatchID != h.Result.DispatchID || p.DispatchID != h.Orca.DispatchID || p.FinalHead != h.Result.FinalHead || !reflect.DeepEqual(p.ChangedFiles, h.Result.ChangedFiles) || p.ReportPath != expectedReport || p.HostIdentity != hostIdentity {
+		return fmt.Errorf("worker_done projection does not match durable handoff evidence")
+	}
+	payload, err := json.Marshal(struct {
+		FromHandle   string   `json:"from_handle"`
+		ToHandle     string   `json:"to_handle"`
+		Subject      string   `json:"subject"`
+		Body         string   `json:"body"`
+		TaskID       string   `json:"task_id"`
+		DispatchID   string   `json:"dispatch_id"`
+		ChangedFiles []string `json:"changed_files"`
+		ReportPath   string   `json:"report_path"`
+	}{p.FromHandle, p.ToHandle, p.Subject, p.Body, p.TaskID, p.DispatchID, p.ChangedFiles, p.ReportPath})
+	if err != nil {
+		return fmt.Errorf("encode worker_done projection payload: %w", err)
+	}
+	sum := sha256.Sum256(payload)
+	if p.PayloadSHA256 != hex.EncodeToString(sum[:]) {
+		return fmt.Errorf("worker_done projection payload digest mismatch")
+	}
+	switch p.State {
+	case "intent":
+		if p.Invoked || p.DiagnosticCode != "intent_persisted" || p.CompletedAt != "" || p.MessageID != "" || p.MessageSequence != 0 {
+			return fmt.Errorf("worker_done projection intent contains outcome evidence")
+		}
+	case "sent":
+		if !p.Invoked || p.DiagnosticCode != "sent" || p.CompletedAt == "" || !canonicalNonSpace(p.MessageID) || p.MessageSequence <= 0 {
+			return fmt.Errorf("worker_done sent projection evidence is incomplete")
+		}
+	case "failed":
+		if p.DiagnosticCode == "intent_persisted" || p.DiagnosticCode == "sent" || p.CompletedAt == "" || p.MessageID != "" || p.MessageSequence != 0 {
+			return fmt.Errorf("worker_done failed projection evidence is invalid")
+		}
+	default:
+		return fmt.Errorf("unknown worker_done projection state")
+	}
+	return nil
 }
 
 func canonicalOrcaIdentity(identity *model.IssueOpsOrcaIdentity) bool {
 	if identity == nil {
 		return true
 	}
-	for _, value := range []string{identity.RuntimeID, identity.RepoID, identity.BaseRef, identity.ProviderIssueLinkStatus, identity.WorktreeID, identity.WorktreeInstanceID, identity.WorktreePath, identity.WorkerPTYID, identity.WorkerMailboxHandle, identity.WorkerTabID, identity.WorkerLeafID, identity.TaskID, identity.DispatchID} {
+	for _, value := range []string{identity.RuntimeID, identity.RepoID, identity.BaseRef, identity.ProviderIssueLinkStatus, identity.WorktreeID, identity.WorktreeInstanceID, identity.WorktreePath, identity.WorkerPTYID, identity.WorkerTerminalHandle, identity.WorkerMailboxHandle, identity.WorkerTabID, identity.WorkerLeafID, identity.TaskID, identity.DispatchID} {
 		if value != strings.TrimSpace(value) {
 			return false
 		}

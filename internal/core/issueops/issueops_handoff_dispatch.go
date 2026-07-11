@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ import (
 
 type IssueOpsHandoffStartRequest struct {
 	ID                    string                 `json:"id"`
+	CoordinatorRecipient  string                 `json:"coordinator_recipient,omitempty"`
 	Confirm               bool                   `json:"confirm,omitempty"`
 	ExpectedContextSHA256 string                 `json:"expected_context_sha256,omitempty"`
 	Context               handoff.ContextOptions `json:"context,omitempty"`
@@ -37,7 +39,10 @@ type IssueOpsHandoffStartResult struct {
 	CodexHookTrustBypassRequired bool                  `json:"codex_hook_trust_bypass_required"`
 	CodexHookTrustBypassAttested bool                  `json:"codex_hook_trust_bypass_attested"`
 	Orca                         *IssueOpsOrcaIdentity `json:"orca,omitempty"`
+	CoordinatorRecipient         string                `json:"coordinator_recipient,omitempty"`
 }
+
+var concreteOrcaTerminalHandlePattern = regexp.MustCompile(`^term_[A-Za-z0-9_-]+$`)
 
 type IssueOpsHandoffStartClock struct {
 	Now func() time.Time
@@ -57,6 +62,7 @@ type IssueOpsOrcaDispatchClient interface {
 	CreateTask(context.Context, port.OrcaCreateTaskRequest) (port.OrcaTask, error)
 	Dispatch(context.Context, port.OrcaDispatchRequest) (port.OrcaDispatch, error)
 	ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
+	ShowDispatchFrom(context.Context, string, string) (port.OrcaDispatch, error)
 }
 
 func IssueOpsPreDispatchReadiness(record IssueOpsRecord) IssueOpsReadiness {
@@ -106,17 +112,26 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if !readiness.Ready {
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("handoff pre-dispatch readiness missing: %s", strings.Join(readiness.Missing, ", "))
 	}
+	coordinatorRecipient, err := resolveHandoffCoordinatorRecipient(record, req.CoordinatorRecipient)
+	if err != nil {
+		return IssueOpsHandoffStartResult{}, err
+	}
 	contextOptions, err := resolveHandoffContextOptions(record, req.Context)
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
-	packet, err := handoff.BuildContext(record, contextOptions)
+	contextRecord := record
+	contextHandoff := *record.ExecutionHandoff
+	contextHandoff.CoordinatorMailboxHandle = coordinatorRecipient
+	contextRecord.ExecutionHandoff = &contextHandoff
+	packet, err := handoff.BuildContext(contextRecord, contextOptions)
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
 	if !req.Confirm {
 		result := projectHandoffStart(record, true, packet.PlanSHA256)
 		result.ContextSHA256 = packet.SHA256
+		result.CoordinatorRecipient = coordinatorRecipient
 		result.CodexHookTrustBypassAttested = contextOptions.AllowCodexHookTrustBypass
 		return result, nil
 	}
@@ -130,7 +145,7 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 		return IssueOpsHandoffStartResult{}, err
 	}
 	nextNow := func() string { return issueOpsHandoffStartNow(clock) }
-	record, err = persistHandoffContext(stateRoot, record.ID, handoff.CanonicalContextOptions(contextOptions), req.ExpectedContextSHA256, nextNow())
+	record, err = persistHandoffContext(stateRoot, record.ID, coordinatorRecipient, handoff.CanonicalContextOptions(contextOptions), req.ExpectedContextSHA256, nextNow())
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
@@ -174,7 +189,7 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 
 func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now func() string, beforeJournal func()) (IssueOpsRecord, string, error) {
 	workerPTYID := strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerPTYID)
-	workerHandle := strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerMailboxHandle)
+	workerHandle := strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerTerminalHandle)
 	if (workerPTYID == "") != (workerHandle == "") {
 		return record, "", fmt.Errorf("persisted Orca terminal checkpoint is incomplete")
 	}
@@ -249,7 +264,7 @@ func completeRuntimeRefreshOperation(stateRoot string, expected IssueOpsRecord, 
 		identity.WorktreeInstanceID = worktree.InstanceID
 		identity.ProviderIssueLinkStatus = providerIssueLinkStatus(current, worktree)
 		identity.WorkerPTYID = terminal.PTYID
-		identity.WorkerMailboxHandle = terminal.Handle
+		identity.WorkerTerminalHandle = terminal.Handle
 		identity.WorkerTabID = terminal.TabID
 		identity.WorkerLeafID = terminal.LeafID
 		current.ExecutionHandoff.Orca = &identity
@@ -448,7 +463,7 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 			h.Orca.RuntimeID = terminal.RuntimeID
 		}
 		h.Orca.WorkerPTYID = terminal.PTYID
-		h.Orca.WorkerMailboxHandle = terminal.Handle
+		h.Orca.WorkerTerminalHandle = terminal.Handle
 		h.Orca.WorkerTabID = terminal.TabID
 		h.Orca.WorkerLeafID = terminal.LeafID
 		return nil
@@ -529,7 +544,7 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		return record, err
 	}
 	dispatched, err := client.Dispatch(ctx, port.OrcaDispatchRequest{
-		TaskID: record.ExecutionHandoff.Orca.TaskID, ToHandle: liveHandle, Inject: true, ReturnPreamble: true,
+		TaskID: record.ExecutionHandoff.Orca.TaskID, ToHandle: liveHandle, FromHandle: record.ExecutionHandoff.CoordinatorMailboxHandle, Inject: true, ReturnPreamble: true,
 	})
 	if err != nil {
 		transitionAt := now()
@@ -548,6 +563,10 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_identity_mismatch", err.Error(), now())
 		return record, err
 	}
+	if err := validateHandoffDispatchPreamble(dispatched.Preamble, record.ExecutionHandoff.CoordinatorMailboxHandle, dispatched.TaskID, dispatched.ID); err != nil {
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_preamble_mismatch", err.Error(), now())
+		return record, err
+	}
 	record, err = finalizeHandoffDispatch(stateRoot, record.ID, fence, dispatched.ID, dispatched.AssigneeHandle, now())
 	if err != nil {
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_persist_failed", err.Error(), now())
@@ -555,7 +574,7 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 	return record, err
 }
 
-func persistHandoffContext(stateRoot, id string, options model.IssueOpsExecutionHandoffContextOptions, expectedContextSHA256 string, now string) (IssueOpsRecord, error) {
+func persistHandoffContext(stateRoot, id, coordinatorRecipient string, options model.IssueOpsExecutionHandoffContextOptions, expectedContextSHA256 string, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
 	err := withIssueOpsLock(stateRoot, id, func() error {
 		record, err := ReadIssueOps(stateRoot, id)
@@ -565,6 +584,10 @@ func persistHandoffContext(stateRoot, id string, options model.IssueOpsExecution
 		if err := validateHandoffCleanExactCheckpoint(record); err != nil {
 			return err
 		}
+		if sealed := strings.TrimSpace(record.ExecutionHandoff.CoordinatorMailboxHandle); sealed != "" && sealed != coordinatorRecipient {
+			return fmt.Errorf("coordinator recipient differs from sealed handoff authority")
+		}
+		record.ExecutionHandoff.CoordinatorMailboxHandle = coordinatorRecipient
 		packet, err := handoff.BuildContext(record, handoff.ContextOptionsFromModel(options))
 		if err != nil {
 			return fmt.Errorf("re-render handoff context before persist: %w", err)
@@ -603,6 +626,69 @@ func validateExpectedContextSHA256(expected string) error {
 	}
 	if _, err := hex.DecodeString(expected); err != nil {
 		return fmt.Errorf("expected_context_sha256 must be a valid SHA-256 hex digest")
+	}
+	return nil
+}
+
+func resolveHandoffCoordinatorRecipient(record IssueOpsRecord, supplied string) (string, error) {
+	supplied = strings.TrimSpace(supplied)
+	sealed := ""
+	if record.ExecutionHandoff != nil {
+		sealed = strings.TrimSpace(record.ExecutionHandoff.CoordinatorMailboxHandle)
+	}
+	if supplied == "" {
+		supplied = sealed
+	}
+	if !concreteOrcaTerminalHandlePattern.MatchString(supplied) || len(supplied) > 256 {
+		return "", fmt.Errorf("coordinator recipient must be a concrete bounded Orca terminal handle")
+	}
+	if sealed != "" && supplied != sealed {
+		return "", fmt.Errorf("coordinator recipient differs from sealed handoff authority")
+	}
+	return supplied, nil
+}
+
+func validateHandoffDispatchPreamble(preamble, coordinatorRecipient, taskID, dispatchID string) error {
+	if len(preamble) == 0 || len(preamble) > handoff.MaxRenderedContextBytes {
+		return fmt.Errorf("Orca dispatch preamble is missing or exceeds the bounded context limit")
+	}
+	const coordinatorLabel = "Your coordinator's terminal handle is: "
+	const taskLabel = "Your task ID is: "
+	coordinatorLine := coordinatorLabel + coordinatorRecipient
+	taskLine := taskLabel + taskID
+	coordinatorCount, taskCount, dispatchCount := 0, 0, 0
+	foundCoordinator, foundTask, foundDispatch := false, false, false
+	for _, line := range strings.Split(preamble, "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		if strings.HasPrefix(line, coordinatorLabel) {
+			coordinatorCount++
+			foundCoordinator = foundCoordinator || line == coordinatorLine
+		}
+		if strings.HasPrefix(line, taskLabel) {
+			taskCount++
+			foundTask = foundTask || line == taskLine
+		}
+		fields := strings.Fields(line)
+		for index, field := range fields {
+			switch {
+			case field == "--dispatch-id":
+				dispatchCount++
+				if index+1 < len(fields) && fields[index+1] == dispatchID {
+					foundDispatch = true
+				}
+			case strings.HasPrefix(field, "--dispatch-id="):
+				dispatchCount++
+			}
+		}
+	}
+	if coordinatorRecipient == "" || coordinatorCount != 1 || !foundCoordinator {
+		return fmt.Errorf("Orca dispatch preamble must contain exactly one official coordinator recipient line")
+	}
+	if taskID == "" || taskCount != 1 || !foundTask {
+		return fmt.Errorf("Orca dispatch preamble must contain exactly one official task id line")
+	}
+	if dispatchID == "" || dispatchCount != 1 || !foundDispatch {
+		return fmt.Errorf("Orca dispatch preamble must contain exactly one exact --dispatch-id token")
 	}
 	return nil
 }
@@ -722,8 +808,12 @@ func finalizeHandoffDispatch(stateRoot, id string, fence handoff.Fence, dispatch
 			return fmt.Errorf("handoff is no longer coordinator_preparing")
 		}
 		identity := *record.ExecutionHandoff.Orca
+		if sealed := strings.TrimSpace(identity.WorkerMailboxHandle); identity.DispatchID != "" && sealed != "" && sealed != strings.TrimSpace(assigneeHandle) {
+			return fmt.Errorf("worker mailbox recipient differs from sealed dispatch authority")
+		}
 		identity.DispatchID = dispatchID
 		identity.WorkerMailboxHandle = strings.TrimSpace(assigneeHandle)
+		identity.WorkerTerminalHandle = strings.TrimSpace(assigneeHandle)
 		record, err = handoff.CompleteOperation(record, fence, handoff.OperationDispatch, now)
 		if err != nil {
 			return err
@@ -752,6 +842,7 @@ func projectHandoffStart(record IssueOpsRecord, preview bool, planSHA string) Is
 	result.CodexHookTrustBypassRequired = codexHookTrustBypassRequired(record)
 	result.CodexHookTrustBypassAttested = record.ExecutionHandoff.ContextOptions != nil && record.ExecutionHandoff.ContextOptions.AllowCodexHookTrustBypass
 	result.Orca = record.ExecutionHandoff.Orca
+	result.CoordinatorRecipient = record.ExecutionHandoff.CoordinatorMailboxHandle
 	if record.ExecutionHandoff.State == handoff.StateRecoveryRequired {
 		result.RecoveryCode = "explicit_reconcile_required"
 		if record.ExecutionHandoff.Failure != nil && record.ExecutionHandoff.Failure.Code != "" {
@@ -829,19 +920,27 @@ func issueOpsHandoffTaskIdentity(id, epoch string, attempt int) (string, string,
 }
 
 func ReconcileIssueOpsHandoffDispatch(ctx context.Context, taskID, assigneeHandle, deliveryMode string, client interface {
-	ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
-}) (port.OrcaDispatch, error) {
+	ShowDispatchFrom(context.Context, string, string) (port.OrcaDispatch, error)
+}, coordinatorRecipient string) (port.OrcaDispatch, error) {
 	taskID = strings.TrimSpace(taskID)
 	assigneeHandle = strings.TrimSpace(assigneeHandle)
 	if taskID == "" || assigneeHandle == "" || deliveryMode != "inject" {
 		return port.OrcaDispatch{}, fmt.Errorf("persisted task id, expected assignee, and inject delivery are required for dispatch recovery")
 	}
-	dispatch, err := client.ShowDispatch(ctx, taskID)
+	var err error
+	coordinatorRecipient, err = resolveHandoffCoordinatorRecipient(IssueOpsRecord{}, coordinatorRecipient)
+	if err != nil {
+		return port.OrcaDispatch{}, err
+	}
+	dispatch, err := client.ShowDispatchFrom(ctx, taskID, coordinatorRecipient)
 	if err != nil {
 		return port.OrcaDispatch{}, err
 	}
 	if dispatch.ID == "" || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != assigneeHandle || dispatch.Status != "dispatched" {
 		return port.OrcaDispatch{}, fmt.Errorf("dispatch recovery result does not match persisted task, assignee, and dispatched status")
+	}
+	if err := validateHandoffDispatchPreamble(dispatch.Preamble, coordinatorRecipient, taskID, dispatch.ID); err != nil {
+		return port.OrcaDispatch{}, err
 	}
 	return dispatch, nil
 }

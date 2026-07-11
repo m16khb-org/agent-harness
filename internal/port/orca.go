@@ -132,10 +132,33 @@ type OrcaDispatch struct {
 }
 
 type OrcaMessage struct {
-	ID      string `json:"id,omitempty"`
-	Type    string `json:"type,omitempty"`
-	Subject string `json:"subject,omitempty"`
-	Body    string `json:"body,omitempty"`
+	ID         string `json:"id,omitempty"`
+	FromHandle string `json:"from_handle,omitempty"`
+	ToHandle   string `json:"to_handle,omitempty"`
+	Type       string `json:"type,omitempty"`
+	Subject    string `json:"subject,omitempty"`
+	Body       string `json:"body,omitempty"`
+	Sequence   int64  `json:"sequence,omitempty"`
+}
+
+type OrcaWorkerDoneRequest struct {
+	FromHandle   string   `json:"from_handle"`
+	ToHandle     string   `json:"to_handle"`
+	Subject      string   `json:"subject"`
+	Body         string   `json:"body"`
+	TaskID       string   `json:"task_id"`
+	DispatchID   string   `json:"dispatch_id"`
+	ChangedFiles []string `json:"changed_files"`
+	ReportPath   string   `json:"report_path"`
+}
+
+type OrcaWorkerDoneResult struct {
+	MessageID string `json:"message_id"`
+	Sequence  int64  `json:"sequence"`
+}
+
+type OrcaWorkerDoneClient interface {
+	SendWorkerDone(context.Context, OrcaWorkerDoneRequest) (OrcaWorkerDoneResult, error)
 }
 
 type OrcaClient interface {
@@ -151,4 +174,5 @@ type OrcaClient interface {
 	UpdateTask(context.Context, string, string, string) error
 	Dispatch(context.Context, OrcaDispatchRequest) (OrcaDispatch, error)
 	ShowDispatch(context.Context, string) (OrcaDispatch, error)
+	ShowDispatchFrom(context.Context, string, string) (OrcaDispatch, error)
 }

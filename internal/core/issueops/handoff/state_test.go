@@ -32,10 +32,11 @@ func TestIssueOpsExecutionHandoffTransitionTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	prepared.ExecutionHandoff.CoordinatorMailboxHandle = "term_coordinator"
 	dispatched, err := Dispatch(prepared, Fence{Attempt: 1, OwnershipEpoch: "epoch-1", ContextSHA256: contextSHA}, model.IssueOpsOrcaIdentity{
 		RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo",
 		WorktreeID: "worktree-1", WorktreeInstanceID: "instance-1", WorktreePath: "/repo.worktrees/16-demo",
-		WorkerPTYID: "pty-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
+		WorkerPTYID: "pty-1", WorkerTerminalHandle: "term-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
 	}, "2026-07-11T00:02:00Z")
 	if err != nil {
 		t.Fatal(err)
@@ -130,6 +131,8 @@ func TestIssueOpsExecutionHandoffEnvelopeRejectsCorruption(t *testing.T) {
 		{name: "zero attempt", mutate: func(h *model.IssueOpsExecutionHandoff) { h.Attempt = 0 }},
 		{name: "empty epoch", mutate: func(h *model.IssueOpsExecutionHandoff) { h.OwnershipEpoch = "" }},
 		{name: "empty coordinator root", mutate: func(h *model.IssueOpsExecutionHandoff) { h.CoordinatorRoot = "" }},
+		{name: "empty worker mailbox", mutate: func(h *model.IssueOpsExecutionHandoff) { h.Orca.WorkerMailboxHandle = "" }},
+		{name: "empty live worker terminal", mutate: func(h *model.IssueOpsExecutionHandoff) { h.Orca.WorkerTerminalHandle = "" }},
 		{name: "unknown state", mutate: func(h *model.IssueOpsExecutionHandoff) { h.State = "future_state" }},
 		{name: "dispatched disposition", mutate: func(h *model.IssueOpsExecutionHandoff) { h.ClosedDisposition = DispositionCancelled }},
 		{name: "dispatched pending", mutate: func(h *model.IssueOpsExecutionHandoff) {
@@ -147,6 +150,36 @@ func TestIssueOpsExecutionHandoffEnvelopeRejectsCorruption(t *testing.T) {
 			}
 			if _, err := Claim(record, ClaimRequest{Fence: Fence{Attempt: record.ExecutionHandoff.Attempt, OwnershipEpoch: record.ExecutionHandoff.OwnershipEpoch, ContextSHA256: record.ExecutionHandoff.ContextSHA256}, Worker: model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "s"}, WorkerRoot: record.ExecutionHandoff.WorkerRoot}); err == nil {
 				t.Fatal("Claim() must fail closed on an invalid envelope")
+			}
+		})
+	}
+}
+
+func TestIssueOpsExecutionHandoffEnvelopeRequiresPairedDispatchMailboxAuthority(t *testing.T) {
+	tests := []struct {
+		name   string
+		record model.IssueOpsRecord
+		mutate func(*model.IssueOpsExecutionHandoff)
+	}{
+		{
+			name:   "dispatch without sealed mailbox",
+			record: dispatchedRecordForTest(t),
+			mutate: func(h *model.IssueOpsExecutionHandoff) { h.Orca.WorkerMailboxHandle = "" },
+		},
+		{
+			name:   "sealed mailbox without dispatch",
+			record: preparingRecordForEnvelopeTest(t),
+			mutate: func(h *model.IssueOpsExecutionHandoff) {
+				h.Orca = &model.IssueOpsOrcaIdentity{WorkerTerminalHandle: "term-live", WorkerMailboxHandle: "term-sealed"}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			record := cloneRecord(t, tt.record)
+			tt.mutate(record.ExecutionHandoff)
+			if err := ValidateEnvelope(record); err == nil || !strings.Contains(err.Error(), "dispatch id and worker mailbox") {
+				t.Fatalf("ValidateEnvelope() error = %v, want paired dispatch/mailbox rejection", err)
 			}
 		})
 	}
@@ -482,10 +515,11 @@ func dispatchedRecordForTest(t *testing.T) model.IssueOpsRecord {
 	if err != nil {
 		t.Fatal(err)
 	}
+	record.ExecutionHandoff.CoordinatorMailboxHandle = "term_coordinator"
 	record, err = Dispatch(record, Fence{Attempt: 1, OwnershipEpoch: "epoch-1", ContextSHA256: sha}, model.IssueOpsOrcaIdentity{
 		RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo",
 		WorktreeID: "worktree-1", WorktreeInstanceID: "instance-1", WorktreePath: "/repo.worktrees/16-demo",
-		WorkerPTYID: "pty-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
+		WorkerPTYID: "pty-1", WorkerTerminalHandle: "term-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
 	}, "")
 	if err != nil {
 		t.Fatal(err)

@@ -203,7 +203,7 @@ func TestHandoffGuardBlocksCoordinatorAbsolutePathIntoWorkerTree(t *testing.T) {
 
 func TestHandoffGuardFailsClosedForRealFutureSchemaWrongSessionMutation(t *testing.T) {
 	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
-	record.SchemaVersion = 3
+	record.SchemaVersion = issueopsmodel.IssueOpsCurrentSchemaVersion + 1
 	raw, err := json.Marshal(record)
 	if err != nil {
 		t.Fatal(err)
@@ -709,7 +709,7 @@ func TestHandoffGuardBlocksRawTerminalSteeringOutsideSourceCoordinator(t *testin
 func TestHandoffGuardAllowsOnlyLiteralSafeClaimedWorkerSteeringFromSourceCoordinator(t *testing.T) {
 	t.Run("claimed safe guidance", func(t *testing.T) {
 		repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
-		record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term_live"
+		record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term_live"
 		var err error
 		record, err = writeIssueOps(IssueOpsStateRoot(), record)
 		if err != nil {
@@ -742,7 +742,7 @@ func TestHandoffGuardAllowsOnlyLiteralSafeClaimedWorkerSteeringFromSourceCoordin
 
 	t.Run("claimed guidance rejects terminal control bytes", func(t *testing.T) {
 		repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
-		record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term_live"
+		record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term_live"
 		var err error
 		record, err = writeIssueOps(IssueOpsStateRoot(), record)
 		if err != nil {
@@ -938,6 +938,7 @@ func TestHandoffGuardDeduplicatesSourceDiscoveryBeforeTerminalSteeringAmbiguity(
 	second.ExecutionHandoff.Orca.WorktreePath = second.WorktreePath
 	second.ExecutionHandoff.Orca.WorkerPTYID = "pty-2"
 	second.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-2"
+	second.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-2"
 	second.ExecutionHandoff.Orca.TaskID = "task-2"
 	second.ExecutionHandoff.Orca.DispatchID = "dispatch-2"
 	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
@@ -953,7 +954,7 @@ func TestHandoffGuardDeduplicatesSourceDiscoveryBeforeTerminalSteeringAmbiguity(
 		t.Fatalf("an unknown terminal handle must fail closed: %#v", got)
 	}
 
-	second.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-1"
+	second.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-1"
 	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
 		t.Fatal(err)
 	}
@@ -1095,7 +1096,7 @@ func TestHandoffGuardStateRoleMatrixReturnsAuthorityAfterAccept(t *testing.T) {
 	}
 }
 
-func TestHandoffGuardAllowsOnlyExactSubmittedWorkerDoneAndRetryGuidance(t *testing.T) {
+func TestHandoffGuardBlocksManualSubmittedWorkerDoneAndRetryGuidance(t *testing.T) {
 	repo, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
 	report := ".agent-harness/research/report.md"
 	record.ExecutionHandoff.Result.ChangedFiles = []string{report}
@@ -1109,8 +1110,8 @@ func TestHandoffGuardAllowsOnlyExactSubmittedWorkerDoneAndRetryGuidance(t *testi
 
 	exact := handoffEditRequest(record, worktree, "codex", "session-1", "")
 	exact.Tool, exact.Command = "exec_command", command
-	if got := BuildLifecyclePreToolUseDecision(exact); got.Decision != "allow" {
-		t.Fatalf("exact submitted worker_done must remain available after finish: %#v", got)
+	if got := BuildLifecyclePreToolUseDecision(exact); got.Decision != "block" {
+		t.Fatalf("submitted worker_done must be projected automatically, never by shell: %#v", got)
 	}
 
 	wrongSession := exact
@@ -1148,12 +1149,42 @@ func TestHandoffGuardAllowsOnlyExactSubmittedWorkerDoneAndRetryGuidance(t *testi
 	guidance := handoffEditRequest(record, repo, "codex", "coordinator", "")
 	guidance.Tool = "exec_command"
 	guidance.Command = "orca terminal send --terminal term-1 --text '# agent-harness guidance: retry the exact worker_done command once' --enter --json"
-	if got := BuildLifecyclePreToolUseDecision(guidance); got.Decision != "allow" {
-		t.Fatalf("source coordinator must be able to steer the exact submitted worker handle: %#v", got)
+	if got := BuildLifecyclePreToolUseDecision(guidance); got.Decision != "block" {
+		t.Fatalf("submitted retry guidance must not authorize a second external send: %#v", got)
 	}
 	guidance.Command = "orca terminal send --terminal term-other --text '# agent-harness guidance: retry the exact worker_done command once' --enter --json"
 	if got := BuildLifecyclePreToolUseDecision(guidance); got.Decision != "block" {
 		t.Fatalf("submitted guidance to a non-persisted handle must block: %#v", got)
+	}
+}
+
+func TestHandoffGuardAllowsOnlyExactClaimedWorkerProgressMessages(t *testing.T) {
+	_, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateClaimed, "")
+	base := "orca orchestration send --to term_coordinator --subject alive --task-id task-1 --dispatch-id dispatch-1"
+	for _, command := range []string{
+		base + " --type heartbeat --phase implementing",
+		base + " --type status --body 'Tests are running' --json",
+		base + " --type escalation --body 'Blocked on coordinator action'",
+	} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact claimed progress message %q should pass: %#v", command, got)
+		}
+	}
+	for _, command := range []string{
+		strings.Replace(base+" --type status --body ok", "term_coordinator", "@all", 1),
+		strings.Replace(base+" --type status --body ok", "task-1", "task-other", 1),
+		strings.Replace(base+" --type status --body ok", "dispatch-1", "dispatch-other", 1),
+		base + " --type worker_done --body done",
+		base + " --type heartbeat --phase implementing --body extra",
+		base + " --type escalation --body blocked --payload '{}'",
+	} {
+		req := handoffEditRequest(record, worktree, "codex", "session-1", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("inexact claimed progress message %q must block: %#v", command, got)
+		}
 	}
 }
 
@@ -1166,19 +1197,43 @@ func TestHandoffGuardAllowsOnlyExactClosedFailedTerminalCleanup(t *testing.T) {
 	for _, disposition := range []string{handoff.DispositionWorkerFailed, handoff.DispositionCancelled} {
 		t.Run(disposition, func(t *testing.T) {
 			repo, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, disposition)
+			record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term_historical"
+			record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term_live"
+			var err error
+			record, err = writeIssueOps(IssueOpsStateRoot(), record)
+			if err != nil {
+				t.Fatal(err)
+			}
 			allowed := handoffEditRequest(record, repo, "codex", "coordinator", "")
 			allowed.Tool = "exec_command"
-			allowed.Command = "orca terminal close --terminal term-1 --json"
+			allowed.Command = "orca terminal close --terminal term_live --json"
 			if got := BuildLifecyclePreToolUseDecision(allowed); got.Decision != "allow" {
-				t.Fatalf("source coordinator exact persisted terminal cleanup should pass: %#v", got)
+				t.Fatalf("source coordinator exact live terminal cleanup should pass: %#v", got)
+			}
+			stop := allowed
+			stop.Command = "orca terminal stop --worktree id:wt-1 --json"
+			if got := BuildLifecyclePreToolUseDecision(stop); got.Decision != "allow" {
+				t.Fatalf("source coordinator exact worktree terminal stop should pass: %#v", got)
 			}
 
 			for name, mutate := range map[string]func(*HookToolUseLifecycleRequest){
 				"wrong handle": func(req *HookToolUseLifecycleRequest) {
 					req.Command = "orca terminal close --terminal term-other --json"
 				},
-				"extra flag": func(req *HookToolUseLifecycleRequest) { req.Command += " --force" },
-				"stop":       func(req *HookToolUseLifecycleRequest) { req.Command = "orca terminal stop --terminal term-1 --json" },
+				"historical mailbox": func(req *HookToolUseLifecycleRequest) {
+					req.Command = "orca terminal close --terminal term_historical --json"
+				},
+				"extra close flag": func(req *HookToolUseLifecycleRequest) { req.Command += " --force" },
+				"stop by terminal": func(req *HookToolUseLifecycleRequest) { req.Command = "orca terminal stop --terminal term_live --json" },
+				"wrong stop worktree": func(req *HookToolUseLifecycleRequest) {
+					req.Command = "orca terminal stop --worktree id:wt-other --json"
+				},
+				"stop without id selector": func(req *HookToolUseLifecycleRequest) {
+					req.Command = "orca terminal stop --worktree wt-1 --json"
+				},
+				"extra stop flag": func(req *HookToolUseLifecycleRequest) {
+					req.Command = "orca terminal stop --worktree id:wt-1 --json --force"
+				},
 				"create": func(req *HookToolUseLifecycleRequest) {
 					req.Command = "orca terminal create --worktree id:wt-1 --command codex --json"
 				},
@@ -1534,8 +1589,8 @@ func TestHandoffGuardRejectsWrappedDuplicateAndTrailingLifecycleCommands(t *test
 	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
 	base := handoffEditRequest(record, repo, "codex", "coordinator", "")
 	base.Tool = "Bash"
-	valid := "agent-harness issueops handoff start --id " + record.ID + " --allow-codex-hook-trust-bypass --confirm --json"
-	for _, command := range []string{valid, "./bin/agent-harness issueops handoff start --id " + record.ID + " --allow-codex-hook-trust-bypass --confirm --json"} {
+	valid := "agent-harness issueops handoff start --id " + record.ID + " --coordinator-recipient term_coordinator --expected-context-sha256 " + strings.Repeat("a", 64) + " --allow-codex-hook-trust-bypass --confirm --json"
+	for _, command := range []string{valid, "./bin/agent-harness issueops handoff start --id " + record.ID + " --coordinator-recipient term_coordinator --expected-context-sha256 " + strings.Repeat("a", 64) + " --allow-codex-hook-trust-bypass --confirm --json"} {
 		req := base
 		req.Command = command
 		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
@@ -1699,12 +1754,14 @@ func lifecycleHandoffRecord(t *testing.T, state string) (string, IssueOpsRecord,
 			RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/1-demo", WorktreeID: "wt-1", WorktreeInstanceID: "inst-1", WorktreePath: worktree,
 		},
 	}
+	record.ExecutionHandoff.CoordinatorMailboxHandle = "term_coordinator"
 	if state != handoff.StateCoordinatorPreparing {
 		record.ExecutionHandoff.ContextVersion = handoff.ContextVersion
 		record.ExecutionHandoff.ContextSourceSHA256 = strings.Repeat("d", 64)
 		record.ExecutionHandoff.ContextOptions = &issueopsmodel.IssueOpsExecutionHandoffContextOptions{}
 		record.ExecutionHandoff.DeliveryMode = "inject"
 		record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
+		record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-1"
 		record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-1"
 		record.ExecutionHandoff.Orca.TaskID = "task-1"
 		record.ExecutionHandoff.Orca.DispatchID = "dispatch-1"

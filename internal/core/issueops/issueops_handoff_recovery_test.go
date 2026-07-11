@@ -126,7 +126,7 @@ func TestHandoffForcedClaimedCancelPersistsEvidenceAndFencesWorker(t *testing.T)
 	}); err == nil {
 		t.Fatal("cancellation tombstone must fence worker heartbeat")
 	}
-	if _, err := FinishIssueOpsHandoff(stateRoot, IssueOpsHandoffFinishRequest{
+	if _, err := finishIssueOpsHandoffWithoutProjection(stateRoot, IssueOpsHandoffFinishRequest{
 		ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch, ContextSHA256: claim.ContextSHA256,
 		Host: claim.Host, SessionID: claim.SessionID, AgentID: claim.AgentID, Outcome: handoff.OutcomeFailed,
 		TaskID: record.ExecutionHandoff.Orca.TaskID, DispatchID: record.ExecutionHandoff.Orca.DispatchID,
@@ -361,10 +361,11 @@ func TestHandoffFinalizeCancelRequiresPendingDispatchTaskToLeaveReadyInventory(t
 	h := record.ExecutionHandoff
 	h.State = handoff.StateRecoveryRequired
 	h.Orca.DispatchID = ""
+	h.Orca.WorkerMailboxHandle = ""
 	h.DeliveryMode = ""
 	h.DispatchedAt = ""
 	h.PendingOperation = &IssueOpsExecutionHandoffPendingOperation{
-		Kind: handoff.OperationDispatch, StartedAt: "2026-07-11T00:50:00Z", ExpectedAssigneeHandle: h.Orca.WorkerMailboxHandle, DeliveryMode: "inject",
+		Kind: handoff.OperationDispatch, StartedAt: "2026-07-11T00:50:00Z", ExpectedAssigneeHandle: h.Orca.WorkerTerminalHandle, DeliveryMode: "inject",
 	}
 	h.Failure = &IssueOpsExecutionHandoffFailure{Code: "dispatch_ambiguous", Message: "dispatch result is unknown", At: "2026-07-11T00:50:00Z"}
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
@@ -377,7 +378,7 @@ func TestHandoffFinalizeCancelRequiresPendingDispatchTaskToLeaveReadyInventory(t
 	}
 	client := handoffDispatchFake(record)
 	client.terminals = []port.OrcaTerminal{{
-		Handle: h.Orca.WorkerMailboxHandle, PTYID: h.Orca.WorkerPTYID, WorktreeID: h.Orca.WorktreeID,
+		Handle: h.Orca.WorkerTerminalHandle, PTYID: h.Orca.WorkerPTYID, WorktreeID: h.Orca.WorktreeID,
 		WorktreePath: h.WorkerRoot, Connected: false, Writable: false,
 	}}
 	client.dispatchShowErr = &port.OrcaError{Code: "not_found", Detail: "dispatch absent", Invoked: true}
@@ -661,7 +662,7 @@ func TestHandoffForceAbandonRequiresConfirmedCompleteAbsentInventoryAndNeverRetr
 			stateRoot, record := handoffDispatchRecord(t)
 			if tt.pending.Kind == handoff.OperationDispatch {
 				record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
-				record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-1"
+				record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-1"
 				record.ExecutionHandoff.Orca.TaskID = "task-1"
 			}
 			setRecoveryRequiredForTest(&record, tt.pending)
@@ -1003,7 +1004,7 @@ func TestHandoffRetryPinsCleanPartialCommitAsNewAttemptBase(t *testing.T) {
 		}
 	}
 	partialHead := preflight.GitOut(record.WorktreePath, "rev-parse", "HEAD")
-	if _, err := FinishIssueOpsHandoff(stateRoot, IssueOpsHandoffFinishRequest{
+	if _, err := finishIssueOpsHandoffWithoutProjection(stateRoot, IssueOpsHandoffFinishRequest{
 		ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch, ContextSHA256: claim.ContextSHA256,
 		Host: claim.Host, SessionID: claim.SessionID, AgentID: claim.AgentID, Outcome: handoff.OutcomeFailed,
 		Verification: []string{"focused test failed after partial commit"}, CleanupReceipts: []string{"worker resources stopped"},
@@ -1064,13 +1065,13 @@ func TestHandoffRetryReattestsLegacyCodexBypassWithoutChangingSealedOptions(t *t
 	}
 	client := handoffDispatchFake(retried)
 	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
-		ID: retried.ID, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
+		ID: retried.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
 	}, client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
 	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
-		ID: retried.ID, Confirm: true, ExpectedContextSHA256: preview.ContextSHA256, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
+		ID: retried.ID, CoordinatorRecipient: testCoordinatorRecipient, Confirm: true, ExpectedContextSHA256: preview.ContextSHA256, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
 	}, client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
@@ -1217,8 +1218,9 @@ func TestHandoffRecoverDispatchRequiresDurableDeliveryIdentityAndDispatchedStatu
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			stateRoot, record := handoffDispatchRecord(t)
+			record.ExecutionHandoff.CoordinatorMailboxHandle = testCoordinatorRecipient
 			record.ExecutionHandoff.Orca.TaskID = "task-1"
-			record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+			record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-1"
 			setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{
 				Kind: handoff.OperationDispatch, ExpectedAssigneeHandle: tt.expectedAssignee, DeliveryMode: tt.deliveryMode,
 			})
@@ -1251,17 +1253,47 @@ func TestHandoffRecoverDispatchRequiresDurableDeliveryIdentityAndDispatchedStatu
 		{name: "unsupported delivery mode", expectedAssignee: "term-1", deliveryMode: "terminal_send"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := ReconcileIssueOpsHandoffDispatch(context.Background(), "task-1", tt.expectedAssignee, tt.deliveryMode, client); err == nil {
+			if _, err := ReconcileIssueOpsHandoffDispatch(context.Background(), "task-1", tt.expectedAssignee, tt.deliveryMode, client, testCoordinatorRecipient); err == nil {
 				t.Fatal("invalid durable delivery journal was accepted")
 			}
 		})
 	}
 }
 
+func TestHandoffRecoverDispatchRejectsInconsistentV4MailboxAuthority(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	h := record.ExecutionHandoff
+	h.CoordinatorMailboxHandle = testCoordinatorRecipient
+	h.Orca.WorkerTerminalHandle = "term-live"
+	h.Orca.WorkerMailboxHandle = "term-stale-sealed"
+	h.Orca.TaskID = "task-1"
+	h.Orca.DispatchID = ""
+	setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationDispatch, ExpectedAssigneeHandle: "term-live", DeliveryMode: "inject",
+	})
+	putRawIssueOpsRecordForTest(t, stateRoot, record)
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	client := handoffDispatchFake(record)
+	client.dispatch = port.OrcaDispatch{ID: "dispatch-1", TaskID: "task-1", AssigneeHandle: "term-live", Status: "dispatched"}
+
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "reconcile",
+	}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "dispatch id and worker mailbox") {
+		t.Fatalf("dispatch recovery error = %v, want unpaired sealed worker mailbox rejection", err)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("invalid v4 authority reached Orca: %v", client.trace)
+	}
+	after := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	if string(after) != string(before) {
+		t.Fatal("rejected inconsistent v4 recovery authority was overwritten")
+	}
+}
+
 func TestHandoffRecoverDispatchUsesDurableRefreshedAssigneeWithoutInjectedField(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
-	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-stale"
 	record.ExecutionHandoff.Orca.TaskID = "task-1"
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)

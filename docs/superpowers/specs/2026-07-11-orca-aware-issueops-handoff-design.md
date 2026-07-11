@@ -1,7 +1,7 @@
 # Orca-Aware IssueOps Supervised Handoff Design
 
 **Date:** 2026-07-11
-**Status:** Design approved for specification; implementation pending review
+**Status:** Implemented with the 2026-07-11 sealed-completion-authority correction
 **Scope:** Optional Orca-backed IssueOps execution handoff with legacy inline compatibility
 
 ## 1. Problem
@@ -105,7 +105,9 @@ For resolved inline mode:
 
 ## 6. Durable model
 
-Add one optional nested field to `IssueOpsRecord` and use root IssueOps schema version 3. Missing/zero, v1, and v2 records remain readable and upgrade on the next write, including locally created older handoff rows. A v1 binary sees v2+ as future and cannot strip the ownership lease; a v2 binary sees v3 as future and cannot strip the stable terminal tab/leaf locator. Versions greater than 3 remain fail-safe.
+Add one optional nested field to `IssueOpsRecord` and use root IssueOps schema version 4. Missing/zero, v1, v2, and v3 records remain readable and upgrade on the next write, including locally created older handoff rows. A v1 binary sees v2+ as future and cannot strip the ownership lease; a v2 binary sees v3 as future and cannot strip the stable terminal tab/leaf locator; a v3 binary sees v4 as future and cannot strip the sealed mailbox recipients or completion projection intent. Versions greater than 4 remain fail-safe.
+
+Legacy migration applies to the current attempt and every prior attempt: copy a missing live terminal from the legacy mailbox, then clear mailbox authority whenever no dispatch exists. In v4, `DispatchID` and `WorkerMailboxHandle` are either both absent or both present. ContextVersion 1 preserves v3 bytes and hashes by omitting an empty `coordinator_recipient`; every nonempty newly sealed recipient remains present in both the full context and source fingerprint.
 
 ```go
 type IssueOpsExecutionHandoff struct {
@@ -122,6 +124,7 @@ type IssueOpsExecutionHandoff struct {
     Agent           string
     DeliveryMode    string // inject (V1)
 
+    CoordinatorMailboxHandle string
     CoordinatorRoot string
     WorkerRoot      string
     WorkerSession   *IssueOpsHostSessionIdentity
@@ -223,6 +226,7 @@ type IssueOpsOrcaIdentity struct {
     TerminalBaselinePTYIDs []string
     WorkerPTYID           string
     WorkerMailboxHandle   string
+    WorkerTerminalHandle  string
     WorkerTabID           string
     WorkerLeafID          string
     TaskID                string
@@ -233,8 +237,9 @@ type IssueOpsOrcaIdentity struct {
 Rules:
 
 - top-level Orca RPC correlation IDs are never stored as domain IDs;
-- the live terminal handle is not persisted as mutation authority; it remains the dispatch mailbox identity and is refreshed only through exact runtime recovery evidence;
-- the worker handle captured by dispatch is retained only as its mailbox/assignee identity for historical message recovery;
+- the coordinator mailbox recipient is sealed before the first Orca dispatch and cannot be derived later from the current task, caller environment, or live terminal inventory;
+- the worker handle captured by dispatch is sealed as `WorkerMailboxHandle`, the historical mailbox/assignee identity used for `worker_done` and mailbox recovery;
+- `WorkerTerminalHandle` is separate live control identity. Exact runtime recovery may refresh only this live handle and its runtime locators; it never overwrites either sealed mailbox recipient;
 - current Orca terminal-list `tabId`/`leafId` are persisted as a pair. The observed runtime rollover reissued handle/PTY and worktree instance while retaining tab/leaf, so a v3 attempt prefers that exact stable pair;
 - v2 attempts that never observed tab/leaf may fall back only to the bounded custom tab title joined from `visualLayouts[].root.tabs[]` by the current exact tab/leaf. The dynamic terminal `title` is never a fallback marker;
 - worktree ID, instance ID, canonical path, and branch are cross-checked to prevent stale path reuse;
@@ -255,6 +260,7 @@ After the coordinator has prepared the plan inside the linked worktree, the hand
 - relevant compatibility and devil's-advocate conclusions;
 - required project documents and selected skill contracts;
 - worker scope, verification commands, heartbeat cadence, stop conditions, and result format;
+- sealed coordinator mailbox recipient in the canonical packet; the official dispatch preamble completes the delivered bounded context with the exact task label and `--dispatch-id` token once those IDs exist;
 - attempt, ownership epoch, and claim/finish command templates.
 
 It excludes:
@@ -286,14 +292,14 @@ This sequence preserves the current `plan_in_worktree` invariant and keeps all p
 
 ### 8.2 Coordinator dispatch start
 
-1. Re-read the `coordinator_preparing` handoff and a pre-dispatch readiness projection containing every implementation-entry prerequisite except the not-yet-possible worker claim.
+1. Require and persist a concrete coordinator mailbox recipient, then re-read the `coordinator_preparing` handoff and a pre-dispatch readiness projection containing every implementation-entry prerequisite except the not-yet-possible worker claim.
 2. For Codex, verify installed bypass-flag support and perform the documented read-only `hooks/list` review for the exact worker cwd. This human attestation is not implemented as an automatic app-server/fingerprint verifier in V1.
 3. Render an unattested preview, then an attested no-confirm preview. Record the latter context hash and require the final confirm request to differ only by `confirm=true`.
 4. Under the per-cycle lock, re-read the same record, re-render its source fingerprint, and require the canonical worker checkout to remain on the exact branch and attempt-base HEAD with a clean status before persisting that stable context version/hash. Missing Codex attestation or a changed checkout fails before any terminal/task/dispatch call.
 5. Before each first-time terminal, task, and dispatch journal write, repeat the locked record/source/branch/HEAD/clean checkpoint. Persist the worktree's current PTY IDs, then start a fresh agent terminal in the existing worktree exactly once.
 6. Reacquire and verify the live terminal handle through `terminal list`.
 7. Create one Orca task whose title/display name contains the cycle ID and attempt marker.
-8. Dispatch/deliver the task and persist the task/dispatch tuple while transitioning to `dispatched`. A rejected later-stage checkpoint preserves all identities completed by prior stages and leaves no new pending journal.
+8. Dispatch/deliver the task and persist the task/dispatch tuple plus the historical worker mailbox while transitioning to `dispatched`. Dispatch recovery requires the sealed coordinator to pass the same concrete bounded `term_*` validation before `dispatch-show`, then validates the returned preamble by its official exact coordinator and task label lines and exact `--dispatch-id <id>` token. A rejected later-stage checkpoint preserves all identities completed by prior stages and leaves no new pending journal.
 9. Return immediately with worker status and recovery commands; do not run a background wait loop.
 
 Every operation journal receives a fresh start timestamp immediately before its write. Every post-call completion, failure, or dispatch transition obtains another fresh timestamp after the external call; it never reuses the pre-call journal time.
@@ -396,9 +402,11 @@ The worker submits:
 - Orca task/dispatch tuple when available;
 - terminal result `completed` or `failed`.
 
-The harness validates the worker identity and current context and writes the IssueOps result first. A completed result transitions `claimed -> submitted`; a failed result transitions `claimed -> closed` with disposition `worker_failed`. Repeating the same finish tuple is idempotent. It then best-effort updates the Orca task/sends `worker_done`.
+The harness validates the worker identity and current context. For a completed result, it derives a deterministic bounded projection exclusively from the durable record and freshly verified exact worker evidence, then transitions `claimed -> submitted` and persists the projection intent in the same IssueOps cycle-lock write. Only after that durable write is visible does it attempt exactly one external `worker_done` outside the lock through the safe argv-only Orca adapter. A failed result transitions `claimed -> closed` with disposition `worker_failed` and performs no completion projection.
 
-The IssueOps result is the only completion authority. Orca task/message data may diagnose a sync failure but is never imported as a replacement worker result. If the IssueOps write was ambiguous, the worker repeats the same idempotent finish command.
+The completion payload uses the sealed historical worker mailbox as sender and the separately sealed coordinator mailbox as recipient. Exact task/dispatch, changed files, report path, final head, host/attempt identity, subject, and three-sentence body come from persisted evidence, never from caller environment, a current Orca task, request-only values, or the refreshable live terminal. Success records bounded message identity/evidence. Failure, timeout, malformed output, ambiguity, or crash leaves `submitted` authoritative and is never automatically retried; an identical finish returns stable diagnostic evidence without another send. Manual submitted-worker shell `worker_done` is blocked.
+
+The IssueOps result is the only completion authority. Orca task/message data may diagnose a projection failure but is never imported as a replacement worker result.
 
 ### 11.3 Coordinator accept
 
@@ -446,7 +454,7 @@ CLI family:
 
 ```text
 issueops worktree prepare --orchestrator auto|orca|inline [--confirm]
-issueops handoff start [--allow-codex-hook-trust-bypass] [--confirm]
+issueops handoff start --coordinator-recipient <term_...> [--allow-codex-hook-trust-bypass] [--confirm]
 issueops handoff claim
 issueops handoff finish
 issueops handoff accept
@@ -472,6 +480,7 @@ The adapter owns:
 - narrow projections for status, repo, worktree, terminal, task, dispatch, and message data;
 - stable error codes and redacted diagnostics;
 - terminal-handle refresh.
+- one-attempt bounded `worker_done` projection with safe argv and no shell.
 
 Do not add a driver registry or duplicate Orca behavior in core. The IssueOps usecase receives the small concrete dependency seam it needs for deterministic fake-runner tests.
 

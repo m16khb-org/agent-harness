@@ -382,7 +382,7 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 	switch argmap.String(args, "action") {
 	case "start":
 		result, err := core.StartIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffStartRequest{
-			ID: id, Confirm: argmap.Bool(args, "confirm"), ExpectedContextSHA256: argmap.String(args, "expected_context_sha256"), Context: handoff.ContextOptions{
+			ID: id, CoordinatorRecipient: argmap.String(args, "coordinator_recipient"), Confirm: argmap.Bool(args, "confirm"), ExpectedContextSHA256: argmap.String(args, "expected_context_sha256"), Context: handoff.ContextOptions{
 				CriteriaIDs: argmap.StringSlice(args, "criteria_ids"), RequiredDocs: argmap.StringSlice(args, "required_docs"), RequiredSkills: argmap.StringSlice(args, "required_skills"),
 				WorkerScope: argmap.String(args, "worker_scope"), VerificationCommands: argmap.StringSlice(args, "verification_commands"), HeartbeatCadence: argmap.String(args, "heartbeat_cadence"),
 				StopConditions: argmap.StringSlice(args, "stop_conditions"), ResultFormat: argmap.String(args, "result_format"),
@@ -397,13 +397,13 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 		})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff claim failed")
 	case "finish":
-		result, err := core.FinishIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
+		result, err := core.FinishIssueOpsHandoffWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
 			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"),
 			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), Outcome: argmap.String(args, "outcome"),
 			FinalHead: argmap.String(args, "final_head"), ChangedFiles: argmap.StringSlice(args, "changed_files"), TuringReportPath: argmap.String(args, "turing_report_path"),
 			Verification: argmap.StringSlice(args, "verification"), CleanupReceipts: argmap.StringSlice(args, "cleanup_receipts"), EvidenceDigest: argmap.String(args, "evidence_digest"),
 			TaskID: argmap.String(args, "task_id"), DispatchID: argmap.String(args, "dispatch_id"),
-		})
+		}, IssueOpsWorkerDoneProjectionClient())
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff finish failed")
 	case "accept":
 		result, err := core.AcceptIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffAcceptRequest{

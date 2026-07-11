@@ -270,7 +270,7 @@ func TestIssueOpsSkillDocumentsOptionalOrcaHandoffContract(t *testing.T) {
 		"worktree removal is not terminal cleanup evidence",
 		"exact spawned handle and PTY",
 		"connected=false or absent from terminal list",
-		"orca terminal close --terminal <persisted-worker-mailbox-handle> --json",
+		"orca terminal close --terminal <resolved-worker-terminal-handle> --json",
 		"optional bounded cleanup attempt",
 		"nested shells",
 		"representative mutation family",
@@ -355,9 +355,8 @@ func TestTuringSkillUsesZshSafeWrapperResultVariable(t *testing.T) {
 func TestTuringSkillUsesLiteralBacktickSearchPatterns(t *testing.T) {
 	skill := readTuringSkillForTest(t)
 	for _, want := range []string{
-		"Search patterns containing Markdown backticks must be single-quoted",
-		"passed as a literal argv",
-		"never double-quoted",
+		"Shell arguments containing Markdown backticks must be single-quoted or passed as direct argv",
+		"never place backticks inside a double-quoted shell command argument",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Fatalf("Turing literal search-pattern contract missing %q", want)
@@ -417,6 +416,11 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 			}
 		}
 	}
+	for _, want := range []string{"--coordinator-recipient", "official exact coordinator and task label lines", "exact `--dispatch-id` token"} {
+		if !strings.Contains(issueOps, want) {
+			t.Fatalf("IssueOps sealed dispatch context missing %q", want)
+		}
+	}
 	for _, want := range []string{
 		"runtime_refresh",
 		"tabId and leafId",
@@ -458,7 +462,7 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 		"orca terminal read --terminal <recovered-current-handle>",
 		"orca orchestration check --all --json",
 		".result.messages",
-		"orca terminal close --terminal <persisted-worker-mailbox-handle> --json",
+		"orca terminal close --terminal <resolved-worker-terminal-handle> --json",
 		"orca terminal stop --worktree id:<persisted-worktree-id>",
 		"orca worktree rm --worktree id:<persisted-worktree-id>",
 		"orca terminal list --worktree id:<persisted-worktree-id>",
@@ -510,14 +514,14 @@ func TestSupervisedHandoffSkillsRequireCompletionFence(t *testing.T) {
 	turing := readTuringSkillForTest(t)
 	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
 		for _, want := range []string{
-			"After verification and immediately before `worker_done`",
+			"After verification and immediately before `handoff finish` triggers automatic projection",
 			"bounded current-task inbox check",
 			"numeric `sequence`",
 			"exact `taskId` and `dispatchId`",
 			"sender and recipient direction",
 			"newly arrived current-task `status` or `escalation`",
 			"through the observed maximum sequence",
-			"repeat any affected verification and commit before `worker_done`",
+			"repeat any affected verification and commit before finish",
 			"fresh ready task, dispatch, host attestation, and sole-writer proof",
 			"Conventional Commit subject",
 			"literal `Lore:` block",
@@ -538,12 +542,29 @@ func TestSupervisedHandoffSkillsRequireBoundedTaskAttestation(t *testing.T) {
 	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
 		for _, want := range []string{
 			"server-filtered task inventory",
-			"orca orchestration task-list --status dispatched",
+			"orca orchestration task-list --status dispatched --json",
 			"orca orchestration dispatch-show --task <current-task-id> --json",
+			"`orca orchestration task show`, `orca orchestration dispatch show`, and status `in_progress` are invalid",
 			"truncated or unparsable JSON is ambiguity, never absence",
 		} {
 			if !strings.Contains(body, want) {
 				t.Fatalf("%s bounded task attestation contract missing %q", name, want)
+			}
+		}
+	}
+}
+
+func TestSupervisedHandoffSkillsSeparateMailboxMessagingFromTerminalControl(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	turing := readTuringSkillForTest(t)
+	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
+		for _, want := range []string{
+			"Orchestration reviews and task-scoped messages target the sealed `WorkerMailboxHandle`",
+			"refreshed `WorkerTerminalHandle` is only terminal read/send/close control",
+			"Automatic `worker_done` uses the sealed `WorkerMailboxHandle` as `--from`",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s mailbox/control distinction missing %q", name, want)
 			}
 		}
 	}
@@ -625,6 +646,22 @@ func TestIssueOpsSkillUsesNumericMailboxSequenceInsteadOfOpaqueMessageIDs(t *tes
 	}
 }
 
+func TestSupervisedHandoffSkillsNeverPredictMailboxSequence(t *testing.T) {
+	for name, body := range map[string]string{
+		"IssueOps": readIssueOpsReferenceForTest(t, "orca-handoff.md"),
+		"Turing":   readTuringSkillForTest(t),
+	} {
+		for _, want := range []string{
+			"Never prestate or predict a future mailbox sequence",
+			"only the returned send envelope or a subsequent bounded mailbox observation supplies the sequence",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s mailbox-sequence provenance contract missing %q", name, want)
+			}
+		}
+	}
+}
+
 func TestRootAgentGuidanceRunsRealGoldenPackage(t *testing.T) {
 	body, err := os.ReadFile(filepath.Join("..", "..", "..", "AGENTS.md"))
 	if err != nil {
@@ -654,20 +691,139 @@ func TestSupervisedReportOnlySkillsRunOnlyDeclaredVerification(t *testing.T) {
 	}
 }
 
-func TestSupervisedSubmittedWorkerDoneSkillsPinExactAuthority(t *testing.T) {
+func TestSupervisedAutomaticWorkerDoneSkillsPinExactAuthority(t *testing.T) {
 	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
 	turing := readTuringSkillForTest(t)
 	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
 		for _, want := range []string{
-			"same submitted worker session",
+			"automatic best-effort projection",
+			"submitted result and projection intent in the same cycle lock",
+			"sealed historical worker mailbox",
+			"refreshable live terminal",
 			"exact persisted task and dispatch",
 			"three-sentence body",
 			"absolute in-worker report path",
-			"exact submitted worker handle",
+			"never automatically retried",
+			"manual shell `worker_done` is blocked",
 		} {
 			if !strings.Contains(body, want) {
-				t.Fatalf("%s submitted worker_done contract missing %q", name, want)
+				t.Fatalf("%s automatic worker_done contract missing %q", name, want)
 			}
+		}
+		for _, forbidden := range []string{"Only the same submitted worker session may send", "retries the exact command once"} {
+			if strings.Contains(body, forbidden) {
+				t.Fatalf("%s retains obsolete manual worker_done authority %q", name, forbidden)
+			}
+		}
+	}
+}
+
+func TestIssueOpsSchemaADRPreservesV3HistoryAndAppendsCurrentDateV4(t *testing.T) {
+	adr := readProjectContractFileForTest(t, ".agent-harness", "ADR.md")
+	design := readProjectContractFileForTest(t, "docs", "superpowers", "specs", "2026-07-11-orca-aware-issueops-handoff-design.md")
+	evidence := readProjectContractFileForTest(t, ".agent-harness", "research", "orca-handoff-turing-evidence-2026-07-11.md")
+	legacyV3 := `## 2026-07-11 — IssueOps root schema v3 protects supervised ownership and stable terminal identity
+
+- Kind: ` + "`adr`" + `
+- Source: GitHub issue #16 schema compatibility review
+- Summary: Stamp every IssueOps write as schema v3 so v1 cannot erase ` + "`execution_handoff`" + ` and v2 cannot erase the stable terminal tab/leaf locator needed after an Orca runtime rollover.
+- Context: ` + "`execution_handoff`" + ` and stable terminal identity are not optional display metadata; they own mutation authority across host sessions. Leaving either addition under a schema already understood by an older writer lets that writer ignore the unknown field and weaken the guard during an unrelated read-modify-write.
+- Decision:
+  - Read missing, zero, v1, and v2 rows with the current model and preserve every recognized field; stamp v3 on the next write.
+  - Reject versions greater than v3. For hook scans, retain only a bounded repo/worker identity projection and an in-memory invalid marker so unsupported rows remain fail-closed without being interpreted or rewritten.
+  - Keep v3 visible at the root. Do not use a private migration table or infer compatibility from nested protocol_version.
+- Consequences: CLI, MCP, daemon, and all native hosts must be updated together before mutating supervised rows. Compatibility fixtures must prove v1 rejects v2 and v2 rejects v3 byte-equivalently; install smoke must verify v1/v2 migration plus v3 readback.
+- Evidence: ` + "`internal/core/issueops/issueops_schema_version_test.go`" + `, the real sqlstore future-schema lifecycle guard test, and three-host install migration verification recorded in the issue evidence ledger.
+- Rejected alternatives: keeping schema v1 because the field is ` + "`omitempty`" + `; silently downgrading v2 for old binaries; discarding future-schema rows from hook ownership scans.`
+	if !strings.Contains(adr, legacyV3) {
+		t.Fatal("schema-v3 ADR history was rewritten instead of preserved byte-for-byte")
+	}
+	if !strings.Contains(adr, "## 2026-07-11 — IssueOps root schema v4 protects sealed completion authority") {
+		t.Fatal("schema-v4 ADR was not appended as a separate current-date decision")
+	}
+	if strings.Contains(adr, "## 2026-07-12 — IssueOps root schema v4 protects sealed completion authority") {
+		t.Fatal("schema-v4 ADR heading contains future-date drift")
+	}
+	if !strings.Contains(design, "**Status:** Implemented with the 2026-07-11 sealed-completion-authority correction") || strings.Contains(design, "**Status:** Implemented with the 2026-07-12 sealed-completion-authority correction") {
+		t.Fatal("sealed-completion design status has the wrong bundle date")
+	}
+	if !strings.Contains(evidence, "## Sealed automatic `worker_done` projection correction — 2026-07-11") || strings.Contains(evidence, "## Sealed automatic `worker_done` projection correction — 2026-07-12") {
+		t.Fatal("sealed-projection evidence heading has the wrong bundle date")
+	}
+}
+
+func TestCompletedHandoffPublicAPIRequiresProjectionDependency(t *testing.T) {
+	for name, body := range map[string]string{
+		"issueops lifecycle": readProjectContractFileForTest(t, "internal", "core", "issueops", "issueops_handoff_lifecycle.go"),
+		"core facade":        readProjectContractFileForTest(t, "internal", "core", "issueops_facade.go"),
+	} {
+		if strings.Contains(body, "func FinishIssueOpsHandoff(") {
+			t.Fatalf("%s still exports a completed-finish path without projection", name)
+		}
+	}
+}
+
+func TestIssueOpsCleanupUsesLiveTerminalAndExactWorktreeStop(t *testing.T) {
+	body := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	for _, want := range []string{
+		"orca terminal close --terminal <resolved-worker-terminal-handle> --json",
+		"currently resolved `WorkerTerminalHandle`",
+		"orca terminal stop --worktree id:<persisted-worktree-id> --json",
+		"sealed `WorkerMailboxHandle` is never terminal-control authority",
+		"remains the sealed orchestration `worker_done` sender",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("IssueOps cleanup contract missing %q", want)
+		}
+	}
+	if strings.Contains(body, "terminal close --terminal <persisted-worker-mailbox-handle>") {
+		t.Fatal("IssueOps cleanup still authorizes the historical mailbox as terminal control")
+	}
+}
+
+func TestIssueOpsHistoricalSchemaDocsCarryFullV4RejectionChain(t *testing.T) {
+	body := readProjectContractFileForTest(t, "docs", "superpowers", "specs", "2026-07-06-issueops-subagent-orchestration-design.md")
+	want := "Current schema-v4 writers instead require v1 to reject v2+, v2 to reject v3, and v3 to reject v4 before rewrite"
+	if !strings.Contains(body, want) {
+		t.Fatalf("historical schema design does not carry the full v4 rejection chain: want %q", want)
+	}
+	if strings.Contains(body, "Current schema-v3 writers") {
+		t.Fatal("historical schema design still describes the current writer as v3")
+	}
+}
+
+func TestIssueOpsSchemaV4DocsCarryAttemptWideMailboxMigrationAndPairing(t *testing.T) {
+	documents := map[string]string{
+		"operations": readProjectContractFileForTest(t, ".agent-harness", "OPERATIONS.md"),
+		"cautions":   readProjectContractFileForTest(t, ".agent-harness", "CAUTIONS.md"),
+		"testing":    readProjectContractFileForTest(t, ".agent-harness", "TESTING.md"),
+		"design":     readProjectContractFileForTest(t, "docs", "superpowers", "specs", "2026-07-11-orca-aware-issueops-handoff-design.md"),
+		"plan":       readProjectContractFileForTest(t, "docs", "superpowers", "plans", "2026-07-11-orca-aware-issueops-handoff.md"),
+		"evidence":   readProjectContractFileForTest(t, ".agent-harness", "research", "orca-handoff-turing-evidence-2026-07-11.md"),
+	}
+	for name, body := range documents {
+		for _, want := range []string{
+			"current attempt and every prior attempt",
+			"`DispatchID` and `WorkerMailboxHandle` are either both absent or both present",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s schema-v4 authority contract missing %q", name, want)
+			}
+		}
+	}
+}
+
+func TestTuringVerificationWaitsForYieldedCellsAndUsesExplicitGofmtArgv(t *testing.T) {
+	body := readTuringSkillForTest(t)
+	for _, want := range []string{
+		"A yielded execution cell is unfinished evidence",
+		"through a terminal exit",
+		"restart the ordered verification gate from step 1",
+		"Never construct `gofmt -w` arguments with shell command substitution",
+		"explicit direct argv list",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("Turing verification process contract missing %q", want)
 		}
 	}
 }
@@ -936,6 +1092,16 @@ func readTuringSkillForTest(t *testing.T) string {
 func readCautionsForTest(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", ".agent-harness", "CAUTIONS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func readProjectContractFileForTest(t *testing.T, parts ...string) string {
+	t.Helper()
+	path := filepath.Join(append([]string{"..", "..", ".."}, parts...)...)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}

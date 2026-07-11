@@ -380,7 +380,7 @@ func handoffHasExternalMutation(h *model.IssueOpsExecutionHandoff) bool {
 	if h.Orca == nil {
 		return false
 	}
-	return strings.TrimSpace(h.Orca.WorktreeID) != "" || strings.TrimSpace(h.Orca.WorktreeInstanceID) != "" || strings.TrimSpace(h.Orca.WorktreePath) != "" || strings.TrimSpace(h.Orca.WorkerPTYID) != "" || strings.TrimSpace(h.Orca.WorkerMailboxHandle) != "" || strings.TrimSpace(h.Orca.TaskID) != "" || strings.TrimSpace(h.Orca.DispatchID) != ""
+	return strings.TrimSpace(h.Orca.WorktreeID) != "" || strings.TrimSpace(h.Orca.WorktreeInstanceID) != "" || strings.TrimSpace(h.Orca.WorktreePath) != "" || strings.TrimSpace(h.Orca.WorkerPTYID) != "" || strings.TrimSpace(h.Orca.WorkerTerminalHandle) != "" || strings.TrimSpace(h.Orca.WorkerMailboxHandle) != "" || strings.TrimSpace(h.Orca.TaskID) != "" || strings.TrimSpace(h.Orca.DispatchID) != ""
 }
 
 func finalizeCancelledIssueOpsHandoff(ctx context.Context, stateRoot, id string, client any, now string) (IssueOpsHandoffRecoverResult, error) {
@@ -456,7 +456,7 @@ func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, c
 		return nil
 	}
 	identity := h.Orca
-	if strings.TrimSpace(identity.WorkerPTYID) != "" || strings.TrimSpace(identity.WorkerMailboxHandle) != "" {
+	if strings.TrimSpace(identity.WorkerPTYID) != "" || strings.TrimSpace(identity.WorkerTerminalHandle) != "" {
 		reader, ok := client.(interface {
 			ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
 		})
@@ -481,7 +481,7 @@ func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, c
 		}
 		for _, row := range rows {
 			ptyMatch := strings.TrimSpace(identity.WorkerPTYID) != "" && row.PTYID == identity.WorkerPTYID
-			handleMatch := strings.TrimSpace(identity.WorkerMailboxHandle) != "" && row.Handle == identity.WorkerMailboxHandle
+			handleMatch := strings.TrimSpace(identity.WorkerTerminalHandle) != "" && row.Handle == identity.WorkerTerminalHandle
 			if ptyMatch != handleMatch {
 				return fmt.Errorf("terminal quiescence identity is inconsistent")
 			}
@@ -497,7 +497,7 @@ func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, c
 			if stableObserved {
 				matches = row.TabID == identity.WorkerTabID && row.LeafID == identity.WorkerLeafID
 			}
-			if !matches || row.PTYID == identity.WorkerPTYID && row.Handle == identity.WorkerMailboxHandle {
+			if !matches || row.PTYID == identity.WorkerPTYID && row.Handle == identity.WorkerTerminalHandle {
 				continue
 			}
 			reissued = append(reissued, row)
@@ -745,7 +745,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		if candidate.RuntimeID != "" {
 			identity.RuntimeID = candidate.RuntimeID
 		}
-		identity.WorkerPTYID, identity.WorkerMailboxHandle = candidate.PTYID, candidate.Handle
+		identity.WorkerPTYID, identity.WorkerTerminalHandle = candidate.PTYID, candidate.Handle
 		identity.WorkerTabID, identity.WorkerLeafID = candidate.TabID, candidate.LeafID
 	case handoff.OperationTaskCreate:
 		reader, ok := client.(interface {
@@ -769,16 +769,17 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		identity.TaskID = candidate.ID
 	case handoff.OperationDispatch:
 		reader, ok := client.(interface {
-			ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
+			ShowDispatchFrom(context.Context, string, string) (port.OrcaDispatch, error)
 		})
 		if !ok {
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("Orca dispatch recovery dependency is unavailable")
 		}
-		candidate, matchErr := ReconcileIssueOpsHandoffDispatch(ctx, identity.TaskID, pending.ExpectedAssigneeHandle, pending.DeliveryMode, reader)
+		candidate, matchErr := ReconcileIssueOpsHandoffDispatch(ctx, identity.TaskID, pending.ExpectedAssigneeHandle, pending.DeliveryMode, reader, record.ExecutionHandoff.CoordinatorMailboxHandle)
 		if matchErr != nil {
 			return IssueOpsHandoffRecoverResult{}, matchErr
 		}
 		identity.DispatchID, identity.WorkerMailboxHandle = candidate.ID, candidate.AssigneeHandle
+		identity.WorkerTerminalHandle = candidate.AssigneeHandle
 		newState = handoff.StateDispatched
 		next = "agent-harness issueops handoff claim --id " + id
 	case handoff.OperationRuntimeRefresh:
@@ -794,7 +795,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		identity.WorktreeInstanceID = worktree.InstanceID
 		identity.ProviderIssueLinkStatus = providerIssueLinkStatus(record, worktree)
 		identity.WorkerPTYID = terminal.PTYID
-		identity.WorkerMailboxHandle = terminal.Handle
+		identity.WorkerTerminalHandle = terminal.Handle
 		identity.WorkerTabID = terminal.TabID
 		identity.WorkerLeafID = terminal.LeafID
 	default:

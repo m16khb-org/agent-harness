@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -11,10 +12,22 @@ import (
 	"agent-harness/internal/core/issueops/handoff"
 	issueopsmodel "agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/preflight"
+	"agent-harness/internal/port"
 )
+
+type cliWorkerDoneFake struct{ calls int }
+
+func (f *cliWorkerDoneFake) SendWorkerDone(context.Context, port.OrcaWorkerDoneRequest) (port.OrcaWorkerDoneResult, error) {
+	f.calls++
+	return port.OrcaWorkerDoneResult{MessageID: "msg-cli", Sequence: 11}, nil
+}
 
 func TestRunIssueOpsHandoffLifecycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	projector := &cliWorkerDoneFake{}
+	previousProjector := issueOpsWorkerDoneProjectionClient
+	issueOpsWorkerDoneProjectionClient = func() core.IssueOpsWorkerDoneProjectionClient { return projector }
+	t.Cleanup(func() { issueOpsWorkerDoneProjectionClient = previousProjector })
 	record := handoffCLIRecord(t, handoff.StateDispatched)
 	common := []string{"--id", record.ID, "--attempt", "1", "--ownership-epoch", "epoch-1", "--context-sha256", strings.Repeat("a", 64)}
 	claim := append([]string{"handoff", "claim"}, common...)
@@ -25,7 +38,7 @@ func TestRunIssueOpsHandoffLifecycle(t *testing.T) {
 	finalHead := commitCLIHandoffResult(t, record.WorktreePath)
 	finish := append([]string{"handoff", "finish"}, common...)
 	finish = append(finish, "--host", "codex", "--session-id", "session-1", "--agent-id", "worker-1", "--outcome", "completed", "--final-head", finalHead, "--changed-file", "internal/x.go", "--changed-file", ".agent-harness/research/report.md", "--turing-report", ".agent-harness/research/report.md", "--verification", "go test: pass", "--cleanup-receipt", "temp removed", "--task-id", "task-1", "--dispatch-id", "dispatch-1", "--json")
-	if out := captureStdoutForContract(t, func() error { return runIssueOps(finish) }); !strings.Contains(out, `"state": "submitted"`) {
+	if out := captureStdoutForContract(t, func() error { return runIssueOps(finish) }); !strings.Contains(out, `"state": "submitted"`) || !strings.Contains(out, `"worker_done_projection"`) || projector.calls != 1 {
 		t.Fatalf("finish output: %s", out)
 	}
 	accept := append([]string{"handoff", "accept"}, common...)
@@ -48,7 +61,7 @@ func TestRunIssueOpsHandoffRequiresConfirmationForMutation(t *testing.T) {
 }
 
 func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T) {
-	for _, want := range []string{"--allow-codex-hook-trust-bypass", "--expected-context-sha256"} {
+	for _, want := range []string{"--coordinator-recipient", "--allow-codex-hook-trust-bypass", "--expected-context-sha256"} {
 		if !strings.Contains(issueOpsHandoffUsage, want) {
 			t.Fatalf("handoff start usage must expose %s", want)
 		}
@@ -106,10 +119,10 @@ func handoffCLIRecord(t *testing.T, state string) core.IssueOpsRecord {
 	record.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{
 		ProtocolVersion: handoff.ProtocolVersion, State: state, Attempt: 1, OwnershipEpoch: "epoch-1", AttemptBaseHead: baseHead, ContextSHA256: strings.Repeat("a", 64),
 		ContextVersion: handoff.ContextVersion, ContextOptions: &issueopsmodel.IssueOpsExecutionHandoffContextOptions{}, Driver: "orca", Agent: "codex", DeliveryMode: "inject",
-		CoordinatorRoot: repo, WorkerRoot: worktree,
+		CoordinatorRoot: repo, CoordinatorMailboxHandle: "term_coordinator", WorkerRoot: worktree,
 		Orca: &issueopsmodel.IssueOpsOrcaIdentity{
 			RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/1-handoff", WorktreeID: "wt-1", WorktreeInstanceID: "instance-1", WorktreePath: worktree,
-			WorkerPTYID: "pty-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
+			WorkerPTYID: "pty-1", WorkerTerminalHandle: "term_worker", WorkerMailboxHandle: "term_worker", TaskID: "task-1", DispatchID: "dispatch-1",
 		},
 	}
 	record.ExecutionHandoff.ContextSourceSHA256, err = handoff.ContextSourceSHA256(record)

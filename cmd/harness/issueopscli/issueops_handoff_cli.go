@@ -11,7 +11,7 @@ import (
 )
 
 const issueOpsHandoffUsage = `Usage:
-  agent-harness issueops handoff start --id ID [--allow-codex-hook-trust-bypass] [--expected-context-sha256 SHA] [--confirm] [--json]
+  agent-harness issueops handoff start --id ID --coordinator-recipient TERM [--allow-codex-hook-trust-bypass] [--expected-context-sha256 SHA] [--confirm] [--json]
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA [--json]
@@ -41,6 +41,7 @@ func runIssueOpsHandoff(args []string) error {
 func runIssueOpsHandoffStart(args []string) error {
 	fs := flag.NewFlagSet("issueops handoff start", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	coordinatorRecipient := fs.String("coordinator-recipient", "", "sealed concrete Orca coordinator mailbox recipient")
 	confirm := fs.Bool("confirm", false, "confirm terminal, task, and dispatch mutations")
 	allowCodexHookTrustBypass := fs.Bool("allow-codex-hook-trust-bypass", false, "attest that the documented Codex hooks/list trust review passed")
 	expectedContextSHA256 := fs.String("expected-context-sha256", "", "reviewed sealed context sha256")
@@ -58,7 +59,7 @@ func runIssueOpsHandoffStart(args []string) error {
 		return err
 	}
 	result, err := core.StartIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffStartRequest{
-		ID: *id, Confirm: *confirm, ExpectedContextSHA256: *expectedContextSHA256,
+		ID: *id, CoordinatorRecipient: *coordinatorRecipient, Confirm: *confirm, ExpectedContextSHA256: *expectedContextSHA256,
 		Context: handoff.ContextOptions{
 			CriteriaIDs: criteria, RequiredDocs: docs, RequiredSkills: skills, WorkerScope: *scope,
 			VerificationCommands: verification, HeartbeatCadence: *heartbeat, StopConditions: stops, ResultFormat: *resultFormat,
@@ -107,12 +108,12 @@ func runIssueOpsHandoffFinish(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.FinishIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
+	record, err := core.FinishIssueOpsHandoffWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
 		ID: *common.id, Attempt: *common.attempt, OwnershipEpoch: *common.epoch, ContextSHA256: *common.context,
 		Host: *host, SessionID: *sessionID, AgentID: *agentID, Outcome: *outcome, FinalHead: *finalHead,
 		ChangedFiles: changedFiles, TuringReportPath: *turingReport, Verification: verification, CleanupReceipts: cleanup,
 		EvidenceDigest: *evidenceDigest, TaskID: *taskID, DispatchID: *dispatchID,
-	})
+	}, issueOpsWorkerDoneProjectionClient())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 

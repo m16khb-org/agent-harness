@@ -18,3 +18,7 @@ func printJSON(v any) error {
 func prepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error) {
 	return core.PrepareIssueOpsHandoffWorktree(ctx, stateRoot, req, orca.New(), core.IssueOpsHandoffPrepareClock{})
 }
+
+var issueOpsWorkerDoneProjectionClient = func() core.IssueOpsWorkerDoneProjectionClient {
+	return orca.New()
+}

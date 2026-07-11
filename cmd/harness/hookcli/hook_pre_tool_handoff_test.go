@@ -45,7 +45,7 @@ func TestRunHookPreToolUseDefaultsHostlessClaimedSessionToCodex(t *testing.T) {
 		Orca: &issueopsmodel.IssueOpsOrcaIdentity{
 			RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-hostless-codex",
 			WorktreeID: "worktree-1", WorktreeInstanceID: "instance-1", WorktreePath: cycle.path,
-			WorkerPTYID: "pty-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
+			WorkerPTYID: "pty-1", WorkerTerminalHandle: "term-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
 		},
 		WorkerSession: &issueopsmodel.IssueOpsHostSessionIdentity{
 			Host:      "codex",
