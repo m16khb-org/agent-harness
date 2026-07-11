@@ -680,7 +680,7 @@ func TestHandoffForceAbandonRequiresConfirmedCompleteAbsentInventoryAndNeverRetr
 				t.Fatalf("force abandon did not close the absent operation: %#v", got)
 			}
 			before := append([]string(nil), client.trace...)
-			if started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err != nil || started.State != handoff.StateClosed {
+			if started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock()); err != nil || started.State != handoff.StateClosed {
 				t.Fatalf("abandoned attempt start must be an inert terminal projection: %#v err=%v", started, err)
 			}
 			if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
@@ -1024,7 +1024,7 @@ func TestHandoffRetryPinsCleanPartialCommitAsNewAttemptBase(t *testing.T) {
 		t.Fatalf("retry attempt base = %q, want partial HEAD %q", retried.ExecutionHandoff.AttemptBaseHead, partialHead)
 	}
 	client := handoffDispatchFake(retried)
-	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
+	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1063,8 +1063,14 @@ func TestHandoffRetryReattestsLegacyCodexBypassWithoutChangingSealedOptions(t *t
 		t.Fatalf("retry must preserve delivery options but clear per-attempt attestation: %#v", options)
 	}
 	client := handoffDispatchFake(retried)
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
+		ID: retried.ID, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
+	}, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
 	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
-		ID: retried.ID, Confirm: true, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
+		ID: retried.ID, Confirm: true, ExpectedContextSHA256: preview.ContextSHA256, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
 	}, client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
@@ -1266,7 +1272,7 @@ func TestHandoffRecoverDispatchUsesDurableRefreshedAssigneeWithoutInjectedField(
 	}
 	client.dispatchErr = &port.OrcaError{Code: "timeout", Invoked: true, Timeout: true}
 	client.dispatch.AssigneeHandle = "term-live"
-	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil {
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock()); err == nil {
 		t.Fatal("expected ambiguous dispatch")
 	}
 	pending, err := ReadIssueOps(stateRoot, record.ID)

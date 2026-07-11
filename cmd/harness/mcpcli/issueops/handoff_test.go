@@ -1,7 +1,9 @@
 package issueops
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,13 +14,50 @@ import (
 	"agent-harness/internal/core/issueops/handoff"
 	issueopsmodel "agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/preflight"
+	"agent-harness/internal/port"
 )
 
 func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := mcpHandoffRecord(t)
+	fake := &handoffStartOrcaFake{workerRoot: record.WorktreePath}
+	previousClient := mcpcli.IssueOpsHandoffOrcaClient
+	mcpcli.IssueOpsHandoffOrcaClient = func() core.IssueOpsOrcaDispatchClient { return fake }
+	t.Cleanup(func() { mcpcli.IssueOpsHandoffOrcaClient = previousClient })
+	unattestedPreview := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{
+		"action": "start",
+		"id":     record.ID,
+	})
+	if unattestedPreview["preview"] != true || len(unattestedPreview["context_sha256"].(string)) != 64 {
+		t.Fatalf("unattested start preview parity failed: %#v", unattestedPreview)
+	}
+	if unattestedPreview["codex_hook_trust_bypass_required"] != true || unattestedPreview["codex_hook_trust_bypass_attested"] != false {
+		t.Fatalf("unattested Codex preview must require the hooks/list attestation: %#v", unattestedPreview)
+	}
+	finalPreview := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{
+		"action":                        "start",
+		"id":                            record.ID,
+		"allow_codex_hook_trust_bypass": true,
+	})
+	if finalPreview["preview"] != true || finalPreview["codex_hook_trust_bypass_attested"] != true {
+		t.Fatalf("attested final start preview parity failed: %#v", finalPreview)
+	}
+	reviewedContextSHA256, _ := finalPreview["context_sha256"].(string)
+	if len(reviewedContextSHA256) != 64 || reviewedContextSHA256 == unattestedPreview["context_sha256"].(string) {
+		t.Fatalf("attested final preview must reseal the reviewed context hash: %#v", finalPreview)
+	}
+	startConfirm := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{
+		"action":                        "start",
+		"id":                            record.ID,
+		"confirm":                       true,
+		"allow_codex_hook_trust_bypass": true,
+		"expected_context_sha256":       reviewedContextSHA256,
+	})
+	if startConfirm["state"] != handoff.StateDispatched || startConfirm["context_sha256"] != reviewedContextSHA256 {
+		t.Fatalf("start parity failed: %#v", startConfirm)
+	}
 	common := map[string]any{
-		"id": record.ID, "attempt": 1, "ownership_epoch": "epoch-1", "context_sha256": strings.Repeat("a", 64),
+		"id": record.ID, "attempt": 1, "ownership_epoch": "epoch-1", "context_sha256": startConfirm["context_sha256"],
 	}
 	claim := cloneHandoffArgs(common)
 	claim["action"], claim["host"], claim["session_id"], claim["agent_id"] = "claim", "codex", "session-1", "worker-1"
@@ -82,18 +121,60 @@ func mcpHandoffRecord(t *testing.T) core.IssueOpsRecord {
 	record.PlanPath = filepath.Join(worktree, "plans", "handoff.md")
 	record.Phase = core.IssueOpsPhaseImplement
 	baseHead := strings.TrimSpace(preflight.GitOut(worktree, "rev-parse", "HEAD"))
+	record.IssueURL = "https://github.com/acme/repo/issues/16"
+	record.BranchPrepare = &issueopsmodel.IssueOpsBranchPrepare{
+		Provider:     "github",
+		IssueURL:     record.IssueURL,
+		Branch:       "1-handoff",
+		BaseBranch:   "main",
+		BaseSHA:      baseHead,
+		LinkVerified: true,
+		CreatedAt:    "2026-07-11T00:00:00Z",
+	}
+	record.Intent = &issueopsmodel.IssueOpsIntentContract{
+		RawRequest:        "Write the supervised handoff start contract",
+		InterpretedIntent: "Preserve preview/confirm CAS semantics for supervised startup",
+		SuccessCriteria:   []string{"preview returns reviewed context", "confirm requires expected_context_sha256"},
+		Constraints:       []string{"no extra mutations", "support github and gitlab"},
+		Ambiguities:       []string{"none"},
+		NonGoals:          []string{"no additional handoff phases"},
+		IntentClass:       "standard",
+		RecordedAt:        "2026-07-11T00:00:00Z",
+	}
+	record.DesignReview = &issueopsmodel.IssueOpsDesignReview{
+		ProblemSummary: "Need a preview-to-confirm CAS for supervised handoff start",
+		ProposedDesign: "Require the reviewed context SHA before confirm and recompute it inside the lock",
+		RefactorPlan:   "Keep the change limited to request plumbing and start-path validation",
+		Alternatives:   []string{"accept preview hash as advisory only"},
+		Risks:          []string{"drift between preview and confirm"},
+		Verification:   []string{"design review checked alternatives and risks", "go test ./internal/core/issueops ./cmd/harness/mcpcli/issueops"},
+		Approved:       true,
+		ReviewedAt:     "2026-07-11T00:00:00Z",
+	}
+	record.ExecutionDecision = &issueopsmodel.IssueOpsExecutionDecision{
+		AutoProceed: []string{"preview only"},
+		HookBlocked: []string{"direct mutation without confirm"},
+		HumanGates:  []string{"review expected_context_sha256"},
+		SubagentUse: "none",
+		RecordedAt:  "2026-07-11T00:00:00Z",
+	}
+	record.CompatibilityReview = &issueopsmodel.IssueOpsCompatibilityReview{
+		BackwardCompatibility: []string{"preview output remains unchanged"},
+		SideEffects:           []string{"none before confirm"},
+		RollbackPlan:          "remove expected_context_sha256 enforcement",
+		Verification:          []string{"contract tests"},
+		Approved:              true,
+		ReviewedAt:            "2026-07-11T00:00:00Z",
+	}
+	record.DevilsAdvocateReview = &issueopsmodel.IssueOpsDevilsAdvocateReview{Verdict: "pass", RecordedAt: "2026-07-11T00:00:00Z"}
+	record.WorktreeTools = &issueopsmodel.IssueOpsWorktreeToolPreparation{OK: true, WorktreePath: worktree, PreparedAt: "2026-07-11T00:00:00Z"}
 	record.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{
-		ProtocolVersion: handoff.ProtocolVersion, State: handoff.StateDispatched, Attempt: 1, OwnershipEpoch: "epoch-1", AttemptBaseHead: baseHead, ContextSHA256: strings.Repeat("a", 64),
-		ContextVersion: handoff.ContextVersion, ContextOptions: &issueopsmodel.IssueOpsExecutionHandoffContextOptions{}, Driver: "orca", Agent: "codex", DeliveryMode: "inject",
+		ProtocolVersion: handoff.ProtocolVersion, State: handoff.StateCoordinatorPreparing, Attempt: 1, OwnershipEpoch: "epoch-1", AttemptBaseHead: baseHead,
+		ContextVersion: 0, ContextOptions: nil, Driver: "orca", Agent: "codex",
 		CoordinatorRoot: repo, WorkerRoot: worktree,
 		Orca: &issueopsmodel.IssueOpsOrcaIdentity{
 			RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/1-handoff", WorktreeID: "wt-1", WorktreeInstanceID: "instance-1", WorktreePath: worktree,
-			WorkerPTYID: "pty-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1",
 		},
-	}
-	record.ExecutionHandoff.ContextSourceSHA256, err = handoff.ContextSourceSHA256(record)
-	if err != nil {
-		t.Fatal(err)
 	}
 	record, err = core.WriteIssueOps(core.IssueOpsStateRoot(), record)
 	if err != nil {
@@ -149,4 +230,43 @@ func callMCPUnknownTool(t *testing.T, name string) string {
 		return "handled"
 	}
 	return rpcErr.Message
+}
+
+type handoffStartOrcaFake struct {
+	workerRoot string
+	terminals  []port.OrcaTerminal
+}
+
+func (f *handoffStartOrcaFake) ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error) {
+	return nil, fmt.Errorf("unexpected worktree list during supervised start")
+}
+
+func (f *handoffStartOrcaFake) ListTerminals(context.Context, string) ([]port.OrcaTerminal, error) {
+	return append([]port.OrcaTerminal(nil), f.terminals...), nil
+}
+
+func (f *handoffStartOrcaFake) CreateTerminal(_ context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
+	terminal := port.OrcaTerminal{Handle: "term-1", PTYID: "pty-1", WorktreeID: req.WorktreeID, WorktreePath: f.workerRoot, Connected: true, Writable: true}
+	f.terminals = []port.OrcaTerminal{terminal}
+	return terminal, nil
+}
+
+func (f *handoffStartOrcaFake) RefreshTerminal(context.Context, string, string) (port.OrcaTerminal, error) {
+	return port.OrcaTerminal{}, fmt.Errorf("unexpected terminal refresh during supervised start")
+}
+
+func (f *handoffStartOrcaFake) ListTasks(context.Context) ([]port.OrcaTask, error) {
+	return nil, nil
+}
+
+func (f *handoffStartOrcaFake) CreateTask(_ context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
+	return port.OrcaTask{ID: "task-1", Title: req.Title, DisplayName: req.DisplayName, Status: "ready"}, nil
+}
+
+func (f *handoffStartOrcaFake) Dispatch(_ context.Context, req port.OrcaDispatchRequest) (port.OrcaDispatch, error) {
+	return port.OrcaDispatch{ID: "dispatch-1", TaskID: req.TaskID, AssigneeHandle: req.ToHandle, Status: "dispatched", Injected: req.Inject}, nil
+}
+
+func (f *handoffStartOrcaFake) ShowDispatch(context.Context, string) (port.OrcaDispatch, error) {
+	return port.OrcaDispatch{}, fmt.Errorf("unexpected dispatch show during supervised start")
 }

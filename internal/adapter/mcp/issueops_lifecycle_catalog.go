@@ -272,6 +272,7 @@ func IssueOpsLifecycleTools() []Tool {
 				"action":                        map[string]any{"type": "string", "enum": []string{"start", "claim", "finish", "accept", "recover"}},
 				"id":                            map[string]any{"type": "string"},
 				"confirm":                       map[string]any{"type": "boolean"},
+				"expected_context_sha256":       map[string]any{"type": "string", "description": "Reviewed sealed context SHA-256 required for confirmed supervised startup."},
 				"criteria_ids":                  map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 				"required_docs":                 map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 				"required_skills":               map[string]any{"type": "array", "items": map[string]any{"type": "string"}},

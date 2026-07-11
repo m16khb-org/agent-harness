@@ -637,7 +637,7 @@ func TestWorktreePrepareAmbiguousRecoveryPreservesRuntimeAndDispatchesWithoutDup
 		t.Fatal(err)
 	}
 	dispatchClient := handoffDispatchFake(recovered)
-	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), dispatchClient, handoffStartTestClock())
+	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), dispatchClient, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}

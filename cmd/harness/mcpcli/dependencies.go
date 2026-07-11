@@ -10,6 +10,7 @@ import (
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/selfworkflow"
 	"agent-harness/cmd/harness/selfworkflow/runmode"
+	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/core"
 )
 
@@ -112,6 +113,10 @@ func isSelfVerificationGateError(err error) bool {
 
 var PrepareIssueOpsWorktreeTools = func(core.IssueOpsRecord) (any, error) {
 	return nil, fmt.Errorf("issueops worktree tool preparation dependency is not configured")
+}
+
+var IssueOpsHandoffOrcaClient = func() core.IssueOpsOrcaDispatchClient {
+	return orca.New()
 }
 
 var VerifyIssueOpsChildIssueBeforeLink = func(string) error {

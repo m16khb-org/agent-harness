@@ -382,13 +382,13 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 	switch argmap.String(args, "action") {
 	case "start":
 		result, err := core.StartIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffStartRequest{
-			ID: id, Confirm: argmap.Bool(args, "confirm"), Context: handoff.ContextOptions{
+			ID: id, Confirm: argmap.Bool(args, "confirm"), ExpectedContextSHA256: argmap.String(args, "expected_context_sha256"), Context: handoff.ContextOptions{
 				CriteriaIDs: argmap.StringSlice(args, "criteria_ids"), RequiredDocs: argmap.StringSlice(args, "required_docs"), RequiredSkills: argmap.StringSlice(args, "required_skills"),
 				WorkerScope: argmap.String(args, "worker_scope"), VerificationCommands: argmap.StringSlice(args, "verification_commands"), HeartbeatCadence: argmap.String(args, "heartbeat_cadence"),
 				StopConditions: argmap.StringSlice(args, "stop_conditions"), ResultFormat: argmap.String(args, "result_format"),
 				AllowCodexHookTrustBypass: argmap.Bool(args, "allow_codex_hook_trust_bypass"),
 			},
-		}, orca.New(), core.IssueOpsHandoffStartClock{})
+		}, IssueOpsHandoffOrcaClient(), core.IssueOpsHandoffStartClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff start failed")
 	case "claim":
 		result, err := core.ClaimIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffClaimRequest{

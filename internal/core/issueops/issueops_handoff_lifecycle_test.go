@@ -566,9 +566,7 @@ func dispatchedHandoffRecordAt(t *testing.T, stateRoot string) (string, IssueOps
 		t.Fatal(err)
 	}
 	client := handoffDispatchFake(record)
-	dispatched, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
-		ID: record.ID, Confirm: true, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
-	}, client, handoffStartTestClock())
+	dispatched, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}

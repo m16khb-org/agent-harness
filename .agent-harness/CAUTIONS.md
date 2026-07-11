@@ -118,9 +118,6 @@ Codex용 skill과 Claude용 skill을 복사본으로 따로 두면 금방 내용
 
 주의:
 - 새 CLI/MCP/native skill 기능은 `agent-harness self-verify`의 테스트 또는 QA 단계에 smoke/fuzz evidence label로 승격한다.
-- 반복 횟수 10회 하한을 임의로 낮추지 않는다.
-- temp git repo 외 실제 사용자 repo에서 commit/push를 수행하지 않는다.
-- 교정 후보의 `VerifyWith`는 모델 자기비판이 아니라 외부 검증 메커니즘을 명시해야 한다(`VerificationKind`로 분류, `qualitycatalog.VerifyWithGrounded`가 강제). 불변식 전문은 `CONVENTIONS.md` §9 "self-augment/self-verify 교정 가드레일". intrinsic self-correction은 외부 신호 없이 추론을 악화시킨다(Huang/Kamoi).
 
 ---
 
@@ -491,6 +488,7 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 - `issueops handoff recover --action reconcile`은 persisted baseline/marker 대비 정확히 하나의 후보만 받아들인다. 후보가 0개거나 여러 개면 fail closed 상태를 유지한다.
 - force-abandon의 exact-candidate narrowing은 안정 ID가 있고 exact-vs-unrelated 분류 필드가 모두 채워진 post-baseline 비일치 행만 무시한다. ID 누락·중복이나 분류 필드 누락 행은 absence 증거가 아니라 ambiguity이므로 `{}` 같은 행을 unrelated로 취급하지 않는다.
 - Orca 1.4.134의 terminal create 응답에서 `ptyId`는 선택적이다. adapter가 이를 필수로 거부하지 말고, core가 create 전 baseline과 create 후 terminal list를 비교해 exact worktree의 connected/writable PTY delta가 정확히 하나인지 검증한다. create가 PTY ID를 돌려준 경우에는 그 delta와 일치해야 한다.
+- local repository symbols는 `.codegraph/`가 있으면 CodeGraph로 먼저 찾고, 없으면 `rg`와 직접 읽기로만 찾는다. web search는 local symbol discovery의 fallback이 아니다.
 - `auto` fallback은 read-only readiness probe가 mutation 전에 실패한 경우에만 허용한다.
 - cycle lock 안에서는 record CAS만 수행하고 외부 Orca CLI를 호출하지 않는다.
 - durable record equality만으로는 checkout/context/report TOCTOU를 막지 못한다. context persist와 terminal/task/dispatch first-time journal은 lock 안에서 source fingerprint + exact branch/attempt-base HEAD + clean status를 다시 확인하고, claim/finish/accept도 자기 filesystem evidence를 record equality 직후와 write 직전에 다시 검증한다. 단계 사이 drift가 나면 이미 완료된 terminal/task identity는 보존하고 새 pending journal 없이 멈춘다. 외부 호출 전 `started_at`을 post-call completion timestamp로 재사용하지 않는다.

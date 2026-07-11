@@ -179,6 +179,10 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	if !schemaHasProperty(byName["issueops_remote_score"].InputSchema, "threshold") {
 		t.Fatalf("issueops_remote_score schema missing threshold: %#v", byName["issueops_remote_score"].InputSchema)
 	}
+	handoff := byName["issueops_handoff"]
+	if !schemaHasProperty(handoff.InputSchema, "expected_context_sha256") {
+		t.Fatalf("issueops_handoff schema missing expected_context_sha256: %#v", handoff.InputSchema)
+	}
 	renderTemplate := byName["issueops_remote_render_template"]
 	for _, required := range []string{"kind", "template", "title"} {
 		if !schemaRequires(renderTemplate.InputSchema, required) {

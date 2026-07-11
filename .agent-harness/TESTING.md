@@ -118,6 +118,7 @@ go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-a
 - 변경된 공개 동작/계약을 직접 검증하고 구현 세부사항에 과도하게 묶이지 않는다.
 - 실패 시 원인을 좁힐 수 있는 fixture 이름, assertion, 에러 메시지를 둔다.
 - deterministic하며 test order, wall-clock sleep, real network, local machine state에 의존하지 않는다.
+- 저장소 내부 심볼을 찾는 contract는 indexed repo에서 CodeGraph 우선, 비인덱스 repo에서만 `rg`/직접 읽기다. local symbol discovery에 web search를 쓰는 fallback은 허용하지 않는다.
 - regression test는 재발했던 입력, false case, 기대 결과를 명확히 담는다.
 - 기존 helper와 style을 재사용하고, golden/snapshot 변경은 의도와 범위를 설명한다.
 - stdout/stderr를 `os.Pipe`로 캡처하는 테스트는 직접 write-then-read 헬퍼를 만들지 말고 `internal/testsupport`의 동시-reader 캡처 헬퍼를 사용한다.

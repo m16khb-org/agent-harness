@@ -101,7 +101,7 @@ agent-harness issueops handoff start \
   --json
 ```
 
-The returned `attempt`, `ownership_epoch`, `context_sha256`, Orca worktree id, task id, and dispatch id are a single fence. The coordinator passes that tuple to the fresh worker without copying credentials, conversation transcripts, or unbounded environment data.
+The returned `attempt`, `ownership_epoch`, `context_sha256`, Orca worktree id, task id, and dispatch id are a single fence. That is the exact current task, dispatch, and sequence fence for the live worker. The coordinator passes that tuple to the fresh worker without copying credentials, conversation transcripts, or unbounded environment data.
 
 ## Worker Lease
 

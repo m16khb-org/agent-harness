@@ -48,8 +48,10 @@ func TestRunIssueOpsHandoffRequiresConfirmationForMutation(t *testing.T) {
 }
 
 func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T) {
-	if !strings.Contains(issueOpsHandoffUsage, "--allow-codex-hook-trust-bypass") {
-		t.Fatal("handoff start usage must expose the explicit Codex hook-trust bypass attestation")
+	for _, want := range []string{"--allow-codex-hook-trust-bypass", "--expected-context-sha256"} {
+		if !strings.Contains(issueOpsHandoffUsage, want) {
+			t.Fatalf("handoff start usage must expose %s", want)
+		}
 	}
 }
 

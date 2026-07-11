@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -17,9 +18,10 @@ import (
 )
 
 type IssueOpsHandoffStartRequest struct {
-	ID      string                 `json:"id"`
-	Confirm bool                   `json:"confirm,omitempty"`
-	Context handoff.ContextOptions `json:"context,omitempty"`
+	ID                    string                 `json:"id"`
+	Confirm               bool                   `json:"confirm,omitempty"`
+	ExpectedContextSHA256 string                 `json:"expected_context_sha256,omitempty"`
+	Context               handoff.ContextOptions `json:"context,omitempty"`
 }
 
 type IssueOpsHandoffStartResult struct {
@@ -124,8 +126,11 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if client == nil {
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("Orca dispatch dependency is unavailable")
 	}
+	if err := validateExpectedContextSHA256(req.ExpectedContextSHA256); err != nil {
+		return IssueOpsHandoffStartResult{}, err
+	}
 	nextNow := func() string { return issueOpsHandoffStartNow(clock) }
-	record, err = persistHandoffContext(stateRoot, record.ID, packet, handoff.CanonicalContextOptions(contextOptions), nextNow())
+	record, err = persistHandoffContext(stateRoot, record.ID, handoff.CanonicalContextOptions(contextOptions), req.ExpectedContextSHA256, nextNow())
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
@@ -550,7 +555,7 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 	return record, err
 }
 
-func persistHandoffContext(stateRoot, id string, packet handoff.ContextPacket, options model.IssueOpsExecutionHandoffContextOptions, now string) (IssueOpsRecord, error) {
+func persistHandoffContext(stateRoot, id string, options model.IssueOpsExecutionHandoffContextOptions, expectedContextSHA256 string, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
 	err := withIssueOpsLock(stateRoot, id, func() error {
 		record, err := ReadIssueOps(stateRoot, id)
@@ -559,6 +564,13 @@ func persistHandoffContext(stateRoot, id string, packet handoff.ContextPacket, o
 		}
 		if err := validateHandoffCleanExactCheckpoint(record); err != nil {
 			return err
+		}
+		packet, err := handoff.BuildContext(record, handoff.ContextOptionsFromModel(options))
+		if err != nil {
+			return fmt.Errorf("re-render handoff context before persist: %w", err)
+		}
+		if packet.SHA256 != expectedContextSHA256 {
+			return fmt.Errorf("expected_context_sha256 does not match freshly recomputed sealed context")
 		}
 		if record.ExecutionHandoff.ContextSHA256 != "" {
 			persistedOptions := model.IssueOpsExecutionHandoffContextOptions{}
@@ -571,13 +583,6 @@ func persistHandoffContext(stateRoot, id string, packet handoff.ContextPacket, o
 			persisted = record
 			return nil
 		}
-		currentSourceSHA, err := handoff.ContextSourceSHA256(record)
-		if err != nil {
-			return fmt.Errorf("re-render handoff context source before persist: %w", err)
-		}
-		if currentSourceSHA != packet.SourceSHA256 {
-			return fmt.Errorf("stale handoff context source changed before persist")
-		}
 		record, err = handoff.SetContext(record, handoffFence(record), packet.Version, packet.SHA256, packet.SourceSHA256, options, now)
 		if err != nil {
 			return err
@@ -587,6 +592,19 @@ func persistHandoffContext(stateRoot, id string, packet handoff.ContextPacket, o
 		return err
 	})
 	return persisted, err
+}
+
+func validateExpectedContextSHA256(expected string) error {
+	if strings.TrimSpace(expected) == "" {
+		return fmt.Errorf("expected_context_sha256 is required for confirmed supervised start")
+	}
+	if len(expected) != 64 || expected != strings.ToLower(expected) {
+		return fmt.Errorf("expected_context_sha256 must be a lowercase SHA-256 hex digest")
+	}
+	if _, err := hex.DecodeString(expected); err != nil {
+		return fmt.Errorf("expected_context_sha256 must be a valid SHA-256 hex digest")
+	}
+	return nil
 }
 
 func resolveHandoffContextOptions(record IssueOpsRecord, supplied handoff.ContextOptions) (handoff.ContextOptions, error) {
