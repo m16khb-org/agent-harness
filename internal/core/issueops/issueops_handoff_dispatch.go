@@ -108,129 +108,151 @@ func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	}
 	fence := handoffFence(record)
 
-	workerPTYID := strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerPTYID)
-	workerHandle := strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerMailboxHandle)
-	liveHandle := workerHandle
-	if (workerPTYID == "") != (workerHandle == "") {
-		return IssueOpsHandoffStartResult{}, fmt.Errorf("persisted Orca terminal checkpoint is incomplete")
-	}
-	if workerPTYID == "" {
-		terminals, listErr := client.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
-		if listErr != nil {
-			return IssueOpsHandoffStartResult{}, fmt.Errorf("list terminals before create: %w", listErr)
-		}
-		record, err = beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{
-			Kind: handoff.OperationTerminalCreate, StartedAt: now, BaselinePTYIDs: terminalPTYIDs(terminals),
-		})
-		if err != nil {
-			return IssueOpsHandoffStartResult{}, err
-		}
-		created, createErr := client.CreateTerminal(ctx, port.OrcaCreateTerminalRequest{
-			WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, Agent: record.ExecutionHandoff.Agent,
-			Title: issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
-		})
-		if createErr != nil {
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_create_ambiguous", createErr.Error(), now)
-			return IssueOpsHandoffStartResult{}, fmt.Errorf("Orca terminal create requires recovery: %w", createErr)
-		}
-		if created.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || strings.TrimSpace(created.Handle) == "" {
-			err = fmt.Errorf("Orca terminal identity does not match the prepared worktree")
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
-			return IssueOpsHandoffStartResult{}, err
-		}
-		currentTerminals, listErr := client.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
-		if listErr != nil {
-			err = fmt.Errorf("list terminals after create: %w", listErr)
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
-			return IssueOpsHandoffStartResult{}, err
-		}
-		terminal, reconcileErr := ReconcileIssueOpsHandoffTerminal(terminalPTYIDs(terminals), record.ExecutionHandoff.Orca.WorktreeID, currentTerminals)
-		if reconcileErr != nil {
-			err = fmt.Errorf("reconcile created terminal: %w", reconcileErr)
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
-			return IssueOpsHandoffStartResult{}, err
-		}
-		if createdPTYID := strings.TrimSpace(created.PTYID); createdPTYID != "" && terminal.PTYID != createdPTYID {
-			err = fmt.Errorf("created terminal PTY does not match the exact terminal-list delta")
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
-			return IssueOpsHandoffStartResult{}, err
-		}
-		record, err = completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationTerminalCreate, now, func(h *IssueOpsExecutionHandoff) error {
-			h.Orca.TerminalBaselinePTYIDs = terminalPTYIDs(terminals)
-			h.Orca.WorkerPTYID = terminal.PTYID
-			h.Orca.WorkerMailboxHandle = terminal.Handle
-			return nil
-		})
-		if err != nil {
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_persist_failed", err.Error(), now)
-			return IssueOpsHandoffStartResult{}, err
-		}
-		liveHandle = terminal.Handle
-	} else {
-		terminal, refreshErr := client.RefreshTerminal(ctx, record.ExecutionHandoff.Orca.WorktreeID, workerPTYID)
-		if refreshErr != nil {
-			return IssueOpsHandoffStartResult{}, fmt.Errorf("refresh persisted Orca terminal: %w", refreshErr)
-		}
-		if terminal.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || terminal.PTYID != workerPTYID || strings.TrimSpace(terminal.Handle) == "" || !terminal.Connected || !terminal.Writable {
-			return IssueOpsHandoffStartResult{}, fmt.Errorf("refreshed Orca terminal identity does not match the persisted checkpoint")
-		}
-		liveHandle = strings.TrimSpace(terminal.Handle)
-	}
-
-	if strings.TrimSpace(record.ExecutionHandoff.Orca.TaskID) == "" {
-		tasks, listErr := client.ListTasks(ctx)
-		if listErr != nil {
-			return IssueOpsHandoffStartResult{}, fmt.Errorf("list tasks before create: %w", listErr)
-		}
-		record, err = beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{
-			Kind: handoff.OperationTaskCreate, StartedAt: now, BaselineTaskIDs: taskIDs(tasks),
-		})
-		if err != nil {
-			return IssueOpsHandoffStartResult{}, err
-		}
-		marker := issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
-		task, createErr := client.CreateTask(ctx, port.OrcaCreateTaskRequest{Spec: packet.Markdown, Title: marker, DisplayName: record.Branch})
-		if createErr != nil {
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "task_create_ambiguous", createErr.Error(), now)
-			return IssueOpsHandoffStartResult{}, fmt.Errorf("Orca task create requires recovery: %w", createErr)
-		}
-		if strings.TrimSpace(task.ID) == "" {
-			err = fmt.Errorf("Orca task identity is empty")
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "task_identity_mismatch", err.Error(), now)
-			return IssueOpsHandoffStartResult{}, err
-		}
-		record, err = completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationTaskCreate, now, func(h *IssueOpsExecutionHandoff) error {
-			h.Orca.TaskID = task.ID
-			return nil
-		})
-		if err != nil {
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "task_persist_failed", err.Error(), now)
-			return IssueOpsHandoffStartResult{}, err
-		}
-	}
-
-	record, err = beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch, StartedAt: now})
+	record, liveHandle, err := ensureHandoffTerminal(ctx, stateRoot, record, fence, client, now)
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
+	}
+	record, err = ensureHandoffTask(ctx, stateRoot, record, fence, client, packet.Markdown, now)
+	if err != nil {
+		return IssueOpsHandoffStartResult{}, err
+	}
+	record, err = dispatchHandoff(ctx, stateRoot, record, fence, client, liveHandle, now)
+	if err != nil {
+		return IssueOpsHandoffStartResult{}, err
+	}
+	return projectHandoffStart(record, false, packet.PlanSHA256), nil
+}
+
+func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now string) (IssueOpsRecord, string, error) {
+	workerPTYID := strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerPTYID)
+	workerHandle := strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerMailboxHandle)
+	if (workerPTYID == "") != (workerHandle == "") {
+		return record, "", fmt.Errorf("persisted Orca terminal checkpoint is incomplete")
+	}
+	if workerPTYID == "" {
+		return createHandoffTerminal(ctx, stateRoot, record, fence, client, now)
+	}
+	terminal, err := client.RefreshTerminal(ctx, record.ExecutionHandoff.Orca.WorktreeID, workerPTYID)
+	if err != nil {
+		return record, "", fmt.Errorf("refresh persisted Orca terminal: %w", err)
+	}
+	if terminal.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || terminal.PTYID != workerPTYID || strings.TrimSpace(terminal.Handle) == "" || !terminal.Connected || !terminal.Writable {
+		return record, "", fmt.Errorf("refreshed Orca terminal identity does not match the persisted checkpoint")
+	}
+	return record, strings.TrimSpace(terminal.Handle), nil
+}
+
+func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now string) (IssueOpsRecord, string, error) {
+	terminals, err := client.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
+	if err != nil {
+		return record, "", fmt.Errorf("list terminals before create: %w", err)
+	}
+	record, err = beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationTerminalCreate, StartedAt: now, BaselinePTYIDs: terminalPTYIDs(terminals),
+	})
+	if err != nil {
+		return record, "", err
+	}
+	created, err := client.CreateTerminal(ctx, port.OrcaCreateTerminalRequest{
+		WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, Agent: record.ExecutionHandoff.Agent,
+		Title: issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
+	})
+	if err != nil {
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_create_ambiguous", err.Error(), now)
+		return record, "", fmt.Errorf("Orca terminal create requires recovery: %w", err)
+	}
+	if created.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || strings.TrimSpace(created.Handle) == "" {
+		err = fmt.Errorf("Orca terminal identity does not match the prepared worktree")
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
+		return record, "", err
+	}
+	currentTerminals, err := client.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
+	if err != nil {
+		err = fmt.Errorf("list terminals after create: %w", err)
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
+		return record, "", err
+	}
+	terminal, err := ReconcileIssueOpsHandoffTerminal(terminalPTYIDs(terminals), record.ExecutionHandoff.Orca.WorktreeID, currentTerminals)
+	if err != nil {
+		err = fmt.Errorf("reconcile created terminal: %w", err)
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
+		return record, "", err
+	}
+	if createdPTYID := strings.TrimSpace(created.PTYID); createdPTYID != "" && terminal.PTYID != createdPTYID {
+		err = fmt.Errorf("created terminal PTY does not match the exact terminal-list delta")
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_identity_mismatch", err.Error(), now)
+		return record, "", err
+	}
+	record, err = completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationTerminalCreate, now, func(h *IssueOpsExecutionHandoff) error {
+		h.Orca.TerminalBaselinePTYIDs = terminalPTYIDs(terminals)
+		h.Orca.WorkerPTYID = terminal.PTYID
+		h.Orca.WorkerMailboxHandle = terminal.Handle
+		return nil
+	})
+	if err != nil {
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "terminal_persist_failed", err.Error(), now)
+		return record, "", err
+	}
+	return record, terminal.Handle, nil
+}
+
+func ensureHandoffTask(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, contextMarkdown, now string) (IssueOpsRecord, error) {
+	if strings.TrimSpace(record.ExecutionHandoff.Orca.TaskID) != "" {
+		return record, nil
+	}
+	tasks, err := client.ListTasks(ctx)
+	if err != nil {
+		return record, fmt.Errorf("list tasks before create: %w", err)
+	}
+	record, err = beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationTaskCreate, StartedAt: now, BaselineTaskIDs: taskIDs(tasks),
+	})
+	if err != nil {
+		return record, err
+	}
+	marker := issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
+	task, err := client.CreateTask(ctx, port.OrcaCreateTaskRequest{Spec: contextMarkdown, Title: marker, DisplayName: record.Branch})
+	if err != nil {
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "task_create_ambiguous", err.Error(), now)
+		return record, fmt.Errorf("Orca task create requires recovery: %w", err)
+	}
+	if strings.TrimSpace(task.ID) == "" {
+		err = fmt.Errorf("Orca task identity is empty")
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "task_identity_mismatch", err.Error(), now)
+		return record, err
+	}
+	record, err = completeHandoffOperation(stateRoot, record.ID, fence, handoff.OperationTaskCreate, now, func(h *IssueOpsExecutionHandoff) error {
+		h.Orca.TaskID = task.ID
+		return nil
+	})
+	if err != nil {
+		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "task_persist_failed", err.Error(), now)
+	}
+	return record, err
+}
+
+func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, liveHandle, now string) (IssueOpsRecord, error) {
+	record, err := beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch, StartedAt: now})
+	if err != nil {
+		return record, err
 	}
 	dispatched, err := client.Dispatch(ctx, port.OrcaDispatchRequest{
 		TaskID: record.ExecutionHandoff.Orca.TaskID, ToHandle: liveHandle, Inject: true, ReturnPreamble: true,
 	})
 	if err != nil {
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_ambiguous", err.Error(), now)
-		return IssueOpsHandoffStartResult{}, fmt.Errorf("Orca dispatch requires recovery: %w", err)
+		return record, fmt.Errorf("Orca dispatch requires recovery: %w", err)
 	}
 	if dispatched.ID == "" || dispatched.TaskID != record.ExecutionHandoff.Orca.TaskID || dispatched.AssigneeHandle != liveHandle || !dispatched.Injected {
 		err = fmt.Errorf("Orca dispatch identity does not match persisted task and worker mailbox")
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_identity_mismatch", err.Error(), now)
-		return IssueOpsHandoffStartResult{}, err
+		return record, err
 	}
 	record, err = finalizeHandoffDispatch(stateRoot, record.ID, fence, dispatched.ID, dispatched.AssigneeHandle, now)
 	if err != nil {
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_persist_failed", err.Error(), now)
-		return IssueOpsHandoffStartResult{}, err
 	}
-	return projectHandoffStart(record, false, packet.PlanSHA256), nil
+	return record, err
 }
 
 func persistHandoffContext(stateRoot, id string, packet handoff.ContextPacket, now string) (IssueOpsRecord, error) {
