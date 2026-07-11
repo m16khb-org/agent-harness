@@ -336,6 +336,35 @@ func TestTuringSkillDocumentsSupervisedHandoffEvidenceContract(t *testing.T) {
 	}
 }
 
+func TestTuringSkillUsesZshSafeWrapperResultVariable(t *testing.T) {
+	skill := readTuringSkillForTest(t)
+	for _, want := range []string{
+		"zsh reserves `status` as a read-only parameter",
+		"Use `rc` or `exit_code`",
+		"test command verdict separately from wrapper bookkeeping errors",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Fatalf("Turing zsh verification-wrapper contract missing %q", want)
+		}
+	}
+	if strings.Contains(skill, "status=$?") {
+		t.Fatal("Turing must not prescribe assignment to zsh's reserved status parameter")
+	}
+}
+
+func TestTuringSkillUsesLiteralBacktickSearchPatterns(t *testing.T) {
+	skill := readTuringSkillForTest(t)
+	for _, want := range []string{
+		"Search patterns containing Markdown backticks must be single-quoted",
+		"passed as a literal argv",
+		"never double-quoted",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Fatalf("Turing literal search-pattern contract missing %q", want)
+		}
+	}
+}
+
 func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
 	turing := readTuringSkillForTest(t)
@@ -470,6 +499,20 @@ func TestIssueOpsSkillPinsGitLabSupervisedHandoffContract(t *testing.T) {
 	} {
 		if strings.Contains(turing, duplicated) {
 			t.Fatalf("Turing duplicates canonical IssueOps GitLab handoff rule %q", duplicated)
+		}
+	}
+}
+
+func TestIssueOpsSkillUsesNumericMailboxSequenceInsteadOfOpaqueMessageIDs(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	for _, want := range []string{
+		"Never order or filter opaque `msg_*` IDs",
+		"numeric `sequence`",
+		"exact `taskId`, `dispatchId`, and handle direction",
+		"`.result.messages`",
+	} {
+		if !strings.Contains(issueOps, want) {
+			t.Fatalf("IssueOps numeric mailbox-selection contract missing %q", want)
 		}
 	}
 }

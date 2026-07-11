@@ -171,7 +171,7 @@ PreToolUse blocks every other explicit message type, including malformed duplica
 orca orchestration check --all --json | jq '.result.messages[]'
 ```
 
-The array is nested under `.result.messages`; querying top-level `.messages` silently yields no rows and is not authoritative absence. Select the exact current task, dispatch, and sequence before acting. A live terminal handle is not historical mailbox identity. For an urgent current-worker correction, use only the existing exact literal-safe source-coordinator terminal guidance bound to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
+The array is nested under `.result.messages`; querying top-level `.messages` silently yields no rows and is not authoritative absence. Never order or filter opaque `msg_*` IDs: they are not chronological. Select the numeric `sequence` plus exact `taskId`, `dispatchId`, and handle direction before acting. A live terminal handle is not historical mailbox identity. For an urgent current-worker correction, use only the existing exact literal-safe source-coordinator terminal guidance bound to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
 
 PreToolUse blocks direct `orca orchestration ask` and `orca orchestration gate-create` from a linked worker checkout even when `execution_handoff` is absent. The source coordinator owns decision gates; `gate-list` remains read-only for workers. After one escalation, heartbeat and wait rather than opening a duplicate gate.
 

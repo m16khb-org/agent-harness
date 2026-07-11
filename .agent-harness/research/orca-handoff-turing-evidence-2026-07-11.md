@@ -243,6 +243,14 @@ Final fresh commands and exact outcomes: PENDING.
 - Compatibility correction: GitLab `auto` with missing, unready, capability-failed, or errored Orca returns the unchanged inline contract without a warning or `execution_handoff`. A later post-probe inline fallback also removes the warning. A nil legacy `BranchPrepare` remains panic-free and preserves its original inline command/base projection.
 - Context/provider boundary: provider and exact Issue URL participate in the sealed source fingerprint. No test or production path creates or mutates a GitLab remote object.
 
+## Verification-wrapper correction
+
+- Observed incident: `go test ./internal/core/issueops -count=1` emitted `ok ... 52.760s`; the following zsh bookkeeping assignment failed with `read-only variable: status`. This was a wrapper failure, not a Go test failure.
+- Search-pattern incident: a later `rg` pattern placed Markdown backticks inside double quotes, so zsh executed the backticked `status` word and emitted `command not found: status`. Turing now requires a single-quoted pattern or literal argv.
+- Mailbox-filter incident: a read compared opaque `msg_*` IDs lexicographically to approximate recency. The canonical IssueOps recipe now selects numeric `sequence` with exact `taskId`/`dispatchId` and handle direction from `.result.messages`; opaque IDs are never ordering evidence.
+- Fresh verdict: the same package was rerun via `exec go test ./internal/core/issueops -count=1` and exited 0 with `ok ... 51.280s`.
+- Retained regressions: Turing requires `rc` or `exit_code` instead of zsh's reserved `status`, separates the test verdict from wrapper bookkeeping, and quotes backtick-bearing searches literally. IssueOps contract tests pin numeric mailbox selection and forbid chronological inference from opaque message IDs.
+
 ## Remaining coordinator-only actions
 
 No push, PR, merge, implementation-handoff acceptance, or implementation worktree/branch cleanup is performed by this worker. The disposable live E2E was accepted and cleaned as recorded above; the parent coordinator still owns the issue branch handoff, push, PR, merge, and final implementation worktree cleanup after receiving worker_done.
