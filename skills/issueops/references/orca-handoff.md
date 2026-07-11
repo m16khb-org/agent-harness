@@ -105,6 +105,8 @@ The fresh worker starts in the exact Orca worktree and claims before any mutatio
 
 The source implementation checkout is read-only; the source checkout is observation-only. From it, use only explicit non-executing observations such as `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git ls-files`, and `rg`. Tests, builds, formatting, installation, and generation run only in the claimed worker root; test initialization, fixtures, caches, binaries, and goldens can mutate state. This includes `go build -o`, every test runner, native install, formatting, golden updates, and generators. If PreToolUse blocks an operation, do not bypass the hook through a different tool. The eval and source primitives are shell reinterpretation and are forbidden wrappers.
 
+For a report-only cycle, run only the verification commands declared in the sealed worker packet. Do not invent API, provider-ref, or history probes; the bounded report is not authority to widen verification or inspect unrelated external state. If a declared command cannot run, record the exact failure instead of substituting a new probe.
+
 Use the installed `agent-harness` command in a fresh worker unless the bounded context proves `./bin/agent-harness` exists in that exact worker checkout. For workers, self-verify requires binary/source contract parity: when a base-checkout evidence worker is running against an installed feature-HEAD binary, record any response-contract mismatch without changing the base checkout and leave final self-verify to the coordinator on matching feature HEAD. The current opt-in LLM evaluation path only renders a read-only prompt. No Z.AI request is sent, and `gate` cannot pass without an ingested verdict. If the coordinator environment intentionally exports `HARNESS_SELF_VERIFY_LLM_EVAL=gate`, run the required deterministic completion sequence with explicit `--llm-eval=false`, record the override, and restart from its first gate after an interrupted or prompt-only run. Native hook lookup uses the default IssueOps state root in V1; safe custom `HARNESS_STATE_DIR` propagation remains issue #17.
 
 The focused hook-input package is `./cmd/harness/hookcli/hookinput`; `./internal/core/hookinput` does not exist. After installing native integrations, run `bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"` and require its JSON host/session/cwd/block assertions. Do not use a literal `--host gjc` grep because the TypeScript shim constructs argv as separate array elements and text layout is not execution evidence.
@@ -186,7 +188,9 @@ agent-harness issueops handoff finish \
   --json
 ```
 
-After a successful finish, the worker stops. The worker must not push, create or merge a PR/MR, accept its own result, delete the provider branch, or remove the coordinator-owned worktree. The coordinator owns PR, acceptance, and cleanup.
+After finish persists `submitted`, repository mutation remains blocked. Only the same submitted worker session may send one exact `worker_done` message: use a concrete coordinator `term_*` target, the exact persisted task and dispatch, a nonempty subject, a three-sentence body, `--files-modified` exactly equal to the persisted changed-file list, and the absolute in-worker report path corresponding to the persisted relative report. Group targets, extra files, external reports, duplicate flags, wrong host/session/agent, or wrong task/dispatch stay blocked. If an older hook blocked that send, the source coordinator may issue literal-safe guidance only to the exact submitted worker handle, after which the worker retries the exact command once.
+
+After `worker_done` succeeds, the worker stops. The worker must not push, create or merge a PR/MR, accept its own result, delete the provider branch, or remove the coordinator-owned worktree. The coordinator owns PR, acceptance, and cleanup.
 
 ## Coordinator Acceptance
 

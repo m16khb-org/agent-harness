@@ -1045,6 +1045,73 @@ func TestHandoffGuardStateRoleMatrixReturnsAuthorityAfterAccept(t *testing.T) {
 	}
 }
 
+func TestHandoffGuardAllowsOnlyExactSubmittedWorkerDoneAndRetryGuidance(t *testing.T) {
+	repo, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateSubmitted, "")
+	report := ".agent-harness/research/report.md"
+	record.ExecutionHandoff.Result.ChangedFiles = []string{report}
+	var err error
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	absoluteReport := filepath.Join(worktree, filepath.FromSlash(report))
+	command := "orca orchestration send --to term_coordinator --type worker_done --subject complete --body 'Implementation completed. Verification passed. Cleanup handed off.' --task-id task-1 --dispatch-id dispatch-1 --files-modified " + report + " --report-path " + absoluteReport
+
+	exact := handoffEditRequest(record, worktree, "codex", "session-1", "")
+	exact.Tool, exact.Command = "exec_command", command
+	if got := BuildLifecyclePreToolUseDecision(exact); got.Decision != "allow" {
+		t.Fatalf("exact submitted worker_done must remain available after finish: %#v", got)
+	}
+
+	wrongSession := exact
+	wrongSession.SessionID = "session-other"
+	wrongAgent := exact
+	wrongAgent.AgentID = "worker-other"
+	wrongHost := exact
+	wrongHost.Host = "claude"
+	for name, req := range map[string]HookToolUseLifecycleRequest{
+		"wrong host":         wrongHost,
+		"wrong session":      wrongSession,
+		"wrong agent":        wrongAgent,
+		"group target":       withHandoffCommand(exact, strings.Replace(command, "--to term_coordinator", "--to @all", 1)),
+		"wrong task":         withHandoffCommand(exact, strings.Replace(command, "--task-id task-1", "--task-id task-other", 1)),
+		"wrong dispatch":     withHandoffCommand(exact, strings.Replace(command, "--dispatch-id dispatch-1", "--dispatch-id dispatch-other", 1)),
+		"extra file":         withHandoffCommand(exact, strings.Replace(command, "--files-modified "+report, "--files-modified "+report+",internal/x.go", 1)),
+		"external report":    withHandoffCommand(exact, strings.Replace(command, absoluteReport, filepath.Join(t.TempDir(), "report.md"), 1)),
+		"duplicate task":     withHandoffCommand(exact, command+" --task-id task-1"),
+		"wrong message type": withHandoffCommand(exact, strings.Replace(command, "--type worker_done", "--type status", 1)),
+		"two sentence body":  withHandoffCommand(exact, strings.Replace(command, "Implementation completed. Verification passed. Cleanup handed off.", "Verification passed. Cleanup handed off.", 1)),
+		"extra payload":      withHandoffCommand(exact, command+" --payload '{}'"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("submitted worker_done %s must block: %#v", name, got)
+			}
+		})
+	}
+
+	lateEdit := handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "late.go"))
+	if got := BuildLifecyclePreToolUseDecision(lateEdit); got.Decision != "block" {
+		t.Fatalf("submitted worker repository mutation must remain blocked: %#v", got)
+	}
+
+	guidance := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	guidance.Tool = "exec_command"
+	guidance.Command = "orca terminal send --terminal term-1 --text '# agent-harness guidance: retry the exact worker_done command once' --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(guidance); got.Decision != "allow" {
+		t.Fatalf("source coordinator must be able to steer the exact submitted worker handle: %#v", got)
+	}
+	guidance.Command = "orca terminal send --terminal term-other --text '# agent-harness guidance: retry the exact worker_done command once' --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(guidance); got.Decision != "block" {
+		t.Fatalf("submitted guidance to a non-persisted handle must block: %#v", got)
+	}
+}
+
+func withHandoffCommand(req HookToolUseLifecycleRequest, command string) HookToolUseLifecycleRequest {
+	req.Command = command
+	return req
+}
+
 func TestHandoffGuardAllowsOnlyExactClosedFailedTerminalCleanup(t *testing.T) {
 	for _, disposition := range []string{handoff.DispositionWorkerFailed, handoff.DispositionCancelled} {
 		t.Run(disposition, func(t *testing.T) {

@@ -1090,7 +1090,7 @@ func linkedWorktreeDecisionGateReason(req HookToolUseLifecycleRequest) string {
 
 func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateClaimed || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+	if h == nil || (h.State != handoff.StateClaimed && h.State != handoff.StateSubmitted) || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
 		return false
 	}
 	handle, ok := literalSafeTerminalSendHandle(req)
@@ -1102,6 +1102,63 @@ func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, r
 		persistedHandle = strings.TrimSpace(h.Orca.WorkerMailboxHandle)
 	}
 	return persistedHandle != "" && handle == persistedHandle
+}
+
+func submittedWorkerDoneAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateSubmitted || h.Orca == nil || h.Result == nil || !searchrouting.IsShellTool(req.Tool) ||
+		cleanAbsPath(req.CWD) != cleanAbsPath(h.WorkerRoot) || cleanAbsPath(req.Repo) != cleanAbsPath(h.WorkerRoot) ||
+		!nativeSessionMatches(req, h.WorkerSession) || !currentWorkerBranchMatches(record) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) < 3 || tokens[0] != "orca" || tokens[1] != "orchestration" || tokens[2] != "send" {
+		return false
+	}
+	values := map[string]bool{
+		"--to": true, "--type": true, "--subject": true, "--body": true, "--task-id": true, "--dispatch-id": true,
+		"--files-modified": true, "--report-path": true,
+	}
+	flags, ok := exactFlags(exactIssueOpsCommand{tokens: tokens, start: 3}, values, map[string]bool{"--json": true}, map[string]bool{})
+	if !ok {
+		return false
+	}
+	to, toOK := oneFlag(flags, "--to")
+	messageType, typeOK := oneFlag(flags, "--type")
+	subject, subjectOK := oneFlag(flags, "--subject")
+	body, bodyOK := oneFlag(flags, "--body")
+	taskID, taskOK := oneFlag(flags, "--task-id")
+	dispatchID, dispatchOK := oneFlag(flags, "--dispatch-id")
+	files, filesOK := oneFlag(flags, "--files-modified")
+	reportPath, reportOK := oneFlag(flags, "--report-path")
+	if !toOK || !strings.HasPrefix(to, "term_") || to == h.Orca.WorkerMailboxHandle || len(to) > 256 || !typeOK || messageType != "worker_done" ||
+		!subjectOK || strings.TrimSpace(subject) == "" || len(subject) > 256 || containsASCIITerminalControl(subject) ||
+		!bodyOK || !threeSentenceWorkerDoneBody(body) || len(body) > 4096 ||
+		!taskOK || taskID == "" || taskID != h.Orca.TaskID || taskID != h.Result.TaskID ||
+		!dispatchOK || dispatchID == "" || dispatchID != h.Orca.DispatchID || dispatchID != h.Result.DispatchID ||
+		!filesOK || files != strings.Join(h.Result.ChangedFiles, ",") ||
+		!reportOK || strings.TrimSpace(h.Result.TuringReportPath) == "" {
+		return false
+	}
+	expectedReport := filepath.Clean(filepath.Join(h.WorkerRoot, filepath.FromSlash(h.Result.TuringReportPath)))
+	return filepath.IsAbs(reportPath) && filepath.Clean(reportPath) == reportPath && reportPath == expectedReport && pathWithin(reportPath, h.WorkerRoot) && resolvedPathWithin(reportPath, h.WorkerRoot)
+}
+
+func threeSentenceWorkerDoneBody(body string) bool {
+	body = strings.TrimSpace(body)
+	if body == "" || containsASCIITerminalControl(body) {
+		return false
+	}
+	count := 0
+	for i := 0; i < len(body); i++ {
+		if !strings.ContainsRune(".!?", rune(body[i])) {
+			continue
+		}
+		if i+1 == len(body) || body[i+1] == ' ' {
+			count++
+		}
+	}
+	return count == 3
 }
 
 func literalSafeTerminalSendHandle(req HookToolUseLifecycleRequest) (string, bool) {

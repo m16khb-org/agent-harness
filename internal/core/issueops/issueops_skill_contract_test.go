@@ -404,6 +404,39 @@ func TestRootAgentGuidanceRunsRealGoldenPackage(t *testing.T) {
 	}
 }
 
+func TestSupervisedReportOnlySkillsRunOnlyDeclaredVerification(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	turing := readTuringSkillForTest(t)
+	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
+		for _, want := range []string{
+			"For a report-only cycle, run only the verification commands declared in the sealed worker packet",
+			"Do not invent API, provider-ref, or history probes",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s report-only verification contract missing %q", name, want)
+			}
+		}
+	}
+}
+
+func TestSupervisedSubmittedWorkerDoneSkillsPinExactAuthority(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	turing := readTuringSkillForTest(t)
+	for name, body := range map[string]string{"IssueOps": issueOps, "Turing": turing} {
+		for _, want := range []string{
+			"same submitted worker session",
+			"exact persisted task and dispatch",
+			"three-sentence body",
+			"absolute in-worker report path",
+			"exact submitted worker handle",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s submitted worker_done contract missing %q", name, want)
+			}
+		}
+	}
+}
+
 func TestIssueOpsPublishRecipeAvoidsShellCommandSubstitution(t *testing.T) {
 	body := readIssueOpsReferenceForTest(t, "orca-handoff.md")
 	sectionStart := strings.Index(body, "## Coordinator Publish")

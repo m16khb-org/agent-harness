@@ -140,7 +140,10 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		if sourceCoordinatorTerminalSteeringAllowed(req, record) {
 			return true, ""
 		}
-		return true, "raw terminal steering is blocked outside literal-safe claimed-worker guidance from the exact source coordinator root; use issueops handoff start for prepare and dispatch"
+		return true, "raw terminal steering is blocked outside literal-safe claimed/submitted-worker guidance from the exact source coordinator root; use issueops handoff start for prepare and dispatch"
+	}
+	if submittedWorkerDoneAllowed(req, record) {
+		return true, ""
 	}
 	if isHandoffMCPTool(req.Tool) {
 		if allowedHandoffMCPTool(req, record) {
