@@ -509,6 +509,41 @@ func TestSupervisedHandoffSkillsPinObservedSoleWriterIncidents(t *testing.T) {
 	}
 }
 
+func TestCautionsPinsDuplicateWriterInventoryRecheckIncident(t *testing.T) {
+	body := readCautionsForTest(t)
+	for _, want := range []string{
+		"요약만 믿고",
+		"exact, untruncated worktree terminal inventory",
+		"connected+writable한 다른 terminal이 하나라도 있으면",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("CAUTIONS.md missing duplicate-writer inventory-recheck incident: want %q", want)
+		}
+	}
+}
+
+func TestOrcaHandoffPinsYieldedVerificationProvenanceIncident(t *testing.T) {
+	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	cautions := readCautionsForTest(t)
+	for name, body := range map[string]string{"IssueOps": issueOps, "CAUTIONS": cautions} {
+		for _, want := range []string{
+			"pipeline",
+			"session_id",
+			"write_stdin",
+			"exit_code",
+			"tui-idle",
+			"filesystem quiescence",
+			"partial package output",
+			"active tool/process",
+			"latest `tool_result`",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s yielded verification provenance incident missing %q", name, want)
+			}
+		}
+	}
+}
+
 func TestSupervisedHandoffSkillsRequireCompletionFence(t *testing.T) {
 	issueOps := readIssueOpsReferenceForTest(t, "orca-handoff.md")
 	turing := readTuringSkillForTest(t)

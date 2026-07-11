@@ -561,3 +561,20 @@ Orca completion reconciliation은 message `from_handle`이 원래 dispatch `assi
 - `auto`의 Orca missing/unready/capability failure나 이후 definitive pre-mutation inline fallback에는 GitLab native-metadata warning을 붙이지 않는다. probe가 성공해 `resolved_mode=orca`가 된 preview/confirm만 warning을 가질 수 있다.
 - warning 여부를 즉시 응답에만 저장하면 반복 prepare/runtime restart에서 사실이 바뀐다. bounded provider-link observation을 durable Orca identity에 저장하고 재투영한다.
 - 이 경로는 GitLab remote issue/branch/work item/MR을 생성·수정하지 않는다. verified provider ref와 sealed provider/IssueURL만 소비한다.
+
+## worker/terminal create 또는 dispatch 직전 "sole writer" 요약을 그대로 신뢰하지 말 것
+
+이전 dispatch가 "no other writer exists"라는 요약만 믿고 새 worktree/terminal을 만들어 동일 worktree에 두 번째 writer가 붙은 사고가 있었다. 요약(assistant prose)은 evidence가 아니다.
+
+- 새 worker terminal/worktree를 create 또는 dispatch하기 직전에 반드시 exact, untruncated worktree terminal inventory(`totalCount`, `truncated=false` 확인 포함)를 다시 조회한다.
+- 그 inventory에 connected+writable한 다른 terminal이 하나라도 있으면 create/dispatch를 거부한다. truncated 응답은 신뢰할 수 없으므로 동일하게 거부한다.
+- 이 확인은 매 dispatch 직전에 반복한다. 과거 턴에서 확인했다는 사실은 현재 turn의 증거가 아니다.
+
+## yielded 검증 command를 완료로 오인하거나 heartbeat 부재만으로 worker를 중단하지 말 것
+
+검증 command가 `session_id`만 반환하고 `exit_code`가 없는데 outer tool call이 끝났다는 이유로 통과 처리한 사고와, 실제 `go test -race` process가 실행 중인데 heartbeat 부재와 화면 spinner만 보고 worker를 interrupt한 사고가 있었다.
+
+- `go test ... | tail` 또는 `go test ... | grep` 같은 pipeline은 test process의 실제 exit status를 별도로 증명하지 않는 한 검증 evidence가 아니다. 필요한 suite를 pipeline 없는 direct command로 다시 실행한다.
+- command가 `session_id`와 함께 yield되면 아직 실행 중이다. 같은 shell session을 `write_stdin`으로 poll해 terminal `exit_code`와 남은 output을 회수할 때까지 완료로 기록하지 않는다.
+- 완료된 outer `functions.exec` cell에 `functions.wait`를 호출하는 것은 yielded shell session 재개가 아니다. 반드시 반환된 exact shell `session_id`를 재개한다.
+- `tui-idle`, heartbeat 부재, filesystem quiescence, spinner, partial package output만으로 worker completion/hang이나 검증 성공을 판정하지 않는다. interrupt/close 직전에 host session의 active tool/process와 latest `tool_result`를 확인하고, exact verification process가 active면 terminal exit까지 기다려 poll한다.

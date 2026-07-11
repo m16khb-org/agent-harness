@@ -372,7 +372,7 @@ Inline and legacy records keep current behavior.
 
 ### 10.3 SessionStart claim guidance
 
-SessionStart shows the native session ID, role, attempt, and exact claim/resume command. It does not claim, write IssueOps state, poll Orca, or advance a phase. PostToolUse, Stop, compact, and user-prompt behavior are unchanged in V1.
+SessionStart shows the native session ID, role, attempt, and exact claim/resume command. It does not claim, write IssueOps state, poll Orca, or advance a phase. PostToolUse, compact, and user-prompt behavior are unchanged in V1, with one narrow observed-host exception: Stop's numbered-next-action relay and missing-choice re-entry are suppressed for the exact worker whose durable handoff record already carries a completed result and a terminal `worker_done_projection` (sent, failed, or intent), matched by native host/session/agent identity and canonical worktree path — see `SuppressStopNextActionForCompletedWorker` in `internal/core/lifecycle`. Because the installed Codex Stop command and its native payload are hostless, that exact no-flag/no-payload case defaults only the identity match to `codex`; explicit host conflicts stay fail-closed and legacy output formatting remains flag-driven. This predicate never inspects a transcript, shell output, or `ORCA_TERMINAL_HANDLE`; it does not alter lifecycle computation, Engelbart checks, `--json` fields, or any other Stop behavior, and any mismatch or ambiguity falls back to legacy Stop output byte-for-byte.
 
 ### 10.4 GJC parity
 

@@ -69,6 +69,10 @@ func BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID string) 
 	return lifecycle.BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID)
 }
 
+func SuppressStopNextActionForCompletedWorker(req HookToolUseLifecycleRequest) bool {
+	return lifecycle.SuppressStopNextActionForCompletedWorker(req)
+}
+
 func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecycleResult, error) {
 	return lifecycle.RecordLifecycleToolUse(req)
 }

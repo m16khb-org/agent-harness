@@ -31,6 +31,23 @@ func runHookStop(args []string) error {
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
 	}
+	payloadHost := strings.TrimSpace(hookinput.HostFromHookInput(stdin))
+	flagHost := strings.TrimSpace(*host)
+	hostConflict := flagHost != "" && payloadHost != "" && !strings.EqualFold(flagHost, payloadHost)
+	resolvedHost := strings.ToLower(flagHost)
+	if resolvedHost == "" {
+		resolvedHost = strings.ToLower(payloadHost)
+	}
+	if resolvedHost == "" {
+		resolvedHost = string(hookadapter.HostCodex)
+	}
+	suppressNextAction := !hostConflict && core.SuppressStopNextActionForCompletedWorker(core.HookToolUseLifecycleRequest{
+		Repo:      parsedRepo,
+		CWD:       hookinput.CWDFromHookInput(stdin),
+		Host:      resolvedHost,
+		SessionID: hookinput.SessionIDFromHookInput(stdin),
+		AgentID:   hookinput.AgentIDFromHookInput(stdin),
+	})
 	result := core.BuildLifecycleStopReminder(parsedRepo)
 	message := hookinput.LastAssistantMessageFromHookInput(stdin)
 	if message == "" {
@@ -61,7 +78,7 @@ func runHookStop(args []string) error {
 		})
 	}
 	ho := hookadapter.Resolve(strings.TrimSpace(*host))
-	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent {
+	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent && !suppressNextAction {
 		relayRecord := core.RecordStopNextActionRelay(parsedRepo, nextActionTrigger)
 		if !relayRecord.ShouldRelay {
 			return printJSON(ho.FormatNoop())
@@ -94,7 +111,7 @@ func runHookStop(args []string) error {
 	// true when this Stop is itself a continuation of a prior stop-hook block. Valid
 	// next-action choices still need the judgement relay above; otherwise a
 	// recovered response can present choices and then silently stop.
-	if nextActions.Decision == "block" && !stopHookActive && !noAutoProceedJudgement {
+	if nextActions.Decision == "block" && !stopHookActive && !noAutoProceedJudgement && !suppressNextAction {
 		markHookMetricBlocked()
 		return printJSON(ho.FormatStopBlock(nextActions.Reason))
 	}
