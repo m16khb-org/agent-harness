@@ -64,13 +64,13 @@ func commandTokensMayMutate(tokens []string) bool {
 		name := searchrouting.SearchTokenName(token)
 		switch name {
 		case "git":
-			if mutationSubcommand(tokens, i+1, map[string]bool{
+			if mutationSubcommandAfterDirectoryFlag(tokens, i+1, map[string]bool{
 				"add": true, "commit": true, "reset": true, "restore": true, "checkout": true, "switch": true,
 			}) {
 				return true
 			}
 		case "go":
-			subcommand, at := nextCommandToken(tokens, i+1)
+			subcommand, at := nextCommandTokenAfterDirectoryFlag(tokens, i+1)
 			if subcommand == "generate" || subcommand == "mod" && at+1 < len(tokens) && searchrouting.SearchTokenName(tokens[at+1]) == "tidy" {
 				return true
 			}
@@ -83,7 +83,7 @@ func commandTokensMayMutate(tokens []string) bool {
 				return true
 			}
 		case "bash", "sh", "zsh":
-			if containsCommandToken(tokens[i+1:], "-c") {
+			if containsShellCommandFlag(tokens[i+1:]) {
 				return true
 			}
 		case "python", "python3":
@@ -94,6 +94,36 @@ func commandTokensMayMutate(tokens []string) bool {
 			if containsCommandToken(tokens[i+1:], "-e") || containsCommandToken(tokens[i+1:], "--eval") {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func mutationSubcommandAfterDirectoryFlag(tokens []string, start int, mutating map[string]bool) bool {
+	command, _ := nextCommandTokenAfterDirectoryFlag(tokens, start)
+	return mutating[command]
+}
+
+func nextCommandTokenAfterDirectoryFlag(tokens []string, start int) (string, int) {
+	for i := start; i < len(tokens); i++ {
+		value := strings.TrimSpace(tokens[i])
+		if value == "-C" {
+			i++
+			continue
+		}
+		if value == "" || strings.HasPrefix(value, "-") {
+			continue
+		}
+		return searchrouting.SearchTokenName(value), i
+	}
+	return "", -1
+}
+
+func containsShellCommandFlag(tokens []string) bool {
+	for _, token := range tokens {
+		value := strings.TrimSpace(token)
+		if len(value) > 1 && strings.HasPrefix(value, "-") && !strings.HasPrefix(value, "--") && strings.Contains(value[1:], "c") {
+			return true
 		}
 	}
 	return false

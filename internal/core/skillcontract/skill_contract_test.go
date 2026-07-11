@@ -104,12 +104,18 @@ func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 		"No Z.AI request is sent",
 		"`gate` therefore returns a non-passing `llm_eval` result",
 		"pass explicit `--llm-eval=false`",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("self-verify SKILL.md missing contract phrase %q", want)
+		}
+	}
+	for _, hostSpecificRecipe := range []string{
 		"./cmd/harness/hookcli/hookinput",
 		"bun scripts/smoke-gjc-native-hook.ts",
 		"Do not use a literal `--host gjc` grep",
 	} {
-		if !strings.Contains(body, want) {
-			t.Fatalf("self-verify SKILL.md missing contract phrase %q", want)
+		if strings.Contains(body, hostSpecificRecipe) {
+			t.Fatalf("self-verify SKILL.md must keep host-specific handoff recipe in IssueOps/Turing: %q", hostSpecificRecipe)
 		}
 	}
 	if strings.Contains(body, "to run the Z.AI Coding Plan") {
