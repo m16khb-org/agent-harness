@@ -196,6 +196,29 @@ func TestHandoffStartCreatesTerminalTaskDispatchExactlyOnce(t *testing.T) {
 	}
 }
 
+func TestHandoffStartRejectsNonDispatchedInitialStatus(t *testing.T) {
+	for _, tt := range []struct{ name, status string }{
+		{name: "missing"}, {name: "failed", status: "failed"}, {name: "cancelled", status: "cancelled"},
+		{name: "completed", status: "completed"}, {name: "unknown", status: "unknown"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			client := handoffDispatchFake(record)
+			client.dispatch.Status = tt.status
+			if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil || !strings.Contains(err.Error(), "status") {
+				t.Fatalf("initial dispatch status %q was accepted: %v", tt.status, err)
+			}
+			persisted, err := ReadIssueOps(stateRoot, record.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.PendingOperation == nil {
+				t.Fatalf("invalid dispatch status did not retain recovery journal: %#v", persisted.ExecutionHandoff)
+			}
+		})
+	}
+}
+
 func TestHandoffStartResolvesOptionalPTYFromExactTerminalDelta(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
@@ -335,7 +358,7 @@ func TestHandoffStartRejectsFullTerminalAndTaskBaselinesBeforeCreate(t *testing.
 		client := handoffDispatchFake(record)
 		client.tasks = make([]port.OrcaTask, 0, handoff.MaxBaselineIDs)
 		for i := 0; i < handoff.MaxBaselineIDs; i++ {
-			client.tasks = append(client.tasks, port.OrcaTask{ID: fmt.Sprintf("task-%03d", i)})
+			client.tasks = append(client.tasks, port.OrcaTask{ID: fmt.Sprintf("task-%03d", i), Status: "ready"})
 		}
 		if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil || !strings.Contains(err.Error(), "headroom") {
 			t.Fatalf("task headroom failure = %v", err)
@@ -344,6 +367,30 @@ func TestHandoffStartRejectsFullTerminalAndTaskBaselinesBeforeCreate(t *testing.
 			t.Fatalf("task create invoked without delta headroom: %d", client.taskCreates)
 		}
 	})
+}
+
+func TestHandoffStartBoundsTaskBaselineToReadyInventory(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-1"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	for i := 0; i < handoff.MaxBaselineIDs+100; i++ {
+		client.tasks = append(client.tasks, port.OrcaTask{ID: fmt.Sprintf("completed-%03d", i), Status: "completed"})
+	}
+	client.tasks = append(client.tasks,
+		port.OrcaTask{ID: "ready-old-1", Status: "ready"},
+		port.OrcaTask{ID: "ready-old-2", Status: "ready"},
+	)
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || client.taskCreates != 1 || client.dispatchCalls != 1 {
+		t.Fatalf("completed task history blocked fresh handoff: result=%#v task/dispatch=%d/%d", got, client.taskCreates, client.dispatchCalls)
+	}
 }
 
 func TestHandoffStartContinuesAfterTerminalCreateReconcileWithoutDuplicate(t *testing.T) {
@@ -442,10 +489,10 @@ func TestHandoffStartTaskMarkerRequiresExactlyOne(t *testing.T) {
 
 func TestHandoffStartDispatchRecoveryRequiresPersistedTask(t *testing.T) {
 	client := handoffDispatchFake()
-	if _, err := ReconcileIssueOpsHandoffDispatch(context.Background(), "", "term-1", client); err == nil {
+	if _, err := ReconcileIssueOpsHandoffDispatch(context.Background(), "", "term-1", "inject", client); err == nil {
 		t.Fatal("missing persisted task must fail")
 	}
-	got, err := ReconcileIssueOpsHandoffDispatch(context.Background(), "task-1", "term-1", client)
+	got, err := ReconcileIssueOpsHandoffDispatch(context.Background(), "task-1", "term-1", "inject", client)
 	if err != nil || got.ID != "dispatch-1" {
 		t.Fatalf("got %#v err=%v", got, err)
 	}
@@ -581,10 +628,6 @@ func (f *dispatchOrcaFake) Dispatch(_ context.Context, req port.OrcaDispatchRequ
 func (f *dispatchOrcaFake) ShowDispatch(context.Context, string) (port.OrcaDispatch, error) {
 	f.trace = append(f.trace, "dispatch-show")
 	return f.dispatch, f.dispatchShowErr
-}
-
-func (f *dispatchOrcaFake) SendTerminal(context.Context, string, string) error {
-	return errors.New("unexpected compatibility delivery")
 }
 
 func handoffDispatchRecord(t *testing.T) (string, IssueOpsRecord) {

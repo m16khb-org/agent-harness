@@ -187,7 +187,7 @@ go test ./internal/core/issueops ./cmd/harness/issueopscli/worktreecmd -run 'Tes
 - Expose required/attested state in preview. After review, a second attested no-confirm preview supplies the reviewed context hash; the final request adds only confirm and must render the same hash. Keep ContextVersion 1 and reset only the attestation on retry.
 - Before each call, persist `pending_operation` plus the relevant bounded ID baseline. After each success, CAS-persist its domain identity and clear the pending operation before starting the next one.
 - Terminal recovery accepts exactly one new PTY relative to the persisted baseline. Task recovery accepts exactly one new task carrying the attempt/epoch marker. Dispatch recovery uses only the persisted task ID and `dispatch-show`.
-- Preferred delivery is a recognized built-in host terminal plus `dispatch --inject --return-preamble`. Compatibility delivery uses a verified built-in terminal and `terminal send`; no arbitrary shell command.
+- V1 delivery is a recognized built-in host terminal plus `dispatch --inject --return-preamble`. Persist delivery mode `inject` and the refreshed exact assignee before dispatch; `dispatch-show` recovery validates its exact identity and `dispatched` status without relying on an absent `injected` field. There is no V1 `terminal send` fallback and no arbitrary shell command.
 - Return after `dispatched`; no wait loop, automatic claim, or automatic next operation.
 
 **RED tests:**

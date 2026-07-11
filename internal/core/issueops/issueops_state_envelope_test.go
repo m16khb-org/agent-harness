@@ -35,6 +35,12 @@ func TestWriteIssueOpsRejectsInvalidHandoffBeforeReplacingStoredBytes(t *testing
 		{name: "padded enum", mutate: func(r *IssueOpsRecord) { r.ExecutionHandoff.Driver = " orca " }},
 		{name: "mismatched coordinator root", mutate: func(r *IssueOpsRecord) { r.ExecutionHandoff.CoordinatorRoot = r.Repo + "-other" }},
 		{name: "malformed attempt sha", mutate: func(r *IssueOpsRecord) { r.ExecutionHandoff.AttemptBaseHead = "not-a-commit" }},
+		{name: "dispatch missing expected assignee", mutate: func(r *IssueOpsRecord) {
+			r.ExecutionHandoff.PendingOperation = &IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch, StartedAt: "2026-07-11T01:00:01Z", DeliveryMode: "inject"}
+		}},
+		{name: "dispatch unsupported delivery", mutate: func(r *IssueOpsRecord) {
+			r.ExecutionHandoff.PendingOperation = &IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch, StartedAt: "2026-07-11T01:00:01Z", ExpectedAssigneeHandle: "term-1", DeliveryMode: "terminal_send"}
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

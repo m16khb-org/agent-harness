@@ -48,7 +48,6 @@ type IssueOpsOrcaDispatchClient interface {
 	CreateTask(context.Context, port.OrcaCreateTaskRequest) (port.OrcaTask, error)
 	Dispatch(context.Context, port.OrcaDispatchRequest) (port.OrcaDispatch, error)
 	ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
-	SendTerminal(context.Context, string, string) error
 }
 
 func IssueOpsPreDispatchReadiness(record IssueOpsRecord) IssueOpsReadiness {
@@ -279,7 +278,9 @@ func ensureHandoffTask(ctx context.Context, stateRoot string, record IssueOpsRec
 }
 
 func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, liveHandle, now string) (IssueOpsRecord, error) {
-	record, err := beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch, StartedAt: now})
+	record, err := beginHandoffOperation(stateRoot, record.ID, fence, model.IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationDispatch, StartedAt: now, ExpectedAssigneeHandle: strings.TrimSpace(liveHandle), DeliveryMode: "inject",
+	})
 	if err != nil {
 		return record, err
 	}
@@ -297,8 +298,8 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_ambiguous", err.Error(), now)
 		return record, fmt.Errorf("Orca dispatch requires recovery: %w", err)
 	}
-	if dispatched.ID == "" || dispatched.TaskID != record.ExecutionHandoff.Orca.TaskID || dispatched.AssigneeHandle != liveHandle || !dispatched.Injected {
-		err = fmt.Errorf("Orca dispatch identity does not match persisted task and worker mailbox")
+	if dispatched.ID == "" || dispatched.TaskID != record.ExecutionHandoff.Orca.TaskID || dispatched.AssigneeHandle != liveHandle || dispatched.Status != "dispatched" || !dispatched.Injected {
+		err = fmt.Errorf("Orca dispatch identity, status, or injected delivery does not match the persisted task and worker mailbox")
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_identity_mismatch", err.Error(), now)
 		return record, err
 	}
@@ -529,20 +530,20 @@ func issueOpsHandoffTaskIdentity(id, epoch string, attempt int) (string, string,
 	return title, display, nil
 }
 
-func ReconcileIssueOpsHandoffDispatch(ctx context.Context, taskID, assigneeHandle string, client interface {
+func ReconcileIssueOpsHandoffDispatch(ctx context.Context, taskID, assigneeHandle, deliveryMode string, client interface {
 	ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
 }) (port.OrcaDispatch, error) {
 	taskID = strings.TrimSpace(taskID)
 	assigneeHandle = strings.TrimSpace(assigneeHandle)
-	if taskID == "" || assigneeHandle == "" {
-		return port.OrcaDispatch{}, fmt.Errorf("persisted task id and worker mailbox are required for dispatch recovery")
+	if taskID == "" || assigneeHandle == "" || deliveryMode != "inject" {
+		return port.OrcaDispatch{}, fmt.Errorf("persisted task id, expected assignee, and inject delivery are required for dispatch recovery")
 	}
 	dispatch, err := client.ShowDispatch(ctx, taskID)
 	if err != nil {
 		return port.OrcaDispatch{}, err
 	}
-	if dispatch.ID == "" || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != assigneeHandle || !dispatch.Injected {
-		return port.OrcaDispatch{}, fmt.Errorf("dispatch recovery result does not match persisted task, assignee, and injected delivery")
+	if dispatch.ID == "" || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != assigneeHandle || dispatch.Status != "dispatched" {
+		return port.OrcaDispatch{}, fmt.Errorf("dispatch recovery result does not match persisted task, assignee, and dispatched status")
 	}
 	return dispatch, nil
 }
@@ -575,7 +576,7 @@ func terminalPTYIDs(rows []port.OrcaTerminal) []string {
 func taskIDs(rows []port.OrcaTask) []string {
 	values := make([]string, 0, len(rows))
 	for _, row := range rows {
-		if row.ID != "" {
+		if row.Status == "ready" && row.ID != "" {
 			values = append(values, row.ID)
 		}
 	}

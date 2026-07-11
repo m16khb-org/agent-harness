@@ -390,11 +390,13 @@ type IssueOpsOrcaIdentity struct {
 }
 
 type IssueOpsExecutionHandoffPendingOperation struct {
-	Kind                string   `json:"kind"`
-	StartedAt           string   `json:"started_at"`
-	BaselineWorktreeIDs []string `json:"baseline_worktree_ids,omitempty"`
-	BaselineTaskIDs     []string `json:"baseline_task_ids,omitempty"`
-	BaselinePTYIDs      []string `json:"baseline_pty_ids,omitempty"`
+	Kind                   string   `json:"kind"`
+	StartedAt              string   `json:"started_at"`
+	ExpectedAssigneeHandle string   `json:"expected_assignee_handle,omitempty"`
+	DeliveryMode           string   `json:"delivery_mode,omitempty"`
+	BaselineWorktreeIDs    []string `json:"baseline_worktree_ids,omitempty"`
+	BaselineTaskIDs        []string `json:"baseline_task_ids,omitempty"`
+	BaselinePTYIDs         []string `json:"baseline_pty_ids,omitempty"`
 }
 
 type IssueOpsExecutionHandoffResult struct {
@@ -443,7 +445,7 @@ type IssueOpsExecutionHandoffPriorAttempt struct {
 	Orca                *IssueOpsOrcaIdentity                   `json:"orca,omitempty"`
 	Result              *IssueOpsExecutionHandoffResult         `json:"result,omitempty"`
 	Failure             *IssueOpsExecutionHandoffFailure        `json:"failure,omitempty"`
-	CleanupOnly         *IssueOpsOrcaCleanupArtifact             `json:"cleanup_only,omitempty"`
+	CleanupOnly         *IssueOpsOrcaCleanupArtifact            `json:"cleanup_only,omitempty"`
 	PreparedAt          string                                  `json:"prepared_at,omitempty"`
 	ProvisionedAt       string                                  `json:"provisioned_at,omitempty"`
 	DispatchedAt        string                                  `json:"dispatched_at,omitempty"`

@@ -307,13 +307,13 @@ func TestHandoffForceAbandonRequiresConfirmedCompleteAbsentInventoryAndNeverRetr
 				Kind: handoff.OperationTaskCreate, StartedAt: "2026-07-11T00:50:00Z", BaselineTaskIDs: []string{"task-old"},
 			},
 			prepare: func(_ IssueOpsRecord, client *dispatchOrcaFake) {
-				client.tasks = []port.OrcaTask{{ID: "task-old"}}
+				client.tasks = []port.OrcaTask{{ID: "task-old", Status: "ready"}}
 			},
 		},
 		{
 			name: "dispatch",
 			pending: IssueOpsExecutionHandoffPendingOperation{
-				Kind: handoff.OperationDispatch, StartedAt: "2026-07-11T00:50:00Z",
+				Kind: handoff.OperationDispatch, StartedAt: "2026-07-11T00:50:00Z", ExpectedAssigneeHandle: "term-1", DeliveryMode: "inject",
 			},
 			prepare: func(record IssueOpsRecord, client *dispatchOrcaFake) {
 				record.ExecutionHandoff.Orca.TaskID = "task-1"
@@ -449,7 +449,7 @@ func TestHandoffForceAbandonRequiresAuthoritativeAbsenceAndExactFence(t *testing
 		{
 			name: "task delta", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationTaskCreate, BaselineTaskIDs: []string{"task-old"}},
 			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
-				client.tasks = []port.OrcaTask{{ID: "task-old"}, {ID: "task-new"}}
+				client.tasks = []port.OrcaTask{{ID: "task-old", Status: "ready"}, {ID: "task-new", Status: "ready"}}
 			},
 			want: "task inventory contains 1 post-baseline artifact",
 		},
@@ -463,17 +463,17 @@ func TestHandoffForceAbandonRequiresAuthoritativeAbsenceAndExactFence(t *testing
 		{
 			name: "task unidentified row", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationTaskCreate, BaselineTaskIDs: []string{"task-old"}},
 			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
-				client.tasks = []port.OrcaTask{{ID: "task-old"}, {}}
+				client.tasks = []port.OrcaTask{{ID: "task-old", Status: "ready"}, {Status: "ready"}}
 			},
 			want: "task inventory contains missing or duplicate identities",
 		},
 		{
-			name: "dispatch exists", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch},
+			name: "dispatch exists", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch, ExpectedAssigneeHandle: "term-1", DeliveryMode: "inject"},
 			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) { client.dispatchShowErr = nil },
 			want:    "dispatch still exists",
 		},
 		{
-			name: "dispatch unknown error", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch},
+			name: "dispatch unknown error", pending: IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch, ExpectedAssigneeHandle: "term-1", DeliveryMode: "inject"},
 			prepare: func(_ string, _ IssueOpsRecord, client *dispatchOrcaFake) {
 				client.dispatchShowErr = fmt.Errorf("transport unavailable")
 			},
@@ -735,33 +735,35 @@ func TestHandoffRecoverExactOneOnlyAndNeverAdvances(t *testing.T) {
 	}
 }
 
-func TestHandoffRecoverDispatchRequiresPersistedAssigneeAndInjection(t *testing.T) {
+func TestHandoffRecoverDispatchRequiresDurableDeliveryIdentityAndDispatchedStatus(t *testing.T) {
 	tests := []struct {
-		name            string
-		persistedHandle string
-		assignee        string
-		injected        bool
+		name, expectedAssignee, deliveryMode, returnedAssignee, status, dispatchID string
 	}{
-		{name: "missing persisted assignee", assignee: "term-1", injected: true},
-		{name: "assignee mismatch", persistedHandle: "term-1", assignee: "term-other", injected: true},
-		{name: "not injected", persistedHandle: "term-1", assignee: "term-1"},
+		{name: "assignee mismatch", expectedAssignee: "term-1", deliveryMode: "inject", returnedAssignee: "term-other", status: "dispatched", dispatchID: "dispatch-1"},
+		{name: "failed status", expectedAssignee: "term-1", deliveryMode: "inject", returnedAssignee: "term-1", status: "failed", dispatchID: "dispatch-1"},
+		{name: "completed status", expectedAssignee: "term-1", deliveryMode: "inject", returnedAssignee: "term-1", status: "completed", dispatchID: "dispatch-1"},
+		{name: "missing dispatch id", expectedAssignee: "term-1", deliveryMode: "inject", returnedAssignee: "term-1", status: "dispatched"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			stateRoot, record := handoffDispatchRecord(t)
 			record.ExecutionHandoff.Orca.TaskID = "task-1"
-			record.ExecutionHandoff.Orca.WorkerMailboxHandle = tt.persistedHandle
-			setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationDispatch})
+			record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+			setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{
+				Kind: handoff.OperationDispatch, ExpectedAssigneeHandle: tt.expectedAssignee, DeliveryMode: tt.deliveryMode,
+			})
 			if _, err := WriteIssueOps(stateRoot, record); err != nil {
 				t.Fatal(err)
 			}
 			client := handoffDispatchFake(record)
-			client.dispatch.AssigneeHandle = tt.assignee
-			client.dispatch.Injected = tt.injected
+			client.dispatch.ID = tt.dispatchID
+			client.dispatch.AssigneeHandle = tt.returnedAssignee
+			client.dispatch.Status = tt.status
+			client.dispatch.Injected = false
 			if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 				ID: record.ID, Action: "reconcile",
 			}, client, handoffPrepareTestClock()); err == nil {
-				t.Fatal("dispatch reconciliation must match the persisted assignee and injected delivery")
+				t.Fatal("dispatch reconciliation must match its durable delivery identity and exact dispatched status")
 			}
 			persisted, err := ReadIssueOps(stateRoot, record.ID)
 			if err != nil {
@@ -771,5 +773,53 @@ func TestHandoffRecoverDispatchRequiresPersistedAssigneeAndInjection(t *testing.
 				t.Fatalf("failed dispatch reconciliation advanced state: %#v", persisted.ExecutionHandoff)
 			}
 		})
+	}
+	client := handoffDispatchFake()
+	for _, tt := range []struct{ name, expectedAssignee, deliveryMode string }{
+		{name: "missing expected assignee", deliveryMode: "inject"},
+		{name: "missing delivery mode", expectedAssignee: "term-1"},
+		{name: "unsupported delivery mode", expectedAssignee: "term-1", deliveryMode: "terminal_send"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := ReconcileIssueOpsHandoffDispatch(context.Background(), "task-1", tt.expectedAssignee, tt.deliveryMode, client); err == nil {
+				t.Fatal("invalid durable delivery journal was accepted")
+			}
+		})
+	}
+}
+
+func TestHandoffRecoverDispatchUsesDurableRefreshedAssigneeWithoutInjectedField(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-stale"
+	record.ExecutionHandoff.Orca.TaskID = "task-1"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.refreshedTerminal = port.OrcaTerminal{
+		Handle: "term-live", PTYID: "pty-1", WorktreeID: "wt-1", WorktreePath: record.WorktreePath, Connected: true, Writable: true,
+	}
+	client.dispatchErr = &port.OrcaError{Code: "timeout", Invoked: true, Timeout: true}
+	client.dispatch.AssigneeHandle = "term-live"
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil {
+		t.Fatal("expected ambiguous dispatch")
+	}
+	pending, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operation := pending.ExecutionHandoff.PendingOperation
+	if operation == nil || operation.Kind != handoff.OperationDispatch || operation.ExpectedAssigneeHandle != "term-live" || operation.DeliveryMode != "inject" {
+		t.Fatalf("dispatch journal did not seal refreshed delivery identity: %#v", operation)
+	}
+	client.dispatchErr = nil
+	client.dispatch = port.OrcaDispatch{ID: "dispatch-live", TaskID: "task-1", AssigneeHandle: "term-live", Status: "dispatched"}
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "reconcile"}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || got.Orca == nil || got.Orca.DispatchID != "dispatch-live" || got.Orca.WorkerMailboxHandle != "term-live" {
+		t.Fatalf("installed-shape dispatch was not reconciled: %#v", got)
 	}
 }

@@ -120,7 +120,7 @@ type IssueOpsExecutionHandoff struct {
 
     Driver          string // orca
     Agent           string
-    DeliveryMode    string // inject | terminal_send
+    DeliveryMode    string // inject (V1)
 
     CoordinatorRoot string
     WorkerRoot      string
@@ -287,18 +287,16 @@ This sequence preserves the current `plan_in_worktree` invariant and keeps all p
 
 ### 8.3 Host launch and delivery
 
-Preferred path:
+V1 path:
 
 - use `terminal create --worktree id:<worktree-id> --command <built-in-host-command>` to start a fresh agent in the already prepared checkout;
 - after the explicit attestation above, use the installed Codex-only `--dangerously-bypass-hook-trust` launch flag; Claude and GJC commands are unchanged;
 - reacquire that terminal with `terminal list`;
 - use `dispatch --inject` after the task exists.
 
-Compatibility path for a supported harness host that Orca does not recognize as an injectable agent:
-
-- dispatch without injection and deliver the generated preamble/task through `terminal send`.
-
 Only built-in host command mappings are allowed. Arbitrary command input is out of scope. Host launch/delivery support is checked by the pre-worktree capability probe. If it disappears after provisioning, the handoff becomes `recovery_required`; it cannot fall back inline.
+
+V1 has no `terminal send` compatibility delivery. The durable dispatch journal seals delivery mode `inject` and the refreshed exact assignee before invocation; recovery validates that tuple against `dispatch-show` without inventing an `injected` response field that the installed show command does not expose.
 
 ### 8.4 Provider-linked branch invariant
 

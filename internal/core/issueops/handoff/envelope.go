@@ -139,6 +139,13 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 		return fmt.Errorf("execution handoff pending operation requires a canonical timestamp")
 	}
 	if h.PendingOperation != nil {
+		if h.PendingOperation.Kind == OperationDispatch {
+			if !canonicalNonSpace(h.PendingOperation.ExpectedAssigneeHandle) || h.PendingOperation.DeliveryMode != "inject" {
+				return fmt.Errorf("dispatch pending operation requires an exact assignee and inject delivery")
+			}
+		} else if h.PendingOperation.ExpectedAssigneeHandle != "" || h.PendingOperation.DeliveryMode != "" {
+			return fmt.Errorf("non-dispatch pending operation cannot contain dispatch delivery identity")
+		}
 		for kind, values := range map[string][]string{
 			"worktree": h.PendingOperation.BaselineWorktreeIDs,
 			"task":     h.PendingOperation.BaselineTaskIDs,
@@ -330,6 +337,8 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 		checks = append(checks,
 			boundedHandoffString{"pending operation", h.PendingOperation.Kind, 64},
 			boundedHandoffString{"pending started timestamp", h.PendingOperation.StartedAt, 128},
+			boundedHandoffString{"pending expected assignee", h.PendingOperation.ExpectedAssigneeHandle, MaxExternalIDBytes},
+			boundedHandoffString{"pending delivery mode", h.PendingOperation.DeliveryMode, 32},
 		)
 	}
 	if h.Result != nil {

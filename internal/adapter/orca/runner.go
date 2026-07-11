@@ -26,6 +26,31 @@ type Runner interface {
 
 type ExecRunner struct{}
 
+type boundedStreamBuffer struct {
+	buffer   bytes.Buffer
+	limit    int
+	exceeded bool
+}
+
+func (b *boundedStreamBuffer) Write(value []byte) (int, error) {
+	written := len(value)
+	remaining := b.limit - b.buffer.Len()
+	if remaining <= 0 {
+		b.exceeded = b.exceeded || written > 0
+		return written, nil
+	}
+	if len(value) > remaining {
+		value = value[:remaining]
+		b.exceeded = true
+	}
+	_, err := b.buffer.Write(value)
+	return written, err
+}
+
+func (b *boundedStreamBuffer) Bytes() []byte {
+	return b.buffer.Bytes()
+}
+
 func (ExecRunner) LookPath(file string) (string, error) {
 	return exec.LookPath(file)
 }
@@ -38,7 +63,8 @@ func (ExecRunner) Run(ctx context.Context, cwd string, timeout time.Duration, ar
 	defer cancel()
 	cmd := exec.CommandContext(runCtx, argv[0], argv[1:]...)
 	cmd.Dir = strings.TrimSpace(cwd)
-	var stdout, stderr bytes.Buffer
+	stdout := boundedStreamBuffer{limit: MaxEnvelopeBytes}
+	stderr := boundedStreamBuffer{limit: MaxEnvelopeBytes}
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Start(); err != nil {
@@ -50,6 +76,9 @@ func (ExecRunner) Run(ctx context.Context, cwd string, timeout time.Duration, ar
 	output.Stderr = append([]byte(nil), stderr.Bytes()...)
 	if cmd.ProcessState != nil {
 		output.ExitCode = cmd.ProcessState.ExitCode()
+	}
+	if stdout.exceeded || stderr.exceeded {
+		return output, &port.OrcaError{Code: "command_output_too_large", Detail: "Orca stdout or stderr exceeded the bounded stream limit", Invoked: true}
 	}
 	if err == nil {
 		return output, nil

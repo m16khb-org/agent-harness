@@ -236,7 +236,7 @@ agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action reconcile --
 Use the public Orca CLI with these exact copyable inspection forms:
 
 ```bash
-orca orchestration task-list --json
+orca orchestration task-list --ready --json
 orca orchestration dispatch-show --task <id> --json
 orca worktree show --worktree id:<id> --json
 ```

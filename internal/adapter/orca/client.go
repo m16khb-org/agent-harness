@@ -128,7 +128,7 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		{argv: []string{"orca", "terminal", "create", "--help"}, want: []string{"--worktree", "--command", "--title", "--json"}},
 		{argv: []string{"orca", "terminal", "list", "--help"}, want: []string{"--worktree", "--limit", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-create", "--help"}, want: []string{"--spec", "--task-title", "--display-name", "--json"}},
-		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--json"}},
+		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--ready", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-update", "--help"}, want: []string{"--id", "--status", "--result", "--json"}},
 		{argv: []string{"orca", "orchestration", "dispatch", "--help"}, want: []string{"--task", "--to", "--from", "--inject", "--return-preamble", "--json"}},
 		{argv: []string{"orca", "orchestration", "dispatch-show", "--help"}, want: []string{"--task", "--json"}},
@@ -278,17 +278,12 @@ func (c *Client) RefreshTerminal(ctx context.Context, worktreeID, ptyID string) 
 	return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_not_found"}
 }
 
-func (c *Client) SendTerminal(ctx context.Context, handle, text string) error {
-	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "terminal", "send", "--terminal", strings.TrimSpace(handle), "--text", text, "--enter", "--json"}, &struct{}{})
-	return err
-}
-
 func (c *Client) ListTasks(ctx context.Context) ([]port.OrcaTask, error) {
 	var payload struct {
 		Tasks []taskPayload `json:"tasks"`
 		Count *int          `json:"count"`
 	}
-	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "task-list", "--json"}, &payload)
+	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "task-list", "--ready", "--json"}, &payload)
 	if err != nil {
 		return nil, err
 	}

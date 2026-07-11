@@ -147,7 +147,7 @@ func TestWorktreePrepareCanonicalizesAgentBeforeProbeAndPersistence(t *testing.T
 				probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
 				create: port.OrcaWorktree{
 					ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree,
-					Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16,
+					Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1),
 				},
 			}
 			materializePrepareWorktreeOnCreate(t, client, worktree)
@@ -226,7 +226,7 @@ func TestWorktreePrepareExistingHandoffNeverFallsBackInline(t *testing.T) {
 				probe: port.OrcaProbeResult{Available: true, Ready: true, RepoID: "repo-1", RepoRemoteName: "origin"},
 				create: port.OrcaWorktree{
 					ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree,
-					Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16,
+					Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1),
 				},
 			}
 			materializePrepareWorktreeOnCreate(t, client, worktree)
@@ -284,7 +284,7 @@ func TestWorktreePrepareReadyOrcaCreatesExactlyOnce(t *testing.T) {
 	worktree := handoffPrepareWorktreePath(record)
 	client := &prepareOrcaFake{
 		probe:  port.OrcaProbeResult{Available: true, Ready: true, RepoID: "repo-1", RepoRemoteName: "origin"},
-		create: port.OrcaWorktree{ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree, Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16},
+		create: port.OrcaWorktree{ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree, Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1)},
 	}
 	materializePrepareWorktreeOnCreate(t, client, worktree)
 	req := IssueOpsHandoffPrepareRequest{ID: record.ID, Orchestrator: "orca", Agent: "codex", Confirm: true}
@@ -319,7 +319,7 @@ func TestWorktreePrepareUsesVerifiedProviderTrackingRef(t *testing.T) {
 		probe: port.OrcaProbeResult{Available: true, Ready: true, RepoID: "repo-1", RepoRemoteName: "upstream"},
 		create: port.OrcaWorktree{
 			ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/upstream/16-demo", Path: worktree,
-			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16,
+			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1),
 		},
 	}
 	materializePrepareWorktreeOnCreate(t, client, worktree)
@@ -351,6 +351,145 @@ func TestWorktreePrepareCrashAfterInvocationNeverCreatesTwice(t *testing.T) {
 	}
 	if client.createCalls != 1 || second.State != "recovery_required" || second.RecoveryCode == "" {
 		t.Fatalf("automatic retry occurred or recovery missing: calls=%d result=%#v", client.createCalls, second)
+	}
+}
+
+func TestWorktreePrepareAmbiguousRecoveryPreservesRuntimeAndDispatchesWithoutDuplicateCreate(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	writeIssueOpsFile(t, record.Repo, "plans/plan.md", "# recovered plan\n")
+	for _, args := range [][]string{{"add", "plans/plan.md"}, {"commit", "-q", "-m", "test: add recovered plan"}} {
+		if code, _, stderr := preflight.GitCmd(record.Repo, args...); code != 0 {
+			t.Fatalf("git %v failed: %s", args, stderr)
+		}
+	}
+	baseHead := strings.TrimSpace(preflight.GitOut(record.Repo, "rev-parse", "HEAD"))
+	for _, ref := range []string{"refs/remotes/origin/16-demo", "refs/remotes/upstream/16-demo"} {
+		if code, _, stderr := preflight.GitCmd(record.Repo, "update-ref", ref, baseHead); code != 0 {
+			t.Fatalf("update %s: %s", ref, stderr)
+		}
+	}
+	record.BranchPrepare.BaseSHA = baseHead
+	record.Phase = IssueOpsPhaseCompatibilityReview
+	record.PlanPath = filepath.Join(handoffPrepareWorktreePath(record), "plans", "plan.md")
+	record.Intent = issueOpsIntentContractForTest()
+	record.DesignReview = issueOpsDesignReviewForTest()
+	record.ExecutionDecision = issueOpsExecutionDecisionForTest()
+	record.CompatibilityReview = issueOpsCompatibilityReviewForTest()
+	record.DevilsAdvocateReview = &IssueOpsDevilsAdvocateReview{Verdict: "pass", RecordedAt: "2026-07-11T00:00:00Z"}
+	record.WorktreeTools = &IssueOpsWorktreeToolPreparation{OK: true, WorktreePath: handoffPrepareWorktreePath(record), PreparedAt: "2026-07-11T00:00:00Z"}
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+
+	worktree := handoffPrepareWorktreePath(record)
+	client := &prepareOrcaFake{
+		probe:     port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
+		createErr: &port.OrcaError{Code: "timeout", Invoked: true, Timeout: true},
+	}
+	materializePrepareWorktreeOnCreate(t, client, worktree)
+	req := IssueOpsHandoffPrepareRequest{ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true}
+	if _, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, req, client, handoffPrepareTestClock()); err == nil {
+		t.Fatal("expected ambiguous create")
+	}
+	pending, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending.ExecutionHandoff == nil || pending.ExecutionHandoff.Orca == nil || pending.ExecutionHandoff.Orca.RuntimeID != "runtime-1" {
+		t.Fatalf("pre-mutation journal lost probed runtime: %#v", pending.ExecutionHandoff)
+	}
+	client.worktrees = []port.OrcaWorktree{{
+		ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree,
+		Branch: "refs/heads/" + record.Branch, Head: baseHead, Issue: 16, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1),
+	}}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "reconcile"}, client, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dispatchClient := handoffDispatchFake(recovered)
+	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), dispatchClient, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if started.State != handoff.StateDispatched || client.createCalls != 1 {
+		t.Fatalf("recovered handoff did not dispatch exactly once: result=%#v create_calls=%d", started, client.createCalls)
+	}
+}
+
+func TestWorktreePrepareSuccessRejectsChangedAuthorizedJournal(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	client := &prepareOrcaFake{
+		probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
+		create: port.OrcaWorktree{
+			ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree,
+			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1),
+		},
+	}
+	materializePrepareWorktreeOnCreate(t, client, worktree)
+	previous := client.beforeCreate
+	client.beforeCreate = func() {
+		previous()
+		current, err := ReadIssueOps(stateRoot, record.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		current.PlanPath = "concurrent-plan.md"
+		if _, err := WriteIssueOps(stateRoot, current); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
+	}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "journal") {
+		t.Fatalf("stale successful result must not be adopted: %v", err)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.PlanPath != "concurrent-plan.md" || persisted.ExecutionHandoff == nil || persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.PendingOperation == nil || persisted.ExecutionHandoff.Orca.WorktreeID != "" {
+		t.Fatalf("stale success overwrote authority or lost pending recovery: %#v", persisted)
+	}
+}
+
+func TestWorktreePrepareRequiresExactAttemptMarkerOnSuccess(t *testing.T) {
+	for _, tt := range []struct {
+		name, comment string
+	}{
+		{name: "missing"},
+		{name: "substring", comment: "prefix " + issueOpsHandoffMarker("io-placeholder", "epoch-1", 1) + " suffix"},
+		{name: "wrong attempt", comment: issueOpsHandoffMarker("io-placeholder", "epoch-1", 2)},
+		{name: "wrong epoch", comment: issueOpsHandoffMarker("io-placeholder", "epoch-other", 1)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record := handoffPrepareRecord(t)
+			comment := strings.ReplaceAll(tt.comment, "io-placeholder", record.ID)
+			worktree := handoffPrepareWorktreePath(record)
+			client := &prepareOrcaFake{
+				probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
+				create: port.OrcaWorktree{
+					ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree,
+					Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16, Comment: comment,
+				},
+			}
+			materializePrepareWorktreeOnCreate(t, client, worktree)
+			if _, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
+			}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "attempt marker") {
+				t.Fatalf("non-exact worktree marker was accepted: %v", err)
+			}
+			persisted, err := ReadIssueOps(stateRoot, record.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if persisted.ExecutionHandoff == nil || persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.PendingOperation == nil {
+				t.Fatalf("marker mismatch did not retain pending recovery: %#v", persisted.ExecutionHandoff)
+			}
+		})
 	}
 }
 

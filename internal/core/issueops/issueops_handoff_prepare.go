@@ -136,7 +136,7 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 	}
 	now := issueOpsHandoffNow(clock)
 	fence := handoff.Fence{Attempt: 1, OwnershipEpoch: epoch}
-	begin, err := beginHandoffWorktreeCreate(stateRoot, record.ID, result.WorktreePath, req.Agent, probe.RepoID, providerTrackingRef, fence, baseline, now)
+	begin, err := beginHandoffWorktreeCreate(stateRoot, record.ID, result.WorktreePath, req.Agent, probe.RuntimeID, probe.RepoID, providerTrackingRef, fence, baseline, now)
 	if err != nil {
 		return result, err
 	}
@@ -157,7 +157,7 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 		}
 		return result, err
 	}
-	persisted, err := persistHandoffWorktreeCreate(stateRoot, record.ID, probe.RuntimeID, created, fence, now)
+	persisted, err := persistHandoffWorktreeCreate(stateRoot, record.ID, created, fence, begin, now)
 	if err != nil {
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_persist_failed", err.Error(), now)
 		return result, err
@@ -296,7 +296,7 @@ type handoffWorktreeBeginSnapshot struct {
 	PreviousUpdatedAt string
 }
 
-func beginHandoffWorktreeCreate(stateRoot, id, workerRoot, agent, repoID, baseRef string, fence handoff.Fence, baseline []string, now string) (handoffWorktreeBeginSnapshot, error) {
+func beginHandoffWorktreeCreate(stateRoot, id, workerRoot, agent, runtimeID, repoID, baseRef string, fence handoff.Fence, baseline []string, now string) (handoffWorktreeBeginSnapshot, error) {
 	snapshot := handoffWorktreeBeginSnapshot{}
 	err := withIssueOpsLock(stateRoot, id, func() error {
 		current, err := ReadIssueOps(stateRoot, id)
@@ -314,7 +314,7 @@ func beginHandoffWorktreeCreate(stateRoot, id, workerRoot, agent, repoID, baseRe
 		if err != nil {
 			return err
 		}
-		current.ExecutionHandoff.Orca = &model.IssueOpsOrcaIdentity{RepoID: strings.TrimSpace(repoID), BaseRef: strings.TrimSpace(baseRef)}
+		current.ExecutionHandoff.Orca = &model.IssueOpsOrcaIdentity{RuntimeID: strings.TrimSpace(runtimeID), RepoID: strings.TrimSpace(repoID), BaseRef: strings.TrimSpace(baseRef)}
 		current, err = handoff.BeginOperation(current, fence, model.IssueOpsExecutionHandoffPendingOperation{
 			Kind: handoff.OperationWorktreeCreate, StartedAt: now, BaselineWorktreeIDs: baseline,
 		})
@@ -348,13 +348,17 @@ func createHandoffWorktree(ctx context.Context, stateRoot string, record IssueOp
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_create_ambiguous", err.Error(), now)
 		return port.OrcaWorktree{}, fmt.Errorf("Orca worktree create requires recovery: %w", err)
 	}
-	if err := validateCreatedHandoffWorktree(record, expectedPath, expectedRepoID, providerTrackingRef, created); err != nil {
+	validationErr := validateCreatedHandoffWorktree(record, expectedPath, expectedRepoID, providerTrackingRef, created)
+	if validationErr == nil && created.Comment != issueOpsHandoffMarker(record.ID, fence.OwnershipEpoch, fence.Attempt) {
+		validationErr = fmt.Errorf("Orca worktree response does not contain the exact attempt marker")
+	}
+	if validationErr != nil {
 		if worktreeCleanupCandidateExact(record, expectedRepoID, fence, baseline, created) {
-			_ = markHandoffCleanupOnlyWorktree(stateRoot, record.ID, fence, created, err.Error(), now)
+			_ = markHandoffCleanupOnlyWorktree(stateRoot, record.ID, fence, created, validationErr.Error(), now)
 		} else {
-			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_identity_mismatch", err.Error(), now)
+			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_identity_mismatch", validationErr.Error(), now)
 		}
-		return port.OrcaWorktree{}, err
+		return port.OrcaWorktree{}, validationErr
 	}
 	return created, nil
 }
@@ -413,7 +417,7 @@ func markHandoffCleanupOnlyWorktree(stateRoot, id string, fence handoff.Fence, c
 	})
 }
 
-func persistHandoffWorktreeCreate(stateRoot, id, runtimeID string, created port.OrcaWorktree, fence handoff.Fence, now string) (IssueOpsRecord, error) {
+func persistHandoffWorktreeCreate(stateRoot, id string, created port.OrcaWorktree, fence handoff.Fence, begin handoffWorktreeBeginSnapshot, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
 	err := withIssueOpsLock(stateRoot, id, func() error {
 		current, err := ReadIssueOps(stateRoot, id)
@@ -423,11 +427,14 @@ func persistHandoffWorktreeCreate(stateRoot, id, runtimeID string, created port.
 		if current.ExecutionHandoff == nil || current.ExecutionHandoff.State != handoff.StateCoordinatorPreparing || current.ExecutionHandoff.PendingOperation == nil || current.ExecutionHandoff.PendingOperation.Kind != handoff.OperationWorktreeCreate {
 			return fmt.Errorf("worktree create result lost its pending-operation fence")
 		}
+		if !begin.Authorized || !reflect.DeepEqual(current, begin.ExpectedJournal) {
+			return fmt.Errorf("worktree create authorized journal changed before result persist")
+		}
 		if current.ExecutionHandoff.Attempt != fence.Attempt || current.ExecutionHandoff.OwnershipEpoch != fence.OwnershipEpoch {
 			return fmt.Errorf("stale worktree create result")
 		}
 		current.ExecutionHandoff.Orca = &model.IssueOpsOrcaIdentity{
-			RuntimeID: runtimeID, RepoID: current.ExecutionHandoff.Orca.RepoID, BaseRef: current.ExecutionHandoff.Orca.BaseRef,
+			RuntimeID: current.ExecutionHandoff.Orca.RuntimeID, RepoID: current.ExecutionHandoff.Orca.RepoID, BaseRef: current.ExecutionHandoff.Orca.BaseRef,
 			WorktreeID: created.ID, WorktreeInstanceID: created.InstanceID, WorktreePath: filepath.Clean(created.Path),
 		}
 		current.ExecutionHandoff.ProvisionedAt = now

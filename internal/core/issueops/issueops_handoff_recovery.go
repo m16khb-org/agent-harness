@@ -201,9 +201,11 @@ func terminalInventoryPTYIDs(rows []port.OrcaTerminal) []string {
 }
 
 func taskInventoryIDs(rows []port.OrcaTask) []string {
-	ids := make([]string, len(rows))
+	ids := make([]string, 0, len(rows))
 	for i := range rows {
-		ids[i] = rows[i].ID
+		if rows[i].Status == "ready" {
+			ids = append(ids, rows[i].ID)
+		}
 	}
 	return ids
 }
@@ -439,7 +441,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		if !ok {
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("Orca dispatch recovery dependency is unavailable")
 		}
-		candidate, matchErr := ReconcileIssueOpsHandoffDispatch(ctx, identity.TaskID, identity.WorkerMailboxHandle, reader)
+		candidate, matchErr := ReconcileIssueOpsHandoffDispatch(ctx, identity.TaskID, pending.ExpectedAssigneeHandle, pending.DeliveryMode, reader)
 		if matchErr != nil {
 			return IssueOpsHandoffRecoverResult{}, matchErr
 		}
@@ -463,6 +465,10 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		current.ExecutionHandoff.PendingOperation = nil
 		current.ExecutionHandoff.State = newState
 		current.ExecutionHandoff.Failure = nil
+		if pending.Kind == handoff.OperationDispatch {
+			current.ExecutionHandoff.DeliveryMode = pending.DeliveryMode
+			current.ExecutionHandoff.DispatchedAt = now
+		}
 		current.ExecutionHandoff.UpdatedAt = now
 		current.WorktreePath = desiredWorktreePath
 		current.UpdatedAt = now

@@ -232,7 +232,7 @@ func TestIssueOpsSkillDocumentsOptionalOrcaHandoffContract(t *testing.T) {
 		"bun scripts/smoke-gjc-native-hook.ts",
 		"Do not use a literal `--host gjc` grep",
 		"`status`, `dispatch`, `worker_done`, `merge_ready`, `escalation`, `handoff`, `decision_gate`, and `heartbeat`",
-		"orca orchestration task-list --json",
+		"orca orchestration task-list --ready --json",
 		"orca orchestration dispatch-show --task <id> --json",
 		"orca worktree show --worktree id:<id> --json",
 		"orca task show",

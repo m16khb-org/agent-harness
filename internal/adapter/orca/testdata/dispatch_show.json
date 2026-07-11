@@ -1,0 +1,21 @@
+{
+  "id": "installed-shape-envelope",
+  "ok": true,
+  "result": {
+    "dispatch": {
+      "id": "dispatch-1",
+      "task_id": "task-1",
+      "assignee_handle": "term-live",
+      "status": "dispatched",
+      "failure_count": 0,
+      "last_failure": null,
+      "dispatched_at": "2026-07-11 11:09:39",
+      "completed_at": null,
+      "created_at": "2026-07-11 11:09:39",
+      "last_heartbeat_at": "2026-07-11 11:33:19"
+    }
+  },
+  "_meta": {
+    "runtimeId": "runtime-1"
+  }
+}

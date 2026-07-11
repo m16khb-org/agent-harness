@@ -170,7 +170,7 @@ func TestProbeRequiresLiveCompleteOrchestrationReadinessBeforeMutation(t *testin
 			runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
 			runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
 			addCompleteProbeLeafHelp(runner)
-			runner.responses["orca orchestration task-list --json"] = tt.output
+			runner.responses["orca orchestration task-list --ready --json"] = tt.output
 			result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
 			if err != nil {
 				t.Fatal(err)
@@ -420,13 +420,28 @@ func TestClientCreateTaskDecodesOfficialSnakeCaseShape(t *testing.T) {
 
 func TestClientListTasksUsesInstalledCountContract(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca orchestration task-list --json"] = fixtureOutput(t, "task_list.json")
+	runner.responses["orca orchestration task-list --ready --json"] = fixtureOutput(t, "task_list.json")
 	got, err := NewClient(runner).ListTasks(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 1 || got[0].ID != "task-1" || got[0].Title != "agent-harness marker" || got[0].Status != "ready" {
 		t.Fatalf("task list projection = %#v", got)
+	}
+}
+
+func TestClientShowDispatchDecodesInstalledShapeWithoutInjectedField(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca orchestration dispatch-show --task task-1 --json"] = fixtureOutput(t, "dispatch_show.json")
+	got, err := NewClient(runner).ShowDispatch(context.Background(), "task-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "dispatch-1" || got.TaskID != "task-1" || got.AssigneeHandle != "term-live" || got.Status != "dispatched" {
+		t.Fatalf("installed dispatch-show projection = %#v", got)
+	}
+	if got.Injected {
+		t.Fatalf("dispatch-show must not synthesize absent injected evidence: %#v", got)
 	}
 }
 
@@ -437,7 +452,7 @@ func TestClientRejectsIncompleteExternalLists(t *testing.T) {
 	}{
 		{name: "worktree truncated", command: "orca worktree list --repo path:/repo --limit 512 --json", field: "worktrees", call: func(c *Client) error { _, err := c.ListWorktrees(context.Background(), "/repo"); return err }},
 		{name: "terminal total mismatch", command: "orca terminal list --worktree id:wt-1 --limit 512 --json", field: "terminals", call: func(c *Client) error { _, err := c.ListTerminals(context.Background(), "wt-1"); return err }},
-		{name: "task missing metadata", command: "orca orchestration task-list --json", field: "tasks", call: func(c *Client) error { _, err := c.ListTasks(context.Background()); return err }},
+		{name: "task missing metadata", command: "orca orchestration task-list --ready --json", field: "tasks", call: func(c *Client) error { _, err := c.ListTasks(context.Background()); return err }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := newFakeRunner(t)
@@ -504,7 +519,7 @@ func addCompleteProbeLeafHelp(runner *fakeRunner) {
 		"orca terminal create --help":             "--worktree --command --title --json",
 		"orca terminal list --help":               "--worktree --limit --json",
 		"orca orchestration task-create --help":   "--spec --task-title --display-name --json",
-		"orca orchestration task-list --help":     "--json",
+		"orca orchestration task-list --help":     "--ready --json",
 		"orca orchestration task-update --help":   "--id --status --result --json",
 		"orca orchestration dispatch --help":      "--task --to --from --inject --return-preamble --json",
 		"orca orchestration dispatch-show --help": "--task --json",
@@ -512,6 +527,6 @@ func addCompleteProbeLeafHelp(runner *fakeRunner) {
 	} {
 		runner.responses[command] = CommandOutput{Stdout: []byte(flags)}
 	}
-	runner.responses["orca orchestration task-list --json"] = fixtureOutput(runner.t, "task_list.json")
+	runner.responses["orca orchestration task-list --ready --json"] = fixtureOutput(runner.t, "task_list.json")
 	runner.responses["codex --help"] = CommandOutput{Stdout: []byte("--dangerously-bypass-hook-trust")}
 }

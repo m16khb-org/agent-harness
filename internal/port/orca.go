@@ -136,7 +136,6 @@ type OrcaClient interface {
 	ListTerminals(context.Context, string) ([]OrcaTerminal, error)
 	CreateTerminal(context.Context, OrcaCreateTerminalRequest) (OrcaTerminal, error)
 	RefreshTerminal(context.Context, string, string) (OrcaTerminal, error)
-	SendTerminal(context.Context, string, string) error
 	ListTasks(context.Context) ([]OrcaTask, error)
 	CreateTask(context.Context, OrcaCreateTaskRequest) (OrcaTask, error)
 	UpdateTask(context.Context, string, string, string) error
