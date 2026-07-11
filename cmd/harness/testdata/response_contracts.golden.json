@@ -636,7 +636,7 @@
       "warnings": []
     },
     "docs_index": {
-      "docs_count": 81,
+      "docs_count": 82,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -723,6 +723,7 @@
         "$HARNESS_ROOT/.agent-harness/research/harness-engineering-12factor.md",
         "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
         "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
+        "$HARNESS_ROOT/.agent-harness/research/orca-handoff-turing-evidence-2026-07-11.md",
         "$HARNESS_ROOT/.agent-harness/research/orca-issueops-orchestration-contract.md",
         "$HARNESS_ROOT/.agent-harness/research/orca-live-handoff-spike-2026-07-11.md",
         "$HARNESS_ROOT/.agent-harness/research/orca-skill-baseline-2026-07-11.md",
@@ -5122,7 +5123,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 81,
+        "docs_indexed": 82,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -7061,7 +7062,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 81,
+            "docs_count": 82,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7155,6 +7156,7 @@
               "$HARNESS_ROOT/.agent-harness/research/harness-engineering-12factor.md",
               "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
               "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
+              "$HARNESS_ROOT/.agent-harness/research/orca-handoff-turing-evidence-2026-07-11.md",
               "$HARNESS_ROOT/.agent-harness/research/orca-issueops-orchestration-contract.md",
               "$HARNESS_ROOT/.agent-harness/research/orca-live-handoff-spike-2026-07-11.md",
               "$HARNESS_ROOT/.agent-harness/research/orca-skill-baseline-2026-07-11.md",
@@ -10225,7 +10227,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 81,
+              "docs_indexed": 82,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

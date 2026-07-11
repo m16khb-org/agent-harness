@@ -72,6 +72,7 @@ The unrelated workpool reminder defect remains out of scope. Custom HARNESS_STAT
 19. 2f03461 — fix(hooks): exclude Codex transcript metadata
 20. a7bcde8 — fix(hooks): distinguish quoted finish evidence
 21. 5fc6ad9 — fix(skills): document prompt-only self-verify gate
+22. 785599d — test(hooks): pin supervised handoff verification
 
 ## Live verification mistakes promoted to contracts
 
@@ -79,6 +80,7 @@ The unrelated workpool reminder defect remains out of scope. Custom HARNESS_STAT
 - Focused-package RED: `go test` was first invoked with the plausible but nonexistent `./internal/core/hookinput` path and failed with `stat .../internal/core/hookinput: directory not found` after other packages had begun. The corrected package is `./cmd/harness/hookcli/hookinput`. TESTING, verification operations, self-verify, IssueOps, Turing, and the plan now pin the complete focused command, and a doc contract rejects any executable `go test` line that reintroduces the nonexistent path.
 - GJC probe RED: plugin listing, `skills.enabled=true`, and the expected custom skill directory all passed, but a literal `--host gjc` grep returned exit 1 because the TypeScript shim represents the flag and value as adjacent array elements. `scripts/smoke-gjc-native-hook.ts` now imports the selected shim, executes its HookAPI bridge with a native session/cwd, and verifies forwarded `host=gjc`, session, cwd, tool input, enforcement, and the returned block shape. Both repository and installed paths returned `{"ok":true,"host":"gjc","session_id":"gjc-session-1","cwd":"/repo.worktrees/16-demo","blocked":true,"reason":"owned-by-other-session"}`; the Go adapter regression test executes the same smoke.
 - Orca enum source proof: an invalid-type probe to a nonexistent terminal returned `invalid_argument` with the exact accepted set `status|dispatch|worker_done|merge_ready|escalation|handoff|decision_gate|heartbeat`. IssueOps and Turing now pin that enum, reserve `status` for progress, `heartbeat` for liveness, `escalation` for the single blocker notice, and `worker_done` for exactly-once completion, and reject invented `progress`, `blocked`, or `completed` types.
+- Golden review: tracking this required report raised the repository docs projection from 81 to 82. Regeneration changed only the projected count, the explicit report path in both CLI/MCP docs lists, and the derived self-augment `docs_indexed` value; no command name, MCP tool, schema, or required response field changed.
 
 ## ORCA-01 through ORCA-14
 
