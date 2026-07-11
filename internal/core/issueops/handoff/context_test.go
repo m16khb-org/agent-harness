@@ -13,14 +13,15 @@ import (
 func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 	record := contextRecordForTest(t)
 	options := ContextOptions{
-		CriteriaIDs:          []string{"ORCA-02", "ORCA-01", "ORCA-01"},
-		RequiredDocs:         []string{".agent-harness/TESTING.md", "AGENTS.md"},
-		RequiredSkills:       []string{"turing", "issueops"},
-		WorkerScope:          "Implement issue #16 only.",
-		VerificationCommands: []string{"go test ./... -count=1"},
-		HeartbeatCadence:     "every 5 minutes",
-		StopConditions:       []string{"scope drift", "destructive action"},
-		ResultFormat:         "bounded Turing evidence",
+		CriteriaIDs:               []string{"ORCA-02", "ORCA-01", "ORCA-01"},
+		RequiredDocs:              []string{".agent-harness/TESTING.md", "AGENTS.md"},
+		RequiredSkills:            []string{"turing", "issueops"},
+		WorkerScope:               "Implement issue #16 only.",
+		VerificationCommands:      []string{"go test ./... -count=1"},
+		HeartbeatCadence:          "every 5 minutes",
+		StopConditions:            []string{"scope drift", "destructive action"},
+		ResultFormat:              "bounded Turing evidence",
+		AllowCodexHookTrustBypass: true,
 	}
 	first, err := BuildContext(record, options)
 	if err != nil {
@@ -38,6 +39,9 @@ func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 	}
 	if first.PlanSHA256 == "" || first.SHA256 == "" || first.SourceSHA256 == "" {
 		t.Fatalf("missing context hashes: %#v", first)
+	}
+	if !first.Projection.AllowCodexHookTrustBypass || !CanonicalContextOptions(options).AllowCodexHookTrustBypass || !ContextOptionsFromModel(CanonicalContextOptions(options)).AllowCodexHookTrustBypass {
+		t.Fatal("Codex hook-trust attestation was not preserved in the delivery projection and model")
 	}
 	withDifferentOptions, err := BuildContext(record, ContextOptions{WorkerScope: "different runtime delivery option"})
 	if err != nil {

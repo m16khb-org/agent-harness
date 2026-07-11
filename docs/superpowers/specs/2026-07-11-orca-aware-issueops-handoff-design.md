@@ -142,6 +142,8 @@ type IssueOpsExecutionHandoff struct {
 
 The exact Go field names may follow existing model conventions, but the JSON contract uses stable snake_case fields.
 
+`context_options` may include the additive optional `allow_codex_hook_trust_bypass` attestation. It remains context version 1 so an existing version-1 closed attempt can retry without a migration. The flag is false by default, is scoped to one attempt, and is reset on retry while every other sealed delivery option is preserved.
+
 ### 6.1 States
 
 ```text
@@ -274,18 +276,21 @@ This sequence preserves the current `plan_in_worktree` invariant and keeps all p
 ### 8.2 Coordinator dispatch start
 
 1. Re-read the `coordinator_preparing` handoff and a pre-dispatch readiness projection containing every implementation-entry prerequisite except the not-yet-possible worker claim.
-2. Render the stable context projection now that the plan exists in the linked worktree; persist its version and hash under the same attempt/epoch.
-3. Persist the worktree's current PTY IDs, then start a fresh agent terminal in the existing worktree exactly once.
-4. Reacquire and verify the live terminal handle through `terminal list`.
-5. Create one Orca task whose title/display name contains the cycle ID and attempt marker.
-6. Dispatch/deliver the task and persist the task/dispatch tuple while transitioning to `dispatched`.
-7. Return immediately with worker status and recovery commands; do not run a background wait loop.
+2. For Codex, verify installed bypass-flag support and perform the documented read-only `hooks/list` review for the exact worker cwd. This human attestation is not implemented as an automatic app-server/fingerprint verifier in V1.
+3. Render an unattested preview, then an attested no-confirm preview. Record the latter context hash and require the final confirm request to differ only by `confirm=true`.
+4. Render and persist that stable context version/hash under the same attempt/epoch. Missing Codex attestation fails before any terminal/task/dispatch call.
+5. Persist the worktree's current PTY IDs, then start a fresh agent terminal in the existing worktree exactly once.
+6. Reacquire and verify the live terminal handle through `terminal list`.
+7. Create one Orca task whose title/display name contains the cycle ID and attempt marker.
+8. Dispatch/deliver the task and persist the task/dispatch tuple while transitioning to `dispatched`.
+9. Return immediately with worker status and recovery commands; do not run a background wait loop.
 
 ### 8.3 Host launch and delivery
 
 Preferred path:
 
 - use `terminal create --worktree id:<worktree-id> --command <built-in-host-command>` to start a fresh agent in the already prepared checkout;
+- after the explicit attestation above, use the installed Codex-only `--dangerously-bypass-hook-trust` launch flag; Claude and GJC commands are unchanged;
 - reacquire that terminal with `terminal list`;
 - use `dispatch --inject` after the task exists.
 
@@ -425,7 +430,7 @@ CLI family:
 
 ```text
 issueops worktree prepare --orchestrator auto|orca|inline [--confirm]
-issueops handoff start [--confirm]
+issueops handoff start [--allow-codex-hook-trust-bypass] [--confirm]
 issueops handoff claim
 issueops handoff finish
 issueops handoff accept

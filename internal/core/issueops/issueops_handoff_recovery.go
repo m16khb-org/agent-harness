@@ -144,6 +144,7 @@ func retryIssueOpsHandoff(stateRoot, id string, clock IssueOpsHandoffPrepareCloc
 			cloned.RequiredSkills = append([]string(nil), old.ContextOptions.RequiredSkills...)
 			cloned.VerificationCommands = append([]string(nil), old.ContextOptions.VerificationCommands...)
 			cloned.StopConditions = append([]string(nil), old.ContextOptions.StopConditions...)
+			cloned.AllowCodexHookTrustBypass = false
 			contextOptions = &cloned
 		}
 		record.ExecutionHandoff = &model.IssueOpsExecutionHandoff{

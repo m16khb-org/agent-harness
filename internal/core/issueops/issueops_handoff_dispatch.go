@@ -22,16 +22,18 @@ type IssueOpsHandoffStartRequest struct {
 }
 
 type IssueOpsHandoffStartResult struct {
-	OK            bool                  `json:"ok"`
-	ID            string                `json:"id"`
-	Preview       bool                  `json:"preview,omitempty"`
-	State         string                `json:"state"`
-	Disposition   string                `json:"disposition,omitempty"`
-	Attempt       int                   `json:"attempt"`
-	ContextSHA256 string                `json:"context_sha256,omitempty"`
-	PlanSHA256    string                `json:"plan_sha256,omitempty"`
-	RecoveryCode  string                `json:"recovery_code,omitempty"`
-	Orca          *IssueOpsOrcaIdentity `json:"orca,omitempty"`
+	OK                           bool                  `json:"ok"`
+	ID                           string                `json:"id"`
+	Preview                      bool                  `json:"preview,omitempty"`
+	State                        string                `json:"state"`
+	Disposition                  string                `json:"disposition,omitempty"`
+	Attempt                      int                   `json:"attempt"`
+	ContextSHA256                string                `json:"context_sha256,omitempty"`
+	PlanSHA256                   string                `json:"plan_sha256,omitempty"`
+	RecoveryCode                 string                `json:"recovery_code,omitempty"`
+	CodexHookTrustBypassRequired bool                  `json:"codex_hook_trust_bypass_required"`
+	CodexHookTrustBypassAttested bool                  `json:"codex_hook_trust_bypass_attested"`
+	Orca                         *IssueOpsOrcaIdentity `json:"orca,omitempty"`
 }
 
 type IssueOpsHandoffStartClock struct {
@@ -103,7 +105,11 @@ func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if !req.Confirm {
 		result := projectHandoffStart(record, true, packet.PlanSHA256)
 		result.ContextSHA256 = packet.SHA256
+		result.CodexHookTrustBypassAttested = contextOptions.AllowCodexHookTrustBypass
 		return result, nil
+	}
+	if codexHookTrustBypassRequired(record) && !contextOptions.AllowCodexHookTrustBypass {
+		return IssueOpsHandoffStartResult{}, fmt.Errorf("confirmed supervised Codex start requires --allow-codex-hook-trust-bypass after the documented hooks/list attestation")
 	}
 	if client == nil {
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("Orca dispatch dependency is unavailable")
@@ -168,8 +174,11 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 		return record, "", err
 	}
 	created, err := client.CreateTerminal(ctx, port.OrcaCreateTerminalRequest{
-		WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, Agent: record.ExecutionHandoff.Agent,
-		Title: issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
+		WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
+		Agent:      record.ExecutionHandoff.Agent,
+		Title:      issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
+		AllowCodexHookTrustBypass: record.ExecutionHandoff.ContextOptions != nil &&
+			record.ExecutionHandoff.ContextOptions.AllowCodexHookTrustBypass,
 	})
 	if err != nil {
 		if externalMutationNotInvoked(err) {
@@ -344,6 +353,15 @@ func resolveHandoffContextOptions(record IssueOpsRecord, supplied handoff.Contex
 	if handoff.ContextOptionsEmpty(supplied) {
 		return handoff.ContextOptionsFromModel(persisted), nil
 	}
+	if record.ExecutionHandoff.ContextSHA256 == "" && !persisted.AllowCodexHookTrustBypass && supplied.AllowCodexHookTrustBypass {
+		expected := handoff.ContextOptionsFromModel(persisted)
+		expected.AllowCodexHookTrustBypass = true
+		withoutAttestation := supplied
+		withoutAttestation.AllowCodexHookTrustBypass = false
+		if handoff.ContextOptionsEmpty(withoutAttestation) || reflect.DeepEqual(handoff.CanonicalContextOptions(supplied), handoff.CanonicalContextOptions(expected)) {
+			return expected, nil
+		}
+	}
 	if !reflect.DeepEqual(handoff.CanonicalContextOptions(supplied), handoff.CanonicalContextOptions(handoff.ContextOptionsFromModel(persisted))) {
 		return handoff.ContextOptions{}, fmt.Errorf("supplied handoff context options do not match the sealed delivery contract")
 	}
@@ -432,6 +450,8 @@ func projectHandoffStart(record IssueOpsRecord, preview bool, planSHA string) Is
 	result.Disposition = record.ExecutionHandoff.ClosedDisposition
 	result.Attempt = record.ExecutionHandoff.Attempt
 	result.ContextSHA256 = record.ExecutionHandoff.ContextSHA256
+	result.CodexHookTrustBypassRequired = codexHookTrustBypassRequired(record)
+	result.CodexHookTrustBypassAttested = record.ExecutionHandoff.ContextOptions != nil && record.ExecutionHandoff.ContextOptions.AllowCodexHookTrustBypass
 	result.Orca = record.ExecutionHandoff.Orca
 	if record.ExecutionHandoff.State == handoff.StateRecoveryRequired {
 		result.RecoveryCode = "explicit_reconcile_required"
@@ -440,6 +460,10 @@ func projectHandoffStart(record IssueOpsRecord, preview bool, planSHA string) Is
 		}
 	}
 	return result
+}
+
+func codexHookTrustBypassRequired(record IssueOpsRecord) bool {
+	return record.ExecutionHandoff != nil && record.ExecutionHandoff.Driver == "orca" && record.ExecutionHandoff.Agent == "codex"
 }
 
 func ReconcileIssueOpsHandoffTerminal(baseline []string, worktreeID, workerRoot string, rows []port.OrcaTerminal) (port.OrcaTerminal, error) {

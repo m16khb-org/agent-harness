@@ -183,6 +183,8 @@ go test ./internal/core/issueops ./cmd/harness/issueopscli/worktreecmd -run 'Tes
 
 - Add a pre-dispatch readiness projection containing all implement-entry gates except the future worker claim.
 - `StartIssueOpsHandoff` renders/persists context version/hash, then executes terminal-create, task-create, and dispatch one at a time.
+- For Codex only, probe installed support for `--dangerously-bypass-hook-trust` and require an explicit per-attempt context attestation before confirmed dispatch. The skill owns the read-only `hooks/list` review; do not embed Codex app-server/fingerprint logic in core.
+- Expose required/attested state in preview. After review, a second attested no-confirm preview supplies the reviewed context hash; the final request adds only confirm and must render the same hash. Keep ContextVersion 1 and reset only the attestation on retry.
 - Before each call, persist `pending_operation` plus the relevant bounded ID baseline. After each success, CAS-persist its domain identity and clear the pending operation before starting the next one.
 - Terminal recovery accepts exactly one new PTY relative to the persisted baseline. Task recovery accepts exactly one new task carrying the attempt/epoch marker. Dispatch recovery uses only the persisted task ID and `dispatch-show`.
 - Preferred delivery is a recognized built-in host terminal plus `dispatch --inject --return-preamble`. Compatibility delivery uses a verified built-in terminal and `terminal send`; no arbitrary shell command.
@@ -345,7 +347,7 @@ go test ./internal/adapter/gjc ./internal/adapter -run 'Test.*GJC|TestNativeInst
 
 **Interfaces:**
 
-- CLI: `issueops handoff start|claim|finish|accept|recover`; extend existing heartbeat and resume flags rather than duplicating them.
+- CLI: `issueops handoff start|claim|finish|accept|recover`; start includes the explicit Codex-only `--allow-codex-hook-trust-bypass` attestation. Extend existing heartbeat and resume flags rather than duplicating them.
 - Every external mutation command is preview/dry-run unless `--confirm` is present where the design requires confirmation.
 - MCP: one `issueops_handoff` tool with `action: start|claim|finish|accept|recover`; handlers invoke the same core DTOs as CLI. Do not advertise five duplicate tools.
 - JSON includes requested/resolved mode, state, disposition, attempt, context hash, redacted fallback/recovery code, and stable Orca domain IDs. CLI text derives from those DTOs.

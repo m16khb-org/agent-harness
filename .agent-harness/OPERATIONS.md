@@ -83,6 +83,8 @@ Plan edits originate only from the exact source coordinator root; do not relay c
 
 Operational release evidence includes fake-runner recovery matrices, installed Codex/Claude/GJC ownership-block smokes, and one disposable live Orca cycle with per-resource cleanup receipts. Native installation and `self-verify` do not require Orca availability.
 
+For supervised Codex dispatch, `handoff start` first previews the unattested context. The coordinator then reviews public `hooks/list` output for the exact worker cwd using the IssueOps/Turing recipe, runs a second no-confirm preview with `--allow-codex-hook-trust-bypass`, records its context hash, and adds only `--confirm` to the identical request. Missing attestation stops before terminal/task/dispatch. Claude, GJC, inline mode, and ordinary native sessions do not receive the Codex bypass flag; automatic trust lifecycle management remains issue #17.
+
 ## Quick Smoke
 
 ```bash

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core/issueops/handoff"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
@@ -222,7 +223,7 @@ func TestHandoffRetryPinsCleanPartialCommitAsNewAttemptBase(t *testing.T) {
 		t.Fatalf("retry attempt base = %q, want partial HEAD %q", retried.ExecutionHandoff.AttemptBaseHead, partialHead)
 	}
 	client := handoffDispatchFake(retried)
-	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,6 +233,53 @@ func TestHandoffRetryPinsCleanPartialCommitAsNewAttemptBase(t *testing.T) {
 	}
 	if _, err := ClaimIssueOpsHandoff(stateRoot, handoffClaimRequest(dispatched)); err != nil {
 		t.Fatalf("new worker claim at the clean retry checkpoint failed: %v", err)
+	}
+}
+
+func TestHandoffRetryReattestsLegacyCodexBypassWithoutChangingSealedOptions(t *testing.T) {
+	stateRoot, record := gitBackedDispatchedHandoff(t)
+	record.ExecutionHandoff.State = handoff.StateClosed
+	record.ExecutionHandoff.ClosedDisposition = handoff.DispositionWorkerFailed
+	record.ExecutionHandoff.WorkerSession = &IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-1", AgentID: "codex-worker"}
+	record.ExecutionHandoff.Result = validFailedHandoffResultForTest(record)
+	record.ExecutionHandoff.ContextOptions = &model.IssueOpsExecutionHandoffContextOptions{
+		WorkerScope: "preserve this exact worker scope", RequiredDocs: []string{"AGENTS.md"}, AllowCodexHookTrustBypass: false,
+	}
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "retry", Confirm: true,
+	}, nil, IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-2", nil }}); err != nil {
+		t.Fatal(err)
+	}
+	retried, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := retried.ExecutionHandoff.ContextOptions
+	if options == nil || options.AllowCodexHookTrustBypass || options.WorkerScope != "preserve this exact worker scope" || len(options.RequiredDocs) != 1 || options.RequiredDocs[0] != "AGENTS.md" {
+		t.Fatalf("retry must preserve delivery options but clear per-attempt attestation: %#v", options)
+	}
+	client := handoffDispatchFake(retried)
+	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
+		ID: retried.ID, Confirm: true, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
+	}, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !started.CodexHookTrustBypassAttested || len(client.terminalRequests) != 1 || !client.terminalRequests[0].AllowCodexHookTrustBypass {
+		t.Fatalf("legacy retry attestation did not authorize exactly one Codex launch: result=%#v terminal=%#v", started, client.terminalRequests)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.ContextVersion != 1 || persisted.ExecutionHandoff.ContextVersion != 1 {
+		t.Fatalf("optional attestation must remain context version 1 for legacy retry compatibility: constant=%d persisted=%d", handoff.ContextVersion, persisted.ExecutionHandoff.ContextVersion)
+	}
+	if persisted.ExecutionHandoff.ContextOptions == nil || !persisted.ExecutionHandoff.ContextOptions.AllowCodexHookTrustBypass || persisted.ExecutionHandoff.ContextOptions.WorkerScope != "preserve this exact worker scope" {
+		t.Fatalf("reattestation changed the sealed delivery contract: %#v", persisted.ExecutionHandoff.ContextOptions)
 	}
 }
 

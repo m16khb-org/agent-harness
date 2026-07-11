@@ -11,7 +11,7 @@ import (
 )
 
 const issueOpsHandoffUsage = `Usage:
-  agent-harness issueops handoff start --id ID [--confirm] [--json]
+  agent-harness issueops handoff start --id ID [--allow-codex-hook-trust-bypass] [--confirm] [--json]
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA [--json]
@@ -42,6 +42,7 @@ func runIssueOpsHandoffStart(args []string) error {
 	fs := flag.NewFlagSet("issueops handoff start", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
 	confirm := fs.Bool("confirm", false, "confirm terminal, task, and dispatch mutations")
+	allowCodexHookTrustBypass := fs.Bool("allow-codex-hook-trust-bypass", false, "attest that the documented Codex hooks/list trust review passed")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	var criteria, docs, skills, verification, stops repeatedFlag
 	fs.Var(&criteria, "criteria-id", "criterion id included in the worker packet")
@@ -60,6 +61,7 @@ func runIssueOpsHandoffStart(args []string) error {
 		Context: handoff.ContextOptions{
 			CriteriaIDs: criteria, RequiredDocs: docs, RequiredSkills: skills, WorkerScope: *scope,
 			VerificationCommands: verification, HeartbeatCadence: *heartbeat, StopConditions: stops, ResultFormat: *resultFormat,
+			AllowCodexHookTrustBypass: *allowCodexHookTrustBypass,
 		},
 	}, orca.New(), core.IssueOpsHandoffStartClock{})
 	return printIssueOpsHandoffValue(result, *jsonOut, err)

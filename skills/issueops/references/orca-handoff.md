@@ -55,6 +55,18 @@ git -C <worker-root> rev-parse --verify HEAD
 
 For `resolved_mode: orca`, the coordinator reviews readiness and creates the bounded context packet. Repeat flags are allowed where shown:
 
+Codex supervised startup uses an explicit per-attempt attestation; Claude and GJC do not. First run `codex --help` as a standalone observation and require `--dangerously-bypass-hook-trust`. Then open the supported read-only catalog with `codex app-server --stdio`, send these JSONL messages one at a time, and keep stdin open until response id 2 arrives:
+
+```text
+{"method":"initialize","id":1,"params":{"clientInfo":{"name":"agent_harness","title":"agent-harness","version":"1"}}}
+{"method":"initialized","params":{}}
+{"method":"hooks/list","id":2,"params":{"cwds":["<exact-worker-cwd>"]}}
+```
+
+Do not call `config/batchWrite` or trust hooks from this recipe. Attest only when the response has exactly the requested cwd, warnings and errors are both empty, required SessionStart and PreToolUse command hooks are enabled, and every untrusted or modified entry is the exact generated agent-harness hook command for the current installed binary. Any unrelated untrusted/modified entry, missing ownership hook, cwd mismatch, or malformed response fails closed. Record the reviewed keys, `currentHash` values, source paths, and binary target in evidence without copying secrets.
+
+Preview `handoff start` without confirmation first. For Codex it must report `codex_hook_trust_bypass_required=true` and `codex_hook_trust_bypass_attested=false`. After the review above, run a second no-confirm preview with every delivery option plus `--allow-codex-hook-trust-bypass`; require `codex_hook_trust_bypass_attested=true` and record the reviewed context hash. The final mutation must be an otherwise identical confirm command: add only `--confirm`, and require the returned context hash to equal the reviewed context hash. Confirm must never introduce an option absent from that final preview. The adapter then launches only that Codex worker with `codex --dangerously-bypass-hook-trust`. Omit the flag for Claude, GJC, inline mode, and any unreviewed Codex attempt. This optional additive field remains ContextVersion 1 for legacy retry compatibility. Retry preserves the sealed delivery options but clears the per-attempt attestation, so the coordinator must perform and attest the review again. General automatic trust probing remains issue #17.
+
 ```bash
 agent-harness issueops handoff start \
   --id "$ISSUEOPS_ID" \
@@ -80,6 +92,7 @@ agent-harness issueops handoff start \
   --heartbeat-cadence "every 5 minutes and at task boundaries" \
   --stop-condition "do not push, open or merge a PR, or accept the handoff" \
   --result-format "final head, changed files, Turing report, verification, and cleanup receipts" \
+  --allow-codex-hook-trust-bypass \
   --confirm \
   --json
 ```
@@ -95,6 +108,12 @@ The source implementation checkout is read-only; the source checkout is observat
 Use the installed `agent-harness` command in a fresh worker unless the bounded context proves `./bin/agent-harness` exists in that exact worker checkout. For workers, self-verify requires binary/source contract parity: when a base-checkout evidence worker is running against an installed feature-HEAD binary, record any response-contract mismatch without changing the base checkout and leave final self-verify to the coordinator on matching feature HEAD. The current opt-in LLM evaluation path only renders a read-only prompt. No Z.AI request is sent, and `gate` cannot pass without an ingested verdict. If the coordinator environment intentionally exports `HARNESS_SELF_VERIFY_LLM_EVAL=gate`, run the required deterministic completion sequence with explicit `--llm-eval=false`, record the override, and restart from its first gate after an interrupted or prompt-only run. Native hook lookup uses the default IssueOps state root in V1; safe custom `HARNESS_STATE_DIR` propagation remains issue #17.
 
 The focused hook-input package is `./cmd/harness/hookcli/hookinput`; `./internal/core/hookinput` does not exist. After installing native integrations, run `bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"` and require its JSON host/session/cwd/block assertions. Do not use a literal `--host gjc` grep because the TypeScript shim constructs argv as separate array elements and text layout is not execution evidence.
+
+A targeted Go test is GREEN only when the intended test names actually ran. `[no tests to run]` is not GREEN; update stale regex names and rerun with `-v`, requiring the named `=== RUN` lines and PASS:
+
+```bash
+go test -v ./internal/core/lifecycle -run '^(TestHandoffGuardBlocksExplicitHistoricalMailboxInjection|TestHandoffGuardEnforcesInstalledOrchestrationMessageTypes)$' -count=1
+```
 
 Codex 0.144.1 initializes hooks during session setup, while its `refresh_runtime_config` path can rebuild and publish them later. Replacing `~/.codex/hooks.json` through native install did not refresh the observed live worker, so an active Codex session may retain its previously loaded hook command until runtime config refresh or a new session. Installed-file readback alone is insufficient; the live current-session probe is authoritative. Keep the installer `--host codex` flag for fresh or refreshed sessions; for a retained older PreToolUse command, hookcli defaults the native host to `codex` only when both the payload host and `--host` are empty. This compatibility path still requires an exact nonempty session, canonical cwd/repo, persisted fence, and in-tree target. It never overwrites an explicit host. After installing a compatible binary, authorize at most one same-worker retry; do not bypass the guard or start a fresh session unless the compatibility repair cannot be made safe.
 
@@ -139,6 +158,8 @@ agent-harness issueops heartbeat \
 If a worker is blocked, send one escalation to the concrete coordinator handle, keep heartbeat at the required cadence, remain mutation-free, and wait for coordinator repair, retry, or cancel. After escalating, the worker must not invoke `orca orchestration ask`, create a duplicate ask or decision gate, or start a separate human-choice workflow.
 
 The current `orca orchestration send --type` enum is exactly `status`, `dispatch`, `worker_done`, `merge_ready`, `escalation`, `handoff`, `decision_gate`, and `heartbeat`. Use `status` for non-terminal progress, `heartbeat` for liveness, one `escalation` for a blocker, and `worker_done` exactly once at completion. Do not invent message types such as `progress`, `blocked`, or `completed`.
+
+PreToolUse blocks every other explicit message type, including malformed duplicate `--type` flags, before supervised-record selection; a valid or omitted type still passes through the existing authority checks. The mailbox repeat-prevention guard blocks any explicit `--inject` on direct `orca orchestration check`, including implicit-default unread, `--unread`, `--all`, reordered, and equals forms; in particular, never use `--unread --inject`. First run the read-only inventory `orca orchestration check --all --json`, then select the exact current task, dispatch, and sequence before acting. A live terminal handle is not historical mailbox identity. For an urgent current-worker correction, use only the existing exact literal-safe source-coordinator terminal guidance bound to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
 
 On completion, submit bounded evidence. A completed result requires the final head, Turing report, at least one verification entry, and at least one cleanup receipt:
 

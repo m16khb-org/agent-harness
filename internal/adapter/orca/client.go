@@ -144,6 +144,13 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		result.Code = "agent_not_found"
 		return result, nil
 	}
+	if agent == "codex" {
+		help, err := c.runText(ctx, "", readTimeout, []string{"codex", "--help"})
+		if err != nil || !containsAllHelpFlags(help, []string{"--dangerously-bypass-hook-trust"}) {
+			result.Code = "codex_hook_trust_bypass_unsupported"
+			return result, nil
+		}
+	}
 	if _, err := c.ListTasks(ctx); err != nil {
 		result.Code = "orchestration_unready"
 		result.Detail = boundedDiagnostic(err.Error())
@@ -235,6 +242,9 @@ func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminal
 	command, ok := hostCommand(req.Agent)
 	if !ok {
 		return port.OrcaTerminal{}, &port.OrcaError{Code: "unsupported_agent", Detail: req.Agent}
+	}
+	if strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && req.AllowCodexHookTrustBypass {
+		command = "codex --dangerously-bypass-hook-trust"
 	}
 	argv := []string{"orca", "terminal", "create", "--worktree", idSelector(req.WorktreeID), "--command", command}
 	if title := strings.TrimSpace(req.Title); title != "" {

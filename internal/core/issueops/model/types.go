@@ -424,14 +424,15 @@ type IssueOpsOrcaCleanupArtifact struct {
 }
 
 type IssueOpsExecutionHandoffContextOptions struct {
-	CriteriaIDs          []string `json:"criteria_ids,omitempty"`
-	RequiredDocs         []string `json:"required_docs,omitempty"`
-	RequiredSkills       []string `json:"required_skills,omitempty"`
-	WorkerScope          string   `json:"worker_scope,omitempty"`
-	VerificationCommands []string `json:"verification_commands,omitempty"`
-	HeartbeatCadence     string   `json:"heartbeat_cadence,omitempty"`
-	StopConditions       []string `json:"stop_conditions,omitempty"`
-	ResultFormat         string   `json:"result_format,omitempty"`
+	CriteriaIDs               []string `json:"criteria_ids,omitempty"`
+	RequiredDocs              []string `json:"required_docs,omitempty"`
+	RequiredSkills            []string `json:"required_skills,omitempty"`
+	WorkerScope               string   `json:"worker_scope,omitempty"`
+	VerificationCommands      []string `json:"verification_commands,omitempty"`
+	HeartbeatCadence          string   `json:"heartbeat_cadence,omitempty"`
+	StopConditions            []string `json:"stop_conditions,omitempty"`
+	ResultFormat              string   `json:"result_format,omitempty"`
+	AllowCodexHookTrustBypass bool     `json:"allow_codex_hook_trust_bypass,omitempty"`
 }
 
 type IssueOpsExecutionHandoff struct {

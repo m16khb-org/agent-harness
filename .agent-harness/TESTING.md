@@ -306,6 +306,10 @@ go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/ada
 
 Native ownership smokes are required for Codex, Claude, and GJC. Feed each installed adapter a distinct native `session_id`, assert coordinator/wrong-session mutation produces that host's real block shape, and verify a matching claimed worker passes. GJC coverage must exercise the HookAPI `(event, ctx)` bridge so `ctx.sessionManager.getSessionId()` and `ctx.cwd` reach the common hook command.
 
+Supervised Codex startup tests require four separate assertions: unattested confirmed start makes zero terminal/task/dispatch calls; installed probe help contains `--dangerously-bypass-hook-trust`; an attested no-confirm preview and otherwise identical confirm render the same context hash; and fake-runner terminal argv uses the bypass flag only for attested Codex, never Claude or GJC. Legacy closed version-1 retry preserves all delivery options while resetting/re-attesting only the optional bypass bool.
+
+The lifecycle hook has two minimal direct-command prefilters. A unique invalid or duplicate explicit `orca orchestration send --type` blocks with the installed eight-value set, while no type and valid no-record values fall through without new authority. Any explicit `--inject` or equals form on direct `orca orchestration check` blocks before record selection; exact `check --all --json` and unrelated observations fall through. The skill recipe then selects exact current task/dispatch/sequence and never treats a live handle as historical mailbox identity.
+
 After native installation, exercise the installed GJC TypeScript shim through that behavior boundary:
 
 ```bash

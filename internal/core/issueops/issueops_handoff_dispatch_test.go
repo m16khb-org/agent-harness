@@ -29,6 +29,76 @@ func TestHandoffStartRequiresPreDispatchReadiness(t *testing.T) {
 	}
 }
 
+func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID}, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Preview || !preview.CodexHookTrustBypassRequired || preview.CodexHookTrustBypassAttested {
+		t.Fatalf("Codex preview must expose the unattested startup requirement: %#v", preview)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("preview invoked Orca: %v", client.trace)
+	}
+
+	_, err = StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "--allow-codex-hook-trust-bypass") {
+		t.Fatalf("confirmed unattested Codex start error = %v", err)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("missing attestation must fail before terminal/task/dispatch calls: %v", client.trace)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if persisted.ExecutionHandoff.ContextSHA256 != "" || persisted.ExecutionHandoff.PendingOperation != nil {
+		t.Fatalf("missing attestation persisted dispatch state: %#v", persisted.ExecutionHandoff)
+	}
+
+	attestedRequest := IssueOpsHandoffStartRequest{ID: record.ID, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true}}
+	reviewed, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedRequest, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reviewed.Preview || !reviewed.CodexHookTrustBypassRequired || !reviewed.CodexHookTrustBypassAttested || len(reviewed.ContextSHA256) != 64 {
+		t.Fatalf("attested no-confirm preview must expose the reviewed context hash: %#v", reviewed)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("attested preview invoked Orca: %v", client.trace)
+	}
+	attestedRequest.Confirm = true
+	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedRequest, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if started.ContextSHA256 != reviewed.ContextSHA256 || !started.CodexHookTrustBypassRequired || !started.CodexHookTrustBypassAttested || len(client.terminalRequests) != 1 || !client.terminalRequests[0].AllowCodexHookTrustBypass {
+		t.Fatalf("attested Codex start did not preserve launch authority: result=%#v requests=%#v", started, client.terminalRequests)
+	}
+}
+
+func TestHandoffStartLeavesClaudeAndGJCStartupUnchanged(t *testing.T) {
+	for _, agent := range []string{"claude", "gjc"} {
+		t.Run(agent, func(t *testing.T) {
+			stateRoot, record := handoffDispatchRecord(t)
+			record.ExecutionHandoff.Agent = agent
+			if _, err := WriteIssueOps(stateRoot, record); err != nil {
+				t.Fatal(err)
+			}
+			client := handoffDispatchFake(record)
+			started, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if started.CodexHookTrustBypassRequired || started.CodexHookTrustBypassAttested || len(client.terminalRequests) != 1 || client.terminalRequests[0].AllowCodexHookTrustBypass {
+				t.Fatalf("%s startup changed under the Codex-only attestation: result=%#v terminal=%#v", agent, started, client.terminalRequests)
+			}
+		})
+	}
+}
+
 func TestHandoffStartAdvancedStateRepeatsNeverMutateExternalSystems(t *testing.T) {
 	for _, state := range []string{handoff.StateClaimed, handoff.StateSubmitted, handoff.StateClosed} {
 		t.Run(state, func(t *testing.T) {
@@ -72,7 +142,7 @@ func TestHandoffStartPersistsStableContextBeforeMutation(t *testing.T) {
 			t.Fatalf("context and pending operation must precede mutation: %#v", persisted.ExecutionHandoff)
 		}
 	}
-	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,9 +161,7 @@ func TestHandoffStartLateCreateErrorCannotReopenCancelledAttempt(t *testing.T) {
 		}, nil, handoffPrepareTestClock())
 	}
 	client.terminalErr = errors.New("terminal create returned after coordinator cancel")
-	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
-		ID: record.ID, Confirm: true,
-	}, client, handoffStartTestClock()); err == nil {
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil {
 		t.Fatal("late terminal create error must still be reported")
 	}
 	if cancelErr == nil {
@@ -111,7 +179,7 @@ func TestHandoffStartLateCreateErrorCannotReopenCancelledAttempt(t *testing.T) {
 func TestHandoffStartCreatesTerminalTaskDispatchExactlyOnce(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
-	req := IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}
+	req := attestedCodexStart(record.ID)
 	first, err := StartIssueOpsHandoff(context.Background(), stateRoot, req, client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +209,7 @@ func TestHandoffStartResolvesOptionalPTYFromExactTerminalDelta(t *testing.T) {
 	}
 	client.dispatch.AssigneeHandle = "term-live"
 
-	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +229,7 @@ func TestHandoffStartRejectsCreatePTYThatDiffersFromDelta(t *testing.T) {
 		{Handle: "term-live", PTYID: "pty-listed", WorktreeID: "wt-1", WorktreePath: record.WorktreePath, Connected: true, Writable: true},
 	}
 
-	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
 	if err == nil || !strings.Contains(err.Error(), "created terminal PTY") {
 		t.Fatalf("StartIssueOpsHandoff() error = %v, want create/list PTY mismatch", err)
 	}
@@ -188,7 +256,7 @@ func TestHandoffStartCrashMatrixNeverRepeatsCreate(t *testing.T) {
 			stateRoot, record := handoffDispatchRecord(t)
 			client := handoffDispatchFake(record)
 			tt.fail(client)
-			req := IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}
+			req := attestedCodexStart(record.ID)
 			if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, req, client, handoffStartTestClock()); err == nil {
 				t.Fatal("expected ambiguous mutation error")
 			}
@@ -223,7 +291,7 @@ func TestHandoffStartDefinitivePreInvocationFailuresClearOnlyTheirJournal(t *tes
 			stateRoot, record := handoffDispatchRecord(t)
 			client := handoffDispatchFake(record)
 			tt.fail(client)
-			req := IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}
+			req := attestedCodexStart(record.ID)
 			if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, req, client, handoffStartTestClock()); err == nil || !strings.Contains(err.Error(), "safe to retry") {
 				t.Fatalf("definitive failure must return retry guidance: %v", err)
 			}
@@ -250,7 +318,7 @@ func TestHandoffStartRejectsFullTerminalAndTaskBaselinesBeforeCreate(t *testing.
 		for i := 0; i < handoff.MaxBaselineIDs; i++ {
 			client.terminals = append(client.terminals, port.OrcaTerminal{PTYID: fmt.Sprintf("pty-%03d", i)})
 		}
-		if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock()); err == nil || !strings.Contains(err.Error(), "headroom") {
+		if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil || !strings.Contains(err.Error(), "headroom") {
 			t.Fatalf("terminal headroom failure = %v", err)
 		}
 		if client.terminalCreates != 0 {
@@ -269,7 +337,7 @@ func TestHandoffStartRejectsFullTerminalAndTaskBaselinesBeforeCreate(t *testing.
 		for i := 0; i < handoff.MaxBaselineIDs; i++ {
 			client.tasks = append(client.tasks, port.OrcaTask{ID: fmt.Sprintf("task-%03d", i)})
 		}
-		if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock()); err == nil || !strings.Contains(err.Error(), "headroom") {
+		if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock()); err == nil || !strings.Contains(err.Error(), "headroom") {
 			t.Fatalf("task headroom failure = %v", err)
 		}
 		if client.taskCreates != 0 {
@@ -296,7 +364,7 @@ func TestHandoffStartContinuesAfterTerminalCreateReconcileWithoutDuplicate(t *te
 	client.refreshedTerminal = port.OrcaTerminal{Handle: "term-live", PTYID: "pty-1", WorktreeID: "wt-1", WorktreePath: record.WorktreePath, Connected: true, Writable: true}
 	client.dispatch.AssigneeHandle = "term-live"
 
-	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +395,7 @@ func TestHandoffStartContinuesAfterTaskCreateReconcileWithoutDuplicate(t *testin
 		t.Fatal(err)
 	}
 
-	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, Confirm: true}, client, handoffStartTestClock())
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(record.ID), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,6 +485,12 @@ func handoffDispatchFake(records ...IssueOpsRecord) *dispatchOrcaFake {
 	}
 	fake.terminalsAfterCreate = []port.OrcaTerminal{fake.terminal}
 	return fake
+}
+
+func attestedCodexStart(id string) IssueOpsHandoffStartRequest {
+	return IssueOpsHandoffStartRequest{
+		ID: id, Confirm: true, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
+	}
 }
 
 func mustHandoffTaskTitle(t *testing.T, record IssueOpsRecord) string {

@@ -247,4 +247,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	if !schemaRequires(byName["issueops_handoff"].InputSchema, "action") || !schemaRequires(byName["issueops_handoff"].InputSchema, "id") {
 		t.Fatalf("issueops_handoff must be one action-discriminated tool: %#v", byName["issueops_handoff"].InputSchema)
 	}
+	if !schemaHasProperty(byName["issueops_handoff"].InputSchema, "allow_codex_hook_trust_bypass") {
+		t.Fatalf("issueops_handoff must expose the explicit Codex hook-trust bypass attestation: %#v", byName["issueops_handoff"].InputSchema)
+	}
 }

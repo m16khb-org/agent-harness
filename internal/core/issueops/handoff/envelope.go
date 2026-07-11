@@ -173,7 +173,7 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 func contextOptionsEqual(left, right model.IssueOpsExecutionHandoffContextOptions) bool {
 	return stringListEqual(left.CriteriaIDs, right.CriteriaIDs) && stringListEqual(left.RequiredDocs, right.RequiredDocs) && stringListEqual(left.RequiredSkills, right.RequiredSkills) &&
 		left.WorkerScope == right.WorkerScope && stringListEqual(left.VerificationCommands, right.VerificationCommands) && left.HeartbeatCadence == right.HeartbeatCadence &&
-		stringListEqual(left.StopConditions, right.StopConditions) && left.ResultFormat == right.ResultFormat
+		stringListEqual(left.StopConditions, right.StopConditions) && left.ResultFormat == right.ResultFormat && left.AllowCodexHookTrustBypass == right.AllowCodexHookTrustBypass
 }
 
 func stringListEqual(left, right []string) bool {

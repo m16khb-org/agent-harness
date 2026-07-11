@@ -121,7 +121,7 @@ func commandSpec(path string) (map[string]bool, map[string]bool, map[string]bool
 		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition"} {
 			r[name] = true
 		}
-		return values, b("--confirm", "--json"), r, true
+		return values, b("--allow-codex-hook-trust-bypass", "--confirm", "--json"), r, true
 	case "handoff recover":
 		return v("--id", "--action", "--reason"), b("--confirm", "--force", "--json"), r, true
 	case "handoff accept":
@@ -1017,6 +1017,57 @@ func terminalControlWriteRequest(req HookToolUseLifecycleRequest) bool {
 		}
 	}
 	return false
+}
+
+func invalidOrcaOrchestrationMessageTypeReason(req HookToolUseLifecycleRequest) string {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return ""
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) < 3 || tokens[0] != "orca" || tokens[1] != "orchestration" || tokens[2] != "send" {
+		return ""
+	}
+	value, count := "", 0
+	for i := 3; i < len(tokens); i++ {
+		switch {
+		case tokens[i] == "--type":
+			count++
+			if i+1 < len(tokens) && !strings.HasPrefix(tokens[i+1], "--") {
+				value = tokens[i+1]
+				i++
+			}
+		case strings.HasPrefix(tokens[i], "--type="):
+			count++
+			value = strings.TrimPrefix(tokens[i], "--type=")
+		}
+	}
+	if count == 0 {
+		return ""
+	}
+	if count == 1 {
+		for _, allowed := range []string{"status", "dispatch", "worker_done", "merge_ready", "escalation", "handoff", "decision_gate", "heartbeat"} {
+			if value == allowed {
+				return ""
+			}
+		}
+	}
+	return "Orca orchestration message --type must be one of status, dispatch, worker_done, merge_ready, escalation, handoff, decision_gate, or heartbeat"
+}
+
+func unsafeOrcaMailboxInjectReason(req HookToolUseLifecycleRequest) string {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return ""
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) < 3 || tokens[0] != "orca" || tokens[1] != "orchestration" || tokens[2] != "check" {
+		return ""
+	}
+	for _, token := range tokens[3:] {
+		if token == "--inject" || strings.HasPrefix(token, "--inject=") {
+			return "bulk mailbox injection is blocked; inspect first with orca orchestration check --all --json and select the exact current task, dispatch, and sequence"
+		}
+	}
+	return ""
 }
 
 func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {

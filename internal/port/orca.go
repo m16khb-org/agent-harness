@@ -85,9 +85,10 @@ type OrcaTerminal struct {
 }
 
 type OrcaCreateTerminalRequest struct {
-	WorktreeID string `json:"worktree_id"`
-	Agent      string `json:"agent"`
-	Title      string `json:"title,omitempty"`
+	WorktreeID                string `json:"worktree_id"`
+	Agent                     string `json:"agent"`
+	Title                     string `json:"title,omitempty"`
+	AllowCodexHookTrustBypass bool   `json:"allow_codex_hook_trust_bypass,omitempty"`
 }
 
 type OrcaTask struct {

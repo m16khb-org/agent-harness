@@ -47,6 +47,12 @@ func TestRunIssueOpsHandoffRequiresConfirmationForMutation(t *testing.T) {
 	}
 }
 
+func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T) {
+	if !strings.Contains(issueOpsHandoffUsage, "--allow-codex-hook-trust-bypass") {
+		t.Fatal("handoff start usage must expose the explicit Codex hook-trust bypass attestation")
+	}
+}
+
 func TestOrcaHandoffResumeBindRefusedReadOnly(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := handoffCLIRecord(t, handoff.StateDispatched)

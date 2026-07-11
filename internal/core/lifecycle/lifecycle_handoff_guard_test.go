@@ -743,6 +743,79 @@ func TestHandoffGuardAllowsOnlyLiteralSafeClaimedWorkerSteeringFromSourceCoordin
 	})
 }
 
+func TestHandoffGuardEnforcesInstalledOrchestrationMessageTypes(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	accepted := []string{"status", "dispatch", "worker_done", "merge_ready", "escalation", "handoff", "decision_gate", "heartbeat"}
+	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	req.Tool, req.Command = "exec_command", "orca orchestration send --to term-coordinator --type progress --subject update --json"
+	got := BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "block" {
+		t.Fatalf("active-handoff invalid explicit message type must block before record authority: %#v", got)
+	}
+	for _, want := range accepted {
+		if !strings.Contains(got.Reason, want) {
+			t.Fatalf("block reason must list accepted type %q: %s", want, got.Reason)
+		}
+	}
+
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	for _, messageType := range accepted {
+		request := HookToolUseLifecycleRequest{
+			Repo: t.TempDir(), CWD: t.TempDir(), Tool: "exec_command",
+			Command: "orca orchestration send --to term-coordinator --type=" + messageType + " --subject update --json",
+		}
+		if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+			t.Fatalf("valid no-record type %q must fall through unchanged: %#v", messageType, got)
+		}
+	}
+	request := HookToolUseLifecycleRequest{Repo: t.TempDir(), CWD: t.TempDir(), Tool: "exec_command", Command: "orca orchestration send --to term-coordinator --subject update --json"}
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("no-type send must fall through unchanged: %#v", got)
+	}
+	request.Command = "orca orchestration send --to term-coordinator --type status --type progress --subject update --json"
+	got = BuildLifecyclePreToolUseDecision(request)
+	if got.Decision != "block" {
+		t.Fatalf("duplicate explicit message type must block without a supervised record: %#v", got)
+	}
+	for _, want := range accepted {
+		if !strings.Contains(got.Reason, want) {
+			t.Fatalf("duplicate-type reason must list accepted type %q: %s", want, got.Reason)
+		}
+	}
+}
+
+func TestHandoffGuardBlocksExplicitHistoricalMailboxInjection(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	base := HookToolUseLifecycleRequest{Repo: t.TempDir(), CWD: t.TempDir(), Tool: "exec_command"}
+	for name, command := range map[string]string{
+		"implicit unread default": "orca orchestration check --inject --json",
+		"unread then inject":      "orca orchestration check --unread --inject --json",
+		"inject then unread":      "orca orchestration check --inject --unread --json",
+		"all history":             "orca orchestration check --all --inject --json",
+		"equals form":             "orca orchestration check --all --inject=true --json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := base
+			req.Command = command
+			got := BuildLifecyclePreToolUseDecision(req)
+			if got.Decision != "block" || !strings.Contains(strings.ToLower(got.Reason), "mailbox") || !strings.Contains(got.Reason, "orca orchestration check --all --json") {
+				t.Fatalf("explicit mailbox injection %q must block with safe inspection guidance: %#v", command, got)
+			}
+		})
+	}
+	for _, command := range []string{
+		"orca orchestration check --all --json",
+		"orca orchestration check --terminal term-current --all --json",
+		"orca orchestration task-list --json",
+	} {
+		req := base
+		req.Command = command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("unrelated observation %q must fall through unchanged: %#v", command, got)
+		}
+	}
+}
+
 func TestHandoffGuardDeduplicatesSourceDiscoveryBeforeTerminalSteeringAmbiguity(t *testing.T) {
 	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateClaimed)
 	info, err := os.Stat(filepath.Join(repo, ".git"))
@@ -1305,8 +1378,8 @@ func TestHandoffGuardRejectsWrappedDuplicateAndTrailingLifecycleCommands(t *test
 	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
 	base := handoffEditRequest(record, repo, "codex", "coordinator", "")
 	base.Tool = "Bash"
-	valid := "agent-harness issueops handoff start --id " + record.ID + " --confirm --json"
-	for _, command := range []string{valid, "./bin/agent-harness issueops handoff start --id " + record.ID + " --confirm --json"} {
+	valid := "agent-harness issueops handoff start --id " + record.ID + " --allow-codex-hook-trust-bypass --confirm --json"
+	for _, command := range []string{valid, "./bin/agent-harness issueops handoff start --id " + record.ID + " --allow-codex-hook-trust-bypass --confirm --json"} {
 		req := base
 		req.Command = command
 		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {

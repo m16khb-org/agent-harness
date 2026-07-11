@@ -21,6 +21,16 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
+	if reason := unsafeOrcaMailboxInjectReason(req); reason != "" {
+		result.Decision = "block"
+		result.Reason = reason
+		return result
+	}
+	if reason := invalidOrcaOrchestrationMessageTypeReason(req); reason != "" {
+		result.Decision = "block"
+		result.Reason = reason
+		return result
+	}
 	handoffHandled, handoffReason := handoffOwnershipBlockReason(req)
 	if handoffReason != "" {
 		result.Decision = "block"

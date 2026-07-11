@@ -19,49 +19,51 @@ const (
 )
 
 type ContextOptions struct {
-	CriteriaIDs          []string
-	RequiredDocs         []string
-	RequiredSkills       []string
-	WorkerScope          string
-	VerificationCommands []string
-	HeartbeatCadence     string
-	StopConditions       []string
-	ResultFormat         string
+	CriteriaIDs               []string
+	RequiredDocs              []string
+	RequiredSkills            []string
+	WorkerScope               string
+	VerificationCommands      []string
+	HeartbeatCadence          string
+	StopConditions            []string
+	ResultFormat              string
+	AllowCodexHookTrustBypass bool
 }
 
 type ContextProjection struct {
-	Version               int      `json:"version"`
-	CycleID               string   `json:"cycle_id"`
-	IssueURL              string   `json:"issue_url,omitempty"`
-	Branch                string   `json:"branch"`
-	BaseBranch            string   `json:"base_branch,omitempty"`
-	BaseSHA               string   `json:"base_sha,omitempty"`
-	WorktreePath          string   `json:"worktree_path"`
-	PlanPath              string   `json:"plan_path"`
-	PlanSHA256            string   `json:"plan_sha256"`
-	Attempt               int      `json:"attempt"`
-	OwnershipEpoch        string   `json:"ownership_epoch"`
-	AttemptBaseHead       string   `json:"attempt_base_head"`
-	Problem               string   `json:"problem,omitempty"`
-	Intent                string   `json:"intent,omitempty"`
-	SuccessCriteria       []string `json:"success_criteria,omitempty"`
-	Constraints           []string `json:"constraints,omitempty"`
-	NonGoals              []string `json:"non_goals,omitempty"`
-	Design                string   `json:"design,omitempty"`
-	Alternatives          []string `json:"alternatives,omitempty"`
-	Risks                 []string `json:"risks,omitempty"`
-	BackwardCompatibility []string `json:"backward_compatibility,omitempty"`
-	SideEffects           []string `json:"side_effects,omitempty"`
-	RollbackPlan          string   `json:"rollback_plan,omitempty"`
-	BrooksFindings        []string `json:"brooks_findings,omitempty"`
-	CriteriaIDs           []string `json:"criteria_ids,omitempty"`
-	RequiredDocs          []string `json:"required_docs,omitempty"`
-	RequiredSkills        []string `json:"required_skills,omitempty"`
-	WorkerScope           string   `json:"worker_scope,omitempty"`
-	VerificationCommands  []string `json:"verification_commands,omitempty"`
-	HeartbeatCadence      string   `json:"heartbeat_cadence,omitempty"`
-	StopConditions        []string `json:"stop_conditions,omitempty"`
-	ResultFormat          string   `json:"result_format,omitempty"`
+	Version                   int      `json:"version"`
+	CycleID                   string   `json:"cycle_id"`
+	IssueURL                  string   `json:"issue_url,omitempty"`
+	Branch                    string   `json:"branch"`
+	BaseBranch                string   `json:"base_branch,omitempty"`
+	BaseSHA                   string   `json:"base_sha,omitempty"`
+	WorktreePath              string   `json:"worktree_path"`
+	PlanPath                  string   `json:"plan_path"`
+	PlanSHA256                string   `json:"plan_sha256"`
+	Attempt                   int      `json:"attempt"`
+	OwnershipEpoch            string   `json:"ownership_epoch"`
+	AttemptBaseHead           string   `json:"attempt_base_head"`
+	Problem                   string   `json:"problem,omitempty"`
+	Intent                    string   `json:"intent,omitempty"`
+	SuccessCriteria           []string `json:"success_criteria,omitempty"`
+	Constraints               []string `json:"constraints,omitempty"`
+	NonGoals                  []string `json:"non_goals,omitempty"`
+	Design                    string   `json:"design,omitempty"`
+	Alternatives              []string `json:"alternatives,omitempty"`
+	Risks                     []string `json:"risks,omitempty"`
+	BackwardCompatibility     []string `json:"backward_compatibility,omitempty"`
+	SideEffects               []string `json:"side_effects,omitempty"`
+	RollbackPlan              string   `json:"rollback_plan,omitempty"`
+	BrooksFindings            []string `json:"brooks_findings,omitempty"`
+	CriteriaIDs               []string `json:"criteria_ids,omitempty"`
+	RequiredDocs              []string `json:"required_docs,omitempty"`
+	RequiredSkills            []string `json:"required_skills,omitempty"`
+	WorkerScope               string   `json:"worker_scope,omitempty"`
+	VerificationCommands      []string `json:"verification_commands,omitempty"`
+	HeartbeatCadence          string   `json:"heartbeat_cadence,omitempty"`
+	StopConditions            []string `json:"stop_conditions,omitempty"`
+	ResultFormat              string   `json:"result_format,omitempty"`
+	AllowCodexHookTrustBypass bool     `json:"allow_codex_hook_trust_bypass,omitempty"`
 }
 
 type ContextPacket struct {
@@ -84,24 +86,25 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 	}
 	planHash := sha256.Sum256(plan)
 	projection := ContextProjection{
-		Version:              ContextVersion,
-		CycleID:              strings.TrimSpace(record.ID),
-		IssueURL:             strings.TrimSpace(record.IssueURL),
-		Branch:               strings.TrimSpace(record.Branch),
-		WorktreePath:         strings.TrimSpace(record.WorktreePath),
-		PlanPath:             planPath,
-		PlanSHA256:           hex.EncodeToString(planHash[:]),
-		Attempt:              record.ExecutionHandoff.Attempt,
-		OwnershipEpoch:       strings.TrimSpace(record.ExecutionHandoff.OwnershipEpoch),
-		AttemptBaseHead:      strings.TrimSpace(record.ExecutionHandoff.AttemptBaseHead),
-		CriteriaIDs:          cleanList(options.CriteriaIDs),
-		RequiredDocs:         cleanList(options.RequiredDocs),
-		RequiredSkills:       cleanList(options.RequiredSkills),
-		WorkerScope:          redact(options.WorkerScope),
-		VerificationCommands: cleanList(options.VerificationCommands),
-		HeartbeatCadence:     redact(options.HeartbeatCadence),
-		StopConditions:       cleanList(options.StopConditions),
-		ResultFormat:         redact(options.ResultFormat),
+		Version:                   ContextVersion,
+		CycleID:                   strings.TrimSpace(record.ID),
+		IssueURL:                  strings.TrimSpace(record.IssueURL),
+		Branch:                    strings.TrimSpace(record.Branch),
+		WorktreePath:              strings.TrimSpace(record.WorktreePath),
+		PlanPath:                  planPath,
+		PlanSHA256:                hex.EncodeToString(planHash[:]),
+		Attempt:                   record.ExecutionHandoff.Attempt,
+		OwnershipEpoch:            strings.TrimSpace(record.ExecutionHandoff.OwnershipEpoch),
+		AttemptBaseHead:           strings.TrimSpace(record.ExecutionHandoff.AttemptBaseHead),
+		CriteriaIDs:               cleanList(options.CriteriaIDs),
+		RequiredDocs:              cleanList(options.RequiredDocs),
+		RequiredSkills:            cleanList(options.RequiredSkills),
+		WorkerScope:               redact(options.WorkerScope),
+		VerificationCommands:      cleanList(options.VerificationCommands),
+		HeartbeatCadence:          redact(options.HeartbeatCadence),
+		StopConditions:            cleanList(options.StopConditions),
+		ResultFormat:              redact(options.ResultFormat),
+		AllowCodexHookTrustBypass: options.AllowCodexHookTrustBypass,
 	}
 	if record.BranchPrepare != nil {
 		projection.BaseBranch = strings.TrimSpace(record.BranchPrepare.BaseBranch)
@@ -168,6 +171,7 @@ func CanonicalContextOptions(options ContextOptions) model.IssueOpsExecutionHand
 		CriteriaIDs: cleanList(options.CriteriaIDs), RequiredDocs: cleanList(options.RequiredDocs), RequiredSkills: cleanList(options.RequiredSkills),
 		WorkerScope: redact(options.WorkerScope), VerificationCommands: cleanList(options.VerificationCommands), HeartbeatCadence: redact(options.HeartbeatCadence),
 		StopConditions: cleanList(options.StopConditions), ResultFormat: redact(options.ResultFormat),
+		AllowCodexHookTrustBypass: options.AllowCodexHookTrustBypass,
 	}
 }
 
@@ -176,6 +180,7 @@ func ContextOptionsFromModel(options model.IssueOpsExecutionHandoffContextOption
 		CriteriaIDs: append([]string(nil), options.CriteriaIDs...), RequiredDocs: append([]string(nil), options.RequiredDocs...), RequiredSkills: append([]string(nil), options.RequiredSkills...),
 		WorkerScope: options.WorkerScope, VerificationCommands: append([]string(nil), options.VerificationCommands...), HeartbeatCadence: options.HeartbeatCadence,
 		StopConditions: append([]string(nil), options.StopConditions...), ResultFormat: options.ResultFormat,
+		AllowCodexHookTrustBypass: options.AllowCodexHookTrustBypass,
 	}
 }
 
@@ -183,7 +188,7 @@ func ContextOptionsEmpty(options ContextOptions) bool {
 	canonical := CanonicalContextOptions(options)
 	return len(canonical.CriteriaIDs) == 0 && len(canonical.RequiredDocs) == 0 && len(canonical.RequiredSkills) == 0 &&
 		canonical.WorkerScope == "" && len(canonical.VerificationCommands) == 0 && canonical.HeartbeatCadence == "" &&
-		len(canonical.StopConditions) == 0 && canonical.ResultFormat == ""
+		len(canonical.StopConditions) == 0 && canonical.ResultFormat == "" && !canonical.AllowCodexHookTrustBypass
 }
 
 func contextSourceProjection(projection ContextProjection) ContextProjection {
@@ -195,6 +200,7 @@ func contextSourceProjection(projection ContextProjection) ContextProjection {
 	projection.HeartbeatCadence = ""
 	projection.StopConditions = nil
 	projection.ResultFormat = ""
+	projection.AllowCodexHookTrustBypass = false
 	return projection
 }
 

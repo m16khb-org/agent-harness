@@ -37,6 +37,51 @@ func TestProbeDoesNotUseVersionOrMutate(t *testing.T) {
 	}
 }
 
+func TestProbeRequiresInstalledCodexHookTrustBypassFlag(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.lookPaths["orca"] = "/usr/local/bin/orca"
+	runner.lookPaths["codex"] = "/usr/local/bin/codex"
+	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+	runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+	addCompleteProbeLeafHelp(runner)
+	runner.responses["codex --help"] = CommandOutput{Stdout: []byte("Usage: codex")}
+	result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Ready || result.Code != "codex_hook_trust_bypass_unsupported" {
+		t.Fatalf("missing installed bypass flag probe = %#v", result)
+	}
+	for _, call := range runner.calls {
+		joined := strings.Join(call, " ")
+		if strings.Contains(joined, " create ") && !strings.HasSuffix(joined, " --help") {
+			t.Fatalf("Codex capability probe mutated state: %s", joined)
+		}
+	}
+}
+
+func TestProbeDoesNotApplyCodexBypassRequirementToClaudeOrGJC(t *testing.T) {
+	for _, agent := range []string{"claude", "gjc"} {
+		t.Run(agent, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.lookPaths["orca"] = "/usr/local/bin/orca"
+			runner.lookPaths[agent] = "/usr/local/bin/" + agent
+			runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+			runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+			addCompleteProbeLeafHelp(runner)
+			result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: agent})
+			if err != nil || !result.Ready {
+				t.Fatalf("%s probe changed: result=%#v err=%v", agent, result, err)
+			}
+			for _, call := range runner.calls {
+				if reflect.DeepEqual(call, []string{"codex", "--help"}) {
+					t.Fatalf("%s probe invoked the Codex-only capability check", agent)
+				}
+			}
+		})
+	}
+}
+
 func TestProbeRequiresCanonicalWorktreeBaseBeforeMutation(t *testing.T) {
 	for _, tt := range []struct {
 		name, base, code string
@@ -316,6 +361,35 @@ func TestClientCreateTerminalAcceptsRuntimeIdentityWithoutPTY(t *testing.T) {
 	}
 }
 
+func TestClientCreateTerminalUsesCodexBypassOnlyWhenAttested(t *testing.T) {
+	tests := []struct {
+		name, agent, command string
+		attested             bool
+	}{
+		{name: "attested Codex", agent: "codex", command: "codex --dangerously-bypass-hook-trust", attested: true},
+		{name: "ordinary Codex", agent: "codex", command: "codex"},
+		{name: "Claude unchanged", agent: "claude", command: "claude", attested: true},
+		{name: "GJC unchanged", agent: "gjc", command: "gjc", attested: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			key := "orca terminal create --worktree id:worktree-1 --command " + tt.command + " --json"
+			runner.responses[key] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"terminal":{"handle":"term-create","worktreeId":"worktree-1"}}}`)}
+			_, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{
+				WorktreeID: "worktree-1", Agent: tt.agent, AllowCodexHookTrustBypass: tt.attested,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []string{"orca", "terminal", "create", "--worktree", "id:worktree-1", "--command", tt.command, "--json"}
+			if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0], want) {
+				t.Fatalf("terminal launch = %#v, want %#v", runner.calls, want)
+			}
+		})
+	}
+}
+
 func TestClientCreateTerminalRejectsIncompleteRuntimeIdentity(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal create --worktree id:worktree-1 --command codex --json"] = CommandOutput{Stdout: []byte(`{
@@ -439,4 +513,5 @@ func addCompleteProbeLeafHelp(runner *fakeRunner) {
 		runner.responses[command] = CommandOutput{Stdout: []byte(flags)}
 	}
 	runner.responses["orca orchestration task-list --json"] = fixtureOutput(runner.t, "task_list.json")
+	runner.responses["codex --help"] = CommandOutput{Stdout: []byte("--dangerously-bypass-hook-trust")}
 }

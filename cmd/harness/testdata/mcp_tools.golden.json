@@ -2179,6 +2179,10 @@
         "agent_id": {
           "type": "string"
         },
+        "allow_codex_hook_trust_bypass": {
+          "description": "Explicit attestation that the documented Codex hooks/list trust review passed before supervised startup.",
+          "type": "boolean"
+        },
         "attempt": {
           "type": "integer"
         },
