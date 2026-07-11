@@ -33,6 +33,22 @@ agent-harness issueops worktree prepare \
 
 If `resolved_mode` is `inline`, continue the existing in-session bind, heartbeat, TDD, verification, and PR-readiness flow. Do not synthesize an `execution_handoff` record for inline fallback.
 
+## Current Cycle Plan Checkpoint
+
+Before dispatch, the supervised plan must state the current issue and cycle intent and its acceptance criteria directly. It must include the exact branch, canonical worker path, attempt base SHA, exact bounded worker scope (report-only only when that is the current cycle's declared scope), exact claim/finish/accept commands, verification commands, and coordinator cleanup order. Never link an unrelated legacy plan merely to satisfy the readiness gate.
+
+Create the plan under the linked worktree's approved plan convention while the handoff is still `coordinator_preparing`, the context is unsealed, and no external-operation journal is pending. Preserve it as one coordinator plan commit containing only that Markdown file:
+
+```bash
+git -C <worker-root> add -- <absolute-current-cycle-plan-path>
+git -C <worker-root> commit --only -m 'docs: record current cycle handoff plan' -- <absolute-current-cycle-plan-path>
+agent-harness issueops link-plan --id <cycle-id> --plan-path <absolute-current-cycle-plan-path> --json
+git -C <worker-root> status --short
+git -C <worker-root> rev-parse --verify HEAD
+```
+
+`link-plan` requires the exact branch to be clean, requires the new commit to descend from the previous checkpoint, and requires its committed diff to contain only the current-cycle plan. It then moves the persisted attempt base head to that coordinator plan commit. The worker therefore starts from the plan commit, and its submitted `changed_files` contains only worker-owned result files rather than the coordinator plan.
+
 ## Coordinator Dispatch
 
 For `resolved_mode: orca`, the coordinator reviews readiness and creates the bounded context packet. Repeat flags are allowed where shown:

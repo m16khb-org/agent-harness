@@ -168,6 +168,9 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	if coordinatorPlanMutationAllowed(req, record) {
 		return true, ""
 	}
+	if coordinatorPlanGitCommandAllowed(req, record) {
+		return true, ""
+	}
 	if record.Phase != issueopsmodel.IssueOpsPhaseImplement && h.State == handoff.StateClaimed {
 		return true, "supervised IssueOps handoff cannot authorize implementation mutation before the durable implement phase"
 	}
@@ -271,6 +274,24 @@ func coordinatorPlanMutationAllowed(req HookToolUseLifecycleRequest, record Issu
 	if workerRoot == "" || len(targets) == 0 {
 		return false
 	}
+	for _, target := range targets {
+		if !coordinatorPlanPathAllowed(record, target) {
+			return false
+		}
+	}
+	return true
+}
+
+func coordinatorPlanPathAllowed(record IssueOpsRecord, target string) bool {
+	h := record.ExecutionHandoff
+	if h == nil {
+		return false
+	}
+	workerRoot := cleanAbsPath(h.WorkerRoot)
+	target = cleanAbsPath(target)
+	if workerRoot == "" || !pathWithin(target, workerRoot) || !resolvedPathWithin(target, workerRoot) || strings.ToLower(filepath.Ext(target)) != ".md" {
+		return false
+	}
 	linkedPlan := strings.TrimSpace(record.PlanPath)
 	if linkedPlan != "" {
 		if !filepath.IsAbs(linkedPlan) {
@@ -280,34 +301,46 @@ func coordinatorPlanMutationAllowed(req HookToolUseLifecycleRequest, record Issu
 		if !pathWithin(linkedPlan, workerRoot) || !resolvedPathWithin(linkedPlan, workerRoot) {
 			return false
 		}
-		for _, target := range targets {
-			if cleanAbsPath(target) != linkedPlan {
-				return false
-			}
+		if target == linkedPlan {
+			return true
 		}
-		return true
+		if strings.Contains(filepath.Base(linkedPlan), record.ID) || !strings.Contains(filepath.Base(target), record.ID) {
+			return false
+		}
 	}
 	allowedRoots := []string{
 		filepath.Join(workerRoot, ".agent-harness", "plans"),
 		filepath.Join(workerRoot, "docs", "superpowers", "plans"),
 		filepath.Join(workerRoot, "plans"),
 	}
-	for _, target := range targets {
-		if !pathWithin(target, workerRoot) || !resolvedPathWithin(target, workerRoot) || strings.ToLower(filepath.Ext(target)) != ".md" {
-			return false
-		}
-		allowed := false
-		for _, root := range allowedRoots {
-			if pathWithin(target, root) && resolvedPathWithin(target, root) {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			return false
+	for _, root := range allowedRoots {
+		if pathWithin(target, root) && resolvedPathWithin(target, root) {
+			return true
 		}
 	}
-	return true
+	return false
+}
+
+func coordinatorPlanGitCommandAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateCoordinatorPreparing || strings.TrimSpace(h.ContextSHA256) != "" || h.PendingOperation != nil || !searchrouting.IsShellTool(req.Tool) {
+		return false
+	}
+	if cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) < 6 || tokens[0] != "git" || tokens[1] != "-C" || cleanAbsPath(tokens[2]) != cleanAbsPath(h.WorkerRoot) {
+		return false
+	}
+	switch tokens[3] {
+	case "add":
+		return len(tokens) == 6 && tokens[4] == "--" && coordinatorPlanPathAllowed(record, tokens[5])
+	case "commit":
+		return len(tokens) == 9 && tokens[4] == "--only" && tokens[5] == "-m" && strings.TrimSpace(tokens[6]) != "" && len(tokens[6]) <= 256 && tokens[7] == "--" && coordinatorPlanPathAllowed(record, tokens[8])
+	default:
+		return false
+	}
 }
 
 func resolvedPathWithin(path, root string) bool {

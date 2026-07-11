@@ -228,6 +228,54 @@ func TestHandoffGuardAllowsOnlyCoordinatorPlanEditsBeforeDispatch(t *testing.T) 
 	}
 }
 
+func TestHandoffGuardAllowsCycleNamedPlanCorrectionAndExactCoordinatorCommit(t *testing.T) {
+	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	legacyPlan := filepath.Join(worktree, "docs", "superpowers", "plans", "legacy.md")
+	if err := os.MkdirAll(filepath.Dir(legacyPlan), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacyPlan, []byte("# unrelated legacy plan\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	record.PlanPath = legacyPlan
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	cyclePlan := filepath.Join(worktree, ".agent-harness", "plans", record.ID+"-live-e2e.md")
+	if err := os.MkdirAll(filepath.Dir(cyclePlan), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	edit := handoffEditRequest(record, repo, "codex", "coordinator", cyclePlan)
+	if got := BuildLifecyclePreToolUseDecision(edit); got.Decision != "allow" {
+		t.Fatalf("cycle-named corrective plan edit should pass before context seal: %#v", got)
+	}
+
+	for _, command := range []string{
+		"git -C " + worktree + " add -- " + cyclePlan,
+		"git -C " + worktree + " commit --only -m 'docs: record current cycle plan' -- " + cyclePlan,
+	} {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool = "Bash"
+		req.Command = command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact coordinator plan command %q should pass: %#v", command, got)
+		}
+	}
+
+	for _, command := range []string{
+		"git -C " + worktree + " add -- " + legacyPlan + " internal/x.go",
+		"git -C " + worktree + " commit -m 'missing only path fence'",
+		"git -C " + repo + " add -- " + cyclePlan,
+	} {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool = "Bash"
+		req.Command = command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("unsafe coordinator plan command %q must block: %#v", command, got)
+		}
+	}
+}
+
 func TestHandoffGuardBlocksCoordinatorPlanSymlinkEscape(t *testing.T) {
 	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
 	outside := t.TempDir()

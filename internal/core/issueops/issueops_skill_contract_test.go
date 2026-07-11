@@ -389,6 +389,38 @@ func TestIssueOpsPublishRecipeAvoidsShellCommandSubstitution(t *testing.T) {
 	}
 }
 
+func TestIssueOpsSupervisedPlanMustDescribeCurrentCycle(t *testing.T) {
+	body := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	for _, want := range []string{
+		"current issue and cycle intent",
+		"acceptance criteria",
+		"exact bounded worker scope",
+		"Never link an unrelated legacy plan",
+		"coordinator plan commit",
+		"attempt base head",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("IssueOps supervised plan contract missing %q", want)
+		}
+	}
+}
+
+func TestTuringSupervisedPlanMustDescribeCurrentCycle(t *testing.T) {
+	body := readTuringSkillForTest(t)
+	for _, want := range []string{
+		"current issue and cycle intent",
+		"acceptance criteria",
+		"exact bounded worker scope",
+		"Never link an unrelated legacy plan",
+		"coordinator plan commit",
+		"attempt base head",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("Turing supervised plan contract missing %q", want)
+		}
+	}
+}
+
 func TestSelfVerifySkillKeepsGenericLLMEvalContractWithoutOrcaRecipes(t *testing.T) {
 	body := readSelfVerifySkillForTest(t)
 	for _, want := range []string{"read-only evaluator prompt", "No Z.AI request is sent", "explicit `--llm-eval=false`"} {

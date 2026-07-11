@@ -1,12 +1,99 @@
 package issueops
 
 import (
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/preflight"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestLinkPlanAfterCoordinatorCommitAdvancesAttemptBase(t *testing.T) {
+	stateRoot, record := coordinatorPlanningRecordForTest(t)
+	planPath := filepath.Join(record.WorktreePath, ".agent-harness", "plans", record.ID+"-live-e2e.md")
+	writeIssueOpsFile(t, record.WorktreePath, filepath.ToSlash(strings.TrimPrefix(planPath, record.WorktreePath+string(filepath.Separator))), "# current cycle plan\n")
+	commitIssueOpsPlanForTest(t, record.WorktreePath, planPath)
+	wantHead := strings.TrimSpace(preflight.GitOut(record.WorktreePath, "rev-parse", "HEAD"))
+
+	got, err := LinkIssueOpsPlan(stateRoot, record.ID, planPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PlanPath != planPath {
+		t.Fatalf("PlanPath=%q, want %q", got.PlanPath, planPath)
+	}
+	if got.ExecutionHandoff.AttemptBaseHead != wantHead {
+		t.Fatalf("AttemptBaseHead=%q, want coordinator plan commit %q", got.ExecutionHandoff.AttemptBaseHead, wantHead)
+	}
+}
+
+func TestLinkPlanRequiresCleanPlanOnlyCoordinatorCommit(t *testing.T) {
+	t.Run("dirty plan", func(t *testing.T) {
+		stateRoot, record := coordinatorPlanningRecordForTest(t)
+		planPath := filepath.Join(record.WorktreePath, ".agent-harness", "plans", record.ID+"-live-e2e.md")
+		writeIssueOpsFile(t, record.WorktreePath, filepath.ToSlash(strings.TrimPrefix(planPath, record.WorktreePath+string(filepath.Separator))), "# dirty plan\n")
+		if _, err := LinkIssueOpsPlan(stateRoot, record.ID, planPath); err == nil || !strings.Contains(err.Error(), "clean coordinator plan commit") {
+			t.Fatalf("dirty coordinator plan must fail before state mutation, got %v", err)
+		}
+	})
+
+	t.Run("extra committed file", func(t *testing.T) {
+		stateRoot, record := coordinatorPlanningRecordForTest(t)
+		planPath := filepath.Join(record.WorktreePath, ".agent-harness", "plans", record.ID+"-live-e2e.md")
+		writeIssueOpsFile(t, record.WorktreePath, filepath.ToSlash(strings.TrimPrefix(planPath, record.WorktreePath+string(filepath.Separator))), "# current cycle plan\n")
+		writeIssueOpsFile(t, record.WorktreePath, "internal/unrelated.go", "package internal\n")
+		if code, _, stderr := preflight.GitCmd(record.WorktreePath, "add", planPath, "internal/unrelated.go"); code != 0 {
+			t.Fatalf("git add: %s", stderr)
+		}
+		if code, _, stderr := preflight.GitCmd(record.WorktreePath, "commit", "-q", "-m", "test: mixed coordinator commit"); code != 0 {
+			t.Fatalf("git commit: %s", stderr)
+		}
+		if _, err := LinkIssueOpsPlan(stateRoot, record.ID, planPath); err == nil || !strings.Contains(err.Error(), "only the current cycle plan") {
+			t.Fatalf("mixed coordinator commit must fail before state mutation, got %v", err)
+		}
+	})
+}
+
+func coordinatorPlanningRecordForTest(t *testing.T) (string, IssueOpsRecord) {
+	t.Helper()
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	makeGitWorktreeMarker(t, worktree)
+	record.WorktreePath = worktree
+	record.PlanPath = filepath.Join(worktree, "README.md")
+	record.DesignReview = issueOpsDesignReviewForTest()
+	record.ExecutionHandoff = &IssueOpsExecutionHandoff{
+		ProtocolVersion: handoff.ProtocolVersion,
+		State:           handoff.StateCoordinatorPreparing,
+		Attempt:         1,
+		OwnershipEpoch:  "epoch-plan",
+		AttemptBaseHead: record.BranchPrepare.BaseSHA,
+		Driver:          "orca",
+		Agent:           "codex",
+		CoordinatorRoot: record.Repo,
+		WorkerRoot:      worktree,
+		Orca: &IssueOpsOrcaIdentity{
+			RuntimeID: "runtime-plan", RepoID: "repo-plan", BaseRef: "refs/remotes/origin/" + record.Branch,
+			WorktreeID: "worktree-plan", WorktreeInstanceID: "instance-plan", WorktreePath: worktree,
+		},
+	}
+	got, err := WriteIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return stateRoot, got
+}
+
+func commitIssueOpsPlanForTest(t *testing.T, worktree, planPath string) {
+	t.Helper()
+	if code, _, stderr := preflight.GitCmd(worktree, "add", "--", planPath); code != 0 {
+		t.Fatalf("git add plan: %s", stderr)
+	}
+	if code, _, stderr := preflight.GitCmd(worktree, "commit", "-q", "-m", "docs: record current cycle plan"); code != 0 {
+		t.Fatalf("git commit plan: %s", stderr)
+	}
+}
 
 func TestIssueOpsLinkPlanResolvesRelativePathInsideLinkedWorktree(t *testing.T) {
 	stateRoot := t.TempDir()

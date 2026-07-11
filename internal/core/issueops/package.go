@@ -310,13 +310,7 @@ func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
 }
 
 func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
-		var e error
-		rec, e = linking.LinkPlan(issueOpsLinkingStore(), stateRoot, id, planPath)
-		return e
-	})
-	return rec, err
+	return linkIssueOpsPlanWithCoordinatorCheckpoint(stateRoot, id, planPath)
 }
 
 func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
