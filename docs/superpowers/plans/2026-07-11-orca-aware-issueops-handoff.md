@@ -9,7 +9,7 @@
 
 **Goal:** When the complete read-only Orca probe succeeds, let the coordinator prepare the issue, provider-linked branch, worktree, plan, and bounded context, then transfer one fenced implementation lease to a fresh Orca-hosted agent session. If Orca is absent or unready before mutation, preserve the existing inline IssueOps behavior and JSON contract.
 
-**Architecture:** IssueOps remains the single durable authority. Add one optional handoff record and a small operation journal to the existing schema-v1 record. A concrete `internal/adapter/orca` implements only spike-verified CLI projections. Core state transitions and compare-and-set fencing are host-neutral. External commands never run while the IssueOps span lock is held. Hooks only parse identity, render claim guidance, and block unauthorized mutations. CLI and MCP are thin adapters over the same request/result DTOs.
+**Architecture:** IssueOps remains the single durable authority. Add one optional handoff record and a small operation journal under root schema v2; missing/zero and v1 rows migrate in memory and stamp v2 on write, while older v1 binaries reject v2 before mutation. A concrete `internal/adapter/orca` implements only spike-verified CLI projections. Core state transitions and compare-and-set fencing are host-neutral. External commands never run while the IssueOps span lock is held. Hooks only parse identity, render claim guidance, and block unauthorized mutations. CLI and MCP are thin adapters over the same request/result DTOs.
 
 **Design source:** `docs/superpowers/specs/2026-07-11-orca-aware-issueops-handoff-design.md` wins if this plan omits detail. Any implementation-driven deviation must update both files and receive a new Brooks review before proceeding.
 
@@ -41,7 +41,7 @@
 | ORCA-07 | Coordinator/wrong-session/out-of-tree mutations block; claimed in-tree worker mutations pass. | lifecycle and hook adapter tests |
 | ORCA-08 | Finish, submit, accept, failure, cancel, and retry obey the actor/state/idempotency table. | table-driven transition tests |
 | ORCA-09 | Resume causes no state or external mutation; only explicit recover persists one unique identity. | before/after record hash + fake trace |
-| ORCA-10 | Missing/zero schema legacy records remain readable and inline; future schemas still fail safe. | schema fixtures |
+| ORCA-10 | Missing/zero/v1 records remain readable and upgrade to v2 without losing handoff fields; v1 binaries reject v2 without modifying bytes; future schemas retain bounded ownership identity and fail safe. | schema fixtures and legacy-decoder probe |
 | ORCA-11 | Context is deterministic, <=64 KiB, redacted, and changes hash when stable source inputs change. | context golden/hash fixtures |
 | ORCA-12 | Codex, Claude, and GJC forward native session identity and each produces a real ownership block result. | installed-host smoke receipts |
 | ORCA-13 | The installed Orca completed path launches a fresh agent, joins a submitted result, and removes disposable worktree/branch/terminal resources. | live E2E transcript + cleanup receipt |

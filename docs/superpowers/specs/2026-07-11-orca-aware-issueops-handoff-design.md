@@ -105,7 +105,7 @@ For resolved inline mode:
 
 ## 6. Durable model
 
-Add one optional nested field to `IssueOpsRecord`. The additive field keeps schema version 1 backward-compatible; unsupported future root schemas remain fail-safe as they are today.
+Add one optional nested field to `IssueOpsRecord` and bump the root IssueOps schema to version 2. Missing/zero and v1 records remain readable and upgrade on the next write, including locally created v1 handoff rows. A v1 binary sees v2 as a future schema and must reject before write, preventing it from silently stripping the unknown ownership lease; versions greater than 2 remain fail-safe.
 
 ```go
 type IssueOpsExecutionHandoff struct {

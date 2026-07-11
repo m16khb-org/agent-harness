@@ -501,10 +501,12 @@ type IssueOpsExecutionHandoff struct {
 	UpdatedAt           string                                    `json:"updated_at,omitempty"`
 }
 
-const IssueOpsCurrentSchemaVersion = 1
+const IssueOpsCurrentSchemaVersion = 2
 
 type IssueOpsRecord struct {
 	OK                      bool                                `json:"ok"`
+	Invalid                 bool                                `json:"-"`
+	InvalidReason           string                              `json:"-"`
 	SchemaVersion           int                                 `json:"schema_version"`
 	ID                      string                              `json:"id"`
 	Repo                    string                              `json:"repo"`

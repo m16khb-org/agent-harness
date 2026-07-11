@@ -509,3 +509,11 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 - `orca orchestration send --type` prefilter는 direct `orca orchestration send`의 explicit type만 검사한다. 8개 installed value 밖의 unique type 또는 duplicate type은 record selection 전에 차단하고 enum을 안내한다. type 생략/valid value는 새 권한을 부여하지 않고 기존 policy로 그대로 넘긴다.
 - `orca orchestration check`는 기본이 unread이고 `--all --inject`는 더 많은 history를 주입할 수 있다. repeat-prevention PreToolUse guard는 direct check의 any explicit `--inject`(equals/reordered 포함)를 record lookup 전에 차단한다. 먼저 `orca orchestration check --all --json`으로 read-only inventory를 보고 exact current task id, dispatch id, sequence를 고른다. live terminal handle을 historical mailbox identity로 간주하지 않으며 urgent worker correction은 uniquely persisted handle의 literal-safe source-coordinator guidance만 사용한다. 자동 handle/mailbox 동기화는 issue #17이다.
 - 별도의 legacy-JSON workpool reminder defect는 이 handoff 변경과 무관한 follow-up이다. SQLite workpool 상태를 읽지 못하는 기존 reminder를 이 branch에서 함께 고치거나 handoff recovery와 결합하지 않는다.
+
+## IssueOps ownership 필드를 root schema bump 없이 추가하지 말 것
+
+`execution_handoff`처럼 mutation authority를 소유하는 필드를 기존 root schema에 additive `omitempty`로만 추가하면, 그 필드를 모르는 이전 binary가 unknown JSON을 버린 뒤 같은 schema로 rewrite할 수 있다. IssueOps root는 v2이며 missing/zero/v1 row를 보존해 upgrade하지만, v1 binary는 v2를 future schema로 byte-equivalent reject해야 한다.
+
+- 새 ownership/security 필드는 root schema compatibility를 명시적으로 검토하고 legacy decoder-writer rejection fixture를 둔다.
+- future schema hook scan은 row 전체를 해석하지 않고 bounded repo/worker identity와 invalid marker만 유지해 mutation을 fail-closed한다.
+- CLI, daemon, Codex, Claude, GJC installed binary가 같은 schema를 읽는지 migration smoke로 확인하기 전에는 mixed-version handoff를 시작하지 않는다.

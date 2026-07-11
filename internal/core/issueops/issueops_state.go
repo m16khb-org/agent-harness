@@ -46,6 +46,26 @@ func readIssueOpsUnchecked(stateRoot, id string) (IssueOpsRecord, error) {
 	if !ok {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops record %s: %w", id, fs.ErrNotExist)
 	}
+	var header struct {
+		SchemaVersion int    `json:"schema_version"`
+		ID            string `json:"id"`
+	}
+	if err := json.Unmarshal(b, &header); err != nil {
+		return IssueOpsRecord{OK: false, ID: id}, err
+	}
+	if header.ID != id {
+		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", header.ID)
+	}
+	if schemaErr := issueOpsSchemaVersionError(header.SchemaVersion); schemaErr != nil {
+		record, projectionErr := decodeInvalidIssueOpsProjection(b)
+		if projectionErr != nil {
+			return IssueOpsRecord{OK: false, ID: id}, projectionErr
+		}
+		record.OK = false
+		record.Invalid = true
+		record.InvalidReason = boundedIssueOpsInvalidReason(schemaErr.Error())
+		return record, schemaErr
+	}
 	var record IssueOpsRecord
 	if err := json.Unmarshal(b, &record); err != nil {
 		return IssueOpsRecord{OK: false, ID: id}, err
@@ -54,7 +74,10 @@ func readIssueOpsUnchecked(stateRoot, id string) (IssueOpsRecord, error) {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", record.ID)
 	}
 	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
-		return IssueOpsRecord{OK: false, ID: id}, err
+		record.OK = false
+		record.Invalid = true
+		record.InvalidReason = boundedIssueOpsInvalidReason(err.Error())
+		return record, err
 	}
 	record.OK = true
 	return record, nil
@@ -152,15 +175,78 @@ func normalizeIssueOpsID(id string) (string, error) {
 }
 
 func normalizeIssueOpsSchemaVersion(record *IssueOpsRecord) error {
-	switch {
-	case record.SchemaVersion == 0:
-		record.SchemaVersion = IssueOpsCurrentSchemaVersion
-		return nil
-	case record.SchemaVersion == IssueOpsCurrentSchemaVersion:
-		return nil
-	case record.SchemaVersion > IssueOpsCurrentSchemaVersion:
-		return fmt.Errorf("unsupported issueops schema_version %d; current is %d", record.SchemaVersion, IssueOpsCurrentSchemaVersion)
-	default:
-		return fmt.Errorf("unsupported issueops schema_version %d", record.SchemaVersion)
+	if err := issueOpsSchemaVersionError(record.SchemaVersion); err != nil {
+		return err
 	}
+	if record.SchemaVersion == 0 || record.SchemaVersion == 1 {
+		record.SchemaVersion = IssueOpsCurrentSchemaVersion
+	}
+	return nil
+}
+
+func issueOpsSchemaVersionError(version int) error {
+	switch {
+	case version == 0 || version == 1 || version == IssueOpsCurrentSchemaVersion:
+		return nil
+	case version > IssueOpsCurrentSchemaVersion:
+		return fmt.Errorf("unsupported issueops schema_version %d; current is %d", version, IssueOpsCurrentSchemaVersion)
+	default:
+		return fmt.Errorf("unsupported issueops schema_version %d", version)
+	}
+}
+
+func decodeInvalidIssueOpsProjection(raw []byte) (IssueOpsRecord, error) {
+	var projection struct {
+		SchemaVersion int           `json:"schema_version"`
+		ID            string        `json:"id"`
+		Repo          string        `json:"repo"`
+		Branch        string        `json:"branch"`
+		Phase         IssueOpsPhase `json:"phase"`
+		WorktreePath  string        `json:"worktree_path"`
+		Handoff       *struct {
+			ProtocolVersion   int    `json:"protocol_version"`
+			State             string `json:"state"`
+			ClosedDisposition string `json:"closed_disposition"`
+			Attempt           int    `json:"attempt"`
+			CoordinatorRoot   string `json:"coordinator_root"`
+			WorkerRoot        string `json:"worker_root"`
+		} `json:"execution_handoff"`
+	}
+	if err := json.Unmarshal(raw, &projection); err != nil {
+		return IssueOpsRecord{}, err
+	}
+	record := IssueOpsRecord{
+		SchemaVersion: projection.SchemaVersion,
+		ID:            boundedIssueOpsIdentity(projection.ID, 128),
+		Repo:          boundedIssueOpsIdentity(projection.Repo, 4096),
+		Branch:        boundedIssueOpsIdentity(projection.Branch, 1024),
+		Phase:         projection.Phase,
+		WorktreePath:  boundedIssueOpsIdentity(projection.WorktreePath, 4096),
+	}
+	if projection.Handoff != nil {
+		record.ExecutionHandoff = &IssueOpsExecutionHandoff{
+			ProtocolVersion:   projection.Handoff.ProtocolVersion,
+			State:             boundedIssueOpsIdentity(projection.Handoff.State, 64),
+			ClosedDisposition: boundedIssueOpsIdentity(projection.Handoff.ClosedDisposition, 64),
+			Attempt:           projection.Handoff.Attempt,
+			CoordinatorRoot:   boundedIssueOpsIdentity(projection.Handoff.CoordinatorRoot, 4096),
+			WorkerRoot:        boundedIssueOpsIdentity(projection.Handoff.WorkerRoot, 4096),
+		}
+	}
+	return record, nil
+}
+
+func boundedIssueOpsIdentity(value string, limit int) string {
+	if len(value) > limit || strings.ContainsRune(value, 0) {
+		return ""
+	}
+	return strings.TrimSpace(value)
+}
+
+func boundedIssueOpsInvalidReason(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) > 256 {
+		return value[:253] + "..."
+	}
+	return value
 }

@@ -228,9 +228,9 @@ Once a cycle reaches `done`, its JSON file persists forever. `NonDoneCyclesForRe
 
 ### 5.3 IssueOps Schema Versioning Is Minimal (P2)
 
-IssueOps records now carry `schema_version=1`. Legacy records without a version are read as the current schema, and records claiming an unsupported future version fail closed before any phase logic runs.
+IssueOps records now carry `schema_version=2` because `execution_handoff` is an ownership lease that a v1 writer must never silently discard. Missing/zero and v1 records are read as v2 and stamped on their next write, while records claiming a version greater than 2 fail closed before phase logic runs.
 
-**Remaining:** Do not add a migration framework until a second IssueOps schema version exists. Keep future schema changes at the `ReadIssueOps`/`WriteIssueOps` boundary so CLI and MCP paths share the same compatibility rules.
+**Compatibility:** The v1 boundary rejects v2 before any write, preserving bytes. Future-schema reads retain only a bounded identifiable handoff projection plus an in-memory invalid marker so hooks keep ownership guards fail-closed without interpreting unsupported state.
 
 ---
 

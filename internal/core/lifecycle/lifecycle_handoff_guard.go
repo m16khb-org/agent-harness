@@ -63,6 +63,9 @@ func renderHandoffSessionGuidance(record IssueOpsRecord, worker bool, host, sess
 	if h == nil {
 		return ""
 	}
+	if record.Invalid {
+		return "IssueOps supervised handoff durable record is invalid; remain read-only and require coordinator recovery: " + record.InvalidReason
+	}
 	if err := handoff.ValidateEnvelope(record); err != nil {
 		return "IssueOps supervised handoff envelope is invalid; remain read-only and require coordinator recovery before claim, heartbeat, finish, or implementation mutation."
 	}
@@ -126,6 +129,9 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	}
 	if !ok {
 		return false, ""
+	}
+	if record.Invalid {
+		return true, "invalid supervised IssueOps durable record: " + record.InvalidReason
 	}
 	if searchrouting.IsShellTool(req.Tool) && (commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command)) {
 		return true, "active shell control, command/process substitution, parameter/tilde expansion, pathname expansion, and output redirection are forbidden during a supervised IssueOps handoff; pass freeform text as argv-safe data or POSIX single-quoted literal data with an explicit canonical path"

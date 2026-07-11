@@ -675,3 +675,17 @@ Archived entries:
   - Bind worker mutation to native host/session/agent plus exact worktree root. SessionStart only renders claim guidance and PreToolUse enforces ownership; no other hook takes workflow ownership.
 - Consequences: CLI and MCP share one core lifecycle and one MCP action tool. The fresh worker finishes with bounded Turing evidence and stops; the coordinator verifies, accepts, owns PR/merge, and later performs cleanup. V1 native hooks resolve the default IssueOps state root only; propagating a custom `HARNESS_STATE_DIR` into a fresh Orca terminal is deferred to issue #17 rather than injected implicitly across the host boundary.
 - Rejected alternatives: Orca as the durable authority; a generic orchestration plugin registry; blind create retry after timeout; lease transfer through `resume --bind`; expanding V1 recipes beyond IssueOps and Turing.
+
+## 2026-07-11 — IssueOps root schema v2 protects supervised ownership leases
+
+- Kind: `adr`
+- Source: GitHub issue #16 schema compatibility review
+- Summary: Stamp every IssueOps write as schema v2 so an older v1 binary rejects a supervised lease instead of decoding and rewriting it without `execution_handoff`.
+- Context: `execution_handoff` is not optional display metadata; it owns mutation authority across host sessions. Leaving the root version at 1 allowed an old struct to ignore that unknown field and erase the guard during an unrelated read-modify-write.
+- Decision:
+  - Read missing, zero, and v1 rows with the current model and preserve every recognized field; stamp v2 on the next write.
+  - Reject versions greater than v2. For hook scans, retain only a bounded repo/worker identity projection and an in-memory invalid marker so unsupported rows remain fail-closed without being interpreted or rewritten.
+  - Keep v2 visible at the root. Do not use a private migration table or infer compatibility from nested protocol_version.
+- Consequences: CLI, MCP, daemon, and all native hosts must be updated together before mutating supervised rows. A v1 compatibility fixture must reject a v2 handoff byte-equivalently, and install smoke must verify v1 migration plus v2 readback.
+- Evidence: `internal/core/issueops/issueops_schema_version_test.go`, the real sqlstore future-schema lifecycle guard test, and three-host install migration verification recorded in the issue evidence ledger.
+- Rejected alternatives: keeping schema v1 because the field is `omitempty`; silently downgrading v2 for old binaries; discarding future-schema rows from hook ownership scans.

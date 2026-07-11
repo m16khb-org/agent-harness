@@ -181,6 +181,36 @@ func TestHandoffGuardBlocksCoordinatorAbsolutePathIntoWorkerTree(t *testing.T) {
 	}
 }
 
+func TestHandoffGuardFailsClosedForRealFutureSchemaWrongSessionMutation(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	record.SchemaVersion = 3
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlstore.Open(IssueOpsStateRoot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("issueops", record.ID, raw); err != nil {
+		t.Fatal(err)
+	}
+	before, ok, err := db.Get("issueops", record.ID)
+	if err != nil || !ok {
+		t.Fatalf("read future-schema fixture: ok=%v err=%v", ok, err)
+	}
+
+	req := handoffEditRequest(record, worktree, "codex", "wrong-session", filepath.Join(worktree, "internal", "x.go"))
+	got := BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "block" || !strings.Contains(got.Reason, "invalid supervised IssueOps") || !strings.Contains(got.Reason, "schema_version") {
+		t.Fatalf("future-schema wrong-session mutation did not fail closed with ownership reason: %#v", got)
+	}
+	after, ok, err := db.Get("issueops", record.ID)
+	if err != nil || !ok || string(after) != string(before) {
+		t.Fatalf("read-only hook changed future-schema bytes: ok=%v err=%v", ok, err)
+	}
+}
+
 func TestHandoffGuardAllowsOnlyCoordinatorPlanEditsBeforeDispatch(t *testing.T) {
 	repo, record, worktree := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
 	plan := filepath.Join(worktree, "docs", "superpowers", "plans", "2026-07-11-demo.md")
