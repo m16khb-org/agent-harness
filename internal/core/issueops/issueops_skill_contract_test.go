@@ -388,6 +388,20 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 	}
 }
 
+func TestRootAgentGuidanceRunsRealGoldenPackage(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("..", "..", "..", "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	guidance := string(body)
+	if strings.Contains(guidance, "go test ./cmd/harness -run Golden") {
+		t.Fatal("root AGENTS must not prescribe a package with zero matching golden tests")
+	}
+	if !strings.Contains(guidance, "go test ./cmd/harness/contractgolden -run Golden -count=1") {
+		t.Fatal("root AGENTS must run the real contractgolden package")
+	}
+}
+
 func TestIssueOpsPublishRecipeAvoidsShellCommandSubstitution(t *testing.T) {
 	body := readIssueOpsReferenceForTest(t, "orca-handoff.md")
 	sectionStart := strings.Index(body, "## Coordinator Publish")

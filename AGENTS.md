@@ -158,7 +158,7 @@ python3 scripts/validate-skill.py skills/atomic-commit-push
 ./bin/agent-harness bootstrap --dry-run
 ./bin/agent-harness install-native --dry-run --json
 go test ./... -count=1
-go test ./cmd/harness -run Golden -count=1
+go test ./cmd/harness/contractgolden -run Golden -count=1
 go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
 go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness inspect --json

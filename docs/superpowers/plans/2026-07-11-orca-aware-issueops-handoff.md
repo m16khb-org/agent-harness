@@ -438,7 +438,7 @@ go mod tidy
 go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/core/skillcontract ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/issueopscli ./cmd/harness/harnessapp -count=1
 go test ./... -count=1
 go test -race ./... -count=1
-go test ./cmd/harness -run Golden -count=1
+go test ./cmd/harness/contractgolden -run Golden -count=1
 go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
 go build -o bin/agent-harness ./cmd/harness
 ./scripts/install-native.sh
