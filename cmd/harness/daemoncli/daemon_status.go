@@ -1,69 +1,260 @@
 package daemoncli
 
 import (
-	"net"
+	"fmt"
 	"os"
 	"syscall"
 	"time"
+
+	"agent-harness/cmd/harness/daemoncli/daemonpaths"
 )
 
+const (
+	daemonStatusReady              = "ready"
+	daemonStatusStopped            = "stopped"
+	daemonStatusLegacyPID          = "legacy_pid_unverified"
+	daemonStatusSocketUnreachable  = "socket_unreachable"
+	daemonStatusIdentityMismatch   = "instance_identity_mismatch"
+	daemonStatusInstanceUnreadable = "instance_record_unreadable"
+)
+
+type daemonStatusDeps struct {
+	paths          func() (daemonPaths, error)
+	readInstance   func(string) (daemonInstance, bool, error)
+	probeStatus    func(string) (daemonIdentityResponse, error)
+	probeIdentity  func(string) (daemonInstance, error)
+	processAlive   func(int) bool
+	inspectProcess func(int) (daemonProcessIdentity, error)
+}
+
 func checkDaemonStatus() daemonStatus {
-	paths, err := currentDaemonPaths()
+	return checkDaemonStatusWithDeps(daemonStatusDeps{
+		paths:          currentDaemonPaths,
+		readInstance:   daemonpaths.ReadInstance,
+		probeStatus:    probeDaemonStatus,
+		processAlive:   processAlive,
+		inspectProcess: daemonpaths.InspectProcess,
+	})
+}
+
+func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
+	paths, err := deps.paths()
 	if err != nil {
-		return daemonStatus{OK: false, Message: err.Error()}
+		return daemonStatus{OK: false, Code: daemonStatusInstanceUnreadable, MaxConnections: maxConnections, Message: err.Error()}
 	}
-	status := daemonStatus{OK: true, Paths: paths}
-	pid := readDaemonPID(paths.PID)
-	if pid > 0 {
-		status.PID = pid
-	}
-	conn, err := net.DialTimeout("unix", paths.Socket, 150*time.Millisecond)
-	if err == nil {
-		_ = conn.Close()
-		status.Running = true
-		if status.PID == 0 {
-			status.PID = pid
+	status := daemonStatus{OK: true, Code: daemonStatusStopped, Paths: paths, MaxConnections: maxConnections, Message: "daemon is not running"}
+	record, legacy, readErr := deps.readInstance(paths.PID)
+	if readErr != nil {
+		probe, probeErr := probeDaemonStatusWithDeps(deps, paths.Socket)
+		if probeErr == nil {
+			observed := probe.Instance
+			status.Running = true
+			status.Reachable = true
+			status.PID = observed.PID
+			status.Instance = &observed
+			applyDaemonAdmissionStatus(&status, probe)
+			return daemonIdentityMismatchStatus(status, "daemon socket is reachable without a matching instance record")
 		}
-		status.Message = "daemon is reachable"
+		if !os.IsNotExist(readErr) {
+			status.OK = false
+			status.Code = daemonStatusInstanceUnreadable
+			status.Message = readErr.Error()
+		}
 		return status
 	}
-	if pid > 0 && processAlive(pid) {
-		status.Message = "daemon pid exists but socket is not reachable"
-	} else {
-		status.Message = "daemon is not running"
+	status.PID = record.PID
+	status.LegacyPID = legacy
+	if !legacy {
+		status.Instance = &record
 	}
+
+	probe, probeErr := probeDaemonStatusWithDeps(deps, paths.Socket)
+	if probeErr != nil {
+		alive := record.PID > 0 && deps.processAlive(record.PID)
+		status.Running = alive
+		if alive {
+			status.OK = false
+			status.Code = daemonStatusSocketUnreachable
+			status.Message = "daemon pid exists but socket is not reachable"
+		}
+		if legacy {
+			status.OK = false
+			status.Code = daemonStatusLegacyPID
+			status.Message = "legacy daemon pid is status-only and cannot be verified"
+		}
+		return status
+	}
+	observed := probe.Instance
+	status.Running = true
+	status.Reachable = true
+	applyDaemonAdmissionStatus(&status, probe)
+	if legacy {
+		status.OK = false
+		status.Code = daemonStatusLegacyPID
+		status.Message = "legacy daemon pid is reachable but identity is unverified"
+		return status
+	}
+	if observed != record {
+		return daemonIdentityMismatchStatus(status, "daemon socket identity does not match instance record")
+	}
+	if !deps.processAlive(record.PID) {
+		return daemonIdentityMismatchStatus(status, "daemon process is not alive")
+	}
+	process, err := deps.inspectProcess(record.PID)
+	if err != nil {
+		return daemonIdentityMismatchStatus(status, fmt.Sprintf("inspect daemon process identity: %v", err))
+	}
+	if !daemonProcessIdentityMatches(record, process) {
+		return daemonIdentityMismatchStatus(status, "daemon OS process identity does not match instance record")
+	}
+	status.OK = true
+	status.IdentityVerified = true
+	status.Code = daemonStatusReady
+	status.Message = "daemon is reachable and identity verified"
 	return status
 }
 
+func probeDaemonStatusWithDeps(deps daemonStatusDeps, socket string) (daemonIdentityResponse, error) {
+	if deps.probeStatus != nil {
+		return deps.probeStatus(socket)
+	}
+	instance, err := deps.probeIdentity(socket)
+	if err != nil {
+		return daemonIdentityResponse{}, err
+	}
+	return daemonIdentityResponse{
+		OK:             true,
+		Instance:       instance,
+		MaxConnections: maxConnections,
+		Accepting:      true,
+	}, nil
+}
+
+func applyDaemonAdmissionStatus(status *daemonStatus, probe daemonIdentityResponse) {
+	status.ActiveConnections = probe.ActiveConnections
+	status.MaxConnections = probe.MaxConnections
+	status.Accepting = probe.Accepting
+	status.Draining = probe.Draining
+}
+
+func daemonIdentityMismatchStatus(status daemonStatus, message string) daemonStatus {
+	status.OK = false
+	status.IdentityVerified = false
+	status.Code = daemonStatusIdentityMismatch
+	status.Message = message
+	return status
+}
+
+func daemonProcessIdentityMatches(instance daemonInstance, process daemonProcessIdentity) bool {
+	return instance.ProcessStartTime == process.StartTime && instance.Executable == process.Executable
+}
+
+func daemonStatusIsReady(status daemonStatus) bool {
+	return status.OK && status.Running && status.Reachable && status.IdentityVerified && status.Code == daemonStatusReady && status.Instance != nil && status.PID == status.Instance.PID
+}
+
+func daemonStatusBlocksStart(status daemonStatus) bool {
+	if daemonStatusIsReady(status) {
+		return false
+	}
+	if status.OK && status.Code == daemonStatusStopped && !status.Running && !status.Reachable {
+		return false
+	}
+	return status.PID > 0 || status.Running || status.Reachable || status.LegacyPID || (status.Code != "" && status.Code != daemonStatusStopped)
+}
+
+type daemonProcess interface {
+	Signal(os.Signal) error
+	Kill() error
+}
+
+type daemonStopDeps struct {
+	checkStatus    func() daemonStatus
+	findProcess    func(int) (daemonProcess, error)
+	inspectProcess func(int) (daemonProcessIdentity, error)
+	processAlive   func(int) bool
+	remove         func(string) error
+	now            func() time.Time
+	sleep          func(time.Duration)
+}
+
 func stopDaemon() (daemonStatus, error) {
-	paths, err := currentDaemonPaths()
+	return stopDaemonWithDeps(daemonStopDeps{
+		checkStatus: checkDaemonStatus,
+		findProcess: func(pid int) (daemonProcess, error) {
+			return os.FindProcess(pid)
+		},
+		inspectProcess: daemonpaths.InspectProcess,
+		processAlive:   processAlive,
+		remove:         os.Remove,
+		now:            time.Now,
+		sleep:          time.Sleep,
+	})
+}
+
+func stopDaemonWithDeps(deps daemonStopDeps) (daemonStatus, error) {
+	status := deps.checkStatus()
+	if status.Code == daemonStatusStopped && status.PID == 0 && !status.Reachable {
+		status.OK = true
+		status.Running = false
+		status.Message = "agent-harness daemon already stopped"
+		return status, nil
+	}
+	if !daemonStatusIsReady(status) {
+		status.OK = false
+		return status, fmt.Errorf("refusing to stop unverified daemon: %s", status.Code)
+	}
+	instance := *status.Instance
+	proc, err := deps.findProcess(instance.PID)
 	if err != nil {
-		return daemonStatus{}, err
+		status.OK = false
+		status.Message = err.Error()
+		return status, err
 	}
-	pid := readDaemonPID(paths.PID)
-	if pid <= 0 || !processAlive(pid) {
-		_ = os.Remove(paths.Socket)
-		_ = os.Remove(paths.PID)
-		return daemonStatus{OK: true, Running: false, Paths: paths, Message: "agent-harness daemon already stopped"}, nil
+	processIdentity, err := deps.inspectProcess(instance.PID)
+	if err != nil || !daemonProcessIdentityMatches(instance, processIdentity) {
+		status = daemonIdentityMismatchStatus(status, "daemon OS process identity changed before stop")
+		return status, fmt.Errorf("refusing to signal unverified daemon process")
 	}
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return daemonStatus{OK: false, Running: true, PID: pid, Paths: paths, Message: err.Error()}, err
+	if err := proc.Signal(syscall.SIGTERM); err != nil {
+		status.OK = false
+		status.Message = err.Error()
+		return status, err
 	}
-	_ = proc.Signal(syscall.SIGTERM)
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if !processAlive(pid) {
-			_ = os.Remove(paths.Socket)
-			_ = os.Remove(paths.PID)
-			return daemonStatus{OK: true, Running: false, PID: pid, Paths: paths, Message: "agent-harness daemon stopped"}, nil
+	deadline := deps.now().Add(3 * time.Second)
+	for deps.now().Before(deadline) {
+		if !deps.processAlive(instance.PID) {
+			return daemonStoppedStatus(status, instance.PID, deps.remove, "agent-harness daemon stopped"), nil
 		}
-		time.Sleep(50 * time.Millisecond)
+		deps.sleep(50 * time.Millisecond)
 	}
-	_ = proc.Kill()
-	_ = os.Remove(paths.Socket)
-	_ = os.Remove(paths.PID)
-	return daemonStatus{OK: true, Running: false, PID: pid, Paths: paths, Message: "agent-harness daemon killed after timeout"}, nil
+	if !deps.processAlive(instance.PID) {
+		return daemonStoppedStatus(status, instance.PID, deps.remove, "agent-harness daemon stopped"), nil
+	}
+	processIdentity, err = deps.inspectProcess(instance.PID)
+	if err != nil || !daemonProcessIdentityMatches(instance, processIdentity) {
+		status = daemonIdentityMismatchStatus(status, "daemon OS process identity changed before forced stop")
+		return status, fmt.Errorf("refusing to kill unverified daemon process")
+	}
+	if err := proc.Kill(); err != nil {
+		status.OK = false
+		status.Message = err.Error()
+		return status, err
+	}
+	return daemonStoppedStatus(status, instance.PID, deps.remove, "agent-harness daemon killed after timeout"), nil
+}
+
+func daemonStoppedStatus(status daemonStatus, pid int, remove func(string) error, message string) daemonStatus {
+	_ = remove(status.Paths.Socket)
+	_ = remove(status.Paths.PID)
+	status.OK = true
+	status.Running = false
+	status.Reachable = false
+	status.IdentityVerified = false
+	status.PID = pid
+	status.Code = daemonStatusStopped
+	status.Message = message
+	return status
 }
 
 func daemonStatusForMCP() daemonStatus {

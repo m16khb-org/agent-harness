@@ -164,16 +164,16 @@ func sdkReadResourceResult(content map[string]any) *mcp.ReadResourceResult {
 
 // serveMCPStreamSDK runs the MCP server using the official go-sdk IOTransport.
 // Used for bidirectional connections (net.Conn from daemon accept loop).
-func serveMCPStreamSDK(input io.Reader, output io.Writer) error {
+func serveMCPStreamSDK(ctx context.Context, input io.Reader, output io.Writer) error {
 	server := initSDKServer()
 	rwc, ok := input.(io.ReadWriteCloser)
 	if !ok {
-		return server.Run(context.Background(), &mcp.IOTransport{
+		return server.Run(ctx, &mcp.IOTransport{
 			Reader: io.NopCloser(input),
 			Writer: writeCloser{output},
 		})
 	}
-	return server.Run(context.Background(), &mcp.IOTransport{
+	return server.Run(ctx, &mcp.IOTransport{
 		Reader: rwc,
 		Writer: rwc,
 	})

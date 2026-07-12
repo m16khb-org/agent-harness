@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/cmd/harness/daemoncli"
 	"agent-harness/internal/core"
 	"agent-harness/internal/testsupport"
 )
@@ -41,6 +42,35 @@ func TestBuildHarnessStatusReportsStateWorkerAndSelfVerify(t *testing.T) {
 	}
 	if status.Daemon.Message == "" {
 		t.Fatalf("daemon status should include an operator-facing message")
+	}
+}
+
+func TestBuildHarnessStatusSharesDaemonAdmissionWithDoctor(t *testing.T) {
+	repo := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	t.Setenv("HARNESS_WORKER_DIR", t.TempDir())
+	oldDeps := deps
+	t.Cleanup(func() { Configure(oldDeps) })
+	want := daemoncli.Status{
+		ActiveConnections: 64,
+		MaxConnections:    64,
+		Accepting:         false,
+		Draining:          false,
+	}
+	Configure(Deps{
+		HarnessRoot:       func() string { return repo },
+		ResolveTarget:     func(target string) string { return target },
+		Version:           "test",
+		InspectHarness:    func(string) core.InspectInfo { return core.InspectInfo{} },
+		CheckDaemonStatus: func() daemoncli.Status { return want },
+	})
+
+	status := BuildStatus(repo)
+	if status.Daemon != want {
+		t.Fatalf("unexpected daemon status: %#v", status.Daemon)
+	}
+	if status.Doctor.ActiveConnections != 64 || status.Doctor.MaxConnections != 64 || status.Doctor.Accepting || status.Doctor.Draining {
+		t.Fatalf("status doctor drifted from daemon admission: doctor=%#v daemon=%#v", status.Doctor, status.Daemon)
 	}
 }
 

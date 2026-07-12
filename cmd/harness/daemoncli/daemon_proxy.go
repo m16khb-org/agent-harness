@@ -32,6 +32,9 @@ func runMCPProxyWithDeps(deps daemonProxyDeps) error {
 	if err != nil {
 		return err
 	}
+	if status.MaxConnections > 0 && !status.Accepting {
+		return fmt.Errorf("%s: daemon is not accepting MCP connections (active_connections=%d max_connections=%d draining=%t)", daemonStatusConnectionLimit, status.ActiveConnections, status.MaxConnections, status.Draining)
+	}
 	conn, err := deps.dial("unix", status.Paths.Socket)
 	if err != nil {
 		return fmt.Errorf("connect daemon: %w", err)

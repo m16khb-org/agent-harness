@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 )
@@ -43,15 +42,11 @@ func Current() (Paths, error) {
 }
 
 func ReadPID(path string) int {
-	b, err := os.ReadFile(path)
+	record, _, err := ReadInstance(path)
 	if err != nil {
 		return 0
 	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(b)))
-	if err != nil {
-		return 0
-	}
-	return pid
+	return record.PID
 }
 
 func ProcessAlive(pid int) bool {

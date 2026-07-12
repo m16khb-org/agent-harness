@@ -155,6 +155,8 @@ draft-wiki queue는 hook 휴리스틱이 자동 생성하지 않는다. UserProm
 주의:
 - 수동 설치/빌드 후 MCP smoke 전에는 필요하면 `agent-harness daemon stop --json`으로 기존 daemon을 내린다.
 - 테스트는 `HARNESS_DAEMON_DIR=$(mktemp -d)/daemon`으로 실제 user daemon과 분리한다.
+- macOS actual-socket QA는 Unix-domain socket 경로 길이 제한을 피하도록 `/tmp/ahd-*`처럼 짧은 임시 root를 사용한다. 기본 `t.TempDir()`의 긴 `/var/folders/...` 경로는 구현과 무관한 `bind: invalid argument`를 만들 수 있다.
+- QA launcher가 daemon child의 parent라면 `daemon stop`과 parent의 `Wait`를 동시에 진행해 SIGTERM 종료 자식을 즉시 reap한다. unreaped zombie는 `kill(pid, 0)`에 살아 있는 것으로 보여 fail-closed forced-stop 검증을 오탐할 수 있다. 모든 QA는 `defer`/`finally` 정리 후 임시 binary, state root, PID, socket이 0개인지 확인한다.
 - daemon socket/pid/log는 user state dir에 두고 repo나 wiki vault에 쓰지 않는다.
 - **D2 (NFS caveat, accepted)**: daemon single-instance locking은 `daemonlock/lock.go`의 `O_EXCL` create + stale(30s)/PID-liveness 감지로 막는다. lock 파일은 startup handoff 후 child가 삭제하므로(transient) flock fallback은 부적합하다(flock은 inode에 묶여 삭제 시 깨짐). `O_EXCL`은 NFS/FUSE에서 원자성이 보장되지 않으니 **daemon state는 로컬 FS에 둔다**; 네트워크 마운트 home에서는 이론상 두 daemon이 뜰 수 있으나 두 번째는 동일 unix socket bind에서 실패한다.
 

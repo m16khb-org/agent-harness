@@ -59,7 +59,19 @@ func runStatus(args []string) error {
 func buildHarnessStatus(repo string) HarnessStatus {
 	home, _ := os.UserHomeDir()
 	inspect := deps.InspectHarness(repo)
-	doctor, doctorErr := core.HarnessDoctor(core.HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: deps.HarnessRoot(), Home: home, Version: deps.Version})
+	daemon := deps.CheckDaemonStatus()
+	doctor, doctorErr := core.HarnessDoctor(core.HarnessDoctorRequest{
+		RepoRoot:    repo,
+		HarnessRoot: deps.HarnessRoot(),
+		Home:        home,
+		Version:     deps.Version,
+		DaemonAdmission: core.HarnessDoctorDaemonAdmission{
+			ActiveConnections: daemon.ActiveConnections,
+			MaxConnections:    daemon.MaxConnections,
+			Accepting:         daemon.Accepting,
+			Draining:          daemon.Draining,
+		},
+	})
 	state, stateErr := core.StateList()
 	workers, workerErr := core.ListWorkerJobs()
 	warnings := []string{}
@@ -87,7 +99,7 @@ func buildHarnessStatus(repo string) HarnessStatus {
 		Repo:       deps.ResolveTarget(repo),
 		Inspect:    inspect,
 		Doctor:     doctor,
-		Daemon:     deps.CheckDaemonStatus(),
+		Daemon:     daemon,
 		State:      state,
 		Workers:    workers,
 		SelfVerify: selfVerify,

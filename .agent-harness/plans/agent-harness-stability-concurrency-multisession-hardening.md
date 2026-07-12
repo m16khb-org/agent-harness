@@ -4,6 +4,8 @@
 
 > **기준점**: `main` / `88c29161f08c46b153278aa80e383e58e1198eaa` (2026-07-10)
 >
+> **실행 기준점**: T00 착수 시 `origin/main`은 `ec865def01a14d66eedff05c24657c908b400349`까지 전진했다. 추가된 `mcp_gateway` doctor probe는 live stateful gateway에 `initialize`를 보내므로, 진단 자체가 세션/FD를 누적하지 않는다는 계약을 T20에 포함한다.
+>
 > **결론**: P0는 확인되지 않았다. 그러나 현재 HEAD에는 실제 재현된 MCP connection-slot 고갈, `read_only` policy의 임의 실행·쓰기·workspace 밖 읽기 우회, worker secret 원문 저장, audit 중단 시 고아 프로세스 잔류가 있다. 소스 경로로 확정된 P1에는 PID 재사용 시 무관한 프로세스 종료, 병렬 세션이 sibling worktree를 편집하는 guard 허용, 재사용된 worktree 강제 삭제, state prune/migrate lost update, workpool/loop contract 덮어쓰기, install/update의 비원자 갱신 및 정상 세션 종료가 포함된다.
 >
 > **전략**: 공통 identity와 fail-closed 경계를 먼저 고정하고, 그 위에서 daemon·policy·IssueOps·state·workpool·install을 독립 worktree로 병렬 수정한다. 마지막에 host parity와 self-verify/stability-audit의 "검증이 실제로 검증하는가"를 교정한다. 전면 재작성은 하지 않는다.
@@ -41,6 +43,7 @@
 - 감사 시작 시 active IssueOps binding은 없었다: `issueops resume --repo "$PWD" --json` → `{"ok":false,"bound":false}`.
 - focused 기존 테스트는 통과했다: `internal/core/{policy,state,workpool,looprun,sqlstore}`, `cmd/harness/{daemoncli,updatecli}`. 이는 아래 결함을 잡는 regression이 없다는 뜻이지 결함이 없다는 뜻이 아니다.
 - stability-audit 중단으로 남은 감사 전용 temp process group은 정확한 temp 경로와 PID/PGID를 재검증한 뒤 종료했다. 실제 사용자 daemon이나 다른 프로세스는 건드리지 않았다.
+- T00 실행 직전 upstream delta `88c2916..ec865de`를 재검토했다. `doctor`의 loopback MCP `initialize` probe가 응답 body만 닫고 stateful session 종료를 보장하지 않아, 반복 진단이 검사 대상의 FD 고갈을 악화시킬 수 있는 새 경계가 확인됐다.
 
 ## 2. 통합 Risk Register
 
@@ -69,6 +72,7 @@
 | R19 self-verify false-positive | P1/P2 | T | 실패 전용 필드가 contract hash에서 빠지고, clean tree에서는 race/vet 미실행도 covered, parallel isolation은 실제 self-verify를 돌리지 않으며 binary drift는 mtime만 본다. | `cmd/harness/selfworkflow/summary/self_verify_summary_contract.go`, `riskqa/*.go`, `validation_parallel_*.go`, `internal/core/doctor/checks.go:142-170` (QCT-01~04) |
 | R20 stability-audit가 시스템을 오염/오판 | P2 | R/T | repo `bin/agent-harness`를 재빌드해 live symlink 대상을 바꾸고, interruption cleanup이 없어 실제 orphan을 남겼다. proxy/socket FD를 세지 않고 live user daemon RSS를 요구한다. | `skills/stability-audit/scripts/e2e_stability_audit.py:131-139,199-218,321-382` (SA-01~04, QCT-05~07) |
 | R21 fuzz·문서·계약 drift | P3 | T | native `Fuzz*`가 0개인데 deterministic battery를 fuzz로 부르고, Go toolchain/audit 문서와 현재 코드가 어긋난다. | `cmd/harness/selfworkflow/steps/self_verify_steps.go:79`, `.agent-harness/TECH_STACK.md:28` (QCT-09, DOC-01) |
+| R22 live doctor probe의 상태 누적 | P1/P2 | S | `mcp_gateway` 진단이 stateful streamable-HTTP endpoint에 `initialize`를 보낸 뒤 session teardown을 보장하지 않아, 반복 doctor가 gateway session/FD 고갈을 증폭할 수 있다. | `internal/core/doctor/checks.go:260-274` (execution-base delta) |
 
 ## 3. 해결됐거나 수용된 항목
 
@@ -388,14 +392,14 @@ Main agent
 - **QA**: happy—temp HOME 3-host fake CLI install/update; failure—각 rename/adapter/daemon refresh 지점 crash matrix 후 invariant scan.
 - **Commit**: `fix(install): make native host updates atomic and recoverable`.
 
-### T20. Standalone scope·managed link·live host 진단
+### T20. Standalone scope·managed link·비누적 live host 진단
 
-- **What**: native install에서 implicit `sync-glab-mcp.sh`를 제거하고 별도 explicit command로 둔다. harness-owned link manifest로 removed/broken/wrong-root links를 diagnose/선택 cleanup한다. doctor/self-verify는 fixture가 아니라 read-only live config/CLI readback으로 user/project endpoint collision, installed build SHA, protocol generation을 검사한다.
+- **What**: native install에서 implicit `sync-glab-mcp.sh`를 제거하고 별도 explicit command로 둔다. harness-owned link manifest로 removed/broken/wrong-root links를 diagnose/선택 cleanup한다. doctor/self-verify는 fixture가 아니라 read-only live config/CLI readback으로 user/project endpoint collision, installed build SHA, protocol generation을 검사한다. live MCP reachability probe는 state를 만들지 않는 transport check를 우선하고, protocol `initialize`가 불가피하면 반환된 session ID를 정상 teardown해 반복 실행 전후 session/FD가 증가하지 않게 한다.
 - **Owner**: deep agent. **Depends**: T01, T19.
-- **References**: `scripts/install-native.sh:135`, `internal/adapter/install_contract_matrix_test.go`, `validation_native_integration*.go`, `internal/core/doctor/checks.go:142-170`.
-- **Must not**: 외부 glab 기능을 core에 복제; 명시 승인 없이 live config 수정; mtime을 build identity로 사용.
-- **Acceptance**: default install은 agent-harness integration만 생성한다. stale managed link는 dry-run에서 정확히 보고되고 apply 전에는 보존. live no-conflict/conflict/dogfood-name/build mismatch fixture가 구분된다.
-- **QA**: happy—temp HOME manifest update; failure—external MCP/config byte hash가 install 전후 동일.
+- **References**: `scripts/install-native.sh:135`, `internal/adapter/install_contract_matrix_test.go`, `validation_native_integration*.go`, `internal/core/doctor/checks.go:142-274`.
+- **Must not**: 외부 glab 기능을 core에 복제; 명시 승인 없이 live config 수정; mtime을 build identity로 사용; 진단용 stateful MCP session을 남기기.
+- **Acceptance**: default install은 agent-harness integration만 생성한다. stale managed link는 dry-run에서 정확히 보고되고 apply 전에는 보존. live no-conflict/conflict/dogfood-name/build mismatch fixture가 구분된다. stateful fake gateway에 doctor를 반복 실행해도 active session과 FD count가 baseline으로 복귀한다.
+- **QA**: happy—temp HOME manifest update와 teardown 가능한 fake MCP gateway probe; failure—external MCP/config byte hash가 install 전후 동일하고, teardown 실패는 healthy로 오판하지 않으며 session/FD 증가가 없다.
 - **Commit**: `fix(install): keep native setup standalone and diagnose managed host state`.
 
 ### T21. GJC와 공통 hook lifecycle parity
@@ -452,6 +456,7 @@ Main agent
    - IssueOps two-session/two-worktree, orphan path reuse
    - state/workpool/loop actual two-process races
    - compact/profile barrier tests, install fault matrix
+   - repeated doctor MCP gateway probe의 session/FD 비누적
 3. **Static and contracts**
    - `go vet ./...`
    - `go test ./cmd/harness -run Golden -count=1`

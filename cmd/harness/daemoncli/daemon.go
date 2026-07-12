@@ -10,23 +10,30 @@ import (
 )
 
 type daemonPaths = daemonpaths.Paths
+type daemonInstance = daemonpaths.InstanceRecord
+type daemonProcessIdentity = daemonpaths.ProcessIdentity
 
 type daemonStatus struct {
-	OK      bool        `json:"ok"`
-	Running bool        `json:"running"`
-	PID     int         `json:"pid,omitempty"`
-	Paths   daemonPaths `json:"paths"`
-	Message string      `json:"message,omitempty"`
+	OK                bool            `json:"ok"`
+	Running           bool            `json:"running"`
+	Reachable         bool            `json:"reachable"`
+	IdentityVerified  bool            `json:"identity_verified"`
+	ActiveConnections int             `json:"active_connections"`
+	MaxConnections    int             `json:"max_connections"`
+	Accepting         bool            `json:"accepting"`
+	Draining          bool            `json:"draining"`
+	LegacyPID         bool            `json:"legacy_pid,omitempty"`
+	PID               int             `json:"pid,omitempty"`
+	Code              string          `json:"code"`
+	Paths             daemonPaths     `json:"paths"`
+	Instance          *daemonInstance `json:"instance,omitempty"`
+	Message           string          `json:"message,omitempty"`
 }
 
 const daemonReadyTimeout = 15 * time.Second
 
 func currentDaemonPaths() (daemonPaths, error) {
 	return daemonpaths.Current()
-}
-
-func readDaemonPID(path string) int {
-	return daemonpaths.ReadPID(path)
 }
 
 func processAlive(pid int) bool {
@@ -66,8 +73,10 @@ func runDaemon(args []string) error {
 		if *jsonOut {
 			return printJSON(status)
 		}
-		if status.Running {
+		if daemonStatusIsReady(status) {
 			fmt.Printf("running pid=%d socket=%s\n", status.PID, status.Paths.Socket)
+		} else if status.Running || status.Reachable || status.PID > 0 {
+			fmt.Printf("unverified code=%s pid=%d socket=%s\n", status.Code, status.PID, status.Paths.Socket)
 		} else {
 			fmt.Printf("stopped socket=%s\n", status.Paths.Socket)
 		}

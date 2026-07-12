@@ -16,6 +16,7 @@ func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		"repo": workspaceDir,
 	})
 	mcpSnapshot["docs_index"] = docsIndexMCPContractProjection(t, runMCPToolContract(t, replacements, "docs_index", map[string]any{}))
+	mcpSnapshot["daemon_status"] = runMCPToolContract(t, replacements, "daemon_status", map[string]any{})
 	mcpSnapshot["atomic_commit_preflight"] = runMCPToolContract(t, replacements, "atomic_commit_preflight", map[string]any{
 		"path": gitRepoDir,
 	})

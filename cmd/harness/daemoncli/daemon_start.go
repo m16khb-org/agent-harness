@@ -41,8 +41,10 @@ type daemonStartDeps struct {
 }
 
 func ensureDaemonRunningWithDeps(deps daemonStartDeps) (daemonStatus, error) {
-	if status := deps.checkStatus(); status.Running {
+	if status := deps.checkStatus(); daemonStatusIsReady(status) {
 		return status, nil
+	} else if daemonStatusBlocksStart(status) {
+		return status, errors.New(status.Code + ": " + status.Message)
 	}
 	paths, err := deps.paths()
 	if err != nil {
@@ -54,7 +56,7 @@ func ensureDaemonRunningWithDeps(deps daemonStartDeps) (daemonStatus, error) {
 	lock, err := deps.acquireLock(paths)
 	if err != nil {
 		// Another launcher may be starting it. Wait briefly.
-		if status, waitErr := deps.wait(paths, daemonReadyTimeout); waitErr == nil && status.Running {
+		if status, waitErr := deps.wait(paths, daemonReadyTimeout); waitErr == nil && daemonStatusIsReady(status) {
 			return status, nil
 		}
 		return daemonStatus{OK: false, Running: false, Paths: paths, Message: err.Error()}, err
@@ -63,8 +65,10 @@ func ensureDaemonRunningWithDeps(deps daemonStartDeps) (daemonStatus, error) {
 		_ = lock.Close()
 		_ = deps.remove(paths.Lock)
 	}()
-	if status := deps.checkStatus(); status.Running {
+	if status := deps.checkStatus(); daemonStatusIsReady(status) {
 		return status, nil
+	} else if daemonStatusBlocksStart(status) {
+		return status, errors.New(status.Code + ": " + status.Message)
 	}
 	exe, err := deps.executable()
 	if err != nil {
@@ -109,8 +113,11 @@ func waitForDaemonWithDeps(paths daemonPaths, timeout time.Duration, deps daemon
 	var last daemonStatus
 	for deps.now().Before(deadline) {
 		last = deps.checkStatus()
-		if last.Running {
+		if daemonStatusIsReady(last) {
 			return last, nil
+		}
+		if daemonStatusBlocksStart(last) {
+			return last, errors.New(last.Code + ": " + last.Message)
 		}
 		deps.sleep(50 * time.Millisecond)
 	}

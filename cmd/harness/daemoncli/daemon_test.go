@@ -1,13 +1,14 @@
 package daemoncli
 
 import (
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"agent-harness/cmd/harness/daemoncli/daemonpaths"
 )
 
 func TestDaemonPathsUseOverride(t *testing.T) {
@@ -51,18 +52,11 @@ func TestCheckDaemonStatusReportsReachableSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	listener, err := net.Listen("unix", paths.Socket)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer listener.Close()
-	if err := os.WriteFile(paths.PID, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	instance := startVerifiedDaemonTestSocket(t, paths)
 
 	status := checkDaemonStatus()
 
-	if !status.OK || !status.Running || status.PID != os.Getpid() || status.Message != "daemon is reachable" {
+	if !status.OK || !status.Running || !status.Reachable || !status.IdentityVerified || status.PID != os.Getpid() || status.Code != daemonStatusReady || status.Instance == nil || *status.Instance != instance {
 		t.Fatalf("unexpected reachable daemon status: %#v", status)
 	}
 }
@@ -74,13 +68,18 @@ func TestCheckDaemonStatusReportsLivePIDWithoutSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(paths.PID, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
+	process, err := daemonpaths.InspectProcess(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	instance := daemonInstance{PID: os.Getpid(), ProcessStartTime: process.StartTime, Executable: process.Executable, InstanceNonce: "nonce-a", BuildSHA: "build-a", ProtocolVersion: daemonProtocolVersion, Generation: "generation-a"}
+	if err := daemonpaths.WriteInstance(paths.PID, instance); err != nil {
 		t.Fatal(err)
 	}
 
 	status := checkDaemonStatus()
 
-	if !status.OK || status.Running || status.PID != os.Getpid() || status.Message != "daemon pid exists but socket is not reachable" {
+	if status.OK || !status.Running || status.Reachable || status.IdentityVerified || status.PID != os.Getpid() || status.Code != daemonStatusSocketUnreachable || status.Message != "daemon pid exists but socket is not reachable" {
 		t.Fatalf("unexpected pid-only daemon status: %#v", status)
 	}
 }
@@ -140,14 +139,17 @@ func TestWaitForDaemonWithDepsReportsReadyStatus(t *testing.T) {
 		sleep: func(time.Duration) {},
 		checkStatus: func() daemonStatus {
 			calls++
-			return daemonStatus{OK: true, Running: calls == 2, Paths: paths, Message: "daemon is reachable"}
+			if calls == 2 {
+				return daemonStatus{OK: true, Running: true, Reachable: true, IdentityVerified: true, PID: 42, Code: daemonStatusReady, Paths: paths, Instance: &daemonInstance{PID: 42}, Message: "daemon is reachable and identity verified"}
+			}
+			return daemonStatus{OK: true, Code: daemonStatusStopped, Paths: paths, Message: "daemon is not running"}
 		},
 	})
 
 	if err != nil {
 		t.Fatalf("expected ready daemon status, got error: %v", err)
 	}
-	if !status.Running || status.Message != "daemon is reachable" || calls != 2 {
+	if !status.Running || !status.IdentityVerified || status.Code != daemonStatusReady || calls != 2 {
 		t.Fatalf("unexpected ready daemon status: %#v calls=%d", status, calls)
 	}
 }

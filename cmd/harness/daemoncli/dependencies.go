@@ -1,6 +1,7 @@
 package daemoncli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,10 @@ var HarnessRoot = func() string {
 
 var ServeMCPStream = func(io.Reader, io.Writer, io.Writer) error {
 	return fmt.Errorf("MCP stream handler is not configured")
+}
+
+var ServeMCPStreamContext = func(context.Context, io.Reader, io.Writer, io.Writer) error {
+	return fmt.Errorf("context-aware MCP stream handler is not configured")
 }
 
 func printJSON(v any) error {
