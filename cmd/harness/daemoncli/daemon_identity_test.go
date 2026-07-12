@@ -49,6 +49,40 @@ func TestCheckDaemonStatusVerifiesInstanceFileSocketAndProcess(t *testing.T) {
 	}
 }
 
+func TestCheckDaemonStatusReportsLiveAdmissionHealth(t *testing.T) {
+	instance := daemonInstance{
+		PID:              4242,
+		ProcessStartTime: "start-a",
+		Executable:       "/tmp/agent-harness",
+		InstanceNonce:    "nonce-a",
+		BuildSHA:         "build-a",
+		ProtocolVersion:  daemonProtocolVersion,
+		Generation:       "generation-a",
+	}
+	status := checkDaemonStatusWithDeps(daemonStatusDeps{
+		paths:        func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
+		readInstance: func(string) (daemonInstance, bool, error) { return instance, false, nil },
+		probeStatus: func(string) (daemonIdentityResponse, error) {
+			return daemonIdentityResponse{
+				OK:                true,
+				Instance:          instance,
+				ActiveConnections: maxConnections,
+				MaxConnections:    maxConnections,
+				Accepting:         false,
+				Draining:          false,
+			}, nil
+		},
+		processAlive: func(int) bool { return true },
+		inspectProcess: func(int) (daemonProcessIdentity, error) {
+			return daemonProcessIdentity{StartTime: instance.ProcessStartTime, Executable: instance.Executable}, nil
+		},
+	})
+
+	if !status.OK || status.ActiveConnections != maxConnections || status.MaxConnections != maxConnections || status.Accepting || status.Draining {
+		t.Fatalf("daemon status lost live admission health: %#v", status)
+	}
+}
+
 func TestCheckDaemonStatusReportsHandshakeIdentityMismatch(t *testing.T) {
 	fileInstance := daemonInstance{
 		PID:              4242,
@@ -183,6 +217,50 @@ func TestServeDaemonConnectionReturnsExactIdentityHandshake(t *testing.T) {
 	}
 	if err := <-done; err != nil {
 		t.Fatalf("identity probe failed: %v", err)
+	}
+}
+
+func TestServeDaemonConnectionReportsAdmissionHealth(t *testing.T) {
+	server, client := net.Pipe()
+	t.Cleanup(func() { _ = client.Close() })
+	done := make(chan error, 1)
+	go func() {
+		done <- serveDaemonConnection(server, &daemonServerFakeLog{}, daemonInstance{}, func(net.Conn, daemonServerLogFile) error {
+			return errors.New("identity probe must bypass MCP stream")
+		})
+	}()
+
+	if _, err := io.WriteString(client, daemonIdentityRequest); err != nil {
+		t.Fatal(err)
+	}
+	var response map[string]any
+	if err := json.NewDecoder(client).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response["active_connections"] != float64(0) || response["max_connections"] != float64(maxConnections) {
+		t.Fatalf("identity response lost connection counts: %#v", response)
+	}
+	if response["accepting"] != true || response["draining"] != false {
+		t.Fatalf("identity response lost admission state: %#v", response)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("identity probe failed: %v", err)
+	}
+}
+
+func TestDaemonStatusJSONIncludesAdmissionHealth(t *testing.T) {
+	raw, err := json.Marshal(daemonStatus{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var status map[string]any
+	if err := json.Unmarshal(raw, &status); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"active_connections", "max_connections", "accepting", "draining"} {
+		if _, ok := status[field]; !ok {
+			t.Fatalf("daemon status JSON is missing %q: %s", field, raw)
+		}
 	}
 }
 

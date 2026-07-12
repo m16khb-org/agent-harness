@@ -8,10 +8,18 @@ import (
 )
 
 type HarnessDoctorRequest struct {
-	RepoRoot    string `json:"repo_root,omitempty"`
-	HarnessRoot string `json:"harness_root,omitempty"`
-	Home        string `json:"home,omitempty"`
-	Version     string `json:"version,omitempty"`
+	RepoRoot        string                       `json:"repo_root,omitempty"`
+	HarnessRoot     string                       `json:"harness_root,omitempty"`
+	Home            string                       `json:"home,omitempty"`
+	Version         string                       `json:"version,omitempty"`
+	DaemonAdmission HarnessDoctorDaemonAdmission `json:"daemon_admission,omitempty"`
+}
+
+type HarnessDoctorDaemonAdmission struct {
+	ActiveConnections int  `json:"active_connections"`
+	MaxConnections    int  `json:"max_connections"`
+	Accepting         bool `json:"accepting"`
+	Draining          bool `json:"draining"`
 }
 
 type HarnessDoctorResult struct {
@@ -24,6 +32,10 @@ type HarnessDoctorResult struct {
 	StateDir          string                    `json:"state_dir"`
 	LifecycleState    ProjectLifecycleStatePlan `json:"lifecycle_state"`
 	PipeCapacityBytes int                       `json:"pipe_capacity_bytes"`
+	ActiveConnections int                       `json:"active_connections"`
+	MaxConnections    int                       `json:"max_connections"`
+	Accepting         bool                      `json:"accepting"`
+	Draining          bool                      `json:"draining"`
 	Checks            []HarnessDoctorCheck      `json:"checks"`
 	Issues            []HarnessDoctorIssue      `json:"issues"`
 	GeneratedAt       string                    `json:"generated_at"`
@@ -55,16 +67,20 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 		return HarnessDoctorResult{OK: false, Kind: "harness_doctor", StateDir: StateDir()}, err
 	}
 	result := HarnessDoctorResult{
-		OK:          true,
-		Healthy:     true,
-		Kind:        "harness_doctor",
-		Version:     req.Version,
-		HarnessRoot: req.HarnessRoot,
-		RepoRoot:    root,
-		StateDir:    StateDir(),
-		Checks:      []HarnessDoctorCheck{},
-		Issues:      []HarnessDoctorIssue{},
-		GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		OK:                true,
+		Healthy:           true,
+		Kind:              "harness_doctor",
+		Version:           req.Version,
+		HarnessRoot:       req.HarnessRoot,
+		RepoRoot:          root,
+		StateDir:          StateDir(),
+		ActiveConnections: req.DaemonAdmission.ActiveConnections,
+		MaxConnections:    req.DaemonAdmission.MaxConnections,
+		Accepting:         req.DaemonAdmission.Accepting,
+		Draining:          req.DaemonAdmission.Draining,
+		Checks:            []HarnessDoctorCheck{},
+		Issues:            []HarnessDoctorIssue{},
+		GeneratedAt:       time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	result.addCheck("binary", true, "agent-harness command is running")
 

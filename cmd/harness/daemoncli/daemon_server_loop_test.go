@@ -1,14 +1,24 @@
 package daemoncli
 
 import (
+	"bufio"
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 )
+
+type daemonServerDiscardLog struct{ io.Writer }
+
+func (daemonServerDiscardLog) Close() error { return nil }
 
 func TestRunDaemonAcceptLoopLogsAcceptAndStreamErrors(t *testing.T) {
 	var log daemonServerFakeLog
@@ -23,16 +33,14 @@ func TestRunDaemonAcceptLoopLogsAcceptAndStreamErrors(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	connSlots := make(chan struct{}, maxConnections)
 	err := runDaemonAcceptLoop(listener, &log, daemonServerLoopDeps{
 		now: func() time.Time {
 			return now
 		},
-		serveMCPStream: func(net.Conn, daemonServerLogFile) error {
+		serveConnection: func(net.Conn, daemonServerLogFile) error {
 			return errors.New("stream failed")
 		},
-		connSlots: connSlots,
-		activeWG:  &wg,
+		activeWG: &wg,
 	})
 
 	if err != nil {
@@ -41,10 +49,10 @@ func TestRunDaemonAcceptLoopLogsAcceptAndStreamErrors(t *testing.T) {
 	select {
 	case <-conn.closedCh:
 	case <-time.After(time.Second):
-		t.Fatal("serveMCPStream goroutine did not finish")
+		t.Fatal("serveConnection goroutine did not finish")
 	}
 	text := log.String()
-	if !strings.Contains(text, "temporary accept failure") || !strings.Contains(text, "mcp stream error: stream failed") {
+	if !strings.Contains(text, "temporary accept failure") || !strings.Contains(text, "connection error: stream failed") {
 		t.Fatalf("missing loop diagnostics: %q", text)
 	}
 }
@@ -101,9 +109,14 @@ type daemonServerFakeConn struct {
 	closed   bool
 	closedCh chan struct{}
 	blocking bool
+	reader   io.Reader
+	writes   bytes.Buffer
 }
 
-func (c *daemonServerFakeConn) Read([]byte) (int, error) {
+func (c *daemonServerFakeConn) Read(p []byte) (int, error) {
+	if c.reader != nil {
+		return c.reader.Read(p)
+	}
 	if c.blocking {
 		<-c.closedCh
 	}
@@ -111,7 +124,11 @@ func (c *daemonServerFakeConn) Read([]byte) (int, error) {
 }
 
 func (c *daemonServerFakeConn) Write(p []byte) (int, error) {
-	return len(p), nil
+	return c.writes.Write(p)
+}
+
+func (c *daemonServerFakeConn) writtenString() string {
+	return c.writes.String()
 }
 
 func (c *daemonServerFakeConn) Close() error {
@@ -154,44 +171,59 @@ func containsDaemonServerString(values []string, want string) bool {
 func TestRunDaemonAcceptLoopRejectsWhenConnectionLimitReached(t *testing.T) {
 	var log daemonServerFakeLog
 	now := time.Unix(300, 0).UTC()
-
-	// Create maxConnections+1 accepts: the first maxConnections succeed,
-	// the next one should be rejected.
-	accepts := make([]daemonServerAccept, 0, maxConnections+2)
-	for i := 0; i < maxConnections; i++ {
-		accepts = append(accepts, daemonServerAccept{
-			conn: &daemonServerFakeConn{closedCh: make(chan struct{}, 1), blocking: true},
-		})
+	admission := newDaemonAdmission(1)
+	held, ok := admission.acquire()
+	if !ok {
+		t.Fatal("failed to occupy admission slot")
 	}
-	rejectedConn := &daemonServerFakeConn{closedCh: make(chan struct{}, 1), blocking: true}
-	accepts = append(accepts, daemonServerAccept{conn: rejectedConn})
-	accepts = append(accepts, daemonServerAccept{err: errors.New("use of closed network connection")})
-
-	listener := &daemonServerScriptedListener{accepts: accepts}
+	defer held.close()
+	rejectedConn := &daemonServerFakeConn{
+		closedCh: make(chan struct{}, 1),
+		reader:   strings.NewReader("{"),
+	}
+	listener := &daemonServerScriptedListener{accepts: []daemonServerAccept{
+		{conn: rejectedConn},
+		{err: errors.New("use of closed network connection")},
+	}}
 
 	var wg sync.WaitGroup
-	connSlots := make(chan struct{}, maxConnections)
 	err := runDaemonAcceptLoop(listener, &log, daemonServerLoopDeps{
 		now: func() time.Time { return now },
-		serveMCPStream: func(c net.Conn, lf daemonServerLogFile) error {
-			// block until connection is closed from outside
-			<-c.(*daemonServerFakeConn).closedCh
-			return nil
+		serveConnection: func(conn net.Conn, logFile daemonServerLogFile) error {
+			return serveDaemonConnectionWithAdmission(conn, logFile, daemonInstance{}, admission, func(context.Context, net.Conn, daemonServerLogFile) error {
+				return errors.New("saturated stream must not start")
+			})
 		},
-		connSlots: connSlots,
-		activeWG:  &wg,
+		activeWG: &wg,
 	})
 
 	if err != nil {
 		t.Fatalf("expected closed listener to stop loop, got %v", err)
 	}
-	text := log.String()
-	if !strings.Contains(text, "connection limit reached") {
-		t.Fatalf("expected connection limit rejection in log: %q", text)
+	select {
+	case <-rejectedConn.closedCh:
+	case <-time.After(time.Second):
+		t.Fatal("rejected connection was not closed")
 	}
-	// Verify rejected conn was closed
-	if !rejectedConn.closed {
-		t.Fatal("rejected connection should have been closed")
+	wg.Wait()
+	if !strings.Contains(log.String(), daemonStatusConnectionLimit) {
+		t.Fatalf("expected connection limit rejection in log: %q", log.String())
+	}
+	var response struct {
+		JSONRPC string `json:"jsonrpc"`
+		Error   struct {
+			Code int            `json:"code"`
+			Data map[string]any `json:"data"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(rejectedConn.writtenString()), &response); err != nil {
+		t.Fatalf("connection rejection must be valid JSON-RPC, got %q: %v", rejectedConn.writtenString(), err)
+	}
+	if response.JSONRPC != "2.0" || response.Error.Code != -32001 {
+		t.Fatalf("unexpected admission error: %#v", response)
+	}
+	if response.Error.Data["code"] != "daemon_connection_limit_reached" || response.Error.Data["accepting"] != false {
+		t.Fatalf("admission error lost structured health: %#v", response.Error.Data)
 	}
 }
 
@@ -208,20 +240,17 @@ func TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections(t *testing
 	}
 
 	var wg sync.WaitGroup
-	connSlots := make(chan struct{}, maxConnections)
 
-	// The serveMCPStream blocks until we signal it
+	// The connection handler blocks until we signal it.
 	streamStarted := make(chan struct{})
 	err := runDaemonAcceptLoop(listener, &log, daemonServerLoopDeps{
 		now: func() time.Time { return now },
-		serveMCPStream: func(c net.Conn, lf daemonServerLogFile) error {
+		serveConnection: func(c net.Conn, _ daemonServerLogFile) error {
 			streamStarted <- struct{}{}
-			// block until closed
 			<-c.(*daemonServerFakeConn).closedCh
 			return nil
 		},
-		connSlots: connSlots,
-		activeWG:  &wg,
+		activeWG: &wg,
 	})
 
 	if err != nil {
@@ -248,5 +277,179 @@ func TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections(t *testing
 		// graceful shutdown worked
 	case <-time.After(5 * time.Second):
 		t.Fatal("WaitGroup did not drain within timeout")
+	}
+}
+
+func TestRunDaemonAcceptLoopHealthProbeBypassesFullMCPAdmission(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "ahd-admission-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	socket := filepath.Join(dir, "daemon.sock")
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logFile := daemonServerDiscardLog{Writer: io.Discard}
+	started := make(chan struct{}, maxConnections)
+	admission := newDaemonAdmission(maxConnections)
+	var wg sync.WaitGroup
+	loopDone := make(chan error, 1)
+	go func() {
+		loopDone <- runDaemonAcceptLoop(listener, logFile, daemonServerLoopDeps{
+			now: func() time.Time { return time.Now().UTC() },
+			serveConnection: func(conn net.Conn, logFile daemonServerLogFile) error {
+				return serveDaemonConnectionWithAdmission(conn, logFile, daemonInstance{}, admission, func(_ context.Context, conn net.Conn, _ daemonServerLogFile) error {
+					started <- struct{}{}
+					_, err := io.Copy(io.Discard, conn)
+					return err
+				})
+			},
+			wrapConn: func(conn net.Conn) net.Conn {
+				return &idleConn{Conn: conn, timeout: time.Minute}
+			},
+			activeWG: &wg,
+		})
+	}()
+	t.Cleanup(func() {
+		_ = listener.Close()
+		select {
+		case <-loopDone:
+		case <-time.After(time.Second):
+		}
+	})
+
+	clients := make([]net.Conn, 0, maxConnections)
+	for i := 0; i < maxConnections; i++ {
+		conn, err := net.Dial("unix", socket)
+		if err != nil {
+			t.Fatal(err)
+		}
+		clients = append(clients, conn)
+		if _, err := io.WriteString(conn, "{"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() {
+		for _, conn := range clients {
+			_ = conn.Close()
+		}
+	})
+	for i := 0; i < maxConnections; i++ {
+		select {
+		case <-started:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("only %d/%d MCP sessions started", i, maxConnections)
+		}
+	}
+
+	statusConn, err := net.Dial("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer statusConn.Close()
+	if err := statusConn.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.WriteString(statusConn, daemonIdentityRequest); err != nil {
+		t.Fatal(err)
+	}
+	var response daemonIdentityResponse
+	if err := json.NewDecoder(statusConn).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if !response.OK || response.ActiveConnections != maxConnections || response.Accepting {
+		t.Fatalf("health probe did not bypass saturated MCP admission: %#v", response)
+	}
+}
+
+func TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "ahd-idle-expiry-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	socket := filepath.Join(dir, "daemon.sock")
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logFile := daemonServerDiscardLog{Writer: io.Discard}
+	admission := newDaemonAdmission(maxConnections)
+	requests := make(chan string, maxConnections+1)
+	var wg sync.WaitGroup
+	loopDone := make(chan error, 1)
+	go func() {
+		loopDone <- runDaemonAcceptLoop(listener, logFile, daemonServerLoopDeps{
+			now: func() time.Time { return time.Now().UTC() },
+			serveConnection: func(conn net.Conn, logFile daemonServerLogFile) error {
+				return serveDaemonConnectionWithAdmission(conn, logFile, daemonInstance{}, admission, func(_ context.Context, conn net.Conn, _ daemonServerLogFile) error {
+					request, err := bufio.NewReader(conn).ReadString('\n')
+					if err == nil {
+						requests <- request
+					}
+					return err
+				})
+			},
+			wrapConn: func(conn net.Conn) net.Conn {
+				return &idleConn{Conn: conn, timeout: 500 * time.Millisecond}
+			},
+			activeWG: &wg,
+		})
+	}()
+	t.Cleanup(func() {
+		_ = listener.Close()
+		select {
+		case <-loopDone:
+		case <-time.After(time.Second):
+		}
+	})
+
+	clients := make([]net.Conn, 0, maxConnections)
+	for i := 0; i < maxConnections; i++ {
+		conn, err := net.Dial("unix", socket)
+		if err != nil {
+			t.Fatal(err)
+		}
+		clients = append(clients, conn)
+	}
+	t.Cleanup(func() {
+		for _, conn := range clients {
+			_ = conn.Close()
+		}
+	})
+	deadline := time.Now().Add(time.Second)
+	for admission.snapshot().ActiveConnections != maxConnections && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if got := admission.snapshot(); got.ActiveConnections != maxConnections || got.Accepting {
+		t.Fatalf("expected saturated admission before expiry, got %#v", got)
+	}
+
+	deadline = time.Now().Add(3 * time.Second)
+	for admission.snapshot().ActiveConnections != 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if got := admission.snapshot(); got.ActiveConnections != 0 || !got.Accepting {
+		t.Fatalf("idle expiry did not release every slot: %#v", got)
+	}
+
+	const initialize = "{\"jsonrpc\":\"2.0\",\"id\":65,\"method\":\"initialize\"}\n"
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if _, err := io.WriteString(conn, initialize); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case got := <-requests:
+		if got != initialize {
+			t.Fatalf("initialize was not replayed exactly: %q", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("initialize was not admitted after idle expiry")
 	}
 }

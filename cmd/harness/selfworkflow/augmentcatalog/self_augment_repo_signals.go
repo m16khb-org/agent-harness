@@ -120,10 +120,11 @@ func repoSignalRules() []repoSignalRule {
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasDaemonConnectionLimit = fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "const maxConnections") &&
-				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "connSlots := make(chan struct{}, maxConnections)") &&
-				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "connection limit reached") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server.go"), "newDaemonAdmission(maxConnections)") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_admission.go"), "case a.slots <- struct{}{}") &&
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_admission.go"), "writeDaemonAdmissionError") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), "TestRunDaemonAcceptLoopRejectsWhenConnectionLimitReached") &&
-				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), "TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections")
+				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), "TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasDraftWikiStaleLockDetection = fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "lock.go"), "staleLockMaxAge") &&

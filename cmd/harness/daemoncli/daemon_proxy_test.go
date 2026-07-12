@@ -105,6 +105,37 @@ func TestRunMCPProxyWithDepsReturnsSetupAndDialErrors(t *testing.T) {
 	}
 }
 
+func TestRunMCPProxyRejectsSaturatedDaemonBeforeDialWithoutStdout(t *testing.T) {
+	var stdout bytes.Buffer
+	dialed := false
+	err := runMCPProxyWithDeps(daemonProxyDeps{
+		ensureDaemonRunning: func() (daemonStatus, error) {
+			return daemonStatus{
+				ActiveConnections: maxConnections,
+				MaxConnections:    maxConnections,
+				Accepting:         false,
+				Paths:             daemonPaths{Socket: "daemon.sock"},
+			}, nil
+		},
+		dial: func(string, string) (io.ReadWriteCloser, error) {
+			dialed = true
+			return nil, errors.New("saturated daemon must not be dialed")
+		},
+		stdin:  strings.NewReader("initialize\n"),
+		stdout: &stdout,
+	})
+
+	if err == nil || !strings.Contains(err.Error(), daemonStatusConnectionLimit) {
+		t.Fatalf("expected explicit saturation error, got %v", err)
+	}
+	if dialed {
+		t.Fatal("saturated proxy must reject before dialing")
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("saturated proxy polluted MCP stdout: %q", stdout.String())
+	}
+}
+
 func TestRunMCPProxyUsesExistingDaemonSocket(t *testing.T) {
 	root, err := os.MkdirTemp("/tmp", "ahd-proxy-")
 	if err != nil {

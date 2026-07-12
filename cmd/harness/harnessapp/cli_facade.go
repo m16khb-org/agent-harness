@@ -29,10 +29,11 @@ type (
 
 func wireBasicCLIDeps() {
 	basiccli.Configure(basiccli.Deps{
-		HarnessRoot:    harnessRoot,
-		ResolveTarget:  resolveTarget,
-		Version:        version,
-		InspectHarness: inspectHarness,
+		HarnessRoot:       harnessRoot,
+		ResolveTarget:     resolveTarget,
+		Version:           version,
+		InspectHarness:    inspectHarness,
+		CheckDaemonStatus: checkDaemonStatus,
 	})
 	installcli.Configure(installcli.Deps{HarnessRoot: harnessRoot})
 	qualitycli.Configure(qualitycli.Deps{

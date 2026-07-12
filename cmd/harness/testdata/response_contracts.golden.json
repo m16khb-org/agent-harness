@@ -635,8 +635,12 @@
       "warnings": []
     },
     "daemon_status": {
+      "accepting": false,
+      "active_connections": 0,
       "code": "stopped",
+      "draining": false,
       "identity_verified": false,
+      "max_connections": 64,
       "message": "daemon is not running",
       "ok": true,
       "paths": {
@@ -7068,8 +7072,12 @@
       "content": [
         {
           "json": {
+            "accepting": false,
+            "active_connections": 0,
             "code": "stopped",
+            "draining": false,
             "identity_verified": false,
+            "max_connections": 64,
             "message": "daemon is not running",
             "ok": true,
             "paths": {

@@ -21,6 +21,7 @@ const (
 type daemonStatusDeps struct {
 	paths          func() (daemonPaths, error)
 	readInstance   func(string) (daemonInstance, bool, error)
+	probeStatus    func(string) (daemonIdentityResponse, error)
 	probeIdentity  func(string) (daemonInstance, error)
 	processAlive   func(int) bool
 	inspectProcess func(int) (daemonProcessIdentity, error)
@@ -30,7 +31,7 @@ func checkDaemonStatus() daemonStatus {
 	return checkDaemonStatusWithDeps(daemonStatusDeps{
 		paths:          currentDaemonPaths,
 		readInstance:   daemonpaths.ReadInstance,
-		probeIdentity:  probeDaemonIdentity,
+		probeStatus:    probeDaemonStatus,
 		processAlive:   processAlive,
 		inspectProcess: daemonpaths.InspectProcess,
 	})
@@ -39,17 +40,19 @@ func checkDaemonStatus() daemonStatus {
 func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 	paths, err := deps.paths()
 	if err != nil {
-		return daemonStatus{OK: false, Code: daemonStatusInstanceUnreadable, Message: err.Error()}
+		return daemonStatus{OK: false, Code: daemonStatusInstanceUnreadable, MaxConnections: maxConnections, Message: err.Error()}
 	}
-	status := daemonStatus{OK: true, Code: daemonStatusStopped, Paths: paths, Message: "daemon is not running"}
+	status := daemonStatus{OK: true, Code: daemonStatusStopped, Paths: paths, MaxConnections: maxConnections, Message: "daemon is not running"}
 	record, legacy, readErr := deps.readInstance(paths.PID)
 	if readErr != nil {
-		observed, probeErr := deps.probeIdentity(paths.Socket)
+		probe, probeErr := probeDaemonStatusWithDeps(deps, paths.Socket)
 		if probeErr == nil {
+			observed := probe.Instance
 			status.Running = true
 			status.Reachable = true
 			status.PID = observed.PID
 			status.Instance = &observed
+			applyDaemonAdmissionStatus(&status, probe)
 			return daemonIdentityMismatchStatus(status, "daemon socket is reachable without a matching instance record")
 		}
 		if !os.IsNotExist(readErr) {
@@ -65,7 +68,7 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 		status.Instance = &record
 	}
 
-	observed, probeErr := deps.probeIdentity(paths.Socket)
+	probe, probeErr := probeDaemonStatusWithDeps(deps, paths.Socket)
 	if probeErr != nil {
 		alive := record.PID > 0 && deps.processAlive(record.PID)
 		status.Running = alive
@@ -81,8 +84,10 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 		}
 		return status
 	}
+	observed := probe.Instance
 	status.Running = true
 	status.Reachable = true
+	applyDaemonAdmissionStatus(&status, probe)
 	if legacy {
 		status.OK = false
 		status.Code = daemonStatusLegacyPID
@@ -107,6 +112,29 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 	status.Code = daemonStatusReady
 	status.Message = "daemon is reachable and identity verified"
 	return status
+}
+
+func probeDaemonStatusWithDeps(deps daemonStatusDeps, socket string) (daemonIdentityResponse, error) {
+	if deps.probeStatus != nil {
+		return deps.probeStatus(socket)
+	}
+	instance, err := deps.probeIdentity(socket)
+	if err != nil {
+		return daemonIdentityResponse{}, err
+	}
+	return daemonIdentityResponse{
+		OK:             true,
+		Instance:       instance,
+		MaxConnections: maxConnections,
+		Accepting:      true,
+	}, nil
+}
+
+func applyDaemonAdmissionStatus(status *daemonStatus, probe daemonIdentityResponse) {
+	status.ActiveConnections = probe.ActiveConnections
+	status.MaxConnections = probe.MaxConnections
+	status.Accepting = probe.Accepting
+	status.Draining = probe.Draining
 }
 
 func daemonIdentityMismatchStatus(status daemonStatus, message string) daemonStatus {

@@ -11,6 +11,41 @@ import (
 	"agent-harness/internal/core/looprun"
 )
 
+func TestHarnessDoctorJSONIncludesDaemonAdmissionHealth(t *testing.T) {
+	repo := t.TempDir()
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{
+		RepoRoot:    repo,
+		HarnessRoot: repo,
+		Home:        t.TempDir(),
+		Version:     "test",
+		DaemonAdmission: doctor.HarnessDoctorDaemonAdmission{
+			ActiveConnections: 12,
+			MaxConnections:    64,
+			Accepting:         true,
+			Draining:          false,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"active_connections", "max_connections", "accepting", "draining"} {
+		if _, ok := payload[field]; !ok {
+			t.Fatalf("doctor JSON is missing %q: %s", field, raw)
+		}
+	}
+	if result.ActiveConnections != 12 || result.MaxConnections != 64 || !result.Accepting || result.Draining {
+		t.Fatalf("doctor lost supplied daemon admission health: %#v", result)
+	}
+}
+
 func TestHarnessDoctorHealthyBaseline(t *testing.T) {
 	stateRoot := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateRoot)

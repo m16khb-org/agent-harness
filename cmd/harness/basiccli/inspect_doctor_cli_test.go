@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/cmd/harness/daemoncli"
 	"agent-harness/internal/core"
 )
 
@@ -107,6 +108,38 @@ func TestRunDoctor_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 	}
 	if !doctorResultHasIssue(result, "project_docs_missing") {
 		t.Fatalf("expected project docs issue: %+v", result.Issues)
+	}
+}
+
+func TestRunDoctor_printsLiveDaemonAdmissionHealth(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	oldDeps := deps
+	t.Cleanup(func() { Configure(oldDeps) })
+	Configure(Deps{
+		HarnessRoot:    func() string { return repo },
+		ResolveTarget:  func(target string) string { return target },
+		Version:        "test",
+		InspectHarness: func(string) core.InspectInfo { return core.InspectInfo{} },
+		CheckDaemonStatus: func() daemoncli.Status {
+			return daemoncli.Status{
+				ActiveConnections: 64,
+				MaxConnections:    64,
+				Accepting:         false,
+				Draining:          false,
+			}
+		},
+	})
+
+	out := captureStatusVerifyStdout(t, func() error {
+		return RunDoctor([]string{"--repo", repo, "--json"})
+	})
+	var result core.HarnessDoctorResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode doctor json: %v\n%s", err, out)
+	}
+	if result.ActiveConnections != 64 || result.MaxConnections != 64 || result.Accepting || result.Draining {
+		t.Fatalf("doctor CLI lost daemon admission health: %#v", result)
 	}
 }
 

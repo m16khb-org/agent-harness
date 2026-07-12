@@ -1,6 +1,7 @@
 package harnessapp
 
 import (
+	"context"
 	"io"
 
 	"agent-harness/cmd/harness/daemoncli"
@@ -13,6 +14,9 @@ func configureDaemonCLI() {
 	daemoncli.HarnessRoot = harnessRoot
 	daemoncli.ServeMCPStream = func(input io.Reader, output io.Writer, diagnostics io.Writer) error {
 		return serveMCPStream(input, output, diagnostics)
+	}
+	daemoncli.ServeMCPStreamContext = func(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer) error {
+		return serveMCPStreamContext(ctx, input, output, diagnostics)
 	}
 }
 

@@ -1,7 +1,9 @@
 package daemoncli
 
 import (
+	"context"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -9,6 +11,29 @@ import (
 	"testing"
 	"time"
 )
+
+func TestDaemonServerDefaultDepsForwardsMCPContext(t *testing.T) {
+	oldServe := ServeMCPStreamContext
+	t.Cleanup(func() { ServeMCPStreamContext = oldServe })
+	type contextKey string
+	const key contextKey = "session"
+	ctx := context.WithValue(context.Background(), key, "admitted")
+	called := false
+	ServeMCPStreamContext = func(got context.Context, input io.Reader, output io.Writer, diagnostics io.Writer) error {
+		called = true
+		if got.Value(key) != "admitted" {
+			t.Fatalf("session context was not forwarded: %v", got.Value(key))
+		}
+		return nil
+	}
+	conn := &daemonServerFakeConn{closedCh: make(chan struct{}, 1)}
+	if err := daemonServerDefaultDeps().serveMCPStream(ctx, conn, &daemonServerFakeLog{}); err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("context-aware MCP stream handler was not called")
+	}
+}
 
 func TestRunDaemonServerWithDepsInitializesStateAndExitsOnClosedListener(t *testing.T) {
 	dir := t.TempDir()
@@ -88,7 +113,7 @@ func TestRunDaemonServerWithDepsInitializesStateAndExitsOnClosedListener(t *test
 		now: func() time.Time {
 			return time.Unix(100, 0).UTC()
 		},
-		serveMCPStream: func(net.Conn, daemonServerLogFile) error {
+		serveMCPStream: func(context.Context, net.Conn, daemonServerLogFile) error {
 			t.Fatal("closed listener should not serve MCP streams")
 			return nil
 		},
@@ -180,7 +205,7 @@ func TestRunDaemonServerUsesDefaultDepsFactory(t *testing.T) {
 			now: func() time.Time {
 				return time.Unix(100, 0).UTC()
 			},
-			serveMCPStream: func(net.Conn, daemonServerLogFile) error {
+			serveMCPStream: func(context.Context, net.Conn, daemonServerLogFile) error {
 				t.Fatal("closed listener should not serve MCP streams")
 				return nil
 			},

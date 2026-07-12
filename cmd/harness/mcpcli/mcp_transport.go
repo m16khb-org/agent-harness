@@ -2,6 +2,7 @@ package mcpcli
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,8 +24,12 @@ func RunMCP() error {
 // official go-sdk IOTransport. Otherwise, it falls back to the hand-rolled
 // JSON-RPC parser for backward compatibility with existing tests.
 func ServeMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
+	return ServeMCPStreamContext(context.Background(), input, output, diagnostics)
+}
+
+func ServeMCPStreamContext(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	if canUseSDKTransport(input, output) {
-		return serveMCPStreamSDK(input, output)
+		return serveMCPStreamSDK(ctx, input, output)
 	}
 	return serveMCPStreamLegacy(input, output, diagnostics)
 }

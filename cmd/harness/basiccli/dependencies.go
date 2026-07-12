@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
+	"agent-harness/cmd/harness/daemoncli"
 	"agent-harness/internal/core"
 )
 
@@ -11,10 +12,11 @@ import (
 // The composition root injects real implementations via Configure; standalone
 // use and tests fall back to defaults.
 type Deps struct {
-	HarnessRoot    func() string
-	ResolveTarget  func(string) string
-	Version        string
-	InspectHarness func(string) core.InspectInfo
+	HarnessRoot       func() string
+	ResolveTarget     func(string) string
+	Version           string
+	InspectHarness    func(string) core.InspectInfo
+	CheckDaemonStatus func() daemoncli.Status
 }
 
 // deps holds the currently configured dependencies. It is package-private and
@@ -32,10 +34,11 @@ func Reset() { deps = defaultDeps() }
 
 func defaultDeps() Deps {
 	return Deps{
-		HarnessRoot:    defaultHarnessRoot,
-		ResolveTarget:  defaultResolveTarget,
-		Version:        "dev",
-		InspectHarness: func(string) core.InspectInfo { return core.InspectInfo{} },
+		HarnessRoot:       defaultHarnessRoot,
+		ResolveTarget:     defaultResolveTarget,
+		Version:           "dev",
+		InspectHarness:    func(string) core.InspectInfo { return core.InspectInfo{} },
+		CheckDaemonStatus: daemoncli.CheckDaemonStatus,
 	}
 }
 

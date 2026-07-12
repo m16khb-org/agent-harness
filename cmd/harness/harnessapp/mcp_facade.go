@@ -1,6 +1,7 @@
 package harnessapp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -53,6 +54,11 @@ func runMCP() error {
 func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	configureMCPCLI()
 	return mcpcli.ServeMCPStream(input, output, diagnostics)
+}
+
+func serveMCPStreamContext(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer) error {
+	configureMCPCLI()
+	return mcpcli.ServeMCPStreamContext(ctx, input, output, diagnostics)
 }
 
 func mcpTools() []map[string]any {

@@ -1,6 +1,7 @@
 package daemoncli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -13,6 +14,11 @@ import (
 )
 
 const maxConnections = 64
+
+const (
+	daemonAdmissionErrorCode    = -32001
+	daemonStatusConnectionLimit = "daemon_connection_limit_reached"
+)
 
 // mcpIdleTimeout bounds how long a daemon MCP connection may stay idle (no
 // reads) before being closed. Without it, server.Run blocks forever on a
@@ -49,8 +55,8 @@ var daemonServerDefaultDeps = func() daemonServerDeps {
 		now: func() time.Time {
 			return time.Now().UTC()
 		},
-		serveMCPStream: func(conn net.Conn, logFile daemonServerLogFile) error {
-			return ServeMCPStream(conn, conn, logFile)
+		serveMCPStream: func(ctx context.Context, conn net.Conn, logFile daemonServerLogFile) error {
+			return ServeMCPStreamContext(ctx, conn, conn, logFile)
 		},
 	}
 }
@@ -73,7 +79,7 @@ type daemonServerDeps struct {
 	buildSHA       func(string) (string, error)
 	newToken       func() (string, error)
 	now            func() time.Time
-	serveMCPStream func(net.Conn, daemonServerLogFile) error
+	serveMCPStream func(context.Context, net.Conn, daemonServerLogFile) error
 }
 
 func runDaemonServerWithDeps(deps daemonServerDeps) error {
@@ -130,19 +136,20 @@ func runDaemonServerWithDeps(deps daemonServerDeps) error {
 	defer func() {
 		_ = deps.remove(paths.PID)
 	}()
-	connSlots := make(chan struct{}, maxConnections)
+	admission := newDaemonAdmission(maxConnections)
 	var activeWG sync.WaitGroup
 	fmt.Fprintf(logFile, "%s daemon started pid=%d socket=%s max_connections=%d\n", deps.now().Format(time.RFC3339), pid, paths.Socket, maxConnections)
 	acceptErr := runDaemonAcceptLoop(listener, logFile, daemonServerLoopDeps{
 		now: deps.now,
-		serveMCPStream: func(conn net.Conn, logFile daemonServerLogFile) error {
-			return serveDaemonConnection(conn, logFile, instance, deps.serveMCPStream)
+		serveConnection: func(conn net.Conn, logFile daemonServerLogFile) error {
+			return serveDaemonConnectionWithAdmission(conn, logFile, instance, admission, func(ctx context.Context, conn net.Conn, logFile daemonServerLogFile) error {
+				return deps.serveMCPStream(ctx, conn, logFile)
+			})
 		},
 		wrapConn: func(c net.Conn) net.Conn {
 			return &idleConn{Conn: c, timeout: mcpIdleTimeout}
 		},
-		connSlots: connSlots,
-		activeWG:  &activeWG,
+		activeWG: &activeWG,
 	})
 	fmt.Fprintf(logFile, "%s daemon stopping, waiting for active connections\n", deps.now().Format(time.RFC3339))
 	shutdownDone := make(chan struct{})
@@ -160,11 +167,10 @@ func runDaemonServerWithDeps(deps daemonServerDeps) error {
 }
 
 type daemonServerLoopDeps struct {
-	now            func() time.Time
-	serveMCPStream func(net.Conn, daemonServerLogFile) error
-	wrapConn       func(net.Conn) net.Conn
-	connSlots      chan struct{}
-	activeWG       *sync.WaitGroup
+	now             func() time.Time
+	serveConnection func(net.Conn, daemonServerLogFile) error
+	wrapConn        func(net.Conn) net.Conn
+	activeWG        *sync.WaitGroup
 }
 
 func runDaemonAcceptLoop(listener net.Listener, logFile daemonServerLogFile, deps daemonServerLoopDeps) error {
@@ -177,26 +183,15 @@ func runDaemonAcceptLoop(listener net.Listener, logFile daemonServerLogFile, dep
 			fmt.Fprintf(logFile, "%s accept error: %v\n", deps.now().Format(time.RFC3339), err)
 			continue
 		}
-		select {
-		case deps.connSlots <- struct{}{}:
-		default:
-			fmt.Fprintf(logFile, "%s connection limit reached (%d), rejecting connection\n", deps.now().Format(time.RFC3339), maxConnections)
-			_, _ = conn.Write([]byte("daemon connection limit reached\n"))
-			_ = conn.Close()
-			continue
-		}
 		deps.activeWG.Add(1)
 		go func(conn net.Conn) {
-			defer func() {
-				<-deps.connSlots
-				deps.activeWG.Done()
-			}()
+			defer deps.activeWG.Done()
 			defer conn.Close()
 			if deps.wrapConn != nil {
 				conn = deps.wrapConn(conn)
 			}
-			if err := deps.serveMCPStream(conn, logFile); err != nil {
-				fmt.Fprintf(logFile, "%s mcp stream error: %v\n", deps.now().Format(time.RFC3339), err)
+			if err := deps.serveConnection(conn, logFile); err != nil {
+				fmt.Fprintf(logFile, "%s connection error: %v\n", deps.now().Format(time.RFC3339), err)
 			}
 		}(conn)
 	}

@@ -65,6 +65,7 @@ func DocsIndex(root, version string) DocsIndexResult {
 
 type HarnessDoctorRequest = doctor.HarnessDoctorRequest
 type HarnessDoctorResult = doctor.HarnessDoctorResult
+type HarnessDoctorDaemonAdmission = doctor.HarnessDoctorDaemonAdmission
 type HarnessDoctorCheck = doctor.HarnessDoctorCheck
 type HarnessDoctorIssue = doctor.HarnessDoctorIssue
 type HarnessDoctorFix = doctor.HarnessDoctorFix

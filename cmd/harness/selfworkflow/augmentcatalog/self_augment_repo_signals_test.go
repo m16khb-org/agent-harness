@@ -218,22 +218,31 @@ func TestDaemonConnectionLimitIsSatisfiedByAcceptLoopGuard(t *testing.T) {
 const maxConnections = 64
 
 func runDaemonServerWithDeps() {
-	connSlots := make(chan struct{}, maxConnections)
-	_ = connSlots
+	admission := newDaemonAdmission(maxConnections)
+	_ = admission
 }
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "daemoncli", "daemon_admission.go"), `package daemoncli
 
-func runDaemonAcceptLoop() {
+const daemonStatusConnectionLimit = "daemon_connection_limit_reached"
+
+type daemonAdmission struct { slots chan struct{} }
+
+func (a *daemonAdmission) acquire() bool {
 	select {
-	case connSlots <- struct{}{}:
+	case a.slots <- struct{}{}:
+		return true
 	default:
-		_ = "connection limit reached"
+		return false
 	}
 }
+
+func writeDaemonAdmissionError() {}
 `)
 	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), `package daemoncli
 
 func TestRunDaemonAcceptLoopRejectsWhenConnectionLimitReached() {}
-func TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections() {}
+func TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize() {}
 `)
 
 	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")

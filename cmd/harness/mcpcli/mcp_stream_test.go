@@ -2,10 +2,31 @@ package mcpcli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"io"
+	"net"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestServeMCPStreamContextCancelsIdleSDKSession(t *testing.T) {
+	server, client := net.Pipe()
+	defer client.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		done <- ServeMCPStreamContext(ctx, server, server, io.Discard)
+	}()
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("SDK MCP session ignored cancellation")
+	}
+}
 
 func TestServeMCPStreamListsHarnessTools(t *testing.T) {
 	input := strings.Join([]string{

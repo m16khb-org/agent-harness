@@ -14,16 +14,20 @@ type daemonInstance = daemonpaths.InstanceRecord
 type daemonProcessIdentity = daemonpaths.ProcessIdentity
 
 type daemonStatus struct {
-	OK               bool            `json:"ok"`
-	Running          bool            `json:"running"`
-	Reachable        bool            `json:"reachable"`
-	IdentityVerified bool            `json:"identity_verified"`
-	LegacyPID        bool            `json:"legacy_pid,omitempty"`
-	PID              int             `json:"pid,omitempty"`
-	Code             string          `json:"code"`
-	Paths            daemonPaths     `json:"paths"`
-	Instance         *daemonInstance `json:"instance,omitempty"`
-	Message          string          `json:"message,omitempty"`
+	OK                bool            `json:"ok"`
+	Running           bool            `json:"running"`
+	Reachable         bool            `json:"reachable"`
+	IdentityVerified  bool            `json:"identity_verified"`
+	ActiveConnections int             `json:"active_connections"`
+	MaxConnections    int             `json:"max_connections"`
+	Accepting         bool            `json:"accepting"`
+	Draining          bool            `json:"draining"`
+	LegacyPID         bool            `json:"legacy_pid,omitempty"`
+	PID               int             `json:"pid,omitempty"`
+	Code              string          `json:"code"`
+	Paths             daemonPaths     `json:"paths"`
+	Instance          *daemonInstance `json:"instance,omitempty"`
+	Message           string          `json:"message,omitempty"`
 }
 
 const daemonReadyTimeout = 15 * time.Second

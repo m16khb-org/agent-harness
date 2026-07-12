@@ -45,7 +45,19 @@ func runDoctor(args []string) error {
 		*repo = fs.Arg(0)
 	}
 	home, _ := os.UserHomeDir()
-	result, err := core.HarnessDoctor(core.HarnessDoctorRequest{RepoRoot: *repo, HarnessRoot: deps.HarnessRoot(), Home: home, Version: deps.Version})
+	daemon := deps.CheckDaemonStatus()
+	result, err := core.HarnessDoctor(core.HarnessDoctorRequest{
+		RepoRoot:    *repo,
+		HarnessRoot: deps.HarnessRoot(),
+		Home:        home,
+		Version:     deps.Version,
+		DaemonAdmission: core.HarnessDoctorDaemonAdmission{
+			ActiveConnections: daemon.ActiveConnections,
+			MaxConnections:    daemon.MaxConnections,
+			Accepting:         daemon.Accepting,
+			Draining:          daemon.Draining,
+		},
+	})
 	if err != nil {
 		return err
 	}
