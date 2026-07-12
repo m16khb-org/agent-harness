@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Read the design spec first: `docs/superpowers/specs/2026-07-06-issueops-subagent-orchestration-design.md`. Where this plan and the spec disagree, the spec wins; update both on any deviation.
-- For this plan's non-ownership orchestration fields, the July 6 baseline used additive `omitempty` under IssueOps schema v1. Issue #16 supersedes that root-version decision with schema v4 for `execution_handoff`, stable terminal identity, and sealed completion authority.
+- For this plan's non-ownership orchestration fields, the July 6 baseline used additive `omitempty` under IssueOps schema v1. Issue #16 supersedes that root-version decision with schema v5 for `execution_handoff`, stable terminal identity, sealed completion authority, and publish/cleanup authority.
 - **Never hold two entity locks at once** (cycle/cycle, cycle/pool, pool/task) **and never call a `with*Lock`-wrapped function from inside another lock callback — including the SAME entity's lock** (a second exclusive flock on the same lock file via a new fd self-deadlocks in-process). Multi-entity ops are sequential single-locked steps + read-repair.
 - **No new upstream dependencies anywhere** (D6): no feature may require CodeGraph, llm-wiki, claude-mem, an external LLM API, or a spawned agent CLI. External intelligence is always a render-prompt → record-result contract performed by the host agent.
 - Lock files are persistent inodes — never delete between lock/unlock (see `.agent-harness/ISSUEOPS_AUDIT.md` "Lock File Deletion Breaks Mutual Exclusion").

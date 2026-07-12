@@ -12,7 +12,7 @@ agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto 
 
 The three modes are intentionally small:
 
-- `--orchestrator auto`: probe Orca. If the probe fails before any mutation, return the unchanged inline result and leave `execution_handoff` absent. If Orca is ready, preview or prepare the supervised worktree.
+- `--orchestrator auto`: probe Orca. If Orca is absent or unready before the first external mutation, return the legacy inline JSON and text byte-for-byte: no orchestration fields, warnings, GitLab residue, `execution_handoff`, row rewrite, or new SQLite artifact. If Orca is ready, preview or prepare the supervised worktree.
 - `--orchestrator orca`: require a ready Orca installation and fail before mutation when the probe fails.
 - `--orchestrator inline`: use the legacy sibling-worktree flow and leave `execution_handoff` absent.
 
@@ -59,7 +59,7 @@ git -C <worker-root> rev-parse --verify HEAD
 
 For `resolved_mode: orca`, the coordinator reviews readiness and creates the bounded context packet. Repeat flags are allowed where shown:
 
-Before any replacement or dispatch, inspect exact-worktree terminals and active orchestration tasks. Any connected/writable possible writer or dispatched task blocks another writer, even when preserved WIP or the diff appears stable. A stable diff is not ownership evidence. Do not adopt WIP until the original task is terminal and the original writer is exited or closed.
+Before any replacement or dispatch, inspect exact-worktree terminals and active orchestration tasks: inventory every terminal for the exact worktree with a non-truncated limit and inventory every server-filtered dispatched task, not only ready tasks. Every connected or writable terminal is a possible writer, including a pre-existing baseline terminal; the designated fresh worker must be the only terminal that is both connected and writable. Any such possible writer or dispatched task blocks another writer, even when preserved WIP or the diff appears stable. A stable diff is not ownership evidence. Do not adopt WIP until the original task is terminal and the original writer is exited or closed.
 
 After any targeted terminal close, reread the complete exact-worktree terminal inventory before dispatch and resolve the fresh connected/writable live handle again. Closing one pane may roll over or exit a sibling; a pre-close inventory is never post-close sole-writer evidence.
 
@@ -70,7 +70,7 @@ orca orchestration task-list --status dispatched --json
 orca orchestration dispatch-show --task <current-task-id> --json
 ```
 
-`orca orchestration task show`, `orca orchestration dispatch show`, and status `in_progress` are invalid; use only the exact inventory forms above. Do not infer task absence from a local filter over broad output. For this fence, truncated or unparsable JSON is ambiguity, never absence; rerun the server-filtered observation and keep mutation blocked until the exact task and dispatch are proven.
+`orca orchestration task show`, `orca orchestration dispatch show`, and status `in_progress` are invalid; use only the exact inventory forms above. Do not infer task absence from a local filter over broad output. Re-attest the complete terminal plus dispatched-task inventories immediately before the first Orca create, immediately before task create and dispatch, and again immediately before a retry can mint replacement identities. For this fence, truncated or unparsable JSON is ambiguity, never absence; incomplete or duplicate identity output likewise persists `recovery_required`. Keep the original task, terminal, and dispatch identities until exact quiescence is durably proven.
 
 Start the fresh worker from a login shell and require the actual host banner. Immediately before dispatch, obtain a fresh `connected=true` and `writable=true` check for the exact terminal. One `tui-idle` sample alone is insufficient. After an authorized terminal send delivers interrupt text plus Enter, read the target and verify that UserPromptSubmit or working state actually began. If the full instruction remains at the idle prompt, send exactly one Enter and read again. Never resend the instruction body.
 
@@ -126,6 +126,8 @@ The returned `attempt`, `ownership_epoch`, `context_sha256`, sealed coordinator 
 
 The fresh worker starts in the exact Orca worktree and claims before any mutation:
 
+A host usage-limit, rate-limit, reset, or model-selection prompt is a user-decision boundary. The worker must dismiss or stop at that prompt and relay it to the coordinator; it must never navigate, confirm, retry, reset usage, or switch models automatically.
+
 The source implementation checkout is read-only; the source checkout is observation-only. From it, use only explicit non-executing observations such as `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git ls-files`, and `rg`. Tests, builds, formatting, installation, and generation run only in the claimed worker root; test initialization, fixtures, caches, binaries, and goldens can mutate state. This includes `go build -o`, every test runner, native install, formatting, golden updates, and generators. If PreToolUse blocks an operation, do not bypass the hook through a different tool. The eval and source primitives are shell reinterpretation and are forbidden wrappers.
 
 For a report-only cycle, run only the verification commands declared in the sealed worker packet. Do not invent API, provider-ref, or history probes; the bounded report is not authority to widen verification or inspect unrelated external state. If a declared command cannot run, record the exact failure instead of substituting a new probe.
@@ -140,7 +142,7 @@ A targeted Go test is GREEN only when the intended test names actually ran. `[no
 go test -v ./internal/core/lifecycle -run '^(TestHandoffGuardBlocksExplicitHistoricalMailboxInjection|TestHandoffGuardEnforcesInstalledOrchestrationMessageTypes)$' -count=1
 ```
 
-A verification command routed through a pipeline such as `go test ... | tail` or `go test ... | grep` is non-evidence unless the test process's own exit status is separately proven; rerun required suites as direct commands. If an execution tool yields a shell `session_id` without `exit_code`, resume that exact shell session with `write_stdin` until terminal output and the real exit code arrive. Waiting on an already-completed outer tool cell is not a substitute for resuming the yielded shell session. `tui-idle`, missing task heartbeat, filesystem quiescence, a spinner, or partial package output alone proves neither worker completion/hang nor validation success. Immediately before interrupt or close, inspect the host session's active tool/process and latest `tool_result`; if the exact verification process remains active, wait and poll it to terminal exit.
+A verification command routed through a pipeline such as `go test ... | tail` or `go test ... | grep` is non-evidence unless the test process's own exit status is separately proven; rerun required suites as direct commands. If an execution tool yields a shell `session_id` without `exit_code`, resume that exact shell session with `write_stdin` until terminal output and the real exit code arrive. Waiting on an already-completed outer tool cell is not a substitute for resuming the yielded shell session, and starting a duplicate overlapping test while the yielded session is still live is forbidden. `tui-idle`, missing task heartbeat, filesystem quiescence, a spinner, or partial package output alone proves neither worker completion/hang nor validation success. Immediately before interrupt or close, inspect the host session's active tool/process and latest `tool_result`; if the exact verification process remains active, wait and poll it to terminal exit.
 
 Codex 0.144.1 initializes hooks during session setup, while its `refresh_runtime_config` path can rebuild and publish them later. Replacing `~/.codex/hooks.json` through native install did not refresh the observed live worker, so an active Codex session may retain its previously loaded hook command until runtime config refresh or a new session. Installed-file readback alone is insufficient; the live current-session probe is authoritative. Keep the installer `--host codex` flag for fresh or refreshed PreToolUse sessions; for a retained older PreToolUse command, hookcli defaults the native host to `codex` only when both the payload host and `--host` are empty. The installed Codex Stop command is also hostless, so Stop applies that default only to completed-worker native identity matching when both sources are empty; explicit payload/flag conflicts remain fail-closed and output formatting still follows the original flag. This compatibility path still requires an exact nonempty session, canonical cwd/repo, persisted fence, and in-tree target. It never overwrites an explicit host. After installing a compatible binary, authorize at most one same-worker retry; do not bypass the guard or start a fresh session unless the compatibility repair cannot be made safe.
 
@@ -259,18 +261,16 @@ agent-harness issueops handoff accept \
 
 ## Coordinator Publish
 
-After acceptance, verify the accepted FinalHead before any publish action. Run the ref query as a standalone read-only command, inspect its stdout, and continue only when that full SHA exactly equals the accepted FinalHead. Do not turn the comparison into shell reinterpretation, command substitution, or a wrapper.
+After acceptance, verify the accepted FinalHead before any publish action. Run the ref query as a standalone read-only command, inspect its stdout, and continue only when that full SHA exactly equals the accepted FinalHead and the durable provider, remote, branch, and base identities match. Do not turn the comparison into shell reinterpretation or command substitution.
 
 ```bash
 git rev-parse --verify refs/heads/<branch>
 # Stop unless the stdout above exactly equals <accepted-final-head>.
-git push <remote> <branch>
-gh pr create --head <branch> --base <base-branch> --draft --title <title> --body <body>
-# GitLab equivalent:
-glab mr create --source-branch <branch> --target-branch <base-branch> --draft --title <title> --description <body>
+agent-harness issueops handoff publish --id <cycle-id> --confirm --json
+agent-harness issueops remote create-pr --id <cycle-id> --provider <github-or-gitlab> --head <branch> --base <base-branch> --title <title> --body <already-rendered-body> --label <label> --assignee <user> --confirm --json
 ```
 
-The order is accepted FinalHead versus `refs/heads/<branch>`, exact branch push, then explicit head/source and base/target flags for a draft PR/MR. `HEAD`, force/delete push, implicit current-branch PR creation, merge, close, reopen, fill, web, and wrapper-side push are outside this authority.
+The order is accepted FinalHead versus `refs/heads/<branch>`, then `handoff publish`: it re-attests every possible writer and durably records either a known writer conflict or ambiguous inventory. Only after a clean attestation does it non-force push the immutable accepted object ID as `<FinalHead>:refs/heads/<branch>`, verify the exact remote ref, and persist the provider-neutral receipt. Only then may the safe wrapper create a draft PR/MR with explicit provider/head/base and a literal body argv. These are the provider-neutral equivalent of explicit head/source and base/target flags. Before provider mutation the wrapper also requires `phase=pr` and no existing `RemoteArtifact`. GitHub/GitLab create and immediate readback use fixed timeouts, bounded/redacted output, exact canonical URL/head/base/draft, and requested label/assignee inclusion. GitLab parses the returned host/project/IID and uses exact `glab api`; provider success then passes through durable `IssueURL` project authority and atomic `RemoteArtifact` persistence. Any post-start timeout, malformed output, mismatch, or verify/write failure is unknown/needs-reconciliation and never retries create; invalid raw output is not retained. The wrapper rechecks both local and remote heads immediately before provider creation and applies the same fence to GitHub and GitLab. Missing/stale receipt, provider/branch/ref mismatch, FinalHead drift, arbitrary `--body-file`, raw `git push`, direct `gh pr create`/`glab mr create`, `HEAD`, force/delete push, implicit current-branch creation, merge, close, reopen, fill, web, and wrapper-side push are outside this authority.
 
 ## Failure And Recovery
 
@@ -305,7 +305,7 @@ orca terminal list --worktree id:<persisted-worktree-id> --limit 512 --json
 
 Require exactly one worktree row matching the sealed repo, base, path, branch, clean exact HEAD, and comment marker. Its instance ID must be nonempty but may equal the previously persisted instance. Require the adopted terminal to name that worktree and current runtime. When stable terminal IDs were recorded, match the exact `tabId and leafId`; for a legacy row that never recorded them, join the terminal by exact tab/leaf to `visualLayouts[].root.tabs[].title` and require the exact bounded marker title. Missing fields, mismatches, duplicate candidates, or conflicting instance evidence leave the lease in `recovery_required`. The runtime-only locked completion exact-compares the journal snapshot and revalidates the sealed context source and clean exact branch/HEAD immediately before refreshing runtime, worktree instance, handle, PTY, tab ID, and leaf ID in one compare-and-set write.
 
-Never launch a replacement while an exact recovered terminal is connected and writable or the worker root contains uncommitted WIP. Monitor only with bounded reads, carrying the previous response's `nextCursor` forward:
+Never launch a replacement while an exact recovered terminal is connected or writable or the worker root contains uncommitted WIP. Monitor only with bounded reads, carrying the previous response's `nextCursor` forward:
 
 ```bash
 orca terminal read --terminal <recovered-current-handle> --cursor <nextCursor> --limit 1000 --json
@@ -313,11 +313,15 @@ orca terminal read --terminal <recovered-current-handle> --cursor <nextCursor> -
 
 A handshake-only local Orca observation is bounded by caller-side Ctrl-C or host tool cancellation. Do not send control input into the target PTY to stop an observation; terminal mutation remains authority-gated.
 
-If reconciliation proves no safe continuation, close the attempt explicitly. A later retry is a new attempt and ownership epoch, and is allowed only after the prior attempt is safely closed with no ambiguous pending operation:
+If reconciliation proves no safe continuation, close the attempt explicitly. A submitted attempt with terminal `worker_done` projection remains cancellable: force-cancel retains that projection as evidence, and deterministic finalization closes it as cancelled after exact quiescence. A later retry is a new attempt and ownership epoch, and is allowed only after the prior attempt is safely closed with no ambiguous pending operation and durable retry cleanup receipts:
 
 ```bash
 agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action cancel --confirm --json
 agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action finalize-cancel --confirm --json
+agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action approve-cleanup --cleanup-disposition retry --reason "<verified reason>" --confirm --json
+# After the ordered task and terminal cleanup plus read-only verification:
+agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action record-cleanup --cleanup-step task_terminal --confirm --json
+agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action record-cleanup --cleanup-step terminal_quiescent --confirm --json
 agent-harness issueops handoff recover --id "$ISSUEOPS_ID" --action retry --confirm --json
 ```
 
@@ -339,16 +343,22 @@ Before retry, require a clean exact branch and HEAD checkpoint. Persist the curr
 
 ## Coordinator Cleanup
 
-For `execution_handoff.driver=orca`, Git worktree removal is not the cleanup route. The coordinator performs and verifies this order after explicit user cleanup approval:
+For `execution_handoff.driver=orca`, Git worktree removal is not the cleanup route. The coordinator first persists the destructive disposition, then performs and receipts this exact order for a failed/cancelled handoff:
 
 ```bash
+agent-harness issueops handoff recover --id <cycle-id> --action approve-cleanup --cleanup-disposition remove --reason <bounded-reason> --confirm --json
 orca orchestration task-update --id <persisted-task-id> --status <completed-or-failed> --result <bounded-result> --json
+agent-harness issueops handoff recover --id <cycle-id> --action record-cleanup --cleanup-step task_terminal --confirm --json
 orca terminal close --terminal <resolved-worker-terminal-handle> --json
 orca terminal stop --worktree id:<persisted-worktree-id> --json
-orca worktree rm --worktree id:<persisted-worktree-id> --force --json
-orca terminal list --worktree id:<persisted-worktree-id> --limit 512 --json
+agent-harness issueops handoff recover --id <cycle-id> --action record-cleanup --cleanup-step terminal_quiescent --confirm --json
+# Stop here for an explicit user cleanup decision. The harness never authorizes raw worktree removal.
+# After user-directed external/manual deletion, record-cleanup itself performs complete ListWorktrees verification before recording absence:
+agent-harness issueops handoff recover --id <cycle-id> --action record-cleanup --cleanup-step worktree_removed --confirm --json
 ```
 
-The exact `orca terminal close --terminal <resolved-worker-terminal-handle> --json` form closes one pane using the currently resolved `WorkerTerminalHandle`; `orca terminal stop --worktree id:<persisted-worktree-id> --json` stops the exact persisted worktree terminal set. Never use `terminal rm`: no such public cleanup command exists. Each is an optional bounded cleanup attempt for source-root coordinators only after `closed/worker_failed` or `closed/cancelled`; it is blocked for accepted or active attempts, worker/non-source sessions, wrong identities, and extra flags. The sealed `WorkerMailboxHandle` is never terminal-control authority: never target it with `orca terminal send`, close, stop, or injected `exit`; it remains the sealed orchestration `worker_done` sender. A successful close or stop is not complete cleanup evidence. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list; nested shells require repeated inspection until fully gone. Also verify the exact worktree selector and path are absent before handling provider refs. Inline records retain the legacy Git cleanup recipe; never substitute `git worktree remove` for Orca-owned removal.
+The exact `orca terminal close --terminal <resolved-worker-terminal-handle> --json` form closes one pane using the currently resolved `WorkerTerminalHandle`; `orca terminal stop --worktree id:<persisted-worktree-id> --json` stops the exact persisted worktree terminal set. Never use `terminal rm`: no such public cleanup command exists. Each terminal/task command is an optional bounded cleanup attempt, allowed only after its durable approval or preceding ordered receipt for `closed/worker_failed` or `closed/cancelled`; duplicate receipt recording is idempotent, while missing, duplicate, truncated, incomplete, or mismatched identity evidence fails closed. A `terminal_quiescent` receipt is indefinitely stale and does not authorize `orca worktree rm --force`; V1 stops at an explicit user cleanup boundary. Only after external/manual deletion may a complete inventory prove absence and record `worktree_removed`. Accepted handoffs cannot approve cleanup or remove the worktree to bypass publication. The sealed `WorkerMailboxHandle` is never terminal-control authority: never target it with `orca terminal send`, close, stop, or injected `exit`; it remains the sealed orchestration `worker_done` sender. A successful close or stop is not complete cleanup evidence. A worktree removal is not terminal cleanup evidence: verify every exact spawned handle and PTY is connected=false or absent from terminal list; nested shells require repeated inspection until fully gone. Also verify every worktree inventory row has bounded stable ID, instance, canonical path, branch, and repo identity before the exact worktree can be classified absent. Inline records retain the legacy Git cleanup recipe; never substitute `git worktree remove` for Orca-owned removal.
 
-`auto` fallback is allowed only after a pre-mutation probe failure. It is never a recovery strategy for `coordinator_preparing`, `dispatched`, `claimed`, `submitted`, or `recovery_required` state.
+Bootstrap exception: issue #16 cycle `io-47c93d1ef742` is a schema-v4 record with no `execution_handoff`; its `branch_prepare.base_sha` is `2ba240b94477190071598b3f1c7278312b296611`. `fe2ed683bd02a5b0e7b029eb10a82e59777b9dbb` is the observed pre-correction local/remote published branch HEAD and `ai_slop_clean_head`, not the cycle base. It must refuse supervised publish. After the worker fully exits, publication for that one cycle requires coordinator-only exact untruncated terminal/task inventory plus immutable commit SHA and local/remote ref verification. Automatic publication-fence guarantees apply only to future supervised envelopes; do not adopt the legacy row into an envelope.
+
+`auto` fallback is allowed only when Orca is absent or unready before the first external mutation, and it must be byte-identical to the legacy inline path with no state rewrite. It is never a recovery strategy for `coordinator_preparing`, `dispatched`, `claimed`, `submitted`, or `recovery_required` state.

@@ -25,9 +25,13 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 	mcpcli.IssueOpsHandoffOrcaClient = func() core.IssueOpsOrcaDispatchClient { return fake }
 	previousProjector := mcpcli.IssueOpsWorkerDoneProjectionClient
 	mcpcli.IssueOpsWorkerDoneProjectionClient = func() core.IssueOpsWorkerDoneProjectionClient { return fake }
+	publication := &mcpPublicationFake{}
+	previousPublication := mcpcli.IssueOpsPublicationReader
+	mcpcli.IssueOpsPublicationReader = func() core.IssueOpsHandoffPublicationReader { return publication }
 	t.Cleanup(func() {
 		mcpcli.IssueOpsHandoffOrcaClient = previousClient
 		mcpcli.IssueOpsWorkerDoneProjectionClient = previousProjector
+		mcpcli.IssueOpsPublicationReader = previousPublication
 	})
 	unattestedPreview := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{
 		"action":                "start",
@@ -96,6 +100,29 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 	if nestedMap(closed, "execution_handoff")["closed_disposition"] != handoff.DispositionAccepted {
 		t.Fatalf("accept parity failed: %#v", closed)
 	}
+	fake.terminals = nil
+	publication.localHead, publication.remoteHead = finalHead, finalHead
+	published := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{"action": "publish", "id": record.ID, "confirm": true})
+	if nestedMap(nestedMap(published, "execution_handoff"), "publish_receipt")["final_head"] != finalHead {
+		t.Fatalf("publish receipt parity failed: %#v", published)
+	}
+}
+
+type mcpPublicationFake struct {
+	localHead  string
+	remoteHead string
+}
+
+func (f *mcpPublicationFake) LocalRefHead(context.Context, string, string) (string, error) {
+	return f.localHead, nil
+}
+
+func (f *mcpPublicationFake) RemoteRefHead(context.Context, string, string, string) (string, error) {
+	return f.remoteHead, nil
+}
+
+func (f *mcpPublicationFake) PushExact(context.Context, string, string, string, string) error {
+	return nil
 }
 
 func TestMCPIssueOpsHandoffUsesOneActionTool(t *testing.T) {
@@ -268,6 +295,10 @@ func (f *handoffStartOrcaFake) RefreshTerminal(context.Context, string, string) 
 }
 
 func (f *handoffStartOrcaFake) ListTasks(context.Context) ([]port.OrcaTask, error) {
+	return nil, nil
+}
+
+func (f *handoffStartOrcaFake) ListDispatchedTasks(context.Context) ([]port.OrcaTask, error) {
 	return nil, nil
 }
 

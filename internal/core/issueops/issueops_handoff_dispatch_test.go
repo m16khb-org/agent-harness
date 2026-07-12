@@ -675,6 +675,39 @@ func TestHandoffOperationJournalRevalidatesCheckpointAfterInventory(t *testing.T
 	}
 }
 
+func TestHandoffDispatchReattestsAfterBeforeJournalCompetitorInjection(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-1"
+	record.ExecutionHandoff.Orca.TaskID = "task-1"
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	hooks := issueOpsHandoffStartHooks{BeforeJournal: func(stage string) {
+		if stage == handoff.OperationDispatch {
+			client.terminals = append(client.terminals, port.OrcaTerminal{
+				Handle: "term-racing", PTYID: "pty-racing", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
+				WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true,
+			})
+		}
+	}}
+	_, err := startIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock(), hooks)
+	if err == nil || !strings.Contains(err.Error(), "competing connected or writable terminal") {
+		t.Fatalf("post-hook sole-writer error = %v", err)
+	}
+	if client.dispatchCalls != 0 || client.terminalCreates != 0 || client.taskCreates != 0 {
+		t.Fatalf("post-hook conflict reached external mutation: terminal=%d task=%d dispatch=%d trace=%v", client.terminalCreates, client.taskCreates, client.dispatchCalls, client.trace)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.PendingOperation == nil || persisted.ExecutionHandoff.PendingOperation.Kind != handoff.OperationLeaseAttestation || persisted.ExecutionHandoff.Failure == nil || persisted.ExecutionHandoff.Failure.Code != "sole_writer_conflict" {
+		t.Fatalf("post-hook conflict did not persist one lease recovery transition: %#v", persisted.ExecutionHandoff)
+	}
+}
+
 func TestHandoffStartLateCreateErrorCannotReopenCancelledAttempt(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
@@ -747,11 +780,11 @@ func TestHandoffStartResolvesOptionalPTYFromExactTerminalDelta(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
 	client.terminals = []port.OrcaTerminal{
-		{Handle: "term-old", PTYID: "pty-old", WorktreeID: "wt-1", WorktreePath: record.WorktreePath, Connected: true, Writable: true},
+		{Handle: "term-old", PTYID: "pty-old", WorktreeID: "wt-1", WorktreePath: record.WorktreePath},
 	}
 	client.terminal = port.OrcaTerminal{Handle: "term-create", WorktreeID: "wt-1"}
 	client.terminalsAfterCreate = []port.OrcaTerminal{
-		{Handle: "term-old", PTYID: "pty-old", WorktreeID: "wt-1", WorktreePath: record.WorktreePath, Connected: true, Writable: true},
+		{Handle: "term-old", PTYID: "pty-old", WorktreeID: "wt-1", WorktreePath: record.WorktreePath},
 		{Handle: "term-live", PTYID: "pty-new", WorktreeID: "wt-1", WorktreePath: record.WorktreePath, Connected: true, Writable: true},
 	}
 	client.dispatch.AssigneeHandle = "term-live"
@@ -763,8 +796,8 @@ func TestHandoffStartResolvesOptionalPTYFromExactTerminalDelta(t *testing.T) {
 	if got.State != handoff.StateDispatched || got.Orca == nil || got.Orca.WorkerPTYID != "pty-new" || got.Orca.WorkerMailboxHandle != "term-live" {
 		t.Fatalf("partial create identity did not resolve from PTY delta: %#v", got)
 	}
-	if client.terminalCreates != 1 || client.terminalListCalls != 2 {
-		t.Fatalf("terminal create/list calls = %d/%d, want 1/2; trace=%v", client.terminalCreates, client.terminalListCalls, client.trace)
+	if client.terminalCreates != 1 || client.terminalListCalls != 8 {
+		t.Fatalf("terminal create/list calls = %d/%d, want 1/8; trace=%v", client.terminalCreates, client.terminalListCalls, client.trace)
 	}
 }
 
@@ -1556,35 +1589,39 @@ func TestFinalizeHandoffDispatchRejectsInconsistentV4MailboxAuthority(t *testing
 }
 
 type dispatchOrcaFake struct {
-	worktrees            []port.OrcaWorktree
-	terminals            []port.OrcaTerminal
-	terminalsAfterCreate []port.OrcaTerminal
-	tasks                []port.OrcaTask
-	terminal             port.OrcaTerminal
-	refreshedTerminal    port.OrcaTerminal
-	task                 port.OrcaTask
-	dispatch             port.OrcaDispatch
-	terminalErr          error
-	taskErr              error
-	dispatchErr          error
-	dispatchShowErr      error
-	worktreeListErr      error
-	terminalListErr      error
-	taskListErr          error
-	beforeWorktreeList   func()
-	beforeTerminalList   func()
-	beforeTerminalCreate func()
-	beforeTaskCreate     func()
-	beforeDispatch       func()
-	terminalCreates      int
-	terminalListCalls    int
-	terminalRefreshes    int
-	terminalRefreshErr   error
-	taskCreates          int
-	dispatchCalls        int
-	dispatchRequests     []port.OrcaDispatchRequest
-	terminalRequests     []port.OrcaCreateTerminalRequest
-	trace                []string
+	worktrees               []port.OrcaWorktree
+	terminals               []port.OrcaTerminal
+	terminalsAfterCreate    []port.OrcaTerminal
+	tasks                   []port.OrcaTask
+	dispatchedTasks         []port.OrcaTask
+	dispatchByTask          map[string]port.OrcaDispatch
+	terminal                port.OrcaTerminal
+	refreshedTerminal       port.OrcaTerminal
+	task                    port.OrcaTask
+	dispatch                port.OrcaDispatch
+	terminalErr             error
+	taskErr                 error
+	dispatchErr             error
+	dispatchShowErr         error
+	worktreeListErr         error
+	terminalListErr         error
+	taskListErr             error
+	dispatchedTaskListErr   error
+	beforeWorktreeList      func()
+	beforeTerminalList      func()
+	beforeTerminalCreate    func()
+	beforeTaskCreate        func()
+	beforeDispatch          func()
+	terminalCreates         int
+	terminalListCalls       int
+	terminalRefreshes       int
+	terminalRefreshErr      error
+	taskCreates             int
+	dispatchCalls           int
+	dispatchedTaskListCalls int
+	dispatchRequests        []port.OrcaDispatchRequest
+	terminalRequests        []port.OrcaCreateTerminalRequest
+	trace                   []string
 }
 
 func (f *dispatchOrcaFake) ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error) {
@@ -1606,6 +1643,14 @@ func handoffDispatchFake(records ...IssueOpsRecord) *dispatchOrcaFake {
 		dispatch: port.OrcaDispatch{ID: "dispatch-1", TaskID: "task-1", AssigneeHandle: "term-1", Status: "dispatched", Injected: true},
 	}
 	fake.terminalsAfterCreate = []port.OrcaTerminal{fake.terminal}
+	if len(records) > 0 && records[0].ExecutionHandoff != nil && records[0].ExecutionHandoff.Orca != nil && records[0].ExecutionHandoff.Orca.WorkerPTYID != "" {
+		identity := records[0].ExecutionHandoff.Orca
+		fake.terminal = port.OrcaTerminal{
+			Handle: identity.WorkerTerminalHandle, PTYID: identity.WorkerPTYID, WorktreeID: identity.WorktreeID,
+			WorktreePath: workerRoot, Connected: true, Writable: true,
+		}
+		fake.terminals = []port.OrcaTerminal{fake.terminal}
+	}
 	return fake
 }
 
@@ -1677,6 +1722,7 @@ func (f *dispatchOrcaFake) RefreshTerminal(context.Context, string, string) (por
 		return port.OrcaTerminal{}, f.terminalRefreshErr
 	}
 	if f.refreshedTerminal.PTYID != "" {
+		f.terminals = []port.OrcaTerminal{f.refreshedTerminal}
 		return f.refreshedTerminal, nil
 	}
 	return f.terminal, nil
@@ -1685,6 +1731,12 @@ func (f *dispatchOrcaFake) RefreshTerminal(context.Context, string, string) (por
 func (f *dispatchOrcaFake) ListTasks(context.Context) ([]port.OrcaTask, error) {
 	f.trace = append(f.trace, "task-list")
 	return append([]port.OrcaTask(nil), f.tasks...), f.taskListErr
+}
+
+func (f *dispatchOrcaFake) ListDispatchedTasks(context.Context) ([]port.OrcaTask, error) {
+	f.trace = append(f.trace, "dispatched-task-list")
+	f.dispatchedTaskListCalls++
+	return append([]port.OrcaTask(nil), f.dispatchedTasks...), f.dispatchedTaskListErr
 }
 
 func (f *dispatchOrcaFake) CreateTask(_ context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
@@ -1717,8 +1769,13 @@ func (f *dispatchOrcaFake) Dispatch(_ context.Context, req port.OrcaDispatchRequ
 	return result, f.dispatchErr
 }
 
-func (f *dispatchOrcaFake) ShowDispatch(context.Context, string) (port.OrcaDispatch, error) {
+func (f *dispatchOrcaFake) ShowDispatch(_ context.Context, taskID string) (port.OrcaDispatch, error) {
 	f.trace = append(f.trace, "dispatch-show")
+	if f.dispatchByTask != nil {
+		if dispatch, ok := f.dispatchByTask[taskID]; ok {
+			return dispatch, f.dispatchShowErr
+		}
+	}
 	return f.dispatch, f.dispatchShowErr
 }
 

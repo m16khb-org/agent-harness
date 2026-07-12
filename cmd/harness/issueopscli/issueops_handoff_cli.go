@@ -15,7 +15,8 @@ const issueOpsHandoffUsage = `Usage:
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA [--json]
-  agent-harness issueops handoff recover --id ID --action reconcile|abandon|cancel|finalize-cancel|retry [--confirm] [--force --reason TEXT] [--json]`
+  agent-harness issueops handoff publish --id ID --confirm [--json]
+  agent-harness issueops handoff recover --id ID --action reconcile|abandon|cancel|finalize-cancel|retry|approve-cleanup|record-cleanup [--cleanup-disposition retry|remove] [--cleanup-step STEP] [--confirm] [--force --reason TEXT] [--json]`
 
 func runIssueOpsHandoff(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
@@ -31,11 +32,27 @@ func runIssueOpsHandoff(args []string) error {
 		return runIssueOpsHandoffFinish(args[1:])
 	case "accept":
 		return runIssueOpsHandoffAccept(args[1:])
+	case "publish":
+		return runIssueOpsHandoffPublish(args[1:])
 	case "recover":
 		return runIssueOpsHandoffRecover(args[1:])
 	default:
 		return fmt.Errorf("unknown issueops handoff subcommand %q", args[0])
 	}
+}
+
+func runIssueOpsHandoffPublish(args []string) error {
+	fs := flag.NewFlagSet("issueops handoff publish", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	confirm := fs.Bool("confirm", false, "verify and persist the exact local and remote final head")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.RecordIssueOpsHandoffPublishReceipt(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffPublishRequest{
+		ID: *id, Confirm: *confirm,
+	}, core.GitIssueOpsHandoffPublicationReader{}, orca.New(), core.IssueOpsHandoffPrepareClock{})
+	return printIssueOpsResult(record, *jsonOut, err)
 }
 
 func runIssueOpsHandoffStart(args []string) error {
@@ -138,11 +155,16 @@ func runIssueOpsHandoffRecover(args []string) error {
 	confirm := fs.Bool("confirm", false, "confirm abandonment, cancellation finalization, or retry")
 	force := fs.Bool("force", false, "force an authoritative abandon or claimed-worker cancellation")
 	reason := fs.String("reason", "", "bounded durable reason for abandonment or forced cancellation")
+	cleanupDisposition := fs.String("cleanup-disposition", "", "approved cleanup disposition: retry or remove")
+	cleanupStep := fs.String("cleanup-step", "", "ordered cleanup receipt: task_terminal, terminal_quiescent, or worktree_removed")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := core.RecoverIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffRecoverRequest{ID: *id, Action: *action, Confirm: *confirm, Force: *force, Reason: *reason}, orca.New(), core.IssueOpsHandoffPrepareClock{})
+	result, err := core.RecoverIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffRecoverRequest{
+		ID: *id, Action: *action, Confirm: *confirm, Force: *force, Reason: *reason,
+		CleanupDisposition: *cleanupDisposition, CleanupStep: *cleanupStep,
+	}, orca.New(), core.IssueOpsHandoffPrepareClock{})
 	return printIssueOpsHandoffValue(result, *jsonOut, err)
 }
 

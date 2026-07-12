@@ -123,7 +123,9 @@ func commandSpec(path string) (map[string]bool, map[string]bool, map[string]bool
 		}
 		return values, b("--allow-codex-hook-trust-bypass", "--confirm", "--json"), r, true
 	case "handoff recover":
-		return v("--id", "--action", "--reason"), b("--confirm", "--force", "--json"), r, true
+		return v("--id", "--action", "--reason", "--cleanup-disposition", "--cleanup-step"), b("--confirm", "--force", "--json"), r, true
+	case "handoff publish":
+		return v("--id"), b("--confirm", "--json"), r, true
 	case "handoff accept":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--final-head"), b("--json"), r, true
 	case "handoff claim":
@@ -219,7 +221,7 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	switch command.path {
 	case "status", "resume":
 		return true
-	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare", "worktree prepare-tools", "handoff start", "handoff recover", "handoff accept":
+	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare", "worktree prepare-tools", "handoff start", "handoff recover", "handoff accept", "handoff publish":
 		return source && coordinatorLifecycleStateAllows(command.path, record)
 	case "phase":
 		return source && h.State == handoff.StateCoordinatorPreparing
@@ -246,6 +248,8 @@ func coordinatorLifecycleStateAllows(path string, record IssueOpsRecord) bool {
 		return h.State == handoff.StateSubmitted || h.State == handoff.StateClosed
 	case "handoff recover":
 		return h.State == handoff.StateRecoveryRequired || h.State == handoff.StateSubmitted || h.State == handoff.StateClosed || h.State == handoff.StateClaimed
+	case "handoff publish":
+		return h.State == handoff.StateClosed && h.ClosedDisposition == handoff.DispositionAccepted
 	case "handoff start":
 		return true // active-attempt repeats are read-only projections
 	default:
@@ -486,13 +490,13 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		if h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
 			return false
 		}
-		return h.Orca != nil && h.Orca.WorkerTerminalHandle != "" && tokens[3] == "--terminal" && tokens[4] == h.Orca.WorkerTerminalHandle && tokens[5] == "--json"
+		return cleanupStepAuthorized(h, "terminal_quiescent") && h.Orca != nil && h.Orca.WorkerTerminalHandle != "" && tokens[3] == "--terminal" && tokens[4] == h.Orca.WorkerTerminalHandle && tokens[5] == "--json"
 	}
 	if len(tokens) == 6 && tokens[1] == "terminal" && tokens[2] == "stop" {
 		if h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
 			return false
 		}
-		return h.Orca != nil && h.Orca.WorktreeID != "" && tokens[3] == "--worktree" && tokens[4] == "id:"+h.Orca.WorktreeID && tokens[5] == "--json"
+		return cleanupStepAuthorized(h, "terminal_quiescent") && h.Orca != nil && h.Orca.WorktreeID != "" && tokens[3] == "--worktree" && tokens[4] == "id:"+h.Orca.WorktreeID && tokens[5] == "--json"
 	}
 	if len(tokens) >= 3 && tokens[1] == "orchestration" && tokens[2] == "task-update" {
 		if h.Orca == nil || h.Orca.TaskID == "" {
@@ -504,18 +508,36 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		wantStatus := "failed"
 		if h.ClosedDisposition == handoff.DispositionAccepted {
 			wantStatus = "completed"
+		} else if !cleanupStepAuthorized(h, "task_terminal") {
+			return false
 		}
 		return idOK && id == h.Orca.TaskID && statusOK && status == wantStatus && (!resultOK || len(result) <= 4096) && onlyTokenFlags(tokens[3:], map[string]bool{"--id": true, "--status": true, "--result": true}, map[string]bool{"--json": true})
 	}
-	if len(tokens) >= 3 && tokens[1] == "worktree" && tokens[2] == "rm" {
-		selector, ok := uniqueTokenFlag(tokens[3:], "--worktree")
-		worktreeID := ""
-		if h.CleanupOnly != nil && h.CleanupOnly.Kind == "worktree" {
-			worktreeID = h.CleanupOnly.ID
-		} else if h.Orca != nil {
-			worktreeID = h.Orca.WorktreeID
+	return false
+}
+
+func cleanupStepAuthorized(h *issueopsmodel.IssueOpsExecutionHandoff, step string) bool {
+	if h == nil || h.Cleanup == nil {
+		return false
+	}
+	switch step {
+	case "task_terminal":
+		return !cleanupReceiptExists(h, "task_terminal")
+	case "terminal_quiescent":
+		return cleanupReceiptExists(h, "task_terminal") && !cleanupReceiptExists(h, "terminal_quiescent")
+	default:
+		return false
+	}
+}
+
+func cleanupReceiptExists(h *issueopsmodel.IssueOpsExecutionHandoff, step string) bool {
+	if h == nil || h.Cleanup == nil {
+		return false
+	}
+	for _, receipt := range h.Cleanup.Receipts {
+		if receipt.Step == step {
+			return true
 		}
-		return worktreeID != "" && ok && selector == "id:"+worktreeID && onlyTokenFlags(tokens[3:], map[string]bool{"--worktree": true}, map[string]bool{"--force": true, "--json": true})
 	}
 	return false
 }
@@ -534,13 +556,13 @@ func acceptedCoordinatorDownstreamCommand(req HookToolUseLifecycleRequest, recor
 	}
 	switch tokens[0] {
 	case "git":
-		return acceptedGitPush(tokens, record)
+		return false
 	case "gh":
 		if len(tokens) <= 2 || tokens[1] != "pr" {
 			return false
 		}
 		if tokens[2] == "create" {
-			return acceptedGitHubPRCreate(tokens[3:], record)
+			return false
 		}
 		return allowedAcceptedReviewSubcommand(tokens[2], map[string]bool{"view": true, "list": true, "status": true, "checks": true, "diff": true})
 	case "glab":
@@ -548,7 +570,7 @@ func acceptedCoordinatorDownstreamCommand(req HookToolUseLifecycleRequest, recor
 			return false
 		}
 		if tokens[2] == "create" {
-			return acceptedGitLabMRCreate(tokens[3:], record)
+			return false
 		}
 		return allowedAcceptedReviewSubcommand(tokens[2], map[string]bool{"view": true, "list": true, "status": true, "diff": true})
 	case "agent-harness", "./bin/agent-harness":
@@ -602,6 +624,13 @@ func acceptedIssueOpsDownstreamCommand(commandText string, record IssueOpsRecord
 			repeatable[name] = true
 		}
 		required = append(required, "--provider", "--kind", "--url")
+	case "remote create-pr":
+		for _, name := range []string{"--id", "--provider", "--title", "--body", "--head", "--base", "--label", "--assignee"} {
+			values[name] = true
+		}
+		repeatable["--label"], repeatable["--assignee"] = true, true
+		booleans["--confirm"] = true
+		required = append(required, "--provider", "--title", "--body", "--head", "--base", "--label", "--assignee")
 	default:
 		return false
 	}
@@ -640,34 +669,34 @@ func acceptedIssueOpsDownstreamCommand(commandText string, record IssueOpsRecord
 		labels := append(append([]string(nil), flags["--label"]...), flags["--labels"]...)
 		assignees := append(append([]string(nil), flags["--assignee"]...), flags["--assignees"]...)
 		return (provider == "github" && kind == "pr" || provider == "gitlab" && kind == "mr") && len(labels) > 0 && len(assignees) > 0
+	case "remote create-pr":
+		provider, _ := oneFlag(flags, "--provider")
+		head, _ := oneFlag(flags, "--head")
+		base, _ := oneFlag(flags, "--base")
+		_, confirmed := oneFlag(flags, "--confirm")
+		return confirmed && publicationReceiptMatches(record, provider, head, base)
 	default:
 		return true
 	}
 }
 
-func acceptedGitPush(tokens []string, record IssueOpsRecord) bool {
-	if len(tokens) < 4 || tokens[0] != "git" || tokens[1] != "push" || record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil {
+func publicationReceiptMatches(record IssueOpsRecord, provider, head, base string) bool {
+	if record.ExecutionHandoff == nil || record.ExecutionHandoff.Result == nil || record.ExecutionHandoff.Orca == nil || record.ExecutionHandoff.PublishReceipt == nil || record.BranchPrepare == nil {
 		return false
 	}
+	receipt := record.ExecutionHandoff.PublishReceipt
 	branch := strings.TrimSpace(record.Branch)
+	provider = strings.ToLower(strings.TrimSpace(provider))
 	baseRef := strings.TrimSpace(record.ExecutionHandoff.Orca.BaseRef)
 	prefix, suffix := "refs/remotes/", "/"+branch
-	if branch == "" || !strings.HasPrefix(baseRef, prefix) || !strings.HasSuffix(baseRef, suffix) {
+	if !strings.HasPrefix(baseRef, prefix) || !strings.HasSuffix(baseRef, suffix) {
 		return false
 	}
 	remote := strings.TrimSuffix(strings.TrimPrefix(baseRef, prefix), suffix)
-	if remote == "" || strings.ContainsAny(remote, " \t\r\n") {
-		return false
-	}
-	args := tokens[2:]
-	if args[0] == "--set-upstream" || args[0] == "-u" {
-		args = args[1:]
-	}
-	if len(args) != 2 || args[0] != remote {
-		return false
-	}
-	exactRefspec := "refs/heads/" + branch + ":refs/heads/" + branch
-	return args[1] == branch || args[1] == exactRefspec
+	return provider != "" && provider == strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider)) &&
+		strings.TrimSpace(head) == branch && strings.TrimSpace(base) == strings.TrimSpace(record.BranchPrepare.BaseBranch) &&
+		receipt.Provider == provider && receipt.Remote == remote && receipt.Branch == branch && receipt.RemoteRef == "refs/heads/"+branch &&
+		receipt.FinalHead == record.ExecutionHandoff.Result.FinalHead && receipt.VerifiedAt != ""
 }
 
 func allowedAcceptedReviewSubcommand(value string, allowed map[string]bool) bool {
@@ -684,7 +713,7 @@ func acceptedGitHubPRCreate(tokens []string, record IssueOpsRecord) bool {
 		return false
 	}
 	return onlyAcceptedCreateFlags(tokens,
-		map[string]bool{"--head": true, "-H": true, "--base": true, "-B": true, "--title": true, "--body": true, "--body-file": true, "--label": true, "--assignee": true, "--reviewer": true, "--milestone": true, "--project": true},
+		map[string]bool{"--head": true, "-H": true, "--base": true, "-B": true, "--title": true, "--body": true, "--label": true, "--assignee": true, "--reviewer": true, "--milestone": true, "--project": true},
 		map[string]bool{"--draft": true, "-d": true})
 }
 
@@ -1283,6 +1312,8 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 		return source && coordinatorLifecycleStateAllows("handoff accept", record) && mcpFenceMatches(input, record)
 	case "recover":
 		return source && coordinatorLifecycleStateAllows("handoff recover", record)
+	case "publish":
+		return source && coordinatorLifecycleStateAllows("handoff publish", record)
 	case "claim":
 		cwd, cwdOK := mcpString(input, "cwd")
 		wt, wtOK := mcpString(input, "orca_worktree_id")

@@ -15,6 +15,7 @@ import (
 
 	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/policy"
 	"agent-harness/internal/port"
 )
 
@@ -59,6 +60,7 @@ type IssueOpsOrcaDispatchClient interface {
 	CreateTerminal(context.Context, port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error)
 	RefreshTerminal(context.Context, string, string) (port.OrcaTerminal, error)
 	ListTasks(context.Context) ([]port.OrcaTask, error)
+	ListDispatchedTasks(context.Context) ([]port.OrcaTask, error)
 	CreateTask(context.Context, port.OrcaCreateTaskRequest) (port.OrcaTask, error)
 	Dispatch(context.Context, port.OrcaDispatchRequest) (port.OrcaDispatch, error)
 	ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
@@ -209,7 +211,39 @@ func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 	if terminal.WorktreeID != record.ExecutionHandoff.Orca.WorktreeID || terminal.PTYID != workerPTYID || strings.TrimSpace(terminal.Handle) == "" || !terminal.Connected || !terminal.Writable || !terminalWorktreePathMatches(terminal, record.ExecutionHandoff.WorkerRoot) {
 		return record, "", fmt.Errorf("refreshed Orca terminal identity does not match the persisted checkpoint")
 	}
+	if strings.TrimSpace(terminal.Handle) != workerHandle || terminal.TabID != record.ExecutionHandoff.Orca.WorkerTabID || terminal.LeafID != record.ExecutionHandoff.Orca.WorkerLeafID {
+		record, err = persistHandoffLiveTerminalIdentity(stateRoot, record, terminal, now())
+		if err != nil {
+			return record, "", err
+		}
+	}
 	return record, strings.TrimSpace(terminal.Handle), nil
+}
+
+func persistHandoffLiveTerminalIdentity(stateRoot string, expected IssueOpsRecord, terminal port.OrcaTerminal, now string) (IssueOpsRecord, error) {
+	var persisted IssueOpsRecord
+	err := withIssueOpsLock(stateRoot, expected.ID, func() error {
+		current, err := ReadIssueOps(stateRoot, expected.ID)
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(current, expected) || current.ExecutionHandoff == nil || current.ExecutionHandoff.Orca == nil {
+			return fmt.Errorf("handoff changed before live terminal identity refresh")
+		}
+		identity := *current.ExecutionHandoff.Orca
+		if terminal.PTYID != identity.WorkerPTYID || terminal.WorktreeID != identity.WorktreeID || !terminalWorktreePathMatches(terminal, current.ExecutionHandoff.WorkerRoot) {
+			return fmt.Errorf("live terminal refresh does not match persisted PTY and worktree authority")
+		}
+		identity.WorkerTerminalHandle = strings.TrimSpace(terminal.Handle)
+		identity.WorkerTabID = strings.TrimSpace(terminal.TabID)
+		identity.WorkerLeafID = strings.TrimSpace(terminal.LeafID)
+		current.ExecutionHandoff.Orca = &identity
+		current.ExecutionHandoff.UpdatedAt = now
+		current.UpdatedAt = now
+		persisted, err = writeIssueOps(stateRoot, current)
+		return err
+	})
+	return persisted, err
 }
 
 func recoverRuntimeReissuedHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now func() string) (IssueOpsRecord, string, error) {
@@ -392,17 +426,23 @@ func terminalCreateCapabilityLost(err error) bool {
 func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now func() string, beforeJournal func()) (IssueOpsRecord, string, error) {
 	terminals, err := client.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
 	if err != nil {
-		return record, "", fmt.Errorf("list terminals before create: %w", err)
+		return record, "", persistHandoffSoleWriterInventoryFailure(stateRoot, record, fence, fmt.Errorf("list terminals before create requires recovery: %w", err), now)
 	}
 	baseline, err := handoff.CanonicalBaselineIDs("terminal", terminalPTYIDs(terminals))
 	if err != nil {
-		return record, "", fmt.Errorf("Orca terminal baseline is unsafe: %w", err)
+		return record, "", persistHandoffSoleWriterInventoryFailure(stateRoot, record, fence, fmt.Errorf("Orca terminal baseline requires recovery: %w", err), now)
 	}
 	if err := handoff.RequireBaselineDeltaHeadroom("terminal", baseline); err != nil {
-		return record, "", fmt.Errorf("Orca terminal baseline is unsafe: %w", err)
+		return record, "", persistHandoffSoleWriterInventoryFailure(stateRoot, record, fence, fmt.Errorf("Orca terminal baseline requires recovery: %w", err), now)
+	}
+	if err := attestHandoffSoleWriterWithRecovery(ctx, stateRoot, record, fence, client, "", now); err != nil {
+		return record, "", err
 	}
 	if beforeJournal != nil {
 		beforeJournal()
+	}
+	if err := attestHandoffSoleWriterWithRecovery(ctx, stateRoot, record, fence, client, "", now); err != nil {
+		return record, "", err
 	}
 	startedAt := now()
 	record, err = beginHandoffOperation(stateRoot, record, fence, model.IssueOpsExecutionHandoffPendingOperation{
@@ -481,17 +521,23 @@ func ensureHandoffTask(ctx context.Context, stateRoot string, record IssueOpsRec
 	}
 	tasks, err := client.ListTasks(ctx)
 	if err != nil {
-		return record, fmt.Errorf("list tasks before create: %w", err)
+		return record, persistHandoffSoleWriterInventoryFailure(stateRoot, record, fence, fmt.Errorf("list tasks before create requires recovery: %w", err), now)
 	}
 	baseline, err := handoff.CanonicalBaselineIDs("task", taskIDs(tasks))
 	if err != nil {
-		return record, fmt.Errorf("Orca task baseline is unsafe: %w", err)
+		return record, persistHandoffSoleWriterInventoryFailure(stateRoot, record, fence, fmt.Errorf("Orca task baseline requires recovery: %w", err), now)
 	}
 	if err := handoff.RequireBaselineDeltaHeadroom("task", baseline); err != nil {
-		return record, fmt.Errorf("Orca task baseline is unsafe: %w", err)
+		return record, persistHandoffSoleWriterInventoryFailure(stateRoot, record, fence, fmt.Errorf("Orca task baseline requires recovery: %w", err), now)
+	}
+	if err := attestHandoffSoleWriterWithRecovery(ctx, stateRoot, record, fence, client, record.ExecutionHandoff.Orca.WorkerTerminalHandle, now); err != nil {
+		return record, err
 	}
 	if beforeJournal != nil {
 		beforeJournal()
+	}
+	if err := attestHandoffSoleWriterWithRecovery(ctx, stateRoot, record, fence, client, record.ExecutionHandoff.Orca.WorkerTerminalHandle, now); err != nil {
+		return record, err
 	}
 	startedAt := now()
 	record, err = beginHandoffOperation(stateRoot, record, fence, model.IssueOpsExecutionHandoffPendingOperation{
@@ -533,8 +579,14 @@ func ensureHandoffTask(ctx context.Context, stateRoot string, record IssueOpsRec
 }
 
 func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, liveHandle string, now func() string, beforeJournal func()) (IssueOpsRecord, error) {
+	if err := attestHandoffSoleWriterWithRecovery(ctx, stateRoot, record, fence, client, liveHandle, now); err != nil {
+		return record, err
+	}
 	if beforeJournal != nil {
 		beforeJournal()
+	}
+	if err := attestHandoffSoleWriterWithRecovery(ctx, stateRoot, record, fence, client, liveHandle, now); err != nil {
+		return record, err
 	}
 	startedAt := now()
 	record, err := beginHandoffOperation(stateRoot, record, fence, model.IssueOpsExecutionHandoffPendingOperation{
@@ -572,6 +624,171 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_persist_failed", err.Error(), now())
 	}
 	return record, err
+}
+
+type handoffSoleWriterRecoveryError struct{ cause error }
+
+func (e handoffSoleWriterRecoveryError) Error() string { return e.cause.Error() }
+func (e handoffSoleWriterRecoveryError) Unwrap() error { return e.cause }
+
+func soleWriterRecoveryError(format string, args ...any) error {
+	return handoffSoleWriterRecoveryError{cause: errors.New(soleWriterRecoveryDiagnostic(fmt.Sprintf(format, args...)))}
+}
+
+type handoffSoleWriterConflictError struct{ cause error }
+
+func (e handoffSoleWriterConflictError) Error() string { return e.cause.Error() }
+func (e handoffSoleWriterConflictError) Unwrap() error { return e.cause }
+
+func soleWriterConflictError(format string, args ...any) error {
+	return handoffSoleWriterConflictError{cause: errors.New(soleWriterRecoveryDiagnostic(fmt.Sprintf(format, args...)))}
+}
+
+func soleWriterRecoveryDiagnostic(value string) string {
+	value = strings.TrimSpace(policy.RedactFreeform(strings.TrimSpace(value)))
+	if len(value) > publicationDiagnosticLimit {
+		value = value[:publicationDiagnosticLimit]
+	}
+	return value
+}
+
+func persistHandoffSoleWriterInventoryFailure(stateRoot string, record IssueOpsRecord, fence handoff.Fence, cause error, now func() string) error {
+	err := soleWriterRecoveryError("%v", cause)
+	if markErr := markHandoffSoleWriterRecovery(stateRoot, record, fence, "sole_writer_inventory_ambiguous", err.Error(), now()); markErr != nil {
+		return fmt.Errorf("%v; persist sole writer recovery: %w", err, markErr)
+	}
+	return err
+}
+
+func attestHandoffSoleWriterWithRecovery(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, allowedHandle string, now func() string) error {
+	err := attestHandoffSoleWriter(ctx, record, client, allowedHandle)
+	if err == nil {
+		return nil
+	}
+	var recoveryErr handoffSoleWriterRecoveryError
+	var conflictErr handoffSoleWriterConflictError
+	if !errors.As(err, &recoveryErr) && !errors.As(err, &conflictErr) {
+		return err
+	}
+	code := "sole_writer_inventory_ambiguous"
+	if errors.As(err, &conflictErr) {
+		code = "sole_writer_conflict"
+	}
+	if markErr := markHandoffSoleWriterRecovery(stateRoot, record, fence, code, err.Error(), now()); markErr != nil {
+		return fmt.Errorf("%v; persist sole writer recovery: %w", err, markErr)
+	}
+	return err
+}
+
+func markHandoffSoleWriterRecovery(stateRoot string, expected IssueOpsRecord, fence handoff.Fence, code, message, now string) error {
+	message = soleWriterRecoveryDiagnostic(message)
+	return withIssueOpsLock(stateRoot, expected.ID, func() error {
+		record, err := ReadIssueOps(stateRoot, expected.ID)
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(record, expected) {
+			return fmt.Errorf("handoff changed during sole writer attestation")
+		}
+		record, err = handoff.BeginOperation(record, fence, model.IssueOpsExecutionHandoffPendingOperation{
+			Kind: handoff.OperationLeaseAttestation, StartedAt: now,
+		})
+		if err != nil {
+			return err
+		}
+		record, err = handoff.MarkRecoveryRequired(record, fence, model.IssueOpsExecutionHandoffFailure{
+			Code: code, Message: message, At: now,
+		})
+		if err != nil {
+			return err
+		}
+		record.UpdatedAt = now
+		_, err = writeIssueOps(stateRoot, record)
+		return err
+	})
+}
+
+func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient, allowedHandle string) error {
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil || strings.TrimSpace(h.Orca.WorktreeID) == "" {
+		return soleWriterRecoveryError("sole writer attestation requires exact Orca worktree authority")
+	}
+	terminals, err := client.ListTerminals(ctx, h.Orca.WorktreeID)
+	if err != nil {
+		return soleWriterRecoveryError("sole writer terminal inventory requires recovery: %v", err)
+	}
+	if len(terminals) > handoff.MaxBaselineIDs {
+		return soleWriterRecoveryError("sole writer terminal inventory requires recovery: exceeds %d entries", handoff.MaxBaselineIDs)
+	}
+	ptyIDs := make([]string, len(terminals))
+	handles := make([]string, len(terminals))
+	exactHandles := make(map[string]struct{}, len(terminals))
+	for _, handle := range []string{h.Orca.WorkerTerminalHandle, h.Orca.WorkerMailboxHandle} {
+		if handle = strings.TrimSpace(handle); handle != "" {
+			exactHandles[handle] = struct{}{}
+		}
+	}
+	allowedMatches := 0
+	for i, terminal := range terminals {
+		ptyIDs[i], handles[i] = terminal.PTYID, terminal.Handle
+	}
+	if err := requireStableInventoryIdentities("terminal", ptyIDs); err != nil {
+		return soleWriterRecoveryError("sole writer terminal inventory requires recovery: %v", err)
+	}
+	if err := requireStableInventoryIdentities("terminal", handles); err != nil {
+		return soleWriterRecoveryError("sole writer terminal inventory requires recovery: %v", err)
+	}
+	for _, terminal := range terminals {
+		if terminal.WorktreeID != h.Orca.WorktreeID || !terminalWorktreePathMatches(terminal, h.WorkerRoot) {
+			return soleWriterRecoveryError("sole writer terminal inventory requires recovery: row does not match the exact worktree")
+		}
+		exactHandles[terminal.Handle] = struct{}{}
+		if terminal.Connected || terminal.Writable {
+			if terminal.Handle != strings.TrimSpace(allowedHandle) {
+				return soleWriterConflictError("sole writer attestation found a competing connected or writable terminal")
+			}
+			if !terminal.Connected || !terminal.Writable {
+				return soleWriterRecoveryError("sole writer designated terminal has inconsistent connected/writable state")
+			}
+			allowedMatches++
+		}
+	}
+	if allowedHandle != "" && allowedMatches != 1 {
+		return soleWriterRecoveryError("sole writer attestation requires exactly one connected writable designated worker terminal; found %d", allowedMatches)
+	}
+	dispatchedTasks, err := client.ListDispatchedTasks(ctx)
+	if err != nil {
+		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: %v", err)
+	}
+	if len(dispatchedTasks) > handoff.MaxBaselineIDs {
+		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: exceeds %d entries", handoff.MaxBaselineIDs)
+	}
+	taskIDs := make([]string, len(dispatchedTasks))
+	for i, task := range dispatchedTasks {
+		taskIDs[i] = task.ID
+	}
+	if err := requireStableInventoryIdentities("task", taskIDs); err != nil {
+		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: %v", err)
+	}
+	for _, task := range dispatchedTasks {
+		if strings.TrimSpace(task.Status) != "dispatched" {
+			return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: row has a non-dispatched status")
+		}
+		dispatch, showErr := client.ShowDispatch(ctx, task.ID)
+		if showErr != nil {
+			return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: dispatch inspection failed")
+		}
+		if requireStableInventoryIdentities("task", []string{dispatch.ID}) != nil || requireStableInventoryIdentities("task", []string{dispatch.TaskID}) != nil || requireStableInventoryIdentities("terminal", []string{dispatch.AssigneeHandle}) != nil {
+			return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: dispatch identity is not stable and bounded")
+		}
+		if dispatch.TaskID != task.ID || dispatch.Status != "dispatched" {
+			return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: row has incomplete dispatch identity")
+		}
+		if _, assignedHere := exactHandles[dispatch.AssigneeHandle]; assignedHere {
+			return soleWriterConflictError("sole writer attestation found a dispatched task assigned to the exact worktree")
+		}
+	}
+	return nil
 }
 
 func persistHandoffContext(stateRoot, id, coordinatorRecipient string, options model.IssueOpsExecutionHandoffContextOptions, expectedContextSHA256 string, now string) (IssueOpsRecord, error) {

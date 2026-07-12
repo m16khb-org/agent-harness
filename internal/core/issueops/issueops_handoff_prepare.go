@@ -293,9 +293,17 @@ func resolveHandoffPrepareMode(ctx context.Context, record IssueOpsRecord, req I
 }
 
 func inlineHandoffPrepareFallback(result IssueOpsHandoffPrepareResult, code string) IssueOpsHandoffPrepareResult {
-	result.ResolvedMode = IssueOpsOrchestratorInline
-	result.FallbackCode = code
-	result.Warnings = removeString(result.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning)
+	_ = code
+	result.Preview = false
+	result.RequestedMode = ""
+	result.ResolvedMode = ""
+	result.State = ""
+	result.Attempt = 0
+	result.ContextSHA256 = ""
+	result.FallbackCode = ""
+	result.RecoveryCode = ""
+	result.Warnings = nil
+	result.Orca = nil
 	return result
 }
 

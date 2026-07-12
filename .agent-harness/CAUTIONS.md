@@ -409,7 +409,7 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
 - Source: codex Task 15 project docs update from codex-orchestration implementation plan
 - Summary: IssueOps child/workpool orchestration must preserve single-entity lock boundaries, additive mixed-binary compatibility, and timestamp lease heartbeat semantics.
 - Context: Delegated child cycles and workpool state add orchestration records that can be touched by multiple sessions. The existing store is per-key/per-entity atomic and host-neutral, not a cross-entity transaction manager or process supervisor.
-- Resolution: Use only one entity lock at a time and never call a same-entity with*Lock helper from inside another same-entity lock callback. At the July 7 baseline the non-ownership orchestration fields remained additive under schema v1; issue #16 first introduced schema v3 for supervised ownership/stable terminal identity and now uses schema v4 for sealed mailbox/completion-projection authority. Verify the active binary, docs, CLI/MCP schema, and daemon readback before trusting mixed-version state. Treat pool liveness as LeaseExpiresAt plus heartbeat, not PID ownership: a worker whose lease is expired or lost must stop and let another claim proceed.
+- Resolution: Use only one entity lock at a time and never call a same-entity with*Lock helper from inside another same-entity lock callback. At the July 7 baseline the non-ownership orchestration fields remained additive under schema v1; issue #16 introduced schema v3 for supervised ownership/stable terminal identity, v4 for sealed mailbox/completion projection, and now v5 for publish/cleanup authority. Verify the active binary, docs, CLI/MCP schema, and daemon readback before trusting mixed-version state. Treat pool liveness as LeaseExpiresAt plus heartbeat, not PID ownership: a worker whose lease is expired or lost must stop and let another claim proceed.
 - Evidence:
   - .agent-harness/ARCHITECTURE.md actor model and workpool namespace
   - .agent-harness/AGENT_WORKFLOW.md pool worker loop and heartbeat contract
@@ -519,7 +519,7 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 ## Orca supervised dispatch에서 완료 task나 안정된 diff를 writer lease로 오인하지 말 것
 
 - Valid `worker_done`은 해당 dispatch를 끝낸다. Coordinator는 exact worker terminal을 닫고, review edit가 필요하면 새 ready task, fresh dispatch, exact sole-writer attestation으로 다시 시작한다. Completed worker에게 edit 지시를 보내거나 기존 task를 mutation lease처럼 재사용하지 않는다.
-- Replacement/dispatch 직전 exact-worktree terminal inventory와 active orchestration task를 함께 확인한다. 다른 connected/writable possible writer나 dispatched task가 하나라도 있으면 중단한다. Diff가 오래 안정돼 보이는 것은 ownership evidence가 아니며, original task/writer가 terminal임을 확인하기 전 preserved WIP를 adopt하지 않는다.
+- Replacement/dispatch 직전 exact-worktree terminal inventory와 active orchestration task를 함께 확인한다. 다른 connected 또는 writable possible writer나 dispatched task가 하나라도 있으면 중단하고 durable lease recovery를 남긴다. Diff가 오래 안정돼 보이는 것은 ownership evidence가 아니며, original task/writer가 terminal임을 확인하기 전 preserved WIP를 adopt하지 않는다.
 - Sole-writer task attestation은 server-filtered `orca orchestration task-list --status dispatched`와 exact `orca orchestration dispatch-show --task <current-task-id> --json`을 사용한다. Broad `task-list --json`을 local `jq`로 거른 출력이 truncated/unparsable이면 task absence가 아니라 ambiguity이며, exact task/dispatch가 증명될 때까지 mutation을 막는다.
 - Fresh worker는 login shell에서 실제 host banner가 나타난 뒤 시작한다. Dispatch 직전 exact terminal의 `connected=true`, `writable=true`를 다시 확인하며, `tui-idle` 단일 표본만으로 startup을 attest하지 않는다.
 - Authorized terminal send가 interrupt text와 Enter를 전달한 뒤에는 terminal read로 UserPromptSubmit 또는 working state 시작을 확인한다. Instruction이 idle prompt에 남아 있으면 instruction body를 다시 보내지 말고 Enter를 정확히 한 번만 보낸 뒤 다시 읽는다.
@@ -530,13 +530,13 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 실제 runtime restart에서 runtime ID, terminal handle/PTY, dynamic terminal title, worktree instance가 다시 발급됐지만 public tab/leaf와 visual-layout의 custom tab title은 유지됐다. 반대로 worktree instance가 같은 값으로 유지되는 restart도 유효할 수 있으므로 old/new equality 자체를 실패로 보지 않는다.
 
 - current-runtime의 complete bounded worktree/terminal inventory가 sealed repo/base/path/branch/HEAD/comment와 stable tab/leaf를 유일하게 증명해도 곧바로 쓰지 않는다. journal snapshot exact equality와 context source, clean exact branch/attempt-base HEAD를 cycle lock 안에서 다시 확인한 뒤에만 runtime, worktree instance, terminal tuple을 한 CAS로 갱신한다. stable ID를 기록하지 못한 legacy row만 joined visual-layout title을 fallback으로 쓰며 dynamic terminal title은 쓰지 않는다.
-- recovered connected/writable terminal이나 uncommitted WIP가 하나라도 있으면 replacement를 시작하지 않는다. local observation의 대기는 caller-side Ctrl-C 또는 host tool cancellation로 끝내며 target PTY에 control input을 보내지 않는다.
+- recovered terminal이 connected 또는 writable이거나 uncommitted WIP가 하나라도 있으면 replacement를 시작하지 않는다. local observation의 대기는 caller-side Ctrl-C 또는 host tool cancellation로 끝내며 target PTY에 control input을 보내지 않는다.
 - 현재 설치 환경의 relay pin 이름은 `ORCA_RELAY_DIR`와 `ORCA_RELAY_SOCKET_PATH`다. stale pin으로 handshake가 됐다는 사실은 current runtime/terminal/worktree identity 증거가 아니다.
 - terminal-create는 설치 help에서 확인한 fixed built-in agent form 또는 harness가 생성한 fixed host command form만 쓴다. worktree provisioning 뒤 capability가 사라지면 create를 호출하지 않았어도 lease를 `recovery_required`로 보존한다.
 
 ## IssueOps ownership 필드를 root schema bump 없이 추가하지 말 것
 
-`execution_handoff`처럼 mutation authority를 소유하는 필드를 기존 root schema에 additive `omitempty`로만 추가하면, 그 필드를 모르는 이전 binary가 unknown JSON을 버린 뒤 같은 schema로 rewrite할 수 있다. IssueOps root는 v4이며 missing/zero/v1/v2/v3 row를 보존해 upgrade한다. v1 binary는 v2+를, v2 binary는 stable terminal tab/leaf를 가진 v3를, v3 binary는 sealed mailbox/projection authority를 가진 v4를 future schema로 byte-equivalent reject해야 한다.
+`execution_handoff`처럼 mutation authority를 소유하는 필드를 기존 root schema에 additive `omitempty`로만 추가하면, 그 필드를 모르는 이전 binary가 unknown JSON을 버린 뒤 같은 schema로 rewrite할 수 있다. IssueOps root는 v5이며 missing/zero/v1/v2/v3/v4 row를 보존해 upgrade한다. v1 binary는 v2+를, v2 binary는 stable terminal tab/leaf를 가진 v3를, v3 binary는 sealed mailbox/projection authority를 가진 v4를, v4 binary는 publish/cleanup authority를 가진 v5를 future schema로 byte-equivalent reject해야 한다.
 
 Legacy v3 migration은 current attempt and every prior attempt 각각에서 missing live terminal을 historical mailbox로 채운 뒤 `DispatchID`가 없으면 mailbox를 지운다. v4에서는 `DispatchID` and `WorkerMailboxHandle` are either both absent or both present이며, ContextVersion 1의 empty `coordinator_recipient`는 기존 JSON/hash 보존을 위해 생략하고 nonempty sealed recipient만 두 hash에 포함한다.
 
@@ -560,8 +560,17 @@ Orca completion reconciliation은 message `from_handle`이 원래 dispatch `assi
 
 설치된 Orca의 worktree-create `--issue`는 GitHub issue 전용이고 public help에는 GitLab issue CLI option이 노출되지 않는다. GitLab supervised handoff는 이미 검증된 provider tracking ref를 쓰되 `--issue`와 사설·가상 GitLab flag를 모두 생략한다. `linkedGitLabIssue`는 nullable이므로 null/zero를 native metadata unavailable로 영속화하고 exact 값과 구분한다. nonzero `linkedIssue` 또는 mismatched nonzero GitLab 값은 identity mismatch다.
 
-- `auto`의 Orca missing/unready/capability failure나 이후 definitive pre-mutation inline fallback에는 GitLab native-metadata warning을 붙이지 않는다. probe가 성공해 `resolved_mode=orca`가 된 preview/confirm만 warning을 가질 수 있다.
+- `auto`의 Orca missing/unready/capability failure나 이후 definitive pre-external-mutation inline fallback은 legacy JSON/text와 row bytes를 그대로 유지해야 하며 GitLab native-metadata warning이나 orchestration field를 붙이지 않는다. probe가 성공해 `resolved_mode=orca`가 된 preview/confirm만 warning을 가질 수 있다.
 - warning 여부를 즉시 응답에만 저장하면 반복 prepare/runtime restart에서 사실이 바뀐다. bounded provider-link observation을 durable Orca identity에 저장하고 재투영한다.
+
+## Orca handoff publication과 cleanup을 caller flag나 best-effort 순서에 맡기지 말 것
+
+- Accepted publish는 local `refs/heads/<branch>`가 full `FinalHead`인지 확인한 exact push 뒤, 동일 remote ref가 같은 SHA임을 증명하는 durable provider-neutral receipt를 먼저 저장한다. PR/MR create 직전에도 provider/remote/branch/ref/local+remote head를 재검증한다. GitHub/GitLab 모두 같은 fence를 쓰고 direct create, missing/stale receipt, `--body-file`, branch/provider drift는 차단한다.
+- Supervised PR/MR는 `phase=pr`이고 기존 `RemoteArtifact`가 없을 때만 provider mutation 전에 통과하며 draft로만 생성한다. GitHub/GitLab create와 즉시 readback은 timeout·stdout/stderr cap·secret redaction을 적용하고 canonical artifact URL, head/base/draft, requested label/assignee inclusion을 검증한다. GitLab readback은 created URL의 host/project/IID를 구조적으로 파싱한 exact `glab api projects/<escaped-project>/merge_requests/<iid> --hostname <host>`다. Create가 시작된 뒤 timeout/nonzero/malformed/mismatch가 나면 unknown/needs-reconciliation이며 자동 재시도하지 않는다. Provider 성공 뒤 supervised wrapper는 durable `IssueURL` project authority로 `VerifyIssueOpsRemoteArtifact`를 수행해 `RemoteArtifact`를 원자적으로 기록한다.
+- Failed/cancelled cleanup은 `approve-cleanup` disposition을 mutation 전에 저장하고 `task_terminal` → `terminal_quiescent` receipt를 exact identity로 저장한다. `terminal_quiescent`는 stale snapshot이므로 raw `orca worktree rm --force` 권한이 아니다. 명시적 사용자 경계에서 외부/manual deletion이 끝난 뒤 complete worktree inventory가 absence를 증명할 때만 optional `worktree_removed`를 기록한다. Accepted handoff에는 cleanup disposition을 열지 않으며, ambiguous/truncated/incomplete inventory나 changed task/terminal/worktree identity는 receipt가 아니다.
+- Bootstrap 예외: issue #16 cycle `io-47c93d1ef742`의 `branch_prepare.base_sha`는 `2ba240b94477190071598b3f1c7278312b296611`이고 schema-v4 pre-envelope record라 새 automatic publication fence가 소급 보호하지 않는다. `fe2ed683bd02a5b0e7b029eb10a82e59777b9dbb`는 correction 전 관측된 local/remote published branch HEAD이자 `ai_slop_clean_head`다. Worker가 완전히 종료한 뒤 coordinator만 exact untruncated terminal/task inventory, immutable commit SHA, local/remote ref equality를 검증할 수 있으며, automatic fence 보장은 future supervised envelopes에만 적용한다.
+- Retry는 원래 task/dispatch/terminal identity를 지운 뒤 새 값을 쓰는 shortcut이 아니다. Retry disposition과 task/terminal receipts, complete terminal/dispatched-task quiescence, immediate sole-writer re-attestation이 모두 있어야 새 attempt/epoch를 만든다.
+- Long-running verification tool이 outer cell에서 yield하고 `session_id`만 반환하면 같은 session을 `write_stdin`으로 terminal `exit_code`까지 poll한다. Outer cell wait만 반복하거나 완료를 추측하지 않으며, 살아 있는 yielded test와 겹치는 duplicate test를 새로 시작하지 않는다. Partial package output은 PASS가 아니다.
 - 이 경로는 GitLab remote issue/branch/work item/MR을 생성·수정하지 않는다. verified provider ref와 sealed provider/IssueURL만 소비한다.
 
 ## worker/terminal create 또는 dispatch 직전 "sole writer" 요약을 그대로 신뢰하지 말 것
@@ -569,10 +578,12 @@ Orca completion reconciliation은 message `from_handle`이 원래 dispatch `assi
 이전 dispatch가 "no other writer exists"라는 요약만 믿고 새 worktree/terminal을 만들어 동일 worktree에 두 번째 writer가 붙은 사고가 있었다. 요약(assistant prose)은 evidence가 아니다.
 
 - 새 worker terminal/worktree를 create 또는 dispatch하기 직전에 반드시 exact, untruncated worktree terminal inventory(`totalCount`, `truncated=false` 확인 포함)를 다시 조회한다.
-- 그 inventory에 connected+writable한 다른 terminal이 하나라도 있으면 create/dispatch를 거부한다. truncated 응답은 신뢰할 수 없으므로 동일하게 거부한다.
+- 그 inventory에 connected 또는 writable한 다른 terminal이 하나라도 있으면 create/dispatch를 거부한다. designated active worker만 connected와 writable이 모두 true여야 하며, truncated 응답은 신뢰할 수 없으므로 동일하게 거부한다.
 - 이 확인은 매 dispatch 직전에 반복한다. 과거 턴에서 확인했다는 사실은 현재 turn의 증거가 아니다.
 
 ## yielded 검증 command를 완료로 오인하거나 heartbeat 부재만으로 worker를 중단하지 말 것
+
+- zsh에서 `path`는 `$PATH`와 연결된 특수 배열이므로 loop 변수로 쓰면 이후 `git`/`rg` 탐색이 깨진다. staging loop에는 `file_name` 같은 이름을 쓰고, shell command에 backtick이 든 검색 문자열은 안전한 단일 인용 또는 별도 argv로 전달한다. Orca terminal read/check cursor flag도 help로 확인한 exact public flag만 사용한다.
 
 검증 command가 `session_id`만 반환하고 `exit_code`가 없는데 outer tool call이 끝났다는 이유로 통과 처리한 사고와, 실제 `go test -race` process가 실행 중인데 heartbeat 부재와 화면 spinner만 보고 worker를 interrupt한 사고가 있었다.
 

@@ -3,6 +3,7 @@ package github
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -64,6 +65,9 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("head and base branches are required")
 	}
 	args := []string{"pr", "create", "--title", title, "--head", head, "--base", base}
+	if req.Draft {
+		args = append(args, "--draft")
+	}
 	body := strings.TrimSpace(req.Body)
 	if body != "" {
 		args = append(args, "--body", body)
@@ -81,14 +85,89 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 			Preview: fmt.Sprintf("[dry-run] would execute: %s", cmdStr),
 		}, nil
 	}
-	result, err := runGhJSON(args, req.Repo, "pr")
+	result, err := runGhPRCreate(args, req.Repo)
 	if err != nil {
-		return port.IssueProviderCreatePullRequestResult{OK: false}, err
+		return port.IssueProviderCreatePullRequestResult{OK: false, URL: result.URL}, err
+	}
+	if !validCanonicalGitHubPullRequestURL(result.URL) {
+		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("created artifact URL unavailable; needs reconciliation; not retried")
+	}
+	if err := verifyCreatedGitHubPullRequest(req, result.URL); err != nil {
+		return port.IssueProviderCreatePullRequestResult{OK: false, URL: result.URL}, githubCreatedPullRequestError(result.URL, err)
 	}
 	return port.IssueProviderCreatePullRequestResult{
 		OK:  true,
 		URL: result.URL,
 	}, nil
+}
+
+func runGhPRCreate(args []string, repo string) (ghResult, error) {
+	out, invoked, err := providerutil.RunBoundedMutation(repo, "gh", args...)
+	result := parseGhOutput(string(out))
+	if err == nil {
+		return result, nil
+	}
+	if !invoked {
+		return ghResult{}, &port.IssueProviderCreateError{Invoked: false, Err: err}
+	}
+	if validCanonicalGitHubPullRequestURL(result.URL) {
+		return result, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("gh PR creation outcome unknown for %s; do not retry: %w", result.URL, err)}
+	}
+	return ghResult{}, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("gh PR creation outcome unknown; do not retry: %w", err)}
+}
+
+func validCanonicalGitHubPullRequestURL(raw string) bool {
+	raw = strings.TrimSpace(raw)
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "https" || parsed.Host != "github.com" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.String() != raw || strings.Contains(parsed.EscapedPath(), "%") {
+		return false
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) != 4 || parts[0] == "" || parts[1] == "" || parts[2] != "pull" {
+		return false
+	}
+	number, err := strconv.Atoi(parts[3])
+	return err == nil && number > 0
+}
+
+type githubPullRequestProjection struct {
+	URL         string           `json:"url"`
+	HeadRefName string           `json:"headRefName"`
+	BaseRefName string           `json:"baseRefName"`
+	IsDraft     bool             `json:"isDraft"`
+	Labels      []githubLabel    `json:"labels"`
+	Assignees   []githubAssignee `json:"assignees"`
+}
+
+func verifyCreatedGitHubPullRequest(req port.IssueProviderCreatePullRequestRequest, createdURL string) error {
+	createdURL = strings.TrimSpace(createdURL)
+	out, err := providerutil.RunBoundedReadback(req.Repo, "gh", "pr", "view", createdURL, "--json", "url,headRefName,baseRefName,isDraft,labels,assignees")
+	if err != nil {
+		return fmt.Errorf("read back created pull request: %w", err)
+	}
+	var got githubPullRequestProjection
+	if err := json.Unmarshal(out, &got); err != nil {
+		return fmt.Errorf("parse created pull request readback: %w", err)
+	}
+	labels := make([]string, 0, len(got.Labels))
+	for _, label := range got.Labels {
+		labels = append(labels, label.Name)
+	}
+	assignees := githubAssigneeLogins(got.Assignees)
+	if strings.TrimSpace(got.URL) != createdURL || strings.TrimSpace(got.HeadRefName) != strings.TrimSpace(req.HeadBranch) || strings.TrimSpace(got.BaseRefName) != strings.TrimSpace(req.BaseBranch) || got.IsDraft != req.Draft {
+		return fmt.Errorf("created pull request identity or draft status does not match the request")
+	}
+	if missing := providerutil.MissingStrings(req.Labels, labels); len(missing) > 0 {
+		return fmt.Errorf("created pull request is missing requested labels")
+	}
+	if missing := providerutil.MissingStrings(req.Assignees, assignees); len(missing) > 0 {
+		return fmt.Errorf("created pull request is missing requested assignees")
+	}
+	return nil
+}
+
+func githubCreatedPullRequestError(createdURL string, err error) error {
+	return fmt.Errorf("created pull request %s has unknown state and needs reconciliation; creation was not retried: %w", strings.TrimSpace(createdURL), err)
 }
 
 func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.IssueProviderCreateChildResult, error) {

@@ -66,7 +66,7 @@ Three additive state features, one binding extension, hook/skill surfacing, and 
 
 ### State shape
 
-At this design's July 6 baseline, these non-ownership fields were additive `omitempty` under IssueOps schema v1, following the `phase_ledger` precedent. Issue #16 later supersedes that compatibility decision with root schema v4 for `execution_handoff`, stable terminal identity, and sealed completion authority:
+At this design's July 6 baseline, these non-ownership fields were additive `omitempty` under IssueOps schema v1, following the `phase_ledger` precedent. Issue #16 later supersedes that compatibility decision with root schema v5 for `execution_handoff`, stable terminal identity, sealed completion authority, and publish/cleanup authority:
 
 ```go
 // Child-side: identifies the parent and carries the delegated work contract.
@@ -319,8 +319,8 @@ Interaction with D1: the delegated child's `worktree_tools` gate (spec above) no
 
 ## Backward Compatibility
 
-- At this design's July 6 baseline, the delegation additions were `omitempty` fields under IssueOps schema v1. Issue #16 supersedes the root version with schema v4 for supervised ownership, stable terminal identity, and sealed completion authority; records without delegation fields and parents without children still preserve the same behavior.
-- The historical mixed-binary risk was that an older writer could drop unknown delegation fields. Current schema-v4 writers instead require v1 to reject v2+, v2 to reject v3, and v3 to reject v4 before rewrite; the single central binary update model remains operationally required.
+- At this design's July 6 baseline, the delegation additions were `omitempty` fields under IssueOps schema v1. Issue #16 supersedes the root version with schema v5 for supervised ownership, stable terminal identity, sealed completion authority, and publish/cleanup authority; records without delegation fields and parents without children still preserve the same behavior.
+- The historical mixed-binary risk was that an older writer could drop unknown delegation fields. Current schema-v5 writers instead require v1 to reject v2+, v2 to reject v3, v3 to reject v4, and v4 to reject v5 before rewrite; the single central binary update model remains operationally required.
 - The workpool namespace is separate and remains at `schema_version=1`; its records apply the same fail-closed-on-future-version principle, not the IssueOps root version number.
 - Legacy per-repo session binding keeps working unchanged for the single-cycle workflow.
 

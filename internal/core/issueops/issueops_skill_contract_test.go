@@ -487,7 +487,7 @@ func TestSupervisedHandoffSkillsPinObservedSoleWriterIncidents(t *testing.T) {
 			"exact sole-writer attestation",
 			"Never send edit instructions to a completed worker",
 			"exact-worktree terminals and active orchestration tasks",
-			"connected/writable possible writer or dispatched task blocks another writer",
+			"Any such possible writer or dispatched task blocks another writer",
 			"A stable diff is not ownership evidence",
 			"login shell",
 			"actual host banner",
@@ -514,7 +514,7 @@ func TestCautionsPinsDuplicateWriterInventoryRecheckIncident(t *testing.T) {
 	for _, want := range []string{
 		"요약만 믿고",
 		"exact, untruncated worktree terminal inventory",
-		"connected+writable한 다른 terminal이 하나라도 있으면",
+		"connected 또는 writable한 다른 terminal이 하나라도 있으면",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("CAUTIONS.md missing duplicate-writer inventory-recheck incident: want %q", want)
@@ -779,8 +779,8 @@ func TestIssueOpsSchemaADRPreservesV3HistoryAndAppendsCurrentDateV4(t *testing.T
 	if strings.Contains(adr, "## 2026-07-12 — IssueOps root schema v4 protects sealed completion authority") {
 		t.Fatal("schema-v4 ADR heading contains future-date drift")
 	}
-	if !strings.Contains(design, "**Status:** Implemented with the 2026-07-11 sealed-completion-authority correction") || strings.Contains(design, "**Status:** Implemented with the 2026-07-12 sealed-completion-authority correction") {
-		t.Fatal("sealed-completion design status has the wrong bundle date")
+	if !strings.Contains(design, "**Status:** Implemented with the 2026-07-12 state/security correction") {
+		t.Fatal("state/security design status has the wrong bundle date")
 	}
 	if !strings.Contains(evidence, "## Sealed automatic `worker_done` projection correction — 2026-07-11") || strings.Contains(evidence, "## Sealed automatic `worker_done` projection correction — 2026-07-12") {
 		t.Fatal("sealed-projection evidence heading has the wrong bundle date")
@@ -818,12 +818,72 @@ func TestIssueOpsCleanupUsesLiveTerminalAndExactWorktreeStop(t *testing.T) {
 
 func TestIssueOpsHistoricalSchemaDocsCarryFullV4RejectionChain(t *testing.T) {
 	body := readProjectContractFileForTest(t, "docs", "superpowers", "specs", "2026-07-06-issueops-subagent-orchestration-design.md")
-	want := "Current schema-v4 writers instead require v1 to reject v2+, v2 to reject v3, and v3 to reject v4 before rewrite"
+	want := "Current schema-v5 writers instead require v1 to reject v2+, v2 to reject v3, v3 to reject v4, and v4 to reject v5 before rewrite"
 	if !strings.Contains(body, want) {
 		t.Fatalf("historical schema design does not carry the full v4 rejection chain: want %q", want)
 	}
-	if strings.Contains(body, "Current schema-v3 writers") {
-		t.Fatal("historical schema design still describes the current writer as v3")
+	if strings.Contains(body, "Current schema-v3 writers") || strings.Contains(body, "Current schema-v4 writers") {
+		t.Fatal("historical schema design describes an obsolete current writer")
+	}
+}
+
+func TestIssueOpsSchemaV5DocsCarryPublicationCleanupAndFallbackAuthority(t *testing.T) {
+	documents := map[string]string{
+		"architecture": readProjectContractFileForTest(t, ".agent-harness", "ARCHITECTURE.md"),
+		"operations":   readProjectContractFileForTest(t, ".agent-harness", "OPERATIONS.md"),
+		"testing":      readProjectContractFileForTest(t, ".agent-harness", "TESTING.md"),
+		"design":       readProjectContractFileForTest(t, "docs", "superpowers", "specs", "2026-07-11-orca-aware-issueops-handoff-design.md"),
+		"plan":         readProjectContractFileForTest(t, "docs", "superpowers", "plans", "2026-07-11-orca-aware-issueops-handoff.md"),
+	}
+	for name, body := range documents {
+		for _, want := range []string{"v5", "publish", "cleanup"} {
+			if !strings.Contains(strings.ToLower(body), want) {
+				t.Fatalf("%s schema-v5 authority contract missing %q", name, want)
+			}
+		}
+	}
+	reference := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	for _, want := range []string{
+		"Every connected or writable terminal is a possible writer, including a pre-existing baseline terminal",
+		"agent-harness issueops handoff publish",
+		"agent-harness issueops remote create-pr",
+		"approve-cleanup",
+		"task_terminal",
+		"terminal_quiescent",
+		"worktree_removed",
+		"byte-identical to the legacy inline path",
+		"schema-v4 record with no `execution_handoff`",
+		"Automatic publication-fence guarantees apply only to future supervised envelopes",
+		"never authorizes raw worktree removal",
+	} {
+		if !strings.Contains(reference, want) {
+			t.Fatalf("IssueOps v5 handoff contract missing %q", want)
+		}
+	}
+	if strings.Contains(reference, "orca worktree rm --worktree id:<persisted-worktree-id> --force --json") {
+		t.Fatal("IssueOps reference still claims automatic supervised worktree removal")
+	}
+	publish := reference[strings.Index(reference, "## Coordinator Publish"):strings.Index(reference, "## Failure And Recovery")]
+	recipeStart := strings.Index(publish, "```bash\n")
+	recipe := publish[recipeStart+len("```bash\n"):]
+	recipe = recipe[:strings.Index(recipe, "```")]
+	for _, forbidden := range []string{"git push", "gh pr create", "glab mr create", "--body-file"} {
+		if strings.Contains(recipe, forbidden) {
+			t.Fatalf("publish recipe retains forbidden surface %q", forbidden)
+		}
+	}
+}
+
+func TestSupervisedHandoffTreatsUsageAndModelPromptsAsUserDecisionBoundary(t *testing.T) {
+	for name, body := range map[string]string{
+		"IssueOps skill":     readIssueOpsSkillForTest(t),
+		"IssueOps reference": readIssueOpsReferenceForTest(t, "orca-handoff.md"),
+	} {
+		for _, want := range []string{"usage-limit", "rate-limit", "reset", "model-selection", "user-decision", "dismiss or stop", "never", "switch models"} {
+			if !strings.Contains(strings.ToLower(body), want) {
+				t.Fatalf("%s usage/model boundary missing %q", name, want)
+			}
+		}
 	}
 }
 
@@ -881,9 +941,14 @@ func TestIssueOpsPublishRecipeAvoidsShellCommandSubstitution(t *testing.T) {
 	if strings.Contains(recipe, "$(") || strings.ContainsRune(recipe, '`') {
 		t.Fatalf("publish recipe must not use shell command substitution: %s", recipe)
 	}
-	for _, want := range []string{"git rev-parse --verify refs/heads/<branch>", "git push <remote> <branch>"} {
+	for _, want := range []string{"git rev-parse --verify refs/heads/<branch>", "agent-harness issueops handoff publish", "agent-harness issueops remote create-pr"} {
 		if !strings.Contains(recipe, want) {
 			t.Fatalf("publish recipe missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{"git push", "gh pr create", "glab mr create", "--body-file"} {
+		if strings.Contains(recipe, forbidden) {
+			t.Fatalf("publish recipe retains forbidden surface %q", forbidden)
 		}
 	}
 }

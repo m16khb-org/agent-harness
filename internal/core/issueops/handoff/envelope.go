@@ -79,6 +79,9 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 	if h.Failure != nil && !validFailure(h.Failure) {
 		return fmt.Errorf("execution handoff failure evidence is not canonical")
 	}
+	if h.PublicationRecovery != nil && (!validFailure(h.PublicationRecovery) || h.State != StateClosed || h.ClosedDisposition != DispositionAccepted || h.PublicationRecovery.Code != "publication_inventory_ambiguous" && h.PublicationRecovery.Code != "publication_writer_conflict") {
+		return fmt.Errorf("publication recovery evidence is not canonical accepted authority")
+	}
 	if h.Orca != nil && !canonicalOrcaIdentity(h.Orca) {
 		return fmt.Errorf("execution handoff Orca identity is not canonical")
 	}
@@ -101,8 +104,17 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 	if err := validateWorkerDoneProjection(h); err != nil {
 		return err
 	}
-	if h.WorkerDoneProjection != nil && h.State != StateSubmitted && (h.State != StateClosed || h.ClosedDisposition != DispositionAccepted) {
-		return fmt.Errorf("worker_done projection requires submitted or accepted authority")
+	projectionAuthority := h.State == StateSubmitted ||
+		h.State == StateRecoveryRequired && h.Cancellation != nil ||
+		h.State == StateClosed && (h.ClosedDisposition == DispositionAccepted || h.ClosedDisposition == DispositionCancelled)
+	if h.WorkerDoneProjection != nil && !projectionAuthority {
+		return fmt.Errorf("worker_done projection requires submitted, cancelling, accepted, or cancelled authority")
+	}
+	if err := validatePublishReceipt(record, h); err != nil {
+		return err
+	}
+	if err := validateCleanup(h); err != nil {
+		return err
 	}
 	if err := validatePriorAttempts(record, h); err != nil {
 		return err
@@ -431,6 +443,46 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 			boundedHandoffString{"cancellation reason", h.Cancellation.Reason, 4096},
 		)
 	}
+	if h.PublishReceipt != nil {
+		p := h.PublishReceipt
+		checks = append(checks,
+			boundedHandoffString{"publish provider", p.Provider, 32},
+			boundedHandoffString{"publish remote", p.Remote, 256},
+			boundedHandoffString{"publish branch", p.Branch, 1024},
+			boundedHandoffString{"publish remote ref", p.RemoteRef, 2048},
+			boundedHandoffString{"publish final head", p.FinalHead, 128},
+			boundedHandoffString{"publish verified timestamp", p.VerifiedAt, 128},
+		)
+	}
+	if h.PublicationRecovery != nil {
+		checks = append(checks,
+			boundedHandoffString{"publication recovery code", h.PublicationRecovery.Code, 128},
+			boundedHandoffString{"publication recovery message", h.PublicationRecovery.Message, 4096},
+			boundedHandoffString{"publication recovery timestamp", h.PublicationRecovery.At, 128},
+		)
+	}
+	if h.Cleanup != nil {
+		checks = append(checks,
+			boundedHandoffString{"cleanup disposition", h.Cleanup.Disposition, 32},
+			boundedHandoffString{"cleanup reason", h.Cleanup.Reason, 4096},
+			boundedHandoffString{"cleanup approved timestamp", h.Cleanup.ApprovedAt, 128},
+		)
+		if len(h.Cleanup.Receipts) > 3 {
+			return fmt.Errorf("cleanup receipts exceed 3 entries")
+		}
+		for _, receipt := range h.Cleanup.Receipts {
+			checks = append(checks,
+				boundedHandoffString{"cleanup receipt step", receipt.Step, 64},
+				boundedHandoffString{"cleanup receipt task id", receipt.TaskID, MaxExternalIDBytes},
+				boundedHandoffString{"cleanup receipt dispatch id", receipt.DispatchID, MaxExternalIDBytes},
+				boundedHandoffString{"cleanup receipt terminal handle", receipt.TerminalHandle, MaxExternalIDBytes},
+				boundedHandoffString{"cleanup receipt PTY id", receipt.PTYID, MaxExternalIDBytes},
+				boundedHandoffString{"cleanup receipt worktree id", receipt.WorktreeID, MaxWorktreeBaselineIDBytes},
+				boundedHandoffString{"cleanup receipt worktree instance id", receipt.WorktreeInstanceID, MaxExternalIDBytes},
+				boundedHandoffString{"cleanup receipt recorded timestamp", receipt.RecordedAt, 128},
+			)
+		}
+	}
 	if h.Orca != nil {
 		o := h.Orca
 		checks = append(checks,
@@ -535,9 +587,68 @@ func validCancellation(cancellation *model.IssueOpsExecutionHandoffCancellation)
 	return cancellation != nil && canonicalTimestamp(cancellation.RequestedAt) && cancellation.Reason != "" && cancellation.Reason == strings.TrimSpace(cancellation.Reason) && cancellation.Reason == redact(cancellation.Reason)
 }
 
+func validatePublishReceipt(record model.IssueOpsRecord, h *model.IssueOpsExecutionHandoff) error {
+	p := h.PublishReceipt
+	if p == nil {
+		return nil
+	}
+	if h.State != StateClosed || h.ClosedDisposition != DispositionAccepted || h.Result == nil || h.Orca == nil || record.BranchPrepare == nil {
+		return fmt.Errorf("publish receipt requires closed accepted authority")
+	}
+	provider := strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
+	branch := strings.TrimSpace(record.Branch)
+	prefix, suffix := "refs/remotes/", "/"+branch
+	baseRef := strings.TrimSpace(h.Orca.BaseRef)
+	if provider != "github" && provider != "gitlab" || branch == "" || !strings.HasPrefix(baseRef, prefix) || !strings.HasSuffix(baseRef, suffix) {
+		return fmt.Errorf("publish receipt provider or branch authority is invalid")
+	}
+	remote := strings.TrimSuffix(strings.TrimPrefix(baseRef, prefix), suffix)
+	if remote == "" || strings.ContainsAny(remote, " \t\r\n") || p.Provider != provider || p.Remote != remote || p.Branch != branch || p.RemoteRef != "refs/heads/"+branch || p.FinalHead != h.Result.FinalHead || !fullCommitPattern.MatchString(p.FinalHead) || !canonicalTimestamp(p.VerifiedAt) {
+		return fmt.Errorf("publish receipt does not match accepted provider, branch, ref, and final head")
+	}
+	return nil
+}
+
+func validateCleanup(h *model.IssueOpsExecutionHandoff) error {
+	cleanup := h.Cleanup
+	if cleanup == nil {
+		return nil
+	}
+	if h.State != StateClosed || h.ClosedDisposition != DispositionWorkerFailed && h.ClosedDisposition != DispositionCancelled || h.Orca == nil || h.PublishReceipt != nil {
+		return fmt.Errorf("cleanup approval requires closed worker_failed or cancelled authority")
+	}
+	if cleanup.Disposition != "retry" && cleanup.Disposition != "remove" || cleanup.Reason == "" || cleanup.Reason != strings.TrimSpace(cleanup.Reason) || cleanup.Reason != redact(cleanup.Reason) || !canonicalTimestamp(cleanup.ApprovedAt) {
+		return fmt.Errorf("cleanup approval disposition, reason, or timestamp is invalid")
+	}
+	expected := []string{"task_terminal", "terminal_quiescent", "worktree_removed"}
+	if cleanup.Disposition == "retry" && len(cleanup.Receipts) > 2 || cleanup.Disposition == "remove" && len(cleanup.Receipts) > 3 {
+		return fmt.Errorf("cleanup receipt count exceeds the approved disposition")
+	}
+	for i, receipt := range cleanup.Receipts {
+		if receipt.Step != expected[i] || !canonicalTimestamp(receipt.RecordedAt) {
+			return fmt.Errorf("cleanup receipts are out of order or have invalid timestamps")
+		}
+		switch receipt.Step {
+		case "task_terminal":
+			if receipt.TaskID != h.Orca.TaskID || receipt.DispatchID != h.Orca.DispatchID || receipt.TaskID == "" || receipt.DispatchID == "" || receipt.TerminalHandle != "" || receipt.PTYID != "" || receipt.WorktreeID != "" || receipt.WorktreeInstanceID != "" {
+				return fmt.Errorf("task cleanup receipt does not match exact task and dispatch identity")
+			}
+		case "terminal_quiescent":
+			if receipt.TerminalHandle != h.Orca.WorkerTerminalHandle || receipt.PTYID != h.Orca.WorkerPTYID || receipt.WorktreeID != h.Orca.WorktreeID || receipt.TerminalHandle == "" || receipt.PTYID == "" || receipt.WorktreeID == "" || receipt.TaskID != "" || receipt.DispatchID != "" || receipt.WorktreeInstanceID != "" {
+				return fmt.Errorf("terminal cleanup receipt does not match exact terminal and worktree identity")
+			}
+		case "worktree_removed":
+			if receipt.WorktreeID != h.Orca.WorktreeID || receipt.WorktreeInstanceID != h.Orca.WorktreeInstanceID || receipt.WorktreeID == "" || receipt.WorktreeInstanceID == "" || receipt.TaskID != "" || receipt.DispatchID != "" || receipt.TerminalHandle != "" || receipt.PTYID != "" {
+				return fmt.Errorf("worktree cleanup receipt does not match exact worktree identity")
+			}
+		}
+	}
+	return nil
+}
+
 func knownOperation(kind string) bool {
 	switch kind {
-	case OperationWorktreeCreate, OperationTerminalCreate, OperationTaskCreate, OperationDispatch, OperationRuntimeRefresh:
+	case OperationWorktreeCreate, OperationTerminalCreate, OperationTaskCreate, OperationDispatch, OperationRuntimeRefresh, OperationLeaseAttestation:
 		return true
 	default:
 		return false

@@ -39,6 +39,10 @@ func Validate(store Store, stateRoot, id string, req model.IssueOpsRemoteArtifac
 	return record, nil
 }
 
+func Projection(record model.IssueOpsRecord, req model.IssueOpsRemoteArtifactVerificationRequest) (model.IssueOpsRemoteArtifactVerification, error) {
+	return verificationFromRequest(record, req)
+}
+
 func verificationFromRequest(record model.IssueOpsRecord, req model.IssueOpsRemoteArtifactVerificationRequest) (model.IssueOpsRemoteArtifactVerification, error) {
 	if record.Phase != model.IssueOpsPhasePR {
 		return model.IssueOpsRemoteArtifactVerification{}, fmt.Errorf("cannot verify remote artifact before pr phase")

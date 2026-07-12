@@ -1,7 +1,7 @@
 # Orca-Aware IssueOps Supervised Handoff Design
 
 **Date:** 2026-07-11
-**Status:** Implemented with the 2026-07-11 sealed-completion-authority correction
+**Status:** Implemented with the 2026-07-12 state/security correction
 **Scope:** Optional Orca-backed IssueOps execution handoff with legacy inline compatibility
 
 ## 1. Problem
@@ -15,7 +15,7 @@ When Orca is available, the desired workflow is different:
 3. The worker explicitly claims the execution attempt, implements and verifies the change, and submits a result.
 4. The coordinator validates the result and retains PR and cleanup authority.
 
-The integration must not make Orca a dependency. If Orca or the required launch capability is unavailable before any Orca mutation, IssueOps must retain its current inline behavior.
+The integration must not make Orca a dependency. If Orca or the required launch capability is unavailable before the first external mutation, IssueOps must retain its current inline JSON/text byte-for-byte without handoff fields, warnings, or state rewrites.
 
 ## 2. Goals
 
@@ -88,7 +88,7 @@ Before any external mutation, the adapter verifies:
 
 ### 5.2 Fallback boundary
 
-- In `auto`, a failed read-only probe returns the existing inline worktree guidance plus a redacted fallback code; it does not add handoff state to the record.
+- In `auto`, Orca absence or unreadiness before the first external mutation returns the legacy inline JSON/text byte-for-byte, without fallback fields, warnings, handoff state, or state artifacts.
 - After an Orca mutation is invoked, no error or timeout may switch execution to inline.
 - Any ambiguous post-invocation result moves the lease to `recovery_required`.
 
@@ -105,7 +105,7 @@ For resolved inline mode:
 
 ## 6. Durable model
 
-Add one optional nested field to `IssueOpsRecord` and use root IssueOps schema version 4. Missing/zero, v1, v2, and v3 records remain readable and upgrade on the next write, including locally created older handoff rows. A v1 binary sees v2+ as future and cannot strip the ownership lease; a v2 binary sees v3 as future and cannot strip the stable terminal tab/leaf locator; a v3 binary sees v4 as future and cannot strip the sealed mailbox recipients or completion projection intent. Versions greater than 4 remain fail-safe.
+Add one optional nested field to `IssueOpsRecord` and use root IssueOps schema version 5. Missing/zero and v1-v4 records remain readable and upgrade on the next write, including locally created older handoff rows. A v1 binary sees v2+ as future and cannot strip the ownership lease; a v2 binary sees v3 as future and cannot strip the stable terminal tab/leaf locator; a v3 binary sees v4 as future and cannot strip the sealed mailbox recipients or completion projection intent; a v4 binary sees v5 as future and cannot strip publication or cleanup authority. Versions greater than 5 remain fail-safe.
 
 Legacy migration applies to the current attempt and every prior attempt: copy a missing live terminal from the legacy mailbox, then clear mailbox authority whenever no dispatch exists. In v4, `DispatchID` and `WorkerMailboxHandle` are either both absent or both present. ContextVersion 1 preserves v3 bytes and hashes by omitting an empty `coordinator_recipient`; every nonempty newly sealed recipient remains present in both the full context and source fingerprint.
 
@@ -245,7 +245,7 @@ Rules:
 - worktree ID, instance ID, canonical path, and branch are cross-checked to prevent stale path reuse;
 - a nonempty current-runtime worktree instance may equal the persisted instance. Missing instance, terminal/worktree mismatch, or conflicting duplicate evidence fails closed;
 - runtime-refresh completion exact-compares the journaled record and re-renders context source plus clean exact branch/attempt-base HEAD inside the cycle lock immediately before the one-write identity replacement. Generic post-mutation operation completion remains unchanged;
-- a connected/writable recovered terminal or uncommitted worker checkout forbids replacement. Stale relay environment pins may prove only a transport handshake; caller cancellation bounds observation without sending control input to the target PTY;
+- a connected or writable recovered terminal or uncommitted worker checkout forbids replacement. Stale relay environment pins may prove only a transport handshake; caller cancellation bounds observation without sending control input to the target PTY;
 - the pre-terminal PTY baseline is bounded and used only to reconcile an ambiguous terminal-create response by exact one-item set difference;
 - raw Orca envelopes are not persisted; only bounded redacted projections and error codes are stored.
 
@@ -446,7 +446,7 @@ Recovery may not:
 - switch to inline after partial mutation;
 - delete a worktree or terminal without explicit confirmation.
 
-`recover --action retry` creates a new attempt only after the prior attempt is safely closed; a force-abandoned ambiguous operation is never retryable. `recover --action cancel --confirm` first writes a `recovery_required` tombstone for every provisioned attempt and therefore does not release the live-worker guard. `recover --action finalize-cancel --confirm` closes only after complete authoritative inventory proves an exact pending candidate absent, the persisted terminal disconnected or absent, the exact task/dispatch terminal or authoritatively absent, and any claimed heartbeat older than the minimum age. A failed check leaves the tombstone active. Orca-owned worktrees are removed through `orca worktree rm`; inline worktrees continue through existing Git cleanup.
+`recover --action retry` creates a new attempt only after the prior attempt is safely closed; a force-abandoned ambiguous operation is never retryable. `recover --action cancel --confirm` first writes a `recovery_required` tombstone for every provisioned attempt and therefore does not release the live-worker guard. `recover --action finalize-cancel --confirm` closes only after complete authoritative inventory proves an exact pending candidate absent, the persisted terminal disconnected or absent, the exact task/dispatch terminal or authoritatively absent, and any claimed heartbeat older than the minimum age. A failed check leaves the tombstone active. V1 does not authorize supervised raw worktree removal: after explicit user-directed external/manual deletion, complete inventory may verify and record `worktree_removed`. Inline worktrees retain existing Git cleanup.
 
 ## 13. CLI and MCP surface
 
@@ -502,13 +502,21 @@ No other skill source changes in V1. Von Neumann/Karpathy already supply plan/pr
 
 Self-verification may report optional Orca diagnostics, but Orca availability is never a gate.
 
+### 15.1 State/security correction
+
+- Harness-guarded sole-writer exclusion comes from a complete exact-worktree terminal inventory plus server-filtered dispatched-task inventory. Every connected or writable terminal, including a baseline terminal, is a possible writer; only the designated active worker must be both connected and writable. Re-attest immediately before each create/dispatch and before retry; ambiguous inventory persists recovery and never replaces identities. Orca exposes no atomic lease, so these snapshots detect and refuse observed external writers but cannot prove absolute exclusion against an actor racing after the final snapshot.
+- Accepted publication is fenced to `result.final_head`. Exact local branch equality authorizes the push; a provider-neutral receipt is persisted only after the exact remote branch also equals that SHA. GitHub and GitLab PR/MR creation share the receipt plus fresh local/remote validation and accept only an already-rendered literal body argv.
+- Submitted attempts retain terminal `worker_done` projection evidence through force-cancel and deterministic finalization. Failed/cancelled destructive cleanup requires a durable disposition before mutation and ordered exact-identity receipts afterward; accepted attempts cannot cross publication through cleanup.
+- Root schema v5 protects publish and cleanup authority. Missing/zero/v1-v4 rows upgrade while preserving known fields, legacy mailbox rewriting stops at v3, and a frozen v4 reader rejects v5 byte-equivalently.
+- `auto` fallback before the first external mutation is byte-identical to the legacy inline JSON/text and leaves no handoff field, warning, row rewrite, or new SQLite artifact.
+
 ## 16. Turing verification contract
 
 Each criterion produces an observable artifact and cleanup receipt.
 
 | ID | Criterion | Binary evidence |
 |---|---|---|
-| ORCA-01 | Orca absent/unreachable in `auto` preserves inline behavior | fake probe + absent handoff field + legacy record/readiness/golden tests |
+| ORCA-01 | Orca absent/unreachable in `auto` preserves byte-exact inline behavior and state | byte characterization + absent handoff/warning/state-artifact tests |
 | ORCA-02 | Explicit `orca` fails before mutation when not ready | command trace contains probe only |
 | ORCA-03 | Ready Orca provisions and dispatches exactly once | fake trace + persisted worktree/task/dispatch projections |
 | ORCA-04 | Post-mutation timeout never falls back or retries automatically | `recovery_required` + one create call + zero inline actions |
@@ -517,7 +525,7 @@ Each criterion produces an observable artifact and cleanup receipt.
 | ORCA-07 | Coordinator writes and worktree escape are blocked; claimed worker in-tree writes pass | positive/negative PreToolUse scenarios |
 | ORCA-08 | Finish, submit, accept, failure, cancellation, and retry follow the transition table | table-driven state/actor/idempotency tests |
 | ORCA-09 | Resume is read-only and only recover persists one unique reconciliation | fake command traces + record before/after comparison |
-| ORCA-10 | Legacy records remain readable and inline | schema fixtures with absent handoff field |
+| ORCA-10 | Legacy records remain readable and inline while v5 authority rejects old writers | schema fixtures with absent handoff field + frozen v4 rejection probe |
 | ORCA-11 | Context packet is bounded, deterministic, stale-sensitive, and redacted | golden/hash/oversize/secret fixtures |
 | ORCA-12 | Codex, Claude, and GJC expose native session identity and enforce one real block smoke each | adapter contracts + installed-host smoke receipts |
 | ORCA-13 | Completed path matches installed Orca and cleans worktree/branch/terminal resources | second isolated live E2E + cleanup receipt; completed task history noted |

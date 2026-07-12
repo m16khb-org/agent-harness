@@ -267,9 +267,9 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_handoff",
-			Description: "Run one supervised IssueOps handoff action (start, claim, finish, accept, or recover) through the same durable DTO contract as the CLI. External mutations remain preview-only unless confirm=true; recovery never advances to the next operation.",
+			Description: "Run one supervised IssueOps handoff action (start, claim, finish, accept, publish, or recover) through the same durable DTO contract as the CLI. External mutations remain preview-only unless confirm=true; recovery never advances to the next operation.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"action", "id"}, "properties": map[string]any{
-				"action":                        map[string]any{"type": "string", "enum": []string{"start", "claim", "finish", "accept", "recover"}},
+				"action":                        map[string]any{"type": "string", "enum": []string{"start", "claim", "finish", "accept", "publish", "recover"}},
 				"id":                            map[string]any{"type": "string"},
 				"coordinator_recipient":         map[string]any{"type": "string", "description": "Concrete Orca coordinator mailbox recipient sealed before first dispatch."},
 				"confirm":                       map[string]any{"type": "boolean"},
@@ -300,7 +300,9 @@ func IssueOpsLifecycleTools() []Tool {
 				"evidence_digest":               map[string]any{"type": "string"},
 				"task_id":                       map[string]any{"type": "string"},
 				"dispatch_id":                   map[string]any{"type": "string"},
-				"recovery_action":               map[string]any{"type": "string", "enum": []string{"reconcile", "abandon", "cancel", "finalize-cancel", "retry"}},
+				"recovery_action":               map[string]any{"type": "string", "enum": []string{"reconcile", "abandon", "cancel", "finalize-cancel", "retry", "approve-cleanup", "record-cleanup"}},
+				"cleanup_disposition":           map[string]any{"type": "string", "enum": []string{"retry", "remove"}},
+				"cleanup_step":                  map[string]any{"type": "string", "enum": []string{"task_terminal", "terminal_quiescent", "worktree_removed"}},
 				"force":                         map[string]any{"type": "boolean"},
 				"reason":                        map[string]any{"type": "string"},
 			}},

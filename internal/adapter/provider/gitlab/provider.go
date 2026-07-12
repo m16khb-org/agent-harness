@@ -57,7 +57,10 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 	if head == "" || base == "" {
 		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("source and target branches are required")
 	}
-	args := []string{"mr", "create", "--title", title, "--source-branch", head, "--target-branch", base}
+	args := []string{"mr", "create", "--title", title, "--source-branch", head, "--target-branch", base, "--yes"}
+	if req.Draft {
+		args = append(args, "--draft")
+	}
 	body := strings.TrimSpace(req.Body)
 	if body != "" {
 		args = append(args, "--description", body)
@@ -75,7 +78,72 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 			Preview: fmt.Sprintf("[dry-run] would execute: %s", cmdStr),
 		}, nil
 	}
-	return runGlabMRJSON(args, req.Repo)
+	result, err := runGlabMRJSON(args, req.Repo)
+	if err != nil {
+		return result, err
+	}
+	if !validCanonicalGitLabMergeRequestURL(result.URL) {
+		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("created artifact URL unavailable; needs reconciliation; not retried")
+	}
+	if err := verifyCreatedGitLabMergeRequest(req, result.URL); err != nil {
+		return port.IssueProviderCreatePullRequestResult{OK: false, URL: result.URL}, gitlabCreatedMergeRequestError(result.URL, err)
+	}
+	return result, nil
+}
+
+func validCanonicalGitLabMergeRequestURL(raw string) bool {
+	raw = strings.TrimSpace(raw)
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.Host != parsed.Hostname() || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.String() != raw {
+		return false
+	}
+	parts := remoteparse.SplitGitLabMRPath(parsed.EscapedPath())
+	return parts.Project != "" && parts.IID != ""
+}
+
+type gitlabMergeRequestProjection struct {
+	WebURL       string           `json:"web_url"`
+	SourceBranch string           `json:"source_branch"`
+	TargetBranch string           `json:"target_branch"`
+	Draft        bool             `json:"draft"`
+	Labels       []string         `json:"labels"`
+	Assignees    []gitlabAssignee `json:"assignees"`
+}
+
+func verifyCreatedGitLabMergeRequest(req port.IssueProviderCreatePullRequestRequest, createdURL string) error {
+	createdURL = strings.TrimSpace(createdURL)
+	parsedURL, err := url.Parse(createdURL)
+	if err != nil {
+		return fmt.Errorf("created merge request URL is invalid")
+	}
+	parts := remoteparse.SplitGitLabMRPath(parsedURL.EscapedPath())
+	if parts.Project == "" || parts.IID == "" {
+		return fmt.Errorf("created merge request URL does not contain an exact project and IID")
+	}
+	endpoint := "projects/" + url.PathEscape(parts.Project) + "/merge_requests/" + parts.IID
+	out, err := providerutil.RunBoundedReadback(req.Repo, "glab", "api", endpoint, "--hostname", parsedURL.Hostname())
+	if err != nil {
+		return fmt.Errorf("read back created merge request: %w", err)
+	}
+	var got gitlabMergeRequestProjection
+	if err := json.Unmarshal(out, &got); err != nil {
+		return fmt.Errorf("parse created merge request readback: %w", err)
+	}
+	assignees := gitlabAssigneeUsernames(got.Assignees)
+	if strings.TrimSpace(got.WebURL) != createdURL || strings.TrimSpace(got.SourceBranch) != strings.TrimSpace(req.HeadBranch) || strings.TrimSpace(got.TargetBranch) != strings.TrimSpace(req.BaseBranch) || got.Draft != req.Draft {
+		return fmt.Errorf("created merge request identity or draft status does not match the request")
+	}
+	if missing := providerutil.MissingStrings(req.Labels, got.Labels); len(missing) > 0 {
+		return fmt.Errorf("created merge request is missing requested labels")
+	}
+	if missing := providerutil.MissingStrings(req.Assignees, assignees); len(missing) > 0 {
+		return fmt.Errorf("created merge request is missing requested assignees")
+	}
+	return nil
+}
+
+func gitlabCreatedMergeRequestError(createdURL string, err error) error {
+	return fmt.Errorf("created merge request %s has unknown state and needs reconciliation; creation was not retried: %w", strings.TrimSpace(createdURL), err)
 }
 
 func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.IssueProviderCreateChildResult, error) {
@@ -407,25 +475,19 @@ func runGlabJSON(args []string, repo string, kind string) (port.IssueProviderCre
 }
 
 func runGlabMRJSON(args []string, repo string) (port.IssueProviderCreatePullRequestResult, error) {
-	if _, err := exec.LookPath("glab"); err != nil {
-		return port.IssueProviderCreatePullRequestResult{OK: false},
-			fmt.Errorf("glab CLI is not installed")
-	}
-	cmd := exec.Command("glab", args...)
-	if repo != "" {
-		cmd.Dir = repo
-	}
-	out, err := cmd.Output()
-	if err != nil {
-		stderr := err.Error()
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			stderr = strings.TrimSpace(string(exitErr.Stderr))
-		}
-		return port.IssueProviderCreatePullRequestResult{OK: false},
-			fmt.Errorf("glab mr create failed: %s", stderr)
-	}
+	out, invoked, err := providerutil.RunBoundedMutation(repo, "glab", args...)
 	url, number := parseGlabOutput(string(out))
-	return port.IssueProviderCreatePullRequestResult{OK: true, URL: url, Number: number}, nil
+	result := port.IssueProviderCreatePullRequestResult{OK: err == nil, URL: url, Number: number}
+	if err == nil {
+		return result, nil
+	}
+	if !invoked {
+		return port.IssueProviderCreatePullRequestResult{OK: false}, &port.IssueProviderCreateError{Invoked: false, Err: err}
+	}
+	if validCanonicalGitLabMergeRequestURL(url) {
+		return result, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("GitLab MR creation outcome unknown for %s; do not retry: %w", url, err)}
+	}
+	return port.IssueProviderCreatePullRequestResult{OK: false}, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("GitLab MR creation outcome unknown; do not retry: %w", err)}
 }
 
 // parseGlabOutput extracts the created artifact's web URL by scanning glab

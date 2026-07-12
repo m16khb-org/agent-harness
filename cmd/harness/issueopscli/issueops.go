@@ -5,6 +5,7 @@ import (
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"agent-harness/cmd/harness/issueopscli/worktreecmd"
+	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/adapter/provider"
 	"flag"
 	"fmt"
@@ -102,10 +103,12 @@ func suggestIssueOpsSubcommand(input string) string {
 
 func issueOpsRemoteDeps() remotecmd.Deps {
 	return remotecmd.Deps{
-		PrintJSON:   printJSON,
-		PrintResult: printIssueOpsResult,
-		PrintError:  printIssueOpsErrorJSON,
-		VerifyLive:  verifyIssueOpsRemoteArtifactLive,
+		PrintJSON:         printJSON,
+		PrintResult:       printIssueOpsResult,
+		PrintError:        printIssueOpsErrorJSON,
+		VerifyLive:        verifyIssueOpsRemoteArtifactLive,
+		PublicationReader: core.GitIssueOpsHandoffPublicationReader{},
+		PublicationLease:  orca.New(),
 	}
 }
 

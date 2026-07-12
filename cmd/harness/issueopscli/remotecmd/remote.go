@@ -1,7 +1,9 @@
 package remotecmd
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -9,13 +11,18 @@ import (
 
 	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/issueops/remote"
 )
 
 type Deps struct {
-	PrintJSON   func(any) error
-	PrintResult func(core.IssueOpsRecord, bool, error) error
-	PrintError  func(error) error
-	VerifyLive  func(core.IssueOpsRemoteArtifactVerificationRequest) error
+	PrintJSON         func(any) error
+	PrintResult       func(core.IssueOpsRecord, bool, error) error
+	PrintError        func(error) error
+	VerifyLive        func(core.IssueOpsRemoteArtifactVerificationRequest) error
+	PublicationReader core.IssueOpsHandoffPublicationReader
+	PublicationLease  core.IssueOpsOrcaDispatchClient
+	CreatePullRequest func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error)
+	VerifyArtifact    func(string, string, core.IssueOpsRemoteArtifactVerificationRequest) (core.IssueOpsRecord, error)
 }
 
 func Run(args []string, deps Deps) error {
@@ -26,7 +33,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
-		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
 		return nil
 	}
@@ -530,8 +537,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	prov, err := provider.Resolve(providerName)
-	if err != nil {
+	if err := rejectSupervisedPullRequestBodyFile(record, *bodyFile); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
 	headBranch := firstNonEmptyMain(*head, record.Branch)
@@ -555,7 +561,16 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	result, err := core.CreateRemotePullRequest(core.IssueProviderCreatePullRequestRequest{
+	if *confirm && record.ExecutionHandoff != nil {
+		reader := deps.PublicationReader
+		if reader == nil {
+			reader = core.GitIssueOpsHandoffPublicationReader{}
+		}
+		if err := core.ValidateIssueOpsHandoffPublication(context.Background(), core.IssueOpsStateRoot(), record, providerName, headBranch, baseBranch, reader, deps.PublicationLease); err != nil {
+			return deps.printErrorResult(*jsonOut, err)
+		}
+	}
+	request := core.IssueProviderCreatePullRequestRequest{
 		Repo:       record.Repo,
 		Title:      *title,
 		Body:       finalBody,
@@ -563,10 +578,41 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		BaseBranch: baseBranch,
 		Labels:     labels,
 		Assignees:  assignees,
+		Draft:      pullRequestDraft(record),
 		Confirm:    *confirm,
-	}, prov)
+	}
+	claimed := record
+	if *confirm && record.ExecutionHandoff != nil {
+		if record.ExecutionHandoff.Result == nil {
+			return deps.printErrorResult(*jsonOut, fmt.Errorf("supervised remote create final head is unavailable"))
+		}
+		claimed, err = core.ClaimIssueOpsRemoteCreate(core.IssueOpsStateRoot(), record.ID, providerName, headBranch, baseBranch, record.ExecutionHandoff.Result.FinalHead)
+		if err != nil {
+			return deps.printErrorResult(*jsonOut, err)
+		}
+	}
+	result, err := deps.createPullRequest(providerName, request)
 	if err != nil {
+		if *confirm && record.ExecutionHandoff != nil {
+			var createErr *core.IssueProviderCreateError
+			if errors.As(err, &createErr) && !createErr.Invoked {
+				_ = core.ClearIssueOpsRemoteCreateClaim(core.IssueOpsStateRoot(), claimed)
+			} else {
+				_ = core.MarkIssueOpsRemoteCreateUnknown(core.IssueOpsStateRoot(), claimed)
+			}
+		}
 		return deps.printErrorResult(*jsonOut, err)
+	}
+	if *confirm && record.ExecutionHandoff != nil {
+		kind := "pr"
+		if providerName == "gitlab" {
+			kind = "mr"
+		}
+		_, err = core.FinalizeIssueOpsRemoteCreateClaim(core.IssueOpsStateRoot(), claimed, core.IssueOpsRemoteArtifactVerificationRequest{Provider: providerName, Kind: kind, URL: result.URL, Labels: labels, Assignees: assignees, TargetBranch: baseBranch})
+		if err != nil {
+			_ = core.MarkIssueOpsRemoteCreateUnknown(core.IssueOpsStateRoot(), claimed)
+			return deps.printErrorResult(*jsonOut, err)
+		}
 	}
 	if *jsonOut {
 		return deps.printJSON(result)
@@ -577,6 +623,54 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		fmt.Println(result.Preview)
 	}
 	return nil
+}
+
+func createPullRequestWithSupervisedState(record core.IssueOpsRecord, provider string, req core.IssueProviderCreatePullRequestRequest, create func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error)) (core.IssueProviderCreatePullRequestResult, error) {
+	if record.ExecutionHandoff != nil {
+		if record.Phase != core.IssueOpsPhasePR {
+			return core.IssueProviderCreatePullRequestResult{}, fmt.Errorf("supervised PR/MR creation requires IssueOps phase pr")
+		}
+		if record.RemoteArtifact != nil {
+			return core.IssueProviderCreatePullRequestResult{}, fmt.Errorf("supervised PR/MR creation is forbidden after a remote artifact is already recorded")
+		}
+	}
+	return create(provider, req)
+}
+
+func pullRequestDraft(record core.IssueOpsRecord) bool {
+	return record.ExecutionHandoff != nil
+}
+
+func verifySupervisedCreatedPullRequest(record core.IssueOpsRecord, provider string, result core.IssueProviderCreatePullRequestResult, labels, assignees []string, base string, verify func(string, string, core.IssueOpsRemoteArtifactVerificationRequest) (core.IssueOpsRecord, error)) error {
+	kind := "pr"
+	if strings.EqualFold(strings.TrimSpace(provider), "gitlab") {
+		kind = "mr"
+	}
+	_, err := verify(core.IssueOpsStateRoot(), record.ID, core.IssueOpsRemoteArtifactVerificationRequest{
+		Provider: provider, Kind: kind, URL: result.URL, Labels: labels, Assignees: assignees, TargetBranch: base,
+	})
+	if err != nil {
+		return fmt.Errorf("created %s; needs reconciliation; not retried", strings.TrimSpace(result.URL))
+	}
+	return nil
+}
+
+func rejectSupervisedPullRequestBodyFile(record core.IssueOpsRecord, bodyFile string) error {
+	if record.ExecutionHandoff != nil && strings.TrimSpace(bodyFile) != "" {
+		return fmt.Errorf("body-file is forbidden for supervised pull/merge request publication; pass the already-rendered literal --body")
+	}
+	return nil
+}
+
+func (deps Deps) createPullRequest(providerName string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+	if deps.CreatePullRequest != nil {
+		return deps.CreatePullRequest(providerName, req)
+	}
+	prov, err := provider.Resolve(providerName)
+	if err != nil {
+		return core.IssueProviderCreatePullRequestResult{OK: false}, err
+	}
+	return core.CreateRemotePullRequest(req, prov)
 }
 
 func validateCreateChildInputs(title string, labels, assignees []string) error {
@@ -648,11 +742,16 @@ func validateConfirmRemoteCreate(confirm bool, labels, assignees []string) error
 	if !confirm {
 		return nil
 	}
+	labels = remote.CleanValues(labels)
+	assignees = remote.CleanValues(assignees)
 	if len(labels) == 0 {
 		return fmt.Errorf("at least one label is required with --confirm")
 	}
 	if len(assignees) == 0 {
 		return fmt.Errorf("at least one assignee is required with --confirm")
+	}
+	if invalid := remote.InvalidAssignee(assignees); invalid != "" {
+		return fmt.Errorf("confirmed remote create requires a verified provider assignee, not %q", invalid)
 	}
 	return nil
 }

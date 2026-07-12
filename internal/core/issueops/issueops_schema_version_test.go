@@ -104,7 +104,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 	id := "io-future-schema"
 	writeRawIssueOpsRecord(t, stateRoot, id, `{
   "ok": true,
-  "schema_version": 5,
+  "schema_version": 6,
   "id": "io-future-schema",
   "repo": "/repo/example",
   "branch": "1-demo",
@@ -115,7 +115,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 `)
 
 	_, err := ReadIssueOps(stateRoot, id)
-	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 5") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 6") {
 		t.Fatalf("expected future schema rejection, got %v", err)
 	}
 }
@@ -150,7 +150,7 @@ func TestIssueOpsSchemaV4PreservesSealedOrcaMailboxAuthorities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"schema_version":4`, `"coordinator_mailbox_handle":"term_coordinator"`, `"worker_terminal_handle":"term_live"`, `"worker_mailbox_handle":"term_dispatched"`} {
+	for _, want := range []string{`"schema_version":5`, `"coordinator_mailbox_handle":"term_coordinator"`, `"worker_terminal_handle":"term_live"`, `"worker_mailbox_handle":"term_dispatched"`} {
 		if !bytes.Contains(reencoded, []byte(want)) {
 			t.Fatalf("schema-v4 authority %s was not preserved: %s", want, reencoded)
 		}
@@ -242,7 +242,7 @@ func TestIssueOpsReadUpgradesV3LiveTerminalIdentityWithoutInventingCoordinator(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if upgraded.SchemaVersion != 4 || upgraded.ExecutionHandoff.CoordinatorMailboxHandle != "" || upgraded.ExecutionHandoff.Orca.WorkerMailboxHandle != "" || upgraded.ExecutionHandoff.Orca.WorkerTerminalHandle != "term-legacy" {
+	if upgraded.SchemaVersion != IssueOpsCurrentSchemaVersion || upgraded.ExecutionHandoff.CoordinatorMailboxHandle != "" || upgraded.ExecutionHandoff.Orca.WorkerMailboxHandle != "" || upgraded.ExecutionHandoff.Orca.WorkerTerminalHandle != "term-legacy" {
 		t.Fatalf("v3 authority migration invented or lost identity: %#v", upgraded.ExecutionHandoff)
 	}
 }
@@ -392,7 +392,7 @@ func TestIssueOpsReadUpgradesV3CancelledNoDispatchCurrentAndPrior(t *testing.T) 
 
 func TestIssueOpsSchemaV4DoesNotApplyLegacyMailboxRewrites(t *testing.T) {
 	_, record := handoffDispatchRecord(t)
-	record.SchemaVersion = IssueOpsCurrentSchemaVersion
+	record.SchemaVersion = 4
 	record.ExecutionHandoff.State = handoff.StateCoordinatorPreparing
 	record.ExecutionHandoff.Orca.DispatchID = ""
 	record.ExecutionHandoff.Orca.WorkerTerminalHandle = ""
@@ -501,11 +501,14 @@ func TestLegacyV2DecoderRejectsV3StableTerminalIdentityWithoutModifyingBytes(t *
 
 func TestLegacyV3DecoderRejectsV4MailboxAuthorityWithoutModifyingBytes(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
+	record.SchemaVersion = 4
 	record.ExecutionHandoff.CoordinatorMailboxHandle = "term_coordinator"
 	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term_live"
-	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+	raw, err := json.Marshal(record)
+	if err != nil {
 		t.Fatal(err)
 	}
+	writeRawIssueOpsRecord(t, stateRoot, record.ID, string(raw))
 	before, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -519,6 +522,24 @@ func TestLegacyV3DecoderRejectsV4MailboxAuthorityWithoutModifyingBytes(t *testin
 	}
 	if !bytes.Equal(after, before) {
 		t.Fatalf("legacy v3 rejection modified durable bytes\nbefore=%s\n after=%s", before, after)
+	}
+}
+
+func TestLegacyV4DecoderRejectsV5PublicationAndCleanupAuthorityWithoutModifyingBytes(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	before, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := legacyV4ReadModifyWriteFixture(stateRoot, record.ID); err == nil || !strings.Contains(err.Error(), "schema_version 5") {
+		t.Fatalf("legacy v4 decoder did not reject v5 authority: %v", err)
+	}
+	after, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(after, before) {
+		t.Fatalf("legacy v4 rejection modified durable bytes\nbefore=%s\n after=%s", before, after)
 	}
 }
 
@@ -616,6 +637,34 @@ func legacyV3ReadModifyWriteFixture(stateRoot, id string) error {
 		return fmt.Errorf("unsupported issueops schema_version %d; current is 3", legacy.SchemaVersion)
 	}
 	legacy.UpdatedAt = "legacy-v3-touch"
+	rewritten, err := json.MarshalIndent(legacy, "", "  ")
+	if err != nil {
+		return err
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		return err
+	}
+	return db.Put(issueOpsBucket, id, rewritten)
+}
+
+func legacyV4ReadModifyWriteFixture(stateRoot, id string) error {
+	raw, err := rawIssueOpsRecordBytes(stateRoot, id)
+	if err != nil {
+		return err
+	}
+	var legacy struct {
+		SchemaVersion int    `json:"schema_version"`
+		ID            string `json:"id"`
+		UpdatedAt     string `json:"updated_at"`
+	}
+	if err := json.Unmarshal(raw, &legacy); err != nil {
+		return err
+	}
+	if legacy.SchemaVersion > 4 {
+		return fmt.Errorf("unsupported issueops schema_version %d; current is 4", legacy.SchemaVersion)
+	}
+	legacy.UpdatedAt = "legacy-v4-touch"
 	rewritten, err := json.MarshalIndent(legacy, "", "  ")
 	if err != nil {
 		return err

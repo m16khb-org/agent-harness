@@ -25,11 +25,12 @@ const (
 	OutcomeCompleted = "completed"
 	OutcomeFailed    = "failed"
 
-	OperationWorktreeCreate = "worktree_create"
-	OperationTerminalCreate = "terminal_create"
-	OperationTaskCreate     = "task_create"
-	OperationDispatch       = "dispatch"
-	OperationRuntimeRefresh = "runtime_refresh"
+	OperationWorktreeCreate   = "worktree_create"
+	OperationTerminalCreate   = "terminal_create"
+	OperationTaskCreate       = "task_create"
+	OperationDispatch         = "dispatch"
+	OperationRuntimeRefresh   = "runtime_refresh"
+	OperationLeaseAttestation = "lease_attestation"
 )
 
 type Fence struct {
@@ -367,6 +368,23 @@ func cloneHandoff(value model.IssueOpsExecutionHandoff) model.IssueOpsExecutionH
 	if value.Failure != nil {
 		v := *value.Failure
 		cloned.Failure = &v
+	}
+	if value.Cancellation != nil {
+		v := *value.Cancellation
+		cloned.Cancellation = &v
+	}
+	if value.PublishReceipt != nil {
+		v := *value.PublishReceipt
+		cloned.PublishReceipt = &v
+	}
+	if value.PublicationRecovery != nil {
+		v := *value.PublicationRecovery
+		cloned.PublicationRecovery = &v
+	}
+	if value.Cleanup != nil {
+		v := *value.Cleanup
+		v.Receipts = append([]model.IssueOpsExecutionHandoffCleanupReceipt(nil), value.Cleanup.Receipts...)
+		cloned.Cleanup = &v
 	}
 	if value.CleanupOnly != nil {
 		v := *value.CleanupOnly

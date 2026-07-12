@@ -534,7 +534,7 @@ Archived entries:
 - Summary: IssueOps orchestration uses additive child-cycle fields, scoped session bindings, and workpool state while keeping the harness host-neutral and non-spawning.
 - Context: D5 documentation update for delegated child cycles and workpool orchestration. The existing architecture keeps hooks observe-only and IssueOps as a durable main-agent state machine.
 - Decision: Represent delegated child cycles as additive IssueOps record fields, represent parent/child session binding as scoped user-state bindings, and represent pool execution in a separate workpool namespace. Main agents dispatch and accept results; child/pool workers own their isolated worktree and heartbeat; hooks only relay or block deterministic violations. The harness records state, gates, leases, and results but does not spawn host agents.
-- Consequences: At this ADR's July 7 baseline, CLI/MCP preserved schema-v1 additive compatibility for these non-ownership fields; issue #16 later introduced schema v3 for supervised ownership/stable terminal identity and schema v4 for sealed completion authority. Locks remain single-entity and worker liveness lease/heartbeat based. Any child or pool dispatch must reference a recorded execution_decision with an allowed sub-agent pattern slug and explicit verification/fallback.
+- Consequences: At this ADR's July 7 baseline, CLI/MCP preserved schema-v1 additive compatibility for these non-ownership fields; issue #16 later introduced schema v3 for supervised ownership/stable terminal identity, schema v4 for sealed completion authority, and schema v5 for publish/cleanup authority. Locks remain single-entity and worker liveness lease/heartbeat based. Any child or pool dispatch must reference a recorded execution_decision with an allowed sub-agent pattern slug and explicit verification/fallback.
 - Evidence:
   - .agent-harness/ARCHITECTURE.md IssueOps and workpool state model update
   - .agent-harness/AGENT_WORKFLOW.md resume, heartbeat, and pool-worker contract update
@@ -703,3 +703,18 @@ Archived entries:
 - Consequences: CLI, MCP, daemon, and all native hosts must be updated together before mutating supervised rows. Compatibility fixtures prove v1 rejects v2, v2 rejects v3, and v3 rejects v4 byte-equivalently; install smoke verifies current migration plus v4 readback.
 - Evidence: `internal/core/issueops/issueops_schema_version_test.go`, automatic projection crash/call-count tests, the real sqlstore future-schema lifecycle guard test, and this issue evidence ledger.
 - Rejected alternatives: additive `omitempty` authority under v3; deriving completion recipients from live terminal/current-task state; retrying a persisted projection intent.
+
+## 2026-07-12 — IssueOps root schema v5 protects publication and cleanup authority
+
+- Kind: `adr`
+- Source: GitHub issue #16 state/security review
+- Summary: Stamp every IssueOps write as schema v5 so v4 binaries cannot erase the provider-neutral exact-head publish receipt or the explicit cleanup approval and ordered receipts.
+- Context: A PR/MR creation fence and destructive cleanup sequence are durable mutation authority, not display metadata. Leaving them additive under v4 would let an older writer discard a receipt, repeat cleanup against replaced identities, or publish a drifted branch after an unrelated rewrite.
+- Decision:
+  - Read missing, zero, v1, v2, v3, and v4 rows with the current model, preserving recognized fields, and stamp v5 on the next write. Apply the legacy mailbox migration only through v3; v4 identities are already sealed and must not be reinterpreted.
+  - Persist a provider-neutral publish receipt only after the exact local branch ref and exact remote branch ref both equal the accepted full `FinalHead`; validate provider, remote, branch, ref, and FinalHead again immediately before the GitHub or GitLab create adapter runs.
+  - Persist cleanup disposition before task/terminal/worktree mutation and ordered exact-identity receipts afterward. Failed/cancelled handoffs may approve cleanup; accepted handoffs cannot use cleanup to cross the publish boundary.
+  - Reject versions greater than v5. A frozen v4 decoder rejects v5 byte-equivalently before rewrite, extending the existing v1→v2, v2→v3, and v3→v4 chain.
+- Consequences: CLI, MCP, lifecycle guards, IssueOps recovery, and canonical skill documentation share one v5 contract. Missing/stale publish receipts and ambiguous cleanup inventories fail closed for both providers.
+- Evidence: `internal/core/issueops/issueops_handoff_publication_test.go`, `issueops_handoff_cleanup_test.go`, `issueops_schema_version_test.go`, lifecycle authority tests, response-contract goldens, and the issue #16 evidence addendum.
+- Rejected alternatives: trusting caller flags or a one-time push result; provider-specific receipt shapes; direct PR/MR create with arbitrary body-file paths; unrecorded best-effort cleanup; a generic driver registry or scheduler reserved for issue #17.

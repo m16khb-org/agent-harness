@@ -364,3 +364,7 @@ The adapter constructs argv directly, invokes no shell, bounds request/output ev
 - The first relevant-package attempt correctly failed four old test setups that placed `WorkerMailboxHandle` on a pending/no-dispatch v4 attempt. Those fixtures now use `WorkerTerminalHandle` or the journaled expected assignee, and dispatch reconciliation supplies the sealed coordinator so each test reaches its intended external-status assertion; this test-only correction restarts the ordered gate from focused step 1.
 - After the last code, test, skill, and evidence edit, the focused correction set, relevant packages, `go test ./...`, `go test -race ./...`, build, both real golden packages, both skill validators, formatting/tidy/diff checks, and the 24-step deterministic self-verification all restart from gate 1 and must reach final exit 0 before this report is committed.
 - The completion message records the resulting commit SHA and final observed mailbox maximum; if any gate or later correction changes an artifact, this receipt is invalid and the ordered gate restarts again from step 1.
+
+## State/security review correction — 2026-07-12
+
+The 2026-07-11 evidence remains the historical sealed-completion receipt. The remaining sole-writer/retry, exact-head publication, cancellation/cleanup, and byte-exact no-Orca compatibility findings are implemented and verified in `.agent-harness/research/orca-handoff-state-security-evidence-2026-07-12.md`; root schema v5 protects the new publish and cleanup authority from v4 writers.

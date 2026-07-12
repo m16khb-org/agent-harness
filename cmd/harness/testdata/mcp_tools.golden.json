@@ -2163,7 +2163,7 @@
     "name": "issueops_remote_sync_graph"
   },
   {
-    "description": "Run one supervised IssueOps handoff action (start, claim, finish, accept, or recover) through the same durable DTO contract as the CLI. External mutations remain preview-only unless confirm=true; recovery never advances to the next operation.",
+    "description": "Run one supervised IssueOps handoff action (start, claim, finish, accept, publish, or recover) through the same durable DTO contract as the CLI. External mutations remain preview-only unless confirm=true; recovery never advances to the next operation.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -2172,6 +2172,7 @@
             "claim",
             "finish",
             "accept",
+            "publish",
             "recover"
           ],
           "type": "string"
@@ -2192,11 +2193,26 @@
           },
           "type": "array"
         },
+        "cleanup_disposition": {
+          "enum": [
+            "retry",
+            "remove"
+          ],
+          "type": "string"
+        },
         "cleanup_receipts": {
           "items": {
             "type": "string"
           },
           "type": "array"
+        },
+        "cleanup_step": {
+          "enum": [
+            "task_terminal",
+            "terminal_quiescent",
+            "worktree_removed"
+          ],
+          "type": "string"
         },
         "confirm": {
           "type": "boolean"
@@ -2264,7 +2280,9 @@
             "abandon",
             "cancel",
             "finalize-cancel",
-            "retry"
+            "retry",
+            "approve-cleanup",
+            "record-cleanup"
           ],
           "type": "string"
         },

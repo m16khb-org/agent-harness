@@ -4,10 +4,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
+	issueopsmodel "agent-harness/internal/core/issueops/model"
 )
 
 func TestRunScoreWithJudgeNoneAndErrorPaths(t *testing.T) {
@@ -154,6 +156,98 @@ func TestRunRemoteCreatePRConfirmRequiresLabelAndAssignee(t *testing.T) {
 		if err := Run(args, deps); err == nil {
 			t.Fatalf("expected confirm validation error for args %v", args)
 		}
+	}
+}
+
+func TestRunRemoteCreatePRPreservesLegacyBodyFileAndRejectsSupervisedBodyFile(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	bodyFile := filepath.Join(t.TempDir(), "body.md")
+	if err := os.WriteFile(bodyFile, []byte("untrusted"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	providerCalls := 0
+	var capturedBody string
+	deps := Deps{
+		PrintError: func(error) error { return nil },
+		CreatePullRequest: func(_ string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+			providerCalls++
+			capturedBody = req.Body
+			return core.IssueProviderCreatePullRequestResult{}, nil
+		},
+	}
+	err := Run([]string{"create-pr", "--id", record.ID, "--title", "PR", "--head", record.Branch, "--base", "main", "--body-file", bodyFile}, deps)
+	if err != nil || providerCalls != 1 || capturedBody != "untrusted" {
+		t.Fatalf("legacy body-file behavior changed: calls=%d body=%q err=%v", providerCalls, capturedBody, err)
+	}
+	supervised := record
+	supervised.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{}
+	if supervised.ExecutionHandoff == nil || strings.TrimSpace(bodyFile) == "" {
+		t.Fatal("invalid supervised body-file test setup")
+	}
+	if err := rejectSupervisedPullRequestBodyFile(supervised, bodyFile); err == nil || !strings.Contains(err.Error(), "body-file is forbidden") {
+		t.Fatalf("supervised body-file rejection = %v", err)
+	}
+}
+
+func TestPullRequestDraftIsSupervisedOnly(t *testing.T) {
+	legacy := core.IssueOpsRecord{}
+	if pullRequestDraft(legacy) {
+		t.Fatal("legacy nil-handoff PR/MR became draft")
+	}
+	supervised := legacy
+	supervised.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{}
+	if !pullRequestDraft(supervised) {
+		t.Fatal("supervised PR/MR was not forced to draft")
+	}
+}
+
+func TestSupervisedCreatedPullRequestPersistsArtifactAndRejectsWrongProject(t *testing.T) {
+	record := core.IssueOpsRecord{ID: "io-supervised"}
+	record.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{}
+	result := core.IssueProviderCreatePullRequestResult{OK: true, URL: "https://github.com/acme/repo/pull/16"}
+	calls := 0
+	verify := func(_ string, id string, req core.IssueOpsRemoteArtifactVerificationRequest) (core.IssueOpsRecord, error) {
+		calls++
+		if id != record.ID || req.Provider != "github" || req.Kind != "pr" || req.URL != result.URL || req.TargetBranch != "main" || !reflect.DeepEqual(req.Labels, []string{"bug"}) || !reflect.DeepEqual(req.Assignees, []string{"octocat"}) {
+			t.Fatalf("supervised artifact request = %#v", req)
+		}
+		return record, nil
+	}
+	if err := verifySupervisedCreatedPullRequest(record, "github", result, []string{"bug"}, []string{"octocat"}, "main", verify); err != nil || calls != 1 {
+		t.Fatalf("supervised artifact persistence calls=%d err=%v", calls, err)
+	}
+	wrongURL := "https://github.com/other/repo/pull/16"
+	result.URL = wrongURL
+	verify = func(string, string, core.IssueOpsRemoteArtifactVerificationRequest) (core.IssueOpsRecord, error) {
+		calls++
+		return core.IssueOpsRecord{}, errors.New("artifact project differs from durable issue authority")
+	}
+	if err := verifySupervisedCreatedPullRequest(record, "github", result, nil, nil, "main", verify); err == nil || !strings.Contains(err.Error(), wrongURL) || !strings.Contains(err.Error(), "needs reconciliation") {
+		t.Fatalf("wrong-project reconciliation error = %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("wrong-project verification retried create/verify: calls=%d", calls)
+	}
+}
+
+func TestSupervisedCreatePRRejectsKnownLocalStateBeforeProviderMutation(t *testing.T) {
+	record := core.IssueOpsRecord{Phase: core.IssueOpsPhaseImplement, ExecutionHandoff: &issueopsmodel.IssueOpsExecutionHandoff{}}
+	calls := 0
+	create := func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+		calls++
+		return core.IssueProviderCreatePullRequestResult{}, nil
+	}
+	if _, err := createPullRequestWithSupervisedState(record, "github", core.IssueProviderCreatePullRequestRequest{}, create); err == nil || !strings.Contains(err.Error(), "phase pr") {
+		t.Fatalf("wrong phase error = %v", err)
+	}
+	record.Phase = core.IssueOpsPhasePR
+	record.RemoteArtifact = &core.IssueOpsRemoteArtifactVerification{}
+	if _, err := createPullRequestWithSupervisedState(record, "gitlab", core.IssueProviderCreatePullRequestRequest{}, create); err == nil || !strings.Contains(err.Error(), "already recorded") {
+		t.Fatalf("existing artifact error = %v", err)
+	}
+	if calls != 0 {
+		t.Fatalf("known local invalidity reached provider: calls=%d", calls)
 	}
 }
 

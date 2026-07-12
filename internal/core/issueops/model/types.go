@@ -79,6 +79,15 @@ type IssueOpsRemoteArtifactVerificationRequest struct {
 	TargetBranch string
 }
 
+type IssueOpsRemoteCreateClaim struct {
+	Provider  string `json:"provider"`
+	Head      string `json:"head"`
+	Base      string `json:"base"`
+	FinalHead string `json:"final_head"`
+	State     string `json:"state"`
+	ClaimedAt string `json:"claimed_at"`
+}
+
 type IssueOpsIntentContract struct {
 	RawRequest        string   `json:"raw_request"`
 	InterpretedIntent string   `json:"interpreted_intent"`
@@ -449,6 +458,33 @@ type IssueOpsExecutionHandoffCancellation struct {
 	Reason      string `json:"reason"`
 }
 
+type IssueOpsExecutionHandoffPublishReceipt struct {
+	Provider   string `json:"provider"`
+	Remote     string `json:"remote"`
+	Branch     string `json:"branch"`
+	RemoteRef  string `json:"remote_ref"`
+	FinalHead  string `json:"final_head"`
+	VerifiedAt string `json:"verified_at"`
+}
+
+type IssueOpsExecutionHandoffCleanupReceipt struct {
+	Step               string `json:"step"`
+	TaskID             string `json:"task_id,omitempty"`
+	DispatchID         string `json:"dispatch_id,omitempty"`
+	TerminalHandle     string `json:"terminal_handle,omitempty"`
+	PTYID              string `json:"pty_id,omitempty"`
+	WorktreeID         string `json:"worktree_id,omitempty"`
+	WorktreeInstanceID string `json:"worktree_instance_id,omitempty"`
+	RecordedAt         string `json:"recorded_at"`
+}
+
+type IssueOpsExecutionHandoffCleanup struct {
+	Disposition string                                   `json:"disposition"`
+	Reason      string                                   `json:"reason"`
+	ApprovedAt  string                                   `json:"approved_at"`
+	Receipts    []IssueOpsExecutionHandoffCleanupReceipt `json:"receipts,omitempty"`
+}
+
 type IssueOpsOrcaCleanupArtifact struct {
 	Kind       string `json:"kind"`
 	ID         string `json:"id"`
@@ -479,6 +515,7 @@ type IssueOpsExecutionHandoffPriorAttempt struct {
 	Result                   *IssueOpsExecutionHandoffResult               `json:"result,omitempty"`
 	WorkerDoneProjection     *IssueOpsExecutionHandoffWorkerDoneProjection `json:"worker_done_projection,omitempty"`
 	Failure                  *IssueOpsExecutionHandoffFailure              `json:"failure,omitempty"`
+	Cleanup                  *IssueOpsExecutionHandoffCleanup              `json:"cleanup,omitempty"`
 	CleanupOnly              *IssueOpsOrcaCleanupArtifact                  `json:"cleanup_only,omitempty"`
 	PreparedAt               string                                        `json:"prepared_at,omitempty"`
 	ProvisionedAt            string                                        `json:"provisioned_at,omitempty"`
@@ -526,6 +563,9 @@ type IssueOpsExecutionHandoff struct {
 	WorkerDoneProjection     *IssueOpsExecutionHandoffWorkerDoneProjection `json:"worker_done_projection,omitempty"`
 	Failure                  *IssueOpsExecutionHandoffFailure              `json:"failure,omitempty"`
 	Cancellation             *IssueOpsExecutionHandoffCancellation         `json:"cancellation,omitempty"`
+	PublishReceipt           *IssueOpsExecutionHandoffPublishReceipt       `json:"publish_receipt,omitempty"`
+	PublicationRecovery      *IssueOpsExecutionHandoffFailure              `json:"publication_recovery,omitempty"`
+	Cleanup                  *IssueOpsExecutionHandoffCleanup              `json:"cleanup,omitempty"`
 	CleanupOnly              *IssueOpsOrcaCleanupArtifact                  `json:"cleanup_only,omitempty"`
 	PriorAttempts            []IssueOpsExecutionHandoffPriorAttempt        `json:"prior_attempts,omitempty"`
 	PreparedAt               string                                        `json:"prepared_at,omitempty"`
@@ -538,7 +578,7 @@ type IssueOpsExecutionHandoff struct {
 	UpdatedAt                string                                        `json:"updated_at,omitempty"`
 }
 
-const IssueOpsCurrentSchemaVersion = 4
+const IssueOpsCurrentSchemaVersion = 5
 
 type IssueOpsRecord struct {
 	OK                      bool                                `json:"ok"`
@@ -558,6 +598,7 @@ type IssueOpsRecord struct {
 	IssueLinks              []IssueOpsIssueLink                 `json:"issue_links,omitempty"`
 	BranchPrepare           *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
 	RemoteArtifact          *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
+	RemoteCreateClaim       *IssueOpsRemoteCreateClaim          `json:"remote_create_claim,omitempty"`
 	Decisions               []IssueOpsDecision                  `json:"decisions,omitempty"`
 	PlanPrep                *IssueOpsPlanPrep                   `json:"plan_prep,omitempty"`
 	WorktreeTools           *IssueOpsWorktreeToolPreparation    `json:"worktree_tools,omitempty"`

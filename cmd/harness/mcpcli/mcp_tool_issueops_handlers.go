@@ -410,13 +410,19 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"), FinalHead: argmap.String(args, "final_head"),
 		})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff accept failed")
+	case "publish":
+		result, err := core.RecordIssueOpsHandoffPublishReceipt(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffPublishRequest{
+			ID: id, Confirm: argmap.Bool(args, "confirm"),
+		}, IssueOpsPublicationReader(), IssueOpsHandoffOrcaClient(), core.IssueOpsHandoffPrepareClock{})
+		return issueOpsMCPOutcome(result, err, "IssueOps handoff publish failed")
 	case "recover":
 		result, err := core.RecoverIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffRecoverRequest{
 			ID: id, Action: argmap.String(args, "recovery_action"), Confirm: argmap.Bool(args, "confirm"),
 			Force: argmap.Bool(args, "force"), Reason: argmap.String(args, "reason"),
+			CleanupDisposition: argmap.String(args, "cleanup_disposition"), CleanupStep: argmap.String(args, "cleanup_step"),
 		}, orca.New(), core.IssueOpsHandoffPrepareClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff recover failed")
 	default:
-		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, finish, accept, or recover"), "IssueOps handoff failed")
+		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, finish, accept, publish, or recover"), "IssueOps handoff failed")
 	}
 }

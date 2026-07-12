@@ -72,12 +72,13 @@ func renderHandoffSessionGuidance(record IssueOpsRecord, worker bool, host, sess
 	if !worker {
 		return fmt.Sprintf("IssueOps supervised handoff role=coordinator state=%s attempt=%d context=%s. Inspect without mutation: agent-harness issueops resume --repo %s --id %s", h.State, h.Attempt, h.ContextSHA256, shellGuidanceQuote(record.Repo), shellGuidanceQuote(record.ID))
 	}
+	modelBoundary := " Host usage-limit, rate-limit, reset, and model-selection prompts are user-decision boundaries: dismiss or stop and relay; never auto switch models or reset usage."
 	resume := "agent-harness issueops resume --repo " + shellGuidanceQuote(record.Repo) + " --id " + shellGuidanceQuote(record.ID)
 	if h.State != handoff.StateDispatched {
-		return fmt.Sprintf("IssueOps supervised handoff role=worker state=%s attempt=%d context=%s. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume)
+		return fmt.Sprintf("IssueOps supervised handoff role=worker state=%s attempt=%d context=%s. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
 	}
 	if h.Orca == nil || strings.TrimSpace(h.Orca.WorktreeID) == "" {
-		return fmt.Sprintf("IssueOps supervised handoff role=worker state=%s attempt=%d context=%s. External identity requires coordinator recovery before claim.", h.State, h.Attempt, h.ContextSHA256)
+		return fmt.Sprintf("IssueOps supervised handoff role=worker state=%s attempt=%d context=%s. External identity requires coordinator recovery before claim.", h.State, h.Attempt, h.ContextSHA256) + modelBoundary
 	}
 	claimParts := []string{
 		"agent-harness issueops handoff claim",
@@ -96,7 +97,7 @@ func renderHandoffSessionGuidance(record IssueOpsRecord, worker bool, host, sess
 		"--orca-worktree-id "+shellGuidanceQuote(h.Orca.WorktreeID),
 	)
 	claim := strings.Join(claimParts, " ")
-	return fmt.Sprintf("IssueOps supervised handoff role=worker state=%s attempt=%d context=%s. Claim before editing: %s. Read-only resume: %s", h.State, h.Attempt, h.ContextSHA256, claim, resume)
+	return fmt.Sprintf("IssueOps supervised handoff role=worker state=%s attempt=%d context=%s. Claim before editing: %s. Read-only resume: %s", h.State, h.Attempt, h.ContextSHA256, claim, resume) + modelBoundary
 }
 
 func ambiguousHandoffSessionGuidance(records []IssueOpsRecord, location string) string {
@@ -161,7 +162,7 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		return true, "supervised IssueOps MCP lifecycle payload does not match the native session, actor, and persisted fence"
 	}
 	if acceptedCoordinatorDownstreamCommand(req, record) {
-		return false, ""
+		return true, ""
 	}
 	if isHandoffLifecycleCommand(req.Command) {
 		if allowedExactHandoffLifecycleCommand(req, record) {

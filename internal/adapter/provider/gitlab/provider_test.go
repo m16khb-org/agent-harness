@@ -77,12 +77,89 @@ func TestGitLabCreateMRDryRun(t *testing.T) {
 		Title:      "Add feature",
 		HeadBranch: "feat/x",
 		BaseBranch: "main",
+		Draft:      true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(res.Preview, "mr create") || !strings.Contains(res.Preview, "--source-branch feat/x") || !strings.Contains(res.Preview, "--target-branch main") {
+	if !strings.Contains(res.Preview, "mr create") || !strings.Contains(res.Preview, "--source-branch feat/x") || !strings.Contains(res.Preview, "--target-branch main") || !strings.Contains(res.Preview, "--draft") || !strings.Contains(res.Preview, "--yes") {
 		t.Errorf("preview missing expected args: %q", res.Preview)
+	}
+	if strings.Contains(res.Preview, "--push") || strings.Contains(res.Preview, "--fill") {
+		t.Errorf("preview gained forbidden implicit mutation args: %q", res.Preview)
+	}
+}
+
+func TestGitLabCreateMRConfirmPassesDraftArgv(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake glab shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "mr create" ]; then
+  printf '%s\n' "$@" > glab.argv
+  printf 'create\n' >> glab.calls
+  printf 'https://gitlab.com/acme/repo/-/merge_requests/16\n'
+  exit 0
+fi
+if [ "$1" = "api" ]; then
+  printf 'view\n' >> glab.calls
+	printf '%s\n' "$@" > glab.api.argv
+  printf '{"web_url":"https://gitlab.com/acme/repo/-/merge_requests/16","source_branch":"feat/x","target_branch":"main","draft":true,"labels":["bug","extra"],"assignees":[{"username":"habin"},{"username":"extra"}]}'
+  exit 0
+fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	if _, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "MR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"habin"}, Draft: true, Confirm: true}); err != nil {
+		t.Fatal(err)
+	}
+	argv, err := os.ReadFile(filepath.Join(repo, "glab.argv"))
+	if err != nil || !strings.Contains(string(argv), "\n--draft\n") || !strings.Contains(string(argv), "\n--yes\n") || strings.Contains(string(argv), "\n--push\n") || strings.Contains(string(argv), "\n--fill\n") {
+		t.Fatalf("GitLab draft argv missing: %q err=%v", argv, err)
+	}
+	if calls, err := os.ReadFile(filepath.Join(repo, "glab.calls")); err != nil || string(calls) != "create\nview\n" {
+		t.Fatalf("GitLab create/readback calls = %q err=%v", calls, err)
+	}
+	apiArgv, err := os.ReadFile(filepath.Join(repo, "glab.api.argv"))
+	wantAPI := "api\nprojects/acme%2Frepo/merge_requests/16\n--hostname\ngitlab.com\n"
+	if err != nil || string(apiArgv) != wantAPI {
+		t.Fatalf("GitLab readback argv = %q, want %q, err=%v", apiArgv, wantAPI, err)
+	}
+}
+
+func TestGitLabCreateMRReadbackMismatchNeedsReconciliationWithoutRetry(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "mr create" ]; then printf 'create\n' >> glab.calls; printf 'https://gitlab.com/acme/repo/-/merge_requests/16\n'; exit 0; fi
+if [ "$1" = "api" ]; then printf 'view\n' >> glab.calls; printf '{"web_url":"https://gitlab.com/acme/repo/-/merge_requests/16","source_branch":"feat/x","target_branch":"wrong","draft":true,"labels":[],"assignees":[]}'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "MR", HeadBranch: "feat/x", BaseBranch: "main", Draft: true, Confirm: true})
+	if err == nil || result.URL != "https://gitlab.com/acme/repo/-/merge_requests/16" || !strings.Contains(err.Error(), result.URL) || !strings.Contains(err.Error(), "needs reconciliation") {
+		t.Fatalf("GitLab mismatch result=%+v err=%v", result, err)
+	}
+	if calls, readErr := os.ReadFile(filepath.Join(repo, "glab.calls")); readErr != nil || string(calls) != "create\nview\n" {
+		t.Fatalf("GitLab mismatch retried creation: %q err=%v", calls, readErr)
+	}
+}
+
+func TestGitLabCreateMRRejectsSecretCreatedURLWithoutAPIOrRetry(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "mr create" ]; then printf 'create\n' >> glab.calls; printf '%s\n' 'api_key=abcdefghijklmnopqrstuvwxyz123456'; exit 0; fi
+printf 'api\n' >> glab.calls
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "MR", HeadBranch: "feat/x", BaseBranch: "main", Draft: true, Confirm: true})
+	if err == nil || result.URL != "" || !strings.Contains(err.Error(), "needs reconciliation") || strings.Contains(err.Error(), "abcdefghijklmnopqrstuvwxyz123456") {
+		t.Fatalf("unsafe GitLab URL result=%+v err=%v", result, err)
+	}
+	if calls, readErr := os.ReadFile(filepath.Join(repo, "glab.calls")); readErr != nil || string(calls) != "create\n" {
+		t.Fatalf("unsafe GitLab URL reached API or retry: %q err=%v", calls, readErr)
 	}
 }
 
@@ -398,8 +475,8 @@ func TestRunGlabJSONReportsMissingCLI(t *testing.T) {
 	}
 
 	_, mrErr := runGlabMRJSON([]string{"mr", "create"}, "")
-	if mrErr == nil || !strings.Contains(mrErr.Error(), "glab CLI is not installed") {
-		t.Fatalf("mr error=%v, want missing glab CLI", mrErr)
+	if mrErr == nil || !strings.Contains(mrErr.Error(), "was not invoked") {
+		t.Fatalf("mr error=%v, want pre-invocation failure", mrErr)
 	}
 }
 

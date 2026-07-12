@@ -123,6 +123,10 @@ var IssueOpsWorkerDoneProjectionClient = func() core.IssueOpsWorkerDoneProjectio
 	return orca.New()
 }
 
+var IssueOpsPublicationReader = func() core.IssueOpsHandoffPublicationReader {
+	return core.GitIssueOpsHandoffPublicationReader{}
+}
+
 var VerifyIssueOpsChildIssueBeforeLink = func(string) error {
 	return fmt.Errorf("issueops child verification dependency is not configured")
 }

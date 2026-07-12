@@ -69,7 +69,7 @@ Shell arguments containing Markdown backticks must be single-quoted or passed as
 
 Codex supervised startup requires a fresh per-attempt attestation; it is not an ownership-guard bypass. Observe `codex --help` and require `--dangerously-bypass-hook-trust`, then run `codex app-server --stdio` and send initialize, initialized, and `{"method":"hooks/list","id":2,"params":{"cwds":["<exact-worker-cwd>"]}}` as separate JSONL messages while keeping stdin open through response id 2. Proceed only when the exact cwd matches, warnings and errors are both empty, required SessionStart and PreToolUse command hooks are enabled, and every untrusted or modified entry is the exact generated agent-harness command for the installed binary. Any unrelated entry fails closed; never call `config/batchWrite` from this recipe.
 
-Before any replacement or dispatch, inspect exact-worktree terminals and active orchestration tasks. Any connected/writable possible writer or dispatched task blocks another writer, even when preserved WIP or the diff appears stable. A stable diff is not ownership evidence. Do not adopt WIP until the original task is terminal and the original writer is exited or closed.
+Before any replacement or dispatch, inspect exact-worktree terminals and active orchestration tasks. Any such possible writer or dispatched task blocks another writer, even when preserved WIP or the diff appears stable; a possible writer is connected or writable, while only the designated active worker must be both. A stable diff is not ownership evidence. Do not adopt WIP until the original task is terminal and the original writer is exited or closed.
 
 Use server-filtered task inventory for sole-writer attestation, then inspect the exact current dispatch:
 

@@ -1,5 +1,17 @@
 package port
 
+import "fmt"
+
+type IssueProviderCreateError struct {
+	Invoked bool
+	Err     error
+}
+
+func (e *IssueProviderCreateError) Error() string {
+	return fmt.Sprintf("provider create failed: %v", e.Err)
+}
+func (e *IssueProviderCreateError) Unwrap() error { return e.Err }
+
 // IssueProviderCreateIssueRequest describes a request to create a remote issue.
 type IssueProviderCreateIssueRequest struct {
 	Repo      string   `json:"repo"`      // local repo path for provider auth context
@@ -27,6 +39,7 @@ type IssueProviderCreatePullRequestRequest struct {
 	BaseBranch string   `json:"base_branch"` // target branch
 	Labels     []string `json:"labels"`
 	Assignees  []string `json:"assignees"`
+	Draft      bool     `json:"draft"`
 	Confirm    bool     `json:"confirm"`
 }
 

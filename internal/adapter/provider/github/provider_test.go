@@ -84,12 +84,80 @@ func TestGitHubCreatePullRequestDryRun(t *testing.T) {
 		Title:      "Add feature",
 		HeadBranch: "feat/x",
 		BaseBranch: "main",
+		Draft:      true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(res.Preview, "pr create") || !strings.Contains(res.Preview, "--head feat/x") {
+	if !strings.Contains(res.Preview, "pr create") || !strings.Contains(res.Preview, "--head feat/x") || !strings.Contains(res.Preview, "--draft") {
 		t.Errorf("preview missing expected args: %q", res.Preview)
+	}
+}
+
+func TestGitHubCreatePullRequestConfirmPassesDraftArgv(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake gh shell script is POSIX-only")
+	}
+	binDir := t.TempDir()
+	repo := t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "pr create" ]; then
+  printf '%s\n' "$@" > gh.argv
+  printf 'create\n' >> gh.calls
+  printf 'https://github.com/acme/repo/pull/16\n'
+  exit 0
+fi
+if [ "$1 $2" = "pr view" ]; then
+  printf 'view\n' >> gh.calls
+  printf '{"url":"https://github.com/acme/repo/pull/16","headRefName":"feat/x","baseRefName":"main","isDraft":true,"labels":[{"name":"bug"},{"name":"extra"}],"assignees":[{"login":"octocat"},{"login":"extra"}]}'
+  exit 0
+fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	if _, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "PR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, Confirm: true}); err != nil {
+		t.Fatal(err)
+	}
+	argv, err := os.ReadFile(filepath.Join(repo, "gh.argv"))
+	if err != nil || !strings.Contains(string(argv), "\n--draft\n") {
+		t.Fatalf("GitHub draft argv missing: %q err=%v", argv, err)
+	}
+	if calls, err := os.ReadFile(filepath.Join(repo, "gh.calls")); err != nil || string(calls) != "create\nview\n" {
+		t.Fatalf("GitHub create/readback calls = %q err=%v", calls, err)
+	}
+}
+
+func TestGitHubCreatePullRequestReadbackMismatchNeedsReconciliationWithoutRetry(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "pr create" ]; then printf 'create\n' >> gh.calls; printf 'https://github.com/acme/repo/pull/16\n'; exit 0; fi
+if [ "$1 $2" = "pr view" ]; then printf 'view\n' >> gh.calls; printf '{"url":"https://github.com/acme/repo/pull/16","headRefName":"feat/x","baseRefName":"wrong","isDraft":true,"labels":[],"assignees":[]}'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "PR", HeadBranch: "feat/x", BaseBranch: "main", Draft: true, Confirm: true})
+	if err == nil || result.URL != "https://github.com/acme/repo/pull/16" || !strings.Contains(err.Error(), result.URL) || !strings.Contains(err.Error(), "needs reconciliation") {
+		t.Fatalf("GitHub mismatch result=%+v err=%v", result, err)
+	}
+	if calls, readErr := os.ReadFile(filepath.Join(repo, "gh.calls")); readErr != nil || string(calls) != "create\nview\n" {
+		t.Fatalf("GitHub mismatch retried creation: %q err=%v", calls, readErr)
+	}
+}
+
+func TestGitHubCreatePullRequestRejectsSecretCreatedURLWithoutViewOrRetry(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "pr create" ]; then printf 'create\n' >> gh.calls; printf '%s\n' 'api_key=abcdefghijklmnopqrstuvwxyz123456'; exit 0; fi
+printf 'view\n' >> gh.calls
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "PR", HeadBranch: "feat/x", BaseBranch: "main", Draft: true, Confirm: true})
+	if err == nil || result.URL != "" || !strings.Contains(err.Error(), "needs reconciliation") || strings.Contains(err.Error(), "abcdefghijklmnopqrstuvwxyz123456") {
+		t.Fatalf("unsafe GitHub URL result=%+v err=%v", result, err)
+	}
+	if calls, readErr := os.ReadFile(filepath.Join(repo, "gh.calls")); readErr != nil || string(calls) != "create\n" {
+		t.Fatalf("unsafe GitHub URL reached view or retry: %q err=%v", calls, readErr)
 	}
 }
 

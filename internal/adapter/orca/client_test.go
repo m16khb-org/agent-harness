@@ -660,6 +660,24 @@ func TestClientListTasksUsesInstalledCountContract(t *testing.T) {
 	}
 }
 
+func TestClientListDispatchedTasksUsesServerFilteredCompleteInventory(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca orchestration task-list --status dispatched --json"] = CommandOutput{Stdout: []byte(`{
+		"ok": true,
+		"result": {"tasks": [{"id": "task-dispatched", "task_title": "writer", "status": "dispatched"}], "count": 1}
+	}`)}
+	got, err := NewClient(runner).ListDispatchedTasks(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != "task-dispatched" || got[0].Status != "dispatched" {
+		t.Fatalf("dispatched task projection = %#v", got)
+	}
+	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != "orca orchestration task-list --status dispatched --json" {
+		t.Fatalf("dispatched task inventory was not server filtered: %#v", runner.calls)
+	}
+}
+
 func TestClientShowDispatchDecodesInstalledShapeWithoutInjectedField(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca orchestration dispatch-show --task task-1 --json"] = fixtureOutput(t, "dispatch_show.json")
@@ -762,7 +780,7 @@ func addCompleteProbeLeafHelp(runner *fakeRunner) {
 		"orca terminal create --help":             "--worktree --command --title --json",
 		"orca terminal list --help":               "--worktree --limit --json",
 		"orca orchestration task-create --help":   "--spec --task-title --display-name --json",
-		"orca orchestration task-list --help":     "--ready --json",
+		"orca orchestration task-list --help":     "--ready --status --json",
 		"orca orchestration task-update --help":   "--id --status --result --json",
 		"orca orchestration dispatch --help":      "--task --to --from --inject --return-preamble --json",
 		"orca orchestration dispatch-show --help": "--task --preamble --from --json",

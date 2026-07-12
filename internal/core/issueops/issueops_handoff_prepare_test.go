@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -16,6 +17,72 @@ import (
 	"agent-harness/internal/port"
 )
 
+func TestWorktreePrepareAutoUnavailableIsByteExactLegacyInlineAndStateNeutral(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	want, err := frozenLegacyWorktreePrepareResult(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantJSON, err := json.Marshal(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeRecord := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	beforeEntries, err := os.ReadDir(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorAuto, Agent: "codex", Confirm: true,
+	}, &prepareOrcaFake{probeErr: errors.New("orca unavailable")}, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotJSON, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(gotJSON, wantJSON) {
+		t.Fatalf("auto fallback JSON changed legacy bytes:\n got: %s\nwant: %s", gotJSON, wantJSON)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !reflect.DeepEqual(after, beforeRecord) {
+		t.Fatal("auto fallback changed the durable IssueOps record")
+	}
+	afterEntries, err := os.ReadDir(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(entryNames(beforeEntries), entryNames(afterEntries)) {
+		t.Fatalf("auto fallback created state artifacts: before=%v after=%v", entryNames(beforeEntries), entryNames(afterEntries))
+	}
+}
+
+func frozenLegacyWorktreePrepareResult(record IssueOpsRecord) (IssueOpsHandoffPrepareResult, error) {
+	repo, branch := strings.TrimSpace(record.Repo), strings.TrimSpace(record.Branch)
+	if repo == "" || branch == "" {
+		return IssueOpsHandoffPrepareResult{}, fmt.Errorf("repo and branch must be set on the IssueOps record")
+	}
+	baseBranch := "main"
+	if record.BranchPrepare != nil && strings.TrimSpace(record.BranchPrepare.BaseBranch) != "" {
+		baseBranch = strings.TrimSpace(record.BranchPrepare.BaseBranch)
+	}
+	path := repo + ".worktrees/" + strings.ReplaceAll(branch, "/", "-")
+	return IssueOpsHandoffPrepareResult{
+		OK: true, ID: record.ID, Repo: repo, Branch: branch, BaseBranch: baseBranch, WorktreePath: path,
+		Command:  []string{"git", "worktree", "add", path, branch},
+		NextStep: "execute the command above, then run issueops link-worktree --id " + record.ID + " --worktree-path " + path,
+	}, nil
+}
+
+func entryNames(entries []os.DirEntry) []string {
+	names := make([]string, len(entries))
+	for i := range entries {
+		names[i] = entries[i].Name()
+	}
+	return names
+}
+
 func TestWorktreePrepareAutoProbeFailurePreservesLegacyInlineResult(t *testing.T) {
 	stateRoot, record := handoffPrepareRecord(t)
 	client := &prepareOrcaFake{probeErr: errors.New("orca unavailable")}
@@ -26,8 +93,8 @@ func TestWorktreePrepareAutoProbeFailurePreservesLegacyInlineResult(t *testing.T
 	if err != nil {
 		t.Fatalf("PrepareIssueOpsHandoffWorktree: %v", err)
 	}
-	if got.ResolvedMode != "inline" || got.FallbackCode == "" {
-		t.Fatalf("expected inline fallback, got %#v", got)
+	if got.ResolvedMode != "" || got.FallbackCode != "" || got.RequestedMode != "" {
+		t.Fatalf("expected byte-exact legacy inline fallback, got %#v", got)
 	}
 	if got.ID != record.ID || got.Repo != record.Repo || got.Branch != record.Branch || len(got.Command) == 0 {
 		t.Fatalf("legacy inline fields changed: %#v", got)
@@ -66,7 +133,7 @@ func TestWorktreePrepareAutoUnavailablePreservesNilBranchPrepareLegacyResult(t *
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode == "" || len(got.Warnings) != 0 {
+			if got.ResolvedMode != "" || got.FallbackCode != "" || got.RequestedMode != "" || len(got.Warnings) != 0 {
 				t.Fatalf("nil BranchPrepare legacy fallback = %#v", got)
 			}
 			if got.BaseBranch != "main" || len(got.Command) == 0 || got.Command[0] != "git" {
@@ -107,7 +174,7 @@ func TestWorktreePrepareOrchestrationUnreadyNeverCreatesArtifact(t *testing.T) {
 				ID: record.ID, Orchestrator: mode, Agent: "codex", Confirm: true,
 			}, client, handoffPrepareTestClock())
 			if mode == IssueOpsOrchestratorAuto {
-				if err != nil || got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode != "orchestration_unready" {
+				if err != nil || got.ResolvedMode != "" || got.FallbackCode != "" || got.RequestedMode != "" {
 					t.Fatalf("auto readiness fallback = %#v err=%v", got, err)
 				}
 			} else if err == nil {
@@ -146,7 +213,7 @@ func TestWorktreePrepareInitialInventoryFailureFallsBackOnlyInAuto(t *testing.T)
 					ID: record.ID, Orchestrator: mode, Agent: "codex", Confirm: true,
 				}, client, handoffPrepareTestClock())
 				if mode == IssueOpsOrchestratorAuto {
-					if err != nil || got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode != tt.code {
+					if err != nil || got.ResolvedMode != "" || got.FallbackCode != "" || got.RequestedMode != "" {
 						t.Fatalf("auto initial inventory fallback = %#v err=%v", got, err)
 					}
 				} else if err == nil || !strings.Contains(err.Error(), "list Orca worktrees") {
@@ -417,7 +484,7 @@ func TestWorktreePrepareGitLabAutoProbeFailurePreservesInlineContract(t *testing
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode == "" || len(got.Warnings) != 0 {
+			if got.ResolvedMode != "" || got.FallbackCode != "" || got.RequestedMode != "" || len(got.Warnings) != 0 {
 				t.Fatalf("GitLab pre-mutation fallback changed the inline contract: %#v", got)
 			}
 			if !reflect.DeepEqual(client.trace, []string{"probe"}) {
@@ -443,7 +510,7 @@ func TestWorktreePrepareGitLabAutoPostProbeFallbackClearsNativeMetadataWarning(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode != "orca_worktree_inventory_failed" || len(got.Warnings) != 0 {
+	if got.ResolvedMode != "" || got.FallbackCode != "" || got.RequestedMode != "" || len(got.Warnings) != 0 {
 		t.Fatalf("post-probe GitLab inline fallback = %#v", got)
 	}
 	if !reflect.DeepEqual(client.trace, []string{"probe", "worktree-list"}) {
@@ -733,7 +800,7 @@ func TestWorktreePrepareDefinitiveStartFailureClearsJournalAndAutoFallsBack(t *t
 				ID: record.ID, Orchestrator: mode, Agent: "codex", Confirm: true,
 			}, client, handoffPrepareTestClock())
 			if mode == IssueOpsOrchestratorAuto {
-				if err != nil || got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode != "orca_worktree_create_not_invoked" {
+				if err != nil || got.ResolvedMode != "" || got.FallbackCode != "" || got.RequestedMode != "" {
 					t.Fatalf("safe auto fallback = %#v err=%v", got, err)
 				}
 			} else if err == nil || !strings.Contains(err.Error(), "safe to retry") {
@@ -849,7 +916,7 @@ func TestWorktreePreparePreCreateCollisionNeverInvokesOrca(t *testing.T) {
 					ID: record.ID, Orchestrator: mode, Agent: "codex", Confirm: true,
 				}, client, handoffPrepareTestClock())
 				if mode == IssueOpsOrchestratorAuto && tt.autoInline {
-					if err != nil || got.ResolvedMode != IssueOpsOrchestratorInline || got.Exists != tt.autoExists {
+					if err != nil || got.ResolvedMode != "" || got.FallbackCode != "" || got.RequestedMode != "" || got.Exists != tt.autoExists {
 						t.Fatalf("safe legacy collision should preserve inline flow: got=%#v err=%v", got, err)
 					}
 				} else if err == nil {
@@ -902,7 +969,7 @@ func TestWorktreePrepareMissingCanonicalBaseFallsBackOnlyInAuto(t *testing.T) {
 				ID: record.ID, Orchestrator: mode, Agent: "codex", Confirm: true,
 			}, client, handoffPrepareTestClock())
 			if mode == IssueOpsOrchestratorAuto {
-				if err != nil || got.ResolvedMode != IssueOpsOrchestratorInline || got.FallbackCode != "orca_worktree_base_missing" {
+				if err != nil || got.ResolvedMode != "" || got.FallbackCode != "" || got.RequestedMode != "" {
 					t.Fatalf("missing base auto fallback = %#v err=%v", got, err)
 				}
 			} else if err == nil {

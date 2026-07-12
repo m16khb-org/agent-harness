@@ -51,6 +51,13 @@ type IssueOpsHandoffFinishRequest = issueops.IssueOpsHandoffFinishRequest
 type IssueOpsHandoffAcceptRequest = issueops.IssueOpsHandoffAcceptRequest
 type IssueOpsHandoffRecoverRequest = issueops.IssueOpsHandoffRecoverRequest
 type IssueOpsHandoffRecoverResult = issueops.IssueOpsHandoffRecoverResult
+type IssueOpsHandoffPublishRequest = issueops.IssueOpsHandoffPublishRequest
+type IssueOpsHandoffPublicationReader = issueops.IssueOpsHandoffPublicationReader
+type GitIssueOpsHandoffPublicationReader = issueops.GitIssueOpsHandoffPublicationReader
+type IssueOpsExecutionHandoffPublishReceipt = issueops.IssueOpsExecutionHandoffPublishReceipt
+type IssueOpsExecutionHandoffCleanupReceipt = issueops.IssueOpsExecutionHandoffCleanupReceipt
+type IssueOpsExecutionHandoffCleanup = issueops.IssueOpsExecutionHandoffCleanup
+type IssueOpsRemoteCreateClaim = issueops.IssueOpsRemoteCreateClaim
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
 type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
@@ -278,6 +285,14 @@ func RecoverIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsH
 	return issueops.RecoverIssueOpsHandoff(ctx, stateRoot, req, client, clock)
 }
 
+func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, req IssueOpsHandoffPublishRequest, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient, clock IssueOpsHandoffPrepareClock) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsHandoffPublishReceipt(ctx, stateRoot, req, reader, lease, clock)
+}
+
+func ValidateIssueOpsHandoffPublication(ctx context.Context, stateRoot string, record IssueOpsRecord, provider, head, base string, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient) error {
+	return issueops.ValidateIssueOpsHandoffPublication(ctx, stateRoot, record, provider, head, base, reader, lease)
+}
+
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsChild(stateRoot, id, childURL, title)
 }
@@ -320,6 +335,11 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
 	return issueops.VerifyIssueOpsRemoteArtifact(stateRoot, id, req)
 }
+
+var ClaimIssueOpsRemoteCreate = issueops.ClaimIssueOpsRemoteCreate
+var ClearIssueOpsRemoteCreateClaim = issueops.ClearIssueOpsRemoteCreateClaim
+var MarkIssueOpsRemoteCreateUnknown = issueops.MarkIssueOpsRemoteCreateUnknown
+var FinalizeIssueOpsRemoteCreateClaim = issueops.FinalizeIssueOpsRemoteCreateClaim
 
 func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
 	return issueops.ValidateIssueOpsRemoteArtifactVerification(stateRoot, id, req)

@@ -135,6 +135,32 @@ func TestHandoffForcedClaimedCancelPersistsEvidenceAndFencesWorker(t *testing.T)
 	}
 }
 
+func TestHandoffSubmittedTerminalProjectionCanForceCancelAndFinalize(t *testing.T) {
+	stateRoot, record, _, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	projector := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "msg-terminal", Sequence: 101}}
+	submitted, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, projector)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if submitted.ExecutionHandoff.WorkerDoneProjection == nil || submitted.ExecutionHandoff.WorkerDoneProjection.State != "sent" {
+		t.Fatalf("terminal projection was not persisted: %#v", submitted.ExecutionHandoff.WorkerDoneProjection)
+	}
+
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "cancel", Confirm: true, Force: true, Reason: "coordinator rejected the submitted result",
+	}, nil, handoffPrepareTestClock()); err != nil {
+		t.Fatalf("force-cancel submitted terminal projection: %v", err)
+	}
+	finalizeCancelledHandoffForTest(t, stateRoot, record.ID)
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateClosed || persisted.ExecutionHandoff.ClosedDisposition != handoff.DispositionCancelled || persisted.ExecutionHandoff.WorkerDoneProjection == nil || persisted.ExecutionHandoff.WorkerDoneProjection.MessageID != "msg-terminal" {
+		t.Fatalf("submitted projection cancellation lost terminal evidence: %#v", persisted.ExecutionHandoff)
+	}
+}
+
 func TestHandoffCancelClosesOnlyTrulyPreMutationPreparation(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	record.ExecutionHandoff.Orca = &IssueOpsOrcaIdentity{RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo"}
@@ -284,7 +310,7 @@ func TestHandoffFinalizeCancelRejectsConnectedRuntimeReissuedWorker(t *testing.T
 	client.dispatch.Status = "failed"
 	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 		ID: record.ID, Action: "finalize-cancel", Confirm: true,
-	}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "runtime-reissued worker terminal is still connected") {
+	}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "possible writer") {
 		t.Fatalf("runtime-reissued connected worker must keep cancellation tombstone: %v", err)
 	}
 	persisted, err := ReadIssueOps(stateRoot, record.ID)
@@ -293,6 +319,42 @@ func TestHandoffFinalizeCancelRejectsConnectedRuntimeReissuedWorker(t *testing.T
 	}
 	if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.Cancellation == nil {
 		t.Fatalf("runtime restart released cancellation guard: %#v", persisted.ExecutionHandoff)
+	}
+}
+
+func TestHandoffFinalizeCancelRejectsSiblingPossibleWriterAndDispatchedAssignment(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		setup func(IssueOpsRecord, *dispatchOrcaFake)
+	}{
+		{name: "writable sibling", setup: func(record IssueOpsRecord, client *dispatchOrcaFake) {
+			client.terminals = []port.OrcaTerminal{{Handle: "term-sibling", PTYID: "pty-sibling", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, WorktreePath: record.WorktreePath, Writable: true}}
+		}},
+		{name: "dispatched assignment", setup: func(record IssueOpsRecord, client *dispatchOrcaFake) {
+			client.terminals = nil
+			client.dispatchedTasks = []port.OrcaTask{{ID: "task-sibling", Status: "dispatched"}}
+			client.dispatchByTask = map[string]port.OrcaDispatch{"task-sibling": {ID: "dispatch-sibling", TaskID: "task-sibling", AssigneeHandle: record.ExecutionHandoff.Orca.WorkerTerminalHandle, Status: "dispatched"}}
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot, record, _ := dispatchedHandoffRecord(t)
+			if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "cancel", Confirm: true}, nil, handoffPrepareTestClock()); err != nil {
+				t.Fatal(err)
+			}
+			client := handoffDispatchFake(record)
+			client.dispatch.Status = "failed"
+			tt.setup(record, client)
+			if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "finalize-cancel", Confirm: true}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "possible writer") {
+				t.Fatalf("possible writer finalized cancellation: %v", err)
+			}
+			persisted, err := ReadIssueOps(stateRoot, record.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || persisted.ExecutionHandoff.Cancellation == nil {
+				t.Fatalf("possible writer released cancellation tombstone: %#v", persisted.ExecutionHandoff)
+			}
+		})
 	}
 }
 
@@ -344,7 +406,7 @@ func TestHandoffFinalizeCancelRejectsMalformedQuiescenceInventory(t *testing.T) 
 	client.dispatch.Status = "failed"
 	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 		ID: record.ID, Action: "finalize-cancel", Confirm: true,
-	}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "missing or duplicate stable identity") {
+	}, client, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "terminal inventory contains missing or duplicate stable identity") {
 		t.Fatalf("malformed terminal inventory must not prove quiescence: %v", err)
 	}
 	persisted, err := ReadIssueOps(stateRoot, record.ID)
@@ -436,7 +498,7 @@ func TestHandoffRetryUsesNewAttemptAndEpoch(t *testing.T) {
 		t.Fatal(err)
 	}
 	finalizeCancelledHandoffForTest(t, stateRoot, record.ID)
-	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "retry", Confirm: true}, nil, IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-2", nil }})
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "retry", Confirm: true}, quiescentRetryClient(t, stateRoot, record.ID), IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-2", nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -461,7 +523,7 @@ func TestHandoffRetryAllowsWorkerFailedDisposition(t *testing.T) {
 
 	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 		ID: record.ID, Action: "retry", Confirm: true,
-	}, nil, IssueOpsHandoffPrepareClock{
+	}, quiescentRetryClient(t, stateRoot, record.ID), IssueOpsHandoffPrepareClock{
 		Now: handoffPrepareTestClock().Now,
 		NewEpoch: func() (string, error) {
 			return "epoch-worker-failed", nil
@@ -495,7 +557,7 @@ func TestHandoffRetryPreservesBoundedPriorAttemptAudit(t *testing.T) {
 		}
 		if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 			ID: record.ID, Action: "retry", Confirm: true,
-		}, nil, IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-new", nil }}); err != nil {
+		}, quiescentRetryClient(t, stateRoot, record.ID), IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-new", nil }}); err != nil {
 			t.Fatal(err)
 		}
 		assertPriorAttemptJSON(t, stateRoot, record.ID, handoff.DispositionWorkerFailed, record.ExecutionHandoff.Orca, "pty-old", "term-old", "task-old", "dispatch-old", "old worker resources stopped", "")
@@ -519,7 +581,7 @@ func TestHandoffRetryPreservesBoundedPriorAttemptAudit(t *testing.T) {
 		finalizeCancelledHandoffForTest(t, stateRoot, record.ID)
 		if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 			ID: record.ID, Action: "retry", Confirm: true,
-		}, nil, IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-new", nil }}); err != nil {
+		}, quiescentRetryClient(t, stateRoot, record.ID), IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-new", nil }}); err != nil {
 			t.Fatal(err)
 		}
 		assertPriorAttemptJSON(t, stateRoot, record.ID, handoff.DispositionCancelled, record.ExecutionHandoff.Orca, "pty-1", "term-1", "task-1", "dispatch-1", "", "cancellation_finalized")
@@ -565,6 +627,45 @@ func finalizeCancelledHandoffForTest(t *testing.T, stateRoot, id string) {
 	if got.State != handoff.StateClosed || got.Disposition != handoff.DispositionCancelled {
 		t.Fatalf("quiescent cancellation did not finalize: %#v", got)
 	}
+}
+
+func quiescentRetryClient(t *testing.T, stateRoot, id string) *dispatchOrcaFake {
+	t.Helper()
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil {
+		t.Fatalf("retry fixture lacks Orca identity: %#v", h)
+	}
+	if h.Orca.WorkerPTYID != "" || h.Orca.WorkerTerminalHandle != "" {
+		client.terminals = []port.OrcaTerminal{{
+			Handle: h.Orca.WorkerTerminalHandle, PTYID: h.Orca.WorkerPTYID, WorktreeID: h.Orca.WorktreeID,
+			WorktreePath: h.WorkerRoot,
+		}}
+	}
+	if h.Orca.TaskID != "" || h.Orca.DispatchID != "" {
+		client.dispatch = port.OrcaDispatch{
+			ID: h.Orca.DispatchID, TaskID: h.Orca.TaskID, AssigneeHandle: h.Orca.WorkerMailboxHandle, Status: "failed",
+		}
+	}
+	if h.Cleanup == nil {
+		if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+			ID: id, Action: "approve-cleanup", Confirm: true, CleanupDisposition: "retry", Reason: "reuse the quiescent worktree for the next fenced attempt",
+		}, client, handoffPrepareTestClock()); err != nil {
+			t.Fatal(err)
+		}
+		for _, step := range []string{"task_terminal", "terminal_quiescent"} {
+			if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+				ID: id, Action: "record-cleanup", Confirm: true, CleanupStep: step,
+			}, client, handoffPrepareTestClock()); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	return client
 }
 
 func assertPriorAttemptJSON(t *testing.T, stateRoot, id, disposition string, oldOrca *IssueOpsOrcaIdentity, pty, mailbox, task, dispatch, cleanup, failure string) {
@@ -1014,7 +1115,7 @@ func TestHandoffRetryPinsCleanPartialCommitAsNewAttemptBase(t *testing.T) {
 	}
 	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 		ID: record.ID, Action: "retry", Confirm: true,
-	}, nil, IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-2", nil }}); err != nil {
+	}, quiescentRetryClient(t, stateRoot, record.ID), IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-2", nil }}); err != nil {
 		t.Fatal(err)
 	}
 	retried, err := ReadIssueOps(stateRoot, record.ID)
@@ -1052,7 +1153,7 @@ func TestHandoffRetryReattestsLegacyCodexBypassWithoutChangingSealedOptions(t *t
 	}
 	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
 		ID: record.ID, Action: "retry", Confirm: true,
-	}, nil, IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-2", nil }}); err != nil {
+	}, quiescentRetryClient(t, stateRoot, record.ID), IssueOpsHandoffPrepareClock{Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "epoch-2", nil }}); err != nil {
 		t.Fatal(err)
 	}
 	retried, err := ReadIssueOps(stateRoot, record.ID)

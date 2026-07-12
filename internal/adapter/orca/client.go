@@ -142,7 +142,7 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		{argv: []string{"orca", "terminal", "create", "--help"}, wantAny: [][]string{{"--worktree", "--agent", "--title", "--json"}, {"--worktree", "--command", "--title", "--json"}}},
 		{argv: []string{"orca", "terminal", "list", "--help"}, want: []string{"--worktree", "--limit", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-create", "--help"}, want: []string{"--spec", "--task-title", "--display-name", "--json"}},
-		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--ready", "--json"}},
+		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--ready", "--status", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-update", "--help"}, want: []string{"--id", "--status", "--result", "--json"}},
 		{argv: []string{"orca", "orchestration", "dispatch", "--help"}, want: []string{"--task", "--to", "--from", "--inject", "--return-preamble", "--json"}},
 		{argv: []string{"orca", "orchestration", "dispatch-show", "--help"}, want: []string{"--task", "--preamble", "--from", "--json"}},
@@ -330,11 +330,19 @@ func (c *Client) RefreshTerminal(ctx context.Context, worktreeID, ptyID string) 
 }
 
 func (c *Client) ListTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--ready", "--json"})
+}
+
+func (c *Client) ListDispatchedTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--status", "dispatched", "--json"})
+}
+
+func (c *Client) listTasks(ctx context.Context, argv []string) ([]port.OrcaTask, error) {
 	var payload struct {
 		Tasks []taskPayload `json:"tasks"`
 		Count *int          `json:"count"`
 	}
-	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "task-list", "--ready", "--json"}, &payload)
+	_, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 	if err != nil {
 		return nil, err
 	}

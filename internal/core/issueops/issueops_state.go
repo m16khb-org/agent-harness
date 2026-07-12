@@ -207,10 +207,11 @@ func normalizeIssueOpsSchemaVersion(record *IssueOpsRecord) error {
 	if err := issueOpsSchemaVersionError(record.SchemaVersion); err != nil {
 		return err
 	}
-	legacySchema := record.SchemaVersion == 0 || record.SchemaVersion == 1 || record.SchemaVersion == 2 || record.SchemaVersion == 3
+	legacyIdentitySchema := record.SchemaVersion == 0 || record.SchemaVersion == 1 || record.SchemaVersion == 2 || record.SchemaVersion == 3
+	legacySchema := legacyIdentitySchema || record.SchemaVersion == 4
 	if legacySchema {
 		record.SchemaVersion = IssueOpsCurrentSchemaVersion
-		if record.ExecutionHandoff != nil {
+		if legacyIdentitySchema && record.ExecutionHandoff != nil {
 			migrateLegacyIssueOpsOrcaIdentity(record.ExecutionHandoff.Orca)
 			for i := range record.ExecutionHandoff.PriorAttempts {
 				migrateLegacyIssueOpsOrcaIdentity(record.ExecutionHandoff.PriorAttempts[i].Orca)
@@ -234,7 +235,7 @@ func migrateLegacyIssueOpsOrcaIdentity(identity *IssueOpsOrcaIdentity) {
 
 func issueOpsSchemaVersionError(version int) error {
 	switch {
-	case version == 0 || version == 1 || version == 2 || version == 3 || version == IssueOpsCurrentSchemaVersion:
+	case version == 0 || version == 1 || version == 2 || version == 3 || version == 4 || version == IssueOpsCurrentSchemaVersion:
 		return nil
 	case version > IssueOpsCurrentSchemaVersion:
 		return fmt.Errorf("unsupported issueops schema_version %d; current is %d", version, IssueOpsCurrentSchemaVersion)

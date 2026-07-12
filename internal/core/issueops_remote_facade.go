@@ -18,6 +18,7 @@ type IssueProviderCreateIssueRequest = port.IssueProviderCreateIssueRequest
 type IssueProviderCreateIssueResult = port.IssueProviderCreateIssueResult
 type IssueProviderCreatePullRequestRequest = port.IssueProviderCreatePullRequestRequest
 type IssueProviderCreatePullRequestResult = port.IssueProviderCreatePullRequestResult
+type IssueProviderCreateError = port.IssueProviderCreateError
 type IssueProviderCreateChildRequest = port.IssueProviderCreateChildRequest
 type IssueProviderCreateChildResult = port.IssueProviderCreateChildResult
 type IssueProviderCloseChildRequest = port.IssueProviderCloseChildRequest

@@ -108,6 +108,35 @@ func TestWorktreePrepareHumanOutputPrintsWarnings(t *testing.T) {
 	}
 }
 
+func TestWorktreePrepareAutoFallbackHumanOutputIsByteExactLegacy(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := worktreeIssueOpsRecord(t)
+	worktreePath := filepath.Join(record.Repo+".worktrees", strings.ReplaceAll(record.Branch, "/", "-"))
+	legacy := core.IssueOpsHandoffPrepareResult{
+		OK: true, ID: record.ID, Repo: record.Repo, Branch: record.Branch, BaseBranch: "main",
+		WorktreePath: worktreePath, Command: []string{"git", "worktree", "add", worktreePath, record.Branch},
+	}
+	run := func(prepare func(context.Context, string, core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error)) string {
+		return testsupport.CaptureStdout(t, func() error {
+			return Run([]string{"prepare", "--id", record.ID, "--orchestrator", "auto", "--confirm"}, Deps{
+				ParseFlags:     parseWorktreeFlags,
+				PrintJSON:      func(any) error { return nil },
+				PrintError:     func(error) error { return nil },
+				PrepareHandoff: prepare,
+			})
+		})
+	}
+	actual := func(ctx context.Context, stateRoot string, req core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error) {
+		return core.PrepareIssueOpsHandoffWorktree(ctx, stateRoot, req, nil, core.IssueOpsHandoffPrepareClock{})
+	}
+	expected := func(context.Context, string, core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error) {
+		return legacy, nil
+	}
+	if got, want := run(actual), run(expected); got != want {
+		t.Fatalf("auto fallback text changed legacy bytes:\n got: %q\nwant: %q", got, want)
+	}
+}
+
 func TestPrepareWorktreeToolsSuccessAndErrors(t *testing.T) {
 	tmp := t.TempDir()
 	worktree := filepath.Join(tmp, "worktree")
