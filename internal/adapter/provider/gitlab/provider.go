@@ -1,10 +1,14 @@
 package gitlab
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +20,8 @@ import (
 
 // Provider adapts GitLab via the `glab` CLI.
 type Provider struct{}
+
+var glabCapabilityVersionPattern = regexp.MustCompile(`(?:^|\s)v?(\d+)\.(\d+)\.(\d+)(?:\s|$)`)
 
 func NewProvider() Provider { return Provider{} }
 
@@ -37,11 +43,10 @@ func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.Issu
 	for _, assignee := range req.Assignees {
 		args = append(args, "--assignee", assignee)
 	}
-	cmdStr := "glab " + strings.Join(args, " ")
 	if !req.Confirm {
 		return port.IssueProviderCreateIssueResult{
 			OK:      true,
-			Preview: fmt.Sprintf("[dry-run] would execute: %s", cmdStr),
+			Preview: providerutil.DryRunPreview("glab", args...),
 		}, nil
 	}
 	return runGlabJSON(args, req.Repo, "issue")
@@ -57,7 +62,14 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 	if head == "" || base == "" {
 		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("source and target branches are required")
 	}
+	projectURL, err := gitLabProjectURL(req.ProjectKey)
+	if err != nil {
+		return port.IssueProviderCreatePullRequestResult{OK: false}, err
+	}
 	args := []string{"mr", "create", "--title", title, "--source-branch", head, "--target-branch", base, "--yes"}
+	if projectURL != "" {
+		args = append(args, "--repo", projectURL)
+	}
 	if req.Draft {
 		args = append(args, "--draft")
 	}
@@ -71,12 +83,17 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 	for _, assignee := range req.Assignees {
 		args = append(args, "--assignee", assignee)
 	}
-	cmdStr := "glab " + strings.Join(args, " ")
 	if !req.Confirm {
 		return port.IssueProviderCreatePullRequestResult{
 			OK:      true,
-			Preview: fmt.Sprintf("[dry-run] would execute: %s", cmdStr),
+			Preview: providerutil.DryRunPreview("glab", args...),
 		}, nil
+	}
+	if gitLabProjectRequiresGlab182(projectURL) {
+		version, versionErr := providerutil.RunBoundedReadback(req.Repo, "glab", "--version")
+		if versionErr != nil || !glabCapabilityAtLeast182(string(version)) {
+			return port.IssueProviderCreatePullRequestResult{OK: false}, &port.IssueProviderCreateError{Invoked: false, Err: fmt.Errorf("GitLab custom web authority requires proven glab >= 1.82.0 capability")}
+		}
 	}
 	result, err := runGlabMRJSON(args, req.Repo)
 	if err != nil {
@@ -94,20 +111,45 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 func validCanonicalGitLabMergeRequestURL(raw string) bool {
 	raw = strings.TrimSpace(raw)
 	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.Host != parsed.Hostname() || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.String() != raw {
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.String() != raw {
 		return false
 	}
 	parts := remoteparse.SplitGitLabMRPath(parsed.EscapedPath())
 	return parts.Project != "" && parts.IID != ""
 }
 
+func gitLabProjectURL(projectKey string) (string, error) {
+	projectKey = strings.TrimSpace(projectKey)
+	if projectKey == "" {
+		return "", nil
+	}
+	if projectKey != strings.ToLower(projectKey) || strings.ContainsAny(projectKey, "\\?#@\x00\r\n\t ") {
+		return "", fmt.Errorf("GitLab project authority is malformed")
+	}
+	projectURL := "https://" + projectKey
+	parsed, err := url.Parse(projectURL)
+	if err != nil || parsed == nil {
+		return "", fmt.Errorf("GitLab project authority is malformed")
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || len(parts) < 2 || parsed.Host+"/"+strings.Join(parts, "/") != projectKey {
+		return "", fmt.Errorf("GitLab project authority is malformed")
+	}
+	return projectURL, nil
+}
+
 type gitlabMergeRequestProjection struct {
-	WebURL       string           `json:"web_url"`
-	SourceBranch string           `json:"source_branch"`
-	TargetBranch string           `json:"target_branch"`
-	Draft        bool             `json:"draft"`
-	Labels       []string         `json:"labels"`
-	Assignees    []gitlabAssignee `json:"assignees"`
+	WebURL          string           `json:"web_url"`
+	Title           string           `json:"title"`
+	Description     string           `json:"description"`
+	SourceBranch    string           `json:"source_branch"`
+	TargetBranch    string           `json:"target_branch"`
+	Draft           bool             `json:"draft"`
+	SHA             string           `json:"sha"`
+	Labels          []string         `json:"labels"`
+	Assignees       []gitlabAssignee `json:"assignees"`
+	SourceProjectID int64            `json:"source_project_id"`
+	TargetProjectID int64            `json:"target_project_id"`
 }
 
 func verifyCreatedGitLabMergeRequest(req port.IssueProviderCreatePullRequestRequest, createdURL string) error {
@@ -120,8 +162,14 @@ func verifyCreatedGitLabMergeRequest(req port.IssueProviderCreatePullRequestRequ
 	if parts.Project == "" || parts.IID == "" {
 		return fmt.Errorf("created merge request URL does not contain an exact project and IID")
 	}
-	endpoint := "projects/" + url.PathEscape(parts.Project) + "/merge_requests/" + parts.IID
-	out, err := providerutil.RunBoundedReadback(req.Repo, "glab", "api", endpoint, "--hostname", parsedURL.Hostname())
+	projectURL, err := gitLabProjectURL(req.ProjectKey)
+	if err != nil {
+		return err
+	}
+	if projectURL == "" {
+		projectURL = parsedURL.Scheme + "://" + parsedURL.Host + "/" + parts.Project
+	}
+	out, err := providerutil.RunBoundedReadback(req.Repo, "glab", "mr", "view", parts.IID, "--repo", projectURL, "--output", "json")
 	if err != nil {
 		return fmt.Errorf("read back created merge request: %w", err)
 	}
@@ -133,17 +181,97 @@ func verifyCreatedGitLabMergeRequest(req port.IssueProviderCreatePullRequestRequ
 	if strings.TrimSpace(got.WebURL) != createdURL || strings.TrimSpace(got.SourceBranch) != strings.TrimSpace(req.HeadBranch) || strings.TrimSpace(got.TargetBranch) != strings.TrimSpace(req.BaseBranch) || got.Draft != req.Draft {
 		return fmt.Errorf("created merge request identity or draft status does not match the request")
 	}
-	if missing := providerutil.MissingStrings(req.Labels, got.Labels); len(missing) > 0 {
-		return fmt.Errorf("created merge request is missing requested labels")
+	if strings.TrimSpace(got.Title) != strings.TrimSpace(req.Title) || got.Description != req.Body {
+		return fmt.Errorf("created merge request title or rendered body does not match the request")
 	}
-	if missing := providerutil.MissingStrings(req.Assignees, assignees); len(missing) > 0 {
-		return fmt.Errorf("created merge request is missing requested assignees")
+	if strings.TrimSpace(req.ProjectKey) != "" && gitLabSourceProjectKey(req.ProjectKey, got) != strings.TrimSpace(req.ProjectKey) {
+		return fmt.Errorf("created merge request source project does not match published project authority")
+	}
+	if strings.TrimSpace(req.ExpectedHeadSHA) != "" && strings.TrimSpace(got.SHA) != strings.TrimSpace(req.ExpectedHeadSHA) {
+		return fmt.Errorf("created merge request head SHA does not match accepted final head")
+	}
+	if !providerutil.SameStrings(req.Labels, got.Labels) {
+		return fmt.Errorf("created merge request labels do not exactly match the request")
+	}
+	if !providerutil.SameStrings(req.Assignees, assignees) {
+		return fmt.Errorf("created merge request assignees do not exactly match the request")
 	}
 	return nil
 }
 
-func gitlabCreatedMergeRequestError(createdURL string, err error) error {
-	return fmt.Errorf("created merge request %s has unknown state and needs reconciliation; creation was not retried: %w", strings.TrimSpace(createdURL), err)
+func (Provider) ReconcilePullRequest(req port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
+	projectURL, err := gitLabProjectURL(req.ProjectKey)
+	if err != nil || projectURL == "" {
+		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("GitLab reconcile requires exact project authority")
+	}
+	if gitLabProjectRequiresGlab182(projectURL) {
+		version, versionErr := providerutil.RunBoundedReadback(req.Repo, "glab", "--version")
+		if versionErr != nil || !glabCapabilityAtLeast182(string(version)) {
+			return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("GitLab custom web authority requires proven glab >= 1.82.0 capability")
+		}
+	}
+	args := []string{"mr", "list", "--repo", projectURL, "--source-branch", strings.TrimSpace(req.HeadBranch), "--all", "--per-page", "2", "--output", "json"}
+	out, err := providerutil.RunBoundedReadback(req.Repo, "glab", args...)
+	if err != nil {
+		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("list GitLab reconcile candidates: %w", err)
+	}
+	var rows []gitlabMergeRequestProjection
+	if err := json.Unmarshal(out, &rows); err != nil {
+		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("parse GitLab reconcile candidates: %w", err)
+	}
+	if strings.TrimSpace(string(out)) == "null" {
+		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("GitLab reconcile candidate response is not an authoritative array")
+	}
+	if len(rows) > 2 {
+		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("GitLab reconcile candidate response exceeded bound")
+	}
+	result := port.IssueProviderReconcilePullRequestResult{AuthoritativeZero: len(rows) == 0}
+	for _, row := range rows {
+		parsed, _ := url.Parse(strings.TrimSpace(row.WebURL))
+		projectKey := ""
+		if parsed != nil {
+			parts := remoteparse.SplitGitLabMRPath(parsed.EscapedPath())
+			if parts.Project != "" {
+				projectKey = strings.ToLower(parsed.Host + "/" + parts.Project)
+			}
+		}
+		result.Candidates = append(result.Candidates, port.IssueProviderReconcilePullRequestCandidate{
+			URL: row.WebURL, ProjectKey: projectKey, SourceProjectKey: gitLabSourceProjectKey(projectKey, row), HeadBranch: row.SourceBranch, BaseBranch: row.TargetBranch,
+			HeadSHA: row.SHA, Title: strings.TrimSpace(row.Title), BodySHA256: gitLabBodySHA256(row.Description), Labels: append([]string(nil), row.Labels...), Assignees: gitlabAssigneeUsernames(row.Assignees), Draft: row.Draft,
+		})
+	}
+	return result, nil
+}
+
+func gitLabBodySHA256(body string) string {
+	sum := sha256.Sum256([]byte(body))
+	return hex.EncodeToString(sum[:])
+}
+
+func gitLabSourceProjectKey(projectKey string, row gitlabMergeRequestProjection) string {
+	if row.SourceProjectID <= 0 || row.TargetProjectID <= 0 || row.SourceProjectID != row.TargetProjectID {
+		return ""
+	}
+	return projectKey
+}
+
+func gitLabProjectRequiresGlab182(projectURL string) bool {
+	parsed, err := url.Parse(projectURL)
+	return err == nil && (strings.Contains(parsed.Hostname(), ":") || parsed.Port() != "" && parsed.Port() != "443")
+}
+
+func glabCapabilityAtLeast182(value string) bool {
+	match := glabCapabilityVersionPattern.FindStringSubmatch(strings.TrimSpace(value))
+	if len(match) != 4 {
+		return false
+	}
+	major, _ := strconv.Atoi(match[1])
+	minor, _ := strconv.Atoi(match[2])
+	return major > 1 || major == 1 && minor >= 82
+}
+
+func gitlabCreatedMergeRequestError(_ string, err error) error {
+	return fmt.Errorf("created merge request has unknown state with a canonical URL returned separately and needs reconciliation; creation was not retried: %s", providerutil.BoundedDiagnostic(err.Error(), 384))
 }
 
 func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.IssueProviderCreateChildResult, error) {
@@ -156,8 +284,14 @@ func (Provider) CreateChild(req port.IssueProviderCreateChildRequest) (port.Issu
 		return port.IssueProviderCreateChildResult{OK: false, Provider: "gitlab"}, err
 	}
 	if !req.Confirm {
-		preview := fmt.Sprintf("[dry-run] would execute: glab api graphql --hostname %s resolve Task workItemTypeId for %s; resolve labelIds and assigneeIds; workItemCreate Task for parentIid=%s; workItemHierarchyAddChildrenItems; verify children, labels, assignees: labels=%s assignees=%s",
-			hostname, projectPath, parentIID, strings.Join(req.Labels, ","), strings.Join(req.Assignees, ","))
+		args := []string{"api", "graphql", "--hostname", hostname, "--field", "project=" + projectPath, "--field", "parent_iid=" + parentIID, "--field", "title=" + title, "--field", "description=" + strings.TrimSpace(req.Body)}
+		for _, label := range req.Labels {
+			args = append(args, "--field", "label="+label)
+		}
+		for _, assignee := range req.Assignees {
+			args = append(args, "--field", "assignee="+assignee)
+		}
+		preview := providerutil.DryRunPreview("glab", args...) + "; resolve Task workItem type; workItemCreate; workItemHierarchyAddChildrenItems; verify children, labels, assignees"
 		return port.IssueProviderCreateChildResult{OK: true, Provider: "gitlab", Preview: preview}, nil
 	}
 	taskTypeID, err := resolveGitLabTaskTypeID(req.Repo, hostname, projectPath)
@@ -485,9 +619,9 @@ func runGlabMRJSON(args []string, repo string) (port.IssueProviderCreatePullRequ
 		return port.IssueProviderCreatePullRequestResult{OK: false}, &port.IssueProviderCreateError{Invoked: false, Err: err}
 	}
 	if validCanonicalGitLabMergeRequestURL(url) {
-		return result, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("GitLab MR creation outcome unknown for %s; do not retry: %w", url, err)}
+		return result, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("GitLab MR creation outcome unknown with a canonical URL returned separately; do not retry: %s", providerutil.BoundedDiagnostic(err.Error(), 384))}
 	}
-	return port.IssueProviderCreatePullRequestResult{OK: false}, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("GitLab MR creation outcome unknown; do not retry: %w", err)}
+	return port.IssueProviderCreatePullRequestResult{OK: false}, &port.IssueProviderCreateError{Invoked: true, Err: fmt.Errorf("GitLab MR creation outcome unknown; do not retry: %s", providerutil.BoundedDiagnostic(err.Error(), 384))}
 }
 
 // parseGlabOutput extracts the created artifact's web URL by scanning glab

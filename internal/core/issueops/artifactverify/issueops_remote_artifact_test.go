@@ -191,3 +191,43 @@ func TestVerifyGitLabRemoteArtifactURLShape(t *testing.T) {
 		t.Fatalf("unexpected gitlab remote artifact: %+v", got.RemoteArtifact)
 	}
 }
+
+func TestVerifyRejectsMalformedLinkedIssueAndExistingCreateClaim(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		record model.IssueOpsRecord
+		want   string
+	}{
+		{
+			name: "malformed linked issue project",
+			record: model.IssueOpsRecord{ID: "io-malformed", Phase: model.IssueOpsPhasePR,
+				IssueURL: "https://gitlab.example/-/issues/2"},
+			want: "project authority",
+		},
+		{
+			name: "pending durable create claim",
+			record: model.IssueOpsRecord{ID: "io-claimed", Phase: model.IssueOpsPhasePR,
+				IssueURL:          "https://gitlab.example/group/project/-/issues/2",
+				RemoteCreateClaim: &model.IssueOpsRemoteCreateClaim{State: "pending"}},
+			want: "remote create claim",
+		},
+		{
+			name: "unknown durable create claim",
+			record: model.IssueOpsRecord{ID: "io-unknown", Phase: model.IssueOpsPhasePR,
+				IssueURL:          "https://gitlab.example/group/project/-/issues/2",
+				RemoteCreateClaim: &model.IssueOpsRemoteCreateClaim{State: "unknown"}},
+			want: "remote create claim",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, store := newArtifactStoreForTest(tt.record)
+			_, err := Verify(store, t.TempDir(), tt.record.ID, model.IssueOpsRemoteArtifactVerificationRequest{
+				Provider: "gitlab", Kind: "mr", URL: "https://gitlab.example/group/project/-/merge_requests/2",
+				Labels: []string{"bug"}, Assignees: []string{"habin"}, TargetBranch: "main",
+			})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Verify error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}

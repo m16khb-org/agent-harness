@@ -132,6 +132,9 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		return false, ""
 	}
 	if record.Invalid {
+		if allowedInvalidLegacyV5PublicationSeal(req, record) {
+			return true, ""
+		}
 		return true, "invalid supervised IssueOps durable record: " + record.InvalidReason
 	}
 	if searchrouting.IsShellTool(req.Tool) && (commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command)) {
@@ -229,6 +232,27 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		}
 	}
 	return true, ""
+}
+
+func allowedInvalidLegacyV5PublicationSeal(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	native := issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}
+	if !handoff.LegacyCoordinatorIdentityCanBeSealed(record, native, req.CWD) {
+		return false
+	}
+	if searchrouting.IsShellTool(req.Tool) {
+		command, ok := parseExactIssueOpsCommand(req.Command)
+		return ok && command.path == "handoff publish" && allowedExactHandoffLifecycleCommand(req, record)
+	}
+	tool, ok := handoffMCPToolKind(req.Tool)
+	if !ok || tool != "issueops_handoff" {
+		return false
+	}
+	input, ok := flatMCPInput(req.ToolInput)
+	if !ok {
+		return false
+	}
+	action, ok := mcpString(input, "action")
+	return ok && action == "publish" && allowedHandoffMCPTool(req, record)
 }
 
 func protectedWorkerRootMutation(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {

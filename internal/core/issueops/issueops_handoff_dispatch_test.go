@@ -144,7 +144,7 @@ func TestHandoffDispatchPreambleRequiresOfficialLabeledIdentityLines(t *testing.
 func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
-	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient}, client, handoffStartTestClock())
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient}), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.
 		t.Fatalf("preview invoked Orca: %v", client.trace)
 	}
 
-	_, err = StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Confirm: true, ExpectedContextSHA256: preview.ContextSHA256}, client, handoffStartTestClock())
+	_, err = StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Confirm: true, ExpectedContextSHA256: preview.ContextSHA256}), client, handoffStartTestClock())
 	if err == nil || !strings.Contains(err.Error(), "--allow-codex-hook-trust-bypass") {
 		t.Fatalf("confirmed unattested Codex start error = %v", err)
 	}
@@ -171,6 +171,7 @@ func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.
 	}
 
 	attestedRequest := IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true}}
+	attestedRequest = coordinatorStartIdentity(record, attestedRequest)
 	reviewed, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedRequest, client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +217,7 @@ func TestHandoffStartPreviewReturnsReviewedContextAndDoesNotMutate(t *testing.T)
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
 	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
-	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient}, client, handoffStartTestClock())
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient}), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +303,7 @@ func TestHandoffStartConfirmRejectsCASDriftBeforeMutation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			stateRoot, record := handoffDispatchRecord(t)
 			client := handoffDispatchFake(record)
-			preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true}}, client, handoffStartTestClock())
+			preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true}}), client, handoffStartTestClock())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -313,6 +314,7 @@ func TestHandoffStartConfirmRejectsCASDriftBeforeMutation(t *testing.T) {
 				t.Fatalf("preview invoked Orca: %v", client.trace)
 			}
 			req := tt.request(record, preview)
+			req = coordinatorStartIdentity(record, req)
 			if tt.mutate != nil {
 				tt.mutate(t, stateRoot, &record, req)
 			}
@@ -335,7 +337,7 @@ func TestHandoffStartConfirmRejectsCASDriftBeforeMutation(t *testing.T) {
 func TestHandoffStartRejectsWrongDigestOnAlreadySealedRetry(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
-	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true}}, client, handoffStartTestClock())
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true}}), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,6 +360,7 @@ func TestHandoffStartRejectsWrongDigestOnAlreadySealedRetry(t *testing.T) {
 	retryClient := handoffDispatchFake(record)
 	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
 	req := IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Confirm: true, ExpectedContextSHA256: strings.Repeat("f", 64), Context: sealedOptions}
+	req = coordinatorStartIdentity(record, req)
 	_, err = StartIssueOpsHandoff(context.Background(), stateRoot, req, retryClient, handoffStartTestClock())
 	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "expected_context_sha256") {
 		t.Fatalf("expected sealed retry digest rejection, got %v", err)
@@ -1668,11 +1671,20 @@ func attestedCodexStart(t *testing.T, stateRoot, id string) IssueOpsHandoffStart
 		options.AllowCodexHookTrustBypass = true
 	}
 	record.ExecutionHandoff.CoordinatorMailboxHandle = testCoordinatorRecipient
+	record.ExecutionHandoff.CoordinatorSession = &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "coordinator-session", AgentID: "coordinator-agent"}
 	packet, err := handoff.BuildContext(record, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return IssueOpsHandoffStartRequest{ID: id, CoordinatorRecipient: testCoordinatorRecipient, Confirm: true, ExpectedContextSHA256: packet.SHA256, Context: options}
+	return IssueOpsHandoffStartRequest{ID: id, CoordinatorRecipient: testCoordinatorRecipient, Confirm: true, ExpectedContextSHA256: packet.SHA256, Context: options, CoordinatorHost: "codex", CoordinatorSessionID: "coordinator-session", CoordinatorAgentID: "coordinator-agent", SourceCWD: record.Repo}
+}
+
+func coordinatorStartIdentity(record IssueOpsRecord, req IssueOpsHandoffStartRequest) IssueOpsHandoffStartRequest {
+	req.CoordinatorHost = "codex"
+	req.CoordinatorSessionID = "coordinator-session"
+	req.CoordinatorAgentID = "coordinator-agent"
+	req.SourceCWD = record.Repo
+	return req
 }
 
 func mustHandoffTaskTitle(t *testing.T, record IssueOpsRecord) string {

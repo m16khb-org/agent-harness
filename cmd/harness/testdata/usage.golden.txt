@@ -53,6 +53,7 @@ Usage:
   agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]
   agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]
   agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]
+  agent-harness issueops remote reconcile-create --id ID --claim-id CLAIM --coordinator-recipient HANDLE --host HOST --session-id SESSION [--agent-id AGENT] --source-cwd PATH [--approve-zero-clear] --confirm [--json]
   agent-harness issueops benchmark run --fixtures PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
   agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]

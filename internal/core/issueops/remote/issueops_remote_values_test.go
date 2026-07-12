@@ -1,6 +1,9 @@
 package remote
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestSplitURLPath(t *testing.T) {
 	tests := []struct {
@@ -156,6 +159,8 @@ func TestProjectKey(t *testing.T) {
 		{"gitlab issue", "https://gitlab.com/group/subgroup/proj/-/issues/1", "gitlab", "issue", "gitlab.com/group/subgroup/proj"},
 		{"gitlab work item", "https://gitlab.com/group/subgroup/proj/-/work_items/2", "gitlab", "issue", "gitlab.com/group/subgroup/proj"},
 		{"gitlab mr", "https://gitlab.com/group/proj/-/merge_requests/2", "gitlab", "mr", "gitlab.com/group/proj"},
+		{"gitlab issue preserves web port", "https://gitlab.example:8443/group/subgroup/proj/-/issues/1", "gitlab", "issue", "gitlab.example:8443/group/subgroup/proj"},
+		{"gitlab mr preserves web port", "https://gitlab.example:8443/group/subgroup/proj/-/merge_requests/2", "gitlab", "mr", "gitlab.example:8443/group/subgroup/proj"},
 		{"bad github issue path", "https://github.com/user/issues/1", "github", "issue", ""},
 		{"empty", "", "github", "issue", ""},
 	}
@@ -167,6 +172,79 @@ func TestProjectKey(t *testing.T) {
 				t.Errorf("ProjectKey(%q, %q, %q) = %q, want %q", tt.url, tt.provider, tt.kind, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestValidateArtifactMatchesIssueRejectsMissingProjectAuthority(t *testing.T) {
+	for _, tt := range []struct {
+		issueURL, artifactURL, provider, kind string
+	}{
+		{"https://gitlab.example/-/issues/16", "https://gitlab.example/group/repo/-/merge_requests/16", "gitlab", "mr"},
+		{"https://github.com/acme/issues/16", "https://github.com/acme/repo/pull/16", "github", "pr"},
+	} {
+		if err := ValidateArtifactMatchesIssue(tt.issueURL, tt.artifactURL, tt.provider, tt.kind); err == nil {
+			t.Fatalf("missing project authority matched: issue=%q artifact=%q", tt.issueURL, tt.artifactURL)
+		}
+	}
+}
+
+func TestProjectKeyFromGitRemoteURLNormalizesHTTPSSSHAndSCP(t *testing.T) {
+	for _, tt := range []struct {
+		name, raw, provider, want string
+	}{
+		{"github https", "https://github.com/acme/repo.git", "github", "github.com/acme/repo"},
+		{"github ssh", "ssh://git@github.com/acme/repo.git", "github", "github.com/acme/repo"},
+		{"github scp", "git@github.com:acme/repo.git", "github", "github.com/acme/repo"},
+		{"gitlab https port nested", "https://gitlab.example:8443/group/sub/repo.git", "gitlab", "gitlab.example:8443/group/sub/repo"},
+		{"gitlab ssh port is transport only", "ssh://git@gitlab.example:2222/group/sub/repo.git", "gitlab", "gitlab.example/group/sub/repo"},
+		{"gitlab scp nested", "git@gitlab.example:group/sub/repo.git", "gitlab", "gitlab.example/group/sub/repo"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ProjectKeyFromGitRemoteURL(tt.raw, tt.provider)
+			if err != nil || got != tt.want {
+				t.Fatalf("ProjectKeyFromGitRemoteURL(%q) = %q, %v; want %q", tt.raw, got, err, tt.want)
+			}
+		})
+	}
+}
+
+func TestRemoteProjectAuthorityNormalizesDefaultWebPortAndRejectsSSHWebPortAmbiguity(t *testing.T) {
+	if got := ProjectKey("https://gitlab.example:443/group/repo/-/issues/1", "gitlab", "issue"); got != "gitlab.example/group/repo" {
+		t.Fatalf("default HTTPS port project key = %q", got)
+	}
+	if err := ValidateGitRemoteMatchesIssue(
+		"https://gitlab.example:8443/group/repo/-/issues/1",
+		"ssh://git@gitlab.example:2222/group/repo.git",
+		"gitlab",
+	); err == nil || !strings.Contains(err.Error(), "web port") {
+		t.Fatalf("custom SSH port versus web port ambiguity error = %v", err)
+	}
+	if err := ValidateGitRemoteMatchesIssue(
+		"https://gitlab.example:8443/group/repo/-/issues/1",
+		"https://gitlab.example:8443/group/repo.git",
+		"gitlab",
+	); err != nil {
+		t.Fatalf("matching HTTPS web authority rejected: %v", err)
+	}
+}
+
+func TestRemoteProjectAuthorityRejectsSchemeIPv6AndCredentialAmbiguity(t *testing.T) {
+	if got := ProjectKey("http://gitlab.example/group/repo/-/issues/1", "gitlab", "issue"); got != "" {
+		t.Fatalf("HTTP issue produced supervised project authority %q", got)
+	}
+	implicit := ProjectKey("https://[2001:db8::1]/group/repo/-/issues/1", "gitlab", "issue")
+	explicit := ProjectKey("https://[2001:db8::1]:443/group/repo/-/issues/1", "gitlab", "issue")
+	if implicit == "" || implicit != explicit {
+		t.Fatalf("IPv6 HTTPS authority mismatch: implicit=%q explicit=%q", implicit, explicit)
+	}
+	for _, raw := range []string{
+		"ssh://git:secret@gitlab.example/group/repo.git",
+		"gitlab.example:group/repo.git",
+		"git@[2001:db8::1]:group/repo.git",
+	} {
+		if _, err := ProjectKeyFromGitRemoteURL(raw, "gitlab"); err == nil || strings.Contains(err.Error(), raw) {
+			t.Fatalf("ambiguous or credential-bearing remote was not safely rejected: err=%v", err)
+		}
 	}
 }
 
@@ -182,7 +260,7 @@ func TestValidateArtifactURL(t *testing.T) {
 		{"valid gitlab mr", "https://gitlab.com/group/proj/-/merge_requests/1", "gitlab", "mr", false},
 		{"empty url", "", "github", "pr", true},
 		{"whitespace url", "https://github.com/user/repo/pull/1\n", "github", "pr", true},
-		{"wrong host for github", "https://gitlab.com/user/repo/pull/1", "github", "pr", true},
+		{"wrong shape for github", "https://gitlab.com/user/repo/-/merge_requests/1", "github", "pr", true},
 		{"unsupported provider", "https://bitbucket.org/user/repo/pull/1", "bitbucket", "pr", true},
 	}
 	for _, tt := range tests {

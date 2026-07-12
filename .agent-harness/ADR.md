@@ -718,3 +718,18 @@ Archived entries:
 - Consequences: CLI, MCP, lifecycle guards, IssueOps recovery, and canonical skill documentation share one v5 contract. Missing/stale publish receipts and ambiguous cleanup inventories fail closed for both providers.
 - Evidence: `internal/core/issueops/issueops_handoff_publication_test.go`, `issueops_handoff_cleanup_test.go`, `issueops_schema_version_test.go`, lifecycle authority tests, response-contract goldens, and the issue #16 evidence addendum.
 - Rejected alternatives: trusting caller flags or a one-time push result; provider-specific receipt shapes; direct PR/MR create with arbitrary body-file paths; unrecorded best-effort cleanup; a generic driver registry or scheduler reserved for issue #17.
+
+## 2026-07-12 — IssueOps root schema v6 protects push-target and provider-create authority
+
+- Kind: `adr`
+- Source: GitHub issue #16 provider fencing and crash-recovery review
+- Summary: Schema v6 extends, rather than rewrites, the historical v5 publication/cleanup decision with an exact effective push-target fingerprint and a request-bound `remote_create_claim`.
+- Decision:
+  - Resolve one effective push URL through `git remote get-url --push --all`, fingerprint it without persisting or logging the URL, and re-check it before push, provider mutation, and every remote readback.
+  - CLI and MCP use one operation ordered as pre-claim publication validation, atomic claim, claimed-record revalidation, provider create/readback, post-provider publication validation, and atomic finalize. Only the same live wrapper with exact ClaimID and typed `Invoked=false` may clear a reserved claim.
+  - A coordinator-only `remote reconcile-create` operation may adopt exactly one live verified candidate. Zero candidates require explicit approval plus authoritative live proof; multiple candidates or transport ambiguity retain `unknown`. Ordinary artifact verification is blocked while any claim exists.
+  - Raw v5 rows never gain v6 authority by inference. A v5 claim, copied `coordinator_session`, or old publish receipt fails before rewrite with bounded re-attest/reconcile guidance; v5 rows without new authority may migrate, v6 is accepted, and v7+ is rejected. A genuine accepted v5 publication predates the native coordinator seal, so its only migration is an explicit source-checkout `--approve-legacy-coordinator-seal` re-attestation: lifecycle and core verify the same current native event, rejection preserves the stored v5 bytes, and the successful locked write atomically seals that identity together with the v6 receipt.
+  - The current v6 reader preserves historical v5 rows that carry no v6-only authority and stamps v6 only on a subsequent valid write. Conversely, the frozen v5 raw-store reader rejects schema-v6 bytes before any rewrite, preserving the forward-reader boundary byte-for-byte.
+  - Privileged lifecycle MCP tools are recognized only by their exact bare names or exact `mcp__agent_harness__<name>` identities. Suffix matches are rejected because a foreign MCP namespace must never inherit agent-harness mutation authority.
+- Consequences: provider selectors are derived from one canonical project authority (`HOST/OWNER/REPO` for gh and full canonical HTTPS URL for glab). Custom-port or IPv6 GitLab requires proven glab v1.82+ both before publication and again at the provider mutation boundary; no bespoke HTTP adapter is introduced.
+- Evidence: schema raw-store tests, real-git push-target tests, claim/reconcile OS-process tests, provider exact-argv/readback tests, lifecycle hook tests, and CLI/MCP parity tests.

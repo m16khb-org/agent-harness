@@ -80,12 +80,26 @@ type IssueOpsRemoteArtifactVerificationRequest struct {
 }
 
 type IssueOpsRemoteCreateClaim struct {
-	Provider  string `json:"provider"`
-	Head      string `json:"head"`
-	Base      string `json:"base"`
-	FinalHead string `json:"final_head"`
-	State     string `json:"state"`
-	ClaimedAt string `json:"claimed_at"`
+	ClaimID          string   `json:"claim_id"`
+	Provider         string   `json:"provider"`
+	Kind             string   `json:"kind"`
+	ProjectKey       string   `json:"project_key"`
+	Remote           string   `json:"remote"`
+	RemoteRef        string   `json:"remote_ref"`
+	PushTargetSHA256 string   `json:"push_target_sha256"`
+	Head             string   `json:"head"`
+	Base             string   `json:"base"`
+	FinalHead        string   `json:"final_head"`
+	Title            string   `json:"title"`
+	Body             string   `json:"body"`
+	BodySHA256       string   `json:"body_sha256"`
+	Labels           []string `json:"labels"`
+	Assignees        []string `json:"assignees"`
+	Draft            bool     `json:"draft"`
+	State            string   `json:"state"`
+	InvocationState  string   `json:"invocation_state"`
+	KnownURL         string   `json:"known_url,omitempty"`
+	ClaimedAt        string   `json:"claimed_at"`
 }
 
 type IssueOpsIntentContract struct {
@@ -459,12 +473,15 @@ type IssueOpsExecutionHandoffCancellation struct {
 }
 
 type IssueOpsExecutionHandoffPublishReceipt struct {
-	Provider   string `json:"provider"`
-	Remote     string `json:"remote"`
-	Branch     string `json:"branch"`
-	RemoteRef  string `json:"remote_ref"`
-	FinalHead  string `json:"final_head"`
-	VerifiedAt string `json:"verified_at"`
+	Provider         string `json:"provider"`
+	ProjectKey       string `json:"project_key"`
+	Remote           string `json:"remote"`
+	PushTargetSHA256 string `json:"push_target_sha256"`
+	Branch           string `json:"branch"`
+	Base             string `json:"base"`
+	RemoteRef        string `json:"remote_ref"`
+	FinalHead        string `json:"final_head"`
+	VerifiedAt       string `json:"verified_at"`
 }
 
 type IssueOpsExecutionHandoffCleanupReceipt struct {
@@ -509,6 +526,7 @@ type IssueOpsExecutionHandoffPriorAttempt struct {
 	DeliveryMode             string                                        `json:"delivery_mode,omitempty"`
 	CoordinatorRoot          string                                        `json:"coordinator_root"`
 	CoordinatorMailboxHandle string                                        `json:"coordinator_mailbox_handle,omitempty"`
+	CoordinatorSession       *IssueOpsHostSessionIdentity                  `json:"coordinator_session,omitempty"`
 	WorkerRoot               string                                        `json:"worker_root"`
 	WorkerSession            *IssueOpsHostSessionIdentity                  `json:"worker_session,omitempty"`
 	Orca                     *IssueOpsOrcaIdentity                         `json:"orca,omitempty"`
@@ -555,6 +573,7 @@ type IssueOpsExecutionHandoff struct {
 	DeliveryMode             string                                        `json:"delivery_mode,omitempty"`
 	CoordinatorRoot          string                                        `json:"coordinator_root,omitempty"`
 	CoordinatorMailboxHandle string                                        `json:"coordinator_mailbox_handle,omitempty"`
+	CoordinatorSession       *IssueOpsHostSessionIdentity                  `json:"coordinator_session,omitempty"`
 	WorkerRoot               string                                        `json:"worker_root,omitempty"`
 	WorkerSession            *IssueOpsHostSessionIdentity                  `json:"worker_session,omitempty"`
 	Orca                     *IssueOpsOrcaIdentity                         `json:"orca,omitempty"`
@@ -578,7 +597,7 @@ type IssueOpsExecutionHandoff struct {
 	UpdatedAt                string                                        `json:"updated_at,omitempty"`
 }
 
-const IssueOpsCurrentSchemaVersion = 5
+const IssueOpsCurrentSchemaVersion = 6
 
 type IssueOpsRecord struct {
 	OK                      bool                                `json:"ok"`

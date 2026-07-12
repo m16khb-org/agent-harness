@@ -32,15 +32,17 @@ type IssueProviderCreateIssueResult struct {
 
 // IssueProviderCreatePullRequestRequest describes a request to create a remote PR/MR.
 type IssueProviderCreatePullRequestRequest struct {
-	Repo       string   `json:"repo"`        // local repo path
-	Title      string   `json:"title"`       // PR title
-	Body       string   `json:"body"`        // PR body (markdown)
-	HeadBranch string   `json:"head_branch"` // source branch
-	BaseBranch string   `json:"base_branch"` // target branch
-	Labels     []string `json:"labels"`
-	Assignees  []string `json:"assignees"`
-	Draft      bool     `json:"draft"`
-	Confirm    bool     `json:"confirm"`
+	Repo            string   `json:"repo"`                  // local repo path
+	ProjectKey      string   `json:"project_key,omitempty"` // verified canonical HOST/OWNER[/NAMESPACE]/REPO authority
+	Title           string   `json:"title"`                 // PR title
+	Body            string   `json:"body"`                  // PR body (markdown)
+	HeadBranch      string   `json:"head_branch"`           // source branch
+	BaseBranch      string   `json:"base_branch"`           // target branch
+	Labels          []string `json:"labels"`
+	Assignees       []string `json:"assignees"`
+	Draft           bool     `json:"draft"`
+	ExpectedHeadSHA string   `json:"expected_head_sha,omitempty"`
+	Confirm         bool     `json:"confirm"`
 }
 
 // IssueProviderCreatePullRequestResult reports the outcome.
@@ -49,6 +51,42 @@ type IssueProviderCreatePullRequestResult struct {
 	URL     string `json:"url"`
 	Number  string `json:"number"`
 	Preview string `json:"preview,omitempty"`
+}
+
+type IssueProviderReconcilePullRequestRequest struct {
+	Repo            string
+	ProjectKey      string
+	HeadBranch      string
+	BaseBranch      string
+	ExpectedHeadSHA string
+	Title           string
+	BodySHA256      string
+	Labels          []string
+	Assignees       []string
+	Draft           bool
+}
+
+type IssueProviderReconcilePullRequestCandidate struct {
+	URL              string
+	ProjectKey       string
+	SourceProjectKey string
+	HeadBranch       string
+	BaseBranch       string
+	HeadSHA          string
+	Title            string
+	BodySHA256       string
+	Labels           []string
+	Assignees        []string
+	Draft            bool
+}
+
+type IssueProviderReconcilePullRequestResult struct {
+	Candidates        []IssueProviderReconcilePullRequestCandidate
+	AuthoritativeZero bool
+}
+
+type IssueProviderRemoteCreateReconciler interface {
+	ReconcilePullRequest(IssueProviderReconcilePullRequestRequest) (IssueProviderReconcilePullRequestResult, error)
 }
 
 // IssueProviderCreateChildRequest describes a provider-native child work item

@@ -2,6 +2,8 @@ package issueops
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops/handoff"
 	issueopsmodel "agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/lifecycle"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
@@ -34,9 +37,13 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 		mcpcli.IssueOpsPublicationReader = previousPublication
 	})
 	unattestedPreview := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{
-		"action":                "start",
-		"id":                    record.ID,
-		"coordinator_recipient": "term_coordinator",
+		"action":                 "start",
+		"id":                     record.ID,
+		"coordinator_recipient":  "term_coordinator",
+		"coordinator_host":       "codex",
+		"coordinator_session_id": "coordinator-session",
+		"coordinator_agent_id":   "coordinator-agent",
+		"source_cwd":             record.Repo,
 	})
 	if unattestedPreview["preview"] != true || len(unattestedPreview["context_sha256"].(string)) != 64 {
 		t.Fatalf("unattested start preview parity failed: %#v", unattestedPreview)
@@ -48,6 +55,10 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 		"action":                        "start",
 		"id":                            record.ID,
 		"coordinator_recipient":         "term_coordinator",
+		"coordinator_host":              "codex",
+		"coordinator_session_id":        "coordinator-session",
+		"coordinator_agent_id":          "coordinator-agent",
+		"source_cwd":                    record.Repo,
 		"allow_codex_hook_trust_bypass": true,
 	})
 	if finalPreview["preview"] != true || finalPreview["codex_hook_trust_bypass_attested"] != true {
@@ -61,6 +72,10 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 		"action":                        "start",
 		"id":                            record.ID,
 		"coordinator_recipient":         "term_coordinator",
+		"coordinator_host":              "codex",
+		"coordinator_session_id":        "coordinator-session",
+		"coordinator_agent_id":          "coordinator-agent",
+		"source_cwd":                    record.Repo,
 		"confirm":                       true,
 		"allow_codex_hook_trust_bypass": true,
 		"expected_context_sha256":       reviewedContextSHA256,
@@ -96,15 +111,55 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 	}
 	accept := cloneHandoffArgs(common)
 	accept["action"], accept["final_head"] = "accept", finalHead
+	accept["host"], accept["session_id"], accept["agent_id"], accept["source_cwd"] = "codex", "coordinator-session", "coordinator-agent", record.Repo
 	closed := callMCPToolForIssueOpsTest(t, "issueops_handoff", accept)
 	if nestedMap(closed, "execution_handoff")["closed_disposition"] != handoff.DispositionAccepted {
 		t.Fatalf("accept parity failed: %#v", closed)
 	}
 	fake.terminals = nil
 	publication.localHead, publication.remoteHead = finalHead, finalHead
-	published := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{"action": "publish", "id": record.ID, "confirm": true})
+	published := callMCPToolForIssueOpsTest(t, "issueops_handoff", map[string]any{"action": "publish", "id": record.ID, "host": "codex", "session_id": "coordinator-session", "agent_id": "coordinator-agent", "source_cwd": record.Repo, "confirm": true})
 	if nestedMap(nestedMap(published, "execution_handoff"), "publish_receipt")["final_head"] != finalHead {
 		t.Fatalf("publish receipt parity failed: %#v", published)
+	}
+	current, err := core.ReadIssueOps(core.IssueOpsStateRoot(), record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current.Phase = core.IssueOpsPhasePR
+	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), current); err != nil {
+		t.Fatal(err)
+	}
+	binDir := t.TempDir()
+	gh := filepath.Join(binDir, "gh")
+	ghBody := `#!/bin/sh
+if [ "$1 $2" = "pr create" ]; then printf '%s\n' "$@" > gh.create.argv; printf 'https://github.com/acme/repo/pull/16\n'; exit 0; fi
+if [ "$1 $2" = "pr view" ]; then printf '{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"literal body","headRefName":"1-handoff","baseRefName":"main","isDraft":true,"headRefOid":"` + finalHead + `","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}],"headRepository":{"nameWithOwner":"acme/repo"}}'; exit 0; fi
+exit 2
+`
+	if err := os.WriteFile(gh, []byte(ghBody), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+	payload := map[string]any{
+		"id": record.ID, "provider": "github", "title": "PR", "body": "literal body", "head": "1-handoff", "base": "main",
+		"labels": []any{"bug"}, "assignees": []any{"octocat"}, "confirm": true,
+	}
+	identity := current.ExecutionHandoff.CoordinatorSession
+	decision := lifecycle.BuildLifecyclePreToolUseDecision(lifecycle.HookToolUseLifecycleRequest{
+		Repo: record.Repo, CWD: record.Repo, Host: identity.Host, SessionID: identity.SessionID, AgentID: identity.AgentID,
+		Tool: "mcp__agent_harness__issueops_remote_create_pr", ToolInput: payload,
+	})
+	if decision.Decision != "allow" {
+		t.Fatalf("JSON-shaped MCP create payload failed lifecycle parity: %#v", decision)
+	}
+	created := callMCPToolForIssueOpsTest(t, "issueops_remote_create_pr", payload)
+	if created["url"] != "https://github.com/acme/repo/pull/16" {
+		t.Fatalf("MCP supervised create did not use shared claim wrapper: %#v", created)
+	}
+	argv, err := os.ReadFile(filepath.Join(record.Repo, "gh.create.argv"))
+	if err != nil || !strings.Contains(string(argv), "\n--repo\ngithub.com/acme/repo\n") || !strings.Contains(string(argv), "\n--draft\n") {
+		t.Fatalf("MCP supervised create argv = %q, err=%v", argv, err)
 	}
 }
 
@@ -117,11 +172,17 @@ func (f *mcpPublicationFake) LocalRefHead(context.Context, string, string) (stri
 	return f.localHead, nil
 }
 
-func (f *mcpPublicationFake) RemoteRefHead(context.Context, string, string, string) (string, error) {
+func (f *mcpPublicationFake) RemoteRefHead(context.Context, string, string, string, string) (string, error) {
 	return f.remoteHead, nil
 }
 
-func (f *mcpPublicationFake) PushExact(context.Context, string, string, string, string) error {
+func (f *mcpPublicationFake) PushTarget(context.Context, string, string) (core.IssueOpsPublicationPushTarget, error) {
+	target := "https://github.com/acme/repo.git"
+	sum := sha256.Sum256([]byte(target))
+	return core.IssueOpsPublicationPushTarget{URL: target, Fingerprint: hex.EncodeToString(sum[:])}, nil
+}
+
+func (f *mcpPublicationFake) PushExact(context.Context, string, string, string, string, string) error {
 	return nil
 }
 

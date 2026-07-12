@@ -104,6 +104,18 @@ func TestHandoffStartRejectsDispatchedTaskAssignedToExactWorktree(t *testing.T) 
 	}
 }
 
+func TestHandoffStartRejectsDispatchedTaskWithMissingAssigneeTerminal(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.terminals = nil
+	client.dispatchedTasks = []port.OrcaTask{{ID: "task-other", Status: "dispatched"}}
+	client.dispatchByTask = map[string]port.OrcaDispatch{"task-other": {ID: "dispatch-other", TaskID: "task-other", AssigneeHandle: "term-vanished", Status: "dispatched"}}
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "assignee terminal is absent") || client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 {
+		t.Fatalf("missing assignee inventory error=%v calls=%d/%d/%d", err, client.terminalCreates, client.taskCreates, client.dispatchCalls)
+	}
+}
+
 func TestHandoffStartBoundsAndRedactsUntrustedSoleWriterInventory(t *testing.T) {
 	secret := "api_key=abcdefghijklmnopqrstuvwxyz123456"
 	for _, tc := range []struct {

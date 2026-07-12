@@ -14,10 +14,13 @@ import (
 	"unicode"
 
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/issueops/remote"
+	"agent-harness/internal/core/policy"
 )
 
 var fullCommitPattern = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var remoteCreateClaimIDPattern = regexp.MustCompile(`^claim_[0-9a-f]{32}$`)
 
 const (
 	MaxPriorAttempts      = 16
@@ -31,7 +34,13 @@ const (
 // absent execution_handoff is the only legacy/inline representation.
 func ValidateEnvelope(record model.IssueOpsRecord) error {
 	if record.ExecutionHandoff == nil {
+		if record.RemoteCreateClaim != nil {
+			return fmt.Errorf("remote create claim requires supervised execution handoff authority")
+		}
 		return nil
+	}
+	if record.RemoteArtifact != nil && record.RemoteCreateClaim != nil {
+		return fmt.Errorf("remote create claim and remote artifact are mutually exclusive")
 	}
 	h := record.ExecutionHandoff
 	if err := validateHandoffExternalStringBounds(h); err != nil {
@@ -101,6 +110,9 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 	if h.Orca != nil && (h.Orca.WorkerTabID == "") != (h.Orca.WorkerLeafID == "") {
 		return fmt.Errorf("execution handoff stable terminal tab/leaf identity is incomplete")
 	}
+	if h.CoordinatorSession != nil && (strings.TrimSpace(h.CoordinatorMailboxHandle) == "" || !validWorkerSession(h.CoordinatorSession)) {
+		return fmt.Errorf("execution handoff coordinator native session is not canonical")
+	}
 	if err := validateWorkerDoneProjection(h); err != nil {
 		return err
 	}
@@ -111,6 +123,9 @@ func ValidateEnvelope(record model.IssueOpsRecord) error {
 		return fmt.Errorf("worker_done projection requires submitted, cancelling, accepted, or cancelled authority")
 	}
 	if err := validatePublishReceipt(record, h); err != nil {
+		return err
+	}
+	if err := validateRemoteCreateClaim(record, h); err != nil {
 		return err
 	}
 	if err := validateCleanup(h); err != nil {
@@ -386,6 +401,13 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 			boundedHandoffString{"worker agent id", h.WorkerSession.AgentID, 1024},
 		)
 	}
+	if h.CoordinatorSession != nil {
+		checks = append(checks,
+			boundedHandoffString{"coordinator host", h.CoordinatorSession.Host, 32},
+			boundedHandoffString{"coordinator session id", h.CoordinatorSession.SessionID, 1024},
+			boundedHandoffString{"coordinator agent id", h.CoordinatorSession.AgentID, 1024},
+		)
+	}
 	if h.PendingOperation != nil {
 		checks = append(checks,
 			boundedHandoffString{"pending operation", h.PendingOperation.Kind, 64},
@@ -447,8 +469,11 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 		p := h.PublishReceipt
 		checks = append(checks,
 			boundedHandoffString{"publish provider", p.Provider, 32},
+			boundedHandoffString{"publish project key", p.ProjectKey, 4096},
 			boundedHandoffString{"publish remote", p.Remote, 256},
+			boundedHandoffString{"publish push target fingerprint", p.PushTargetSHA256, 64},
 			boundedHandoffString{"publish branch", p.Branch, 1024},
+			boundedHandoffString{"publish base", p.Base, 1024},
 			boundedHandoffString{"publish remote ref", p.RemoteRef, 2048},
 			boundedHandoffString{"publish final head", p.FinalHead, 128},
 			boundedHandoffString{"publish verified timestamp", p.VerifiedAt, 128},
@@ -602,9 +627,47 @@ func validatePublishReceipt(record model.IssueOpsRecord, h *model.IssueOpsExecut
 	if provider != "github" && provider != "gitlab" || branch == "" || !strings.HasPrefix(baseRef, prefix) || !strings.HasSuffix(baseRef, suffix) {
 		return fmt.Errorf("publish receipt provider or branch authority is invalid")
 	}
-	remote := strings.TrimSuffix(strings.TrimPrefix(baseRef, prefix), suffix)
-	if remote == "" || strings.ContainsAny(remote, " \t\r\n") || p.Provider != provider || p.Remote != remote || p.Branch != branch || p.RemoteRef != "refs/heads/"+branch || p.FinalHead != h.Result.FinalHead || !fullCommitPattern.MatchString(p.FinalHead) || !canonicalTimestamp(p.VerifiedAt) {
+	remoteName := strings.TrimSuffix(strings.TrimPrefix(baseRef, prefix), suffix)
+	projectKey := remote.ProjectKey(record.IssueURL, provider, "issue")
+	if remoteName == "" || strings.ContainsAny(remoteName, " \t\r\n") || projectKey == "" || p.Provider != provider || p.ProjectKey != projectKey || p.Remote != remoteName || !sha256Pattern.MatchString(p.PushTargetSHA256) || p.Branch != branch || p.Base != strings.TrimSpace(record.BranchPrepare.BaseBranch) || p.RemoteRef != "refs/heads/"+branch || p.FinalHead != h.Result.FinalHead || !fullCommitPattern.MatchString(p.FinalHead) || !canonicalTimestamp(p.VerifiedAt) {
 		return fmt.Errorf("publish receipt does not match accepted provider, branch, ref, and final head")
+	}
+	return nil
+}
+
+func validateRemoteCreateClaim(record model.IssueOpsRecord, h *model.IssueOpsExecutionHandoff) error {
+	c := record.RemoteCreateClaim
+	if c == nil {
+		return nil
+	}
+	if record.Phase != model.IssueOpsPhasePR || record.RemoteArtifact != nil || h.State != StateClosed || h.ClosedDisposition != DispositionAccepted || h.Result == nil || h.PublishReceipt == nil || record.BranchPrepare == nil {
+		return fmt.Errorf("remote create claim requires supervised closed accepted pr authority with no artifact")
+	}
+	provider := strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
+	kind := "pr"
+	if provider == "gitlab" {
+		kind = "mr"
+	}
+	projectKey := remote.ProjectKey(record.IssueURL, provider, "issue")
+	p := h.PublishReceipt
+	bodySum := sha256.Sum256([]byte(c.Body))
+	if !remoteCreateClaimIDPattern.MatchString(c.ClaimID) || c.Provider != provider || c.Kind != kind || c.ProjectKey == "" || c.ProjectKey != projectKey ||
+		c.Remote != p.Remote || c.RemoteRef != p.RemoteRef || c.PushTargetSHA256 != p.PushTargetSHA256 || !sha256Pattern.MatchString(c.PushTargetSHA256) || c.Head != record.Branch || c.Base != record.BranchPrepare.BaseBranch || c.FinalHead != h.Result.FinalHead ||
+		p.Provider != c.Provider || p.ProjectKey != c.ProjectKey || p.Branch != c.Head || p.Base != c.Base || p.FinalHead != c.FinalHead || c.Title == "" || c.Title != strings.TrimSpace(c.Title) || len(c.Title) > 1024 || len(c.Body) > 1<<20 ||
+		policy.RedactFreeform(c.Title) != c.Title || policy.RedactFreeform(c.Body) != c.Body || c.BodySHA256 != hex.EncodeToString(bodySum[:]) || !c.Draft || !canonicalTimestamp(c.ClaimedAt) {
+		return fmt.Errorf("remote create claim does not match exact publish receipt and accepted authority")
+	}
+	if c.State != "pending" && c.State != "unknown" || c.State == "pending" && c.InvocationState != "reserved" || c.State == "unknown" && c.InvocationState != "unknown" {
+		return fmt.Errorf("remote create claim state is not canonical")
+	}
+	if validateBoundedStringList(c.Labels, 128, 4096, 128*1024, true) != nil || validateBoundedStringList(c.Assignees, 128, 4096, 128*1024, true) != nil ||
+		!reflect.DeepEqual(c.Labels, remote.CleanValues(c.Labels)) || len(c.Labels) == 0 || !reflect.DeepEqual(c.Assignees, remote.CleanValues(c.Assignees)) || len(c.Assignees) == 0 || remote.InvalidAssignee(c.Assignees) != "" {
+		return fmt.Errorf("remote create claim labels or assignees are not canonical")
+	}
+	if c.KnownURL != "" {
+		if c.State != "unknown" || remote.ValidateArtifactURL(c.KnownURL, c.Provider, c.Kind) != nil || remote.ValidateArtifactMatchesIssue(record.IssueURL, c.KnownURL, c.Provider, c.Kind) != nil {
+			return fmt.Errorf("remote create claim known URL is not canonical authority")
+		}
 	}
 	return nil
 }

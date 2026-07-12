@@ -1,6 +1,8 @@
 package gitlab
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -65,6 +67,14 @@ func TestGitLabCreateChildDryRunDoesNotExecute(t *testing.T) {
 	}
 }
 
+func TestGitLabCreateChildDryRunRedactsSecretArgv(t *testing.T) {
+	secret := "glpat-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	res, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{Repo: t.TempDir(), ParentIssueURL: "https://gitlab.example.com/acme/repo/-/issues/12", Title: "child", Body: "token=" + secret, Labels: []string{"bug"}, Assignees: []string{"habin"}})
+	if err != nil || strings.Contains(res.Preview, secret) || !strings.Contains(res.Preview, "<redacted>") {
+		t.Fatalf("GitLab child preview leaked secret: %q err=%v", res.Preview, err)
+	}
+}
+
 func TestGitLabCreateMRRequiresBranches(t *testing.T) {
 	_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Title: "MR"})
 	if err == nil {
@@ -90,6 +100,175 @@ func TestGitLabCreateMRDryRun(t *testing.T) {
 	}
 }
 
+func TestGitLabCreateMRDryRunRedactsSecretArgv(t *testing.T) {
+	secret := "api_key=opaque-token password=opaque-password Authorization: Bearer opaque-bearer /tmp/secret.pem"
+	res, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Title: "MR", Body: secret, HeadBranch: "feat/x", BaseBranch: "main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(res.Preview, "opaque-") || !strings.Contains(res.Preview, "<redacted>") {
+		t.Fatalf("GitLab dry-run preview was not redacted: %q", res.Preview)
+	}
+}
+
+func TestGitLabNestedCustomPortCreateAndReadbackUseExactFullURLSelector(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+if [ "$1" = "--version" ]; then printf 'glab 1.82.0\n'; exit 0; fi
+printf '%s\n' "$@" > "glab.$2.argv"
+if [ "$1 $2" = "mr create" ]; then printf 'https://gitlab.example:8443/group/sub/repo/-/merge_requests/16\n'; exit 0; fi
+if [ "$1 $2" = "mr view" ]; then printf '{"web_url":"https://gitlab.example:8443/group/sub/repo/-/merge_requests/16","title":"MR","description":"body","source_branch":"feat/x","target_branch":"main","draft":true,"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":["bug"],"assignees":[{"username":"habin"}],"source_project_id":7,"target_project_id":7}'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, ProjectKey: "gitlab.example:8443/group/sub/repo", Title: "MR", Body: "body", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"habin"}, Draft: true, ExpectedHeadSHA: strings.Repeat("a", 40), Confirm: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	createArgv, err := os.ReadFile(filepath.Join(repo, "glab.create.argv"))
+	wantCreate := "mr\ncreate\n--title\nMR\n--source-branch\nfeat/x\n--target-branch\nmain\n--yes\n--repo\nhttps://gitlab.example:8443/group/sub/repo\n--draft\n--description\nbody\n--label\nbug\n--assignee\nhabin\n"
+	if err != nil || string(createArgv) != wantCreate {
+		t.Fatalf("GitLab custom-port create argv = %q, want %q, err=%v", createArgv, wantCreate, err)
+	}
+	viewArgv, err := os.ReadFile(filepath.Join(repo, "glab.view.argv"))
+	wantView := "mr\nview\n16\n--repo\nhttps://gitlab.example:8443/group/sub/repo\n--output\njson\n"
+	if err != nil || string(viewArgv) != wantView {
+		t.Fatalf("GitLab custom-port readback argv = %q, want %q, err=%v", viewArgv, wantView, err)
+	}
+}
+
+func TestGitLabCreateGatesCustomPortAndIPv6OnGlab182BeforeMutation(t *testing.T) {
+	for _, authority := range []struct {
+		name       string
+		projectKey string
+		mrURL      string
+	}{
+		{name: "custom port", projectKey: "gitlab.example:8443/group/sub/repo", mrURL: "https://gitlab.example:8443/group/sub/repo/-/merge_requests/16"},
+		{name: "implicit-port IPv6", projectKey: "[2001:db8::1]/group/sub/repo", mrURL: "https://[2001:db8::1]/group/sub/repo/-/merge_requests/16"},
+		{name: "explicit-443 IPv6", projectKey: "[2001:db8::1]:443/group/sub/repo", mrURL: "https://[2001:db8::1]:443/group/sub/repo/-/merge_requests/16"},
+	} {
+		for _, capability := range []struct {
+			name    string
+			version string
+			accept  bool
+		}{
+			{name: "v1.81", version: "glab 1.81.0"},
+			{name: "unknown", version: "unknown capability"},
+			{name: "v1.82", version: "glab 1.82.0", accept: true},
+		} {
+			t.Run(authority.name+"/"+capability.name, func(t *testing.T) {
+				binDir, repo := t.TempDir(), t.TempDir()
+				createMarker := filepath.Join(t.TempDir(), "create.called")
+				script := fmt.Sprintf(`#!/bin/sh
+if [ "$1" = "--version" ]; then printf '%%s\n' %q; exit 0; fi
+if [ "$1 $2" = "mr create" ]; then : > %q; printf '%%s\n' %q; exit 0; fi
+if [ "$1 $2" = "mr view" ]; then printf '{"web_url":%q,"title":"MR","description":"body","source_branch":"feat/x","target_branch":"main","draft":true,"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":["bug"],"assignees":[{"username":"habin"}],"source_project_id":7,"target_project_id":7}'; exit 0; fi
+exit 2
+`, capability.version, createMarker, authority.mrURL, authority.mrURL)
+				writeFakeGlab(t, binDir, script)
+				t.Setenv("PATH", binDir)
+				_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, ProjectKey: authority.projectKey, Title: "MR", Body: "body", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"habin"}, Draft: true, ExpectedHeadSHA: strings.Repeat("a", 40), Confirm: true})
+				_, createErr := os.Stat(createMarker)
+				if capability.accept {
+					if err != nil || createErr != nil {
+						t.Fatalf("glab v1.82 create err=%v marker=%v", err, createErr)
+					}
+					return
+				}
+				var createFailure *port.IssueProviderCreateError
+				if err == nil || !errors.As(err, &createFailure) || createFailure.Invoked || !os.IsNotExist(createErr) {
+					t.Fatalf("pre-mutation capability gate err=%v marker=%v", err, createErr)
+				}
+			})
+		}
+	}
+}
+
+func TestGitLabReconcileAcceptsNonemptyTitleBodyFromSameNestedCustomPortSelector(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+if [ "$1" = "--version" ]; then printf 'glab 1.82.0\n'; exit 0; fi
+printf '%s\n' "$@" > "glab.$2.argv"
+if [ "$1 $2" = "mr list" ]; then printf '[{"web_url":"https://gitlab.example:8443/group/sub/repo/-/merge_requests/16","title":"MR","description":"body","source_branch":"feat/x","target_branch":"main","draft":true,"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":["bug"],"assignees":[{"username":"habin"}],"source_project_id":7,"target_project_id":7}]'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().ReconcilePullRequest(port.IssueProviderReconcilePullRequestRequest{Repo: repo, ProjectKey: "gitlab.example:8443/group/sub/repo", Title: "MR", BodySHA256: gitLabBodySHA256("body"), HeadBranch: "feat/x", BaseBranch: "main", ExpectedHeadSHA: strings.Repeat("a", 40), Labels: []string{"bug"}, Assignees: []string{"habin"}, Draft: true})
+	if err != nil || len(result.Candidates) != 1 || result.AuthoritativeZero {
+		t.Fatalf("GitLab reconcile = %#v, %v", result, err)
+	}
+	listArgv, err := os.ReadFile(filepath.Join(repo, "glab.list.argv"))
+	wantList := "mr\nlist\n--repo\nhttps://gitlab.example:8443/group/sub/repo\n--source-branch\nfeat/x\n--all\n--per-page\n2\n--output\njson\n"
+	if err != nil || string(listArgv) != wantList {
+		t.Fatalf("GitLab reconcile list argv = %q, want %q, err=%v", listArgv, wantList, err)
+	}
+	if viewArgv, readErr := os.ReadFile(filepath.Join(repo, "glab.view.argv")); !os.IsNotExist(readErr) || len(viewArgv) != 0 {
+		t.Fatalf("GitLab reconcile performed duplicate view readback: argv=%q err=%v", viewArgv, readErr)
+	}
+}
+
+func TestGitLabReconcileSearchesHeadOnlyAndProjectsBaseDrift(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+printf '%s\n' "$@" > glab.list.argv
+if [ "$1 $2" = "mr list" ]; then printf '[{"web_url":"https://gitlab.com/acme/repo/-/merge_requests/16","title":"MR","description":"body","source_branch":"feat/x","target_branch":"edited-base","draft":true,"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":[],"assignees":[],"source_project_id":7,"target_project_id":7}]'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().ReconcilePullRequest(port.IssueProviderReconcilePullRequestRequest{Repo: repo, ProjectKey: "gitlab.com/acme/repo", HeadBranch: "feat/x", BaseBranch: "main"})
+	if err != nil || len(result.Candidates) != 1 || result.Candidates[0].BaseBranch != "edited-base" {
+		t.Fatalf("GitLab base-drift projection = %#v, %v", result, err)
+	}
+	argv, err := os.ReadFile(filepath.Join(repo, "glab.list.argv"))
+	if err != nil || strings.Contains(string(argv), "\n--target-branch\n") {
+		t.Fatalf("GitLab reconcile overfiltered by base: argv=%q err=%v", argv, err)
+	}
+}
+
+func TestGitLabReconcileRejectsNullCandidateArray(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "mr list" ]; then printf 'null'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().ReconcilePullRequest(port.IssueProviderReconcilePullRequestRequest{Repo: repo, ProjectKey: "gitlab.com/acme/repo", HeadBranch: "feat/x", BaseBranch: "main"})
+	if err == nil || result.AuthoritativeZero {
+		t.Fatalf("GitLab null candidate list = %#v, %v, want ambiguous error", result, err)
+	}
+}
+
+func TestGitLabCreatePullRequestRejectsSourceProjectMismatch(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "mr create" ]; then printf 'https://gitlab.example/acme/repo/-/merge_requests/16\n'; exit 0; fi
+if [ "$1 $2" = "mr view" ]; then printf '{"web_url":"https://gitlab.example/acme/repo/-/merge_requests/16","title":"MR","description":"","source_branch":"feat/x","target_branch":"main","draft":true,"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":["bug"],"assignees":[{"username":"habin"}],"source_project_id":8,"target_project_id":7}'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, ProjectKey: "gitlab.example/acme/repo", Title: "MR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"habin"}, Draft: true, ExpectedHeadSHA: strings.Repeat("a", 40), Confirm: true})
+	if err == nil || !strings.Contains(err.Error(), "source project") {
+		t.Fatalf("GitLab source-project mismatch = %v, want rejection", err)
+	}
+}
+
+func TestGitLabReconcileCustomPortRejectsGlab181BeforeCandidateRead(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGlab(t, binDir, `#!/bin/sh
+if [ "$1" = "--version" ]; then printf 'glab 1.81.0\n'; exit 0; fi
+printf 'unexpected\n' >> glab.calls
+exit 0
+`)
+	t.Setenv("PATH", binDir)
+	_, err := NewProvider().ReconcilePullRequest(port.IssueProviderReconcilePullRequestRequest{Repo: repo, ProjectKey: "gitlab.example:8443/group/sub/repo", HeadBranch: "feat/x", BaseBranch: "main"})
+	if err == nil || !strings.Contains(err.Error(), "1.82.0") {
+		t.Fatalf("glab 1.81 custom-port reconcile error = %v", err)
+	}
+	if calls, readErr := os.ReadFile(filepath.Join(repo, "glab.calls")); !os.IsNotExist(readErr) || len(calls) != 0 {
+		t.Fatalf("glab 1.81 reached candidate read: calls=%q err=%v", calls, readErr)
+	}
+}
+
 func TestGitLabCreateMRConfirmPassesDraftArgv(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake glab shell script is POSIX-only")
@@ -103,29 +282,52 @@ if [ "$1 $2" = "mr create" ]; then
   printf 'https://gitlab.com/acme/repo/-/merge_requests/16\n'
   exit 0
 fi
-if [ "$1" = "api" ]; then
+if [ "$1 $2" = "mr view" ]; then
   printf 'view\n' >> glab.calls
-	printf '%s\n' "$@" > glab.api.argv
-  printf '{"web_url":"https://gitlab.com/acme/repo/-/merge_requests/16","source_branch":"feat/x","target_branch":"main","draft":true,"labels":["bug","extra"],"assignees":[{"username":"habin"},{"username":"extra"}]}'
+	printf '%s\n' "$@" > glab.view.argv
+  printf '{"web_url":"https://gitlab.com/acme/repo/-/merge_requests/16","title":"MR","description":"","source_branch":"feat/x","target_branch":"main","draft":true,"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":["bug"],"assignees":[{"username":"habin"}],"source_project_id":7,"target_project_id":7}'
   exit 0
 fi
 exit 2
 `)
 	t.Setenv("PATH", binDir)
-	if _, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "MR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"habin"}, Draft: true, Confirm: true}); err != nil {
+	if _, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, ProjectKey: "gitlab.com/acme/repo", Title: "MR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"habin"}, Draft: true, ExpectedHeadSHA: strings.Repeat("a", 40), Confirm: true}); err != nil {
 		t.Fatal(err)
 	}
 	argv, err := os.ReadFile(filepath.Join(repo, "glab.argv"))
-	if err != nil || !strings.Contains(string(argv), "\n--draft\n") || !strings.Contains(string(argv), "\n--yes\n") || strings.Contains(string(argv), "\n--push\n") || strings.Contains(string(argv), "\n--fill\n") {
+	if err != nil || !strings.Contains(string(argv), "\n--draft\n") || !strings.Contains(string(argv), "\n--yes\n") || !strings.Contains(string(argv), "\n--repo\nhttps://gitlab.com/acme/repo\n") || strings.Contains(string(argv), "\n--push\n") || strings.Contains(string(argv), "\n--fill\n") {
 		t.Fatalf("GitLab draft argv missing: %q err=%v", argv, err)
 	}
 	if calls, err := os.ReadFile(filepath.Join(repo, "glab.calls")); err != nil || string(calls) != "create\nview\n" {
 		t.Fatalf("GitLab create/readback calls = %q err=%v", calls, err)
 	}
-	apiArgv, err := os.ReadFile(filepath.Join(repo, "glab.api.argv"))
-	wantAPI := "api\nprojects/acme%2Frepo/merge_requests/16\n--hostname\ngitlab.com\n"
-	if err != nil || string(apiArgv) != wantAPI {
-		t.Fatalf("GitLab readback argv = %q, want %q, err=%v", apiArgv, wantAPI, err)
+	viewArgv, err := os.ReadFile(filepath.Join(repo, "glab.view.argv"))
+	wantView := "mr\nview\n16\n--repo\nhttps://gitlab.com/acme/repo\n--output\njson\n"
+	if err != nil || string(viewArgv) != wantView {
+		t.Fatalf("GitLab readback argv = %q, want %q, err=%v", viewArgv, wantView, err)
+	}
+}
+
+func TestGitLabCreatePullRequestRejectsExtraLabelsAndAssignees(t *testing.T) {
+	for _, tc := range []struct{ name, labels, assignees string }{
+		{name: "extra label", labels: `["bug","extra"]`, assignees: `[{"username":"habin"}]`},
+		{name: "extra assignee", labels: `["bug"]`, assignees: `[{"username":"habin"},{"username":"extra"}]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			binDir, repo := t.TempDir(), t.TempDir()
+			script := `#!/bin/sh
+if [ "$1 $2" = "mr create" ]; then printf 'https://gitlab.com/acme/repo/-/merge_requests/16\n'; exit 0; fi
+if [ "$1 $2" = "mr view" ]; then printf '{"web_url":"https://gitlab.com/acme/repo/-/merge_requests/16","title":"MR","description":"","source_branch":"feat/x","target_branch":"main","draft":true,"labels":LABELS,"assignees":ASSIGNEES,"source_project_id":7,"target_project_id":7}'; exit 0; fi
+exit 2
+`
+			script = strings.ReplaceAll(strings.ReplaceAll(script, "LABELS", tc.labels), "ASSIGNEES", tc.assignees)
+			writeFakeGlab(t, binDir, script)
+			t.Setenv("PATH", binDir)
+			_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, ProjectKey: "gitlab.com/acme/repo", Title: "MR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"habin"}, Draft: true, Confirm: true})
+			if err == nil || !strings.Contains(err.Error(), "exactly match") {
+				t.Fatalf("extra readback authority error = %v", err)
+			}
+		})
 	}
 }
 
@@ -133,16 +335,25 @@ func TestGitLabCreateMRReadbackMismatchNeedsReconciliationWithoutRetry(t *testin
 	binDir, repo := t.TempDir(), t.TempDir()
 	writeFakeGlab(t, binDir, `#!/bin/sh
 if [ "$1 $2" = "mr create" ]; then printf 'create\n' >> glab.calls; printf 'https://gitlab.com/acme/repo/-/merge_requests/16\n'; exit 0; fi
-if [ "$1" = "api" ]; then printf 'view\n' >> glab.calls; printf '{"web_url":"https://gitlab.com/acme/repo/-/merge_requests/16","source_branch":"feat/x","target_branch":"wrong","draft":true,"labels":[],"assignees":[]}'; exit 0; fi
+if [ "$1 $2" = "mr view" ]; then printf 'view\n' >> glab.calls; printf '{"web_url":"https://gitlab.com/acme/repo/-/merge_requests/16","source_branch":"feat/x","target_branch":"wrong","draft":true,"labels":[],"assignees":[]}'; exit 0; fi
 exit 2
 `)
 	t.Setenv("PATH", binDir)
 	result, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "MR", HeadBranch: "feat/x", BaseBranch: "main", Draft: true, Confirm: true})
-	if err == nil || result.URL != "https://gitlab.com/acme/repo/-/merge_requests/16" || !strings.Contains(err.Error(), result.URL) || !strings.Contains(err.Error(), "needs reconciliation") {
+	if err == nil || result.URL != "https://gitlab.com/acme/repo/-/merge_requests/16" || strings.Contains(err.Error(), result.URL) || !strings.Contains(err.Error(), "needs reconciliation") {
 		t.Fatalf("GitLab mismatch result=%+v err=%v", result, err)
 	}
 	if calls, readErr := os.ReadFile(filepath.Join(repo, "glab.calls")); readErr != nil || string(calls) != "create\nview\n" {
 		t.Fatalf("GitLab mismatch retried creation: %q err=%v", calls, readErr)
+	}
+}
+
+func TestGitLabCreatedMergeRequestDiagnosticOmitsOversizedSecretLikeURL(t *testing.T) {
+	secret := "api_key=opaque-marker"
+	rawURL := "https://gitlab.example/" + strings.Repeat("a", 128*1024) + "/-/merge_requests/16/" + secret
+	err := gitlabCreatedMergeRequestError(rawURL, errors.New("readback failed for "+rawURL))
+	if strings.Contains(err.Error(), secret) || strings.Contains(err.Error(), rawURL) || len(err.Error()) > 512 {
+		t.Fatalf("GitLab created URL diagnostic is not bounded/redacted: len=%d", len(err.Error()))
 	}
 }
 
@@ -475,7 +686,8 @@ func TestRunGlabJSONReportsMissingCLI(t *testing.T) {
 	}
 
 	_, mrErr := runGlabMRJSON([]string{"mr", "create"}, "")
-	if mrErr == nil || !strings.Contains(mrErr.Error(), "was not invoked") {
+	var createErr *port.IssueProviderCreateError
+	if !errors.As(mrErr, &createErr) || createErr.Invoked {
 		t.Fatalf("mr error=%v, want pre-invocation failure", mrErr)
 	}
 }

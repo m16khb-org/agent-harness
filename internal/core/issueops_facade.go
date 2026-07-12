@@ -54,6 +54,7 @@ type IssueOpsHandoffRecoverResult = issueops.IssueOpsHandoffRecoverResult
 type IssueOpsHandoffPublishRequest = issueops.IssueOpsHandoffPublishRequest
 type IssueOpsHandoffPublicationReader = issueops.IssueOpsHandoffPublicationReader
 type GitIssueOpsHandoffPublicationReader = issueops.GitIssueOpsHandoffPublicationReader
+type IssueOpsPublicationPushTarget = issueops.IssueOpsPublicationPushTarget
 type IssueOpsExecutionHandoffPublishReceipt = issueops.IssueOpsExecutionHandoffPublishReceipt
 type IssueOpsExecutionHandoffCleanupReceipt = issueops.IssueOpsExecutionHandoffCleanupReceipt
 type IssueOpsExecutionHandoffCleanup = issueops.IssueOpsExecutionHandoffCleanup
@@ -337,9 +338,28 @@ func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifa
 }
 
 var ClaimIssueOpsRemoteCreate = issueops.ClaimIssueOpsRemoteCreate
-var ClearIssueOpsRemoteCreateClaim = issueops.ClearIssueOpsRemoteCreateClaim
+
+type IssueOpsRemoteCreateClaimRequest = issueops.IssueOpsRemoteCreateClaimRequest
+
+var ClearIssueOpsRemoteCreateClaimPreInvocation = issueops.ClearIssueOpsRemoteCreateClaimPreInvocation
 var MarkIssueOpsRemoteCreateUnknown = issueops.MarkIssueOpsRemoteCreateUnknown
 var FinalizeIssueOpsRemoteCreateClaim = issueops.FinalizeIssueOpsRemoteCreateClaim
+
+type IssueOpsRemotePullRequestCreateFunc = issueops.IssueOpsRemotePullRequestCreateFunc
+type IssueOpsRemoteCreateReconcileRequest = issueops.IssueOpsRemoteCreateReconcileRequest
+type IssueOpsRemoteCreateCandidate = issueops.IssueOpsRemoteCreateCandidate
+type IssueOpsRemoteCreateProbeResult = issueops.IssueOpsRemoteCreateProbeResult
+type IssueOpsRemoteCreateProbe = issueops.IssueOpsRemoteCreateProbe
+
+func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provider string, request IssueProviderCreatePullRequestRequest, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient, create IssueOpsRemotePullRequestCreateFunc) (IssueProviderCreatePullRequestResult, error) {
+	return issueops.CreateIssueOpsRemotePullRequest(ctx, stateRoot, id, provider, request, reader, lease, create)
+}
+
+func ReconcileIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueOpsRemoteCreateReconcileRequest, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient, probe IssueOpsRemoteCreateProbe) (IssueOpsRecord, error) {
+	return issueops.ReconcileIssueOpsRemoteCreate(ctx, stateRoot, req, reader, lease, probe)
+}
+
+var ProjectIssueOpsRemoteCreateProbeResult = issueops.ProjectIssueOpsRemoteCreateProbeResult
 
 func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
 	return issueops.ValidateIssueOpsRemoteArtifactVerification(stateRoot, id, req)

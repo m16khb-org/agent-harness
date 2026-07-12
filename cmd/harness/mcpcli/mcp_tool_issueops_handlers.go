@@ -382,7 +382,8 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 	switch argmap.String(args, "action") {
 	case "start":
 		result, err := core.StartIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffStartRequest{
-			ID: id, CoordinatorRecipient: argmap.String(args, "coordinator_recipient"), Confirm: argmap.Bool(args, "confirm"), ExpectedContextSHA256: argmap.String(args, "expected_context_sha256"), Context: handoff.ContextOptions{
+			ID: id, CoordinatorRecipient: argmap.String(args, "coordinator_recipient"), Confirm: argmap.Bool(args, "confirm"), ExpectedContextSHA256: argmap.String(args, "expected_context_sha256"),
+			CoordinatorHost: argmap.String(args, "coordinator_host"), CoordinatorSessionID: argmap.String(args, "coordinator_session_id"), CoordinatorAgentID: argmap.String(args, "coordinator_agent_id"), SourceCWD: argmap.String(args, "source_cwd"), Context: handoff.ContextOptions{
 				CriteriaIDs: argmap.StringSlice(args, "criteria_ids"), RequiredDocs: argmap.StringSlice(args, "required_docs"), RequiredSkills: argmap.StringSlice(args, "required_skills"),
 				WorkerScope: argmap.String(args, "worker_scope"), VerificationCommands: argmap.StringSlice(args, "verification_commands"), HeartbeatCadence: argmap.String(args, "heartbeat_cadence"),
 				StopConditions: argmap.StringSlice(args, "stop_conditions"), ResultFormat: argmap.String(args, "result_format"),
@@ -408,11 +409,12 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 	case "accept":
 		result, err := core.AcceptIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffAcceptRequest{
 			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"), FinalHead: argmap.String(args, "final_head"),
+			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), SourceCWD: argmap.String(args, "source_cwd"),
 		})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff accept failed")
 	case "publish":
 		result, err := core.RecordIssueOpsHandoffPublishReceipt(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffPublishRequest{
-			ID: id, Confirm: argmap.Bool(args, "confirm"),
+			ID: id, Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), SourceCWD: argmap.String(args, "source_cwd"), Confirm: argmap.Bool(args, "confirm"), ApproveLegacyCoordinatorSeal: argmap.Bool(args, "approve_legacy_coordinator_seal"),
 		}, IssueOpsPublicationReader(), IssueOpsHandoffOrcaClient(), core.IssueOpsHandoffPrepareClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff publish failed")
 	case "recover":

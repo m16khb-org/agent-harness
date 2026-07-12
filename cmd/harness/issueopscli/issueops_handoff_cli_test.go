@@ -42,7 +42,7 @@ func TestRunIssueOpsHandoffLifecycle(t *testing.T) {
 		t.Fatalf("finish output: %s", out)
 	}
 	accept := append([]string{"handoff", "accept"}, common...)
-	accept = append(accept, "--final-head", finalHead, "--json")
+	accept = append(accept, "--final-head", finalHead, "--host", "codex", "--session-id", "coordinator-session", "--agent-id", "coordinator-agent", "--source-cwd", record.Repo, "--json")
 	if out := captureStdoutForContract(t, func() error { return runIssueOps(accept) }); !strings.Contains(out, `"closed_disposition": "accepted"`) {
 		t.Fatalf("accept output: %s", out)
 	}
@@ -61,10 +61,14 @@ func TestRunIssueOpsHandoffRequiresConfirmationForMutation(t *testing.T) {
 }
 
 func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T) {
-	for _, want := range []string{"--coordinator-recipient", "--allow-codex-hook-trust-bypass", "--expected-context-sha256"} {
+	for _, want := range []string{"--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--allow-codex-hook-trust-bypass", "--expected-context-sha256", "--approve-legacy-coordinator-seal"} {
 		if !strings.Contains(issueOpsHandoffUsage, want) {
 			t.Fatalf("handoff start usage must expose %s", want)
 		}
+	}
+	usage, err := captureProjectCLIStderr(t, func() error { issueOpsUsage(); return nil })
+	if err != nil || !strings.Contains(usage, "start|claim|finish|accept|publish|recover") {
+		t.Fatal("top-level handoff usage omits publish")
 	}
 }
 
@@ -119,7 +123,7 @@ func handoffCLIRecord(t *testing.T, state string) core.IssueOpsRecord {
 	record.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{
 		ProtocolVersion: handoff.ProtocolVersion, State: state, Attempt: 1, OwnershipEpoch: "epoch-1", AttemptBaseHead: baseHead, ContextSHA256: strings.Repeat("a", 64),
 		ContextVersion: handoff.ContextVersion, ContextOptions: &issueopsmodel.IssueOpsExecutionHandoffContextOptions{}, Driver: "orca", Agent: "codex", DeliveryMode: "inject",
-		CoordinatorRoot: repo, CoordinatorMailboxHandle: "term_coordinator", WorkerRoot: worktree,
+		CoordinatorRoot: repo, CoordinatorMailboxHandle: "term_coordinator", CoordinatorSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "coordinator-session", AgentID: "coordinator-agent"}, WorkerRoot: worktree,
 		Orca: &issueopsmodel.IssueOpsOrcaIdentity{
 			RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/1-handoff", WorktreeID: "wt-1", WorktreeInstanceID: "instance-1", WorktreePath: worktree,
 			WorkerPTYID: "pty-1", WorkerTerminalHandle: "term_worker", WorkerMailboxHandle: "term_worker", TaskID: "task-1", DispatchID: "dispatch-1",

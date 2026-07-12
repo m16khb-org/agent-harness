@@ -26,6 +26,15 @@ func RunBoundedMutation(repo, name string, args ...string) (stdout []byte, invok
 	return runBoundedCommand(repo, name, args, providerMutationTimeout, providerReadbackLimit)
 }
 
+func DryRunPreview(name string, args ...string) string {
+	argv := append([]string{name}, args...)
+	value := strings.Join(policy.RedactArgv(argv), " ")
+	if len(value) > providerDiagnosticLimit {
+		value = value[:providerDiagnosticLimit] + "...[truncated]"
+	}
+	return "[dry-run] would execute: " + value
+}
+
 func runBoundedCommand(repo, name string, args []string, timeout time.Duration, outputLimit int) ([]byte, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -74,9 +83,16 @@ func (b *boundedBuffer) String() string {
 }
 
 func boundedDiagnostic(value string) string {
-	value = strings.TrimSpace(policy.RedactFreeform(value))
-	if len(value) > providerDiagnosticLimit {
-		value = value[:providerDiagnosticLimit]
+	return BoundedDiagnostic(value, providerDiagnosticLimit)
+}
+
+func BoundedDiagnostic(value string, limit int) string {
+	if limit <= 0 || limit > providerDiagnosticLimit {
+		limit = providerDiagnosticLimit
+	}
+	value = strings.TrimSpace(policy.RedactDiagnostic(value))
+	if len(value) > limit {
+		value = value[:limit] + "...[truncated]"
 	}
 	return value
 }

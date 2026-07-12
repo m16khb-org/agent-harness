@@ -1,6 +1,8 @@
 package remotecmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -10,6 +12,8 @@ import (
 
 	"agent-harness/internal/core"
 	issueopsmodel "agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/testsupport"
 )
 
 func TestRunScoreWithJudgeNoneAndErrorPaths(t *testing.T) {
@@ -190,6 +194,78 @@ func TestRunRemoteCreatePRPreservesLegacyBodyFileAndRejectsSupervisedBodyFile(t 
 	}
 }
 
+func TestRunRemoteCreatePRLegacyAtMeReachesProviderWithoutStateMutation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	db, err := sqlstore.Open(core.IssueOpsStateRoot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, ok, err := db.Get("issueops", record.ID)
+	if err != nil || !ok {
+		t.Fatalf("read legacy bytes: ok=%v err=%v", ok, err)
+	}
+	var captured core.IssueProviderCreatePullRequestRequest
+	deps := Deps{
+		PrintJSON: func(value any) error {
+			encoder := json.NewEncoder(os.Stdout)
+			encoder.SetIndent("", "  ")
+			return encoder.Encode(value)
+		},
+		PrintError: func(error) error { return nil },
+		CreatePullRequest: func(_ string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+			captured = req
+			return core.IssueProviderCreatePullRequestResult{OK: true, URL: "https://github.com/acme/repo/pull/16"}, nil
+		},
+	}
+	baseArgs := []string{"create-pr", "--id", record.ID, "--title", "PR", "--body", " legacy body ", "--head", record.Branch, "--base", "main", "--label", " bug ", "--assignee", "@me", "--confirm"}
+	for _, golden := range []struct {
+		name string
+		args []string
+	}{
+		{name: "testdata/legacy_create_pr_text.golden.txt", args: baseArgs},
+		{name: "testdata/legacy_create_pr_json.golden.json", args: append(append([]string(nil), baseArgs...), "--json")},
+	} {
+		got := testsupport.CaptureStdout(t, func() error { return Run(golden.args, deps) })
+		want, readErr := os.ReadFile(golden.name)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if !bytes.Equal([]byte(got), want) {
+			t.Fatalf("legacy CLI output changed for %s\nwant=%q\n got=%q", golden.name, want, got)
+		}
+	}
+	if captured.Assignees[0] != "@me" || captured.Draft || captured.Body != "legacy body" {
+		t.Fatalf("legacy provider request changed: %#v", captured)
+	}
+	after, ok, err := db.Get("issueops", record.ID)
+	if err != nil || !ok || !reflect.DeepEqual(after, before) {
+		t.Fatalf("legacy create mutated IssueOps bytes: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestRunRemoteCreatePRDryRunRedactsProviderArgvForGitHubAndGitLab(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	secret := "api_key=opaque-token password=opaque-password Authorization: Bearer opaque-bearer /tmp/secret.pem"
+	for _, providerName := range []string{"github", "gitlab"} {
+		t.Run(providerName, func(t *testing.T) {
+			var printed core.IssueProviderCreatePullRequestResult
+			deps := Deps{PrintJSON: func(value any) error {
+				printed = value.(core.IssueProviderCreatePullRequestResult)
+				return nil
+			}}
+			err := Run([]string{"create-pr", "--id", record.ID, "--provider", providerName, "--title", "PR", "--body", secret, "--head", record.Branch, "--base", "main", "--json"}, deps)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(printed.Preview, "opaque-") || !strings.Contains(printed.Preview, "<redacted>") || len(printed.Preview) > 4200 {
+				t.Fatalf("%s CLI dry-run preview was not bounded and redacted: %q", providerName, printed.Preview)
+			}
+		})
+	}
+}
+
 func TestPullRequestDraftIsSupervisedOnly(t *testing.T) {
 	legacy := core.IssueOpsRecord{}
 	if pullRequestDraft(legacy) {
@@ -199,55 +275,6 @@ func TestPullRequestDraftIsSupervisedOnly(t *testing.T) {
 	supervised.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{}
 	if !pullRequestDraft(supervised) {
 		t.Fatal("supervised PR/MR was not forced to draft")
-	}
-}
-
-func TestSupervisedCreatedPullRequestPersistsArtifactAndRejectsWrongProject(t *testing.T) {
-	record := core.IssueOpsRecord{ID: "io-supervised"}
-	record.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{}
-	result := core.IssueProviderCreatePullRequestResult{OK: true, URL: "https://github.com/acme/repo/pull/16"}
-	calls := 0
-	verify := func(_ string, id string, req core.IssueOpsRemoteArtifactVerificationRequest) (core.IssueOpsRecord, error) {
-		calls++
-		if id != record.ID || req.Provider != "github" || req.Kind != "pr" || req.URL != result.URL || req.TargetBranch != "main" || !reflect.DeepEqual(req.Labels, []string{"bug"}) || !reflect.DeepEqual(req.Assignees, []string{"octocat"}) {
-			t.Fatalf("supervised artifact request = %#v", req)
-		}
-		return record, nil
-	}
-	if err := verifySupervisedCreatedPullRequest(record, "github", result, []string{"bug"}, []string{"octocat"}, "main", verify); err != nil || calls != 1 {
-		t.Fatalf("supervised artifact persistence calls=%d err=%v", calls, err)
-	}
-	wrongURL := "https://github.com/other/repo/pull/16"
-	result.URL = wrongURL
-	verify = func(string, string, core.IssueOpsRemoteArtifactVerificationRequest) (core.IssueOpsRecord, error) {
-		calls++
-		return core.IssueOpsRecord{}, errors.New("artifact project differs from durable issue authority")
-	}
-	if err := verifySupervisedCreatedPullRequest(record, "github", result, nil, nil, "main", verify); err == nil || !strings.Contains(err.Error(), wrongURL) || !strings.Contains(err.Error(), "needs reconciliation") {
-		t.Fatalf("wrong-project reconciliation error = %v", err)
-	}
-	if calls != 2 {
-		t.Fatalf("wrong-project verification retried create/verify: calls=%d", calls)
-	}
-}
-
-func TestSupervisedCreatePRRejectsKnownLocalStateBeforeProviderMutation(t *testing.T) {
-	record := core.IssueOpsRecord{Phase: core.IssueOpsPhaseImplement, ExecutionHandoff: &issueopsmodel.IssueOpsExecutionHandoff{}}
-	calls := 0
-	create := func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-		calls++
-		return core.IssueProviderCreatePullRequestResult{}, nil
-	}
-	if _, err := createPullRequestWithSupervisedState(record, "github", core.IssueProviderCreatePullRequestRequest{}, create); err == nil || !strings.Contains(err.Error(), "phase pr") {
-		t.Fatalf("wrong phase error = %v", err)
-	}
-	record.Phase = core.IssueOpsPhasePR
-	record.RemoteArtifact = &core.IssueOpsRemoteArtifactVerification{}
-	if _, err := createPullRequestWithSupervisedState(record, "gitlab", core.IssueProviderCreatePullRequestRequest{}, create); err == nil || !strings.Contains(err.Error(), "already recorded") {
-		t.Fatalf("existing artifact error = %v", err)
-	}
-	if calls != 0 {
-		t.Fatalf("known local invalidity reached provider: calls=%d", calls)
 	}
 }
 

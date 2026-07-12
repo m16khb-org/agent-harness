@@ -235,7 +235,7 @@
           "name": "version"
         }
       ],
-      "hash": "834166df0f62bf5af070e1faa8c04a90d538d34656c081bde935fab8fe2e0800",
+      "hash": "b1dbe931a14596ab7352e196cfd5a0e1cfd45c9e9a7881893a9d04184210dcb7",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -284,6 +284,7 @@
         "issueops_remote_create_child",
         "issueops_remote_create_issue",
         "issueops_remote_create_pr",
+        "issueops_remote_reconcile_create",
         "issueops_remote_reflect_devils_advocate",
         "issueops_remote_render_template",
         "issueops_remote_score",
@@ -636,7 +637,7 @@
       "warnings": []
     },
     "docs_index": {
-      "docs_count": 82,
+      "docs_count": 83,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -723,6 +724,7 @@
         "$HARNESS_ROOT/.agent-harness/research/harness-engineering-12factor.md",
         "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
         "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
+        "$HARNESS_ROOT/.agent-harness/research/orca-handoff-state-security-evidence-2026-07-12.md",
         "$HARNESS_ROOT/.agent-harness/research/orca-handoff-turing-evidence-2026-07-11.md",
         "$HARNESS_ROOT/.agent-harness/research/orca-issueops-orchestration-contract.md",
         "$HARNESS_ROOT/.agent-harness/research/orca-live-handoff-spike-2026-07-11.md",
@@ -1114,7 +1116,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1261,7 +1263,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1455,7 +1457,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1610,7 +1612,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1824,7 +1826,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2041,7 +2043,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2164,7 +2166,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2215,7 +2217,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_link_plan": {
@@ -2328,7 +2330,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2458,7 +2460,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2554,7 +2556,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2710,7 +2712,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2760,7 +2762,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_pr_readiness": {
@@ -2875,7 +2877,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_record_devils_advocate_review": {
@@ -3038,7 +3040,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3067,7 +3069,7 @@
       "ok": true,
       "phase": "problem",
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_regress_for_replan": {
@@ -3250,14 +3252,14 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "issueops_remote_create_child": {
       "hierarchy_verified": false,
       "ok": true,
-      "preview": "[dry-run] would execute: glab api graphql --hostname gitlab.example resolve Task workItemTypeId for group/project; resolve labelIds and assigneeIds; workItemCreate Task for parentIid=1; workItemHierarchyAddChildrenItems; verify children, labels, assignees: labels=contract assignees=octocat",
+      "preview": "[dry-run] would execute: glab api graphql --hostname gitlab.example --field project=group/project --field parent_iid=1 --field title=contract child --field description=contract child body --field label=contract --field assignee=octocat; resolve Task workItem type; workItemCreate; workItemHierarchyAddChildrenItems; verify children, labels, assignees",
       "provider": "gitlab"
     },
     "issueops_remote_create_issue": {
@@ -3269,7 +3271,7 @@
     "issueops_remote_create_pr": {
       "number": "",
       "ok": true,
-      "preview": "[dry-run] would execute: glab mr create --title contract PR --source-branch 1-contract-branch --target-branch main",
+      "preview": "[dry-run] would execute: glab mr create --title contract PR --source-branch 1-contract-branch --target-branch main --yes",
       "url": ""
     },
     "issueops_remote_reflect_devils_advocate": {
@@ -3386,7 +3388,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3593,7 +3595,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3604,7 +3606,7 @@
       "ok": true,
       "phase": "problem",
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_status": {
@@ -3855,7 +3857,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 5,
+      "schema_version": 6,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -5123,7 +5125,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 82,
+        "docs_indexed": 83,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6654,7 +6656,7 @@
                 "name": "version"
               }
             ],
-            "hash": "834166df0f62bf5af070e1faa8c04a90d538d34656c081bde935fab8fe2e0800",
+            "hash": "b1dbe931a14596ab7352e196cfd5a0e1cfd45c9e9a7881893a9d04184210dcb7",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6703,6 +6705,7 @@
               "issueops_remote_create_child",
               "issueops_remote_create_issue",
               "issueops_remote_create_pr",
+              "issueops_remote_reconcile_create",
               "issueops_remote_reflect_devils_advocate",
               "issueops_remote_render_template",
               "issueops_remote_score",
@@ -7062,7 +7065,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 82,
+            "docs_count": 83,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7156,6 +7159,7 @@
               "$HARNESS_ROOT/.agent-harness/research/harness-engineering-12factor.md",
               "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
               "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
+              "$HARNESS_ROOT/.agent-harness/research/orca-handoff-state-security-evidence-2026-07-12.md",
               "$HARNESS_ROOT/.agent-harness/research/orca-handoff-turing-evidence-2026-07-11.md",
               "$HARNESS_ROOT/.agent-harness/research/orca-issueops-orchestration-contract.md",
               "$HARNESS_ROOT/.agent-harness/research/orca-live-handoff-spike-2026-07-11.md",
@@ -7462,7 +7466,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -7582,7 +7586,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -7640,7 +7644,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -7750,7 +7754,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -7843,7 +7847,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -7972,7 +7976,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8029,7 +8033,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -8151,7 +8155,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -8303,7 +8307,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8440,7 +8444,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8587,7 +8591,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8635,7 +8639,7 @@
             "ok": true,
             "phase": "problem",
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -8660,7 +8664,7 @@
           "json": {
             "hierarchy_verified": false,
             "ok": true,
-            "preview": "[dry-run] would execute: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo --parent 2; verify with gh api repos/example/repo/issues/2/sub_issues; fallback if --parent is unsupported: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo; gh api repos/example/repo/issues/{child_number}; gh api -X POST repos/example/repo/issues/2/sub_issues -f sub_issue_id={child_database_id}; gh api repos/example/repo/issues/2/sub_issues",
+            "preview": "[dry-run] would execute: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo --parent 2; [dry-run] would execute: gh api repos/example/repo/issues/2/sub_issues; [dry-run] would execute: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo; [dry-run] would execute: gh api -X POST repos/example/repo/issues/2/sub_issues -f sub_issue_id={child_database_id}; fallback if --parent is unsupported",
             "provider": "github"
           },
           "type": "text"
@@ -8825,7 +8829,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8935,7 +8939,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -9082,7 +9086,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -9100,7 +9104,7 @@
             "ok": true,
             "phase": "problem",
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -9324,7 +9328,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 5,
+            "schema_version": 6,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -10227,7 +10231,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 82,
+              "docs_indexed": 83,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

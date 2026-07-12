@@ -25,6 +25,10 @@ type IssueOpsHandoffStartRequest struct {
 	Confirm               bool                   `json:"confirm,omitempty"`
 	ExpectedContextSHA256 string                 `json:"expected_context_sha256,omitempty"`
 	Context               handoff.ContextOptions `json:"context,omitempty"`
+	CoordinatorHost       string                 `json:"coordinator_host,omitempty"`
+	CoordinatorSessionID  string                 `json:"coordinator_session_id,omitempty"`
+	CoordinatorAgentID    string                 `json:"coordinator_agent_id,omitempty"`
+	SourceCWD             string                 `json:"source_cwd,omitempty"`
 }
 
 type IssueOpsHandoffStartResult struct {
@@ -118,6 +122,14 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
+	coordinatorSession := model.IssueOpsHostSessionIdentity{Host: strings.TrimSpace(req.CoordinatorHost), SessionID: strings.TrimSpace(req.CoordinatorSessionID), AgentID: strings.TrimSpace(req.CoordinatorAgentID)}
+	identityRecord := record
+	identityHandoff := *record.ExecutionHandoff
+	identityHandoff.CoordinatorSession = &coordinatorSession
+	identityRecord.ExecutionHandoff = &identityHandoff
+	if !handoff.CoordinatorIdentityMatches(identityRecord, coordinatorSession, req.SourceCWD) {
+		return IssueOpsHandoffStartResult{}, fmt.Errorf("handoff start requires authenticated coordinator native session from the exact source checkout")
+	}
 	contextOptions, err := resolveHandoffContextOptions(record, req.Context)
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
@@ -125,6 +137,7 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	contextRecord := record
 	contextHandoff := *record.ExecutionHandoff
 	contextHandoff.CoordinatorMailboxHandle = coordinatorRecipient
+	contextHandoff.CoordinatorSession = &coordinatorSession
 	contextRecord.ExecutionHandoff = &contextHandoff
 	packet, err := handoff.BuildContext(contextRecord, contextOptions)
 	if err != nil {
@@ -147,7 +160,7 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 		return IssueOpsHandoffStartResult{}, err
 	}
 	nextNow := func() string { return issueOpsHandoffStartNow(clock) }
-	record, err = persistHandoffContext(stateRoot, record.ID, coordinatorRecipient, handoff.CanonicalContextOptions(contextOptions), req.ExpectedContextSHA256, nextNow())
+	record, err = persistHandoffContext(stateRoot, record.ID, coordinatorRecipient, coordinatorSession, handoff.CanonicalContextOptions(contextOptions), req.ExpectedContextSHA256, nextNow())
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
@@ -787,11 +800,12 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 		if _, assignedHere := exactHandles[dispatch.AssigneeHandle]; assignedHere {
 			return soleWriterConflictError("sole writer attestation found a dispatched task assigned to the exact worktree")
 		}
+		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: assignee terminal is absent from the exact worktree inventory")
 	}
 	return nil
 }
 
-func persistHandoffContext(stateRoot, id, coordinatorRecipient string, options model.IssueOpsExecutionHandoffContextOptions, expectedContextSHA256 string, now string) (IssueOpsRecord, error) {
+func persistHandoffContext(stateRoot, id, coordinatorRecipient string, coordinatorSession model.IssueOpsHostSessionIdentity, options model.IssueOpsExecutionHandoffContextOptions, expectedContextSHA256 string, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
 	err := withIssueOpsLock(stateRoot, id, func() error {
 		record, err := ReadIssueOps(stateRoot, id)
@@ -805,6 +819,10 @@ func persistHandoffContext(stateRoot, id, coordinatorRecipient string, options m
 			return fmt.Errorf("coordinator recipient differs from sealed handoff authority")
 		}
 		record.ExecutionHandoff.CoordinatorMailboxHandle = coordinatorRecipient
+		if record.ExecutionHandoff.CoordinatorSession != nil && !reflect.DeepEqual(*record.ExecutionHandoff.CoordinatorSession, coordinatorSession) {
+			return fmt.Errorf("coordinator native session differs from sealed handoff authority")
+		}
+		record.ExecutionHandoff.CoordinatorSession = &coordinatorSession
 		packet, err := handoff.BuildContext(record, handoff.ContextOptionsFromModel(options))
 		if err != nil {
 			return fmt.Errorf("re-render handoff context before persist: %w", err)

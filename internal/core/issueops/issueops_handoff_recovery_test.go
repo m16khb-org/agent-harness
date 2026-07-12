@@ -1165,15 +1165,15 @@ func TestHandoffRetryReattestsLegacyCodexBypassWithoutChangingSealedOptions(t *t
 		t.Fatalf("retry must preserve delivery options but clear per-attempt attestation: %#v", options)
 	}
 	client := handoffDispatchFake(retried)
-	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(retried, IssueOpsHandoffStartRequest{
 		ID: retried.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
-	}, client, handoffStartTestClock())
+	}), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
-	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
+	started, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(retried, IssueOpsHandoffStartRequest{
 		ID: retried.ID, CoordinatorRecipient: testCoordinatorRecipient, Confirm: true, ExpectedContextSHA256: preview.ContextSHA256, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true},
-	}, client, handoffStartTestClock())
+	}), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1241,10 +1241,10 @@ func TestHandoffRetryRejectsUnsafeWorktreeCheckpointBeforeNewAttempt(t *testing.
 
 func TestHandoffRetryRejectsAcceptedDisposition(t *testing.T) {
 	stateRoot, record, claim, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
-	if _, err := AcceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
+	if _, err := AcceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
 		ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch,
 		ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead,
-	}); err != nil {
+	})); err != nil {
 		t.Fatal(err)
 	}
 

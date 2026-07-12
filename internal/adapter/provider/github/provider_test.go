@@ -1,6 +1,7 @@
 package github
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -72,6 +73,14 @@ func TestGitHubCreateChildDryRunDoesNotExecute(t *testing.T) {
 	}
 }
 
+func TestGitHubCreateChildDryRunRedactsSecretArgv(t *testing.T) {
+	secret := "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	res, err := NewProvider().CreateChild(port.IssueProviderCreateChildRequest{Repo: t.TempDir(), ParentIssueURL: "https://github.com/acme/repo/issues/12", Title: "child", Body: "token=" + secret, Labels: []string{"bug"}, Assignees: []string{"octocat"}})
+	if err != nil || strings.Contains(res.Preview, secret) || !strings.Contains(res.Preview, "<redacted>") {
+		t.Fatalf("GitHub child preview leaked secret: %q err=%v", res.Preview, err)
+	}
+}
+
 func TestGitHubCreatePullRequestRequiresBranches(t *testing.T) {
 	_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Title: "PR"})
 	if err == nil {
@@ -94,6 +103,95 @@ func TestGitHubCreatePullRequestDryRun(t *testing.T) {
 	}
 }
 
+func TestGitHubCreatePullRequestDryRunRedactsSecretArgv(t *testing.T) {
+	secret := "api_key=opaque-token password=opaque-password Authorization: Bearer opaque-bearer /tmp/secret.pem"
+	res, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Title: "PR", Body: secret, HeadBranch: "feat/x", BaseBranch: "main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(res.Preview, "opaque-") || !strings.Contains(res.Preview, "<redacted>") {
+		t.Fatalf("GitHub dry-run preview was not redacted: %q", res.Preview)
+	}
+}
+
+func TestGitHubEnterpriseCreateAndReadbackUseExactNonAmbientSelector(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+printf '%s\n' "$@" > "gh.$2.argv"
+if [ "$1 $2" = "pr create" ]; then printf 'https://github.enterprise/acme/repo/pull/16\n'; exit 0; fi
+if [ "$1 $2" = "pr view" ]; then printf '{"url":"https://github.enterprise/acme/repo/pull/16","title":"PR","body":"body","headRefName":"feat/x","baseRefName":"main","isDraft":true,"headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}],"headRepository":{"nameWithOwner":"acme/repo"}}'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, ProjectKey: "github.enterprise/acme/repo", Title: "PR", Body: "body", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, ExpectedHeadSHA: strings.Repeat("a", 40), Confirm: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	createArgv, err := os.ReadFile(filepath.Join(repo, "gh.create.argv"))
+	wantCreate := "pr\ncreate\n--title\nPR\n--head\nfeat/x\n--base\nmain\n--repo\ngithub.enterprise/acme/repo\n--draft\n--body\nbody\n--label\nbug\n--assignee\noctocat\n"
+	if err != nil || string(createArgv) != wantCreate {
+		t.Fatalf("GitHub Enterprise create argv = %q, want %q, err=%v", createArgv, wantCreate, err)
+	}
+	viewArgv, err := os.ReadFile(filepath.Join(repo, "gh.view.argv"))
+	wantView := "pr\nview\nhttps://github.enterprise/acme/repo/pull/16\n--repo\ngithub.enterprise/acme/repo\n--json\nurl,title,body,headRefName,baseRefName,isDraft,headRefOid,labels,assignees,headRepository\n"
+	if err != nil || string(viewArgv) != wantView {
+		t.Fatalf("GitHub Enterprise readback argv = %q, want %q, err=%v", viewArgv, wantView, err)
+	}
+}
+
+func TestGitHubReconcileAcceptsNonemptyTitleBodyFromBoundedExactSelector(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+printf '%s\n' "$@" > "gh.$2.argv"
+if [ "$1 $2" = "pr list" ]; then printf '[{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"body","headRefName":"feat/x","baseRefName":"main","isDraft":true,"headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}],"headRepository":{"nameWithOwner":"acme/repo"}}]'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().ReconcilePullRequest(port.IssueProviderReconcilePullRequestRequest{Repo: repo, ProjectKey: "github.com/acme/repo", Title: "PR", BodySHA256: providerBodySHA256("body"), HeadBranch: "feat/x", BaseBranch: "main", ExpectedHeadSHA: strings.Repeat("a", 40), Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true})
+	if err != nil || len(result.Candidates) != 1 || result.AuthoritativeZero {
+		t.Fatalf("GitHub reconcile = %#v, %v", result, err)
+	}
+	listArgv, err := os.ReadFile(filepath.Join(repo, "gh.list.argv"))
+	wantList := "pr\nlist\n--repo\ngithub.com/acme/repo\n--head\nfeat/x\n--state\nall\n--limit\n2\n--json\nurl,title,body,headRefName,baseRefName,isDraft,headRefOid,labels,assignees,headRepository\n"
+	if err != nil || string(listArgv) != wantList {
+		t.Fatalf("GitHub reconcile list argv = %q, want %q, err=%v", listArgv, wantList, err)
+	}
+	if viewArgv, readErr := os.ReadFile(filepath.Join(repo, "gh.view.argv")); !os.IsNotExist(readErr) || len(viewArgv) != 0 {
+		t.Fatalf("GitHub reconcile performed duplicate view readback: argv=%q err=%v", viewArgv, readErr)
+	}
+}
+
+func TestGitHubReconcileSearchesHeadOnlyAndProjectsBaseDrift(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+printf '%s\n' "$@" > gh.list.argv
+if [ "$1 $2" = "pr list" ]; then printf '[{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"body","headRefName":"feat/x","baseRefName":"edited-base","isDraft":true,"headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":[],"assignees":[],"headRepository":{"nameWithOwner":"acme/repo"}}]'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().ReconcilePullRequest(port.IssueProviderReconcilePullRequestRequest{Repo: repo, ProjectKey: "github.com/acme/repo", HeadBranch: "feat/x", BaseBranch: "main"})
+	if err != nil || len(result.Candidates) != 1 || result.Candidates[0].BaseBranch != "edited-base" {
+		t.Fatalf("GitHub base-drift projection = %#v, %v", result, err)
+	}
+	argv, err := os.ReadFile(filepath.Join(repo, "gh.list.argv"))
+	if err != nil || strings.Contains(string(argv), "\n--base\n") {
+		t.Fatalf("GitHub reconcile overfiltered by base: argv=%q err=%v", argv, err)
+	}
+}
+
+func TestGitHubReconcileRejectsNullCandidateArray(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "pr list" ]; then printf 'null'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	result, err := NewProvider().ReconcilePullRequest(port.IssueProviderReconcilePullRequestRequest{Repo: repo, ProjectKey: "github.com/acme/repo", HeadBranch: "feat/x", BaseBranch: "main"})
+	if err == nil || result.AuthoritativeZero {
+		t.Fatalf("GitHub null candidate list = %#v, %v, want ambiguous error", result, err)
+	}
+}
+
 func TestGitHubCreatePullRequestConfirmPassesDraftArgv(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake gh shell script is POSIX-only")
@@ -109,21 +207,80 @@ if [ "$1 $2" = "pr create" ]; then
 fi
 if [ "$1 $2" = "pr view" ]; then
   printf 'view\n' >> gh.calls
-  printf '{"url":"https://github.com/acme/repo/pull/16","headRefName":"feat/x","baseRefName":"main","isDraft":true,"labels":[{"name":"bug"},{"name":"extra"}],"assignees":[{"login":"octocat"},{"login":"extra"}]}'
+  printf '{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"","headRefName":"feat/x","baseRefName":"main","isDraft":true,"headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}],"headRepository":{"nameWithOwner":"acme/repo"}}'
   exit 0
 fi
 exit 2
 `)
 	t.Setenv("PATH", binDir)
-	if _, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "PR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, Confirm: true}); err != nil {
+	if _, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, ProjectKey: "github.com/acme/repo", Title: "PR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, ExpectedHeadSHA: strings.Repeat("a", 40), Confirm: true}); err != nil {
 		t.Fatal(err)
 	}
 	argv, err := os.ReadFile(filepath.Join(repo, "gh.argv"))
-	if err != nil || !strings.Contains(string(argv), "\n--draft\n") {
+	if err != nil || !strings.Contains(string(argv), "\n--draft\n") || !strings.Contains(string(argv), "\n--repo\ngithub.com/acme/repo\n") {
 		t.Fatalf("GitHub draft argv missing: %q err=%v", argv, err)
 	}
 	if calls, err := os.ReadFile(filepath.Join(repo, "gh.calls")); err != nil || string(calls) != "create\nview\n" {
 		t.Fatalf("GitHub create/readback calls = %q err=%v", calls, err)
+	}
+}
+
+func TestGitHubCreatePullRequestRejectsExtraLabelsAndAssignees(t *testing.T) {
+	for _, tc := range []struct{ name, labels, assignees string }{
+		{name: "extra label", labels: `[{"name":"bug"},{"name":"extra"}]`, assignees: `[{"login":"octocat"}]`},
+		{name: "extra assignee", labels: `[{"name":"bug"}]`, assignees: `[{"login":"octocat"},{"login":"extra"}]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			binDir, repo := t.TempDir(), t.TempDir()
+			script := `#!/bin/sh
+if [ "$1 $2" = "pr create" ]; then printf 'https://github.com/acme/repo/pull/16\n'; exit 0; fi
+if [ "$1 $2" = "pr view" ]; then printf '{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"","headRefName":"feat/x","baseRefName":"main","isDraft":true,"labels":LABELS,"assignees":ASSIGNEES,"headRepository":{"nameWithOwner":"acme/repo"}}'; exit 0; fi
+exit 2
+`
+			script = strings.ReplaceAll(strings.ReplaceAll(script, "LABELS", tc.labels), "ASSIGNEES", tc.assignees)
+			writeFakeGh(t, binDir, script)
+			t.Setenv("PATH", binDir)
+			_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, ProjectKey: "github.com/acme/repo", Title: "PR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, Confirm: true})
+			if err == nil || !strings.Contains(err.Error(), "exactly match") {
+				t.Fatalf("extra readback authority error = %v", err)
+			}
+		})
+	}
+}
+
+func TestGitHubCreatePullRequestRejectsForkOriginReadback(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "pr create" ]; then printf 'https://github.com/acme/repo/pull/16\n'; exit 0; fi
+if [ "$1 $2" = "pr view" ]; then printf '{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"","headRefName":"feat/x","baseRefName":"main","isDraft":true,"headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}],"headRepository":{"nameWithOwner":"fork/repo"}}'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	_, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, ProjectKey: "github.com/acme/repo", Title: "PR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, ExpectedHeadSHA: strings.Repeat("a", 40), Confirm: true})
+	if err == nil || !strings.Contains(err.Error(), "source project") {
+		t.Fatalf("fork-origin readback = %v, want source-project rejection", err)
+	}
+}
+
+func TestGitHubLegacySelfPlaceholderIsExactAtMeOnly(t *testing.T) {
+	binDir, repo := t.TempDir(), t.TempDir()
+	writeFakeGh(t, binDir, `#!/bin/sh
+if [ "$1 $2" = "pr create" ]; then printf 'https://github.com/acme/repo/pull/16\n'; exit 0; fi
+if [ "$1 $2" = "pr view" ]; then printf '{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"","headRefName":"feat/x","baseRefName":"main","isDraft":false,"labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}]}'; exit 0; fi
+if [ "$1 $2" = "api user" ]; then printf 'octocat\n'; exit 0; fi
+exit 2
+`)
+	t.Setenv("PATH", binDir)
+	base := port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "PR", HeadBranch: "feat/x", BaseBranch: "main", Labels: []string{"bug"}, Confirm: true}
+	exact := base
+	exact.Assignees = []string{"@me"}
+	if _, err := NewProvider().CreatePullRequest(exact); err != nil {
+		t.Fatalf("exact @me placeholder failed: %v", err)
+	}
+	alias := base
+	alias.Assignees = []string{"me"}
+	if _, err := NewProvider().CreatePullRequest(alias); err == nil || !strings.Contains(err.Error(), "exactly match") {
+		t.Fatalf("arbitrary self alias = %v, want exact rejection", err)
 	}
 }
 
@@ -136,11 +293,20 @@ exit 2
 `)
 	t.Setenv("PATH", binDir)
 	result, err := NewProvider().CreatePullRequest(port.IssueProviderCreatePullRequestRequest{Repo: repo, Title: "PR", HeadBranch: "feat/x", BaseBranch: "main", Draft: true, Confirm: true})
-	if err == nil || result.URL != "https://github.com/acme/repo/pull/16" || !strings.Contains(err.Error(), result.URL) || !strings.Contains(err.Error(), "needs reconciliation") {
+	if err == nil || result.URL != "https://github.com/acme/repo/pull/16" || strings.Contains(err.Error(), result.URL) || !strings.Contains(err.Error(), "needs reconciliation") {
 		t.Fatalf("GitHub mismatch result=%+v err=%v", result, err)
 	}
 	if calls, readErr := os.ReadFile(filepath.Join(repo, "gh.calls")); readErr != nil || string(calls) != "create\nview\n" {
 		t.Fatalf("GitHub mismatch retried creation: %q err=%v", calls, readErr)
+	}
+}
+
+func TestGitHubCreatedPullRequestDiagnosticOmitsOversizedSecretLikeURL(t *testing.T) {
+	secret := "api_key=opaque-marker"
+	rawURL := "https://github.com/" + strings.Repeat("a", 128*1024) + "/repo/pull/16/" + secret
+	err := githubCreatedPullRequestError(rawURL, errors.New("readback failed for "+rawURL))
+	if strings.Contains(err.Error(), secret) || strings.Contains(err.Error(), rawURL) || len(err.Error()) > 512 {
+		t.Fatalf("GitHub created URL diagnostic is not bounded/redacted: len=%d", len(err.Error()))
 	}
 }
 

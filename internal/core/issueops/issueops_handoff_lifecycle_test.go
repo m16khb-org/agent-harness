@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -92,6 +93,7 @@ func TestHandoffFinishProjectionFailureIsTerminalAndNeverRetries(t *testing.T) {
 func TestHandoffFinishProjectionPreconditionsNeverCallOrca(t *testing.T) {
 	stateRoot, record, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
 	submitted.ExecutionHandoff.CoordinatorMailboxHandle = ""
+	submitted.ExecutionHandoff.CoordinatorSession = nil
 	if _, err := WriteIssueOps(stateRoot, submitted); err != nil {
 		t.Fatal(err)
 	}
@@ -593,12 +595,27 @@ func TestHandoffFinishSubmitAcceptLifecycle(t *testing.T) {
 	if submitted.ExecutionHandoff.State != handoff.StateSubmitted {
 		t.Fatalf("expected submitted: %#v", submitted.ExecutionHandoff)
 	}
-	accepted, err := AcceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch, ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead})
+	accepted, err := AcceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch, ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if accepted.ExecutionHandoff.State != handoff.StateClosed || accepted.ExecutionHandoff.ClosedDisposition != handoff.DispositionAccepted {
 		t.Fatalf("expected accepted close: %#v", accepted.ExecutionHandoff)
+	}
+}
+
+func TestHandoffAcceptRejectsDifferentNativeCoordinatorSession(t *testing.T) {
+	stateRoot, record, claim, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	req := coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
+		ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch, ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead,
+	})
+	req.SessionID = "different-coordinator-session"
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	if _, err := AcceptIssueOpsHandoff(stateRoot, req); err == nil || !strings.Contains(err.Error(), "sealed coordinator native session") {
+		t.Fatalf("different native coordinator accept = %v", err)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !bytes.Equal(after, before) {
+		t.Fatal("rejected different-session accept mutated durable state")
 	}
 }
 
@@ -616,10 +633,10 @@ func TestHandoffAcceptRejectsRerenderedContextSourceDrift(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err := AcceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
+			_, err := AcceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
 				ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch,
 				ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead,
-			})
+			}))
 			if err == nil || !strings.Contains(err.Error(), "context source") {
 				t.Fatalf("accept must reject %s drift, got %v", source, err)
 			}
@@ -667,10 +684,10 @@ func TestHandoffAcceptRevalidatesFilesystemEvidenceInsideLock(t *testing.T) {
 			stateRoot, record, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
 			before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
 			hooks := issueOpsHandoffLifecycleHooks{BeforeLockedRevalidation: func() { tt.mutate(t, record, finish) }}
-			_, err := acceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
+			_, err := acceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
 				ID: record.ID, Attempt: submitted.ExecutionHandoff.Attempt, OwnershipEpoch: submitted.ExecutionHandoff.OwnershipEpoch,
 				ContextSHA256: submitted.ExecutionHandoff.ContextSHA256, FinalHead: finish.FinalHead,
-			}, hooks)
+			}), hooks)
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("accept lock revalidation error = %v, want %q", err, tt.want)
 			}
@@ -686,10 +703,10 @@ func TestHandoffAcceptRequiresCleanWorkerAndCanonicalReport(t *testing.T) {
 	t.Run("dirty worktree", func(t *testing.T) {
 		stateRoot, record, claim, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
 		writeIssueOpsFile(t, record.WorktreePath, "dirty.txt", "dirty\n")
-		_, err := AcceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
+		_, err := AcceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
 			ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch,
 			ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead,
-		})
+		}))
 		if err == nil || !strings.Contains(err.Error(), "clean") {
 			t.Fatalf("dirty worker worktree must reject accept, got %v", err)
 		}
@@ -712,10 +729,10 @@ func TestHandoffAcceptRequiresCleanWorkerAndCanonicalReport(t *testing.T) {
 				submitted.ExecutionHandoff.Result.TuringReportPath = tt.report
 				putRawIssueOpsRecordForTest(t, stateRoot, submitted)
 			}
-			_, err := AcceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
+			_, err := AcceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
 				ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch,
 				ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead,
-			})
+			}))
 			if err == nil {
 				t.Fatalf("%s must reject accept, got %v", tt.name, err)
 			}
@@ -769,10 +786,10 @@ func TestHandoffAcceptRejectsCommittedLeafSymlinkReport(t *testing.T) {
 	if _, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish); err != nil {
 		t.Fatal(err)
 	}
-	_, err = AcceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
+	_, err = AcceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
 		ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch,
 		ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead,
-	})
+	}))
 	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "symlink") {
 		t.Fatalf("committed leaf symlink must not stand in for Turing report content, got %v", err)
 	}
@@ -801,10 +818,10 @@ func TestHandoffAcceptValidatesPersistedCompletedEvidence(t *testing.T) {
 			}
 			tt.mutate(submitted.ExecutionHandoff.Result)
 			putRawIssueOpsRecordForTest(t, stateRoot, submitted)
-			if _, err := AcceptIssueOpsHandoff(stateRoot, IssueOpsHandoffAcceptRequest{
+			if _, err := AcceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
 				ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch,
 				ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead,
-			}); err == nil {
+			})); err == nil {
 				t.Fatal("accept must reject a corrupted completed evidence tuple")
 			}
 		})
@@ -837,7 +854,7 @@ func TestHandoffFinishAndAcceptIdempotency(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(first.ExecutionHandoff.Result, second.ExecutionHandoff.Result) {
 		t.Fatalf("finish not idempotent: err=%v", err)
 	}
-	accept := IssueOpsHandoffAcceptRequest{ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch, ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead}
+	accept := coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{ID: record.ID, Attempt: claim.Attempt, OwnershipEpoch: claim.OwnershipEpoch, ContextSHA256: claim.ContextSHA256, FinalHead: finish.FinalHead})
 	if _, err := AcceptIssueOpsHandoff(stateRoot, accept); err != nil {
 		t.Fatal(err)
 	}
@@ -1025,4 +1042,14 @@ func submittedGitHandoff(t *testing.T, reportPath string, createReport bool) (st
 		t.Fatal(err)
 	}
 	return stateRoot, record, claim, finish, submitted
+}
+
+func coordinatorAcceptRequest(record IssueOpsRecord, req IssueOpsHandoffAcceptRequest) IssueOpsHandoffAcceptRequest {
+	req.SourceCWD = record.Repo
+	if record.ExecutionHandoff != nil && record.ExecutionHandoff.CoordinatorSession != nil {
+		req.Host = record.ExecutionHandoff.CoordinatorSession.Host
+		req.SessionID = record.ExecutionHandoff.CoordinatorSession.SessionID
+		req.AgentID = record.ExecutionHandoff.CoordinatorSession.AgentID
+	}
+	return req
 }

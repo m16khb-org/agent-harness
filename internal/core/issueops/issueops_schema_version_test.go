@@ -104,7 +104,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 	id := "io-future-schema"
 	writeRawIssueOpsRecord(t, stateRoot, id, `{
   "ok": true,
-  "schema_version": 6,
+  "schema_version": 7,
   "id": "io-future-schema",
   "repo": "/repo/example",
   "branch": "1-demo",
@@ -115,14 +115,113 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 `)
 
 	_, err := ReadIssueOps(stateRoot, id)
-	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 6") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 7") {
 		t.Fatalf("expected future schema rejection, got %v", err)
+	}
+}
+
+func TestRawSchemaV5RejectsRemoteCreateClaimWithoutRewriting(t *testing.T) {
+	stateRoot, id := t.TempDir(), "io-v5-claim"
+	raw := `{"ok":true,"schema_version":5,"id":"io-v5-claim","repo":"/repo/example","branch":"16-demo","phase":"pr","remote_create_claim":{"claim_id":"claim_00000000000000000000000000000000"}}`
+	writeRawIssueOpsRecord(t, stateRoot, id, raw)
+	before := rawIssueOpsBytesForTest(t, stateRoot, id)
+	_, err := ReadIssueOps(stateRoot, id)
+	if err == nil || !strings.Contains(err.Error(), "schema_version 5 cannot contain remote_create_claim") {
+		t.Fatalf("raw schema-v5 claim error = %v", err)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, id); !bytes.Equal(after, before) {
+		t.Fatal("raw schema-v5 claim row was rewritten")
+	}
+}
+
+func TestRawSchemaV5RejectsCoordinatorSessionWithoutRewriting(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.SchemaVersion = 5
+	record.ExecutionHandoff.CoordinatorMailboxHandle = "term_coordinator"
+	record.ExecutionHandoff.CoordinatorSession = &IssueOpsHostSessionIdentity{Host: "codex", SessionID: "copied-session", AgentID: "copied-agent"}
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeRawIssueOpsRecord(t, stateRoot, record.ID, string(raw))
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	invalid, err := ReadIssueOps(stateRoot, record.ID)
+	if err == nil || !strings.Contains(err.Error(), "schema_version 5 cannot contain coordinator_session") {
+		t.Fatalf("raw schema-v5 coordinator session error = %v", err)
+	}
+	if !invalid.Invalid || invalid.ExecutionHandoff == nil || invalid.ExecutionHandoff.WorkerRoot != record.ExecutionHandoff.WorkerRoot || invalid.Repo != record.Repo {
+		t.Fatalf("raw schema-v5 coordinator session lost bounded handoff guard authority: %#v", invalid)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !bytes.Equal(after, before) {
+		t.Fatal("raw schema-v5 coordinator session row was rewritten")
+	}
+}
+
+func TestFrozenSchemaV5ReaderRejectsRawSchemaV6WithoutRewriting(t *testing.T) {
+	setup := func(t *testing.T) (string, string, []byte) {
+		t.Helper()
+		stateRoot, record := handoffDispatchRecord(t)
+		record.SchemaVersion = 6
+		raw, err := json.Marshal(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeRawIssueOpsRecord(t, stateRoot, record.ID, string(raw))
+		return stateRoot, record.ID, rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	}
+	t.Run("rejects raw schema-v6", func(t *testing.T) {
+		stateRoot, id, _ := setup(t)
+		if err := legacyV5ReadModifyWriteFixture(stateRoot, id); err == nil || !strings.Contains(err.Error(), "schema_version 6") {
+			t.Fatalf("frozen schema-v5 reader did not reject raw schema-v6 bytes: %v", err)
+		}
+	})
+	t.Run("preserves raw bytes", func(t *testing.T) {
+		stateRoot, id, before := setup(t)
+		_ = legacyV5ReadModifyWriteFixture(stateRoot, id)
+		if after := rawIssueOpsBytesForTest(t, stateRoot, id); !bytes.Equal(after, before) {
+			t.Fatal("frozen schema-v5 reader rewrote raw schema-v6 bytes")
+		}
+	})
+}
+
+func TestSchemaV5OldPublishReceiptRequiresReattestOrReconcileWithoutRewriting(t *testing.T) {
+	stateRoot, id := t.TempDir(), "io-v5-receipt"
+	raw := `{"ok":true,"schema_version":5,"id":"io-v5-receipt","repo":"/repo/example","branch":"16-demo","phase":"pr","execution_handoff":{"protocol_version":1,"state":"closed","closed_disposition":"accepted","coordinator_root":"/repo/example","coordinator_mailbox_handle":"term_coordinator","worker_root":"/repo/example.worktrees/16-demo","publish_receipt":{"provider":"github","remote":"origin","branch":"16-demo","remote_ref":"refs/heads/16-demo","final_head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","verified_at":"2026-07-12T00:00:00Z"}}}`
+	writeRawIssueOpsRecord(t, stateRoot, id, raw)
+	before := rawIssueOpsBytesForTest(t, stateRoot, id)
+	got, err := ReadIssueOps(stateRoot, id)
+	if err == nil || !strings.Contains(err.Error(), "re-attest publication") || !strings.Contains(err.Error(), "dedicated remote-create reconcile") || len(err.Error()) > 512 {
+		t.Fatalf("raw schema-v5 receipt diagnostic = %v", err)
+	}
+	if !got.Invalid || got.SchemaVersion != 5 || got.Repo != "/repo/example" || got.ExecutionHandoff == nil || got.ExecutionHandoff.PublishReceipt == nil || got.ExecutionHandoff.CoordinatorMailboxHandle != "term_coordinator" {
+		t.Fatalf("raw schema-v5 receipt lost bounded hook authority projection: %#v", got)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, id); !bytes.Equal(after, before) {
+		t.Fatal("raw schema-v5 receipt row was rewritten")
+	}
+}
+
+func TestSchemaV5WithoutV6AuthorityMigratesInMemoryAndSchemaV6IsAccepted(t *testing.T) {
+	for _, version := range []int{5, 6} {
+		stateRoot := t.TempDir()
+		id := fmt.Sprintf("io-schema-v%d", version)
+		raw := fmt.Sprintf(`{"ok":true,"schema_version":%d,"id":%q,"repo":"/repo/example","branch":"16-demo","phase":"problem"}`, version, id)
+		writeRawIssueOpsRecord(t, stateRoot, id, raw)
+		before := rawIssueOpsBytesForTest(t, stateRoot, id)
+		got, err := ReadIssueOps(stateRoot, id)
+		if err != nil || got.SchemaVersion != 6 {
+			t.Fatalf("schema v%d read = %#v, %v", version, got, err)
+		}
+		if after := rawIssueOpsBytesForTest(t, stateRoot, id); !bytes.Equal(after, before) {
+			t.Fatalf("schema v%d read rewrote stored bytes", version)
+		}
 	}
 }
 
 func TestIssueOpsSchemaV4PreservesSealedOrcaMailboxAuthorities(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
 	record.SchemaVersion = 4
+	record.ExecutionHandoff.CoordinatorSession = nil
 	raw, err := json.Marshal(record)
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +249,7 @@ func TestIssueOpsSchemaV4PreservesSealedOrcaMailboxAuthorities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"schema_version":5`, `"coordinator_mailbox_handle":"term_coordinator"`, `"worker_terminal_handle":"term_live"`, `"worker_mailbox_handle":"term_dispatched"`} {
+	for _, want := range []string{`"schema_version":6`, `"coordinator_mailbox_handle":"term_coordinator"`, `"worker_terminal_handle":"term_live"`, `"worker_mailbox_handle":"term_dispatched"`} {
 		if !bytes.Contains(reencoded, []byte(want)) {
 			t.Fatalf("schema-v4 authority %s was not preserved: %s", want, reencoded)
 		}
@@ -329,6 +428,7 @@ func TestIssueOpsReadUpgradesV3CurrentAndPriorTerminalAuthority(t *testing.T) {
 	h.AcceptedAt = ""
 	h.Orca.WorkerTerminalHandle = ""
 	h.Orca.WorkerMailboxHandle = "term-current-legacy"
+	h.CoordinatorSession = nil
 	h.Orca.DispatchID = ""
 	h.PriorAttempts = []IssueOpsExecutionHandoffPriorAttempt{prior}
 	record.SchemaVersion = 3
@@ -525,14 +625,14 @@ func TestLegacyV3DecoderRejectsV4MailboxAuthorityWithoutModifyingBytes(t *testin
 	}
 }
 
-func TestLegacyV4DecoderRejectsV5PublicationAndCleanupAuthorityWithoutModifyingBytes(t *testing.T) {
+func TestLegacyV4DecoderRejectsV6AuthorityWithoutModifyingBytes(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	before, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := legacyV4ReadModifyWriteFixture(stateRoot, record.ID); err == nil || !strings.Contains(err.Error(), "schema_version 5") {
-		t.Fatalf("legacy v4 decoder did not reject v5 authority: %v", err)
+	if err := legacyV4ReadModifyWriteFixture(stateRoot, record.ID); err == nil || !strings.Contains(err.Error(), "schema_version 6") {
+		t.Fatalf("legacy v4 decoder did not reject v6 authority: %v", err)
 	}
 	after, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
 	if err != nil {
@@ -665,6 +765,34 @@ func legacyV4ReadModifyWriteFixture(stateRoot, id string) error {
 		return fmt.Errorf("unsupported issueops schema_version %d; current is 4", legacy.SchemaVersion)
 	}
 	legacy.UpdatedAt = "legacy-v4-touch"
+	rewritten, err := json.MarshalIndent(legacy, "", "  ")
+	if err != nil {
+		return err
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		return err
+	}
+	return db.Put(issueOpsBucket, id, rewritten)
+}
+
+func legacyV5ReadModifyWriteFixture(stateRoot, id string) error {
+	raw, err := rawIssueOpsRecordBytes(stateRoot, id)
+	if err != nil {
+		return err
+	}
+	var legacy struct {
+		SchemaVersion int    `json:"schema_version"`
+		ID            string `json:"id"`
+		UpdatedAt     string `json:"updated_at"`
+	}
+	if err := json.Unmarshal(raw, &legacy); err != nil {
+		return err
+	}
+	if legacy.SchemaVersion > 5 {
+		return fmt.Errorf("unsupported issueops schema_version %d; current is 5", legacy.SchemaVersion)
+	}
+	legacy.UpdatedAt = "legacy-v5-touch"
 	rewritten, err := json.MarshalIndent(legacy, "", "  ")
 	if err != nil {
 		return err

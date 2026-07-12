@@ -2,6 +2,10 @@ package providerutil
 
 import "strings"
 
+func SameStrings(want, got []string) bool {
+	return len(MissingStrings(want, got)) == 0 && len(MissingStrings(got, want)) == 0
+}
+
 func MissingStrings(want, got []string) []string {
 	gotSet := make(map[string]bool, len(got))
 	for _, value := range got {
@@ -15,6 +19,10 @@ func MissingStrings(want, got []string) []string {
 		}
 	}
 	return missing
+}
+
+func MissingAssignees(want, got []string) []string {
+	return MissingStrings(want, got)
 }
 
 func FirstNonEmpty(values ...string) string {

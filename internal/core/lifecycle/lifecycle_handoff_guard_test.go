@@ -1033,7 +1033,7 @@ func TestHandoffGuardStateRoleMatrixReturnsAuthorityAfterAccept(t *testing.T) {
 			t.Fatalf("submitted worker mutation must block: %#v", got)
 		}
 		for _, command := range []string{
-			"agent-harness issueops handoff accept --id " + record.ID + " --attempt 1 --ownership-epoch epoch-1 --context-sha256 " + strings.Repeat("a", 64) + " --final-head " + record.ExecutionHandoff.Result.FinalHead,
+			"agent-harness issueops handoff accept --id " + record.ID + " --attempt 1 --ownership-epoch epoch-1 --context-sha256 " + strings.Repeat("a", 64) + " --final-head " + record.ExecutionHandoff.Result.FinalHead + " --host codex --session-id coordinator --agent-id worker-1 --source-cwd " + repo,
 			"agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm",
 		} {
 			req := handoffEditRequest(record, repo, "codex", "coordinator", "")
@@ -1411,7 +1411,7 @@ func TestAcceptedCoordinatorPRWrapperRequiresMatchingPublishReceipt(t *testing.T
 		t.Fatalf("missing publish receipt authorized PR wrapper: %#v", got)
 	}
 	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
-		Provider: "github", Remote: "origin", Branch: record.Branch, RemoteRef: "refs/heads/" + record.Branch,
+		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: strings.Repeat("a", 64), Branch: record.Branch, Base: "main", RemoteRef: "refs/heads/" + record.Branch,
 		FinalHead: record.ExecutionHandoff.Result.FinalHead, VerifiedAt: "2026-07-11T02:01:00Z",
 	}
 	var err error
@@ -1419,7 +1419,7 @@ func TestAcceptedCoordinatorPRWrapperRequiresMatchingPublishReceipt(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !acceptedIssueOpsDownstreamCommand(command, record) {
+	if !acceptedIssueOpsDownstreamCommand(req, record) {
 		t.Fatal("matching publish receipt failed the exact downstream parser")
 	}
 	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
@@ -1429,11 +1429,304 @@ func TestAcceptedCoordinatorPRWrapperRequiresMatchingPublishReceipt(t *testing.T
 		strings.Replace(command, "--provider github", "--provider gitlab", 1),
 		strings.Replace(command, "--head 1-demo", "--head other", 1),
 		strings.Replace(command, "--body rendered", "--body-file /tmp/untrusted", 1),
+		strings.Replace(command, " --provider github", "", 1),
+		strings.Replace(command, " --body rendered", "", 1),
+		strings.Replace(command, " --head 1-demo", "", 1),
+		strings.Replace(command, " --base main", "", 1),
+		strings.Replace(command, " --label bug", "", 1),
+		strings.Replace(command, " --assignee octocat", "", 1),
 	} {
 		req.Command = mismatch
 		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
 			t.Fatalf("mismatched PR wrapper %q should block: %#v", mismatch, got)
 		}
+	}
+}
+
+func TestAcceptedCoordinatorRemoteCreateReconcileRequiresExactClaimAndSealedRecipient(t *testing.T) {
+	repo, record, _ := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
+	record.Phase = IssueOpsPhasePR
+	fingerprint := strings.Repeat("a", 64)
+	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: fingerprint,
+		Branch: record.Branch, Base: "main", RemoteRef: "refs/heads/" + record.Branch,
+		FinalHead: record.ExecutionHandoff.Result.FinalHead, VerifiedAt: "2026-07-11T02:01:00Z",
+	}
+	record.RemoteCreateClaim = &issueopsmodel.IssueOpsRemoteCreateClaim{
+		ClaimID: "claim_00000000000000000000000000000000", Provider: "github", Kind: "pr", ProjectKey: "github.com/example/repo",
+		Remote: "origin", RemoteRef: "refs/heads/" + record.Branch, PushTargetSHA256: fingerprint,
+		Head: record.Branch, Base: "main", FinalHead: record.ExecutionHandoff.Result.FinalHead,
+		Title: "title", Body: "", BodySHA256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, State: "unknown", InvocationState: "unknown", ClaimedAt: "2026-07-11T02:02:00Z",
+	}
+	var err error
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := "agent-harness issueops remote reconcile-create --id " + record.ID + " --claim-id " + record.RemoteCreateClaim.ClaimID + " --coordinator-recipient term_coordinator --host codex --session-id coordinator --agent-id worker-1 --source-cwd " + repo + " --confirm --json"
+	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	req.Tool, req.Command = "exec_command", command
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("exact coordinator remote-create reconcile should pass: %#v", got)
+	}
+	for _, mismatch := range []string{
+		strings.Replace(command, record.RemoteCreateClaim.ClaimID, "claim_11111111111111111111111111111111", 1),
+		strings.Replace(command, "term_coordinator", "term_worker", 1),
+		strings.Replace(command, " --confirm", "", 1),
+		strings.Replace(command, " --json", " --unknown", 1),
+	} {
+		req.Command = mismatch
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("mismatched remote-create reconcile %q should block: %#v", mismatch, got)
+		}
+	}
+}
+
+func TestAcceptedCoordinatorMCPRemoteCreateAndReconcileRequireNativeSourceIdentity(t *testing.T) {
+	repo, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
+	record.Phase = IssueOpsPhasePR
+	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: strings.Repeat("a", 64),
+		Branch: record.Branch, Base: "main", RemoteRef: "refs/heads/" + record.Branch, FinalHead: record.ExecutionHandoff.Result.FinalHead, VerifiedAt: "2026-07-11T02:01:00Z",
+	}
+	record, _ = writeIssueOps(IssueOpsStateRoot(), record)
+	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	req.Tool = "mcp__agent_harness__issueops_remote_create_pr"
+	req.ToolInput = map[string]any{"id": record.ID, "title": "draft", "body": "rendered", "provider": "github", "head": record.Branch, "base": "main", "labels": []any{"bug"}, "assignees": []any{"octocat"}, "confirm": true}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("exact coordinator MCP create blocked: %#v", got)
+	}
+	for _, key := range []string{"provider", "body", "head", "base", "labels", "assignees"} {
+		bad := req
+		bad.ToolInput = map[string]any{}
+		for inputKey, value := range req.ToolInput {
+			bad.ToolInput[inputKey] = value
+		}
+		delete(bad.ToolInput, key)
+		if got := BuildLifecyclePreToolUseDecision(bad); got.Decision != "block" {
+			t.Fatalf("MCP create defaulted omitted %s unlike shell: %#v", key, got)
+		}
+	}
+	for _, key := range []string{"provider", "body", "head", "base"} {
+		bad := req
+		bad.ToolInput = map[string]any{}
+		for inputKey, value := range req.ToolInput {
+			bad.ToolInput[inputKey] = value
+		}
+		bad.ToolInput[key] = ""
+		if got := BuildLifecyclePreToolUseDecision(bad); got.Decision != "block" {
+			t.Fatalf("MCP create accepted empty %s unlike shell: %#v", key, got)
+		}
+	}
+	worker := req
+	worker.CWD, worker.Repo, worker.SessionID = worktree, worktree, "session-1"
+	if got := BuildLifecyclePreToolUseDecision(worker); got.Decision != "block" {
+		t.Fatalf("worker MCP create allowed with copied payload: %#v", got)
+	}
+	record.RemoteCreateClaim = &issueopsmodel.IssueOpsRemoteCreateClaim{
+		ClaimID: "claim_00000000000000000000000000000000", Provider: "github", Kind: "pr", ProjectKey: "github.com/example/repo", Remote: "origin", RemoteRef: "refs/heads/" + record.Branch,
+		PushTargetSHA256: strings.Repeat("a", 64), Head: record.Branch, Base: "main", FinalHead: record.ExecutionHandoff.Result.FinalHead, Title: "draft", Body: "",
+		BodySHA256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, State: "unknown", InvocationState: "unknown", ClaimedAt: "2026-07-11T02:02:00Z",
+	}
+	record, _ = writeIssueOps(IssueOpsStateRoot(), record)
+	req.Tool = "mcp__agent_harness__issueops_remote_reconcile_create"
+	req.ToolInput = map[string]any{"id": record.ID, "claim_id": record.RemoteCreateClaim.ClaimID, "coordinator_recipient": "term_coordinator", "host": "codex", "session_id": "coordinator", "agent_id": "worker-1", "source_cwd": repo, "confirm": true}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("exact coordinator MCP reconcile blocked: %#v", got)
+	}
+	for _, mutate := range []func(*HookToolUseLifecycleRequest){
+		func(r *HookToolUseLifecycleRequest) { r.CWD, r.Repo = worktree, worktree },
+		func(r *HookToolUseLifecycleRequest) { r.ToolInput["session_id"] = "worker-session" },
+	} {
+		bad := req
+		bad.ToolInput = map[string]any{}
+		for key, value := range req.ToolInput {
+			bad.ToolInput[key] = value
+		}
+		mutate(&bad)
+		if got := BuildLifecyclePreToolUseDecision(bad); got.Decision != "block" {
+			t.Fatalf("non-source MCP reconcile allowed: %#v", got)
+		}
+	}
+}
+
+func TestHandoffLifecycleBlocksForeignMCPNameCollisions(t *testing.T) {
+	repo, record, _ := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
+	record.Phase = IssueOpsPhasePR
+	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: strings.Repeat("a", 64),
+		Branch: record.Branch, Base: "main", RemoteRef: "refs/heads/" + record.Branch, FinalHead: record.ExecutionHandoff.Result.FinalHead, VerifiedAt: "2026-07-11T02:01:00Z",
+	}
+	record.RemoteCreateClaim = &issueopsmodel.IssueOpsRemoteCreateClaim{
+		ClaimID: "claim_00000000000000000000000000000000", Provider: "github", Kind: "pr", ProjectKey: "github.com/example/repo", Remote: "origin", RemoteRef: "refs/heads/" + record.Branch,
+		PushTargetSHA256: strings.Repeat("a", 64), Head: record.Branch, Base: "main", FinalHead: record.ExecutionHandoff.Result.FinalHead, Title: "draft", Body: "",
+		BodySHA256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, State: "unknown", InvocationState: "unknown", ClaimedAt: "2026-07-11T02:02:00Z",
+	}
+	var err error
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	for _, tt := range []struct {
+		tool  string
+		input map[string]any
+	}{
+		{
+			tool:  "mcp__evil__issueops_remote_create_pr",
+			input: map[string]any{"id": record.ID, "title": "draft", "body": "rendered", "provider": "github", "head": record.Branch, "base": "main", "labels": []any{"bug"}, "assignees": []any{"octocat"}, "confirm": true},
+		},
+		{
+			tool:  "mcp__evil__issueops_remote_reconcile_create",
+			input: map[string]any{"id": record.ID, "claim_id": record.RemoteCreateClaim.ClaimID, "coordinator_recipient": "term_coordinator", "host": "codex", "session_id": "coordinator", "agent_id": "worker-1", "source_cwd": repo, "confirm": true},
+		},
+		{
+			tool:  "MCP__AGENT_HARNESS__ISSUEOPS_REMOTE_RECONCILE_CREATE",
+			input: map[string]any{"id": record.ID, "claim_id": record.RemoteCreateClaim.ClaimID, "coordinator_recipient": "term_coordinator", "host": "codex", "session_id": "coordinator", "agent_id": "worker-1", "source_cwd": repo, "confirm": true},
+		},
+		{
+			tool:  " mcp__agent_harness__issueops_remote_reconcile_create",
+			input: map[string]any{"id": record.ID, "claim_id": record.RemoteCreateClaim.ClaimID, "coordinator_recipient": "term_coordinator", "host": "codex", "session_id": "coordinator", "agent_id": "worker-1", "source_cwd": repo, "confirm": true},
+		},
+		{
+			tool:  "mcp__agent_harness__issueops_remote_reconcile_create ",
+			input: map[string]any{"id": record.ID, "claim_id": record.RemoteCreateClaim.ClaimID, "coordinator_recipient": "term_coordinator", "host": "codex", "session_id": "coordinator", "agent_id": "worker-1", "source_cwd": repo, "confirm": true},
+		},
+		{
+			tool:  "prefix_mcp__agent_harness__issueops_remote_reconcile_create",
+			input: map[string]any{"id": record.ID, "claim_id": record.RemoteCreateClaim.ClaimID, "coordinator_recipient": "term_coordinator", "host": "codex", "session_id": "coordinator", "agent_id": "worker-1", "source_cwd": repo, "confirm": true},
+		},
+		{
+			tool:  "mcp__agent_harness__issueops_remote_reconcile_create_suffix",
+			input: map[string]any{"id": record.ID, "claim_id": record.RemoteCreateClaim.ClaimID, "coordinator_recipient": "term_coordinator", "host": "codex", "session_id": "coordinator", "agent_id": "worker-1", "source_cwd": repo, "confirm": true},
+		},
+	} {
+		req.Tool, req.ToolInput = tt.tool, tt.input
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("foreign MCP name collision %q bypassed supervised authority: %#v", tt.tool, got)
+		}
+	}
+}
+
+func TestLiteralV5CoordinatorSealRequiresExplicitSourceApprovalInShellAndMCP(t *testing.T) {
+	repo, record, worktree := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
+	record.SchemaVersion = 5
+	record.Invalid = true
+	record.ExecutionHandoff.CoordinatorSession = nil
+	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+		Provider: "github", Remote: "origin", Branch: record.Branch, RemoteRef: "refs/heads/" + record.Branch,
+		FinalHead: record.ExecutionHandoff.Result.FinalHead, VerifiedAt: "2026-07-11T02:01:00Z",
+	}
+	putRawLifecycleIssueOpsRecord(t, record)
+	req := handoffEditRequest(record, repo, "codex", "legacy-coordinator", "")
+	req.Tool = "exec_command"
+	req.Command = "agent-harness issueops handoff publish --id " + record.ID + " --host codex --session-id legacy-coordinator --agent-id worker-1 --source-cwd " + repo + " --confirm --json"
+	if allowedExactHandoffLifecycleCommand(req, record) {
+		t.Fatal("literal v5 publish allowed an implicit coordinator seal")
+	}
+	req.Command = strings.Replace(req.Command, " --confirm", " --approve-legacy-coordinator-seal --confirm", 1)
+	if !allowedExactHandoffLifecycleCommand(req, record) {
+		t.Fatal("literal v5 publish blocked an explicit source-coordinator seal")
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("lifecycle guard blocked an explicit source-coordinator seal: %#v", got)
+	}
+	withoutApproval := req
+	withoutApproval.Command = strings.Replace(req.Command, " --approve-legacy-coordinator-seal", "", 1)
+	if got := BuildLifecyclePreToolUseDecision(withoutApproval); got.Decision != "block" {
+		t.Fatalf("lifecycle guard allowed an implicit coordinator seal: %#v", got)
+	}
+	mcp := req
+	mcp.Tool = "mcp__agent_harness__issueops_handoff"
+	mcp.Command = ""
+	mcp.ToolInput = map[string]any{
+		"action": "publish", "id": record.ID, "host": "codex", "session_id": "legacy-coordinator", "agent_id": "worker-1", "source_cwd": repo,
+		"approve_legacy_coordinator_seal": true, "confirm": true,
+	}
+	if !allowedHandoffMCPTool(mcp, record) {
+		t.Fatal("literal v5 MCP publish blocked an explicit source-coordinator seal")
+	}
+	if got := BuildLifecyclePreToolUseDecision(mcp); got.Decision != "allow" {
+		t.Fatalf("lifecycle guard blocked an explicit MCP source-coordinator seal: %#v", got)
+	}
+	withoutMCPApproval := mcp
+	withoutMCPApproval.ToolInput = map[string]any{}
+	for key, value := range mcp.ToolInput {
+		withoutMCPApproval.ToolInput[key] = value
+	}
+	delete(withoutMCPApproval.ToolInput, "approve_legacy_coordinator_seal")
+	if got := BuildLifecyclePreToolUseDecision(withoutMCPApproval); got.Decision != "block" {
+		t.Fatalf("lifecycle guard allowed an implicit MCP coordinator seal: %#v", got)
+	}
+	mcp.CWD, mcp.Repo = worktree, worktree
+	if allowedHandoffMCPTool(mcp, record) {
+		t.Fatal("worker MCP publish authorized a copied legacy coordinator seal")
+	}
+}
+
+func TestCoordinatorMCPStartRejectsCopiedNativeIdentity(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	req := handoffEditRequest(record, repo, "codex", "victim-session", "")
+	req.Tool = "mcp__agent_harness__issueops_handoff"
+	req.ToolInput = map[string]any{
+		"action": "start", "id": record.ID, "coordinator_recipient": "term_coordinator",
+		"coordinator_host": "codex", "coordinator_session_id": "victim-session", "coordinator_agent_id": "worker-1", "source_cwd": repo,
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("MCP start blocked exact native coordinator identity: %#v", got)
+	}
+	req.SessionID = "attacker-session"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("MCP start accepted copied coordinator identity: %#v", got)
+	}
+}
+
+func TestCoordinatorAcceptAndPublishRequireSealedNativeSessionInShellAndMCP(t *testing.T) {
+	for _, action := range []string{"accept", "publish"} {
+		t.Run(action, func(t *testing.T) {
+			state, disposition := handoff.StateSubmitted, ""
+			if action == "publish" {
+				state, disposition = handoff.StateClosed, handoff.DispositionAccepted
+			}
+			repo, record, _ := lifecycleTerminalHandoffRecord(t, state, disposition)
+			good := handoffEditRequest(record, repo, "codex", "coordinator", "")
+			good.Tool = "mcp__agent_harness__issueops_handoff"
+			good.ToolInput = map[string]any{
+				"action": action, "id": record.ID, "host": "codex", "session_id": "coordinator", "agent_id": "worker-1", "source_cwd": repo,
+				"attempt": record.ExecutionHandoff.Attempt, "ownership_epoch": record.ExecutionHandoff.OwnershipEpoch, "context_sha256": record.ExecutionHandoff.ContextSHA256, "confirm": true,
+			}
+			if got := BuildLifecyclePreToolUseDecision(good); got.Decision != "allow" {
+				t.Fatalf("MCP %s blocked sealed coordinator session: %#v", action, got)
+			}
+			bad := good
+			bad.SessionID = "different-coordinator-session"
+			bad.ToolInput = map[string]any{}
+			for key, value := range good.ToolInput {
+				bad.ToolInput[key] = value
+			}
+			bad.ToolInput["session_id"] = "different-coordinator-session"
+			if got := BuildLifecyclePreToolUseDecision(bad); got.Decision != "block" {
+				t.Fatalf("MCP %s accepted different coordinator session: %#v", action, got)
+			}
+			goodShell := good
+			goodShell.Tool = "exec_command"
+			goodShell.Command = "agent-harness issueops handoff " + action + " --id " + record.ID + " --host codex --session-id coordinator --agent-id worker-1 --source-cwd " + repo
+			if action == "accept" {
+				goodShell.Command += " --attempt 1 --ownership-epoch epoch-1 --context-sha256 " + record.ExecutionHandoff.ContextSHA256 + " --final-head " + record.ExecutionHandoff.Result.FinalHead
+			} else {
+				goodShell.Command += " --confirm"
+			}
+			if got := BuildLifecyclePreToolUseDecision(goodShell); got.Decision != "allow" {
+				t.Fatalf("shell %s blocked sealed coordinator session: %#v", action, got)
+			}
+			bad = goodShell
+			bad.SessionID = "different-coordinator-session"
+			bad.Command = strings.Replace(goodShell.Command, "--session-id coordinator", "--session-id different-coordinator-session", 1)
+			if got := BuildLifecyclePreToolUseDecision(bad); got.Decision != "block" {
+				t.Fatalf("shell %s accepted different coordinator session: %#v", action, got)
+			}
+		})
 	}
 }
 
@@ -1741,8 +2034,9 @@ func TestHandoffGuardRejectsWrappedDuplicateAndTrailingLifecycleCommands(t *test
 	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
 	base := handoffEditRequest(record, repo, "codex", "coordinator", "")
 	base.Tool = "Bash"
-	valid := "agent-harness issueops handoff start --id " + record.ID + " --coordinator-recipient term_coordinator --expected-context-sha256 " + strings.Repeat("a", 64) + " --allow-codex-hook-trust-bypass --confirm --json"
-	for _, command := range []string{valid, "./bin/agent-harness issueops handoff start --id " + record.ID + " --coordinator-recipient term_coordinator --expected-context-sha256 " + strings.Repeat("a", 64) + " --allow-codex-hook-trust-bypass --confirm --json"} {
+	flags := " --id " + record.ID + " --coordinator-recipient term_coordinator --coordinator-host codex --coordinator-session-id coordinator --coordinator-agent-id worker-1 --source-cwd " + repo + " --expected-context-sha256 " + strings.Repeat("a", 64) + " --allow-codex-hook-trust-bypass --confirm --json"
+	valid := "agent-harness issueops handoff start" + flags
+	for _, command := range []string{valid, "./bin/agent-harness issueops handoff start" + flags} {
 		req := base
 		req.Command = command
 		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
@@ -1907,6 +2201,7 @@ func lifecycleHandoffRecord(t *testing.T, state string) (string, IssueOpsRecord,
 		},
 	}
 	record.ExecutionHandoff.CoordinatorMailboxHandle = "term_coordinator"
+	record.ExecutionHandoff.CoordinatorSession = &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "coordinator", AgentID: "worker-1"}
 	if state != handoff.StateCoordinatorPreparing {
 		record.ExecutionHandoff.ContextVersion = handoff.ContextVersion
 		record.ExecutionHandoff.ContextSourceSHA256 = strings.Repeat("d", 64)

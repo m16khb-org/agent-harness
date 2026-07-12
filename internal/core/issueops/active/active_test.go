@@ -64,6 +64,54 @@ func TestSupervisedHandoffCyclesKeepsIdentifiableRecordOnEnvelopeReadError(t *te
 	}
 }
 
+func TestSupervisedHandoffCyclesKeepsInvalidClosedV5PublicationAuthority(t *testing.T) {
+	repo := t.TempDir()
+	worker := filepath.Join(repo+".worktrees", "legacy")
+	record := model.IssueOpsRecord{
+		ID: "io-v5-publication", Repo: repo, Branch: "16-legacy", Phase: model.IssueOpsPhasePR,
+		SchemaVersion: 5, Invalid: true,
+		ExecutionHandoff: &model.IssueOpsExecutionHandoff{
+			ProtocolVersion: 1, State: "closed", ClosedDisposition: "accepted", CoordinatorRoot: repo, WorkerRoot: worker,
+			PublishReceipt: &model.IssueOpsExecutionHandoffPublishReceipt{},
+		},
+	}
+	store := Store{
+		StateRoot: func() string { return t.TempDir() },
+		ListIDs:   func(string) ([]string, error) { return []string{record.ID}, nil },
+		Read: func(string, string) (model.IssueOpsRecord, error) {
+			return record, errors.New("schema-v5 publication authority requires re-attestation")
+		},
+	}
+	got := SupervisedHandoffCyclesForRepo(store, repo)
+	if len(got) != 1 || got[0].ID != record.ID {
+		t.Fatalf("invalid closed schema-v5 publication authority became invisible to hooks: %#v", got)
+	}
+}
+
+func TestSupervisedHandoffCyclesKeepsInvalidV5CoordinatorAuthority(t *testing.T) {
+	repo := t.TempDir()
+	worker := filepath.Join(repo+".worktrees", "injected-v5")
+	record := model.IssueOpsRecord{
+		ID: "io-v5-coordinator", Repo: repo, Branch: "16-injected", Phase: model.IssueOpsPhaseImplement,
+		SchemaVersion: 5, Invalid: true,
+		ExecutionHandoff: &model.IssueOpsExecutionHandoff{
+			ProtocolVersion: 1, State: "claimed", CoordinatorRoot: repo, WorkerRoot: worker,
+			CoordinatorSession: &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "copied", AgentID: "copied"},
+		},
+	}
+	store := Store{
+		StateRoot: func() string { return t.TempDir() },
+		ListIDs:   func(string) ([]string, error) { return []string{record.ID}, nil },
+		Read: func(string, string) (model.IssueOpsRecord, error) {
+			return record, errors.New("schema_version 5 cannot contain coordinator_session durable mutation authority")
+		},
+	}
+	got := SupervisedHandoffCyclesForRepo(store, repo)
+	if len(got) != 1 || got[0].ID != record.ID {
+		t.Fatalf("invalid v5 coordinator authority disappeared from lifecycle guard scan: %#v", got)
+	}
+}
+
 func TestLinkedWorktreeCycleForRepoRejectsMissingRepo(t *testing.T) {
 	store := newActiveTestStore(t)
 	if got, ok := LinkedWorktreeCycleForRepo(store.issueOpsStore(), "   "); ok || got.ID != "" {

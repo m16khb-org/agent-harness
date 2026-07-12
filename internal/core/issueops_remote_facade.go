@@ -19,6 +19,9 @@ type IssueProviderCreateIssueResult = port.IssueProviderCreateIssueResult
 type IssueProviderCreatePullRequestRequest = port.IssueProviderCreatePullRequestRequest
 type IssueProviderCreatePullRequestResult = port.IssueProviderCreatePullRequestResult
 type IssueProviderCreateError = port.IssueProviderCreateError
+type IssueProviderReconcilePullRequestRequest = port.IssueProviderReconcilePullRequestRequest
+type IssueProviderReconcilePullRequestResult = port.IssueProviderReconcilePullRequestResult
+type IssueProviderReconcilePullRequestCandidate = port.IssueProviderReconcilePullRequestCandidate
 type IssueProviderCreateChildRequest = port.IssueProviderCreateChildRequest
 type IssueProviderCreateChildResult = port.IssueProviderCreateChildResult
 type IssueProviderCloseChildRequest = port.IssueProviderCloseChildRequest
@@ -55,6 +58,18 @@ func CreateRemotePullRequest(req IssueProviderCreatePullRequestRequest, prov Iss
 		return IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("no issue provider configured")
 	}
 	return prov.CreatePullRequest(req)
+}
+
+func ReconcileRemotePullRequest(req IssueProviderReconcilePullRequestRequest, prov IssueProvider) (IssueProviderReconcilePullRequestResult, error) {
+	reconciler, ok := prov.(port.IssueProviderRemoteCreateReconciler)
+	if !ok {
+		return IssueProviderReconcilePullRequestResult{}, fmt.Errorf("issue provider does not support remote create reconciliation")
+	}
+	return reconciler.ReconcilePullRequest(req)
+}
+
+func ProjectIssueOpsRemoteCreateClaimForProviderReconcile(record IssueOpsRecord) (IssueProviderReconcilePullRequestRequest, error) {
+	return issueops.ProjectIssueOpsRemoteCreateClaimForProviderReconcile(record)
 }
 
 // CreateRemoteChild creates and verifies a provider-native child work item

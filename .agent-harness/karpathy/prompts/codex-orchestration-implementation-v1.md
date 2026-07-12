@@ -30,7 +30,7 @@ IMMUTABLE CONSTRAINTS (these override anything else you infer):
    external LLM API (no api.z.ai, no API keys), or a spawned agent CLI. External intelligence
    is always render-prompt → record-result performed by the host agent.
 6. Compatibility: the historical orchestration fields remain additive omitempty, but the
-   repository's current IssueOps root is schema_version 5 per issue #16. Never downgrade it:
+   repository's current IssueOps root is schema_version 6 per issue #16. Preserve historical v5 rows and never invent v6 publication fingerprints or remote-create claims while migrating them:
    missing/zero/v1/v2/v3 rows upgrade with known fields preserved, v1 rejects v2+, v2 rejects
    v3, and v3 rejects v4 before rewrite. Never rename or remove existing JSON fields; lock files are persistent
    inodes — never delete them between lock/unlock.

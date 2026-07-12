@@ -119,6 +119,7 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_remote_reflect_devils_advocate",
 		"issueops_remote_create_child",
 		"issueops_remote_create_pr",
+		"issueops_remote_reconcile_create",
 		"issueops_remote_sync_graph",
 		"issueops_force_release",
 		"issueops_pr_readiness",
@@ -183,6 +184,9 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	if !schemaHasProperty(handoff.InputSchema, "expected_context_sha256") {
 		t.Fatalf("issueops_handoff schema missing expected_context_sha256: %#v", handoff.InputSchema)
 	}
+	if !schemaHasProperty(handoff.InputSchema, "approve_legacy_coordinator_seal") {
+		t.Fatalf("issueops_handoff schema missing explicit schema-v5 coordinator seal approval: %#v", handoff.InputSchema)
+	}
 	renderTemplate := byName["issueops_remote_render_template"]
 	for _, required := range []string{"kind", "template", "title"} {
 		if !schemaRequires(renderTemplate.InputSchema, required) {
@@ -209,6 +213,12 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaHasProperty(createChild.InputSchema, "confirm") {
 		t.Fatalf("issueops_remote_create_child schema missing confirm: %#v", createChild.InputSchema)
+	}
+	createPR := byName["issueops_remote_create_pr"]
+	for _, required := range []string{"id", "provider", "title", "body", "head", "base", "labels", "assignees", "confirm"} {
+		if !schemaRequires(createPR.InputSchema, required) {
+			t.Fatalf("issueops_remote_create_pr must require %q: %#v", required, createPR.InputSchema)
+		}
 	}
 	childStart := byName["issueops_child_start"]
 	for _, required := range []string{"parent", "branch", "title", "scope", "acceptance"} {

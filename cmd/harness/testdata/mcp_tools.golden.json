@@ -2065,7 +2065,7 @@
     "name": "issueops_remote_create_child"
   },
   {
-    "description": "Create a remote pull request / merge request for the IssueOps cycle. Dry-run by default; pass confirm=true to execute. Provider and branch info are inferred from the cycle state (branch_prepare, branch, remote_artifact).",
+    "description": "Create a remote pull request / merge request for the IssueOps cycle. Supervised execution requires the full explicit provider, title, body, head, base, labels, assignees, and confirm payload.",
     "inputSchema": {
       "properties": {
         "assignees": {
@@ -2076,7 +2076,7 @@
           "type": "array"
         },
         "base": {
-          "description": "Target branch (defaults to branch_prepare.base_branch).",
+          "description": "Explicit target branch.",
           "type": "string"
         },
         "body": {
@@ -2092,7 +2092,7 @@
           "type": "object"
         },
         "head": {
-          "description": "Source branch (defaults to cycle branch).",
+          "description": "Explicit source branch.",
           "type": "string"
         },
         "id": {
@@ -2107,7 +2107,7 @@
           "type": "array"
         },
         "provider": {
-          "description": "Optional remote provider override.",
+          "description": "Explicit remote provider.",
           "enum": [
             "github",
             "gitlab"
@@ -2136,11 +2136,63 @@
       },
       "required": [
         "id",
-        "title"
+        "provider",
+        "title",
+        "body",
+        "head",
+        "base",
+        "labels",
+        "assignees",
+        "confirm"
       ],
       "type": "object"
     },
     "name": "issueops_remote_create_pr"
+  },
+  {
+    "description": "Coordinator-only reconciliation for a durable remote_create_claim. Exactly one live verified candidate is adopted; zero requires explicit approval plus authoritative proof; ambiguity retains unknown.",
+    "inputSchema": {
+      "properties": {
+        "agent_id": {
+          "type": "string"
+        },
+        "approve_zero_clear": {
+          "type": "boolean"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "confirm": {
+          "type": "boolean"
+        },
+        "coordinator_recipient": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "source_cwd": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "claim_id",
+        "coordinator_recipient",
+        "host",
+        "session_id",
+        "source_cwd",
+        "confirm"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_remote_reconcile_create"
   },
   {
     "description": "Sync the local IssueOps issue graph (typed related-issue links) to the remote issue as a comment listing each link. Dry-run by default; pass confirm=true to post the comment. Helps collaborators see the decision structure directly on the remote issue.",
@@ -2184,6 +2236,10 @@
           "description": "Explicit attestation that the documented Codex hooks/list trust review passed before supervised startup.",
           "type": "boolean"
         },
+        "approve_legacy_coordinator_seal": {
+          "description": "Explicitly seal the current source coordinator identity while re-attesting a genuine schema-v5 publication.",
+          "type": "boolean"
+        },
         "attempt": {
           "type": "integer"
         },
@@ -2220,8 +2276,17 @@
         "context_sha256": {
           "type": "string"
         },
+        "coordinator_agent_id": {
+          "type": "string"
+        },
+        "coordinator_host": {
+          "type": "string"
+        },
         "coordinator_recipient": {
           "description": "Concrete Orca coordinator mailbox recipient sealed before first dispatch.",
+          "type": "string"
+        },
+        "coordinator_session_id": {
           "type": "string"
         },
         "criteria_ids": {
@@ -2302,6 +2367,9 @@
           "type": "string"
         },
         "session_id": {
+          "type": "string"
+        },
+        "source_cwd": {
           "type": "string"
         },
         "stop_conditions": {

@@ -61,6 +61,10 @@ type IssueOpsHandoffAcceptRequest struct {
 	OwnershipEpoch string `json:"ownership_epoch"`
 	ContextSHA256  string `json:"context_sha256"`
 	FinalHead      string `json:"final_head"`
+	Host           string `json:"host"`
+	SessionID      string `json:"session_id"`
+	AgentID        string `json:"agent_id,omitempty"`
+	SourceCWD      string `json:"source_cwd"`
 }
 
 type issueOpsHandoffLifecycleHooks struct {
@@ -353,6 +357,9 @@ func acceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest, h
 	if validated.ExecutionHandoff == nil {
 		return IssueOpsRecord{}, fmt.Errorf("execution handoff is required")
 	}
+	if !handoff.CoordinatorIdentityMatches(validated, model.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.SourceCWD) {
+		return IssueOpsRecord{}, fmt.Errorf("handoff accept requires the sealed coordinator native session from the exact source checkout")
+	}
 	if validated.ExecutionHandoff.State != handoff.StateClosed {
 		if strings.TrimSpace(req.ContextSHA256) == "" || req.ContextSHA256 != validated.ExecutionHandoff.ContextSHA256 {
 			return IssueOpsRecord{}, fmt.Errorf("stale handoff context")
@@ -373,6 +380,9 @@ func acceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest, h
 		}
 		if !reflect.DeepEqual(record, validated) {
 			return fmt.Errorf("handoff changed after accept validation; retry with the current fence")
+		}
+		if !handoff.CoordinatorIdentityMatches(record, model.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.SourceCWD) {
+			return fmt.Errorf("handoff accept requires the sealed coordinator native session from the exact source checkout")
 		}
 		if record.ExecutionHandoff.State != handoff.StateClosed {
 			if strings.TrimSpace(req.ContextSHA256) == "" || req.ContextSHA256 != record.ExecutionHandoff.ContextSHA256 {

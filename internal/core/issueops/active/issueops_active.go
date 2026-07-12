@@ -158,7 +158,11 @@ func SupervisedHandoffCyclesForRepo(store Store, repo string) []model.IssueOpsRe
 	records := []model.IssueOpsRecord{}
 	for _, id := range ids {
 		record, err := store.Read(stateRoot, id)
-		if record.ExecutionHandoff == nil || record.ExecutionHandoff.State == "closed" {
+		if record.ExecutionHandoff == nil {
+			continue
+		}
+		legacyClosedPublication := err != nil && record.Invalid && record.SchemaVersion == 5 && record.ExecutionHandoff.State == "closed" && record.ExecutionHandoff.ClosedDisposition == "accepted" && record.ExecutionHandoff.PublishReceipt != nil
+		if record.ExecutionHandoff.State == "closed" && !legacyClosedPublication {
 			continue
 		}
 		if err != nil && !safelyIdentifiableSupervisedHandoff(record) {

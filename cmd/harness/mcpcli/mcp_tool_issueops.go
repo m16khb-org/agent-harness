@@ -1,6 +1,7 @@
 package mcpcli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -57,6 +58,7 @@ var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
 	"issueops_remote_reflect_devils_advocate": handleMCPRemoteReflectDevilsAdvocate,
 	"issueops_remote_create_child":            handleMCPRemoteCreateChild,
 	"issueops_remote_create_pr":               handleMCPRemoteCreatePR,
+	"issueops_remote_reconcile_create":        handleMCPRemoteReconcileCreate,
 	"issueops_remote_sync_graph":              handleMCPRemoteSyncGraph,
 	"issueops_resume":                         handleMCPIssueOpsResume,
 }
@@ -283,7 +285,7 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 	if err := validateMCPConfirmRemoteCreate(argmap.Bool(args, "confirm"), argmap.StringSlice(args, "labels"), argmap.StringSlice(args, "assignees")); err != nil {
 		return issueOpsMCPOutcome(nil, err, "IssueOps remote create-pr failed")
 	}
-	result, err := core.CreateRemotePullRequest(core.IssueProviderCreatePullRequestRequest{
+	request := core.IssueProviderCreatePullRequestRequest{
 		Repo:       record.Repo,
 		Title:      argmap.String(args, "title"),
 		Body:       body,
@@ -291,9 +293,46 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 		BaseBranch: base,
 		Labels:     argmap.StringSlice(args, "labels"),
 		Assignees:  argmap.StringSlice(args, "assignees"),
+		Draft:      record.ExecutionHandoff != nil,
 		Confirm:    argmap.Bool(args, "confirm"),
-	}, prov)
+	}
+	result, err := core.CreateIssueOpsRemotePullRequest(context.Background(), core.IssueOpsStateRoot(), record.ID, providerName, request, IssueOpsPublicationReader(), IssueOpsHandoffOrcaClient(), func(req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+		return core.CreateRemotePullRequest(req, prov)
+	})
 	return issueOpsMCPOutcome(result, err, "IssueOps remote create-pr failed")
+}
+
+func handleMCPRemoteReconcileCreate(args map[string]any) MCPToolOutcome {
+	result, err := core.ReconcileIssueOpsRemoteCreate(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsRemoteCreateReconcileRequest{
+		ID: argmap.String(args, "id"), ClaimID: argmap.String(args, "claim_id"), CoordinatorRecipient: argmap.String(args, "coordinator_recipient"),
+		Confirm: argmap.Bool(args, "confirm"), ApproveZeroClear: argmap.Bool(args, "approve_zero_clear"),
+		Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), SourceCWD: argmap.String(args, "source_cwd"),
+	}, IssueOpsPublicationReader(), IssueOpsHandoffOrcaClient(), remoteCreateReconcileProbe(func(providerName string, providerRequest core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error) {
+		prov, err := provider.Resolve(providerName)
+		if err != nil {
+			return core.IssueProviderReconcilePullRequestResult{}, err
+		}
+		return core.ReconcileRemotePullRequest(providerRequest, prov)
+	}))
+	return issueOpsMCPOutcome(result, err, "IssueOps remote create reconcile failed")
+}
+
+func remoteCreateReconcileProbe(reconcile func(string, core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error)) core.IssueOpsRemoteCreateProbe {
+	return func(_ context.Context, record core.IssueOpsRecord) (core.IssueOpsRemoteCreateProbeResult, error) {
+		claim := record.RemoteCreateClaim
+		if claim == nil {
+			return core.IssueOpsRemoteCreateProbeResult{}, fmt.Errorf("remote create claim disappeared before provider reconciliation")
+		}
+		providerRequest, err := core.ProjectIssueOpsRemoteCreateClaimForProviderReconcile(record)
+		if err != nil {
+			return core.IssueOpsRemoteCreateProbeResult{}, err
+		}
+		providerResult, err := reconcile(claim.Provider, providerRequest)
+		if err != nil {
+			return core.IssueOpsRemoteCreateProbeResult{}, err
+		}
+		return core.ProjectIssueOpsRemoteCreateProbeResult(record, providerResult)
+	}
 }
 
 func validateMCPCreateChildInputs(title string, labels, assignees []string) error {

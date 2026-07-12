@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"ok\": true,\n  \"url\": \"https://github.com/acme/repo/pull/16\",\n  \"number\": \"\"\n}"
+    }
+  ]
+}

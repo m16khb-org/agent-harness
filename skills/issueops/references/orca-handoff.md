@@ -72,6 +72,8 @@ orca orchestration dispatch-show --task <current-task-id> --json
 
 `orca orchestration task show`, `orca orchestration dispatch show`, and status `in_progress` are invalid; use only the exact inventory forms above. Do not infer task absence from a local filter over broad output. Re-attest the complete terminal plus dispatched-task inventories immediately before the first Orca create, immediately before task create and dispatch, and again immediately before a retry can mint replacement identities. For this fence, truncated or unparsable JSON is ambiguity, never absence; incomplete or duplicate identity output likewise persists `recovery_required`. Keep the original task, terminal, and dispatch identities until exact quiescence is durably proven.
 
+Read raw bounded inventories before local filtering and keep each read/check command standalone. Never combine cwd/root/branch/HEAD/status, terminal inventory, task inventory, or dispatch evidence into one shell command: each raw response and exit belongs to one authority check. A resumed session must ignore stale sender/recipient handles in transcript context and use only the injected current task/dispatch/coordinator preamble; exact dispatch inspection uses the current assignee handle as `--from` or omits it. Additive corrections use normal orchestration status/inbox delivery. Interrupt is only for explicit cancellation/override; afterward, verify submission and send at most one Enter without resending the body. Never guess jq projections, an `in_progress` status, cursor flags, or use zsh's reserved `path` variable. Model/usage prompts require user approval, and a worker must not emit checkpoint `worker_done` while any Critical/Important finding or required gate remains.
+
 Start the fresh worker from a login shell and require the actual host banner. Immediately before dispatch, obtain a fresh `connected=true` and `writable=true` check for the exact terminal. One `tui-idle` sample alone is insufficient. After an authorized terminal send delivers interrupt text plus Enter, read the target and verify that UserPromptSubmit or working state actually began. If the full instruction remains at the idle prompt, send exactly one Enter and read again. Never resend the instruction body.
 
 Codex supervised startup uses an explicit per-attempt attestation; Claude and GJC do not. First run `codex --help` as a standalone observation and require `--dangerously-bypass-hook-trust`. Then open the supported read-only catalog with `codex app-server --stdio`, send these JSONL messages one at a time, and keep stdin open until response id 2 arrives:
@@ -88,10 +90,16 @@ Preview `handoff start` without confirmation first. For Codex it must report `co
 
 Every preview and confirm supplies `--coordinator-recipient` with the same concrete historical coordinator mailbox handle. Confirmation persists that recipient with the sealed context before terminal/task/dispatch mutation and passes it as Orca dispatch `--from`; refreshable current coordinator control identity never replaces it. The returned preamble is accepted only when it contains the official exact coordinator and task label lines (`Your coordinator's terminal handle is:` and `Your task ID is:`) plus the exact `--dispatch-id` token; arbitrary substring matches fail closed.
 
+The mailbox handle is routing only. Every preview and confirmation also supplies the current native coordinator host/session/optional agent plus the exact source checkout cwd. PreToolUse must match that tuple to the native event, and confirmation seals it durably before dispatch. Later source-coordinator create/reconcile authorization uses the same sealed native identity and exact `record.Repo`; a worker session that copies the mailbox handle is never coordinator authority.
+
 ```bash
 agent-harness issueops handoff start \
   --id "$ISSUEOPS_ID" \
   --coordinator-recipient "$COORDINATOR_MAILBOX_HANDLE" \
+  --coordinator-host "$HOST" \
+  --coordinator-session-id "$SESSION_ID" \
+  --coordinator-agent-id "$AGENT_ID" \
+  --source-cwd "$SOURCE_CHECKOUT" \
   --criteria-id ORCA-01 \
   --criteria-id ORCA-02 \
   --criteria-id ORCA-03 \
@@ -254,6 +262,10 @@ agent-harness issueops handoff accept \
   --ownership-epoch "$OWNERSHIP_EPOCH" \
   --context-sha256 "$CONTEXT_SHA256" \
   --final-head "$FINAL_HEAD" \
+  --host "$COORDINATOR_HOST" \
+  --session-id "$COORDINATOR_SESSION_ID" \
+  --agent-id "$COORDINATOR_AGENT_ID" \
+  --source-cwd "$SOURCE_CHECKOUT" \
   --json
 ```
 
@@ -266,11 +278,21 @@ After acceptance, verify the accepted FinalHead before any publish action. Run t
 ```bash
 git rev-parse --verify refs/heads/<branch>
 # Stop unless the stdout above exactly equals <accepted-final-head>.
-agent-harness issueops handoff publish --id <cycle-id> --confirm --json
+agent-harness issueops handoff publish --id <cycle-id> --host <native-host> --session-id <native-session> --agent-id <native-agent> --source-cwd <source-checkout> --confirm --json
 agent-harness issueops remote create-pr --id <cycle-id> --provider <github-or-gitlab> --head <branch> --base <base-branch> --title <title> --body <already-rendered-body> --label <label> --assignee <user> --confirm --json
 ```
 
-The order is accepted FinalHead versus `refs/heads/<branch>`, then `handoff publish`: it re-attests every possible writer and durably records either a known writer conflict or ambiguous inventory. Only after a clean attestation does it non-force push the immutable accepted object ID as `<FinalHead>:refs/heads/<branch>`, verify the exact remote ref, and persist the provider-neutral receipt. Only then may the safe wrapper create a draft PR/MR with explicit provider/head/base and a literal body argv. These are the provider-neutral equivalent of explicit head/source and base/target flags. Before provider mutation the wrapper also requires `phase=pr` and no existing `RemoteArtifact`. GitHub/GitLab create and immediate readback use fixed timeouts, bounded/redacted output, exact canonical URL/head/base/draft, and requested label/assignee inclusion. GitLab parses the returned host/project/IID and uses exact `glab api`; provider success then passes through durable `IssueURL` project authority and atomic `RemoteArtifact` persistence. Any post-start timeout, malformed output, mismatch, or verify/write failure is unknown/needs-reconciliation and never retries create; invalid raw output is not retained. The wrapper rechecks both local and remote heads immediately before provider creation and applies the same fence to GitHub and GitLab. Missing/stale receipt, provider/branch/ref mismatch, FinalHead drift, arbitrary `--body-file`, raw `git push`, direct `gh pr create`/`glab mr create`, `HEAD`, force/delete push, implicit current-branch creation, merge, close, reopen, fill, web, and wrapper-side push are outside this authority.
+The commands above are the normal sealed-identity path. A genuine accepted raw schema-v5 receipt predates `coordinator_session`; never infer or silently backfill it. Keep its invalid closed-handoff projection under lifecycle guard authority and preserve its bytes on rejection. Only the exact source coordinator may explicitly add `--approve-legacy-coordinator-seal` to `handoff publish`; hook and core verify the same current native event, and the locked target -> local -> remote re-attestation atomically writes both the coordinator seal and the v6 receipt. CLI and MCP expose the same boolean. Privileged MCP lifecycle names are exact: bare `issueops_*` or `mcp__agent_harness__issueops_*`; foreign namespaces that merely share a suffix are blocked.
+
+The order is accepted FinalHead versus `refs/heads/<branch>`, then `handoff publish`: accept and publish require the same sealed native coordinator host/session/agent and exact source cwd as the hook event. Under deterministic Git config locks, resolve nested `insteadOf`/`pushInsteadOf` rules to a bounded fixed point, require exactly one effective push URL from bounded `git remote get-url --push --all`, validate its nonsecret fingerprint, validate the durable receipt, and only then read the local and exact ephemeral remote ref. Lock every effective config file origin—including unrelated system/global settings and include targets—and fail closed on unresolved, changed, pre-locked, or unlockable authority before mutation. The shared CLI/MCP create wrapper canonicalizes supervised title/body once, performs pre-claim publication validation, atomic durable claim, exact claimed-record revalidation, provider create/readback, post-provider remote-ref revalidation, and atomic finalize for a draft PR/MR. A post-claim pre-provider failure clears only the same ClaimID with typed `Invoked=false`; every invoked or ambiguous result remains `unknown` and is never retried. The claim binds canonical title plus rendered-body SHA-256, and provider readback verifies both target and source project authority so fork-origin artifacts fail closed. The wrapper retains explicit head/source and base/target flags: GitHub derives `gh --repo HOST/OWNER/REPO`; GitLab derives the full canonical HTTPS `glab --repo` URL and uses that same URL for `mr create` and `mr view <IID> --output json`. Nondefault-port or IPv6 GitLab requires proven glab v1.82+ before publication and again at the provider mutation boundary; an old or unparseable version returns typed `Invoked=false` before `mr create`. Never use `glab api --hostname host:port` or add a bespoke HTTP adapter. Provider create readback verifies canonical URL, branch/base, draft, labels, assignees, exact FinalHead SHA, title/body, and source project. Reconcile searches bounded exact-project+head candidates without prefiltering base, requires a non-null JSON array, and lets the shared core reject base/title/body/source drift. Missing/stale receipt, target drift, arbitrary `--body-file`, raw push, direct provider create, or implicit ambient repo authority is outside this contract.
+
+Provider-create recovery for a durable `remote_create_claim` is separate from Orca handoff recovery. Do not overload `handoff recover --action reconcile`. Use the coordinator-only wrapper with the exact claim and sealed recipient:
+
+```bash
+agent-harness issueops remote reconcile-create --id <cycle-id> --claim-id <claim-id> --coordinator-recipient <sealed-handle> --host <native-host> --session-id <native-session> --agent-id <native-agent> --source-cwd <source-checkout> --confirm --json
+```
+
+The operation validates publication before its live probe and immediately before finalize or approved zero-clear, then atomically adopts exactly one live verified candidate. Zero candidates clear only with `--approve-zero-clear` plus authoritative proof from the provider; multiple candidates, mismatches, force-push/fingerprint drift, or transport ambiguity retain `unknown`. Ordinary `verify-artifact` remains blocked while any claim exists.
 
 ## Failure And Recovery
 

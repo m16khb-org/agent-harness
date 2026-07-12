@@ -1162,6 +1162,67 @@ func TestIssueOpsRoutingFixturesCarrySkipRule(t *testing.T) {
 	}
 }
 
+func TestRemoteCreateClaimReconcileAndInterruptOperationalContracts(t *testing.T) {
+	issueOpsSkill := readIssueOpsSkillForTest(t)
+	orcaReference := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	turingSkill := readTuringSkillForTest(t)
+	cautions := readCautionsForTest(t)
+	for name, document := range map[string]string{
+		"issueops": issueOpsSkill,
+		"orca":     orcaReference,
+	} {
+		for _, want := range []string{"remote_create_claim", "reconcile-create", "exactly one live verified candidate", "authoritative proof", "multiple", "unknown"} {
+			if !strings.Contains(document, want) {
+				t.Fatalf("%s remote-create reconciliation contract missing %q", name, want)
+			}
+		}
+	}
+	for name, document := range map[string]string{"turing": turingSkill, "orca": orcaReference, "cautions": cautions} {
+		for _, want := range []string{"Additive correction", "Interrupt", "at most one Enter", "worker_done"} {
+			if !strings.Contains(document, want) {
+				t.Fatalf("%s interrupt guardrail missing %q", name, want)
+			}
+		}
+	}
+	architecture := readProjectContractFileForTest(t, ".agent-harness", "ARCHITECTURE.md")
+	operations := readProjectContractFileForTest(t, ".agent-harness", "OPERATIONS.md")
+	for name, document := range map[string]string{"architecture": architecture, "operations": operations} {
+		for _, want := range []string{"schema_version=6", "v5", "remote_create_claim"} {
+			if !strings.Contains(document, want) {
+				t.Fatalf("%s schema v5-to-v6 contract missing %q", name, want)
+			}
+		}
+	}
+}
+
+func TestCautionsRequiresNamedRedBeforeReviewFindingProductionEdit(t *testing.T) {
+	cautions := readCautionsForTest(t)
+	for _, want := range []string{"production fix", "named RED", "RED skipped", "reviewer repro"} {
+		if !strings.Contains(cautions, want) {
+			t.Fatalf("review-finding TDD guardrail missing %q", want)
+		}
+	}
+}
+
+func TestRemoteCreateReconcileAdaptersUseOneDurableClaimProjection(t *testing.T) {
+	for _, path := range []string{
+		filepath.Join("..", "..", "..", "cmd", "harness", "issueopscli", "remotecmd", "remote.go"),
+		filepath.Join("..", "..", "..", "cmd", "harness", "mcpcli", "mcp_tool_issueops.go"),
+	} {
+		body, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read reconcile adapter %s: %v", path, err)
+		}
+		text := string(body)
+		if !strings.Contains(text, "core.ProjectIssueOpsRemoteCreateClaimForProviderReconcile(record)") {
+			t.Errorf("%s must use the shared durable-claim provider projection", path)
+		}
+		if strings.Contains(text, "core.IssueProviderReconcilePullRequestRequest{") {
+			t.Errorf("%s must not duplicate the provider reconcile request projection", path)
+		}
+	}
+}
+
 func readIssueOpsSkillForTest(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "skills", "issueops", "SKILL.md"))

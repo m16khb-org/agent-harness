@@ -2,9 +2,12 @@ package policy
 
 import (
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
+
+var diagnosticURLPattern = regexp.MustCompile(`https?://[^\s]+`)
 
 func cleanEnvAllowlist(items []string) []string {
 	out := []string{}
@@ -61,6 +64,13 @@ func redactFreeform(s string) string {
 
 func RedactFreeform(s string) string {
 	return redactFreeform(s)
+}
+
+func RedactDiagnostic(s string) string {
+	if redacted := redactFreeform(s); redacted != s {
+		return redacted
+	}
+	return diagnosticURLPattern.ReplaceAllString(s, "[REDACTED_URL]")
 }
 
 func secretLikeArg(arg string) bool {

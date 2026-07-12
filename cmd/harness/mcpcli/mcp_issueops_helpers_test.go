@@ -1,12 +1,57 @@
 package mcpcli
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/sqlstore"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+func TestCLIAndMCPRemoteCreateReconcileCallbacksCaptureIdenticalCompleteClaimProjection(t *testing.T) {
+	record := core.IssueOpsRecord{
+		Repo: "/workspace/repo",
+		RemoteCreateClaim: &core.IssueOpsRemoteCreateClaim{
+			Provider: "gitlab", Kind: "mr", ProjectKey: "gitlab.example:8443/group/nested/repo",
+			Head: "issue/16", Base: "main", FinalHead: strings.Repeat("a", 40), Title: "canonical title", BodySHA256: strings.Repeat("b", 64),
+			Labels: []string{"bug", "security"}, Assignees: []string{"alice", "bob"}, Draft: true,
+		},
+	}
+	type capture struct {
+		provider string
+		request  core.IssueProviderReconcilePullRequestRequest
+	}
+	var cliCapture, mcpCapture capture
+	cliProbe := remotecmd.RemoteCreateReconcileProbe(remotecmd.Deps{ReconcilePullRequest: func(providerName string, request core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error) {
+		cliCapture = capture{provider: providerName, request: request}
+		return core.IssueProviderReconcilePullRequestResult{AuthoritativeZero: true}, nil
+	}})
+	mcpProbe := remoteCreateReconcileProbe(func(providerName string, request core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error) {
+		mcpCapture = capture{provider: providerName, request: request}
+		return core.IssueProviderReconcilePullRequestResult{AuthoritativeZero: true}, nil
+	})
+	if _, err := cliProbe(context.Background(), record); err != nil {
+		t.Fatalf("CLI reconcile callback: %v", err)
+	}
+	if _, err := mcpProbe(context.Background(), record); err != nil {
+		t.Fatalf("MCP reconcile callback: %v", err)
+	}
+	want, err := core.ProjectIssueOpsRemoteCreateClaimForProviderReconcile(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cliCapture.provider != record.RemoteCreateClaim.Provider || mcpCapture.provider != record.RemoteCreateClaim.Provider || !reflect.DeepEqual(cliCapture, mcpCapture) || !reflect.DeepEqual(cliCapture.request, want) {
+		t.Fatalf("adapter captures differ from complete durable claim projection: cli=%#v mcp=%#v want=%#v", cliCapture, mcpCapture, want)
+	}
+}
 
 func TestIssueOpsMCPHelpersAndRemoteDryRuns(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
@@ -64,6 +109,99 @@ func TestIssueOpsMCPHelpersAndRemoteDryRuns(t *testing.T) {
 	}
 	if outcome := handleIssueOpsMCPToolCall(MCPToolCall{Name: "issueops_remote_score", Arguments: map[string]any{"bad": true}}); !outcome.IsError {
 		t.Fatalf("invalid remote score call should be a normalized error result, got %#v", outcome)
+	}
+}
+
+func TestMCPRemoteCreatePRLegacyAtMeParityAndNoStateMutation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := mcpIssueOpsRecord(t)
+	binDir := t.TempDir()
+	script := filepath.Join(binDir, "gh")
+	body := `#!/bin/sh
+if [ "$1 $2" = "pr create" ]; then printf '%s\n' "$@" > gh.argv; printf 'https://github.com/acme/repo/pull/16\n'; exit 0; fi
+if [ "$1 $2" = "pr view" ]; then printf '{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"legacy body","headRefName":"1234-mcp","baseRefName":"main","isDraft":false,"labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}]}'; exit 0; fi
+if [ "$1 $2" = "api user" ]; then printf 'octocat\n'; exit 0; fi
+exit 2
+`
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+	db, err := sqlstore.Open(core.IssueOpsStateRoot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, ok, err := db.Get("issueops", record.ID)
+	if err != nil || !ok {
+		t.Fatalf("read legacy bytes: ok=%v err=%v", ok, err)
+	}
+	arguments := map[string]any{
+		"id": record.ID, "title": "PR", "body": "legacy body", "head": record.Branch, "base": "main",
+		"labels": []any{"bug"}, "assignees": []any{"@me"}, "confirm": true,
+	}
+	rawArguments, err := json.Marshal(arguments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := sdkToolHandler(resolveHandlerGroup("issueops_remote_create_pr"), "issueops_remote_create_pr")
+	result, err := handler(context.Background(), &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Arguments: rawArguments}})
+	if err != nil || result == nil || result.IsError || len(result.Content) != 1 {
+		t.Fatalf("legacy MCP @me create result=%#v err=%v", result, err)
+	}
+	content, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("legacy MCP content type = %T", result.Content[0])
+	}
+	assertMCPGoldenBytes(t, "testdata/legacy_create_pr_content.golden.json", []byte(content.Text))
+	encodedResult, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertMCPGoldenBytes(t, "testdata/legacy_create_pr_response.golden.json", encodedResult)
+	argv, err := os.ReadFile(filepath.Join(record.Repo, "gh.argv"))
+	if err != nil || !strings.Contains(string(argv), "\n--assignee\n@me\n") || strings.Contains(string(argv), "\n--draft\n") {
+		t.Fatalf("legacy MCP provider argv = %q, err=%v", argv, err)
+	}
+	after, ok, err := db.Get("issueops", record.ID)
+	if err != nil || !ok || !reflect.DeepEqual(after, before) {
+		t.Fatalf("legacy MCP create mutated IssueOps bytes: ok=%v err=%v", ok, err)
+	}
+}
+
+func assertMCPGoldenBytes(t *testing.T, path string, got []byte) {
+	t.Helper()
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Repository text fixtures end with one newline; the MCP content itself does not.
+	got = append(append([]byte(nil), got...), '\n')
+	if !bytes.Equal(got, want) {
+		t.Fatalf("MCP golden changed for %s\nwant=%q\n got=%q", path, want, got)
+	}
+}
+
+func TestMCPRemoteCreatePRDryRunRedactsProviderArgvForGitHubAndGitLab(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := mcpIssueOpsRecord(t)
+	secret := "api_key=opaque-token password=opaque-password Authorization: Bearer opaque-bearer /tmp/secret.pem"
+	for _, providerName := range []string{"github", "gitlab"} {
+		t.Run(providerName, func(t *testing.T) {
+			outcome := handleMCPRemoteCreatePR(map[string]any{
+				"id": record.ID, "provider": providerName, "title": "PR", "body": secret, "head": record.Branch, "base": "main",
+			})
+			if outcome.IsError || outcome.Err != nil {
+				t.Fatalf("%s MCP dry-run = %#v", providerName, outcome)
+			}
+			result, ok := outcome.Payload.(core.IssueProviderCreatePullRequestResult)
+			if !ok {
+				t.Fatalf("%s MCP dry-run payload = %#v", providerName, outcome.Payload)
+			}
+			preview := result.Preview
+			if strings.Contains(preview, "opaque-") || !strings.Contains(preview, "<redacted>") || len(preview) > 4300 {
+				t.Fatalf("%s MCP dry-run preview was not bounded and redacted: %s", providerName, preview)
+			}
+		})
 	}
 }
 
