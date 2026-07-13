@@ -12,8 +12,8 @@ func TestRunStateMaintainReportsRoots(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
 	t.Setenv("HARNESS_WORKER_DIR", "")
-	// Materialize the root store and the issueops store; workpool/worker stay
-	// absent and must be reported as skipped, not created.
+	// Materialize the root store and the issueops store; workpool, worker, and
+	// loop stay absent and must be reported as skipped, not created.
 	if _, err := core.StateWrite("maintain-smoke", "content"); err != nil {
 		t.Fatalf("seed state: %v", err)
 	}
@@ -38,8 +38,8 @@ func TestRunStateMaintainReportsRoots(t *testing.T) {
 	if len(result.Roots) != 2 {
 		t.Fatalf("expected 2 maintained roots (state, issueops), got %+v", result)
 	}
-	if len(result.Skipped) != 2 {
-		t.Fatalf("expected 2 skipped roots (workpool, worker), got %+v", result)
+	if len(result.Skipped) != 3 {
+		t.Fatalf("expected 3 skipped roots (workpool, worker, loop), got %+v", result)
 	}
 
 	text := captureStatusVerifyStdout(t, func() error {

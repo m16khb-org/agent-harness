@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -15,9 +16,9 @@ type StateMaintainResult struct {
 	Skipped []string                  `json:"skipped,omitempty"`
 }
 
-// knownStoreRoots returns the store directories the harness owns: the state
-// KV root plus the issueops, workpool, and worker subsystems. The worker root
-// honors HARNESS_WORKER_DIR exactly like the worker package does.
+// knownStoreRoots returns fixed store directories the harness owns. Project
+// stores are discovered separately so lifecycle-only namespaces are not
+// reported as skipped or materialized by maintenance.
 func knownStoreRoots() []string {
 	base := StateDir()
 	workerRoot := filepath.Join(base, "worker")
@@ -31,7 +32,37 @@ func knownStoreRoots() []string {
 		filepath.Join(base, "issueops"),
 		filepath.Join(base, "workpool"),
 		workerRoot,
+		filepath.Join(base, "loop"),
 	}
+}
+
+func projectStoreRoots() ([]string, error) {
+	projectsDir := filepath.Join(StateDir(), "projects")
+	entries, err := os.ReadDir(projectsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("discover project stores %s: %w", projectsDir, err)
+	}
+	roots := []string{}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		dir := filepath.Join(projectsDir, entry.Name())
+		info, err := os.Lstat(filepath.Join(dir, "harness.db"))
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("discover project store %s: %w", dir, err)
+		}
+		if info.Mode().IsRegular() {
+			roots = append(roots, dir)
+		}
+	}
+	return roots, nil
 }
 
 // StateMaintain runs sqlstore maintenance (WAL truncate + permission repair)
@@ -39,7 +70,13 @@ func knownStoreRoots() []string {
 // store are skipped, never created — maintenance must not materialize state.
 func StateMaintain() (StateMaintainResult, error) {
 	result := StateMaintainResult{Roots: []sqlstore.MaintainResult{}}
-	for _, dir := range knownStoreRoots() {
+	roots := knownStoreRoots()
+	projectRoots, err := projectStoreRoots()
+	if err != nil {
+		return result, err
+	}
+	roots = append(roots, projectRoots...)
+	for _, dir := range roots {
 		if _, err := os.Stat(filepath.Join(dir, "harness.db")); err != nil {
 			result.Skipped = append(result.Skipped, dir)
 			continue

@@ -21,7 +21,7 @@ func TestMCPStateMaintain(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected payload type %T", outcome.Payload)
 	}
-	if !result.OK || len(result.Roots) != 1 || len(result.Skipped) != 3 {
-		t.Fatalf("expected 1 maintained root and 3 skipped, got %+v", result)
+	if !result.OK || len(result.Roots) != 1 || len(result.Skipped) != 4 {
+		t.Fatalf("expected 1 maintained root and 4 skipped, got %+v", result)
 	}
 }
