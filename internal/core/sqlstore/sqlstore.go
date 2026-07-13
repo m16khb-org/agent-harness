@@ -2,7 +2,7 @@
 // roots. Each state root directory owns two SQLite files: harness.db holds all
 // records as (bucket, id, data-JSON) rows, and harness.lock.db exists only to
 // carry the cross-process span lock. Read-modify-write spans serialize
-// in-process on a per-directory mutex and cross-process by holding a BEGIN
+// in-process on a per-directory token gate and cross-process by holding a BEGIN
 // IMMEDIATE transaction on the lock database for the span's duration — the
 // write lock dies with the process, so a crashed holder can never deadlock
 // later contenders. Data writes autocommit on harness.db, so a span's own
@@ -11,27 +11,46 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
-	_ "modernc.org/sqlite"
+	sqlite "modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 )
 
 const (
-	dataDBFile = "harness.db"
-	spanDBFile = "harness.lock.db"
+	dataDBFile       = "harness.db"
+	spanDBFile       = "harness.lock.db"
+	spanLockMaxWait  = 60 * time.Second
+	spanLockRetryGap = 10 * time.Millisecond
 )
 
 // DB is the handle for one state root directory.
 type DB struct {
-	dir  string
-	data *sql.DB
-	span *sql.DB
-	mu   sync.Mutex
+	dir      string
+	data     *sql.DB
+	span     *sql.DB
+	spanGate chan struct{}
+}
+
+type spanChainKey struct{}
+
+// NestedSpanError reports an attempted re-entry into a root that is already
+// active in the propagated span chain.
+type NestedSpanError struct {
+	ActiveDirs   []string
+	RequestedDir string
+}
+
+func (e *NestedSpanError) Error() string {
+	return fmt.Sprintf("sqlstore nested span: root %q is already active in %v", e.RequestedDir, e.ActiveDirs)
 }
 
 // Row is one record returned by GetAll.
@@ -94,7 +113,10 @@ func newDB(abs string) (*DB, error) {
 		data.Close()
 		return nil, fmt.Errorf("sqlstore create span db: %w", err)
 	}
-	span, err := openSQLite(spanPath, "_pragma=busy_timeout(60000)&_txlock=immediate")
+	// SQLite's busy handler does not return promptly when the driver interrupts
+	// a blocked BEGIN. Disable it here and let beginSpanTx perform typed retries
+	// that can select on the caller context while preserving the 60-second cap.
+	span, err := openSQLite(spanPath, "_pragma=busy_timeout(0)&_txlock=immediate")
 	if err != nil {
 		data.Close()
 		return nil, fmt.Errorf("sqlstore open span db: %w", err)
@@ -106,7 +128,13 @@ func newDB(abs string) (*DB, error) {
 		span.Close()
 		return nil, fmt.Errorf("sqlstore init span db: %w", err)
 	}
-	return &DB{dir: abs, data: data, span: span}, nil
+	return &DB{dir: abs, data: data, span: span, spanGate: newSpanGate()}, nil
+}
+
+func newSpanGate() chan struct{} {
+	gate := make(chan struct{}, 1)
+	gate <- struct{}{}
+	return gate
 }
 
 // touchPrivate pre-creates path with 0600 so SQLite (and its -wal/-shm
@@ -136,20 +164,90 @@ func openSQLite(path, params string) (*sql.DB, error) {
 	return db, nil
 }
 
-// WithSpan serializes a read-modify-write span against all other spans on the
-// same state root, in-process and cross-process. Spans must not nest — a
-// nested span on the same directory self-deadlocks, exactly like the previous
-// per-entity flock re-entry did. Multi-entity operations stay sequential
-// single-span steps.
-func (d *DB) WithSpan(fn func() error) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	tx, err := d.span.Begin()
+// WithSpanContext serializes a read-modify-write span against all other spans
+// on the same state root, in-process and cross-process. Local and SQLite waits
+// both observe ctx. A root already present in the propagated active-root chain
+// is rejected before either wait begins.
+func (d *DB) WithSpanContext(ctx context.Context, fn func(context.Context) error) error {
+	if ctx == nil {
+		return fmt.Errorf("sqlstore span context is required")
+	}
+	if fn == nil {
+		return fmt.Errorf("sqlstore span callback is required")
+	}
+	chain, _ := ctx.Value(spanChainKey{}).([]string)
+	chain = append([]string(nil), chain...)
+	for _, active := range chain {
+		if active == d.dir {
+			return &NestedSpanError{
+				ActiveDirs:   append([]string(nil), chain...),
+				RequestedDir: d.dir,
+			}
+		}
+	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-d.spanGate:
+	}
+	defer func() { d.spanGate <- struct{}{} }()
+	tx, err := d.beginSpanTx(ctx)
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return fmt.Errorf("sqlstore span lock %s: %w", d.dir, ctxErr)
+		}
 		return fmt.Errorf("sqlstore span lock %s: %w", d.dir, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	return fn()
+	spanCtx := context.WithValue(ctx, spanChainKey{}, append(chain, d.dir))
+	return fn(spanCtx)
+}
+
+func (d *DB) beginSpanTx(ctx context.Context) (*sql.Tx, error) {
+	maxWait := time.NewTimer(spanLockMaxWait)
+	defer maxWait.Stop()
+	retry := time.NewTicker(spanLockRetryGap)
+	defer retry.Stop()
+
+	for {
+		tx, err := d.span.BeginTx(ctx, nil)
+		if err == nil {
+			return tx, nil
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		if !isSQLiteLockContention(err) {
+			return nil, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-maxWait.C:
+			return nil, err
+		case <-retry.C:
+		}
+	}
+}
+
+func isSQLiteLockContention(err error) bool {
+	var sqliteErr *sqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+	primaryCode := sqliteErr.Code() & 0xff
+	return primaryCode == int(sqlite3.SQLITE_BUSY) || primaryCode == int(sqlite3.SQLITE_LOCKED)
+}
+
+// WithSpan is a migration bridge for callers that have not yet adopted the
+// context-bearing callback. It is removed after the repository-wide cutover.
+func (d *DB) WithSpan(fn func() error) error {
+	if fn == nil {
+		return fmt.Errorf("sqlstore span callback is required")
+	}
+	return d.WithSpanContext(context.Background(), func(context.Context) error {
+		return fn()
+	})
 }
 
 // Get returns the record data for (bucket, id) and whether it exists.
