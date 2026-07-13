@@ -1,6 +1,7 @@
 package hookmetrics
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -215,7 +216,7 @@ func TestPruneHookMetricsLogWaitsForMetricsLock(t *testing.T) {
 
 	started := make(chan struct{})
 	done := make(chan error, 1)
-	if err := corestate.WithKeyLock(stateDir, "hook-metrics", func() error {
+	if err := corestate.WithKeyLock(context.Background(), stateDir, "hook-metrics", func(context.Context) error {
 		go func() {
 			close(started)
 			_, err := PruneHookMetricsLog(720 * time.Hour)

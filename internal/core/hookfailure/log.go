@@ -4,6 +4,7 @@ import (
 	"agent-harness/internal/core/policy"
 	corestate "agent-harness/internal/core/state"
 	"bufio"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -68,7 +69,7 @@ func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, er
 	// can exceed PIPE_BUF (uncapped Argv/CWD plus two 500B snippet fields), so
 	// O_APPEND alone does not guarantee atomic, non-interleaved writes; the state
 	// span lock (via WithKeyLock) does. O_APPEND keeps the OS positioned at EOF.
-	writeErr := corestate.WithKeyLock(filepath.Dir(path), "hook-failures", func() error {
+	writeErr := corestate.WithKeyLock(context.Background(), filepath.Dir(path), "hook-failures", func(context.Context) error {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		if err != nil {
 			return err
@@ -139,7 +140,7 @@ func PruneHookFailureLog(maxAge time.Duration) (HookFailurePruneResult, error) {
 	// Serialize the read+rewrite+rename against concurrent appends, which hold the
 	// same lock (RecordHookFailureEvent). Without this, an append onto the old
 	// inode between our read and rename would be dropped when the rename unlinks it.
-	lockErr := corestate.WithKeyLock(filepath.Dir(path), "hook-failures", func() error {
+	lockErr := corestate.WithKeyLock(context.Background(), filepath.Dir(path), "hook-failures", func(context.Context) error {
 		f, err := os.Open(path)
 		if os.IsNotExist(err) {
 			result.OK = true

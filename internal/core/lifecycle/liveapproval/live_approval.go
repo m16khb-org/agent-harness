@@ -1,6 +1,7 @@
 package liveapproval
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
@@ -36,7 +37,7 @@ type Namespace struct {
 type Store struct {
 	Resolve   func(repoRoot string) (Namespace, error)
 	Init      func(repoRoot string) (Namespace, error)
-	WithLock  func(dir, key string, fn func() error) error
+	WithLock  func(ctx context.Context, dir, key string, fn func(context.Context) error) error
 	WriteJSON func(path string, value any, perm os.FileMode) error
 	Now       func() time.Time
 	NewToken  func() (string, error)
@@ -93,7 +94,7 @@ func Evaluate(store Store, req Request) Result {
 	if store.WithLock == nil || store.WriteJSON == nil {
 		return result
 	}
-	err = store.WithLock(namespace.Dir, key, func() error {
+	err = store.WithLock(context.Background(), namespace.Dir, key, func(context.Context) error {
 		current, valid := readRecord(path, now)
 		if valid && current.RequestFingerprint == fingerprint {
 			switch current.Status {
@@ -156,7 +157,7 @@ func Approve(store Store, req ApprovalRequest) Result {
 	if store.WithLock == nil || store.WriteJSON == nil {
 		return result
 	}
-	err = store.WithLock(namespace.Dir, key, func() error {
+	err = store.WithLock(context.Background(), namespace.Dir, key, func(context.Context) error {
 		current, valid := readRecord(path, now)
 		if !valid || current.Status != statusPending || current.Token != match[1] {
 			return nil

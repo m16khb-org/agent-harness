@@ -2,6 +2,7 @@ package docupkeep
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -138,7 +139,7 @@ func TestAppendWaitsForDocUpkeepLock(t *testing.T) {
 
 	started := make(chan struct{})
 	done := make(chan error, 1)
-	if err := corestate.WithKeyLock(plan.ProjectStateDir, "doc-upkeep", func() error {
+	if err := corestate.WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
 		go func() {
 			close(started)
 			_, err := Append(store, plan.RepoRoot, model.DocUpkeepEvent{

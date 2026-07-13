@@ -6,6 +6,7 @@ package hookmetrics
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"math"
 	"os"
@@ -94,7 +95,7 @@ func RecordHookMetricEvent(event HookMetricEvent) (HookMetricRecordResult, error
 	if err != nil {
 		return result, err
 	}
-	if err := corestate.WithKeyLock(filepath.Dir(path), "hook-metrics", func() error {
+	if err := corestate.WithKeyLock(context.Background(), filepath.Dir(path), "hook-metrics", func(context.Context) error {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 		if err != nil {
 			return err
@@ -172,7 +173,7 @@ func PruneHookMetricsLog(maxAge time.Duration) (HookMetricsPruneResult, error) {
 func pruneHookMetricsLog(maxAge time.Duration, limits hookMetricsPruneLimits) (HookMetricsPruneResult, error) {
 	path := HookMetricsLogPath()
 	result := HookMetricsPruneResult{OK: false, Path: path}
-	err := corestate.WithKeyLock(filepath.Dir(path), "hook-metrics", func() error {
+	err := corestate.WithKeyLock(context.Background(), filepath.Dir(path), "hook-metrics", func(context.Context) error {
 		if removed, err := sweepStaleHookMetricTemps(filepath.Dir(path), limits.StaleTempAge); err != nil {
 			return err
 		} else {

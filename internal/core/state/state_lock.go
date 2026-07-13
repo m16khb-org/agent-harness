@@ -1,12 +1,13 @@
 package state
 
 import (
+	"context"
 	"os"
 )
 
 // StateUpdate reads the current state record for key, passes it to the transform
 // function, and writes the result. The read-modify-write runs under the state
-// directory's sqlstore span (in-process mutex + cross-process sqlite write
+// directory's sqlstore span (in-process token gate + cross-process sqlite write
 // lock) so concurrent callers across processes cannot lose updates.
 //
 // When the key does not exist, transform receives an empty StateRecord with
@@ -18,7 +19,7 @@ func StateUpdate(key string, transform func(StateRecord) (StateRecord, error)) (
 	}
 	dir := StateDir()
 	var result StateResult
-	err = withStateLock(dir, key, func() error {
+	err = withStateLock(context.Background(), dir, key, func(context.Context) error {
 		current, readErr := StateRead(key)
 		if readErr != nil && !os.IsNotExist(readErr) {
 			return readErr
@@ -51,16 +52,16 @@ func StateUpdate(key string, transform func(StateRecord) (StateRecord, error)) (
 // uses for dir, so callers OUTSIDE the state package can serialize their own
 // read-modify-write or append spans against concurrent processes (e.g. the
 // compact-capsule RMW and the hook-failure log append). All spans on one
-// directory serialize together and must not nest.
-func WithKeyLock(dir, key string, fn func() error) error {
-	return withStateLock(dir, key, fn)
+// directory serialize together and carry cancellation plus active-root metadata.
+func WithKeyLock(ctx context.Context, dir, key string, fn func(context.Context) error) error {
+	return withStateLock(ctx, dir, key, fn)
 }
 
 // withStateLock holds the state directory's sqlstore span for the full
 // read-modify-write span. The span serializes in-process via a per-directory
-// mutex and cross-process via a held BEGIN IMMEDIATE transaction on the
+// token gate and cross-process via a held BEGIN IMMEDIATE transaction on the
 // directory's lock database, which is released automatically on process death.
-func withStateLock(dir, key string, fn func() error) error {
+func withStateLock(ctx context.Context, dir, key string, fn func(context.Context) error) error {
 	if _, err := NormalizeStateKey(key); err != nil {
 		return err
 	}
@@ -68,5 +69,5 @@ func withStateLock(dir, key string, fn func() error) error {
 	if err != nil {
 		return err
 	}
-	return db.WithSpan(fn)
+	return db.WithSpanContext(ctx, fn)
 }

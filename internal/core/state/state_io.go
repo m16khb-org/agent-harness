@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -41,7 +42,7 @@ func StateWrite(key, content string) (StateResult, error) {
 	}
 	dir := StateDir()
 	var result StateResult
-	err = withStateLock(dir, key, func() error {
+	err = withStateLock(context.Background(), dir, key, func(context.Context) error {
 		record := StateRecord{
 			SchemaVersion: StateCurrentSchemaVersion,
 			Key:           key,
@@ -150,7 +151,7 @@ func WriteStateRecord(dir, key string, record StateRecord) (string, error) {
 		return "", fmt.Errorf("state record key %q does not match write key %q", record.Key, key)
 	}
 	var path string
-	err = withStateLock(dir, key, func() error {
+	err = withStateLock(context.Background(), dir, key, func(context.Context) error {
 		var werr error
 		path, werr = writeStateRecord(dir, key, record)
 		return werr

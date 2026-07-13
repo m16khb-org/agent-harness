@@ -1,6 +1,7 @@
 package compact
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -33,7 +34,7 @@ func BuildPreCompactCapsule(store Store, repo string) model.LifecycleCompactResu
 	// P2: serialize the read-existing -> merge -> write span so two overlapping
 	// PreCompacts (the same per-repo capsule is shared across sessions) cannot
 	// lose each other's merged PendingDocUpkeep via a last-writer-wins clobber.
-	lockErr := state.WithKeyLock(plan.ProjectStateDir, "compact-capsule", func() error {
+	lockErr := state.WithKeyLock(context.Background(), plan.ProjectStateDir, "compact-capsule", func(context.Context) error {
 		capsule := model.LifecycleCompactCapsule{
 			SchemaVersion:     model.ProjectLifecycleSchemaVersion,
 			RepoRoot:          plan.RepoRoot,

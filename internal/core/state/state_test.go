@@ -1,14 +1,33 @@
 package state
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"agent-harness/internal/core/sqlstore"
 )
+
+func TestWithKeyLockPropagatesActiveRoot(t *testing.T) {
+	dir := t.TempDir()
+	err := WithKeyLock(context.Background(), dir, "outer", func(spanCtx context.Context) error {
+		db, err := openStateDB(dir)
+		if err != nil {
+			return err
+		}
+		return db.WithSpanContext(spanCtx, func(context.Context) error { return nil })
+	})
+	var nested *sqlstore.NestedSpanError
+	if !errors.As(err, &nested) {
+		t.Fatalf("expected NestedSpanError, got %v", err)
+	}
+}
 
 func TestWriteStateRecordRejectsKeyMismatch(t *testing.T) {
 	dir := t.TempDir()
@@ -153,7 +172,7 @@ func TestStateWriteWaitsForKeyLock(t *testing.T) {
 	release := make(chan struct{})
 	lockErr := make(chan error, 1)
 	go func() {
-		lockErr <- withStateLock(dir, "locked-key", func() error {
+		lockErr <- withStateLock(context.Background(), dir, "locked-key", func(context.Context) error {
 			close(locked)
 			<-release
 			return nil

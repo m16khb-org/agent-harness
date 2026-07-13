@@ -1,6 +1,7 @@
 package liveapproval
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -222,10 +223,10 @@ func newTestStore(t *testing.T) (Store, *time.Time) {
 			}
 			return Namespace{Exists: true, Valid: true, RepoRoot: repoRoot, Dir: dir}, nil
 		},
-		WithLock: func(_ string, _ string, fn func() error) error {
+		WithLock: func(_ context.Context, _ string, _ string, fn func(context.Context) error) error {
 			mu.Lock()
 			defer mu.Unlock()
-			return fn()
+			return fn(context.Background())
 		},
 		WriteJSON: func(path string, value any, perm os.FileMode) error {
 			data, err := json.Marshal(value)

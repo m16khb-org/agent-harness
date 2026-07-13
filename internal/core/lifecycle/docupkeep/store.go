@@ -2,6 +2,7 @@ package docupkeep
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -60,7 +61,7 @@ func Append(store Store, repoRoot string, event model.DocUpkeepEvent) (model.Doc
 	if err != nil {
 		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
 	}
-	if err := corestate.WithKeyLock(plan.ProjectStateDir, "doc-upkeep", func() error {
+	if err := corestate.WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
 		f, err := os.OpenFile(plan.QueuePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		if err != nil {
 			return err
@@ -80,7 +81,7 @@ func ReadPending(store Store, repoRoot string, limit int) ([]model.DocUpkeepEven
 		return []model.DocUpkeepEvent{}, plan, err
 	}
 	events := []model.DocUpkeepEvent{}
-	if err := corestate.WithKeyLock(plan.ProjectStateDir, "doc-upkeep", func() error {
+	if err := corestate.WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
 		f, err := os.Open(plan.QueuePath)
 		if os.IsNotExist(err) {
 			return nil
