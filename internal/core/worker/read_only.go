@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -20,7 +21,7 @@ func RunReadOnlyWorkerJob(kind, payload string, req policy.CommandPolicyRequest)
 
 	// Transition to running under lock so concurrent CancelWorkerJob
 	// serializes with this state change.
-	if err := withWorkerJobLock(dir, job.ID, func() error {
+	if err := withWorkerJobLock(context.Background(), dir, job.ID, func(context.Context) error {
 		current, reReadErr := ReadWorkerJob(job.ID)
 		if reReadErr != nil {
 			return reReadErr
@@ -45,7 +46,7 @@ func RunReadOnlyWorkerJob(kind, payload string, req policy.CommandPolicyRequest)
 	result := policy.RunReadOnlyCommand(req)
 
 	// Transition to final status under lock.
-	if err := withWorkerJobLock(dir, job.ID, func() error {
+	if err := withWorkerJobLock(context.Background(), dir, job.ID, func(context.Context) error {
 		current, reReadErr := ReadWorkerJob(job.ID)
 		if reReadErr != nil {
 			return reReadErr

@@ -1,6 +1,7 @@
 package workpool
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -55,7 +56,7 @@ func CreatePool(req CreatePoolRequest) (WorkPool, error) {
 
 	poolID := newPoolID(repo, name)
 	var pool WorkPool
-	err = withPoolLock(poolID, func() error {
+	err = withPoolLock(context.Background(), poolID, func(context.Context) error {
 		now := timestampNow()
 		pool = WorkPool{
 			OK:            true,
@@ -89,7 +90,7 @@ func AddTask(poolID string, req AddTaskRequest) (WorkTask, error) {
 		return WorkTask{OK: false, PoolID: poolID}, fmt.Errorf("title is required")
 	}
 	var task WorkTask
-	err = withPoolLock(poolID, func() error {
+	err = withPoolLock(context.Background(), poolID, func(context.Context) error {
 		pool, err := ReadPool(poolID)
 		if err != nil {
 			return err
@@ -142,8 +143,9 @@ func AddTask(poolID string, req AddTaskRequest) (WorkTask, error) {
 }
 
 // withPoolLock serializes a pool-level read-modify-write span via the workpool
-// state root's sqlstore span lock. Spans must not nest (see sqlstore.WithSpan).
-func withPoolLock(poolID string, fn func() error) error {
+// state root's sqlstore span lock and carries cancellation plus active-root
+// metadata.
+func withPoolLock(ctx context.Context, poolID string, fn func(context.Context) error) error {
 	if _, err := normalizePoolID(poolID); err != nil {
 		return err
 	}
@@ -151,13 +153,13 @@ func withPoolLock(poolID string, fn func() error) error {
 	if err != nil {
 		return err
 	}
-	return db.WithSpan(fn)
+	return db.WithSpanContext(ctx, fn)
 }
 
 // withTaskLock serializes a task-level read-modify-write span. It shares the
-// same per-state-root span as withPoolLock, so it must never be entered from
-// inside a pool span (the codebase keeps pool and task spans sequential).
-func withTaskLock(poolID, taskID string, fn func() error) error {
+// same per-state-root span as withPoolLock, so same-root re-entry is rejected
+// and the codebase keeps pool and task spans sequential.
+func withTaskLock(ctx context.Context, poolID, taskID string, fn func(context.Context) error) error {
 	if _, err := normalizePoolID(poolID); err != nil {
 		return err
 	}
@@ -168,7 +170,7 @@ func withTaskLock(poolID, taskID string, fn func() error) error {
 	if err != nil {
 		return err
 	}
-	return db.WithSpan(fn)
+	return db.WithSpanContext(ctx, fn)
 }
 
 func validateParentCycle(parentCycleID, poolName string) error {

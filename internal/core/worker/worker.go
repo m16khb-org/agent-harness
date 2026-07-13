@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -90,7 +91,7 @@ func EnqueueWorkerJob(kind, payload string) (WorkerJob, error) {
 	// writers use (Enqueue was the lone unlocked writeWorkerJob caller). Enqueue
 	// holds no other lock and RunReadOnlyWorkerJob calls it before taking its own,
 	// so this does not nest.
-	return job, withWorkerJobLock(dir, id, func() error { return writeWorkerJob(job) })
+	return job, withWorkerJobLock(context.Background(), dir, id, func(context.Context) error { return writeWorkerJob(job) })
 }
 
 func CancelWorkerJob(id string) (WorkerJob, error) {
@@ -99,7 +100,7 @@ func CancelWorkerJob(id string) (WorkerJob, error) {
 		return WorkerJob{OK: false, ID: id}, err
 	}
 	var job WorkerJob
-	err = withWorkerJobLock(dir, id, func() error {
+	err = withWorkerJobLock(context.Background(), dir, id, func(context.Context) error {
 		current, reReadErr := ReadWorkerJob(id)
 		if reReadErr != nil {
 			job = current

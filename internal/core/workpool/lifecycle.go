@@ -1,6 +1,7 @@
 package workpool
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -22,7 +23,7 @@ func Claim(poolID, workerID string) (ClaimResult, error) {
 		return ClaimResult{OK: false}, fmt.Errorf("worker_id is required")
 	}
 	var result ClaimResult
-	err = withPoolLock(poolID, func() error {
+	err = withPoolLock(context.Background(), poolID, func(context.Context) error {
 		pool, err := ReadPool(poolID)
 		if err != nil {
 			return err
@@ -192,7 +193,7 @@ func Reap(poolID string) ([]WorkTask, error) {
 		return nil, err
 	}
 	var reaped []WorkTask
-	err = withPoolLock(poolID, func() error {
+	err = withPoolLock(context.Background(), poolID, func(context.Context) error {
 		pool, err := ReadPool(poolID)
 		if err != nil {
 			return err
@@ -209,7 +210,7 @@ func Status(poolID string) (StatusResult, error) {
 		return StatusResult{OK: false}, err
 	}
 	result := StatusResult{OK: true, Counts: map[string]int{}}
-	err = withPoolLock(poolID, func() error {
+	err = withPoolLock(context.Background(), poolID, func(context.Context) error {
 		pool, err := ReadPool(poolID)
 		if err != nil {
 			return err
@@ -247,7 +248,7 @@ func Close(poolID string, force bool, reason string) (WorkPool, error) {
 		return WorkPool{OK: false}, err
 	}
 	var pool WorkPool
-	err = withPoolLock(poolID, func() error {
+	err = withPoolLock(context.Background(), poolID, func(context.Context) error {
 		var readErr error
 		pool, readErr = ReadPool(poolID)
 		if readErr != nil {
@@ -306,7 +307,7 @@ func mutateTaskIfPoolOpen(poolID, taskID string, fn func(WorkTask, WorkPool) (Wo
 		return WorkTask{OK: false, PoolID: poolID}, err
 	}
 	var task WorkTask
-	err = withTaskLock(poolID, taskID, func() error {
+	err = withTaskLock(context.Background(), poolID, taskID, func(context.Context) error {
 		pool, err := ReadPool(poolID)
 		if err != nil {
 			return err

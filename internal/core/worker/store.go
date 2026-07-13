@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -162,7 +163,7 @@ func DetectStuckWorkerJobs() (WorkerListResult, error) {
 		if job.Status == WorkerStatusRunning && !isPIDAlive(job.PID) {
 			// Lock per job so we don't race with another modifier.
 			fixed := false
-			lockErr := withWorkerJobLock(dir, id, func() error {
+			lockErr := withWorkerJobLock(context.Background(), dir, id, func(context.Context) error {
 				current, reReadErr := ReadWorkerJob(id)
 				if reReadErr != nil {
 					return reReadErr

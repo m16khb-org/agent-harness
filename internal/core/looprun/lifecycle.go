@@ -1,6 +1,7 @@
 package looprun
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -34,7 +35,7 @@ func Start(req StartLoopRequest) (LoopRun, error) {
 	}
 	loopID := newLoopID(repo, name)
 	var loop LoopRun
-	err = withLoopLock(loopID, func() error {
+	err = withLoopLock(context.Background(), loopID, func(context.Context) error {
 		existing, readErr := ReadLoop(loopID)
 		if readErr == nil {
 			if existing.Status == "active" {
@@ -81,7 +82,7 @@ func RecordAttempt(loopID string, req RecordAttemptRequest) (LoopRun, error) {
 		return LoopRun{OK: false, ID: loopID}, fmt.Errorf("evidence_required")
 	}
 	var loop LoopRun
-	err = withLoopLock(loopID, func() error {
+	err = withLoopLock(context.Background(), loopID, func(context.Context) error {
 		var readErr error
 		loop, readErr = ReadLoop(loopID)
 		if readErr != nil {
@@ -114,7 +115,7 @@ func Stop(loopID string, success bool, reason string) (LoopRun, error) {
 		return LoopRun{OK: false}, err
 	}
 	var loop LoopRun
-	err = withLoopLock(loopID, func() error {
+	err = withLoopLock(context.Background(), loopID, func(context.Context) error {
 		var readErr error
 		loop, readErr = ReadLoop(loopID)
 		if readErr != nil {
@@ -157,7 +158,7 @@ func Status(loopID string) (StatusResult, error) {
 	return result, nil
 }
 
-func withLoopLock(loopID string, fn func() error) error {
+func withLoopLock(ctx context.Context, loopID string, fn func(context.Context) error) error {
 	if _, err := normalizeLoopID(loopID); err != nil {
 		return err
 	}
@@ -165,7 +166,7 @@ func withLoopLock(loopID string, fn func() error) error {
 	if err != nil {
 		return err
 	}
-	return db.WithSpan(fn)
+	return db.WithSpanContext(ctx, fn)
 }
 
 func normalizeRepo(repo string) (string, error) {

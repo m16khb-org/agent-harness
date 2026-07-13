@@ -13,6 +13,7 @@
 package session
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -54,7 +55,7 @@ func Bind(store Store, repo, cycleID, branch, expectedWorktree string) error {
 	if repo == "" {
 		return fmt.Errorf("repo is required")
 	}
-	return withSessionLock(store, repo, func() error {
+	return withSessionLock(context.Background(), store, repo, func(context.Context) error {
 		return writeBindingForKey(store, repo, bindingKey(repo), cycleID, branch, expectedWorktree)
 	})
 }
@@ -158,7 +159,7 @@ func UnbindForCycle(store Store, repo, cycleID string) error {
 		return fmt.Errorf("repo is required")
 	}
 	cycleID = strings.TrimSpace(cycleID)
-	return withSessionLock(store, repo, func() error {
+	return withSessionLock(context.Background(), store, repo, func(context.Context) error {
 		b, err := Read(store, repo)
 		if err != nil {
 			return err
@@ -182,7 +183,7 @@ func BindScoped(store Store, repo, cycleID, branch, expectedWorktree string) err
 	if err := validateScopedCycleID(cycleID); err != nil {
 		return err
 	}
-	return withSessionLock(store, repo, func() error {
+	return withSessionLock(context.Background(), store, repo, func(context.Context) error {
 		return writeBindingForKey(store, repo, scopedBindingKey(repo, cycleID), cycleID, branch, expectedWorktree)
 	})
 }
@@ -213,7 +214,7 @@ func UnbindScopedForCycle(store Store, repo, cycleID string) error {
 	if err := validateScopedCycleID(cycleID); err != nil {
 		return err
 	}
-	return withSessionLock(store, repo, func() error {
+	return withSessionLock(context.Background(), store, repo, func(context.Context) error {
 		key := scopedBindingKey(repo, cycleID)
 		b, err := readBindingForKey(store, repo, key)
 		if err != nil {
@@ -271,9 +272,9 @@ func ListBindings(store Store, repo string) ([]Binding, error) {
 // withSessionLock serializes all binding mutations for a repo under the state
 // root's span lock. The per-cycle IssueOps lock cannot serialize two different
 // cycles racing on the shared per-repo binding, so this lock guards bind vs
-// cross-cycle unbind. It must never be entered while already inside another
-// span on the same state root (spans do not nest).
-func withSessionLock(store Store, repo string, fn func() error) error {
+// cross-cycle unbind. Same-root re-entry through the propagated context is
+// rejected before waiting.
+func withSessionLock(ctx context.Context, store Store, repo string, fn func(context.Context) error) error {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
 		return fmt.Errorf("repo is required")
@@ -282,7 +283,7 @@ func withSessionLock(store Store, repo string, fn func() error) error {
 	if err != nil {
 		return err
 	}
-	return db.WithSpan(fn)
+	return db.WithSpanContext(ctx, fn)
 }
 
 // StaleBinding pairs a session binding's sqlstore key with its cycle ID for
@@ -341,7 +342,7 @@ func PruneStaleBindings(store Store, repo string, stale []StaleBinding, isCycleL
 	pruned := 0
 	for _, entry := range stale {
 		deleted := false
-		err := withSessionLock(store, repo, func() error {
+		err := withSessionLock(context.Background(), store, repo, func(context.Context) error {
 			fresh, err := readBindingForKey(store, repo, entry.Key)
 			if err != nil {
 				return err
