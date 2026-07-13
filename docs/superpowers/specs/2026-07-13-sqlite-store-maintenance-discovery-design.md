@@ -88,8 +88,8 @@ TDD는 다음 순서로 진행한다.
 ```bash
 go test ./internal/core/state -run 'Maintain|Discover' -count=1
 go test ./cmd/harness/statecli ./cmd/harness/mcpcli -run Maintain -count=1
-go test ./... -count=1
-go test -race ./... -count=1
+go test -p 1 -timeout 20m ./... -count=1
+go test -race -p 1 -timeout 20m ./... -count=1
 go build -o bin/agent-harness ./cmd/harness
 ```
 

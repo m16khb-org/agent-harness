@@ -590,11 +590,11 @@ Archived entries:
 - Context: After the sqlite migration, three operational defects were measured: WAL files held high-water (issueops WAL 4.1MB vs DB 200KB), sidecar files could be created with 0644 under umask 022, and stale session bindings accumulated without any prune surface.
 - Decision:
   - `sqlstore.Maintain` runs `PRAGMA wal_checkpoint(TRUNCATE)` and re-asserts 0600 on every store file/sidecar. It is safe concurrent with readers/writers; busy checkpoints are skipped (Checkpointed=false), not errors.
-  - `state maintain` CLI/MCP exposes maintenance across the 4 known store roots. Roots without a database are skipped.
+  - `state maintain` CLI/MCP covers five fixed roots (state, issueops, workpool, worker, loop) plus direct `projects/<repo-id>` directories that already contain a regular `harness.db`. Missing fixed roots are reported as skipped; lifecycle-only project namespaces are neither listed nor materialized.
   - `MaybeMaintainStateStores(24h)` amortizes maintenance on the session-start hook via `.last-store-maintain` sentinel, mirroring `MaybeDetectStuckWorkerJobs(6h)`.
   - Session binding cleanup (`FindStaleBindings`/`PruneStaleBindings`) runs in `ScanStaleIssueOpsCycles` with TOCTOU re-checks.
-- Rationale: WAL checkpoint is ms-scale and safe concurrent; a 24h amortization interval keeps the hot path predictable without needing a timer-based scheduler. VACUUM requires an exclusive lock and rewrites every page — unjustified at 200KB DB size. The sentinel pattern is already proven for stuck-worker detection.
-- Consequences: WAL files stay near header size; sidecars are always 0600; orphan bindings are prunable. The `.last-store-maintain` sentinel is recognized by the state doctor.
+- Rationale: WAL checkpoint is ms-scale and safe concurrent; a 24h amortization interval keeps the hot path predictable without needing a timer-based scheduler. Direct-only project discovery is bounded and runs only when the sentinel allows maintenance; a fresh-sentinel skip remains stat-only. VACUUM requires an exclusive lock and rewrites every page — unjustified at 200KB DB size. The sentinel pattern is already proven for stuck-worker detection.
+- Consequences: WAL files across fixed and discovered project stores stay near header size; sidecars are always 0600; orphan bindings are prunable. The `.last-store-maintain` sentinel is recognized by the state doctor.
 - Evidence:
   - internal/core/sqlstore/maintain.go, maintain_test.go
   - internal/core/state/state_maintain.go, state_maintain_test.go

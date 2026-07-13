@@ -66,7 +66,7 @@
 | R13 loop contract 혼선 | P1 | S | 같은 repo+name active loop면 goal/verify argv/max attempts 불일치도 조용히 기존 loop에 합류한다. | `internal/core/looprun/lifecycle.go:18-67` (LOOP-1) |
 | R14 parent readiness TOCTOU | P2 | S | pool/loop scan과 IssueOps PR phase write가 다른 root/transaction이라 scan 직후 새 dispatch가 생겨도 PR 전이가 통과한다. | `internal/core/issueops_facade.go:265-318`, `workpool/gate.go:9-60`, `looprun/gate.go:14-44` (ORCH-1) |
 | R15 compaction/project state 유실 | P2 | S | PostCompact compare 뒤 concurrent PreCompact가 새 capsule을 쓰면 새 파일을 삭제할 수 있고, existing profile RMW도 lock이 없어 metadata rollback이 가능하다. | `internal/core/lifecycle/compact/compact.go:125-175`, `lifecycle_project_state_store.go:52-119` (SS-03/06) |
-| R16 SQLite 유지보수·privacy·crash test | P2/P3 | S/T | loop root가 maintenance에서 빠지고 existing permissive mode는 즉시 교정되지 않는다. nested span은 self-deadlock, 실제 process crash test는 없다. | `internal/core/state/state_maintain.go:18-35`, `sqlstore/sqlstore.go:70-151`, `sqlstore_test.go:96-140` (SS-04/07/08, QCT-08) |
+| R16 SQLite 유지보수·privacy·crash test | P2/P3 | S/T | loop 및 project-scoped store maintenance 누락은 보완됐다. existing permissive mode는 즉시 교정되지 않고, nested span은 self-deadlock하며, 실제 process crash test는 없다. | `internal/core/state/state_maintain.go:18-82`, `sqlstore/sqlstore.go:70-151`, `sqlstore_test.go:96-140` (SS-04/07/08, QCT-08) |
 | R17 install/update 비원자성 | P1/P2 | S | 전체 lock/rollback 없이 in-place write·remove/create를 하며 host 실패를 숨기고 GJC install을 중복 소유한다. crash/concurrent update가 mixed host state를 만든다. | `internal/core/install/install.go:80`, `internal/adapter/installutil/install_util.go:40-77`, `scripts/install-native.sh:95-135` (HI-03/08) |
 | R18 standalone/host parity drift | P1/P2 | S | 기본 install이 외부 glab MCP를 등록하고, GJC hook은 모든 callback에서 `undefined`; live Claude collision 대신 fixture를 검사하며 managed stale link manifest가 없다. | `scripts/install-native.sh:135`, `gjc-plugin/hook.ts:19-40`, `validation_native_integration*.go` (HI-06/07/09/10) |
 | R19 self-verify false-positive | P1/P2 | T | 실패 전용 필드가 contract hash에서 빠지고, clean tree에서는 race/vet 미실행도 covered, parallel isolation은 실제 self-verify를 돌리지 않으며 binary drift는 mtime만 본다. | `cmd/harness/selfworkflow/summary/self_verify_summary_contract.go`, `riskqa/*.go`, `validation_parallel_*.go`, `internal/core/doctor/checks.go:142-170` (QCT-01~04) |
@@ -374,11 +374,11 @@ Main agent
 
 ### T18. SQLite maintenance·privacy·process-crash 계약
 
-- **What**: loop root를 maintenance catalog에 넣고 store open 직후 owned root 0700, DB/WAL/SHM/lock 0600을 보증한다. actual helper process로 acquire/block/kill/reacquire를 검증한다. nested `WithSpan`은 감지해 fail-fast error를 내고 busy wait는 context-aware로 만든다. process-lifetime handle cache는 FD-growth probe만 추가하고, 실제 상한 위반이 측정될 때에만 별도 task로 eviction/close 설계를 연다.
+- **What**: loop root와 existing direct project store discovery는 maintenance catalog에 반영됐다. 남은 범위로 store open 직후 owned root 0700, DB/WAL/SHM/lock 0600을 보증한다. actual helper process로 acquire/block/kill/reacquire를 검증한다. nested `WithSpan`은 감지해 fail-fast error를 내고 busy wait는 context-aware로 만든다. process-lifetime handle cache는 FD-growth probe만 추가하고, 실제 상한 위반이 측정될 때에만 별도 task로 eviction/close 설계를 연다.
 - **Owner**: deep agent. **Depends**: T13, T14.
 - **References**: `internal/core/state/state_maintain.go:18-35`, `sqlstore/sqlstore.go:51-151`, `sqlstore/maintain.go:37-55`, `sqlstore_test.go:96-140`.
 - **Must not**: scheduler timing 200ms만으로 lock test; nested span 무기한 hang 유지; unrelated root chmod.
-- **Acceptance**: two-process holder kill 뒤 bounded time 재획득, nested span 즉시 typed error, cancelled wait 조기 반환. loop WAL maintenance와 permissive pre-created root 교정이 첫 write 직후 확인된다. 반복 open의 FD 수는 측정·기록되며 근거 없이 cache semantics를 바꾸지 않는다.
+- **Acceptance**: loop 및 existing project WAL maintenance와 lifecycle-only project non-materialization은 retained tests로 확인됐다. 남은 acceptance는 two-process holder kill 뒤 bounded time 재획득, nested span 즉시 typed error, cancelled wait 조기 반환, permissive pre-created root 교정이다. 반복 open의 FD 수는 측정·기록되며 근거 없이 cache semantics를 바꾸지 않는다.
 - **QA**: happy—cross-process serialization/crash recovery; failure—nested/cancel/busy/permission table.
 - **Commit**: `fix(sqlstore): harden process locking maintenance and private modes`.
 
