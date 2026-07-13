@@ -374,12 +374,12 @@ Main agent
 
 ### T18. SQLite maintenance·privacy·process-crash 계약
 
-- **What**: loop root와 existing direct project store discovery는 maintenance catalog에 반영됐다. 남은 범위로 store open 직후 owned root 0700, DB/WAL/SHM/lock 0600을 보증한다. actual helper process로 acquire/block/kill/reacquire를 검증한다. nested `WithSpan`은 감지해 fail-fast error를 내고 busy wait는 context-aware로 만든다. process-lifetime handle cache는 FD-growth probe만 추가하고, 실제 상한 위반이 측정될 때에만 별도 task로 eviction/close 설계를 연다.
+- **What**: loop root와 existing direct project store discovery는 maintenance catalog에 반영됐다. store open 직후 owned root 0700, DB/WAL/SHM/journal/lock 0600을 보증한다. actual helper process로 acquire/block/kill/reacquire를 검증한다. `WithSpan(ctx, fn)`은 active-root-chain re-entry를 typed fail-fast error로 내고 local/SQLite wait를 context-aware로 만든다. process-lifetime handle cache는 반복-open 측정만 추가하며 eviction/close는 도입하지 않는다.
 - **Owner**: deep agent. **Depends**: T13, T14.
-- **References**: `internal/core/state/state_maintain.go:18-35`, `sqlstore/sqlstore.go:51-151`, `sqlstore/maintain.go:37-55`, `sqlstore_test.go:96-140`.
+- **References**: `internal/core/sqlstore/sqlstore.go`, `span_context_test.go`, `permissions_test.go`, `process_crash_test.go`, `resource_test.go`; `internal/core/issueops/issueops_remote_create_claim.go`.
 - **Must not**: scheduler timing 200ms만으로 lock test; nested span 무기한 hang 유지; unrelated root chmod.
-- **Acceptance**: loop 및 existing project WAL maintenance와 lifecycle-only project non-materialization은 retained tests로 확인됐다. 남은 acceptance는 two-process holder kill 뒤 bounded time 재획득, nested span 즉시 typed error, cancelled wait 조기 반환, permissive pre-created root 교정이다. 반복 open의 FD 수는 측정·기록되며 근거 없이 cache semantics를 바꾸지 않는다.
-- **QA**: happy—cross-process serialization/crash recovery; failure—nested/cancel/busy/permission table.
+- **Acceptance**: 2026-07-13 검증 완료. `TestOpenRepairsPermissiveRootAndKnownFiles`와 invalid-path tests가 exact mode와 symlink/unrelated 경계를 고정한다. `TestWithSpanRejectsActiveRootReentry`, `TestWithSpanAllowsDistinctRootsAndRejectsCycle`, `TestWithSpanCancelsLocalWaiter`, `TestWithSpanCancelsSQLiteWaiter`가 chain과 cancellation을 고정한다. create/reconcile projection tests는 remote-create child-root-to-main-root 순서를 보존한다.
+- **QA**: `TestWithSpanRecoversAfterHolderProcessIsKilled`는 holder kill 뒤 같은 contender의 bounded 재획득을 일반 10회와 race 3회 검증했다. `TestRepeatedOpenKeepsHandleAndConnectionCountsStable`은 매 run 200회 cached open에서 handle-map 증가 0과 warmed data/span connection 불변을 10회 검증했다. `/dev/fd`는 지원될 때만 관찰 로그이며 OS-wide FD bound를 주장하지 않는다.
 - **Commit**: `fix(sqlstore): harden process locking maintenance and private modes`.
 
 ### T19. Install/update transaction과 단일 단계 소유권

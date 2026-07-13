@@ -570,11 +570,13 @@ Archived entries:
 - Source: user decision in follow-up session ("파일락이 아니라 sqlite3 기반으로 구현"), scope confirmed as full migration of all five lock families with a fresh start
 - Summary: Every harness state layer (issueops cycles, session bindings, state KV, workpool pools/tasks, worker jobs) persists as rows in a per-state-root SQLite database (`harness.db`), and every read-modify-write span serializes through a held `BEGIN IMMEDIATE` transaction on a dedicated lock database (`harness.lock.db`). The flock layer is deleted.
 - Context: The previous layout stored one JSON file per record with per-entity `flock` advisory locks. That left a documented P1 gap on `!unix` platforms (in-process mutex only), accumulated `.lock` inode files that could never be deleted safely, required orphan-lock sweeps, and offered no transactional listing. The five with*Lock families shared the same discipline but four separate implementations.
-- Decision: `internal/core/sqlstore` owns storage and spans. Per state-root directory: `harness.db` (WAL, `records(bucket,id,data)` JSON blob rows) plus `harness.lock.db` used only as a crash-safe cross-process span lock (transaction dies with the process, exactly like flock). Data writes autocommit so a span's own writes stay visible mid-span, matching flock-era semantics. Spans serialize per directory and must never nest — the same no-nested-locks invariant the flock layer had. Existing JSON state is NOT migrated (fresh start); legacy `*.json`/`*.lock` files are ignored by the state doctor. Record JSON schemas, IDs, and CLI/MCP response shapes are unchanged; `path` fields keep the legacy `<dir>/<key>.json` shape as a stable per-record identifier.
+- Decision: `internal/core/sqlstore` owns storage and spans. Per state-root directory: `harness.db` (WAL, `records(bucket,id,data)` JSON blob rows) plus `harness.lock.db` used only as a crash-safe cross-process span lock (transaction dies with the process, exactly like flock). Data writes autocommit so a span's own writes stay visible mid-span, matching flock-era semantics. `WithSpan(ctx, fn)` propagates an ordered active-root chain: a root may appear only once, same-root or cyclic re-entry returns `*NestedSpanError` before waiting, and distinct roots are allowed only in a documented acyclic order. The retained production order is `remote-create-live/<id>` child root followed by the main IssueOps root. Existing JSON state is NOT migrated (fresh start); legacy `*.json`/`*.lock` files are ignored by the state doctor. Record JSON schemas, IDs, and CLI/MCP response shapes are unchanged; `path` fields keep the legacy `<dir>/<key>.json` shape as a stable per-record identifier.
 - Rationale: SQLite gives real cross-process locking on every platform (closing the `!unix` gap), removes lock-inode lifecycle rules and orphan sweeps, and consolidates five storage implementations into one. The pure-Go driver (`modernc.org/sqlite`) keeps the single-binary standalone policy — no cgo, no external service.
 - Consequences: State roots now contain two SQLite files instead of JSON trees; raw-file inspection is replaced by `state read`/`state list`/`issueops status` CLI surfaces or any sqlite3 client. Concurrency granularity is per state root, not per entity — conservative but correct; the workpool race battery passes unchanged. Pre-migration state is inert on disk until manually removed.
 - Evidence:
-  - internal/core/sqlstore/sqlstore.go and sqlstore_test.go (cross-handle span serialization test)
+  - internal/core/sqlstore/span_context_test.go (`TestWithSpanRejectsActiveRootReentry`, `TestWithSpanAllowsDistinctRootsAndRejectsCycle`, local/SQLite cancellation and panic cleanup)
+  - internal/core/sqlstore/process_crash_test.go (`TestWithSpanRecoversAfterHolderProcessIsKilled`, repeated normal and race runs)
+  - internal/core/issueops/issueops_remote_create_claim_test.go (create/reconcile durable projection tests retain child-root-to-main-root order)
   - feat(issueops)!/feat(workpool)! migration commits with package + consumer + race batteries green
   - internal/core/state, internal/core/worker ports with doctor/migrate/prune operating on rows
 - Alternatives / rejected options:
@@ -589,7 +591,8 @@ Archived entries:
 - Summary: Store maintenance (WAL checkpoint truncate + sidecar permission repair) runs automatically on the session-start hook at most once per 24h via a sentinel-mtime gate, with a manual `state maintain` CLI fallback. Orphan session bindings (cycle done or absent) are swept by `issueops cleanup stale --apply`. VACUUM is explicitly not adopted.
 - Context: After the sqlite migration, three operational defects were measured: WAL files held high-water (issueops WAL 4.1MB vs DB 200KB), sidecar files could be created with 0644 under umask 022, and stale session bindings accumulated without any prune surface.
 - Decision:
-  - `sqlstore.Maintain` runs `PRAGMA wal_checkpoint(TRUNCATE)` and re-asserts 0600 on every store file/sidecar. It is safe concurrent with readers/writers; busy checkpoints are skipped (Checkpointed=false), not errors.
+  - `sqlstore.Open` validates the exact state root as a real directory, repairs it to 0700, rejects symlink/non-regular known SQLite paths, and repairs the fixed main/sidecar set to 0600 before returning, including cached opens.
+  - `sqlstore.Maintain` runs `PRAGMA wal_checkpoint(TRUNCATE)` and re-asserts 0600 only on the fixed known store file/sidecar set. It is safe concurrent with readers/writers; busy checkpoints are skipped (Checkpointed=false), not errors.
   - `state maintain` CLI/MCP covers five fixed roots (state, issueops, workpool, worker, loop) plus direct `projects/<repo-id>` directories that already contain a regular `harness.db`. Missing fixed roots are reported as skipped; lifecycle-only project namespaces are neither listed nor materialized.
   - `MaybeMaintainStateStores(24h)` amortizes maintenance on the session-start hook via `.last-store-maintain` sentinel, mirroring `MaybeDetectStuckWorkerJobs(6h)`.
   - Session binding cleanup (`FindStaleBindings`/`PruneStaleBindings`) runs in `ScanStaleIssueOpsCycles` with TOCTOU re-checks.
@@ -597,6 +600,8 @@ Archived entries:
 - Consequences: WAL files across fixed and discovered project stores stay near header size; sidecars are always 0600; orphan bindings are prunable. The `.last-store-maintain` sentinel is recognized by the state doctor.
 - Evidence:
   - internal/core/sqlstore/maintain.go, maintain_test.go
+  - internal/core/sqlstore/permissions_test.go (exact root/file modes, cached drift repair, invalid-path and unrelated-file boundaries)
+  - internal/core/sqlstore/resource_test.go (200 repeated opens preserve handle identity, handle-map size, and warmed connection counts)
   - internal/core/state/state_maintain.go, state_maintain_test.go
   - internal/core/issueops/issueops_stale_scan.go (session binding scan integration)
   - internal/core/issueops/session/session.go (FindStaleBindings, PruneStaleBindings)
@@ -604,7 +609,7 @@ Archived entries:
   - Dogfood: `state maintain --json` truncated issueops WAL from 1.2MB to 0; doctor healthy
 - Alternatives / rejected options:
   - VACUUM / auto_vacuum — rejected: 200KB DB, exclusive lock cost >> space recovery. Revisit at multi-MB scale.
-  - sqlstore handle eviction — rejected: ~10 store roots, fd cost negligible. Revisit when project spans reach hundreds.
+  - sqlstore handle eviction — rejected: the repeated-open measurement shows no handle-map or warmed connection growth for one cached root. This is not an OS-wide FD bound; revisit only with measured unique-root growth.
   - Timer-based scheduler in daemon — rejected: sentinel pattern is simpler and needs no daemon-side timer.
 
 ## 2026-07-09 — Loop contracts and pilot-first workpool gates
