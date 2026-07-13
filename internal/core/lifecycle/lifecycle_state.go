@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/core/commandguard"
+	"agent-harness/internal/core/lifecycle/liveapproval"
 	"agent-harness/internal/core/lifecycle/nextactionrelay"
 	"agent-harness/internal/core/remoteartifact"
 )
@@ -85,11 +86,42 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 	}
 	if result.Decision != "block" && req.EnforceGitOpsKubectl {
 		if decision, reason := commandguard.GitOpsKubectlDecision(req.Tool, req.Command); decision != "" {
-			result.Decision = decision
-			result.Reason = reason
+			if decision == "ask" && strings.EqualFold(strings.TrimSpace(req.Host), "codex") {
+				approval := liveapproval.Evaluate(liveApprovalStore(), liveapproval.Request{
+					Host:      req.Host,
+					SessionID: req.SessionID,
+					RepoRoot:  req.Repo,
+					CWD:       req.CWD,
+					Tool:      req.Tool,
+					Command:   req.Command,
+				})
+				switch {
+				case approval.Allowed:
+					result.Decision = "allow"
+					result.Reason = ""
+				case approval.Token != "":
+					result.Decision = "ask"
+					result.Reason = approval.Reason
+				default:
+					result.Decision = "block"
+					result.Reason = approval.Reason
+				}
+			} else {
+				result.Decision = decision
+				result.Reason = reason
+			}
 		}
 	}
 	return result
+}
+
+func ApproveCodexKubectlLiveAccess(repo, host, sessionID, prompt string) liveapproval.Result {
+	return liveapproval.Approve(liveApprovalStore(), liveapproval.ApprovalRequest{
+		Host:      host,
+		SessionID: sessionID,
+		RepoRoot:  repo,
+		Prompt:    prompt,
+	})
 }
 
 func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTriggerResult) StopNextActionRelayResult {

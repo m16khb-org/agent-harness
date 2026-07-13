@@ -24,6 +24,11 @@ func ReadStopNextActionRelay(repoRoot string) (StopNextActionRelayRecord, bool) 
 	return lifecycle.ReadStopNextActionRelay(repoRoot)
 }
 
+func ApproveCodexKubectlLiveAccess(repo, host, sessionID, prompt string) (bool, string) {
+	result := lifecycle.ApproveCodexKubectlLiveAccess(repo, host, sessionID, prompt)
+	return result.Handled, result.AdditionalContext
+}
+
 func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 	return lifecycle.ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
 }

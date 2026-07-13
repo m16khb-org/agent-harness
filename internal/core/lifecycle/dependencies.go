@@ -4,6 +4,7 @@ import (
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/lifecycle/compact"
 	"agent-harness/internal/core/lifecycle/docupkeep"
+	"agent-harness/internal/core/lifecycle/liveapproval"
 	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/lifecycle/worktreepath"
 	"agent-harness/internal/core/nextaction"
@@ -195,6 +196,29 @@ func compactStore() compact.Store {
 		ReadPending: ReadPendingDocUpkeepEvents,
 		Validate:    ValidateProjectLifecycleState,
 		WriteJSON:   writeJSONAtomic,
+	}
+}
+
+func liveApprovalStore() liveapproval.Store {
+	toNamespace := func(plan ProjectLifecycleStatePlan) liveapproval.Namespace {
+		return liveapproval.Namespace{
+			Exists:   plan.Exists,
+			Valid:    plan.NamespaceValid,
+			RepoRoot: plan.RepoRoot,
+			Dir:      plan.ProjectStateDir,
+		}
+	}
+	return liveapproval.Store{
+		Resolve: func(repoRoot string) (liveapproval.Namespace, error) {
+			plan, err := ValidateProjectLifecycleState(repoRoot)
+			return toNamespace(plan), err
+		},
+		Init: func(repoRoot string) (liveapproval.Namespace, error) {
+			plan, err := InitProjectLifecycleState(repoRoot, true)
+			return toNamespace(plan), err
+		},
+		WithLock:  state.WithKeyLock,
+		WriteJSON: writeJSONAtomic,
 	}
 }
 

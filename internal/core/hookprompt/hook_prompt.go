@@ -8,6 +8,8 @@ import (
 type HookUserPromptRequest struct {
 	Prompt               string `json:"prompt"`
 	Repo                 string `json:"repo,omitempty"`
+	Host                 string `json:"host,omitempty"`
+	SessionID            string `json:"session_id,omitempty"`
 	EnableLLMHints       bool   `json:"enable_llm_hints,omitempty"`
 	DisableKarpathyFirst bool   `json:"disable_karpathy_first,omitempty"`
 }
@@ -49,6 +51,11 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		Hints:       []HookUserPromptHint{},
 	}
 	if prompt == "" {
+		return result
+	}
+	if handled, context := ApproveCodexKubectlLiveAccess(req.Repo, req.Host, req.SessionID, prompt); handled {
+		result.ShouldInject = true
+		result.AdditionalContext = context
 		return result
 	}
 	karpathyFirst, cleaned := karpathyFirstDecision(prompt)

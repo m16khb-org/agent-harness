@@ -35,9 +35,19 @@ func runHookUserPrompt(args []string) error {
 	if repo == "" {
 		repo = ResolveTarget("")
 	}
+	payloadHost := strings.TrimSpace(hookinput.HostFromHookInput(stdin))
+	flagHost := strings.TrimSpace(*hostFlag)
+	nativeHost := firstNonEmptyHookValue(payloadHost, flagHost)
+	if nativeHost == "" {
+		nativeHost = string(hookadapter.HostCodex)
+	} else if payloadHost != "" && flagHost != "" && !strings.EqualFold(payloadHost, flagHost) {
+		nativeHost = "conflict"
+	}
 	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{
 		Prompt:               prompt,
 		Repo:                 repo,
+		Host:                 nativeHost,
+		SessionID:            hookinput.SessionIDFromHookInput(stdin),
 		EnableLLMHints:       *enableLLMHints || hookenv.Bool("HARNESS_ENABLE_LLM_HINTS"),
 		DisableKarpathyFirst: *disableKarpathyFirst || hookenv.Bool("HARNESS_DISABLE_KARPATHY_FIRST"),
 	})
@@ -55,7 +65,7 @@ func runHookUserPrompt(args []string) error {
 	// fire silently, and Claude/Reasonix carry it via systemMessage. Codex has
 	// no separate systemMessage channel here (userView would replace the hint
 	// context), so the notice is Claude/Reasonix-only.
-	host := strings.TrimSpace(*hostFlag)
+	host := flagHost
 	ho := hookadapter.Resolve(host)
 	userView := ""
 	switch hookadapter.Host(host) {
