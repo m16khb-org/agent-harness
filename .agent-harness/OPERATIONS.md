@@ -56,6 +56,14 @@ agent-harness issueops cleanup stale --repo /path/to/repo --apply --prune-done 7
 
 `state maintain` is read-only (checkpoint + chmod); it does not delete rows. Stale binding cleanup is destructive and gated behind `--apply`; without it, stale bindings are reported but not deleted.
 
+## Kubectl Live-Access Approval
+
+With `--enforce-gitops-kubectl`, `kubectl exec` and `kubectl port-forward` require explicit confirmation. Claude uses its native `ask`. Codex cannot emit native PreToolUse `ask`, so the first attempt blocks with a short instruction such as `승인 AH-XXXXXX`.
+
+Enter that exact token in the same session. UserPromptSubmit records a project-scoped 10-minute grant, and the next identical workspace/cwd/tool/command is allowed exactly once. A changed command, another session, an expired token, or a reused grant blocks again. Runtime state stores only the request fingerprint with mode `0600`; it never stores the raw command.
+
+If the token expires or the allowed tool call fails, retry the command to receive a new token and approve it. Do not remove `--enforce-gitops-kubectl` as routine recovery. Direct mutating kubectl commands remain blocked and must go through GitOps.
+
 ## Release Smoke
 
 ```bash

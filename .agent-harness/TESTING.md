@@ -289,6 +289,7 @@ CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden 
 - project lifecycle namespace tests must use `HARNESS_STATE_DIR` with `t.TempDir()` and must not write runtime state under the target repo.
 - bootstrap tests should verify dry-run plans `projects/<repo-id>/project.json` without creating it, and normal `project bootstrap` writes lifecycle profile metadata in user-state.
 - hook tests should cover fallback behavior when lifecycle state is missing/corrupt so prompt routing remains useful.
+- kubectl live-access hook tests must cover Codex first-block/token reuse/exact approval/one allow/re-block, session/workspace/cwd/tool/command mismatch, 10-minute pending/granted expiry, concurrent single consume, `0600` state without raw command, and unchanged Claude native `ask` behavior.
 - doctor tests should cover repo-local `.agent-harness/state/` and namespace mismatch warnings.
 
 ## Optional Orca handoff verification
