@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops/model"
+	"context"
 )
 
 // validIssueOpsFeedbackResolutions are the recognised feedback resolution
@@ -21,7 +22,7 @@ var validIssueOpsFeedbackResolutions = map[string]bool{
 // the grill domain_review artifact.
 func RecordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = recordIssueOpsDomainReviewLocked(stateRoot, id, req)
 		return e
@@ -56,7 +57,7 @@ func recordIssueOpsDomainReviewLocked(stateRoot, id string, req IssueOpsDomainRe
 // backing the ai-slop-clean cleanup_evidence and verification_evidence artifacts.
 func RecordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verification []string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = recordIssueOpsAISlopCleanEvidenceLocked(stateRoot, id, categories, verification)
 		return e
@@ -88,7 +89,7 @@ func recordIssueOpsAISlopCleanEvidenceLocked(stateRoot, id string, categories, v
 // source of truth backing the feedback feedback_resolution artifact.
 func ResolveIssueOpsFeedback(stateRoot, id string, index int, resolution string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = resolveIssueOpsFeedbackLocked(stateRoot, id, index, resolution)
 		return e

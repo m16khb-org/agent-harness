@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -8,7 +9,7 @@ import (
 
 func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = addIssueOpsFeedbackLocked(stateRoot, id, source, body, classification)
 		return e
@@ -56,7 +57,7 @@ func knownIssueOpsFeedbackClassification(classification string) bool {
 
 func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = markIssueOpsContractFeedbackIssueUpdatedLocked(stateRoot, id)
 		return e

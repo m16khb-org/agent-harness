@@ -12,6 +12,7 @@ import (
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/preflight"
+	"context"
 )
 
 type IssueOpsHandoffClaimRequest struct {
@@ -90,7 +91,7 @@ func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hoo
 	}
 	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, req.ID, func() error {
+	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
 		if err != nil {
 			return err
@@ -162,7 +163,7 @@ func validateHandoffClaim(record IssueOpsRecord, req IssueOpsHandoffClaimRequest
 
 func RecordIssueOpsHeartbeatWithRequest(stateRoot string, req IssueOpsHeartbeatRequest) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, req.ID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
 		if err != nil {
 			return err
@@ -223,7 +224,7 @@ func finishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest, h
 	}
 	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, req.ID, func() error {
+	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
 		if err != nil {
 			return err
@@ -373,7 +374,7 @@ func acceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest, h
 	}
 	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, req.ID, func() error {
+	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
 		if err != nil {
 			return err

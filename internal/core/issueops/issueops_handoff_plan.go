@@ -9,6 +9,7 @@ import (
 	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/linking"
 	"agent-harness/internal/core/preflight"
+	"context"
 )
 
 type coordinatorPlanCheckpoint struct {
@@ -23,7 +24,7 @@ func linkIssueOpsPlanWithCoordinatorCheckpoint(stateRoot, id, planPath string) (
 		return IssueOpsRecord{}, err
 	}
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, id, func() error {
+	err = withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		store := issueOpsLinkingStore()
 		read := store.Read
 		write := store.TouchWrite

@@ -235,7 +235,7 @@ func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 
 func persistHandoffLiveTerminalIdentity(stateRoot string, expected IssueOpsRecord, terminal port.OrcaTerminal, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, expected.ID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, expected.ID)
 		if err != nil {
 			return err
@@ -285,7 +285,7 @@ func recoverRuntimeReissuedHandoffTerminal(ctx context.Context, stateRoot string
 
 func completeRuntimeRefreshOperation(stateRoot string, expected IssueOpsRecord, fence handoff.Fence, worktree port.OrcaWorktree, terminal port.OrcaTerminal, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, expected.ID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, expected.ID)
 		if err != nil {
 			return err
@@ -695,7 +695,7 @@ func attestHandoffSoleWriterWithRecovery(ctx context.Context, stateRoot string, 
 
 func markHandoffSoleWriterRecovery(stateRoot string, expected IssueOpsRecord, fence handoff.Fence, code, message, now string) error {
 	message = soleWriterRecoveryDiagnostic(message)
-	return withIssueOpsLock(stateRoot, expected.ID, func() error {
+	return withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, expected.ID)
 		if err != nil {
 			return err
@@ -807,7 +807,7 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 
 func persistHandoffContext(stateRoot, id, coordinatorRecipient string, coordinatorSession model.IssueOpsHostSessionIdentity, options model.IssueOpsExecutionHandoffContextOptions, expectedContextSHA256 string, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err
@@ -953,7 +953,7 @@ func resolveHandoffContextOptions(record IssueOpsRecord, supplied handoff.Contex
 
 func beginHandoffOperation(stateRoot string, expected IssueOpsRecord, fence handoff.Fence, pending model.IssueOpsExecutionHandoffPendingOperation) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, expected.ID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, expected.ID)
 		if err != nil {
 			return err
@@ -980,7 +980,7 @@ func beginHandoffOperation(stateRoot string, expected IssueOpsRecord, fence hand
 
 func validateHandoffStageCheckpoint(stateRoot string, expected IssueOpsRecord) (IssueOpsRecord, error) {
 	var validated IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, expected.ID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, expected.ID)
 		if err != nil {
 			return err
@@ -1008,7 +1008,7 @@ func runHandoffStartHook(hook func(string), stage string) {
 
 func completeHandoffOperation(stateRoot, id string, fence handoff.Fence, kind, now string, update func(*IssueOpsExecutionHandoff) error) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err
@@ -1034,7 +1034,7 @@ func completeHandoffOperation(stateRoot, id string, fence handoff.Fence, kind, n
 
 func finalizeHandoffDispatch(stateRoot, id string, fence handoff.Fence, dispatchID, assigneeHandle, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops/delegation"
+	"context"
 )
 
 func StartIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest) (IssueOpsChildStartResult, error) {
@@ -64,7 +65,7 @@ func StartIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest) (IssueO
 
 func readIssueOpsChildParentForStart(stateRoot string, req IssueOpsChildStartRequest) (IssueOpsRecord, error) {
 	var parent IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, req.ParentID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, req.ParentID, func(context.Context) error {
 		var readErr error
 		parent, readErr = ReadIssueOps(stateRoot, req.ParentID)
 		if readErr != nil {
@@ -80,7 +81,7 @@ func readIssueOpsChildParentForStart(stateRoot string, req IssueOpsChildStartReq
 
 func stampIssueOpsChildDelegation(stateRoot string, parent IssueOpsRecord, childID string, req IssueOpsChildStartRequest, now string) (IssueOpsRecord, error) {
 	var child IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, childID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, childID, func(context.Context) error {
 		var readErr error
 		child, readErr = ReadIssueOps(stateRoot, childID)
 		if readErr != nil {
@@ -96,7 +97,7 @@ func stampIssueOpsChildDelegation(stateRoot string, parent IssueOpsRecord, child
 
 func appendIssueOpsChildRef(stateRoot, parentID string, child IssueOpsRecord, req IssueOpsChildStartRequest, now string) (IssueOpsChildCycleRef, error) {
 	ref := delegation.ParentRef(child, req, now)
-	err := withIssueOpsLock(stateRoot, parentID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, parentID, func(context.Context) error {
 		parent, readErr := ReadIssueOps(stateRoot, parentID)
 		if readErr != nil {
 			return readErr
@@ -120,7 +121,7 @@ func IssueOpsChildStatus(stateRoot, parentID string, repair bool) (IssueOpsChild
 		return IssueOpsChildStatusResult{OK: false}, fmt.Errorf("parent_id is required")
 	}
 	var parent IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, parentID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, parentID, func(context.Context) error {
 		var readErr error
 		parent, readErr = ReadIssueOps(stateRoot, parentID)
 		return readErr
@@ -246,7 +247,7 @@ func buildIssueOpsChildStatus(parent IssueOpsRecord, scanned map[string]IssueOps
 
 func repairIssueOpsChildIndex(stateRoot, parentID string, scanned map[string]IssueOpsRecord) ([]string, error) {
 	appended := []string{}
-	err := withIssueOpsLock(stateRoot, parentID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, parentID, func(context.Context) error {
 		parent, readErr := ReadIssueOps(stateRoot, parentID)
 		if readErr != nil {
 			return readErr
@@ -286,7 +287,7 @@ func readIssueOpsChildForValidation(stateRoot, parentID, childID string) (IssueO
 		return IssueOpsRecord{OK: false}, fmt.Errorf("child_id is required")
 	}
 	var child IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, childID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, childID, func(context.Context) error {
 		var readErr error
 		child, readErr = ReadIssueOps(stateRoot, childID)
 		return readErr
@@ -303,7 +304,7 @@ func readIssueOpsChildForValidation(stateRoot, parentID, childID string) (IssueO
 func recordIssueOpsChildVerdict(stateRoot, parentID string, child IssueOpsRecord, verdict, reason string, evidence []string) (IssueOpsChildValidationResult, error) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	var updated IssueOpsChildCycleRef
-	err := withIssueOpsLock(stateRoot, strings.TrimSpace(parentID), func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, strings.TrimSpace(parentID), func(context.Context) error {
 		parent, readErr := ReadIssueOps(stateRoot, parentID)
 		if readErr != nil {
 			return readErr

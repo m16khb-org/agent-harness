@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops/benchmark"
+	"context"
 )
 
 // RoutingFidelityResult reports whether a cycle's live routing covered every
@@ -31,7 +32,7 @@ const maxRoutingTraceEntries = 500
 // behavior rather than a tautology. It is idempotent per (phase, skill).
 func RecordIssueOpsRouting(stateRoot, id, phase, skill string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = recordIssueOpsRoutingLocked(stateRoot, id, phase, skill)
 		return e

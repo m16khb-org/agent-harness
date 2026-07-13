@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -8,7 +9,7 @@ import (
 
 func ForceReleaseIssueOps(stateRoot, id, reason string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = forceReleaseLocked(stateRoot, id, reason)
 		return e

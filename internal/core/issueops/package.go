@@ -22,6 +22,7 @@ import (
 	"agent-harness/internal/core/issueops/start"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/port"
+	"context"
 )
 
 type IssueOpsStartRequest = model.IssueOpsStartRequest
@@ -105,7 +106,7 @@ const IssueOpsDesignReviewEvidenceExample = intentdesign.DesignReviewEvidenceExa
 
 func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = artifactverify.Verify(issueOpsArtifactStore(), stateRoot, id, req)
 		return e
@@ -115,7 +116,7 @@ func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifa
 
 func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = artifactverify.Validate(issueOpsArtifactStore(), stateRoot, id, req)
 		return e
@@ -175,7 +176,7 @@ func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupSt
 
 func CloseIssueOpsChildren(stateRoot, id string, req IssueOpsCloseChildrenRequest, provider func(string) (port.IssueProvider, error)) (IssueOpsCloseChildrenResult, error) {
 	var result IssueOpsCloseChildrenResult
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		result, e = cleanupchildren.ByID(cleanupchildren.Store{
 			Read:       ReadIssueOps,
@@ -199,7 +200,7 @@ func issueOpsCleanupStatusStore() cleanupstatus.Store {
 
 func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = branchprepare.Prepare(issueOpsBranchPrepareStore(), stateRoot, id, req)
 		return e
@@ -245,7 +246,7 @@ func issueOpsStartLockID(repo, branch string) string {
 func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
 	id := issueOpsStartLockID(req.Repo, req.Branch)
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = start.Start(issueOpsStartStore(), stateRoot, req)
 		return e
@@ -265,7 +266,7 @@ func issueOpsStartStore() start.Store {
 
 func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = intentdesign.RecordIntent(issueOpsIntentDesignStore(), stateRoot, id, req)
 		return e
@@ -275,7 +276,7 @@ func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest)
 
 func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = intentdesign.RecordPlanPrep(issueOpsIntentDesignStore(), stateRoot, id, req)
 		return e
@@ -285,7 +286,7 @@ func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (
 
 func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = intentdesign.RecordDesignReview(issueOpsIntentDesignStore(), stateRoot, id, req)
 		return e
@@ -307,7 +308,7 @@ func issueOpsIntentDesignStore() intentdesign.Store {
 
 func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = linking.LinkIssue(issueOpsLinkingStore(), stateRoot, id, issueURL)
 		return e
@@ -321,7 +322,7 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 
 func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = linking.LinkWorktree(issueOpsLinkingStore(), stateRoot, id, worktreePath)
 		return e
@@ -345,7 +346,7 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 
 func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
 			return readErr
@@ -377,7 +378,7 @@ func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeTool
 
 func RecordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = executiondecision.Record(issueOpsExecutionDecisionStore(), stateRoot, id, req)
 		return e
@@ -394,7 +395,7 @@ func issueOpsExecutionDecisionStore() executiondecision.Store {
 
 func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = compatibilityreview.Record(issueOpsCompatibilityReviewStore(), stateRoot, id, req)
 		return e
@@ -413,7 +414,7 @@ func issueOpsCompatibilityReviewStore() compatibilityreview.Store {
 
 func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = devilsadvocate.Record(devilsadvocate.Store{Read: ReadIssueOps, TouchWrite: touchAndWriteIssueOps}, stateRoot, id, req)
 		return e
@@ -434,7 +435,7 @@ func unbindIssueOpsSessionForCycle(record IssueOpsRecord) {
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = linking.LinkChild(issueOpsLinkingStore(), stateRoot, id, childURL, title)
 		return e
@@ -444,7 +445,7 @@ func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, e
 
 func LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = linking.LinkRelated(issueOpsLinkingStore(), stateRoot, id, linkType, relatedURL, title)
 		return e

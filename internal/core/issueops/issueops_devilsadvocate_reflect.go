@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"agent-harness/internal/port"
+	"context"
 )
 
 // ReflectDevilsAdvocateFindings writes the recorded devil's-advocate findings
@@ -41,7 +42,7 @@ func ReflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port
 	if !confirm || !result.Updated {
 		return record, result, nil
 	}
-	lockErr := withIssueOpsLock(stateRoot, id, func() error {
+	lockErr := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		rec, e := ReadIssueOps(stateRoot, id)
 		if e != nil {
 			return e

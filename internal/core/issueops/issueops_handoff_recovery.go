@@ -125,7 +125,7 @@ func forceAbandonIssueOpsHandoff(ctx context.Context, stateRoot, id, reason stri
 	}
 
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, id, func() error {
+	err = withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
 		current, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
 			return readErr
@@ -335,7 +335,7 @@ func requireZeroExactCandidates(kind string, candidates int) error {
 
 func cancelIssueOpsHandoff(stateRoot, id string, force bool, reason, now string) (IssueOpsHandoffRecoverResult, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err
@@ -414,7 +414,7 @@ func finalizeCancelledIssueOpsHandoff(ctx context.Context, stateRoot, id string,
 		return IssueOpsHandoffRecoverResult{}, err
 	}
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, id, func() error {
+	err = withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
 		current, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
 			return readErr
@@ -631,7 +631,7 @@ func approveIssueOpsHandoffCleanup(stateRoot, id, disposition, reason, now strin
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("cleanup approval requires a nonempty bounded reason")
 	}
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err
@@ -683,7 +683,7 @@ func recordIssueOpsHandoffCleanup(ctx context.Context, stateRoot, id, step strin
 		return IssueOpsHandoffRecoverResult{}, err
 	}
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, id, func() error {
+	err = withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
 		current, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
 			return readErr
@@ -861,7 +861,7 @@ func retryIssueOpsHandoff(ctx context.Context, stateRoot, id string, client any,
 		return IssueOpsHandoffRecoverResult{}, err
 	}
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, id, func() error {
+	err = withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
 			return readErr
@@ -1060,7 +1060,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 	}
 
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, id, func() error {
+	err = withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
 		current, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
 			return readErr
@@ -1120,7 +1120,7 @@ func cloneHandoffReconcileSnapshot(record IssueOpsRecord) IssueOpsRecord {
 
 func persistReconciledCleanupOnlyWorktree(stateRoot string, validated IssueOpsRecord, candidate port.OrcaWorktree, reason, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, validated.ID, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, validated.ID, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, validated.ID)
 		if err != nil {
 			return err

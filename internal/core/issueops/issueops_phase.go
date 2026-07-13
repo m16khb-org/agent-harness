@@ -7,6 +7,7 @@ import (
 
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/model"
+	"context"
 )
 
 func knownIssueOpsPhase(phase IssueOpsPhase) bool {
@@ -23,7 +24,7 @@ func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
 
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = advanceIssueOpsPhaseLocked(stateRoot, id, to)
 		return e

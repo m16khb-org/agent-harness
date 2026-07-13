@@ -60,7 +60,7 @@ func TestRemoteCreateClaimAllowsOnlyOneConcurrentCallerAndFinalizes(t *testing.T
 	for range 2 {
 		go func() {
 			defer wg.Done()
-			got, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record))
+			got, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
 			results <- got
 			errs <- err
 		}()
@@ -83,10 +83,10 @@ func TestRemoteCreateClaimAllowsOnlyOneConcurrentCallerAndFinalizes(t *testing.T
 	if successes != 1 || claimed.RemoteCreateClaim == nil {
 		t.Fatalf("concurrent claim successes=%d claim=%#v", successes, claimed.RemoteCreateClaim)
 	}
-	if err := MarkIssueOpsRemoteCreateUnknown(stateRoot, claimed, "https://github.com/acme/repo/pull/16"); err != nil {
+	if err := MarkIssueOpsRemoteCreateUnknown(context.Background(), stateRoot, claimed, "https://github.com/acme/repo/pull/16"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record)); err == nil {
+	if _, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record)); err == nil {
 		t.Fatal("unknown claim allowed retry")
 	}
 }
@@ -97,21 +97,21 @@ func TestRemoteCreateClaimClearsOnlyPreInvocationAndFinalizesArtifact(t *testing
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	claimed, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record))
+	claimed, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ClearIssueOpsRemoteCreateClaimPreInvocation(stateRoot, claimed, claimed.RemoteCreateClaim.ClaimID, &port.IssueProviderCreateError{Invoked: false, Err: context.Canceled}); err != nil {
+	if err := ClearIssueOpsRemoteCreateClaimPreInvocation(context.Background(), stateRoot, claimed, claimed.RemoteCreateClaim.ClaimID, &port.IssueProviderCreateError{Invoked: false, Err: context.Canceled}); err != nil {
 		t.Fatal(err)
 	}
-	claimed, err = ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record))
+	claimed, err = ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ClearIssueOpsRemoteCreateClaimPreInvocation(stateRoot, claimed, "claim_wrong", &port.IssueProviderCreateError{Invoked: false, Err: context.Canceled}); err == nil {
+	if err := ClearIssueOpsRemoteCreateClaimPreInvocation(context.Background(), stateRoot, claimed, "claim_wrong", &port.IssueProviderCreateError{Invoked: false, Err: context.Canceled}); err == nil {
 		t.Fatal("wrong live claim identity cleared reserved claim")
 	}
-	final, err := FinalizeIssueOpsRemoteCreateClaim(stateRoot, claimed, IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/16", Labels: []string{"bug"}, Assignees: []string{"octocat"}, TargetBranch: "main"})
+	final, err := FinalizeIssueOpsRemoteCreateClaim(context.Background(), stateRoot, claimed, IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/16", Labels: []string{"bug"}, Assignees: []string{"octocat"}, TargetBranch: "main"})
 	if err != nil || final.RemoteArtifact == nil || final.RemoteCreateClaim != nil {
 		t.Fatalf("final=%#v err=%v", final, err)
 	}
@@ -119,11 +119,11 @@ func TestRemoteCreateClaimClearsOnlyPreInvocationAndFinalizesArtifact(t *testing
 
 func TestInvokedRemoteCreateInvalidKnownURLStillBecomesDurablyUnknown(t *testing.T) {
 	stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
-	claimed, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record))
+	claimed, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := MarkIssueOpsRemoteCreateUnknown(stateRoot, claimed, "https://github.com/other/repo/pull/16"); err == nil {
+	if err := MarkIssueOpsRemoteCreateUnknown(context.Background(), stateRoot, claimed, "https://github.com/other/repo/pull/16"); err == nil {
 		t.Fatal("wrong-project known URL did not report validation failure")
 	}
 	got, err := ReadIssueOps(stateRoot, record.ID)
@@ -133,26 +133,26 @@ func TestInvokedRemoteCreateInvalidKnownURLStillBecomesDurablyUnknown(t *testing
 	if got.RemoteCreateClaim == nil || got.RemoteCreateClaim.State != "unknown" || got.RemoteCreateClaim.InvocationState != "unknown" || got.RemoteCreateClaim.KnownURL != "" {
 		t.Fatalf("invalid known URL claim = %#v", got.RemoteCreateClaim)
 	}
-	if err := ClearIssueOpsRemoteCreateClaimPreInvocation(stateRoot, got, got.RemoteCreateClaim.ClaimID, &port.IssueProviderCreateError{Invoked: false, Err: context.Canceled}); err == nil {
+	if err := ClearIssueOpsRemoteCreateClaimPreInvocation(context.Background(), stateRoot, got, got.RemoteCreateClaim.ClaimID, &port.IssueProviderCreateError{Invoked: false, Err: context.Canceled}); err == nil {
 		t.Fatal("durable invoked-unknown claim was clearable")
 	}
 }
 
 func TestMarkRemoteCreateUnknownRejectsDifferentKnownURL(t *testing.T) {
 	stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
-	claimed, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record))
+	claimed, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
 	if err != nil {
 		t.Fatal(err)
 	}
 	firstURL := "https://github.com/acme/repo/pull/16"
-	if err := MarkIssueOpsRemoteCreateUnknown(stateRoot, claimed, firstURL); err != nil {
+	if err := MarkIssueOpsRemoteCreateUnknown(context.Background(), stateRoot, claimed, firstURL); err != nil {
 		t.Fatal(err)
 	}
 	unknown, err := ReadIssueOps(stateRoot, claimed.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := MarkIssueOpsRemoteCreateUnknown(stateRoot, unknown, "https://github.com/acme/repo/pull/17"); err == nil || !strings.Contains(err.Error(), "differs") {
+	if err := MarkIssueOpsRemoteCreateUnknown(context.Background(), stateRoot, unknown, "https://github.com/acme/repo/pull/17"); err == nil || !strings.Contains(err.Error(), "differs") {
 		t.Fatalf("different known URL overwrite error = %v", err)
 	}
 	persisted, err := ReadIssueOps(stateRoot, claimed.ID)
@@ -167,17 +167,17 @@ func TestRemoteCreateReservedCrashWindowBlocksRetryWithoutClearProof(t *testing.
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	claimed, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record))
+	claimed, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if claimed.RemoteCreateClaim.InvocationState != "reserved" {
 		t.Fatalf("crash-window claim state = %#v", claimed.RemoteCreateClaim)
 	}
-	if _, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record)); err == nil {
+	if _, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record)); err == nil {
 		t.Fatal("reserved crash-window claim allowed duplicate create")
 	}
-	if err := ClearIssueOpsRemoteCreateClaimPreInvocation(stateRoot, claimed, claimed.RemoteCreateClaim.ClaimID, nil); err == nil {
+	if err := ClearIssueOpsRemoteCreateClaimPreInvocation(context.Background(), stateRoot, claimed, claimed.RemoteCreateClaim.ClaimID, nil); err == nil {
 		t.Fatal("reserved crash-window claim cleared without typed live failure")
 	}
 }
@@ -189,7 +189,7 @@ func TestRemoteCreateClaimRequiresSealedCoordinatorNativeSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
-	if _, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record)); err == nil {
+	if _, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record)); err == nil {
 		t.Fatal("remote create claim accepted mailbox-only coordinator authority")
 	}
 	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !reflect.DeepEqual(before, after) {
@@ -203,7 +203,7 @@ func TestRemoteCreateClaimIsAtomicAcrossOSProcesses(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record)); err != nil {
+		if _, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record)); err != nil {
 			fmt.Print("blocked")
 		} else {
 			fmt.Print("claimed")
@@ -311,7 +311,7 @@ func TestRemoteCreateClaimEnvelopeRejectsContradictoryAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	claimed, err = ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(claimed))
+	claimed, err = ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(claimed))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,6 +420,13 @@ func TestCreateRemotePullRequestProviderRequestEqualsCompleteDurableClaimProject
 	if result.URL != "https://github.com/acme/repo/pull/16" {
 		t.Fatalf("result = %#v", result)
 	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if persisted.RemoteArtifact == nil || persisted.RemoteCreateClaim != nil {
+		t.Fatalf("ordered cross-root create did not finalize: artifact=%#v claim=%#v", persisted.RemoteArtifact, persisted.RemoteCreateClaim)
+	}
 }
 
 func TestRemoteCreateReconcileProviderRequestEqualsCompleteDurableClaimProjection(t *testing.T) {
@@ -508,7 +515,7 @@ func TestRemoteCreateClaimEnvelopeRejectsSecretLikeTitleAndBody(t *testing.T) {
 	for _, field := range []string{"title", "body"} {
 		t.Run(field, func(t *testing.T) {
 			stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
-			claimed, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record))
+			claimed, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -534,7 +541,7 @@ func TestRemoteCreateClaimEnvelopeRejectsSecretLikeTitleAndBody(t *testing.T) {
 func TestRemoteCreateClaimEnvelopeRejectsNonHexAndControlClaimIDs(t *testing.T) {
 	for _, claimID := range []string{"claim_gggggggggggggggggggggggggggggggg", "claim_0000000000000000000000000000000\n"} {
 		stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
-		claimed, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record))
+		claimed, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -600,7 +607,7 @@ func TestCreateRemotePullRequestReportsClearAndFinalizeTransitionFailures(t *tes
 			if readErr != nil {
 				return port.IssueProviderCreatePullRequestResult{}, readErr
 			}
-			if markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, claimed, ""); markErr != nil {
+			if markErr := MarkIssueOpsRemoteCreateUnknown(context.Background(), stateRoot, claimed, ""); markErr != nil {
 				return port.IssueProviderCreatePullRequestResult{}, markErr
 			}
 			return port.IssueProviderCreatePullRequestResult{}, &port.IssueProviderCreateError{Invoked: false, Err: context.Canceled}
@@ -622,7 +629,7 @@ func TestCreateRemotePullRequestReportsClearAndFinalizeTransitionFailures(t *tes
 			}
 			claimed, readErr := ReadIssueOps(stateRoot, record.ID)
 			if readErr == nil {
-				_ = MarkIssueOpsRemoteCreateUnknown(stateRoot, claimed, "")
+				_ = MarkIssueOpsRemoteCreateUnknown(context.Background(), stateRoot, claimed, "")
 			}
 		}
 		result, err := CreateIssueOpsRemotePullRequest(context.Background(), stateRoot, record.ID, "github", port.IssueProviderCreatePullRequestRequest{
@@ -644,7 +651,7 @@ func TestRemoteCreateReconcileAuthorityZeroOneManyAndAmbiguity(t *testing.T) {
 	newClaim := func(t *testing.T) (string, IssueOpsRecord, IssueOpsRemoteCreateCandidate) {
 		t.Helper()
 		stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
-		claimed, err := ClaimIssueOpsRemoteCreate(stateRoot, remoteCreateClaimRequest(record))
+		claimed, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -779,7 +786,7 @@ func TestRemoteCreateReconcileAuthorityZeroOneManyAndAmbiguity(t *testing.T) {
 		stateRoot, claimed, candidate := newClaim(t)
 		reader, lease := publicationDeps(claimed)
 		original := finalizeIssueOpsRemoteCreateClaimForReconcile
-		finalizeIssueOpsRemoteCreateClaimForReconcile = func(string, IssueOpsRecord, IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
+		finalizeIssueOpsRemoteCreateClaimForReconcile = func(context.Context, string, IssueOpsRecord, IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
 			return IssueOpsRecord{}, errors.New("forced reconcile finalize failure")
 		}
 		defer func() { finalizeIssueOpsRemoteCreateClaimForReconcile = original }()
@@ -799,8 +806,8 @@ func TestRemoteCreateReconcileAuthorityZeroOneManyAndAmbiguity(t *testing.T) {
 		stateRoot, claimed, candidate := newClaim(t)
 		reader, lease := publicationDeps(claimed)
 		original := finalizeIssueOpsRemoteCreateClaimForReconcile
-		finalizeIssueOpsRemoteCreateClaimForReconcile = func(root string, expected IssueOpsRecord, _ IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
-			if err := MarkIssueOpsRemoteCreateUnknown(root, expected, ""); err != nil {
+		finalizeIssueOpsRemoteCreateClaimForReconcile = func(ctx context.Context, root string, expected IssueOpsRecord, _ IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
+			if err := MarkIssueOpsRemoteCreateUnknown(ctx, root, expected, ""); err != nil {
 				return IssueOpsRecord{}, err
 			}
 			return IssueOpsRecord{}, errors.New("forced reconcile finalize failure")

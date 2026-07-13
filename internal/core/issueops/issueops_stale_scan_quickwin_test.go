@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,7 +34,7 @@ func TestPruneDoneCyclesPreservesSpanLockDB(t *testing.T) {
 
 	// Touch the span lock once so the lock database exists, as a concurrent
 	// contender would have left it.
-	if err := withIssueOpsLock(stateRoot, id, func() error { return nil }); err != nil {
+	if err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error { return nil }); err != nil {
 		t.Fatal(err)
 	}
 

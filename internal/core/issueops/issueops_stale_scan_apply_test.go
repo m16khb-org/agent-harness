@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -20,7 +21,7 @@ func TestWithIssueOpsLockSpanDBPersists(t *testing.T) {
 
 	lockDB := filepath.Join(stateRoot, "harness.lock.db")
 
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		// While locked, the span lock database must exist.
 		if _, err := os.Stat(lockDB); err != nil {
 			t.Errorf("span lock db should exist while locked: %v", err)
@@ -45,7 +46,7 @@ func TestWithIssueOpsLockSpanDBPersistsOnError(t *testing.T) {
 	repo := t.TempDir()
 	id := NewIssueOpsID(repo, "lock-err-test")
 
-	_ = withIssueOpsLock(stateRoot, id, func() error {
+	_ = withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		return os.ErrNotExist // any non-nil error
 	})
 

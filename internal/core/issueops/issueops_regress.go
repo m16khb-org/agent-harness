@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -28,7 +29,7 @@ func RegressIssueOpsForReplan(stateRoot, id, reason string) (IssueOpsRecord, err
 		return IssueOpsRecord{OK: false}, fmt.Errorf("regression reason is required (the Brooks stop verdict)")
 	}
 	var rec IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = regressIssueOpsForReplanLocked(stateRoot, id, reason)
 		return e

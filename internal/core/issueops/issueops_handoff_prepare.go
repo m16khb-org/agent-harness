@@ -335,7 +335,7 @@ type handoffWorktreeBeginSnapshot struct {
 
 func beginHandoffWorktreeCreate(stateRoot, id, workerRoot, agent, runtimeID, repoID, baseRef string, fence handoff.Fence, baseline []string, now string) (handoffWorktreeBeginSnapshot, error) {
 	snapshot := handoffWorktreeBeginSnapshot{}
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err
@@ -417,7 +417,7 @@ func worktreeCleanupCandidateExact(record IssueOpsRecord, expectedRepoID string,
 }
 
 func rollbackHandoffWorktreeStartFailure(stateRoot, id string, begin handoffWorktreeBeginSnapshot) error {
-	return withIssueOpsLock(stateRoot, id, func() error {
+	return withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err
@@ -438,7 +438,7 @@ func externalMutationNotInvoked(err error) bool {
 }
 
 func markHandoffCleanupOnlyWorktree(stateRoot, id string, fence handoff.Fence, created port.OrcaWorktree, reason, now string) error {
-	return withIssueOpsLock(stateRoot, id, func() error {
+	return withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err
@@ -457,7 +457,7 @@ func markHandoffCleanupOnlyWorktree(stateRoot, id string, fence handoff.Fence, c
 
 func persistHandoffWorktreeCreate(stateRoot, id string, created port.OrcaWorktree, linkStatus string, fence handoff.Fence, begin handoffWorktreeBeginSnapshot, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err
@@ -716,7 +716,7 @@ func projectHandoffPrepareResult(result IssueOpsHandoffPrepareResult, record Iss
 }
 
 func markHandoffPrepareRecovery(stateRoot, id string, fence handoff.Fence, code, message, now string) error {
-	return withIssueOpsLock(stateRoot, id, func() error {
+	return withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err

@@ -72,7 +72,7 @@ func finishIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, 
 
 	var persisted IssueOpsRecord
 	winner := false
-	err = withIssueOpsLock(stateRoot, req.ID, func() error {
+	err = withIssueOpsLock(ctx, stateRoot, req.ID, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, req.ID)
 		if readErr != nil {
 			return readErr
@@ -229,7 +229,7 @@ func workerDoneRequestFromProjection(projection *model.IssueOpsExecutionHandoffW
 
 func persistWorkerDoneProjectionOutcome(stateRoot, id string, sendErr error, result port.OrcaWorkerDoneResult) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err

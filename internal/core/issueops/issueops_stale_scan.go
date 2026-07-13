@@ -11,6 +11,7 @@ import (
 	"agent-harness/internal/core/issueops/session"
 	"agent-harness/internal/core/issueops/stalescan"
 	"agent-harness/internal/core/preflight"
+	"context"
 )
 
 type IssueOpsStaleScanRequest struct {
@@ -62,7 +63,7 @@ func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResu
 			// fully close the TOCTOU window identified in CAUTIONS 21. A parallel
 			// session cannot advance or mutate the cycle while we re-probe and
 			// release it.
-			err := withIssueOpsLock(IssueOpsStateRoot(), finding.ID, func() error {
+			err := withIssueOpsLock(context.Background(), IssueOpsStateRoot(), finding.ID, func(context.Context) error {
 				fresh, err := ReadIssueOps(IssueOpsStateRoot(), finding.ID)
 				if err != nil {
 					return err

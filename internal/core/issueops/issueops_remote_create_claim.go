@@ -126,8 +126,8 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provide
 		kind = "mr"
 	}
 	var result port.IssueProviderCreatePullRequestResult
-	err = withIssueOpsRemoteCreateLiveLock(stateRoot, record.ID, func() error {
-		claimed, claimErr := ClaimIssueOpsRemoteCreate(stateRoot, IssueOpsRemoteCreateClaimRequest{
+	err = withIssueOpsRemoteCreateLiveLock(ctx, stateRoot, record.ID, func(spanCtx context.Context) error {
+		claimed, claimErr := ClaimIssueOpsRemoteCreate(spanCtx, stateRoot, IssueOpsRemoteCreateClaimRequest{
 			ID: record.ID, Provider: provider, Kind: kind, Title: request.Title, Body: request.Body, Head: request.HeadBranch, Base: request.BaseBranch,
 			Labels: request.Labels, Assignees: request.Assignees, Draft: request.Draft,
 		})
@@ -139,9 +139,9 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provide
 		request.Title, request.Body = claim.Title, claim.Body
 		request.Labels, request.Assignees, request.Draft = append([]string(nil), claim.Labels...), append([]string(nil), claim.Assignees...), claim.Draft
 		request.ExpectedHeadSHA = claim.FinalHead
-		if validationErr := ValidateIssueOpsHandoffPublication(ctx, stateRoot, claimed, claim.Provider, claim.Head, claim.Base, reader, lease); validationErr != nil {
+		if validationErr := ValidateIssueOpsHandoffPublication(spanCtx, stateRoot, claimed, claim.Provider, claim.Head, claim.Base, reader, lease); validationErr != nil {
 			proof := &port.IssueProviderCreateError{Invoked: false, Err: validationErr}
-			clearErr := ClearIssueOpsRemoteCreateClaimPreInvocation(stateRoot, claimed, claim.ClaimID, proof)
+			clearErr := ClearIssueOpsRemoteCreateClaimPreInvocation(spanCtx, stateRoot, claimed, claim.ClaimID, proof)
 			return combineRemoteCreateTransitionError("remote create publication revalidation failed before provider invocation", validationErr, clearErr)
 		}
 		var createErr error
@@ -149,17 +149,17 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provide
 		if createErr != nil {
 			var typed *port.IssueProviderCreateError
 			if errors.As(createErr, &typed) && !typed.Invoked {
-				clearErr := ClearIssueOpsRemoteCreateClaimPreInvocation(stateRoot, claimed, claim.ClaimID, typed)
+				clearErr := ClearIssueOpsRemoteCreateClaimPreInvocation(spanCtx, stateRoot, claimed, claim.ClaimID, typed)
 				return combineRemoteCreateTransitionError("remote create failed before provider invocation", createErr, clearErr)
 			}
-			markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, claimed, result.URL)
+			markErr := MarkIssueOpsRemoteCreateUnknown(spanCtx, stateRoot, claimed, result.URL)
 			return combineRemoteCreateTransitionError("remote create outcome is ambiguous and requires reconciliation; do not retry", createErr, markErr)
 		}
-		if validationErr := ValidateIssueOpsHandoffPublication(ctx, stateRoot, claimed, provider, claim.Head, claim.Base, reader, lease); validationErr != nil {
-			markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, claimed, result.URL)
+		if validationErr := ValidateIssueOpsHandoffPublication(spanCtx, stateRoot, claimed, provider, claim.Head, claim.Base, reader, lease); validationErr != nil {
+			markErr := MarkIssueOpsRemoteCreateUnknown(spanCtx, stateRoot, claimed, result.URL)
 			return combineRemoteCreateTransitionError("remote ref changed after provider readback; create outcome requires reconciliation and must not be retried", validationErr, markErr)
 		}
-		_, finalizeErr := FinalizeIssueOpsRemoteCreateClaim(stateRoot, claimed, IssueOpsRemoteArtifactVerificationRequest{
+		_, finalizeErr := FinalizeIssueOpsRemoteCreateClaim(spanCtx, stateRoot, claimed, IssueOpsRemoteArtifactVerificationRequest{
 			Provider: provider, Kind: claim.Kind, URL: result.URL, Labels: claim.Labels, Assignees: claim.Assignees, TargetBranch: claim.Base,
 		})
 		if finalizeErr != nil {
@@ -169,7 +169,7 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provide
 				if current.RemoteCreateClaim == nil || current.RemoteCreateClaim.ClaimID != claim.ClaimID {
 					markErr = fmt.Errorf("remote create claim identity changed before preserving the known URL")
 				} else {
-					markErr = MarkIssueOpsRemoteCreateUnknown(stateRoot, current, result.URL)
+					markErr = MarkIssueOpsRemoteCreateUnknown(spanCtx, stateRoot, current, result.URL)
 				}
 			}
 			return combineRemoteCreateTransitionError("provider succeeded but durable finalize failed; known URL requires reconciliation and must not be retried", finalizeErr, markErr)
@@ -181,9 +181,9 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provide
 
 func ReconcileIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueOpsRemoteCreateReconcileRequest, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient, probe IssueOpsRemoteCreateProbe) (IssueOpsRecord, error) {
 	var result IssueOpsRecord
-	err := withIssueOpsRemoteCreateLiveLock(stateRoot, req.ID, func() error {
+	err := withIssueOpsRemoteCreateLiveLock(ctx, stateRoot, req.ID, func(spanCtx context.Context) error {
 		var reconcileErr error
-		result, reconcileErr = reconcileIssueOpsRemoteCreate(ctx, stateRoot, req, reader, lease, probe)
+		result, reconcileErr = reconcileIssueOpsRemoteCreate(spanCtx, stateRoot, req, reader, lease, probe)
 		return reconcileErr
 	})
 	return result, err
@@ -212,7 +212,7 @@ func reconcileIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req Is
 		return IssueOpsRecord{}, fmt.Errorf("remote create reconcile requires the sealed coordinator native session from the exact source checkout")
 	}
 	if err := ValidateIssueOpsHandoffPublication(ctx, stateRoot, record, claim.Provider, claim.Head, claim.Base, reader, lease); err != nil {
-		markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, record, claim.KnownURL)
+		markErr := MarkIssueOpsRemoteCreateUnknown(ctx, stateRoot, record, claim.KnownURL)
 		return IssueOpsRecord{}, combineRemoteCreateTransitionError("remote create reconcile publication validation failed before live probe; claim retained unknown", err, markErr)
 	}
 	if probe == nil {
@@ -220,18 +220,18 @@ func reconcileIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req Is
 	}
 	result, err := probe(ctx, record)
 	if err != nil {
-		markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, record, claim.KnownURL)
+		markErr := MarkIssueOpsRemoteCreateUnknown(ctx, stateRoot, record, claim.KnownURL)
 		return IssueOpsRecord{}, combineRemoteCreateTransitionError("remote create reconcile transport is ambiguous; claim retained unknown", err, markErr)
 	}
 	if len(result.Candidates) > 1 {
 		primary := fmt.Errorf("remote create reconcile found multiple live candidates")
-		markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, record, claim.KnownURL)
+		markErr := MarkIssueOpsRemoteCreateUnknown(ctx, stateRoot, record, claim.KnownURL)
 		return IssueOpsRecord{}, combineRemoteCreateTransitionError("remote create reconcile found multiple live candidates; claim retained unknown", primary, markErr)
 	}
 	if len(result.Candidates) == 0 {
 		if !req.ApproveZeroClear || !result.AuthoritativeZero {
 			primary := fmt.Errorf("zero-candidate remote create reconcile requires explicit user approval and authoritative live proof")
-			markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, record, claim.KnownURL)
+			markErr := MarkIssueOpsRemoteCreateUnknown(ctx, stateRoot, record, claim.KnownURL)
 			return IssueOpsRecord{}, combineRemoteCreateTransitionError("zero-candidate remote create reconcile requires explicit user approval and authoritative live proof; claim retained unknown", primary, markErr)
 		}
 		current, readErr := ReadIssueOps(stateRoot, record.ID)
@@ -239,14 +239,14 @@ func reconcileIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req Is
 			return IssueOpsRecord{}, readErr
 		}
 		if err := ValidateIssueOpsHandoffPublication(ctx, stateRoot, current, claim.Provider, claim.Head, claim.Base, reader, lease); err != nil {
-			markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, current, claim.KnownURL)
+			markErr := MarkIssueOpsRemoteCreateUnknown(ctx, stateRoot, current, claim.KnownURL)
 			return IssueOpsRecord{}, combineRemoteCreateTransitionError("remote create reconcile publication validation failed before authoritative zero clear; claim retained unknown", err, markErr)
 		}
-		return clearIssueOpsRemoteCreateClaimAfterAuthoritativeZero(stateRoot, current, claim.ClaimID)
+		return clearIssueOpsRemoteCreateClaimAfterAuthoritativeZero(ctx, stateRoot, current, claim.ClaimID)
 	}
 	candidate := result.Candidates[0]
 	if err := validateRemoteCreateReconcileCandidate(record, candidate); err != nil {
-		markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, record, claim.KnownURL)
+		markErr := MarkIssueOpsRemoteCreateUnknown(ctx, stateRoot, record, claim.KnownURL)
 		return IssueOpsRecord{}, combineRemoteCreateTransitionError("remote create reconcile candidate verification failed; claim retained unknown", err, markErr)
 	}
 	current, err := ReadIssueOps(stateRoot, record.ID)
@@ -257,7 +257,7 @@ func reconcileIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req Is
 		return IssueOpsRecord{}, fmt.Errorf("remote create reconcile claim identity changed after live probe; stale candidate was not adopted")
 	}
 	if err := ValidateIssueOpsHandoffPublication(ctx, stateRoot, current, claim.Provider, claim.Head, claim.Base, reader, lease); err != nil {
-		markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, current, claim.KnownURL)
+		markErr := MarkIssueOpsRemoteCreateUnknown(ctx, stateRoot, current, claim.KnownURL)
 		return IssueOpsRecord{}, combineRemoteCreateTransitionError("remote create reconcile publication validation failed before finalize; claim retained unknown", err, markErr)
 	}
 	current, err = ReadIssueOps(stateRoot, record.ID)
@@ -267,17 +267,17 @@ func reconcileIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req Is
 	if !reflect.DeepEqual(current.RemoteCreateClaim, claim) {
 		return IssueOpsRecord{}, fmt.Errorf("remote create reconcile claim identity changed after publication revalidation; stale candidate was not adopted")
 	}
-	finalized, finalizeErr := finalizeIssueOpsRemoteCreateClaimForReconcile(stateRoot, current, IssueOpsRemoteArtifactVerificationRequest{
+	finalized, finalizeErr := finalizeIssueOpsRemoteCreateClaimForReconcile(ctx, stateRoot, current, IssueOpsRemoteArtifactVerificationRequest{
 		Provider: claim.Provider, Kind: claim.Kind, URL: candidate.URL, Labels: claim.Labels, Assignees: claim.Assignees, TargetBranch: claim.Base,
 	})
 	if finalizeErr == nil {
 		return finalized, nil
 	}
-	markErr := MarkIssueOpsRemoteCreateUnknown(stateRoot, current, candidate.URL)
+	markErr := MarkIssueOpsRemoteCreateUnknown(ctx, stateRoot, current, candidate.URL)
 	return IssueOpsRecord{}, combineRemoteCreateTransitionError("remote create reconcile verified one candidate but finalize failed; claim retained unknown and needs reconciliation; creation was not retried", finalizeErr, markErr)
 }
 
-func withIssueOpsRemoteCreateLiveLock(stateRoot, id string, fn func() error) error {
+func withIssueOpsRemoteCreateLiveLock(ctx context.Context, stateRoot, id string, fn func(context.Context) error) error {
 	normalized, err := normalizeIssueOpsID(id)
 	if err != nil {
 		return err
@@ -286,7 +286,7 @@ func withIssueOpsRemoteCreateLiveLock(stateRoot, id string, fn func() error) err
 	if err != nil {
 		return err
 	}
-	return db.WithSpan(fn)
+	return db.WithSpanContext(ctx, fn)
 }
 
 func combineRemoteCreateTransitionError(message string, primary, transition error) error {
@@ -347,8 +347,8 @@ func sameCanonicalRemoteCreateSet(left, right []string) bool {
 	return true
 }
 
-func clearIssueOpsRemoteCreateClaimAfterAuthoritativeZero(stateRoot string, expected IssueOpsRecord, claimID string) (IssueOpsRecord, error) {
-	err := mutateRemoteCreateClaim(stateRoot, expected, func(r *IssueOpsRecord) error {
+func clearIssueOpsRemoteCreateClaimAfterAuthoritativeZero(ctx context.Context, stateRoot string, expected IssueOpsRecord, claimID string) (IssueOpsRecord, error) {
+	err := mutateRemoteCreateClaim(ctx, stateRoot, expected, func(r *IssueOpsRecord) error {
 		if r.RemoteCreateClaim.ClaimID != claimID {
 			return fmt.Errorf("remote create claim changed before authoritative zero clear")
 		}
@@ -374,9 +374,9 @@ type IssueOpsRemoteCreateClaimRequest struct {
 	Draft     bool
 }
 
-func ClaimIssueOpsRemoteCreate(stateRoot string, req IssueOpsRemoteCreateClaimRequest) (IssueOpsRecord, error) {
+func ClaimIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueOpsRemoteCreateClaimRequest) (IssueOpsRecord, error) {
 	var out IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, req.ID, func() error {
+	err := withIssueOpsLock(ctx, stateRoot, req.ID, func(context.Context) error {
 		r, err := ReadIssueOps(stateRoot, req.ID)
 		if err != nil {
 			return err
@@ -440,11 +440,11 @@ func ClaimIssueOpsRemoteCreate(stateRoot string, req IssueOpsRemoteCreateClaimRe
 	return out, err
 }
 
-func ClearIssueOpsRemoteCreateClaimPreInvocation(stateRoot string, expected IssueOpsRecord, liveClaimID string, proof *port.IssueProviderCreateError) error {
+func ClearIssueOpsRemoteCreateClaimPreInvocation(ctx context.Context, stateRoot string, expected IssueOpsRecord, liveClaimID string, proof *port.IssueProviderCreateError) error {
 	if proof == nil || proof.Invoked {
 		return fmt.Errorf("remote create claim clear requires typed pre-invocation failure proof")
 	}
-	return mutateRemoteCreateClaim(stateRoot, expected, func(r *IssueOpsRecord) error {
+	return mutateRemoteCreateClaim(ctx, stateRoot, expected, func(r *IssueOpsRecord) error {
 		if liveClaimID == "" || liveClaimID != r.RemoteCreateClaim.ClaimID || r.RemoteCreateClaim.State != "pending" || r.RemoteCreateClaim.InvocationState != "reserved" {
 			return fmt.Errorf("invoked or unknown remote create claim cannot be cleared")
 		}
@@ -453,10 +453,10 @@ func ClearIssueOpsRemoteCreateClaimPreInvocation(stateRoot string, expected Issu
 	})
 }
 
-func MarkIssueOpsRemoteCreateUnknown(stateRoot string, expected IssueOpsRecord, knownURL string) error {
+func MarkIssueOpsRemoteCreateUnknown(ctx context.Context, stateRoot string, expected IssueOpsRecord, knownURL string) error {
 	knownURL = strings.TrimSpace(knownURL)
 	var knownURLErr error
-	err := mutateRemoteCreateClaim(stateRoot, expected, func(r *IssueOpsRecord) error {
+	err := mutateRemoteCreateClaim(ctx, stateRoot, expected, func(r *IssueOpsRecord) error {
 		claim := r.RemoteCreateClaim
 		if knownURL != "" {
 			if claim.KnownURL != "" && knownURL != claim.KnownURL {
@@ -476,9 +476,9 @@ func MarkIssueOpsRemoteCreateUnknown(stateRoot string, expected IssueOpsRecord, 
 	return errors.Join(knownURLErr, err)
 }
 
-func FinalizeIssueOpsRemoteCreateClaim(stateRoot string, expected IssueOpsRecord, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
+func FinalizeIssueOpsRemoteCreateClaim(ctx context.Context, stateRoot string, expected IssueOpsRecord, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
 	var out IssueOpsRecord
-	err := withIssueOpsLock(stateRoot, expected.ID, func() error {
+	err := withIssueOpsLock(ctx, stateRoot, expected.ID, func(context.Context) error {
 		r, err := ReadIssueOps(stateRoot, expected.ID)
 		if err != nil {
 			return err
@@ -507,8 +507,8 @@ func FinalizeIssueOpsRemoteCreateClaim(stateRoot string, expected IssueOpsRecord
 	return out, err
 }
 
-func mutateRemoteCreateClaim(stateRoot string, expected IssueOpsRecord, fn func(*IssueOpsRecord) error) error {
-	return withIssueOpsLock(stateRoot, expected.ID, func() error {
+func mutateRemoteCreateClaim(ctx context.Context, stateRoot string, expected IssueOpsRecord, fn func(*IssueOpsRecord) error) error {
+	return withIssueOpsLock(ctx, stateRoot, expected.ID, func(context.Context) error {
 		r, err := ReadIssueOps(stateRoot, expected.ID)
 		if err != nil {
 			return err

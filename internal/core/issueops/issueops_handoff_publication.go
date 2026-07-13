@@ -561,7 +561,7 @@ func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, 
 	}
 	now := issueOpsHandoffNow(clock)
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(stateRoot, validated.ID, func() error {
+	err = withIssueOpsLock(ctx, stateRoot, validated.ID, func(context.Context) error {
 		current, readErr := ReadIssueOps(stateRoot, validated.ID)
 		if readErr != nil {
 			return readErr
@@ -585,7 +585,7 @@ func reattestRawV5Publication(ctx context.Context, stateRoot string, req IssueOp
 	id := req.ID
 	var persisted IssueOpsRecord
 	handled := false
-	err := withIssueOpsLock(stateRoot, id, func() error {
+	err := withIssueOpsLock(ctx, stateRoot, id, func(spanCtx context.Context) error {
 		raw, err := readRawIssueOpsBytes(stateRoot, id)
 		if err != nil {
 			return err
@@ -635,20 +635,20 @@ func reattestRawV5Publication(ctx context.Context, stateRoot string, req IssueOp
 		if lease == nil || reader == nil {
 			return fmt.Errorf("raw schema-v5 publication re-attestation dependencies are unavailable")
 		}
-		if err := attestHandoffSoleWriter(ctx, record, lease, ""); err != nil {
+		if err := attestHandoffSoleWriter(spanCtx, record, lease, ""); err != nil {
 			return fmt.Errorf("raw schema-v5 publication sole-writer re-attestation failed: %w", err)
 		}
-		identity, err = resolveIssueOpsPublicationPushTarget(ctx, record, identity, reader)
+		identity, err = resolveIssueOpsPublicationPushTarget(spanCtx, record, identity, reader)
 		if err != nil {
 			return err
 		}
 		if legacyReceipt.Provider != identity.Provider || legacyReceipt.Remote != identity.Remote || legacyReceipt.Branch != identity.Branch || legacyReceipt.RemoteRef != identity.RemoteRef || legacyReceipt.FinalHead != identity.FinalHead {
 			return fmt.Errorf("raw schema-v5 publication receipt differs from current durable authority")
 		}
-		if err := verifyIssueOpsLocalPublicationHead(ctx, record.Repo, identity, reader); err != nil {
+		if err := verifyIssueOpsLocalPublicationHead(spanCtx, record.Repo, identity, reader); err != nil {
 			return err
 		}
-		if err := verifyIssueOpsRemotePublicationHead(ctx, record.Repo, identity, reader); err != nil {
+		if err := verifyIssueOpsRemotePublicationHead(spanCtx, record.Repo, identity, reader); err != nil {
 			return err
 		}
 		now := issueOpsHandoffNow(clock)
@@ -708,7 +708,7 @@ func attestIssueOpsPublicationSoleWriter(ctx context.Context, stateRoot string, 
 		return expected, fmt.Errorf("publication sole-writer re-attestation failed: %w", err)
 	}
 	var persisted IssueOpsRecord
-	persistErr := withIssueOpsLock(stateRoot, expected.ID, func() error {
+	persistErr := withIssueOpsLock(ctx, stateRoot, expected.ID, func(context.Context) error {
 		current, readErr := ReadIssueOps(stateRoot, expected.ID)
 		if readErr != nil {
 			return readErr
