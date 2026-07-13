@@ -59,6 +59,48 @@ func TestIssueOpsSkillRoutesPhasesToAgentHarnessFeatures(t *testing.T) {
 	}
 }
 
+func TestIssueOpsWorktreeDocumentationMakesInlineExceptionalAndAuthorized(t *testing.T) {
+	skill := readIssueOpsSkillForTest(t)
+	worktree := readIssueOpsReferenceForTest(t, "worktree-context.md")
+	orca := readIssueOpsReferenceForTest(t, "orca-handoff.md")
+	const generic = `agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto --json`
+	for name, document := range map[string]string{"skill": skill, "worktree": worktree, "orca": orca} {
+		if !strings.Contains(document, generic) {
+			t.Fatalf("%s missing canonical generic auto recipe", name)
+		}
+	}
+	parts := strings.SplitN(worktree, "## Exceptional Explicit Inline", 2)
+	if len(parts) != 2 {
+		t.Fatal("worktree reference must isolate explicit inline in an exceptional section")
+	}
+	if strings.Contains(parts[0], "agent-harness issueops worktree prepare --id \"$ISSUEOPS_ID\" --orchestrator inline") {
+		t.Fatal("generic worktree documentation demonstrates explicit inline")
+	}
+	if strings.Contains(skill, "worktree prepare --orchestrator auto\\|orca\\|inline") {
+		t.Fatal("IssueOps flow matrix still presents explicit inline as a generic choice")
+	}
+	if !strings.Contains(parts[1], "--orchestrator inline --inline-reason user-requested") ||
+		!strings.Contains(parts[1], "--orchestrator inline --inline-reason recovery") {
+		t.Fatal("exceptional inline documentation must show both bounded authorizations")
+	}
+	for name, document := range map[string]string{"skill": skill, "worktree": worktree, "orca": orca} {
+		for _, want := range []string{"Never pass `--orchestrator inline`", "resolved_mode", "fresh worker"} {
+			if !strings.Contains(document, want) {
+				t.Fatalf("%s missing inline guardrail %q", name, want)
+			}
+		}
+	}
+	for _, want := range []string{"coordination cost", "implementation simplicity", "absence of an explicit handoff request"} {
+		if !strings.Contains(strings.ToLower(skill+"\n"+worktree+"\n"+orca), want) {
+			t.Fatalf("IssueOps documentation missing inline rejection rationale %q", want)
+		}
+	}
+	if !strings.Contains(skill+"\n"+worktree+"\n"+orca, "coordinator must stop implementation after dispatch") &&
+		!strings.Contains(skill+"\n"+worktree+"\n"+orca, "coordinator stops implementation after dispatch") {
+		t.Fatal("full-handoff documentation must stop coordinator implementation after dispatch")
+	}
+}
+
 func TestIssueOpsSkillRequiresQualityUpgradeContracts(t *testing.T) {
 	skill := readIssueOpsSkillForTest(t)
 	refs := readIssueOpsReferenceForTest(t, "remote-issue.md") + "\n" +

@@ -2141,6 +2141,21 @@ func TestExactFlagsRejectsFollowingFlagAsValue(t *testing.T) {
 	}
 }
 
+func TestWorktreePrepareCommandSpecAllowsBoundedInlineReasonFlag(t *testing.T) {
+	command, ok := parseExactIssueOpsCommand("agent-harness issueops worktree prepare --id io-demo --orchestrator inline --inline-reason recovery --json")
+	if !ok {
+		t.Fatal("worktree prepare command should parse")
+	}
+	values, booleans, repeatable, ok := commandSpec(command.path)
+	if !ok {
+		t.Fatal("worktree prepare command spec missing")
+	}
+	flags, ok := exactFlags(command, values, booleans, repeatable)
+	if !ok || len(flags["--inline-reason"]) != 1 || flags["--inline-reason"][0] != "recovery" {
+		t.Fatalf("inline authorization flag rejected by lifecycle parser: %#v", flags)
+	}
+}
+
 func TestSessionStartRendersClaimWithoutMutation(t *testing.T) {
 	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateDispatched)
 	before, _ := json.Marshal(record)

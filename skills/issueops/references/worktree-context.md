@@ -12,7 +12,15 @@ Create the provider-linked branch before creating a local worktree. The IssueOps
 
 Create an isolated git worktree before implementation, TDD, subagent work, verification, commit, or PR/MR drafting:
 
-Choose the worktree driver with `agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto|orca|inline --json`. `auto` may fall back to the unchanged inline flow only when the Orca readiness probe fails before mutation; `orca` requires the optional driver; `inline` preserves the existing sibling-worktree flow. If the resolved mode is Orca, load `orca-handoff.md` and let the confirmed prepare command create and persist the supervised worktree identity. Do not also run `git worktree add` for that same cycle.
+Use this as the only generic/default worktree recipe:
+
+```bash
+agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto --json
+```
+
+`auto` may fall back to the unchanged inline flow only when the Orca readiness probe fails before mutation. Inspect `resolved_mode`; if it is `orca`, load `orca-handoff.md` and create a fresh worker through the supervised path. Do not also run `git worktree add` for that same cycle. If the byte-exact legacy response has no `resolved_mode`, execute its returned inline command. Absence of an explicit handoff request is not authorization for inline. Coordination cost or implementation simplicity is not a valid inline reason.
+
+Never pass `--orchestrator inline` unless the current user explicitly requested inline execution or a documented recovery procedure requires it.
 
 ```bash
 branch_slug="3-webhook-delivery"
@@ -31,7 +39,26 @@ agent-harness issueops design review --id "$ISSUEOPS_ID" \
   --verification "$VERIFICATION_STEP" \
   --approved \
   --json
-agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator inline --json
+agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto --json
+```
+
+If `resolved_mode` is `orca`, stop this generic sequence, load `orca-handoff.md`, and create the supervised fresh worker. If the user requested a full handoff, the coordinator stops implementation after dispatch. If the command returned the legacy inline fallback, execute the returned command and continue with the existing link-worktree flow.
+
+## Exceptional Explicit Inline
+
+Explicit inline remains available only for an auditable user request or documented recovery procedure. It is not a convenience choice.
+
+```bash
+# Current user explicitly requested inline execution.
+agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator inline --inline-reason user-requested --json
+
+# A documented recovery procedure requires the legacy inline path.
+agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator inline --inline-reason recovery --json
+```
+
+After an authorized explicit inline result or an automatic legacy fallback, use the existing sibling-worktree flow:
+
+```bash
 worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
 git fetch origin "$branch_slug"
 git worktree add --track -b "$branch_slug" "$worktree_path" "origin/$branch_slug"
@@ -42,7 +69,7 @@ agent-harness issueops worktree prepare-tools --id "$ISSUEOPS_ID" --json
 agent-harness issueops phase --id "$ISSUEOPS_ID" --to implement --json
 ```
 
-The explicit `git worktree add` sequence above is the inline recipe. A supervised worker still uses the same fixed sibling path and exact branch, but its Orca worktree id and `execution_handoff` lease are authoritative for ownership checks.
+A supervised worker still uses the same fixed sibling path and exact branch, but its Orca worktree id and `execution_handoff` lease are authoritative for ownership checks.
 
 Keep IssueOps worktrees as siblings of the source checkout under the fixed pattern `../<repo>.worktrees/<branch-slug-with-slashes-replaced>`. Do not create ad hoc worktree paths inside the repo or under temporary directories unless the user explicitly asks for a different location.
 

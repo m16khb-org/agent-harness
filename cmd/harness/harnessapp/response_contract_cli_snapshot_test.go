@@ -99,7 +99,7 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		return runIssueOps([]string{"decision", "add", "--id", issueopsID, "--title", "Contract decision", "--body", "Chose approach A over B for contract snapshot coverage", "--kind", "architecture", "--rationale", "Approach A keeps snapshots deterministic", "--alternative", "Approach B: live-only verification", "--alternative", "Approach C: manual review", "--affected-artifact", "test", "--affected-artifact", "implementation", "--json"})
 	})
 	cliSnapshot["issueops_worktree_prepare"] = runCLIJSONContract(t, replacements, func() error {
-		return runIssueOps([]string{"worktree", "prepare", "--id", issueopsID, "--orchestrator", "inline", "--json"})
+		return runIssueOps([]string{"worktree", "prepare", "--id", issueopsID, "--orchestrator", "inline", "--inline-reason", "recovery", "--json"})
 	})
 	cliSnapshot["issueops_worktree_verify"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"worktree", "verify", "--id", issueopsID, "--json"})

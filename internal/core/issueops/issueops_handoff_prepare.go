@@ -23,9 +23,11 @@ import (
 )
 
 const (
-	IssueOpsOrchestratorAuto   = "auto"
-	IssueOpsOrchestratorOrca   = "orca"
-	IssueOpsOrchestratorInline = "inline"
+	IssueOpsOrchestratorAuto          = "auto"
+	IssueOpsOrchestratorOrca          = "orca"
+	IssueOpsOrchestratorInline        = "inline"
+	IssueOpsInlineReasonUserRequested = "user-requested"
+	IssueOpsInlineReasonRecovery      = "recovery"
 
 	IssueOpsGitLabNativeMetadataUnavailableWarning = "orca_gitlab_native_metadata_unavailable"
 )
@@ -33,6 +35,7 @@ const (
 type IssueOpsHandoffPrepareRequest struct {
 	ID           string `json:"id"`
 	Orchestrator string `json:"orchestrator,omitempty"`
+	InlineReason string `json:"inline_reason,omitempty"`
 	Agent        string `json:"agent,omitempty"`
 	Confirm      bool   `json:"confirm,omitempty"`
 }
@@ -50,6 +53,7 @@ type IssueOpsHandoffPrepareResult struct {
 	Preview       bool                  `json:"preview,omitempty"`
 	RequestedMode string                `json:"requested_mode,omitempty"`
 	ResolvedMode  string                `json:"resolved_mode,omitempty"`
+	InlineReason  string                `json:"inline_reason,omitempty"`
 	State         string                `json:"state,omitempty"`
 	Attempt       int                   `json:"attempt,omitempty"`
 	ContextSHA256 string                `json:"context_sha256,omitempty"`
@@ -71,15 +75,20 @@ type IssueOpsOrcaWorktreeClient interface {
 }
 
 func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req IssueOpsHandoffPrepareRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffPrepareResult, error) {
+	requested, err := normalizeOrchestrator(req.Orchestrator)
+	if err != nil {
+		return IssueOpsHandoffPrepareResult{}, err
+	}
+	inlineReason, err := validateInlineAuthorization(requested, req.InlineReason)
+	if err != nil {
+		return IssueOpsHandoffPrepareResult{}, err
+	}
+	req.InlineReason = inlineReason
 	record, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return IssueOpsHandoffPrepareResult{}, err
 	}
 	result, err := issueOpsLegacyWorktreePrepareResult(record)
-	if err != nil {
-		return result, err
-	}
-	requested, err := normalizeOrchestrator(req.Orchestrator)
 	if err != nil {
 		return result, err
 	}
@@ -239,6 +248,7 @@ func handoffInventoryFallbackCode(err error) string {
 func resolveHandoffPrepareMode(ctx context.Context, record IssueOpsRecord, req IssueOpsHandoffPrepareRequest, requested string, client IssueOpsOrcaWorktreeClient, result IssueOpsHandoffPrepareResult) (IssueOpsHandoffPrepareResult, port.OrcaProbeResult, bool, error) {
 	if requested == IssueOpsOrchestratorInline {
 		result.ResolvedMode = IssueOpsOrchestratorInline
+		result.InlineReason = req.InlineReason
 		result.Preview = !req.Confirm
 		return result, port.OrcaProbeResult{}, false, nil
 	}
@@ -756,6 +766,24 @@ func normalizeOrchestrator(value string) (string, error) {
 		return value, nil
 	default:
 		return "", fmt.Errorf("orchestrator must be auto, orca, or inline")
+	}
+}
+
+func validateInlineAuthorization(orchestrator, reason string) (string, error) {
+	if orchestrator != IssueOpsOrchestratorInline {
+		if reason != "" {
+			return "", fmt.Errorf("--inline-reason is valid only with --orchestrator inline")
+		}
+		return "", nil
+	}
+	if reason == "" {
+		return "", fmt.Errorf("explicit inline requires --inline-reason user-requested|recovery")
+	}
+	switch reason {
+	case IssueOpsInlineReasonUserRequested, IssueOpsInlineReasonRecovery:
+		return reason, nil
+	default:
+		return "", fmt.Errorf("inline reason must be user-requested or recovery")
 	}
 }
 

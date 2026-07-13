@@ -3916,6 +3916,7 @@
       ],
       "exists": true,
       "id": "$ISSUEOPS_ID",
+      "inline_reason": "recovery",
       "next_step": "worktree exists; run issueops link-worktree --id $ISSUEOPS_ID --worktree-path $ISSUEOPS_WORKTREE",
       "ok": true,
       "preview": true,

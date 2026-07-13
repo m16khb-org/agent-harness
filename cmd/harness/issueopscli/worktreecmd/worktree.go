@@ -23,7 +23,7 @@ type PrepareResult = worktreetools.PrepareResult
 func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage:")
-		fmt.Println("  agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--agent NAME] [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--inline-reason user-requested|recovery] [--agent NAME] [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops worktree prepare-tools --id ID [--json]")
 		fmt.Println("  agent-harness issueops worktree verify --id ID [--json]")
 		fmt.Println("  agent-harness issueops worktree cleanup-readiness --id ID [--merged] [--json]")
@@ -127,6 +127,7 @@ func runWorktreePrepare(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops worktree prepare", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
 	orchestrator := fs.String("orchestrator", "auto", "orchestrator: auto, orca, or inline")
+	inlineReason := fs.String("inline-reason", "", "explicit inline authorization: user-requested or recovery")
 	agent := fs.String("agent", "codex", "built-in Orca agent host")
 	confirm := fs.Bool("confirm", false, "confirm Orca worktree creation")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -136,8 +137,11 @@ func runWorktreePrepare(args []string, deps Deps) error {
 	if deps.PrepareHandoff == nil {
 		return fmt.Errorf("IssueOps handoff worktree dependency is unavailable")
 	}
+	if strings.EqualFold(strings.TrimSpace(*orchestrator), "inline") && strings.TrimSpace(*inlineReason) == "" {
+		return fmt.Errorf("explicit inline requires --inline-reason user-requested|recovery")
+	}
 	result, err := deps.PrepareHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffPrepareRequest{
-		ID: *id, Orchestrator: *orchestrator, Agent: *agent, Confirm: *confirm,
+		ID: *id, Orchestrator: *orchestrator, InlineReason: *inlineReason, Agent: *agent, Confirm: *confirm,
 	})
 	if err != nil {
 		if *jsonOut {

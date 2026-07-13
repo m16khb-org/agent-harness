@@ -75,14 +75,50 @@ func TestWorktreePrepareCLIForwardsOrchestratorAgentAndConfirmation(t *testing.T
 			return core.IssueOpsHandoffPrepareResult{OK: true, ID: req.ID, RequestedMode: req.Orchestrator, ResolvedMode: "orca", Preview: !req.Confirm}, nil
 		},
 	}
-	if err := Run([]string{"prepare", "--id", record.ID, "--orchestrator", "orca", "--agent", "claude", "--confirm", "--json"}, deps); err != nil {
+	if err := Run([]string{"prepare", "--id", record.ID, "--orchestrator", "inline", "--inline-reason", "user-requested", "--agent", "claude", "--confirm", "--json"}, deps); err != nil {
 		t.Fatal(err)
 	}
-	if captured.ID != record.ID || captured.Orchestrator != "orca" || captured.Agent != "claude" || !captured.Confirm {
+	if captured.ID != record.ID || captured.Orchestrator != "inline" || captured.InlineReason != "user-requested" || captured.Agent != "claude" || !captured.Confirm {
 		t.Fatalf("flags not forwarded: %#v", captured)
 	}
 	if _, ok := printed.(core.IssueOpsHandoffPrepareResult); !ok {
 		t.Fatalf("expected typed result, got %T", printed)
+	}
+}
+
+func TestWorktreePrepareCLIRejectsInlineWithoutAuthorizationBeforeDependency(t *testing.T) {
+	called := false
+	deps := Deps{
+		ParseFlags: parseWorktreeFlags,
+		PrintJSON:  func(any) error { return nil },
+		PrintError: func(error) error { return nil },
+		PrepareHandoff: func(context.Context, string, core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error) {
+			called = true
+			return core.IssueOpsHandoffPrepareResult{}, nil
+		},
+	}
+	err := Run([]string{"prepare", "--id", "io-demo", "--orchestrator", "inline", "--json"}, deps)
+	if err == nil || err.Error() != "explicit inline requires --inline-reason user-requested|recovery" {
+		t.Fatalf("missing inline authorization error = %v", err)
+	}
+	if called {
+		t.Fatal("missing inline authorization reached prepare dependency")
+	}
+}
+
+func TestWorktreePrepareCLIRejectsInvalidInlineAuthorization(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := worktreeIssueOpsRecord(t)
+	err := Run([]string{"prepare", "--id", record.ID, "--orchestrator", "inline", "--inline-reason", "simpler", "--json"}, Deps{
+		ParseFlags: parseWorktreeFlags,
+		PrintJSON:  func(any) error { return nil },
+		PrintError: func(error) error { return nil },
+		PrepareHandoff: func(ctx context.Context, stateRoot string, req core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error) {
+			return core.PrepareIssueOpsHandoffWorktree(ctx, stateRoot, req, nil, core.IssueOpsHandoffPrepareClock{})
+		},
+	})
+	if err == nil || err.Error() != "inline reason must be user-requested or recovery" {
+		t.Fatalf("invalid inline authorization error = %v", err)
 	}
 }
 

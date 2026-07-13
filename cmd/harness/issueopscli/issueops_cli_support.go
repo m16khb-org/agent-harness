@@ -32,7 +32,7 @@ func issueOpsUsage() {
   agent-harness issueops link-plan --id ID --plan-path PATH [--json]
   agent-harness issueops execution decide --id ID --auto TEXT --hook-block TEXT --human-gate TEXT --subagent-use none|planned [--subagent-rationale TEXT] [--subagent-plan-file PATH] [--json]
   agent-harness issueops worktree prepare-tools --id ID [--json]
-  agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--agent NAME] [--confirm] [--json]
+  agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--inline-reason user-requested|recovery] [--agent NAME] [--confirm] [--json]
   agent-harness issueops handoff start|claim|finish|accept|publish|recover [flags] [--json]
   agent-harness issueops worktree verify --id ID [--json]
   agent-harness issueops worktree cleanup-readiness --id ID [--merged] [--json]

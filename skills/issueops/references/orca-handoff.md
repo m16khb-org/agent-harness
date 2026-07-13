@@ -7,14 +7,18 @@ Choose the worktree mode after the IssueOps issue is linked, the provider branch
 Preview before mutation:
 
 ```bash
-agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto --agent codex --json
+agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto --json
 ```
 
 The three modes are intentionally small:
 
 - `--orchestrator auto`: probe Orca. If Orca is absent or unready before the first external mutation, return the legacy inline JSON and text byte-for-byte: no orchestration fields, warnings, GitLab residue, `execution_handoff`, row rewrite, or new SQLite artifact. If Orca is ready, preview or prepare the supervised worktree.
 - `--orchestrator orca`: require a ready Orca installation and fail before mutation when the probe fails.
-- `--orchestrator inline`: use the legacy sibling-worktree flow and leave `execution_handoff` absent.
+- `--orchestrator inline --inline-reason user-requested|recovery`: exceptional compatibility path only; use the legacy sibling-worktree flow and leave `execution_handoff` absent.
+
+Never pass `--orchestrator inline` unless the current user explicitly requested inline execution or a documented recovery procedure requires it. Absence of an explicit handoff request is not authorization for inline, and coordination cost or implementation simplicity is not a valid inline reason.
+
+Always inspect `resolved_mode`. When it is `orca`, use this reference to create and dispatch a fresh worker. If the user requested a full handoff, the coordinator must stop implementation after dispatch and wait for that worker instead of continuing implementation locally.
 
 Before confirming Orca mode, turn **Settings > General > Workspace > Nest Workspaces** off. IssueOps requires the flat canonical path `<repo>.worktrees/<branch>` and does not read private Orca settings, toggle global layout preferences, or accept the nested `<repo>.worktrees/<repo-name>/<branch>` form. The returned worktree path is validated after the exactly-once create call. A mismatch moves the handoff to `recovery_required` with an actionable diagnostic; it never adopts the mismatched path or falls back inline. Cancel the handoff, remove the mismatched resources, and start a fresh IssueOps cycle after correcting the setting.
 

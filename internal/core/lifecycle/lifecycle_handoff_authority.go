@@ -113,7 +113,7 @@ func commandSpec(path string) (map[string]bool, map[string]bool, map[string]bool
 	case "phase":
 		return v("--id", "--to"), b("--force", "--json"), r, true
 	case "worktree prepare":
-		return v("--id", "--orchestrator", "--agent"), b("--confirm", "--json"), r, true
+		return v("--id", "--orchestrator", "--inline-reason", "--agent"), b("--confirm", "--json"), r, true
 	case "worktree prepare-tools":
 		return v("--id"), b("--json"), r, true
 	case "handoff start":

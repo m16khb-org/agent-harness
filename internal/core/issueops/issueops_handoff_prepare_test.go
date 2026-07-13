@@ -111,6 +111,148 @@ func TestWorktreePrepareAutoProbeFailurePreservesLegacyInlineResult(t *testing.T
 	}
 }
 
+func TestWorktreePrepareAutoAndOmittedReadyOrcaResolveToOrca(t *testing.T) {
+	for _, mode := range []string{"", IssueOpsOrchestratorAuto} {
+		name := mode
+		if name == "" {
+			name = "omitted"
+		}
+		t.Run(name, func(t *testing.T) {
+			stateRoot, record := handoffPrepareRecord(t)
+			client := &prepareOrcaFake{probe: port.OrcaProbeResult{
+				Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin",
+			}}
+
+			got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: record.ID, Orchestrator: mode, Agent: "codex",
+			}, client, handoffPrepareTestClock())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.RequestedMode != IssueOpsOrchestratorAuto || got.ResolvedMode != IssueOpsOrchestratorOrca || !got.Preview {
+				t.Fatalf("ready Orca resolution = %#v", got)
+			}
+			if !reflect.DeepEqual(client.trace, []string{"probe"}) {
+				t.Fatalf("ready Orca trace = %v, want probe", client.trace)
+			}
+		})
+	}
+}
+
+func TestWorktreePrepareExplicitInlineRequiresAuthorizationBeforeProbeOrMutation(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true}}
+
+	_, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorInline,
+	}, client, handoffPrepareTestClock())
+	if err == nil || err.Error() != "explicit inline requires --inline-reason user-requested|recovery" {
+		t.Fatalf("missing inline authorization error = %v", err)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("missing authorization reached Orca: %v", client.trace)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !reflect.DeepEqual(after, before) {
+		t.Fatal("missing authorization mutated IssueOps state")
+	}
+}
+
+func TestWorktreePrepareExplicitInlineAuthorizationIsBoundedAndAuditable(t *testing.T) {
+	for _, reason := range []string{IssueOpsInlineReasonUserRequested, IssueOpsInlineReasonRecovery} {
+		t.Run(reason, func(t *testing.T) {
+			stateRoot, record := handoffPrepareRecord(t)
+			client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true}}
+
+			got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: record.ID, Orchestrator: IssueOpsOrchestratorInline, InlineReason: reason, Confirm: true,
+			}, client, handoffPrepareTestClock())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ResolvedMode != IssueOpsOrchestratorInline || got.InlineReason != reason || got.Preview || len(got.Command) == 0 {
+				t.Fatalf("authorized inline result = %#v", got)
+			}
+			if len(client.trace) != 0 {
+				t.Fatalf("authorized inline probed Orca: %v", client.trace)
+			}
+			persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+			if readErr != nil || persisted.ExecutionHandoff != nil {
+				t.Fatalf("authorized inline persisted supervised state: %#v err=%v", persisted.ExecutionHandoff, readErr)
+			}
+		})
+	}
+}
+
+func TestWorktreePrepareExplicitInlineRejectsUnknownReasonBeforeProbeOrMutation(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true}}
+
+	_, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorInline, InlineReason: "simpler",
+	}, client, handoffPrepareTestClock())
+	if err == nil || err.Error() != "inline reason must be user-requested or recovery" {
+		t.Fatalf("invalid inline authorization error = %v", err)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("invalid authorization reached Orca: %v", client.trace)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !reflect.DeepEqual(after, before) {
+		t.Fatal("invalid authorization mutated IssueOps state")
+	}
+}
+
+func TestWorktreePrepareInlineAuthorizationValidationPrecedesStateRead(t *testing.T) {
+	for _, tt := range []struct {
+		name, reason, want string
+	}{
+		{name: "missing", want: "explicit inline requires --inline-reason user-requested|recovery"},
+		{name: "unknown", reason: "simpler", want: "inline reason must be user-requested or recovery"},
+		{name: "uppercase", reason: "USER-REQUESTED", want: "inline reason must be user-requested or recovery"},
+		{name: "whitespace padded", reason: " recovery ", want: "inline reason must be user-requested or recovery"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stateRoot := filepath.Join(t.TempDir(), "missing-state-root")
+			client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true}}
+			_, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: "io-missing", Orchestrator: IssueOpsOrchestratorInline, InlineReason: tt.reason,
+			}, client, handoffPrepareTestClock())
+			if err == nil || err.Error() != tt.want {
+				t.Fatalf("authorization error = %v, want %q", err, tt.want)
+			}
+			if len(client.trace) != 0 {
+				t.Fatalf("authorization validation reached Orca: %v", client.trace)
+			}
+			if _, statErr := os.Stat(stateRoot); !os.IsNotExist(statErr) {
+				t.Fatalf("authorization validation touched state root: %v", statErr)
+			}
+		})
+	}
+}
+
+func TestWorktreePrepareRejectsInlineReasonOutsideExplicitInlineBeforeStateRead(t *testing.T) {
+	for _, mode := range []string{"", IssueOpsOrchestratorAuto, IssueOpsOrchestratorOrca} {
+		name := mode
+		if name == "" {
+			name = "omitted"
+		}
+		t.Run(name, func(t *testing.T) {
+			stateRoot := filepath.Join(t.TempDir(), "missing-state-root")
+			client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true}}
+			_, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+				ID: "io-missing", Orchestrator: mode, InlineReason: IssueOpsInlineReasonRecovery,
+			}, client, handoffPrepareTestClock())
+			if err == nil || err.Error() != "--inline-reason is valid only with --orchestrator inline" {
+				t.Fatalf("non-inline authorization error = %v", err)
+			}
+			if len(client.trace) != 0 {
+				t.Fatalf("non-inline authorization reached Orca: %v", client.trace)
+			}
+		})
+	}
+}
+
 func TestWorktreePrepareAutoUnavailablePreservesNilBranchPrepareLegacyResult(t *testing.T) {
 	for _, tt := range []struct {
 		name   string
@@ -305,7 +447,7 @@ func TestWorktreePrepareExplicitInlineIgnoresOrcaOnlyAgentIdentity(t *testing.T)
 	stateRoot, record := handoffPrepareRecord(t)
 	client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true}}
 	got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
-		ID: record.ID, Orchestrator: IssueOpsOrchestratorInline, Agent: "reasonix",
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorInline, InlineReason: IssueOpsInlineReasonRecovery, Agent: "reasonix",
 	}, client, handoffPrepareTestClock())
 	if err != nil {
 		t.Fatalf("legacy inline mode must not interpret an Orca-only agent: %v", err)
@@ -340,9 +482,11 @@ func TestWorktreePrepareExistingHandoffNeverFallsBackInline(t *testing.T) {
 
 			client.trace = nil
 			client.probeErr = errors.New("orca unavailable after mutation")
-			got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
-				ID: record.ID, Orchestrator: mode, Agent: "codex", Confirm: true,
-			}, client, handoffPrepareTestClock())
+			req := IssueOpsHandoffPrepareRequest{ID: record.ID, Orchestrator: mode, Agent: "codex", Confirm: true}
+			if mode == IssueOpsOrchestratorInline {
+				req.InlineReason = IssueOpsInlineReasonRecovery
+			}
+			got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, req, client, handoffPrepareTestClock())
 			if err != nil {
 				t.Fatal(err)
 			}
