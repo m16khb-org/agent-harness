@@ -17,11 +17,16 @@ type MaintainResult struct {
 
 // Maintain runs the store's periodic maintenance: it truncates the data
 // database's WAL via PRAGMA wal_checkpoint(TRUNCATE) and re-asserts 0600 on
-// every store file and sidecar. It is safe to run concurrently with readers
+// known store files and sidecars. It is safe to run concurrently with readers
 // and writers; when a writer holds the WAL busy the checkpoint is skipped for
 // this pass (Checkpointed=false) instead of failing.
 func (d *DB) Maintain() (MaintainResult, error) {
 	result := MaintainResult{Dir: d.dir}
+	fixed, err := repairPrivateSQLiteFiles(d.dir)
+	if err != nil {
+		return result, fmt.Errorf("sqlstore maintain permissions %s: %w", d.dir, err)
+	}
+	result.PermissionsFixed = fixed
 	walPath := filepath.Join(d.dir, dataDBFile+"-wal")
 	if info, err := os.Stat(walPath); err == nil {
 		result.WALBytesBefore = info.Size()
@@ -33,25 +38,6 @@ func (d *DB) Maintain() (MaintainResult, error) {
 	result.Checkpointed = busy == 0
 	if info, err := os.Stat(walPath); err == nil {
 		result.WALBytesAfter = info.Size()
-	}
-	// Re-assert private permissions on every store file. Sidecar modes are not
-	// reliably inherited from the database file in the wild (0644 sidecars have
-	// been observed under umask 022), so repair rather than trust.
-	for _, base := range []string{dataDBFile, spanDBFile} {
-		for _, suffix := range []string{"", "-wal", "-shm", "-journal"} {
-			path := filepath.Join(d.dir, base+suffix)
-			info, err := os.Stat(path)
-			if err != nil {
-				continue
-			}
-			if info.Mode().Perm() == 0o600 {
-				continue
-			}
-			if err := os.Chmod(path, 0o600); err != nil {
-				return result, fmt.Errorf("sqlstore maintain chmod %s: %w", path, err)
-			}
-			result.PermissionsFixed = append(result.PermissionsFixed, base+suffix)
-		}
 	}
 	return result, nil
 }

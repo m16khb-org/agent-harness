@@ -32,6 +32,8 @@ const (
 	spanLockRetryGap = 10 * time.Millisecond
 )
 
+var sqliteFileSuffixes = [...]string{"", "-wal", "-shm", "-journal"}
+
 // DB is the handle for one state root directory.
 type DB struct {
 	dir      string
@@ -74,6 +76,12 @@ func Open(dir string) (*DB, error) {
 	}
 	handlesMu.Lock()
 	defer handlesMu.Unlock()
+	if err := ensurePrivateRoot(abs); err != nil {
+		return nil, fmt.Errorf("sqlstore secure root %s: %w", abs, err)
+	}
+	if _, err := repairPrivateSQLiteFiles(abs); err != nil {
+		return nil, err
+	}
 	if d, ok := handles[abs]; ok {
 		return d, nil
 	}
@@ -88,7 +96,10 @@ func Open(dir string) (*DB, error) {
 // newDB opens an uncached handle. Tests use a second uncached handle to prove
 // cross-process serialization comes from SQLite, not the shared mutex.
 func newDB(abs string) (*DB, error) {
-	if err := os.MkdirAll(abs, 0o700); err != nil {
+	if err := ensurePrivateRoot(abs); err != nil {
+		return nil, fmt.Errorf("sqlstore secure root %s: %w", abs, err)
+	}
+	if _, err := repairPrivateSQLiteFiles(abs); err != nil {
 		return nil, err
 	}
 	dataPath := filepath.Join(abs, dataDBFile)
@@ -128,6 +139,11 @@ func newDB(abs string) (*DB, error) {
 		span.Close()
 		return nil, fmt.Errorf("sqlstore init span db: %w", err)
 	}
+	if _, err := repairPrivateSQLiteFiles(abs); err != nil {
+		data.Close()
+		span.Close()
+		return nil, err
+	}
 	return &DB{dir: abs, data: data, span: span, spanGate: newSpanGate()}, nil
 }
 
@@ -141,6 +157,13 @@ func newSpanGate() chan struct{} {
 // sidecars, which inherit the database file's mode) never exposes state with
 // wider permissions.
 func touchPrivate(path string) error {
+	if info, err := os.Lstat(path); err == nil {
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("refusing non-regular SQLite file %s", path)
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return err
@@ -150,6 +173,56 @@ func touchPrivate(path string) error {
 		return err
 	}
 	return f.Close()
+}
+
+func ensurePrivateRoot(dir string) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	info, err := os.Lstat(dir)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("refusing non-directory state root %s", dir)
+	}
+	if info.Mode().Perm() != 0o700 {
+		if err := os.Chmod(dir, 0o700); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func repairPrivateSQLiteFiles(dir string) ([]string, error) {
+	var repaired []string
+	for _, base := range [...]string{dataDBFile, spanDBFile} {
+		for _, suffix := range sqliteFileSuffixes {
+			name := base + suffix
+			path := filepath.Join(dir, name)
+			info, err := os.Lstat(path)
+			if os.IsNotExist(err) {
+				continue
+			}
+			if err != nil {
+				return nil, fmt.Errorf("sqlstore inspect permissions %s: %w", path, err)
+			}
+			if !info.Mode().IsRegular() {
+				return nil, fmt.Errorf("sqlstore refusing non-regular SQLite file %s", path)
+			}
+			if info.Mode().Perm() == 0o600 {
+				continue
+			}
+			if err := os.Chmod(path, 0o600); err != nil {
+				if os.IsNotExist(err) {
+					continue
+				}
+				return nil, fmt.Errorf("sqlstore chmod %s: %w", path, err)
+			}
+			repaired = append(repaired, name)
+		}
+	}
+	return repaired, nil
 }
 
 func openSQLite(path, params string) (*sql.DB, error) {
