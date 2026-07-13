@@ -186,7 +186,7 @@ func TestWithSpanSerializesAcrossHandles(t *testing.T) {
 	release := make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		done <- d1.WithSpan(func() error {
+		done <- d1.WithSpan(context.Background(), func(context.Context) error {
 			close(inSpan)
 			<-release
 			return nil
@@ -195,7 +195,7 @@ func TestWithSpanSerializesAcrossHandles(t *testing.T) {
 	<-inSpan
 	entered := make(chan struct{})
 	go func() {
-		_ = d2.WithSpan(func() error {
+		_ = d2.WithSpan(context.Background(), func(context.Context) error {
 			close(entered)
 			return nil
 		})
@@ -218,7 +218,7 @@ func TestWithSpanSerializesAcrossHandles(t *testing.T) {
 
 func TestWithSpanAllowsWritesInsideSpanAndPropagatesError(t *testing.T) {
 	d := openTestDB(t)
-	err := d.WithSpan(func() error {
+	err := d.WithSpan(context.Background(), func(context.Context) error {
 		if err := d.Put("b", "k", []byte("v")); err != nil {
 			return err
 		}
@@ -232,7 +232,7 @@ func TestWithSpanAllowsWritesInsideSpanAndPropagatesError(t *testing.T) {
 		t.Fatalf("WithSpan: %v", err)
 	}
 	wantErr := fmt.Errorf("boom")
-	if err := d.WithSpan(func() error { return wantErr }); err != wantErr {
+	if err := d.WithSpan(context.Background(), func(context.Context) error { return wantErr }); err != wantErr {
 		t.Fatalf("expected callback error propagated, got %v", err)
 	}
 }
@@ -246,7 +246,7 @@ func TestConcurrentSpansAndReadsRace(t *testing.T) {
 			defer wg.Done()
 			id := fmt.Sprintf("id-%d", n%4)
 			for j := 0; j < 10; j++ {
-				_ = d.WithSpan(func() error {
+				_ = d.WithSpan(context.Background(), func(context.Context) error {
 					_, _, _ = d.Get("race", id)
 					return d.Put("race", id, []byte(fmt.Sprintf("%d-%d", n, j)))
 				})

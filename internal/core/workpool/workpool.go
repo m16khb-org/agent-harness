@@ -153,7 +153,7 @@ func withPoolLock(ctx context.Context, poolID string, fn func(context.Context) e
 	if err != nil {
 		return err
 	}
-	return db.WithSpanContext(ctx, fn)
+	return db.WithSpan(ctx, fn)
 }
 
 // withTaskLock serializes a task-level read-modify-write span. It shares the
@@ -170,7 +170,7 @@ func withTaskLock(ctx context.Context, poolID, taskID string, fn func(context.Co
 	if err != nil {
 		return err
 	}
-	return db.WithSpanContext(ctx, fn)
+	return db.WithSpan(ctx, fn)
 }
 
 func validateParentCycle(parentCycleID, poolName string) error {

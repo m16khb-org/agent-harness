@@ -16,5 +16,5 @@ func withWorkerJobLock(ctx context.Context, dir, jobID string, fn func(context.C
 	if err != nil {
 		return err
 	}
-	return db.WithSpanContext(ctx, fn)
+	return db.WithSpan(ctx, fn)
 }

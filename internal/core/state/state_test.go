@@ -21,7 +21,7 @@ func TestWithKeyLockPropagatesActiveRoot(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		return db.WithSpanContext(spanCtx, func(context.Context) error { return nil })
+		return db.WithSpan(spanCtx, func(context.Context) error { return nil })
 	})
 	var nested *sqlstore.NestedSpanError
 	if !errors.As(err, &nested) {

@@ -283,7 +283,7 @@ func withSessionLock(ctx context.Context, store Store, repo string, fn func(cont
 	if err != nil {
 		return err
 	}
-	return db.WithSpanContext(ctx, fn)
+	return db.WithSpan(ctx, fn)
 }
 
 // StaleBinding pairs a session binding's sqlstore key with its cycle ID for

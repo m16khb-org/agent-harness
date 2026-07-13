@@ -69,5 +69,5 @@ func withStateLock(ctx context.Context, dir, key string, fn func(context.Context
 	if err != nil {
 		return err
 	}
-	return db.WithSpanContext(ctx, fn)
+	return db.WithSpan(ctx, fn)
 }

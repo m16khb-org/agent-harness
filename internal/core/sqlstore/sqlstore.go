@@ -164,11 +164,9 @@ func openSQLite(path, params string) (*sql.DB, error) {
 	return db, nil
 }
 
-// WithSpanContext serializes a read-modify-write span against all other spans
-// on the same state root, in-process and cross-process. Local and SQLite waits
-// both observe ctx. A root already present in the propagated active-root chain
-// is rejected before either wait begins.
-func (d *DB) WithSpanContext(ctx context.Context, fn func(context.Context) error) error {
+// WithSpan serializes a read-modify-write span for one root, propagates the
+// ordered active-root chain, and makes both local and SQLite lock waits obey ctx.
+func (d *DB) WithSpan(ctx context.Context, fn func(context.Context) error) error {
 	if ctx == nil {
 		return fmt.Errorf("sqlstore span context is required")
 	}
@@ -237,17 +235,6 @@ func isSQLiteLockContention(err error) bool {
 	}
 	primaryCode := sqliteErr.Code() & 0xff
 	return primaryCode == int(sqlite3.SQLITE_BUSY) || primaryCode == int(sqlite3.SQLITE_LOCKED)
-}
-
-// WithSpan is a migration bridge for callers that have not yet adopted the
-// context-bearing callback. It is removed after the repository-wide cutover.
-func (d *DB) WithSpan(fn func() error) error {
-	if fn == nil {
-		return fmt.Errorf("sqlstore span callback is required")
-	}
-	return d.WithSpanContext(context.Background(), func(context.Context) error {
-		return fn()
-	})
 }
 
 // Get returns the record data for (bucket, id) and whether it exists.

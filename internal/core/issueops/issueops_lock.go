@@ -21,5 +21,5 @@ func withIssueOpsLock(ctx context.Context, stateRoot, id string, fn func(context
 	if err != nil {
 		return err
 	}
-	return db.WithSpanContext(ctx, fn)
+	return db.WithSpan(ctx, fn)
 }

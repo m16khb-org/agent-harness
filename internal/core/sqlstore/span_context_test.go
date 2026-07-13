@@ -10,20 +10,20 @@ import (
 	"time"
 )
 
-func TestWithSpanContextRejectsNilArguments(t *testing.T) {
+func TestWithSpanRejectsNilArguments(t *testing.T) {
 	d := openTestDB(t)
-	if err := d.WithSpanContext(nil, func(context.Context) error { return nil }); err == nil {
+	if err := d.WithSpan(nil, func(context.Context) error { return nil }); err == nil {
 		t.Fatal("nil context was accepted")
 	}
-	if err := d.WithSpanContext(context.Background(), nil); err == nil {
+	if err := d.WithSpan(context.Background(), nil); err == nil {
 		t.Fatal("nil callback was accepted")
 	}
 }
 
-func TestWithSpanContextRejectsActiveRootReentry(t *testing.T) {
+func TestWithSpanRejectsActiveRootReentry(t *testing.T) {
 	d := openTestDB(t)
-	err := d.WithSpanContext(context.Background(), func(spanCtx context.Context) error {
-		return d.WithSpanContext(spanCtx, func(context.Context) error { return nil })
+	err := d.WithSpan(context.Background(), func(spanCtx context.Context) error {
+		return d.WithSpan(spanCtx, func(context.Context) error { return nil })
 	})
 	var nested *NestedSpanError
 	if !errors.As(err, &nested) || nested.RequestedDir != d.dir || !reflect.DeepEqual(nested.ActiveDirs, []string{d.dir}) {
@@ -31,11 +31,11 @@ func TestWithSpanContextRejectsActiveRootReentry(t *testing.T) {
 	}
 }
 
-func TestWithSpanContextAllowsDistinctRootsAndRejectsCycle(t *testing.T) {
+func TestWithSpanAllowsDistinctRootsAndRejectsCycle(t *testing.T) {
 	a, b := openTestDB(t), openTestDB(t)
-	err := a.WithSpanContext(context.Background(), func(aCtx context.Context) error {
-		return b.WithSpanContext(aCtx, func(bCtx context.Context) error {
-			err := a.WithSpanContext(bCtx, func(context.Context) error { return nil })
+	err := a.WithSpan(context.Background(), func(aCtx context.Context) error {
+		return b.WithSpan(aCtx, func(bCtx context.Context) error {
+			err := a.WithSpan(bCtx, func(context.Context) error { return nil })
 			var nested *NestedSpanError
 			if !errors.As(err, &nested) || !reflect.DeepEqual(nested.ActiveDirs, []string{a.dir, b.dir}) {
 				return fmt.Errorf("cycle error=%#v err=%v", nested, err)
@@ -48,11 +48,11 @@ func TestWithSpanContextAllowsDistinctRootsAndRejectsCycle(t *testing.T) {
 	}
 }
 
-func TestWithSpanContextCancelsLocalWaiter(t *testing.T) {
+func TestWithSpanCancelsLocalWaiter(t *testing.T) {
 	d := openTestDB(t)
 	entered, release, holderDone := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		holderDone <- d.WithSpanContext(context.Background(), func(context.Context) error {
+		holderDone <- d.WithSpan(context.Background(), func(context.Context) error {
 			close(entered)
 			<-release
 			return nil
@@ -63,7 +63,7 @@ func TestWithSpanContextCancelsLocalWaiter(t *testing.T) {
 	cancel()
 	var called atomic.Bool
 	started := time.Now()
-	err := d.WithSpanContext(ctx, func(context.Context) error {
+	err := d.WithSpan(ctx, func(context.Context) error {
 		called.Store(true)
 		return nil
 	})
@@ -76,7 +76,7 @@ func TestWithSpanContextCancelsLocalWaiter(t *testing.T) {
 	}
 }
 
-func TestWithSpanContextCancelsSQLiteWaiter(t *testing.T) {
+func TestWithSpanCancelsSQLiteWaiter(t *testing.T) {
 	dir := t.TempDir()
 	d1, err := newDB(dir)
 	if err != nil {
@@ -94,7 +94,7 @@ func TestWithSpanContextCancelsSQLiteWaiter(t *testing.T) {
 	})
 	entered, release, holderDone := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		holderDone <- d1.WithSpanContext(context.Background(), func(context.Context) error {
+		holderDone <- d1.WithSpan(context.Background(), func(context.Context) error {
 			close(entered)
 			<-release
 			return nil
@@ -105,7 +105,7 @@ func TestWithSpanContextCancelsSQLiteWaiter(t *testing.T) {
 	defer cancel()
 	var called atomic.Bool
 	started := time.Now()
-	err = d2.WithSpanContext(ctx, func(context.Context) error {
+	err = d2.WithSpan(ctx, func(context.Context) error {
 		called.Store(true)
 		return nil
 	})
@@ -118,14 +118,14 @@ func TestWithSpanContextCancelsSQLiteWaiter(t *testing.T) {
 	}
 }
 
-func TestWithSpanContextPreservesCallbackError(t *testing.T) {
+func TestWithSpanPreservesCallbackError(t *testing.T) {
 	d, want := openTestDB(t), errors.New("sentinel")
-	if err := d.WithSpanContext(context.Background(), func(context.Context) error { return want }); err != want {
+	if err := d.WithSpan(context.Background(), func(context.Context) error { return want }); err != want {
 		t.Fatalf("callback error identity lost: %v", err)
 	}
 }
 
-func TestWithSpanContextPanicReleasesGate(t *testing.T) {
+func TestWithSpanPanicReleasesGate(t *testing.T) {
 	d, want := openTestDB(t), errors.New("panic sentinel")
 	func() {
 		defer func() {
@@ -133,11 +133,11 @@ func TestWithSpanContextPanicReleasesGate(t *testing.T) {
 				t.Fatalf("panic=%v want=%v", got, want)
 			}
 		}()
-		_ = d.WithSpanContext(context.Background(), func(context.Context) error { panic(want) })
+		_ = d.WithSpan(context.Background(), func(context.Context) error { panic(want) })
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := d.WithSpanContext(ctx, func(context.Context) error { return nil }); err != nil {
+	if err := d.WithSpan(ctx, func(context.Context) error { return nil }); err != nil {
 		t.Fatal(err)
 	}
 }

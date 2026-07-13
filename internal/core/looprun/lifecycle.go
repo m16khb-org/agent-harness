@@ -166,7 +166,7 @@ func withLoopLock(ctx context.Context, loopID string, fn func(context.Context) e
 	if err != nil {
 		return err
 	}
-	return db.WithSpanContext(ctx, fn)
+	return db.WithSpan(ctx, fn)
 }
 
 func normalizeRepo(repo string) (string, error) {

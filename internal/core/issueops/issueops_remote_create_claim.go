@@ -286,7 +286,7 @@ func withIssueOpsRemoteCreateLiveLock(ctx context.Context, stateRoot, id string,
 	if err != nil {
 		return err
 	}
-	return db.WithSpanContext(ctx, fn)
+	return db.WithSpan(ctx, fn)
 }
 
 func combineRemoteCreateTransitionError(message string, primary, transition error) error {
