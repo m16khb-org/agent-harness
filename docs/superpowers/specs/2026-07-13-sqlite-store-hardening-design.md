@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-13
 **Scope:** `.agent-harness/plans/agent-harness-stability-concurrency-multisession-hardening.md` T18 remaining work
-**Status:** conversational design approved; written-spec review pending
+**Status:** written spec approved with ordered cross-root correction; implementation planning in progress
 
 ## 1. Purpose
 
@@ -19,7 +19,8 @@ This change hardens those four boundaries without changing row schemas, CLI/MCP 
 
 - When `Open` returns successfully, the exact store root is `0700` and every known SQLite file that exists at that moment is a regular `0600` file.
 - Make local in-process span contention and SQLite `BEGIN IMMEDIATE` contention cancellable through one `context.Context`.
-- Reject every span entered from an active span callback, including cross-root nesting, with a typed error before waiting.
+- Reject a span when its canonical root already appears in the active span chain, including `A -> B -> A`, with a typed error before waiting.
+- Preserve the existing ordered cross-root production path from `remote-create-live/<id>` to the main IssueOps root.
 - Migrate all eight production `WithSpan` call sites to the context-bearing callback contract.
 - Prove holder death releases the SQLite span lock by using real helper subprocesses and bounded handshakes.
 - Measure repeated-open connection/FD behavior without adding eviction, close, or cache-size policy.
@@ -32,12 +33,15 @@ This change hardens those four boundaries without changing row schemas, CLI/MCP 
 - No handle eviction, LRU, explicit public `Close`, or cache-size limit.
 - No recursive chmod, parent-directory chmod, unrelated-file chmod, `VACUUM`, or live user-state maintenance.
 - No goroutine-ID extraction, `runtime.Stack` ownership inference, or fail-fast behavior for legitimate non-nested contention.
+- No global lock-order registry or inference of semantic root priority inside `sqlstore`; distinct-root ordering remains an explicit caller contract.
 - No general filesystem symlink race solution. Paths observed as symlinks at validation time are rejected; platform-specific `O_NOFOLLOW` work is outside this scope.
 
 ## 4. Preserved Invariants
 
 - One absolute state root maps to one cached `*DB` per process.
 - Spans serialize per root in-process and through `harness.lock.db` across processes.
+- A root may appear at most once in one propagated span context chain. Distinct roots may nest only under a documented acyclic caller order.
+- The retained production cross-root order is `remote-create-live/<id>` outer span followed by the main IssueOps-root span; the reverse order is not introduced.
 - The SQLite transaction is used only as the span lock; data writes continue through `harness.db` autocommit operations.
 - Callback errors retain their identity.
 - Transaction rollback and local-gate release run on every normal callback return path.
@@ -60,16 +64,18 @@ func (d *DB) WithSpan(
 
 `ctx` and `fn` are required. A nil argument returns an argument error before lock acquisition.
 
-The callback receives `spanCtx`, a child context containing an unexported active-span marker. The marker stores the canonical outer root for diagnostic purposes. Any `WithSpan` call whose input context already contains a marker returns `*NestedSpanError` immediately. The rule applies to same-root and cross-root nesting because the project contract forbids all span nesting, not only self-reentry.
+The callback receives `spanCtx`, a child context containing an unexported ordered chain of canonical active roots. Before waiting, `WithSpan` checks the requested root against the whole chain. If that root is already active, it returns `*NestedSpanError` immediately. This rejects same-root re-entry and cycles such as `A -> B -> A` while allowing an explicitly ordered distinct-root path such as the existing `remote-create-live/<id> -> main IssueOps root` flow.
 
 ```go
 type NestedSpanError struct {
-	OuterDir     string
+	ActiveDirs   []string
 	RequestedDir string
 }
 ```
 
-`NestedSpanError` implements `error`. Callers and tests identify it with `errors.As`. No error-string matching is required.
+`NestedSpanError` implements `error`. `ActiveDirs` is a defensive copy in outer-to-inner order. Callers and tests identify the error with `errors.As`; no error-string matching is required.
+
+For a distinct requested root, `WithSpan` appends that canonical root to a copied chain before invoking the callback. `sqlstore` does not decide whether unrelated roots have a valid semantic order. The caller that introduces a cross-root path must document one acyclic direction and add a regression test. The current scope retains only the already-shipped remote-create child-root-to-main-root direction.
 
 ### 5.2 Context-cancellable local gate
 
@@ -109,7 +115,9 @@ The eight production call sites in these seven files migrate in the same change:
 - `internal/core/issueops/issueops_lock.go`
 - `internal/core/issueops/issueops_remote_create_claim.go`
 
-Each lock helper accepts a context and a `func(context.Context) error` callback. The outermost production operation uses its existing request context when one exists; an operation with no context-bearing surface uses `context.Background()`. Inside a locked callback, code uses the supplied `spanCtx` for any context-bearing work and must forward it to any attempted span acquisition. This propagation is what turns an accidental nested span into `NestedSpanError` instead of a wait.
+Each lock helper accepts a context and a `func(context.Context) error` callback. The outermost production operation uses its existing request context when one exists; an operation with no context-bearing surface uses `context.Background()`. Inside a locked callback, code uses the supplied `spanCtx` for any context-bearing work and must forward it to any attempted span acquisition. This propagation is what exposes root re-entry to `NestedSpanError` instead of hiding it behind a fresh background context.
+
+`CreateIssueOpsRemotePullRequest` and `ReconcileIssueOpsRemoteCreate` pass the outer `remote-create-live/<id>` `spanCtx` through their claim, clear, mark-unknown, and finalize transitions. Those transitions acquire the distinct main IssueOps root and therefore remain allowed. Regression tests must prove the existing create and reconcile flows still complete and that no main-root-to-remote-create reverse acquisition is introduced.
 
 The migration is internal to this repository. It may change unexported helper signatures and `internal/` package APIs, but it must not change CLI flags, MCP schemas, JSON DTOs, or exit-code behavior.
 
@@ -186,7 +194,8 @@ The test does not open hundreds of unique roots and does not introduce eviction.
 | Stage | Failure | Required result |
 |---|---|---|
 | argument validation | nil context/callback | argument error, no gate acquisition |
-| nested validation | active marker present | `*NestedSpanError`, no waiting |
+| nested validation | requested root already appears in active chain | `*NestedSpanError`, no waiting |
+| ordered cross-root validation | requested root differs from every active root | append root to copied chain and continue |
 | local gate | context cancelled | `ctx.Err()`, callback not called |
 | SQLite gate | context cancelled/busy interrupted | error wraps `ctx.Err()`, local token returned |
 | SQLite gate | other driver error | error includes requested directory |
@@ -199,7 +208,7 @@ The test does not open hundreds of unique roots and does not introduce eviction.
 
 ## 10. TDD Sequence
 
-1. Add RED tests for the new `WithSpan` signature, local cancellation, SQLite cancellation, typed nested rejection, and permissive-mode repair.
+1. Add RED tests for the new `WithSpan` signature, local cancellation, SQLite cancellation, typed root re-entry rejection, allowed distinct-root nesting, and permissive-mode repair.
 2. Implement the context gate, `NestedSpanError`, and `BeginTx(ctx)` path.
 3. Migrate all production direct callers and compile-test each affected package.
 4. Implement exact root/file validation and repair; reuse it from `Maintain`.
@@ -207,7 +216,7 @@ The test does not open hundreds of unique roots and does not introduce eviction.
 6. Add repeated-open handle/pool/FD measurement.
 7. Update ADR, CAUTIONS, and T18 evidence only after behavior is verified.
 
-The crash-recovery and FD tests may be characterization tests that pass against part of the current implementation. The change still follows TDD because the new API, cancellation, nested error, and open-time permission tests fail before production code changes.
+The crash-recovery and FD tests may be characterization tests that pass against part of the current implementation. The change still follows TDD because the new API, cancellation, root-chain error, and open-time permission tests fail before production code changes.
 
 ## 11. Verification
 
@@ -235,7 +244,8 @@ No command may target live user state, overwrite tracked `bin/agent-harness`, or
 - A symlink root or known SQLite file is rejected without chmod of its target.
 - A local waiter returns on context cancellation without entering its callback.
 - An independent handle waiting on SQLite returns on context cancellation without waiting for the 60-second busy timeout.
-- Same-root and cross-root nested spans return `*NestedSpanError` immediately.
+- Same-root re-entry and `A -> B -> A` cycles return `*NestedSpanError` immediately; a documented `A -> B` distinct-root chain completes.
+- Supervised remote create and reconcile retain the existing `remote-create-live/<id> -> main IssueOps root` acquisition order and pass their focused regression tests.
 - Existing concurrent spans still serialize and enter after release when their context remains active.
 - A killed real holder process releases the lock and an already-waiting contender acquires it within the test deadline.
 - Repeated `Open` of one root preserves handle identity and stable data/span connection counts; OS FD observations are recorded when supported.
