@@ -99,7 +99,7 @@ func TestStateWriteLockingIsSatisfiedByLockedStateWrite(t *testing.T) {
 	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_io.go"), `package state
 
 func StateWrite(key, content string) (StateResult, error) {
-	err := withStateLock(dir, key, func() error {
+	err := withStateLock(context.Background(), dir, key, func(context.Context) error {
 		_, err := writeStateRecord(dir, key, record)
 		return err
 	})
@@ -108,7 +108,7 @@ func StateWrite(key, content string) (StateResult, error) {
 `)
 	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_lock.go"), `package state
 
-func withStateLock(dir, key string, fn func() error) error { return fn() }
+func withStateLock(ctx context.Context, dir, key string, fn func(context.Context) error) error { return fn(ctx) }
 `)
 	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_test.go"), `package state
 

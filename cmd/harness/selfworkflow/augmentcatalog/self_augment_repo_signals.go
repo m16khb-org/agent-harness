@@ -96,9 +96,9 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "TestValidateIssueURL")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasStateWriteLocking = fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_io.go"), "withStateLock(dir, key") &&
+			signals.HasStateWriteLocking = fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_io.go"), "withStateLock(context.Background(), dir, key") &&
 				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_io.go"), "writeStateRecord(dir, key, record)") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_lock.go"), "func withStateLock") &&
+				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_lock.go"), "func withStateLock(ctx context.Context") &&
 				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_test.go"), "TestStateWriteWaitsForKeyLock")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
