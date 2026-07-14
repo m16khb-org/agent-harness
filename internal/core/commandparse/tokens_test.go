@@ -104,6 +104,23 @@ func TestHasActiveOutputRedirect(t *testing.T) {
 	}
 }
 
+func TestHasActiveInputRedirect(t *testing.T) {
+	for _, command := range []string{
+		"kubectl exec pod/api -- cat /etc/resolv.conf < /tmp/input",
+		"kubectl exec pod/api -- cat /etc/resolv.conf 0</tmp/input",
+		"kubectl exec pod/api -- cat /etc/resolv.conf <<<value",
+	} {
+		if !HasActiveInputRedirect(command) {
+			t.Fatalf("active input redirect must be detected: %q", command)
+		}
+	}
+	for _, command := range []string{`printf '%s' '<'`, `printf "%s" "<"`, `printf %s \<`} {
+		if HasActiveInputRedirect(command) {
+			t.Fatalf("quoted or escaped input punctuation must remain data: %q", command)
+		}
+	}
+}
+
 func TestHasActiveParameterOrTildeExpansion(t *testing.T) {
 	for _, command := range []string{
 		`rm "$HOME/out"`, `touch ${TMPDIR}/x`, `echo $1`, `echo $?`, `touch ~/x`, `cd ~`,

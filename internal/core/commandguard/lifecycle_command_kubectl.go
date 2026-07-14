@@ -3,28 +3,12 @@ package commandguard
 import (
 	"strings"
 
-	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/searchrouting"
 )
 
 func GitOpsKubectlDecision(tool string, command string) (string, string) {
-	if !searchrouting.IsShellTool(tool) {
-		return "", ""
-	}
-	tokens := commandparse.SplitCommandTokens(command)
-	for i, token := range tokens {
-		if searchrouting.SearchTokenName(token) != "kubectl" {
-			continue
-		}
-		verb, subverb := kubectlVerb(tokens[i+1:])
-		if kubectlLiveAccessNeedsConfirmation(verb) {
-			return "ask", "kubectl live cluster access requires explicit user confirmation: exec and port-forward can expose live workloads or local ports. Confirm before running this command."
-		}
-		if kubectlMutationBlocked(verb, subverb, tokens[i+1:]) {
-			return "block", "GitOps is the source of truth for cluster changes: do not run direct mutating kubectl commands from the agent. Edit Kubernetes manifests in git and use the repo's GitOps review/apply path instead."
-		}
-	}
-	return "", ""
+	result := EvaluateGitOpsKubectl(tool, command)
+	return result.Decision, result.Reason
 }
 
 func kubectlVerb(args []string) (string, string) {

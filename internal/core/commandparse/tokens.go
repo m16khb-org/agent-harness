@@ -240,6 +240,38 @@ func HasActiveOutputRedirect(command string) bool {
 	return false
 }
 
+// HasActiveInputRedirect reports shell input redirection outside quoted or
+// escaped literal data. Any unquoted '<' is active, including fd-prefixed,
+// heredoc, and here-string forms.
+func HasActiveInputRedirect(command string) bool {
+	var quote rune
+	escaped := false
+	for _, r := range command {
+		if escaped {
+			escaped = false
+			continue
+		}
+		if r == '\\' && quote != '\'' {
+			escaped = true
+			continue
+		}
+		if quote != 0 {
+			if r == quote {
+				quote = 0
+			}
+			continue
+		}
+		if r == '\'' || r == '"' {
+			quote = r
+			continue
+		}
+		if r == '<' {
+			return true
+		}
+	}
+	return false
+}
+
 // HasActiveParameterOrTildeExpansion reports shell expansion that can turn an
 // apparently relative operand into an environment-controlled path. POSIX
 // single quotes and backslash escapes remain literal; parameter expansion is
