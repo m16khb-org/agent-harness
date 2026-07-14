@@ -85,34 +85,57 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		}
 	}
 	if result.Decision != "block" && req.EnforceGitOpsKubectl {
-		if decision, reason := commandguard.GitOpsKubectlDecision(req.Tool, req.Command); decision != "" {
-			if decision == "ask" && strings.EqualFold(strings.TrimSpace(req.Host), "codex") {
-				approval := liveapproval.Evaluate(liveApprovalStore(), liveapproval.Request{
-					Host:      req.Host,
-					SessionID: req.SessionID,
-					RepoRoot:  req.Repo,
-					CWD:       req.CWD,
-					Tool:      req.Tool,
-					Command:   req.Command,
-				})
-				switch {
-				case approval.Allowed:
-					result.Decision = "allow"
-					result.Reason = ""
-				case approval.Token != "":
-					result.Decision = "ask"
-					result.Reason = approval.Reason
+		evaluation := commandguard.EvaluateGitOpsKubectl(req.Tool, req.Command)
+		if evaluation.Decision != "" {
+			result.Decision = evaluation.Decision
+			result.Reason = evaluation.Reason
+			if evaluation.Decision == "ask" && strings.EqualFold(strings.TrimSpace(req.Host), "codex") {
+				switch evaluation.LiveAccess {
+				case commandguard.KubectlLiveAccessPortForward:
+					applyCodexLiveApproval(&result, liveapproval.Evaluate(liveApprovalStore(), liveapproval.Request{
+						Host:      req.Host,
+						SessionID: req.SessionID,
+						RepoRoot:  req.Repo,
+						CWD:       req.CWD,
+						Tool:      req.Tool,
+						Command:   req.Command,
+					}))
+				case commandguard.KubectlLiveAccessReadOnlyExec:
+					applyCodexLiveApproval(&result, liveapproval.EvaluateReadOnlyExec(liveApprovalStore(), liveapproval.ReadOnlyExecRequest{
+						Host:      req.Host,
+						SessionID: req.SessionID,
+						RepoRoot:  req.Repo,
+						CWD:       req.CWD,
+						Tool:      req.Tool,
+						Command:   req.Command,
+						Context:   evaluation.ExecScope.Context,
+						Namespace: evaluation.ExecScope.Namespace,
+					}))
+				case commandguard.KubectlLiveAccessUnsafeExec:
+					result.Decision = "block"
+					result.Reason = "kubectl exec is blocked: Codex session approval is limited to explicit-context and explicit-namespace DNS, resolver, and Linkerd metrics diagnostics."
 				default:
 					result.Decision = "block"
-					result.Reason = approval.Reason
+					result.Reason = "kubectl live-access approval unavailable: the request could not be classified safely."
 				}
-			} else {
-				result.Decision = decision
-				result.Reason = reason
 			}
 		}
 	}
 	return result
+}
+
+func applyCodexLiveApproval(result *HookPreToolUseDecisionResult, approval liveapproval.Result) {
+	switch {
+	case approval.Allowed:
+		result.Decision = "allow"
+		result.Reason = ""
+	case approval.Token != "":
+		result.Decision = "ask"
+		result.Reason = approval.Reason
+	default:
+		result.Decision = "block"
+		result.Reason = approval.Reason
+	}
 }
 
 func ApproveCodexKubectlLiveAccess(repo, host, sessionID, prompt string) liveapproval.Result {

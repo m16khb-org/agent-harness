@@ -151,7 +151,7 @@ func TestRunHookPreToolUseClaudeHostAsksForKubectlLiveAccess(t *testing.T) {
 func TestRunHookCodexKubectlLiveApprovalFlow(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	command := "kubectl exec -n stg deploy/rest-api-gateway -- getent hosts grpc-user"
+	command := "kubectl --context bc-stgdev -n stg exec deploy/rest-api-gateway -- getent hosts grpc-user"
 	preToolPayload, err := json.Marshal(map[string]any{
 		"cwd":        repo,
 		"session_id": "session-approval",
@@ -181,7 +181,7 @@ func TestRunHookCodexKubectlLiveApprovalFlow(t *testing.T) {
 	approved := runHookCapture(t, string(promptPayload), func() error {
 		return runHookUserPrompt([]string{"--host", "codex"})
 	})
-	if ctx := hookAdditionalContext(approved); !strings.Contains(ctx, "다음 동일 명령 한 번") ||
+	if ctx := hookAdditionalContext(approved); !strings.Contains(ctx, "10분") || !strings.Contains(ctx, "30분") ||
 		strings.Contains(ctx, command) || strings.Contains(ctx, "karpathy-first") {
 		t.Fatalf("unexpected approval context: %q", ctx)
 	}
@@ -192,13 +192,59 @@ func TestRunHookCodexKubectlLiveApprovalFlow(t *testing.T) {
 	if len(allowed) != 0 {
 		t.Fatalf("approved exact request was not host no-op allow: %+v", allowed)
 	}
-	again := runHookCapture(t, string(preToolPayload), func() error {
+	sameScopePayload, err := json.Marshal(map[string]any{
+		"cwd":        repo,
+		"session_id": "session-approval",
+		"tool_name":  "shell",
+		"tool_input": map[string]any{"command": "kubectl --context bc-stgdev -n stg exec -c linkerd-proxy pod/gateway-2 -- curl -fsS http://localhost:4191/metrics"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reused := runHookCapture(t, string(sameScopePayload), func() error {
 		return runHookPreToolUse([]string{"--host", "codex", "--enforce-gitops-kubectl"})
 	})
-	againReason, _ := again["reason"].(string)
-	againToken := regexp.MustCompile(`AH-[A-HJ-NP-Z2-9]{6}`).FindString(againReason)
-	if again["decision"] != "block" || againToken == "" || againToken == token {
-		t.Fatalf("one-shot request did not re-block with a new token: first=%q again=%+v", token, again)
+	if len(reused) != 0 {
+		t.Fatalf("same-scope request was not host no-op allow: %+v", reused)
+	}
+
+	changedScopePayload, err := json.Marshal(map[string]any{
+		"cwd":        repo,
+		"session_id": "session-approval",
+		"tool_name":  "Bash",
+		"tool_input": map[string]any{"command": "kubectl --context bc-stgdev -n prod exec deploy/rest-api-gateway -- getent hosts grpc-user"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := runHookCapture(t, string(changedScopePayload), func() error {
+		return runHookPreToolUse([]string{"--host", "codex", "--enforce-gitops-kubectl"})
+	})
+	changedReason, _ := changed["reason"].(string)
+	changedToken := regexp.MustCompile(`AH-[A-HJ-NP-Z2-9]{6}`).FindString(changedReason)
+	if changed["decision"] != "block" || changedToken == "" || changedToken == token {
+		t.Fatalf("changed scope did not block with a new token: first=%q changed=%+v", token, changed)
+	}
+}
+
+func TestRunHookCodexUnsafeKubectlExecBlocksWithoutToken(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	payload, err := json.Marshal(map[string]any{
+		"cwd":        repo,
+		"session_id": "session-unsafe",
+		"tool_name":  "Bash",
+		"tool_input": map[string]any{"command": "kubectl --context bc-stgdev -n stg exec deploy/api -- env"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "codex", "--enforce-gitops-kubectl"})
+	})
+	reason, _ := got["reason"].(string)
+	if got["decision"] != "block" || strings.Contains(reason, "AH-") || strings.Contains(reason, "bc-stgdev") || strings.Contains(reason, "stg") {
+		t.Fatalf("unsafe exec did not block safely: %+v", got)
 	}
 }
 
@@ -209,7 +255,7 @@ func TestRunHookUserPromptHostConflictCannotGrantKubectlLiveAccess(t *testing.T)
 		"cwd":        repo,
 		"session_id": "session-conflict",
 		"tool_name":  "Bash",
-		"tool_input": map[string]any{"command": "kubectl exec deploy/api -- env"},
+		"tool_input": map[string]any{"command": "kubectl --context bc-stgdev -n stg port-forward svc/api 8080:80"},
 	})
 	if err != nil {
 		t.Fatal(err)
