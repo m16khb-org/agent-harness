@@ -58,11 +58,18 @@ agent-harness issueops cleanup stale --repo /path/to/repo --apply --prune-done 7
 
 ## Kubectl Live-Access Approval
 
-With `--enforce-gitops-kubectl`, `kubectl exec` and `kubectl port-forward` require explicit confirmation. Claude uses its native `ask`. Codex cannot emit native PreToolUse `ask`, so the first attempt blocks with a short instruction such as `승인 AH-XXXXXX`.
+With `--enforce-gitops-kubectl`, live access requires explicit confirmation. Claude uses its native `ask`. Codex cannot emit native PreToolUse `ask`, so the first eligible request blocks with a short instruction such as `승인 AH-XXXXXX`.
 
-Enter that exact token in the same session. UserPromptSubmit records a project-scoped 10-minute grant, and the next identical workspace/cwd/tool/command is allowed exactly once. A changed command, another session, an expired token, or a reused grant blocks again. Runtime state stores only the request fingerprint with mode `0600`; it never stores the raw command.
+Codex can reuse approval only for exact-allowlisted read-only exec diagnostics that state both kube context and namespace. For example:
 
-If the token expires or the allowed tool call fails, retry the command to receive a new token and approve it. Do not remove `--enforce-gitops-kubectl` as routine recovery. Direct mutating kubectl commands remain blocked and must go through GitOps.
+```bash
+kubectl --context bc-stgdev -n stg exec deploy/rest-api-gateway -- getent hosts grpc-user
+kubectl --context bc-stgdev -n stg exec -c linkerd-proxy deploy/rest-api-gateway -- curl -fsS http://localhost:4191/metrics
+```
+
+Enter the exact token in the same session. The approval must be activated by an allowlisted diagnostic within 10 minutes. The first allowed command and each later allowed command refresh a 30-minute idle TTL for the same session, canonical repo, context, and namespace; workload target and container may change. Changing context or namespace, allowing the TTL to expire, or losing state requires a new token. Runtime state uses mode `0600` and stores only request/scope fingerprints, never raw commands or cluster identifiers.
+
+Codex `kubectl port-forward` remains exact-command one-shot: the next identical request consumes its 10-minute grant. Unsafe or unclassified Codex exec, including generic shells, interactive flags, arbitrary file/env reads, redirects, and non-allowlisted curl/dig options, blocks without an approval token. Do not remove `--enforce-gitops-kubectl` or use a generic shell as routine recovery. Direct mutating kubectl commands remain blocked and must go through GitOps.
 
 ## Release Smoke
 
