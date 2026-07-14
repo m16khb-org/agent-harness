@@ -109,6 +109,20 @@ go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -updat
 go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-adapter-contract -count=1
 ```
 
+### Cross-host tool contract conformance
+
+기본 self-verify에는 network/auth가 없는 다음 deterministic baseline이 포함된다.
+
+```bash
+./bin/agent-harness contract conformance baseline --json
+```
+
+baseline은 representative schema 3개와 `valid`, `unknown_key`, `coercible_type_drift`, `noncoercible_type_drift` payload class의 preregistered 10 cases를 정확히 판정하고, 승격된 behavioral regression fixture가 있으면 handler 호출 0회·동일한 state digest·정규화된 final result를 재생한다.
+
+Live 측정은 CI와 기본 self-verify에 포함하지 않는다. `HARNESS_TOOL_CONFORMANCE_LIVE=1`과 host/model/auth 입력을 명시한 뒤 clean-context `3 hosts × 3 fixtures = 9 completed episodes`를 수집한다. environment/transport/no-call attempt는 model denominator에서 제외하며, case당 최대 3회 retry 후 9 episodes를 채우지 못하면 `inconclusive`다. invalid raw call은 동일 host/schema/diagnostic signature가 2회 이상 재현되어야 regression fixture와 canonical production enforcement 후보가 된다. 한 번뿐인 관측은 승격하지 않는다.
+
+환경 실패율 5%는 조사 warning일 뿐 pass/fail threshold가 아니다. context-pressure profile과 10/20 reproduction batch는 clean initial matrix와 denominator를 합치지 않고 별도 승인·비용 경계로 실행한다. evidence는 `.agent-harness/evidence/tool-conformance/`에 mode 0600/0700으로 저장하고 git에 추가하지 않는다.
+
 ---
 
 ## 3. 테스트 작성 기준

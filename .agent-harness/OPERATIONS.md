@@ -24,7 +24,7 @@ Use this file as the quick map. Read the focused operation file that matches the
 
 1. Native skills: `atomic-commit-push`, `issueops`, `self-augment`, `project-bootstrap`, `self-verify`, `stability-audit`, plus the named specialist skills in `skills/`.
 2. MCP stdio proxy: `agent-harness mcp` starts or connects to the shared user-level `agent-harness daemon`.
-3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/workpool/loop/daemon/worker/self-verify/self-augment/api-doc/hook`.
+3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/workpool/loop/contract/daemon/worker/self-verify/self-augment/api-doc/hook`.
 4. Loop contracts: `agent-harness loop start/record-attempt/status/stop` records verify-until-done state and strict readiness gates without executing verification commands.
 
 ## Daily Commands
@@ -38,6 +38,28 @@ agent-harness doctor --repo . --json
 agent-harness status --json
 agent-harness docs --json
 ```
+
+## Tool Contract Conformance
+
+```bash
+agent-harness contract conformance baseline --json
+HARNESS_TOOL_CONFORMANCE_LIVE=1 agent-harness contract conformance live \
+  --hosts codex,claude,gjc \
+  --model codex=default \
+  --model claude=default \
+  --model gjc=PROVIDER/MODEL \
+  --gjc-auth-env PROVIDER_API_KEY \
+  --profile clean \
+  --target-completed 1 \
+  --max-attempts-per-case 3 \
+  --evidence-dir .agent-harness/evidence/tool-conformance \
+  --json
+agent-harness contract conformance replay --fixture PATH --json
+```
+
+`baseline`과 `replay`는 deterministic local gates다. `live`는 외부 model 비용 경계이며 opt-in env가 없으면 host process를 시작하지 않는다. Codex는 ephemeral/read-only/ignore-user-config 실행, Claude는 strict temp MCP config와 settings-source isolation, GJC는 temp project/plugin/`GJC_CODING_AGENT_DIR`와 명시한 auth env만 사용한다. 사용자 MCP 등록, GJC registry, credential DB는 수정하거나 복사하지 않는다.
+
+Initial live report가 `defer_hardening`이면 현재 preregistered matrix에서 confirmed drift가 없다는 뜻이며 production contract를 변경하지 않는다. `needs_reproduction`이면 report가 지정한 한 host+fixture만 별도 10/20-completed batch로 재현한다. `authorize_hardening`은 같은 normalized signature가 두 번 이상 관측된 경우에만 가능하다. 상세 denominator와 fixture promotion 규칙은 `.agent-harness/TESTING.md`를 따른다.
 
 ## State Store Maintenance
 

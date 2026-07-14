@@ -86,6 +86,12 @@ CLI와 MCP가 서로 다른 응답 의미를 갖기 시작하면 host별 동작�
 - CLI JSON과 MCP response는 같은 core DTO를 공유한다.
 - schema 변경은 golden test와 migration note를 남긴다.
 - tool 이름과 field 이름은 안정적으로 유지한다.
+- advertised schema가 unknown key를 허용했다면 canonical intent와 달라도 model fault로 분류하지 않는다. `advertised_valid`와 `canonical_valid`를 따로 기록한다.
+- `additionalProperties`가 없는 implicit open object를 새로 만들지 않는다. 자유형 map은 schema owner가 `additionalProperties:true`를 명시해야 한다.
+- unknown key 삭제, alias 적용, Unicode 수정, string/CSV/bool coercion 같은 silent repair로 malformed call을 성공시키지 않는다.
+- raw argument drift는 capture-only probe에서 production handler보다 먼저 관측하고, 동일 signature가 재현되기 전에는 production validator나 tracked regression fixture로 승격하지 않는다.
+- GJC live probe는 임시 `GJC_CODING_AGENT_DIR`과 operator가 명시한 nonempty auth env만 사용한다. 실제 registry/credential DB copy, symlink, fallback은 금지한다.
+- `failure_cause`는 typed evidence로만 올리고, evidence가 없거나 상충하면 `unknown`을 유지한다. 기존 반복 패턴 축인 `failure_class`를 덮어쓰지 않는다.
 
 ---
 

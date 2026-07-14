@@ -128,3 +128,4 @@ Candidate generation must use at least two formulas from `GENIUS_THINK.md`. Pref
 - Any new CLI/MCP/native capability must add evidence labels to self-verification tests or QA steps.
 - Never lower the 95-point gate. Skipped verification does not count as a passing score.
 - Capture reusable failures with `self-augment lesson` or the appropriate `.agent-harness` document.
+- Close a reproduced tool-contract failure by promoting a redacted behavioral fixture and correcting the shared validator/schema-generation process, not by hand-fixing one host output. Follow `.agent-harness/TESTING.md`.
