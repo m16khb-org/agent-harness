@@ -115,15 +115,15 @@ func TestSelfVerificationCoverageCompleteWhenAllLabelsPresent(t *testing.T) {
 
 func TestSelfVerificationContractIncludesSummaryExtensions(t *testing.T) {
 	contract := SelfVerificationContractValue()
-	if contract.Name != "self_verification_summary" || contract.Version < 2 || len(contract.Hash) != 64 {
+	if contract.Name != "self_verification_summary" || contract.Version != 4 || len(contract.Hash) != 64 {
 		t.Fatalf("unexpected contract identity: %+v", contract)
 	}
-	for _, want := range []string{"goal_scores", "coverage_gaps", "slowest_steps"} {
+	for _, want := range []string{"goal_scores", "coverage_gaps", "slowest_steps", "failure_cause", "failure_cause_reason", "failure_cause_evidence"} {
 		if !containsString(contract.RequiredFields, want) {
 			t.Fatalf("contract missing required field %q: %+v", want, contract.RequiredFields)
 		}
 	}
-	if !containsString(contract.GoalNames, "policy_security") || !containsString(contract.CoverageClaims, "secret redaction audit") {
+	if !containsString(contract.GoalNames, "policy_security") || !containsString(contract.CoverageClaims, "secret redaction audit") || !containsString(contract.CoverageClaims, "tool-call schema conformance") {
 		t.Fatalf("contract missing goals/coverage claims: %+v", contract)
 	}
 }

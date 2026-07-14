@@ -2,10 +2,13 @@ package stateio
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
+	"agent-harness/internal/core"
+	"agent-harness/internal/core/failurecause"
 )
 
 func TestWriteSelfAugmentSnapshotRecordIsLockedAndAtomic(t *testing.T) {
@@ -86,5 +89,81 @@ func TestReadSelfAugmentStateSnapshotRejectsBadKindAndSchemaAndAcceptsLegacyKind
 	}
 	if snapshot, err := ReadSelfAugmentStateSnapshot("legacy"); err != nil || snapshot.Kind != model.LegacySelfAugmentSummaryKind {
 		t.Fatalf("expected legacy kind to read, snapshot=%+v err=%v", snapshot, err)
+	}
+}
+func TestReadSelfAugmentStateSnapshotNormalizesLegacyFailureCause(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+
+	for _, tc := range []struct {
+		name    string
+		content string
+		cause   failurecause.Cause
+	}{
+		{
+			name:    "success",
+			content: `{"schema_version":1,"kind":"self_verification_summary","ok":true,"summary":{"total_steps":1,"passed_steps":1,"failed_steps":0}}`,
+			cause:   failurecause.None,
+		},
+		{
+			name:    "failure",
+			content: `{"schema_version":1,"kind":"self_verification_summary","ok":false,"summary":{"total_steps":1,"failed_steps":1}}`,
+			cause:   failurecause.Unknown,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := core.StateWrite("legacy-"+tc.name, tc.content); err != nil {
+				t.Fatalf("write legacy state: %v", err)
+			}
+
+			snapshot, err := ReadSelfAugmentStateSnapshot("legacy-" + tc.name)
+			if err != nil {
+				t.Fatalf("read legacy state: %v", err)
+			}
+			if snapshot.Summary.FailureCause != tc.cause {
+				t.Fatalf("failure cause = %q, want %q", snapshot.Summary.FailureCause, tc.cause)
+			}
+			if snapshot.Summary.FailureCauseEvidence == nil || len(snapshot.Summary.FailureCauseEvidence) != 0 {
+				t.Fatalf("failure cause evidence = %#v, want empty slice", snapshot.Summary.FailureCauseEvidence)
+			}
+		})
+	}
+}
+
+func TestReadSelfAugmentStateSnapshotRoundTripsFailureCause(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	evidence := []failurecause.Evidence{{
+		Cause:  failurecause.Transport,
+		Code:   "framing",
+		Source: "mcp",
+	}}
+	want := SelfAugmentStateSnapshot{
+		SchemaVersion: 1,
+		Kind:          model.SelfVerificationSummaryKind,
+		Summary: model.SelfAugmentSummary{
+			TotalSteps:           1,
+			FailedSteps:          1,
+			FailureCause:         failurecause.Transport,
+			FailureCauseReason:   "transport:framing",
+			FailureCauseEvidence: evidence,
+		},
+	}
+
+	if err := WriteSelfAugmentSnapshotRecord(dir, "cause-round-trip", want); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	got, err := ReadSelfAugmentStateSnapshot("cause-round-trip")
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if got.SchemaVersion != 1 {
+		t.Fatalf("schema version = %d, want 1", got.SchemaVersion)
+	}
+	if got.Summary.FailureCause != want.Summary.FailureCause || got.Summary.FailureCauseReason != want.Summary.FailureCauseReason {
+		t.Fatalf("failure cause fields = %#v, want %#v", got.Summary, want.Summary)
+	}
+	if !reflect.DeepEqual(got.Summary.FailureCauseEvidence, want.Summary.FailureCauseEvidence) {
+		t.Fatalf("failure cause evidence = %#v, want %#v", got.Summary.FailureCauseEvidence, want.Summary.FailureCauseEvidence)
 	}
 }

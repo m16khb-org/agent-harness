@@ -1,5 +1,28 @@
 {
   "cli": {
+    "contract_conformance_baseline": {
+      "case_count": 10,
+      "counts": {
+        "attempts": 10,
+        "completed": 10,
+        "environment_failures": 0,
+        "model_denominator": 0,
+        "no_calls": 0,
+        "schema_drift_observations": 0,
+        "transport_failures": 0,
+        "valid_semantic_differences": 0
+      },
+      "evidence": {},
+      "gate": {
+        "decision": "baseline_passed"
+      },
+      "hosts": [],
+      "ok": true,
+      "profile": "deterministic",
+      "run_id": "deterministic-baseline",
+      "schema_version": 1,
+      "warnings": []
+    },
     "contract_schema": {
       "adapter_tools": [
         {
@@ -235,7 +258,7 @@
           "name": "version"
         }
       ],
-      "hash": "b1dbe931a14596ab7352e196cfd5a0e1cfd45c9e9a7881893a9d04184210dcb7",
+      "hash": "7b98e7fdc085f5654fa2adc24f1cd3dacd5ba791a905d2b8cc4b7a6cb9aa0382",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -543,7 +566,22 @@
           "coverage_gaps",
           "step_labels",
           "slowest_steps",
-          "step_duration_stats"
+          "step_duration_stats",
+          "failure_cause",
+          "failure_cause_reason",
+          "failure_cause_evidence"
+        ],
+        "tool_conformance_report": [
+          "ok",
+          "schema_version",
+          "run_id",
+          "profile",
+          "case_count",
+          "counts",
+          "gate",
+          "hosts",
+          "warnings",
+          "evidence"
         ],
         "trace_analysis": [
           "ok",
@@ -631,9 +669,10 @@
       "verification": [
         "go test ./... -count=1",
         "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1",
-        "harness contract check --json"
+        "agent-harness contract conformance baseline --json",
+        "agent-harness contract check --json"
       ],
-      "version": 1,
+      "version": 2,
       "warnings": []
     },
     "daemon_status": {
@@ -5628,6 +5667,9 @@
         "coverage": null,
         "coverage_gaps": null,
         "failed_steps": 0,
+        "failure_cause": "none",
+        "failure_cause_evidence": [],
+        "failure_cause_reason": "no_failed_steps",
         "goal_scores": null,
         "minimum_goal_score": 0,
         "passed_steps": 20,
@@ -5682,6 +5724,9 @@
         "coverage": null,
         "coverage_gaps": null,
         "failed_steps": 0,
+        "failure_cause": "none",
+        "failure_cause_evidence": [],
+        "failure_cause_reason": "no_failed_steps",
         "goal_scores": null,
         "minimum_goal_score": 0,
         "passed_steps": 20,
@@ -5806,6 +5851,9 @@
         "coverage": null,
         "coverage_gaps": null,
         "failed_steps": 0,
+        "failure_cause": "none",
+        "failure_cause_evidence": [],
+        "failure_cause_reason": "no_failed_steps",
         "goal_scores": null,
         "minimum_goal_score": 0,
         "passed_steps": 20,
@@ -6055,6 +6103,8 @@
       "finding_count": 1,
       "findings": [
         {
+          "failure_cause": "unknown",
+          "failure_cause_evidence": [],
           "failure_class": "lifecycle_doc_upkeep",
           "overfit_risk": "low: append-only lifecycle reminders should not alter task execution",
           "proposed_knob": "route pending upkeep into completion evidence instead of leaving lifecycle queue stale",
@@ -6676,7 +6726,7 @@
                 "name": "version"
               }
             ],
-            "hash": "b1dbe931a14596ab7352e196cfd5a0e1cfd45c9e9a7881893a9d04184210dcb7",
+            "hash": "7b98e7fdc085f5654fa2adc24f1cd3dacd5ba791a905d2b8cc4b7a6cb9aa0382",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6984,7 +7034,22 @@
                 "coverage_gaps",
                 "step_labels",
                 "slowest_steps",
-                "step_duration_stats"
+                "step_duration_stats",
+                "failure_cause",
+                "failure_cause_reason",
+                "failure_cause_evidence"
+              ],
+              "tool_conformance_report": [
+                "ok",
+                "schema_version",
+                "run_id",
+                "profile",
+                "case_count",
+                "counts",
+                "gate",
+                "hosts",
+                "warnings",
+                "evidence"
               ],
               "trace_analysis": [
                 "ok",
@@ -7072,9 +7137,10 @@
             "verification": [
               "go test ./... -count=1",
               "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1",
-              "harness contract check --json"
+              "agent-harness contract conformance baseline --json",
+              "agent-harness contract check --json"
             ],
-            "version": 1,
+            "version": 2,
             "warnings": []
           },
           "type": "text"
@@ -10801,6 +10867,9 @@
               "coverage": null,
               "coverage_gaps": null,
               "failed_steps": 0,
+              "failure_cause": "none",
+              "failure_cause_evidence": [],
+              "failure_cause_reason": "no_failed_steps",
               "goal_scores": null,
               "minimum_goal_score": 0,
               "passed_steps": 20,
@@ -10855,6 +10924,9 @@
               "coverage": null,
               "coverage_gaps": null,
               "failed_steps": 0,
+              "failure_cause": "none",
+              "failure_cause_evidence": [],
+              "failure_cause_reason": "no_failed_steps",
               "goal_scores": null,
               "minimum_goal_score": 0,
               "passed_steps": 20,
@@ -10997,6 +11069,9 @@
               "coverage": null,
               "coverage_gaps": null,
               "failed_steps": 0,
+              "failure_cause": "none",
+              "failure_cause_evidence": [],
+              "failure_cause_reason": "no_failed_steps",
               "goal_scores": null,
               "minimum_goal_score": 0,
               "passed_steps": 20,

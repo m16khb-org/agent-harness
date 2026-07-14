@@ -79,6 +79,7 @@ func TestValidateContractAuditWorkerWrappersUseExecutableSurface(t *testing.T) {
 	}{
 		{name: "command audit", run: func() StepResult { return ValidateCommandAudit(binary, root, 101) }},
 		{name: "contract check", run: func() StepResult { return ValidateContractCheck(binary, root) }},
+		{name: "tool conformance", run: func() StepResult { return ValidateToolConformance(binary, root) }},
 		{name: "worker lifecycle", run: func() StepResult { return ValidateWorkerLifecycle(binary, root, 101) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -102,6 +103,9 @@ case "$*" in
   "contract check --json")
     printf '{"ok":true,"hash":"abc","cli_commands":[{"name":"worker"},{"name":"contract"},{"name":"policy"}]}\n'
     ;;
+	  "contract conformance baseline --json")
+	    printf '{"ok":true,"case_count":10,"gate":{"decision":"baseline_passed"}}\n'
+	    ;;
   "worker enqueue "*)
     printf '{"ok":true,"id":"job-1","kind":"smoke","status":"queued","no_shell":true}\n'
     ;;
@@ -160,6 +164,29 @@ func TestValidateContractCheckWithDepsCoversSuccessParseAndContractFailures(t *t
 		if !strings.Contains(failed.Error, want) {
 			t.Fatalf("expected %q in %+v", want, failed)
 		}
+	}
+}
+
+func TestValidateToolConformanceWithDepsAddsTypedFailureEvidence(t *testing.T) {
+	root := t.TempDir()
+	deps := ValidationDeps{
+		RunCommandStep: func(_ string, label string, _ time.Duration, _ string, _ string, args ...string) StepResult {
+			if label != "tool contract conformance" || strings.Join(args, " ") != "contract conformance baseline --json" {
+				return StepResult{Label: label, OK: false, Error: "bad conformance command"}
+			}
+			return StepResult{Label: label, OK: true, Stdout: `{"ok":true,"case_count":10,"gate":{"decision":"baseline_passed"}}`}
+		},
+	}
+	if step := ValidateToolConformanceWithDeps("harness", root, deps); !step.OK {
+		t.Fatalf("expected conformance success, got %+v", step)
+	}
+
+	deps.RunCommandStep = func(string, string, time.Duration, string, string, ...string) StepResult {
+		return StepResult{Label: "tool contract conformance", OK: true, Stdout: `{"ok":false,"case_count":9,"gate":{"decision":"inconclusive"}}`}
+	}
+	failed := ValidateToolConformanceWithDeps("harness", root, deps)
+	if failed.OK || len(failed.FailureEvidence) != 1 || failed.FailureEvidence[0].Code != "baseline_contract_failed" {
+		t.Fatalf("expected typed conformance failure, got %+v", failed)
 	}
 }
 

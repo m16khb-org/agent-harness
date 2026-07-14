@@ -219,6 +219,9 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["contract_schema"] = runCLIJSONContract(t, replacements, func() error {
 		return runContract([]string{"schema", "--json"})
 	})
+	cliSnapshot["contract_conformance_baseline"] = runCLIJSONContract(t, replacements, func() error {
+		return runContract([]string{"conformance", "baseline", "--json"})
+	})
 	traceInput := filepath.Join(workspaceDir, "trace.jsonl")
 	if err := os.WriteFile(traceInput, []byte(`{"kind":"code_change","target_docs":["OPERATIONS.md"],"summary":"contract fixture","source":"contract"}`+"\n"), 0o600); err != nil {
 		t.Fatal(err)

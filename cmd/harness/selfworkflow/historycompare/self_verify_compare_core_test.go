@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
+	"agent-harness/internal/core/failurecause"
 )
 
 func TestCompareSelfAugmentSummariesFromSnapshotsCoversWarningsAndGoalRegressions(t *testing.T) {
@@ -43,5 +44,55 @@ func TestCompareSelfAugmentSummariesFromSnapshotsCoversWarningsAndGoalRegression
 		if !containsString(result.Warnings, want) {
 			t.Fatalf("missing warning %q in %+v", want, result.Warnings)
 		}
+	}
+}
+func TestCompareSelfAugmentSummariesFromSnapshotsWarnsWhenFailureCauseChanges(t *testing.T) {
+	baseline := SelfAugmentStateSnapshot{
+		SchemaVersion: 1,
+		Kind:          model.SelfVerificationSummaryKind,
+		Summary: SelfAugmentSummary{
+			TotalSteps:   1,
+			FailedSteps:  1,
+			FailureCause: failurecause.Model,
+			FailureCauseEvidence: []failurecause.Evidence{
+				{Cause: failurecause.Model, Code: "invalid_tool_arguments", Source: "tool_conformance"},
+			},
+			TerminationEligible: false,
+		},
+	}
+	candidate := baseline
+	candidate.Summary.FailureCause = failurecause.Transport
+	candidate.Summary.FailureCauseEvidence = []failurecause.Evidence{
+		{Cause: failurecause.Transport, Code: "mcp_framing", Source: "tool_conformance"},
+	}
+
+	result := CompareSelfAugmentSummariesFromSnapshots("baseline", "candidate", 5, baseline, candidate)
+
+	if result.Regressed || len(result.Regressions) != 0 {
+		t.Fatalf("failure cause warning must not regress comparison: %+v", result)
+	}
+	if !containsString(result.Warnings, "failure_cause_changed:model->transport") {
+		t.Fatalf("missing failure cause change warning in %+v", result.Warnings)
+	}
+}
+
+func TestCompareSelfAugmentSummariesFromSnapshotsSkipsCauseWarningWhenOnlyOneSummaryFailed(t *testing.T) {
+	baseline := SelfAugmentStateSnapshot{
+		SchemaVersion: 1,
+		Kind:          model.SelfVerificationSummaryKind,
+		Summary: SelfAugmentSummary{
+			TotalSteps:   1,
+			FailedSteps:  1,
+			FailureCause: failurecause.Model,
+		},
+	}
+	candidate := baseline
+	candidate.Summary.FailedSteps = 0
+	candidate.Summary.FailureCause = failurecause.None
+
+	result := CompareSelfAugmentSummariesFromSnapshots("baseline", "candidate", 5, baseline, candidate)
+
+	if containsString(result.Warnings, "failure_cause_changed:model->none") {
+		t.Fatalf("failure cause warning requires failures in both summaries: %+v", result.Warnings)
 	}
 }

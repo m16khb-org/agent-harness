@@ -20,6 +20,14 @@ func ValidateContractCheckWithDeps(binary, root string, deps ContractAuditWorker
 	return contractauditworker.ValidateContractCheckWithDeps(binary, root, deps)
 }
 
+func ValidateToolConformance(binary, root string) StepResult {
+	return contractauditworker.ValidateToolConformance(binary, root)
+}
+
+func ValidateToolConformanceWithDeps(binary, root string, deps ContractAuditWorkerValidationDeps) StepResult {
+	return contractauditworker.ValidateToolConformanceWithDeps(binary, root, deps)
+}
+
 func ValidateWorkerLifecycle(binary, root string, seed int64) StepResult {
 	return contractauditworker.ValidateWorkerLifecycle(binary, root, seed)
 }

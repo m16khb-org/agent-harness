@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"agent-harness/internal/core/failurecause"
 	"agent-harness/internal/core/policy"
 )
 
@@ -28,6 +29,54 @@ func stringField(doc map[string]any, key string) string {
 		return strings.TrimSpace(s)
 	}
 	return ""
+}
+func failureCauseField(doc map[string]any, key string) failurecause.Cause {
+	return normalizedFailureCause(failurecause.Cause(stringField(doc, key)))
+}
+
+func failureCauseEvidenceField(doc map[string]any, key string) []failurecause.Evidence {
+	raw, ok := doc[key]
+	if !ok {
+		return []failurecause.Evidence{}
+	}
+	items, ok := raw.([]any)
+	if !ok {
+		return []failurecause.Evidence{}
+	}
+	evidence := make([]failurecause.Evidence, 0, len(items))
+	for _, item := range items {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		evidence = append(evidence, failurecause.Evidence{
+			Cause:  failureCauseField(entry, "cause"),
+			Code:   stringField(entry, "code"),
+			Source: stringField(entry, "source"),
+		})
+	}
+	return redactedFailureCauseEvidence(evidence)
+}
+
+func normalizedFailureCause(cause failurecause.Cause) failurecause.Cause {
+	switch cause {
+	case failurecause.None, failurecause.Model, failurecause.HarnessEnvironment, failurecause.Transport, failurecause.ContractInput, failurecause.Unknown:
+		return cause
+	default:
+		return failurecause.Unknown
+	}
+}
+
+func redactedFailureCauseEvidence(items []failurecause.Evidence) []failurecause.Evidence {
+	out := make([]failurecause.Evidence, 0, len(items))
+	for _, item := range items {
+		out = append(out, failurecause.Evidence{
+			Cause:  normalizedFailureCause(item.Cause),
+			Code:   policy.RedactFreeform(item.Code),
+			Source: policy.RedactFreeform(item.Source),
+		})
+	}
+	return out
 }
 
 func intField(doc map[string]any, key string) int {
@@ -117,7 +166,9 @@ func dedupeTraceFindings(findings []TraceAnalysisFinding) []TraceAnalysisFinding
 	seen := map[string]bool{}
 	out := []TraceAnalysisFinding{}
 	for _, finding := range findings {
-		key := finding.FailureClass + "\x00" + finding.RecurringPattern + "\x00" + finding.ProposedKnob
+		finding.FailureCause = normalizedFailureCause(finding.FailureCause)
+		finding.FailureCauseEvidence = redactedFailureCauseEvidence(finding.FailureCauseEvidence)
+		key := finding.FailureClass + "\x00" + string(finding.FailureCause) + "\x00" + finding.RecurringPattern + "\x00" + finding.ProposedKnob
 		if seen[key] {
 			continue
 		}
@@ -128,7 +179,19 @@ func dedupeTraceFindings(findings []TraceAnalysisFinding) []TraceAnalysisFinding
 		if out[i].FailureClass != out[j].FailureClass {
 			return out[i].FailureClass < out[j].FailureClass
 		}
-		return out[i].RecurringPattern < out[j].RecurringPattern
+		if out[i].FailureCause != out[j].FailureCause {
+			return out[i].FailureCause < out[j].FailureCause
+		}
+		if out[i].RecurringPattern != out[j].RecurringPattern {
+			return out[i].RecurringPattern < out[j].RecurringPattern
+		}
+		if out[i].ProposedKnob != out[j].ProposedKnob {
+			return out[i].ProposedKnob < out[j].ProposedKnob
+		}
+		if out[i].OverfitRisk != out[j].OverfitRisk {
+			return out[i].OverfitRisk < out[j].OverfitRisk
+		}
+		return out[i].VerificationCommand < out[j].VerificationCommand
 	})
 	return out
 }

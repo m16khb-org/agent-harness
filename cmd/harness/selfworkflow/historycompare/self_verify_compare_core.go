@@ -34,6 +34,8 @@ func CompareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedReg
 
 func CompareSelfAugmentSummariesFromSnapshots(baselineKey, candidateKey string, maxElapsedRegressionPct float64, baseline, candidate SelfAugmentStateSnapshot) SelfAugmentCompareResult {
 	result := NewSelfAugmentCompareResult(baselineKey, candidateKey, maxElapsedRegressionPct)
+	stateio.NormalizeSelfAugmentSnapshotFailureCause(&baseline)
+	stateio.NormalizeSelfAugmentSnapshotFailureCause(&candidate)
 	result.BaselineSummary = baseline.Summary
 	result.CandidateSummary = candidate.Summary
 	result.BaselineSnapshotGeneratedAt = baseline.GeneratedAt
@@ -68,6 +70,9 @@ func CompareSelfAugmentSummariesFromSnapshots(baselineKey, candidateKey string, 
 	}
 	if result.ElapsedDeltaPct > maxElapsedRegressionPct {
 		result.Regressions = append(result.Regressions, fmt.Sprintf("elapsed_ms_increased_by_%.2f_pct", result.ElapsedDeltaPct))
+	}
+	if baseline.Summary.FailedSteps > 0 && candidate.Summary.FailedSteps > 0 && baseline.Summary.FailureCause != candidate.Summary.FailureCause {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("failure_cause_changed:%s->%s", baseline.Summary.FailureCause, candidate.Summary.FailureCause))
 	}
 	result.SlowStepRegressions = CompareSlowestStepRegressions(baseline.Summary.SlowestSteps, candidate.Summary.SlowestSteps, maxElapsedRegressionPct)
 	for _, regression := range result.SlowStepRegressions {

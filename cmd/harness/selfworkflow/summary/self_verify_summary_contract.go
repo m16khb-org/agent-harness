@@ -9,7 +9,7 @@ import (
 func SelfVerificationContractValue() SelfVerificationContract {
 	contract := SelfVerificationContract{
 		Name:    "self_verification_summary",
-		Version: 3,
+		Version: 4,
 		RequiredFields: []string{
 			"total_runs",
 			"total_steps",
@@ -25,6 +25,9 @@ func SelfVerificationContractValue() SelfVerificationContract {
 			"step_labels",
 			"slowest_steps",
 			"step_duration_stats",
+			"failure_cause",
+			"failure_cause_reason",
+			"failure_cause_evidence",
 		},
 		GoalNames:      []string{},
 		CoverageClaims: []string{},
@@ -51,7 +54,7 @@ func SelfVerificationGoalDefinitions() []SelfVerificationGoalDefinition {
 		{Name: "step_budget_baseline", KoreanName: "단계 budget baseline", Labels: []string{"step budget baseline"}},
 		{Name: "install_dry_run", KoreanName: "설치 dry-run", Labels: []string{"install dry-run smoke"}},
 		{Name: "policy_security", KoreanName: "정책·보안", Labels: []string{"command policy smoke", "command audit smoke", "preflight fuzz", "redaction audit"}},
-		{Name: "mcp_state_regression", KoreanName: "MCP·상태 회귀", Labels: []string{"MCP smoke", "state roundtrip", "contract check"}},
+		{Name: "mcp_state_regression", KoreanName: "MCP·상태 회귀", Labels: []string{"MCP smoke", "state roundtrip", "contract check", "tool contract conformance"}},
 		{Name: "concurrency_isolation", KoreanName: "동시성 격리", Labels: []string{"parallel isolation"}},
 		{Name: "daemon_resilience", KoreanName: "데몬 복구력", Labels: []string{"daemon resilience"}},
 		{Name: "worker_lifecycle", KoreanName: "Worker 생명주기", Labels: []string{"worker lifecycle smoke"}},
@@ -72,6 +75,7 @@ func SelfVerificationCoverageDefinitions() []SelfVerificationCoverageDefinition 
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
 		{Claim: "redacted command audit log", Labels: []string{"command audit smoke"}},
 		{Claim: "CLI/MCP compatibility contract", Labels: []string{"contract check"}},
+		{Claim: "tool-call schema conformance", Labels: []string{"tool contract conformance"}},
 		{Claim: "no-shell worker lifecycle", Labels: []string{"worker lifecycle smoke"}},
 		{Claim: "MCP and state regression", Labels: []string{"MCP smoke", "state roundtrip"}},
 		{Claim: "parallel temp isolation", Labels: []string{"parallel isolation"}},

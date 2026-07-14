@@ -122,6 +122,14 @@ func validateContractCheckWithDeps(binary, root string, deps contractAuditWorker
 	return validationcli.ValidateContractCheckWithDeps(binary, root, contractAuditWorkerDepsForValidationCLI(deps))
 }
 
+func validateToolConformance(binary, root string) StepResult {
+	return validationcli.ValidateToolConformance(binary, root)
+}
+
+func validateToolConformanceWithDeps(binary, root string, deps contractAuditWorkerValidationDeps) StepResult {
+	return validationcli.ValidateToolConformanceWithDeps(binary, root, contractAuditWorkerDepsForValidationCLI(deps))
+}
+
 func validateWorkerLifecycle(binary, root string, seed int64) StepResult {
 	return validationcli.ValidateWorkerLifecycle(binary, root, seed)
 }

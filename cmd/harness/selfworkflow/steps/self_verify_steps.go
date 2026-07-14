@@ -28,6 +28,7 @@ type SelfVerifyStepDeps struct {
 	ValidateCommandPolicy           func(string, string) StepResult
 	ValidateCommandAudit            func(string, string, int64) StepResult
 	ValidateContractCheck           func(string, string) StepResult
+	ValidateToolConformance         func(string, string) StepResult
 	ValidateWorkerLifecycle         func(string, string, int64) StepResult
 	ValidateMCP                     func(string, string) StepResult
 	ValidateStateRoundtrip          func(string, string, int64) StepResult
@@ -71,6 +72,7 @@ func PlannedSelfVerifySteps(root string, tempBin string, seed int64, goTestStep 
 		{Label: "command policy smoke", Run: func() StepResult { return deps.ValidateCommandPolicy(tempBin, root) }},
 		{Label: "command audit smoke", Run: func() StepResult { return deps.ValidateCommandAudit(tempBin, root, seed) }},
 		{Label: "contract check", Run: func() StepResult { return deps.ValidateContractCheck(tempBin, root) }},
+		{Label: "tool contract conformance", Run: func() StepResult { return deps.ValidateToolConformance(tempBin, root) }},
 		{Label: "worker lifecycle smoke", Run: func() StepResult { return deps.ValidateWorkerLifecycle(tempBin, root, seed) }},
 		{Label: "MCP smoke", Run: func() StepResult { return deps.ValidateMCP(tempBin, root) }},
 		{Label: "state roundtrip", Run: func() StepResult { return deps.ValidateStateRoundtrip(tempBin, root, seed) }},

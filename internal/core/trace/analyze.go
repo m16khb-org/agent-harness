@@ -3,6 +3,8 @@ package trace
 import (
 	"fmt"
 	"strings"
+
+	"agent-harness/internal/core/failurecause"
 )
 
 const TraceAnalysisKind = "trace_analysis"
@@ -23,11 +25,13 @@ type TraceAnalyzeResult struct {
 }
 
 type TraceAnalysisFinding struct {
-	FailureClass        string `json:"failure_class"`
-	RecurringPattern    string `json:"recurring_pattern"`
-	ProposedKnob        string `json:"proposed_knob"`
-	OverfitRisk         string `json:"overfit_risk"`
-	VerificationCommand string `json:"verification_command"`
+	FailureClass         string                  `json:"failure_class"`
+	FailureCause         failurecause.Cause      `json:"failure_cause"`
+	FailureCauseEvidence []failurecause.Evidence `json:"failure_cause_evidence"`
+	RecurringPattern     string                  `json:"recurring_pattern"`
+	ProposedKnob         string                  `json:"proposed_knob"`
+	OverfitRisk          string                  `json:"overfit_risk"`
+	VerificationCommand  string                  `json:"verification_command"`
 }
 
 func TraceAnalyze(req TraceAnalyzeRequest) (TraceAnalyzeResult, error) {

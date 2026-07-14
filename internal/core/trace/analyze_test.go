@@ -1,11 +1,13 @@
 package trace
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"agent-harness/internal/core/failurecause"
 	corestate "agent-harness/internal/core/state"
 )
 
@@ -19,7 +21,11 @@ func TestTraceAnalyzeSelfVerifySummary(t *testing.T) {
     "failure_clusters": [
       {"step": "contract golden tests", "count": 2, "seeds": [100, 101]}
     ],
-    "rerun_commands": ["go test ./cmd/harness -run Golden -count=1"]
+    "rerun_commands": ["go test ./cmd/harness -run Golden -count=1"],
+    "failure_cause": "transport",
+    "failure_cause_evidence": [
+      {"cause": "transport", "code": "mcp-framing", "source": "conformance_probe"}
+    ]
   }
 }`
 	if err := os.WriteFile(input, []byte(body), 0o600); err != nil {
@@ -41,6 +47,16 @@ func TestTraceAnalyzeSelfVerifySummary(t *testing.T) {
 	}
 	if finding.VerificationCommand != "go test ./cmd/harness -run Golden -count=1" {
 		t.Fatalf("unexpected verification command: %+v", finding)
+	}
+	if finding.FailureCause != failurecause.Transport {
+		t.Fatalf("unexpected failure cause: %+v", finding)
+	}
+	if len(finding.FailureCauseEvidence) != 1 || finding.FailureCauseEvidence[0] != (failurecause.Evidence{
+		Cause:  failurecause.Transport,
+		Code:   "mcp-framing",
+		Source: "conformance_probe",
+	}) {
+		t.Fatalf("unexpected failure cause evidence: %+v", finding.FailureCauseEvidence)
 	}
 }
 
@@ -81,6 +97,10 @@ func TestTraceAnalyzeSingleDocUpkeepJSON(t *testing.T) {
 	if result.FindingCount != 1 || !containsString(result.TraceTypes, "doc_upkeep_json") {
 		t.Fatalf("expected single doc-upkeep finding: %+v", result)
 	}
+	finding := result.Findings[0]
+	if finding.FailureCause != failurecause.Unknown || finding.FailureCauseEvidence == nil {
+		t.Fatalf("doc upkeep failure cause defaults = %+v", finding)
+	}
 }
 
 func TestTraceAnalyzeGuardFindingsAndWarnings(t *testing.T) {
@@ -108,6 +128,11 @@ func TestTraceAnalyzeGuardFindingsAndWarnings(t *testing.T) {
 	for _, want := range []string{"guard_guard_finding", "guard_search-routing", "search-routing reported 2 time"} {
 		if !strings.Contains(encoded, want) {
 			t.Fatalf("guard findings missing %q: %+v", want, result.Findings)
+		}
+	}
+	for _, finding := range result.Findings {
+		if finding.FailureCause != failurecause.Unknown || finding.FailureCauseEvidence == nil {
+			t.Fatalf("guard failure cause defaults = %+v", finding)
 		}
 	}
 
@@ -150,6 +175,66 @@ func TestTraceAnalyzeInvalidJSONAndJSONLFallback(t *testing.T) {
 	}
 }
 
+func TestDedupeTraceFindingsKeepsDistinctFailureCauses(t *testing.T) {
+	findings := dedupeTraceFindings([]TraceAnalysisFinding{
+		{
+			FailureClass:     "shared_failure",
+			FailureCause:     failurecause.Transport,
+			RecurringPattern: "same pattern",
+			ProposedKnob:     "same knob",
+		},
+		{
+			FailureClass:     "shared_failure",
+			FailureCause:     failurecause.Model,
+			RecurringPattern: "same pattern",
+			ProposedKnob:     "same knob",
+		},
+	})
+	if len(findings) != 2 {
+		t.Fatalf("distinct failure causes were deduped: %+v", findings)
+	}
+	if findings[0].FailureCause != failurecause.Model || findings[1].FailureCause != failurecause.Transport {
+		t.Fatalf("findings were not deterministically sorted by failure cause: %+v", findings)
+	}
+	for _, finding := range findings {
+		if finding.FailureCauseEvidence == nil {
+			t.Fatalf("failure cause evidence must serialize as an array: %+v", finding)
+		}
+	}
+}
+
+func TestTraceAnalyzeRedactsFailureCauseEvidence(t *testing.T) {
+	input := filepath.Join(t.TempDir(), "summary.json")
+	body := `{
+  "summary": {
+    "failed_steps": 1,
+    "failure_class": "deterministic",
+    "failed_step": "contract probe",
+    "failure_cause": "model",
+    "failure_cause_evidence": [
+      {"cause": "model", "code": "TOKEN=secret-value", "source": "authorization: Bearer secret-value"}
+    ]
+  }
+}`
+	if err := os.WriteFile(input, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: input})
+	if err != nil {
+		t.Fatalf("TraceAnalyze: %v", err)
+	}
+	evidence := result.Findings[0].FailureCauseEvidence
+	if len(evidence) != 1 || evidence[0].Code != "redacted" || evidence[0].Source != "redacted" {
+		t.Fatalf("failure cause evidence was not redacted: %+v", evidence)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "secret-value") {
+		t.Fatalf("trace analysis leaked failure cause evidence: %s", encoded)
+	}
+}
 func TestTraceAnalyzeReadsStateKey(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	if _, err := corestate.StateWrite("trace-fixture", `{"failed_steps":1,"failure_class":"intermittent","failed_step":"go test"}`); err != nil {

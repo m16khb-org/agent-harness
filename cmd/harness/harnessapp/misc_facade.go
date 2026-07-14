@@ -33,6 +33,7 @@ var (
 
 func configureContractCLI() {
 	contractcli.MCPTools = mcpTools
+	contractcli.ConfigureConformance(contractcli.ConformanceDependencies{Root: harnessRoot, RunProcess: runToolConformanceLive})
 }
 
 func runContract(args []string) error {

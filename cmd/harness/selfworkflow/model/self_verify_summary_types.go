@@ -1,6 +1,9 @@
 package model
 
-import "agent-harness/cmd/harness/commandstep"
+import (
+	"agent-harness/cmd/harness/commandstep"
+	"agent-harness/internal/core/failurecause"
+)
 
 type SelfAugmentResult struct {
 	OK                  bool                        `json:"ok"`
@@ -36,27 +39,30 @@ type SelfVerifyLLMEvalResult struct {
 }
 
 type SelfAugmentSummary struct {
-	TotalRuns           int                              `json:"total_runs"`
-	TotalSteps          int                              `json:"total_steps"`
-	PassedSteps         int                              `json:"passed_steps"`
-	FailedSteps         int                              `json:"failed_steps"`
-	TargetScore         float64                          `json:"target_score"`
-	Contract            SelfVerificationContract         `json:"contract"`
-	MinimumGoalScore    float64                          `json:"minimum_goal_score"`
-	TerminationEligible bool                             `json:"termination_eligible"`
-	GoalScores          []SelfVerificationGoalScore      `json:"goal_scores"`
-	Coverage            []SelfVerificationCoverage       `json:"coverage"`
-	CoverageGaps        []string                         `json:"coverage_gaps"`
-	RerunCommands       []string                         `json:"rerun_commands,omitempty"`
-	FailureClass        string                           `json:"failure_class,omitempty"`
-	FailureClassReason  string                           `json:"failure_class_reason,omitempty"`
-	FailureClusters     []SelfVerificationFailureCluster `json:"failure_clusters,omitempty"`
-	FailedIteration     int                              `json:"failed_iteration,omitempty"`
-	FailedSeed          int64                            `json:"failed_seed,omitempty"`
-	FailedStep          string                           `json:"failed_step,omitempty"`
-	StepLabels          []string                         `json:"step_labels"`
-	SlowestSteps        []SelfAugmentSlowStep            `json:"slowest_steps"`
-	StepDurationStats   []SelfAugmentStepDurationStat    `json:"step_duration_stats"`
+	TotalRuns            int                              `json:"total_runs"`
+	TotalSteps           int                              `json:"total_steps"`
+	PassedSteps          int                              `json:"passed_steps"`
+	FailedSteps          int                              `json:"failed_steps"`
+	TargetScore          float64                          `json:"target_score"`
+	Contract             SelfVerificationContract         `json:"contract"`
+	MinimumGoalScore     float64                          `json:"minimum_goal_score"`
+	TerminationEligible  bool                             `json:"termination_eligible"`
+	GoalScores           []SelfVerificationGoalScore      `json:"goal_scores"`
+	Coverage             []SelfVerificationCoverage       `json:"coverage"`
+	CoverageGaps         []string                         `json:"coverage_gaps"`
+	RerunCommands        []string                         `json:"rerun_commands,omitempty"`
+	FailureClass         string                           `json:"failure_class,omitempty"`
+	FailureClassReason   string                           `json:"failure_class_reason,omitempty"`
+	FailureCause         failurecause.Cause               `json:"failure_cause"`
+	FailureCauseReason   string                           `json:"failure_cause_reason"`
+	FailureCauseEvidence []failurecause.Evidence          `json:"failure_cause_evidence"`
+	FailureClusters      []SelfVerificationFailureCluster `json:"failure_clusters,omitempty"`
+	FailedIteration      int                              `json:"failed_iteration,omitempty"`
+	FailedSeed           int64                            `json:"failed_seed,omitempty"`
+	FailedStep           string                           `json:"failed_step,omitempty"`
+	StepLabels           []string                         `json:"step_labels"`
+	SlowestSteps         []SelfAugmentSlowStep            `json:"slowest_steps"`
+	StepDurationStats    []SelfAugmentStepDurationStat    `json:"step_duration_stats"`
 }
 
 type SelfVerificationContract struct {

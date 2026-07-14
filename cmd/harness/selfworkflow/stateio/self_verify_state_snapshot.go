@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/failurecause"
 )
 
 func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) {
@@ -23,14 +24,22 @@ func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) 
 	if snapshot.SchemaVersion != 1 {
 		return SelfAugmentStateSnapshot{}, fmt.Errorf("state key %q has unsupported self-verification summary schema %d", key, snapshot.SchemaVersion)
 	}
+	NormalizeSelfAugmentSnapshotFailureCause(&snapshot)
 	return snapshot, nil
 }
 
 func IsSelfVerificationSummaryKind(kind string) bool {
 	return kind == selfVerificationSummaryKind || kind == legacySelfAugmentSummaryKind
 }
+func NormalizeSelfAugmentSnapshotFailureCause(snapshot *SelfAugmentStateSnapshot) {
+	classified := failurecause.Classify(snapshot.Summary.FailedSteps > 0, snapshot.Summary.FailureCauseEvidence)
+	snapshot.Summary.FailureCause = classified.Cause
+	snapshot.Summary.FailureCauseReason = classified.Reason
+	snapshot.Summary.FailureCauseEvidence = classified.Evidence
+}
 
 func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSnapshot) error {
+	NormalizeSelfAugmentSnapshotFailureCause(&snapshot)
 	key, err := core.NormalizeStateKey(key)
 	if err != nil {
 		return err

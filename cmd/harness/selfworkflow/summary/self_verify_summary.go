@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"agent-harness/cmd/harness/selfworkflow/rerun"
+	"agent-harness/internal/core/failurecause"
 )
 
 func SummarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {
@@ -12,12 +13,13 @@ func SummarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {
 
 func SummarizeSelfVerification(result SelfAugmentResult, targetScore float64) SelfAugmentSummary {
 	summary := SelfAugmentSummary{
-		TotalRuns:         len(result.Runs),
-		TargetScore:       targetScore,
-		Contract:          SelfVerificationContractValue(),
-		StepLabels:        []string{},
-		SlowestSteps:      []SelfAugmentSlowStep{},
-		StepDurationStats: []SelfAugmentStepDurationStat{},
+		TotalRuns:            len(result.Runs),
+		TargetScore:          targetScore,
+		Contract:             SelfVerificationContractValue(),
+		StepLabels:           []string{},
+		SlowestSteps:         []SelfAugmentSlowStep{},
+		StepDurationStats:    []SelfAugmentStepDurationStat{},
+		FailureCauseEvidence: []failurecause.Evidence{},
 	}
 	seenLabels := map[string]bool{}
 	durationsByLabel := map[string][]int64{}
@@ -75,6 +77,16 @@ func SummarizeSelfVerification(result SelfAugmentResult, targetScore float64) Se
 		summary.RerunCommands = rerun.SelfVerifyRerunCommands(summary.FailedStep, result.Iterations, result.BaseSeed, targetScore)
 		summary.FailureClass, summary.FailureClassReason, summary.FailureClusters = ClassifySelfVerificationFailure(result, summary)
 	}
+	evidence := []failurecause.Evidence{}
+	for _, run := range result.Runs {
+		for _, step := range run.Steps {
+			if !step.OK {
+				evidence = append(evidence, step.FailureEvidence...)
+			}
+		}
+	}
+	cause := failurecause.Classify(summary.FailedSteps > 0, evidence)
+	summary.FailureCause, summary.FailureCauseReason, summary.FailureCauseEvidence = cause.Cause, cause.Reason, cause.Evidence
 	summary.MinimumGoalScore = 100
 	if len(summary.GoalScores) == 0 {
 		summary.MinimumGoalScore = 0

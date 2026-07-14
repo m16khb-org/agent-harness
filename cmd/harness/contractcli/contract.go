@@ -42,6 +42,8 @@ func Run(args []string) error {
 		return runContractSchema(args[1:])
 	case "check":
 		return runContractCheck(args[1:])
+	case "conformance":
+		return runConformance(args[1:])
 	default:
 		contractUsage()
 		return fmt.Errorf("unknown contract subcommand %q", args[0])
@@ -50,8 +52,9 @@ func Run(args []string) error {
 
 func contractUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  agent-harness contract schema [--json]
-  agent-harness contract check [--json]
+	  agent-harness contract schema [--json]
+	  agent-harness contract check [--json]
+	  agent-harness contract conformance baseline|live|replay|serve [flags]
 `)
 }
 
@@ -103,7 +106,7 @@ func BuildCompatibilityContract() CompatibilityContract {
 	contract := CompatibilityContract{
 		OK:          true,
 		Name:        "agent_harness_cli_mcp_compatibility",
-		Version:     1,
+		Version:     2,
 		CLICommands: cliadapter.Commands(),
 		MCPTools:    toolNames,
 		ResponseFields: map[string][]string{
@@ -114,6 +117,7 @@ func BuildCompatibilityContract() CompatibilityContract {
 			"command_run":                     {"ok", "executed", "exit_code", "read_only", "policy", "stdout", "stderr", "error"},
 			"guard_check":                     {"ok", "repo_root", "mode", "checked_files", "findings", "summary"},
 			"trace_analysis":                  {"ok", "kind", "input", "input_source", "trace_types", "finding_count", "findings", "warnings"},
+			"tool_conformance_report":         {"ok", "schema_version", "run_id", "profile", "case_count", "counts", "gate", "hosts", "warnings", "evidence"},
 			"worker_job":                      {"ok", "id", "kind", "status", "created_at", "updated_at", "no_shell"},
 			"workpool_pool":                   {"ok", "schema_version", "id", "repo", "name", "size", "lease_ttl", "max_attempts", "status", "created_at", "updated_at"},
 			"workpool_task":                   {"ok", "schema_version", "id", "pool_id", "title", "instructions", "status", "created_at", "updated_at"},
@@ -137,7 +141,7 @@ func BuildCompatibilityContract() CompatibilityContract {
 		},
 		Warnings:     []string{},
 		AdapterTools: mcpadapter.AdapterOwnedTools(),
-		Verification: []string{"go test ./... -count=1", "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1", "harness contract check --json"},
+		Verification: []string{"go test ./... -count=1", "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -count=1", "agent-harness contract conformance baseline --json", "agent-harness contract check --json"},
 	}
 	for _, want := range []string{"contract_schema", "worker_enqueue", "command_fake_run"} {
 		if !containsString(toolNames, want) {

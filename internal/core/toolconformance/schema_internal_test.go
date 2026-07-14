@@ -1,0 +1,132 @@
+package toolconformance
+
+import (
+	"encoding/json"
+	"reflect"
+	"testing"
+)
+
+func TestClassifyPriorityAndBranches(t *testing.T) {
+	schema := map[string]any{"type": "object", "required": []any{"mode"}, "properties": map[string]any{"mode": map[string]any{"type": "string", "enum": []any{"safe"}}, "flag": map[string]any{"type": "boolean"}}}
+	for _, tt := range []struct {
+		name        string
+		observation CallObservation
+		expected    map[string]any
+		want        Classification
+	}{
+		{"invalid json before call count", CallObservation{RawArguments: []byte(`{`), CallCount: 0}, nil, InvalidJSON},
+		{"no call", CallObservation{RawArguments: []byte(`{}`), CallCount: 0}, nil, NoCall},
+		{"multiple calls", CallObservation{RawArguments: []byte(`{}`), CallCount: 2}, nil, MultipleCalls},
+		{"semantic difference", CallObservation{RawArguments: []byte(`{"mode":"safe"}`), CallCount: 1}, map[string]any{"mode": "other"}, ValidButSemanticallyDifferent},
+		{"missing required", CallObservation{RawArguments: []byte(`{}`), CallCount: 1}, nil, MissingRequired},
+		{"enum mismatch", CallObservation{RawArguments: []byte(`{"mode":"unsafe"}`), CallCount: 1}, map[string]any{"mode": "safe"}, EnumMismatch},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Classify(tt.observation, schema, tt.expected)
+			if err != nil || got.Classification != tt.want {
+				t.Fatalf("got=%#v err=%v", got, err)
+			}
+		})
+	}
+}
+
+func TestClassifyRequiresLosslessCoercion(t *testing.T) {
+	schema := map[string]any{"type": "object", "properties": map[string]any{
+		"flag": map[string]any{"type": "boolean"},
+		"tags": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"argv": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+	}}
+	expected := map[string]any{"flag": false, "tags": []any{"one", "two"}, "argv": []any{"git"}}
+	for _, tt := range []struct {
+		name string
+		raw  []byte
+		want Classification
+	}{
+		{"bool text parses and matches", []byte(`{"flag":"false","tags":["one","two"],"argv":["git"]}`), CoercibleTypeDrift},
+		{"csv trims spacing and matches", []byte(`{"flag":false,"tags":"one, two","argv":["git"]}`), CoercibleTypeDrift},
+		{"invalid bool text is noncoercible", []byte(`{"flag":"not-bool","tags":["one","two"],"argv":["git"]}`), NoncoercibleTypeDrift},
+		{"wrong bool value is noncoercible", []byte(`{"flag":"true","tags":["one","two"],"argv":["git"]}`), NoncoercibleTypeDrift},
+		{"csv values must match exactly", []byte(`{"flag":false,"tags":"one,other","argv":["git"]}`), NoncoercibleTypeDrift},
+		{"one convertible and one noncoercible mismatch", []byte(`{"flag":"false","tags":["one","two"],"argv":{}}`), NoncoercibleTypeDrift},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Classify(CallObservation{RawArguments: tt.raw, CallCount: 1}, schema, expected)
+			if err != nil || got.Classification != tt.want {
+				t.Fatalf("got=%#v err=%v", got, err)
+			}
+		})
+	}
+	t.Run("blank csv maps to empty slice", func(t *testing.T) {
+		emptyTags := map[string]any{"flag": false, "tags": []any{}, "argv": []any{"git"}}
+		got, err := Classify(CallObservation{RawArguments: []byte(`{"flag":false,"tags":"","argv":["git"]}`), CallCount: 1}, schema, emptyTags)
+		if err != nil || got.Classification != CoercibleTypeDrift {
+			t.Fatalf("blank csv got=%#v err=%v", got, err)
+		}
+	})
+}
+
+func TestValidatorSupportsNestedUnknownEscapesNumbersEnumsAndMixedArrays(t *testing.T) {
+	schema := map[string]any{"type": "object", "properties": map[string]any{
+		"nested": map[string]any{"type": "object", "properties": map[string]any{"a~/b": map[string]any{"type": "integer"}}},
+		"mode":   map[string]any{"type": "string", "enum": []any{"safe"}},
+		"list":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+	}}
+	diagnostics, err := Validate(ClosedProjection(schema), map[string]any{"nested": map[string]any{"a~/b": float64(1.5), "extra": true}, "mode": "unsafe", "list": []any{"ok", false, float64(2)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Diagnostic{{Path: "/list/1", Code: "wrong_type", Expected: "string", Actual: "boolean"}, {Path: "/list/2", Code: "wrong_type", Expected: "string", Actual: "number"}, {Path: "/mode", Code: "enum_mismatch", Expected: "enum", Actual: "string"}, {Path: "/nested/a~0~1b", Code: "wrong_type", Expected: "integer", Actual: "number"}, {Path: "/nested/extra", Code: "unknown_key", Expected: "declared property", Actual: "boolean"}}
+	if !reflect.DeepEqual(diagnostics, want) {
+		t.Fatalf("got=%#v want=%#v", diagnostics, want)
+	}
+}
+
+func TestSortDiagnosticsUsesFullTuple(t *testing.T) {
+	got := []Diagnostic{{Path: "/a", Code: "wrong_type", Expected: "z", Actual: "z"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "z"}, {Path: "/a", Code: "enum_mismatch", Expected: "enum", Actual: "string"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "a"}}
+	sortDiagnostics(got)
+	want := []Diagnostic{{Path: "/a", Code: "enum_mismatch", Expected: "enum", Actual: "string"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "a"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "z"}, {Path: "/a", Code: "wrong_type", Expected: "z", Actual: "z"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got=%#v want=%#v", got, want)
+	}
+}
+
+func TestValidatorRejectsUnsupportedSchemaKeyword(t *testing.T) {
+	if _, err := Validate(map[string]any{"type": "object", "oneOf": []any{}}, map[string]any{}); err == nil {
+		t.Fatal("unsupported keyword accepted")
+	}
+}
+
+func TestNestedObjectMismatchUsesWrongType(t *testing.T) {
+	schema := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"nested": map[string]any{"type": "object", "properties": map[string]any{}},
+		},
+	}
+	diagnostics, err := Validate(schema, map[string]any{"nested": "not-an-object"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Diagnostic{{Path: "/nested", Code: "wrong_type", Expected: "object", Actual: "string"}}
+	if !reflect.DeepEqual(diagnostics, want) {
+		t.Fatalf("diagnostics=%#v want=%#v", diagnostics, want)
+	}
+}
+
+func TestReportEnumsRejectUnknownJSONValues(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		data string
+		out  any
+	}{
+		{name: "status", data: `"unknown"`, out: new(EpisodeStatus)},
+		{name: "classification", data: `"unknown"`, out: new(Classification)},
+		{name: "gate", data: `"unknown"`, out: new(GateDecision)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := json.Unmarshal([]byte(tt.data), tt.out); err == nil {
+				t.Fatalf("unknown %s accepted", tt.name)
+			}
+		})
+	}
+}

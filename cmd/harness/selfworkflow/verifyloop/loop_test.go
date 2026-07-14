@@ -165,6 +165,9 @@ func fakeVerifyLoopStepDepsOK(ok func(string) commandstep.StepResult) steps.Self
 		ValidateContractCheck: func(string, string) commandstep.StepResult {
 			return ok("contract check")
 		},
+		ValidateToolConformance: func(string, string) commandstep.StepResult {
+			return ok("tool contract conformance")
+		},
 		ValidateWorkerLifecycle: func(string, string, int64) commandstep.StepResult {
 			return ok("worker lifecycle smoke")
 		},

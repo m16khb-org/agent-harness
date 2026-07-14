@@ -30,6 +30,7 @@ func TestPlannedSelfVerifyStepsPreservesExecutionOrder(t *testing.T) {
 		"command policy smoke",
 		"command audit smoke",
 		"contract check",
+		"tool contract conformance",
 		"worker lifecycle smoke",
 		"MCP smoke",
 		"state roundtrip",
@@ -161,6 +162,9 @@ func fakeSelfVerifyStepDeps(t *testing.T) SelfVerifyStepDeps {
 		},
 		ValidateContractCheck: func(string, string) StepResult {
 			return ok("contract check")
+		},
+		ValidateToolConformance: func(string, string) StepResult {
+			return ok("tool contract conformance")
 		},
 		ValidateWorkerLifecycle: func(string, string, int64) StepResult {
 			return ok("worker lifecycle smoke")

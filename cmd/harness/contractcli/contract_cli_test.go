@@ -37,7 +37,7 @@ func TestRunContractSchemaPrintsTextAndJSON(t *testing.T) {
 	text := captureStdoutForContract(t, func() error {
 		return Run([]string{"schema"})
 	})
-	if !strings.Contains(text, "agent_harness_cli_mcp_compatibility v1 ") {
+	if !strings.Contains(text, "agent_harness_cli_mcp_compatibility v2 ") {
 		t.Fatalf("expected schema text summary, got:\n%s", text)
 	}
 
@@ -48,7 +48,7 @@ func TestRunContractSchemaPrintsTextAndJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonOut), &contract); err != nil {
 		t.Fatalf("decode contract schema JSON: %v\n%s", err, jsonOut)
 	}
-	if !contract.OK || contract.Name != "agent_harness_cli_mcp_compatibility" || contract.Version != 1 || contract.Hash == "" {
+	if !contract.OK || contract.Name != "agent_harness_cli_mcp_compatibility" || contract.Version != 2 || contract.Hash == "" {
 		t.Fatalf("unexpected contract schema: %#v", contract)
 	}
 }

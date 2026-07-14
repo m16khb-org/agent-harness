@@ -207,6 +207,7 @@ func selfVerifyStepDeps() selfworkflow.SelfVerifyStepDeps {
 		ValidateCommandPolicy:           validateCommandPolicy,
 		ValidateCommandAudit:            validateCommandAudit,
 		ValidateContractCheck:           validateContractCheck,
+		ValidateToolConformance:         validateToolConformance,
 		ValidateWorkerLifecycle:         validateWorkerLifecycle,
 		ValidateMCP:                     validateMCP,
 		ValidateStateRoundtrip:          validateStateRoundtrip,

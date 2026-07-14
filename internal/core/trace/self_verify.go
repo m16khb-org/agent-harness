@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"agent-harness/internal/core/failurecause"
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/trace/classification"
 )
@@ -43,12 +44,18 @@ func selfVerifySummaryFindings(doc map[string]any) []TraceAnalysisFinding {
 			pattern = strings.Join(parts, "; ")
 		}
 	}
+	failureCauseEvidence := failureCauseEvidenceField(summary, "failure_cause_evidence")
+	classifiedCause := failurecause.Classify(true, failureCauseEvidence)
+	failureCause := classifiedCause.Cause
+	failureCauseEvidence = classifiedCause.Evidence
 	return []TraceAnalysisFinding{{
-		FailureClass:        policy.RedactFreeform(failureClass),
-		RecurringPattern:    policy.RedactFreeform(pattern),
-		ProposedKnob:        classification.ProposedKnobForStep(failedStep),
-		OverfitRisk:         classification.OverfitRiskForClass(failureClass),
-		VerificationCommand: firstString(summary, "rerun_commands", classification.DefaultVerificationCommand(failedStep)),
+		FailureClass:         policy.RedactFreeform(failureClass),
+		FailureCause:         failureCause,
+		FailureCauseEvidence: failureCauseEvidence,
+		RecurringPattern:     policy.RedactFreeform(pattern),
+		ProposedKnob:         classification.ProposedKnobForStep(failedStep),
+		OverfitRisk:          classification.OverfitRiskForClass(failureClass),
+		VerificationCommand:  firstString(summary, "rerun_commands", classification.DefaultVerificationCommand(failedStep)),
 	}}
 }
 
