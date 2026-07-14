@@ -381,6 +381,39 @@ func TestReleaseUserReadmeIsSatisfiedByInstallUpdateRollbackGuide(t *testing.T) 
 	}
 }
 
+func TestReleaseUserReadmeSupportsKoreanCanonicalReadmeWithEnglishCompanion(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "# agent-harness\n\n[English](README.en.md)\n\n## 릴리스와 롤백\n\n```bash\nagent-harness update\nscripts/release-repro-smoke.sh\ngit reset --hard <known-good-sha>\n```\n\n[릴리스 재현성과 롤백](.agent-harness/operations/release-reproducibility.md)\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.en.md"), "# agent-harness\n\n[한국어](README.md)\n\n## Release and rollback\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "README section: Release User Guide: Install, Update, Rollback\n")
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasReleaseUserReadme {
+		t.Fatalf("split Korean/English release README signal was not detected: %+v", signals)
+	}
+}
+
+func TestReleaseUserReadmeRequiresRollbackCommand(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "## 릴리스와 롤백\n\nagent-harness update\nscripts/release-repro-smoke.sh\n\n[롤백](.agent-harness/operations/release-reproducibility.md)\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "README section: Release User Guide: Install, Update, Rollback\n")
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if signals.HasReleaseUserReadme {
+		t.Fatal("release README signal should require a concrete rollback command")
+	}
+}
+
+func TestReadmeContainsTermReadsEnglishCompanion(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "# agent-harness\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.en.md"), "companion-only-marker\n")
+
+	if !readmeContainsTerm(root, "companion-only-marker") {
+		t.Fatal("term from English companion README was not detected")
+	}
+}
+
 func TestCrossPlatformBuildMatrixIsSatisfiedByScriptDocsAndTestingSignal(t *testing.T) {
 	root := t.TempDir()
 	writeFileForRepoSignalTest(t, filepath.Join(root, "scripts", "release-build-matrix.sh"), "TARGETS=\"darwin/arm64 darwin/amd64 linux/amd64 linux/arm64\"\n")
@@ -414,6 +447,18 @@ func TestDistributionDecisionRecordIsSatisfiedByADRReleaseDocsAndReadme(t *testi
 	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
 	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
 		t.Fatalf("distribution decision candidate was not marked satisfied: %+v", candidate)
+	}
+}
+
+func TestDistributionDecisionSupportsKoreanCanonicalReadme(t *testing.T) {
+	root := t.TempDir()
+	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "ADR.md"), "### 2026-06-13 — Distribution decision gate\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "Current decision: prefer tarball/manual archive\n\nRollback criteria\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "README.md"), "현재 배포 결정은 tarball/manual archive를 우선합니다.\n")
+
+	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
+	if !signals.HasDistributionDecision {
+		t.Fatalf("Korean README distribution decision signal was not detected: %+v", signals)
 	}
 }
 

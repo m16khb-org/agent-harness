@@ -174,10 +174,14 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join(".agent-harness", "TESTING.md"), "release install reproducibility smoke")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasReleaseUserReadme = fileContainsTerm(root, "README.md", "Release User Guide: Install, Update, Rollback") &&
-				fileContainsTerm(root, "README.md", "agent-harness update") &&
-				fileContainsTerm(root, "README.md", "scripts/release-repro-smoke.sh") &&
-				fileContainsTerm(root, "README.md", "git reset --hard <known-good-sha>") &&
+			hasReleaseGuideHeading := readmeContainsTerm(root, "Release User Guide: Install, Update, Rollback") ||
+				readmeContainsTerm(root, "## Release and rollback") ||
+				readmeContainsTerm(root, "## 릴리스와 롤백")
+			hasRollbackCommand := readmeContainsTerm(root, "git reset --hard <known-good-sha>")
+			signals.HasReleaseUserReadme = hasReleaseGuideHeading &&
+				readmeContainsTerm(root, "agent-harness update") &&
+				readmeContainsTerm(root, "scripts/release-repro-smoke.sh") &&
+				hasRollbackCommand &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Release User Guide: Install, Update, Rollback")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
@@ -189,7 +193,7 @@ func repoSignalRules() []repoSignalRule {
 			signals.HasDistributionDecision = fileContainsTerm(root, filepath.Join(".agent-harness", "ADR.md"), "2026-06-13 — Distribution decision gate") &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Current decision: prefer tarball/manual archive") &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Rollback criteria") &&
-				fileContainsTerm(root, "README.md", "Current distribution decision")
+				(readmeContainsTerm(root, "Current distribution decision") || readmeContainsTerm(root, "현재 배포 결정"))
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasReleaseDogfoodNotes = fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-dogfood-notes.md"), "Codex MCP transcript") &&
@@ -198,6 +202,10 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Release Dogfood Notes")
 		}},
 	}
+}
+
+func readmeContainsTerm(root, term string) bool {
+	return fileContainsTerm(root, "README.md", term) || fileContainsTerm(root, "README.en.md", term)
 }
 
 func hasMCPAdapterCatalog(root string) bool {
