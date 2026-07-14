@@ -74,7 +74,7 @@ func TestEvaluateBindsPendingToEveryRequestField(t *testing.T) {
 	}
 }
 
-func TestApproveConsumesGrantExactlyOnce(t *testing.T) {
+func TestApproveConsumesPortForwardGrantExactlyOnce(t *testing.T) {
 	store, _ := newTestStore(t)
 	req := testRequest()
 	first := Evaluate(store, req)
@@ -199,7 +199,7 @@ func testRequest() Request {
 		RepoRoot:  repo,
 		CWD:       repo,
 		Tool:      "Bash",
-		Command:   "kubectl exec -n stg deploy/rest-api-gateway -- getent hosts grpc-user",
+		Command:   "kubectl --context bc-stgdev -n stg port-forward svc/api 8080:80",
 	}
 }
 

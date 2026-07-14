@@ -152,24 +152,42 @@ func Approve(store Store, req ApprovalRequest) Result {
 	}
 	now := storeNow(store)
 	key := approvalKey(req.SessionID)
-	path := filepath.Join(namespace.Dir, key+".json")
+	oneShotPath := filepath.Join(namespace.Dir, key+".json")
+	readOnlyExecPath := filepath.Join(namespace.Dir, readOnlyExecApprovalKey(req.SessionID)+".json")
 	result := approvalRejected()
 	if store.WithLock == nil || store.WriteJSON == nil {
 		return result
 	}
 	err = store.WithLock(context.Background(), namespace.Dir, key, func(context.Context) error {
-		current, valid := readRecord(path, now)
-		if !valid || current.Status != statusPending || current.Token != match[1] {
+		oneShot, oneShotValid := readRecord(oneShotPath, now)
+		readOnlyExec, readOnlyExecValid := readReadonlyExecRecord(readOnlyExecPath, now)
+		oneShotMatch := oneShotValid && oneShot.Status == statusPending && oneShot.Token == match[1]
+		readOnlyExecMatch := readOnlyExecValid && readOnlyExec.Status == statusPending && readOnlyExec.Token == match[1]
+		if oneShotMatch == readOnlyExecMatch {
 			return nil
 		}
-		current.Status = statusGranted
-		current.ExpiresAt = now.Add(ApprovalTTL).UTC().Format(time.RFC3339Nano)
-		if err := store.WriteJSON(path, current, 0o600); err != nil {
+		if oneShotMatch {
+			oneShot.Status = statusGranted
+			oneShot.ExpiresAt = now.Add(ApprovalTTL).UTC().Format(time.RFC3339Nano)
+			if err := store.WriteJSON(oneShotPath, oneShot, 0o600); err != nil {
+				return err
+			}
+			result = Result{
+				Handled:           true,
+				AdditionalContext: "[agent-harness]\n- approval: kubectl live-access 승인이 기록되었습니다. 다음 동일 명령 한 번에만 유효합니다.",
+			}
+			return nil
+		}
+		readOnlyExec.Status = statusGranted
+		readOnlyExec.Token = ""
+		readOnlyExec.RequestFingerprint = ""
+		readOnlyExec.ExpiresAt = now.Add(ApprovalTTL).UTC().Format(time.RFC3339Nano)
+		if err := store.WriteJSON(readOnlyExecPath, readOnlyExec, 0o600); err != nil {
 			return err
 		}
 		result = Result{
 			Handled:           true,
-			AdditionalContext: "[agent-harness]\n- approval: kubectl live-access 승인이 기록되었습니다. 다음 동일 명령 한 번에만 유효합니다.",
+			AdditionalContext: "[agent-harness]\n- approval: kubectl read-only exec scope 승인이 기록되었습니다. 10분 안에 첫 진단을 실행하면 같은 session/context/namespace의 허용된 진단에 30분 동안 재사용됩니다.",
 		}
 		return nil
 	})
@@ -202,7 +220,7 @@ func resolveNamespace(store Store, repoRoot string, initialize bool) (Namespace,
 }
 
 func requestFingerprint(req Request, canonicalRepo string) string {
-	fields := []string{
+	return fingerprintFields(
 		"kubectl-live-approval:v1",
 		strings.ToLower(strings.TrimSpace(req.Host)),
 		strings.TrimSpace(req.SessionID),
@@ -210,7 +228,10 @@ func requestFingerprint(req Request, canonicalRepo string) string {
 		strings.TrimSpace(req.CWD),
 		strings.TrimSpace(req.Tool),
 		strings.TrimSpace(req.Command),
-	}
+	)
+}
+
+func fingerprintFields(fields ...string) string {
 	hash := sha256.New()
 	for _, field := range fields {
 		_ = binary.Write(hash, binary.BigEndian, uint64(len(field)))
