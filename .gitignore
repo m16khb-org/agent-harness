@@ -17,6 +17,7 @@ cache/
 evidence
 .agent-harness/state/
 .gjc/
+.reasonix/
 
 # Language/tool caches
 __pycache__/
