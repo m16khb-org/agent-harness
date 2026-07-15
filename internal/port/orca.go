@@ -171,6 +171,7 @@ type OrcaWorkerDoneClient interface {
 type OrcaClient interface {
 	Probe(context.Context, OrcaProbeRequest) (OrcaProbeResult, error)
 	ListWorktrees(context.Context, string) ([]OrcaWorktree, error)
+	ShowWorktree(context.Context, string) (OrcaWorktree, error)
 	CreateWorktree(context.Context, OrcaCreateWorktreeRequest) (OrcaWorktree, error)
 	AdoptWorktree(context.Context, OrcaAdoptWorktreeRequest) (OrcaWorktree, error)
 	RemoveWorktree(context.Context, string, bool) error

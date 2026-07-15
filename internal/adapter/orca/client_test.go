@@ -429,6 +429,19 @@ func TestClientAdoptsExistingGitHubWorktreeWithIssueAndMarker(t *testing.T) {
 	}
 }
 
+func TestClientShowsExistingWorktreeByExactPath(t *testing.T) {
+	runner := newFakeRunner(t)
+	command := "orca worktree show --worktree path:/repo.worktrees/16-demo --json"
+	runner.responses[command] = fixtureOutput(t, "worktree_create.json")
+	got, err := NewClient(runner).ShowWorktree(context.Background(), "/repo.worktrees/16-demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "worktree-1" || got.InstanceID != "instance-1" || len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+		t.Fatalf("shown worktree = %#v calls=%#v", got, runner.calls)
+	}
+}
+
 func TestClientCreateWorktreeUsesProviderSpecificIssueMetadata(t *testing.T) {
 	for _, tt := range []struct {
 		name, provider, command, output string

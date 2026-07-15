@@ -217,6 +217,16 @@ func (c *Client) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWor
 	return result, nil
 }
 
+func (c *Client) ShowWorktree(ctx context.Context, path string) (port.OrcaWorktree, error) {
+	var payload struct {
+		Worktree worktreePayload `json:"worktree"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "worktree", "show", "--worktree", pathSelector(path), "--json"}, &payload)
+	shown := payload.Worktree.portValue()
+	shown.RuntimeID = runtimeID
+	return shown, err
+}
+
 func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktreeRequest) (port.OrcaWorktree, error) {
 	provider, ok := orcaIssueProvider(req.Provider)
 	if !ok {

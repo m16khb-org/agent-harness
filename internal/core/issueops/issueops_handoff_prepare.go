@@ -71,6 +71,7 @@ type IssueOpsHandoffPrepareClock struct {
 type IssueOpsOrcaWorktreeClient interface {
 	Probe(context.Context, port.OrcaProbeRequest) (port.OrcaProbeResult, error)
 	ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error)
+	ShowWorktree(context.Context, string) (port.OrcaWorktree, error)
 	CreateWorktree(context.Context, port.OrcaCreateWorktreeRequest) (port.OrcaWorktree, error)
 	AdoptWorktree(context.Context, port.OrcaAdoptWorktreeRequest) (port.OrcaWorktree, error)
 }
@@ -133,6 +134,20 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 	existing, err := exactExistingHandoffWorktree(record, result.WorktreePath, probe.RepoID, worktrees)
 	if err != nil {
 		return result, err
+	}
+	if existing == nil && existingLegacyWorktreeMatches(record, result.WorktreePath) {
+		shown, showErr := client.ShowWorktree(ctx, result.WorktreePath)
+		if showErr != nil {
+			var orcaErr *port.OrcaError
+			if !errors.As(showErr, &orcaErr) || (orcaErr.Code != "not_found" && orcaErr.Code != "selector_not_found") {
+				return result, fmt.Errorf("show existing Orca worktree before adoption: %w", showErr)
+			}
+		} else if strings.TrimSpace(shown.ID) != "" {
+			existing, err = exactExistingHandoffWorktree(record, result.WorktreePath, probe.RepoID, []port.OrcaWorktree{shown})
+			if err != nil {
+				return result, err
+			}
+		}
 	}
 	if existing != nil {
 		linkedIssue, issueErr := issueNumber(record.IssueURL)
