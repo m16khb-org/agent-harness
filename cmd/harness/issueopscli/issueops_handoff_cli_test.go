@@ -3,6 +3,7 @@ package issueopscli
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"os"
 	"path/filepath"
 	"strings"
@@ -69,6 +70,19 @@ func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T
 	usage, err := captureProjectCLIStderr(t, func() error { issueOpsUsage(); return nil })
 	if err != nil || !strings.Contains(usage, "start|claim|finish|accept|publish|recover") {
 		t.Fatal("top-level handoff usage omits publish")
+	}
+}
+
+func TestRunIssueOpsHandoffStartAcceptsLegacyVerificationCommandAlias(t *testing.T) {
+	fs := flag.NewFlagSet("issueops handoff start", flag.ContinueOnError)
+	var verification repeatedFlag
+	fs.Var(&verification, "verification", "worker verification command")
+	fs.Var(&verification, "verification-command", "legacy alias for worker verification command")
+	if err := fs.Parse([]string{"--verification-command", "go test ./...", "--verification", "go vet ./..."}); err != nil {
+		t.Fatal(err)
+	}
+	if got := []string(verification); len(got) != 2 || got[0] != "go test ./..." || got[1] != "go vet ./..." {
+		t.Fatalf("verification alias values = %#v", got)
 	}
 }
 

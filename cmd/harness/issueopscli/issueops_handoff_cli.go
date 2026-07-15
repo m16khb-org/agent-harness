@@ -77,6 +77,7 @@ func runIssueOpsHandoffStart(args []string) error {
 	fs.Var(&docs, "required-doc", "required worker document")
 	fs.Var(&skills, "required-skill", "required worker skill")
 	fs.Var(&verification, "verification", "worker verification command")
+	fs.Var(&verification, "verification-command", "legacy alias for worker verification command")
 	fs.Var(&stops, "stop-condition", "worker stop condition")
 	scope := fs.String("worker-scope", "", "bounded worker scope")
 	heartbeat := fs.String("heartbeat-cadence", "", "worker heartbeat cadence")

@@ -165,6 +165,12 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	if !req.EnforceWorktree {
 		return false, ""
 	}
+	// A Codex coordinator must observe this exact read-only command before an
+	// attested supervised start. It carries no lifecycle target or mutation, so
+	// multi-cycle source ambiguity cannot safely turn it into a deadlock.
+	if searchrouting.IsShellTool(req.Tool) && strings.TrimSpace(req.Command) == "codex --help" {
+		return false, ""
+	}
 	record, ok, selectionReason := selectSupervisedHandoffRecord(req)
 	if selectionReason != "" {
 		return true, selectionReason

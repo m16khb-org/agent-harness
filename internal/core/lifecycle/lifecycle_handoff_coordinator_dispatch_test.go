@@ -110,6 +110,16 @@ func TestCoordinatorPreparingBootstrapProbeReturnsAuthenticatedRunnableCommand(t
 	}
 }
 
+func TestCoordinatorPreparingAllowsExactCodexTrustObservationBeforeCycleSelection(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	request := handoffEditRequest(record, repo, "codex", "fresh-coordinator", "")
+	request.Tool = "Bash"
+	request.Command = "codex --help"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("exact Codex trust observation must remain read-only: %#v", got)
+	}
+}
+
 // TestCoordinatorPreparingDispatchStillDeniesMismatchedIdentity keeps the fence
 // intact: the emitted skeleton with a mismatched coordinator session is denied.
 func TestCoordinatorPreparingDispatchStillDeniesMismatchedIdentity(t *testing.T) {
