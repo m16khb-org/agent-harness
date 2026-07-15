@@ -96,6 +96,8 @@ Every preview and confirm supplies `--coordinator-recipient` with the same concr
 
 The mailbox handle is routing only. Every preview and confirmation also supplies the current native coordinator host/session/optional agent plus the exact source checkout cwd. PreToolUse must match that tuple to the native event, and confirmation seals it durably before dispatch. Later source-coordinator create/reconcile authorization uses the same sealed native identity and exact `record.Repo`; a worker session that copies the mailbox handle is never coordinator authority.
 
+Do not source `--coordinator-host`/`--coordinator-session-id`/`--coordinator-agent-id`/`--source-cwd` yourself: the process environment is not an authenticated identity source, and reading the session or agent id to fill those flags is identity-reconnaissance that fails the spoofing boundary. Instead, at `coordinator_preparing` the harness authors the exact identity-filled `agent-harness issueops handoff start` preview command for you — the SessionStart guidance in the source checkout (and the PreToolUse block if you attempt mutation there) prints it with `--coordinator-host`/`--coordinator-session-id`/`--coordinator-agent-id`/`--source-cwd` already populated from the authenticated native event. Copy that printed command verbatim, then append your sealed `--criteria-id`/`--required-doc`/`--required-skill`/`--worker-scope`/`--verification` packet before running the no-confirm preview. The `$HOST`/`$SESSION_ID`/`$AGENT_ID`/`$SOURCE_CHECKOUT` placeholders below denote the values already filled in by that harness-printed command, not variables you resolve from the shell.
+
 ```bash
 agent-harness issueops handoff start \
   --id "$ISSUEOPS_ID" \
