@@ -2,6 +2,7 @@
 
 > Generated: 2026-06-14
 > Scope: Full-stack analysis of IssueOps skill, MCP tools, lifecycle hooks, state management, worktree isolation, and cross-session continuity.
+> Note (2026-07-15): the supervised execution-handoff subsystem (coordinator/worker over shared state + Orca runtime) postdates this audit and is **not** covered here. Its threat model and invariants live in `ARCHITECTURE.md` → "IssueOps handoff: threat model and invariants".
 
 ---
 

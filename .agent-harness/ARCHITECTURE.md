@@ -280,6 +280,53 @@ Orca integration is an optional CLI adapter, not a native-install dependency or 
 
 Every supervised attempt records attempt/epoch/context, native host session identity, coordinator/worker roots, sealed coordinator and worker mailbox recipients, refreshable live terminal control identity, and stable Orca domain ids in the IssueOps record. Runtime rollover recovery treats tab/leaf as the stable terminal locator, joins the bounded visual-layout tab title only for legacy rows that never observed those IDs, and atomically refreshes runtime + exact current worktree instance + live terminal tuple after complete worktree/terminal inventories agree; it never overwrites either sealed mailbox. Completed finish writes the submitted result and deterministic `worker_done` projection intent or terminal diagnostic in the same cycle lock, then performs at most one argv-only Orca send outside the lock from the sealed worker mailbox to the sealed coordinator mailbox. State compare-and-set runs under the existing cycle lock, but no Orca process call may run while that lock is held. Hooks are limited to SessionStart claim guidance and PreToolUse ownership enforcement; that ownership check includes exact source-root plan authority and blocks non-source terminal control before it can bypass a target terminal's hooks. Coordinator acceptance and cleanup remain explicit commands.
 
+## IssueOps handoff: threat model and invariants
+
+이 절은 supervised IssueOps handoff 서브시스템의 위협 모델과 불변식을 한곳에 모은다. CAUTIONS.md의 개별 사건 항목은 그 한 줄 교훈을 유지하되 근거는 이 절을 참조한다. (이 서브시스템은 `ISSUEOPS_AUDIT.md` 이후에 추가되었으므로 그 감사 범위에 포함되지 않는다.)
+
+### 적대적 다중 세션 모델
+
+- 한 supervised cycle은 두 역할이 하나의 durable state(`state.json` / sqlstore row)와 외부 Orca 런타임을 공유한다: **coordinator**(source checkout에서 준비·dispatch·accept·cleanup을 소유)와 **worker**(canonical worktree에서 claim 후에만 mutation).
+- 신뢰 경계는 **native host session identity**다. mailbox handle은 routing 전용이며 권한이 아니다. worker 세션이 coordinator mailbox handle을 복사해도 coordinator 권한을 얻지 못한다(`CoordinatorIdentityMatches`는 sealed `CoordinatorSession` + `cwd == record.Repo == CoordinatorRoot`를 요구).
+- PreToolUse hook은 default-deny다. 허용은 상태×역할×명령/도구 표면이 정확히 일치할 때만 부여되며, 애매하거나 unnamed면 fail closed다.
+
+### Fence triple (재생·탈취 방지)
+
+모든 mutating 전이는 `fencedCopy`가 세 값으로 gate한다:
+
+- **Attempt** — 단조 증가하는 시도 번호. 재시도마다 새 attempt/epoch를 mint한다.
+- **OwnershipEpoch** — 한 attempt의 소유권 토큰. stale attempt/epoch는 CAS 이전에 거부된다.
+- **ContextSHA256** — sealed worker context의 해시. dispatch·claim·finish·accept 같은 context 의존 전이는 정확히 이 해시를 요구한다(`requireContext`).
+
+세 값은 schema 버전 bump 때 파괴되기 쉬운 lease 필드였다(v1→v2→v3 회귀 이력). 필드 semantics를 바꾸지 말고 additive로만 확장한다.
+
+### 상태 기계
+
+`coordinator_preparing → dispatched → claimed → submitted → closed` (정상 경로). 분기:
+
+- 어느 non-terminal 상태에서든 create/dispatch 실패는 `recovery_required`로 멈춘다(worktree가 provisioning되지 못하면 `cleanup_only` tombstone을 남긴다). `recovery_required`는 hard deadlock이 아니라 회복 가능 상태다 — block 메시지는 그 sub-state의 정확한 `handoff recover --action …` escape를 이름으로 제시해야 한다(CAUTIONS의 "block message must name a working escape").
+- **유일한 terminal handoff 상태는 `closed`다.** `closed/accepted`는 종결이며 재시도 불가. `closed/worker_failed`와 `closed/cancelled`만 새 attempt/epoch를 mint할 수 있다. `StateClosed`만 검사하면 이미 accept된 결과를 다시 열게 된다.
+- **phase와 handoff terminality는 독립 축이다.** cycle이 `phase=done`이면서 handoff는 non-terminal일 수 있고, 그 경우 여전히 source checkout을 fence하고 un-reconciled Orca artifact를 소유한다. write-time 가드가 이 조합의 생성을 막고, stale classifier(`handoff_nonterminal_on_terminal_phase`)가 report-only로 감지한다(auto-release 금지).
+
+### Lock 규율
+
+- `with*Lock` 계열(issueops/session/state/workpool/worker)은 모두 sqlstore span(`BEGIN IMMEDIATE`)이다. 같은 root 재진입과 `A→B→A`는 self-deadlock 위험이며, 한 번에 하나의 entity lock만 잡는다.
+- **cycle lock 안에서는 record CAS만 수행하고, lock을 쥔 채로 어떤 Orca process도 호출하지 않는다.** Completed finish는 submitted 결과와 `worker_done` projection intent를 같은 cycle lock에서 쓴 뒤, lock 밖에서 sealed worker→coordinator mailbox로 argv-only Orca send를 최대 한 번 수행한다.
+
+### Pending-operation journal ("timeout ≠ absence")
+
+- Orca worktree/terminal/task create 또는 dispatch는 호출 전에 durable `pending_operation`을 기록하고, 실패 시 `recovery_required`로 멈춘다. process timeout/error는 mutation 부재를 뜻하지 않는다 — 같은 create를 자동 재시도하거나 inline fallback을 시작하면 중복 worker가 생긴다.
+- 어떤 stranded/inconsistent handoff도 TTL·age·`phase==done`으로 auto-release하지 않는다. 감지는 report하고 recover 명령을 넘길 뿐, release는 명시 operator 액션이다.
+
+### Exact-one-candidate 규율
+
+- `handoff recover --action reconcile`을 포함한 모든 inventory 조정은 persisted baseline + fence marker 대비 **정확히 하나**의 후보만 채택한다(CAS는 lock 안에서). 후보가 0개거나 여럿이면 fail closed 상태를 유지한다.
+- 식별 불가능한 inventory row는 절대 absence 증거가 될 수 없다(`requireStableInventoryIdentities`). unidentified-row-as-absence는 force-abandon에서 재발한 버그 클래스다.
+
+### Cleanup-receipt 순서
+
+- coordinator cleanup은 정확히 정해진 순서로만 진행하며, 각 단계는 앞선 단계의 receipt가 존재할 때만 authorize된다. sealed historical `WorkerMailboxHandle`은 close/stop 권한이 아니고, close/stop 성공 자체도 spawned PTY 전체 정리 증거가 아니다 — exact worktree removal 뒤 terminal inventory로 각 handle/PTY의 absent/disconnected를 재확인한다.
+
 ## MCP tool design guidance
 
 - Tool descriptions must state: purpose, when to use, whether it writes, required arguments, and expected result shape.

@@ -494,6 +494,8 @@ sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고�
 
 ## Orca create 호출의 모호한 실패를 재시도하지 말 것
 
+> 이 아래 supervised handoff 사건 항목들의 위협 모델·불변식 근거는 `ARCHITECTURE.md`의 "IssueOps handoff: threat model and invariants" 절을 참조한다. 여기서는 각 사건의 한 줄 교훈만 유지한다.
+
 Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error가 mutation 부재를 뜻하지 않는다. 호출 전 IssueOps `pending_operation`을 durable하게 기록하고, 호출 뒤 실패하면 `recovery_required`로 멈춘다. 같은 create를 자동 재시도하거나 inline fallback을 시작하면 중복 worker가 생길 수 있다.
 
 - `issueops handoff recover --action reconcile`은 persisted baseline/marker 대비 정확히 하나의 후보만 받아들인다. 후보가 0개거나 여러 개면 fail closed 상태를 유지한다.
