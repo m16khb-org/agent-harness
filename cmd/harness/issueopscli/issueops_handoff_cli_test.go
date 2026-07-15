@@ -49,6 +49,91 @@ func TestRunIssueOpsHandoffLifecycle(t *testing.T) {
 	}
 }
 
+func TestNoChangeHandoffFinishDefaultsSealedEvidence(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	projector := &cliWorkerDoneFake{}
+	previousProjector := issueOpsWorkerDoneProjectionClient
+	issueOpsWorkerDoneProjectionClient = func() core.IssueOpsWorkerDoneProjectionClient { return projector }
+	t.Cleanup(func() { issueOpsWorkerDoneProjectionClient = previousProjector })
+	record := handoffCLIRecord(t, handoff.StateDispatched)
+	claim := core.IssueOpsHandoffClaimRequest{
+		ID: record.ID, Attempt: 1, OwnershipEpoch: "epoch-1", ContextSHA256: strings.Repeat("a", 64),
+		Host: "codex", SessionID: "session-1", AgentID: "worker-1", CWD: record.WorktreePath, OrcaWorktreeID: "wt-1",
+	}
+	if _, err := core.ClaimIssueOpsHandoff(core.IssueOpsStateRoot(), claim); err != nil {
+		t.Fatal(err)
+	}
+	args := []string{
+		"handoff", "finish", "--id", record.ID, "--attempt", "1", "--ownership-epoch", "epoch-1", "--context-sha256", strings.Repeat("a", 64),
+		"--host", "codex", "--session-id", "session-1", "--agent-id", "worker-1", "--no-change", "--verification", "go test ./internal/core/lifecycle: pass", "--json",
+	}
+	if out := captureStdoutForContract(t, func() error { return runIssueOps(args) }); !strings.Contains(out, `"state": "submitted"`) {
+		t.Fatalf("no-change finish output: %s", out)
+	}
+	completed, err := core.ReadIssueOps(core.IssueOpsStateRoot(), record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := completed.ExecutionHandoff.Result
+	if result == nil || result.FinalHead != record.ExecutionHandoff.AttemptBaseHead || result.TuringReportPath != "plans/handoff.md" || result.TaskID != "task-1" || result.DispatchID != "dispatch-1" || len(result.ChangedFiles) != 0 || len(result.CleanupReceipts) != 1 || result.CleanupReceipts[0] != "no worker-created temporary resources" || projector.calls != 1 {
+		t.Fatalf("no-change result = %#v, projection calls = %d", result, projector.calls)
+	}
+}
+
+func TestNoChangeHandoffFinishRejectsUnsafeEvidence(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		mutate func(*core.IssueOpsRecord, *core.IssueOpsHandoffFinishRequest)
+		want   string
+	}{
+		{
+			name: "changed files",
+			mutate: func(_ *core.IssueOpsRecord, req *core.IssueOpsHandoffFinishRequest) {
+				req.ChangedFiles = []string{"internal/unexpected.go"}
+			},
+			want: "must not include changed files",
+		},
+		{
+			name: "failed outcome",
+			mutate: func(_ *core.IssueOpsRecord, req *core.IssueOpsHandoffFinishRequest) {
+				req.Outcome = handoff.OutcomeFailed
+			},
+			want: "requires completed outcome",
+		},
+		{
+			name: "missing verification",
+			mutate: func(_ *core.IssueOpsRecord, req *core.IssueOpsHandoffFinishRequest) {
+				req.Verification = nil
+			},
+			want: "requires verification evidence",
+		},
+		{
+			name: "missing sealed plan",
+			mutate: func(record *core.IssueOpsRecord, _ *core.IssueOpsHandoffFinishRequest) {
+				record.PlanPath = filepath.Join(record.WorktreePath, "plans", "missing.md")
+			},
+			want: "regular sealed plan evidence file",
+		},
+		{
+			name: "plan outside worker root",
+			mutate: func(record *core.IssueOpsRecord, _ *core.IssueOpsHandoffFinishRequest) {
+				record.PlanPath = filepath.Join(t.TempDir(), "outside.md")
+			},
+			want: "inside the worker root",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+			record := handoffCLIRecord(t, handoff.StateDispatched)
+			req := core.IssueOpsHandoffFinishRequest{ID: record.ID, Verification: []string{"focused test passed"}}
+			tt.mutate(&record, &req)
+			if _, err := prepareNoChangeHandoffFinish(record, req); err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("prepare no-change error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestRunIssueOpsHandoffRequiresConfirmationForMutation(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := handoffCLIRecord(t, handoff.StateDispatched)

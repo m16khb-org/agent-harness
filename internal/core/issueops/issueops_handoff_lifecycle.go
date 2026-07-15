@@ -294,6 +294,9 @@ func normalizeHandoffFinishRequest(req IssueOpsHandoffFinishRequest) IssueOpsHan
 }
 
 func canonicalChangedFileList(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
 	seen := map[string]struct{}{}
 	clean := make([]string, 0, len(values))
 	for _, value := range values {
@@ -305,6 +308,9 @@ func canonicalChangedFileList(values []string) []string {
 		}
 		seen[value] = struct{}{}
 		clean = append(clean, value)
+	}
+	if len(clean) == 0 {
+		return nil
 	}
 	return clean
 }
