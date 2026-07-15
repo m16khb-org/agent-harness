@@ -33,6 +33,25 @@ func TestClientProjectsWorkerDoneThroughDedicatedSafeArgvMethod(t *testing.T) {
 	}
 }
 
+func TestClientProjectsNoChangeWorkerDoneWithoutFilesModifiedFlag(t *testing.T) {
+	runner := newFakeRunner(t)
+	req := port.OrcaWorkerDoneRequest{
+		FromHandle: "term_worker", ToHandle: "term_coordinator", Subject: "Completed no-change issue io-demo",
+		Body:   "Verification evidence is persisted and no files changed.",
+		TaskID: "task-1", DispatchID: "dispatch-1", ReportPath: "/repo/report.md",
+	}
+	argv := []string{"orca", "orchestration", "send", "--to", req.ToHandle, "--from", req.FromHandle, "--type", "worker_done", "--subject", req.Subject, "--body", req.Body, "--task-id", req.TaskID, "--dispatch-id", req.DispatchID, "--report-path", req.ReportPath, "--json"}
+	runner.responses[strings.Join(argv, " ")] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"message":{"id":"msg-clean","from_handle":"term_worker","to_handle":"term_coordinator","type":"worker_done","subject":"Completed no-change issue io-demo","body":"Verification evidence is persisted and no files changed.","payload":"{\"taskId\":\"task-1\",\"dispatchId\":\"dispatch-1\",\"filesModified\":[],\"reportPath\":\"/repo/report.md\"}","sequence":43}}}`)}
+
+	got, err := NewClient(runner).SendWorkerDone(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.MessageID != "msg-clean" || got.Sequence != 43 || len(runner.calls) != 1 || !slices.Equal(runner.calls[0], argv) {
+		t.Fatalf("no-change worker_done projection = %#v calls=%#v", got, runner.calls)
+	}
+}
+
 func TestClientWorkerDonePreconditionAndAmbiguityCallCounts(t *testing.T) {
 	valid := port.OrcaWorkerDoneRequest{
 		FromHandle: "term_worker", ToHandle: "term_coordinator", Subject: "Completed issue io-demo",
@@ -503,7 +522,7 @@ func TestClientListsCompleteGlobalTerminalInventoryWithoutWorktreeSelector(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(terminals) != 1 || terminals[0].Handle != "term-live" {
+	if len(terminals) != 2 || terminals[0].Handle != "term-old" || terminals[1].Handle != "term-live" {
 		t.Fatalf("global terminal inventory = %#v", terminals)
 	}
 	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != "orca terminal list --limit 512 --json" {

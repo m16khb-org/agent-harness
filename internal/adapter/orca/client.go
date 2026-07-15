@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -495,10 +495,11 @@ func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequ
 		"--body", req.Body,
 		"--task-id", req.TaskID,
 		"--dispatch-id", req.DispatchID,
-		"--files-modified", strings.Join(req.ChangedFiles, ","),
-		"--report-path", req.ReportPath,
-		"--json",
 	}
+	if len(req.ChangedFiles) > 0 {
+		argv = append(argv, "--files-modified", strings.Join(req.ChangedFiles, ","))
+	}
+	argv = append(argv, "--report-path", req.ReportPath, "--json")
 	output, err := c.runner.Run(ctx, "", createTimeout, argv)
 	if err != nil {
 		return port.OrcaWorkerDoneResult{}, err
@@ -528,7 +529,7 @@ func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequ
 		FilesModified []string `json:"filesModified"`
 		ReportPath    string   `json:"reportPath"`
 	}
-	if len(message.Payload) > 64*1024 || json.Unmarshal([]byte(message.Payload), &evidence) != nil || evidence.TaskID != req.TaskID || evidence.DispatchID != req.DispatchID || !reflect.DeepEqual(evidence.FilesModified, req.ChangedFiles) || evidence.ReportPath != req.ReportPath {
+	if len(message.Payload) > 64*1024 || json.Unmarshal([]byte(message.Payload), &evidence) != nil || evidence.TaskID != req.TaskID || evidence.DispatchID != req.DispatchID || !slices.Equal(evidence.FilesModified, req.ChangedFiles) || evidence.ReportPath != req.ReportPath {
 		return port.OrcaWorkerDoneResult{}, &port.OrcaError{Code: "worker_done_response_mismatch", Detail: "Orca message payload does not match the requested projection", Invoked: true}
 	}
 	return port.OrcaWorkerDoneResult{MessageID: message.ID, Sequence: message.Sequence}, nil
@@ -548,8 +549,8 @@ func validateWorkerDoneRequest(req port.OrcaWorkerDoneRequest) error {
 			return fmt.Errorf("worker_done %s is missing, non-canonical, or unbounded", name)
 		}
 	}
-	if len(req.ChangedFiles) == 0 || len(req.ChangedFiles) > 512 {
-		return fmt.Errorf("worker_done changed files are missing or unbounded")
+	if len(req.ChangedFiles) > 512 {
+		return fmt.Errorf("worker_done changed files are unbounded")
 	}
 	for _, path := range req.ChangedFiles {
 		if path == "" || strings.ContainsAny(path, ",\x00") {
