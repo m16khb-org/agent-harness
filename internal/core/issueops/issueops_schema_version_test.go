@@ -678,14 +678,14 @@ func TestLegacyV3DecoderRejectsV4MailboxAuthorityWithoutModifyingBytes(t *testin
 	}
 }
 
-func TestLegacyV4DecoderRejectsV6AuthorityWithoutModifyingBytes(t *testing.T) {
+func TestLegacyV4DecoderRejectsCurrentSchemaAuthorityWithoutModifyingBytes(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	before, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := legacyV4ReadModifyWriteFixture(stateRoot, record.ID); err == nil || !strings.Contains(err.Error(), "schema_version 6") {
-		t.Fatalf("legacy v4 decoder did not reject v6 authority: %v", err)
+	if err := legacyV4ReadModifyWriteFixture(stateRoot, record.ID); err == nil || !strings.Contains(err.Error(), fmt.Sprintf("schema_version %d", IssueOpsCurrentSchemaVersion)) {
+		t.Fatalf("legacy v4 decoder did not reject current schema authority: %v", err)
 	}
 	after, err := rawIssueOpsRecordBytes(stateRoot, record.ID)
 	if err != nil {

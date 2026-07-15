@@ -676,7 +676,7 @@ func TestAcceptedHandoffPublicationRejectsDifferentNativeCoordinatorBeforePush(t
 	}
 }
 
-func TestRawSchemaV5PublishReceiptHasExecutableLockedReattestationToV6(t *testing.T) {
+func TestRawSchemaV5PublishReceiptHasExecutableLockedReattestationToCurrentSchema(t *testing.T) {
 	stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
 	coordinator := *record.ExecutionHandoff.CoordinatorSession
 	raw, err := json.Marshal(record)
@@ -730,7 +730,7 @@ func TestRawSchemaV5PublishReceiptHasExecutableLockedReattestationToV6(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.SchemaVersion != 6 || got.ExecutionHandoff.CoordinatorSession == nil || *got.ExecutionHandoff.CoordinatorSession != coordinator || got.ExecutionHandoff.PublishReceipt == nil || !publicationSHA256Pattern.MatchString(got.ExecutionHandoff.PublishReceipt.PushTargetSHA256) || reader.pushCalls != 0 {
+	if got.SchemaVersion != IssueOpsCurrentSchemaVersion || got.ExecutionHandoff.CoordinatorSession == nil || *got.ExecutionHandoff.CoordinatorSession != coordinator || got.ExecutionHandoff.PublishReceipt == nil || !publicationSHA256Pattern.MatchString(got.ExecutionHandoff.PublishReceipt.PushTargetSHA256) || reader.pushCalls != 0 {
 		t.Fatalf("raw v5 re-attestation = %#v pushCalls=%d", got.ExecutionHandoff.PublishReceipt, reader.pushCalls)
 	}
 	if !reflect.DeepEqual(reader.trace, []string{"target", "local", "remote"}) {
