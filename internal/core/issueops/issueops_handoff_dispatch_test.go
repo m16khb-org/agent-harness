@@ -926,6 +926,33 @@ func TestHandoffStartAdoptsExactlyOneCleanWorkerBaseline(t *testing.T) {
 	}
 }
 
+func TestHandoffStartIgnoresVerifiedForeignDispatchedTask(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	baseline := port.OrcaTerminal{
+		Handle: "term-baseline", PTYID: "pty-baseline", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
+		WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true,
+	}
+	client.terminals = []port.OrcaTerminal{baseline}
+	client.allTerminals = []port.OrcaTerminal{
+		baseline,
+		{Handle: "term-foreign", PTYID: "pty-foreign", WorktreeID: "wt-foreign", WorktreePath: "/repo/foreign", Connected: true, Writable: true},
+	}
+	client.dispatchedTasks = []port.OrcaTask{{ID: "task-foreign", Status: "dispatched"}}
+	client.dispatchByTask = map[string]port.OrcaDispatch{
+		"task-foreign": {ID: "dispatch-foreign", TaskID: "task-foreign", AssigneeHandle: "term-foreign", Status: "dispatched"},
+	}
+	client.dispatch.AssigneeHandle = baseline.Handle
+
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || client.terminalCreates != 0 || len(client.dispatchRequests) != 1 || client.dispatchRequests[0].ToHandle != baseline.Handle {
+		t.Fatalf("verified foreign dispatched task blocked exact worker: result=%#v creates=%d dispatch=%#v", got, client.terminalCreates, client.dispatchRequests)
+	}
+}
+
 func TestHandoffStartFailsClosedForMultipleWorkerBaselines(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
@@ -1837,6 +1864,7 @@ func TestFinalizeHandoffDispatchRejectsInconsistentV4MailboxAuthority(t *testing
 type dispatchOrcaFake struct {
 	worktrees               []port.OrcaWorktree
 	terminals               []port.OrcaTerminal
+	allTerminals            []port.OrcaTerminal
 	terminalsAfterCreate    []port.OrcaTerminal
 	tasks                   []port.OrcaTask
 	dispatchedTasks         []port.OrcaTask
@@ -2017,11 +2045,14 @@ func mustHandoffTaskDisplay(t *testing.T, record IssueOpsRecord) string {
 	return display
 }
 
-func (f *dispatchOrcaFake) ListTerminals(context.Context, string) ([]port.OrcaTerminal, error) {
+func (f *dispatchOrcaFake) ListTerminals(_ context.Context, worktreeID string) ([]port.OrcaTerminal, error) {
 	f.trace = append(f.trace, "terminal-list")
 	f.terminalListCalls++
 	if f.beforeTerminalList != nil {
 		f.beforeTerminalList()
+	}
+	if worktreeID == "" && f.allTerminals != nil {
+		return append([]port.OrcaTerminal(nil), f.allTerminals...), f.terminalListErr
 	}
 	return append([]port.OrcaTerminal(nil), f.terminals...), f.terminalListErr
 }
