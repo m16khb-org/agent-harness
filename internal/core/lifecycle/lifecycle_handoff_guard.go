@@ -130,6 +130,34 @@ func shellGuidanceQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
+// supervisedFenceRecoverEscape returns the exact working escape command for a
+// supervised-fence block, keyed to the record's current handoff sub-state (Task
+// F1). CAUTIONS.md requires every stale/fence block message to name a working
+// escape; this is the handoff-fence resolver. Each named command is allowed by
+// allowedExactHandoffLifecycleCommand from the source checkout for the matching
+// state — handoff recover has no session-identity gate there, so the operator
+// (any session in the source checkout) can run it.
+func supervisedFenceRecoverEscape(record IssueOpsRecord) string {
+	h := record.ExecutionHandoff
+	if h == nil {
+		return ""
+	}
+	id := shellGuidanceQuote(record.ID)
+	switch h.State {
+	case handoff.StateRecoveryRequired:
+		if h.CleanupOnly != nil {
+			return "agent-harness issueops handoff recover --id " + id + " --action cancel --confirm (then --action finalize-cancel --confirm; release the recorded cleanup-only artifact with --action approve-cleanup --confirm)"
+		}
+		return "agent-harness issueops handoff recover --id " + id + " --action <reconcile|cancel|abandon|retry> (cancel/abandon/retry require --confirm; cancel then --action finalize-cancel --confirm stands the cycle down)"
+	case handoff.StateSubmitted:
+		return "agent-harness issueops handoff recover --id " + id + " --action <cancel|abandon> --confirm (or accept the submitted result from the source checkout)"
+	case handoff.StateClosed:
+		return "agent-harness issueops handoff recover --id " + id + " --action <approve-cleanup|record-cleanup> --confirm"
+	default:
+		return "agent-harness issueops resume --repo " + shellGuidanceQuote(record.Repo) + " --id " + id
+	}
+}
+
 func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string) {
 	if !req.EnforceWorktree {
 		return false, ""
@@ -184,7 +212,7 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		if record.ExecutionHandoff.State == handoff.StateClaimed && cleanAbsPath(req.CWD) == cleanAbsPath(record.ExecutionHandoff.WorkerRoot) {
 			return true, "supervised IssueOps role=worker may run exact status, resume, heartbeat, or handoff finish only; coordinator owns start, recover, accept, phase, remote publish, and cleanup"
 		}
-		return true, "supervised IssueOps handoff lifecycle command flags do not match the native session and persisted fence"
+		return true, "supervised IssueOps handoff lifecycle command is not in the supervised-fence allowlist for this session and state; the working escape from the source checkout " + shellGuidanceQuote(record.Repo) + " is " + supervisedFenceRecoverEscape(record)
 	}
 	if searchrouting.IsShellTool(req.Tool) {
 		if exactReadOnlyShellCommand(req, record) || allowedClosedOrcaCleanup(req, record) {
@@ -225,9 +253,13 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 			return true, "supervised IssueOps handoff is not dispatched yet; this session stays read-only until the worker claims. The coordinator must dispatch from the source checkout " + shellGuidanceQuote(record.Repo) + " — run there: agent-harness issueops handoff start --id " + shellGuidanceQuote(record.ID) + " --source-cwd " + shellGuidanceQuote(record.Repo) + " (its SessionStart guidance fills the coordinator identity flags). Read-only resume: " + resume
 		}
 		if h.State == handoff.StateRecoveryRequired {
-			return true, "supervised IssueOps handoff is not dispatched; remain read-only and poll: agent-harness issueops resume --repo " + shellGuidanceQuote(record.Repo) + " --id " + shellGuidanceQuote(record.ID)
+			// Escape-naming (Task F1): a stranded recovery_required lease is
+			// recoverable, not a hard deadlock. Name the exact working recover
+			// command for this sub-state (CAUTIONS.md "block message must name a
+			// working escape"); remaining read-only is also allowed while polling.
+			return true, "supervised IssueOps handoff is in recovery_required; remain read-only or run the working escape from the source checkout " + shellGuidanceQuote(record.Repo) + " — " + supervisedFenceRecoverEscape(record)
 		}
-		return true, "supervised IssueOps handoff must be claimed by the dispatched worker before implementation mutation"
+		return true, "supervised IssueOps handoff must be claimed by the dispatched worker before implementation mutation; working escape from the source checkout " + shellGuidanceQuote(record.Repo) + " — " + supervisedFenceRecoverEscape(record)
 	}
 	if !nativeSessionMatches(req, h.WorkerSession) {
 		return true, "supervised IssueOps handoff mutation is restricted to the claimed native worker session"
