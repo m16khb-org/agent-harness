@@ -814,6 +814,19 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 	} else if len(matches) > 1 {
 		return IssueOpsRecord{}, false, "ambiguous supervised IssueOps mutation target"
 	}
+	// Fence-scope narrowing (Task F2): the source-checkout fallback below binds
+	// every unmatched command in the source checkout to the fenced record. A
+	// command that explicitly names a *different* cycle id is provably unrelated
+	// — any explicit id that reaches here missed the byID match above, so it is
+	// not one of the supervised records fencing this checkout. Do not capture it
+	// (this is the plan's single allowed-set change). id-less commands (bare
+	// mutations, no lifecycle/MCP id) fall through and stay fenced by default,
+	// so nothing without an explicit different target escapes. Worker-context
+	// and same-id-as-stranded commands were already resolved above, so this only
+	// unblocks source-checkout commands targeting another cycle.
+	if _, hasExplicitID := lifecycleRecordID(req); hasExplicitID {
+		return IssueOpsRecord{}, false, ""
+	}
 	sourceMatches := filterHandoffRecords(records, func(record IssueOpsRecord) bool { return cwd == cleanAbsPath(record.Repo) })
 	if len(sourceMatches) == 1 {
 		return sourceMatches[0], true, ""
