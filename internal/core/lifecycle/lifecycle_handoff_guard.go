@@ -213,7 +213,18 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 				return true, "supervised IssueOps handoff must be claimed before mutation; run only: " + claim
 			}
 		}
-		if h.State == handoff.StateCoordinatorPreparing || h.State == handoff.StateRecoveryRequired {
+		if h.State == handoff.StateCoordinatorPreparing {
+			// Worker-worktree forward path (Task G3): a session inside the worker
+			// worktree (or the source checkout) must not dead-end before claim.
+			// Read-only IssueOps stays allowed above; this mutation block now names
+			// the exact cross-role forward action — the coordinator dispatches from
+			// the source checkout, whose SessionStart guidance (G1) fills the
+			// authenticated coordinator identity. Mutation-before-claim stays denied
+			// (sealed-context guarantee); only the message string changed.
+			resume := "agent-harness issueops resume --repo " + shellGuidanceQuote(record.Repo) + " --id " + shellGuidanceQuote(record.ID)
+			return true, "supervised IssueOps handoff is not dispatched yet; this session stays read-only until the worker claims. The coordinator must dispatch from the source checkout " + shellGuidanceQuote(record.Repo) + " — run there: agent-harness issueops handoff start --id " + shellGuidanceQuote(record.ID) + " --source-cwd " + shellGuidanceQuote(record.Repo) + " (its SessionStart guidance fills the coordinator identity flags). Read-only resume: " + resume
+		}
+		if h.State == handoff.StateRecoveryRequired {
 			return true, "supervised IssueOps handoff is not dispatched; remain read-only and poll: agent-harness issueops resume --repo " + shellGuidanceQuote(record.Repo) + " --id " + shellGuidanceQuote(record.ID)
 		}
 		return true, "supervised IssueOps handoff must be claimed by the dispatched worker before implementation mutation"
