@@ -556,6 +556,22 @@ func TestClientCreateTerminalNegotiatesOnlyFixedBuiltInLaunchShape(t *testing.T)
 	}
 }
 
+func TestClientBootstrapsExactLegacyTerminalWithAttestedCodex(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal send --terminal term-legacy --text codex --dangerously-bypass-hook-trust --enter --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"send":{"accepted":true}}}`)}
+	runner.responses["orca terminal wait --terminal term-legacy --for tui-idle --timeout-ms 10000 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"wait":{"satisfied":true}}}`)}
+	if err := NewClient(runner).BootstrapTerminalAgent(context.Background(), port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: "term-legacy", Agent: "codex", AllowCodexHookTrustBypass: true}); err != nil {
+		t.Fatal(err)
+	}
+	want := [][]string{
+		{"orca", "terminal", "send", "--terminal", "term-legacy", "--text", "codex --dangerously-bypass-hook-trust", "--enter", "--json"},
+		{"orca", "terminal", "wait", "--terminal", "term-legacy", "--for", "tui-idle", "--timeout-ms", "10000", "--json"},
+	}
+	if !reflect.DeepEqual(runner.calls, want) {
+		t.Fatalf("bootstrap calls = %#v, want %#v", runner.calls, want)
+	}
+}
+
 func TestClientCreateTerminalCapabilityLossIsPreInvocation(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --title --json")}

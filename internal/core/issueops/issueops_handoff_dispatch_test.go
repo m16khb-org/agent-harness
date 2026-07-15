@@ -195,6 +195,22 @@ func TestHandoffStartSealsCoordinatorAndDispatchesFromExactRecipient(t *testing.
 	}
 }
 
+func TestHandoffStartBootstrapsExactLegacyTerminalAfterRecognizedAgentRejection(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{client.terminal}
+	client.dispatchErrors = []error{errors.New("runtime_error: no recognized agent detected")}
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	if client.bootstrapCalls != 1 || client.dispatchCalls != 2 {
+		t.Fatalf("legacy bootstrap calls=%d dispatch calls=%d, want 1 and 2", client.bootstrapCalls, client.dispatchCalls)
+	}
+	if len(client.bootstrapRequests) != 1 || client.bootstrapRequests[0].TerminalHandle != "term-1" || client.bootstrapRequests[0].Agent != "codex" || !client.bootstrapRequests[0].AllowCodexHookTrustBypass {
+		t.Fatalf("bootstrap request = %#v", client.bootstrapRequests)
+	}
+}
+
 func TestHandoffStartRejectsDispatchPreambleWithoutSealedAuthority(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
@@ -1794,6 +1810,8 @@ type dispatchOrcaFake struct {
 	terminalErr             error
 	taskErr                 error
 	dispatchErr             error
+	dispatchErrors          []error
+	bootstrapErr            error
 	dispatchShowErr         error
 	worktreeListErr         error
 	terminalListErr         error
@@ -1810,9 +1828,11 @@ type dispatchOrcaFake struct {
 	terminalRefreshErr      error
 	taskCreates             int
 	dispatchCalls           int
+	bootstrapCalls          int
 	dispatchedTaskListCalls int
 	dispatchRequests        []port.OrcaDispatchRequest
 	terminalRequests        []port.OrcaCreateTerminalRequest
+	bootstrapRequests       []port.OrcaBootstrapTerminalAgentRequest
 	trace                   []string
 }
 
@@ -2032,7 +2052,19 @@ func (f *dispatchOrcaFake) Dispatch(_ context.Context, req port.OrcaDispatchRequ
 	if result.Preamble == "" {
 		result.Preamble = fmt.Sprintf("Your coordinator's terminal handle is: %s\nYour task ID is: %s\n  --task-id %s --dispatch-id %s", req.FromHandle, result.TaskID, result.TaskID, result.ID)
 	}
+	if len(f.dispatchErrors) > 0 {
+		err := f.dispatchErrors[0]
+		f.dispatchErrors = f.dispatchErrors[1:]
+		return result, err
+	}
 	return result, f.dispatchErr
+}
+
+func (f *dispatchOrcaFake) BootstrapTerminalAgent(_ context.Context, req port.OrcaBootstrapTerminalAgentRequest) error {
+	f.trace = append(f.trace, "terminal-agent-bootstrap")
+	f.bootstrapCalls++
+	f.bootstrapRequests = append(f.bootstrapRequests, req)
+	return f.bootstrapErr
 }
 
 func (f *dispatchOrcaFake) ShowDispatch(_ context.Context, taskID string) (port.OrcaDispatch, error) {

@@ -351,6 +351,46 @@ func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminal
 	return created, nil
 }
 
+// BootstrapTerminalAgent turns an exact, already-owned legacy terminal into
+// an Orca-recognized agent target before inject dispatch. The worker terminal
+// is selected and sole-writer-attested by IssueOps; this adapter only emits a
+// fixed host command and waits for Orca to settle its TUI state.
+func (c *Client) BootstrapTerminalAgent(ctx context.Context, req port.OrcaBootstrapTerminalAgentRequest) error {
+	if strings.TrimSpace(req.TerminalHandle) == "" {
+		return &port.OrcaError{Code: "terminal_agent_bootstrap_invalid", Detail: "terminal handle is required"}
+	}
+	command, ok := hostCommand(req.Agent)
+	if !ok {
+		return &port.OrcaError{Code: "unsupported_agent", Detail: req.Agent}
+	}
+	if strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && req.AllowCodexHookTrustBypass {
+		command = "codex --dangerously-bypass-hook-trust"
+	}
+	var send struct {
+		Send struct {
+			Accepted bool `json:"accepted"`
+		} `json:"send"`
+	}
+	if _, err := c.runJSON(ctx, "", createTimeout, []string{"orca", "terminal", "send", "--terminal", strings.TrimSpace(req.TerminalHandle), "--text", command, "--enter", "--json"}, &send); err != nil {
+		return err
+	}
+	if !send.Send.Accepted {
+		return &port.OrcaError{Code: "terminal_agent_bootstrap_rejected", Detail: "Orca did not accept the exact terminal bootstrap", Invoked: true}
+	}
+	var wait struct {
+		Wait struct {
+			Satisfied bool `json:"satisfied"`
+		} `json:"wait"`
+	}
+	if _, err := c.runJSON(ctx, "", createTimeout, []string{"orca", "terminal", "wait", "--terminal", strings.TrimSpace(req.TerminalHandle), "--for", "tui-idle", "--timeout-ms", "10000", "--json"}, &wait); err != nil {
+		return err
+	}
+	if !wait.Wait.Satisfied {
+		return &port.OrcaError{Code: "terminal_agent_bootstrap_timeout", Detail: "agent terminal did not reach Orca TUI idle state", Invoked: true}
+	}
+	return nil
+}
+
 func (c *Client) RefreshTerminal(ctx context.Context, worktreeID, ptyID string) (port.OrcaTerminal, error) {
 	terminals, err := c.ListTerminals(ctx, worktreeID)
 	if err != nil {

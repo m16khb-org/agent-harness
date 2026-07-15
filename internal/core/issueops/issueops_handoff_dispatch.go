@@ -71,6 +71,10 @@ type IssueOpsOrcaDispatchClient interface {
 	ShowDispatchFrom(context.Context, string, string) (port.OrcaDispatch, error)
 }
 
+type issueOpsOrcaTerminalAgentBootstrapper interface {
+	BootstrapTerminalAgent(context.Context, port.OrcaBootstrapTerminalAgentRequest) error
+}
+
 func IssueOpsPreDispatchReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	ready := IssueOpsImplementationReadiness(record)
 	missing := make([]string, 0, len(ready.Missing))
@@ -660,9 +664,24 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 	if err != nil {
 		return record, err
 	}
-	dispatched, err := client.Dispatch(ctx, port.OrcaDispatchRequest{
+	dispatchRequest := port.OrcaDispatchRequest{
 		TaskID: record.ExecutionHandoff.Orca.TaskID, ToHandle: liveHandle, FromHandle: record.ExecutionHandoff.CoordinatorMailboxHandle, Inject: true, ReturnPreamble: true,
-	})
+	}
+	dispatched, err := client.Dispatch(ctx, dispatchRequest)
+	if isOrcaUnrecognizedAgentDispatch(err) {
+		bootstrapper, ok := client.(issueOpsOrcaTerminalAgentBootstrapper)
+		if !ok {
+			err = fmt.Errorf("exact worker terminal has no recognized agent and this Orca client cannot bootstrap it: %w", err)
+		} else {
+			options := record.ExecutionHandoff.ContextOptions
+			allowCodexHookTrustBypass := options != nil && options.AllowCodexHookTrustBypass
+			if bootstrapErr := bootstrapper.BootstrapTerminalAgent(ctx, port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: liveHandle, Agent: record.ExecutionHandoff.Agent, AllowCodexHookTrustBypass: allowCodexHookTrustBypass}); bootstrapErr != nil {
+				err = fmt.Errorf("bootstrap exact worker terminal agent: %w", bootstrapErr)
+			} else {
+				dispatched, err = client.Dispatch(ctx, dispatchRequest)
+			}
+		}
+	}
 	if err != nil {
 		transitionAt := now()
 		if externalMutationNotInvoked(err) {
@@ -689,6 +708,10 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_persist_failed", err.Error(), now())
 	}
 	return record, err
+}
+
+func isOrcaUnrecognizedAgentDispatch(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "no recognized agent detected")
 }
 
 type handoffSoleWriterRecoveryError struct{ cause error }
