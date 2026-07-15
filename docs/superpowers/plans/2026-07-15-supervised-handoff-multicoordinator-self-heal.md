@@ -135,6 +135,7 @@ func TestHandoffStartAdoptsExactlyOneCleanWorkerBaseline(t *testing.T) { /* no C
 func TestHandoffStartCreatesWorkerTerminalWhenBaselineMissing(t *testing.T) { /* one CreateTerminal */ }
 func TestHandoffStartMarksRecoveryForMultipleWorkerBaselines(t *testing.T) { /* no task/dispatch */ }
 func TestHandoffStartDoesNotSelfHealPartialDispatch(t *testing.T) { /* existing task or dispatch */ }
+func TestHandoffRecoveryRejectsDispatchOnlyPartialIdentity(t *testing.T) { /* dispatch id without task id */ }
 ```
 
 - [ ] **Step 2: Run the focused test and observe the create-before-attest failure**
@@ -146,6 +147,8 @@ Expected: FAIL before implementation because `ensureHandoffTerminal` creates a t
 - [ ] **Step 3: Implement the record-scoped reconcile transaction**
 
 Before `createHandoffTerminal`, enumerate only the record's worker worktree. When no persisted worker checkpoint exists: adopt one validated terminal; create one if zero; otherwise call the existing recovery-state writer with a specific code and return without task/dispatch. Retain checkpoint revalidation before every external stage. Never stop terminals automatically.
+
+Keep the existing exact recovery-command fence: an extra lifecycle/recovery flag must not turn a bounded pre-dispatch exception into a general mutation permission.
 
 - [ ] **Step 4: Run focused tests and race test**
 
