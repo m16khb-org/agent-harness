@@ -80,6 +80,25 @@ func TestHandoffStartPreviewAutoSealsUniqueSourceRecipient(t *testing.T) {
 	}
 }
 
+func TestHandoffStartPreviewRejectsAmbiguousSourceRecipients(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.worktrees = []port.OrcaWorktree{{ID: "source-wt", Path: record.Repo}}
+	client.terminals = []port.OrcaTerminal{
+		{Handle: "term_source_a", PTYID: "pty-source-a", WorktreeID: "source-wt", WorktreePath: record.Repo, Connected: true, Writable: true},
+		{Handle: "term_source_b", PTYID: "pty-source-b", WorktreeID: "source-wt", WorktreePath: record.Repo, Connected: true, Writable: true},
+	}
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID}), client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "exactly one connected writable source terminal") {
+		t.Fatalf("ambiguous source recipient error = %v", err)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !slices.Equal(before, after) || client.taskCreates != 0 || client.dispatchCalls != 0 {
+		t.Fatalf("ambiguous source recipient mutated or dispatched: tasks=%d dispatch=%d trace=%v", client.taskCreates, client.dispatchCalls, client.trace)
+	}
+}
+
 func TestHandoffStartRejectsRecipientSealedByAnotherActiveRecord(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	other := record
