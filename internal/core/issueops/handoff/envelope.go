@@ -693,8 +693,7 @@ func validateCleanup(h *model.IssueOpsExecutionHandoff) error {
 		}
 		switch receipt.Step {
 		case "task_terminal":
-			tasklessPreDispatchCancellation := h.ClosedDisposition == DispositionCancelled && h.DeliveryMode == "" && h.WorkerSession == nil && h.Result == nil && h.Orca.TaskID == "" && h.Orca.DispatchID == ""
-			if tasklessPreDispatchCancellation {
+			if tasklessPreDispatchCancellation(h) {
 				if receipt.TaskID != "" || receipt.DispatchID != "" || receipt.TerminalHandle != "" || receipt.PTYID != "" || receipt.WorktreeID != "" || receipt.WorktreeInstanceID != "" {
 					return fmt.Errorf("taskless pre-dispatch cleanup receipt contains external identity")
 				}
@@ -704,6 +703,12 @@ func validateCleanup(h *model.IssueOpsExecutionHandoff) error {
 				return fmt.Errorf("task cleanup receipt does not match exact task and dispatch identity")
 			}
 		case "terminal_quiescent":
+			if terminallessPreDispatchCancellation(h) {
+				if receipt.TerminalHandle != "" || receipt.PTYID != "" || receipt.WorktreeID != "" || receipt.TaskID != "" || receipt.DispatchID != "" || receipt.WorktreeInstanceID != "" {
+					return fmt.Errorf("terminalless pre-dispatch cleanup receipt contains external identity")
+				}
+				continue
+			}
 			if receipt.TerminalHandle != h.Orca.WorkerTerminalHandle || receipt.PTYID != h.Orca.WorkerPTYID || receipt.WorktreeID != h.Orca.WorktreeID || receipt.TerminalHandle == "" || receipt.PTYID == "" || receipt.WorktreeID == "" || receipt.TaskID != "" || receipt.DispatchID != "" || receipt.WorktreeInstanceID != "" {
 				return fmt.Errorf("terminal cleanup receipt does not match exact terminal and worktree identity")
 			}
@@ -714,6 +719,14 @@ func validateCleanup(h *model.IssueOpsExecutionHandoff) error {
 		}
 	}
 	return nil
+}
+
+func tasklessPreDispatchCancellation(h *model.IssueOpsExecutionHandoff) bool {
+	return h != nil && h.Orca != nil && h.ClosedDisposition == DispositionCancelled && h.DeliveryMode == "" && h.WorkerSession == nil && h.Result == nil && h.Orca.TaskID == "" && h.Orca.DispatchID == ""
+}
+
+func terminallessPreDispatchCancellation(h *model.IssueOpsExecutionHandoff) bool {
+	return tasklessPreDispatchCancellation(h) && h.Orca.WorkerPTYID == "" && h.Orca.WorkerTerminalHandle == "" && h.Orca.WorkerMailboxHandle == "" && h.Orca.WorkerTabID == "" && h.Orca.WorkerLeafID == ""
 }
 
 func knownOperation(kind string) bool {

@@ -166,7 +166,7 @@ func runIssueOpsHandoffAccept(args []string) error {
 func runIssueOpsHandoffRecover(args []string) error {
 	fs := flag.NewFlagSet("issueops handoff recover", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
-	action := fs.String("action", "", "reconcile, abandon, cancel, finalize-cancel, or retry")
+	action := fs.String("action", "", "reconcile, abandon, cancel, finalize-cancel, retry, approve-cleanup, or record-cleanup")
 	confirm := fs.Bool("confirm", false, "confirm abandonment, cancellation finalization, or retry")
 	force := fs.Bool("force", false, "force an authoritative abandon or claimed-worker cancellation")
 	reason := fs.String("reason", "", "bounded durable reason for abandonment or forced cancellation")
