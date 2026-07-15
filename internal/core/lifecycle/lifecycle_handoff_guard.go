@@ -293,8 +293,8 @@ func allowedInvalidLegacyV5PublicationSeal(req HookToolUseLifecycleRequest, reco
 		return false
 	}
 	if searchrouting.IsShellTool(req.Tool) {
-		command, ok := parseExactIssueOpsCommand(req.Command)
-		return ok && command.path == "handoff publish" && allowedExactHandoffLifecycleCommand(req, record)
+		command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
+		return ok && command.Path == "handoff publish" && allowedExactHandoffLifecycleCommand(req, record)
 	}
 	tool, ok := handoffMCPToolKind(req.Tool)
 	if !ok || tool != "issueops_handoff" {
@@ -476,7 +476,7 @@ func resolvePathWithMissingLeaf(path string) (string, error) {
 }
 
 func isHandoffLifecycleCommand(command string) bool {
-	if exact, _, ok := parsedExactIssueOps(command); ok && exact.path != "status" && exact.path != "resume" {
+	if exact, _, ok := parsedExactIssueOps(command); ok && exact.Path != "status" && exact.Path != "resume" {
 		return true
 	}
 	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
