@@ -717,20 +717,25 @@ func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step 
 	receipt := model.IssueOpsExecutionHandoffCleanupReceipt{Step: step, RecordedAt: now}
 	switch step {
 	case "task_terminal":
+		taskID := strings.TrimSpace(identity.TaskID)
+		dispatchID := strings.TrimSpace(identity.DispatchID)
+		if taskID == "" && dispatchID == "" {
+			break
+		}
 		reader, ok := client.(interface {
 			ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
 		})
-		if !ok || identity.TaskID == "" || identity.DispatchID == "" {
+		if !ok || taskID == "" || dispatchID == "" {
 			return receipt, fmt.Errorf("task cleanup verification dependency or identity is unavailable")
 		}
-		dispatch, err := reader.ShowDispatch(ctx, identity.TaskID)
+		dispatch, err := reader.ShowDispatch(ctx, taskID)
 		if err != nil {
 			return receipt, err
 		}
-		if dispatch.ID != identity.DispatchID || dispatch.TaskID != identity.TaskID || dispatch.AssigneeHandle != identity.WorkerMailboxHandle || !terminalDispatchStatus(dispatch.Status) {
+		if dispatch.ID != dispatchID || dispatch.TaskID != taskID || dispatch.AssigneeHandle != identity.WorkerMailboxHandle || !terminalDispatchStatus(dispatch.Status) {
 			return receipt, fmt.Errorf("exact task and dispatch are not terminal")
 		}
-		receipt.TaskID, receipt.DispatchID = identity.TaskID, identity.DispatchID
+		receipt.TaskID, receipt.DispatchID = taskID, dispatchID
 	case "terminal_quiescent":
 		reader, ok := client.(interface {
 			ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)

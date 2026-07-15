@@ -635,8 +635,6 @@ func issueOpsResumeByID(repo, id string) IssueOpsResumeResult {
 		if binding, err := ReadScopedIssueOpsSession(resumeRepo, rec.ID); err == nil && strings.TrimSpace(binding.ExpectedWorktree) != "" {
 			expectedWorktree = binding.ExpectedWorktree
 		}
-	} else {
-		expectedWorktree = ExpectedWorktreeFromSession(resumeRepo, func() string { return rec.WorktreePath })
 	}
 	return IssueOpsResumeResult{
 		OK:               true,

@@ -92,6 +92,75 @@ func TestAcceptedHandoffCannotApproveCleanupDisposition(t *testing.T) {
 	}
 }
 
+func TestHandoffCleanupAllowsTasklessPreDispatchCancellation(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	record.ExecutionHandoff.State = handoff.StateClosed
+	record.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+	record.ExecutionHandoff.Orca.TaskID = ""
+	record.ExecutionHandoff.Orca.DispatchID = ""
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = ""
+	record.ExecutionHandoff.DeliveryMode = ""
+	record.ExecutionHandoff.DispatchedAt = ""
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{{
+		Handle: record.ExecutionHandoff.Orca.WorkerTerminalHandle, PTYID: record.ExecutionHandoff.Orca.WorkerPTYID,
+		WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, WorktreePath: record.ExecutionHandoff.WorkerRoot,
+	}}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "approve-cleanup", Confirm: true, CleanupDisposition: "remove", Reason: "remove cancelled pre-dispatch resources",
+	}, client, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+
+	partial, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	partial.ExecutionHandoff.Orca.TaskID = "task-only"
+	if _, err := WriteIssueOps(stateRoot, partial); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "record-cleanup", Confirm: true, CleanupStep: "task_terminal",
+	}, client, handoffPrepareTestClock()); err == nil {
+		t.Fatal("partial task identity authorized pre-dispatch cleanup")
+	}
+	partial.ExecutionHandoff.Orca.TaskID = ""
+	partial.ExecutionHandoff.Orca.DispatchID = "dispatch-only"
+	partial.ExecutionHandoff.Orca.WorkerMailboxHandle = "mailbox-only"
+	if _, err := WriteIssueOps(stateRoot, partial); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "record-cleanup", Confirm: true, CleanupStep: "task_terminal",
+	}, client, handoffPrepareTestClock()); err == nil {
+		t.Fatal("partial dispatch identity authorized pre-dispatch cleanup")
+	}
+	partial.ExecutionHandoff.Orca.DispatchID = ""
+	partial.ExecutionHandoff.Orca.WorkerMailboxHandle = ""
+	if _, err := WriteIssueOps(stateRoot, partial); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, step := range []string{"task_terminal", "terminal_quiescent"} {
+		if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+			ID: record.ID, Action: "record-cleanup", Confirm: true, CleanupStep: step,
+		}, client, handoffPrepareTestClock()); err != nil {
+			t.Fatalf("record taskless cleanup %s: %v", step, err)
+		}
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := persisted.ExecutionHandoff.Cleanup.Receipts; len(got) != 2 || got[0].TaskID != "" || got[0].DispatchID != "" || got[1].Step != "terminal_quiescent" {
+		t.Fatalf("taskless cleanup receipts = %#v", got)
+	}
+}
+
 func TestHandoffCleanupQuiescenceRejectsPossibleWritersDispatchesAndReissuedWorktree(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
 	record.ExecutionHandoff.State = handoff.StateClosed

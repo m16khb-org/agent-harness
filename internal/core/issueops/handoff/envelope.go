@@ -693,6 +693,13 @@ func validateCleanup(h *model.IssueOpsExecutionHandoff) error {
 		}
 		switch receipt.Step {
 		case "task_terminal":
+			tasklessPreDispatchCancellation := h.ClosedDisposition == DispositionCancelled && h.DeliveryMode == "" && h.WorkerSession == nil && h.Result == nil && h.Orca.TaskID == "" && h.Orca.DispatchID == ""
+			if tasklessPreDispatchCancellation {
+				if receipt.TaskID != "" || receipt.DispatchID != "" || receipt.TerminalHandle != "" || receipt.PTYID != "" || receipt.WorktreeID != "" || receipt.WorktreeInstanceID != "" {
+					return fmt.Errorf("taskless pre-dispatch cleanup receipt contains external identity")
+				}
+				continue
+			}
 			if receipt.TaskID != h.Orca.TaskID || receipt.DispatchID != h.Orca.DispatchID || receipt.TaskID == "" || receipt.DispatchID == "" || receipt.TerminalHandle != "" || receipt.PTYID != "" || receipt.WorktreeID != "" || receipt.WorktreeInstanceID != "" {
 				return fmt.Errorf("task cleanup receipt does not match exact task and dispatch identity")
 			}

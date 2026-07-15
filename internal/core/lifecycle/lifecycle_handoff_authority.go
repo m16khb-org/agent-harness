@@ -100,8 +100,10 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		cwd, cwdOK := oneFlag(flags, "--source-cwd")
 		agentMatches := strings.TrimSpace(req.AgentID) == "" && !aok || aok && agentID == strings.TrimSpace(req.AgentID)
 		return source && coordinatorLifecycleStateAllows(command.Path, record) && hok && sok && cwdOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
-	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare", "worktree prepare-tools", "handoff recover":
+	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare", "worktree prepare-tools":
 		return source && coordinatorLifecycleStateAllows(command.Path, record)
+	case "handoff recover":
+		return source && (coordinatorLifecycleStateAllows(command.Path, record) || exactCoordinatorPreparingCancel(req, flags, record))
 	case "handoff accept":
 		cwd, cwdOK := oneFlag(flags, "--source-cwd")
 		return source && coordinatorLifecycleStateAllows(command.Path, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo) && handoff.CoordinatorIdentityMatches(record, issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.CWD)
@@ -124,6 +126,22 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	default:
 		return false
 	}
+}
+
+func exactCoordinatorPreparingCancel(req HookToolUseLifecycleRequest, flags map[string][]string, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateCoordinatorPreparing || h.PendingOperation != nil || h.CleanupOnly != nil || h.WorkerSession != nil || h.Result != nil {
+		return false
+	}
+	if h.Orca != nil && (strings.TrimSpace(h.Orca.TaskID) != "" || strings.TrimSpace(h.Orca.DispatchID) != "") {
+		return false
+	}
+	action, actionOK := oneFlag(flags, "--action")
+	_, confirmed := flags["--confirm"]
+	if !actionOK || action != "cancel" || !confirmed || len(flags) != 3 || !nativeSessionMatches(req, h.CoordinatorSession) {
+		return false
+	}
+	return handoff.CoordinatorIdentityMatches(record, issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.CWD)
 }
 
 func coordinatorLifecycleStateAllows(path string, record IssueOpsRecord) bool {

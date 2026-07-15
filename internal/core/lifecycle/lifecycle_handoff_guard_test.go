@@ -1881,6 +1881,39 @@ func TestHandoffGuardRetainsNonterminalLeaseAfterWorkerWorktreeDisappears(t *tes
 	}
 }
 
+func TestCoordinatorPreparingAllowsOnlyExactPreDispatchCancel(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	allow := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	allow.Tool = "exec_command"
+	allow.Command = "agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm"
+	if got := BuildLifecyclePreToolUseDecision(allow); got.Decision != "allow" {
+		t.Fatalf("exact pre-dispatch cancel = %#v", got)
+	}
+
+	for _, command := range []string{
+		"agent-harness issueops handoff recover --id " + record.ID + " --action cancel",
+		"agent-harness issueops handoff recover --id " + record.ID + " --action finalize-cancel --confirm",
+		"agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm --json",
+		"agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm --force",
+		"agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm --reason 'unneeded reason'",
+	} {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool, req.Command = "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("non-exact pre-dispatch recovery %q = %#v", command, got)
+		}
+	}
+	mismatched := handoffEditRequest(record, repo, "codex", "different-session", "")
+	mismatched.Tool, mismatched.Command = "exec_command", allow.Command
+	if got := BuildLifecyclePreToolUseDecision(mismatched); got.Decision != "block" {
+		t.Fatalf("mismatched coordinator cancel = %#v", got)
+	}
+	edit := handoffEditRequest(record, repo, "codex", "coordinator", filepath.Join(repo, "internal", "x.go"))
+	if got := BuildLifecyclePreToolUseDecision(edit); got.Decision != "block" {
+		t.Fatalf("source edit during coordinator preparation = %#v", got)
+	}
+}
+
 func TestClaimedWorkerCannotDestroyCanonicalRootOrGitMetadata(t *testing.T) {
 	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
 	outside := t.TempDir()

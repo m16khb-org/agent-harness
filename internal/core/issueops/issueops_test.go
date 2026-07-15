@@ -501,6 +501,42 @@ func TestIssueOpsResumeBoundIncludesExpectedWorktreeGuidance(t *testing.T) {
 	}
 }
 
+func TestIssueOpsResumeByIDUsesRequestedCycleWorktree(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	repo := t.TempDir()
+	stale, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "16-stale-binding"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "18-requested-cycle"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale.WorktreePath = filepath.Join(repo, "worktrees", "16-stale-binding")
+	target.WorktreePath = filepath.Join(repo, "worktrees", "18-requested-cycle")
+	for _, record := range []IssueOpsRecord{stale, target} {
+		if err := os.MkdirAll(record.WorktreePath, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := WriteIssueOps(IssueOpsStateRoot(), record); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := BindIssueOpsSession(repo, stale.ID, stale.Branch, stale.WorktreePath); err != nil {
+		t.Fatal(err)
+	}
+
+	result := issueOpsResumeByID(repo, target.ID)
+	if result.WorktreePath != target.WorktreePath {
+		t.Fatalf("explicit resume worktree = %q, want %q", result.WorktreePath, target.WorktreePath)
+	}
+	want := "export HARNESS_EXPECTED_WORKTREE=" + target.WorktreePath
+	if result.Guidance != want {
+		t.Fatalf("explicit resume guidance = %q, want %q", result.Guidance, want)
+	}
+}
+
 func TestIssueOpsResumeUnboundNoBranches(t *testing.T) {
 	stateRoot := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateRoot)
