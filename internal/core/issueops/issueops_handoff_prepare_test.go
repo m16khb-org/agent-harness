@@ -1163,27 +1163,25 @@ func TestWorktreePrepareRejectsAmbiguousExistingOrcaWorktreeWithoutMutation(t *t
 	}
 }
 
-func TestWorktreePrepareAdoptsExistingWorktreeMissingFromListByExactPathShow(t *testing.T) {
+func TestWorktreePrepareRejectsRawLegacyWorktreeMissingFromOrcaInventory(t *testing.T) {
 	stateRoot, record := handoffPrepareRecord(t)
 	worktree := handoffPrepareWorktreePath(record)
 	makeGitWorktreeMarker(t, worktree)
-	marker := issueOpsHandoffMarker(record.ID, "epoch-1", 1)
 	client := &prepareOrcaFake{
 		probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
-		show: port.OrcaWorktree{
-			ID: "wt-shown", InstanceID: "inst-shown", RepoID: "repo-1", Path: worktree,
-			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA,
-			Issue: 16, Comment: marker,
-		},
 	}
-	got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+	_, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
 		ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
 	}, client, handoffPrepareTestClock())
-	if err != nil {
-		t.Fatal(err)
+	if err == nil || !strings.Contains(err.Error(), "orca_existing_legacy_worktree") {
+		t.Fatalf("raw Git worktree absent from Orca inventory must fail closed: %v", err)
 	}
-	if got.Orca == nil || got.Orca.WorktreeID != "wt-shown" || client.showCalls != 1 || client.createCalls != 0 {
-		t.Fatalf("path-show legacy worktree was not adopted: result=%#v shows=%d creates=%d", got, client.showCalls, client.createCalls)
+	if client.adoptCalls != 0 || client.createCalls != 0 {
+		t.Fatalf("raw Git worktree crossed Orca mutation boundary: adopts=%d creates=%d", client.adoptCalls, client.createCalls)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil || persisted.ExecutionHandoff != nil {
+		t.Fatalf("raw Git worktree persisted handoff: %#v err=%v", persisted.ExecutionHandoff, readErr)
 	}
 }
 
@@ -1460,10 +1458,6 @@ type prepareOrcaFake struct {
 	adoptErr       error
 	adoptCalls     int
 	adoptRequests  []port.OrcaAdoptWorktreeRequest
-	show           port.OrcaWorktree
-	showErr        error
-	showCalls      int
-	showPaths      []string
 	probeRequests  []port.OrcaProbeRequest
 	beforeCreate   func()
 	trace          []string
@@ -1495,13 +1489,6 @@ func (f *prepareOrcaFake) AdoptWorktree(_ context.Context, req port.OrcaAdoptWor
 	f.adoptCalls++
 	f.adoptRequests = append(f.adoptRequests, req)
 	return f.adopt, f.adoptErr
-}
-
-func (f *prepareOrcaFake) ShowWorktree(_ context.Context, path string) (port.OrcaWorktree, error) {
-	f.trace = append(f.trace, "worktree-show")
-	f.showCalls++
-	f.showPaths = append(f.showPaths, path)
-	return f.show, f.showErr
 }
 
 func materializePrepareWorktreeOnCreate(t *testing.T, client *prepareOrcaFake, worktree string) {
