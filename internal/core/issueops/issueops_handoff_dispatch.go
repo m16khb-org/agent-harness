@@ -45,6 +45,8 @@ type IssueOpsHandoffStartResult struct {
 	CodexHookTrustBypassAttested bool                  `json:"codex_hook_trust_bypass_attested"`
 	Orca                         *IssueOpsOrcaIdentity `json:"orca,omitempty"`
 	CoordinatorRecipient         string                `json:"coordinator_recipient,omitempty"`
+	ConfirmedCommand             string                `json:"confirmed_command,omitempty"`
+	NextCommand                  string                `json:"next_command,omitempty"`
 }
 
 var concreteOrcaTerminalHandlePattern = regexp.MustCompile(`^term_[A-Za-z0-9_-]+$`)
@@ -69,6 +71,10 @@ type IssueOpsOrcaDispatchClient interface {
 	Dispatch(context.Context, port.OrcaDispatchRequest) (port.OrcaDispatch, error)
 	ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
 	ShowDispatchFrom(context.Context, string, string) (port.OrcaDispatch, error)
+}
+
+type issueOpsOrcaTerminalAgentBootstrapper interface {
+	BootstrapTerminalAgent(context.Context, port.OrcaBootstrapTerminalAgentRequest) error
 }
 
 func IssueOpsPreDispatchReadiness(record IssueOpsRecord) IssueOpsReadiness {
@@ -148,6 +154,12 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 		result.ContextSHA256 = packet.SHA256
 		result.CoordinatorRecipient = coordinatorRecipient
 		result.CodexHookTrustBypassAttested = contextOptions.AllowCodexHookTrustBypass
+		if codexHookTrustBypassRequired(record) && !contextOptions.AllowCodexHookTrustBypass {
+			result.NextCommand = attestedHandoffPreviewCommand(record, coordinatorRecipient, coordinatorSession)
+		} else {
+			result.ConfirmedCommand = confirmedHandoffStartCommand(record, coordinatorRecipient, coordinatorSession, contextOptions, packet.SHA256)
+			result.NextCommand = result.ConfirmedCommand
+		}
 		return result, nil
 	}
 	if codexHookTrustBypassRequired(record) && !contextOptions.AllowCodexHookTrustBypass {
@@ -200,6 +212,44 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 		return IssueOpsHandoffStartResult{}, err
 	}
 	return projectHandoffStart(record, false, packet.PlanSHA256), nil
+}
+
+func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coordinator model.IssueOpsHostSessionIdentity, options handoff.ContextOptions, contextSHA string) string {
+	parts := []string{
+		"agent-harness issueops handoff start",
+		"--id " + quoteHandoffCLIToken(record.ID),
+		"--coordinator-recipient " + quoteHandoffCLIToken(recipient),
+		"--coordinator-host " + quoteHandoffCLIToken(coordinator.Host),
+		"--coordinator-session-id " + quoteHandoffCLIToken(coordinator.SessionID),
+	}
+	if coordinator.AgentID != "" {
+		parts = append(parts, "--coordinator-agent-id "+quoteHandoffCLIToken(coordinator.AgentID))
+	}
+	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo))
+	if options.AllowCodexHookTrustBypass {
+		parts = append(parts, "--allow-codex-hook-trust-bypass")
+	}
+	parts = append(parts, "--expected-context-sha256 "+quoteHandoffCLIToken(contextSHA), "--confirm", "--json")
+	return strings.Join(parts, " ")
+}
+
+func attestedHandoffPreviewCommand(record IssueOpsRecord, recipient string, coordinator model.IssueOpsHostSessionIdentity) string {
+	parts := []string{
+		"agent-harness issueops handoff start",
+		"--id " + quoteHandoffCLIToken(record.ID),
+		"--coordinator-recipient " + quoteHandoffCLIToken(recipient),
+		"--coordinator-host " + quoteHandoffCLIToken(coordinator.Host),
+		"--coordinator-session-id " + quoteHandoffCLIToken(coordinator.SessionID),
+	}
+	if coordinator.AgentID != "" {
+		parts = append(parts, "--coordinator-agent-id "+quoteHandoffCLIToken(coordinator.AgentID))
+	}
+	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo), "--allow-codex-hook-trust-bypass", "--json")
+	return strings.Join(parts, " ")
+}
+
+func quoteHandoffCLIToken(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 
 func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now func() string, beforeJournal func()) (IssueOpsRecord, string, error) {
@@ -660,9 +710,24 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 	if err != nil {
 		return record, err
 	}
-	dispatched, err := client.Dispatch(ctx, port.OrcaDispatchRequest{
+	dispatchRequest := port.OrcaDispatchRequest{
 		TaskID: record.ExecutionHandoff.Orca.TaskID, ToHandle: liveHandle, FromHandle: record.ExecutionHandoff.CoordinatorMailboxHandle, Inject: true, ReturnPreamble: true,
-	})
+	}
+	dispatched, err := client.Dispatch(ctx, dispatchRequest)
+	if isOrcaUnrecognizedAgentDispatch(err) {
+		bootstrapper, ok := client.(issueOpsOrcaTerminalAgentBootstrapper)
+		if !ok {
+			err = fmt.Errorf("exact worker terminal has no recognized agent and this Orca client cannot bootstrap it: %w", err)
+		} else {
+			options := record.ExecutionHandoff.ContextOptions
+			allowCodexHookTrustBypass := options != nil && options.AllowCodexHookTrustBypass
+			if bootstrapErr := bootstrapper.BootstrapTerminalAgent(ctx, port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: liveHandle, Agent: record.ExecutionHandoff.Agent, AllowCodexHookTrustBypass: allowCodexHookTrustBypass}); bootstrapErr != nil {
+				err = fmt.Errorf("bootstrap exact worker terminal agent: %w", bootstrapErr)
+			} else {
+				dispatched, err = client.Dispatch(ctx, dispatchRequest)
+			}
+		}
+	}
 	if err != nil {
 		transitionAt := now()
 		if externalMutationNotInvoked(err) {
@@ -689,6 +754,10 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_persist_failed", err.Error(), now())
 	}
 	return record, err
+}
+
+func isOrcaUnrecognizedAgentDispatch(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "no recognized agent detected")
 }
 
 type handoffSoleWriterRecoveryError struct{ cause error }
@@ -1012,8 +1081,9 @@ func validateHandoffDispatchPreamble(preamble, coordinatorRecipient, taskID, dis
 	const taskLabel = "Your task ID is: "
 	coordinatorLine := coordinatorLabel + coordinatorRecipient
 	taskLine := taskLabel + taskID
-	coordinatorCount, taskCount, dispatchCount := 0, 0, 0
+	coordinatorCount, taskCount := 0, 0
 	foundCoordinator, foundTask, foundDispatch := false, false, false
+	conflictingDispatch := false
 	for _, line := range strings.Split(preamble, "\n") {
 		line = strings.TrimSuffix(line, "\r")
 		if strings.HasPrefix(line, coordinatorLabel) {
@@ -1028,12 +1098,13 @@ func validateHandoffDispatchPreamble(preamble, coordinatorRecipient, taskID, dis
 		for index, field := range fields {
 			switch {
 			case field == "--dispatch-id":
-				dispatchCount++
 				if index+1 < len(fields) && fields[index+1] == dispatchID {
 					foundDispatch = true
+				} else {
+					conflictingDispatch = true
 				}
 			case strings.HasPrefix(field, "--dispatch-id="):
-				dispatchCount++
+				conflictingDispatch = true
 			}
 		}
 	}
@@ -1043,8 +1114,8 @@ func validateHandoffDispatchPreamble(preamble, coordinatorRecipient, taskID, dis
 	if taskID == "" || taskCount != 1 || !foundTask {
 		return fmt.Errorf("Orca dispatch preamble must contain exactly one official task id line")
 	}
-	if dispatchID == "" || dispatchCount != 1 || !foundDispatch {
-		return fmt.Errorf("Orca dispatch preamble must contain exactly one exact --dispatch-id token")
+	if dispatchID == "" || !foundDispatch || conflictingDispatch {
+		return fmt.Errorf("Orca dispatch preamble must contain only exact --dispatch-id tokens")
 	}
 	return nil
 }

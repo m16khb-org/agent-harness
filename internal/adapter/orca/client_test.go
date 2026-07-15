@@ -556,6 +556,22 @@ func TestClientCreateTerminalNegotiatesOnlyFixedBuiltInLaunchShape(t *testing.T)
 	}
 }
 
+func TestClientBootstrapsExactLegacyTerminalWithAttestedCodex(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal send --terminal term-legacy --text codex --dangerously-bypass-hook-trust --enter --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"send":{"accepted":true}}}`)}
+	runner.responses["orca terminal wait --terminal term-legacy --for tui-idle --timeout-ms 10000 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"wait":{"satisfied":true}}}`)}
+	if err := NewClient(runner).BootstrapTerminalAgent(context.Background(), port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: "term-legacy", Agent: "codex", AllowCodexHookTrustBypass: true}); err != nil {
+		t.Fatal(err)
+	}
+	want := [][]string{
+		{"orca", "terminal", "send", "--terminal", "term-legacy", "--text", "codex --dangerously-bypass-hook-trust", "--enter", "--json"},
+		{"orca", "terminal", "wait", "--terminal", "term-legacy", "--for", "tui-idle", "--timeout-ms", "10000", "--json"},
+	}
+	if !reflect.DeepEqual(runner.calls, want) {
+		t.Fatalf("bootstrap calls = %#v, want %#v", runner.calls, want)
+	}
+}
+
 func TestClientCreateTerminalCapabilityLossIsPreInvocation(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --title --json")}
@@ -718,6 +734,16 @@ func TestClientShowDispatchDecodesInstalledShapeWithoutInjectedField(t *testing.
 	}
 	if got.Injected {
 		t.Fatalf("dispatch-show must not synthesize absent injected evidence: %#v", got)
+	}
+}
+
+func TestClientShowDispatchNullReturnsNotFound(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca orchestration dispatch-show --task task-absent --json"] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"dispatch":null}}`)}
+	_, err := NewClient(runner).ShowDispatch(context.Background(), "task-absent")
+	var orcaErr *port.OrcaError
+	if !errors.As(err, &orcaErr) || orcaErr.Code != "not_found" {
+		t.Fatalf("dispatch=null error = %v, want Orca not_found", err)
 	}
 }
 

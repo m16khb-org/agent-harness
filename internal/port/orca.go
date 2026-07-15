@@ -108,6 +108,15 @@ type OrcaCreateTerminalRequest struct {
 	AllowCodexHookTrustBypass bool   `json:"allow_codex_hook_trust_bypass,omitempty"`
 }
 
+// OrcaBootstrapTerminalAgentRequest starts the selected supported host agent
+// in an already-owned sole-writer terminal. It is limited to recovery of an
+// exact legacy worktree terminal; it never targets an arbitrary shell.
+type OrcaBootstrapTerminalAgentRequest struct {
+	TerminalHandle            string `json:"terminal_handle"`
+	Agent                     string `json:"agent"`
+	AllowCodexHookTrustBypass bool   `json:"allow_codex_hook_trust_bypass,omitempty"`
+}
+
 type OrcaTask struct {
 	ID          string `json:"id"`
 	Title       string `json:"title,omitempty"`
