@@ -112,6 +112,40 @@ func TestIssueOpsMCPHelpersAndRemoteDryRuns(t *testing.T) {
 	}
 }
 
+func TestVerifyIssueOpsRemoteArtifactFromMCPForwardsTargetBranch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	record := core.IssueOpsRecord{
+		ID:       core.NewIssueOpsID(repo, "76-target-branch"),
+		Repo:     repo,
+		Branch:   "76-target-branch",
+		Phase:    core.IssueOpsPhasePR,
+		IssueURL: "https://github.com/example/repo/issues/76",
+	}
+	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	previousVerifyLive := VerifyIssueOpsRemoteArtifactLive
+	VerifyIssueOpsRemoteArtifactLive = func(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+		if req.TargetBranch != "release/76" {
+			t.Fatalf("MCP target branch = %q", req.TargetBranch)
+		}
+		return nil
+	}
+	t.Cleanup(func() { VerifyIssueOpsRemoteArtifactLive = previousVerifyLive })
+
+	got, err := verifyIssueOpsRemoteArtifactFromMCP(map[string]any{
+		"id": record.ID, "provider": "github", "kind": "pr", "url": "https://github.com/example/repo/pull/76",
+		"target_branch": "release/76", "labels": []string{"bug"}, "assignees": []string{"habin"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RemoteArtifact == nil || got.RemoteArtifact.TargetBranch != "release/76" {
+		t.Fatalf("MCP verification did not persist target branch: %#v", got.RemoteArtifact)
+	}
+}
+
 func TestMCPRemoteCreatePRLegacyAtMeParityAndNoStateMutation(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := mcpIssueOpsRecord(t)

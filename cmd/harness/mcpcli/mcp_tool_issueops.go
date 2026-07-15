@@ -88,11 +88,12 @@ func issueOpsMCPOutcome(payload any, err error, message string) MCPToolOutcome {
 
 func verifyIssueOpsRemoteArtifactFromMCP(args map[string]any) (core.IssueOpsRecord, error) {
 	req := core.IssueOpsRemoteArtifactVerificationRequest{
-		Provider:  argmap.String(args, "provider"),
-		Kind:      argmap.String(args, "kind"),
-		URL:       argmap.String(args, "url"),
-		Labels:    argmap.StringSlice(args, "labels"),
-		Assignees: argmap.StringSlice(args, "assignees"),
+		Provider:     argmap.String(args, "provider"),
+		Kind:         argmap.String(args, "kind"),
+		URL:          argmap.String(args, "url"),
+		TargetBranch: argmap.String(args, "target_branch"),
+		Labels:       argmap.StringSlice(args, "labels"),
+		Assignees:    argmap.StringSlice(args, "assignees"),
 	}
 	_, err := core.ValidateIssueOpsRemoteArtifactVerification(core.IssueOpsStateRoot(), argmap.String(args, "id"), req)
 	if err == nil {

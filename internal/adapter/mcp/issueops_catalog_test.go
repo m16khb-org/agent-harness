@@ -167,6 +167,9 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 			t.Fatalf("issueops_verify_remote_artifact must require %q: %#v", required, verifyRemote.InputSchema)
 		}
 	}
+	if !schemaHasProperty(verifyRemote.InputSchema, "target_branch") {
+		t.Fatalf("issueops_verify_remote_artifact schema missing target_branch: %#v", verifyRemote.InputSchema)
+	}
 
 	if !schemaRequires(byName["issueops_pr_readiness"].InputSchema, "id") {
 		t.Fatalf("issueops_pr_readiness must require id: %#v", byName["issueops_pr_readiness"].InputSchema)

@@ -30,7 +30,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("Usage:")
 		fmt.Println("  agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]")
 		fmt.Println("  agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]")
-		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --label LABEL --assignee USER [--json]")
+		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --target-branch BRANCH --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
@@ -97,6 +97,7 @@ func Run(args []string, deps Deps) error {
 		provider := fs.String("provider", "", "remote provider: github or gitlab")
 		kind := fs.String("kind", "", "remote artifact kind: pr or mr")
 		url := fs.String("url", "", "remote PR/MR URL")
+		targetBranch := fs.String("target-branch", "", "verified PR/MR target branch")
 		var labels repeatedFlag
 		var assignees repeatedFlag
 		fs.Var(&labels, "label", "verified remote label; may be repeated")
@@ -108,11 +109,12 @@ func Run(args []string, deps Deps) error {
 			return err
 		}
 		req := core.IssueOpsRemoteArtifactVerificationRequest{
-			Provider:  *provider,
-			Kind:      *kind,
-			URL:       *url,
-			Labels:    labels,
-			Assignees: assignees,
+			Provider:     *provider,
+			Kind:         *kind,
+			URL:          *url,
+			TargetBranch: *targetBranch,
+			Labels:       labels,
+			Assignees:    assignees,
 		}
 		_, err := core.ValidateIssueOpsRemoteArtifactVerification(core.IssueOpsStateRoot(), *id, req)
 		var record core.IssueOpsRecord

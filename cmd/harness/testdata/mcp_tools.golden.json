@@ -1457,6 +1457,10 @@
           ],
           "type": "string"
         },
+        "target_branch": {
+          "description": "Verified PR/MR target branch; must match the IssueOps linked base branch for strict PR readiness.",
+          "type": "string"
+        },
         "url": {
           "description": "Verified PR/MR URL.",
           "type": "string"
